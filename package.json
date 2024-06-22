@@ -31,6 +31,7 @@
     "playgrounds/embla-carousel-playground-solid"
   ],
   "scripts": {
+    "pre-commit": "lint-staged",
     "eslint:report": "yarn workspaces foreach -v --exclude \"{embla-carousel-monorepo,embla-carousel-playground-vanilla,embla-carousel-playground-react}\" run eslint:report",
     "prettier:report": "prettier \"**/*.{js,jsx,tsx,ts,scss,json}\" --check",
     "lint": "npm-run-all prettier:report eslint:report",
@@ -56,23 +57,51 @@
     "version:create": "git add -A && git commit -m \"$npm_package_version\" && git tag v$npm_package_version",
     "version:push": "yarn install && yarn version:create && git add -A && git push && git push --tags"
   },
+  "engines": {
+    "node": "20.13.1",
+    "npm": "10.8.1"
+  },
   "devDependencies": {
     "@babel/core": "7.23.2",
+    "@commitlint/cli": "17.7.1",
+    "@commitlint/config-conventional": "17.7.0",
+    "@csmith/release-it-calver-plugin": "2023.9.0",
+    "@release-it/conventional-changelog": "7.0.0",
+    "@typescript-eslint/eslint-plugin": "7.13.0",
+    "@typescript-eslint/parser": "7.13.1",
     "@octokit/types": "^11.1.0",
     "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-node-resolve": "15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.5",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "9.0.0",
+    "eslint-import-resolver-typescript": "3.6.1",
+    "eslint-plugin-import": "2.29.0",
+    "eslint-plugin-json": "2.1.2",
+    "eslint-plugin-require-path-exists": "1.1.9",
     "husky": "^4.3.8",
     "npm-run-all": "^4.1.5",
+    "lint-staged": "13.2.3",
     "prettier": "2.8.8",
     "rollup": "^4.1.5",
+    "stylelint": "16.6.1",
+    "stylelint-config-standard": "36.0.0",
+    "stylelint-order": "6.0.4",
+    "stylelint-selector-bem-pattern": "4.0.0",
+    "tsx": "4.15.7",
     "typescript": "^5.2.2"
   },
-  "husky": {
-    "hooks": {
-      "pre-push": "npm-run-all format test lint"
-    }
-  },
-  "packageManager": "yarn@3.3.1"
+  "lint-staged": {
+    "*.{json,scss,css,html}": [
+      "prettier --write"
+    ],
+    "packages/embla-carousel/**/*.{js,ts,tsx,jsx}": [
+      "eslint --config packages/embla-caro/.eslintrc.js --fix",
+      "prettier --write"
+    ],
+    "packages/embla-carousel/**/*.{ts,tsx}": [
+      "tsc-files --noEmit --project packages/embla-carousel/tsconfig.json"
+    ]
+  }
 }
