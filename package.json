@@ -19,11 +19,11 @@
   "scripts": {
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "eslint:report": "yarn workspaces foreach -v --exclude \"{embla-carousel-monorepo,embla-carousel-playground-vanilla,embla-carousel-playground-react}\" run eslint:report",
+    "eslint:report": "pnpm -r --stream --filter=!{} run eslint:report",
     "prettier:report": "prettier \"**/*.{js,jsx,tsx,ts,scss,json}\" --check",
     "lint": "npm-run-all prettier:report eslint:report",
     "format": "prettier \"**/*.{js,jsx,tsx,ts,scss,json}\" --write",
-    "test": "yarn workspaces foreach -v --exclude \"{embla-carousel-monorepo,embla-carousel-playground-vanilla,embla-carousel-playground-react}\" run test",
+    "test": "pnpm -r --filter=!{embla-carousel-monorepo,embla-carousel-playground-vanilla,embla-carousel-playground-react} run test",
     "watch:package-vanilla": "yarn workspace embla-carousel run start",
     "watch:package-react": "yarn workspace embla-carousel-react run start",
     "watch:package-solid": "yarn workspace embla-carousel-solid run start",
