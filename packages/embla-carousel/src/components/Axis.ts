@@ -54,3 +54,5 @@ export function Axis(
   }
   return self
 }
+
+const unused = 'foo'
