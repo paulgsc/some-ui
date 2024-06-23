@@ -1,13 +1,14 @@
-import { AxisType } from './Axis'
-import { EmblaCarouselType } from './EmblaCarousel'
-import { EventHandlerType } from './EventHandler'
-import { NodeRectsType } from './NodeRects'
-import { isBoolean, mathAbs, WindowType } from './utils'
+import type { AxisType } from './Axis'
+import type { EmblaCarouselType } from './EmblaCarousel'
+import type { EventHandlerType } from './EventHandler'
+import type { NodeRectsType } from './NodeRects'
+import type { WindowType } from './utils'
+import { isBoolean, mathAbs } from './utils'
 
 type ResizeHandlerCallbackType = (
   emblaApi: EmblaCarouselType,
   entries: ResizeObserverEntry[]
-) => boolean | void
+) => boolean | undefined
 
 export type ResizeHandlerOptionType = boolean | ResizeHandlerCallbackType
 
@@ -30,7 +31,8 @@ export function ResizeHandler(
   let slideSizes: number[] = []
   let destroyed = false
 
-  function readSize(node: HTMLElement): number {
+  function readSize(node?: HTMLElement): number {
+    if (!node) return 0
     return axis.measureSize(nodeRects.measure(node))
   }
 
@@ -43,8 +45,10 @@ export function ResizeHandler(
     function defaultCallback(entries: ResizeObserverEntry[]): void {
       for (const entry of entries) {
         const isContainer = entry.target === container
-        const slideIndex = slides.indexOf(<HTMLElement>entry.target)
-        const lastSize = isContainer ? containerSize : slideSizes[slideIndex]
+        const slideIndex = slides.indexOf(entry.target as HTMLElement)
+        const lastSize = isContainer
+          ? containerSize
+          : slideSizes[slideIndex] ?? 0
         const newSize = readSize(isContainer ? container : slides[slideIndex])
         const diffSize = mathAbs(newSize - lastSize)
 
@@ -66,12 +70,19 @@ export function ResizeHandler(
     })
 
     const observeNodes = [container].concat(slides)
-    observeNodes.forEach((node) => resizeObserver.observe(node))
+    observeNodes.forEach((node) => {
+      resizeObserver.observe(node)
+    })
   }
 
   function destroy(): void {
-    if (resizeObserver) resizeObserver.disconnect()
-    destroyed = true
+    try {
+      resizeObserver.disconnect()
+    } catch {
+      // pass
+    } finally {
+      destroyed = true
+    }
   }
 
   const self: ResizeHandlerType = {
