@@ -91,7 +91,7 @@
       "prettier --write"
     ],
     "packages/embla-carousel/**/*.{ts,tsx}": [
-      "tsc-files --noEmit --project packages/embla-carousel/tsconfig.json"
+      "npx tsc --build --project packages/embla-carousel/tsconfig.json"
     ]
   }
 }

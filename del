@@ -1,0 +1,215 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+//@ts-check
+import eslint from '@eslint/js'
+import deprecationPlugin from 'eslint-plugin-deprecation'
+import tseslint from 'typescript-eslint'
+import prettier from 'eslint-config-prettier'
+import tsParser from '@typescript-eslint/parser'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import json from 'eslint-plugin-json'
+// import importPlugin from 'eslint-plugin-import'
+// import importTypescript from 'eslint-import-resolver-typescript'
+import prettierPlugin from 'eslint-plugin-prettier'
+import globals from 'globals'
+
+export default [
+  {
+    plugins: {
+      // 'require-path-exists': require('eslint-plugin-require-path-exists'),
+      ['@typescript-eslint']: tseslint.plugin,
+      // import: importPlugin,
+      prettier: prettierPlugin,
+      ['deprecation']: deprecationPlugin,
+      ['@typescript-eslint/eslint-plugin']: tsPlugin
+    }
+  },
+  {
+    // config with just ignores is the replacement for `.eslintignore`
+    ignores: [
+      '**/jest.config.js',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/package.json',
+      '**/package-lock.json',
+      '**/fixtures/**',
+      '**/coverage/**',
+      '**/__snapshots__/**',
+      '**/.docusaurus/**',
+      '**/build/**'
+    ]
+  },
+  // extends ...
+  eslint.configs.recommended,
+
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  ...tseslint.configs.recommended,
+  {
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        ...globals.es2021
+      },
+      parserOptions: {
+        allowAutomaticSingleRunInference: true,
+        cacheLifetime: {
+          // we pretty well never create/change tsconfig structure - so no need to ever evict the cache
+          // in the rare case that we do - just need to manually restart their IDE.
+          glob: 'Infinity'
+        },
+        project: ['./tsconfig.json', './packages/*/tsconfig.json'],
+        // tsconfigRootDir: __dirname,
+        warnOnUnsupportedTypeScriptVersion: false,
+        parser: '@typescript-eslint/parser'
+      }
+    }
+  },
+  {
+    rules: {
+      // make sure we're not leveraging any deprecated APIs
+      // 'deprecation/deprecation': 'error',
+
+      // TODO: https://github.com/typescript-eslint/typescript-eslint/issues/8538
+      '@typescript-eslint/no-confusing-void-expression': 'off',
+
+      //
+      // our plugin :D
+      //
+
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-expect-error': 'allow-with-description',
+          'ts-ignore': true,
+          'ts-nocheck': true,
+          'ts-check': false,
+          minimumDescriptionLength: 5
+        }
+      ],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', disallowTypeAnnotations: true }
+      ],
+      '@typescript-eslint/explicit-function-return-type': [
+        'error',
+        { allowIIFEs: true }
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      'no-constant-condition': 'off',
+      '@typescript-eslint/no-unnecessary-condition': [
+        'error',
+        { allowConstantLoopConditions: true }
+      ],
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/prefer-literal-enum-member': [
+        'error',
+        {
+          allowBitwiseExpressions: true
+        }
+      ],
+      '@typescript-eslint/prefer-string-starts-ends-with': [
+        'error',
+        {
+          allowSingleElementEquality: 'always'
+        }
+      ],
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/restrict-template-expressions': [
+        'error',
+        {
+          allowNumber: true,
+          allowBoolean: true,
+          allowAny: true,
+          allowNullish: true,
+          allowRegExp: true
+        }
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          caughtErrors: 'all',
+          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_'
+        }
+      ],
+      '@typescript-eslint/prefer-nullish-coalescing': [
+        'error',
+        {
+          ignoreConditionalTests: true,
+          ignorePrimitives: true
+        }
+      ]
+    }
+  },
+  {
+    settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: ['frontend/tsconfig.json']
+        },
+        node: true
+      }
+    }
+  },
+  {
+    files: ['**/*.json'],
+    ...json.configs.recommended
+  },
+
+  {
+    files: ['*.ts', '*.tsx'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: '**/tsconfig.json'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      prettier: prettierPlugin
+    },
+    rules: {
+      ...tsPlugin.configs['eslint-recommended'].rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...tsPlugin.configs.strict.rules,
+      '@typescript-eslint/explicit-function-return-type': ['error'],
+      '@typescript-eslint/no-empty-function': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^(_|e|event)', varsIgnorePattern: '^_' }
+      ],
+      '@typescript-eslint/no-var-requires': 'error',
+      '@typescript-eslint/no-this-alias': 'off',
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        {
+          checksVoidReturn: false
+        }
+      ],
+      '@typescript-eslint/promise-function-async': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/strict-boolean-expressions': [
+        'error',
+        { allowNullableBoolean: true, allowNullableNumber: true }
+      ],
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/no-invalid-void-type': 'off',
+      ...prettier.rules
+    }
+  },
+  {
+    files: ['backend/**/*.ts'],
+    rules: {
+      eqeqeq: 'error'
+    }
+  }
+]
