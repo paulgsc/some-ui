@@ -1,10 +1,10 @@
-import { NodeRectType } from './NodeRects'
+import type { NodeRectType } from './NodeRects'
 
 export type AxisOptionType = 'x' | 'y'
 export type AxisDirectionOptionType = 'ltr' | 'rtl'
 type AxisEdgeType = 'top' | 'right' | 'bottom' | 'left'
 
-export type AxisType = {
+export interface AxisType {
   scroll: AxisOptionType
   cross: AxisOptionType
   startEdge: AxisEdgeType
@@ -54,5 +54,3 @@ export function Axis(
   }
   return self
 }
-
-// const foo = (bar: string): number => 'red'
