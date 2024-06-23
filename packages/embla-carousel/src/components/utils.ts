@@ -1,4 +1,4 @@
-import { PointerEventType } from './DragTracker'
+import type { PointerEventType } from './DragTracker'
 
 export type WindowType = Window & typeof globalThis
 
@@ -42,7 +42,7 @@ export function arrayKeys<Type>(array: Type[]): number[] {
 }
 
 export function arrayLast<Type>(array: Type[]): Type {
-  return array[arrayLastIndex(array)]
+  return array[arrayLastIndex(array)] as Type
 }
 
 export function arrayLastIndex<Type>(array: Type[]): number {
@@ -53,7 +53,7 @@ export function arrayIsLastIndex<Type>(array: Type[], index: number): boolean {
   return index === arrayLastIndex(array)
 }
 
-export function arrayFromNumber(n: number, startAt: number = 0): number[] {
+export function arrayFromNumber(n: number, startAt = 0): number[] {
   return Array.from(Array(n), (_, i) => startAt + i)
 }
 
@@ -83,8 +83,5 @@ export function isMouseEvent(
   evt: PointerEventType,
   ownerWindow: WindowType
 ): evt is MouseEvent {
-  return (
-    typeof ownerWindow.MouseEvent !== 'undefined' &&
-    evt instanceof ownerWindow.MouseEvent
-  )
+  return evt instanceof ownerWindow.MouseEvent
 }
