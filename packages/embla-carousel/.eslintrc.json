@@ -4,10 +4,6 @@
     {
       "files": ["**/*.{js,mjs,ts,tsx,mdx}"],
       "parser": "@typescript-eslint/parser",
-      "parserOptions": {
-        "ecmaVersion": 2018,
-        "sourceType": "module"
-      },
       "rules": {
         "no-debugger": 2,
         "no-console": 2,
