@@ -161,7 +161,7 @@ export default tseslint.config(
       '@typescript-eslint/restrict-template-expressions': [
         'error',
         {
-          allowNumber: false,
+          allowNumber: true,
           allowBoolean: false,
           allowAny: false,
           allowNullish: false,

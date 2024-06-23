@@ -1,4 +1,4 @@
-import { AxisType } from './Axis'
+import type { AxisType } from './Axis'
 
 export type TranslateType = {
   clear: () => void
@@ -8,10 +8,10 @@ export type TranslateType = {
 
 export function Translate(
   axis: AxisType,
-  container: HTMLElement
+  container?: HTMLElement
 ): TranslateType {
   const translate = axis.scroll === 'x' ? x : y
-  const containerStyle = container.style
+  const containerStyle = container?.style
   let disabled = false
 
   function x(n: number): string {
@@ -23,7 +23,7 @@ export function Translate(
   }
 
   function to(target: number): void {
-    if (disabled) return
+    if (disabled || !containerStyle) return
     containerStyle.transform = translate(axis.direction(target))
   }
 
@@ -32,8 +32,8 @@ export function Translate(
   }
 
   function clear(): void {
-    if (disabled) return
-    containerStyle.transform = ''
+    if (disabled || !container) return
+    if (containerStyle) containerStyle.transform = ''
     if (!container.getAttribute('style')) container.removeAttribute('style')
   }
 
