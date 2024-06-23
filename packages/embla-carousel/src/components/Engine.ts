@@ -1,40 +1,62 @@
 import { Alignment } from './Alignment'
-import {
-  Animations,
+import type {
+  AnimationsRenderType,
   AnimationsType,
-  AnimationsUpdateType,
-  AnimationsRenderType
+  AnimationsUpdateType
 } from './Animations'
-import { Axis, AxisType } from './Axis'
-import { Counter, CounterType } from './Counter'
-import { DragHandler, DragHandlerType } from './DragHandler'
+import { Animations } from './Animations'
+import type { AxisType } from './Axis'
+import { Axis } from './Axis'
+import type { CounterType } from './Counter'
+import { Counter } from './Counter'
+import type { DragHandlerType } from './DragHandler'
+import { DragHandler } from './DragHandler'
 import { DragTracker } from './DragTracker'
-import { EventHandlerType } from './EventHandler'
-import { EventStore, EventStoreType } from './EventStore'
-import { LimitType } from './Limit'
-import { NodeRectType, NodeRects } from './NodeRects'
-import { OptionsType } from './Options'
-import { PercentOfView, PercentOfViewType } from './PercentOfView'
-import { ResizeHandler, ResizeHandlerType } from './ResizeHandler'
-import { ScrollBody, ScrollBodyType } from './ScrollBody'
-import { ScrollBounds, ScrollBoundsType } from './ScrollBounds'
+import type { EventHandlerType } from './EventHandler'
+import type { EventStoreType } from './EventStore'
+import { EventStore } from './EventStore'
+import type { LimitType } from './Limit'
+import type { NodeRectType } from './NodeRects'
+import { NodeRects } from './NodeRects'
+import type { OptionsType } from './Options'
+import type { PercentOfViewType } from './PercentOfView'
+import { PercentOfView } from './PercentOfView'
+import type { ResizeHandlerType } from './ResizeHandler'
+import { ResizeHandler } from './ResizeHandler'
+import type { ScrollBodyType } from './ScrollBody'
+import { ScrollBody } from './ScrollBody'
+import type { ScrollBoundsType } from './ScrollBounds'
+import { ScrollBounds } from './ScrollBounds'
 import { ScrollContain } from './ScrollContain'
 import { ScrollLimit } from './ScrollLimit'
-import { ScrollLooper, ScrollLooperType } from './ScrollLooper'
-import { ScrollProgress, ScrollProgressType } from './ScrollProgress'
+import type { ScrollLooperType } from './ScrollLooper'
+import { ScrollLooper } from './ScrollLooper'
+import type { ScrollProgressType } from './ScrollProgress'
+import { ScrollProgress } from './ScrollProgress'
 import { ScrollSnaps } from './ScrollSnaps'
-import { SlideRegistry, SlideRegistryType } from './SlideRegistry'
-import { ScrollTarget, ScrollTargetType } from './ScrollTarget'
-import { ScrollTo, ScrollToType } from './ScrollTo'
-import { SlideFocus, SlideFocusType } from './SlideFocus'
-import { SlideLooper, SlideLooperType } from './SlideLooper'
-import { SlidesHandler, SlidesHandlerType } from './SlidesHandler'
-import { SlidesInView, SlidesInViewType } from './SlidesInView'
+import type { ScrollTargetType } from './ScrollTarget'
+import { ScrollTarget } from './ScrollTarget'
+import type { ScrollToType } from './ScrollTo'
+import { ScrollTo } from './ScrollTo'
+import type { SlideFocusType } from './SlideFocus'
+import { SlideFocus } from './SlideFocus'
+import type { SlideLooperType } from './SlideLooper'
+import { SlideLooper } from './SlideLooper'
+import type { SlideRegistryType } from './SlideRegistry'
+import { SlideRegistry } from './SlideRegistry'
+import type { SlidesHandlerType } from './SlidesHandler'
+import { SlidesHandler } from './SlidesHandler'
+import type { SlidesInViewType } from './SlidesInView'
+import { SlidesInView } from './SlidesInView'
 import { SlideSizes } from './SlideSizes'
-import { SlidesToScroll, SlidesToScrollType } from './SlidesToScroll'
-import { Translate, TranslateType } from './Translate'
-import { arrayKeys, arrayLast, arrayLastIndex, WindowType } from './utils'
-import { Vector1D, Vector1DType } from './Vector1d'
+import type { SlidesToScrollType } from './SlidesToScroll'
+import { SlidesToScroll } from './SlidesToScroll'
+import type { TranslateType } from './Translate'
+import { Translate } from './Translate'
+import type { WindowType } from './utils'
+import { arrayKeys, arrayLast, arrayLastIndex } from './utils'
+import type { Vector1DType } from './Vector1d'
+import { Vector1D } from './Vector1d'
 
 export type EngineType = {
   ownerDocument: Document
@@ -192,6 +214,7 @@ export function Engine(
     }
     if (!hasSettled) eventHandler.emit('scroll')
 
+    // eslint-disable-next-line no-mixed-operators
     offsetLocation.set(location.get() - velocity + velocity * lagOffset)
 
     if (loop) {
@@ -204,13 +227,17 @@ export function Engine(
   const animation = Animations(
     ownerDocument,
     ownerWindow,
-    () => update(engine),
-    (lagOffset: number) => render(engine, lagOffset)
+    () => {
+      update(engine)
+    },
+    (lagOffset: number) => {
+      render(engine, lagOffset)
+    }
   )
 
   // Shared
   const friction = 0.68
-  const startLocation = scrollSnaps[index.get()]
+  const startLocation = scrollSnaps[index.get()] ?? 0
   const location = Vector1D(startLocation)
   const offsetLocation = Vector1D(startLocation)
   const target = Vector1D(startLocation)
