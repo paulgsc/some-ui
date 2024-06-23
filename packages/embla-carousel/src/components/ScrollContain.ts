@@ -1,4 +1,5 @@
-import { Limit, LimitType } from './Limit'
+import type { LimitType } from './Limit'
+import { Limit } from './Limit'
 import { arrayIsLastIndex, arrayLast, deltaAbs } from './utils'
 
 export type ScrollContainOptionType = false | 'trimSnaps' | 'keepSnaps'
@@ -25,7 +26,7 @@ export function ScrollContain(
   }
 
   function findScrollContainLimit(): LimitType {
-    const startSnap = snapsBounded[0]
+    const startSnap = snapsBounded[0] ?? 0
     const endSnap = arrayLast(snapsBounded)
     const min = snapsBounded.lastIndexOf(startSnap)
     const max = snapsBounded.indexOf(endSnap) + 1
