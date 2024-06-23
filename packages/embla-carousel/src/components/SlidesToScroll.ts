@@ -1,5 +1,5 @@
-import { AxisType } from './Axis'
-import { NodeRectType } from './NodeRects'
+import type { AxisType } from './Axis'
+import type { NodeRectType } from './NodeRects'
 import {
   arrayKeys,
   arrayLast,
@@ -43,8 +43,14 @@ export function SlidesToScroll(
         const isFirst = rectA === 0
         const isLast = rectB === arrayLastIndex(array)
 
-        const edgeA = containerRect[startEdge] - slideRects[rectA][startEdge]
-        const edgeB = containerRect[startEdge] - slideRects[rectB][endEdge]
+        const slideRectA = slideRects[rectA]
+        const slideRectB = slideRects[rectB]
+
+        const edgeA =
+          containerRect[startEdge] - (slideRectA ? slideRectA[startEdge] : 0)
+        const edgeB =
+          containerRect[startEdge] - (slideRectB ? slideRectB[endEdge] : 0)
+
         const gapA = !loop && isFirst ? direction(startGap) : 0
         const gapB = !loop && isLast ? direction(endGap) : 0
         const chunkSize = mathAbs(edgeB - gapB - (edgeA + gapA))
