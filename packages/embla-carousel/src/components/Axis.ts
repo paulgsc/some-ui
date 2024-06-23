@@ -55,4 +55,4 @@ export function Axis(
   return self
 }
 
-const foo = (bar: string): number => 'red'
+const foo = (bar: string): number => 'blue'
