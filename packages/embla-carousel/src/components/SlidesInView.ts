@@ -1,9 +1,7 @@
-import { EventHandlerType } from './EventHandler'
+import type { EventHandlerType } from './EventHandler'
 import { objectKeys } from './utils'
 
-type IntersectionEntryMapType = {
-  [key: number]: IntersectionObserverEntry
-}
+type IntersectionEntryMapType = Record<number, IntersectionObserverEntry>
 
 export type SlidesInViewOptionsType = IntersectionObserverInit['threshold']
 
@@ -31,7 +29,7 @@ export function SlidesInView(
         if (destroyed) return
 
         entries.forEach((entry) => {
-          const index = slides.indexOf(<HTMLElement>entry.target)
+          const index = slides.indexOf(entry.target as HTMLElement)
           intersectionEntryMap[index] = entry
         })
 
@@ -45,19 +43,27 @@ export function SlidesInView(
       }
     )
 
-    slides.forEach((slide) => intersectionObserver.observe(slide))
+    slides.forEach((slide) => {
+      intersectionObserver.observe(slide)
+    })
   }
 
   function destroy(): void {
-    if (intersectionObserver) intersectionObserver.disconnect()
-    destroyed = true
+    try {
+      intersectionObserver.disconnect()
+    } catch {
+      // pass
+    } finally {
+      destroyed = true
+    }
   }
 
   function createInViewList(inView: boolean): number[] {
     return objectKeys(intersectionEntryMap).reduce(
       (list: number[], slideIndex) => {
         const index = parseInt(slideIndex)
-        const { isIntersecting } = intersectionEntryMap[index]
+        const { isIntersecting } =
+          intersectionEntryMap[index] ?? ({} as IntersectionObserverEntry)
         const inViewMatch = inView && isIntersecting
         const notInViewMatch = !inView && !isIntersecting
 
@@ -68,7 +74,7 @@ export function SlidesInView(
     )
   }
 
-  function get(inView: boolean = true): number[] {
+  function get(inView = true): number[] {
     if (inView && inViewCache) return inViewCache
     if (!inView && notInViewCache) return notInViewCache
 
