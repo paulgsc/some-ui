@@ -1,7 +1,7 @@
-import { AlignmentType } from './Alignment'
-import { AxisType } from './Axis'
-import { NodeRectType } from './NodeRects'
-import { SlidesToScrollType } from './SlidesToScroll'
+import type { AlignmentType } from './Alignment'
+import type { AxisType } from './Axis'
+import type { NodeRectType } from './NodeRects'
+import type { SlidesToScrollType } from './SlidesToScroll'
 import { arrayLast, mathAbs } from './utils'
 
 export type ScrollSnapsType = {
@@ -24,7 +24,10 @@ export function ScrollSnaps(
 
   function measureSizes(): number[] {
     return groupSlides(slideRects)
-      .map((rects) => arrayLast(rects)[endEdge] - rects[0][startEdge])
+      .map(
+        (rects) =>
+          arrayLast(rects)[endEdge] - (rects[0] ? rects[0][startEdge] : 0)
+      )
       .map(mathAbs)
   }
 
@@ -37,7 +40,7 @@ export function ScrollSnaps(
   function measureAligned(): number[] {
     return groupSlides(snaps)
       .map((g) => g[0])
-      .map((snap, index) => snap + alignments[index])
+      .map((snap, index) => (snap ?? 0) + (alignments[index] ?? 0))
   }
 
   const self: ScrollSnapsType = {
