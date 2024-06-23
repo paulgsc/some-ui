@@ -1,6 +1,6 @@
-import { LimitType } from './Limit'
-import { Vector1DType } from './Vector1d'
+import type { LimitType } from './Limit'
 import { arrayLast, mathAbs, mathSign } from './utils'
+import type { Vector1DType } from './Vector1d'
 
 export type TargetType = {
   distance: number
@@ -22,7 +22,7 @@ export function ScrollTarget(
 ): ScrollTargetType {
   const { reachedAny, removeOffset, constrain } = limit
 
-  function minDistance(distances: number[]): number {
+  function minDistance(distances: number[]): number | undefined {
     return distances.concat().sort((a, b) => mathAbs(a) - mathAbs(b))[0]
   }
 
@@ -32,7 +32,8 @@ export function ScrollTarget(
       .map((snap, index) => ({ diff: shortcut(snap - distance, 0), index }))
       .sort((d1, d2) => mathAbs(d1.diff) - mathAbs(d2.diff))
 
-    const { index } = ascDiffsToSnaps[0]
+    const { index } =
+      ascDiffsToSnaps[0] ?? ({} as { diff: number; index: number })
     return { index, distance }
   }
 
@@ -40,15 +41,15 @@ export function ScrollTarget(
     const targets = [target, target + contentSize, target - contentSize]
 
     if (!loop) return target
-    if (!direction) return minDistance(targets)
+    if (!direction) return minDistance(targets) ?? 0
 
     const matchingTargets = targets.filter((t) => mathSign(t) === direction)
-    if (matchingTargets.length) return minDistance(matchingTargets)
+    if (matchingTargets.length) return minDistance(matchingTargets) ?? 0
     return arrayLast(targets) - contentSize
   }
 
   function byIndex(index: number, direction: number): TargetType {
-    const diffToSnap = scrollSnaps[index] - targetVector.get()
+    const diffToSnap = (scrollSnaps[index] ?? 0) - targetVector.get()
     const distance = shortcut(diffToSnap, direction)
     return { index, distance }
   }
@@ -60,7 +61,7 @@ export function ScrollTarget(
 
     if (!snap || reachedBound) return { index, distance }
 
-    const diffToSnap = scrollSnaps[index] - targetSnapDistance
+    const diffToSnap = (scrollSnaps[index] ?? 0) - targetSnapDistance
     const snapDistance = distance + shortcut(diffToSnap, 0)
 
     return { index, distance: snapDistance }
