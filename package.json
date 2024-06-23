@@ -81,17 +81,5 @@
     "tsx": "4.15.7",
     "typescript": "^5.5.2",
     "typescript-eslint": "^7.13.1"
-  },
-  "lint-staged": {
-    "*.{json,scss,css,html}": [
-      "prettier --write"
-    ],
-    "packages/embla-carousel/**/*.{js,ts,tsx,jsx}": [
-      "eslint --config packages/embla-caro/.eslintrc.js --fix",
-      "prettier --write"
-    ],
-    "packages/embla-carousel/**/*.{ts,tsx}": [
-      "npx tsc --build --project packages/embla-carousel/tsconfig.json"
-    ]
   }
 }
