@@ -1,5 +1,13 @@
 {
   "**/*.{js,mjs,ts,tsx,md,mdx}": ["eslint --fix", "prettier --check --write"],
   "**/*.css": ["stylelint --allow-empty-input", "prettier --write"],
-  "**/*.{json,yml}": ["prettier --check --write"]
+  "**/*.{json,yml}": ["prettier --check --write"],
+  "**/*.{scss,html}": ["prettier --write"],
+  "packages/embla-carousel/**/*.{js,ts,tsx,jsx}": [
+    "eslint --config packages/embla-caro/.eslintrc.js --fix",
+    "prettier --write"
+  ],
+  "packages/embla-carousel/**/*.{ts,tsx}": [
+    "npx tsc --build --project packages/embla-carousel/tsconfig.json"
+  ]
 }
