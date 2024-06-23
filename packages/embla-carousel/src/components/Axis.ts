@@ -4,7 +4,7 @@ export type AxisOptionType = 'x' | 'y'
 export type AxisDirectionOptionType = 'ltr' | 'rtl'
 type AxisEdgeType = 'top' | 'right' | 'bottom' | 'left'
 
-export interface AxisType {
+export type AxisType = {
   scroll: AxisOptionType
   cross: AxisOptionType
   startEdge: AxisEdgeType
@@ -54,5 +54,3 @@ export function Axis(
   }
   return self
 }
-
-const unused = 'foo'
