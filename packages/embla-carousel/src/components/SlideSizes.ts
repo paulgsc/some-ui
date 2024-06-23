@@ -1,6 +1,7 @@
-import { AxisType } from './Axis'
-import { NodeRectType } from './NodeRects'
-import { arrayIsLastIndex, arrayLast, mathAbs, WindowType } from './utils'
+import type { AxisType } from './Axis'
+import type { NodeRectType } from './NodeRects'
+import type { WindowType } from './utils'
+import { arrayIsLastIndex, arrayLast, mathAbs } from './utils'
 
 export type SlideSizesType = {
   slideSizes: number[]
@@ -26,7 +27,7 @@ export function SlideSizes(
 
   function measureStartGap(): number {
     if (!withEdgeGap) return 0
-    const slideRect = slideRects[0]
+    const slideRect = slideRects[0] ?? ({} as NodeRectType)
     return mathAbs(containerRect[startEdge] - slideRect[startEdge])
   }
 
@@ -41,9 +42,12 @@ export function SlideSizes(
       .map((rect, index, rects) => {
         const isFirst = !index
         const isLast = arrayIsLastIndex(rects, index)
-        if (isFirst) return slideSizes[index] + startGap
-        if (isLast) return slideSizes[index] + endGap
-        return rects[index + 1][startEdge] - rect[startEdge]
+        if (isFirst) return (slideSizes[index] ?? 0) + startGap
+        if (isLast) return (slideSizes[index] ?? 0) + endGap
+        return (
+          (rects[index + 1] ?? ({} as NodeRectType))[startEdge] -
+          rect[startEdge]
+        )
       })
       .map(mathAbs)
   }
