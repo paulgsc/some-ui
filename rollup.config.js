@@ -1,11 +1,11 @@
-import fs from 'fs'
-import path from 'path'
-import emblaPackageJson from 'embla-carousel/package.json'
-import utilsPackageJson from 'embla-carousel-reactive-utils/package.json'
 import babel from '@rollup/plugin-babel'
-import typescript from '@rollup/plugin-typescript'
 import resolve from '@rollup/plugin-node-resolve'
 import terser from '@rollup/plugin-terser'
+import typescript from '@rollup/plugin-typescript'
+import emblaPackageJson from 'embla-carousel/package.json'
+import utilsPackageJson from 'embla-carousel-reactive-utils/package.json'
+import fs from 'fs'
+import path from 'path'
 
 const FOLDERS = {
   ESM: 'esm',
