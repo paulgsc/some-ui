@@ -1,4 +1,5 @@
-import { Limit, LimitType } from './Limit'
+import type { LimitType } from './Limit'
+import { Limit } from './Limit'
 import { arrayLast } from './utils'
 
 export type ScrollLimitType = {
@@ -10,7 +11,7 @@ export function ScrollLimit(
   scrollSnaps: number[],
   loop: boolean
 ): ScrollLimitType {
-  const max = scrollSnaps[0]
+  const max = scrollSnaps[0] ?? contentSize
   const min = loop ? max - contentSize : arrayLast(scrollSnaps)
   const limit = Limit(min, max)
 
