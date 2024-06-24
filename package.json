@@ -17,7 +17,6 @@
     "packages/embla-carousel"
   ],
   "scripts": {
-    "prepare": "husky install",
     "pre-commit": "lint-staged",
     "eslint:report": "pnpm -r --stream run eslint:report",
     "prettier:report": "prettier \"**/*.{js,jsx,tsx,ts,scss,json}\" --check",
@@ -42,7 +41,8 @@
     "version:minor": "yarn workspaces foreach version minor && yarn version:push",
     "version:major": "yarn workspaces foreach version major && yarn version:push",
     "version:create": "git add -A && git commit -m \"$npm_package_version\" && git tag v$npm_package_version",
-    "version:push": "yarn install && yarn version:create && git add -A && git push && git push --tags"
+    "version:push": "yarn install && yarn version:create && git add -A && git push && git push --tags",
+    "prepare": "husky"
   },
   "engines": {
     "node": "20.13.1",
