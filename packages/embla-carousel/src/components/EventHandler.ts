@@ -1,11 +1,11 @@
-import { EmblaCarouselType } from './EmblaCarousel'
+import type { EmblaCarouselType } from './EmblaCarousel'
 
 type CallbackType = (emblaApi: EmblaCarouselType, evt: EmblaEventType) => void
 type ListenersType = Partial<{ [key in EmblaEventType]: CallbackType[] }>
 
 export type EmblaEventType = EmblaEventListType[keyof EmblaEventListType]
 
-export interface EmblaEventListType {
+export type EmblaEventListType = {
   init: 'init'
   pointerDown: 'pointerDown'
   pointerUp: 'pointerUp'
@@ -37,11 +37,13 @@ export function EventHandler(): EventHandlerType {
   }
 
   function getListeners(evt: EmblaEventType): CallbackType[] {
-    return listeners[evt] || []
+    return listeners[evt] ?? []
   }
 
   function emit(evt: EmblaEventType): EventHandlerType {
-    getListeners(evt).forEach((e) => e(api, evt))
+    getListeners(evt).forEach((e) => {
+      e(api, evt)
+    })
     return self
   }
 

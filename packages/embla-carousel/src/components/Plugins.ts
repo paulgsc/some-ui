@@ -1,10 +1,8 @@
-import { CreateOptionsType, LooseOptionsType } from './Options'
-import { EmblaCarouselType } from './EmblaCarousel'
-import { OptionsHandlerType } from './OptionsHandler'
+import type { EmblaCarouselType } from './EmblaCarousel'
+import type { CreateOptionsType, LooseOptionsType } from './Options'
+import type { OptionsHandlerType } from './OptionsHandler'
 
-export type LoosePluginType = {
-  [key: string]: unknown
-}
+export type LoosePluginType = Record<string, unknown>
 
 export type CreatePluginType<
   TypeA extends LoosePluginType,
@@ -16,8 +14,10 @@ export type CreatePluginType<
   destroy: () => void
 }
 
-export interface EmblaPluginsType {
-  [key: string]: CreatePluginType<LoosePluginType, {}>
-}
+export type EmblaPluginsType = Record<
+  string,
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  CreatePluginType<LoosePluginType, {}>
+>
 
 export type EmblaPluginType = EmblaPluginsType[keyof EmblaPluginsType]

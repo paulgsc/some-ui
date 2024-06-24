@@ -1,21 +1,20 @@
-import { AlignmentOptionType } from './Alignment'
-import { AxisDirectionOptionType, AxisOptionType } from './Axis'
-import { SlidesToScrollOptionType } from './SlidesToScroll'
-import { ScrollContainOptionType } from './ScrollContain'
-import { DragHandlerOptionType } from './DragHandler'
-import { ResizeHandlerOptionType } from './ResizeHandler'
-import { SlidesHandlerOptionType } from './SlidesHandler'
-import { SlidesInViewOptionsType } from './SlidesInView'
+import type { AlignmentOptionType } from './Alignment'
+import type { AxisDirectionOptionType, AxisOptionType } from './Axis'
+import type { DragHandlerOptionType } from './DragHandler'
+import type { ResizeHandlerOptionType } from './ResizeHandler'
+import type { ScrollContainOptionType } from './ScrollContain'
+import type { SlidesHandlerOptionType } from './SlidesHandler'
+import type { SlidesInViewOptionsType } from './SlidesInView'
+import type { SlidesToScrollOptionType } from './SlidesToScroll'
 
-export type LooseOptionsType = {
-  [key: string]: unknown
-}
+export type LooseOptionsType = Record<string, unknown>
 
 export type CreateOptionsType<Type extends LooseOptionsType> = Type & {
   active: boolean
-  breakpoints: {
-    [key: string]: Omit<Partial<CreateOptionsType<Type>>, 'breakpoints'>
-  }
+  breakpoints: Record<
+    string,
+    Omit<Partial<CreateOptionsType<Type>>, 'breakpoints'>
+  >
 }
 
 export type OptionsType = CreateOptionsType<{

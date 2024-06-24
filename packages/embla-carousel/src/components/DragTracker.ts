@@ -1,5 +1,6 @@
-import { AxisOptionType, AxisType } from './Axis'
-import { isMouseEvent, mathAbs, WindowType } from './utils'
+import type { AxisOptionType, AxisType } from './Axis'
+import type { WindowType } from './utils'
+import { isMouseEvent, mathAbs } from './utils'
 
 type PointerCoordType = keyof Touch | keyof MouseEvent
 export type PointerEventType = TouchEvent | MouseEvent
@@ -25,9 +26,10 @@ export function DragTracker(
   }
 
   function readPoint(evt: PointerEventType, evtAxis?: AxisOptionType): number {
-    const property = evtAxis || axis.scroll
+    const property = evtAxis ?? axis.scroll
     const coord: PointerCoordType = `client${property === 'x' ? 'X' : 'Y'}`
-    return (isMouseEvent(evt, ownerWindow) ? evt : evt.touches[0])[coord]
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return (isMouseEvent(evt, ownerWindow) ? evt : evt.touches[0]!)[coord]
   }
 
   function pointerDown(evt: PointerEventType): number {
@@ -46,6 +48,7 @@ export function DragTracker(
   }
 
   function pointerUp(evt: PointerEventType): number {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!startEvent || !lastEvent) return 0
     const diffDrag = readPoint(lastEvent) - readPoint(startEvent)
     const diffTime = readTime(evt) - readTime(startEvent)

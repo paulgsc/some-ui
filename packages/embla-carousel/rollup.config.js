@@ -1,16 +1,16 @@
-import packageJson from './package.json'
 import {
-  FOLDERS,
+  babel,
   CONFIG_BABEL,
   CONFIG_TYPESCRIPT,
-  babel,
-  typescript,
+  createBuildPath,
+  createNodeNextSupport,
+  FOLDERS,
+  kebabToPascalCase,
   resolve,
   terser,
-  createBuildPath,
-  kebabToPascalCase,
-  createNodeNextSupport
+  typescript
 } from '../../rollup.config'
+import packageJson from './package.json'
 
 export default [
   {
