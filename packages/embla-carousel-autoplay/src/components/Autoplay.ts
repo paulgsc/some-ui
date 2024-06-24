@@ -20,6 +20,8 @@ export type AutoplayType = CreatePluginType<
 // @ts-expect-error Migraine inducer
 export type AutoplayOptionsType = AutoplayType['options']
 
+type ScrolDirection = 'forward' | 'backward'
+
 function Autoplay(userOptions: AutoplayOptionsType): AutoplayType {
   let options: OptionsType
   let emblaApi: EmblaCarouselType
@@ -28,6 +30,7 @@ function Autoplay(userOptions: AutoplayOptionsType): AutoplayType {
   let resume = true
   let jump = false
   let timer = 0
+  let direction: ScrolDirection = 'forward'
 
   function init(
     emblaApiInstance: EmblaCarouselType,
@@ -150,11 +153,25 @@ function Autoplay(userOptions: AutoplayOptionsType): AutoplayType {
 
     if (kill) stopTimer()
 
-    if (emblaApi.canScrollNext()) {
-      emblaApi.scrollNext(jump)
-    } else {
-      emblaApi.scrollTo(0, jump)
+    const scroll = (next: boolean): void => {
+      if (next) {
+        if (emblaApi.canScrollNext()) {
+          emblaApi.scrollNext(jump)
+        } else {
+          direction = 'backward'
+          emblaApi.scrollPrev(jump)
+        }
+      } else {
+        if (emblaApi.canScrollPrev()) {
+          emblaApi.scrollPrev(jump)
+        } else {
+          direction = 'forward'
+          emblaApi.scrollNext(jump)
+        }
+      }
     }
+
+    scroll(direction === 'forward')
   }
 
   const self: AutoplayType = {
