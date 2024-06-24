@@ -18,6 +18,8 @@ export type EmblaEventListType = {
   reInit: 'reInit'
   resize: 'resize'
   slideFocus: 'slideFocus'
+  autoplayPlay: 'autoplay:play'
+  autoplayStop: 'autoplay:stop'
 }
 
 export type EventHandlerType = {

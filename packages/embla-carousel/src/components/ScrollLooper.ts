@@ -1,5 +1,6 @@
-import { Limit, LimitType } from './Limit'
-import { Vector1DType } from './Vector1d'
+import type { LimitType } from './Limit'
+import { Limit } from './Limit'
+import type { Vector1DType } from './Vector1d'
 
 export type ScrollLooperType = {
   loop: (direction: number) => void
@@ -26,7 +27,9 @@ export function ScrollLooper(
     if (!shouldLoop(direction)) return
 
     const loopDistance = contentSize * (direction * -1)
-    vectors.forEach((v) => v.add(loopDistance))
+    vectors.forEach((v) => {
+      v.add(loopDistance)
+    })
   }
 
   const self: ScrollLooperType = {
