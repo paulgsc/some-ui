@@ -116,7 +116,7 @@ export default tseslint.config(
       ...tseslint.configs.stylisticTypeChecked
     ],
     plugins: {
-      '@typescript-eslint': tsPlugin,
+      '@typescript-eslint/eslint-plugin': tsPlugin,
       deprecation: deprecationPlugin,
       ['unicorn']: unicornPlugin
     },
