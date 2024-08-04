@@ -1,3 +1,10 @@
+ /*
+ * This file contains code adapted from the Node.js website repository,
+ * available at: https://github.com/davidjerleke/embla-carousel
+ * The original code is licensed under the MIT License.
+ */
+
+
 import fs from 'fs'
 import path from 'path'
 import some-uiPackageJson from 'some-ui/package.json'
