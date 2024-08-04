@@ -1,0 +1,55 @@
+name: Linting
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+  release:
+    types: [published]
+
+defaults:
+  run:
+    working-directory: ./
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: write
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  lint:
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'release' && github.event.action == 'published')
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+
+      - uses: pnpm/action-setup@v4
+        name: Add pnpm
+        id: pnpm-install
+        with:
+          # version declared in packagemanager
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run quality checks with `turbo`
+        if: |
+          github.event_name == 'pull_request' ||
+          (github.event_name == 'release' && github.event.action == 'published')
+
+        run: npx --package=turbo@latest -- turbo lint:js lint:vercel lint:md typecheck prettier
