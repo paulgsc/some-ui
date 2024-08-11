@@ -1,0 +1,11 @@
+{
+  "extends": "@some-ui/tsconfig/tsconfig.ui",
+  "compilerOptions": {
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "types": ["chrome"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+  "exclude": ["node_modules", "build", "dist"]
+}
