@@ -2,8 +2,8 @@
 import url from "node:url"
 import { FlatCompat } from "@eslint/eslintrc"
 import eslint from "@eslint/js"
-import nextPlugin from "@next/eslint-plugin-next"
 import tsPlugin from "@typescript-eslint/eslint-plugin"
+import typescriptParser from "@typescript-eslint/parser"
 import prettier from "eslint-config-prettier"
 import deprecationPlugin from "eslint-plugin-deprecation"
 import importPlugin from "eslint-plugin-import"
@@ -13,6 +13,7 @@ import prettierPlugin from "eslint-plugin-prettier"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
 import simpleImportSortPlugin from "eslint-plugin-simple-import-sort"
+import tailwindPlugin from "eslint-plugin-tailwindcss"
 import unicornPlugin from "eslint-plugin-unicorn"
 import unusedImports from "eslint-plugin-unused-imports"
 import globals from "globals"
@@ -33,9 +34,9 @@ export default tseslint.config(
       ["unicorn"]: unicornPlugin,
       ["react-hooks"]: reactHooksPlugin,
       ["react"]: reactPlugin,
-      ["jsx-a11y"]: jsxA11yPlugin,
       ["import"]: importPlugin,
-      ["next"]: nextPlugin,
+      ["tailwindcss"]: tailwindPlugin,
+      ["json"]: jsonPlugin,
     },
   },
   {
@@ -55,7 +56,16 @@ export default tseslint.config(
     ],
   },
   {
+    settings: {
+      tailwindcss: {
+        callees: ["cn", "cva"],
+      },
+    },
+  },
+  {
     languageOptions: {
+      parser: typescriptParser,
+      ...jsxA11yPlugin.flatConfigs.recommended.languageOptions,
       globals: {
         ...globals.es2020,
         ...globals.node,
@@ -88,8 +98,15 @@ export default tseslint.config(
       ],
       "one-var": ["error", "never"],
 
-      // enforce a sort order across the codebase
+      // // enforce a sort order across the codebase
       "simple-import-sort/imports": "error",
+
+      // tailwindcss
+      "tailwindcss/classnames-order": "error",
+      "tailwindcss/enforces-shorthand": "warn",
+      "tailwindcss/no-custom-classname": "warn",
+      "tailwindcss/no-contradicting-classname": "error",
+      "tailwindcss/no-unnecessary-arbitrary-value": "error",
     },
   },
 
@@ -128,13 +145,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/guru/**/*.{ts,tsx,cts,mts}"],
+    files: ["packages/**/*.{ts,tsx,cts,mts}"],
 
     extends: [
       eslint.configs.recommended,
+      jsxA11yPlugin.flatConfigs.recommended,
+      reactPlugin.configs.flat.recommended,
 
-      ...compat.config(jsxA11yPlugin.configs.recommended),
-      ...compat.config(reactPlugin.configs.recommended),
       ...compat.config(reactHooksPlugin.configs.recommended),
 
       ...tseslint.configs.strictTypeChecked,
@@ -237,6 +254,21 @@ export default tseslint.config(
       "jsx-a11y/role-has-required-aria-props": "error",
       "jsx-a11y/role-supports-aria-props": "error",
       "react/jsx-no-target-blank": "off",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "ImportDeclaration[source.value='react'][specifiers.0.type='ImportDefaultSpecifier']",
+          message:
+            "Default React import not allowed since we use the TypeScript jsx-transform. If you need a global type that collides with a React named export (such as `MouseEvent`), try using `globalThis.MouseHandler`",
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='react'] :matches(ImportNamespaceSpecifier)",
+          message:
+            "Named * React import is not allowed. Please import what you need from React with Named Imports",
+        },
+      ],
     },
   },
   {
