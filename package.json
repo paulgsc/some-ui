@@ -2,7 +2,7 @@
   "name": "some-ui",
   "version": "1.0.0",
   "description": "",
- "private": true,
+  "private": true,
   "license": "MIT",
   "keywords": [
     "oauth"
@@ -12,7 +12,7 @@
     "url": "https://github.com/paulgsc/guru-catcher"
   },
   "scripts": {
-     "clean": "rimraf dist && rimraf .turbo && turbo clean",
+    "clean": "rimraf dist && rimraf .turbo && turbo clean",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
     "lint": "turbo lint",
     "lint:fix": "turbo run lint:fix --filter=./self-host",
@@ -23,15 +23,15 @@
     "prepare": "husky",
     "test": "turbor test"
   },
-  "packageManager": "pnpm@9.5.0", 
+  "packageManager": "pnpm@9.5.0",
   "author": "pgdev",
-   "dependencies": {
-    "postcss": "^8.4.40",
+  "dependencies": {
+    "postcss": "^8.4.41",
     "pretty-quick": "^4.0.0",
-    "tailwindcss": "^3.4.6",
+    "tailwindcss": "^3.4.9",
     "tailwindcss-animate": "^1.0.7",
-    "tsx": "^4.16.2",
-    "turbo": "^2.0.9"
+    "tsx": "^4.17.0",
+    "turbo": "^2.0.12"
   },
   "devDependencies": {
     "@commitlint/cli": "19.3.0",
@@ -42,13 +42,13 @@
     "@ianvs/prettier-plugin-sort-imports": "^4.3.1",
     "@next/eslint-plugin-next": "^14.2.5",
     "@types/chrome": "^0.0.268",
-    "@types/node": "^20.14.12",
+    "@types/node": "^20.14.15",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react-swc": "^3.7.0",
-    "autoprefixer": "^10.4.19",
+    "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
     "eslint": "9.5.0",
     "eslint-config-airbnb-typescript": "17.1.0",
@@ -64,16 +64,16 @@
     "eslint-plugin-require-path-exists": "1.1.9",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-unicorn": "^50.0.1",
-    "eslint-plugin-unused-imports": "^4.0.1",
+    "eslint-plugin-unused-imports": "^4.1.3",
     "glob": "^10.4.5",
-    "globals": "^15.8.0",
-    "husky": "^9.1.1",
-    "lint-staged": "^15.2.7",
+    "globals": "^15.9.0",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.8",
     "postcss": "^8.4.39",
     "prettier": "^3.3.3",
     "react": "18.3.1",
     "react-dom": "18.2.0",
-    "rimraf": "^5.0.9",
+    "rimraf": "^5.0.10",
     "stylelint": "16.6.1",
     "stylelint-config-standard": "36.0.1",
     "stylelint-order": "6.0.4",
@@ -84,6 +84,6 @@
     "tsx": "4.15.7",
     "turbo": "^2.0.6",
     "typescript": "^5.5.4",
-    "typescript-eslint": "^7.17.0"
+    "typescript-eslint": "^7.18.0"
   }
 }
