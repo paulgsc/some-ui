@@ -1,3 +1,5 @@
 packages:
   - packages/ui/*
   - packages/tsconfig
+  - packages/utils
+  - packages/tailwind-config
