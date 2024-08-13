@@ -11,7 +11,18 @@ function getAbsolutePath(value: string): any {
 const config: StorybookConfig = {
   stories: ["../packages/ui/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   logLevel: "error",
-  core: { disableTelemetry: true, disableWhatsNewNotifications: true },
+  core: {
+    disableTelemetry: true,
+    disableWhatsNewNotifications: true,
+    builder: {
+      name: getAbsolutePath("@storybook/builder-vite"),
+      options: {
+        launchOptions: {
+          open: false,
+        },
+      },
+    },
+  },
   addons: [
     getAbsolutePath("@storybook/addon-onboarding"),
     getAbsolutePath("@storybook/addon-links"),
