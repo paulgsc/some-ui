@@ -39,3 +39,4 @@ tsconfig.tsbuildinfo
 
 /target
 */.vercel
+*storybook.log
