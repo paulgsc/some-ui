@@ -1,0 +1,21 @@
+{
+  "name": "@some-ui/pivot-search",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "rollup --bundleConfigAsCjs -c",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "lint:md": "eslint \"**/*.{md,mdx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@some-ui/tsconfig": "workspace:*"
+  }
+}
