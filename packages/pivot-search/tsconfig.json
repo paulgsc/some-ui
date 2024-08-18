@@ -6,7 +6,7 @@
     "baseUrl": ".",
     "types": ["chrome"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@pivot-search/*": ["./src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
