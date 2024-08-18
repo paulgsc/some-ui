@@ -3,3 +3,4 @@ packages:
   - packages/tsconfig
   - packages/utils
   - packages/tailwind-config
+  - packages/pivot-search
