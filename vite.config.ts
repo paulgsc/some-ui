@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@pivot-search": path.resolve(__dirname, "./packages/pivot-search/src"),
+      "@shared": path.resolve(__dirname, "./packages/shared/src"),
       // Add more aliases for other packages as needed
     },
   },
