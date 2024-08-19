@@ -18,9 +18,22 @@
       "cache": false
     },
     "lint:fix": {
-      "cache": false
+      "cache": false,
+      "outputs": []
+    },
+    "lint:js": {
+      "cache": false,
+      "outputs": []
+    },
+    "lint:md": {
+      "cache": false,
+      "outputs": []
     },
     "prettier": {
+      "cache": false
+    },
+    "typecheck": {},
+    "check": {
       "cache": false
     },
     "test": {
