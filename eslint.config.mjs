@@ -13,6 +13,7 @@ import prettierPlugin from "eslint-plugin-prettier"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
 import simpleImportSortPlugin from "eslint-plugin-simple-import-sort"
+import * as storybookPlugin from "eslint-plugin-storybook"
 import tailwindPlugin from "eslint-plugin-tailwindcss"
 import unicornPlugin from "eslint-plugin-unicorn"
 import unusedImports from "eslint-plugin-unused-imports"
@@ -53,6 +54,8 @@ export default tseslint.config(
       "**/.docusaurus/**",
       "**/build/**",
       "**/.next/**",
+      "**/tsconfig.json",
+      "**/storybook-static/**",
     ],
   },
   {
@@ -81,7 +84,7 @@ export default tseslint.config(
           // in the rare case that we do - just need to manually restart their IDE.
           glob: "Infinity",
         },
-        project: ["tsconfig.json", "packages/*/tsconfig.json"],
+        project: ["./tsconfig.json", "./packages/*/tsconfig.json"],
         tsconfigRootDir: __dirname,
         warnOnUnsupportedTypeScriptVersion: false,
       },
@@ -278,6 +281,13 @@ export default tseslint.config(
     rules: {
       // or the equivalent:
       "json/*": ["error", { allowComments: true }],
+    },
+  },
+  {
+    files: ["**/*.stories.tsx"],
+    rules: {
+      ...storybookPlugin.rules,
+      "import/no-anonymous-default-export": "off",
     },
   }
 )
