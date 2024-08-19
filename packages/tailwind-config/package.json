@@ -1,7 +1,0 @@
-{
-  "name": "@some-ui/tailwindcss-config",
-  "version": "0.1.0",
-  "description": "Tailwind CSS configuration for boilerplate",
-  "main": "./tailwind.config.ts",
-  "private": true
-}
