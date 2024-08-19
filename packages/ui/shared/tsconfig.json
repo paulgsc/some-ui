@@ -4,8 +4,12 @@
     "outDir": "dist",
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "types": ["chrome"]
+    "types": ["chrome"],
+    "paths": {
+      "@shared/*": ["./src/*"]
+    }
   },
- "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
   "exclude": ["node_modules", "build", "dist"]
 }
