@@ -84,7 +84,10 @@ export default tseslint.config(
           // in the rare case that we do - just need to manually restart their IDE.
           glob: "Infinity",
         },
-        project: ["./tsconfig.json", "./packages/*/tsconfig.json"],
+        project: [
+          "./packages/*/tsconfig.json",
+          "./packages/ui/*/tsconfig.json",
+        ],
         tsconfigRootDir: __dirname,
         warnOnUnsupportedTypeScriptVersion: false,
       },
