@@ -18,7 +18,6 @@
   "devDependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/tailwindcss-config": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*"
   }
 }
