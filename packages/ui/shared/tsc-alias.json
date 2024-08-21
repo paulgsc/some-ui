@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declarationDir": "./",
+    "baseUrl": ".",
+    "paths": { "@shared/*": ["./src/*"] }
+  }
+}
