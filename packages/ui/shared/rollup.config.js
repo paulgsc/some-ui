@@ -30,10 +30,6 @@ const CONFIG_GLOBALS_UMD = {
   "react/jsx-runtime": "jsxRuntime",
 }
 
-const customResolver = resolve({
-  extensions: [".mjs", ".js", ".jsx", ".mts", ".ts", ".tsx"],
-})
-
 const aliasEntries = [
   { find: "@shared", replacement: path.resolve(cwd(), "./src") },
 ]
@@ -64,7 +60,6 @@ export default [
     plugins: [
       alias({
         entries: aliasEntries,
-        customResolver,
       }),
       resolve(),
       typescript(CONFIG_TYPESCRIPT),
@@ -87,7 +82,6 @@ export default [
         plugins: [
           alias({
             entries: aliasEntries,
-            customResolver,
           }),
           resolve(),
           terser(),
@@ -98,7 +92,6 @@ export default [
     plugins: [
       alias({
         entries: aliasEntries,
-        customResolver,
       }),
       resolve(),
       typescript(CONFIG_TYPESCRIPT),
