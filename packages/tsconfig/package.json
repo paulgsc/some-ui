@@ -4,6 +4,6 @@
   "description": "tsconfig for some-ui",
   "private": true,
   "scripts": {
-    "clean": "rimraf ./dist"
+    "clean": "rimraf ./dist && rimraf .turbo"
   }
 }
