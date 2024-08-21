@@ -40,3 +40,10 @@ tsconfig.tsbuildinfo
 /target
 */.vercel
 *storybook.log
+
+.eslintcache
+.rollup.cache
+.*cache
+**/cjs
+**/esm
+/dist
