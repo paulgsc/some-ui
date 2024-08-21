@@ -3,7 +3,7 @@
  * available at: https://github.com/davidjerleke/embla-carousel
  * The original code is licensed under the MIT License.
  */
-
+//@ts-check
 import fs from "fs"
 import path from "path"
 import alias from "@rollup/plugin-alias"
@@ -185,19 +185,19 @@ function createNodeNextSupport() {
 }
 
 export {
-  FOLDERS,
-  CONFIG_TYPESCRIPT,
-  CONFIG_BABEL,
-  CONFIG_GLOBALS,
-  CONFIG_EXTERNAL_MODULES,
-  CONFIG_EXTERNAL_MODULE_SUPPRESS,
   alias,
   babel,
+  CONFIG_BABEL,
+  CONFIG_EXTERNAL_MODULE_SUPPRESS,
+  CONFIG_EXTERNAL_MODULES,
+  CONFIG_GLOBALS,
+  CONFIG_TYPESCRIPT,
+  createBuildPath,
+  createNodeNextSupport,
+  FOLDERS,
+  kebabToPascalCase,
   path,
-  typescript,
   resolve,
   terser,
-  createBuildPath,
-  kebabToPascalCase,
-  createNodeNextSupport,
+  typescript,
 }
