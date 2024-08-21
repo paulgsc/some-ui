@@ -3,4 +3,3 @@ packages:
   - packages/tsconfig
   - packages/utils
   - packages/pivot-search
-  - packages/delme/*
