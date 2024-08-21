@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Some-ui rollup tsconfig",
+  "extends": "./tsconfig.ui.json",
+  "compilerOptions": {
+    "declaration": true,
+    "allowImportingTsExtensions": null,
+    "moduleResolution": "node",
+    "plugins": [
+      { "transform": "typescript-transform-paths" },
+      { "transform": "typescript-transform-paths", "afterDeclarations": true }
+    ]
+  }
+}
