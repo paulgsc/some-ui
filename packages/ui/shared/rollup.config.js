@@ -1,32 +1,46 @@
-import packageJson from './package.json'
+import { cwd } from "process"
+
 import {
-  FOLDERS,
-  CONFIG_BABEL,
-  CONFIG_TYPESCRIPT,
-  CONFIG_GLOBALS,
-  CONFIG_EXTERNAL_MODULES,
-  CONFIG_EXTERNAL_MODULE_SUPPRESS,
+  alias,
   babel,
-  typescript,
+  CONFIG_BABEL,
+  CONFIG_EXTERNAL_MODULE_SUPPRESS,
+  CONFIG_EXTERNAL_MODULES,
+  CONFIG_GLOBALS,
+  CONFIG_TYPESCRIPT,
+  createBuildPath,
+  createNodeNextSupport,
+  FOLDERS,
+  kebabToPascalCase,
+  path,
   resolve,
   terser,
-  createBuildPath,
-  kebabToPascalCase,
-  createNodeNextSupport
-} from '../../rollup.config'
+  typescript,
+} from "../../../rollup.config"
+import packageJson from "./package.json"
 
 const CONFIG_GLOBALS_MODULE = {
   ...CONFIG_GLOBALS,
-  react: 'React'
+  react: "React",
+  "react/jsx-runtime": "jsxRuntime",
 }
 
 const CONFIG_GLOBALS_UMD = {
-  react: 'React'
+  react: "React",
+  "react/jsx-runtime": "jsxRuntime",
 }
+
+const customResolver = resolve({
+  extensions: [".mjs", ".js", ".jsx", ".mts", ".ts", ".tsx"],
+})
+
+const aliasEntries = [
+  { find: "@shared", replacement: path.resolve(cwd(), "./src") },
+]
 
 export default [
   {
-    input: 'src/index.ts',
+    input: "src/index.ts",
     output: [
       {
         file: createBuildPath(packageJson, FOLDERS.CJS),
@@ -34,8 +48,8 @@ export default [
         globals: CONFIG_GLOBALS_MODULE,
         strict: true,
         sourcemap: true,
-        exports: 'auto',
-        plugins: resolve(CONFIG_EXTERNAL_MODULES)
+        exports: "auto",
+        plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
       },
       {
         file: createBuildPath(packageJson, FOLDERS.ESM),
@@ -43,15 +57,25 @@ export default [
         globals: CONFIG_GLOBALS_MODULE,
         strict: true,
         sourcemap: true,
-        plugins: resolve(CONFIG_EXTERNAL_MODULES)
-      }
+        plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
+      },
     ],
     onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
-    plugins: [resolve(), typescript(CONFIG_TYPESCRIPT), babel(CONFIG_BABEL)],
-    external: Object.keys(CONFIG_GLOBALS_MODULE)
+    plugins: [
+      alias({
+        entries: aliasEntries,
+        customResolver,
+      }),
+      resolve(),
+      typescript(CONFIG_TYPESCRIPT),
+      babel(CONFIG_BABEL),
+      // tscAliasReplacer(),
+    ],
+    external: Object.keys(CONFIG_GLOBALS_MODULE),
+    // Use manual chunking to handle the @shared alias
   },
   {
-    input: 'src/index.ts',
+    input: "src/index.ts",
     output: [
       {
         file: createBuildPath(packageJson, FOLDERS.UMD),
@@ -60,16 +84,29 @@ export default [
         strict: true,
         sourcemap: false,
         name: kebabToPascalCase(packageJson.name),
-        plugins: [resolve(), terser()]
-      }
+        plugins: [
+          alias({
+            entries: aliasEntries,
+            customResolver,
+          }),
+          resolve(),
+          terser(),
+        ],
+      },
     ],
     onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
     plugins: [
+      alias({
+        entries: aliasEntries,
+        customResolver,
+      }),
       resolve(),
       typescript(CONFIG_TYPESCRIPT),
       babel(CONFIG_BABEL),
-      createNodeNextSupport()
+      // tscAliasReplacer(),
+      createNodeNextSupport(),
     ],
-    external: Object.keys(CONFIG_GLOBALS_UMD)
-  }
+    external: Object.keys(CONFIG_GLOBALS_UMD),
+    // Use manual chunking to handle the @shared alias
+  },
 ]
