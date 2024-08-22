@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --prefer-offline
+
+      - run: pnpm build
+
+      - name: Publish to NPM
+        id: changesets
+        uses: changesets/action@v1.4.1
+        with:
+          publish: pnpm -r --filter "{some-ui-calendar}" npx changeset publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          NODE_ENV: "production"
