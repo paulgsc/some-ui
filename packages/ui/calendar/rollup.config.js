@@ -1,4 +1,7 @@
+import { cwd } from "process"
+
 import {
+  alias,
   babel,
   CONFIG_BABEL,
   CONFIG_EXTERNAL_MODULE_SUPPRESS,
@@ -9,20 +12,27 @@ import {
   createNodeNextSupport,
   FOLDERS,
   kebabToPascalCase,
+  path,
   resolve,
   terser,
   typescript,
-} from "../../rollup.config"
+} from "../../../rollup.config"
 import packageJson from "./package.json"
 
 const CONFIG_GLOBALS_MODULE = {
   ...CONFIG_GLOBALS,
   react: "React",
+  "react/jsx-runtime": "jsxRuntime",
 }
 
 const CONFIG_GLOBALS_UMD = {
   react: "React",
+  "react/jsx-runtime": "jsxRuntime",
 }
+
+const aliasEntries = [
+  { find: "@calendar", replacement: path.resolve(cwd(), "./src") },
+]
 
 export default [
   {
@@ -35,7 +45,7 @@ export default [
         strict: true,
         sourcemap: true,
         exports: "auto",
-        plugins: resolve(CONFIG_EXTERNAL_MODULES),
+        plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
       },
       {
         file: createBuildPath(packageJson, FOLDERS.ESM),
@@ -43,12 +53,21 @@ export default [
         globals: CONFIG_GLOBALS_MODULE,
         strict: true,
         sourcemap: true,
-        plugins: resolve(CONFIG_EXTERNAL_MODULES),
+        plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
       },
     ],
     onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
-    plugins: [resolve(), typescript(CONFIG_TYPESCRIPT), babel(CONFIG_BABEL)],
+    plugins: [
+      alias({
+        entries: aliasEntries,
+      }),
+      resolve(),
+      typescript(CONFIG_TYPESCRIPT),
+      babel(CONFIG_BABEL),
+      // tscAliasReplacer(),
+    ],
     external: Object.keys(CONFIG_GLOBALS_MODULE),
+    // Use manual chunking to handle the @shared alias
   },
   {
     input: "src/index.ts",
@@ -60,16 +79,27 @@ export default [
         strict: true,
         sourcemap: false,
         name: kebabToPascalCase(packageJson.name),
-        plugins: [resolve(), terser()],
+        plugins: [
+          alias({
+            entries: aliasEntries,
+          }),
+          resolve(),
+          terser(),
+        ],
       },
     ],
     onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
     plugins: [
+      alias({
+        entries: aliasEntries,
+      }),
       resolve(),
       typescript(CONFIG_TYPESCRIPT),
       babel(CONFIG_BABEL),
+      // tscAliasReplacer(),
       createNodeNextSupport(),
     ],
     external: Object.keys(CONFIG_GLOBALS_UMD),
+    // Use manual chunking to handle the @shared alias
   },
 ]
