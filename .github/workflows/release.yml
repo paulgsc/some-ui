@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 permissions:
+  contents: write
   actions: write
-  contents: read
 
 jobs:
   release:
@@ -24,12 +24,10 @@ jobs:
 
       - run: pnpm -r --filter "some-ui-calendar" build
 
-      - name: Publish to NPM
+      - name: Create Release Pull Request
         id: changesets
-        uses: changesets/action@v1.4.1
+        uses: changesets/action@v1
         with:
-          publish: pnpm -r --filter "some-ui-calendar" npx changeset publish
+          publish: false # This ensures a PR is created instead of directly pushing changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
-          NODE_ENV: "production"
