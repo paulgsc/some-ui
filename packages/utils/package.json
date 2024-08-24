@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rimraf ./dist && rimraf .turbo",
     "build": "rollup --bundleConfigAsCjs -c",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
