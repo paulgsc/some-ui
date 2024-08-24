@@ -1,6 +1,6 @@
 {
   "name": "some-ui-calendar",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
