@@ -1,5 +1,11 @@
 # some-ui-calendar
 
+## 0.4.0
+
+### Minor Changes
+
+- [#37](https://github.com/paulgsc/some-ui/pull/37) [`c5ca1630ef857bbe657d11aff849bf48bf52b38f`](https://github.com/paulgsc/some-ui/commit/c5ca1630ef857bbe657d11aff849bf48bf52b38f) Thanks [@paulgsc](https://github.com/paulgsc)! - fix package filter in ci
+
 ## 0.3.0
 
 ### Minor Changes
