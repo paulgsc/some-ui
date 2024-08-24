@@ -26,5 +26,6 @@ jobs:
         with:
           publish: pnpm -r --filter "{some-ui-calendar}" npx changeset publish
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NODE_ENV: "production"
