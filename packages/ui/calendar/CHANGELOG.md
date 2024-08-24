@@ -1,5 +1,11 @@
 # some-ui-calendar
 
+## 0.2.0
+
+### Minor Changes
+
+- [#33](https://github.com/paulgsc/some-ui/pull/33) [`5f89079c762c6357b56728870e5cbb15a8a812a3`](https://github.com/paulgsc/some-ui/commit/5f89079c762c6357b56728870e5cbb15a8a812a3) Thanks [@paulgsc](https://github.com/paulgsc)! - make the package public
+
 ## 0.1.0
 
 ### Minor Changes
