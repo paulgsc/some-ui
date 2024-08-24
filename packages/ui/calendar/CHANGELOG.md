@@ -4,6 +4,12 @@
 
 ### Minor Changes
 
+- [#41](https://github.com/paulgsc/some-ui/pull/41) [`4188f1d7afbfe95c78dc5535800c0436b2adfa9a`](https://github.com/paulgsc/some-ui/commit/4188f1d7afbfe95c78dc5535800c0436b2adfa9a) Thanks [@paulgsc](https://github.com/paulgsc)! - first publish of calendar to show npm release proof of concept
+
+## 0.1.0
+
+### Minor Changes
+
 - [#39](https://github.com/paulgsc/some-ui/pull/39) [`2061af13f3dfa17699d100f5213f02185397b4cb`](https://github.com/paulgsc/some-ui/commit/2061af13f3dfa17699d100f5213f02185397b4cb) Thanks [@paulgsc](https://github.com/paulgsc)! - using calendar to get release ci to work
 
 ## 0.4.0
