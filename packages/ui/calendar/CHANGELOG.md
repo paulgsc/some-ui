@@ -1,5 +1,11 @@
 # some-ui-calendar
 
+## 0.1.0
+
+### Minor Changes
+
+- [#39](https://github.com/paulgsc/some-ui/pull/39) [`2061af13f3dfa17699d100f5213f02185397b4cb`](https://github.com/paulgsc/some-ui/commit/2061af13f3dfa17699d100f5213f02185397b4cb) Thanks [@paulgsc](https://github.com/paulgsc)! - using calendar to get release ci to work
+
 ## 0.4.0
 
 ### Minor Changes
