@@ -282,6 +282,7 @@ export default tseslint.config(
     extends: [...eslintPluginStorybook.configs["flat/recommended"]],
     rules: {
       "import/no-anonymous-default-export": "off",
+      "@typescript-eslint/explicit-function-return-type": "off",
     },
   }
 )
