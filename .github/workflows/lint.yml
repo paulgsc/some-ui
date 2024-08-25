@@ -38,8 +38,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-        env:
-          ENV: "production"
 
       - name: Check prettier
         run: pnpm prettier
