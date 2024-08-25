@@ -7,7 +7,7 @@
     "dist/**"
   ],
   "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
+  "module": "index.js",
   "types": "index.ts",
   "scripts": {
     "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
