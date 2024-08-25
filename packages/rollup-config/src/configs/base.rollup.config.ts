@@ -159,10 +159,11 @@ function createNodeNextSupportForPackage(): void {
   if (!fs.existsSync(esmFolder)) fs.mkdirSync(esmFolder)
   if (!fs.existsSync(cjsFolder)) fs.mkdirSync(cjsFolder)
 
-  fs.writeFileSync(
-    path.join(".", "package.json"),
-    JSON.stringify(packageJsonMain, null, "\t")
-  )
+  if (process.env.ENV === "developemnt")
+    fs.writeFileSync(
+      path.join(".", "package.json"),
+      JSON.stringify(packageJsonMain, null, "\t")
+    )
 
   fs.writeFileSync(
     path.join(outFolder, "package.json"),

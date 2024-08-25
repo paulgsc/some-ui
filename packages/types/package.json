@@ -11,7 +11,8 @@
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "lint:md": "eslint \"**/*.{md,mdx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "pnpm build"
   },
   "dependencies": {},
   "devDependencies": {
