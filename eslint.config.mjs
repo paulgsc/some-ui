@@ -283,6 +283,7 @@ export default tseslint.config(
     rules: {
       "import/no-anonymous-default-export": "off",
       "@typescript-eslint/explicit-function-return-type": "off",
+      "no-mixed-operators": "off",
     },
   }
 )
