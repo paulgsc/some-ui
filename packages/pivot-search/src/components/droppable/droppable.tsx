@@ -1,4 +1,4 @@
-import type { UniqueIdentifier} from "@dnd-kit/core";
+import type { UniqueIdentifier } from "@dnd-kit/core"
 import { useDroppable } from "@dnd-kit/core"
 import classNames from "classnames"
 
@@ -11,7 +11,7 @@ type Props = {
   id: UniqueIdentifier
 }
 
-export const Droppable = ({ children, id, dragging }: Props) => {
+export const Droppable = ({ children, id, dragging }: Props): JSX.Element => {
   const { isOver, setNodeRef } = useDroppable({
     id,
   })

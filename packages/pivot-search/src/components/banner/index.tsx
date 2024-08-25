@@ -5,10 +5,8 @@ type BannerProps = {
   type?: "default" | "warning" | "error"
 }
 
-const Banner: FC<PropsWithChildren<BannerProps>> = ({
-  type = "default",
-  link,
-  children,
-}) => <div className="">{link ? <a href={link}>{children}</a> : children}</div>
+const Banner: FC<PropsWithChildren<BannerProps>> = ({ link, children }) => (
+  <div className="">{link ? <a href={link}>{children}</a> : children}</div>
+)
 
 export default Banner

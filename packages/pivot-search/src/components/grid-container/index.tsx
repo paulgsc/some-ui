@@ -7,7 +7,7 @@ export type Props = {
   columns: number
 }
 
-export const GridContainer = ({ children, columns }: Props) => {
+export const GridContainer = ({ children, columns }: Props): JSX.Element => {
   return (
     <ul
       className={styles.GridContainer}
