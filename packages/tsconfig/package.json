@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "description": "tsconfig for some-ui",
   "private": true,
+  "main": "tsconfig.rollup.json",
+  "files": [
+    "base.json",
+    "tsconfig.rollup.json",
+    "tsconfig.ui.json"
+  ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf .turbo"
   }
