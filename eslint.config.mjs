@@ -231,6 +231,8 @@ export default tseslint.config(
       "unicorn/no-typeof-undefined": "error",
       // make sure we're not leveraging any deprecated APIs
       // 'deprecation/deprecation': 'error'
+
+      "@typescript-eslint/array-type": ["error", { default: "generic" }],
     },
   },
   {
