@@ -28,10 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    strategy:
-      matrix:
-        check: [lint:js, typecheck, prettier, lint:fix]
-
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -45,9 +41,11 @@ jobs:
         env:
           ENV: "production"
 
-      - name: Run quality checks with `turbo`
-        if: |
-          github.event_name == 'pull_request' ||
-          (github.event_name == 'release' && github.event.action == 'published')
+      - name: Check prettier
+        run: pnpm prettier
 
-        run: pnpm turbo ${{ matrix.check }}
+      - name: Check eslint
+        run: pnpm lint:js
+
+      - name: Run typecheck
+        run: pnpm typecheck
