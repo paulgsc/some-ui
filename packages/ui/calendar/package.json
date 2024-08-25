@@ -1,57 +1,57 @@
 {
-	"name": "some-ui-calendar",
-	"version": "0.1.0",
-	"type": "module",
-	"scripts": {
-		"build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-		"build:tsc-alias": "tsc-alias -p tsconfig.json",
-		"clean": "rimraf ./dist && rimraf .turbo",
-		"lint": "pnpm --package=turbo@latest -- turbo lint:js lint:md typecheck prettier",
-		"lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-		"lint:md": "eslint \"**/*.{md,mdx}\" --cache",
-		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-		"typecheck": "tsc --noEmit"
-	},
-	"dependencies": {},
-	"devDependencies": {
-		"@some-ui/tsconfig": "workspace:*",
-		"@some-ui/rollup-config": "workspace:*",
-		"react": "^18.3.1",
-		"react-dom": "^18.3.1"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/paulgsc/some-ui"
-	},
-	"bugs": {
-		"url": "https://github.com/paulgsc/some-ui/issues"
-	},
-	"homepage": "https://pgdev.maishatu.com/?tab=github",
-	"license": "MIT",
-	"keywords": [],
-	"files": [
-		"some-ui-calendar*",
-		"./dist/src/**/*",
-		"index.d.ts",
-		"./dist/esm/**/*",
-		"./dist/cjs/**/*"
-	],
-	"sideEffects": false,
-	"unpkg": "some-ui-calendar.umd.js",
-	"main": "./dist/some-ui-calendar.umd.js",
-	"module": "./dist/esm/some-ui-calendar.esm.js",
-	"types": "index.d.ts",
-	"exports": {
-		"./package.json": "./package.json",
-		".": {
-			"import": {
-				"types": "./dist/esm/index.d.ts",
-				"default": "./dist/esm/some-ui-calendar.esm.js"
-			},
-			"require": {
-				"types": "./dist/cjs/index.d.ts",
-				"default": "./dist/cjs/some-ui-calendar.cjs.js"
-			}
-		}
-	}
+  "name": "some-ui-calendar",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf ./dist && rimraf .turbo",
+    "lint": "pnpm --package=turbo@latest -- turbo lint:js lint:md typecheck prettier",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "lint:md": "eslint \"**/*.{md,mdx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/rollup-config": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "some-ui-calendar*",
+    "./dist/src/**/*",
+    "index.d.ts",
+    "./dist/esm/**/*",
+    "./dist/cjs/**/*"
+  ],
+  "sideEffects": false,
+  "unpkg": "some-ui-calendar.umd.js",
+  "main": "./dist/some-ui-calendar.umd.js",
+  "module": "./dist/esm/some-ui-calendar.esm.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/some-ui-calendar.esm.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/some-ui-calendar.cjs.js"
+      }
+    }
+  }
 }
