@@ -6,8 +6,8 @@
   "files": [
     "dist/**"
   ],
-  "main": "./dist/cjs/index.js",
-  "module": "index.js",
+  "main": "index.js",
+  "module": "./dist/esm/index.js",
   "types": "index.ts",
   "scripts": {
     "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
