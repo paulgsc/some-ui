@@ -1,0 +1,64 @@
+name: Check Unused Dependencies
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+  release:
+    types: [published]
+
+defaults:
+  run:
+    working-directory: ./
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build
+        run: pnpm -r --filter=!some-ui-pivotsearch build
+
+      - name: Install depcheck
+        run: npm install -g depcheck
+
+      - name: Run depcheck
+        run: |
+          for dir in packages/*; do
+           if [ -d "$dir" ]; then
+             echo "Checking $dir"
+             depcheck "$dir" --ignore-patterns="node_modules,public,build,dist,**/*.test.js,**/*.spec.js" --json > "${dir##*/}_depcheck.json"
+           fi
+          done
+
+      - name: Check depcheck results
+        run: |
+          EXIT_CODE=0
+          for file in *_depcheck.json; do
+           UNUSED=$(jq '.dependencies | length' "$file")
+           if [ "$UNUSED" -gt 0 ]; then
+             echo "Unused dependencies found in ${file%_depcheck.json}:"
+             jq '.dependencies' "$file"
+             EXIT_CODE=1
+           fi
+          done
+          exit $EXIT_CODE
+
+      - name: Upload depcheck results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: depcheck-results
+          path: ./*_depcheck.json
