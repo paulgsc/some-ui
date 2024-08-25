@@ -33,6 +33,5 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true
-  },
-  "include": ["src"]
+  }
 }
