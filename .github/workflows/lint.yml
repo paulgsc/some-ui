@@ -48,7 +48,7 @@ jobs:
         run: pnpm install
 
       - name: Build workspace dependencies # @todo: this is for now when the workspaces have not been published or are private
-        run: pnpm build && pnpm install
+        run: pnpm --filter=!some-ui-pivotsearch build && pnpm install
 
       - name: Run quality checks with `turbo`
         if: |
