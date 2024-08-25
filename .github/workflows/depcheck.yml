@@ -31,8 +31,6 @@ jobs:
       - name: Install depcheck
         run: npm install -g depcheck
 
-      - run: pnpm build
-
       - name: Run depcheck
         run: |
           for dir in packages/*; do
