@@ -1,6 +1,5 @@
 import type { ComponentProps, ReactPortal } from "react"
-import type { DropAnimation } from "@dnd-kit/core"
-import { DragOverlay, useDndContext } from "@dnd-kit/core"
+import { DragOverlay, useDndContext, type DropAnimation } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
 import { Draggable } from "@pivot-search/components/draggable"
 import { createPortal } from "react-dom"

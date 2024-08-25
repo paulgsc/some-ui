@@ -1,6 +1,5 @@
 import { forwardRef } from "react"
-import { Action } from "@pivot-search/components/action"
-import type { ActionProps } from "@pivot-search/components/action"
+import { Action, type ActionProps } from "@pivot-search/components/action"
 
 export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
   (props, ref) => {

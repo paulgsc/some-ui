@@ -1,5 +1,4 @@
-import type { CSSProperties } from "react"
-import { forwardRef } from "react"
+import { forwardRef, type CSSProperties } from "react"
 import classNames from "classnames"
 
 import styles from "./Action.module.css"
