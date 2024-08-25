@@ -12,7 +12,6 @@ import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
 import prettierPlugin from "eslint-plugin-prettier"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
-import simpleImportSortPlugin from "eslint-plugin-simple-import-sort"
 import eslintPluginStorybook from "eslint-plugin-storybook"
 import tailwindPlugin from "eslint-plugin-tailwindcss"
 import unicornPlugin from "eslint-plugin-unicorn"
@@ -28,7 +27,6 @@ export default tseslint.config(
   {
     plugins: {
       prettier: prettierPlugin,
-      ["simple-import-sort"]: simpleImportSortPlugin,
       "unused-imports": unusedImports,
       "@typescript-eslint/eslint-plugin": tsPlugin,
       deprecation: deprecationPlugin,
@@ -104,9 +102,6 @@ export default tseslint.config(
         { commentPattern: ".*intentional fallthrough.*" },
       ],
       "one-var": ["error", "never"],
-
-      // // enforce a sort order across the codebase
-      "simple-import-sort/imports": "error",
 
       // tailwindcss
       "tailwindcss/classnames-order": "error",
