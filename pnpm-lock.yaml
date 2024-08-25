@@ -128,9 +128,6 @@ importers:
       eslint-plugin-require-path-exists:
         specifier: 1.1.9
         version: 1.1.9
-      eslint-plugin-simple-import-sort:
-        specifier: ^10.0.0
-        version: 10.0.0(eslint@9.5.0)
       eslint-plugin-storybook:
         specifier: 0.9.0--canary.156.da7873a.0
         version: 0.9.0--canary.156.da7873a.0(eslint@9.5.0)(typescript@5.5.4)
@@ -3252,11 +3249,6 @@ packages:
 
   eslint-plugin-require-path-exists@1.1.9:
     resolution: {integrity: sha512-moZRfrPr4GFyT/W8PHzjzC7D4Hnj7Us+GYj0fbVKQoPvP4xIF8VG702L1jzyhqE8eIYkcs8p1CoqSfjk9WkxBg==}
-
-  eslint-plugin-simple-import-sort@10.0.0:
-    resolution: {integrity: sha512-AeTvO9UCMSNzIHRkg8S6c3RPy5YEwKWSQPx3DYghLedo2ZQxowPFLGDN1AZ2evfg6r6mjBSZSLxLFsWSu3acsw==}
-    peerDependencies:
-      eslint: '>=5.0.0'
 
   eslint-plugin-storybook@0.9.0--canary.156.da7873a.0:
     resolution: {integrity: sha512-3b6hQMRfKWwkNB0koK0y9Boi+GYAt8vz+3tzU5JHylyAZh3Vg5TgvxM6IRhKixEY4OlQhsJPhqMzP0rT9fP5mA==}
@@ -9192,10 +9184,6 @@ snapshots:
       builtin-modules: 1.1.1
       fs-plus: 3.1.1
       resolve: 1.22.8
-
-  eslint-plugin-simple-import-sort@10.0.0(eslint@9.5.0):
-    dependencies:
-      eslint: 9.5.0
 
   eslint-plugin-storybook@0.9.0--canary.156.da7873a.0(eslint@9.5.0)(typescript@5.5.4):
     dependencies:
