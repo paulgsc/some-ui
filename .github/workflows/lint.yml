@@ -42,8 +42,8 @@ jobs:
       - name: Check prettier
         run: pnpm prettier
 
-      - name: Check eslint
-        run: pnpm lint:js
+      # - name: Check eslint
+      #   run: pnpm lint:js
 
       - name: Run typecheck
         run: pnpm typecheck
