@@ -132,7 +132,7 @@ const DraggableItem = ({
 }
 
 export const TestStory = () => (
-  <div className="size-52 clear-bg-red-500 text-white">foo foo</div>
+  <div className="clear-bg-red-500 size-52 text-white">foo foo</div>
 )
 
 export const BasicSetup = () => <DraggableStory />

@@ -2,12 +2,12 @@ import type { CSSProperties, ReactNode } from "react"
 
 import styles from "./grid-container.module.css"
 
-export interface Props {
+export type Props = {
   children: ReactNode
   columns: number
 }
 
-export function GridContainer({ children, columns }: Props) {
+export const GridContainer = ({ children, columns }: Props) => {
   return (
     <ul
       className={styles.GridContainer}

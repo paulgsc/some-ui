@@ -1,13 +1,14 @@
 import { useState } from "react"
+import type {
+  CollisionDetection as CollisionDetectionType,
+  Modifiers,
+  UniqueIdentifier} from "@dnd-kit/core";
 import {
   closestCenter,
   closestCorners,
-  CollisionDetection as CollisionDetectionType,
   DndContext,
-  Modifiers,
   pointerWithin,
   rectIntersection,
-  UniqueIdentifier,
   useDraggable,
 } from "@dnd-kit/core"
 import {
@@ -22,18 +23,18 @@ export default {
   title: "Core/Droppable/useDroppable",
 }
 
-interface Props {
+type Props = {
   collisionDetection?: CollisionDetectionType
-  containers?: string[]
+  containers?: Array<string>
   modifiers?: Modifiers
   value?: string
 }
 
-function DroppableStory({
+const DroppableStory = ({
   containers = ["A"],
   collisionDetection,
   modifiers,
-}: Props) {
+}: Props) => {
   const [isDragging, setIsDragging] = useState(false)
   const [parent, setParent] = useState<UniqueIdentifier | null>(null)
 
@@ -43,12 +44,12 @@ function DroppableStory({
     <DndContext
       collisionDetection={collisionDetection}
       modifiers={parent === null ? undefined : modifiers}
-      onDragStart={() => setIsDragging(true)}
+      onDragStart={() => { setIsDragging(true); }}
       onDragEnd={({ over }) => {
         setParent(over ? over.id : null)
         setIsDragging(false)
       }}
-      onDragCancel={() => setIsDragging(false)}
+      onDragCancel={() => { setIsDragging(false); }}
     >
       <Wrapper>
         <Wrapper style={{ width: 350, flexShrink: 0 }}>
@@ -67,11 +68,11 @@ function DroppableStory({
   )
 }
 
-interface DraggableProps {
+type DraggableProps = {
   handle?: boolean
 }
 
-function DraggableItem({ handle }: DraggableProps) {
+const DraggableItem = ({ handle }: DraggableProps) => {
   const { isDragging, setNodeRef, listeners } = useDraggable({
     id: "draggable-item",
   })
@@ -122,7 +123,7 @@ export const CollisionDetectionAlgorithms = () => {
             value="rectIntersection"
             checked={algorithm === rectIntersection}
             onClick={() =>
-              setCollisionDetectionAlgorithm({ algorithm: rectIntersection })
+              { setCollisionDetectionAlgorithm({ algorithm: rectIntersection }); }
             }
           />
           Rect Intersection
@@ -133,7 +134,7 @@ export const CollisionDetectionAlgorithms = () => {
             value="closestCenter"
             checked={algorithm === closestCenter}
             onClick={() =>
-              setCollisionDetectionAlgorithm({ algorithm: closestCenter })
+              { setCollisionDetectionAlgorithm({ algorithm: closestCenter }); }
             }
           />
           Closest Center
@@ -144,7 +145,7 @@ export const CollisionDetectionAlgorithms = () => {
             value="closestCorners"
             checked={algorithm === closestCorners}
             onClick={() =>
-              setCollisionDetectionAlgorithm({ algorithm: closestCorners })
+              { setCollisionDetectionAlgorithm({ algorithm: closestCorners }); }
             }
           />
           Closest Corners
@@ -155,7 +156,7 @@ export const CollisionDetectionAlgorithms = () => {
             value="pointerWithin"
             checked={algorithm === pointerWithin}
             onClick={() =>
-              setCollisionDetectionAlgorithm({ algorithm: pointerWithin })
+              { setCollisionDetectionAlgorithm({ algorithm: pointerWithin }); }
             }
           />
           Pointer Within
