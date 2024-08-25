@@ -1,0 +1,1 @@
+export { createRollupConfig } from "./src"
