@@ -1,16 +1,14 @@
 import { useState } from "react"
-import type {
-  CollisionDetection as CollisionDetectionType,
-  Modifiers,
-  UniqueIdentifier,
-} from "@dnd-kit/core"
 import {
+  DndContext,
   closestCenter,
   closestCorners,
-  DndContext,
   pointerWithin,
   rectIntersection,
   useDraggable,
+  type CollisionDetection as CollisionDetectionType,
+  type Modifiers,
+  type UniqueIdentifier,
 } from "@dnd-kit/core"
 import {
   Draggable,

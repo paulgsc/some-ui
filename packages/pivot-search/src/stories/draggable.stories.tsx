@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react"
-import type { Modifiers, PointerActivationConstraint } from "@dnd-kit/core"
 import {
   DndContext,
   KeyboardSensor,
@@ -8,6 +7,8 @@ import {
   useDraggable,
   useSensor,
   useSensors,
+  type Modifiers,
+  type PointerActivationConstraint,
 } from "@dnd-kit/core"
 import {
   createSnapModifier,

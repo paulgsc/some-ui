@@ -1,9 +1,8 @@
-import type { UniqueIdentifier } from "@dnd-kit/core"
-import { useDroppable } from "@dnd-kit/core"
+import { useDroppable, type UniqueIdentifier } from "@dnd-kit/core"
 import classNames from "classnames"
 
-import { droppable } from "./droppable-svg"
 import styles from "./Droppable.module.css"
+import { droppable } from "./droppable-svg"
 
 type Props = {
   children: React.ReactNode

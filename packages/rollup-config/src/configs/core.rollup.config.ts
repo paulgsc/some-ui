@@ -1,13 +1,13 @@
 import type { PackageJsonTypes } from "../types"
 import {
-  babel,
   CONFIG_BABEL,
-  CONFIG_EXTERNAL_MODULE_SUPPRESS,
   CONFIG_EXTERNAL_MODULES,
+  CONFIG_EXTERNAL_MODULE_SUPPRESS,
   CONFIG_GLOBALS,
+  FOLDERS,
+  babel,
   createBuildPath,
   createNodeNextSupport,
-  FOLDERS,
   kebabToPascalCase,
   resolve,
   terser,
