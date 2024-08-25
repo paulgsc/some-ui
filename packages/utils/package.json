@@ -2,10 +2,17 @@
   "name": "@some-ui/utils",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "files": [
+    "dist/**"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "index.ts",
   "scripts": {
+    "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
+    "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
+    "build": "pnpm build:esm && pnpm build:cjs",
     "clean": "rimraf ./dist && rimraf .turbo",
-    "build": "rollup --bundleConfigAsCjs -c",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "lint:md": "eslint \"**/*.{md,mdx}\" --cache",
