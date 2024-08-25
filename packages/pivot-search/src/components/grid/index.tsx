@@ -6,7 +6,7 @@ export type Props = {
   onSizeChange(size: number): void
 }
 
-export const Grid = ({ size }: Props) => {
+export const Grid = ({ size }: Props): JSX.Element => {
   return (
     <div
       className={styles.Grid}

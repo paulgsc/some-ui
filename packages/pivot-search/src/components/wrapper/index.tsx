@@ -8,7 +8,7 @@ type Props = {
   style?: React.CSSProperties
 }
 
-export const Wrapper = ({ children, center, style }: Props) => {
+export const Wrapper = ({ children, center, style }: Props): JSX.Element => {
   return (
     <div
       className={classNames(styles.Wrapper, center && styles.center)}

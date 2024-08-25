@@ -1,5 +1,5 @@
-import type { CSSProperties} from "react";
-import React, { forwardRef } from "react"
+import type { CSSProperties } from "react"
+import { forwardRef } from "react"
 import classNames from "classnames"
 
 import styles from "./Action.module.css"
@@ -32,3 +32,5 @@ export const Action = forwardRef<HTMLButtonElement, Props>(
     )
   }
 )
+
+Action.displayName = "Action"

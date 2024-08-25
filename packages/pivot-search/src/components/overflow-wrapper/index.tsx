@@ -4,6 +4,6 @@ type Props = {
   children: React.ReactNode
 }
 
-export const OverflowWrapper = ({ children }: Props) => {
+export const OverflowWrapper = ({ children }: Props): JSX.Element => {
   return <div className={styles.OverflowWrapper}>{children}</div>
 }
