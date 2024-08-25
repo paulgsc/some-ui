@@ -13,7 +13,7 @@ import prettierPlugin from "eslint-plugin-prettier"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
 import simpleImportSortPlugin from "eslint-plugin-simple-import-sort"
-import * as storybookPlugin from "eslint-plugin-storybook"
+import eslintPluginStorybook from "eslint-plugin-storybook"
 import tailwindPlugin from "eslint-plugin-tailwindcss"
 import unicornPlugin from "eslint-plugin-unicorn"
 import unusedImports from "eslint-plugin-unused-imports"
@@ -38,6 +38,7 @@ export default tseslint.config(
       ["import"]: importPlugin,
       ["tailwindcss"]: tailwindPlugin,
       ["json"]: jsonPlugin,
+      ["storybook"]: eslintPluginStorybook,
     },
   },
   {
@@ -288,8 +289,8 @@ export default tseslint.config(
   },
   {
     files: ["**/*.stories.tsx"],
+    extends: [...eslintPluginStorybook.configs["flat/recommended"]],
     rules: {
-      ...storybookPlugin.rules,
       "import/no-anonymous-default-export": "off",
     },
   }
