@@ -16,7 +16,7 @@
     "build": "turbo build",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
     "lint": "turbo lint",
-    "lint:fix": "turbo run lint:fix --filter=./self-host",
+    "lint:fix": "turbo lint:fix -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
     "lint:js": "turbo run lint:js",
     "lint:md": "turbo run lint:md --cache",
     "typecheck": "turbo run typecheck",
