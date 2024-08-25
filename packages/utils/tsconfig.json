@@ -12,8 +12,7 @@
     "noEmit": false,
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "target": "ES6",
-    "types": ["chrome"]
+    "target": "ES6"
   },
   "include": ["lib", "index.ts"],
   "exclude": ["node_modules", "build", "dist"]
