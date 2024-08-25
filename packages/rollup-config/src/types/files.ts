@@ -22,8 +22,8 @@ export type PackageJsonTypes = {
   bugs?: IPackageJsonAddress
   license?: string
   author?: string | IPackageJsonPerson
-  contributors?: string[] | IPackageJsonPerson[]
-  files?: string[]
+  contributors?: Array<string> | Array<IPackageJsonPerson>
+  files?: Array<string>
   main?: string
   browser?: string
   bin?: Record<string, string>
@@ -47,8 +47,8 @@ export type PackageJsonTypes = {
   devDependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
   optionalDependencies?: Record<string, string>
-  bundledDependencies?: string[]
+  bundledDependencies?: Array<string>
   engines?: Record<string, string>
-  os?: string[]
-  cpu?: string[]
+  os?: Array<string>
+  cpu?: Array<string>
 }
