@@ -104,7 +104,7 @@ export default tseslint.config(
       "one-var": ["error", "never"],
 
       // tailwindcss
-      "tailwindcss/classnames-order": "error",
+      "tailwindcss/classnames-order": "warn",
       "tailwindcss/enforces-shorthand": "warn",
       "tailwindcss/no-custom-classname": "warn",
       "tailwindcss/no-contradicting-classname": "error",
