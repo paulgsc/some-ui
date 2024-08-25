@@ -1,5 +1,6 @@
 packages:
   - packages/ui/*
   - packages/tsconfig
+  - packages/rollup-config
   - packages/utils
   - packages/pivot-search
