@@ -5,7 +5,7 @@
   "compilerOptions": {
     "declaration": true,
     "allowImportingTsExtensions": null,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "plugins": [
       { "transform": "typescript-transform-paths" },
       { "transform": "typescript-transform-paths", "afterDeclarations": true }
