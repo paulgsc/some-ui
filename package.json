@@ -38,7 +38,7 @@
     "@eslint/compat": "^1.1.1",
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^8.57.0",
-    "@ianvs/prettier-plugin-sort-imports": "^4.3.1",
+    "@ianvs/prettier-plugin-sort-imports": "3.7.2",
     "@next/eslint-plugin-next": "^14.2.6",
     "@storybook/addon-essentials": "^8.2.9",
     "@storybook/addon-interactions": "^8.2.9",
