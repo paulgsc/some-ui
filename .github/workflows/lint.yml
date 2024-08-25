@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
         env:
-          NODE_ENV: "production"
+          ENV: "production"
 
       - name: Run quality checks with `turbo`
         if: |
