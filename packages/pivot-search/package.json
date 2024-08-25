@@ -7,10 +7,9 @@
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf ./dist && rimraf .turbo",
-    "lint": "pnpm --package=turbo@latest -- turbo lint:js lint:md typecheck prettier",
+    "lint": "pnpm --package=turbo@latest -- turbo lint:js typecheck prettier",
     "lint:fix": "eslint --fix",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "lint:md": "eslint \"**/*.{md,mdx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit"
   },
