@@ -2,7 +2,8 @@ import { useState } from "react"
 import type {
   CollisionDetection as CollisionDetectionType,
   Modifiers,
-  UniqueIdentifier} from "@dnd-kit/core";
+  UniqueIdentifier,
+} from "@dnd-kit/core"
 import {
   closestCenter,
   closestCorners,
@@ -44,12 +45,16 @@ const DroppableStory = ({
     <DndContext
       collisionDetection={collisionDetection}
       modifiers={parent === null ? undefined : modifiers}
-      onDragStart={() => { setIsDragging(true); }}
+      onDragStart={() => {
+        setIsDragging(true)
+      }}
       onDragEnd={({ over }) => {
         setParent(over ? over.id : null)
         setIsDragging(false)
       }}
-      onDragCancel={() => { setIsDragging(false); }}
+      onDragCancel={() => {
+        setIsDragging(false)
+      }}
     >
       <Wrapper>
         <Wrapper style={{ width: 350, flexShrink: 0 }}>
@@ -122,9 +127,9 @@ export const CollisionDetectionAlgorithms = () => {
             type="radio"
             value="rectIntersection"
             checked={algorithm === rectIntersection}
-            onClick={() =>
-              { setCollisionDetectionAlgorithm({ algorithm: rectIntersection }); }
-            }
+            onClick={() => {
+              setCollisionDetectionAlgorithm({ algorithm: rectIntersection })
+            }}
           />
           Rect Intersection
         </label>
@@ -133,9 +138,9 @@ export const CollisionDetectionAlgorithms = () => {
             type="radio"
             value="closestCenter"
             checked={algorithm === closestCenter}
-            onClick={() =>
-              { setCollisionDetectionAlgorithm({ algorithm: closestCenter }); }
-            }
+            onClick={() => {
+              setCollisionDetectionAlgorithm({ algorithm: closestCenter })
+            }}
           />
           Closest Center
         </label>
@@ -144,9 +149,9 @@ export const CollisionDetectionAlgorithms = () => {
             type="radio"
             value="closestCorners"
             checked={algorithm === closestCorners}
-            onClick={() =>
-              { setCollisionDetectionAlgorithm({ algorithm: closestCorners }); }
-            }
+            onClick={() => {
+              setCollisionDetectionAlgorithm({ algorithm: closestCorners })
+            }}
           />
           Closest Corners
         </label>
@@ -155,9 +160,9 @@ export const CollisionDetectionAlgorithms = () => {
             type="radio"
             value="pointerWithin"
             checked={algorithm === pointerWithin}
-            onClick={() =>
-              { setCollisionDetectionAlgorithm({ algorithm: pointerWithin }); }
-            }
+            onClick={() => {
+              setCollisionDetectionAlgorithm({ algorithm: pointerWithin })
+            }}
           />
           Pointer Within
         </label>
