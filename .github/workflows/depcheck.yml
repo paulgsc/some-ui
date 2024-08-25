@@ -28,6 +28,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile --prefer-offline
 
+      - name: Build
+        run: pnpm -r --filter=!some-ui-pivotsearch build
+
       - name: Install depcheck
         run: npm install -g depcheck
 
