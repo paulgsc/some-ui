@@ -55,6 +55,8 @@ export default tseslint.config(
       "**/.next/**",
       "**/tsconfig.json",
       "**/storybook-static/**",
+
+      ".stylelintrc.mjs",
     ],
   },
   {
@@ -113,7 +115,7 @@ export default tseslint.config(
   },
 
   {
-    files: ["**/*.js"],
+    files: ["packages/**/*.js"],
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       // turn off other type-aware rules
@@ -231,7 +233,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.{mdx,jsx,tsx}"],
+    files: ["packages/**/*.{mdx,jsx,tsx}"],
 
     rules: {
       "react/function-component-definition": [
@@ -273,15 +275,6 @@ export default tseslint.config(
             "Named * React import is not allowed. Please import what you need from React with Named Imports",
         },
       ],
-    },
-  },
-  {
-    files: ["**/*.json"],
-    plugins: { jsonPlugin },
-    processor: "json/json",
-    rules: {
-      // or the equivalent:
-      "json/*": ["error", { allowComments: true }],
     },
   },
   {
