@@ -36,7 +36,7 @@ jobs:
           for dir in packages/*; do
            if [ -d "$dir" ]; then
              echo "Checking $dir"
-             depcheck "$dir" --ignore-patterns="public,build,dist,**/*.test.js,**/*.spec.js" --json > "${dir##*/}_depcheck.json"
+             depcheck "$dir" --ignore-patterns="node_modules,public,build,dist,**/*.test.js,**/*.spec.js" --json > "${dir##*/}_depcheck.json"
            fi
           done
 
