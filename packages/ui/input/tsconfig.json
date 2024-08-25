@@ -1,17 +1,14 @@
 {
-  "extends": "@some-ui/tsconfig/tsconfig.ui",
+  "extends": "@some-ui/tsconfig/tsconfig.rollup",
   "compilerOptions": {
-    "outDir": "dist",
-    "jsx": "react-jsx",
     "baseUrl": ".",
-    "types": ["chrome"]
+    "declarationDir": "./",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "paths": {
+      "@input/*": ["./src/*"]
+    }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.js",
-    "**/*.jsx",
-    "tailwind.config.cjs"
-  ],
+  "include": ["src"],
   "exclude": ["node_modules", "build", "dist"]
 }

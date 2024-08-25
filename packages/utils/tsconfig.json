@@ -1,11 +1,20 @@
 {
-  "extends": "@some-ui/tsconfig/base",
+  "extends": "@some-ui/tsconfig/tsconfig.rollup",
   "compilerOptions": {
-    "outDir": "dist",
-    "jsx": "react-jsx",
     "baseUrl": ".",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES6",
     "types": ["chrome"]
   },
-  "include": ["index.ts", "lib"],
+  "include": ["lib", "index.ts"],
   "exclude": ["node_modules", "build", "dist"]
 }
