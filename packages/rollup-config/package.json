@@ -1,0 +1,36 @@
+{
+  "name": "@some-ui/rollup-config",
+  "version": "0.1.0",
+  "description": "rollup-sconfig for some-ui",
+  "private": true,
+  "files": [
+    "dist/**"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "index.ts",
+  "scripts": {
+    "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
+    "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
+    "build": "pnpm build:esm && pnpm build:cjs",
+    "clean": "rimraf ./dist && rimraf .turbo"
+  },
+  "dependencies": {
+    "@rollup/plugin-alias": "^5.1.0",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/node": "^20.16.1",
+    "rollup": "^4.21.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.36.0"
+  },
+  "peerDependencies": {
+    "typescript": "^4.0.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "typescript": "^5.5.4"
+  }
+}
