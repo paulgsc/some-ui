@@ -1,9 +1,16 @@
 {
-  "name": "some-ui-tsconfig",
+  "name": "@some-ui/tsconfig",
   "version": "0.1.0",
   "description": "tsconfig for some-ui",
   "private": true,
+  "main": "rollupconfig.json",
+  "files": [
+    "base.json",
+    "tsconfig.rollup.json",
+    "tsconfig.ui.json"
+  ],
+  "types": "base.json",
   "scripts": {
-    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules"
+    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache"
   }
 }

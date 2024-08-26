@@ -5,7 +5,7 @@
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules",
+    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache",
     "lint": "pnpm --package=turbo@latest -- turbo lint:js typecheck prettier",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
@@ -14,7 +14,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "some-ui-tsconfig": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
