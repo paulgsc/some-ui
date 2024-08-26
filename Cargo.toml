@@ -31,3 +31,4 @@ anyhow = "1.0.69"
 cap = "4.5.2"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
+thiserror = "1.0.48"
