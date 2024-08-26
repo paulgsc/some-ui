@@ -1,5 +1,5 @@
 {
-  "extends": "@some-ui/tsconfig/tsconfig.rollup.json",
+  "extends": ["@some-ui/tsconfig/tsconfig.rollup.json"],
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
