@@ -8,6 +8,18 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+walkdir = "2.3.3"
+anyhow = "1.0"
+
+
+[lib]
+name = "pnpm_package_creator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pnpm-package-creator"
+path = "src/main.rs"
+
 
 [lints]
 workspace = true
