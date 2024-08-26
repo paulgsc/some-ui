@@ -1,7 +1,7 @@
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = ["crates/package-cli"]
+members = [ "crates/cli-logger","crates/package-cli"]
 
 exclude = []
 
