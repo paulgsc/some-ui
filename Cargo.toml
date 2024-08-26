@@ -1,0 +1,33 @@
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["crates/package-cli"]
+
+exclude = []
+
+# new crates created should not create their own .git
+[cargo-new]
+vcs = "none"
+
+# This prevents a Travis CI error when building for Windows.
+resolver = "2"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = 2 }
+pedantic = { level = "deny", priority = 2 }
+nursery = { level = "deny", priority = 2 }
+cargo = { level = "deny", priority = 2 }
+
+[workspace.package]
+version = "0.0.0"
+authors = ["pgdev"]
+repository = "https://github.com/paulgsc/some-ui"
+homepage = "https://maishatu.com/"
+license = "MIT"
+edition = "2021"
+
+[workspace.dependencies]
+anyhow = "1.0.69"
+cap = "4.5.2"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
