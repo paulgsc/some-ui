@@ -16,6 +16,9 @@ pub enum PackageError {
 
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
+    
+    #[error("Missing argument: {0}")]
+    MissingArgument(String),
 
 }
 
