@@ -12,8 +12,12 @@ walkdir = "2.3.3"
 anyhow = "1.0"
 
 [lib]
-name = "pnpm_package_creator"
+name = "package_cli"
 path = "src/lib.rs"
+
+[[bin]]
+name = "package_cli"
+path = "src/main.rs"
 
 [lints]
 workspace = true
