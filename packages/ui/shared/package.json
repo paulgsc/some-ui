@@ -18,7 +18,7 @@
     "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
+    "some-ui-tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

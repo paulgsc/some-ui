@@ -1,5 +1,5 @@
 {
-  "name": "@some-ui/tsconfig",
+  "name": "some-ui-tsconfig",
   "version": "0.1.0",
   "description": "tsconfig for some-ui",
   "private": true,
