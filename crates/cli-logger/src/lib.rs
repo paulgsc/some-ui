@@ -84,3 +84,84 @@ pub fn trace(message: &str) {
     log!(LogLevel::Trace, "{}", message);
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::Mutex as StdMutex;
+
+    struct TestWriter {
+        contents: Arc<StdMutex<Vec<u8>>>,
+    }
+
+    impl TestWriter {
+        fn new() -> Self {
+            TestWriter {
+                contents: Arc::new(StdMutex::new(Vec::new())),
+            }
+        }
+
+        fn contents(&self) -> String {
+            String::from_utf8(self.contents.lock().unwrap().clone()).unwrap()
+        }
+    }
+
+    impl Write for TestWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.contents.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_log_levels() {
+        let writer = TestWriter::new();
+        let writer_clone = TestWriter {
+            contents: Arc::clone(&writer.contents),
+        };
+
+        set_level(LogLevel::Debug);
+
+        set_output(writer);
+        error("This is an error");
+        warn("This is a warning");
+        info("This is info");
+        debug("This is debug");
+        trace("This is trace");
+
+        let output = writer_clone.contents();
+
+        let error_expected = format!(
+            "{} - This is an error\n",
+            "ERROR".red().bold()
+            );
+
+        let warn_expected = format!(
+            "{} - This is a warning\n",
+            "WARN".yellow().bold()
+            );
+
+        let info_expected = format!(
+            "{} - This is info\n",
+            "INFO".green().bold()
+            );
+
+        let debug_expected = format!(
+            "{} - This is debug\n",
+            "DEBUG".blue().bold()
+            );
+
+        assert!(output.contains(&error_expected), "Expected '{}' in output: {}", error_expected, output);
+        assert!(output.contains(&warn_expected), "Expected '{}' in output: {}", warn_expected, output);
+        assert!(output.contains(&info_expected), "Expected '{}' in output: {}", info_expected, output);
+        assert!(output.contains(&debug_expected), "Expected '{}' in output: {}", debug_expected, output);
+        assert!(!output.contains("TRACE - This is trace"), "Unexpected 'TRACE - This is trace' in output: {}", output);
+    }
+
+
+}
+

@@ -1,10 +1,10 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
-    Error,
-    Warn,
-    Info,
-    Debug,
     Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
 }
 
 impl LogLevel {
