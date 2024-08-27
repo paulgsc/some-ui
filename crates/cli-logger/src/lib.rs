@@ -124,7 +124,7 @@ mod tests {
             contents: Arc::clone(&writer.contents),
         };
 
-        set_level(LogLevel::Debug);
+        set_level(LogLevel::Trace);
 
         set_output(writer);
         error("This is an error");
@@ -162,6 +162,55 @@ mod tests {
         assert!(!output.contains("TRACE - This is trace"), "Unexpected 'TRACE - This is trace' in output: {}", output);
     }
 
+    #[test]
+    fn test_log_level_info_filtering() {
+        let writer = TestWriter::new();
+        let writer_clone = TestWriter {
+            contents: Arc::clone(&writer.contents),
+        };
+
+        set_output(writer);
+        set_level(LogLevel::Info);
+
+        error("Error");
+        warn("Warning");
+        info("Info");
+        debug("Debug");
+        trace("Trace");
+
+        let output = writer_clone.contents();
+        assert!(output.contains("ERROR"));
+        assert!(output.contains("WARN"));
+        assert!(output.contains("INFO"));
+        assert!(!output.contains("DEBUG"));
+        assert!(!output.contains("TRACE"));
+    }
+
+    #[test]
+    fn test_log_level_error_filtering() {
+        let writer = TestWriter::new();
+        let writer_clone = TestWriter {
+            contents: Arc::clone(&writer.contents),
+        };
+
+        set_output(writer);
+        set_level(LogLevel::Error);
+
+        error("Error");
+        warn("Warning");
+        info("Info");
+        debug("Debug");
+        trace("Trace");
+
+        let output = writer_clone.contents();
+        assert!(output.contains("ERROR"));
+        assert!(!output.contains("WARN"));
+        assert!(!output.contains("INFO"));
+        assert!(!output.contains("DEBUG"));
+        assert!(!output.contains("TRACE"));
+    }
+
 
 }
+
 
