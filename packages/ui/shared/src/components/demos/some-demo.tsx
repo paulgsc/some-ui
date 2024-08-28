@@ -1,40 +1,21 @@
-import type { CSSProperties, FC } from "react"
+import { useRef, type FC, type ReactNode } from "react"
+import { useMeasureRect } from "@some-ui/utils"
 
-import type { Node, Rect } from "./rect-utils"
-
-type RectDemoProps = {
-  rect: Rect
-  nodes?: Array<Node>
+type RectDisplayProps = {
+  className?: string
+  children?: ReactNode
 }
 
-const RectDemo: FC<RectDemoProps> = ({ rect, nodes = [] }) => {
-  const style: CSSProperties = {
-    position: "relative",
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    border: "1px solid black",
-    margin: "10px",
-  }
+const RectDisplay: FC<RectDisplayProps> = ({ className }) => {
+  const ref = useRef<HTMLDivElement>(null)
+
+  const { height, width } = useMeasureRect({ ref })
 
   return (
-    <div style={style}>
-      <div>{`Width: ${rect.width}, Height: ${rect.height}`}</div>
-      {nodes.map((node) => (
-        <div
-          key={node.id}
-          style={{
-            position: "absolute",
-            left: `${node.position.x - rect.x}px`,
-            top: `${node.position.y - rect.y}px`,
-            width: "10px",
-            height: "10px",
-            borderRadius: "50%",
-            backgroundColor: "red",
-          }}
-        />
-      ))}
+    <div ref={ref} className={className}>
+      {`Width: ${Math.round(width ?? 0)}px, Height: ${Math.round(height ?? 0)}px`}
     </div>
   )
 }
 
-export default RectDemo
+export default RectDisplay

@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "tailwind-merge": "^2.4.0",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "usehooks-ts": "^3.1.0"
   },
   "devDependencies": {}
 }
