@@ -4,3 +4,4 @@ packages:
   - packages/rollup-config
   - packages/utils
   - packages/pivot-search
+  - packages/mdx-generator

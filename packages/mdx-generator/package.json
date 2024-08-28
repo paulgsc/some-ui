@@ -1,0 +1,30 @@
+{
+  "name": "some-ui-mdx",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache",
+    "lint": "pnpm --package=turbo@latest -- turbo lint:js typecheck prettier",
+    "lint:fix": "eslint --fix",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.0.8",
+    "@dnd-kit/modifiers": "^6.0.1",
+    "@dnd-kit/sortable": "^7.0.2",
+    "@dnd-kit/utilities": "^3.2.1",
+    "classnames": "^2.2.6",
+    "some-ui-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/rollup-config": "workspace:*"
+  }
+}
