@@ -15,7 +15,8 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "react-resizable-panels": "^2.1.0",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^2.4.0",
+    "@some-ui/utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
