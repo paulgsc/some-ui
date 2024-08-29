@@ -285,5 +285,16 @@ export default tseslint.config(
       "@typescript-eslint/explicit-function-return-type": "off",
       "no-mixed-operators": "off",
     },
+  },
+  {
+    files: ["packages/**/*rollup*.ts"],
+    rules: {
+      // turn off other type-aware rules
+      "deprecation/deprecation": "off",
+      "@typescript-eslint/internal/no-poorly-typed-ts-props": "off",
+
+      // turn off rules that don't apply to JS code
+      "@typescript-eslint/explicit-function-return-type": "off",
+    },
   }
 )
