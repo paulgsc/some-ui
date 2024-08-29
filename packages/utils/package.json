@@ -20,5 +20,40 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "some-ui-utils*",
+    "./dist/src/**/*",
+    "index.d.ts",
+    "./dist/esm/**/*",
+    "./dist/cjs/**/*"
+  ],
+  "sideEffects": false,
+  "unpkg": "some-ui-utils.umd.js",
+  "main": "./dist/some-ui-utils.umd.js",
+  "module": "./dist/esm/some-ui-utils.esm.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/some-ui-utils.esm.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/some-ui-utils.cjs.js"
+      }
+    }
   }
 }

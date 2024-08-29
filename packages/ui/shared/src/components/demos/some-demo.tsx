@@ -1,5 +1,5 @@
 import { useRef, type FC, type ReactNode } from "react"
-import { useMeasureRect } from "@some-ui/utils"
+import { useMeasureRect } from "some-ui-utils"
 
 type RectDisplayProps = {
   className?: string
