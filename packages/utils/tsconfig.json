@@ -2,18 +2,14 @@
   "extends": "../tsconfig/rollupconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "dist",
-    "declaration": true,
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": false,
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "target": "ES6"
+    "declarationDir": "./",
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "paths": {
+      "@utils/*": ["./src/*"]
+    }
   },
-  "include": ["lib", "index.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "build", "dist"]
 }
