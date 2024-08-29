@@ -14,8 +14,11 @@ import {
   typescript,
 } from "./base.rollup.config"
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-const creatRollupConfig = (packageJson: PackageJsonTypes, tsconfig: object) => {
+const creatRollupConfig = (
+  packageJson: PackageJsonTypes,
+  tsconfig: object,
+  customExternal: Array<string> = []
+) => {
   const CONFIG_GLOBALS_MODULE = {
     ...CONFIG_GLOBALS,
     react: "React",
@@ -30,6 +33,9 @@ const creatRollupConfig = (packageJson: PackageJsonTypes, tsconfig: object) => {
   const CONFIG_TYPESCRIPT = {
     ...tsconfig,
   }
+
+  const defaultExternal = Object.keys(CONFIG_GLOBALS_MODULE)
+  const finalExternal = [...defaultExternal, ...customExternal]
 
   return [
     {
@@ -60,7 +66,7 @@ const creatRollupConfig = (packageJson: PackageJsonTypes, tsconfig: object) => {
         babel(CONFIG_BABEL),
         // tscAliasReplacer(),
       ],
-      external: Object.keys(CONFIG_GLOBALS_MODULE),
+      external: finalExternal,
       // Use manual chunking to handle the @shared alias
     },
     {
@@ -84,7 +90,7 @@ const creatRollupConfig = (packageJson: PackageJsonTypes, tsconfig: object) => {
         // tscAliasReplacer(),
         createNodeNextSupport(),
       ],
-      external: Object.keys(CONFIG_GLOBALS_UMD),
+      external: finalExternal,
       // Use manual chunking to handle the @shared alias
     },
   ]
