@@ -12,6 +12,7 @@ coverage
 .next/
 out/
 build
+dist
 
 # misc
 .DS_Store
@@ -46,4 +47,3 @@ rimraf tsconfig.tsbuildinfo && rimraf .eslintcache
 .*cache
 **/cjs
 **/esm
-/dist

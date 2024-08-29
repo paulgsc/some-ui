@@ -1,17 +1,10 @@
 {
-  "name": "@some-ui/utils",
-  "private": true,
+  "name": "some-ui-utils",
   "version": "0.0.0",
-  "files": [
-    "dist/**"
-  ],
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "index.ts",
+  "type": "module",
   "scripts": {
-    "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
-    "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
-    "build": "pnpm build:esm && pnpm build:cjs",
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache",
     "lint": "pnpm --package=turbo@latest -- turbo lint:js typecheck prettier",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
@@ -24,5 +17,8 @@
     "clsx": "^2.1.1",
     "usehooks-ts": "^3.1.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/rollup-config": "workspace:*"
+  }
 }
