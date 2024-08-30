@@ -1,14 +1,10 @@
 "use client"
 
 import type { ComponentProps, HTMLAttributes, ImgHTMLAttributes } from "react"
-import Callout from "@mdx/components/callout"
 import CodeBlockWrapper from "@mdx/components/code-block-wrapper"
 import CopyButton, { CopyNpmCommandButton } from "@mdx/components/copy-button"
-import { Event, NpmCommands, Style } from "@mdx/types"
-
-import cn from "@/lib/utils/cn"
-import { AspectRatio } from "@/components/ui/aspect-ratio"
-import FrameworkDocs from "@/components/framework-docs"
+import type { Event, NpmCommands } from "@mdx/types"
+import { cn } from "some-ui-utils"
 
 const defaultMdxComponents = {
   h1: ({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) => (
@@ -90,7 +86,6 @@ const defaultMdxComponents = {
     />
   ),
   img: ({ className, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => (
-    // eslint-disable-next-line @next/next/no-img-element
     <img className={cn("rounded-md", className)} alt={alt} {...props} />
   ),
   hr: ({ ...props }: HTMLAttributes<HTMLHRElement>) => (
@@ -103,7 +98,7 @@ const defaultMdxComponents = {
   ),
   tr: ({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) => (
     <tr
-      className={cn("even:bg-muted m-0 border-t p-0", className)}
+      className={cn("m-0 border-t p-0 even:bg-muted", className)}
       {...props}
     />
   ),
@@ -136,10 +131,8 @@ const defaultMdxComponents = {
     __src__,
     __event__,
 
-    __style__,
     ...props
   }: HTMLAttributes<HTMLPreElement> & {
-    __style__?: Style["name"]
     __rawString__?: string
     __withMeta__?: boolean
     __src__?: string
@@ -182,14 +175,12 @@ const defaultMdxComponents = {
   code: ({ className, ...props }: HTMLAttributes<HTMLElement>) => (
     <code
       className={cn(
-        "bg-muted relative rounded px-[0.3rem] py-[0.2rem] font-mono text-sm",
+        "relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm",
         className
       )}
       {...props}
     />
   ),
-  Callout,
-  AspectRatio,
   CodeBlockWrapper: ({ ...props }) => (
     <CodeBlockWrapper className="rounded-md border" {...props} />
   ),
@@ -207,13 +198,6 @@ const defaultMdxComponents = {
       className="[&>h3]:step steps mb-12 ml-4 border-l pl-8 [counter-reset:step]"
       {...props}
     />
-  ),
-
-  FrameworkDocs: ({
-    className,
-    ...props
-  }: ComponentProps<typeof FrameworkDocs>) => (
-    <FrameworkDocs className={cn(className)} {...props} />
   ),
 } as const
 

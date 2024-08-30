@@ -1,4 +1,4 @@
-import { ComponentType } from "react"
+import type { ComponentType } from "react"
 import type { Node } from "unist-builder"
 import { z } from "zod"
 
@@ -6,10 +6,10 @@ export type MDXComponentsProps = Record<string, ComponentType>
 
 export type MdxProps = {
   code: string
-  component?: MDXComponentsProps
+  components?: MDXComponentsProps
 }
 
-const eventSchema = z.object({
+export const eventSchema = z.object({
   name: z.enum([
     "copy_npm_command",
     "copy_usage_import_code",
@@ -28,7 +28,7 @@ const eventSchema = z.object({
 
 export type Event = z.infer<typeof eventSchema>
 
-export interface UnistNode extends Node {
+export type UnistNode = {
   type: string
   name?: string
   tagName?: string
@@ -45,13 +45,13 @@ export interface UnistNode extends Node {
     type?: string
   }>
   children?: Array<UnistNode>
-}
+} & Node
 
-export interface UnistTree extends Node {
+export type UnistTree = {
   children: Array<UnistNode>
-}
+} & Node
 
-export interface NpmCommands {
+export type NpmCommands = {
   __npmCommand__?: string
   __yarnCommand__?: string
   __pnpmCommand__?: string
