@@ -15,7 +15,10 @@
   },
   "peerDependencies": {
     "lucide-react": "0.436.0",
-    "@radix-ui/react-dropdown-menu": "2.1.1"
+    "@radix-ui/react-dropdown-menu": "2.1.1",
+    "next-contentlayer2": "^0.4.6",
+    "some-ui-utils": "workspace:*",
+    "some-ui-shared": "workspace:*"
   },
   "dependencies": {
     "some-ui-shared": "workspace:*",
@@ -23,7 +26,8 @@
     "zod": "3.23.8",
     "unist-builder": "3.0.0",
     "lucide-react": "0.436.0",
-    "@radix-ui/react-dropdown-menu": "2.1.1"
+    "@radix-ui/react-dropdown-menu": "2.1.1",
+    "next-contentlayer2": "^0.4.6"
   },
   "devDependencies": {
     "react": "^18.3.1",
