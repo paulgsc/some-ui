@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react"
-import { Event, NpmCommands } from "@mdx/types"
+import type { Event, NpmCommands } from "@mdx/types"
 import type { DropdownMenuTriggerProps } from "@radix-ui/react-dropdown-menu"
 import { CheckIcon, ClipboardIcon } from "lucide-react"
 import {
   Button,
-  ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  type ButtonProps,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -18,20 +18,17 @@ type CopyButtonProps = {
   event?: Event["name"]
 } & ButtonProps
 
-export async function copyToClipboardWithMeta(value: string, event?: Event) {
-  navigator.clipboard.writeText(value)
-  if (event) {
-    trackEvent(event)
-  }
+// eslint-disable-next-line @typescript-eslint/require-await
+export async function copyToClipboardWithMeta(value: string): Promise<void> {
+  void navigator.clipboard.writeText(value)
 }
 
 const CopyButton = ({
   value,
   className,
   variant = "ghost",
-  event,
   ...props
-}: CopyButtonProps) => {
+}: CopyButtonProps): JSX.Element => {
   const [hasCopied, setHasCopied] = useState(false)
 
   useEffect(() => {
@@ -49,17 +46,7 @@ const CopyButton = ({
         className
       )}
       onClick={() => {
-        copyToClipboardWithMeta(
-          value,
-          event
-            ? {
-                name: event,
-                properties: {
-                  code: value,
-                },
-              }
-            : undefined
-        )
+        void copyToClipboardWithMeta(value)
         setHasCopied(true)
       }}
       {...props}
@@ -80,7 +67,7 @@ export const CopyWithClassNames = ({
   value,
   classNames,
   className,
-}: CopyWithClassNamesProps) => {
+}: CopyWithClassNamesProps): JSX.Element => {
   const [hasCopied, setHasCopied] = useState(false)
 
   useEffect(() => {
@@ -90,7 +77,7 @@ export const CopyWithClassNames = ({
   }, [hasCopied])
 
   const copyToClipboard = useCallback((value: string) => {
-    copyToClipboardWithMeta(value)
+    void copyToClipboardWithMeta(value)
     setHasCopied(true)
   }, [])
 
@@ -114,10 +101,18 @@ export const CopyWithClassNames = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => copyToClipboard(value)}>
+        <DropdownMenuItem
+          onClick={() => {
+            copyToClipboard(value)
+          }}
+        >
           Component
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => copyToClipboard(classNames)}>
+        <DropdownMenuItem
+          onClick={() => {
+            copyToClipboard(classNames)
+          }}
+        >
           Classname
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -132,7 +127,7 @@ type CopyNpmCommandButtonProps = {
 export const CopyNpmCommandButton = ({
   commands,
   className,
-}: CopyNpmCommandButtonProps) => {
+}: CopyNpmCommandButtonProps): JSX.Element => {
   const [hasCopied, setHasCopied] = useState(false)
 
   useEffect(() => {
@@ -141,19 +136,10 @@ export const CopyNpmCommandButton = ({
     }, 2000)
   }, [hasCopied])
 
-  const copyCommand = useCallback(
-    (value: string, pm: "npm" | "pnpm" | "yarn" | "bun") => {
-      copyToClipboardWithMeta(value, {
-        name: "copy_npm_command",
-        properties: {
-          command: value,
-          pm,
-        },
-      })
-      setHasCopied(true)
-    },
-    []
-  )
+  const copyCommand = useCallback((value: string) => {
+    void copyToClipboardWithMeta(value)
+    setHasCopied(true)
+  }, [])
 
   return (
     <DropdownMenu>
@@ -176,22 +162,30 @@ export const CopyNpmCommandButton = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          onClick={() => copyCommand(commands.__npmCommand__, "npm")}
+          onClick={() => {
+            copyCommand(commands.__npmCommand__, "npm")
+          }}
         >
           npm
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => copyCommand(commands.__yarnCommand__, "yarn")}
+          onClick={() => {
+            copyCommand(commands.__yarnCommand__, "yarn")
+          }}
         >
           yarn
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => copyCommand(commands.__pnpmCommand__, "pnpm")}
+          onClick={() => {
+            copyCommand(commands.__pnpmCommand__, "pnpm")
+          }}
         >
           pnpm
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => copyCommand(commands.__bunCommand__, "bun")}
+          onClick={() => {
+            copyCommand(commands.__bunCommand__, "bun")
+          }}
         >
           bun
         </DropdownMenuItem>
