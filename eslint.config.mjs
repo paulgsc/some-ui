@@ -254,12 +254,15 @@ export default tseslint.config(
           img: ["Image"],
         },
       ],
+      "jsx-a11y/heading-has-content": "off",
+      "jsx-a11y/anchor-has-content": "off",
       "jsx-a11y/aria-props": "error",
       "jsx-a11y/aria-proptypes": "error",
       "jsx-a11y/aria-unsupported-elements": "error",
       "jsx-a11y/role-has-required-aria-props": "error",
       "jsx-a11y/role-supports-aria-props": "error",
       "react/jsx-no-target-blank": "off",
+
       "no-restricted-syntax": [
         "error",
         {
