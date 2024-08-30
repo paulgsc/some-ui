@@ -163,31 +163,10 @@ export const CopyNpmCommandButton = ({
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           onClick={() => {
-            copyCommand(commands.__npmCommand__, "npm")
-          }}
-        >
-          npm
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            copyCommand(commands.__yarnCommand__, "yarn")
-          }}
-        >
-          yarn
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            copyCommand(commands.__pnpmCommand__, "pnpm")
+            copyCommand(commands.__pnpmCommand__)
           }}
         >
           pnpm
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => {
-            copyCommand(commands.__bunCommand__, "bun")
-          }}
-        >
-          bun
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
