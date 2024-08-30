@@ -13,11 +13,17 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "lucide-react": "0.436.0",
+    "@radix-ui/react-dropdown-menu": "2.1.1"
+  },
   "dependencies": {
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "3.23.8",
-    "unist-builder": "3.0.0"
+    "unist-builder": "3.0.0",
+    "lucide-react": "0.436.0",
+    "@radix-ui/react-dropdown-menu": "2.1.1"
   },
   "devDependencies": {
     "react": "^18.3.1",

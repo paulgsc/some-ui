@@ -2,16 +2,15 @@ import { useCallback, useEffect, useState } from "react"
 import { Event, NpmCommands } from "@mdx/types"
 import type { DropdownMenuTriggerProps } from "@radix-ui/react-dropdown-menu"
 import { CheckIcon, ClipboardIcon } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-import { Button } from "./ui/button"
 import {
+  Button,
+  ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
+} from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 type CopyButtonProps = {
   value: string
