@@ -25,3 +25,9 @@ export {
   ResizablePanel,
   ResizableHandle,
 } from "./resizable"
+
+export {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "./collapsible"
