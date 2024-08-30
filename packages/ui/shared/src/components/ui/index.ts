@@ -1,6 +1,6 @@
 export { Alert, AlertTitle, AlertDescription } from "./alert"
 export { AspectRatio } from "./aspect-ratio"
-export { Button, buttonVariants } from "./button"
+export { Button, buttonVariants, ButtonProps } from "./button"
 
 export {
   DropdownMenu,
