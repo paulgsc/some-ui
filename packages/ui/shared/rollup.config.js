@@ -7,4 +7,11 @@ const CONFIG_TYPESCRIPT = {
   tsconfig: path.join(__dirname, "tsconfig.json"),
 }
 
-export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT)
+const external = [
+  "@radix-ui/react-aspect-ratio",
+  "@radix-ui/react-slot",
+  "@radix-ui/react-dropdown-menu",
+  "lucide-react",
+]
+
+export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
