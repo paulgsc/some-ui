@@ -1,22 +1,19 @@
-import { MdxProps } from "@mdx/types"
+import type { MdxProps } from "@mdx/types"
 import { useMDXComponent } from "next-contentlayer2/hooks"
 
-import { useConfig } from "@/hooks/use-config"
+import { defaultMdxComponents } from "./default-components"
 
-const Mdx = ({ code, component = {} }: MdxProps) => {
-  const config = useConfig()
-  const Component = useMDXComponent(code, {
-    style: config.style,
-  })
+const Mdx = ({ code, components = {} }: MdxProps): JSX.Element => {
+  const Component = useMDXComponent(code)
 
   const mergedComponents = {
-    ...defaultComponents,
+    ...defaultMdxComponents,
     ...components,
   }
 
   return (
     <div className="mdx">
-      <MDXComponent components={mergedComponents} />
+      <Component components={mergedComponents} />
     </div>
   )
 }

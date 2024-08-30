@@ -1,13 +1,11 @@
 import { useState, type HTMLAttributes } from "react"
-
-import cn from "@/lib/utils/cn"
-
-import { Button } from "./ui/button"
 import {
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "./ui/collapsible"
+} from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 type CodeBlockProps = {
   expandButtonTitle?: string
@@ -18,7 +16,7 @@ const CodeBlockWrapper = ({
   className,
   children,
   ...props
-}: CodeBlockProps) => {
+}: CodeBlockProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false)
 
   return (
