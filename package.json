@@ -22,7 +22,7 @@
     "typecheck": "turbo run typecheck",
     "prettier": "turbo prettier",
     "prepare": "husky",
-    "test": "turbor test",
+    "test": "turbo test",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build"
   },
