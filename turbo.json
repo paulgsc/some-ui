@@ -15,6 +15,7 @@
       "cache": false
     },
     "lint": {
+      "dependsOn": ["^lint:js", "^prettier", "^typecheck", "^lint"],
       "cache": false
     },
     "lint:fix": {
