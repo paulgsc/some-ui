@@ -14,7 +14,7 @@
     "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
     "build": "pnpm build:esm && pnpm build:cjs",
     "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache",
-    "lint": "pnpm --package=turbo@latest -- turbo lint:js typecheck prettier",
+    "lint": "pnpm --package=turbo@latest -- turbo lint",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit",
