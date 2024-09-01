@@ -47,3 +47,5 @@ rimraf tsconfig.tsbuildinfo && rimraf .eslintcache
 .*cache
 **/cjs
 **/esm
+
+tsconfig.tsbuildinfo
