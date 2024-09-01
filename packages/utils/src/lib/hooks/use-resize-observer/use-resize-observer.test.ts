@@ -1,20 +1,29 @@
-import { act, renderHook } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { act } from "react"
+import { renderHook } from "@testing-library/react"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from "vitest"
 
 import { useResizeObserver } from "./use-resize-observer"
 
-describe("useResizeObserver", () => {
-  let mockResizeObserver: {
-    observe: vi.Mock
-    disconnect: vi.Mock
-  }
+const mockResizeObserver = {
+  observe: vi.fn(),
+  disconnect: vi.fn(),
+}
+global.ResizeObserver = vi.fn(
+  () => mockResizeObserver
+) as unknown as typeof ResizeObserver
 
+describe("useResizeObserver", () => {
   beforeEach(() => {
-    mockResizeObserver = {
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    }
-    global.ResizeObserver = vi.fn().mockImplementation(() => mockResizeObserver)
+    // Reset mocks before each test
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -41,8 +50,8 @@ describe("useResizeObserver", () => {
     const { result } = renderHook(() => useResizeObserver({ ref }))
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [{ inlineSize: 100, blockSize: 50 }],
@@ -61,8 +70,8 @@ describe("useResizeObserver", () => {
     )
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           borderBoxSize: [{ inlineSize: 110, blockSize: 60 }],
@@ -81,8 +90,8 @@ describe("useResizeObserver", () => {
     )
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [{ inlineSize: 100, blockSize: 50 }],
@@ -101,8 +110,8 @@ describe("useResizeObserver", () => {
     )
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           devicePixelContentBoxSize: [{ inlineSize: 200, blockSize: 100 }],
@@ -120,8 +129,8 @@ describe("useResizeObserver", () => {
     renderHook(() => useResizeObserver({ ref, onResize }))
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [{ inlineSize: 100, blockSize: 50 }],
@@ -139,8 +148,8 @@ describe("useResizeObserver", () => {
     const { result } = renderHook(() => useResizeObserver({ ref, onResize }))
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [{ inlineSize: 100, blockSize: 50 }],
@@ -157,8 +166,8 @@ describe("useResizeObserver", () => {
     const { result } = renderHook(() => useResizeObserver({ ref }))
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: { inlineSize: 100, blockSize: 50 },
@@ -175,8 +184,8 @@ describe("useResizeObserver", () => {
     const { result } = renderHook(() => useResizeObserver({ ref }))
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [],
@@ -224,8 +233,8 @@ describe("useResizeObserver", () => {
     unmount()
 
     act(() => {
-      const [[callback]] = (global.ResizeObserver as unknown as vi.Mock).mock
-        .calls
+      const [[callback]] = (global.ResizeObserver as unknown as MockInstance)
+        .mock.calls
       callback([
         {
           contentBoxSize: [{ inlineSize: 100, blockSize: 50 }],
