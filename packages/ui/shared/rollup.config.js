@@ -11,9 +11,12 @@ const external = [
   "@radix-ui/react-aspect-ratio",
   "@radix-ui/react-slot",
   "@radix-ui/react-dropdown-menu",
+  "@radix-ui/react-select",
   "lucide-react",
   "react-resizable-panels",
   "class-variance-authority",
+  "tailwind-merge",
+  "clsx",
   "react",
   "react-dom",
 ]
