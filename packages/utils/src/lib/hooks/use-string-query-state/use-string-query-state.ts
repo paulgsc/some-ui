@@ -12,7 +12,7 @@ type QueryStateOptions = {
 
 type QueryStateReturnType = ReturnType<typeof useQueryState>
 
-export function useGeneralizedQueryState(
+export function useStringQueryState(
   key: string,
   config: QueryStateOptions
 ): QueryStateReturnType {
