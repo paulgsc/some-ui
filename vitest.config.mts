@@ -8,6 +8,7 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   test: {
     environment: "jsdom",
+    globals: true,
     exclude: [
       "react-smooth",
       "**/node_modules/**",
