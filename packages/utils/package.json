@@ -14,13 +14,18 @@
     "postinstall": "pnpm build",
     "test": "vitest"
   },
-  "dependencies": {
+  "peerDependencies": {
     "tailwind-merge": "^2.4.0",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "nuqs": "1.18.0"
   },
+  "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*"
+    "@some-ui/rollup-config": "workspace:*",
+    "tailwind-merge": "^2.4.0",
+    "clsx": "^2.1.1",
+    "nuqs": "1.18.0"
   },
   "repository": {
     "type": "git",
