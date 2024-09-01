@@ -14,6 +14,7 @@
   },
   "scripts": {
     "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo",
+    "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
     "build": "turbo build",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
     "lint": "turbo lint",
