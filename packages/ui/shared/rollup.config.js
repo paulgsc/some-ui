@@ -12,6 +12,10 @@ const external = [
   "@radix-ui/react-slot",
   "@radix-ui/react-dropdown-menu",
   "lucide-react",
+  "react-resizable-panels",
+  "class-variance-authority",
+  "react",
+  "react-dom",
 ]
 
 export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
