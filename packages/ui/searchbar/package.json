@@ -31,27 +31,27 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-calendar*",
+    "some-ui-searchbar*",
     "./dist/src/**/*",
     "index.d.ts",
     "./dist/esm/**/*",
     "./dist/cjs/**/*"
   ],
   "sideEffects": false,
-  "unpkg": "some-ui-calendar.umd.js",
-  "main": "./dist/some-ui-calendar.umd.js",
-  "module": "./dist/esm/some-ui-calendar.esm.js",
+  "unpkg": "some-ui-searchbar.umd.js",
+  "main": "./dist/some-ui-searchbar.umd.js",
+  "module": "./dist/esm/some-ui-searchbar.esm.js",
   "types": "index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-calendar.esm.js"
+        "default": "./dist/esm/some-ui-searchbar.esm.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-calendar.cjs.js"
+        "default": "./dist/cjs/some-ui-searchbar.cjs.js"
       }
     }
   }
