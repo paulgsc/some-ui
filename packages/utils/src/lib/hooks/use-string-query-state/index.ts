@@ -1,1 +1,1 @@
-export * from "./use-generic-query-state"
+export * from "./use-string-query-state"
