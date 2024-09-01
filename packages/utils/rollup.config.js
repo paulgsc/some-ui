@@ -6,6 +6,6 @@ import packageJson from "./package.json"
 const CONFIG_TYPESCRIPT = {
   tsconfig: path.join(__dirname, "tsconfig.json"),
 }
-const external = ["react", "react-dom"]
+const external = ["nuqs", "tailwind-merge", "clsx", "react", "react-dom"]
 
 export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
