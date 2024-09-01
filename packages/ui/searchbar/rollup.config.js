@@ -7,4 +7,6 @@ const CONFIG_TYPESCRIPT = {
   tsconfig: path.join(__dirname, "tsconfig.json"),
 }
 
-export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT)
+const external = ["nuqs"]
+
+export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)

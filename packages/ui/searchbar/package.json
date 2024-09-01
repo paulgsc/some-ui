@@ -17,11 +17,15 @@
     "some-ui-utils": "workspace:*",
     "some-ui-shared": "workspace:*"
   },
+  "peerDependencies": {
+    "nuqs": "1.18.0"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "nuqs": "1.18.0"
   },
   "repository": {
     "type": "git",
