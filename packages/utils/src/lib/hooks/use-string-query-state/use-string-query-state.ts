@@ -2,7 +2,7 @@ import { parseAsStringLiteral, useQueryState } from "nuqs"
 
 // Replace with the actual import path
 
-type QueryStateOptions = {
+export type QueryStateOptions = {
   defaultValue: string
   validValues: Array<string>
   options?: {
