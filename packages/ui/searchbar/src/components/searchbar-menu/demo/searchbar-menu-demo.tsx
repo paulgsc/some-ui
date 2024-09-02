@@ -7,10 +7,12 @@ import type { QueryStateOptions } from "some-ui-utils"
 type SearchBarContextMenuProps = {
   config?: QueryStateOptions
   param?: string
+  placeholder?: string
 }
 
 const SearchBarContextMenuDemo: FC<SearchBarContextMenuProps> = ({
   config,
+  placeholder,
 }) => {
   // Use fallback hook if in Storybook,
   const { context, setContext, menuItems } = useFallbackState({
@@ -23,6 +25,7 @@ const SearchBarContextMenuDemo: FC<SearchBarContextMenuProps> = ({
       context={context}
       menuItems={menuItems}
       setContext={setContext}
+      placeholder={placeholder}
     />
   )
 }
