@@ -31,6 +31,10 @@
   "packageManager": "pnpm@9.5.0",
   "author": "pgdev",
   "devDependencies": {
+    "storybook-addon-next-router": "4.0.2",
+    "next": "14.2.3",
+    "next-router-mock": "0.9.13",
+    "@storybook/nextjs": "^8.2.9",
     "@babel/eslint-parser": "7.25.1",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.27.7",
