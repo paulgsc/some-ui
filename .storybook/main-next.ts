@@ -1,5 +1,5 @@
 import { dirname, join } from "path"
-import type { StorybookConfig } from "@storybook/react-vite"
+import type { StorybookConfig } from "@storybook/nextjs"
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -7,19 +7,11 @@ import type { StorybookConfig } from "@storybook/react-vite"
  */
 
 const config: StorybookConfig = {
-  stories: ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: ["../packages/ui/searchbar/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   logLevel: "error",
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,
-    builder: {
-      name: "@storybook/builder-vite",
-      options: {
-        launchOptions: {
-          open: false,
-        },
-      },
-    },
   },
   addons: [
     "@storybook/addon-onboarding",
@@ -29,15 +21,8 @@ const config: StorybookConfig = {
     "@storybook/addon-interactions",
   ],
   framework: {
-    name: "@storybook/react-vite",
+    name: "@storybook/nextjs",
     options: {},
-  },
-  viteFinal: (config) => {
-    config.define = {
-      ...config.define,
-      "process.env": {},
-    }
-    return config
   },
 }
 export default config
