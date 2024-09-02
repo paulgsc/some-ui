@@ -4,7 +4,7 @@ import { parseAsStringLiteral, useQueryState } from "nuqs"
 
 export type QueryStateOptions = {
   defaultValue: string
-  validValues: Array<string>
+  menu: Array<string>
   options?: {
     clearOnDefault?: boolean
   }
@@ -16,11 +16,11 @@ export function useStringQueryState(
   key: string,
   config: QueryStateOptions
 ): QueryStateReturnType {
-  const { defaultValue, validValues, options } = config
+  const { defaultValue, menu, options } = config
 
   const [value, setValue] = useQueryState(
     key,
-    parseAsStringLiteral(validValues)
+    parseAsStringLiteral(menu)
       .withDefault(defaultValue)
       .withOptions({ ...options })
   )
