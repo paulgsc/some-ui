@@ -1,18 +1,10 @@
-import { searchContextSchema } from "@searchbar/types/searchbar"
-import { useStringQueryState, type QueryStateOptions } from "some-ui-utils"
+import {
+  searchContextSchema,
+  type UseSearchBarStateProps,
+  type UseSearchBarStateReturn,
+} from "@searchbar/types/searchbar"
+import { useStringQueryState } from "some-ui-utils"
 
-type QueryStateReturnType = ReturnType<typeof useStringQueryState>
-
-type UseSearchBarStateReturn = {
-  context: string
-  setContext: QueryStateReturnType[1]
-  menuItems: Array<string>
-}
-
-type UseSearchBarStateProps<T extends string> = {
-  config: QueryStateOptions
-  param: T
-}
 export const useSearchBarState = <T extends string>({
   config,
   param,
