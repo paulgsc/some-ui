@@ -5,3 +5,5 @@ packages:
   - packages/utils
   - packages/pivot-search
   - packages/mdx-generator
+  - packages/routing
+  - packages/types
