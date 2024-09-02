@@ -3,7 +3,7 @@ import { createEnumSchema } from "some-types-utils"
 
 export type SearchContext = "navigation" | "blog" | "events" | "updates"
 export type SearchContextMenu = {
-  default: SearchContext
+  defaultValue: SearchContext
   menu: Array<SearchContext>
 }
 
