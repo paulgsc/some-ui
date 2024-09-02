@@ -2,6 +2,8 @@ import { SearchBarContextMenu } from "@searchbar/components/searchbar-menu"
 import { SearchBarToggle } from "@searchbar/components/searchbar-toggle"
 import { Button, SvgIcons } from "some-ui-shared"
 
+import { SearchbarInput } from "../searchbar-input"
+
 const SearchBarForm = (): JSX.Element => {
   return (
     <form
@@ -12,12 +14,7 @@ const SearchBarForm = (): JSX.Element => {
         <SearchBarToggle param="foo" role="status">
           <SvgIcons.cross className="size-3 shrink-0 text-muted-foreground transition-transform hover:scale-105 hover:text-pink-500" />
         </SearchBarToggle>
-        <input
-          type="text"
-          className="size-full rounded-l-full bg-card p-2.5 ps-10 text-sm text-gray-900 outline-none focus:ring-1 dark:text-white"
-          placeholder="Search"
-          required
-        />
+        <SearchbarInput />
         <Button
           type="submit"
           variant={"ghost"}
