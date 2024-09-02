@@ -1,11 +1,14 @@
 import { useState, type FC } from "react"
-import { defaultConfig } from "@searchbar/components/data"
+import { defaultSearchContextMenuConfig } from "@searchbar/components/data"
 import { SelectMenu } from "@searchbar/components/searchbar-menu/select-menu"
-import type { UseSearchBarStateReturn } from "@searchbar/types/searchbar"
+import type {
+  SearchContext,
+  UseSearchBarStateReturn,
+} from "@searchbar/types/searchbar"
 import type { QueryStateOptions } from "some-ui-utils"
 
 type SearchBarContextMenuProps = {
-  config?: QueryStateOptions
+  config?: QueryStateOptions<SearchContext>
   param?: string
   placeholder?: string
 }
@@ -16,7 +19,7 @@ const SearchBarContextMenuDemo: FC<SearchBarContextMenuProps> = ({
 }) => {
   // Use fallback hook if in Storybook,
   const { context, setContext, menuItems } = useFallbackState({
-    ...defaultConfig,
+    ...defaultSearchContextMenuConfig,
     ...config,
   })
 
@@ -32,8 +35,8 @@ const SearchBarContextMenuDemo: FC<SearchBarContextMenuProps> = ({
 
 // Fallback hook for Storybook
 const useFallbackState = (
-  config: QueryStateOptions
-): UseSearchBarStateReturn => {
+  config: QueryStateOptions<SearchContext>
+): UseSearchBarStateReturn<SearchContext> => {
   const [context, setContext] = useState(config.defaultValue)
   const menuItems = config.menu
 
