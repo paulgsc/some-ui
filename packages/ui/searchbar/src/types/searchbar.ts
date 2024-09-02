@@ -1,5 +1,6 @@
-import type { ReactNode } from "react"
+import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { createEnumSchema } from "some-types-utils"
+import type { ButtonProps } from "some-ui-shared"
 import type { QueryStateOptions, useStringQueryState } from "some-ui-utils"
 
 export type SearchContext = "navigation" | "blog" | "events" | "updates"
@@ -45,3 +46,9 @@ export type UseSearchBarStateProps<T extends string> = {
   config: QueryStateOptions<T>
   param: string
 }
+
+export type CloseSearchBarBtnProps = {
+  setContext:
+    | QueryStateReturnType<SearchBarRenderType>[1]
+    | Dispatch<SetStateAction<SearchBarRenderType>>
+} & ButtonProps
