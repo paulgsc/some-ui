@@ -3,7 +3,7 @@ import { defaultConfig } from "@searchbar/components/data"
 import { useSearchBarState } from "@searchbar/hooks"
 import type { QueryStateOptions } from "some-ui-utils"
 
-import SelectMenu from "./select-menu"
+import { SelectMenu } from "./select-menu"
 
 type SearchBarContextMenuProps = {
   config?: QueryStateOptions
