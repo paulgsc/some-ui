@@ -1,10 +1,8 @@
-import { useState, type FC } from "react"
+import { type FC } from "react"
 import { defaultSearchContextMenuConfig } from "@searchbar/components/data"
 import { SelectMenu } from "@searchbar/components/searchbar-menu/select-menu"
-import type {
-  SearchContext,
-  UseSearchBarStateReturn,
-} from "@searchbar/types/searchbar"
+import { useFallbackState } from "@searchbar/hooks/storybook"
+import type { SearchContext } from "@searchbar/types/searchbar"
 import type { QueryStateOptions } from "some-ui-utils"
 
 type SearchBarContextMenuProps = {
@@ -31,20 +29,6 @@ const SearchBarContextMenuDemo: FC<SearchBarContextMenuProps> = ({
       placeholder={placeholder}
     />
   )
-}
-
-// Fallback hook for Storybook
-const useFallbackState = (
-  config: QueryStateOptions<SearchContext>
-): UseSearchBarStateReturn<SearchContext> => {
-  const [context, setContext] = useState(config.defaultValue)
-  const menuItems = config.menu
-
-  return {
-    context,
-    setContext,
-    menuItems,
-  }
 }
 
 export default SearchBarContextMenuDemo
