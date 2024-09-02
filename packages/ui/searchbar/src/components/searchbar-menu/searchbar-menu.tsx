@@ -1,4 +1,5 @@
-import { config } from "@searchbar/components/data"
+import type { FC } from "react"
+import { defaultConfig } from "@searchbar/components/data"
 import { useSearchBarState } from "@searchbar/hooks"
 import {
   Select,
@@ -8,11 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "some-ui-shared"
+import type { QueryStateOptions } from "some-ui-utils"
 
-const SearchBarContextMenu = (): JSX.Element => {
+type SearchBarContextMenuProps = {
+  config?: QueryStateOptions
+  param: string
+}
+const SearchBarContextMenu: FC<SearchBarContextMenuProps> = ({
+  param,
+  config,
+}): JSX.Element => {
   const { context, setContext, menuItems } = useSearchBarState({
-    config: config,
-    param: "foo",
+    config: { ...defaultConfig, ...config },
+    param: param,
   })
   return (
     <Select

@@ -6,7 +6,7 @@ const SearchMenu: SearchContextMenu = {
   menu: ["blog", "navigation", "events", "updates"],
 }
 
-export const config: QueryStateOptions = {
+export const defaultConfig: QueryStateOptions = {
   ...SearchMenu,
   options: {
     clearOnDefault: true,
