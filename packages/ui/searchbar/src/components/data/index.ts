@@ -1,1 +1,1 @@
-export { config } from "./searcbar"
+export { defaultConfig } from "./searcbar"
