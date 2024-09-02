@@ -5,7 +5,7 @@ export { Button, buttonVariants, ButtonProps } from "./button"
 export * from "./dropdown-menu"
 
 export * from "./resizable"
-
+export * from "./input"
 export {
   Collapsible,
   CollapsibleTrigger,
