@@ -1,36 +1,39 @@
 import { forwardRef } from "react"
-import { Button, ButtonProps } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { useSearchBarState } from "@searchbar/hooks"
+import type { SearchBarRenderType } from "@searchbar/types"
+import { Button, type ButtonProps } from "some-ui-shared"
+import { cn, type QueryStateOptions } from "some-ui-utils"
 
-const CloseSearchBarBtn = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, ...props }, ref) => {
-    // const sortOrder: Array<SearchBarRenderType> = [
-    //   "fragment",
-    //   "searchbar",
-    // ] as const
+import { defaultSearchToggleContextConfig } from "../data"
 
-    // const [_, setShowSearch] = useQueryState(
-    //   "seshow",
-    //   parseAsStringLiteral(sortOrder)
-    //     .withDefault("fragment")
-    //     .withOptions({ clearOnDefault: true })
-    // )
+type CloseSearchBarBtnProps<T extends SearchBarRenderType> = {
+  config?: QueryStateOptions<T>
+  param: string
+} & ButtonProps
 
-    return (
-      <Button
-        ref={ref}
-        onClick={() => {
-          // setShowSearch("fragment")
-        }}
-        className={cn(
-          "absolute inset-y-0 start-0 z-10 flex items-center ps-3",
-          className
-        )}
-        {...props}
-      />
-    )
-  }
-)
+const CloseSearchBarBtn = forwardRef<
+  HTMLButtonElement,
+  CloseSearchBarBtnProps<SearchBarRenderType>
+>(({ className, config, param, ...props }, ref) => {
+  const { setContext } = useSearchBarState({
+    config: { ...defaultSearchToggleContextConfig, ...config },
+    param: param,
+  })
+
+  return (
+    <Button
+      ref={ref}
+      onClick={() => {
+        void setContext("fragment")
+      }}
+      className={cn(
+        "absolute inset-y-0 start-0 z-10 flex items-center ps-3",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 CloseSearchBarBtn.displayName = "CloseSearchBarBtn"
 
 export { CloseSearchBarBtn }

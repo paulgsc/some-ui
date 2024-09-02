@@ -1,1 +1,4 @@
-export { defaultConfig } from "./searcbar"
+export {
+  defaultSearchContextMenuConfig,
+  defaultSearchToggleContextConfig,
+} from "./searcbar"

@@ -1,5 +1,8 @@
 import type { FC } from "react"
-import type { UseSearchBarStateReturn } from "@searchbar/types/searchbar"
+import type {
+  SearchContext,
+  UseSearchBarStateReturn,
+} from "@searchbar/types/searchbar"
 import {
   Select,
   SelectContent,
@@ -11,7 +14,7 @@ import {
 
 type SelectMenuProps = {
   placeholder?: string
-} & UseSearchBarStateReturn
+} & UseSearchBarStateReturn<SearchContext>
 
 const SelectMenu: FC<SelectMenuProps> = ({
   placeholder,
@@ -22,7 +25,7 @@ const SelectMenu: FC<SelectMenuProps> = ({
   return (
     <Select
       onValueChange={(value) => {
-        void setContext(value)
+        void setContext(value as SearchContext)
       }}
       defaultValue={context}
     >

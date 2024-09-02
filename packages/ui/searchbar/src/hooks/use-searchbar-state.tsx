@@ -1,5 +1,4 @@
 import {
-  searchContextSchema,
   type UseSearchBarStateProps,
   type UseSearchBarStateReturn,
 } from "@searchbar/types/searchbar"
@@ -8,10 +7,9 @@ import { useStringQueryState } from "some-ui-utils"
 export const useSearchBarState = <T extends string>({
   config,
   param,
-}: UseSearchBarStateProps<T>): UseSearchBarStateReturn => {
+}: UseSearchBarStateProps<T>): UseSearchBarStateReturn<T> => {
   const [urlContext, setUrlContext] = useStringQueryState(param, config)
-  const contextFromParam = searchContextSchema.safeParse(urlContext).data
-  const defaultContext = contextFromParam ?? config.defaultValue
+  const defaultContext = urlContext ?? config.defaultValue
 
   return {
     context: defaultContext,

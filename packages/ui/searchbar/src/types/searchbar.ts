@@ -8,6 +8,11 @@ export type SearchContextMenu = {
   menu: Array<SearchContext>
 }
 
+export type SearchbarToggleContextMenu = {
+  defaultValue: SearchBarRenderType
+  menu: Array<SearchBarRenderType>
+}
+
 export type SearchBarRenderType = "fragment" | "searchbar"
 
 export type SeachBarNode = Record<SearchBarRenderType, ReactNode>
@@ -24,17 +29,19 @@ export const searchBarRenderSchema = createEnumSchema<SearchBarRenderType>([
   "searchbar",
 ])
 
-export type QueryStateReturnType = ReturnType<typeof useStringQueryState>
+export type QueryStateReturnType<T extends string> = ReturnType<
+  typeof useStringQueryState<T>
+>
 
-export type UseSearchBarStateReturn = {
-  context: string
+export type UseSearchBarStateReturn<T extends string> = {
+  context: T
   setContext:
-    | QueryStateReturnType[1]
-    | React.Dispatch<React.SetStateAction<string>>
-  menuItems: Array<string>
+    | QueryStateReturnType<T>[1]
+    | React.Dispatch<React.SetStateAction<T>>
+  menuItems: Array<T>
 }
 
 export type UseSearchBarStateProps<T extends string> = {
-  config: QueryStateOptions
-  param: T
+  config: QueryStateOptions<T>
+  param: string
 }
