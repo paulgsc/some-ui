@@ -28,7 +28,9 @@ export type QueryStateReturnType = ReturnType<typeof useStringQueryState>
 
 export type UseSearchBarStateReturn = {
   context: string
-  setContext: QueryStateReturnType[1]
+  setContext:
+    | QueryStateReturnType[1]
+    | React.Dispatch<React.SetStateAction<string>>
   menuItems: Array<string>
 }
 
