@@ -9,6 +9,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@pivot-search": path.resolve(__dirname, "./packages/pivot-search/src"),
       "@shared": path.resolve(__dirname, "./packages/shared/src"),
+      "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
       // Add more aliases for other packages as needed
     },
   },
