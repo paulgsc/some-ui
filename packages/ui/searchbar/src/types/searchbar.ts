@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { createEnumSchema } from "some-types-utils"
+import type { QueryStateOptions, useStringQueryState } from "some-ui-utils"
 
 export type SearchContext = "navigation" | "blog" | "events" | "updates"
 export type SearchContextMenu = {
@@ -22,3 +23,16 @@ export const searchBarRenderSchema = createEnumSchema<SearchBarRenderType>([
   "fragment",
   "searchbar",
 ])
+
+export type QueryStateReturnType = ReturnType<typeof useStringQueryState>
+
+export type UseSearchBarStateReturn = {
+  context: string
+  setContext: QueryStateReturnType[1]
+  menuItems: Array<string>
+}
+
+export type UseSearchBarStateProps<T extends string> = {
+  config: QueryStateOptions
+  param: T
+}
