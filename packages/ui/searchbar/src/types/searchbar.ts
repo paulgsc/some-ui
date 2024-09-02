@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
-
-import { createEnumSchema } from "./auth/roles"
+import { createEnumSchema } from "some-types-utils"
 
 export type SearchContext = "navigation" | "blog" | "events" | "updates"
 export type SearchContextMenu = {
