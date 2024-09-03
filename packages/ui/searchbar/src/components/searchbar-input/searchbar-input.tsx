@@ -1,6 +1,6 @@
-import type { FC } from "react"
+import { useRef, type FC } from "react"
 import { Input } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, useIsomorphicLayoutEffect } from "some-ui-utils"
 
 type SearchbarInputProps = {
   placeholder?: string
@@ -10,8 +10,14 @@ const SearchbarInput: FC<SearchbarInputProps> = ({
   placeholder = "Search",
   className,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useIsomorphicLayoutEffect(() => {
+    if (inputRef.current) inputRef.current.focus()
+  }, [])
   return (
     <Input
+      ref={inputRef}
       type="search"
       placeholder={placeholder}
       required
