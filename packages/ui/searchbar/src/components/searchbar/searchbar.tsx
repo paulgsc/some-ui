@@ -1,28 +1,27 @@
 "use client"
 
-import { searchBarRenderSchema, type SearchBarRenderType } from "@/types"
-import { parseAsStringLiteral, useQueryState } from "nuqs"
+import type { FC } from "react"
+import { defaultSearchToggleContextConfig } from "@searchbar/components/data"
+import { WithSearchbar } from "@searchbar/components/with-searchbar"
+import { useSearchbarUrlState } from "@searchbar/hooks/use-searchbar-state"
+import {
+  ASCII,
+  createKeyBindingImpl,
+  type SearchBarKeyBinding,
+  type SearchBarRenderType,
+} from "@searchbar/types"
+import { useEventListener, type QueryStateOptions } from "some-ui-utils"
 
-import { type SearchBarKeyBinding } from "@/types/key-bindings/key-traits-utilities"
-import { ASCII } from "@/types/key-bindings/keys"
-import { createKeyBindingImpl } from "@/lib/key-bindings"
-import { useEventListener } from "@/hooks/useEventListener"
+type SearchBarProps = {
+  config?: QueryStateOptions<SearchBarRenderType>
+  param: string
+}
 
-import WithSearchBar from "./with-search-bar"
-
-// @todo maybe make it animate?
-const SearchBarResponsive = () => {
-  const sortOrder: Array<SearchBarRenderType> = [
-    "fragment",
-    "searchbar",
-  ] as const
-  const [showSearch, setShowSearch] = useQueryState(
-    "seshow",
-    parseAsStringLiteral(sortOrder).withDefault("fragment")
-  )
-
-  const contextFromParam =
-    searchBarRenderSchema.safeParse(showSearch).data ?? "fragment"
+const SearchBar: FC<SearchBarProps> = ({ config, param }) => {
+  const { context, setContext } = useSearchbarUrlState({
+    config: { ...defaultSearchToggleContextConfig, ...config },
+    param: param,
+  })
 
   const slashKeyBinding = createKeyBindingImpl<
     SearchBarKeyBinding["keyBinding"],
@@ -30,17 +29,17 @@ const SearchBarResponsive = () => {
   >({
     apply: (event) => {
       event.preventDefault()
-      setShowSearch("searchbar")
+      void setContext("searchbar")
     },
     eventName: "keydown",
     keyBinding: ASCII.SLASH,
     isActive: (event, keyBinding) =>
-      event.key.charCodeAt(0) === keyBinding && !event.repeat,
+      event.key.charCodeAt(0) === (keyBinding as number) && !event.repeat,
   })
 
   useEventListener(slashKeyBinding.eventName, (event: KeyboardEvent) => {
     if (slashKeyBinding.isActive?.(event, slashKeyBinding.keyBinding)) {
-      switch (contextFromParam) {
+      switch (context) {
         case "fragment": {
           slashKeyBinding.apply(event)
           break
@@ -48,12 +47,12 @@ const SearchBarResponsive = () => {
         case "searchbar":
           break
         default:
-          contextFromParam satisfies never
+          context satisfies never
           return
       }
     }
   })
-  return <WithSearchBar showSearch={contextFromParam} />
+  return <WithSearchbar showSearch={context} />
 }
 
-export default SearchBarResponsive
+export default SearchBar

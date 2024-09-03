@@ -1,8 +1,8 @@
 /*global WindowEventMap */
 
-import type { ASCII } from "./keys"
+import type { ASCII } from "@searchbar/types/keys"
 
-type KeyBindings<T extends ASCII, K extends keyof WindowEventMap> = {
+export type KeyBindings<T extends ASCII, K extends keyof WindowEventMap> = {
   keyBinding: T
   eventName: K
 }
