@@ -35,7 +35,9 @@ const config: StorybookConfig = {
   viteFinal: (config) => {
     config.define = {
       ...config.define,
-      "process.env": {},
+      "process.env": {
+        STORYBOOK: JSON.stringify(process.env.STORYBOOK),
+      },
     }
     return config
   },
