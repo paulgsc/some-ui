@@ -1,1 +1,1 @@
-export { default as Foo } from "@searchbar/components/foo"
+export { Searchbar } from "./searchbar"
