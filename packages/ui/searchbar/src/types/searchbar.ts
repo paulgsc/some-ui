@@ -44,7 +44,7 @@ export type UseSearchBarStateReturn<T extends string> = {
 
 export type UseSearchBarStateProps<T extends string> = {
   config: QueryStateOptions<T>
-  param: string
+  param?: string
 }
 
 export type CloseSearchBarBtnProps = {

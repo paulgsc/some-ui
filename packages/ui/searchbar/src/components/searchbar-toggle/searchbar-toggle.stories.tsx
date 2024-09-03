@@ -1,10 +1,10 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 import { SvgIcons } from "some-ui-shared"
 
-import SearchBarToggleDemo from "./searchbar-toggle-btn-demo"
+import { SearchBarToggle } from "./searchbar-toggle"
 
-type Meta = MetaObj<typeof SearchBarToggleDemo>
-type Story = StoryObj<typeof SearchBarToggleDemo>
+type Meta = MetaObj<typeof SearchBarToggle>
+type Story = StoryObj<typeof SearchBarToggle>
 
 export const Default: Story = {
   args: {
@@ -15,4 +15,4 @@ export const Default: Story = {
   },
 }
 
-export default { component: SearchBarToggleDemo } as Meta
+export default { component: SearchBarToggle } as Meta
