@@ -57,6 +57,7 @@ export default tseslint.config(
       "**/storybook-static/**",
 
       ".stylelintrc.mjs",
+      "**/vite-env.d.ts",
     ],
   },
   {
