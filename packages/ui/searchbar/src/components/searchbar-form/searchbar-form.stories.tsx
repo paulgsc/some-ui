@@ -1,9 +1,9 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import SearchBarFormDemo from "./searchbar-form-demo"
+import SearchBarForm from "./searchbar-form"
 
-type Meta = MetaObj<typeof SearchBarFormDemo>
-type Story = StoryObj<typeof SearchBarFormDemo>
+type Meta = MetaObj<typeof SearchBarForm>
+type Story = StoryObj<typeof SearchBarForm>
 
 export const Default: Story = {
   args: {
@@ -15,4 +15,4 @@ export const Default: Story = {
   },
 }
 
-export default { component: SearchBarFormDemo } as Meta
+export default { component: SearchBarForm } as Meta

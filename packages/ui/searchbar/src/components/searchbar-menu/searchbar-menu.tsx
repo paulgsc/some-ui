@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { defaultSearchContextMenuConfig } from "@searchbar/components/data"
-import { useSearchBarState } from "@searchbar/hooks"
+import { useSearchbarUrlState } from "@searchbar/hooks/use-searchbar-state"
 import type { SearchContext } from "@searchbar/types"
 import type { QueryStateOptions } from "some-ui-utils"
 
@@ -14,7 +14,7 @@ const SearchBarContextMenu: FC<SearchBarContextMenuProps> = ({
   param,
   config,
 }): JSX.Element => {
-  const { context, setContext, menuItems } = useSearchBarState({
+  const { context, setContext, menuItems } = useSearchbarUrlState({
     config: { ...defaultSearchContextMenuConfig, ...config },
     param: param,
   })

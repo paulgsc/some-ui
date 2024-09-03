@@ -1,5 +1,5 @@
 import { forwardRef } from "react"
-import { useSearchBarState } from "@searchbar/hooks"
+import { useSearchbarUrlState } from "@searchbar/hooks/use-searchbar-state"
 import type { SearchBarRenderType } from "@searchbar/types"
 import type { ButtonProps } from "some-ui-shared"
 import { type QueryStateOptions } from "some-ui-utils"
@@ -14,7 +14,7 @@ type SearchBarToggleProps = {
 
 const SearchBarToggle = forwardRef<HTMLButtonElement, SearchBarToggleProps>(
   ({ className, config, param, ...props }, ref) => {
-    const { setContext } = useSearchBarState({
+    const { setContext } = useSearchbarUrlState({
       config: { ...defaultSearchToggleContextConfig, ...config },
       param: param,
     })
@@ -25,6 +25,7 @@ const SearchBarToggle = forwardRef<HTMLButtonElement, SearchBarToggleProps>(
         onClick={() => {
           void setContext("fragment")
         }}
+        variant="ghost"
         className={className}
         {...props}
       />
