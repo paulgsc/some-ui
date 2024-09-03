@@ -1,8 +1,6 @@
 import { Fragment, type FC } from "react"
-
-import type { SeachBarNode, SearchBarRenderType } from "@/types/searchbar"
-
-import SearchBarForm from "./search-bar-form"
+import SearchBarForm from "@searchbar/components/searchbar-form/searchbar-form"
+import type { SeachBarNode, SearchBarRenderType } from "@searchbar/types"
 
 const searchBarComponent: SeachBarNode = {
   fragment: <Fragment />,
