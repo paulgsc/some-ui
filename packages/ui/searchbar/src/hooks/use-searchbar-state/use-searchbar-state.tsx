@@ -32,8 +32,9 @@ const useFallbackState = <T extends string>({
   }
 }
 
-const useSearchbarUrlState = import.meta.env.STORYBOOK
-  ? useFallbackState
-  : useSearchBarState
+const useSearchbarUrlState =
+  import.meta.env.VITE_STORYBOOK === "true"
+    ? useFallbackState
+    : useSearchBarState
 
 export { useSearchBarState, useSearchbarUrlState }
