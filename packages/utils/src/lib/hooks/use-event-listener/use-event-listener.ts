@@ -1,4 +1,3 @@
-/* eslint-disable no-redeclare */
 /*
  * This file contains code adapted from the Node.js website repository,
  * available at: https://github.com/nodejs/nodejs.org
@@ -37,7 +36,7 @@ function useEventListener<
   handler: (event: WindowEventMap[KW] | Event) => void,
   element?: RefObject<T>,
   options?: boolean | AddEventListenerOptions
-) {
+): void {
   const savedHandler = useRef(handler)
 
   useIsomorphicLayoutEffect(() => {
@@ -47,15 +46,13 @@ function useEventListener<
   useEffect(() => {
     const targetElement: T | Window = element?.current ?? window
 
-    if (!(targetElement && targetElement.addEventListener)) return
-
     const listener: typeof handler = (event) => {
       savedHandler.current(event)
     }
 
     targetElement.addEventListener(eventName, listener, options)
 
-    return () => {
+    return (): void => {
       targetElement.removeEventListener(eventName, listener, options)
     }
   }, [eventName, element, options])
