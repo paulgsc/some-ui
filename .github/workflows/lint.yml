@@ -49,6 +49,7 @@ jobs:
         with:
           PATTERNS: |
             **/*.{yml,yaml,md,mdx,js,jsx,ts,tsx,json,toml,css}
+            !Cargo.toml
 
     outputs:
       rust: ${{ steps.rust.outputs.diff != '' }}
