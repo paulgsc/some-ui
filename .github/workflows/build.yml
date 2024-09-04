@@ -6,21 +6,58 @@ on:
   pull_request:
 
 jobs:
+  determine_jobs:
+    name: Determine jobs to run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      build: ${{ steps.changes.outputs.build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect build-related changes
+        id: changes
+        uses: technote-space/get-diff-action@v6
+        with:
+          PATTERNS: |
+            **/src/**/*.{js,jsx,ts,tsx,json,css}
+            public/**
+            package.json
+            pnpm-lock.yaml
+            .nvmrc
+            vite.config.ts
+            tsconfig.json
+            index.html
+            !**/*.md
+            !**/*.mdx
+
   build:
+    name: Build Extension
+    needs: determine_jobs
+    if: ${{ needs.determine_jobs.outputs.build == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
 
-      - run: pnpm build
+      - name: Build extension
+        run: pnpm build
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: extension-dist
           path: dist/*
