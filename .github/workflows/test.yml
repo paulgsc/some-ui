@@ -16,7 +16,7 @@ jobs:
       contents: read
       pull-requests: write
     outputs:
-      frontend: ${{ steps.changes.outputs.frontend }}
+      frontend: ${{ steps.changes.outputs.count > 0 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
