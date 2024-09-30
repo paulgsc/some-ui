@@ -27,7 +27,7 @@
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "@types/node": "^20.16.1",
+    "@types/node": "^22.7.4",
     "rollup": "^4.21.0",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-typescript2": "^0.36.0"
