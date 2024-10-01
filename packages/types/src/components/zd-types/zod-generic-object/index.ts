@@ -14,15 +14,9 @@ export type ZodReturnCase<T> =
         : "zod error"
     : "invalid type"
 
-
-    export const GenericZodObjectSchema = z
+export const GenericZodObjectSchema = z
   .object({})
 
   .passthrough()
 
-
-  export type GenericZodObject = z.infer<typeof GenericZodObjectSchema>
-
-    export function parseZodToken<T extends GenericZodObject>(t : T = GenericZodObjectSchema, payload: any) {
-const parsedToken = 
-    }
+export type GenericZodObject = z.infer<typeof GenericZodObjectSchema>
