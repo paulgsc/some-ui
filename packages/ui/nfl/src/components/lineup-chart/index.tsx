@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -8,8 +8,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts"
-
-import { Select } from "@/components/ui/select"
+import { Select } from "some-ui-shared"
 
 const formationData = {
   offense: {
@@ -68,11 +67,26 @@ const formationData = {
       { x: 40, y: 45 },
     ],
   },
-}
+} as const
 
-const FootballFormationChart = () => {
-  const [offenseFormation, setOffenseFormation] = useState("I-Formation")
-  const [defenseFormation, setDefenseFormation] = useState("4-3")
+export type FormationTypes = {
+  [K in keyof typeof formationData]: keyof (typeof formationData)[K]
+}[keyof typeof formationData]
+
+// This type defines the units (offense and defense)
+type FormationUnit = keyof typeof formationData
+
+// This type gets the formations for a specific unit
+type UnitFormations<U extends FormationUnit> = {
+  [K in keyof typeof formationData]: keyof (typeof formationData)[K]
+}[U]
+
+const FootballFormationChart = (): JSX.Element => {
+  const [offenseFormation, setOffenseFormation] =
+    useState<UnitFormations<"offense">>("I-Formation")
+
+  const [defenseFormation, setDefenseFormation] =
+    useState<UnitFormations<"defense">>("3-4")
 
   const data = [
     ...formationData.offense[offenseFormation].map((pos) => ({
@@ -86,8 +100,8 @@ const FootballFormationChart = () => {
   ]
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div className="flex justify-between mb-4">
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="mb-4 flex justify-between">
         <Select
           value={offenseFormation}
           onValueChange={setOffenseFormation}
