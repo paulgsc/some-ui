@@ -1,0 +1,59 @@
+{
+  "name": "some-ui-nfl",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "pnpm build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/rollup-config": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "some-ui-nfl*",
+    "./dist/src/**/*",
+    "index.d.ts",
+    "./dist/esm/**/*",
+    "./dist/cjs/**/*"
+  ],
+  "sideEffects": false,
+  "unpkg": "some-ui-nfl.umd.js",
+  "main": "./dist/some-ui-nfl.umd.js",
+  "module": "./dist/esm/some-ui-nfl.esm.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/some-ui-nfl.esm.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/some-ui-nfl.cjs.js"
+      }
+    }
+  }
+}
