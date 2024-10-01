@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "declarationDir": "./",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "paths": {
+      "@nfl/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "build", "dist"]
+}
