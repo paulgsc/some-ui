@@ -10,6 +10,7 @@ export default defineConfig({
       "@pivot-search": path.resolve(__dirname, "./packages/pivot-search/src"),
       "@shared": path.resolve(__dirname, "./packages/shared/src"),
       "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
+      "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       // Add more aliases for other packages as needed
     },
   },
