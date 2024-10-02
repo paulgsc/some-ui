@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Field } from "@nfl/public"
 import {
   CartesianGrid,
   ResponsiveContainer,
@@ -83,7 +84,7 @@ type UnitFormations<U extends FormationUnit> = {
 
 const FootballFormationChart = (): JSX.Element => {
   const [offenseFormation, setOffenseFormation] =
-    useState<UnitFormations<"offense">>("I-Formation")
+    useState<UnitFormations<"offense">>("Shotgun")
 
   const [defenseFormation, setDefenseFormation] =
     useState<UnitFormations<"defense">>("3-4")
@@ -100,7 +101,12 @@ const FootballFormationChart = (): JSX.Element => {
   ]
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="relative mx-auto w-full max-w-3xl">
+      <img
+        src={Field}
+        alt="nfl field"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat  aspect-[11/5.3]"
+      />
       <div className="mb-4 flex justify-between">
         <Select
           value={offenseFormation}
@@ -125,6 +131,7 @@ const FootballFormationChart = (): JSX.Element => {
           <XAxis type="number" dataKey="x" domain={[0, 100]} tickCount={11} />
           <YAxis type="number" dataKey="y" domain={[0, 50]} reversed />
           <ZAxis type="category" dataKey="team" />
+
           <Scatter
             data={data}
             shape="square"

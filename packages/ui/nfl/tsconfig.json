@@ -5,6 +5,7 @@
     "declarationDir": "./",
     "rootDir": "./src",
     "outDir": "./dist",
+    "esModuleInterop": true,
     "paths": {
       "@nfl/*": ["./src/*"]
     }
