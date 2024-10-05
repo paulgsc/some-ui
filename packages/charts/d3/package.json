@@ -14,21 +14,20 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "recharts": "git+https://github.com/paulgsc/recharts.git"
+    "recharts": "github:paulgsc/recharts"
   },
   "dependencies": {
-    "some-ui-utils": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-types-utils": "workspace:*",
-    "d3": "7.9.0",
     "@types/d3": "7.4.3",
-    "recharts": "git+https://github.com/paulgsc/recharts.git"
+    "d3": "7.9.0",
+    "some-types-utils": "workspace:*",
+    "some-ui-shared": "workspace:*",
+    "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@some-ui/rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "repository": {
     "type": "git",
