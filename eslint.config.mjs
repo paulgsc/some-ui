@@ -89,6 +89,7 @@ export default tseslint.config(
         project: [
           "./packages/*/tsconfig.json",
           "./packages/ui/*/tsconfig.json",
+          "./packages/charts/*/tsconfig.json",
         ],
         tsconfigRootDir: __dirname,
         warnOnUnsupportedTypeScriptVersion: false,

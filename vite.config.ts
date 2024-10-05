@@ -11,6 +11,7 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "./packages/shared/src"),
       "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
+      "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
       // Add more aliases for other packages as needed
     },
   },
