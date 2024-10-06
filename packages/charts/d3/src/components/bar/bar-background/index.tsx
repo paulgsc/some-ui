@@ -5,6 +5,26 @@
  */
 
 import { FC } from "react"
+import {
+  ActiveShape,
+  BarProps,
+  BarRectangle,
+  BarRectangleItem,
+  BarRectangleProps,
+  DataKey,
+  PresentationAttributesAdaptChildEvent,
+  adaptEventsOfChild,
+  filterProps,
+  useMouseClickItemDispatch,
+  useMouseEnterItemDispatch,
+  useMouseLeaveItemDispatch,
+} from "recharts"
+
+type BarSvgProps = Omit<
+  PresentationAttributesAdaptChildEvent<BarRectangleItem, SVGPathElement>,
+  "radius" | "name"
+>
+type Props = BarSvgProps & BarProps
 
 type BarBackgroundProps = {
   background?: ActiveShape<BarProps, SVGPathElement>
@@ -15,7 +35,42 @@ type BarBackgroundProps = {
   allOtherBarProps: Props
 }
 
-export const BarBackground: FC<BarBackgroundProps> = () => {
+const BarBackground: FC<BarBackgroundProps> = (props: BarBackgroundProps) => {
+  const activeIndex = 0
+
+  const {
+    data,
+    dataKey,
+    background: backgroundFromProps,
+    onAnimationStart,
+    onAnimationEnd,
+    allOtherBarProps,
+  } = props
+
+  const {
+    onMouseEnter: onMouseEnterFromProps,
+    onMouseLeave: onMouseLeaveFromProps,
+    onClick: onItemClickFromProps,
+    ...restOfAllOtherProps
+  } = allOtherBarProps
+
+  const onMouseEnterFromContext = useMouseEnterItemDispatch(
+    onMouseEnterFromProps,
+    dataKey
+  )
+  const onMouseLeaveFromContext = useMouseLeaveItemDispatch(
+    onMouseLeaveFromProps
+  )
+  const onClickFromContext = useMouseClickItemDispatch(
+    onItemClickFromProps,
+    dataKey
+  )
+  if (!backgroundFromProps) {
+    return null
+  }
+
+  const backgroundProps = filterProps(backgroundFromProps, false)
+
   return (
     <>
       {data.map((entry: BarRectangleItem, i: number) => {
@@ -58,3 +113,5 @@ export const BarBackground: FC<BarBackgroundProps> = () => {
     </>
   )
 }
+
+export default BarBackground
