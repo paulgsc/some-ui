@@ -78,8 +78,8 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(@types/react@18.3.5)(react-dom@18.2.0(react@18.3.1))(react@18.3.1)
       '@types/chrome':
-        specifier: ^0.0.268
-        version: 0.0.268
+        specifier: ^0.0.277
+        version: 0.0.277
       '@types/node':
         specifier: ^20.16.2
         version: 20.16.2
@@ -3365,8 +3365,8 @@ packages:
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
 
-  '@types/chrome@0.0.268':
-    resolution: {integrity: sha512-7N1QH9buudSJ7sI8Pe4mBHJr5oZ48s0hcanI9w3wgijAlv1OZNUZve9JR4x42dn5lJ5Sm87V1JNfnoh10EnQlA==}
+  '@types/chrome@0.0.277':
+    resolution: {integrity: sha512-qoTgBcDWblSsX+jvFnpUlLUE3LAuOhZfBh9MyMWMQHDsQiYVgBvdZWu9COrdB9+aNnInEyXcFgfc2HE16sdSYQ==}
 
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
@@ -12047,7 +12047,7 @@ snapshots:
       '@types/connect': 3.4.38
       '@types/node': 20.16.2
 
-  '@types/chrome@0.0.268':
+  '@types/chrome@0.0.277':
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.15
