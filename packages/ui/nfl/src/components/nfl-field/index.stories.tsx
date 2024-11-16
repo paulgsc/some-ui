@@ -35,18 +35,8 @@ export const Complete: Story = {
           dashArray="0.2,0.2"
         />
         <FootballField.HashMarks />
-        <FootballField.YardNumbers
-          orientation="top"
-          startX={14}
-          spacing={8}
-          fontSize={2}
-        />
-        <FootballField.YardNumbers
-          orientation="bottom"
-          startX={14}
-          spacing={8}
-          fontSize={2}
-        />
+        <FootballField.YardNumbers orientation="top" />
+        <FootballField.YardNumbers orientation="bottom" />
         <FootballField.CenterLogo
           primaryColor="#C8102E"
           width={100}
@@ -59,6 +49,83 @@ export const Complete: Story = {
           height={53.3}
         />
       </>
+    ),
+  },
+}
+
+export const EndZoneOnly: Story = {
+  args: {
+    width: 100,
+    height: 53.3,
+    children: (
+      <FootballField.EndZone
+        teamName="Niners"
+        primaryColor="#C8102E"
+        accentColor="white"
+        width={100}
+        height={53.3}
+      />
+    ),
+  },
+}
+
+export const FieldLinesOnly: Story = {
+  args: {
+    width: 100,
+    height: 53.3,
+    children: (
+      <FootballField.FieldLines
+        count={21}
+        startX={10}
+        spacing={4}
+        dashArray="0.2,0.2"
+      />
+    ),
+  },
+}
+
+export const HarshMarksOnly: Story = {
+  args: {
+    width: 100,
+    height: 53.3,
+    children: <FootballField.HashMarks />,
+  },
+}
+
+export const YardNumbersOnly: Story = {
+  args: {
+    width: 100,
+    height: 53.3,
+    children: (
+      <>
+        <FootballField.YardNumbers
+          orientation="bottom"
+          startX={14}
+          spacing={8}
+          fontSize={2}
+        />
+        <FootballField.CenterLogo
+          primaryColor="#C8102E"
+          width={100}
+          height={53.3}
+          teamLogo={"49ERS"}
+        />
+      </>
+    ),
+  },
+}
+
+export const CenterLogoOnly: Story = {
+  args: {
+    width: 100,
+    height: 53.3,
+    children: (
+      <FootballField.CenterLogo
+        primaryColor="#C8102E"
+        width={100}
+        height={53.3}
+        teamLogo={"49ERS"}
+      />
     ),
   },
 }
