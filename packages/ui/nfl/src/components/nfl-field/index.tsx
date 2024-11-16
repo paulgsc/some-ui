@@ -1,9 +1,4 @@
-import type {
-  HTMLAttributes,
-  ReactElement,
-  ReactSVGElement,
-  SVGAttributes,
-} from "react"
+import type { HTMLAttributes, ReactSVGElement, SVGAttributes } from "react"
 import { forwardRef, Fragment, type ComponentPropsWithoutRef } from "react"
 import { cn } from "some-ui-utils"
 
@@ -100,7 +95,15 @@ FootballFieldRoot.displayName = "FootballFieldRoot"
 
 const EndZone = forwardRef<SVGRectElement, EndZoneProps>(
   (
-    { className, height, accentColor, teamName, width, primaryColor, ...props },
+    {
+      className,
+      height = 0,
+      accentColor,
+      teamName,
+      width = 0,
+      primaryColor,
+      ...props
+    },
     ref
   ) => {
     return (
@@ -189,11 +192,12 @@ const HashMarks = forwardRef<SVGGElement, ComponentPropsWithoutRef<"g">>(
 HashMarks.displayName = "HashMarks"
 
 const YardNumbers = forwardRef<SVGGElement, YardNumberProps>(
-  ({ orientation, startX = 14, spacing = 8, fontSize = 2, ...props }, ref) => {
+  ({ orientation, startX = 10, spacing = 8, fontSize = 2, ...props }, ref) => {
     return (
       <g ref={ref} {...props}>
         {Array.from({ length: 10 }).map((_, i) => {
-          const num = i * 10
+          const p = (i * 10) % 50
+          const num = i * 10 > p ? 50 - p : i * 10
           const x = startX + i * spacing
           const y = orientation === "top" ? 10 : 43.3
 
@@ -209,7 +213,7 @@ const YardNumbers = forwardRef<SVGGElement, YardNumberProps>(
                 orientation === "top" ? `rotate(180, ${x}, ${y})` : undefined
               }
             >
-              {num}
+              {!!num && num}
             </text>
           )
         })}
