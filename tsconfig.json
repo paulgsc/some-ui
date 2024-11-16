@@ -1,0 +1,26 @@
+{
+  "extends": "./packages/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["@types/node"],
+    "allowImportingTsExtensions": true,
+    "declaration": true,
+    "declarationMap": true,
+    "module": "Node16",
+    "moduleResolution": "node16",
+    "paths": {},
+    "pretty": true,
+    "sourceMap": true,
+    "lib": ["ES2023"],
+    "target": "ES2022"
+  },
+  "include": [
+    "eslint/",
+    "eslint.config.js",
+    "eslint.config-deprecated.mjs",
+    "next.config.mjs",
+    "prettier.config.cjs",
+    "tailwind.config.ts",
+    "vite.config.ts",
+    "vitest.config.mts"
+  ]
+}
