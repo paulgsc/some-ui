@@ -15,3 +15,4 @@ export {
 export * from "./select"
 export * from "./accordion"
 export * from "./card"
+export * from "./chart"
