@@ -10,7 +10,7 @@ type FootballFieldProps = {
   fieldColor?: string
   width?: number
   height?: number
-} & HTMLAttributes<HTMLDivElement>
+} & SVGAttributes<SVGElement>
 
 type CenterLogoProps = {
   teamLogo?: string | ReactSVGElement
@@ -53,7 +53,7 @@ type YardNumberProps = {
   fontSize?: number
 } & SVGAttributes<SVGElement>
 
-const FootballFieldRoot = forwardRef<HTMLDivElement, FootballFieldProps>(
+const FootballFieldRoot = forwardRef<SVGSVGElement, FootballFieldProps>(
   (
     {
       className,
@@ -69,25 +69,17 @@ const FootballFieldRoot = forwardRef<HTMLDivElement, FootballFieldProps>(
     ref
   ) => {
     return (
-      <div
+      <svg
         ref={ref}
-        className={cn("mx-auto w-full max-w-6xl", className)}
+        className={cn("size-full", className)}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        xmlns="http://www.w3.org/2000/svg"
         {...props}
       >
-        <div
-          className="relative w-full"
-          style={{ paddingBottom: `${(height / width) * 100}%` }}
-        >
-          <svg
-            className="absolute inset-0 size-full"
-            viewBox={`0 0 ${width} ${height}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <rect width={width} height={height} fill={fieldColor} />
-            {props.children}
-          </svg>
-        </div>
-      </div>
+        <rect width={width} height={height} fill={fieldColor} />
+        {props.children}
+      </svg>
     )
   }
 )
