@@ -110,7 +110,7 @@ const DraggableContainer = forwardRef<HTMLDivElement, DraggableContainerProps>(
         <div
           ref={containerRef}
           className={cn(
-            "relative min-h-[200px] w-full rounded-lg border-2",
+            "z-50 w-full border-none bg-transparent",
             isDragging && "border-dashed",
             className
           )}
