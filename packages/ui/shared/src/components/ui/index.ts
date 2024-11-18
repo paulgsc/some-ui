@@ -13,3 +13,5 @@ export {
 } from "./collapsible"
 
 export * from "./select"
+export * from "./accordion"
+export * from "./card"
