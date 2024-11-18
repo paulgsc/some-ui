@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from "react"
@@ -32,7 +33,7 @@ type DraggableContextProps = {
 
 const DraggableContext = createContext<DraggableContextProps | null>(null)
 
-const useDraggable = () => {
+const useDraggable = (): DraggableContextProps => {
   const context = useContext(DraggableContext)
 
   if (!context) {
@@ -45,6 +46,8 @@ const useDraggable = () => {
 const DraggableContainer = forwardRef<HTMLDivElement, DraggableContainerProps>(
   ({ className, children, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    useImperativeHandle(ref, () => containerRef.current!, [])
     const [positions, setPositions] = useState<
       Record<string, { x: number; y: number }>
     >({})
