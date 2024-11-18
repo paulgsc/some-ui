@@ -22,16 +22,16 @@ const PlayerIcon = ({
   number: string
 }) => (
   <div className="flex flex-col items-center">
-    <div className="w-12 h-12 rounded-full bg-white border-2 border-black flex items-center justify-center font-bold">
+    <div className="flex size-12 items-center justify-center rounded-full border-2 border-black bg-white font-bold">
       {number}
     </div>
-    <span className="text-xs mt-1 font-medium">{position}</span>
+    <span className="mt-1 text-xs font-medium">{position}</span>
   </div>
 )
 
 export const NFLFormation: Story = {
   render: () => (
-    <DraggableContainer className="size-96 bg-green-600">
+    <DraggableContainer className="size-[720px] bg-green-600">
       {/* Offensive Line */}
       <DraggableItem id="c" initialPosition={{ x: 50, y: 70 }}>
         <PlayerIcon position="C" number="50" />
