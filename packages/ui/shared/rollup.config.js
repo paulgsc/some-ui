@@ -8,10 +8,12 @@ const CONFIG_TYPESCRIPT = {
 }
 
 const external = [
+  "@radix-ui/react-accordion",
   "@radix-ui/react-aspect-ratio",
   "@radix-ui/react-slot",
   "@radix-ui/react-dropdown-menu",
   "@radix-ui/react-select",
+  "@radix-ui/react-tabs",
   "lucide-react",
   "react-resizable-panels",
   "class-variance-authority",
@@ -19,6 +21,7 @@ const external = [
   "clsx",
   "react",
   "react-dom",
+  "recharts",
 ]
 
 export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)

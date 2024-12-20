@@ -6,7 +6,11 @@ const FootballFieldDraggable = () => {
     <div className="flex justify-center items-center h-[75vh] relative">
       <div className="w-full h-full max-w-[calc(75vh*1.875)] max-h-[75vh] relative">
         {/* The max-width is calculated based on the field's aspect ratio (100/53.3 ≈ 1.875) */}
-        <FootballField className="absolute inset-0" height={53.3} width={100}>
+        <FootballField
+          className="absolute inset-0 rotate-90"
+          height={53.3}
+          width={100}
+        >
           <FootballField.EndZone
             teamName="NINERS"
             primaryColor="#C8102E"
