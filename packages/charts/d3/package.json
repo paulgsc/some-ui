@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "recharts": "github:paulgsc/recharts"
+    "recharts": "github:paulgsc/recharts",
+    "honeycomb-grid": "4.1.5"
   },
   "dependencies": {
     "@types/d3": "7.4.3",

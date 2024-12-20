@@ -4,7 +4,7 @@ import { Button, SvgIcons } from "some-ui-shared"
 
 import { SearchbarInput } from "../searchbar-input"
 
-const SearchBarForm = (): JSX.Element => {
+const SearchBarForm = (): React.JSX.Element => {
   return (
     <form
       role="search"
