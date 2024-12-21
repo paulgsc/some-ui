@@ -7,6 +7,15 @@ const CONFIG_TYPESCRIPT = {
   tsconfig: path.join(__dirname, "tsconfig.json"),
 }
 
-const external = ["nuqs", "react", "react-dom", "@radix-ui/react-select"]
+const external = [
+  "nuqs",
+  "react",
+  "react-dom",
+  "@radix-ui/react-select",
+  "lodash",
+  "some-ui-utils",
+  "some-ui-shared",
+  "some-types-utils",
+]
 
 export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
