@@ -49,3 +49,7 @@ rimraf tsconfig.tsbuildinfo && rimraf .eslintcache
 **/esm
 
 tsconfig.tsbuildinfo
+
+# Vim swap files
+*.swp
+
