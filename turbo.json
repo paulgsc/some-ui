@@ -16,26 +16,26 @@
     },
     "lint": {
       "dependsOn": ["^build", "^lint"],
-      "cache": false
+      "cache": true
     },
     "lint:fix": {
-      "cache": false,
+      "cache": true,
       "outputs": []
     },
     "lint:js": {
-      "cache": false,
+      "cache": true,
       "outputs": []
     },
     "lint:md": {
-      "cache": false,
+      "cache": true,
       "outputs": []
     },
     "prettier": {
-      "cache": false
+      "cache": true
     },
     "typecheck": {},
     "check": {
-      "cache": false
+      "cache": true
     },
     "test": {
       "cache": false
