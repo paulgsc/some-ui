@@ -21,7 +21,7 @@ const config: StorybookConfig = {
     getAbsolutePath("@storybook/addon-essentials"),
     getAbsolutePath("@chromatic-com/storybook"),
     getAbsolutePath("@storybook/addon-interactions"),
-    "@chromatic-com/storybook",
+    getAbsolutePath("@chromatic-com/storybook"),
   ],
 
   framework: {
