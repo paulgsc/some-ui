@@ -40,9 +40,12 @@ export default [
       ...tseslint.configs.stylisticTypeChecked,
     ],
     rules: {
+      "@typescript-eslint/no-unused-expressions": "error",
+      "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
+          vars: "all",
           caughtErrors: "all",
           varsIgnorePattern: "^_",
           argsIgnorePattern: "^_",

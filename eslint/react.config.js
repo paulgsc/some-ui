@@ -14,13 +14,13 @@ export default [
   {
     files: ["packages/**/*.{mdx,jsx,tsx}"],
     plugins: {
-      ["react"]: fixupPluginRules(reactPlugin),
-      ["react-hooks"]: fixupPluginRules(reactHooksPlugin),
-      ["import"]: fixupPluginRules(importPlugin),
+      react: reactPlugin,
+      "react-hooks": fixupPluginRules(reactHooksPlugin),
+      import: fixupPluginRules(importPlugin),
     },
     extends: [
       jsxA11yPlugin.flatConfigs.recommended,
-      ...fixupConfigRules(compat.config(reactPlugin.configs.recommended)),
+      reactPlugin.configs.flat.recommended,
       ...fixupConfigRules(compat.config(reactHooksPlugin.configs.recommended)),
     ],
     settings: {
@@ -41,6 +41,7 @@ export default [
         },
       ],
       "import/no-anonymous-default-export": "error",
+      "react/jsx-uses-vars": "error",
       "react/no-unknown-property": "off",
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
