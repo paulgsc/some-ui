@@ -15,6 +15,7 @@ const Step = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     />
   )
 )
+
 Step.displayName = "Step"
 
 type StepIconProps = {
@@ -84,7 +85,7 @@ const StepEnd = forwardRef<SVGSVGElement, HTMLAttributes<SVGSVGElement>>(
 
 StepEnd.displayName = "StepEnd"
 
-const CardTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+const StepTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
@@ -93,9 +94,9 @@ const CardTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     />
   )
 )
-CardTitle.displayName = "CardTitle"
+StepTitle.displayName = "StepTitle"
 
-const CardDescription = forwardRef<
+const StepDescription = forwardRef<
   HTMLDivElement,
   HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
@@ -105,22 +106,6 @@ const CardDescription = forwardRef<
     {...props}
   />
 ))
-CardDescription.displayName = "CardDescription"
+StepDescription.displayName = "StepDescription"
 
-const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-  )
-)
-CardContent.displayName = "CardContent"
-
-const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("flex items-center p-6 pt-0", className)}
-      {...props}
-    />
-  )
-)
-CardFooter.displayName = "CardFooter"
+export { Step, StepStart, StepMiddle, StepEnd, StepTitle, StepDescription }
