@@ -29,6 +29,10 @@ export default [
       },
     },
     rules: {
+      "import/no-unresolved": "error",
+      "import/no-cycle": "error",
+      "import/named": "error",
+      "import/export": "error",
       "react/function-component-definition": [
         "error",
         {
