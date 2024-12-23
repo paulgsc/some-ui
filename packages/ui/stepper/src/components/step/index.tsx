@@ -3,12 +3,27 @@ import { forwardRef } from "react"
 import { SvgIcons } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-const Step = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+const Stepper = forwardRef<HTMLUListElement, HTMLAttributes<HTMLUListElement>>(
   ({ className, ...props }, ref) => (
-    <div
+    <ul
       ref={ref}
       className={cn(
         "rounded-xl border bg-card text-card-foreground shadow",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+
+Stepper.displayName = "Stepper"
+
+const Step = forwardRef<HTMLLIElement, HTMLAttributes<HTMLLIElement>>(
+  ({ className, ...props }, ref) => (
+    <li
+      ref={ref}
+      className={cn(
+        "relative size-full rounded-sm bg-inherit text-center",
         className
       )}
       {...props}
@@ -35,54 +50,48 @@ const StepStart = forwardRef<SVGSVGElement, HTMLAttributes<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
     <svg
       ref={ref}
-      className={cn("", className)}
-      viewBox="0 0 200 60"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
+      className={cn("size-full", className)}
+      preserveAspectRatio="none"
+      viewBox="0 0 200 80"
+      fill="currentColor"
       {...props}
     >
-      <path d="M 10,10 H 160 L 190,30 L 160,50 H 10 Q 5,30 10,10" />
+      <path d="M0,0 H160 L200,40 L160,80 H0 Z" />
     </svg>
   )
 )
-
 StepStart.displayName = "StepStart"
 
 const StepMiddle = forwardRef<SVGSVGElement, HTMLAttributes<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
     <svg
       ref={ref}
-      className={cn("", className)}
-      viewBox="0 0 200 60"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
+      className={cn("size-full", className)}
+      preserveAspectRatio="none"
+      viewBox="0 0 200 80"
+      fill="currentColor"
       {...props}
     >
-      <path d="M 10,10 H 160 L 190,30 L 160,50 H 10 L 40,30 L 10,10" />
+      <path d="M0,0 H160 L200,40 L160,80 H0 L40,40 Z" />
     </svg>
   )
 )
-
 StepMiddle.displayName = "StepMiddle"
 
 const StepEnd = forwardRef<SVGSVGElement, HTMLAttributes<SVGSVGElement>>(
   ({ className, ...props }, ref) => (
     <svg
       ref={ref}
-      className={cn("", className)}
-      viewBox="0 0 200 60"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
+      className={cn("size-full", className)}
+      preserveAspectRatio="none"
+      viewBox="0 0 200 80"
+      fill="currentColor"
       {...props}
     >
-      <path d="M 10,10 H 160 Q 190,30 160,50 H 10 L 40,30 L 10,10" />
+      <path d="M0,0 H160 C180,0 200,20 200,40 C200,60 180,80 160,80 H0 L40,40 Z" />
     </svg>
   )
 )
-
 StepEnd.displayName = "StepEnd"
 
 const StepTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
@@ -108,4 +117,12 @@ const StepDescription = forwardRef<
 ))
 StepDescription.displayName = "StepDescription"
 
-export { Step, StepStart, StepMiddle, StepEnd, StepTitle, StepDescription }
+export {
+  Stepper,
+  Step,
+  StepStart,
+  StepMiddle,
+  StepEnd,
+  StepTitle,
+  StepDescription,
+}
