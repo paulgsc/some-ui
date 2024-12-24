@@ -8,4 +8,3 @@ packages:
   - packages/mdx-generator
   - packages/routing
   - packages/types
-  - packages/stepper
