@@ -13,10 +13,15 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependecies": {
+    "framer-motion": "11.15.0",
+    "canvas-confetti": "1.9.3"
+  },
   "dependencies": {
     "some-ui-utils": "workspace:*",
-"some-ui-shared": "workspace:*"
-
+    "some-ui-shared": "workspace:*",
+    "framer-motion": "11.15.0",
+    "canvas-confetti": "1.9.3"
   },
   "devDependencies": {
     "react": "^18.3.1",
