@@ -10,7 +10,6 @@ const meta: Meta = {
   },
   parameters: {
     layout: "centered",
-    backgrounds: { default: "dark" },
   },
 }
 
