@@ -7,4 +7,11 @@ const CONFIG_TYPESCRIPT = {
   tsconfig: path.join(__dirname, "tsconfig.json"),
 }
 
-export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT)
+const external = [
+  "framer-motion",
+  "canvas-confetti",
+  "some-ui-shared",
+  "some-ui-utils",
+]
+
+export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
