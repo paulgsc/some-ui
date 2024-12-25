@@ -119,73 +119,112 @@ const NavBarStepperList = forwardRef<
 >(({ className, ...props }, ref) => (
   <ul
     ref={ref}
-    className={cn(
-      "m-0.5 flex min-h-24 flex-1 items-center justify-around",
-      className
-    )}
+    className={cn("m-0.5 flex flex-1 justify-around", className)}
     {...props}
   />
 ))
 
 NavBarStepperList.displayName = "NavBarStepperList"
 
+type NavBarStepperListItemProps = {
+  stepId: number
+  activeStep: number
+} & HTMLAttributes<HTMLLIElement>
+
 const NavBarStepperListItem = forwardRef<
   HTMLLIElement,
-  HTMLAttributes<HTMLLIElement>
->(({ className, ...props }, ref) => (
-  <li ref={ref} className={cn("", className)} {...props} />
+  NavBarStepperListItemProps
+>(({ className, stepId, activeStep, ...props }, ref) => (
+  <li
+    ref={ref}
+    className={cn(
+      "relative flex flex-1 items-center overflow-hidden text-center text-card-foreground shadow-inner before:absolute before:inset-0 before:transform before:opacity-0 before:transition-transform before:duration-1000",
+      {
+        "before:opacity-0 before:-translate-x-full": stepId > activeStep,
+        "before:translate-x-full": stepId < activeStep,
+        "before:opacity-100 before:translate-x-0": stepId === activeStep,
+      },
+      className
+    )}
+    {...props}
+  />
 ))
 
 NavBarStepperListItem.displayName = "NavBarStepperList"
 
 type NavBarStepperBtnProps = {
-  activeCell?: number
+  isActiveCell?: boolean
+  stepId: number
+  handleClickStep: (stepId: number) => void
 } & ComponentProps<typeof Button>
 
 const NavBarStepperBtn = forwardRef<HTMLButtonElement, NavBarStepperBtnProps>(
-  ({ className, variant = "ghost", activeCell = 0, ...props }, ref) => (
+  (
+    {
+      className,
+      variant = "ghost",
+      isActiveCell = false,
+      stepId,
+      handleClickStep,
+      children,
+      ...props
+    },
+    ref
+  ) => (
     <Button
       ref={ref}
       variant={variant}
       className={cn("", className)}
+      onClick={() => {
+        handleClickStep(stepId)
+      }}
       {...props}
     >
-      <motion.div
-        layoutId="bubble"
-        className="absolute inset-0 z-10"
-        transition={{
-          type: "spring",
-          bounce: 0.5,
-          duration: 0.6,
-          delay: 0.2,
-        }}
-      >
-        <motion.div
-          className="absolute inset-0 rounded-full bg-indigo-100"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{
-            scale: 1,
-            opacity: 1,
-            filter: "url(#goo)",
-          }}
-          exit={{ scale: 0.8, opacity: 0 }}
-        />
-        <motion.div
-          className="absolute bottom-0 left-1/2 size-1 rounded-full bg-indigo-600"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{
-            type: "spring",
-            bounce: 0.5,
-            delay: 0.4,
-          }}
-        />
-      </motion.div>
+      {children}
     </Button>
   )
 )
 
 NavBarStepperBtn.displayName = "NavBarStepperBtn"
+
+const NavBarBubbleMotion = forwardRef<
+  HTMLDivElement,
+  HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <motion.div
+    layoutId="bubble"
+    className={cn("absolute inset-0 z-10", className)}
+    transition={{
+      type: "spring",
+      bounce: 0.5,
+      duration: 0.6,
+      delay: 0.2,
+    }}
+  >
+    <motion.div
+      className="absolute inset-0 rounded-full bg-indigo-100"
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{
+        scale: 1,
+        opacity: 1,
+        filter: "url(#goo)",
+      }}
+      exit={{ scale: 0.8, opacity: 0 }}
+    />
+    <motion.div
+      className="absolute bottom-0 left-1/2 size-1 rounded-full bg-indigo-600"
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{
+        type: "spring",
+        bounce: 0.5,
+        delay: 0.4,
+      }}
+    />
+  </motion.div>
+))
+
+NavBarBubbleMotion.displayName = "NavBarBubbleMotion"
 
 export default NavStepper
 export {
@@ -193,4 +232,5 @@ export {
   NavBarStepperList,
   NavBarStepperListItem,
   NavBarStepperBtn,
+  NavBarBubbleMotion,
 }
