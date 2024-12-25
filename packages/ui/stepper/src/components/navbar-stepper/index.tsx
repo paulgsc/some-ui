@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { forwardRef, useState } from "react"
+import type { ComponentProps, HTMLAttributes } from "react"
 import confetti from "canvas-confetti"
-import { AnimatePresence, motion } from "framer-motion"
-
-import { Input } from "@/components/ui/input"
+import { motion } from "framer-motion"
+import { Button } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 const tabs = [
   { id: "all", label: "All Posts" },
@@ -13,7 +14,7 @@ const tabs = [
   { id: "marketing", label: "Marketing" },
 ]
 
-export default function AnimatedNav() {
+const NavStepper = (): React.JSX.Element => {
   const [activeTab, setActiveTab] = useState("all")
 
   const handleTabChange = (tabId: string) => {
@@ -37,7 +38,7 @@ export default function AnimatedNav() {
                 handleTabChange(tab.id)
               }}
               className={`relative px-3 py-1.5 text-sm font-medium transition-colors
-                                                                                                                                      ${activeTab === tab.id ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"}`}
+                                                                                                   ${activeTab === tab.id ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"}`}
             >
               {activeTab === tab.id && (
                 <motion.div
@@ -76,8 +77,9 @@ export default function AnimatedNav() {
             </button>
           ))}
         </nav>
+      </div>
 
-              {/* SVG filter for the gooey effect */}
+      {/* SVG filter for the gooey effect */}
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <filter id="goo">
@@ -94,4 +96,101 @@ export default function AnimatedNav() {
       </svg>
     </div>
   )
+}
+
+const NavBarStepper = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>>(
+  ({ className, ...props }, ref) => (
+    <nav
+      ref={ref}
+      className={cn(
+        "m-0.5 flex flex-1 items-center justify-center rounded-full bg-card pe-2 ps-1.5 text-card-foreground shadow-inner backdrop-blur-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+
+NavBarStepper.displayName = "NavStepper"
+
+const NavBarStepperList = forwardRef<
+  HTMLUListElement,
+  HTMLAttributes<HTMLUListElement>
+>(({ className, ...props }, ref) => (
+  <ul
+    ref={ref}
+    className={cn(
+      "m-0.5 flex min-h-24 flex-1 items-center justify-around",
+      className
+    )}
+    {...props}
+  />
+))
+
+NavBarStepperList.displayName = "NavBarStepperList"
+
+const NavBarStepperListItem = forwardRef<
+  HTMLLIElement,
+  HTMLAttributes<HTMLLIElement>
+>(({ className, ...props }, ref) => (
+  <li ref={ref} className={cn("", className)} {...props} />
+))
+
+NavBarStepperListItem.displayName = "NavBarStepperList"
+
+type NavBarStepperBtnProps = {
+  activeCell?: number
+} & ComponentProps<typeof Button>
+
+const NavBarStepperBtn = forwardRef<HTMLButtonElement, NavBarStepperBtnProps>(
+  ({ className, variant = "ghost", activeCell = 0, ...props }, ref) => (
+    <Button
+      ref={ref}
+      variant={variant}
+      className={cn("", className)}
+      {...props}
+    >
+      <motion.div
+        layoutId="bubble"
+        className="absolute inset-0 z-10"
+        transition={{
+          type: "spring",
+          bounce: 0.5,
+          duration: 0.6,
+          delay: 0.2,
+        }}
+      >
+        <motion.div
+          className="absolute inset-0 rounded-full bg-indigo-100"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{
+            scale: 1,
+            opacity: 1,
+            filter: "url(#goo)",
+          }}
+          exit={{ scale: 0.8, opacity: 0 }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-1/2 size-1 rounded-full bg-indigo-600"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{
+            type: "spring",
+            bounce: 0.5,
+            delay: 0.4,
+          }}
+        />
+      </motion.div>
+    </Button>
+  )
+)
+
+NavBarStepperBtn.displayName = "NavBarStepperBtn"
+
+export default NavStepper
+export {
+  NavBarStepper,
+  NavBarStepperList,
+  NavBarStepperListItem,
+  NavBarStepperBtn,
 }
