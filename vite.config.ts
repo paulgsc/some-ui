@@ -12,6 +12,7 @@ export default defineConfig({
       "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
+      "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       // Add more aliases for other packages as needed
     },
   },
