@@ -26,6 +26,7 @@ const external = [
   "react",
   "react-dom",
   "recharts",
+  "some-ui-utils",
 ]
 
 export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT, external)
