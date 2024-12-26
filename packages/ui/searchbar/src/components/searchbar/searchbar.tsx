@@ -1,15 +1,9 @@
-"use client"
-
 import type { FC } from "react"
 import { defaultSearchToggleContextConfig } from "@searchbar/components/data"
 import { WithSearchbar } from "@searchbar/components/with-searchbar"
 import { useSearchbarUrlState } from "@searchbar/hooks/use-searchbar-state"
-import {
-  ASCII,
-  createKeyBindingImpl,
-  type SearchBarKeyBinding,
-  type SearchBarRenderType,
-} from "@searchbar/types"
+import type { SearchBarKeyBinding, SearchBarRenderType } from "@searchbar/types"
+import { ASCII, createKeyBindingImpl } from "@searchbar/types"
 import { useEventListener, type QueryStateOptions } from "some-ui-utils"
 
 type SearchBarProps = {

@@ -1,5 +1,3 @@
-"use client"
-
 import { Bar, BarChart, CartesianGrid, Cell, LabelList } from "recharts"
 import type { ChartConfig } from "some-ui-shared"
 import {

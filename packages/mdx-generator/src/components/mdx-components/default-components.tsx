@@ -1,5 +1,3 @@
-"use client"
-
 import type { ComponentProps, HTMLAttributes, ImgHTMLAttributes } from "react"
 import CodeBlockWrapper from "@mdx/components/code-block-wrapper"
 import CopyButton, { CopyNpmCommandButton } from "@mdx/components/copy-button"
