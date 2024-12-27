@@ -14,7 +14,7 @@ const BoredAnimation: FC = () => {
   }, [charge])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100">
+    <div className="group flex min-h-screen flex-col items-center justify-center">
       <motion.div
         className="mb-8"
         animate={{ rotate: isSleeping ? [0, -5, 5, -5, 5, 0] : 0 }}
@@ -24,10 +24,21 @@ const BoredAnimation: FC = () => {
       </motion.div>
       <BatteryIndicator charge={charge} isCharging={isCharging} />
       <button
-        className="mt-4 rounded bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+        className="group mt-4 hidden size-full max-w-24 rounded bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 group-hover:block group-focus:block"
         onClick={toggleCharging}
       >
-        {isCharging ? "Unplug" : "Charge"}
+        {isCharging ? (
+          "Unplug"
+        ) : (
+          <p className="size-full shrink-0 text-center  text-sm capitalize tracking-tight">
+            <span className="group-hover:hidden group-focus:hidden">
+              motivation
+            </span>
+            <span className="hidden group-hover:block group-focus:block">
+              Charge
+            </span>
+          </p>
+        )}
       </button>
     </div>
   )
