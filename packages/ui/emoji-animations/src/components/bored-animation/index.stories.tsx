@@ -6,7 +6,7 @@ type Meta = MetaObj<typeof BoredAnimation>
 type Story = StoryObj<typeof BoredAnimation>
 
 export default {
-  title: "NFL Standings",
+  title: "Animations/Components/Bored",
   component: BoredAnimation,
 } as Meta
 

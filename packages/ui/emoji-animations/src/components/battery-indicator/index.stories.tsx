@@ -6,7 +6,7 @@ type Meta = MetaObj<typeof BatteryIndicator>
 type Story = StoryObj<typeof BatteryIndicator>
 
 export default {
-  title: "NFL Standings",
+  title: "Animations/Components/Battery",
   component: BatteryIndicator,
 } as Meta
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { FC } from "react"
-import { BatteryIndicator } from "@emoji/battery-indicator"
-import { BoredEmoji } from "@emoji/bored-emoji"
+import BatteryIndicator from "@emoji/components/battery-indicator"
+import BoredEmoji from "@emoji/components/bored-emoji"
 import { useBatteryState } from "@emoji/hooks/use-battery-state"
 import { motion } from "framer-motion"
 
