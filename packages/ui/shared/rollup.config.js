@@ -18,6 +18,7 @@ const external = [
   "@radix-ui/react-select",
   "@radix-ui/react-tabs",
   "@radix-ui/react-tooltip",
+     "embla-carousel-react",
   "lucide-react",
   "react-resizable-panels",
   "class-variance-authority",
