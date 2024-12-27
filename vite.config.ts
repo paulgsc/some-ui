@@ -13,6 +13,7 @@ export default defineConfig({
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
+      "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       // Add more aliases for other packages as needed
     },
   },
