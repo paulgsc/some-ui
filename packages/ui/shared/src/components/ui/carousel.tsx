@@ -1,4 +1,4 @@
-import type { ComponentProps, HTMLAttributes } from "react"
+import type { ComponentProps, HTMLAttributes, KeyboardEvent } from "react"
 import {
   createContext,
   forwardRef,
@@ -7,7 +7,7 @@ import {
   useEffect,
   useState,
 } from "react"
-import { Button } from "@shared/components/button"
+import { Button } from "@shared/components/ui/button"
 import { cn } from "@shared/lib/utils"
 import type { UseEmblaCarouselType } from "embla-carousel-react"
 import useEmblaCarousel from "embla-carousel-react"
@@ -120,7 +120,7 @@ const Carousel = forwardRef<
       api.on("select", onSelect)
 
       return () => {
-        api?.off("select", onSelect)
+        api.off("select", onSelect)
       }
     }, [api, onSelect])
 
