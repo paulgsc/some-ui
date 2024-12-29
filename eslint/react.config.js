@@ -27,6 +27,10 @@ export default [
       react: {
         version: "detect",
       },
+      "import/resolver": {
+        typescript: true,
+        node: true,
+      },
     },
     rules: {
       "import/no-unresolved": "error",
