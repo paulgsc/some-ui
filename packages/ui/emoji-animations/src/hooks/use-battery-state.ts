@@ -1,7 +1,26 @@
 import { useEffect, useState } from "react"
+import { useLocalStorage } from "some-ui-utils"
 
-export const useBatteryState = (initialCharge = 100, dischargeRate = 1) => {
-  const [charge, setCharge] = useState(initialCharge)
+//TODO: Use fucntional types to manage all state: future goal!.
+
+type UseBatteryStateType = {
+  chargeKey?: string
+  charge: number
+  isCharging: boolean
+  toggleCharging: () => void
+  delCharge: () => void
+}
+
+export const useBatteryState = (
+  chargeKey = "bored-meter",
+  initialCharge = 100,
+  dischargeRate = 1
+): UseBatteryStateType => {
+  const {
+    value: charge,
+    setValue: setCharge,
+    removeValue: delCharge,
+  } = useLocalStorage(chargeKey, initialCharge)
   const [isCharging, setIsCharging] = useState(false)
 
   useEffect(() => {
@@ -23,5 +42,5 @@ export const useBatteryState = (initialCharge = 100, dischargeRate = 1) => {
     setIsCharging(!isCharging)
   }
 
-  return { charge, isCharging, toggleCharging }
+  return { charge, isCharging, delCharge, toggleCharging }
 }
