@@ -10,4 +10,8 @@ export default {
   component: BoredEmoji,
 } as Meta
 
-export const Complete: Story = {}
+export const Complete: Story = {
+  args: {
+    isSleeping: true,
+  },
+}
