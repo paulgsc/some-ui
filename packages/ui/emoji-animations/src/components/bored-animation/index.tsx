@@ -4,8 +4,13 @@ import BatteryIndicator from "@emoji/components/battery-indicator"
 import BoredEmoji from "@emoji/components/bored-emoji"
 import { useBatteryState } from "@emoji/hooks/use-battery-state"
 import { motion } from "framer-motion"
+import { cn } from "some-ui-utils"
 
-const BoredAnimation: FC = () => {
+type BoredAnimationProps = {
+  className?: string
+}
+
+const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
   const { charge, isCharging, toggleCharging } = useBatteryState()
   const [isSleeping, setIsSleeping] = useState(false)
 
@@ -14,7 +19,12 @@ const BoredAnimation: FC = () => {
   }, [charge])
 
   return (
-    <div className="group flex min-h-screen flex-col items-center justify-center">
+    <div
+      className={cn(
+        "flex  flex-col items-center justify-center",
+        className
+      )}
+    >
       <motion.div
         className="mb-8"
         animate={{ rotate: isSleeping ? [0, -5, 5, -5, 5, 0] : 0 }}
