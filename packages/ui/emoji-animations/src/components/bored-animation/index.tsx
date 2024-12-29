@@ -11,7 +11,7 @@ type BoredAnimationProps = {
 }
 
 const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
-  const { charge, isCharging, toggleCharging } = useBatteryState()
+  const { charge, isCharging, toggleCharging, delCharge } = useBatteryState()
   const [isSleeping, setIsSleeping] = useState(false)
 
   useEffect(() => {
@@ -20,10 +20,7 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
 
   return (
     <div
-      className={cn(
-        "flex  flex-col items-center justify-center",
-        className
-      )}
+      className={cn("flex  flex-col items-center justify-center", className)}
     >
       <motion.div
         className="mb-8"
@@ -35,7 +32,7 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
       <BatteryIndicator charge={charge} isCharging={isCharging} />
       <button
         className="group mt-4 hidden size-full max-w-24 rounded bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 group-hover:block group-focus:block"
-        onClick={toggleCharging}
+        onClick={charge > 0 ? toggleCharging : delCharge}
       >
         {isCharging ? (
           "Unplug"
