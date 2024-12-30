@@ -1,5 +1,5 @@
 import type { MdxProps } from "@mdx/types"
-import { useMDXComponent } from "next-contentlayer2/hooks"
+import { useMDXComponent } from "contentlayer/runtime"
 
 import { defaultMdxComponents } from "./default-components"
 
