@@ -79,7 +79,9 @@ const SidebarCarousel: FC<SideBarCarouselProps> = ({
               {items.map((item) => (
                 <SidebarMenuItem
                   key={item.title}
-                  className="flex h-48 w-full max-w-xs flex-col items-center justify-center rounded-lg px-1.5 py-0.5 outline outline-2 outline-blue-600"
+                  tabIndex={-1}
+                  className="flex h-48 w-full max-w-xs flex-col items-center justify-center rounded-lg px-1.5 py-0.5
+                  outline outline-muted/50 transition-colors hover:outline-muted focus:outline-2 focus:outline-blue-600"
                 >
                   <h3 className="text-lg font-semibold tracking-tight">
                     {item.title}
