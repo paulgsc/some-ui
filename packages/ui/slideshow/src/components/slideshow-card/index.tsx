@@ -1,4 +1,4 @@
-import SlideshowSidebar from "@slideshow/components/slideshow-sidebar"
+import SidebarCarousel from "@slideshow/components/sidebar-carousel"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,7 +15,7 @@ import {
 const SlideShowCard = (): React.JSX.Element => {
   return (
     <SidebarProvider>
-      <SlideshowSidebar />
+      <SidebarCarousel />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
