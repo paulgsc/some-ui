@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react"
-import type { FC } from "react"
-import { Card, CardContent } from "some-ui-shared"
+import type { ComponentProps, FC } from "react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarRail,
+} from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type DummyData = {
@@ -20,11 +29,13 @@ type SideBarCarouselProps = {
   className?: string
   start?: number
   end?: number
-}
+} & ComponentProps<typeof Sidebar>
+
 const SidebarCarousel: FC<SideBarCarouselProps> = ({
   start = 0,
   end = 3,
   className,
+  ...props
 }): React.JSX.Element => {
   const [items, setItems] = useState<Array<DummyData>>(
     generateDummyData(start, end)
@@ -35,6 +46,7 @@ const SidebarCarousel: FC<SideBarCarouselProps> = ({
     if (!observerTarget.current) return
 
     const fetchMoreItems = (): void => {
+      if (items.length > 20) return
       const lastId = items[items.length - 1].id
       const pgCnt = 3
       const newItems = generateDummyData(lastId + 1, lastId + pgCnt)
@@ -58,19 +70,29 @@ const SidebarCarousel: FC<SideBarCarouselProps> = ({
   }, [items])
 
   return (
-    <aside className={cn("", className)}>
-      {items.map((item) => (
-        <Card key={item.id} className="h-52 w-full rounded-md">
-          <CardContent className="">
-            <h3 className="text-lg font-semibold tracking-tight">
-              {item.title}
-            </h3>
-          </CardContent>
-        </Card>
-      ))}
-
-      <div ref={observerTarget} />
-    </aside>
+    <Sidebar {...props}>
+      <SidebarHeader></SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="grid grid-flow-row auto-rows-min gap-y-4">
+              {items.map((item) => (
+                <SidebarMenuItem
+                  key={item.title}
+                  className="flex h-48 w-full max-w-xs flex-col items-center justify-center rounded-lg px-1.5 py-0.5 outline outline-2 outline-blue-600"
+                >
+                  <h3 className="text-lg font-semibold tracking-tight">
+                    {item.title}
+                  </h3>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+            <div ref={observerTarget} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarRail />
+    </Sidebar>
   )
 }
 
