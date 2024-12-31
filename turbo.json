@@ -11,6 +11,9 @@
       "outputs": ["../../dist/**", "dist/**", "build/**"],
       "cache": false
     },
+    "docs:build": {
+      "cache": true
+    },
     "type-check": {
       "cache": false
     },
