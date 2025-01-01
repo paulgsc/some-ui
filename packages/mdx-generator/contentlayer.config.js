@@ -1,3 +1,5 @@
+import { rehypeComponent } from "@mdx/lib/rehype-component"
+import { rehypeNpmCommand } from "@mdx/lib/rehype-npm-command"
 import { getHighlighter } from "@shikijs/compat"
 import {
   defineDocumentType,
@@ -10,9 +12,6 @@ import rehypeSlug from "rehype-slug"
 import { codeImport } from "remark-code-import"
 import remarkGfm from "remark-gfm"
 import { visit } from "unist-util-visit"
-
-import { rehypeComponent } from "./lib/rehype-component"
-import { rehypeNpmCommand } from "./lib/rehype-npm-command"
 
 /** @type {import('contentlayer/source-files').ComputedFields} */
 const computedFields = {
