@@ -7,22 +7,43 @@ import type { StorybookConfig } from "@storybook/nextjs"
  */
 
 const config: StorybookConfig = {
-  stories: ["../packages/ui/searchbar/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   logLevel: "error",
+
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,
   },
+
   addons: [
-    "@storybook/addon-onboarding",
-    "@storybook/addon-links",
-    "@storybook/addon-essentials",
-    "@chromatic-com/storybook",
-    "@storybook/addon-interactions",
+    getAbsolutePath("@storybook/addon-onboarding"),
+    getAbsolutePath("@storybook/addon-links"),
+    getAbsolutePath("@storybook/addon-essentials"),
+    getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-interactions"),
+    getAbsolutePath("@chromatic-com/storybook"),
   ],
+
   framework: {
-    name: "@storybook/nextjs",
-    options: {},
+    name: getAbsolutePath("@storybook/nextjs"),
+    options: {
+      builder: {
+        launchOptions: {
+          open: false,
+        },
+        useSWC: true,
+      },
+    },
+  },
+
+  docs: {},
+
+  typescript: {
+    reactDocgen: "react-docgen-typescript",
   },
 }
 export default config
+
+function getAbsolutePath(value: string): any {
+  return dirname(require.resolve(join(value, "package.json")))
+}

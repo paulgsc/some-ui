@@ -9,35 +9,50 @@ import type { StorybookConfig } from "@storybook/react-vite"
 const config: StorybookConfig = {
   stories: ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   logLevel: "error",
+
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,
-    builder: {
-      name: "@storybook/builder-vite",
-      options: {
+  },
+
+  addons: [
+    getAbsolutePath("@storybook/addon-onboarding"),
+    getAbsolutePath("@storybook/addon-links"),
+    getAbsolutePath("@storybook/addon-essentials"),
+    getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-interactions"),
+    getAbsolutePath("@chromatic-com/storybook"),
+  ],
+
+  framework: {
+    name: getAbsolutePath("@storybook/react-vite"),
+    options: {
+      builder: {
         launchOptions: {
           open: false,
         },
       },
     },
   },
-  addons: [
-    "@storybook/addon-onboarding",
-    "@storybook/addon-links",
-    "@storybook/addon-essentials",
-    "@chromatic-com/storybook",
-    "@storybook/addon-interactions",
-  ],
-  framework: {
-    name: "@storybook/react-vite",
-    options: {},
-  },
+
   viteFinal: (config) => {
     config.define = {
       ...config.define,
-      "process.env": {},
+      "process.env": {
+        STORYBOOK: JSON.stringify(process.env.STORYBOOK),
+      },
     }
     return config
   },
+
+  docs: {},
+
+  typescript: {
+    reactDocgen: "react-docgen-typescript",
+  },
 }
 export default config
+
+function getAbsolutePath(value: string): any {
+  return dirname(require.resolve(join(value, "package.json")))
+}
