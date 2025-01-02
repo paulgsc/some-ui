@@ -6,7 +6,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@mdx/*": ["./src/*"]
+      "@mdx/*": ["./src/*", "contentlayer.config.js"]
     }
   },
   "include": ["src"],

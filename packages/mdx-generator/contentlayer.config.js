@@ -1,5 +1,5 @@
-import { rehypeComponent } from "@mdx/lib/rehype-component"
-import { rehypeNpmCommand } from "@mdx/lib/rehype-npm-command"
+// import { rehypeComponent } from "./src/lib/rehype-component"
+// import { rehypeNpmCommand } from "./src/lib/rehype-npm-command"
 import { getHighlighter } from "@shikijs/compat"
 import {
   defineDocumentType,
@@ -84,7 +84,7 @@ export default makeSource({
     remarkPlugins: [remarkGfm, codeImport],
     rehypePlugins: [
       rehypeSlug,
-      rehypeComponent,
+      // rehypeComponent,
       () => (tree) => {
         visit(tree, (node) => {
           if (node?.type === "element" && node?.tagName === "pre") {
@@ -159,7 +159,7 @@ export default makeSource({
           }
         })
       },
-      rehypeNpmCommand,
+      // rehypeNpmCommand,
       [
         rehypeAutolinkHeadings,
         {
