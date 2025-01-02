@@ -50,5 +50,8 @@ rimraf tsconfig.tsbuildinfo && rimraf .eslintcache
 
 tsconfig.tsbuildinfo
 
+# mdx contentlayer
+.contentlayer
+
 # Vim swap files
 
