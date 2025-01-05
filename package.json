@@ -26,7 +26,7 @@
     "prettier": "turbo prettier",
     "prepare": "husky",
     "test": "turbo test",
-    "storybook": "storybook dev -p 6006 --host localhost --no-open",
+    "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open",
     "build-storybook": "storybook build"
   },
   "packageManager": "pnpm@9.5.0",
