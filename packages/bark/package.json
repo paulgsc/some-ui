@@ -5,6 +5,8 @@
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
@@ -21,7 +23,6 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
-
   },
   "repository": {
     "type": "git",

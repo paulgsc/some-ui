@@ -8,11 +8,21 @@
     },
     "build": {
       "dependsOn": ["clean:build", "^build"],
-      "outputs": ["../../dist/**", "dist/**", "build/**"],
+      "outputs": ["../../dist/**", "dist/**", "build/**", ".content/**"],
       "cache": false
     },
     "build:docs": {
-      "cache": true
+      "cache": true,
+      "outputs": [".content/**"]
+    },
+    "watch:build": {
+      "dependsOn": ["^build", "^build:docs"],
+      "cache": false,
+      "persistent": true
+    },
+    "watch:lint": {
+      "persistent": true,
+      "cache": false
     },
     "type-check": {
       "cache": false
