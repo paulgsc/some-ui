@@ -4,7 +4,7 @@ import { createRollupConfig } from "@some-ui/rollup-config"
 import packageJson from "./package.json"
 
 const CONFIG_TYPESCRIPT = {
-  tsconfig: path.join(__dirname, "tsconfig.json"),
+  tsconfig: path.join(__dirname, "tsconfig.build.json"),
 }
 
 const external = ["recharts", "react", "react-dom"]
