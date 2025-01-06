@@ -10,7 +10,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "some-ui-shared"
-import { cn } from "some-ui-utils"
 
 type DummyData = {
   id: number
