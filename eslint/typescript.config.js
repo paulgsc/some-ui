@@ -34,11 +34,7 @@ export default [
         warnOnUnsupportedTypeScriptVersion: false,
       },
     },
-    extends: [
-      eslint.configs.recommended,
-      ...tseslint.configs.strictTypeChecked,
-      ...tseslint.configs.stylisticTypeChecked,
-    ],
+    extends: [eslint.configs.recommended],
     rules: {
       "@typescript-eslint/no-unused-expressions": "error",
       "no-unused-vars": "off",
@@ -98,6 +94,11 @@ export default [
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/array-type": ["error", { default: "generic" }],
+      "@typescript-eslint/no-mixed-enums": "error",
+      "@typescript-eslint/no-unnecessary-type-arguments": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/no-unnecessary-type-constraint": "error",
+      "@typescript-eslint/no-unnecessary-type-parameters": "error",
     },
   },
   {
