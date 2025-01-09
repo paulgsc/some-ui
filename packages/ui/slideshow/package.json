@@ -16,13 +16,15 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "pnpm build"
   },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
   "dependencies": {
     "some-ui-utils": "workspace:*",
     "some-ui-shared": "workspace:*"
   },
   "devDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
   },
