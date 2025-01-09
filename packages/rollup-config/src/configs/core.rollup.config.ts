@@ -1,24 +1,34 @@
 import type { PackageJsonTypes } from "../types"
 import {
-  CONFIG_BABEL,
-  CONFIG_EXTERNAL_MODULES,
-  CONFIG_EXTERNAL_MODULE_SUPPRESS,
-  CONFIG_GLOBALS,
-  FOLDERS,
+  alias,
   babel,
+  CONFIG_BABEL,
+  CONFIG_EXTERNAL_MODULE_SUPPRESS,
+  CONFIG_EXTERNAL_MODULES,
+  CONFIG_GLOBALS,
   createBuildPath,
   createNodeNextSupport,
+  FOLDERS,
   kebabToPascalCase,
   resolve,
   terser,
   typescript,
 } from "./base.rollup.config"
 
-const creatRollupConfig = (
-  packageJson: PackageJsonTypes,
-  tsconfig: object,
-  customExternal: Array<string> = []
-) => {
+type RollupConfigOptions = {
+  packageJson: PackageJsonTypes
+  tsconfig?: `${string}/tsconfig.build.json` | false
+  aliasPath: {
+    aliasKey: string
+    pathVal: string
+  }
+}
+
+export default function ({
+  tsconfig = false,
+  packageJson,
+  aliasPath,
+}: RollupConfigOptions) {
   const CONFIG_GLOBALS_MODULE = {
     ...CONFIG_GLOBALS,
     react: "React",
@@ -31,15 +41,26 @@ const creatRollupConfig = (
   }
 
   const CONFIG_TYPESCRIPT = {
-    ...tsconfig,
+    tsconfig: tsconfig === false ? "./tsconfig.json" : (tsconfig as string),
   }
 
-  const defaultExternal = Object.keys(CONFIG_GLOBALS_MODULE)
-  const finalExternal = [...defaultExternal, ...customExternal]
+  const externalModules = [
+    ...new Set([
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+      "react-router-dom",
+      "next",
+      "react/jsx-runtime",
+    ]),
+  ]
+
+  const { aliasKey, pathVal } = aliasPath
+  const entries = [{ find: aliasKey, replacement: pathVal }]
+  const input = "src/index.ts"
 
   return [
     {
-      input: "src/index.ts",
+      input,
       output: [
         {
           file: createBuildPath(packageJson, FOLDERS.CJS),
@@ -48,7 +69,10 @@ const creatRollupConfig = (
           strict: true,
           sourcemap: true,
           exports: "auto",
-          plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
+          plugins: [
+            alias({ entries: entries }),
+            resolve(CONFIG_EXTERNAL_MODULES),
+          ],
         },
         {
           file: createBuildPath(packageJson, FOLDERS.ESM),
@@ -56,21 +80,24 @@ const creatRollupConfig = (
           globals: CONFIG_GLOBALS_MODULE,
           strict: true,
           sourcemap: true,
-          plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
+          plugins: [
+            alias({ entries: entries }),
+            resolve(CONFIG_EXTERNAL_MODULES),
+          ],
         },
       ],
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
+        alias({ entries: entries }),
         resolve(),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
         // tscAliasReplacer(),
       ],
-      external: finalExternal,
-      // Use manual chunking to handle the @shared alias
+      external: externalModules,
     },
     {
-      input: "src/index.ts",
+      input,
       output: [
         {
           file: createBuildPath(packageJson, FOLDERS.UMD),
@@ -84,16 +111,14 @@ const creatRollupConfig = (
       ],
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
+        alias({ entries: entries }),
         resolve(),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
         // tscAliasReplacer(),
         createNodeNextSupport(),
       ],
-      external: finalExternal,
-      // Use manual chunking to handle the @shared alias
+      external: externalModules,
     },
   ]
 }
-
-export default creatRollupConfig
