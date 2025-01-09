@@ -1,0 +1,23 @@
+{
+  "name": "@some-ui/eslint",
+  "version": "0.1.0",
+  "description": "tsconfig for some-ui",
+  "private": true,
+  "main": "rollupconfig.json",
+  "files": [
+    "base.json",
+    "tsconfig.rollup.json",
+    "tsconfig.ui.json"
+  ],
+  "types": "base.json",
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "pnpm build"
+  }
+}
