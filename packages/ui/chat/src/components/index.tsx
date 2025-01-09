@@ -1,4 +1,4 @@
-const Chat = (): JSX.Element => {
+const Chat = (): React.JSX.Element => {
   return <h1 className="text-xl text-red-500"> me is Chat</h1>
 }
 
