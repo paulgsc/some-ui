@@ -3,8 +3,9 @@ import prettier from "eslint-config-prettier"
 import prettierPlugin from "eslint-plugin-prettier"
 import unusedImports from "eslint-plugin-unused-imports"
 import globals from "globals"
+import type { ConfigWithExtends } from "typescript-eslint"
 
-export default [
+export default <Array<ConfigWithExtends>>[
   prettier,
   {
     plugins: {

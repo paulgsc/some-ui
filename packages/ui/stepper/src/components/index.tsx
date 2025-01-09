@@ -4,9 +4,9 @@ import { Button, Card, CardContent, SvgIcons } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type Step = {
-    id: number;
-    label: string;
-    status: 'complete' | 'current' | 'upcoming';
+  id: number
+  label: string
+  status: "complete" | "current" | "upcoming"
 }
 
 type StepperProps = {
@@ -72,7 +72,7 @@ const Stepper: FC<StepperProps> = ({ steps = [], initialStep = 1 }) => {
         <Card className="mt-6">
           <CardContent className="pt-6">
             <p className="text-muted-foreground">
-              {steps[currentStep - 1]?.content || "No content available"}
+              {steps[currentStep - 1]?.status || "No content available"}
             </p>
           </CardContent>
         </Card>

@@ -5,10 +5,11 @@ import tsPlugin from "@typescript-eslint/eslint-plugin"
 import typescriptParser from "@typescript-eslint/parser"
 import deprecationPlugin from "eslint-plugin-deprecation"
 import tseslint from "typescript-eslint"
+import type { ConfigWithExtends } from "typescript-eslint"
 
 const __dirname = url.fileURLToPath(new URL("../", import.meta.url))
 
-export default [
+export default <Array<ConfigWithExtends>>[
   {
     files: ["packages/**/*.{ts,tsx,cts,mts}"],
     plugins: {
