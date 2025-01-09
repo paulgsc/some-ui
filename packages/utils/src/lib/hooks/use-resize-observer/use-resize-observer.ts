@@ -81,8 +81,6 @@ export function useResizeObserver<T extends HTMLElement = HTMLElement>(
   onResize.current = options.onResize
 
   useEffect(() => {
-    if (!ref.current) return
-
     if (typeof window === "undefined" || !("ResizeObserver" in window)) return
 
     const observer = new ResizeObserver(([entry]) => {
@@ -107,15 +105,13 @@ export function useResizeObserver<T extends HTMLElement = HTMLElement>(
 
         if (onResize.current) {
           onResize.current(newSize)
-        } else {
-          if (isMounted()) {
-            setSize(newSize)
-          }
+        } else if (isMounted()) {
+          setSize(newSize)
         }
       }
     })
 
-    observer.observe(ref.current, { box })
+    if (ref.current !== null) observer.observe(ref.current, { box })
 
     return (): void => {
       observer.disconnect()
@@ -143,7 +139,6 @@ function extractSize(
     return undefined
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return Array.isArray(entry[box])
     ? entry[box][0][sizeType]
     : // @ts-expect-error copy paste !!
