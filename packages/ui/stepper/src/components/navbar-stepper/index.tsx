@@ -163,7 +163,6 @@ const NavBarStepperBtn = forwardRef<HTMLButtonElement, NavBarStepperBtnProps>(
     {
       className,
       variant = "ghost",
-      isActiveCell = false,
       stepId,
       handleClickStep,
       children,
@@ -190,8 +189,9 @@ NavBarStepperBtn.displayName = "NavBarStepperBtn"
 const NavBarBubbleMotion = forwardRef<
   HTMLDivElement,
   HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+>(({ className }, ref) => (
   <motion.div
+    ref={ref}
     layoutId="bubble"
     className={cn("absolute inset-0 z-10", className)}
     transition={{

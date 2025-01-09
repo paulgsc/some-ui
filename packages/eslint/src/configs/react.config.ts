@@ -6,11 +6,12 @@ import importPlugin from "eslint-plugin-import"
 import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
 import reactPlugin from "eslint-plugin-react"
 import reactHooksPlugin from "eslint-plugin-react-hooks"
+import type { ConfigWithExtends } from "typescript-eslint"
 
 const __dirname = url.fileURLToPath(new URL("../", import.meta.url))
 const compat = new FlatCompat({ baseDirectory: __dirname })
 
-export default [
+export default <Array<ConfigWithExtends>>[
   {
     files: ["packages/**/*.{mdx,jsx,tsx}"],
     plugins: {

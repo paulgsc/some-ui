@@ -1,11 +1,12 @@
 //@ts-check
 import eslintPluginStorybook from "eslint-plugin-storybook"
+import type { ConfigWithExtends } from "typescript-eslint"
 
-export default [
+export default <Array<ConfigWithExtends>>[
   {
     files: ["**/*.stories.tsx"],
     plugins: {
-      ["storybook"]: eslintPluginStorybook,
+      storybook: eslintPluginStorybook,
     },
     extends: [...eslintPluginStorybook.configs["flat/recommended"]],
     rules: {
