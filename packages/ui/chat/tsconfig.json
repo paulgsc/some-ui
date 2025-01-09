@@ -2,9 +2,9 @@
   "extends": "../../tsconfig/rollupconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "declarationDir": "./",
     "rootDir": "./src",
     "outDir": "./dist",
+    "declaration": true,
     "paths": {
       "@chat/*": ["./src/*"]
     }

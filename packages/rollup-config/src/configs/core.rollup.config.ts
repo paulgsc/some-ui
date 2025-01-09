@@ -1,6 +1,5 @@
 import type { PackageJsonTypes } from "../types"
 import {
-  alias,
   babel,
   CONFIG_BABEL,
   CONFIG_EXTERNAL_MODULE_SUPPRESS,
@@ -18,7 +17,7 @@ import {
 type RollupConfigOptions = {
   packageJson: PackageJsonTypes
   tsconfig?: `${string}/tsconfig.build.json` | false
-  aliasPath: {
+  aliasPath?: {
     aliasKey: string
     pathVal: string
   }
@@ -27,7 +26,6 @@ type RollupConfigOptions = {
 export default function ({
   tsconfig = false,
   packageJson,
-  aliasPath,
 }: RollupConfigOptions) {
   const CONFIG_GLOBALS_MODULE = {
     ...CONFIG_GLOBALS,
@@ -44,18 +42,24 @@ export default function ({
     tsconfig: tsconfig === false ? "./tsconfig.json" : (tsconfig as string),
   }
 
+  const defaultExternal = Object.keys(CONFIG_GLOBALS_MODULE)
   const externalModules = [
     ...new Set([
+      ...defaultExternal,
       ...Object.keys(packageJson.dependencies ?? {}),
       ...Object.keys(packageJson.peerDependencies ?? {}),
       "react-router-dom",
       "next",
-      "react/jsx-runtime",
     ]),
   ]
 
-  const { aliasKey, pathVal } = aliasPath
-  const entries = [{ find: aliasKey, replacement: pathVal }]
+  // const { aliasKey, pathVal } = aliasPath
+  // const entries = [
+  //   {
+  //     find: aliasKey,
+  //     replacement: pathVal,
+  //   },
+  // ]
   const input = "src/index.ts"
 
   return [
@@ -69,10 +73,7 @@ export default function ({
           strict: true,
           sourcemap: true,
           exports: "auto",
-          plugins: [
-            alias({ entries: entries }),
-            resolve(CONFIG_EXTERNAL_MODULES),
-          ],
+          plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
         },
         {
           file: createBuildPath(packageJson, FOLDERS.ESM),
@@ -80,19 +81,15 @@ export default function ({
           globals: CONFIG_GLOBALS_MODULE,
           strict: true,
           sourcemap: true,
-          plugins: [
-            alias({ entries: entries }),
-            resolve(CONFIG_EXTERNAL_MODULES),
-          ],
+          plugins: [resolve(CONFIG_EXTERNAL_MODULES)],
         },
       ],
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
-        alias({ entries: entries }),
         resolve(),
+        // alias({ entries: entries }),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
-        // tscAliasReplacer(),
       ],
       external: externalModules,
     },
@@ -111,11 +108,9 @@ export default function ({
       ],
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
-        alias({ entries: entries }),
         resolve(),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
-        // tscAliasReplacer(),
         createNodeNextSupport(),
       ],
       external: externalModules,

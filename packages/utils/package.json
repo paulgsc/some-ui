@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache",
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",

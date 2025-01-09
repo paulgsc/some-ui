@@ -58,16 +58,14 @@ function addImportExtensions(content: string, extension = "js"): string {
 }
 
 // @ts-expect-error headache for now
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+
 function readFiles(dirname: string, onFileContent, onError) {
   fs.readdirSync(dirname, { withFileTypes: true }).forEach((entry) => {
     if (entry.isDirectory()) {
-      // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
       return readFiles(dirname + entry.name + "/", onFileContent, onError)
     }
 
     fs.readFile(dirname + entry.name, "utf-8", (error, content) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       if (error) return onError(error)
       onFileContent(dirname + entry.name, content)
     })
@@ -137,7 +135,7 @@ function createNodeNextSupportForPackage(): void {
   const propsToDelete = ["scripts", "exports", "main", "unpkg", "module"]
 
   // @ts-expect-error ignore for now
-  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+
   propsToDelete.forEach((prop) => delete packageJson[prop])
 
   const files = [`${packageJson.name}*`, "src/**/*", "index.d.ts"]
@@ -158,11 +156,11 @@ function createNodeNextSupportForPackage(): void {
   if (!fs.existsSync(esmFolder)) fs.mkdirSync(esmFolder)
   if (!fs.existsSync(cjsFolder)) fs.mkdirSync(cjsFolder)
 
-  if (process.env.ENV === "developemnt")
-    fs.writeFileSync(
-      path.join(".", "package.json"),
-      JSON.stringify(packageJsonMain, null, "\t")
-    )
+  // if (process.env.ENV === "developemnt")
+  fs.writeFileSync(
+    path.join(".", "package.json"),
+    JSON.stringify(packageJsonMain, null, "\t")
+  )
 
   fs.writeFileSync(
     path.join(outFolder, "package.json"),
@@ -186,10 +184,9 @@ function createNodeNextSupportForPackage(): void {
   fs.writeFileSync(esmTypesFilePath, esmTypesFileWithImportExtensions)
   // @ts-expect-error headache for now
   readFiles(path.join(esmFolder, "/"), (filename, fileContent) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const fileContentWithImportExtensions = addImportExtensions(fileContent)
     // @ts-expect-error headache for now
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function, @typescript-eslint/no-unsafe-argument
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fs.writeFile(filename, fileContentWithImportExtensions, (error) => {})
   })
 }
