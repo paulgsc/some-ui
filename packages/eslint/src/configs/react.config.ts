@@ -21,7 +21,7 @@ export default <Array<ConfigWithExtends>>[
     },
     extends: [
       jsxA11yPlugin.flatConfigs.recommended,
-      reactPlugin.configs.flat.recommended,
+      reactPlugin.configs.flat?.recommended,
       ...fixupConfigRules(compat.config(reactHooksPlugin.configs.recommended)),
     ],
     settings: {

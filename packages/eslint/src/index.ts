@@ -1,4 +1,5 @@
 import tseslint from "typescript-eslint"
+import type { Config } from "typescript-eslint"
 
 import {
   baseConfig,
@@ -8,14 +9,16 @@ import {
   testsOverrideConfig,
   toolsOverrideConfig,
   typescriptConfig,
-} from "./configs/"
+} from "./configs/index.js"
 
-export default tseslint.config(
-  ...baseConfig,
-  ...typescriptConfig,
-  ...tailwindConfig,
-  ...reactConfig,
-  ...eslintPluginStorybook,
-  toolsOverrideConfig,
-  testsOverrideConfig
+export default <Config>(
+  tseslint.config(
+    ...baseConfig,
+    ...typescriptConfig,
+    ...tailwindConfig,
+    ...reactConfig,
+    ...eslintPluginStorybook,
+    toolsOverrideConfig,
+    testsOverrideConfig
+  )
 )
