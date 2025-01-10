@@ -15,12 +15,14 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "pnpm build"
   },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
   "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@some-ui/rollup-config": "workspace:*"
   },
   "repository": {
     "type": "git",

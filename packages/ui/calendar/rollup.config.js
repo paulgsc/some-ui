@@ -1,10 +1,16 @@
-import path from "path"
+import path, { resolve } from "path"
 import { createRollupConfig } from "@some-ui/rollup-config"
 
 import packageJson from "./package.json"
 
-const CONFIG_TYPESCRIPT = {
-  tsconfig: path.join(__dirname, "tsconfig.build.json"),
+const aliasPath = {
+  aliasKey: "@calendar",
+  pathVal: resolve(__dirname, "src"),
 }
+const tsconfig = path.join(__dirname, "tsconfig.build.json")
 
-export default createRollupConfig(packageJson, CONFIG_TYPESCRIPT)
+export default createRollupConfig({
+  tsconfig,
+  packageJson,
+  aliasPath: aliasPath,
+})

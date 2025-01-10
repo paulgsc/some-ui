@@ -15,13 +15,16 @@
     "postinstall": "pnpm build"
   },
   "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "zod": "3.23.8"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "3.23.8"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*",
-    "zod": "3.23.8"
+    "@some-ui/rollup-config": "workspace:*"
   },
   "repository": {
     "type": "git",

@@ -6,7 +6,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@input/*": ["./src/*"]
+      "@honeycomb/*": ["./src/*"]
     }
   },
   "include": ["src"],

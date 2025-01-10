@@ -1,1 +1,1 @@
-export { default } from "@input/components"
+export { default } from "@charts/components"
