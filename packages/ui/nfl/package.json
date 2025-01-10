@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "recharts": "2.12.7"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "dependencies": {
     "some-ui-utils": "workspace:*",
@@ -24,8 +25,6 @@
     "some-types-utils": "workspace:*"
   },
   "devDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
   },
