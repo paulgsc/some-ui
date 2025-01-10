@@ -15,16 +15,16 @@
     "postinstall": "pnpm build"
   },
   "peerDependencies": {
-         "framer-motion": "11.15.0"
+    "framer-motion": "11.15.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "dependencies": {
     "some-ui-utils": "workspace:*",
-     "usehooks-ts": "3.1.0",
-       "framer-motion": "11.15.0"
+    "usehooks-ts": "3.1.0",
+    "framer-motion": "11.15.0"
   },
   "devDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
   },
@@ -46,20 +46,20 @@
     "./dist/cjs/**/*"
   ],
   "sideEffects": false,
-  "unpkg": "some-ui-input.umd.js",
-  "main": "./dist/some-ui-input.umd.js",
-  "module": "./dist/esm/some-ui-input.esm.js",
+  "unpkg": "some-ui-emoji-animations.umd.js",
+  "main": "./dist/some-ui-emoji-animations.umd.js",
+  "module": "./dist/esm/some-ui-emoji-animations.esm.js",
   "types": "index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-input.esm.js"
+        "default": "./dist/esm/some-ui-emoji-animations.esm.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-input.cjs.js"
+        "default": "./dist/cjs/some-ui-emoji-animations.cjs.js"
       }
     }
   }

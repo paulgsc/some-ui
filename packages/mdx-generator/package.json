@@ -20,8 +20,8 @@
     "lucide-react": "0.436.0",
     "@radix-ui/react-dropdown-menu": "2.1.1",
     "contentlayer2": "^0.4.6",
-    "some-ui-utils": "workspace:*",
-    "some-ui-shared": "workspace:*"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "dependencies": {
     "some-ui-shared": "workspace:*",
