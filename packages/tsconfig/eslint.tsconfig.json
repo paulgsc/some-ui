@@ -2,7 +2,6 @@
   "extends": "./base.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "rootDir": "./src",
     "outDir": "./dist",
 
     "types": ["@types/node"],
@@ -16,7 +15,6 @@
     "sourceMap": true,
     "target": "ES2022",
     "composite": false,
-    "rootDir": ".",
     "checkJs": true
   }
 }
