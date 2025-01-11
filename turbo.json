@@ -28,27 +28,28 @@
       "cache": false
     },
     "lint": {
-      "dependsOn": ["^build", "^lint"],
-      "cache": true
+      "dependsOn": ["^build"],
+      "cache": false
     },
     "lint:fix": {
-      "cache": true,
+      "cache": false,
       "outputs": []
     },
     "lint:js": {
-      "cache": true,
+      "dependsOn": ["^build"],
+      "cache": false,
       "outputs": []
     },
     "lint:md": {
-      "cache": true,
+      "cache": false,
       "outputs": []
     },
     "prettier": {
-      "cache": true
+      "cache": false
     },
     "typecheck": {},
     "check": {
-      "cache": true
+      "cache": false
     },
     "test": {
       "cache": false
