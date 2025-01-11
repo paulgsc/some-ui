@@ -22,6 +22,7 @@
 	"dependencies": {},
 	"devDependencies": {
 		"@some-ui/tsconfig": "workspace:*",
+		"@some-ui/eslint": "workspace:*",
 		"@some-ui/rollup-config": "workspace:*"
 	},
 	"repository": {
