@@ -4,18 +4,21 @@
   "description": "tsconfig for some-ui",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/esm/index.js",
   "types": "index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js"
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b tsconfig.build.json",
+    "build:esm": "tsc -b tsconfig.esm.build.json",
+    "build:cjs": "tsc -b tsconfig.cjs.build.json",
+    "build": "pnpm build:esm",
     "check-dist": "if [ ! -d dist ]; then npm run build; fi",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
