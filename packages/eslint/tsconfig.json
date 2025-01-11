@@ -1,5 +1,10 @@
 {
   "extends": "../tsconfig/eslint.tsconfig.json",
-  "include": ["src"],
+  "compilerOptions": {
+    "paths": {
+      "@eslint/*": ["./src/*"]
+    }
+  },
+  "include": ["eslint.config.*.{cjs, mjs, js, ts}", "src"],
   "exclude": ["node_modules", "build", "dist"]
 }

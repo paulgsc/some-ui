@@ -1,6 +1,4 @@
 //@ts-check
-import url from "node:url"
-import path from "path"
 import eslint from "@eslint/js"
 import tsPlugin from "@typescript-eslint/eslint-plugin"
 import typescriptParser from "@typescript-eslint/parser"
