@@ -6,8 +6,13 @@
   "files": [
     "dist/**"
   ],
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
+  "main": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
   "types": "index.ts",
   "scripts": {
     "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
@@ -37,6 +42,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/eslint": "workspace:*",
     "typescript": "^5.7.3"
   }
 }

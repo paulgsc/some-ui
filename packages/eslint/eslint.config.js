@@ -1,4 +1,3 @@
+import someUIEslint from "./dist/esm/index.js"
 
-import someUIEslint  from "./dist/index.js"
-
-export default someUIEslint 
+export default someUIEslint

@@ -1,1 +1,0 @@
-{"root":["./src/index.ts","./src/configs/base.config.ts","./src/configs/index.ts","./src/configs/overrides-tests.config.ts","./src/configs/overrides-tools.config.ts","./src/configs/react.config.ts","./src/configs/stories.config.ts","./src/configs/tailwind.config.ts","./src/configs/typescript.config.ts","./src/types/global.d.ts"],"version":"5.7.3"}
