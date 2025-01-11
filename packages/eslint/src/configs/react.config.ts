@@ -13,7 +13,7 @@ const compat = new FlatCompat({ baseDirectory: __dirname })
 
 export default <Array<ConfigWithExtends>>[
   {
-    files: ["packages/**/*.{mdx,jsx,tsx}"],
+    files: ["**/*.{mdx,jsx,tsx}"],
     plugins: {
       react: reactPlugin,
       "react-hooks": fixupPluginRules(reactHooksPlugin),

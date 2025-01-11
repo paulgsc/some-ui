@@ -1,5 +1,6 @@
 //@ts-check
 import url from "node:url"
+import path from "path"
 import eslint from "@eslint/js"
 import tsPlugin from "@typescript-eslint/eslint-plugin"
 import typescriptParser from "@typescript-eslint/parser"
@@ -7,11 +8,9 @@ import deprecationPlugin from "eslint-plugin-deprecation"
 import tseslint from "typescript-eslint"
 import type { ConfigWithExtends } from "typescript-eslint"
 
-const __dirname = url.fileURLToPath(new URL("../", import.meta.url))
-
 export default <Array<ConfigWithExtends>>[
   {
-    files: ["packages/**/*.{ts,tsx,cts,mts}"],
+    files: ["**/*.{ts,tsx,cts,mts}"],
     plugins: {
       "@typescript-eslint": tsPlugin,
       deprecation: deprecationPlugin,
@@ -26,12 +25,7 @@ export default <Array<ConfigWithExtends>>[
         cacheLifetime: {
           glob: "Infinity",
         },
-        project: [
-          "./packages/*/tsconfig.json",
-          "./packages/ui/*/tsconfig.json",
-          "./packages/charts/*/tsconfig.json",
-        ],
-        tsconfigRootDir: __dirname,
+        project: true,
         warnOnUnsupportedTypeScriptVersion: false,
       },
     },
@@ -103,7 +97,7 @@ export default <Array<ConfigWithExtends>>[
     },
   },
   {
-    files: ["packages/**/*.js"],
+    files: ["**/*.js"],
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       "deprecation/deprecation": "off",
@@ -112,7 +106,7 @@ export default <Array<ConfigWithExtends>>[
     },
   },
   {
-    files: ["packages/**/*rollup*.ts"],
+    files: ["**/*rollup*.ts"],
     rules: {
       // turn off other type-aware rules
       "deprecation/deprecation": "off",

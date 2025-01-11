@@ -25,6 +25,7 @@ export default <Array<ConfigWithExtends>>[
       "**/coverage/**",
       "**/__snapshots__/**",
       "**/.docusaurus/**",
+      "**/*.cache/**",
       "**/build/**",
       "**/.next/**",
       "**/tsconfig.json",
