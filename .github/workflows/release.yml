@@ -20,7 +20,23 @@ jobs:
           node-version-file: ".nvmrc"
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Cache Turborepo
+        uses: actions/cache@v3
+        with:
+          path: |
+            .turbo
+            node_modules/.cache/turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm run prepare
+        env:
+          HUSKY_SKIP_INSTALL: 1
+          NODE_ENV: production
 
       - name: Create Release Pull Request or Publish
         id: changesets
