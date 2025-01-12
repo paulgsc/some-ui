@@ -18,7 +18,7 @@
     "build:esm": "tsc -b tsconfig.esm.build.json",
     "build:cjs": "tsc -b tsconfig.cjs.build.json",
     "build": "pnpm build:esm",
-    "check-dist": "if [ ! -d dist ]; then npm run build; fi",
+    "check-dist": "if [ ! -d dist ]; then pnpm run build; fi",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
