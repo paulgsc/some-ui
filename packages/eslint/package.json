@@ -1,5 +1,5 @@
 {
-  "name": "@some-ui/eslint",
+  "name": "maishatu-eslint-kit",
   "version": "1.0.0",
   "description": "tsconfig for some-ui",
   "type": "module",

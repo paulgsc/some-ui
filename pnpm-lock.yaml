@@ -41,7 +41,7 @@ importers:
       '@next/eslint-plugin-next':
         specifier: ^15.1.4
         version: 15.1.4
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:packages/eslint
       '@storybook/addon-essentials':
@@ -517,7 +517,7 @@ importers:
         specifier: ^0.36.0
         version: 0.36.0(rollup@4.30.1)(typescript@5.7.3)
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../eslint
       '@some-ui/tsconfig':
@@ -541,7 +541,7 @@ importers:
         specifier: 3.23.8
         version: 3.23.8
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../eslint
       '@some-ui/rollup-config':
@@ -560,7 +560,7 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -572,7 +572,7 @@ importers:
 
   packages/ui/chat:
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -625,7 +625,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -647,7 +647,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -669,7 +669,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -697,7 +697,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -716,7 +716,7 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -738,7 +738,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -823,7 +823,7 @@ importers:
         specifier: ^2.4.0
         version: 2.6.0
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -848,7 +848,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -876,7 +876,7 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
       '@some-ui/rollup-config':
@@ -888,7 +888,7 @@ importers:
 
   packages/utils:
     dependencies:
-      '@some-ui/eslint':
+      'maishatu-eslint-kit':
         specifier: workspace:*
         version: link:../eslint
       clsx:

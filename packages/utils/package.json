@@ -26,14 +26,14 @@
   },
   "dependencies": {
     "tailwind-merge": "^2.4.0",
-    "@some-ui/eslint": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*",
     "clsx": "^2.1.1",
     "nuqs": "1.18.0",
     "usehooks-ts": "3.1.0"
   },
   "devDependencies": {
     "@some-ui/rollup-config": "workspace:*",
-    "@some-ui/eslint": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {

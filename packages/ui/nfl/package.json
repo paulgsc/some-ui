@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/eslint": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
   },
   "repository": {

@@ -1,4 +1,4 @@
-# @some-ui/eslint
+# maishatu-eslint-kit
 
 ## 1.0.0
 
@@ -23,13 +23,13 @@
   To use this plugin in a project:
 
   1. Install the plugin:
-     `pnpm add -D @some-ui/eslint`
+     `pnpm add -D maishatu-eslint-kit`
   2. Update your ESLint config:
 
   ```js
   // Flat Config
   // eslint.config.*.{js,mjs}
-  import someUIEslint from "@some-ui/eslint"
+  import someUIEslint from "maishatu-eslint-kit"
 
   export default someUIEslint
   ```
