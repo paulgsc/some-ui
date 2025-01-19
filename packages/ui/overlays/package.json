@@ -3,7 +3,9 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "some-ui-shared": "workspace:*"
+    "some-ui-shared": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
+    "wireframes": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/rollup-config": "workspace:*",
