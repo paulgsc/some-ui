@@ -1,12 +1,12 @@
+import { logo } from "@overlays/components/youtube/assets"
+
 const Logo = () => {
   return (
-    <div className="bg-muted">
-      <img
-        src="https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?w=800&dpr=2&q=80"
-        alt="PGDEV"
-        className="size-full rounded-md object-cover"
-      />
-    </div>
+    <img
+      src={logo}
+      alt="PGDEV"
+      className="absolute inset-0 aspect-square size-full rounded-md object-scale-down"
+    />
   )
 }
 
