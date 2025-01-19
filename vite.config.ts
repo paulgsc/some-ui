@@ -14,6 +14,7 @@ export default defineConfig({
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
+      "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
       // Add more aliases for other packages as needed
     },
   },
