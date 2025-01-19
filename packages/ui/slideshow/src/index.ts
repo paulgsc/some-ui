@@ -1,1 +1,1 @@
-export { default } from "@slideshow/components"
+export * from "@slideshow/components"
