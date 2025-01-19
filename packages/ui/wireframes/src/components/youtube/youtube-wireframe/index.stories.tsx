@@ -1,5 +1,5 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
-import YoutubeWireframe from "@wireframes/components/youtube"
+import YoutubeWireframe from "@wireframes/components/youtube/youtube-wireframe"
 
 type Story = StoryObj<typeof YoutubeWireframe>
 type Meta = MetaObj<typeof YoutubeWireframe>

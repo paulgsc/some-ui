@@ -1,1 +1,1 @@
-export * from "./youtube"
+export * from "@wireframes/components/youtube"
