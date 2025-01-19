@@ -2,7 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {},
+  "dependencies": {
+    "some-ui-shared": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
