@@ -10,6 +10,7 @@ import alias from "@rollup/plugin-alias"
 import babel, { type RollupBabelInputPluginOptions } from "@rollup/plugin-babel"
 import resolve from "@rollup/plugin-node-resolve"
 import terser from "@rollup/plugin-terser"
+import postcss from "rollup-plugin-postcss"
 import typescript from "rollup-plugin-typescript2"
 
 import fileUnKown from "../../../../package.json"
@@ -216,4 +217,5 @@ export {
   resolve,
   terser,
   typescript,
+  postcss,
 }
