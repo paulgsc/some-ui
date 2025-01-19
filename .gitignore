@@ -34,7 +34,8 @@ yarn-error.log*
 .turbo
 
 .contentlayer
-rimraf tsconfig.tsbuildinfo && rimraf .eslintcache
+*.tsbuildinfo 
+
 
 # Added by cargo
 
