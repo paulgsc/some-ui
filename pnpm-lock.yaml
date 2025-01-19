@@ -707,6 +707,22 @@ importers:
         specifier: workspace:*
         version: link:../../eslint
 
+  packages/ui/overlays:
+    dependencies:
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@some-ui/rollup-config':
+        specifier: workspace:*
+        version: link:../../rollup-config
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../eslint
+
   packages/ui/resume:
     dependencies:
       react:
@@ -875,6 +891,18 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+    devDependencies:
+      '@some-ui/rollup-config':
+        specifier: workspace:*
+        version: link:../../rollup-config
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../eslint
+
+  packages/ui/wireframes:
     devDependencies:
       '@some-ui/rollup-config':
         specifier: workspace:*
