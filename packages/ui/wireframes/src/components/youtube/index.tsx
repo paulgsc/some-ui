@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from "react"
 
-export enum OverlayRegion {
+export enum WireframeRegion {
   VIDEO = "VIDEO", // Region 1
   MARQUEE = "MARQUEE", // Region 2
   MAIN_CONTENT = "MAIN_CONTENT", // Region 3
@@ -10,46 +10,46 @@ export enum OverlayRegion {
   FOOTER_RIGHT = "FOOTER_RIGHT", // Region 7
 }
 
-export type OverlayContent = {
-  [OverlayRegion.VIDEO]: ReactNode
-  [OverlayRegion.MARQUEE]: ReactNode
-  [OverlayRegion.MAIN_CONTENT]: ReactNode
-  [OverlayRegion.FOOTER_LEFT]: ReactNode
-  [OverlayRegion.SIDEBAR_TOP]: ReactNode
-  [OverlayRegion.SIDEBAR_BOTTOM]: ReactNode
-  [OverlayRegion.FOOTER_RIGHT]: ReactNode
+export type WireframeContent = {
+  [WireframeRegion.VIDEO]: ReactNode
+  [WireframeRegion.MARQUEE]: ReactNode
+  [WireframeRegion.MAIN_CONTENT]: ReactNode
+  [WireframeRegion.FOOTER_LEFT]: ReactNode
+  [WireframeRegion.SIDEBAR_TOP]: ReactNode
+  [WireframeRegion.SIDEBAR_BOTTOM]: ReactNode
+  [WireframeRegion.FOOTER_RIGHT]: ReactNode
 }
 
-type YoutubeOverlayProps = {
-  content?: OverlayContent
+type YoutubeWireframeProps = {
+  content?: WireframeContent
 }
 
-const YoutubeOverlay: FC<YoutubeOverlayProps> = ({ content = {} }) => {
+const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
   return (
     <main className="bg-card absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-4 rounded-md border border-dashed p-0.5 shadow-md">
       <div className="bg-muted relative row-span-5 rounded-md border border-dashed">
-        {content[OverlayRegion.VIDEO]}
+        {content[WireframeRegion.VIDEO]}
       </div>
       <div className="bg-muted relative col-span-3 col-start-2 rounded-md border border-dashed">
-        {content[OverlayRegion.MARQUEE]}
+        {content[WireframeRegion.MARQUEE]}
       </div>
       <div className="relative col-span-3 col-start-2 row-span-4 row-start-2 rounded-md border border-dashed bg-green-500">
-        {content[OverlayRegion.MAIN_CONTENT]}
+        {content[WireframeRegion.MAIN_CONTENT]}
       </div>
       <div className="bg-accent relative col-start-5 row-span-3 row-start-1 rounded-md border border-dashed">
-        {content[OverlayRegion.SIDEBAR_TOP]}
+        {content[WireframeRegion.SIDEBAR_TOP]}
       </div>
       <div className="bg-accent relative col-start-5 row-span-3 row-start-4 rounded-md border border-dashed">
-        {content[OverlayRegion.SIDEBAR_BOTTOM]}
+        {content[WireframeRegion.SIDEBAR_BOTTOM]}
       </div>
       <div className="bg-accent relative row-start-6 rounded-md border border-dashed">
-        {content[OverlayRegion.FOOTER_LEFT]}
+        {content[WireframeRegion.FOOTER_LEFT]}
       </div>
       <div className="bg-accent relative col-span-3 row-start-6 rounded-md border border-dashed">
-        {content[OverlayRegion.FOOTER_RIGHT]}
+        {content[WireframeRegion.FOOTER_RIGHT]}
       </div>
     </main>
   )
 }
 
-export default YoutubeOverlay
+export default YoutubeWireframe
