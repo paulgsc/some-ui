@@ -19,9 +19,7 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
   }, [charge])
 
   return (
-    <div
-      className={cn("flex  flex-col items-center justify-center", className)}
-    >
+    <div className={cn("", className)}>
       <motion.div
         className="mb-8"
         animate={{ rotate: isSleeping ? [0, -5, 5, -5, 5, 0] : 0 }}

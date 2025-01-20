@@ -38,16 +38,14 @@ const NeonSignText: FC<NeoSignTextProps> = ({ text = "NeonSign" }) => {
     )
   })
   return (
-    <div className="flex min-h-screen items-start justify-center bg-none">
-      <div className="relative">
-        <div
-          className="relative animate-pulse-slow rounded-lg border-4 border-blue-500 px-8 py-4
+    <div className="relative">
+      <div
+        className="animate-pulse-slow relative rounded-lg border-4 border-blue-500 px-8 py-4 text-center
                                          [box-shadow:0_0_0.5rem_#3b82f6,inset_0_0_0.5rem_#3b82f6]"
-        >
-          <span className="text-4xl font-bold tracking-wider">
-            {StyledCharacters}
-          </span>
-        </div>
+      >
+        <span className="size-full text-center text-4xl font-bold tracking-wider">
+          {StyledCharacters}
+        </span>
       </div>
     </div>
   )

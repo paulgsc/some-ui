@@ -1,5 +1,7 @@
 import { Fragment } from "react"
 import Logo from "@overlays/components/youtube/logo"
+import { BoredAnimation } from "some-ui-emoji-animations"
+import { NeonText } from "some-ui-neon-sign"
 import { RotatingCube } from "some-ui-slideshow"
 import type { WireframeContent } from "wireframes"
 import { WireframeRegion, YoutubeWireframe } from "wireframes"
@@ -7,10 +9,12 @@ import { WireframeRegion, YoutubeWireframe } from "wireframes"
 const YoutubeOverlay = () => {
   const overlayContent: WireframeContent = {
     [WireframeRegion.VIDEO]: <RotatingCube />,
-    [WireframeRegion.MARQUEE]: <Fragment />,
+    [WireframeRegion.MARQUEE]: <NeonText />,
     [WireframeRegion.MAIN_CONTENT]: <Fragment />,
     [WireframeRegion.FOOTER_LEFT]: <Logo />,
-    [WireframeRegion.SIDEBAR_TOP]: <Fragment />,
+    [WireframeRegion.SIDEBAR_TOP]: (
+      <BoredAnimation className="absolute inset-0 flex flex-col items-center justify-center" />
+    ),
     [WireframeRegion.SIDEBAR_BOTTOM]: <Fragment />,
     [WireframeRegion.FOOTER_RIGHT]: <Fragment />,
   }

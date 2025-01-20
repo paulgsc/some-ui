@@ -1,1 +1,1 @@
-export { default } from "@neon-sign/components"
+export * from "@neon-sign/components"
