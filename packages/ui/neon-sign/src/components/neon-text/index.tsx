@@ -1,20 +1,25 @@
-import type { FC } from "react"
-import { useState } from "react"
+import type { ChangeEvent, FC } from "react"
 import { Input } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, useLocalStorage } from "some-ui-utils"
 
 type NeoSignTextProps = {
   initialText?: string
 }
 
-const NeonSignText: FC<NeoSignTextProps> = ({ initialText = "NeonSign" }) => {
-  const [text, setText] = useState<string>(initialText)
-  const characters = text.split("")
+const NeonSignText: FC<NeoSignTextProps> = ({
+  initialText = "Change me...",
+}) => {
+  const { value: neonTxt, setValue: updateStorage } = useLocalStorage(
+    "neon",
+    initialText
+  )
 
-  const shouldHaveNeonEffect = () => Math.random() > 0.5
+  const characters = neonTxt.split("")
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value)
+  const shouldHaveNeonEffect = (): boolean => Math.random() > 0.5
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    updateStorage(e.target.value)
   }
 
   const StyledCharacters = characters.map((char, index) => {
@@ -55,7 +60,7 @@ const NeonSignText: FC<NeoSignTextProps> = ({ initialText = "NeonSign" }) => {
         </span>
         <Input
           type="text"
-          value={text}
+          value={neonTxt}
           onChange={handleInputChange}
           className={cn(
             "absolute inset-0 size-full border-none bg-transparent text-4xl font-bold tracking-wider text-transparent",
