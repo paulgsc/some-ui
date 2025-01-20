@@ -5,6 +5,8 @@
   "dependencies": {
     "some-ui-shared": "workspace:*",
     "some-ui-slideshow": "workspace:*",
+    "some-ui-neon-sign": "workspace:*",
+    "some-ui-emoji-animations": "workspace:*",
     "wireframes": "workspace:*"
   },
   "devDependencies": {

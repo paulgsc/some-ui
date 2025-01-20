@@ -5,7 +5,7 @@ const Logo = () => {
     <img
       src={logo}
       alt="PGDEV"
-      className="absolute inset-0 aspect-square size-full rounded-md object-scale-down"
+      className="aspect-square size-full rounded-md object-scale-down"
     />
   )
 }
