@@ -16,6 +16,7 @@ export default defineConfig({
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
       "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),
+      "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
       // Add more aliases for other packages as needed
     },
   },
