@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
+import { SplayTree } from "@overlays/utils"
 import { Tree } from "react-d3-tree"
-
-import { SplayTree } from "../utils/splay-tree"
 
 const SplayTreeVisualization = () => {
   const [tree, setTree] = useState(() => new SplayTree())
