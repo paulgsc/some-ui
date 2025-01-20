@@ -19,9 +19,14 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
   }, [charge])
 
   return (
-    <div className={cn("", className)}>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-4",
+        className
+      )}
+    >
       <motion.div
-        className="mb-8"
+        className=""
         animate={{ rotate: isSleeping ? [0, -5, 5, -5, 5, 0] : 0 }}
         transition={{ repeat: Infinity, duration: 2, repeatType: "loop" }}
       >
@@ -29,11 +34,11 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
       </motion.div>
       <BatteryIndicator charge={charge} isCharging={isCharging} />
       <button
-        className="group mt-4 hidden size-full max-w-24 rounded bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 group-hover:block group-focus:block"
+        className="size-fit max-w-24 rounded bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-blue-600 group-hover:block group-focus:block"
         onClick={charge > 0 ? toggleCharging : delCharge}
       >
         {isCharging ? (
-          "Unplug"
+          "Charging!"
         ) : (
           <p className="size-full shrink-0 text-center  text-sm capitalize tracking-tight">
             <span className="group-hover:hidden group-focus:hidden">
