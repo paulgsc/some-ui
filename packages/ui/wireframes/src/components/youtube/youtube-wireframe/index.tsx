@@ -27,7 +27,7 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
           </ResizableLayout.PanelB>
         </ResizableLayout.Root>
       </div>
-      <div className="bg-accent relative col-start-5 row-span-3 row-start-1 rounded-md border border-dashed">
+      <div className="bg-accent relative z-0 col-start-5 row-span-3 row-start-1 rounded-md border border-dashed">
         {content[WireframeRegion.SIDEBAR_TOP]}
       </div>
       <div className="bg-accent relative col-start-5 row-span-3 row-start-4 rounded-md border border-dashed">
@@ -35,10 +35,10 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
       </div>
       <div className="bg-accent relative col-span-4 row-start-6 rounded-md border border-dashed">
         <ResizableLayout.Root direction="horizontal">
-          <ResizableLayout.PanelA defaultSize={20} className="">
+          <ResizableLayout.PanelA defaultSize={10} className="">
             {content[WireframeRegion.FOOTER_LEFT]}
           </ResizableLayout.PanelA>
-          <ResizableLayout.PanelB defaultSize={80} minSize={80} className="">
+          <ResizableLayout.PanelB defaultSize={90} minSize={90} className="">
             {content[WireframeRegion.FOOTER_RIGHT]}
           </ResizableLayout.PanelB>
         </ResizableLayout.Root>
