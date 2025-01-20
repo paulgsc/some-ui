@@ -2,7 +2,11 @@
 	"bugs": {
 		"url": "https://github.com/paulgsc/some-ui/issues"
 	},
-	"dependencies": {},
+	"dependencies": {
+		"react-resizable-panels": "^2.1.0",
+		"some-ui-shared": "workspace:*",
+		"some-ui-utils": "workspace:*"
+	},
 	"devDependencies": {
 		"@some-ui/rollup-config": "workspace:*",
 		"@some-ui/tsconfig": "workspace:*",
@@ -34,7 +38,11 @@
 	"main": "./dist/wireframes.umd.js",
 	"module": "./dist/esm/wireframes.esm.js",
 	"name": "wireframes",
-	"peerDependencies": {},
+	"peerDependencies": {
+		"react": "^19.0.0",
+		"react-resizable-panels": "^2.1.0",
+		"react-dom": "^19.0.0"
+	},
 	"private": true,
 	"repository": {
 		"type": "git",
