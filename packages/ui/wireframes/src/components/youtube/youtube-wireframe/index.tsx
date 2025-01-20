@@ -1,4 +1,5 @@
 import type { FC } from "react"
+import { ResizableLayout } from "@wireframes/components/youtube/resizable-wireframe"
 import type { WireframeContent } from "@wireframes/components/youtube/types"
 import { WireframeRegion } from "@wireframes/components/youtube/types"
 
@@ -12,11 +13,15 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
       <div className="bg-muted relative row-span-5 flex items-center justify-center rounded-md border border-dashed">
         {content[WireframeRegion.VIDEO]}
       </div>
-      <div className="bg-muted relative col-span-3 col-start-2 rounded-md border border-dashed">
-        {content[WireframeRegion.MARQUEE]}
-      </div>
-      <div className="relative col-span-3 col-start-2 row-span-4 row-start-2 rounded-md border border-dashed bg-green-500">
-        {content[WireframeRegion.MAIN_CONTENT]}
+      <div className="relative col-span-3 col-start-2 row-span-5 rounded-md border border-dashed bg-none">
+        <ResizableLayout.Root direction="vertical">
+          <ResizableLayout.PanelA className="">
+            {content[WireframeRegion.MARQUEE]}
+          </ResizableLayout.PanelA>
+          <ResizableLayout.PanelB className="bg-green-500">
+            {content[WireframeRegion.MAIN_CONTENT]}
+          </ResizableLayout.PanelB>
+        </ResizableLayout.Root>
       </div>
       <div className="bg-accent relative col-start-5 row-span-3 row-start-1 rounded-md border border-dashed">
         {content[WireframeRegion.SIDEBAR_TOP]}
@@ -24,11 +29,15 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
       <div className="bg-accent relative col-start-5 row-span-3 row-start-4 rounded-md border border-dashed">
         {content[WireframeRegion.SIDEBAR_BOTTOM]}
       </div>
-      <div className="bg-accent relative row-start-6 rounded-md border border-dashed">
-        {content[WireframeRegion.FOOTER_LEFT]}
-      </div>
-      <div className="bg-accent relative col-span-3 row-start-6 rounded-md border border-dashed">
-        {content[WireframeRegion.FOOTER_RIGHT]}
+      <div className="bg-accent relative col-span-4 row-start-6 rounded-md border border-dashed">
+        <ResizableLayout.Root direction="horizontal">
+          <ResizableLayout.PanelA defaultSize={20} className="">
+            {content[WireframeRegion.FOOTER_LEFT]}
+          </ResizableLayout.PanelA>
+          <ResizableLayout.PanelB defaultSize={80} minSize={80} className="">
+            {content[WireframeRegion.FOOTER_RIGHT]}
+          </ResizableLayout.PanelB>
+        </ResizableLayout.Root>
       </div>
     </main>
   )
