@@ -17,6 +17,32 @@ export class SplayTree {
     this.root = null
   }
 
+  getHeight(): number {
+    const calculateHeight = (node: TreeNode | null): number => {
+      if (!node) return 0
+      return (
+        1 + Math.max(calculateHeight(node.left), calculateHeight(node.right))
+      )
+    }
+    return calculateHeight(this.root)
+  }
+
+  getDepthOfNode(key: number): number {
+    let depth = 0
+    let current = this.root
+
+    while (current) {
+      if (current.key === key) return depth
+      if (key < current.key) {
+        current = current.left
+      } else {
+        current = current.right
+      }
+      depth++
+    }
+    return -1
+  }
+
   splay(key: number): void {
     if (!this.root) return
 
@@ -118,18 +144,24 @@ export class SplayTree {
       return {
         name: node.key.toString(),
         attributes: {}, // react-d3-tree expects an attributes object
-        children: [convertToJSON(node.left), convertToJSON(node.right)].filter(Boolean),
+        children: [convertToJSON(node.left), convertToJSON(node.right)].filter(
+          Boolean
+        ),
       }
     }
 
     return this.root ? convertToJSON(this.root) : { name: "Empty Tree" }
   }
 
-  verifyTree(): string[] {
-    const result: string[] = []
-    const inOrderTraversal = (node: TreeNode | null): number[] => {
+  verifyTree(): Array<string> {
+    const result: Array<string> = []
+    const inOrderTraversal = (node: TreeNode | null): Array<number> => {
       if (!node) return []
-      return [...inOrderTraversal(node.left), node.key, ...inOrderTraversal(node.right)]
+      return [
+        ...inOrderTraversal(node.left),
+        node.key,
+        ...inOrderTraversal(node.right),
+      ]
     }
 
     const keys = inOrderTraversal(this.root)
@@ -138,7 +170,9 @@ export class SplayTree {
     if (keys.length > 1) {
       for (let i = 1; i < keys.length; i++) {
         if (keys[i] <= keys[i - 1]) {
-          result.push(`ERROR: Tree is not properly ordered at ${keys[i - 1]} and ${keys[i]}`)
+          result.push(
+            `ERROR: Tree is not properly ordered at ${keys[i - 1]} and ${keys[i]}`
+          )
         }
       }
     }
@@ -146,5 +180,3 @@ export class SplayTree {
     return result
   }
 }
-
-

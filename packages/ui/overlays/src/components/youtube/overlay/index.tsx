@@ -1,4 +1,5 @@
 import { Fragment } from "react"
+import { SplayAnimation } from "@overlays/components"
 import Logo from "@overlays/components/youtube/logo"
 import { BoredAnimation } from "some-ui-emoji-animations"
 import { NeonText } from "some-ui-neon-sign"
@@ -15,7 +16,7 @@ const YoutubeOverlay = () => {
     [WireframeRegion.SIDEBAR_TOP]: (
       <BoredAnimation className="absolute inset-0 size-full" />
     ),
-    [WireframeRegion.SIDEBAR_BOTTOM]: <Fragment />,
+    [WireframeRegion.SIDEBAR_BOTTOM]: <SplayAnimation />,
     [WireframeRegion.FOOTER_RIGHT]: <Fragment />,
   }
 
