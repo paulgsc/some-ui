@@ -13,7 +13,8 @@
     "target": "ES2022",
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/"],
-      "@utils/*": ["./packages/ui/utils/src/"]
+      "@utils/*": ["./packages/ui/utils/src/"],
+      "@overlays/*": ["./packages/ui/overlays/src/"]
     }
   },
   "include": [
