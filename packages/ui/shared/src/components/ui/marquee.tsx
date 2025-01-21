@@ -41,7 +41,7 @@ export const Marquee = ({
   vertical = false,
   repeat = 4,
   ...props
-}: MarqueeProps) => {
+}: MarqueeProps): React.JSX.Element => {
   return (
     <div
       {...props}
