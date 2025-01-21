@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react"
 import { cn } from "@shared/lib/utils"
 
+const foo = "bar"
 type MarqueeProps = {
   /**
    * Optional CSS class name to apply custom styles
@@ -40,7 +41,7 @@ export const Marquee = ({
   vertical = false,
   repeat = 4,
   ...props
-}: MarqueeProps): React.JSX.Element => {
+}: MarqueeProps) => {
   return (
     <div
       {...props}
