@@ -26,6 +26,9 @@ export default <Array<ConfigWithExtends>>[
         project: true,
         warnOnUnsupportedTypeScriptVersion: false,
       },
+      globals: {
+        React: "readonly",
+      },
     },
     extends: [eslint.configs.recommended],
     rules: {

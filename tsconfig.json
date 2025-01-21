@@ -7,11 +7,14 @@
     "declarationMap": true,
     "module": "Node16",
     "moduleResolution": "node16",
-    "paths": {},
     "pretty": true,
     "sourceMap": true,
     "lib": ["ES2023"],
-    "target": "ES2022"
+    "target": "ES2022",
+    "paths": {
+      "@shared/*": ["./packages/ui/shared/src/"],
+      "@utils/*": ["./packages/ui/utils/src/"]
+    }
   },
   "include": [
     "eslint/",
