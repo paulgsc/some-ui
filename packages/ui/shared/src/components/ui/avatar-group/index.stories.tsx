@@ -31,6 +31,6 @@ export const Default: Story = {
 }
 
 export default {
-  title: "Shared/Ui/AvatarGroup",
+  title: "UI/Shared/AvatarGroup",
   component: AvatarGroup,
 } as Meta
