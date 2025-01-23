@@ -5,9 +5,6 @@ import NeonSignText from "."
 const meta = {
   title: "UI/NeonSign/NeonText",
   component: NeonSignText,
-  argTypes: {
-    text: { control: "text", description: "Text to display in neon effect" },
-  },
   parameters: {
     layout: "centered",
   },
