@@ -1,13 +1,8 @@
 import type { ComponentProps, CSSProperties, FC } from "react"
 import { useMemo, useState } from "react"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-} from "@shared/components/ui"
+import type { AvatarImage } from "@shared/components/ui"
+import { Button, WithAvatar } from "@shared/components/ui"
 import { cn } from "@shared/lib/utils"
-import { getAcronymFromString } from "some-ui-utils"
 
 export type AvatarGroupProps = {
   avatars: Array<ComponentProps<typeof AvatarImage>>
@@ -43,16 +38,7 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
       )}
     >
       {renderAvatars.map((avatar, index) => (
-        <Avatar
-          style={{ "--avatar-size": avatarSize } as CSSProperties}
-          key={index}
-          className="size-[calc(var(--avatar-size)*1px)]"
-        >
-          <AvatarImage className="" src={avatar.src} />
-          <AvatarFallback>
-            {getAcronymFromString(avatar.alt ?? "")}
-          </AvatarFallback>
-        </Avatar>
+        <WithAvatar key={index} avatarSize={avatarSize} avatar={avatar} />
       ))}
 
       {avatars.length > limit && (
