@@ -1,1 +1,1 @@
-export { default } from "@chat/components"
+export * from "./components"

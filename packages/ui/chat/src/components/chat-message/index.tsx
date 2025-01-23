@@ -17,7 +17,6 @@ export type Options = {
 
 type ChatMessageProps = {
   message: Options
-  isLatest: boolean
 }
 
 export const ChatMessage = ({
@@ -27,7 +26,7 @@ export const ChatMessage = ({
   return (
     <Card
       className={cn(
-        "grid size-full max-w-sm grid-flow-row rounded-lg pt-0.5 shadow-md",
+        "grid size-fit max-w-sm grid-flow-row rounded-lg border border-red-500 pt-0.5 shadow-md",
         {
           "bg-accent text-gray-900": character === "ai",
           "bg-blue-600 text-white": character === "pgdev",
