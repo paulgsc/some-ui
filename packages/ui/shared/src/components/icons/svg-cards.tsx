@@ -78,9 +78,21 @@ export const SvgIcons = {
       <path d="M20 6 9 17l-5-5" />
     </svg>
   )),
+  refresh: forwardRef<SVGSVGElement, SVGIconProps>((props: SVGIconProps) => (
+    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4"
+      />
+    </svg>
+  )),
 }
 
 SvgIcons.gripVertical.displayName = "GripVerticalIcon"
 SvgIcons.cross.displayName = "CrossIcon"
 SvgIcons.magnifyGlass.displayName = "MangnifyclassIcon"
 SvgIcons.check.displayName = "CheckIcon"
+SvgIcons.refresh.displayName = "RefreshIcon"
