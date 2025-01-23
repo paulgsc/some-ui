@@ -1,4 +1,4 @@
-import { Card, CardContent, CardFooter, WithAvatar } from "some-ui-shared"
+import { Card, WithAvatar } from "some-ui-shared"
 import type { AvatarOptions } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -23,7 +23,7 @@ type ChatMessageProps = {
 export const ChatMessage = ({
   message,
 }: ChatMessageProps): React.JSX.Element => {
-  const { timestamp, content, character, avatarSize = 10, avatar } = message
+  const { timestamp, content, character, avatarSize = 30, avatar } = message
   return (
     <Card
       className={cn(
@@ -34,25 +34,40 @@ export const ChatMessage = ({
         }
       )}
     >
-      <CardContent
-        className={cn("row-span-2 flex flex-1", {
+      <section
+        className={cn("row-span-2 flex flex-1 px-2 pt-0.5", {
           "justify-end": character === "pgdev",
           "justify-start": character === "ai",
         })}
       >
         {content}
-      </CardContent>
-      <CardFooter className="shrink-0 text-start">
-        {avatar && <WithAvatar avatarSize={avatarSize} avatar={avatar} />}
+      </section>
+      <section className="relative shrink-0 p-0.5 text-start">
+        {avatar && (
+          <WithAvatar
+            className={cn(
+              "pointer-events-none absolute shrink-0 brightness-75",
+              {
+                "end-[95%] top-0": character === "ai",
+                "start-[98%] top-0": character === "pgdev",
+              }
+            )}
+            avatarSize={avatarSize}
+            avatar={avatar}
+          />
+        )}
         <span
-          className={cn(" flex flex-1 text-xs text-muted/60", {
-            "justify-start text-muted/50": character === "pgdev",
-            "justify-end text-muted-foreground/60": character === "ai",
-          })}
+          className={cn(
+            " flex h-full flex-1 items-end text-end text-xs text-muted/60",
+            {
+              "justify-start text-muted/50": character === "pgdev",
+              "justify-end text-muted-foreground/60": character === "ai",
+            }
+          )}
         >
           {timestamp}
         </span>
-      </CardFooter>
+      </section>
     </Card>
   )
 }

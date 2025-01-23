@@ -6,12 +6,19 @@ import type { Options } from "."
 type Story = StoryObj<typeof ChatMessage>
 type Meta = MetaObj<typeof ChatMessage>
 
+const avatar = {
+  src: "https://github.com/shadcn.png",
+  alt: "@shadcn",
+  fallback: "CN",
+}
+
 const message: Options = {
   id: "1",
   character: "ai",
   content: "👋 Hi there! How can I help?",
   type: "chat",
   timestamp: "Just now",
+  avatar,
 }
 
 export const Default: Story = {
