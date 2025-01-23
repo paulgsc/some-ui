@@ -1,5 +1,4 @@
 export { Alert, AlertTitle, AlertDescription } from "./alert"
-export { Button, buttonVariants, ButtonProps } from "./button"
 
 export * from "./dropdown-menu"
 
@@ -11,6 +10,7 @@ export {
   CollapsibleContent,
 } from "./collapsible"
 
+export * from "./button"
 export * from "./select"
 export * from "./accordion"
 export * from "./card"
@@ -25,3 +25,4 @@ export * from "./skeleton"
 export * from "./breadcrumb"
 export * from "./carousel"
 export * from "./marquee"
+export * from "./avatar"
