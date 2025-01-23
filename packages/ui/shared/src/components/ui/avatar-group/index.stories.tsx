@@ -27,6 +27,8 @@ const avatars = [
 export const Default: Story = {
   args: {
     avatars,
+    avatarSize: 75,
+    avatarSpacing: 30,
   },
 }
 
