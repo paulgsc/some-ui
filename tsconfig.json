@@ -14,6 +14,7 @@
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/"],
       "@utils/*": ["./packages/ui/utils/src/"],
+      "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
     }
   },

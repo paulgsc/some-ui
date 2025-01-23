@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react"
 import NeonSignText from "."
 
 const meta = {
-  title: "Components/NeonSign",
+  title: "UI/NeonSign/NeonText",
   component: NeonSignText,
   argTypes: {
     text: { control: "text", description: "Text to display in neon effect" },
