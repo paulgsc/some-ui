@@ -13,7 +13,7 @@ type SearchBarContextMenuProps = {
 const SearchBarContextMenu: FC<SearchBarContextMenuProps> = ({
   param,
   config,
-}): JSX.Element => {
+}): React.JSX.Element => {
   const { context, setContext, menuItems } = useSearchbarUrlState({
     config: { ...defaultSearchContextMenuConfig, ...config },
     param: param,
