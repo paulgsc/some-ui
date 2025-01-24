@@ -16,6 +16,7 @@
       "@chat/*": ["./packages/ui/chat/src/"],
       "@utils/*": ["./packages/ui/utils/src/"],
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
+      "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
     }
