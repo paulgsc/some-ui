@@ -13,12 +13,14 @@
     "target": "ES2022",
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/"],
+      "@chat/*": ["./packages/ui/chat/src/"],
       "@utils/*": ["./packages/ui/utils/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
     }
   },
   "include": [
+    "assets/",
     "eslint/",
     "eslint.config.js",
     "eslint.config-deprecated.mjs",
