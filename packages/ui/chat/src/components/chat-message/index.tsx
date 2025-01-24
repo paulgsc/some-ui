@@ -1,4 +1,4 @@
-import { Card, WithAvatar } from "some-ui-shared"
+import { Badge, Card, WithAvatar } from "some-ui-shared"
 import type { AvatarOptions } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -22,32 +22,35 @@ type ChatMessageProps = {
 export const ChatMessage = ({
   message,
 }: ChatMessageProps): React.JSX.Element => {
-  const { timestamp, content, character, avatarSize = 30, avatar } = message
+  const { timestamp, content, character, avatarSize = 25, avatar } = message
   return (
     <Card
       className={cn(
-        "grid size-fit max-w-sm grid-flow-row rounded-lg border border-red-500 pt-0.5 shadow-md",
+        "relative grid min-w-[45%] max-w-[75%]  grid-flow-row rounded-lg pt-0.5 shadow-inner",
         {
           "bg-accent text-gray-900": character === "ai",
           "bg-blue-600 text-white": character === "pgdev",
         }
       )}
     >
-      <section
-        className={cn("row-span-2 flex flex-1 px-2 pt-0.5", {
-          "justify-end": character === "pgdev",
-          "justify-start": character === "ai",
-        })}
+      <p
+        className={cn(
+          "z-10 row-span-2 flex flex-1 break-all bg-inherit pe-1.5 ps-3 pt-0.5 text-sm font-medium tracking-tight",
+          {
+            "justify-end": character === "pgdev",
+            "justify-start": character === "ai",
+          }
+        )}
       >
         {content}
-      </section>
-      <section className="relative shrink-0 p-0.5 text-start">
+      </p>
+      <section className="h-10 shrink-0 p-0.5 text-start">
         {avatar && (
           <WithAvatar
             className={cn(
-              "pointer-events-none absolute shrink-0 brightness-75",
+              "pointer-events-none absolute z-0 shrink-0 brightness-75",
               {
-                "end-[95%] top-0": character === "ai",
+                "end-[98%] top-0": character === "ai",
                 "start-[98%] top-0": character === "pgdev",
               }
             )}
@@ -56,15 +59,22 @@ export const ChatMessage = ({
           />
         )}
         <span
-          className={cn(
-            " flex h-full flex-1 items-end text-end text-xs text-muted/60",
-            {
-              "justify-start text-muted/50": character === "pgdev",
-              "justify-end text-muted-foreground/60": character === "ai",
-            }
-          )}
+          className={cn("flex h-full flex-1 shrink-0 items-end", {
+            "justify-start text-muted/50": character === "pgdev",
+            "justify-end text-muted-foreground/60": character === "ai",
+          })}
         >
-          {timestamp}
+          <Badge
+            className={cn(
+              "shrink-0 p-0.5 text-xs tracking-tight text-muted-foreground/60",
+              {
+                "bg-inherit text-accent-foreground/40": character === "pgdev",
+              }
+            )}
+            variant={character === "ai" ? "outline" : "secondary"}
+          >
+            {timestamp}
+          </Badge>
         </span>
       </section>
     </Card>
