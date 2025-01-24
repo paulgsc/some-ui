@@ -10,4 +10,7 @@ export const Default: Story = {
   },
 }
 
-export default { title: "SlideShow/Inset", component: InsetCard } as Meta
+export default {
+  title: "UI/Slideshow/Components/Inset",
+  component: InsetCard,
+} as Meta

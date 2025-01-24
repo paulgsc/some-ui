@@ -20,6 +20,6 @@ export const Default: Story = {
 }
 
 export default {
-  title: "SlideShow/Carousel/Sidebar",
+  title: "UI/SlideShow/Components/SidebarCarousel",
   component: SidebarCarousel,
 } as Meta

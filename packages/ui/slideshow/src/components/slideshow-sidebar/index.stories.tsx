@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof SlideshowSidebar>
 export const Default: Story = {}
 
 export default {
-  title: "SlideShow/Sidebar",
+  title: "UI/SlideShow/Components/Sidebar",
   component: SlideshowSidebar,
 } as Meta
