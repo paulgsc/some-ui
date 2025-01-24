@@ -6,4 +6,4 @@ type Meta = MetaObj<typeof SlideShowCard>
 
 export const Default: Story = {}
 
-export default { title: "SlideShow/Card", component: SlideShowCard } as Meta
+export default { title: "UI/Slideshow/Main", component: SlideShowCard } as Meta

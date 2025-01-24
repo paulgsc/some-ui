@@ -13,6 +13,6 @@ export const Default: Story = {
 }
 
 export default {
-  title: "SlideShow/RotatingCube",
+  title: "UI/Slideshow/Components/RotatingCube",
   component: RotatingCube,
 } as Meta
