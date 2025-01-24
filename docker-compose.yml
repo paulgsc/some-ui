@@ -1,0 +1,29 @@
+services:
+  dev:
+    build: .
+    volumes:
+      # Mount your source code
+      - .:/app
+      # Mount git config
+      - ~/.gitconfig:/root/.gitconfig
+      # Mount pnpm store
+      - pnpm-store:/root/.local/share/pnpm/store
+      # Mount Turbo cache
+      - turbo-cache:/root/.turbo
+      # Mount node_modules
+      - node_modules:/app/node_modules
+      # Mount workspace package node_modules
+      - packages-node_modules:/app/packages
+    ports:
+      - "6006:6006"  # Storybook
+    environment:
+      - HOST=0.0.0.0
+      - TURBO_TEAM=local
+      # Enable Turbo Remote Caching in container
+      - TURBO_REMOTE_ONLY=false
+
+volumes:
+  pnpm-store:
+  turbo-cache:
+  node_modules:
+  packages-node_modules:
