@@ -9,6 +9,6 @@
       "@slideshow/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "src/data/*.json"],
   "exclude": ["node_modules", "build", "dist"]
 }

@@ -22,12 +22,14 @@
   },
   "dependencies": {
     "lucide-react": "^0.474.0",
+    "@radix-ui/react-accordion": "^1.1.2",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
+    "zod": "^3.24.1",
     "maishatu-eslint-kit": "workspace:*"
   },
   "repository": {

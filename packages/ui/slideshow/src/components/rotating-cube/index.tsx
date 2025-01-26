@@ -1,8 +1,17 @@
 import type { CSSProperties, RefObject } from "react"
 import { useRef } from "react"
+import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
 import { useRotatingCube } from "@slideshow/hooks"
+import type { CubeJson, Question } from "@slideshow/types"
 import { Bot, Code2, LineChart, Server } from "lucide-react"
-import { Card } from "some-ui-shared"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  AnimatedBadge,
+  Card,
+} from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 import styles from "./index.module.css"
@@ -64,101 +73,86 @@ const RotatingCube = (): React.JSX.Element => {
 const sections = [
   {
     icon: <Server className="size-8 text-blue-500" />,
-    title: "Rust Axum Server",
-    description:
-      "High-performance backend infrastructure built with Rust and Axum framework",
-    features: [
-      "RESTful API endpoints",
-      "WebSocket connections",
-      "Database integration",
-      "Error handling middleware",
-    ],
+    title: "Nest",
+    inProgress: true,
   },
   {
     icon: <Code2 className="size-8 text-blue-500" />,
     title: "TypeScript Overlay UI",
-    description: "Modern streaming overlay built with TypeScript and React",
-    features: [
-      "Custom animations",
-      "Real-time updates",
-      "Stream notifications",
-      "Viewer interactions",
-    ],
+    inProgress: false,
   },
   {
     icon: <LineChart className="size-8 text-blue-500" />,
-    title: "Trading Analyzer",
-    description: "Real-time market analysis and trading insights",
-    features: [
-      "Price tracking",
-      "Technical indicators",
-      "Market trends",
-      "Trading signals",
-    ],
+    title: "ChessNFL",
+    inProgress: false,
   },
   {
     icon: <Bot className="size-8 text-blue-500" />,
     title: "Chatbot Blog",
-    description: "Interactive AI-powered blog system",
-    features: [
-      "Natural language processing",
-      "Content generation",
-      "User interactions",
-      "Learning algorithms",
-    ],
+    inProgress: false,
   },
-]
+] as const
 
 const cubeFaces = (): Array<React.JSX.Element> =>
-  sections.map((section, index) => (
-    <Card key={index} className="relative size-full overflow-hidden p-6">
-      {/* Background pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, black 1px, transparent 0)",
-          backgroundSize: "20px 20px",
-        }}
-      />
+  sections.map((section, index) => {
+    const data = (validatedCubeJson.data ??
+      ([] as Array<CubeJson>)) satisfies Array<CubeJson>
+    const options = ["What", "How", "Why"] satisfies Array<Question>
+    const selectedOption = options[Math.floor(Math.random() * options.length)]
+    const filteredData = filterCubeJson(
+      data,
+      section.title,
+      selectedOption
+    ).pop()
 
-      <div className="relative space-y-4">
-        {/* Icon */}
-        <div className="inline-block rounded-lg bg-blue-50 p-3">
-          {section.icon}
+    return (
+      <Card key={index} className="relative size-full overflow-hidden p-6">
+        {/* Background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, black 1px, transparent 0)",
+            backgroundSize: "20px 20px",
+          }}
+        />
+
+        <div className="relative space-y-4">
+          <div className="flex flex-1 items-center justify-between px-2">
+            <div className="inline-block rounded-lg bg-blue-50 p-3">
+              {section.icon}
+            </div>
+            {section.inProgress && <AnimatedBadge />}
+          </div>
+          <h3 className="text-xl font-semibold tracking-tight">
+            {section.title}
+          </h3>
+
+          {/* Description */}
+          <p className="text-sm text-muted-foreground">
+            {filteredData?.abstract}
+          </p>
+
+          {/* Features list */}
+          <Accordion
+            type="multiple"
+            defaultValue={filteredData?.answers.map((_, index) => `${index}`)}
+            className="w-full"
+          >
+            {filteredData?.answers.map((answer, index) => {
+              return (
+                <AccordionItem key={index} value={`${index}`}>
+                  <AccordionTrigger>{answer.title}</AccordionTrigger>
+                  <AccordionContent>
+                    <span className="text-sm">{answer.description}</span>
+                  </AccordionContent>
+                </AccordionItem>
+              )
+            })}
+          </Accordion>
         </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold tracking-tight">
-          {section.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground">{section.description}</p>
-
-        {/* Features list */}
-        <ul className="space-y-2">
-          {section.features.map((feature, featureIndex) => (
-            <li key={featureIndex} className="flex items-center gap-2">
-              <svg
-                className="size-4 shrink-0 text-blue-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <span className="text-sm">{feature}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </Card>
-  ))
+      </Card>
+    )
+  })
 
 export default RotatingCube

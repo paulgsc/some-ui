@@ -8,6 +8,7 @@ import {
   createBuildPath,
   createNodeNextSupport,
   FOLDERS,
+  json,
   kebabToPascalCase,
   postcss,
   resolve,
@@ -18,6 +19,7 @@ import {
 type RollupConfigOptions = {
   packageJson: PackageJsonTypes
   tsconfig?: `${string}/tsconfig.build.json` | false
+  customExt?: Array<string>
   aliasPath?: {
     aliasKey: string
     pathVal: string
@@ -27,6 +29,7 @@ type RollupConfigOptions = {
 export default function ({
   tsconfig = false,
   packageJson,
+  customExt = [],
 }: RollupConfigOptions) {
   const CONFIG_GLOBALS_MODULE = {
     ...CONFIG_GLOBALS,
@@ -47,6 +50,7 @@ export default function ({
   const externalModules = [
     ...new Set([
       ...defaultExternal,
+      ...customExt,
       ...Object.keys(packageJson.dependencies ?? {}),
       ...Object.keys(packageJson.peerDependencies ?? {}),
       "react-router-dom",
@@ -88,6 +92,7 @@ export default function ({
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
         resolve(),
+        json(),
         // alias({ entries: entries }),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
@@ -114,6 +119,7 @@ export default function ({
       onwarn: CONFIG_EXTERNAL_MODULE_SUPPRESS,
       plugins: [
         resolve(),
+        json(),
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
         postcss({

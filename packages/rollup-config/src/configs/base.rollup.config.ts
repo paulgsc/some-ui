@@ -8,6 +8,7 @@ import * as fs from "fs"
 import path from "path"
 import alias from "@rollup/plugin-alias"
 import babel, { type RollupBabelInputPluginOptions } from "@rollup/plugin-babel"
+import json from "@rollup/plugin-json"
 import resolve from "@rollup/plugin-node-resolve"
 import terser from "@rollup/plugin-terser"
 import postcss from "rollup-plugin-postcss"
@@ -218,4 +219,5 @@ export {
   terser,
   typescript,
   postcss,
+  json,
 }

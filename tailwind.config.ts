@@ -92,6 +92,12 @@ const config = {
           from: { transform: "translateY(0)" },
           to: { transform: "translateY(calc(-100% - var(--gap)))" },
         },
+        sparkle: {
+          "0%, 100%": { transform: "scale(1) rotate(0deg)" },
+          "25%": { transform: "scale(1.2) rotate(10deg)" },
+          "50%": { transform: "scale(1.2) rotate(-10deg)" },
+          "75%": { transform: "scale(1) rotate(0deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -102,6 +108,7 @@ const config = {
         "flicker-fast": "flicker 1.5s linear infinite",
         marquee: "marquee var(--duration) linear infinite",
         "marquee-vertical": "marquee-vertical var(--duration) linear infinite",
+        sparkle: "sparkle 1.5s ease-in-out infinite",
       },
       "caret-blink": {
         "0%,70%,100%": { opacity: "1" },

@@ -8,9 +8,11 @@ const aliasPath = {
   pathVal: resolve(__dirname, "src"),
 }
 const tsconfig = path.join(__dirname, "tsconfig.build.json")
+const custExt = ["**/*.ts"]
 
 export default createRollupConfig({
   tsconfig,
   packageJson,
   aliasPath: aliasPath,
+  custExt,
 })
