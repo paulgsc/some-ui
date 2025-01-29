@@ -1,0 +1,379 @@
+/* --------- COLORS -------------- */
+.container {
+  background: black;
+  color: white;
+}
+
+/* ------------ FONTS --------------- */
+.container {
+  font-family: "BenchNine", sans-serif;
+  text-transform: uppercase;
+  font-size: 49px;
+  letter-spacing: -0.04rem;
+  text-align: center;
+}
+
+h3 {
+  font-size: 0.31rem;
+  letter-spacing: 0.04rem;
+}
+
+.supporting,
+.credentials {
+  font-size: 0.63rem;
+}
+
+.credentials {
+  text-transform: lowercase;
+}
+
+.hidden {
+  color: black;
+  font-size: inherit;
+  z-index: 0;
+}
+
+/* ----------- LAYOUT --------------*/
+.container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.credits * {
+  position: relative;
+}
+
+.credits > div {
+  width: 6.94rem;
+  margin-bottom: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.credits > div:first-of-type {
+  margin-top: 40vh;
+}
+
+.credits > div:last-of-type {
+  margin-bottom: 50vh;
+}
+
+/* Stagger all the alignments */
+.directed h3 {
+  right: 0.7rem;
+}
+
+.screenplay {
+  right: 0.55rem;
+}
+
+.screenplay h3 {
+  left: 0.43rem;
+}
+
+.screenplay h2:nth-of-type(2) {
+  left: 0.275rem;
+}
+
+.screenplay h2:last-of-type {
+  right: 0.57rem;
+}
+
+.story {
+  right: 0.95rem;
+}
+
+.story h2:last-of-type {
+  right: 0.32rem;
+}
+
+.produced {
+  right: 1.38rem;
+}
+
+.produced h3 {
+  left: 0.2rem;
+}
+
+.produced h2:last-of-type {
+  left: 0.51rem;
+}
+
+/* ---- VERTICAL LINES & THEIR ANIMATIONS ---- */
+h2::after {
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+  z-index: 1;
+}
+
+.directed h2::after {
+  content: "";
+  position: absolute;
+  border-left: 0.123rem solid white;
+  top: 0.191rem;
+  left: 2.05rem;
+  bottom: -11.32rem;
+  animation-name: directedT;
+  animation-duration: 6s;
+  animation-delay: 2s;
+}
+
+@keyframes directedT {
+  from {
+    bottom: 0.191rem;
+  }
+  to {
+    bottom: -11.32rem;
+  }
+}
+
+.screenplay h2:first-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.122rem solid white;
+  top: 0.124rem;
+  left: 4.388rem;
+  bottom: -0.75rem;
+  animation-name: screenplayB;
+  animation-duration: 1.7s;
+  animation-delay: 6s;
+}
+
+@keyframes screenplayB {
+  from {
+    bottom: 0.19rem;
+  }
+  to {
+    bottom: -0.82rem;
+  }
+}
+
+.screenplay h2:nth-of-type(2)::after {
+  content: "";
+  position: absolute;
+  border-left: 0.117rem solid white;
+  top: 0.18rem;
+  left: 3.47rem;
+  bottom: -0.822rem;
+  animation-name: screenplayT;
+  animation-duration: 1.7s;
+  animation-delay: 6.6s;
+}
+
+@keyframes screenplayT {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -0.822rem;
+  }
+}
+
+.screenplay h2:last-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.12rem solid white;
+  top: 0.111rem;
+  left: 2.75rem;
+  bottom: -11.324rem;
+  animation-name: screenplayI;
+  animation-duration: 6s;
+  animation-delay: 8.4s;
+}
+
+@keyframes screenplayI {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -11.324rem;
+  }
+}
+
+.story h2:first-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.109rem solid white;
+  top: 0.114rem;
+  left: 4.8rem;
+  bottom: -0.815rem;
+  animation-name: storyE;
+  animation-duration: 1.7s;
+  animation-delay: 12.6s;
+}
+
+@keyframes storyE {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -0.815rem;
+  }
+}
+
+.story h2:last-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.123rem solid white;
+  top: 0.18rem;
+  left: 2.47rem;
+  bottom: -11.31rem;
+  animation-name: storyT;
+  animation-duration: 6s;
+  animation-delay: 14.3s;
+}
+
+@keyframes storyT {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -11.33rem;
+  }
+}
+
+.produced h2:first-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.121rem solid white;
+  top: 0.114rem;
+  left: 2.98rem;
+  bottom: -0.808rem;
+  animation-name: producedR;
+  animation-duration: 1.7s;
+  animation-delay: 18.9s;
+}
+
+@keyframes producedR {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -0.808rem;
+  }
+}
+
+.produced h2:last-of-type::after {
+  content: "";
+  position: absolute;
+  border-left: 0.111rem solid white;
+  top: 0.12rem;
+  left: 1.11rem;
+  bottom: -5.5rem;
+  animation-name: producedI;
+  animation-duration: 4s;
+  animation-delay: 20.5s;
+  animation-timing-function: ease-in;
+}
+
+@keyframes producedI {
+  from {
+    bottom: 0.18rem;
+  }
+  to {
+    bottom: -70vh;
+  }
+}
+
+/* -----------EMULATE HIDDEN LETTERS --------- */
+.hidden::before,
+.hidden::after {
+  content: "";
+  position: absolute;
+  visibility: visible;
+  z-index: 1;
+}
+
+.hidden.e::before {
+  border-top: 0.09rem solid white;
+  border-bottom: 0.09rem solid white;
+  top: 0.3rem;
+  left: 0.18rem;
+  bottom: 0.66rem;
+  right: 0rem;
+}
+
+.hidden.e::after {
+  border-bottom: 0.09rem solid white;
+  top: 0.6rem;
+  left: 0.18rem;
+  bottom: 0.37rem;
+  right: 0rem;
+}
+
+.hidden.h::before {
+  border-bottom: 0.07rem solid white;
+  top: 0.3rem;
+  left: 0.1rem;
+  bottom: 0.66rem;
+  right: 0.16rem;
+}
+
+.hidden.h::after {
+  border-left: 0.09rem solid white;
+  top: 0.3rem;
+  left: 0.06rem;
+  bottom: 0.37rem;
+  right: 0.18rem;
+}
+
+.hidden.b::before {
+  top: 0.3rem;
+  bottom: 0.65rem;
+  left: 0.23rem;
+  right: 0;
+  border-radius: 0 0.1rem 0.09rem 0;
+  border-right: 0.1rem solid white;
+  border-top: 0.1rem solid white;
+  border-bottom: 0.09rem solid white;
+}
+
+.hidden.b::after {
+  top: 0.6rem;
+  bottom: 0.34rem;
+  left: 0.23rem;
+  right: 0;
+  border-radius: 0 0.09rem 0.1rem 0;
+  border-right: 0.1rem solid white;
+  border-bottom: 0.1rem solid white;
+}
+
+/* ---------- WHOLE PAGE ANIMATIONS ---------- */
+.container {
+  animation-name: fadeIn;
+  animation-duration: 0.7s;
+  animation-delay: 0.8s;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.credits {
+  animation-name: scroll;
+  animation-duration: 17s;
+  animation-delay: 2.6s;
+  animation-timing-function: cubic-bezier(0.81, 0, 0.19, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes scroll {
+  0% {
+  }
+  33% {
+    transform: translateY(-500px);
+  }
+  67% {
+    transform: translateY(-1300px);
+  }
+  100% {
+    transform: translateY(-1900px);
+  }
+}
