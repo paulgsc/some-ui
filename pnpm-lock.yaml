@@ -563,6 +563,34 @@ importers:
         specifier: workspace:*
         version: link:../eslint
 
+  packages/ui/attributions:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      react-resizable-panels:
+        specifier: ^2.1.0
+        version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/rollup-config':
+        specifier: workspace:*
+        version: link:../../rollup-config
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../eslint
+
   packages/ui/calendar:
     dependencies:
       react:
@@ -665,6 +693,34 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/rollup-config':
+        specifier: workspace:*
+        version: link:../../rollup-config
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../eslint
+
+  packages/ui/makjang:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      react-resizable-panels:
+        specifier: ^2.1.0
+        version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils

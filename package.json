@@ -30,7 +30,8 @@
     "prepare": "husky",
     "test": "turbo test",
     "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build:template": "./bin/release/pkg_cloner"
   },
   "packageManager": "pnpm@9.5.0",
   "author": "pgdev",

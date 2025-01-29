@@ -38,6 +38,12 @@ const reviews = [
     body: "Be skeptical not cynical",
     img: "https://avatar.vercel.sh/james",
   },
+  {
+    name: "because of course",
+    username: "@scam?",
+    body: "Sorry to bother! I'm Ailsa I have some information about a job that I'd like to mention. Can we have a conversation?",
+    img: "https://avatar.vercel.sh/tim",
+  },
 ]
 
 const firstRow = reviews
