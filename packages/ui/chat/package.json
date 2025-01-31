@@ -26,6 +26,7 @@
     "react-dom": "^18.3.1",
     "@some-ui/tsconfig": "workspace:*",
     "maishatu-eslint-kit": "workspace:*",
+    "tailwind-config": "workspace:*",
     "@some-ui/rollup-config": "workspace:*"
   },
   "repository": {
