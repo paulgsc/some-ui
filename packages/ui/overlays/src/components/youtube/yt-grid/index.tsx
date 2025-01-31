@@ -1,19 +1,33 @@
+import { Fragment } from "react"
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "some-ui-shared"
+
 export const YtGrid = (): React.JSX.Element => {
   return (
-    <main className="grid min-h-[600px] w-full grid-flow-row gap-0.5 rounded-lg p-2.5 shadow-lg">
+    <ResizablePanelGroup
+      direction="vertical"
+      className="min-h-[600px] w-full rounded-lg border"
+    >
       {Array.from({ length: 3 }, (_, i) => (
-        <section
-          key={i}
-          className="grid size-full grid-flow-col items-center border border-red-600 p-1.5 shadow-inner first:rounded-t-lg last:rounded-b-lg"
-        >
-          {Array.from({ length: 4 }, (_, k) => (
-            <div
-              key={k}
-              className="size-full rounded-xl border-b border-dashed bg-muted-foreground blur-sm"
-            />
-          ))}
-        </section>
+        <Fragment key={i}>
+          <ResizablePanel defaultSize={100 / 3}>
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="grid size-full grid-flow-col gap-1.5">
+                {Array.from({ length: 4 }, (_, k) => (
+                  <div
+                    key={k}
+                    className="rounded-xl border-2 border-dashed border-muted-foreground bg-muted"
+                  />
+                ))}
+              </div>
+            </div>
+          </ResizablePanel>
+          {i < 2 && <ResizableHandle />}
+        </Fragment>
       ))}
-    </main>
+    </ResizablePanelGroup>
   )
 }
