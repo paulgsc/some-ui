@@ -10,6 +10,11 @@
       "@some-ui/*": ["../../../assets/*"]
     }
   },
-  "include": ["../../../assets/**/*", "src"],
+  "include": [
+    "tailwind.config.ts",
+    "eslint.config.js",
+    "../../../assets/**/*",
+    "src"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

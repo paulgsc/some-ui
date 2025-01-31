@@ -10,6 +10,6 @@
       "@overlays/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["eslint.config.js", "tailwind.config.ts", "src"],
   "exclude": ["node_modules", "build", "dist"]
 }
