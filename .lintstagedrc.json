@@ -1,5 +1,9 @@
 {
-  "**/*.{js,mjs,ts,tsx,md,mdx}": ["eslint --fix", "prettier --check --write"],
+  "**/*.{js,mjs,ts,tsx,md,mdx}": [
+    "eslint --fix",
+    "prettier --check --write",
+    "tsc-files --noEmit"
+  ],
   "**/*.css": ["stylelint --allow-empty-input", "prettier --write"],
   "**/*.{json,yml}": ["prettier --check --write"]
 }
