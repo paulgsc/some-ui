@@ -47,7 +47,6 @@ export default <Array<ConfigWithExtends>>[
       "no-lonely-if": "error",
       "logical-assignment-operators": "error",
       "no-else-return": "error",
-      "no-mixed-operators": "error",
       "no-console": "error",
       "no-process-exit": "error",
       "no-fallthrough": [

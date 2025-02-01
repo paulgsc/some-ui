@@ -7,7 +7,8 @@ import { cn } from "some-ui-utils"
 export const YtGrid = (): React.JSX.Element => {
   const rows = 3
   const cols = 4
-  const { expandedPanel, updatePanelSize } = useRandomPanelExpansion(rows, cols)
+  const { pauseAnimation, resumeAnimation, expandedPanel, updatePanelSize } =
+    useRandomPanelExpansion(rows, cols)
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
@@ -26,6 +27,8 @@ export const YtGrid = (): React.JSX.Element => {
         direction="vertical"
         autoSaveId="conditional"
         className="size-full rounded-lg border"
+        onMouseEnter={pauseAnimation}
+        onMouseLeave={resumeAnimation}
       >
         {Array.from({ length: rows }, (_, i) => (
           <ResizablePanel
