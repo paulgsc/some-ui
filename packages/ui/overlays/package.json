@@ -9,6 +9,7 @@
     "some-ui-neon-sign": "workspace:*",
     "some-ui-emoji-animations": "workspace:*",
     "react-d3-tree": "3.6.2",
+    "react-resizable-panels": "^2.1.0",
     "wireframes": "workspace:*"
   },
   "devDependencies": {
