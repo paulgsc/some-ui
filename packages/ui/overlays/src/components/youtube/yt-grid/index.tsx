@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
@@ -11,21 +11,30 @@ export const YtGrid = (): React.JSX.Element => {
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
+  const updateAllPanels = useCallback(() => {
+    updatePanelSize({ refs: rowsRef.current, dimension: "row" })
+    updatePanelSize({ refs: colsRef.current, dimension: "col" })
+  }, [updatePanelSize])
+
+  useEffect(() => {
+    updateAllPanels()
+  }, [updateAllPanels])
+
   return (
     <div className="h-[600px] w-full">
       <ResizablePanelGroup
         direction="vertical"
         autoSaveId="conditional"
-        onLayout={() =>
-          updatePanelSize({ refs: rowsRef.current, dimension: "row" })
-        }
         className="size-full rounded-lg border"
       >
         {Array.from({ length: rows }, (_, i) => (
           <ResizablePanel
             id={`yt_grid_row_${i}`}
             ref={(el) => {
-              if (el) rowsRef.current[i] = el
+              if (el) {
+                rowsRef.current[i] = el
+                updateAllPanels()
+              }
             }}
             key={i}
             order={i}
@@ -34,9 +43,6 @@ export const YtGrid = (): React.JSX.Element => {
             <ResizablePanelGroup
               direction="horizontal"
               autoSaveId="conditional"
-              onLayout={() =>
-                updatePanelSize({ refs: colsRef.current, dimension: "col" })
-              }
               className="h-full"
             >
               {Array.from({ length: cols }, (_, k) => {
@@ -46,7 +52,10 @@ export const YtGrid = (): React.JSX.Element => {
                     key={k}
                     order={k}
                     ref={(el) => {
-                      if (el) colsRef.current[k] = el
+                      if (el) {
+                        colsRef.current[k] = el
+                        updateAllPanels()
+                      }
                     }}
                     defaultSize={100 / cols}
                     className="transition-all duration-100 ease-linear"
