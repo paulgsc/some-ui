@@ -14,20 +14,26 @@ type UpdatePanelSizeOptions = {
 type RandomExpansion = {
   updatePanelSize: (options: UpdatePanelSizeOptions) => void
   expandedPanel: ExpandedPanel | null
+  pauseAnimation: () => void
+  resumeAnimation: () => void
 }
 
 export const useRandomPanelExpansion = (
   rows: number,
   cols: number,
-  interval = 5000,
+  interval = 15000,
   animationDuration = 5000
 ): RandomExpansion => {
   const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel | null>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
+  const [isPaused, setIsPaused] = useState<boolean>(false)
+
   const animationFrameRef = useRef<number | undefined>(undefined)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
+  const startTimeRef = useRef<number>(0)
+  const pausedTimeRef = useRef<number>(0)
 
   const updatePanelSize = useCallback(
     ({ refs, dimension }: UpdatePanelSizeOptions): void => {
@@ -63,6 +69,11 @@ export const useRandomPanelExpansion = (
     const startTime = Date.now()
 
     const animate = (): void => {
+      if (isPaused) {
+        pausedTimeRef.current = Date.now()
+        return
+      }
+
       const elapsedTime = Date.now() - startTime
       const progress = Math.min(elapsedTime / animationDuration, 1)
       setAnimationProgress(progress)
@@ -84,6 +95,27 @@ export const useRandomPanelExpansion = (
     animationFrameRef.current = requestAnimationFrame(animate)
   }, [interval, animationDuration, selectRandomPanel])
 
+  const pauseAnimation = useCallback(() => {
+    setIsPaused(true)
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+  }, [])
+
+  const resumeAnimation = useCallback(() => {
+    setIsPaused(false)
+    if (pausedTimeRef.current) {
+      // Adjust start time to account for pause duration
+      const pauseDuration = Date.now() - pausedTimeRef.current
+      startTimeRef.current += pauseDuration
+      pausedTimeRef.current = 0
+    }
+    startAnimation()
+  }, [startAnimation])
+
   useEffect(() => {
     selectRandomPanel()
     startAnimation()
@@ -96,5 +128,5 @@ export const useRandomPanelExpansion = (
     }
   }, [selectRandomPanel, startAnimation])
 
-  return { expandedPanel, updatePanelSize }
+  return { expandedPanel, updatePanelSize, pauseAnimation, resumeAnimation }
 }

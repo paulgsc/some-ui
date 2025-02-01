@@ -32,6 +32,7 @@ export default <Array<ConfigWithExtends>>[
     },
     extends: [eslint.configs.recommended],
     rules: {
+      "no-mixed-operators": "off",
       "@typescript-eslint/no-unused-expressions": "error",
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
