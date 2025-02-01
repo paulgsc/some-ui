@@ -2,22 +2,17 @@ import { useEffect, useRef } from "react"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 export const YtGrid = (): React.JSX.Element => {
   const rows = 3
   const cols = 4
-  const { updatePanelSize } = useRandomPanelExpansion(rows, cols)
+  const { expandedPanel, updatePanelSize } = useRandomPanelExpansion(rows, cols)
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
   useEffect(() => {
-    rowsRef.current.forEach((ref, index) => {
-      updatePanelSize(index, true, ref)
-    })
-
-    colsRef.current.forEach((ref, index) => {
-      updatePanelSize(index, false, ref)
-    })
+    updatePanelSize({ rowsRef: rowsRef.current, colsRef: colsRef.current })
   }, [updatePanelSize])
 
   return (
@@ -46,7 +41,13 @@ export const YtGrid = (): React.JSX.Element => {
                     className="transition-all duration-100 ease-linear"
                   >
                     <div
-                      className={`flex size-full items-center justify-center rounded-xl border-2 border-dashed`}
+                      className={cn(
+                        "flex size-full items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground bg-muted",
+                        {
+                          "border-blue-500 bg-blue-100":
+                            expandedPanel?.row === i && expandedPanel.col === k,
+                        }
+                      )}
                     >
                       Panel {i}-{k}
                     </div>

@@ -6,20 +6,21 @@ type ExpandedPanel = {
   col: number
 }
 
+type UpdatePanelSizeOptions = {
+  rowsRef: Array<ImperativePanelHandle | null>
+  colsRef: Array<ImperativePanelHandle | null>
+}
+
 type RandomExpansion = {
-  updatePanelSize: (
-    index: number,
-    isRow: boolean,
-    ref: ImperativePanelHandle | null
-  ) => void
+  updatePanelSize: (options: UpdatePanelSizeOptions) => void
   expandedPanel: ExpandedPanel | null
 }
 
 export const useRandomPanelExpansion = (
   rows: number,
   cols: number,
-  interval = 5000,
-  animationDuration = 5000
+  interval = 30000,
+  animationDuration = 30000
 ): RandomExpansion => {
   const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel | null>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
@@ -28,21 +29,35 @@ export const useRandomPanelExpansion = (
     undefined
   )
 
-  function updatePanelSize(
-    index: number,
-    isRow: boolean,
-    ref: ImperativePanelHandle | null
-  ): void {
-    if (!ref) return
-    const initialSize = isRow ? 100 / rows : 100 / cols
-    const expandedIndex = isRow ? expandedPanel?.row : expandedPanel?.col
-    const size =
-      expandedIndex === index
-        ? // eslint-disable-next-line no-mixed-operators
-          Math.min(100, initialSize + animationProgress * (100 - initialSize))
-        : Math.max(0, initialSize * (1 - animationProgress))
-    ref.resize(size)
-  }
+  const updatePanelSize = useCallback(
+    ({ rowsRef, colsRef }: UpdatePanelSizeOptions): void => {
+      const resizePanels = (
+        panelRefs: Array<ImperativePanelHandle | null>,
+        isRow: boolean
+      ) => {
+        if (!expandedPanel) return
+        const initialSize = isRow ? 100 / rows : 100 / cols
+        for (const ref of panelRefs) {
+          const expandedRef = isRow
+            ? panelRefs[expandedPanel.row]
+            : panelRefs[expandedPanel.col]
+          if (!expandedRef || !ref) return
+          const size =
+            ref.getId() === expandedRef.getId()
+              ? Math.min(
+                  100,
+                  initialSize + animationProgress * (100 - initialSize)
+                )
+              : Math.max(0, initialSize * (1 - animationProgress))
+          ref.resize(size)
+        }
+      }
+
+      resizePanels(rowsRef, true)
+      resizePanels(colsRef, false)
+    },
+    [rows, cols, expandedPanel, animationProgress]
+  )
 
   const selectRandomPanel = useCallback(() => {
     const row = Math.floor(Math.random() * rows)
