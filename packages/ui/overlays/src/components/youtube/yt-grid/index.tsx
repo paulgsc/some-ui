@@ -11,29 +11,40 @@ export const YtGrid = (): React.JSX.Element => {
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
-  useEffect(() => {
-    updatePanelSize({ rowsRef: rowsRef.current, colsRef: colsRef.current })
-  }, [updatePanelSize])
-
   return (
     <div className="h-[600px] w-full">
       <ResizablePanelGroup
         direction="vertical"
+        autoSaveId="conditional"
+        onLayout={() =>
+          updatePanelSize({ refs: rowsRef.current, dimension: "row" })
+        }
         className="size-full rounded-lg border"
       >
         {Array.from({ length: rows }, (_, i) => (
           <ResizablePanel
+            id={`yt_grid_row_${i}`}
             ref={(el) => {
               if (el) rowsRef.current[i] = el
             }}
             key={i}
+            order={i}
             defaultSize={100 / rows}
           >
-            <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanelGroup
+              direction="horizontal"
+              autoSaveId="conditional"
+              onLayout={() =>
+                updatePanelSize({ refs: colsRef.current, dimension: "col" })
+              }
+              className="h-full"
+            >
               {Array.from({ length: cols }, (_, k) => {
                 return (
                   <ResizablePanel
+                    id={`yt_grid_${i}_${k}`}
                     key={k}
+                    order={k}
                     ref={(el) => {
                       if (el) colsRef.current[k] = el
                     }}
