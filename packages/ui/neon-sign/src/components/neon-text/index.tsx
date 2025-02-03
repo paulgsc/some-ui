@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { StyledCharacters } from "@neon-sign/components/styled-characters"
+import { StyledCharacters } from "@neon-sign/components"
 import { OverlayInput } from "some-ui-shared"
 import { useLocalStorage } from "some-ui-utils"
 
