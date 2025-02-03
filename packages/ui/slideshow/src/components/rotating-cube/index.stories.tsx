@@ -6,7 +6,7 @@ type Meta = MetaObj<typeof RotatingCube>
 
 export const Default: Story = {
   args: {
-    perspective: 50,
+    perspective: 1250,
   },
   render: (args) => (
     <main className="flex h-96 min-h-screen flex-1 items-center justify-center">
