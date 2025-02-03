@@ -936,8 +936,8 @@ importers:
         specifier: 2.12.7
         version: 2.12.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.0.1
+        version: 1.0.1(@types/eslint@9.6.1)(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(prettier@3.4.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(typescript@5.7.3)(usehooks-ts@3.1.0(react@19.0.0))
       tailwind-merge:
         specifier: ^2.4.0
         version: 2.6.0
@@ -947,10 +947,10 @@ importers:
         version: link:../../tsconfig
       eslint-import-resolver-alias:
         specifier: ^1.1.2
-        version: 1.1.2(eslint-plugin-import@2.31.0)
+        version: 1.1.2(eslint-plugin-import@2.29.1)
       eslint-import-resolver-typescript:
         specifier: 3.7.0
-        version: 3.7.0(eslint-plugin-import@2.31.0)(eslint@9.18.0(jiti@2.4.2))
+        version: 3.7.0(eslint-plugin-import@2.29.1)(eslint@9.18.0(jiti@2.4.2))
       maishatu-eslint-kit:
         specifier: 1.1.0
         version: 1.1.0(@types/eslint@9.6.1)(eslint@9.18.0(jiti@2.4.2))(prettier@3.4.2)(tailwindcss@4.0.3)(typescript@5.7.3)
@@ -8992,6 +8992,16 @@ packages:
   smob@1.5.0:
     resolution: {integrity: sha512-g6T+p7QO8npa+/hNx9ohv1E5pVCmWrVCUzUXJyLdMmftX6ER0oiWY/w9knEonLpnOp6b6FenKnMfR8gqwWdwig==}
 
+  some-ui-utils@1.0.1:
+    resolution: {integrity: sha512-PCEbFrpHg98eMJi/5Hq+wZ8v/dZ/u5+pjA/9jPmu97dtMcA1wtesUf72iSL0h111FEgmhfTnljNS2u4URrHO2Q==}
+    peerDependencies:
+      clsx: ^2.1.1
+      nuqs: 1.18.0
+      react: 18.3.1
+      react-dom: 18.3.1
+      tailwind-merge: ^2.4.0
+      usehooks-ts: 3.1.0
+
   sort-keys@5.1.0:
     resolution: {integrity: sha512-aSbHV0DaBcr7u0PVHXzM6NbZNAtrr9sF6+Qfs9UUVG7Ll3jQ6hHi8F/xqIIcn2rvIVbr0v/2zyjSdwSV47AgLQ==}
     engines: {node: '>=12'}
@@ -15950,9 +15960,9 @@ snapshots:
     dependencies:
       eslint: 9.18.0(jiti@2.4.2)
 
-  eslint-import-resolver-alias@1.1.2(eslint-plugin-import@2.31.0):
+  eslint-import-resolver-alias@1.1.2(eslint-plugin-import@2.29.1):
     dependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@8.19.1(eslint@9.18.0(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-typescript@3.7.0)(eslint@9.18.0(jiti@2.4.2))
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@8.19.1(eslint@9.18.0(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-typescript@3.7.0)(eslint@9.18.0(jiti@2.4.2))
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
@@ -18761,6 +18771,11 @@ snapshots:
       mitt: 3.0.1
       next: 15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
+  nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      mitt: 3.0.1
+      next: 15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+
   nwsapi@2.2.16: {}
 
   object-assign@4.1.1: {}
@@ -20458,6 +20473,25 @@ snapshots:
 
   smob@1.5.0: {}
 
+  some-ui-utils@1.0.1(@types/eslint@9.6.1)(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(prettier@3.4.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(typescript@5.7.3)(usehooks-ts@3.1.0(react@19.0.0)):
+    dependencies:
+      clsx: 2.1.1
+      maishatu-eslint-kit: 1.1.0(@types/eslint@9.6.1)(eslint@9.18.0(jiti@2.4.2))(prettier@3.4.2)(tailwindcss@4.0.3)(typescript@5.7.3)
+      nuqs: 1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      tailwind-merge: 2.6.0
+      usehooks-ts: 3.1.0(react@19.0.0)
+    transitivePeerDependencies:
+      - '@types/eslint'
+      - eslint
+      - eslint-import-resolver-webpack
+      - eslint-plugin-import-x
+      - prettier
+      - supports-color
+      - tailwindcss
+      - typescript
+
   sort-keys@5.1.0:
     dependencies:
       is-plain-obj: 4.1.0
@@ -21308,6 +21342,11 @@ snapshots:
     dependencies:
       lodash.debounce: 4.0.8
       react: 18.3.1
+
+  usehooks-ts@3.1.0(react@19.0.0):
+    dependencies:
+      lodash.debounce: 4.0.8
+      react: 19.0.0
 
   util-deprecate@1.0.2: {}
 
