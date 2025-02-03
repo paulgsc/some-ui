@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { SplayTree } from "@overlays/utils"
+import type { RawNodeDatum } from "react-d3-tree"
 import { Tree } from "react-d3-tree"
 
-const SplayTreeAnimation = () => {
+const SplayTreeAnimation = (): React.JSX.Element => {
   const [tree, setTree] = useState(() => new SplayTree())
-  const [treeData, setTreeData] = useState<any>(null)
-  const [message, setMessage] = useState("")
-  const intervalRef = useRef<NodeJS.Timeout>()
-  const containerRef = useRef(null)
+  const [treeData, setTreeData] = useState<RawNodeDatum | undefined>(undefined)
+  const [_, setMessage] = useState("")
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+
+  const containerRef = useRef<HTMLDivElement>(null)
   const [translate, setTranslate] = useState({ x: 0, y: 0 })
 
   const updateTreeData = useCallback(() => {
@@ -18,7 +22,7 @@ const SplayTreeAnimation = () => {
     return tree.getHeight() || 0
   }, [tree])
 
-  const getRandomKey = () => {
+  const getRandomKey = (): number => {
     return Math.floor(Math.random() * 100)
   }
 
@@ -64,14 +68,16 @@ const SplayTreeAnimation = () => {
           newTree.insert(key)
           setMessage(`Inserted ${key}`)
           break
-        case "find":
+        case "find": {
           const found = newTree.find(key)
           setMessage(found ? `Found ${key}` : `${key} not found`)
           break
-        case "remove":
+        }
+        case "remove": {
           const removed = newTree.remove(key)
           setMessage(removed ? `Removed ${key}` : `${key} not found`)
           break
+        }
       }
 
       return newTree
@@ -86,7 +92,7 @@ const SplayTreeAnimation = () => {
     // Start animation cycle
     intervalRef.current = setInterval(performOperation, 1000)
 
-    return () => {
+    return (): void => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
