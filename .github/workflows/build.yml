@@ -1,10 +1,8 @@
 name: Build And Upload Extension Zip Via Artifact
-
 on:
   push:
     branches: [main]
   pull_request:
-
 jobs:
   determine_jobs:
     name: Determine jobs to run
@@ -17,51 +15,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Detect build-related changes
         id: changes
-        uses: technote-space/get-diff-action@v6
+        uses: dorny/paths-filter@v3
         with:
-          PATTERNS: |
-            **/src/**/*.{js,jsx,ts,tsx,json,css}
-            public/**
-            package.json
-            pnpm-lock.yaml
-            .nvmrc
-            vite.config.ts
-            tsconfig.json
-            index.html
-            !**/*.md
-            !**/*.mdx
-      - name: Debug Output
-        run: |
-          echo "Diff: ${{ steps.changes.outputs.diff }}"
-          echo "Filtered Diff: ${{ steps.changes.outputs.filtered_diff }}"
-          echo "Matched Files: ${{ steps.changes.outputs.matched_files }}"
-          echo "Count: ${{ steps.changes.outputs.count }}"
-
+          filters: |
+            build:
+              - '**/src/**/*.{js,jsx,ts,tsx,json,css}'
+              - 'public/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - '.nvmrc'
+              - 'vite.config.ts'
+              - 'tsconfig.json'
+              - 'index.html'
+              - '!**/*.md'
+              - '!**/*.mdx'
   build:
     name: Build Extension
     needs: determine_jobs
     if: ${{ needs.determine_jobs.outputs.build == 'true' }}
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-
       - name: Build extension
         run: pnpm build
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
