@@ -1,8 +1,8 @@
 import type {
   SearchBarRenderType,
+  SearchbarToggleContextMenu,
   SearchContext,
   SearchContextMenu,
-  SearchbarToggleContextMenu,
 } from "@searchbar/types/searchbar"
 import type { QueryStateOptions } from "some-ui-utils"
 

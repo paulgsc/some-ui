@@ -13,7 +13,11 @@ type WaveBarChartProps = {
   bars: number
 }
 
-export const WaveBarChart: React.FC<WaveBarChartProps> = ({ width, height, bars }) => {
+export const WaveBarChart: React.FC<WaveBarChartProps> = ({
+  width,
+  height,
+  bars,
+}) => {
   const { audioContext, analyser, gainNode } = useAudioContext()
   const { audioElement, fileName, handleFileUpload } = useAudioElement()
   const { isPlaying, togglePlay } = useAudioPlayback(audioElement, audioContext)
