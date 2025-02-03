@@ -1,5 +1,13 @@
 # some-ui-chat
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-shared@0.0.3
+  - some-ui-utils@1.0.1
+
 ## 0.0.1
 
 ### Patch Changes

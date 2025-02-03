@@ -1,5 +1,14 @@
 # some-ui-nfl
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-types-utils@0.0.0
+  - some-ui-shared@0.0.3
+  - some-ui-utils@1.0.1
+
 ## 0.0.2
 
 ### Patch Changes

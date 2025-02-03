@@ -1,5 +1,12 @@
 # some-ui-utils
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`5d1bde9`](https://github.com/paulgsc/some-ui/commit/5d1bde9ff108ba2fd31085974b2d5ae6feef1e4b)]:
+  - maishatu-eslint-kit@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
