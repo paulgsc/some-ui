@@ -1,5 +1,13 @@
 # maishatu-eslint-kit
 
+## 1.1.0
+
+### Minor Changes
+
+- [#155](https://github.com/paulgsc/some-ui/pull/155) [`5d1bde9`](https://github.com/paulgsc/some-ui/commit/5d1bde9ff108ba2fd31085974b2d5ae6feef1e4b) Thanks [@paulgsc](https://github.com/paulgsc)! - What remove post install script
+  How del script from package.json
+  Why was needed for workspace version
+
 ## 1.0.0
 
 ### Major Changes

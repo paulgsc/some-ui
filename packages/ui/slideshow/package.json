@@ -1,6 +1,6 @@
 {
   "name": "some-ui-slideshow",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",

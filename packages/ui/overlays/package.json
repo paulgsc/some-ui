@@ -65,5 +65,5 @@
   "type": "module",
   "types": "index.d.ts",
   "unpkg": "overlays.umd.js",
-  "version": "0.0.2"
+  "version": "0.0.3"
 }

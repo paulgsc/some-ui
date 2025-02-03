@@ -1,6 +1,6 @@
 {
   "name": "some-ui-utils",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",

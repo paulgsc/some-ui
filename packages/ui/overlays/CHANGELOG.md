@@ -1,5 +1,17 @@
 # overlays
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-neon-sign@0.0.3
+  - some-ui-shared@0.0.3
+  - some-ui-slideshow@0.0.3
+  - wireframes@0.0.3
+  - some-ui-utils@1.0.1
+  - some-ui-emoji-animations@0.0.3
+
 ## 0.0.2
 
 ### Patch Changes
