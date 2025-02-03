@@ -12,20 +12,20 @@
     "maishatu-eslint-kit": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/umag.esm.js"
+        "default": "./dist/esm/wireframes.esm.js",
+        "types": "./dist/esm/index.d.ts"
       },
       "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/umag.cjs.js"
+        "default": "./dist/cjs/wireframes.cjs.js",
+        "types": "./dist/cjs/index.d.ts"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "umag*",
+    "wireframes*",
     "./dist/src/**/*",
     "index.d.ts",
     "./dist/esm/**/*",
@@ -35,7 +35,7 @@
   "keywords": [],
   "license": "MIT",
   "main": "./dist/umag.umd.js",
-  "module": "./dist/esm/umag.esm.js",
+  "module": "./dist/esm/wireframes.esm.js",
   "name": "umag",
   "peerDependencies": {
     "react": "^19.0.0",
@@ -62,6 +62,6 @@
   "sideEffects": false,
   "type": "module",
   "types": "index.d.ts",
-  "unpkg": "umag.umd.js",
+  "unpkg": "wireframes.umd.js",
   "version": "0.0.1"
 }
