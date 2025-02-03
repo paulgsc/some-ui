@@ -65,9 +65,6 @@ importers:
       '@rollup/plugin-typescript':
         specifier: 12.1.2
         version: 12.1.2(rollup@4.30.1)(tslib@2.8.1)(typescript@5.7.3)
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:packages/rollup-config
       '@storybook/addon-essentials':
         specifier: ^8.5.1
         version: 8.5.3(@types/react@19.0.4)(storybook@8.5.3(prettier@3.4.2))
@@ -236,6 +233,9 @@ importers:
       rollup-plugin-typescript2:
         specifier: ^0.36.0
         version: 0.36.0(rollup@4.30.1)(typescript@5.7.3)
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:packages/rollup-config
       storybook:
         specifier: ^8.5.1
         version: 8.5.3(prettier@3.4.2)
@@ -327,12 +327,12 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/eslint:
     dependencies:
@@ -452,9 +452,6 @@ importers:
       '@shikijs/compat':
         specifier: ^1.1.7
         version: 1.26.1
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -491,6 +488,9 @@ importers:
       rimraf:
         specifier: ^4.1.3
         version: 4.4.1
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../rollup-config
       unist-util-visit:
         specifier: ^4.1.2
         version: 4.1.2
@@ -522,12 +522,12 @@ importers:
         specifier: workspace:*
         version: link:../ui/shared
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../rollup-config
 
   packages/rollup-config:
     devDependencies:
@@ -610,15 +610,15 @@ importers:
         specifier: 3.23.8
         version: 3.23.8
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../rollup-config
 
   packages/ui/attributions:
     dependencies:
@@ -638,15 +638,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/calendar:
     dependencies:
@@ -657,15 +657,15 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/chat:
     dependencies:
@@ -679,9 +679,6 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
@@ -694,6 +691,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
       tailwind-config:
         specifier: workspace:*
         version: link:../../tailwind-config
@@ -716,12 +716,12 @@ importers:
         specifier: 3.1.0
         version: 3.1.0(react@18.3.1)
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/honeycomb:
     dependencies:
@@ -735,15 +735,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/input:
     dependencies:
@@ -757,15 +757,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/makjang:
     dependencies:
@@ -785,15 +785,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/neon-sign:
     dependencies:
@@ -810,15 +810,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/nfl:
     dependencies:
@@ -838,15 +838,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/overlays:
     dependencies:
@@ -875,15 +875,15 @@ importers:
         specifier: workspace:*
         version: link:../wireframes
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
       tailwind-config:
         specifier: workspace:*
         version: link:../../tailwind-config
@@ -897,15 +897,15 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/searchbar:
     dependencies:
@@ -919,9 +919,6 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
@@ -940,6 +937,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/shared:
     dependencies:
@@ -1007,9 +1007,6 @@ importers:
         specifier: ^2.4.0
         version: 2.6.0
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
@@ -1028,6 +1025,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/slideshow:
     dependencies:
@@ -1050,15 +1050,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
       tailwind-config:
         specifier: workspace:*
         version: link:../../tailwind-config
@@ -1084,15 +1084,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/umag:
     dependencies:
@@ -1112,15 +1112,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/ui/wireframes:
     dependencies:
@@ -1140,15 +1140,15 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../eslint
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../rollup-config
 
   packages/utils:
     dependencies:
@@ -1174,12 +1174,12 @@ importers:
         specifier: 3.1.0
         version: 3.1.0(react@18.3.1)
     devDependencies:
-      '@some-ui/rollup-config':
-        specifier: workspace:*
-        version: link:../rollup-config
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../rollup-config
 
 packages:
 

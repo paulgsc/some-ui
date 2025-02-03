@@ -28,6 +28,6 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*"
+    "some-ui-rollup-config": "workspace:*"
   }
 }
