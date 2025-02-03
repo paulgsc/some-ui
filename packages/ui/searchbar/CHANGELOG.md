@@ -1,5 +1,14 @@
 # some-ui-searchbar
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-types-utils@0.0.0
+  - some-ui-shared@0.0.4
+  - some-ui-utils@1.0.2
+
 ## 0.0.3
 
 ### Patch Changes

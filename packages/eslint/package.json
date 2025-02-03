@@ -1,6 +1,6 @@
 {
   "name": "maishatu-eslint-kit",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "tsconfig for some-ui",
   "type": "module",
   "main": "./dist/esm/index.js",

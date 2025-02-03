@@ -1,5 +1,13 @@
 # maishatu-eslint-kit
 
+## 1.2.0
+
+### Minor Changes
+
+- [#160](https://github.com/paulgsc/some-ui/pull/160) [`7eba3d1`](https://github.com/paulgsc/some-ui/commit/7eba3d1485cf02167659b03fdb26dbefbad04c32) Thanks [@paulgsc](https://github.com/paulgsc)! - What add dist files
+  How add build ci step
+  Why no longer building on postinstall, need build step in ci pipeline
+
 ## 1.1.0
 
 ### Minor Changes
