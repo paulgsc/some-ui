@@ -1,67 +1,67 @@
 {
-  "bugs": {
-    "url": "https://github.com/paulgsc/some-ui/issues"
-  },
-  "dependencies": {
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
-  },
-  "devDependencies": {
-    "some-ui-rollup-config": "workspace:*",
-    "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*"
-  },
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/attributions.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/attributions.cjs.js"
-      }
-    }
-  },
-  "files": [
-    "attributions*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
-  ],
-  "homepage": "https://pgdev.maishatu.com/?tab=github",
-  "keywords": [],
-  "license": "MIT",
-  "main": "./dist/attributions.umd.js",
-  "module": "./dist/esm/attributions.esm.js",
-  "name": "attributions",
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-resizable-panels": "^2.1.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/paulgsc/some-ui"
-  },
-  "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "postinstall": "pnpm build",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-    "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
-  },
-  "sideEffects": false,
-  "type": "module",
-  "types": "index.d.ts",
-  "unpkg": "attributions.umd.js",
-  "version": "0.0.1"
+	"bugs": {
+		"url": "https://github.com/paulgsc/some-ui/issues"
+	},
+	"dependencies": {
+		"some-ui-shared": "workspace:*",
+		"some-ui-utils": "workspace:*"
+	},
+	"devDependencies": {
+		"some-ui-rollup-config": "workspace:*",
+		"@some-ui/tsconfig": "workspace:*",
+		"maishatu-eslint-kit": "workspace:*"
+	},
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"import": {
+				"types": "./dist/esm/index.d.ts",
+				"default": "./dist/esm/attributions.esm.js"
+			},
+			"require": {
+				"types": "./dist/cjs/index.d.ts",
+				"default": "./dist/cjs/attributions.cjs.js"
+			}
+		}
+	},
+	"files": [
+		"attributions*",
+		"./dist/src/**/*",
+		"index.d.ts",
+		"./dist/esm/**/*",
+		"./dist/cjs/**/*"
+	],
+	"homepage": "https://pgdev.maishatu.com/?tab=github",
+	"keywords": [],
+	"license": "MIT",
+	"main": "./dist/attributions.umd.js",
+	"module": "./dist/esm/attributions.esm.js",
+	"name": "attributions",
+	"peerDependencies": {
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"react-resizable-panels": "^2.1.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/paulgsc/some-ui"
+	},
+	"scripts": {
+		"build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+		"build:tsc-alias": "tsc-alias -p tsconfig.json",
+		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+		"clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+		"postinstall": "pnpm build",
+		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+		"typecheck": "tsc --noEmit",
+		"watch:build": "rollup --bundleConfigAsCjs -c --watch",
+		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+	},
+	"sideEffects": false,
+	"type": "module",
+	"types": "index.d.ts",
+	"unpkg": "attributions.umd.js",
+	"version": "0.0.1"
 }

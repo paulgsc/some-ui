@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import {
   Card,
   CardContent,
@@ -172,7 +172,7 @@ export default function NFLStandings() {
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="mx-auto w-full max-w-4xl">
       <CardHeader>
         <CardTitle>NFL Standings</CardTitle>
       </CardHeader>
@@ -187,10 +187,10 @@ export default function NFLStandings() {
           <TabsContent value="divisions">
             {Object.entries(nflData).map(([conference, divisions]) => (
               <div key={conference} className="mb-8">
-                <h2 className="text-xl font-bold mb-4">{conference}</h2>
+                <h2 className="mb-4 text-xl font-bold">{conference}</h2>
                 {divisions.map((division) => (
                   <div key={division.division} className="mb-6">
-                    <h3 className="text-lg font-semibold mb-2">
+                    <h3 className="mb-2 text-lg font-semibold">
                       {division.division}
                     </h3>
                     <Table>
@@ -242,7 +242,7 @@ export default function NFLStandings() {
           <TabsContent value="conference">
             {Object.entries(nflData).map(([conference, _]) => (
               <div key={conference} className="mb-8">
-                <h2 className="text-xl font-bold mb-4">{conference}</h2>
+                <h2 className="mb-4 text-xl font-bold">{conference}</h2>
                 <Table>
                   <TableHeader>
                     <TableRow>

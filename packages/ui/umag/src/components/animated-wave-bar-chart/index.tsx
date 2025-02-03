@@ -1,8 +1,8 @@
 import { useState } from "react"
-import { WaveBarChart } from "@umag/components"
+import { WaveBarChart } from "@umag/components/wave-bar-chart"
 import { Button, Slider } from "some-ui-shared"
 
-export const AnimatedWaveBarChart = () => {
+export const AnimatedWaveBarChart = (): React.JSX.Element => {
   const [amplitude, setAmplitude] = useState(100)
   const [frequency, setFrequency] = useState(1)
   const [speed, setSpeed] = useState(5)
