@@ -1,5 +1,5 @@
 import type { ChangeEvent, FC } from "react"
-import { Input } from "@shared/components/ui"
+import { Input } from "@shared/components/ui/input"
 import { cn } from "@shared/lib/utils"
 
 type OverlayInputProps = {
