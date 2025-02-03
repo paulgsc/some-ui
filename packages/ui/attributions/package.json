@@ -12,20 +12,20 @@
     "maishatu-eslint-kit": "workspace:*"
   },
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "import": {
-        "default": "./dist/esm/wireframes.esm.js",
-        "types": "./dist/esm/index.d.ts"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/attributions.esm.js"
       },
       "require": {
-        "default": "./dist/cjs/wireframes.cjs.js",
-        "types": "./dist/cjs/index.d.ts"
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/attributions.cjs.js"
       }
-    },
-    "./package.json": "./package.json"
+    }
   },
   "files": [
-    "wireframes*",
+    "attributions*",
     "./dist/src/**/*",
     "index.d.ts",
     "./dist/esm/**/*",
@@ -34,8 +34,8 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/wireframes.umd.js",
-  "module": "./dist/esm/wireframes.esm.js",
+  "main": "./dist/attributions.umd.js",
+  "module": "./dist/esm/attributions.esm.js",
   "name": "attributions",
   "peerDependencies": {
     "react": "^19.0.0",
@@ -62,6 +62,6 @@
   "sideEffects": false,
   "type": "module",
   "types": "index.d.ts",
-  "unpkg": "wireframes.umd.js",
+  "unpkg": "attributions.umd.js",
   "version": "0.0.1"
 }
