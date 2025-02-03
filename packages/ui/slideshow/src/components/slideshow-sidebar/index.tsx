@@ -143,7 +143,9 @@ const data = {
   ],
 }
 
-const SlideshowSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
+export const SlideshowSidebar = ({
+  ...props
+}: ComponentProps<typeof Sidebar>) => {
   return (
     <Sidebar {...props}>
       <SidebarHeader></SidebarHeader>
@@ -170,5 +172,3 @@ const SlideshowSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
     </Sidebar>
   )
 }
-
-export default SlideshowSidebar

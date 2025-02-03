@@ -9,6 +9,12 @@
       "@slideshow/*": ["./src/*"]
     }
   },
-  "include": ["src", "src/data/*.json"],
+"include": [
+    "tailwind.config.ts",
+    "eslint.config.js",
+    "../../../assets/**/*",
+    "src"
+    , "src/data/*.json"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

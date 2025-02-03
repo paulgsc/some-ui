@@ -1,4 +1,4 @@
-import type { CSSProperties, RefObject } from "react"
+import type { CSSProperties, FC, RefObject } from "react"
 import { useRef } from "react"
 import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
 import { useRotatingCube } from "@slideshow/hooks"
@@ -14,9 +14,14 @@ import {
 } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
-import styles from "./index.module.css"
 
-const RotatingCube = (): React.JSX.Element => {
+type RotatingCubeProps = {
+  perspective?: number
+}
+
+export const RotatingCube: FC<RotatingCubeProps> = ({
+  perspective = 1200,
+}): React.JSX.Element => {
   const { isRotating, currentFace, setIsRotating } = useRotatingCube()
   const faces = cubeFaces()
   const ref = useRef<HTMLDivElement>(null)
@@ -27,14 +32,15 @@ const RotatingCube = (): React.JSX.Element => {
 
   return (
     <div
-      style={{ perspective: "1150px" }}
-      className="flex size-10/12 items-center justify-center"
+      style={{ "--perspective": perspective } as CSSProperties}
+      className={cn(
+        "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]"
+      )}
     >
       <div
         ref={ref}
         className={cn(
-          "preserve-3d relative size-full max-w-sm transition-transform duration-500",
-          { [styles.rotating]: true }
+          "transform-3d relative size-full max-w-sm transition-transform duration-500",
         )}
         style={{ transform: `rotateY(-${currentFace * 90}deg)` }}
         onMouseEnter={() => setIsRotating(false)}
@@ -60,7 +66,7 @@ const RotatingCube = (): React.JSX.Element => {
             )}
           >
             {currentFace !== index && (
-              <div className="pointer-events-none absolute inset-0 -z-10 size-full rounded-xl bg-muted brightness-50" />
+              <div className="bg-muted pointer-events-none absolute inset-0 -z-10 size-full rounded-xl brightness-50" />
             )}
             {currentFace === index && face}
           </div>
@@ -129,7 +135,7 @@ const cubeFaces = (): Array<React.JSX.Element> =>
           </h3>
 
           {/* Description */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {filteredData?.abstract}
           </p>
 
@@ -155,4 +161,3 @@ const cubeFaces = (): Array<React.JSX.Element> =>
     )
   })
 
-export default RotatingCube

@@ -1,4 +1,4 @@
-import SlideShowCard from "@slideshow/components/slideshow-card"
+import {SlideShowCard} from "@slideshow/components/slideshow-card"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 type Story = StoryObj<typeof SlideShowCard>

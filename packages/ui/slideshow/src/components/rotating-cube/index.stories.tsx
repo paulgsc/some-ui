@@ -1,13 +1,16 @@
-import RotatingCube from "@slideshow/components/rotating-cube"
+import { RotatingCube } from "@slideshow/components/rotating-cube"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 type Story = StoryObj<typeof RotatingCube>
 type Meta = MetaObj<typeof RotatingCube>
 
 export const Default: Story = {
-  render: () => (
+  args: {
+    perspective: 50,
+  },
+  render: (args) => (
     <main className="flex h-96 min-h-screen flex-1 items-center justify-center">
-      <RotatingCube />
+      <RotatingCube {...args} />
     </main>
   ),
 }
