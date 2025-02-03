@@ -40,9 +40,13 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          # Disable Husky explicitly
+          npx husky disable
         env:
           HUSKY_SKIP_INSTALL: 1
+          HUSKY_DISABLE: 1
           # NODE_ENV: production # need to ensure this is set for most packages
 
       - name: Create Release Pull Request or Publish
