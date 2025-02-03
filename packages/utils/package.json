@@ -1,74 +1,73 @@
 {
-	"name": "some-ui-utils",
-	"version": "1.0.0",
-	"type": "module",
-	"scripts": {
-		"build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-		"build:tsc-alias": "tsc-alias -p tsconfig.json",
-		"watch:build": "rollup --bundleConfigAsCjs -c --watch",
-		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
-		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-		"clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-		"typecheck": "tsc --noEmit",
-		"postinstall": "pnpm build",
-		"test": "vitest"
-	},
-	"peerDependencies": {
-		"react": "18.3.1",
-		"react-dom": "18.3.1",
-		"tailwind-merge": "^2.4.0",
-		"clsx": "^2.1.1",
-		"nuqs": "1.18.0",
-		"usehooks-ts": "3.1.0"
-	},
-	"dependencies": {
-		"tailwind-merge": "^2.4.0",
-		"maishatu-eslint-kit": "workspace:*",
-		"clsx": "^2.1.1",
-		"nuqs": "1.18.0",
-		"usehooks-ts": "3.1.0"
-	},
-	"devDependencies": {
-		"some-ui-rollup-config": "workspace:*",
-		"maishatu-eslint-kit": "workspace:*",
-		"@some-ui/tsconfig": "workspace:*"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/paulgsc/some-ui"
-	},
-	"bugs": {
-		"url": "https://github.com/paulgsc/some-ui/issues"
-	},
-	"homepage": "https://pgdev.maishatu.com/?tab=github",
-	"license": "MIT",
-	"keywords": [],
-	"files": [
-		"some-ui-utils*",
-		"./dist/src/**/*",
-		"index.d.ts",
-		"./dist/esm/**/*",
-		"./dist/cjs/**/*"
-	],
-	"sideEffects": false,
-	"unpkg": "some-ui-utils.umd.js",
-	"main": "./dist/some-ui-utils.umd.js",
-	"module": "./dist/esm/some-ui-utils.esm.js",
-	"types": "index.d.ts",
-	"exports": {
-		"./package.json": "./package.json",
-		".": {
-			"import": {
-				"types": "./dist/esm/index.d.ts",
-				"default": "./dist/esm/some-ui-utils.esm.js"
-			},
-			"require": {
-				"types": "./dist/cjs/index.d.ts",
-				"default": "./dist/cjs/some-ui-utils.cjs.js"
-			}
-		}
-	}
+  "name": "some-ui-utils",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "^2.4.0",
+    "clsx": "^2.1.1",
+    "nuqs": "1.18.0",
+    "usehooks-ts": "3.1.0"
+  },
+  "dependencies": {
+    "tailwind-merge": "^2.4.0",
+    "maishatu-eslint-kit": "workspace:*",
+    "clsx": "^2.1.1",
+    "nuqs": "1.18.0",
+    "usehooks-ts": "3.1.0"
+  },
+  "devDependencies": {
+    "some-ui-rollup-config": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "some-ui-utils*",
+    "./dist/src/**/*",
+    "index.d.ts",
+    "./dist/esm/**/*",
+    "./dist/cjs/**/*"
+  ],
+  "sideEffects": false,
+  "unpkg": "some-ui-utils.umd.js",
+  "main": "./dist/some-ui-utils.umd.js",
+  "module": "./dist/esm/some-ui-utils.esm.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/some-ui-utils.esm.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/some-ui-utils.cjs.js"
+      }
+    }
+  }
 }
