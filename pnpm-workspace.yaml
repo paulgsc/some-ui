@@ -1,9 +1,11 @@
 packages:
   - packages/ui/*
+  - packages/charts/*
   - packages/tsconfig
   - packages/rollup-config
   - packages/tailwind-config
   - packages/utils
+  - packages/pivot-search
   - packages/mdx-generator
   - packages/routing
   - packages/types
