@@ -18,6 +18,7 @@
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
       "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
+      "@umag/*": ["./packages/ui/umag/src/"],
       "@wireframes/*": ["./packages/ui/wireframes/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
