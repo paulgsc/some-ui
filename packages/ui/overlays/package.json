@@ -45,7 +45,6 @@
   "module": "./dist/esm/some-ui-shared.esm.js",
   "name": "overlays",
   "peerDependencies": {},
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
