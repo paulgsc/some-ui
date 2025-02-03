@@ -1,5 +1,5 @@
-import {InsetCard} from "@slideshow/components/inset-card"
-import {SidebarCarousel} from "@slideshow/components/sidebar-carousel"
+import { InsetCard } from "@slideshow/components/inset-card"
+import { SidebarCarousel } from "@slideshow/components/sidebar-carousel"
 import {
   Breadcrumb,
   BreadcrumbItem,

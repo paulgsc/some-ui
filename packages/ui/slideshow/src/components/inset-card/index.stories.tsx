@@ -1,4 +1,4 @@
-import {InsetCard} from "@slideshow/components/inset-card"
+import { InsetCard } from "@slideshow/components/inset-card"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 type Story = StoryObj<typeof InsetCard>

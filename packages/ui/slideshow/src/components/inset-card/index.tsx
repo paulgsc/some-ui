@@ -10,7 +10,9 @@ type InsetCardProps = {
   topVh?: InsetTopVerticalHeight
 }
 
-export const InsetCard: FC<InsetCardProps> = ({ topVh = 25 }): React.JSX.Element => {
+export const InsetCard: FC<InsetCardProps> = ({
+  topVh = 25,
+}): React.JSX.Element => {
   return (
     <ResizablePanelGroup
       direction="vertical"
@@ -30,4 +32,3 @@ export const InsetCard: FC<InsetCardProps> = ({ topVh = 25 }): React.JSX.Element
     </ResizablePanelGroup>
   )
 }
-

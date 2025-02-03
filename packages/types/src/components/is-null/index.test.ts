@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, test } from "vitest"
 
-import { IsNil, IsNull, isNil, isNull } from "."
+import { IsNil, isNil, IsNull, isNull } from "."
 
 // Update the path as needed
 

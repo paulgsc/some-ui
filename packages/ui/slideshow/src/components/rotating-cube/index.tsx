@@ -13,8 +13,8 @@ import {
   Card,
 } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
-import styles from "./index.module.css"
 
+import styles from "./index.module.css"
 
 type RotatingCubeProps = {
   perspective?: number
@@ -42,11 +42,11 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
         ref={ref}
         className={cn(
           "transform-3d relative size-full max-w-sm transition-transform duration-500",
-                { [styles.rotating]: true }
+          { [styles.rotating]: true }
         )}
-        style={{ 
-            transform: `rotateY(-${currentFace * 90}deg)`, 
-              transformStyle: "preserve-3d" 
+        style={{
+          transform: `rotateY(-${currentFace * 90}deg)`,
+          transformStyle: "preserve-3d",
         }}
         onMouseEnter={() => setIsRotating(false)}
         onMouseLeave={() => setIsRotating(true)}
@@ -165,4 +165,3 @@ const cubeFaces = (): Array<React.JSX.Element> =>
       </Card>
     )
   })
-
