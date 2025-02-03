@@ -1,71 +1,71 @@
 {
-	"name": "some-ui-slideshow",
-	"private": true,
-	"version": "0.0.1",
-	"type": "module",
-	"scripts": {
-		"build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-		"build:tsc-alias": "tsc-alias -p tsconfig.json",
-		"watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
-		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
-		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-		"clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-		"typecheck": "tsc --noEmit",
-		"postinstall": "pnpm build"
-	},
-	"peerDependencies": {
-		"react": "18.3.1",
-		"react-dom": "18.3.1"
-	},
-	"dependencies": {
-		"lucide-react": "^0.474.0",
-		"@radix-ui/react-accordion": "^1.1.2",
-		"some-ui-shared": "workspace:*",
-		"some-ui-utils": "workspace:*"
-	},
-	"devDependencies": {
-		"@some-ui/rollup-config": "workspace:*",
-		"@some-ui/tsconfig": "workspace:*",
-		"zod": "^3.24.1",
-		"tailwind-config": "workspace:*",
-		"maishatu-eslint-kit": "workspace:*"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/paulgsc/some-ui"
-	},
-	"bugs": {
-		"url": "https://github.com/paulgsc/some-ui/issues"
-	},
-	"homepage": "https://pgdev.maishatu.com/?tab=github",
-	"license": "MIT",
-	"keywords": [],
-	"files": [
-		"some-ui-slideshow*",
-		"./dist/src/**/*",
-		"index.d.ts",
-		"./dist/esm/**/*",
-		"./dist/cjs/**/*"
-	],
-	"sideEffects": false,
-	"unpkg": "some-ui-slideshow.umd.js",
-	"main": "./dist/some-ui-slideshow.umd.js",
-	"module": "./dist/esm/some-ui-slideshow.esm.js",
-	"types": "index.d.ts",
-	"exports": {
-		"./package.json": "./package.json",
-		".": {
-			"import": {
-				"types": "./dist/esm/index.d.ts",
-				"default": "./dist/esm/some-ui-slideshow.esm.js"
-			},
-			"require": {
-				"types": "./dist/cjs/index.d.ts",
-				"default": "./dist/cjs/some-ui-slideshow.cjs.js"
-			}
-		}
-	}
+  "name": "some-ui-slideshow",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "pnpm build"
+  },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "dependencies": {
+    "lucide-react": "^0.474.0",
+    "@radix-ui/react-accordion": "^1.1.2",
+    "some-ui-shared": "workspace:*",
+    "some-ui-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "some-ui-rollup-config": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "zod": "^3.24.1",
+    "tailwind-config": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "some-ui-slideshow*",
+    "./dist/src/**/*",
+    "index.d.ts",
+    "./dist/esm/**/*",
+    "./dist/cjs/**/*"
+  ],
+  "sideEffects": false,
+  "unpkg": "some-ui-slideshow.umd.js",
+  "main": "./dist/some-ui-slideshow.umd.js",
+  "module": "./dist/esm/some-ui-slideshow.esm.js",
+  "types": "index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/some-ui-slideshow.esm.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/some-ui-slideshow.cjs.js"
+      }
+    }
+  }
 }

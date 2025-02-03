@@ -1,5 +1,5 @@
 import path, { resolve } from "path"
-import { createRollupConfig } from "@some-ui/rollup-config"
+import { createRollupConfig } from "some-ui-rollup-config"
 
 import packageJson from "./package.json"
 

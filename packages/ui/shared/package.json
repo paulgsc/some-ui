@@ -60,7 +60,7 @@
     "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
-    "@some-ui/rollup-config": "workspace:*",
+    "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-typescript": "3.7.0",

@@ -31,7 +31,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "maishatu-eslint-kit": "workspace:*",
-    "@some-ui/rollup-config": "workspace:*"
+    "some-ui-rollup-config": "workspace:*"
   },
   "repository": {
     "type": "git",

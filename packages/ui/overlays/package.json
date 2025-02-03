@@ -13,7 +13,7 @@
     "wireframes": "workspace:*"
   },
   "devDependencies": {
-    "@some-ui/rollup-config": "workspace:*",
+    "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "tailwind-config": "workspace:*",
     "maishatu-eslint-kit": "workspace:*"
