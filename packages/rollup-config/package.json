@@ -2,7 +2,6 @@
   "name": "@some-ui/rollup-config",
   "version": "0.1.0",
   "description": "rollup-sconfig for some-ui",
-  "private": true,
   "files": [
     "dist/**"
   ],
