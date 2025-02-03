@@ -9,7 +9,7 @@
   "devDependencies": {
     "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.1.0"
+    "maishatu-eslint-kit": "1.2.0"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -62,5 +62,5 @@
   "type": "module",
   "types": "index.d.ts",
   "unpkg": "makjang.umd.js",
-  "version": "0.0.3"
+  "version": "0.0.4"
 }

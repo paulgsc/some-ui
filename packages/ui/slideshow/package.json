@@ -1,6 +1,6 @@
 {
   "name": "some-ui-slideshow",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "scripts": {
     "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
@@ -29,7 +29,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "zod": "^3.24.1",
     "tailwind-config": "workspace:*",
-    "maishatu-eslint-kit": "1.1.0"
+    "maishatu-eslint-kit": "1.2.0"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,13 @@
 # some-ui-slideshow
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-shared@0.0.4
+  - some-ui-utils@1.0.2
+
 ## 0.0.3
 
 ### Patch Changes
