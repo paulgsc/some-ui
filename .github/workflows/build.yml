@@ -51,4 +51,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: extension-dist
-          path: dist/*
+          path: |
+            packages/ui/*/dist
+            packages/tsconfig/dist
+            packages/rollup-config/dist
+            packages/tailwind-config/dist
+            packages/utils/dist
+            packages/mdx-generator/dist
+            packages/routing/dist
+            packages/types/dist
+            packages/eslint/dist
+          if-no-files-found: warn
