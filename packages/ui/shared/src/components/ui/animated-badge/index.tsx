@@ -1,6 +1,6 @@
 import type { FC } from "react"
-import { Badge } from "@shared/components/ui"
-import type { badgeVariants } from "@shared/components/ui"
+import { Badge } from "@shared/components/ui/badge"
+import type { badgeVariants } from "@shared/components/ui/badge"
 import { cn } from "@shared/lib/utils"
 import type { VariantProps } from "class-variance-authority"
 
