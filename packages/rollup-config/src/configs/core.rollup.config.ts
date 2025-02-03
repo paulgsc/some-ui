@@ -1,5 +1,6 @@
 import type { PackageJsonTypes } from "../types"
 import {
+  autoprefixer,
   babel,
   CONFIG_BABEL,
   CONFIG_EXTERNAL_MODULE_SUPPRESS,
@@ -12,6 +13,7 @@ import {
   kebabToPascalCase,
   postcss,
   resolve,
+  tailwindcss,
   terser,
   typescript,
 } from "./base.rollup.config"
@@ -97,8 +99,9 @@ export default function ({
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
         postcss({
-          plugins: [require("tailwindcss"), require("autoprefixer")],
-          extract: true,
+          plugins: [tailwindcss, autoprefixer],
+          extract: false,
+          modules: true,
         }),
       ],
       external: externalModules,
@@ -123,8 +126,9 @@ export default function ({
         typescript(CONFIG_TYPESCRIPT),
         babel(CONFIG_BABEL),
         postcss({
-          plugins: [require("tailwindcss"), require("autoprefixer")],
-          extract: true,
+          plugins: [tailwindcss, autoprefixer],
+          extract: false,
+          modules: true,
         }),
         createNodeNextSupport(),
       ],

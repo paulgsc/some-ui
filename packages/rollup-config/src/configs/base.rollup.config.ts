@@ -11,8 +11,10 @@ import babel, { type RollupBabelInputPluginOptions } from "@rollup/plugin-babel"
 import json from "@rollup/plugin-json"
 import resolve from "@rollup/plugin-node-resolve"
 import terser from "@rollup/plugin-terser"
+import autoprefixer from "autoprefixer"
 import postcss from "rollup-plugin-postcss"
 import typescript from "rollup-plugin-typescript2"
+import tailwindcss from "tailwindcss"
 
 import fileUnKown from "../../../../package.json"
 import type { PackageJsonTypes } from "../types"
@@ -220,4 +222,6 @@ export {
   typescript,
   postcss,
   json,
+  autoprefixer,
+  tailwindcss,
 }
