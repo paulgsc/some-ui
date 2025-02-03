@@ -1,8 +1,7 @@
 import type { ComponentProps, CSSProperties, FC } from "react"
 import { useMemo, useState } from "react"
 import type { AvatarImage } from "@shared/components/ui"
-import { Button } from "@shared/components/ui/button"
-import { WithAvatar } from "@shared/components/ui/with-avatar"
+import { Button, WithAvatar } from "@shared/components/ui"
 import { cn } from "@shared/lib/utils"
 
 export type AvatarGroupProps = {
