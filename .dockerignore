@@ -57,3 +57,6 @@ tsconfig.tsbuildinfo
 
 # bin - rust binaries
 bin
+
+# Github
+.github
