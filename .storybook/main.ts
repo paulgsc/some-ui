@@ -1,3 +1,5 @@
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
 import type { StorybookConfig } from "@storybook/react-vite"
 
 /**
@@ -12,19 +14,18 @@ const config: StorybookConfig = {
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,
-    builder: "@storybook/builder-vite",
   },
 
   addons: [
-    "@storybook/addon-onboarding",
-    "@storybook/addon-links",
-    "@storybook/addon-essentials",
-    "@chromatic-com/storybook",
-    "@storybook/addon-interactions",
-    "@chromatic-com/storybook",
+    getAbsolutePath("@storybook/addon-onboarding"),
+    getAbsolutePath("@storybook/addon-links"),
+    getAbsolutePath("@storybook/addon-essentials"),
+    getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-interactions"),
+    getAbsolutePath("@chromatic-com/storybook"),
   ],
 
-  framework: "@storybook/react-vite",
+  framework: getAbsolutePath("@storybook/react-vite"),
 
   viteFinal: (config) => {
     config.define = {
@@ -43,3 +44,10 @@ const config: StorybookConfig = {
   },
 }
 export default config
+
+function getAbsolutePath(value: string): string {
+  // Resolve the URL to the package.json file.
+  const pkgUrl = import.meta.resolve(join(value, "package.json"))
+  // Convert the URL to a file path, then get its directory name.
+  return dirname(fileURLToPath(pkgUrl))
+}
