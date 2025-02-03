@@ -1,6 +1,6 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import SlideshowSidebar from "."
+import {SlideshowSidebar} from "."
 
 type Story = StoryObj<typeof SlideshowSidebar>
 type Meta = MetaObj<typeof SlideshowSidebar>

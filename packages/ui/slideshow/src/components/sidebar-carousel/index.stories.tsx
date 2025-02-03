@@ -1,6 +1,6 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import SidebarCarousel from "."
+import { SidebarCarousel } from "."
 
 type Story = StoryObj<typeof SidebarCarousel>
 type Meta = MetaObj<typeof SidebarCarousel>

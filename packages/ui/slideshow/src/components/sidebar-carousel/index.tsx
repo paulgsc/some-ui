@@ -17,7 +17,10 @@ type DummyData = {
   content: string
 }
 
-const generateDummyData = (start: number, end: number): Array<DummyData> =>
+export const generateDummyData = (
+  start: number,
+  end: number
+): Array<DummyData> =>
   Array.from({ length: end - start }, (_, i) => ({
     id: start + 1 + i,
     title: `Item ${start + i}`,
@@ -30,7 +33,7 @@ type SideBarCarouselProps = {
   end?: number
 } & ComponentProps<typeof Sidebar>
 
-const SidebarCarousel: FC<SideBarCarouselProps> = ({
+export const SidebarCarousel: FC<SideBarCarouselProps> = ({
   start = 0,
   end = 3,
   className,
@@ -96,5 +99,3 @@ const SidebarCarousel: FC<SideBarCarouselProps> = ({
     </Sidebar>
   )
 }
-
-export default SidebarCarousel

@@ -1,5 +1,5 @@
-import InsetCard from "@slideshow/components/inset-card"
-import SidebarCarousel from "@slideshow/components/sidebar-carousel"
+import {InsetCard} from "@slideshow/components/inset-card"
+import {SidebarCarousel} from "@slideshow/components/sidebar-carousel"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
 } from "some-ui-shared"
 
-const SlideShowCard = (): React.JSX.Element => {
+export const SlideShowCard = (): React.JSX.Element => {
   return (
     <SidebarProvider>
       <SidebarCarousel />
@@ -40,5 +40,3 @@ const SlideShowCard = (): React.JSX.Element => {
     </SidebarProvider>
   )
 }
-
-export default SlideShowCard
