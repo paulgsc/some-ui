@@ -34,7 +34,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/wireframes.umd.js",
+  "main": "./dist/umag.umd.js",
   "module": "./dist/esm/wireframes.esm.js",
   "name": "umag",
   "peerDependencies": {
@@ -42,7 +42,6 @@
     "react-dom": "^19.0.0",
     "react-resizable-panels": "^2.1.0"
   },
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
