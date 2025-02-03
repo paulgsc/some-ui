@@ -33,6 +33,12 @@ jobs:
             index.html
             !**/*.md
             !**/*.mdx
+      - name: Debug Output
+        run: |
+          echo "Diff: ${{ steps.changes.outputs.diff }}"
+          echo "Filtered Diff: ${{ steps.changes.outputs.filtered_diff }}"
+          echo "Matched Files: ${{ steps.changes.outputs.matched_files }}"
+          echo "Count: ${{ steps.changes.outputs.count }}"
 
   build:
     name: Build Extension
