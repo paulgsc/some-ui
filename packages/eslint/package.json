@@ -28,7 +28,8 @@
     "postinstall": "pnpm build"
   },
   "peerDependencies": {
-    "eslint": ">=8.0.0"
+    "eslint": ">=8.0.0",
+    "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "@eslint/compat": "^1.2.4",
