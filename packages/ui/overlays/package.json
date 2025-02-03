@@ -15,8 +15,8 @@
   "devDependencies": {
     "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "tailwind-config": "workspace:*",
-    "maishatu-eslint-kit": "1.2.0"
+    "maishatu-eslint-kit": "1.1.0",
+    "tailwind-config": "workspace:*"
   },
   "exports": {
     "./package.json": "./package.json",
