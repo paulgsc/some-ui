@@ -4,8 +4,6 @@ services:
     volumes:
       # Mount your source code
       - .:/app
-      # Mount git config
-      - ~/.gitconfig:/root/.gitconfig
       # Mount pnpm store
       - pnpm-store:/root/.local/share/pnpm/store
       # Mount Turbo cache
@@ -15,7 +13,7 @@ services:
       # Mount workspace package node_modules
       - packages-node_modules:/app/packages
     ports:
-      - "6006:6006"  # Storybook
+      - "6006:6006" # Storybook
     environment:
       - HOST=0.0.0.0
       - TURBO_TEAM=local

@@ -21,9 +21,6 @@ RUN pnpm install --frozen-lockfile --prefer-offline
 # Copy the rest of the code
 COPY . .
 
-# Keep container running
-CMD ["tail", "-f", "/dev/null"]
-
 # Expose the port Storybook runs on
 EXPOSE 6006
 
