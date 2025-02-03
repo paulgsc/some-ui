@@ -100,7 +100,8 @@ export default function ({
         babel(CONFIG_BABEL),
         postcss({
           plugins: [tailwindcss, autoprefixer],
-          extract: true,
+          extract: false,
+          modules: true,
         }),
       ],
       external: externalModules,
@@ -126,7 +127,8 @@ export default function ({
         babel(CONFIG_BABEL),
         postcss({
           plugins: [tailwindcss, autoprefixer],
-          extract: true,
+          extract: false,
+          modules: true,
         }),
         createNodeNextSupport(),
       ],
