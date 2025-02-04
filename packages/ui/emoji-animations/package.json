@@ -18,13 +18,12 @@
     "react-dom": "18.3.1"
   },
   "dependencies": {
+    "framer-motion": "11.15.0",
     "some-ui-utils": "workspace:*",
-    "usehooks-ts": "3.1.0",
-    "framer-motion": "11.15.0"
+    "usehooks-ts": "3.1.0"
   },
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {
     "type": "git",
