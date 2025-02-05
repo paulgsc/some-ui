@@ -9,7 +9,7 @@
     "some-ui-neon-sign": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-slideshow": "workspace:*",
-    "some-ui-utils": "workspace:*",
+    "some-ui-utils": "1.1.0",
     "wireframes": "workspace:*"
   },
   "devDependencies": {

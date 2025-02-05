@@ -379,8 +379,8 @@ importers:
         specifier: workspace:*
         version: link:../ui/shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
       unist-builder:
         specifier: 3.0.0
         version: 3.0.0
@@ -534,8 +534,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -569,8 +569,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -600,8 +600,8 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
       usehooks-ts:
         specifier: 3.1.0
         version: 3.1.0(react@18.3.1)
@@ -619,8 +619,8 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -638,8 +638,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -663,8 +663,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -685,8 +685,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -710,8 +710,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -741,8 +741,8 @@ importers:
         specifier: workspace:*
         version: link:../slideshow
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
       wireframes:
         specifier: workspace:*
         version: link:../wireframes
@@ -782,8 +782,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@14.2.3(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -864,8 +864,8 @@ importers:
         specifier: 2.12.7
         version: 2.12.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
       tailwind-merge:
         specifier: ^2.4.0
         version: 2.6.0
@@ -907,8 +907,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -938,8 +938,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -963,8 +963,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -988,8 +988,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
+        specifier: 1.1.0
+        version: 1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -8918,6 +8918,16 @@ packages:
       rollup-plugin-terser: ^7.0.2
       rollup-plugin-typescript2: ^0.36.0
       typescript: ^4.0.0 || ^5.0.0
+
+  some-ui-utils@1.1.0:
+    resolution: {integrity: sha512-f0n0Vn6Ajd6GCUD7JI1S3Ul/e4umL2B0GWzWIRm5SPf9ZHdqbz3V8MmU32BEpYPV/quHdIMafUy5qHhaxf0vcw==}
+    peerDependencies:
+      clsx: ^2.1.1
+      nuqs: 1.18.0
+      react: 18.3.1
+      react-dom: 18.3.1
+      tailwind-merge: ^2.4.0
+      usehooks-ts: 3.1.0
 
   sort-keys@5.1.0:
     resolution: {integrity: sha512-aSbHV0DaBcr7u0PVHXzM6NbZNAtrr9sF6+Qfs9UUVG7Ll3jQ6hHi8F/xqIIcn2rvIVbr0v/2zyjSdwSV47AgLQ==}
@@ -17268,7 +17278,7 @@ snapshots:
 
   jest-worker@26.6.2:
     dependencies:
-      '@types/node': 22.10.5
+      '@types/node': 22.13.0
       merge-stream: 2.0.0
       supports-color: 7.2.0
 
@@ -18510,6 +18520,11 @@ snapshots:
     dependencies:
       mitt: 3.0.1
       next: 15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+
+  nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      mitt: 3.0.1
+      next: 15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
   nwsapi@2.2.16: {}
 
@@ -20224,6 +20239,45 @@ snapshots:
       rollup-plugin-typescript2: 0.36.0(rollup@4.30.1)(typescript@5.7.3)
       typescript: 5.7.3
 
+  some-ui-utils@1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@14.2.3(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1)):
+    dependencies:
+      clsx: 2.1.1
+      maishatu-eslint-kit: 1.3.0(eslint@9.18.0(jiti@2.4.2))(tailwindcss@4.0.3)
+      nuqs: 1.18.0(next@14.2.3(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      tailwind-merge: 2.6.0
+      usehooks-ts: 3.1.0(react@18.3.1)
+    transitivePeerDependencies:
+      - eslint
+      - tailwindcss
+
+  some-ui-utils@1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@18.3.1)):
+    dependencies:
+      clsx: 2.1.1
+      maishatu-eslint-kit: 1.3.0(eslint@9.18.0(jiti@2.4.2))(tailwindcss@4.0.3)
+      nuqs: 1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      tailwind-merge: 2.6.0
+      usehooks-ts: 3.1.0(react@18.3.1)
+    transitivePeerDependencies:
+      - eslint
+      - tailwindcss
+
+  some-ui-utils@1.1.0(clsx@2.1.1)(eslint@9.18.0(jiti@2.4.2))(nuqs@1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwind-merge@2.6.0)(tailwindcss@4.0.3)(usehooks-ts@3.1.0(react@19.0.0)):
+    dependencies:
+      clsx: 2.1.1
+      maishatu-eslint-kit: 1.3.0(eslint@9.18.0(jiti@2.4.2))(tailwindcss@4.0.3)
+      nuqs: 1.18.0(next@15.1.4(@babel/core@7.26.0)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      tailwind-merge: 2.6.0
+      usehooks-ts: 3.1.0(react@19.0.0)
+    transitivePeerDependencies:
+      - eslint
+      - tailwindcss
+
   sort-keys@5.1.0:
     dependencies:
       is-plain-obj: 4.1.0
@@ -21063,6 +21117,11 @@ snapshots:
     dependencies:
       lodash.debounce: 4.0.8
       react: 18.3.1
+
+  usehooks-ts@3.1.0(react@19.0.0):
+    dependencies:
+      lodash.debounce: 4.0.8
+      react: 19.0.0
 
   util-deprecate@1.0.2: {}
 

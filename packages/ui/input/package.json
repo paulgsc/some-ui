@@ -20,7 +20,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "1.1.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

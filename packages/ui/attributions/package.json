@@ -4,7 +4,7 @@
   },
   "dependencies": {
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "1.1.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
