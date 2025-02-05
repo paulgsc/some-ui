@@ -1,5 +1,12 @@
 # some-ui-emoji-animations
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`8735c83`](https://github.com/paulgsc/some-ui/commit/8735c839e4cea6d11d1047343c89e74408908f79)]:
+  - some-ui-utils@1.1.0
+
 ## 0.0.4
 
 ### Patch Changes
