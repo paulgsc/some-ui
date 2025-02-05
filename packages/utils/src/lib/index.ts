@@ -1,4 +1,4 @@
 export { default as cn } from "./cn"
-export * from "@utils/lib/hooks"
+export * from "./hooks"
 export * from "./string-utils"
 export * from "./date-utils"

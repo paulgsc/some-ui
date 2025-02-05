@@ -7,9 +7,8 @@
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
-    "some-ui-rollup-config": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0",
-    "@some-ui/tsconfig": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*",
+    "maishatu-eslint-kit": "1.3.0"
   },
   "exports": {
     "./package.json": "./package.json",
