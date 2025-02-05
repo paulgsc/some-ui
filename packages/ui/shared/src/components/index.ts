@@ -1,2 +1,2 @@
-export * from "@shared/components/ui"
-export * from "@shared/components/icons"
+export * from "./ui"
+export * from "./icons"

@@ -1,2 +1,2 @@
-export * from "@shared/components"
+export * from "./components"
 //
