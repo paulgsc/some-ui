@@ -1,5 +1,13 @@
 # some-ui-utils
 
+## 1.1.0
+
+### Minor Changes
+
+- [#167](https://github.com/paulgsc/some-ui/pull/167) [`8735c83`](https://github.com/paulgsc/some-ui/commit/8735c839e4cea6d11d1047343c89e74408908f79) Thanks [@paulgsc](https://github.com/paulgsc)! - What update some-ui-utils tsconfig
+  Why current build not exposing the declarations
+  How remove alias from index files
+
 ## 1.0.2
 
 ### Patch Changes
