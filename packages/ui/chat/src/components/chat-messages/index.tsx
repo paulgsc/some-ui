@@ -1,16 +1,25 @@
 import type { FC } from "react"
-import type { Options as ChatMessageOptions } from "@chat/components"
-import { ChatMessage } from "@chat/components"
+import type { Options as ChatMessageOptions } from "@chat/components/chat-message"
+import { ChatMessage } from "@chat/components/chat-message"
 import { cn } from "some-ui-utils"
 
 type ChatMessagesProps = {
   messages: Array<ChatMessageOptions>
+  className?: string
 }
 
-export const ChatMessages: FC<ChatMessagesProps> = ({ messages = [] }) => {
+export const ChatMessages: FC<ChatMessagesProps> = ({
+  className,
+  messages = [],
+}) => {
   return (
-    <main className="relative flex h-[600px] w-[400px]  flex-col gap-y-3 rounded-xl p-3 shadow-md">
-      <div className="absolute inset-0 h-1/4 rounded-t-xl border border-red-500" />
+    <main
+      className={cn(
+        "relative flex size-full flex-col gap-y-3 rounded-b-xl p-3 shadow-md",
+        className
+      )}
+    >
+      <div className="absolute inset-0 h-1/4 border border-red-500" />
       <div className="absolute bottom-0 end-0 start-0  h-1/4  rounded-b-xl border border-red-500" />
       {messages.map((msg) => {
         const { character, id } = msg

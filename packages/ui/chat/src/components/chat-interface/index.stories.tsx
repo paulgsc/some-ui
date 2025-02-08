@@ -2,12 +2,24 @@ import type { Options as ChatMessageOptions } from "@chat/components/chat-messag
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 import { formatRelativeTime } from "some-ui-utils"
 
-import { ChatMessages } from "."
+import { ChatInterface } from "."
 import { pgdevPng } from "../../../../../../assets"
 
-type Story = StoryObj<typeof ChatMessages>
-type Meta = MetaObj<typeof ChatMessages>
+type Story = StoryObj<typeof ChatInterface>
+type Meta = MetaObj<typeof ChatInterface>
 
+const characters = [
+  {
+    src: "https://github.com/shadcn.png",
+    alt: "@shadcn",
+    fallback: "CN",
+  },
+  {
+    src: "https://github.com/openai.png",
+    alt: "@openai",
+    fallback: "AI",
+  },
+]
 const mockMessages: Array<ChatMessageOptions> = Array.from(
   { length: 20 },
   (_, index) => ({
@@ -27,10 +39,11 @@ export const Default: Story = {
   args: {
     messages: mockMessages,
     className: "h-[600px] w-[400px]",
+    characters,
   },
 }
 
 export default {
-  title: "UI/Chat/Components/ChatMessages",
-  component: ChatMessages,
+  title: "UI/Chat/Components/ChatInterface",
+  component: ChatInterface,
 } as Meta

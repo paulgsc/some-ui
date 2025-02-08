@@ -1,6 +1,6 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import ChatHeader from "."
+import { ChatHeader } from "."
 
 type Story = StoryObj<typeof ChatHeader>
 type Meta = MetaObj<typeof ChatHeader>

@@ -14,7 +14,9 @@ type ChatHeaderProps = {
   characters: AvatarGroupProps["avatars"]
 }
 
-const ChatHeader: FC<ChatHeaderProps> = ({ characters }): React.JSX.Element => {
+export const ChatHeader: FC<ChatHeaderProps> = ({
+  characters,
+}): React.JSX.Element => {
   const RefreshIcon = SvgIcons.refresh
   const initialTitle = "Change me..."
   const { value: chatbotTitle, setValue: updateTitle } = useLocalStorage(
@@ -25,8 +27,8 @@ const ChatHeader: FC<ChatHeaderProps> = ({ characters }): React.JSX.Element => {
     updateTitle(e.target.value)
   }
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-1.5 rounded-t-xl bg-blue-600">
-      <AvatarGroup avatars={characters} />
+    <CardHeader className="flex flex-row items-center justify-between gap-1.5 rounded-t-xl bg-blue-600 p-2.5">
+      <AvatarGroup avatarSize={30} avatarSpacing={10} avatars={characters} />
       <CardTitle className="relative flex-1 pb-2 ps-1 text-2xl text-white ">
         <span>{chatbotTitle}</span>
         <OverlayInput
@@ -44,5 +46,3 @@ const ChatHeader: FC<ChatHeaderProps> = ({ characters }): React.JSX.Element => {
     </CardHeader>
   )
 }
-
-export default ChatHeader
