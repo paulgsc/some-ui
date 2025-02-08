@@ -9,7 +9,7 @@ type ChatMessagesProps = {
 
 export const ChatMessages: FC<ChatMessagesProps> = ({ messages = [] }) => {
   return (
-    <main className="relative flex h-[600px] w-[400px]  flex-col gap-y-3 rounded-xl bg-sky-50 p-3 shadow-md">
+    <main className="relative flex h-[600px] w-[400px]  flex-col gap-y-3 rounded-xl p-3 shadow-md">
       <div className="absolute inset-0 h-1/4 rounded-t-xl border border-red-500" />
       <div className="absolute bottom-0 end-0 start-0  h-1/4  rounded-b-xl border border-red-500" />
       {messages.map((msg) => {
