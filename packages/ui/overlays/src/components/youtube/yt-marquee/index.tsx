@@ -3,33 +3,33 @@ import { cn } from "some-ui-utils"
 
 const reviews = [
   {
-    name: "HR",
+    name: "CapitalOne",
     username: "@lol",
-    body: "Hi Paul, Unfortunately you were not selected for the position at Sc***er. They ended up moving forward with a different candidate.",
+    body: "Your paypment is past due. Please make at least your minimum payment to get caught up now.",
     img: "https://avatar.vercel.sh/jack",
   },
   {
-    name: "Goo Ha Na",
+    name: "Good copium",
     username: "@cindarella",
-    body: "No rain, no flowers!",
+    body: "It's ep 48 and the drama is still going strong! good cope.",
     img: "https://avatar.vercel.sh/jill",
   },
   {
     name: "Top Listener of Crush",
     username: "@music",
-    body: "You were in the top 0.25% of listeners in December 2024",
+    body: "You were in the top 0.05% of listeners in January 2025",
     img: "https://avatar.vercel.sh/john",
   },
   {
-    name: "Thought of the day",
+    name: "UsBank",
     username: "@neverbegan",
-    body: "Today is as good as it gets, but today was a bad day",
+    body: "Thank you for choosing U.S. Bank. We noticed you haven't used your account ending in 0915 for several months. ..., so we wanted to check in with you.",
     img: "https://avatar.vercel.sh/jane",
   },
   {
-    name: "Levy",
-    username: "@farmer",
-    body: "One day I will be grandmother! Interesting start the procedure!",
+    name: "Sankyu Kindly! 🫠",
+    username: "@vaibhavtanwar442",
+    body: "Dude u r savior",
     img: "https://avatar.vercel.sh/jenny",
   },
   {
@@ -40,8 +40,8 @@ const reviews = [
   },
   {
     name: "because of course",
-    username: "@scam?",
-    body: "Sorry to bother! I'm Ailsa I have some information about a job that I'd like to mention. Can we have a conversation?",
+    username: "@sadness",
+    body: "Thank you for applying to the Tool *** position at FM *** Unfortunately, ..., and your application was not selected at this time.",
     img: "https://avatar.vercel.sh/tim",
   },
 ]
