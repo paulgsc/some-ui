@@ -8,15 +8,13 @@
   "main": "./dist/esm/index.js",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "import": "./dist/esm/index.js"
     }
   },
   "types": "index.ts",
   "scripts": {
-    "build:esm": "tsc --module es2015 --target es5 --outDir dist/esm",
-    "build:cjs": "tsc --module commonjs --target es5 --outDir dist/cjs",
-    "build": "pnpm build:esm && pnpm build:cjs",
+    "build:esm": "tsc --module ESNext --target ESNext --outDir dist/esm",
+    "build": "pnpm build:esm",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
@@ -53,6 +51,7 @@
     "@rollup/plugin-typescript": "12.1.2",
     "@types/node": "^22.10.5",
     "rollup": "^4.30.1",
+    "@tailwindcss/postcss": "^4.0.4",
     "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-typescript2": "^0.36.0",

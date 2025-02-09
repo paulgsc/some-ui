@@ -1,70 +1,70 @@
 {
-  "name": "some-ui-stepper",
-  "private": true,
-  "version": "0.0.5",
-  "type": "module",
-  "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-    "typecheck": "tsc --noEmit"
-  },
-  "peerDependecies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "framer-motion": "11.15.0",
-    "canvas-confetti": "1.9.3"
-  },
-  "dependencies": {
-    "@types/canvas-confetti": "1.9.0",
-    "canvas-confetti": "1.9.3",
-    "framer-motion": "11.15.0",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "1.1.0"
-  },
-  "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/paulgsc/some-ui"
-  },
-  "bugs": {
-    "url": "https://github.com/paulgsc/some-ui/issues"
-  },
-  "homepage": "https://pgdev.maishatu.com/?tab=github",
-  "license": "MIT",
-  "keywords": [],
-  "files": [
-    "some-ui-stepper*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
-  ],
-  "sideEffects": false,
-  "unpkg": "some-ui-stepper.umd.js",
-  "main": "./dist/some-ui-stepper.umd.js",
-  "module": "./dist/esm/some-ui-stepper.esm.js",
-  "types": "index.d.ts",
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-stepper.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-stepper.cjs.js"
-      }
-    }
-  }
+	"name": "some-ui-stepper",
+	"private": true,
+	"version": "0.0.5",
+	"type": "module",
+	"scripts": {
+		"build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+		"build:tsc-alias": "tsc-alias -p tsconfig.json",
+		"watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+		"clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+		"typecheck": "tsc --noEmit"
+	},
+	"peerDependecies": {
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"framer-motion": "11.15.0",
+		"canvas-confetti": "1.9.3"
+	},
+	"dependencies": {
+		"@types/canvas-confetti": "1.9.0",
+		"canvas-confetti": "1.9.3",
+		"framer-motion": "11.15.0",
+		"some-ui-shared": "workspace:*",
+		"some-ui-utils": "1.1.0"
+	},
+	"devDependencies": {
+		"@some-ui/tsconfig": "workspace:*",
+		"maishatu-eslint-kit": "1.3.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/paulgsc/some-ui"
+	},
+	"bugs": {
+		"url": "https://github.com/paulgsc/some-ui/issues"
+	},
+	"homepage": "https://pgdev.maishatu.com/?tab=github",
+	"license": "MIT",
+	"keywords": [],
+	"files": [
+		"some-ui-stepper*",
+		"./dist/src/**/*",
+		"index.d.ts",
+		"./dist/esm/**/*",
+		"./dist/cjs/**/*"
+	],
+	"sideEffects": false,
+	"unpkg": "some-ui-stepper.umd.js",
+	"main": "./dist/some-ui-stepper.umd.js",
+	"module": "./dist/esm/some-ui-stepper.esm.js",
+	"types": "index.d.ts",
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"import": {
+				"types": "./dist/esm/index.d.ts",
+				"default": "./dist/esm/some-ui-stepper.esm.js"
+			},
+			"require": {
+				"types": "./dist/cjs/index.d.ts",
+				"default": "./dist/cjs/some-ui-stepper.cjs.js"
+			}
+		}
+	}
 }

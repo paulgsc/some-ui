@@ -14,8 +14,6 @@ import {
 } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
-import styles from "./index.module.css"
-
 type RotatingCubeProps = {
   perspective?: number
 }
@@ -23,7 +21,8 @@ type RotatingCubeProps = {
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
 }): React.JSX.Element => {
-  const { isRotating, currentFace, setIsRotating } = useRotatingCube()
+  const { isRotating, currentFace, totalRotation, setIsRotating } =
+    useRotatingCube()
   const faces = cubeFaces()
   const ref = useRef<HTMLDivElement>(null)
 
@@ -42,11 +41,10 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
         ref={ref}
         className={cn(
           "transform-3d relative size-full max-w-sm transition-transform duration-500",
-          { [styles.rotating]: true }
+          { "": true }
         )}
         style={{
-          transform: `rotateY(-${currentFace * 90}deg)`,
-          transformStyle: "preserve-3d",
+          transform: `rotateY(-${totalRotation}deg)`,
         }}
         onMouseEnter={() => setIsRotating(false)}
         onMouseLeave={() => setIsRotating(true)}

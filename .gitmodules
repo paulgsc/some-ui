@@ -1,4 +1,0 @@
-[submodule "packages/eslint-plugin-tailwindcss"]
-	path = packages/eslint-plugin-tailwindcss
-	url = git@github.com:paulgsc/eslint-plugin-tailwindcss.git
-	branch = feat/add-support-for-tailwindcss-v4

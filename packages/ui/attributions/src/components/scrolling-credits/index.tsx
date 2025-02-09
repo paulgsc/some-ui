@@ -1,7 +1,5 @@
 import { cn } from "some-ui-utils"
 
-import styles from "./index.module.css"
-
 type CreditItem = {
   job: string
   name: string
@@ -32,7 +30,7 @@ export const ScrollingCredits = () => {
       <div
         className={cn(
           "absolute left-1/2 w-[400px] -translate-x-1/2 text-center font-light uppercase text-white",
-          styles.credits
+          "animate-credits-scroll"
         )}
       >
         <h1 className="mb-12 text-5xl">Life of John Doe</h1>
