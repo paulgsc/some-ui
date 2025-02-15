@@ -1,0 +1,34 @@
+{
+  "description": "rollup-sconfig for some-ui",
+  "dependencies": {
+    "@typescript-eslint/utils": "8.23.0",
+    "@typescript-eslint/typescript-estree": "^8.23.0"
+  },
+  "devDependencies": {
+    "maishatu-eslint-kit": "workspace:*",
+    "tailwindcss": "^4.0.5"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js"
+    }
+  },
+  "files": [
+    "dist/**"
+  ],
+  "main": "./dist/esm/index.js",
+  "name": "maishatu-tw-eslint",
+  "scripts": {
+    "build": "pnpm build:esm",
+    "build:esm": "tsc --module ESNext --target ESNext --outDir dist/esm",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "types": "index.ts",
+  "version": "0.0.0"
+}
