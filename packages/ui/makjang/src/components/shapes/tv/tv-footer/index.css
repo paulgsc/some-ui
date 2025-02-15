@@ -1,0 +1,15 @@
+@layer utilities {
+  .bg-gradient-leg {
+    background: linear-gradient(
+      0deg,
+      rgb(114, 114, 114),
+      rgb(255, 255, 255),
+      rgb(197, 197, 197),
+      rgb(114, 114, 114)
+    );
+  }
+
+  .clip-path-leg {
+    clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  }
+}
