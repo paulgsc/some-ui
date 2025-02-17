@@ -11,7 +11,7 @@ const faces = Array.from({ length: 6 }, (_, i) => (
 
 export const Default: Story = {
   args: {
-    className: "size-40",
+    className: "w-[500px] h-[300px]",
     faceClassName: "bg-sky-300/75",
     perspective: 1250,
     dof: "X-axis",

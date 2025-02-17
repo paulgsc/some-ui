@@ -1,17 +1,21 @@
 import type { FC } from "react"
 import { StyledCharacters } from "@neon-sign/components/styled-characters"
 import { OverlayInput } from "some-ui-shared"
-import { useLocalStorage } from "some-ui-utils"
+import { cn, useLocalStorage } from "some-ui-utils"
 
-type NeoSignTextProps = {
+type NeonTextProps = {
   initialText?: string
+  className?: string
+  storageKey?: string
 }
 
-const NeonSignText: FC<NeoSignTextProps> = ({
+export const NeonText: FC<NeonTextProps> = ({
   initialText = "Change me...",
+  storageKey = "neon",
+  className,
 }) => {
   const { value: neonTxt, setValue: updateStorage } = useLocalStorage(
-    "neon",
+    storageKey,
     initialText
   )
 
@@ -20,12 +24,12 @@ const NeonSignText: FC<NeoSignTextProps> = ({
   }
 
   return (
-    <div className="relative">
+    <div className={cn("relative size-full", className)}>
       <div
-        className="animate-pulse-slow rounded-lg border-4 border-blue-500 px-8 py-4 text-center
+        className="size-full animate-pulse-slow rounded-lg border-4 border-blue-500 px-8 py-4 text-center
                                                                        [box-shadow:0_0_0.5rem_#3b82f6,inset_0_0_0.5rem_#3b82f6]"
       >
-        <span className="size-full text-center text-4xl font-bold tracking-wider">
+        <span className="size-full flex justify-center items-center text-center text-4xl font-bold tracking-wider">
           <StyledCharacters text={neonTxt} />
         </span>
         <OverlayInput value={neonTxt} onChange={handleInputChange} />
@@ -33,5 +37,3 @@ const NeonSignText: FC<NeoSignTextProps> = ({
     </div>
   )
 }
-
-export default NeonSignText

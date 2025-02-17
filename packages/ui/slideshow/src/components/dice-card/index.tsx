@@ -61,20 +61,22 @@ export const DiceCard: FC<RotatingCubeProps> = ({
               {
                 "--face-width": (width ?? 0) / 2,
                 "--face-height": (height ?? 0) / 2,
+                "--face-depth": (Math.min(width ?? 0, height ?? 0) ?? 0) / 2,
               } as CSSProperties
             }
             className={cn(
               "absolute z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
-              "backface-visible",
               faceClassName,
               {
-                "[transform:rotateY(0deg)_translateZ(calc(var(--face-width)*1px))]":
+                "[transform:translateZ(calc(var(--face-width)*1px))]":
                   index === 0,
+                "[transform:translateZ(calc(var(--face-depth)*1px))]":
+                  index === 0 && rotationAxis === "X-axis",
                 "[transform:rotateY(90deg)_translateZ(calc(var(--face-width)*1px))]":
                   index === 1,
                 "[transform:rotateY(180deg)_translateZ(calc(var(--face-width)*1px))]":
                   index === 2 && rotationAxis === "Y-axis",
-                "[transform:rotateY(180deg)_rotateZ(180deg)_translateZ(calc(var(--face-width)*1px))]":
+                "[transform:rotateY(180deg)_rotateZ(180deg)_translateZ(calc(var(--face-depth)*1px))]":
                   index === 2 && rotationAxis === "X-axis",
                 "[transform:rotateY(-90deg)_translateZ(calc(var(--face-width)*1px))]":
                   index === 3,
@@ -82,6 +84,10 @@ export const DiceCard: FC<RotatingCubeProps> = ({
                   index === 4,
                 "[transform:rotateX(-90deg)_translateZ(calc(var(--face-height)*1px))]":
                   index === 5,
+                invisible:
+                  (index === 1 || index === 3) &&
+                  width !== height &&
+                  rotationAxis === "X-axis",
                 "backface-visible": isRotating,
               }
             )}

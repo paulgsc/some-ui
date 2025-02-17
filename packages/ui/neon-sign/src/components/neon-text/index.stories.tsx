@@ -1,26 +1,22 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import NeonSignText from "."
+import { NeonText } from "."
 
-const meta = {
-  title: "UI/NeonSign/NeonText",
-  component: NeonSignText,
-  parameters: {
-    layout: "centered",
-  },
-} satisfies Meta<typeof NeonSignText>
-
-export default meta
-type Story = StoryObj<typeof NeonSignText>
+type Story = StoryObj<typeof NeonText>
+type Meta = MetaObj<typeof NeonText>
 
 export const Default: Story = {
   args: {
-    text: "CODE PEN",
+    className: "w-full max-w-xl h-40",
   },
+  render: (args) => (
+    <main className="w-screen">
+      <NeonText {...args} />
+    </main>
+  ),
 }
 
-export const CustomText: Story = {
-  args: {
-    text: "HELLO WORLD",
-  },
-}
+export default {
+  title: "UI/NeonText/NeonText",
+  component: NeonText,
+} as Meta

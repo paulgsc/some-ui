@@ -1,0 +1,25 @@
+import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+
+import { RotatingNeonSign } from "."
+
+type Story = StoryObj<typeof RotatingNeonSign>
+type Meta = MetaObj<typeof RotatingNeonSign>
+
+export const Default: Story = {
+  args: {
+    className: "w-96 h-32",
+    faceClassName: "bg-sky-200",
+    perspective: 1250,
+    dof: "X-axis",
+  },
+  render: (args) => (
+    <main className="flex h-96 min-h-screen flex-1 items-center justify-center">
+      <RotatingNeonSign {...args} />
+    </main>
+  ),
+}
+
+export default {
+  title: "UI/Slideshow/Components/RotatingNeonSign",
+  component: RotatingNeonSign,
+} as Meta
