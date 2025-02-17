@@ -1,0 +1,54 @@
+@layer utilities {
+  .clip-path-lens-hole {
+    clip-path: polygon(
+      var(--top-x) 0%,
+      var(--right-x) var(--right-y),
+      var(--right-x) calc(100% - var(--right-y)),
+      var(--top-x) 100%,
+      var(--left-x) calc(100% - var(--left-y)),
+      var(--left-x) var(--left-y)
+    );
+  }
+}
+
+@keyframes open-shutter {
+  0% {
+    --top-x: 50%;
+    --right-x: 86.6%;
+    --right-y: 25%;
+    --left-x: 13.4%;
+    --left-y: 25%;
+  }
+  100% {
+    --top-x: 50%;
+    --right-x: 100%;
+    --right-y: 0%;
+    --left-x: 0%;
+    --left-y: 0%;
+  }
+}
+
+@keyframes close-shutter {
+  0% {
+    --top-x: 50%;
+    --right-x: 100%;
+    --right-y: 0%;
+    --left-x: 0%;
+    --left-y: 0%;
+  }
+  100% {
+    --top-x: 50%;
+    --right-x: 86.6%;
+    --right-y: 25%;
+    --left-x: 13.4%;
+    --left-y: 25%;
+  }
+}
+
+.animate-open-shutter {
+  animation: open-shutter 3.5s forwards;
+}
+
+.animate-close-shutter {
+  animation: close-shutter 3.5s forwards;
+}

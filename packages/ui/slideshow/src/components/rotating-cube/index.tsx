@@ -41,11 +41,13 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
         ref={ref}
         className={cn(
           "transform-3d relative size-full max-w-sm transition-transform duration-500",
-          { "": true }
+          "[transform:rotateY(calc(var(--cube-rotation)*1deg))]"
         )}
-        style={{
-          transform: `rotateY(-${totalRotation}deg)`,
-        }}
+        style={
+          {
+            "--cube-rotation": -totalRotation,
+          } as CSSProperties
+        }
         onMouseEnter={() => setIsRotating(false)}
         onMouseLeave={() => setIsRotating(true)}
       >

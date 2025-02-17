@@ -3,21 +3,21 @@ import { cn } from "some-ui-utils"
 
 const reviews = [
   {
-    name: "CapitalOne",
-    username: "@lol",
-    body: "Your paypment is past due. Please make at least your minimum payment to get caught up now.",
+    name: "This song is fire🔥🔥🔥",
+    username: "@mujik",
+    body: "房东的猫 - 所念皆星河「所念皆星河，辗转里反侧」【動態歌詞/Lyrics Video",
     img: "https://avatar.vercel.sh/jack",
   },
   {
-    name: "Good copium",
-    username: "@cindarella",
-    body: "It's ep 48 and the drama is still going strong! good cope.",
+    name: "This song is da bomb💣💣💣🔥🔥🔥",
+    username: "@lfg",
+    body: "買辣椒也用券 - 起風了 (新版)【動態歌詞Lyrics】",
     img: "https://avatar.vercel.sh/jill",
   },
   {
-    name: "Top Listener of Crush",
-    username: "@music",
-    body: "You were in the top 0.05% of listeners in January 2025",
+    name: "It's not rain, I'm just pissed!",
+    username: "@cindarella",
+    body: "No boys, no flowers, just focus on revenge Go Ana!",
     img: "https://avatar.vercel.sh/john",
   },
   {
@@ -33,15 +33,15 @@ const reviews = [
     img: "https://avatar.vercel.sh/jenny",
   },
   {
-    name: "defensive defection",
-    username: "@goodfaith",
-    body: "Be skeptical not cynical",
+    name: "What is even the point?!",
+    username: "@emotion",
+    body: "Not joy, just pain, frustration and humiliation, is this real life!",
     img: "https://avatar.vercel.sh/james",
   },
   {
-    name: "because of course",
-    username: "@sadness",
-    body: "Thank you for applying to the Tool *** position at FM *** Unfortunately, ..., and your application was not selected at this time.",
+    name: "smooth brained boyo",
+    username: "@ast",
+    body: "I'm building a tailwindcss linter from scratch, but I don't even know how an ast is working. I hate everything.",
     img: "https://avatar.vercel.sh/tim",
   },
 ]
