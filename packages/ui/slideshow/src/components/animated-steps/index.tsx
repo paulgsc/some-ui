@@ -5,11 +5,9 @@ export interface Step {
   number: number
 }
 
-type AnimatedStepsProps = {
-  steps: Array<Step>
-}
+type AnimatedStepsProps = {}
 
-export const AnimatedSteps: FC<AnimatedStepsProps> = ({ steps }) => {
+export const AnimatedSteps: FC<AnimatedStepsProps> = ({}) => {
   return (
     <section className="flex min-h-screen items-center justify-center border border-red-100">
       <ul

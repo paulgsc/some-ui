@@ -14,6 +14,11 @@ type RotationState = {
   yRotation: number
 }
 
+type Options = {
+  dof?: AllowedRotationAxis
+  duration?: number
+}
+
 type ReturnOptions = {
   isRotating: boolean
   rotationAxis: RotationAxis
@@ -104,9 +109,8 @@ const getRotationPath = (
 
 export const useRotatingCube = ({
   dof = "Y-axis",
-}: {
-  dof?: AllowedRotationAxis
-}): ReturnOptions => {
+  duration = 10000,
+}: Options): ReturnOptions => {
   const [isRotating, setIsRotating] = useState<boolean>(false)
   const [rotationState, setRotationState] = useState<RotationState>({
     face: 0,
@@ -188,7 +192,7 @@ export const useRotatingCube = ({
       chooseRotationAxis()
       rotateCube()
       setTimeout(() => setIsRotating(false), 500)
-    }, 10000)
+    }, duration)
     return (): void => clearInterval(interval)
   }, [chooseRotationAxis, rotateCube])
 

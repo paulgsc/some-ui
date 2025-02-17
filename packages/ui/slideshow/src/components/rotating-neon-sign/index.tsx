@@ -9,10 +9,12 @@ type RotatingNeonSignProps = {
   dof?: AllowedRotationAxis
   className?: string
   faceClassName?: string
+  duration?: number
 }
 
 export const RotatingNeonSign: FC<RotatingNeonSignProps> = ({
   perspective = 1200,
+  duration = 10000,
   dof = "Y-axis",
   className,
   faceClassName,
@@ -24,6 +26,7 @@ export const RotatingNeonSign: FC<RotatingNeonSignProps> = ({
       dof={dof}
       faces={cubeFaces()}
       perspective={perspective}
+      duration={duration}
     />
   )
 }

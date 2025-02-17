@@ -15,7 +15,10 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
       </div>
       <div className="relative col-span-3 col-start-2 row-span-5 rounded-md border border-dashed bg-none">
         <ResizableLayout.Root direction="vertical">
-          <ResizableLayout.PanelA defaultSize={12} className="">
+          <ResizableLayout.PanelA
+            defaultSize={12}
+            className="flex items-center justify-center p-1.5"
+          >
             {content[WireframeRegion.MARQUEE]}
           </ResizableLayout.PanelA>
           <ResizableLayout.PanelB

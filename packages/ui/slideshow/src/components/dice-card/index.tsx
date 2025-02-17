@@ -10,6 +10,7 @@ type RotatingCubeProps = {
   perspective?: number
   faces?: Array<ReactNode>
   dof?: AllowedRotationAxis
+  duration?: number
   className?: string
   faceClassName?: string
 }
@@ -19,11 +20,13 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   faceClassName,
   perspective = 1200,
   dof = "Y-axis",
+  duration = 10000,
   faces = [],
 }): React.JSX.Element => {
   const { isRotating, setIsRotating, rotationState, rotationAxis } =
     useRotatingCube({
       dof,
+      duration,
     })
   const ref = useRef<HTMLDivElement>(null)
 
