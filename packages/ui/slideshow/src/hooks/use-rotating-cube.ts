@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from "react"
-import { Range as ValidNumbers } from "some-types-utils"
+import type { Range as ValidNumbers } from "some-types-utils"
 
+type Face = ValidNumbers<6>
 type RotationAxis = "X-axis" | "Y-axis"
+type AllowedRotationAxis = RotationAxis | "All"
 type Rotation = {
   axis: RotationAxis
   face: Face
 }
-type AllowedRotationAxis = RotationAxis | "All"
-type Options = {
-  dof?: AllowedRotationAxis
+type RotationState = {
+  face: Face
+  xRotation: number
+  yRotation: number
 }
+
 type ReturnOptions = {
   isRotating: boolean
   rotationAxis: RotationAxis
@@ -18,23 +22,7 @@ type ReturnOptions = {
   rotateCube: () => void
 }
 
-type Face = ValidNumbers<6>
-type RotationState = {
-  face: Face
-  xRotation: number
-  yRotation: number
-}
-
-const FACE_Adj_List: Record<Face, Record<"x" | "y", number>> = {
-  0: { x: 0, y: 0 },
-  1: { x: 0, y: 90 },
-  2: { x: 0, y: 180 },
-  3: { x: 0, y: 270 },
-  4: { x: 90, y: 0 },
-  5: { x: -90, y: 0 },
-}
-
-// Define adjacency map for each face
+// Define adjacency map for each face with valid rotations
 const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
   0: { "X-axis": 4, "Y-axis": 1 }, // Front -> Top/Right
   1: { "X-axis": 4, "Y-axis": 2 }, // Right -> Top/Back
@@ -44,14 +32,43 @@ const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
   5: { "X-axis": 0, "Y-axis": 1 }, // Bottom -> Front/Right
 }
 
+// Define cycle sequences for single-axis rotations
+const ROTATION_CYCLES: Record<RotationAxis, Face[]> = {
+  "X-axis": [0, 4, 2, 5], // Front -> Top -> Back -> Bottom
+  "Y-axis": [0, 1, 2, 3], // Front -> Right -> Back -> Left
+}
+
+const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
+  const cycle = ROTATION_CYCLES[axis]
+  const currentIndex = cycle.indexOf(currentFace)
+  return cycle[(currentIndex + 1) % cycle.length]
+}
+
 const getRotationPath = (
   startFace: Face,
   targetFace: Face,
-  preferredAxis?: RotationAxis
+  preferredAxis: RotationAxis
 ): Rotation[] => {
   if (startFace === targetFace) return []
 
-  // Use BFS to find the shortest path
+  // For single-axis rotations, follow the predefined cycle
+  if (
+    ROTATION_CYCLES[preferredAxis].includes(startFace) &&
+    ROTATION_CYCLES[preferredAxis].includes(targetFace)
+  ) {
+    const path: Rotation[] = []
+    let currentFace = startFace
+
+    while (currentFace !== targetFace) {
+      const nextFace = getNextFaceInCycle(currentFace, preferredAxis)
+      path.push({ axis: preferredAxis, face: nextFace })
+      currentFace = nextFace
+    }
+
+    return path
+  }
+
+  // For other cases, use BFS to find shortest path
   const queue: Array<{ face: Face; path: Rotation[] }> = [
     { face: startFace, path: [] },
   ]
@@ -60,10 +77,11 @@ const getRotationPath = (
   while (queue.length > 0) {
     const { face, path } = queue.shift()!
 
-    // Try preferred axis first if specified
-    const axes: RotationAxis[] = preferredAxis
-      ? [preferredAxis, preferredAxis === "X-axis" ? "Y-axis" : "X-axis"]
-      : ["X-axis", "Y-axis"]
+    // Try preferred axis first
+    const axes: RotationAxis[] = [
+      preferredAxis,
+      preferredAxis === "X-axis" ? "Y-axis" : "X-axis",
+    ]
 
     for (const axis of axes) {
       const nextFace = FACE_GRAPH[face][axis]
@@ -84,7 +102,11 @@ const getRotationPath = (
   return [] // Should never happen with a valid cube
 }
 
-export const useRotatingCube = ({ dof = "Y-axis" }: Options): ReturnOptions => {
+export const useRotatingCube = ({
+  dof = "Y-axis",
+}: {
+  dof?: AllowedRotationAxis
+}): ReturnOptions => {
   const [isRotating, setIsRotating] = useState<boolean>(false)
   const [rotationState, setRotationState] = useState<RotationState>({
     face: 0,
@@ -93,149 +115,82 @@ export const useRotatingCube = ({ dof = "Y-axis" }: Options): ReturnOptions => {
   })
   const [rotationAxis, setRotationAxis] = useState<RotationAxis>("Y-axis")
 
-  const chooseRotationAxis = useCallback(
-    (dof: AllowedRotationAxis): void => {
-      switch (dof) {
-        case "Y-axis": {
-          break
-        }
-        case "X-axis": {
-          setRotationAxis(dof)
-          break
-        }
-        case "All": {
-          const axis = Math.random() < 0.5 ? "X-axis" : "Y-axis"
-          setRotationAxis(axis)
-          break
-        }
-        default: {
-          dof satisfies never
-          return
-        }
-      }
-    },
-    [dof]
-  )
+  const chooseRotationAxis = useCallback((): void => {
+    switch (dof) {
+      case "Y-axis":
+      case "X-axis":
+        setRotationAxis(dof)
+        break
+      case "All":
+        setRotationAxis(Math.random() < 0.5 ? "X-axis" : "Y-axis")
+        break
+      default:
+        dof satisfies never
+    }
+  }, [dof])
 
   const rotateCube = useCallback(() => {
     setRotationState((prev) => {
-      if (dof !== "All") {
-        const { face, xRotation, yRotation } = prev
-        let newFace: Face
-        let newXRotation = xRotation
-        let newYRotation = yRotation
+      let targetFace: Face
 
-        console.log("axis is now: ", rotationAxis)
-        switch (rotationAxis) {
-          case "X-axis": {
-            // Cycle through faces: 0 (Front) -> 4 (Top) -> 2 (Back) -> 5 (Bottom) -> 0 (Front)
-            newFace = (
-              face === 0 ? 4 : face === 4 ? 2 : face === 2 ? 5 : 0
-            ) as Face
-            newXRotation += 90
-            console.log("x-axis ran!")
-            break
-          }
-          case "Y-axis": {
-            // Cycle through faces: 0 (Front) -> 1 (Right) -> 2 (Back) -> 3 (Left) -> 0 (Front)
-            newFace = ((face + 1) % 4) as Face
-            newYRotation += 90
-            console.log("y-axis ran!")
-            break
-          }
-          default:
-            rotationAxis satisfies never
-            throw new Error("Invalid rotation axis")
-        }
-
-        newXRotation = newXRotation % 360
-        newYRotation = newYRotation % 360
-
-        function getSmoothRotation(curr: number, target: number): number {
-          const diff = target - curr
-          if (Math.abs(diff) > 180) {
-            return curr + (diff > 0 ? -360 : 360) + diff
-          }
-          return target
-        }
-
-        const targetRotation = FACE_Adj_List[newFace]
-        const smoothXRotation = getSmoothRotation(
-          newXRotation,
-          targetRotation.x
-        )
-        const smoothYRotation = getSmoothRotation(
-          newYRotation,
-          targetRotation.y
-        )
-
-        return {
-          face: newFace,
-          xRotation: smoothXRotation,
-          yRotation: smoothYRotation,
-        }
+      if (dof === "All") {
+        // Choose random target face for dual-axis rotation
+        const possibleFaces: Face[] = [0, 1, 2, 3, 4, 5]
+        targetFace = possibleFaces[Math.floor(Math.random() * 6)] as Face
+      } else {
+        // Get next face in cycle for single-axis rotation
+        targetFace = getNextFaceInCycle(prev.face, rotationAxis)
       }
 
-      // For dual-axis rotation, choose random target face and find path
-      const possibleFaces: Face[] = [0, 1, 2, 3, 4, 5]
-      const targetFace = possibleFaces[Math.floor(Math.random() * 6)] as Face
-
-      const rotations = getRotationPath(prev.face, targetFace)
+      const rotations = getRotationPath(prev.face, targetFace, rotationAxis)
       if (rotations.length === 0) return prev
 
-      // Apply first rotation in path
+      // Apply first rotation
       const firstRotation = rotations[0]
-      let newXRotation = prev.xRotation
-      let newYRotation = prev.yRotation
-
-      if (firstRotation.axis === "X-axis") {
-        newXRotation += 90
-      } else {
-        newYRotation += 90
+      const newState = {
+        face: firstRotation.face,
+        xRotation: prev.xRotation + (firstRotation.axis === "X-axis" ? 90 : 0),
+        yRotation: prev.yRotation + (firstRotation.axis === "Y-axis" ? 90 : 0),
       }
 
-      // Queue up subsequent rotations with timeouts
+      // Queue subsequent rotations
       if (rotations.length > 1) {
         let delay = 500 // Match your transition time
         rotations.slice(1).forEach((rotation) => {
           setTimeout(() => {
-            setRotationState((current) => {
-              const xRot =
-                rotation.axis === "X-axis"
-                  ? current.xRotation + 90
-                  : current.xRotation
-              const yRot =
-                rotation.axis === "Y-axis"
-                  ? current.yRotation + 90
-                  : current.yRotation
-              return {
-                face: rotation.face,
-                xRotation: xRot % 360,
-                yRotation: yRot % 360,
-              }
-            })
+            setRotationState((current) => ({
+              face: rotation.face,
+              xRotation:
+                current.xRotation + (rotation.axis === "X-axis" ? 90 : 0),
+              yRotation:
+                current.yRotation + (rotation.axis === "Y-axis" ? 90 : 0),
+            }))
           }, delay)
           delay += 500
         })
       }
 
       return {
-        face: firstRotation.face,
-        xRotation: newXRotation % 360,
-        yRotation: newYRotation % 360,
+        ...newState,
+        xRotation: newState.xRotation % 360,
+        yRotation: newState.yRotation % 360,
       }
     })
-  }, [dof])
+  }, [dof, rotationAxis])
+
+  useEffect(() => {
+    chooseRotationAxis()
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
       setIsRotating(true)
-      chooseRotationAxis(dof)
+      chooseRotationAxis()
       rotateCube()
-      setTimeout(() => setIsRotating(false), 500) // Assuming 500ms transition
-    }, 10000) // Change face every 10 seconds
+      setTimeout(() => setIsRotating(false), 500)
+    }, 10000)
     return (): void => clearInterval(interval)
-  }, [dof, chooseRotationAxis, rotateCube])
+  }, [chooseRotationAxis, rotateCube])
 
   return {
     rotationAxis,

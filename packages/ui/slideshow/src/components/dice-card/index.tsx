@@ -16,7 +16,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
 }): React.JSX.Element => {
   const { rotationAxis, isRotating, setIsRotating, rotationState } =
     useRotatingCube({
-      dof: "X-axis",
+      dof: "All",
     })
   console.log(rotationAxis, rotationState)
   const ref = useRef<HTMLDivElement>(null)
