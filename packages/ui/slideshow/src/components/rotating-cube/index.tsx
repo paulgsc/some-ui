@@ -1,7 +1,7 @@
-import type { CSSProperties, FC, RefObject } from "react"
-import { useRef } from "react"
+import type { FC } from "react"
+import { DiceCard } from "@slideshow/components/dice-card"
 import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
-import { useRotatingCube } from "@slideshow/hooks"
+import { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import type { CubeJson, Question } from "@slideshow/types"
 import { Bot, Code2, LineChart, Server } from "lucide-react"
 import {
@@ -12,72 +12,25 @@ import {
   AnimatedBadge,
   Card,
 } from "some-ui-shared"
-import { cn, useMeasureRect } from "some-ui-utils"
 
 type RotatingCubeProps = {
   perspective?: number
+  dof?: AllowedRotationAxis
+  className?: string
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
+  className,
 }): React.JSX.Element => {
-  const { isRotating, currentFace, totalRotation, setIsRotating } =
-    useRotatingCube()
-  const faces = cubeFaces()
-  const ref = useRef<HTMLDivElement>(null)
-
-  const { width } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
-
+  const faces = [...cubeFaces(), "foo", "foo"]
   return (
-    <div
-      style={{ "--perspective": perspective } as CSSProperties}
-      className={cn(
-        "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]"
-      )}
-    >
-      <div
-        ref={ref}
-        className={cn(
-          "transform-3d relative size-full max-w-sm transition-transform duration-500",
-          "[transform:rotateY(calc(var(--cube-rotation)*1deg))]"
-        )}
-        style={
-          {
-            "--cube-rotation": -totalRotation,
-          } as CSSProperties
-        }
-        onMouseEnter={() => setIsRotating(false)}
-        onMouseLeave={() => setIsRotating(true)}
-      >
-        {faces.map((face, index) => (
-          <div
-            key={index}
-            style={{ "--face-width": (width ?? 0) / 2 } as CSSProperties}
-            className={cn(
-              "absolute z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
-              {
-                "[transform:rotateY(0deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 0,
-                "[transform:rotateY(90deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 1,
-                "[transform:rotateY(180deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 2,
-                "[transform:rotateY(-90deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 3,
-                "opacity-80": isRotating,
-              }
-            )}
-          >
-            {currentFace !== index && (
-              <div className="bg-muted pointer-events-none absolute inset-0 -z-10 size-full rounded-xl brightness-50" />
-            )}
-            {currentFace === index && face}
-          </div>
-        ))}
-      </div>
-    </div>
+    <DiceCard
+      className={className}
+      dof={"Y-axis"}
+      faces={faces}
+      perspective={perspective}
+    />
   )
 }
 
