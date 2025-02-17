@@ -7,6 +7,7 @@ type Meta = MetaObj<typeof RotatingCube>
 export const Default: Story = {
   args: {
     perspective: 1250,
+    dof: "Y-axis",
     className: "w-96 h-72",
   },
   render: (args) => (

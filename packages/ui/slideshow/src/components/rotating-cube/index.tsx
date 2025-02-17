@@ -21,13 +21,14 @@ type RotatingCubeProps = {
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
+  dof = "Y-axis",
   className,
 }): React.JSX.Element => {
   const faces = [...cubeFaces(), "foo", "foo"]
   return (
     <DiceCard
       className={className}
-      dof={"Y-axis"}
+      dof={dof}
       faces={faces}
       perspective={perspective}
     />
