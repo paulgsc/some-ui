@@ -3,7 +3,7 @@ import type { Range as ValidNumbers } from "some-types-utils"
 
 type Face = ValidNumbers<6>
 type RotationAxis = "X-axis" | "Y-axis"
-type AllowedRotationAxis = RotationAxis | "All"
+export type AllowedRotationAxis = RotationAxis | "All"
 type Rotation = {
   axis: RotationAxis
   face: Face

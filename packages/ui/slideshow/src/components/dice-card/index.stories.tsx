@@ -6,13 +6,14 @@ type Story = StoryObj<typeof DiceCard>
 type Meta = MetaObj<typeof DiceCard>
 
 const faces = Array.from({ length: 6 }, (_, i) => (
-  <span key={i} className="size-full bg-red-50 opacity-200">{`foo ${i}`}</span>
+  <span key={i} className="size-full">{`foo ${i}`}</span>
 ))
 
 export const Default: Story = {
   args: {
     className: "size-40",
     perspective: 1250,
+    dof: "X-axis",
     faces,
   },
   render: (args) => (
