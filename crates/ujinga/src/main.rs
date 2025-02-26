@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use ujinga::file_path::WasmPkgDirPath;
 
 #[derive(Serialize, Deserialize)]
 struct PackageJson {
@@ -13,97 +14,90 @@ struct PackageJson {
 }
 
 fn main() -> Result<()> {
-    // Configuration
-    let repo_root = std::env::current_dir()?;
-    let wasm_sources_dir = repo_root.join("wasm-sources");
-    let wasm_packages_dir = repo_root.join("wasm-packages");
-    let npm_scope = "your-scope"; // Replace with your scope
+    let npm_scope = "your-scope";
+    const SOURCES_DIR: &str = "foo/foo";
+    const PACKAGES_DIR: &str = "foo/bar";
 
-    // Ensure the wasm-packages directory exists
-    if !wasm_packages_dir.exists() {
-        fs::create_dir_all(&wasm_packages_dir)?;
-    }
+    let wasm_sources_dir = WasmPkgDirPath::new(SOURCES_DIR)?;
+    let wasm_packages_dir = WasmPkgDirPath::new(PACKAGES_DIR)?;
 
-    // Get all Rust crates from wasm-sources
-    let crate_dirs = fs::read_dir(&wasm_sources_dir)?
-        .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
-        .map(|entry| entry.path());
-
-    // Process each crate
+    let crate_dirs = get_crate_directories(&wasm_sources_dir.as_ref())?;
     for crate_path in crate_dirs {
-        let crate_name = crate_path.file_name().unwrap().to_string_lossy().to_string();
-
-        println!("\n=== Processing {} ===", crate_name);
-
-        // Check if this is a valid Rust crate (has Cargo.toml)
-        if !crate_path.join("Cargo.toml").exists() {
-            println!("Skipping {}: Not a valid Rust crate (no Cargo.toml found)", crate_name);
-            continue;
-        }
-
-        let wasm_package_dir = wasm_packages_dir.join(format!("wasm-{}", crate_name));
-
-        // Create wasm package directory if it doesn't exist
-        if !wasm_package_dir.exists() {
-            println!("Creating new WASM package for {}", crate_name);
-            fs::create_dir_all(&wasm_package_dir)?;
-        } else {
-            println!("Updating existing WASM package for {}", crate_name);
-        }
-
-        // Build WASM package with wasm-pack
-        println!("Building WASM for {}...", crate_name);
-        let build_result = Command::new("wasm-pack")
-            .current_dir(&crate_path)
-            .args(&["build", "--scope", npm_scope, "--target", "bundler", "--out-dir", "pkg"])
-            .status()
-            .context("Failed to execute wasm-pack")?;
-
-        if !build_result.success() {
-            println!("Error building {}: wasm-pack build failed", crate_name);
-            continue;
-        }
-
-        // Temporary pkg directory created by wasm-pack
-        let temp_pkg_dir = crate_path.join("pkg");
-
-        // Read the generated package.json
-        let pkg_json_path = temp_pkg_dir.join("package.json");
-        let pkg_json_content = fs::read_to_string(&pkg_json_path).context("Failed to read package.json")?;
-
-        let mut pkg_json: PackageJson = serde_json::from_str(&pkg_json_content).context("Failed to parse package.json")?;
-
-        // Modify package.json to fit pnpm workspace
-        pkg_json.name = format!("@{}/wasm-{}", npm_scope, crate_name);
-
-        // Copy all files from temp pkg dir to the wasm package dir
-        copy_directory_contents(&temp_pkg_dir, &wasm_package_dir)?;
-
-        // Update package.json
-        let new_pkg_json = serde_json::to_string_pretty(&pkg_json).context("Failed to serialize package.json")?;
-
-        fs::write(wasm_package_dir.join("package.json"), new_pkg_json).context("Failed to write package.json")?;
-
-        // Add a README indicating this is auto-generated
-        let readme_content = format!(
-            "# @{}/wasm-{}\n\nThis package is auto-generated from the Rust crate `{}` using wasm-pack.\n\n**DO NOT EDIT DIRECTLY**\n",
-            npm_scope, crate_name, crate_name
-        );
-
-        fs::write(wasm_package_dir.join("README.md"), readme_content).context("Failed to write README.md")?;
-
-        // Clean up temp pkg directory
-        fs::remove_dir_all(&temp_pkg_dir).context("Failed to remove temporary pkg directory")?;
-
-        println!("Successfully built and packaged {}", crate_name);
+        process_crate(&crate_path, &wasm_packages_dir.as_ref(), npm_scope)?;
     }
 
     println!("\n=== WASM build completed ===");
     Ok(())
 }
 
-// Helper function to copy directory contents
+fn get_crate_directories(base_dir: &Path) -> Result<Vec<PathBuf>> {
+    Ok(fs::read_dir(base_dir)?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .map(|entry| entry.path())
+        .collect())
+}
+
+fn process_crate(crate_path: &Path, wasm_packages_dir: &Path, npm_scope: &str) -> Result<()> {
+    let crate_name = crate_path.file_name().unwrap().to_string_lossy().to_string();
+    println!("\n=== Processing {} ===", crate_name);
+
+    if !crate_path.join("Cargo.toml").exists() {
+        println!("Skipping {}: No Cargo.toml found", crate_name);
+        return Ok(());
+    }
+
+    let wasm_package_dir = wasm_packages_dir.join(format!("wasm-{}", crate_name));
+
+    build_wasm_package(crate_path, npm_scope)?;
+    let temp_pkg_dir = crate_path.join("pkg");
+    let pkg_json = update_package_json(&temp_pkg_dir, npm_scope, &crate_name)?;
+
+    copy_directory_contents(&temp_pkg_dir, &wasm_package_dir)?;
+    save_package_json(&wasm_package_dir, &pkg_json)?;
+    generate_readme(&wasm_package_dir, npm_scope, &crate_name)?;
+
+    fs::remove_dir_all(&temp_pkg_dir).context("Failed to remove temporary pkg directory")?;
+    println!("Successfully built and packaged {}", crate_name);
+    Ok(())
+}
+
+fn build_wasm_package(crate_path: &Path, npm_scope: &str) -> Result<()> {
+    println!("Building WASM for {}...", crate_path.display());
+    let build_result = Command::new("wasm-pack")
+        .current_dir(crate_path)
+        .args(["build", "--scope", npm_scope, "--target", "bundler", "--out-dir", "pkg"])
+        .status()
+        .context("Failed to execute wasm-pack")?;
+
+    if !build_result.success() {
+        anyhow::bail!("wasm-pack build failed for {}", crate_path.display());
+    }
+    Ok(())
+}
+
+fn update_package_json(temp_pkg_dir: &Path, npm_scope: &str, crate_name: &str) -> Result<PackageJson> {
+    let pkg_json_path = temp_pkg_dir.join("package.json");
+    let pkg_json_content = fs::read_to_string(&pkg_json_path).context("Failed to read package.json")?;
+    let mut pkg_json: PackageJson = serde_json::from_str(&pkg_json_content).context("Failed to parse package.json")?;
+
+    pkg_json.name = format!("@{}/wasm-{}", npm_scope, crate_name);
+    Ok(pkg_json)
+}
+
+fn save_package_json(wasm_package_dir: &Path, pkg_json: &PackageJson) -> Result<()> {
+    let new_pkg_json = serde_json::to_string_pretty(pkg_json).context("Failed to serialize package.json")?;
+    fs::write(wasm_package_dir.join("package.json"), new_pkg_json).context("Failed to write package.json")
+}
+
+fn generate_readme(wasm_package_dir: &Path, npm_scope: &str, crate_name: &str) -> Result<()> {
+    let readme_content = format!(
+        "# @{}/wasm-{}\n\nThis package is auto-generated from the Rust crate `{}` using wasm-pack.\n\n**DO NOT EDIT DIRECTLY**\n",
+        npm_scope, crate_name, crate_name
+    );
+    fs::write(wasm_package_dir.join("README.md"), readme_content).context("Failed to write README.md")
+}
+
 fn copy_directory_contents(src: &Path, dst: &PathBuf) -> Result<()> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
@@ -112,9 +106,6 @@ fn copy_directory_contents(src: &Path, dst: &PathBuf) -> Result<()> {
         let dst_path = dst.join(&file_name);
 
         if src_path.is_dir() {
-            if !dst_path.exists() {
-                fs::create_dir_all(&dst_path)?;
-            }
             copy_directory_contents(&src_path, &dst_path)?;
         } else {
             fs::copy(&src_path, &dst_path)?;

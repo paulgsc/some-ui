@@ -2,12 +2,9 @@
 [workspace]
 resolver = "2"
 
-members = []
+members = ["crates/ujinga"]
 
 exclude = []
-
-# This prevents a Travis CI error when building for Windows.
-resolver = "2"
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = 2 }
