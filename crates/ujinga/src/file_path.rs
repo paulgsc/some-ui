@@ -11,19 +11,21 @@ pub enum WasmPkgDirPath {
 impl AsRef<StdPath> for WasmPkgDirPath {
     fn as_ref(&self) -> &StdPath {
         match self {
-            WasmPkgDirPath::PkgDirPath(path) => StdPath::new(path.as_ref()),
+            Self::PkgDirPath(path) => StdPath::new(path.as_ref()),
         }
     }
 }
 
 #[derive(Debug, Error)]
-pub enum PkgDirPathError {
+pub enum PkgDirPathError<'a> {
     #[error("Invalid file extension: expected .json, got {extension}")]
     InvalidExtension { extension: String },
     #[error("Invalid filename: expected client_secret_file.json, got {filename}")]
     InvalidDirname { filename: String },
     #[error("Path error: {0}")]
     PathError(#[from] PathPartError),
+    #[error("Directory not found: {path}")]
+    NoSuchDirectoryFound { path: &'a str },
 }
 
 impl WasmPkgDirPath {
@@ -36,12 +38,12 @@ impl WasmPkgDirPath {
             });
         }
 
-        Ok(WasmPkgDirPath::PkgDirPath(parsed_path))
+        Ok(Self::PkgDirPath(parsed_path))
     }
 
     pub fn as_str(&self) -> &str {
         match self {
-            WasmPkgDirPath::PkgDirPath(path) => path.as_ref(),
+            Self::PkgDirPath(path) => path.as_ref(),
         }
     }
 }

@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use ujinga::file_path::WasmPkgDirPath;
+use tracing::info;
+use tracing_subscriber;
+use ujinga::WasmClient;
 
 #[derive(Serialize, Deserialize)]
 struct PackageJson {
@@ -14,19 +16,24 @@ struct PackageJson {
 }
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let npm_scope = "your-scope";
     const SOURCES_DIR: &str = "foo/foo";
     const PACKAGES_DIR: &str = "foo/bar";
 
-    let wasm_sources_dir = WasmPkgDirPath::new(SOURCES_DIR)?;
-    let wasm_packages_dir = WasmPkgDirPath::new(PACKAGES_DIR)?;
+    info!("Retrieving dir path...");
 
-    let crate_dirs = get_crate_directories(&wasm_sources_dir.as_ref())?;
+    let sources_client = WasmClient::new(SOURCES_DIR).context(format!("Failed to initialize WasmClient for `{SOURCES_DIR}`"))?;
+    let pkgs_client = WasmClient::new(PACKAGES_DIR).context(format!("Failed to initialize WasmClient for `{PACKAGES_DIR}`"))?;
+    println!("succesfully retrieved dir path...");
+
+    let crate_dirs = get_crate_directories(&sources_client.file_dir_path.as_ref()).context("Failed to retrieve crate directories")?;
     for crate_path in crate_dirs {
-        process_crate(&crate_path, &wasm_packages_dir.as_ref(), npm_scope)?;
+        process_crate(&crate_path, &pkgs_client.file_dir_path.as_ref(), npm_scope).context(format!("Failed processing crate at `{}`", crate_path.display()))?;
     }
 
-    println!("\n=== WASM build completed ===");
+    info!("\n=== WASM build completed ===");
     Ok(())
 }
 
