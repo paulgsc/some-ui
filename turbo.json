@@ -15,6 +15,10 @@
       "cache": true,
       "outputs": [".content/**"]
     },
+    "build:wasm": {
+      "outputs": ["packages/wasm/**/*"],
+      "cache": true
+    },
     "watch:build": {
       "dependsOn": ["^build", "^build:docs"],
       "cache": false,

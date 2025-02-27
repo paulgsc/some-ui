@@ -16,6 +16,9 @@
     "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo",
     "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
     "build": "turbo run build",
+    "build:wasm": "cargo run --manifest-path crates/ujinga/Cargo.toml",
+    "build-storybook": "storybook build",
+    "build:template": "./bin/release/pkg_cloner",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
     "docs:build": "turbo run build:docs",
     "watch:build": "turbo run watch:build --parallel",
@@ -29,9 +32,7 @@
     "prettier": "turbo prettier",
     "prepare": "husky",
     "test": "turbo test",
-    "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open",
-    "build-storybook": "storybook build",
-    "build:template": "./bin/release/pkg_cloner"
+    "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open"
   },
   "packageManager": "pnpm@9.5.0",
   "author": "pgdev",
@@ -94,6 +95,7 @@
     "maishatu-eslint-kit": "1.3.0",
     "next": "15.1.4",
     "next-router-mock": "0.9.13",
+    "pnpm": "^10.2.1",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "pretty-quick": "^4.0.0",
