@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "tailwind.config.ts",
+    "eslint.config.js",
+    "../../../assets/**/*",
+    "src/data",
+    "**/*.stories.tsx",
+    "**/*.stories.ts"
+  ]
+}
