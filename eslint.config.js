@@ -1,3 +1,3 @@
-import someUIEslint from "maishatu-eslint-kit"
+import {maishatuNonStylistic} from "maishatu-eslint-kit"
 
-export default someUIEslint
+export default maishatuNonStylistic
