@@ -25,85 +25,219 @@ export default createRule<[], MessageId>({
         "Using the `delete` operator with an array expression is unsafe.",
       useSplice: "Use `array.splice()` instead.",
     },
-    schema: [],
+    schema: [
+      {
+        type: "object",
+        properties: {
+          callees: {
+            type: "array",
+            items: { type: "string", minLength: 0 },
+            uniqueItems: true,
+          },
+          ignoredKeys: {
+            type: "array",
+            items: { type: "string", minLength: 0 },
+            uniqueItems: true,
+          },
+          config: {
+            // returned from `loadConfig()` utility
+            type: ["string", "object"],
+          },
+          removeDuplicates: {
+            // default: true,
+            type: "boolean",
+          },
+          tags: {
+            type: "array",
+            items: { type: "string", minLength: 0 },
+            uniqueItems: true,
+          },
+        },
+      },
+    ],
   },
-  defaultOptions: [],
+  defaultOptions: [
+    {
+      callees: [],
+      ignoredKeys: [],
+      removeDuplicates: true,
+      tags: [],
+      skipClassAttribute: false,
+    },
+  ],
+
   create(context: TSESLint.RuleContext<MessageId, []>) {
-    const services = getParserServices(context)
-    const checker = services.program.getTypeChecker()
+    function sortNodeArgumentValue(
+      node: TSESTree.Node,
+      arg: TSESTree.Node | null = null
+    ): void {
+      let originalClassNamesValue: string | null = null
+      let start: number | null = null
+      let end: number | null = null
+      let prefix = ""
+      let suffix = ""
 
-    function isUnderlyingTypeArray(type: ts.Type): boolean {
-      const predicate = (t: ts.Type): boolean =>
-        checker.isArrayType(t) || checker.isTupleType(t)
-
-      if (type.isUnion()) {
-        return type.types.every(predicate)
+      if (arg === null) {
+        originalClassNamesValue = astUtil.extractValueFromNode(node)
+        const range = astUtil.extractRangeFromNode(node)
+        if (node.type === AST_NODE_TYPES.JSXAttribute) {
+          start = range[0]
+          end = range[1]
+        } else {
+          start = range[0] + 1
+          end = range[1] - 1
+        }
+      } else {
+        switch (arg.type) {
+          case AST_NODE_TYPES.Identifier:
+            return
+          case AST_NODE_TYPES.TemplateLiteral:
+            arg.expressions.forEach((exp) => {
+              sortNodeArgumentValue(node, exp)
+            })
+            arg.quasis.forEach((quasis) => {
+              sortNodeArgumentValue(node, quasis)
+            })
+            return
+          case AST_NODE_TYPES.ConditionalExpression:
+            sortNodeArgumentValue(node, arg.consequent)
+            sortNodeArgumentValue(node, arg.alternate)
+            return
+          case AST_NODE_TYPES.LogicalExpression:
+            sortNodeArgumentValue(node, arg.right)
+            return
+          case AST_NODE_TYPES.ArrayExpression:
+            arg.elements.forEach((el) => {
+              if (el) sortNodeArgumentValue(node, el)
+            })
+            return
+          case AST_NODE_TYPES.ObjectExpression:
+            arg.properties.forEach((prop) => {
+              if (TSESTree.isProperty(prop)) {
+                sortNodeArgumentValue(node, prop.value)
+              }
+            })
+            return
+          case AST_NODE_TYPES.Literal:
+            originalClassNamesValue = String(arg.value)
+            start = arg.range[0] + 1
+            end = arg.range[1] - 1
+            break
+          case AST_NODE_TYPES.TemplateElement:
+            originalClassNamesValue = arg.value.raw
+            if (originalClassNamesValue === "") {
+              return
+            }
+            start = arg.range[0]
+            end = arg.range[1]
+            const txt = context.getSourceCode().getText(arg)
+            prefix = astUtil.getTemplateElementPrefix(
+              txt,
+              originalClassNamesValue
+            )
+            suffix = astUtil.getTemplateElementSuffix(
+              txt,
+              originalClassNamesValue
+            )
+            originalClassNamesValue = astUtil.getTemplateElementBody(
+              txt,
+              prefix,
+              suffix
+            )
+            break
+        }
       }
 
-      if (type.isIntersection()) {
-        return type.types.some(predicate)
+      if (!originalClassNamesValue || !start || !end) {
+        return
       }
 
-      return predicate(type)
+      const { classNames, whitespaces, headSpace, tailSpace } =
+        astUtil.extractClassnamesFromValue(originalClassNamesValue)
+
+      if (classNames.length <= 1) {
+        return
+      }
+
+      let orderedClassNames = order(classNames, contextFallback).split(" ")
+
+      if (options.removeDuplicates) {
+        removeDuplicatesFromClassnamesAndWhitespaces(
+          orderedClassNames,
+          whitespaces,
+          headSpace,
+          tailSpace
+        )
+      }
+
+      let validatedClassNamesValue = ""
+      for (let i = 0; i < orderedClassNames.length; i++) {
+        const w = whitespaces[i] ?? ""
+        const cls = orderedClassNames[i]
+        validatedClassNamesValue += headSpace ? `${w}${cls}` : `${cls}${w}`
+        if (headSpace && tailSpace && i === orderedClassNames.length - 1) {
+          validatedClassNamesValue += whitespaces[whitespaces.length - 1] ?? ""
+        }
+      }
+
+      if (originalClassNamesValue !== validatedClassNamesValue) {
+        validatedClassNamesValue = prefix + validatedClassNamesValue + suffix
+        context.report({
+          node: node,
+          messageId: "invalidOrder",
+          fix(fixer) {
+            return fixer.replaceTextRange(
+              [start, end],
+              validatedClassNamesValue
+            )
+          },
+        })
+      }
     }
 
     return {
-      'UnaryExpression[operator="delete"]'(
-        node: TSESTree.UnaryExpression
-      ): void {
-        const { argument } = node
-
-        if (argument.type !== AST_NODE_TYPES.MemberExpression) {
+      JSXAttribute(node: TSESTree.JSXAttribute): void {
+        if (
+          !astUtil.isClassAttribute(node, options.classRegex) ||
+          options.skipClassAttribute
+        ) {
           return
         }
 
-        const type = getConstrainedTypeAtLocation(services, argument.object)
+        if (node.value && TSESTree.isLiteral(node.value)) {
+          sortNodeArgumentValue(node)
+        } else if (
+          node.value &&
+          node.value.type === AST_NODE_TYPES.JSXExpressionContainer
+        ) {
+          sortNodeArgumentValue(node, node.value.expression)
+        }
+      },
 
-        if (!isUnderlyingTypeArray(type)) {
+      CallExpression(node: TSESTree.CallExpression): void {
+        const calleeStr = astUtil.calleeToString(node.callee)
+        if (!options.callees?.includes(calleeStr)) {
           return
         }
 
-        context.report({
-          node,
-          messageId: "noArrayDelete",
-          suggest: [
-            {
-              messageId: "useSplice",
-              fix(fixer): TSESLint.RuleFix | null {
-                const { object, property } = argument
-
-                const shouldHaveParentheses =
-                  property.type === AST_NODE_TYPES.SequenceExpression
-
-                const nodeMap = services.esTreeNodeToTSNodeMap
-                const target = nodeMap.get(object).getText()
-                const rawKey = nodeMap.get(property).getText()
-                const key = shouldHaveParentheses ? `(${rawKey})` : rawKey
-
-                let suggestion = `${target}.splice(${key}, 1)`
-
-                const comments = context.sourceCode.getCommentsInside(node)
-
-                if (comments.length > 0) {
-                  const indentationCount = node.loc.start.column
-                  const indentation = " ".repeat(indentationCount)
-
-                  const commentsText = comments
-                    .map((comment) => {
-                      return comment.type === AST_TOKEN_TYPES.Line
-                        ? `//${comment.value}`
-                        : `/*${comment.value}*/`
-                    })
-                    .join(`\n${indentation}`)
-
-                  suggestion = `${commentsText}\n${indentation}${suggestion}`
-                }
-
-                return fixer.replaceText(node, suggestion)
-              },
-            },
-          ],
+        node.arguments.forEach((arg) => {
+          sortNodeArgumentValue(node, arg)
         })
+      },
+
+      TaggedTemplateExpression(node: TSESTree.TaggedTemplateExpression): void {
+        const tagName = TSESTree.isIdentifier(node.tag)
+          ? node.tag.name
+          : TSESTree.isMemberExpression(node.tag) &&
+              TSESTree.isIdentifier(node.tag.object)
+            ? node.tag.object.name
+            : undefined
+
+        if (!tagName || !options.tags?.includes(tagName)) {
+          return
+        }
+
+        sortNodeArgumentValue(node, node.quasi)
       },
     }
   },

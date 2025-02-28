@@ -2,6 +2,7 @@ import { ESLintUtils } from "@typescript-eslint/utils"
 
 export * from "./create-rule"
 export * from "./get-constrained-type-allocation"
+export * from "./get-option"
 
 export const {
   applyDefault,
