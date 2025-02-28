@@ -2,9 +2,9 @@ packages:
   - packages/ui/*
   - packages/tsconfig
   - packages/rollup-config
-  - packages/tailwind-config
   - packages/utils
   - packages/mdx-generator
-  - packages/routing
   - packages/types
   - packages/eslint
+  - packages/maishatu-tw-eslint
+  - packages/eslint-plugin-tailwindcss

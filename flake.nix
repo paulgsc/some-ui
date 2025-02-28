@@ -27,7 +27,7 @@
                 ];
                 targets = [
                     "x86_64-unknown-linux-gnu"
-                    # "wasm32-unknown-unknown"
+                     "wasm32-unknown-unknown"
                 ];
             };
         in
@@ -35,6 +35,7 @@
             devShells.default = pkgs.mkShell {
                 buildInputs = with pkgs; [
                     rustToolchain
+                    wasm-pack
 
                     # Build essentials
                     pkg-config
