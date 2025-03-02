@@ -19,7 +19,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   characters,
 }): React.JSX.Element => {
   return (
-    <div className={cn("size-full flex flex-col", className)}>
+    <div className={cn("flex size-full flex-col", className)}>
       <ChatHeader characters={characters} />
       <ChatMessages className={chatMessagesClassName} messages={messages} />
     </div>

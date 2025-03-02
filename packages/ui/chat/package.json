@@ -21,8 +21,8 @@
     "some-ui-utils": "1.1.0"
   },
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {
     "type": "git",

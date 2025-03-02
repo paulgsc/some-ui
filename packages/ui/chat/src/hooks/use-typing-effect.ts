@@ -5,8 +5,8 @@ type Option = {
   speed?: number
 }
 
-export function useTypingEffect({ content, speed = 20 }: Option) {
-  const [displayedContent, setDisplayedContent] = useState("")
+export function useTypingEffect({ content, speed = 20 }: Option): string {
+  const [displayedContent, setDisplayedContent] = useState<string>("")
 
   useEffect(() => {
     // If typing effect should be applied
@@ -19,7 +19,7 @@ export function useTypingEffect({ content, speed = 20 }: Option) {
       }
     }, speed)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [content, speed])
 
   return displayedContent

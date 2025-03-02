@@ -13,7 +13,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   className,
   messages = [],
 }) => {
-  const { messages: chats } = useChatMessages({ chats: messages })
+  const { chats } = useChatMessages({ chats: messages })
   return (
     <main
       className={cn(
