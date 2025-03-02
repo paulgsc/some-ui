@@ -13,7 +13,7 @@ const mockMessages: Array<ChatMessageOptions> = Array.from(
   (_, index) => ({
     id: `msg-${index}`,
     character: index % 2 === 0 ? "ai" : "pgdev",
-    content: `This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is a repeated sentence! This is message ${index + 1}`,
+    content: `This is message ${index + 1}`,
     type: index % 3 === 0 ? "thinking" : "chat",
     timestamp: formatRelativeTime(new Date()),
     avatar: {
