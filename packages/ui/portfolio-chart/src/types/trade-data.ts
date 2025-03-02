@@ -1,7 +1,9 @@
-export interface TradeData {
-  id: number
+export type TradeData = {
+  id: string
   date: string
+  symbol: string
   value: number
-  regressionValue: number
-  info: string
+  logic: string
+  evaluation: string
+  nextStrategy: string
 }

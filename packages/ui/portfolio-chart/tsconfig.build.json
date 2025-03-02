@@ -3,9 +3,10 @@
   "exclude": [
     "tailwind.config.ts",
     "eslint.config.js",
+    "setupVitest.ts",
     "../../../assets/**/*",
     "src/data",
-    "**/*.stories.tsx",
-    "**/*.stories.ts"
+"**/*.stories.tsx", "**/*.stories.ts",
+    "**/*.test.ts"
   ]
 }

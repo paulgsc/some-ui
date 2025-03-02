@@ -3,27 +3,34 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "framer-motion": "12.4.7"
+    "@types/d3-shape": "^3.1.7",
+    "d3-shape": "^3.2.0",
+    "framer-motion": "12.4.7",
+    "lucide-react": "^0.477.0",
+    "recharts": "2.12.7",
+    "some-charts": "link:../../../crates/some-charts/dist",
+    "some-ui-shared": "workspace:*",
+    "some-ui-utils": "1.1.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "zod": "^3.24.1"
   },
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "import": {
-        "default": "./dist/esm/some-ui-slideshow.esm.js",
-        "types": "./dist/esm/index.d.ts"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/portfolio-chart.esm.js"
       },
       "require": {
-        "default": "./dist/cjs/some-ui-slideshow.cjs.js",
-        "types": "./dist/cjs/index.d.ts"
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/portfolio-chart.cjs.js"
       }
-    },
-    "./package.json": "./package.json"
+    }
   },
   "files": [
-    "some-ui-slideshow*",
+    "portfolio-chart*",
     "./dist/src/**/*",
     "index.d.ts",
     "./dist/esm/**/*",
@@ -32,8 +39,8 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/some-ui-slideshow.umd.js",
-  "module": "./dist/esm/some-ui-slideshow.esm.js",
+  "main": "./dist/portfolio-chart.umd.js",
+  "module": "./dist/esm/portfolio-chart.esm.js",
   "name": "portfolio-chart",
   "peerDependencies": {
     "react": "18.3.1",
@@ -52,12 +59,13 @@
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": false,
   "type": "module",
   "types": "index.d.ts",
-  "unpkg": "some-ui-slideshow.umd.js",
+  "unpkg": "portfolio-chart.umd.js",
   "version": "0.0.5"
 }

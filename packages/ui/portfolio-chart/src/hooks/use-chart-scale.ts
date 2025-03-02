@@ -1,29 +1,22 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
+import type { ChartDimensions } from "@portfolio-chart/types/chart"
+import type { TradeData } from "@portfolio-chart/types/trade-data"
+import { extent } from "d3-array"
+import { scaleLinear, scaleTime } from "d3-scale"
+import type { ScaleLinear, ScaleTime } from "d3-scale"
 
-import type { ChartDimensions, TradeData } from "../types"
-import { extent, initScales, scaleLinear, scaleTime } from "./scales"
+type ReturnOptions = {
+  xScale: ScaleTime<number, number>
+  yScale: ScaleLinear<number, number>
+  chartWidth: number
+  chartHeight: number
+}
 
-export function useChartScale(data: TradeData[], dimensions: ChartDimensions) {
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  // Initialize WASM module
-  useEffect(() => {
-    initScales().then(() => {
-      setIsInitialized(true)
-    })
-  }, [])
-
+export function useChartScale(
+  data: Array<TradeData>,
+  dimensions: ChartDimensions
+): ReturnOptions {
   return useMemo(() => {
-    if (!isInitialized || data.length === 0) {
-      // Return placeholder scales until WASM is initialized
-      return {
-        xScale: (d: any) => 0,
-        yScale: (d: any) => 0,
-        chartWidth: 0,
-        chartHeight: 0,
-      }
-    }
-
     const { width, height, margin } = dimensions
     const chartWidth = width - margin.left - margin.right
     const chartHeight = height - margin.top - margin.bottom
@@ -45,5 +38,5 @@ export function useChartScale(data: TradeData[], dimensions: ChartDimensions) {
       chartWidth,
       chartHeight,
     }
-  }, [data, dimensions, isInitialized])
+  }, [data, dimensions])
 }

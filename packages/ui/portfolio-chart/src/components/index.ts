@@ -1,2 +1,2 @@
 
-export * from "./bar-group"
+export * from "./ticks-showcase"
