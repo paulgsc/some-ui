@@ -38,7 +38,7 @@ const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
 }
 
 // Define cycle sequences for single-axis rotations
-const ROTATION_CYCLES: Record<RotationAxis, Face[]> = {
+const ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
   "X-axis": [0, 4, 2, 5], // Front -> Top -> Back -> Bottom
   "Y-axis": [0, 1, 2, 3], // Front -> Right -> Back -> Left
 }
@@ -53,7 +53,7 @@ const getRotationPath = (
   startFace: Face,
   targetFace: Face,
   preferredAxis: RotationAxis
-): Rotation[] => {
+): Array<Rotation> => {
   if (startFace === targetFace) return []
 
   // For single-axis rotations, follow the predefined cycle
@@ -61,7 +61,7 @@ const getRotationPath = (
     ROTATION_CYCLES[preferredAxis].includes(startFace) &&
     ROTATION_CYCLES[preferredAxis].includes(targetFace)
   ) {
-    const path: Rotation[] = []
+    const path: Array<Rotation> = []
     let currentFace = startFace
 
     while (currentFace !== targetFace) {
@@ -74,7 +74,7 @@ const getRotationPath = (
   }
 
   // For other cases, use BFS to find shortest path
-  const queue: Array<{ face: Face; path: Rotation[] }> = [
+  const queue: Array<{ face: Face; path: Array<Rotation> }> = [
     { face: startFace, path: [] },
   ]
   const visited = new Set<Face>([startFace])
@@ -83,7 +83,7 @@ const getRotationPath = (
     const { face, path } = queue.shift()!
 
     // Try preferred axis first
-    const axes: RotationAxis[] = [
+    const axes: Array<RotationAxis> = [
       preferredAxis,
       preferredAxis === "X-axis" ? "Y-axis" : "X-axis",
     ]
@@ -139,8 +139,8 @@ export const useRotatingCube = ({
 
       if (dof === "All") {
         // Choose random target face for dual-axis rotation
-        const possibleFaces: Face[] = [0, 1, 2, 3, 4, 5]
-        targetFace = possibleFaces[Math.floor(Math.random() * 6)] as Face
+        const possibleFaces: Array<Face> = [0, 1, 2, 3, 4, 5]
+        targetFace = possibleFaces[Math.floor(Math.random() * 6)]
       } else {
         // Get next face in cycle for single-axis rotation
         targetFace = getNextFaceInCycle(prev.face, rotationAxis)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type ApertureProperties = {
   topX: number
@@ -30,38 +30,46 @@ const finalProperties: ApertureProperties = {
   apertureRotation: 120,
 }
 
-export const useAperture = (duration = 500) => {
+export const useAperture = (duration = 500): ApertureProperties => {
   const [properties, setProperties] =
     useState<ApertureProperties>(initialProperties)
+  const startTimeRef = useRef<number | null>(null)
+  const frameRef = useRef<number | null>(null)
 
-  useEffect(() => {
-    const startTime = Date.now()
+  const animateProperties = useCallback(
+    (timestamp: number) => {
+      if (!startTimeRef.current) {
+        startTimeRef.current = timestamp
+      }
 
-    const animateProperties = () => {
-      const elapsedTime = Date.now() - startTime
+      const elapsedTime = timestamp - startTimeRef.current
       const progress = Math.min(elapsedTime / duration, 1)
 
-      const newProperties = Object.keys(initialProperties).reduce(
-        (acc, key) => {
-          const initialValue =
-            initialProperties[key as keyof ApertureProperties]
+      const newProperties = Object.fromEntries(
+        Object.entries(initialProperties).map(([key, initialValue]) => {
           const finalValue = finalProperties[key as keyof ApertureProperties]
-          acc[key as keyof ApertureProperties] =
-            initialValue + (finalValue - initialValue) * progress
-          return acc
-        },
-        {} as ApertureProperties
-      )
+          return [key, initialValue + (finalValue - initialValue) * progress]
+        })
+      ) as ApertureProperties
 
       setProperties(newProperties)
 
       if (progress < 1) {
-        requestAnimationFrame(animateProperties)
+        frameRef.current = requestAnimationFrame(animateProperties)
+      }
+    },
+    [duration]
+  )
+
+  useEffect(() => {
+    frameRef.current = requestAnimationFrame(animateProperties)
+
+    return (): void => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current)
       }
     }
-
-    requestAnimationFrame(animateProperties)
-  }, [duration])
+  }, [animateProperties])
 
   return properties
 }

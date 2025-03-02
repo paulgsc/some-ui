@@ -1,9 +1,7 @@
-import type { CSSProperties, FC, RefObject } from "react"
-import { ReactNode, useRef } from "react"
-import {
-  AllowedRotationAxis,
-  useRotatingCube,
-} from "@slideshow/hooks/use-rotating-cube"
+import type { CSSProperties, FC, ReactNode, RefObject } from "react"
+import { useRef } from "react"
+import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import { useRotatingCube } from "@slideshow/hooks/use-rotating-cube"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 type RotatingCubeProps = {

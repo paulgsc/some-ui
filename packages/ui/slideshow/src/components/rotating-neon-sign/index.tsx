@@ -1,7 +1,7 @@
 import type { FC } from "react"
 import { Fragment } from "react"
 import { DiceCard } from "@slideshow/components/dice-card"
-import { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import { NeonText } from "some-ui-neon-sign"
 
 type RotatingNeonSignProps = {
