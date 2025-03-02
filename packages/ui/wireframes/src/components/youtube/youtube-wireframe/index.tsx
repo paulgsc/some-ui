@@ -9,7 +9,7 @@ type YoutubeWireframeProps = {
 
 const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
   return (
-    <main className="bg-card absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-4 rounded-md border border-dashed p-0.5 shadow-md">
+    <main className="absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-4 rounded-md border border-dashed bg-none p-0.5 shadow-md">
       <div className="bg-muted relative row-span-5 flex items-center justify-center rounded-md border border-dashed">
         {content[WireframeRegion.VIDEO]}
       </div>
@@ -24,7 +24,7 @@ const YoutubeWireframe: FC<YoutubeWireframeProps> = ({ content = {} }) => {
           <ResizableLayout.PanelB
             defaultSize={88}
             minSize={88}
-            className="bg-green-500"
+            className="bg-none"
           >
             {content[WireframeRegion.MAIN_CONTENT]}
           </ResizableLayout.PanelB>
