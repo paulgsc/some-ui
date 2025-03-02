@@ -1,4 +1,4 @@
-import { ChatMessage } from "@chat/types/chat"
+import type { ChatMessage } from "@chat/types/chat"
 import { formatRelativeTime } from "some-ui-utils"
 
 import { pgdevPng } from "../../../../../assets"
