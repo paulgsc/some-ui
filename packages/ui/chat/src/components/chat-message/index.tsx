@@ -7,9 +7,7 @@ type ChatMessageProps = {
   message: ChatMessageType
 }
 
-export const ChatMessage = ({
-  message,
-}: ChatMessageProps): React.JSX.Element => {
+export const ChatMessage = ({ message }: ChatMessageProps) => {
   const { timestamp, content, character, avatarSize = 25, avatar } = message
   const displayedContent = useTypingEffect({ content })
   return (
