@@ -17,7 +17,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   return (
     <main
       className={cn(
-        "relative flex size-full flex-col gap-y-3 rounded-b-xl p-3 shadow-md",
+        "relative flex size-full flex-col justify-end gap-y-3 overflow-clip rounded-b-xl p-3 shadow-md",
         className
       )}
     >
