@@ -3,7 +3,9 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "@types/d3": "^7.4.3",
     "@types/d3-shape": "^3.1.7",
+    "d3": "^7.9.0",
     "d3-shape": "^3.2.0",
     "framer-motion": "12.4.7",
     "lucide-react": "^0.477.0",
