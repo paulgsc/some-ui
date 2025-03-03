@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
+import { LensShutter } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
 export const YtGrid = (): React.JSX.Element => {
   const rows = 3
   const cols = 4
+  const [showLens, setShowLens] = useState<boolean>(false)
+  const callback = useCallback(() => {
+    setShowLens(false)
+  }, [])
+  const onSuccess = useCallback(() => {
+    setShowLens(true)
+  }, [setShowLens])
   const { pauseAnimation, resumeAnimation, expandedPanel, updatePanelSize } =
-    useRandomPanelExpansion(rows, cols)
+    useRandomPanelExpansion({ rows, cols, replay: true, onSuccess, callback })
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
@@ -22,7 +30,7 @@ export const YtGrid = (): React.JSX.Element => {
   }, [updateAllPanels])
 
   return (
-    <div className="h-[600px] w-full">
+    <div className="absolute inset-0">
       <ResizablePanelGroup
         direction="vertical"
         autoSaveId="conditional"
@@ -65,14 +73,18 @@ export const YtGrid = (): React.JSX.Element => {
                   >
                     <div
                       className={cn(
-                        "flex size-full items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground bg-muted",
+                        "border-muted-foreground bg-muted flex size-full items-center justify-center rounded-xl border-2 border-dashed",
                         {
                           "border-blue-500 bg-blue-100":
                             expandedPanel?.row === i && expandedPanel.col === k,
                         }
                       )}
                     >
-                      Panel {i}-{k}
+                      <div className="flex aspect-square h-[min(100%,100vw)] w-[min(100%,100vh)] items-center justify-center rounded-full bg-blue-500">
+                        {showLens &&
+                          expandedPanel?.row === i &&
+                          expandedPanel.col === k && <LensShutter />}
+                      </div>
                     </div>
                   </ResizablePanel>
                 )
