@@ -20,7 +20,6 @@
   "main": "./dist/esm/index.js",
   "name": "maishatu-tw-eslint",
   "scripts": {
-    "build": "pnpm build:esm",
     "build:esm": "tsc --module ESNext --target ESNext --outDir dist/esm",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
