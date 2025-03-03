@@ -5,7 +5,11 @@ import { LensShutter } from "."
 type Story = StoryObj<typeof LensShutter>
 type Meta = MetaObj<typeof LensShutter>
 
-export const Default: Story = {}
+export const Default: Story = {
+  args: {
+    className: "size-96",
+  },
+}
 
 export default {
   title: "UI/Slideshow/Components/LensShutter",
