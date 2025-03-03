@@ -17,7 +17,7 @@
   "dependencies": {
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "1.1.0"
+    "some-ui-utils": "workspace:*"
   },
   "peerDependencies": {
     "nuqs": "1.18.0",

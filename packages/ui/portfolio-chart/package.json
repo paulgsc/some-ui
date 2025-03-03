@@ -11,7 +11,7 @@
     "lucide-react": "^0.477.0",
     "some-charts": "link:../../../crates/some-charts/dist",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "1.1.0"
+    "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

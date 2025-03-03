@@ -18,7 +18,7 @@
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.3",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "1.1.0"
+    "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*"
