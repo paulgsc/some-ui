@@ -7,7 +7,11 @@ type TradeHeaderProps = {
   value: number
 }
 
-export const TradeHeader = ({ date, symbol, value }: TradeHeaderProps) => {
+export const TradeHeader = ({
+  date,
+  symbol,
+  value,
+}: TradeHeaderProps): React.JSX.Element => {
   const isGain = value >= 0
 
   return (
