@@ -21,6 +21,8 @@
       "@umag/*": ["./packages/ui/umag/src/"],
       "@wireframes/*": ["./packages/ui/wireframes/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
+      "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/"],
+      "@attributions/*": ["./packages/ui/attributions/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
     }
   },

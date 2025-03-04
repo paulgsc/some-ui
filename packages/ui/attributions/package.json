@@ -3,12 +3,14 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "lucide-react": "^0.477.0",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*"
+    "maishatu-eslint-kit": "workspace:*",
+    "maishatu-fetch-kit": "workspace:*"
   },
   "exports": {
     "./package.json": "./package.json",

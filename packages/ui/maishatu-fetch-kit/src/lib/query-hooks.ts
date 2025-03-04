@@ -10,12 +10,9 @@ import type { z } from "zod"
 import type { FetchClient, HttpMethod } from "./fetch-client"
 import { apiClient } from "./fetch-client"
 
-/**
- * Type-safe generic fetch hook creator for React Query
- */
 type QueryHookFactory = {
   createQueryHook: <TData, TError = unknown>(
-    endpoint: string,
+    endpoint: URL,
     schema: z.ZodType<TData>,
     method?: HttpMethod,
     defaultOptions?: Omit<
@@ -28,7 +25,7 @@ type QueryHookFactory = {
   ) => UseQueryResult<TData, TError>
 
   createMutationHook: <TData, TVariables, TError = unknown>(
-    endpoint: string,
+    endpoint: URL,
     schema: z.ZodType<TData>,
     method?: HttpMethod,
     defaultOptions?: Omit<
@@ -49,7 +46,7 @@ export const createApiHooks = (
      * Create a type-safe hook for data fetching with React Query
      */
     createQueryHook: <TData, TError = unknown>(
-      endpoint: string,
+      endpoint: URL,
       schema: z.ZodType<TData>,
       method: HttpMethod = "GET",
       defaultOptions: Omit<
@@ -65,37 +62,33 @@ export const createApiHooks = (
           "queryKey" | "queryFn"
         > = {}
       ) => {
-        // Replace URL parameters (e.g., /users/:id -> /users/123)
-        let url = endpoint
-        const queryParams: Record<string, string> = {}
+        // Clone the URL to avoid modifying the original
+        const url = new URL(endpoint.toString())
+        const pathParams: Record<string, string> = {}
 
-        // Process params, separating path params from query params
+        // Process path parameters and query parameters
         Object.entries(params).forEach(([key, value]) => {
           const placeholder = `:${key}`
-          if (url.includes(placeholder)) {
-            url = url.replace(placeholder, String(value))
+          const pathTemplate = url.pathname
+
+          if (pathTemplate.includes(placeholder)) {
+            // Handle path parameters
+            url.pathname = pathTemplate.replace(placeholder, String(value))
+            pathParams[key] = String(value)
           } else {
-            queryParams[key] = String(value)
+            // Handle query parameters
+            url.searchParams.append(key, String(value))
           }
         })
 
-        // Add query string if there are query parameters
-        if (Object.keys(queryParams).length > 0) {
-          const searchParams = new URLSearchParams()
-          Object.entries(queryParams).forEach(([key, value]) => {
-            searchParams.append(key, value)
-          })
-          url = `${url}?${searchParams.toString()}`
-        }
-
         // Create query key based on endpoint and params
-        const queryKey = [endpoint, params]
+        const queryKey = [endpoint.toString(), params]
 
         return useQuery<TData, TError>({
           queryKey,
           queryFn: async () => {
             const response = await client.createQueryFn<TData>(
-              new URL(url),
+              url,
               method,
               {},
               schema
@@ -112,7 +105,7 @@ export const createApiHooks = (
      * Create a type-safe hook for data mutations with React Query
      */
     createMutationHook: <TData, TVariables, TError = unknown>(
-      endpoint: string,
+      endpoint: URL,
       schema: z.ZodType<TData>,
       method: HttpMethod = "POST",
       defaultOptions: Omit<
@@ -128,20 +121,21 @@ export const createApiHooks = (
           "mutationFn"
         > = {}
       ) => {
-        // Replace URL parameters (e.g., /users/:id -> /users/123)
-        let url = endpoint
+        // Clone the URL to avoid modifying the original
+        const url = new URL(endpoint.toString())
 
+        // Replace URL parameters in the pathname
         Object.entries(params).forEach(([key, value]) => {
           const placeholder = `:${key}`
-          if (url.includes(placeholder)) {
-            url = url.replace(placeholder, String(value))
+          if (url.pathname.includes(placeholder)) {
+            url.pathname = url.pathname.replace(placeholder, String(value))
           }
         })
 
         return useMutation<TData, TError, TVariables>({
           mutationFn: async (variables: TVariables) => {
             return client.createMutationFn<TData, TVariables>(
-              new URL(url),
+              url,
               method,
               {},
               schema

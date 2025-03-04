@@ -1,17 +1,17 @@
 import { attributionData } from "@attributions/data/attribution-data"
 import type { Meta, StoryObj } from "@storybook/react"
 
-import { ScrollingCredits } from "."
+import { AttributionCard } from "."
 
-type Story = StoryObj<typeof ScrollingCredits>
+type Story = StoryObj<typeof AttributionCard>
 
 export const Default: Story = {
   args: {
-    credits: attributionData,
+    attribution: attributionData[1],
   },
 }
 
 export default {
-  title: "UI/Attributions/ScrollingCredits",
-  component: ScrollingCredits,
+  title: "UI/Attributions/AttributionCard",
+  component: AttributionCard,
 } as Meta
