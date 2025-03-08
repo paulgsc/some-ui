@@ -5,10 +5,12 @@
   "dependencies": {
     "react-resizable-panels": "^2.1.0",
     "some-ui-shared": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "some-ui-rollup-config": "workspace:*",
     "maishatu-eslint-kit": "1.3.0"
   },
   "exports": {

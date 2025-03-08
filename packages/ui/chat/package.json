@@ -21,6 +21,7 @@
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
+    "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {

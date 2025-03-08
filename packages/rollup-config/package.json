@@ -8,12 +8,13 @@
   "main": "./dist/esm/index.js",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js"
+      "import": "./dist/esm/index.js",
+      "require": "./dist/esm/index.js"
     }
   },
   "types": "index.ts",
   "scripts": {
-    "build:esm": "tsc --module ESNext --target ESNext --outDir dist/esm",
+    "build:esm": "tsc --outDir dist/esm",
     "build": "pnpm build:esm",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",

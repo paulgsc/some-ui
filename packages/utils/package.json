@@ -30,6 +30,7 @@
     "usehooks-ts": "3.1.0"
   },
   "devDependencies": {
+    "some-ui-rollup-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {
