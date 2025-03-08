@@ -39,7 +39,7 @@ const CONFIG_EXTERNAL_MODULES = {
 
 const CONFIG_BABEL: RollupBabelInputPluginOptions = {
   extensions: [".js", ".jsx", ".ts", ".tsx"],
-  exclude: ["node_modules/**", "**/*.stories.tsx"],
+  exclude: ["node_modules/**", "**/*.stories.tsx", "**/src/data/**"],
   babelHelpers: "bundled",
 }
 
