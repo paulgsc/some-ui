@@ -1,9 +1,11 @@
 import path from "path"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
+import topLevelAwait from "vite-plugin-top-level-await"
+import wasm from "vite-plugin-wasm"
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [wasm(), topLevelAwait(), react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -20,6 +22,10 @@ export default defineConfig({
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
+      "@portfolio-chart": path.resolve(
+        __dirname,
+        "./packages/ui/portfolio-chart/src"
+      ),
       "@makjang": path.resolve(__dirname, "./packages/ui/makjang/src"),
       "@umag": path.resolve(__dirname, "./packages/ui/umag/src"),
       "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),

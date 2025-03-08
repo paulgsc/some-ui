@@ -17,3 +17,6 @@ rustflags = [
 "-D", "warnings"
 ]
 
+[alias]
+wasm = "run -- wasm-pack build --target web --out-dir dist"
+
