@@ -11,6 +11,7 @@ import {
   DrawerFooter,
   DrawerHeader,
 } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 type GanttDrawerProps = {
   chapters: Array<Chapter>
@@ -68,7 +69,7 @@ export const GanttDrawer: FC<GanttDrawerProps> = ({
   return (
     <Drawer open={showOverlay} onOpenChange={() => {}} {...mouseHandlers}>
       <DrawerContent className="bg-black">
-        <div className="mx-auto w-full">
+        <div className={cn("mx-auto w-full", className)}>
           <DrawerHeader>
             <GanttHeader
               currentTime={currentTime}

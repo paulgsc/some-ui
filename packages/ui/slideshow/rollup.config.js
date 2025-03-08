@@ -1,7 +1,7 @@
 import path, { resolve } from "path"
 import { createRollupConfig } from "some-ui-rollup-config"
 
-import packageJson from "./package.json"
+import packageJson from "./package.json" with { type: "json" }
 
 const aliasPath = {
   aliasKey: "@slideshow",

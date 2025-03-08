@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import { usePeriodicOverlay } from "@slideshow/hooks/use-periodic-overlay"
 import { useVideoTime } from "@slideshow/hooks/use-video-time"
 import type { Chapter, SubChapter } from "@slideshow/types/gantt"
@@ -8,9 +9,27 @@ type Options = {
   chapters: Array<Chapter>
   totalDuration: number
 }
-export function useGanttDrawer({ chapters, totalDuration }: Options) {
-  const [isExpanded, setIsExpanded] = useState(true)
-  const [showSubchapters, setShowSubchapters] = useState(true)
+
+type ReturnOptions = {
+  isExpanded: boolean
+  setIsExpanded: Dispatch<SetStateAction<boolean>>
+  showSubchapters: boolean
+  setShowSubchapters: Dispatch<SetStateAction<boolean>>
+  currentChapter: Chapter | SubChapter
+  currentTime: number
+  showOverlay: boolean
+  setShowOverlay: Dispatch<SetStateAction<boolean>>
+  totalDuration: number
+  jumpToTimestamp: (time: number) => void
+  mouseHandlers: { onMouseEnter: () => void; onMouseLeave: () => void }
+  formatTime: (seconds: number) => string
+}
+export function useGanttDrawer({
+  chapters,
+  totalDuration,
+}: Options): ReturnOptions {
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+  const [showSubchapters, setShowSubchapters] = useState<boolean>(true)
   const [currentChapter, setCurrentChapter] = useState<Chapter | SubChapter>(
     chapters[0]
   )
@@ -25,7 +44,7 @@ export function useGanttDrawer({ chapters, totalDuration }: Options) {
     }
   }, [currentTime, currentChapter.id])
 
-  const jumpToTimestamp = (time: number) => {
+  const jumpToTimestamp = (time: number): void => {
     setCurrentTime(time)
   }
 

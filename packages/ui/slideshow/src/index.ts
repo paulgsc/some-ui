@@ -1,1 +1,2 @@
-export * from "@slideshow/components"
+export * from "./components"
+export * from "./types"

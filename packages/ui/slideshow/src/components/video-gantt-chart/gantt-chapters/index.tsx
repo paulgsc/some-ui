@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react"
 import type {
   Chapter,
   GanttBaseProps,
@@ -20,7 +19,7 @@ export const GanttChapters = ({
   totalDuration,
   onJumpToTimestamp,
   className,
-}: GanttChaptersProps) => {
+}: GanttChaptersProps): React.JSX.Element => {
   return (
     <div className={cn("absolute inset-x-0 top-8 h-6", className)}>
       {chapters.map((chapter) => (
