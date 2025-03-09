@@ -9,8 +9,16 @@ type LensShutterProps = {
 export const LensShutter = ({
   className,
 }: LensShutterProps): React.JSX.Element => {
-  const { topX, rightX, leftX, rightY, leftY, apertureSize, apertureRotation } =
-    useAperture()
+  const {
+    topX,
+    rightX,
+    leftX,
+    rightY,
+    leftY,
+    apertureSize,
+    apertureRotation,
+    apertureOpacity,
+  } = useAperture()
   const clipPath = `polygon(
           ${topX}% 0%,
               ${rightX}% ${rightY}%,
@@ -23,7 +31,18 @@ export const LensShutter = ({
     <div
       className={cn("transform-3d perspective-[1250px] size-full", className)}
     >
-      <div className="inset-shadow-lg inset-shadow-red-700 ring-10 relative flex size-full items-center justify-center rounded-full ring-gray-800">
+      <div
+        className={cn(
+          "inset-shadow-lg inset-shadow-red-700 ring-10 relative flex size-full items-center justify-center",
+          "duration-2000 rounded-full ring-gray-800 transition-all",
+          "opacity-[calc(var(--aperture-opacity)*1%)]"
+        )}
+        style={
+          {
+            "--aperture-opacity": apertureOpacity,
+          } as CSSProperties
+        }
+      >
         <div className="-translate-z-10 absolute inset-0 z-0 rounded-full border-4 border-white bg-gray-950" />
         <div
           style={

@@ -8,7 +8,12 @@ type ApertureProperties = {
   leftY: number
   apertureSize: number
   apertureRotation: number
+  apertureOpacity: number
 }
+
+type AperturePropertiesWithState = {
+  state?: "progress" | "done"
+} & ApertureProperties
 
 const initialProperties: ApertureProperties = {
   topX: 50,
@@ -18,6 +23,7 @@ const initialProperties: ApertureProperties = {
   leftY: 25,
   apertureSize: 30,
   apertureRotation: 0,
+  apertureOpacity: 100,
 }
 
 const finalProperties: ApertureProperties = {
@@ -28,11 +34,12 @@ const finalProperties: ApertureProperties = {
   leftY: 0,
   apertureSize: 95,
   apertureRotation: 120,
+  apertureOpacity: 0,
 }
 
-export const useAperture = (duration = 500): ApertureProperties => {
+export const useAperture = (duration = 500): AperturePropertiesWithState => {
   const [properties, setProperties] =
-    useState<ApertureProperties>(initialProperties)
+    useState<AperturePropertiesWithState>(initialProperties)
   const startTimeRef = useRef<number | null>(null)
   const frameRef = useRef<number | null>(null)
 
@@ -52,7 +59,8 @@ export const useAperture = (duration = 500): ApertureProperties => {
         })
       ) as ApertureProperties
 
-      setProperties(newProperties)
+      const state = progress < 1 ? "progress" : "done"
+      setProperties({ ...newProperties, state })
 
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(animateProperties)
