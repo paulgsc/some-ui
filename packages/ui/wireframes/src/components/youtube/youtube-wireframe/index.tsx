@@ -4,21 +4,30 @@ import type { WireframeContent } from "@wireframes/components/youtube/types"
 import { WireframeRegion } from "@wireframes/components/youtube/types"
 import type { Chapter } from "some-ui-slideshow"
 import { GanttDrawer } from "some-ui-slideshow"
+import { cn } from "some-ui-utils"
 
 type YoutubeWireframeProps = {
   content?: WireframeContent
   chapters: Array<Chapter>
   totalDuration: number
+  className?: string
 }
 
 export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
   content = {},
   chapters,
   totalDuration,
+  className,
 }) => {
   return (
     <>
-      <main className="absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-4 rounded-md border border-dashed bg-none p-0.5 shadow-md">
+      <main
+        className={cn(
+          "absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-4 rounded-md",
+          "border border-dashed bg-none p-0.5 shadow-md",
+          className
+        )}
+      >
         <div className="bg-muted relative row-span-5 flex items-center justify-center rounded-md border border-dashed">
           {content[WireframeRegion.VIDEO]}
         </div>

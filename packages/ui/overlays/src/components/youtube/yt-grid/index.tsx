@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { YTGridThumbnail } from "@overlays/components/youtube/yt-grid-thumbnail"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
@@ -73,17 +74,22 @@ export const YtGrid = (): React.JSX.Element => {
                   >
                     <div
                       className={cn(
-                        "border-muted-foreground bg-muted flex size-full items-center justify-center rounded-xl border-2 border-dashed",
-                        {
-                          "border-blue-500 bg-blue-100":
-                            expandedPanel?.row === i && expandedPanel.col === k,
-                        }
+                        "bg-muted flex size-full items-center justify-center rounded-xl"
                       )}
                     >
-                      <div className="flex aspect-square h-[min(100%,100vw)] w-[min(100%,100vh)] items-center justify-center rounded-full bg-blue-500">
+                      <div
+                        className={cn(
+                          "relative flex  items-center justify-center rounded-full bg-blue-500",
+                          "aspect-square h-[min(100%,100vw)] w-[min(100%,100vh)]"
+                        )}
+                      >
                         {showLens &&
-                          expandedPanel?.row === i &&
-                          expandedPanel.col === k && <LensShutter />}
+                        expandedPanel?.row === i &&
+                        expandedPanel.col === k ? (
+                          <LensShutter />
+                        ) : (
+                          <YTGridThumbnail />
+                        )}
                       </div>
                     </div>
                   </ResizablePanel>

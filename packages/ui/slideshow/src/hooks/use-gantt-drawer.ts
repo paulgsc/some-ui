@@ -15,7 +15,7 @@ type ReturnOptions = {
   setIsExpanded: Dispatch<SetStateAction<boolean>>
   showSubchapters: boolean
   setShowSubchapters: Dispatch<SetStateAction<boolean>>
-  currentChapter: Chapter | SubChapter
+  currentChapter: Chapter | SubChapter | undefined
   currentTime: number
   showOverlay: boolean
   setShowOverlay: Dispatch<SetStateAction<boolean>>
@@ -30,19 +30,20 @@ export function useGanttDrawer({
 }: Options): ReturnOptions {
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
   const [showSubchapters, setShowSubchapters] = useState<boolean>(true)
-  const [currentChapter, setCurrentChapter] = useState<Chapter | SubChapter>(
-    chapters[0]
-  )
+  const [currentChapter, setCurrentChapter] = useState<
+    Chapter | SubChapter | undefined
+  >(chapters[0])
 
   const { currentTime, setCurrentTime } = useVideoTime({ totalDuration })
   const { showOverlay, setShowOverlay, mouseHandlers } = usePeriodicOverlay()
 
   useEffect(() => {
+    if (chapters.length === 0 || currentChapter === undefined) return
     const chapter = findCurrentChapter(currentTime, chapters)
     if (chapter && chapter.id !== currentChapter.id) {
       setCurrentChapter(chapter)
     }
-  }, [currentTime, currentChapter.id])
+  }, [currentTime, currentChapter?.id])
 
   const jumpToTimestamp = (time: number): void => {
     setCurrentTime(time)

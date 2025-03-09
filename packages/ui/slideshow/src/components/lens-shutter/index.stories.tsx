@@ -6,9 +6,11 @@ type Story = StoryObj<typeof LensShutter>
 type Meta = MetaObj<typeof LensShutter>
 
 export const Default: Story = {
-  args: {
-    className: "size-96",
-  },
+  render: () => (
+    <main className="absolute inset-0 flex items-center justify-center border border-red-500">
+      <LensShutter />
+    </main>
+  ),
 }
 
 export default {

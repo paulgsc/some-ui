@@ -113,6 +113,13 @@ export const Default: Story = {
   },
 }
 
+export const WireframeScaled: Story = {
+  args: {
+    chapters,
+    totalDuration,
+    className: "scale-50",
+  },
+}
 export default {
   title: "WireFrames/Youtube",
   component: YoutubeWireframe,

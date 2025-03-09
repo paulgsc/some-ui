@@ -27,7 +27,13 @@ const YoutubeOverlay = (): React.JSX.Element => {
     [WireframeRegion.FOOTER_RIGHT]: <YoutubeMarquee />,
   }
 
-  return <YoutubeWireframe content={overlayContent} />
+  return (
+    <YoutubeWireframe
+      chapters={[]}
+      totalDuration={0}
+      content={overlayContent}
+    />
+  )
 }
 
 export default YoutubeOverlay

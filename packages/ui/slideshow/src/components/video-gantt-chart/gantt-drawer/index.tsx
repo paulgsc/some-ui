@@ -1,4 +1,5 @@
 import type { FC } from "react"
+import { Fragment } from "react"
 import { GanttToast } from "@slideshow/components/video-gantt-chart/gantt-burst-notification"
 import { GanttFooter } from "@slideshow/components/video-gantt-chart/gantt-footer"
 import { GanttHeader } from "@slideshow/components/video-gantt-chart/gantt-header"
@@ -10,6 +11,7 @@ import {
   DrawerContent,
   DrawerFooter,
   DrawerHeader,
+  DrawerOverlay,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -66,9 +68,12 @@ export const GanttDrawer: FC<GanttDrawerProps> = ({
     formatTime,
   } = useGanttDrawer({ chapters, totalDuration })
 
+  if (chapters.length <= 0 || currentChapter === undefined) return <Fragment />
+
   return (
     <Drawer open={showOverlay} onOpenChange={() => {}} {...mouseHandlers}>
       <DrawerContent className="bg-black">
+        <DrawerOverlay className="" />
         <div className={cn("mx-auto w-full", className)}>
           <DrawerHeader>
             <GanttHeader
