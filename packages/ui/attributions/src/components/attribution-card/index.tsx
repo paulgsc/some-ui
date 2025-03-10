@@ -33,50 +33,52 @@ export const AttributionCard = ({
   } = attribution
 
   const getSourceIcon = (): ReactNode => {
-    switch (sourceType.toLowerCase()) {
-      case "book":
+    switch (sourceType) {
+      case "Book":
         return <Book className="size-5" />
-      case "website":
+      case "Website":
         return <Globe className="size-5" />
-      case "data":
-      case "satellite data":
+      case "Data":
+      case "SatelliteData":
         return <Database className="size-5" />
-      case "document":
+      case "Document":
         return <FileText className="size-5" />
-      case "image":
+      case "Image":
         return <ImageIcon className="size-5" />
-      case "music":
+      case "Music":
         return <Music className="size-5" />
-      case "video":
+      case "Video":
         return <Video className="size-5" />
-      case "code":
+      case "Code":
         return <Code className="size-5" />
       default:
+        sourceType satisfies never
         return <FileText className="size-5" />
     }
   }
 
   // Get color based on source type
   const getSourceColor = (): string => {
-    switch (sourceType.toLowerCase()) {
-      case "book":
+    switch (sourceType) {
+      case "Book":
         return "bg-blue-500/10 text-blue-500 border-blue-500/20"
-      case "website":
+      case "Website":
         return "bg-purple-500/10 text-purple-500 border-purple-500/20"
-      case "data":
-      case "satellite data":
+      case "Data":
+      case "SatelliteData":
         return "bg-green-500/10 text-green-500 border-green-500/20"
-      case "document":
+      case "Document":
         return "bg-orange-500/10 text-orange-500 border-orange-500/20"
-      case "image":
+      case "Image":
         return "bg-pink-500/10 text-pink-500 border-pink-500/20"
-      case "music":
+      case "Music":
         return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20"
-      case "video":
+      case "Video":
         return "bg-red-500/10 text-red-500 border-red-500/20"
-      case "code":
+      case "Code":
         return "bg-cyan-500/10 text-cyan-500 border-cyan-500/20"
       default:
+        sourceType satisfies never
         return "bg-gray-500/10 text-gray-500 border-gray-500/20"
     }
   }
