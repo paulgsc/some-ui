@@ -4,10 +4,10 @@ import {
 } from "@slideshow/utils/dial-utils"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import { DialSection } from "."
+import { DialPieSection } from "."
 
-type Story = StoryObj<typeof DialSection>
-type Meta = MetaObj<typeof DialSection>
+type Story = StoryObj<typeof DialPieSection>
+type Meta = MetaObj<typeof DialPieSection>
 
 const section = {
   id: 1,
@@ -49,13 +49,13 @@ export const Default: Story = {
         viewBox={`0 0 ${center * 2} ${center * 2}`}
         preserveAspectRatio="xMidYMid meet"
       >
-        <DialSection {...args} />
+        <DialPieSection {...args} />
       </svg>
     </main>
   ),
 }
 
 export default {
-  title: "UI/Slideshow/Components/DialSection",
-  component: DialSection,
+  title: "UI/Slideshow/Components/Dial/DialPieSection",
+  component: DialPieSection,
 } as Meta

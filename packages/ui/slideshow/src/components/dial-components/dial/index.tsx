@@ -1,77 +1,102 @@
-import type { RefObject } from "react"
-import type { DialSection } from "@slideshow/types/dial"
+import { useState } from "react"
+import { DialPieSection } from "@slideshow/components/dial-components/dial-section"
+import { useDialAnimation } from "@slideshow/hooks/use-dial-animation"
+import { useSectionCalculations } from "@slideshow/hooks/use-dial-sections"
+import type { AnimationPattern, DialSection } from "@slideshow/types/dial"
 import {
+  calculateTrianglePoints,
   generateSectionPath,
   getSectionTextPosition,
 } from "@slideshow/utils/dial-utils"
+import { cn } from "some-ui-utils"
 
-import { DialSectionComponent } from "./DialSection"
-
-type DialSVGProps = {
+type DialProps = {
+  center: number
+  cycleTime: number
+  animationPattern: AnimationPattern
+  uniformSections: boolean
   sections: Array<DialSection>
-  sectionBoundaries: Array<{ startAngle: number; endAngle: number }>
-  currentAngle: number
-  currentSection: DialSection
-  svgRef: RefObject<SVGSVGElement>
-  isDragging: boolean
-  isHovering: boolean
-  handlePointerMouseDown: (e: React.MouseEvent) => void
-  setZoomedSection: (index: number | null) => void
-  zoomedSection: number | null
+  className?: string
 }
 
-export const DialSVG = ({
+export const Dial = ({
+  center,
+  cycleTime,
+  animationPattern,
+  uniformSections,
   sections,
-  sectionBoundaries,
-  currentAngle,
-  currentSection,
-  svgRef,
-  isDragging,
-  isHovering,
-  handlePointerMouseDown,
-  setZoomedSection,
-  zoomedSection,
-}: DialSVGProps) => {
-  // Generate SVG paths for each section
+  className,
+}: DialProps): React.JSX.Element => {
+  const innerRadius = 0.7 * center
+  const outerRadius = 0.95 * center
+  const tHW = (outerRadius - innerRadius) * 0.6
+  const radius = (innerRadius + outerRadius) / 2
 
-  // Calculate pointer position
-  const pointerAngleRadians = (currentAngle - 90) * (Math.PI / 180)
-  const pointerX = 100 + 70 * Math.cos(pointerAngleRadians)
-  const pointerY = 100 + 70 * Math.sin(pointerAngleRadians)
+  const [zoomedSection, setZoomedSection] = useState<number | null>(null)
+
+  const { currentAngle } = useDialAnimation({
+    sections,
+    cycleTime,
+    animationPattern,
+  })
+
+  const { sectionBoundaries } = useSectionCalculations({
+    sections,
+    uniformSections,
+    currentAngle: currentAngle,
+  })
 
   return (
-    <svg width="200" height="200" viewBox="0 0 200 200" ref={svgRef}>
+    <svg
+      className={cn("size-full", className)}
+      viewBox={`0 0 ${center * 2} ${center * 2}`}
+      preserveAspectRatio="xMidYMid meet"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+    >
       {/* Outer ring with 3D effect */}
       <circle
-        cx="100"
-        cy="100"
-        r="80"
+        cx={center}
+        cy={center}
+        r={outerRadius}
         fill="none"
         stroke="#333"
         strokeWidth="1"
       />
       <circle
-        cx="100"
-        cy="100"
-        r="80"
+        cx={center}
+        cy={center}
+        r={outerRadius}
         fill="none"
         stroke="rgba(255,255,255,0.8)"
         strokeWidth="2"
         filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.2))"
       />
 
-      {/* Dial sections */}
       <g>
+        {/* Dial sections */}
         {sections.map((section, index) => {
           const { startAngle, endAngle } = sectionBoundaries[index]
-          const path = generateSectionPath(startAngle, endAngle, 40, 80)
+          const path = generateSectionPath({
+            startAngle,
+            endAngle,
+            innerRadius,
+            outerRadius,
+            center,
+          })
           const isZoomed = zoomedSection === index
-          const textPos = getSectionTextPosition(index, sectionBoundaries)
+          const textPos = getSectionTextPosition({
+            sectionIndex: index,
+            radius,
+            sectionBoundaries,
+            center,
+          })
 
           return (
-            <DialSectionComponent
+            <DialPieSection
               key={section.id}
               section={section}
+              radius={radius}
               path={path}
               isZoomed={isZoomed}
               index={index}
@@ -85,10 +110,15 @@ export const DialSVG = ({
       {/* Section dividing lines */}
       {sectionBoundaries.map((boundary, index) => {
         const radians = (boundary.startAngle - 90) * (Math.PI / 180)
-        const x1 = 100 + 40 * Math.cos(radians)
-        const y1 = 100 + 40 * Math.sin(radians)
-        const x2 = 100 + 80 * Math.cos(radians)
-        const y2 = 100 + 80 * Math.sin(radians)
+        const x1 = center + innerRadius * Math.cos(radians)
+        const y1 = center + innerRadius * Math.sin(radians)
+        const x2 = center + outerRadius * Math.cos(radians)
+        const y2 = center + outerRadius * Math.sin(radians)
+        const isZoomed =
+          zoomedSection === index ||
+          (zoomedSection &&
+            (zoomedSection + 1) % sectionBoundaries.length === index)
+        const scale = isZoomed ? 1.05 : 1
 
         return (
           <line
@@ -98,36 +128,40 @@ export const DialSVG = ({
             x2={x2}
             y2={y2}
             stroke="#333"
-            strokeWidth="1"
+            strokeWidth={center * 0.015}
+            transform={`scale(${scale}) translate(${(1 - scale) * 50}, ${(1 - scale) * 50})`}
           />
         )
       })}
 
       {/* Center circle with 3D effect */}
       <circle
-        cx="100"
-        cy="100"
-        r="40"
+        cx={center}
+        cy={center}
+        r={innerRadius}
         fill="#FFC0CB"
         filter="drop-shadow(0px 3px 5px rgba(0,0,0,0.2))"
       />
       <circle
-        cx="100"
-        cy="100"
-        r="40"
+        cx={center}
+        cy={center}
+        r={innerRadius}
         fill="url(#centerGradient)"
         filter="drop-shadow(0px 3px 5px rgba(0,0,0,0.2))"
       />
 
       {/* Pointer */}
-      <g
-        transform={`rotate(${currentAngle}, 100, 100)`}
-        onMouseDown={handlePointerMouseDown}
-        style={{ cursor: "grab" }}
-      >
+      <g transform={`rotate(${currentAngle}, ${center}, ${center})`}>
         <polygon
-          points="100,30 110,50 90,50"
-          fill={isDragging ? "#FF5555" : "#FF7F7F"}
+          points={calculateTrianglePoints(
+            center,
+            center,
+            outerRadius * 0.95,
+            currentAngle,
+            tHW,
+            tHW
+          )}
+          fill={"#FF7F7F"}
           stroke="#333"
           strokeWidth="1"
           filter="drop-shadow(0px 2px 2px rgba(0,0,0,0.3))"

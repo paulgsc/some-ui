@@ -59,3 +59,31 @@ export const getSectionTextPosition = ({
 
   return { x, y, rotation }
 }
+
+export function calculateTrianglePoints(
+  centerX: number,
+  centerY: number,
+  radius: number,
+  angleInDegrees: number,
+  triangleHeight: number,
+  triangleWidth: number
+): string {
+  const angleInRadians = (angleInDegrees * Math.PI) / 180
+
+  const tipX = centerX + radius * Math.cos(angleInRadians)
+  const tipY = centerY + radius * Math.sin(angleInRadians)
+
+  const baseMiddleX = tipX - triangleHeight * Math.cos(angleInRadians)
+  const baseMiddleY = tipY - triangleHeight * Math.sin(angleInRadians)
+
+  const perpAngle = angleInRadians + Math.PI / 2
+
+  const halfWidth = triangleWidth / 2
+  const point2X = baseMiddleX + halfWidth * Math.cos(perpAngle)
+  const point2Y = baseMiddleY + halfWidth * Math.sin(perpAngle)
+
+  const point3X = baseMiddleX - halfWidth * Math.cos(perpAngle)
+  const point3Y = baseMiddleY - halfWidth * Math.sin(perpAngle)
+
+  return `${tipX},${tipY} ${point2X},${point2Y} ${point3X},${point3Y}`
+}

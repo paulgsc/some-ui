@@ -10,7 +10,7 @@ type DialSectionProps = {
   textPosition: { x: number; y: number; rotation: number }
 }
 
-export const DialSection = ({
+export const DialPieSection = ({
   section,
   path,
   radius,
