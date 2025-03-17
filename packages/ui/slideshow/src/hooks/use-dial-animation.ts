@@ -1,18 +1,24 @@
-import { useEffect, useRef, useState } from "react"
-import type { AnimationPattern, DialSection } from "@slideshow/types/dial"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type {
+  AnimationPattern,
+  DialSection,
+  SectionBounds,
+} from "@slideshow/types/dial"
 
 type UseDialAnimationProps = {
   sections: Array<DialSection>
+  terminal: SectionBounds
   cycleTime: number
   animationPattern: AnimationPattern
 }
 
 export function useDialAnimation({
   sections,
+  terminal,
   cycleTime,
   animationPattern,
 }: UseDialAnimationProps) {
-  const [currentAngle, setCurrentAngle] = useState(0)
+  const [currentAngle, setCurrentAngle] = useState(Math.random() * 360)
   const [progress, setProgress] = useState(0)
 
   const animationRef = useRef<number | null>(null)
@@ -70,7 +76,8 @@ export function useDialAnimation({
       }
     }
 
-    setCurrentAngle(newAngle % 360)
+    setCurrentAngle((prev) => {
+      return (prev + newAngle) % 360 })
 
     animationRef.current = requestAnimationFrame(animate)
   }
