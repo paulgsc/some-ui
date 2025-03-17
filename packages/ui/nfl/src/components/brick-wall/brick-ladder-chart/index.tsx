@@ -2,8 +2,9 @@ import type { FC, ReactNode, RefObject } from "react"
 import { useRef } from "react"
 import { Brick } from "@nfl/components/brick-wall/brick"
 import { Crown } from "@nfl/components/brick-wall/crown"
+import { Medal } from "@nfl/components/brick-wall/medal"
 import { calculateBrickPositions } from "@nfl/utils/brick-positions"
-import { useMeasureRect } from "some-ui-utils"
+import { cn, useMeasureRect } from "some-ui-utils"
 
 type DataItem = {
   name: string
@@ -12,9 +13,13 @@ type DataItem = {
 
 type BrickLadderChartProps = {
   data: Array<DataItem>
+  className?: string
 }
 
-export const BrickLadderChart: FC<BrickLadderChartProps> = ({ data }) => {
+export const BrickLadderChart: FC<BrickLadderChartProps> = ({
+  data,
+  className,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const { height, width } = useMeasureRect({
     ref: containerRef as RefObject<HTMLElement>,
@@ -161,14 +166,66 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({ data }) => {
     return null
   }
 
+  // Render medals for the top three layers
+  const renderMedals = () => {
+    if (layerSizes.length < 3 || canvasWidth === 0 || canvasHeight === 0)
+      return null
+
+    const medals = []
+    const medalSize = brickWidth * 0.8
+
+    // Get positions for the top three layers
+    const topLayers = [
+      layerSizes.length - 1, // Gold (top layer)
+      layerSizes.length - 2, // Silver (second layer)
+      layerSizes.length - 3, // Bronze (third layer)
+    ]
+
+    // Calculate medal positions
+    for (let i = 0; i < 3; i++) {
+      const layerIndex = topLayers[i]
+      const positions = calculateBrickPositions(
+        layerIndex,
+        layerSizes[layerIndex],
+        brickWidth,
+        brickHeight,
+        canvasWidth,
+        canvasHeight,
+        padding
+      )
+
+      if (positions.length > 0) {
+        // Position medal above the first brick in each layer
+        const pos = positions[0]
+        const medalX = pos.x + brickWidth / 2
+
+        // Calculate ribbon height to reach from top to the brick
+        const ribbonHeight = pos.y - medalSize / 2
+
+        // Add medal
+        medals.push(
+          <Medal
+            key={`medal-${i}`}
+            x={medalX}
+            y={pos.y - medalSize / 2}
+            size={medalSize}
+            type={i === 0 ? "gold" : i === 1 ? "silver" : "bronze"}
+            ribbonHeight={ribbonHeight}
+          />
+        )
+      }
+    }
+
+    return medals
+  }
+
   // Calculate title font size based on canvas width
   const titleFontSize = Math.max(12, Math.min(20, canvasWidth * 0.025))
 
   return (
     <div ref={containerRef} className="size-full">
       <svg
-        width="100%"
-        height="100%"
+        className={cn("size-full", className)}
         viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
         preserveAspectRatio="xMidYMid meet"
       >
@@ -195,6 +252,8 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({ data }) => {
           strokeWidth="2"
         />
 
+        {/* Render medals */}
+        {renderMedals()}
         {/* Render all bricks */}
         {renderBricks()}
 
