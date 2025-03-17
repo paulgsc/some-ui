@@ -12,9 +12,10 @@ export type BrickPosition = {
 
 export type BrickData = {
   position: BrickPosition
-  item: DataItem
+  item?: DataItem
   maxValue: number
   minValue: number
+  isBlank?: boolean
 }
 
 export type CrownPosition = {

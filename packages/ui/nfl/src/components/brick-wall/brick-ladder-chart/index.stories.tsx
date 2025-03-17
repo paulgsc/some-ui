@@ -28,7 +28,7 @@ export const Default: Story = {
     data,
   },
   render: (args) => (
-    <main className="size-120 border border-red-500">
+    <main className="absolute inset-0 border border-red-500">
       <BrickLadderChart {...args} />
     </main>
   ),
