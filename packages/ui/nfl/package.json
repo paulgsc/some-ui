@@ -19,12 +19,12 @@
   "dependencies": {
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
+    "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "some-ui-rollup-config": "workspace:*"
   },
   "repository": {
     "type": "git",
