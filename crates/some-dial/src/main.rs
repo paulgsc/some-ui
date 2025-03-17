@@ -62,7 +62,7 @@ impl fmt::Display for CirclePoint {
 }
 
 /// Represents a direction of movement along the circle.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Direction {
     Clockwise,
     Counterclockwise,
@@ -81,6 +81,7 @@ pub struct Segment {
 
 impl Segment {
     /// Creates a new segment between two points.
+    #[must_use]
     pub fn new(start: CirclePoint, end: CirclePoint, index: usize) -> Self {
         let radius = start.radius;
 
@@ -123,7 +124,7 @@ impl Segment {
 }
 
 /// The state of the free moving point.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum PointState {
     /// At rest (absorbed) at a segment midpoint
     AtRest,
