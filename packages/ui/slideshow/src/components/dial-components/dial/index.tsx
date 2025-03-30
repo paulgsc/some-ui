@@ -12,7 +12,7 @@ import { cn } from "some-ui-utils"
 
 type DialProps = {
   center: number
-  cycleTime: number
+  animationDuration: number
   animationPattern: AnimationPattern
   uniformSections: boolean
   sections: Array<DialSection>
@@ -21,7 +21,7 @@ type DialProps = {
 
 export const Dial = ({
   center,
-  cycleTime,
+  animationDuration,
   animationPattern,
   uniformSections,
   sections,
@@ -34,16 +34,15 @@ export const Dial = ({
 
   const [zoomedSection, setZoomedSection] = useState<number | null>(null)
 
-  const { currentAngle } = useDialAnimation({
-    sections,
-    cycleTime,
-    animationPattern,
-  })
-
   const { sectionBoundaries } = useSectionCalculations({
     sections,
     uniformSections,
-    currentAngle: currentAngle,
+  })
+
+  const { currentAngle, isWithinSection } = useDialAnimation({
+    animationDuration,
+    animationPattern,
+    sectionBounds: sectionBoundaries[2],
   })
 
   return (

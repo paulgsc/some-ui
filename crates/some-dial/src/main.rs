@@ -345,7 +345,6 @@ impl Simulator {
 
         while self.current_time < end_time {
             let (point, state, phase) = self.get_state();
-            println!("Free point: {point}, State: {state:?}, Phase segment: {phase}");
             self.environment.update(self.time_step);
             self.current_time += self.time_step;
         }

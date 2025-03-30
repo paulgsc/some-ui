@@ -219,8 +219,16 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     return medals
   }
 
-  // Calculate title font size based on canvas width
-  const titleFontSize = Math.max(12, Math.min(20, canvasWidth * 0.025))
+  const rectWidth = canvasWidth * 0.4
+  const rectHeight = canvasHeight * 0.1
+  const rectX = canvasWidth / 16
+  const rectY = padding / 2
+
+  // Dynamically calculate font size to fit within the rect
+  const titleFontSize = rectHeight * 0.25 // 50% of rect height
+
+  const textX = rectX + rectWidth / 2 // Center text horizontally
+  const textY = rectY + rectHeight / 2 + titleFontSize * 0.35 // Adjust for visual centering
 
   return (
     <div ref={containerRef} className="size-full">
@@ -230,15 +238,27 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Title */}
+        <rect
+          x={rectX}
+          y={rectY}
+          width={rectWidth}
+          height={rectHeight}
+          rx="6"
+          fill="#555"
+          stroke="#000"
+          strokeWidth="2"
+        />
+
         <text
-          x={canvasWidth / 2}
-          y={padding / 2}
+          x={textX}
+          y={textY}
           textAnchor="middle"
           fontFamily="Arial"
           fontWeight="bold"
+          fill="white"
           fontSize={titleFontSize}
         >
-          Data Visualization Brick Ladder
+          NFL Draft Picks Olympics
         </text>
 
         {/* Base platform */}

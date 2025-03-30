@@ -4,13 +4,11 @@ import type { DialSection } from "@slideshow/types/dial"
 type UseSectionCalculationsProps = {
   sections: Array<DialSection>
   uniformSections: boolean
-  currentAngle: number
 }
 
 export function useSectionCalculations({
   sections,
   uniformSections,
-  currentAngle,
 }: UseSectionCalculationsProps) {
   // Calculate total angle for each section
   const { sectionAngles, sectionBoundaries } = useMemo(() => {
@@ -52,12 +50,9 @@ export function useSectionCalculations({
     return sections[0] // Fallback
   }
 
-  const currentSection = getCurrentSection(currentAngle)
-
   return {
     sectionAngles,
     sectionBoundaries,
     getCurrentSection,
-    currentSection,
   }
 }

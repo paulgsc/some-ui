@@ -27,7 +27,7 @@ export const ScrollingCredits: FC<ScrollingCreditsProps> = ({
             "animate-credits-scroll"
           )}
         >
-          <h1 className="mb-12 text-5xl">Life of John Doe</h1>
+          <h1 className="mb-12 text-5xl">Ending Credits & Attributions</h1>
 
           {credits.map((credit, index) => (
             <AttributionCard key={index} attribution={credit} />
