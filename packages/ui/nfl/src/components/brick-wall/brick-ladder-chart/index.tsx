@@ -13,11 +13,13 @@ type DataItem = {
 
 type BrickLadderChartProps = {
   data: Array<DataItem>
+  title?: string
   className?: string
 }
 
 export const BrickLadderChart: FC<BrickLadderChartProps> = ({
   data,
+  title = "Some title...",
   className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -30,12 +32,10 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
 
   const padding = Math.max(20, Math.min(50, canvasWidth * 0.05)) // Responsive padding
 
-  // Process data - sort by value (ascending)
   const processedData = [...data].sort((a, b) => a.value - b.value)
   const minValue = Math.min(...processedData.map((d) => d.value))
   const maxValue = Math.max(...processedData.map((d) => d.value))
 
-  // Group data by value
   const groupedData: Record<number, Array<DataItem>> = {}
   processedData.forEach((item) => {
     if (!groupedData[item.value]) {
@@ -44,42 +44,33 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     groupedData[item.value].push(item)
   })
 
-  // Get unique values and sort them (ascending)
   const uniqueValues = Object.keys(groupedData)
     .map(Number)
     .sort((a, b) => a - b)
 
-  // Calculate layer sizes (number of bricks per layer)
-  // Start with 1 at the top, increase by 1 for each layer down
   const layerSizes: Array<number> = []
   for (let i = 0; i < uniqueValues.length; i++) {
-    // Top layer (highest value) has 1 brick, each layer below adds 1 more
     layerSizes.unshift(i + 1)
   }
 
-  // Set brick width based on canvas size and max elements in a layer
   const maxElementsInLayer = Math.max(...layerSizes)
   const brickWidth = Math.min(
     canvasWidth * 0.2, // Max 20% of canvas width
     (canvasWidth - padding * 2) / (maxElementsInLayer + 0.5)
   )
 
-  // Adjust brick height proportionally
   const brickHeight = brickWidth * 0.4
 
-  // Generate bricks for all layers
   const renderBricks = (): Array<ReactNode> | ReactNode => {
     if (canvasWidth === 0 || canvasHeight === 0) return null
 
     const allBricks = []
 
-    // Iterate through layers from bottom to top
     for (let layerIndex = 0; layerIndex < layerSizes.length; layerIndex++) {
       const elementsInLayer = layerSizes[layerIndex]
       const valueForLayer = uniqueValues[layerIndex]
-      const itemsForLayer = groupedData[valueForLayer] || []
+      const itemsForLayer = groupedData[valueForLayer]
 
-      // Calculate brick positions for this layer
       const positions = calculateBrickPositions(
         layerIndex,
         elementsInLayer,
@@ -90,12 +81,10 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
         padding
       )
 
-      // Generate bricks for this layer
       for (let posIndex = 0; posIndex < positions.length; posIndex++) {
         const pos = positions[posIndex]
 
         if (posIndex < itemsForLayer.length) {
-          // Real data brick
           const item = itemsForLayer[posIndex]
           const brick = {
             position: {
@@ -111,7 +100,6 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
 
           allBricks.push(<Brick key={`brick-${layerIndex}`} brick={brick} />)
         } else {
-          // Blank placeholder brick
           const brick = {
             position: {
               x: pos.x,
@@ -136,10 +124,8 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     if (uniqueValues.length === 0 || canvasWidth === 0 || canvasHeight === 0)
       return null
 
-    // Get the top layer (highest value)
     const topLayer = layerSizes.length - 1
 
-    // Get positions for the top layer
     const topPositions = calculateBrickPositions(
       topLayer,
       layerSizes[topLayer],
@@ -150,7 +136,6 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       padding
     )
 
-    // Place crown above the first brick in the top layer (which should be the highest value)
     if (topPositions.length > 0) {
       const topPos = topPositions[0]
       const crownX = topPos.x + brickWidth / 2
@@ -166,7 +151,6 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     return null
   }
 
-  // Render medals for the top three layers
   const renderMedals = () => {
     if (layerSizes.length < 3 || canvasWidth === 0 || canvasHeight === 0)
       return null
@@ -174,14 +158,12 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     const medals = []
     const medalSize = brickWidth * 0.8
 
-    // Get positions for the top three layers
     const topLayers = [
-      layerSizes.length - 1, // Gold (top layer)
-      layerSizes.length - 2, // Silver (second layer)
-      layerSizes.length - 3, // Bronze (third layer)
+      layerSizes.length - 1,
+      layerSizes.length - 2,
+      layerSizes.length - 3,
     ]
 
-    // Calculate medal positions
     for (let i = 0; i < 3; i++) {
       const layerIndex = topLayers[i]
       const positions = calculateBrickPositions(
@@ -195,14 +177,11 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       )
 
       if (positions.length > 0) {
-        // Position medal above the first brick in each layer
         const pos = positions[0]
         const medalX = pos.x + brickWidth / 2
 
-        // Calculate ribbon height to reach from top to the brick
         const ribbonHeight = pos.y - medalSize / 2
 
-        // Add medal
         medals.push(
           <Medal
             key={`medal-${i}`}
@@ -224,7 +203,6 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
   const rectX = canvasWidth / 16
   const rectY = padding / 2
 
-  // Dynamically calculate font size to fit within the rect
   const titleFontSize = rectHeight * 0.25 // 50% of rect height
 
   const textX = rectX + rectWidth / 2 // Center text horizontally
@@ -258,7 +236,7 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
           fill="white"
           fontSize={titleFontSize}
         >
-          NFL Draft Picks Olympics
+          {title}
         </text>
 
         {/* Base platform */}

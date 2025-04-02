@@ -20,6 +20,7 @@
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-bricks": "link:../../../crates/some-bricks/dist",
+    "maishatu-fetch-kit": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
