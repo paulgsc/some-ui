@@ -17,7 +17,7 @@ export const Default: Story = {
     if (isLoading) return <div>Loading...</div>
     if (error) return <div>error...{`${error}`}</div>
     return (
-      <main className="h-screen w-1/2">
+      <main className="h-screen w-full border border-red-600">
         <BrickLadderChart
           {...{ ...args, data: points ?? [], title: metadata?.title }}
         />

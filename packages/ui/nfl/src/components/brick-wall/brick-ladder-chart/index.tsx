@@ -1,5 +1,5 @@
 import type { FC, ReactNode, RefObject } from "react"
-import { useRef } from "react"
+import { useCallback, useRef } from "react"
 import { Brick } from "@nfl/components/brick-wall/brick"
 import { Crown } from "@nfl/components/brick-wall/crown"
 import { Medal } from "@nfl/components/brick-wall/medal"
@@ -48,32 +48,58 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     .map(Number)
     .sort((a, b) => a - b)
 
-  const layerSizes: Array<number> = []
-  for (let i = 0; i < uniqueValues.length; i++) {
-    layerSizes.unshift(i + 1)
-  }
-
-  const maxElementsInLayer = Math.max(...layerSizes)
-  const brickWidth = Math.min(
-    canvasWidth * 0.2, // Max 20% of canvas width
-    (canvasWidth - padding * 2) / (maxElementsInLayer + 0.5)
+  const maxElementsInAnyLayer = Math.max(
+    ...Object.values(groupedData).map((items) => items.length)
   )
 
-  const brickHeight = brickWidth * 0.4
+  const calculateAdaptiveBrickSize = useCallback(() => {
+    if (canvasWidth === 0) return { width: 0, height: 0 }
+
+    let maxRequiredElements = 0
+    for (let layerIndex = 0; layerIndex < uniqueValues.length; layerIndex++) {
+      let requiredElements = groupedData[uniqueValues[layerIndex]].length
+
+      for (let i = layerIndex + 1; i < uniqueValues.length; i++) {
+        const higherLayerItems = groupedData[uniqueValues[i]].length
+        requiredElements = Math.max(requiredElements, higherLayerItems)
+      }
+
+      maxRequiredElements = Math.max(maxRequiredElements, requiredElements)
+    }
+
+    const spacing = 0.15
+    const availableWidth = canvasWidth - padding * 2
+    const maxBrickWidth =
+      availableWidth / (maxRequiredElements * (1 + spacing) - spacing)
+
+    return { width: maxBrickWidth, height: maxBrickWidth * 0.4 }
+  }, [canvasWidth, uniqueValues, groupedData, padding])
+
+  const { width: brickWidth, height: brickHeight } =
+    calculateAdaptiveBrickSize()
 
   const renderBricks = (): Array<ReactNode> | ReactNode => {
     if (canvasWidth === 0 || canvasHeight === 0) return null
 
     const allBricks = []
 
-    for (let layerIndex = 0; layerIndex < layerSizes.length; layerIndex++) {
-      const elementsInLayer = layerSizes[layerIndex]
+    for (let layerIndex = 0; layerIndex < uniqueValues.length; layerIndex++) {
       const valueForLayer = uniqueValues[layerIndex]
       const itemsForLayer = groupedData[valueForLayer]
+      const elementsInLayer = itemsForLayer.length
+
+      let requiredElements = elementsInLayer
+
+      // Check if there are any layers above with more elements
+      for (let i = layerIndex + 1; i < uniqueValues.length; i++) {
+        const higherLayerValue = uniqueValues[i]
+        const higherLayerItems = groupedData[higherLayerValue].length
+        requiredElements = Math.max(requiredElements, higherLayerItems)
+      }
 
       const positions = calculateBrickPositions(
         layerIndex,
-        elementsInLayer,
+        requiredElements,
         brickWidth,
         brickHeight,
         canvasWidth,
@@ -84,7 +110,7 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       for (let posIndex = 0; posIndex < positions.length; posIndex++) {
         const pos = positions[posIndex]
 
-        if (posIndex < itemsForLayer.length) {
+        if (posIndex < elementsInLayer) {
           const item = itemsForLayer[posIndex]
           const brick = {
             position: {
@@ -120,15 +146,18 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     return allBricks
   }
 
-  const renderCrown = (): Array<ReactNode> | ReactNode => {
+  const renderCrown = (): ReactNode => {
     if (uniqueValues.length === 0 || canvasWidth === 0 || canvasHeight === 0)
       return null
 
-    const topLayer = layerSizes.length - 1
+    const topValue = uniqueValues[uniqueValues.length - 1]
+    const topLayerIndex = uniqueValues.length - 1
 
-    const topPositions = calculateBrickPositions(
-      topLayer,
-      layerSizes[topLayer],
+    const requiredElements = groupedData[topValue].length
+
+    const positions = calculateBrickPositions(
+      topLayerIndex,
+      requiredElements,
       brickWidth,
       brickHeight,
       canvasWidth,
@@ -136,8 +165,8 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       padding
     )
 
-    if (topPositions.length > 0) {
-      const topPos = topPositions[0]
+    if (positions.length > 0) {
+      const topPos = positions[positions.length - 1]
       const crownX = topPos.x + brickWidth / 2
       const crownY = topPos.y
       const crownWidth = brickWidth * 0.6
@@ -152,23 +181,39 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
   }
 
   const renderMedals = () => {
-    if (layerSizes.length < 3 || canvasWidth === 0 || canvasHeight === 0)
+    if (uniqueValues.length < 3 || canvasWidth === 0 || canvasHeight === 0)
       return null
+
+    const topThreeValues = uniqueValues.slice(-3).reverse()
+    if (topThreeValues.length < 3) return null
+
+    const hasSharedMedals = topThreeValues.some(
+      (value) => groupedData[value].length > 1
+    )
+    if (hasSharedMedals) return null
 
     const medals = []
     const medalSize = brickWidth * 0.8
 
-    const topLayers = [
-      layerSizes.length - 1,
-      layerSizes.length - 2,
-      layerSizes.length - 3,
+    const topLayerIndices = [
+      uniqueValues.indexOf(topThreeValues[0]),
+      uniqueValues.indexOf(topThreeValues[1]),
+      uniqueValues.indexOf(topThreeValues[2]),
     ]
 
     for (let i = 0; i < 3; i++) {
-      const layerIndex = topLayers[i]
+      const layerIndex = topLayerIndices[i]
+
+      let requiredElements = groupedData[topThreeValues[i]].length
+      for (let j = layerIndex + 1; j < uniqueValues.length; j++) {
+        const higherLayerValue = uniqueValues[j]
+        const higherLayerItems = groupedData[higherLayerValue].length
+        requiredElements = Math.max(requiredElements, higherLayerItems)
+      }
+
       const positions = calculateBrickPositions(
         layerIndex,
-        layerSizes[layerIndex],
+        requiredElements,
         brickWidth,
         brickHeight,
         canvasWidth,
@@ -177,9 +222,9 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       )
 
       if (positions.length > 0) {
-        const pos = positions[0]
+        // For right-aligned medals, use the rightmost brick position
+        const pos = positions[positions.length - 1]
         const medalX = pos.x + brickWidth / 2
-
         const ribbonHeight = pos.y - medalSize / 2
 
         medals.push(
@@ -212,7 +257,7 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     <div ref={containerRef} className="size-full">
       <svg
         className={cn("size-full", className)}
-        viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+        viewBox={`0 0 ${1.2 * canvasWidth} ${1.2 * canvasHeight}`}
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Title */}
