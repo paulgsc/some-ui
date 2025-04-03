@@ -22,7 +22,7 @@ const characters = [
 export const Default: Story = {
   args: {
     messages: mockMessages,
-    className: "border border-red-500 w-full max-w-sm h-[700px]",
+    className: "w-full max-w-sm h-[700px]",
     characters,
   },
 }

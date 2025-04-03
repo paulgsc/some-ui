@@ -1,8 +1,10 @@
 import type { FC } from "react"
+import { useCallback } from "react"
 import { DiceCard } from "@slideshow/components/dice-card"
 import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
-import { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import type { CubeJson, Question } from "@slideshow/types"
+import { processArray } from "@slideshow/utils/rotating-cube"
 import { Bot, Code2, LineChart, Server } from "lucide-react"
 import {
   Accordion,
@@ -24,12 +26,16 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
   dof = "Y-axis",
   className,
 }): React.JSX.Element => {
-  const faces = [...cubeFaces(), "foo", "foo"]
+  const getFaces = useCallback(() => {
+    const faces = [...cubeFaces(), "foo", "foo", "bar", "zar"]
+    return processArray(faces, 4)
+  }, [])
+
   return (
     <DiceCard
       className={className}
       dof={dof}
-      faces={faces}
+      faces={getFaces()}
       perspective={perspective}
     />
   )

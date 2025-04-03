@@ -17,12 +17,12 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   return (
     <main
       className={cn(
-        "relative flex size-full flex-col justify-end gap-y-3 overflow-clip rounded-b-xl p-3 shadow-md",
+        "relative flex size-full flex-col justify-end gap-y-3 overflow-clip rounded-b-xl bg-rose-100 p-3 shadow-md",
         className
       )}
     >
-      <div className="absolute inset-0 h-1/4 border border-red-500" />
-      <div className="absolute bottom-0 end-0 start-0  h-1/4  rounded-b-xl border border-red-500" />
+      <div className="absolute inset-0 h-1/4" />
+      <div className="absolute bottom-0 end-0 start-0  h-1/4" />
       {chats.map((msg) => {
         const { character, id } = msg
         return (
