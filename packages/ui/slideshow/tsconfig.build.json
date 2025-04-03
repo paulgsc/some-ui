@@ -3,7 +3,7 @@
   "exclude": [
     "eslint.config.js",
     "../../../assets/**/*",
-    "src/data",
+    "**/data/**/*.ts",
     "**/*.stories.tsx",
     "**/*.stories.ts"
   ]

@@ -39,7 +39,7 @@ export const Dial = ({
     uniformSections,
   })
 
-  const { currentAngle, isWithinSection } = useDialAnimation({
+  const { currentAngle } = useDialAnimation({
     animationDuration,
     animationPattern,
     sectionBounds: sectionBoundaries[2],

@@ -1,10 +1,13 @@
+import type { Dispatch, FC, SetStateAction } from "react"
 import { useEffect, useRef, useState } from "react"
 
 type PolarSphereProps = {
   polarity?: number
 }
 
-export const PolarSphere = ({ polarity = 2 }: PolarSphereProps) => {
+export const PolarSphere = ({
+  polarity = 2,
+}: PolarSphereProps): React.JSX.Element => {
   const [rotationSpeed, setRotationSpeed] = useState(1)
   const { rotation } = useSphereAnimation(rotationSpeed)
 
@@ -24,7 +27,10 @@ type SphereSVGProps = {
   rotation: number
 }
 
-export const SphereSVG = ({ polarity, rotation }: SphereSVGProps) => {
+export const SphereSVG = ({
+  polarity,
+  rotation,
+}: SphereSVGProps): React.JSX.Element => {
   const width = 300
   const height = 300
   const radius = 100
@@ -60,8 +66,12 @@ export const SphereSVG = ({ polarity, rotation }: SphereSVGProps) => {
   )
 }
 
-// SvgDefs.jsx
-export const SvgDefs = ({ centerX, centerY, radius }) => {
+type SvgDefsProps = {
+  centerX: number
+  centerY: number
+  radius: number
+}
+export const SvgDefs: FC<SvgDefsProps> = ({ centerX, centerY, radius }) => {
   return (
     <defs>
       {/* Enhanced sphere gradient */}
@@ -105,7 +115,17 @@ export const SvgDefs = ({ centerX, centerY, radius }) => {
   )
 }
 
-export const SphereBase = ({ centerX, centerY, radius }) => {
+type SphereBaseProps = {
+  centerX: number
+  centerY: number
+  radius: number
+}
+
+export const SphereBase: FC<SphereBaseProps> = ({
+  centerX,
+  centerY,
+  radius,
+}): React.JSX.Element => {
   return (
     <>
       {/* Main sphere */}
@@ -130,7 +150,17 @@ export const SphereBase = ({ centerX, centerY, radius }) => {
   )
 }
 
-export const SphereHighlight = ({ centerX, centerY, radius }) => {
+type SphereHighlightProps = {
+  centerX: number
+  centerY: number
+  radius: number
+}
+
+export const SphereHighlight: FC<SphereHighlightProps> = ({
+  centerX,
+  centerY,
+  radius,
+}): React.JSX.Element => {
   return (
     <circle
       cx={centerX}
@@ -142,7 +172,19 @@ export const SphereHighlight = ({ centerX, centerY, radius }) => {
   )
 }
 
-export const LongitudeLines = ({ centerX, centerY, radius, rotation }) => {
+type LongitudeLinesProps = {
+  centerX: number
+  centerY: number
+  radius: number
+  rotation: number
+}
+
+export const LongitudeLines: FC<LongitudeLinesProps> = ({
+  centerX,
+  centerY,
+  radius,
+  rotation,
+}): React.JSX.Element => {
   const numLongitudes = 4
   const numLatitudes = 8 // Adding latitude lines for better spherical appearance
 
@@ -233,13 +275,20 @@ export const LongitudeLines = ({ centerX, centerY, radius, rotation }) => {
   )
 }
 
-export const PolarityNumbers = ({
+type PolarityNumbersProps = {
+  polarity: number
+  centerX: number
+  centerY: number
+  radius: number
+  rotation: number
+}
+export const PolarityNumbers: FC<PolarityNumbersProps> = ({
   polarity,
   centerX,
   centerY,
   radius,
   rotation,
-}) => {
+}): React.JSX.Element => {
   return (
     <g id="numbers">
       {[...Array(polarity)].map((_, index) => {
@@ -302,7 +351,14 @@ export const PolarityNumbers = ({
   )
 }
 
-export const SpeedControls = ({ rotationSpeed, setRotationSpeed }) => {
+type SpeedControlsProps = {
+  rotationSpeed: number
+  setRotationSpeed: Dispatch<SetStateAction<number>>
+}
+export const SpeedControls: FC<SpeedControlsProps> = ({
+  rotationSpeed,
+  setRotationSpeed,
+}): React.JSX.Element => {
   return (
     <div className="controls mt-4">
       <label className="mb-1 block text-sm font-medium">Rotation Speed:</label>
@@ -319,37 +375,33 @@ export const SpeedControls = ({ rotationSpeed, setRotationSpeed }) => {
   )
 }
 
-export function useSphereAnimation(rotationSpeed) {
+export function useSphereAnimation(rotationSpeed: number): {
+  rotation: number
+} {
   const [rotation, setRotation] = useState(0)
-  const animationFrameRef = useRef(null)
+  const animationFrameRef = useRef<number | null>(null)
   const lastTimeRef = useRef(0)
 
   useEffect(() => {
-    let currentRotation = rotation
-
-    const animate = (timestamp) => {
+    const animate = (timestamp: number): void => {
       if (!lastTimeRef.current) {
         lastTimeRef.current = timestamp
       }
 
-      // Calculate time delta for smoother animation
       const delta = timestamp - lastTimeRef.current
       lastTimeRef.current = timestamp
 
-      // Update rotation based on time delta and speed
-      // This makes animation frame-rate independent
-      currentRotation += (rotationSpeed * delta) / 16.67 // 60fps normalization
+      setRotation((prevRotation) => {
+        let currentRotation = prevRotation + (rotationSpeed * delta) / 16.67
+        return currentRotation % 360
+      })
 
-      // Keep rotation in reasonable bounds
-      currentRotation = currentRotation % 360
-
-      setRotation(currentRotation)
       animationFrameRef.current = requestAnimationFrame(animate)
     }
 
     animationFrameRef.current = requestAnimationFrame(animate)
 
-    return () => {
+    return (): void => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }

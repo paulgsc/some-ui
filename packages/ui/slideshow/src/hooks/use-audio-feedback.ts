@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import type { DialSection } from "./useSectionCalculations"
+import type { DialSection } from "@slideshow/types/dial"
 
 type UseAudioFeedbackProps = {
   sections: Array<DialSection>

@@ -12,6 +12,12 @@ export const Default: Story = {
     totalDuration,
     className: "relative bg-black w-full h-150",
   },
+  render: (args) => (
+    <main className="absolute inset-0">
+      <div className="size-40 border border-red-500" />
+      <GanttDrawer {...args} />
+    </main>
+  ),
 }
 
 export default {

@@ -11,7 +11,6 @@ import {
   DrawerContent,
   DrawerFooter,
   DrawerHeader,
-  DrawerOverlay,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -72,8 +71,7 @@ export const GanttDrawer: FC<GanttDrawerProps> = ({
 
   return (
     <Drawer open={showOverlay} onOpenChange={() => {}} {...mouseHandlers}>
-      <DrawerContent className="bg-black">
-        <DrawerOverlay className="" />
+      <DrawerContent className="absolute bg-black">
         <div className={cn("mx-auto w-full", className)}>
           <DrawerHeader>
             <GanttHeader
