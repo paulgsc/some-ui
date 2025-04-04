@@ -23,7 +23,7 @@ const message: Options = {
 
 export const Default: Story = {
   args: {
-    message,
+    ...message,
   },
 }
 

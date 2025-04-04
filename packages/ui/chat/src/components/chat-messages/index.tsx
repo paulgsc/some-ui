@@ -1,11 +1,11 @@
 import type { FC } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
-import type { ChatMessage as ChatMessageType } from "@chat/types/chat"
+import type { ChatMessageProps } from "@chat/types/chat"
 import { cn } from "some-ui-utils"
 
 type ChatMessagesProps = {
-  messages: Array<ChatMessageType>
+  messages: Array<ChatMessageProps>
   className?: string
 }
 
@@ -33,7 +33,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
               "justify-end": character === "ai",
             })}
           >
-            <ChatMessage key={id} message={msg} />
+            <ChatMessage key={id} {...msg} />
           </section>
         )
       })}

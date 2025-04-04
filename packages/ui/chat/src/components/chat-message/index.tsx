@@ -1,16 +1,15 @@
 import { useTypingEffect } from "@chat/hooks/use-typing-effect"
-import type { ChatMessage as ChatMessageType } from "@chat/types/chat"
+import type { ChatMessageProps } from "@chat/types/chat"
 import { Badge, WithAvatar } from "some-ui-shared"
-import { cn } from "some-ui-utils"
-
-type ChatMessageProps = {
-  message: ChatMessageType
-}
+import { cn, formatRelativeTime } from "some-ui-utils"
 
 export const ChatMessage = ({
-  message,
+  avatarSize = 25,
+  avatar,
+  character,
+  content,
+  timestamp,
 }: ChatMessageProps): React.JSX.Element => {
-  const { timestamp, content, character, avatarSize = 25, avatar } = message
   const displayedContent = useTypingEffect({ content })
   return (
     <section
@@ -50,7 +49,7 @@ export const ChatMessage = ({
         )}
         variant={character === "ai" ? "outline" : "secondary"}
       >
-        {timestamp}
+        {formatRelativeTime(timestamp)}
       </Badge>
     </section>
   )

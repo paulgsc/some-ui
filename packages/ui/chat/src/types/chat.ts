@@ -3,7 +3,7 @@ import type { AvatarOptions } from "some-ui-shared"
 export type MessageType = "chat" | "thinking"
 type User = "ai" | "pgdev"
 
-export type ChatMessage = {
+export type ChatMessageProps = {
   id: string
   character: User
   content: string

@@ -65,7 +65,6 @@ export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
           </ResizableLayout.Root>
         </div>
       </main>
-
       <GanttDrawer chapters={chapters} totalDuration={totalDuration} />
     </>
   )

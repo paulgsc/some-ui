@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
-import type { ChatMessage } from "@chat/types/chat"
+import type { ChatMessageProps } from "@chat/types/chat"
 
 type Options = {
-  chats: Array<ChatMessage>
+  chats: Array<ChatMessageProps>
 }
 
 export function useChatMessages({ chats }: Options): Options {
-  const [messages, setMessages] = useState<Array<ChatMessage>>([])
+  const [messages, setMessages] = useState<Array<ChatMessageProps>>([])
   const [currentIndex, setCurrentIndex] = useState(0)
 
   // Load messages with a delay effect

@@ -19,17 +19,19 @@ type RotatingCubeProps = {
   perspective?: number
   dof?: AllowedRotationAxis
   className?: string
+  content?: Array<React.JSX.Element>
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
   dof = "Y-axis",
+  content = [],
   className,
 }): React.JSX.Element => {
   const getFaces = useCallback(() => {
-    const faces = [...cubeFaces(), "foo", "foo", "bar", "zar"]
+    const faces = [...cubeFaces(), ...content]
     return processArray(faces, 4)
-  }, [])
+  }, [content])
 
   return (
     <DiceCard

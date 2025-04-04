@@ -1,8 +1,21 @@
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { ChatMessageProps } from "some-ui-chat"
 
-import { pgdevPng } from "../../../../../assets"
+import { pgdevPng } from "../../../../../../assets"
 
-export const mockMessages: Array<ChatMessageProps> = [
+export const characters = [
+  {
+    src: "https://github.com/shadcn.png",
+    alt: "@shadcn",
+    fallback: "CN",
+  },
+  {
+    src: "https://github.com/openai.png",
+    alt: "@openai",
+    fallback: "AI",
+  },
+]
+
+export const waiNoTockTock: Array<ChatMessageProps> = [
   {
     id: "1",
     character: "ai",

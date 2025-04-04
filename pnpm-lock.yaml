@@ -533,8 +533,8 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       zod:
-        specifier: 3.23.8
-        version: 3.23.8
+        specifier: 3.24.2
+        version: 3.24.2
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -755,6 +755,9 @@ importers:
 
   packages/ui/nfl:
     dependencies:
+      maishatu-fetch-kit:
+        specifier: workspace:*
+        version: link:../maishatu-fetch-kit
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -792,6 +795,9 @@ importers:
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      some-ui-chat:
+        specifier: workspace:*
+        version: link:../chat
       some-ui-emoji-animations:
         specifier: workspace:*
         version: link:../emoji-animations
@@ -1037,13 +1043,13 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+      zod:
+        specifier: 3.24.2
+        version: 3.24.2
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
-      zod:
-        specifier: ^3.24.1
-        version: 3.24.1
 
   packages/ui/stepper:
     dependencies:

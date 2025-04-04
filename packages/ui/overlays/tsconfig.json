@@ -4,12 +4,18 @@
     "baseUrl": ".",
     "declarationDir": "./",
     "composite": true,
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@overlays/*": ["./src/*"]
+      "@overlays/*": ["./src/*"],
+      "@some-ui/*": ["../../../assets/*"]
     }
   },
-  "include": ["eslint.config.js", "tailwind.config.ts", "src"],
+  "include": [
+    "eslint.config.js",
+    "tailwind.config.ts",
+    "src",
+    "../../../assets/**/*"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }
