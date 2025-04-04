@@ -1,13 +1,7 @@
 import { z } from "zod"
 
-/**
- * HTTP method types
- */
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
 
-/**
- * Options for the API fetch request
- */
 export type FetchOptions<TBody = unknown> = {
   method?: HttpMethod
   headers?: HeadersInit
