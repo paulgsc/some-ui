@@ -28,6 +28,11 @@ export const Default: Story = {
     messages: mockMessages,
     className: "h-[600px] w-[400px]",
   },
+  render: (args) => (
+    <main className="h-[610px] w-[410px] border border-red-600">
+      <ChatMessages {...args} />
+    </main>
+  ),
 }
 
 export default {

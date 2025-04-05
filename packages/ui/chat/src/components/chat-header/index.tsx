@@ -1,4 +1,4 @@
-import type { ChangeEvent, FC } from "react"
+import type { ChangeEvent, CSSProperties, FC } from "react"
 import type { AvatarGroupProps } from "some-ui-shared"
 import {
   AvatarGroup,
@@ -8,14 +8,16 @@ import {
   OverlayInput,
   SvgIcons,
 } from "some-ui-shared"
-import { useLocalStorage } from "some-ui-utils"
+import { cn, useLocalStorage } from "some-ui-utils"
 
 type ChatHeaderProps = {
   characters: AvatarGroupProps["avatars"]
+  height?: number
 }
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
   characters,
+  height,
 }): React.JSX.Element => {
   const RefreshIcon = SvgIcons.refresh
   const initialTitle = "Change me..."
@@ -27,7 +29,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     updateTitle(e.target.value)
   }
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-1.5 rounded-t-xl bg-blue-600 p-2.5">
+    <CardHeader
+      style={
+        {
+          "--chat-header-height": `${height ?? 0}px`,
+        } as CSSProperties
+      }
+      className={cn(
+        "flex flex-row items-center justify-between gap-1.5 rounded-t-xl bg-blue-600 p-2.5",
+        {
+          "h-[var(--chat-header-height)]": height !== undefined,
+        }
+      )}
+    >
       <AvatarGroup avatarSize={30} avatarSpacing={10} avatars={characters} />
       <CardTitle className="relative flex-1 pb-2 ps-1 text-2xl text-white ">
         <span>{chatbotTitle}</span>
@@ -41,7 +55,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         variant="ghost"
         className="scale-90 hover:scale-100 hover:bg-inherit"
       >
-        <RefreshIcon className="size-4 text-muted/60 hover:text-muted" />
+        <RefreshIcon className="text-muted/60 hover:text-muted size-4" />
       </Button>
     </CardHeader>
   )

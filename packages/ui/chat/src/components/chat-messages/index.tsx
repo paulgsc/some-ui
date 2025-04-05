@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { CSSProperties, FC } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
 import type { ChatMessageProps } from "@chat/types/chat"
@@ -7,17 +7,27 @@ import { cn } from "some-ui-utils"
 type ChatMessagesProps = {
   messages: Array<ChatMessageProps>
   className?: string
+  height?: number
 }
 
 export const ChatMessages: FC<ChatMessagesProps> = ({
   className,
+  height,
   messages = [],
 }) => {
   const { chats } = useChatMessages({ chats: messages })
   return (
     <main
+      style={
+        {
+          "--chat-messages-height": `${height ?? 0}px`,
+        } as CSSProperties
+      }
       className={cn(
         "relative flex size-full flex-col justify-end gap-y-3 overflow-clip rounded-b-xl bg-rose-100 p-3 shadow-md",
+        {
+          "h-[var(--chat-messages-height)]": height !== undefined,
+        },
         className
       )}
     >
