@@ -1,0 +1,129 @@
+@layer base {
+  :root {
+    --ant-size: 24px;
+    --ant-color: #333333;
+    --ant-duration: 8s;
+    --ant-delay: 0s;
+    --ant-direction: 1;
+
+    --trail-width: 2px;
+    --trail-opacity: 0.6;
+    --trail-fade-duration: 4s;
+    --trail-color-start: #ffaa40;
+    --trail-color-end: #9c40ff;
+
+    --container-width: 0px;
+    --container-height: 0px;
+  }
+}
+
+@layer utilities {
+  .ant-animation {
+    animation: ant-border var(--ant-duration) linear calc(var(--ant-delay) * -1)
+      infinite;
+    animation-direction: var(--ant-direction);
+  }
+
+  .trail-animation {
+    animation:
+      trail-draw var(--ant-duration) linear calc(var(--ant-delay) * -1) infinite,
+      trail-fade var(--ant-duration) linear calc(var(--ant-delay) * -1) infinite;
+    animation-direction: var(--ant-direction);
+  }
+}
+
+@keyframes ant-border {
+  0% {
+    transform: translate(0px, 0px) rotate(0deg);
+  }
+  24.9% {
+    transform: translate(calc(var(--container-width) - var(--ant-size)), 0px)
+      rotate(0deg);
+  }
+  25% {
+    transform: translate(calc(var(--container-width) - var(--ant-size)), 0px)
+      rotate(90deg);
+  }
+  49.9% {
+    transform: translate(
+        calc(var(--container-width) - var(--ant-size)),
+        calc(var(--container-height) - var(--ant-size))
+      )
+      rotate(90deg);
+  }
+  50% {
+    transform: translate(
+        calc(var(--container-width) - var(--ant-size)),
+        calc(var(--container-height) - var(--ant-size))
+      )
+      rotate(180deg);
+  }
+  74.9% {
+    transform: translate(0px, calc(var(--container-height) - var(--ant-size)))
+      rotate(180deg);
+  }
+  75% {
+    transform: translate(0px, calc(var(--container-height) - var(--ant-size)))
+      rotate(270deg);
+  }
+  99.9% {
+    transform: translate(0px, 0px) rotate(270deg);
+  }
+  100% {
+    transform: translate(0px, 0px) rotate(360deg);
+  }
+}
+
+@keyframes trail-draw {
+  0% {
+    stroke-dashoffset: var(--trail-length);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes trail-fade {
+  0%,
+  calc((var(--ant-duration) - var(--trail-fade-duration)) / var(--ant-duration) * 100%) {
+    opacity: var(--trail-opacity);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes legMove {
+  0% {
+    transform: rotate(-15deg);
+  }
+  100% {
+    transform: rotate(15deg);
+  }
+}
+
+.animate-wiggle-1 {
+  animation: wiggle 1.5s ease-in-out infinite;
+}
+
+.animate-wiggle-2 {
+  animation: wiggle 1.8s ease-in-out infinite;
+}
+
+.animate-leg-move {
+  animation: legMove 0.5s ease-in-out infinite alternate;
+}
+
+.animate-leg-move-reverse {
+  animation: legMove 0.5s ease-in-out infinite alternate-reverse;
+}
