@@ -20,12 +20,14 @@ type RotatingCubeProps = {
   dof?: AllowedRotationAxis
   className?: string
   content?: Array<React.JSX.Element>
+  duration?: number
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
   dof = "Y-axis",
   content = [],
+  duration = 3000,
   className,
 }): React.JSX.Element => {
   const getFaces = useCallback(() => {
@@ -39,6 +41,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
       dof={dof}
       faces={getFaces()}
       perspective={perspective}
+      duration={duration}
     />
   )
 }

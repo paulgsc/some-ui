@@ -2,6 +2,7 @@ import type { CSSProperties, FC, ReactNode, RefObject } from "react"
 import { useRef } from "react"
 import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import { useRotatingCube } from "@slideshow/hooks/use-rotating-cube"
+import { BorderBeam } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 type RotatingCubeProps = {
@@ -62,7 +63,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
               {
                 "--face-width": (width ?? 0) / 2,
                 "--face-height": (height ?? 0) / 2,
-                "--face-depth": (Math.min(width ?? 0, height ?? 0) ?? 0) / 2,
+                "--face-depth": Math.min(width ?? 0, height ?? 0) / 2,
               } as CSSProperties
             }
             className={cn(
@@ -93,6 +94,20 @@ export const DiceCard: FC<RotatingCubeProps> = ({
               }
             )}
           >
+            {rotationState.face === index && (
+              <BorderBeam
+                size={16}
+                duration={duration / 1000}
+                color={"#333333"}
+                showTrail={true}
+                trailColorStart={"#ffaa40"}
+                trailColorEnd={"#9c40ff"}
+                trailWidth={1}
+                trailOpacity={0.5}
+                trailFadeDuration={duration / 2}
+              />
+            )}
+
             {face}
           </div>
         ))}

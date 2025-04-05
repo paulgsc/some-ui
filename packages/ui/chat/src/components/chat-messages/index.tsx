@@ -25,6 +25,8 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
       <div className="absolute bottom-0 end-0 start-0  h-1/4" />
       {chats.map((msg) => {
         const { character, id } = msg
+        const t = 15 * 1000
+        const timestamp = new Date(Date.now() - t).toString()
         return (
           <section
             key={id}
@@ -33,7 +35,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
               "justify-end": character === "ai",
             })}
           >
-            <ChatMessage key={id} {...msg} />
+            <ChatMessage key={id} {...{ ...msg, timestamp }} />
           </section>
         )
       })}

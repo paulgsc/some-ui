@@ -39,8 +39,8 @@ const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
 
 // Define cycle sequences for single-axis rotations
 const ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
-  "X-axis": [0, 4, 2, 5], // Front -> Top -> Back -> Bottom
-  "Y-axis": [0, 1, 2, 3], // Front -> Right -> Back -> Left
+  "X-axis": [0, 5, 2, 4], // Front -> Top -> Back -> Bottom
+  "Y-axis": [0, 3, 2, 1], // Front -> Right -> Back -> Left
 }
 
 const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {

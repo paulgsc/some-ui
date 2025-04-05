@@ -1,10 +1,9 @@
 import { Fragment } from "react"
 import { SplayAnimation, YoutubeMarquee } from "@overlays/components"
 import Logo from "@overlays/components/youtube/logo"
-import {
-  characters,
-  waiNoTockTock,
-} from "@overlays/data/chatbot-messages/wai-no-tock-tock"
+import { beachedWhale } from "@overlays/data/chatbot-messages/beached-whale"
+import { characters } from "@overlays/data/chatbot-messages/characters"
+import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
 import { ChatInterface } from "some-ui-chat"
 // import { useGanttChapters } from "@overlays/data/gantt-data"
 import { BoredAnimation } from "some-ui-emoji-animations"
@@ -24,9 +23,16 @@ const YoutubeOverlay = (): React.JSX.Element => {
       messages={waiNoTockTock}
       characters={characters}
     />,
+    <ChatInterface
+      key={"beachedWhale"}
+      messages={beachedWhale}
+      characters={characters}
+    />,
   ]
   const overlayContent: WireframeContent = {
-    [WireframeRegion.VIDEO]: <RotatingCube content={cubeFaces} />,
+    [WireframeRegion.VIDEO]: (
+      <RotatingCube content={cubeFaces} duration={1 * 60 * 1000} />
+    ),
     [WireframeRegion.MARQUEE]: (
       <RotatingNeonSign
         className="size-11/12"

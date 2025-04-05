@@ -80,7 +80,7 @@ export const BorderBeam = ({
   return (
     <div
       ref={containerRef}
-      className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+      className="z-[1000] pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
       style={cssVars}
     >
       {/* Pheromone Trail */}
