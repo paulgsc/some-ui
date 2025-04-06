@@ -1,26 +1,37 @@
-import { Fragment } from "react"
 import { SplayAnimation, YoutubeMarquee } from "@overlays/components"
 import Logo from "@overlays/components/youtube/logo"
+import { getMainContent } from "@overlays/components/youtube/overlay-content"
 import { beachedWhale } from "@overlays/data/chatbot-messages/beached-whale"
 import { characters } from "@overlays/data/chatbot-messages/characters"
+import { nflTennis } from "@overlays/data/chatbot-messages/nfl-tennis"
 import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
+import { useGanttChapters } from "@overlays/data/gantt-data"
 import { ChatInterface } from "some-ui-chat"
-// import { useGanttChapters } from "@overlays/data/gantt-data"
 import { BoredAnimation } from "some-ui-emoji-animations"
 import { RotatingCube, RotatingNeonSign } from "some-ui-slideshow"
+import { useLocalStorage } from "some-ui-utils"
 import type { WireframeContent } from "wireframes"
 import { WireframeRegion, YoutubeWireframe } from "wireframes"
 
 const YoutubeOverlay = (): React.JSX.Element => {
-  // const params = {
-  //   range: "gantt!A1:L20",
-  // }
-  //  const { data: chapters, isLoading, error } = useGanttChapters({ ...params })
+  const { value: currentChapterId } = useLocalStorage(
+    "gantt-chapter",
+    "credits"
+  )
+  const params = {
+    range: "gantt!A1:L20",
+  }
+  const { data: chapters, isLoading } = useGanttChapters({ ...params })
 
   const cubeFaces = [
     <ChatInterface
       key={"wai-no-tock"}
       messages={waiNoTockTock}
+      characters={characters}
+    />,
+    <ChatInterface
+      key={"beachedWhale"}
+      messages={nflTennis}
       characters={characters}
     />,
     <ChatInterface
@@ -42,7 +53,7 @@ const YoutubeOverlay = (): React.JSX.Element => {
         duration={30000}
       />
     ),
-    [WireframeRegion.MAIN_CONTENT]: <Fragment />,
+    [WireframeRegion.MAIN_CONTENT]: getMainContent(currentChapterId),
     [WireframeRegion.FOOTER_LEFT]: <Logo />,
     [WireframeRegion.SIDEBAR_TOP]: (
       <BoredAnimation className="absolute inset-0 size-full" />
@@ -51,13 +62,16 @@ const YoutubeOverlay = (): React.JSX.Element => {
     [WireframeRegion.FOOTER_RIGHT]: <YoutubeMarquee />,
   }
 
-  // if (isLoading) return <div>Loading...</div>
+  if (isLoading) return <div>Loading...</div>
   // if (error) return <div>error...{`${error}`}</div>
+
+  const totalDuration =
+    chapters?.reduce((max, chapter) => Math.max(max, chapter.endTime), 0) ?? 0
 
   return (
     <YoutubeWireframe
-      chapters={[]}
-      totalDuration={0}
+      chapters={chapters ?? []}
+      totalDuration={totalDuration}
       content={overlayContent}
     />
   )

@@ -5,11 +5,13 @@
   "dependencies": {
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
+    "attributions": "workspace:*",
     "some-ui-emoji-animations": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-chat": "workspace:*",
     "some-ui-slideshow": "workspace:*",
+    "some-ui-nfl": "workspace:*",
     "some-ui-utils": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "wireframes": "workspace:*"

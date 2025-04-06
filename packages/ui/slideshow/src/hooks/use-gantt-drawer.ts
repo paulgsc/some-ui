@@ -4,6 +4,7 @@ import { usePeriodicOverlay } from "@slideshow/hooks/use-periodic-overlay"
 import { useVideoTime } from "@slideshow/hooks/use-video-time"
 import type { Chapter, SubChapter } from "@slideshow/types/gantt"
 import { findCurrentChapter, formatTime } from "@slideshow/utils/gantt-utils"
+import { useLocalStorage } from "some-ui-utils"
 
 type Options = {
   chapters: Array<Chapter>
@@ -36,14 +37,17 @@ export function useGanttDrawer({
 
   const { currentTime, setCurrentTime } = useVideoTime({ totalDuration })
   const { showOverlay, setShowOverlay, mouseHandlers } = usePeriodicOverlay()
+  const { setValue: updateStorage } = useLocalStorage(
+    "gantt-chapter",
+    currentChapter
+  )
 
   useEffect(() => {
     if (chapters.length === 0 || currentChapter === undefined) return
     const chapter = findCurrentChapter(currentTime, chapters)
-    if (chapter && chapter.id !== currentChapter.id) {
-      setCurrentChapter(chapter)
-    }
-  }, [currentTime, currentChapter?.id])
+    setCurrentChapter(chapter)
+    updateStorage(chapter.id)
+  }, [currentTime, chapters])
 
   const jumpToTimestamp = (time: number): void => {
     setCurrentTime(time)

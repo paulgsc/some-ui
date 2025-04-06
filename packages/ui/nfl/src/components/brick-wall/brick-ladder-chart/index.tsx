@@ -48,10 +48,6 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
     .map(Number)
     .sort((a, b) => a - b)
 
-  const maxElementsInAnyLayer = Math.max(
-    ...Object.values(groupedData).map((items) => items.length)
-  )
-
   const calculateAdaptiveBrickSize = useCallback(() => {
     if (canvasWidth === 0) return { width: 0, height: 0 }
 

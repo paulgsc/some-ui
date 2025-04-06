@@ -786,6 +786,9 @@ importers:
 
   packages/ui/overlays:
     dependencies:
+      attributions:
+        specifier: workspace:*
+        version: link:../attributions
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../maishatu-fetch-kit
@@ -804,6 +807,9 @@ importers:
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../neon-sign
+      some-ui-nfl:
+        specifier: workspace:*
+        version: link:../nfl
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
