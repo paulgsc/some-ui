@@ -18,7 +18,12 @@ export const Default: Story = {
       thankYouMessage: thanks,
       ...rest,
     }))
-    return <ScrollingCredits credits={transform ?? []} />
+    return (
+      <ScrollingCredits
+        className="absolute inset-0"
+        credits={transform ?? []}
+      />
+    )
   },
 }
 

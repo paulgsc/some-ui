@@ -16,7 +16,10 @@ export const BrickChartCarousel = (): React.JSX.Element => {
     >
       <CarouselContent>
         {Array.from({ length: 5 }).map((_, index) => (
-          <CarouselItem key={index} className="size-full">
+          <CarouselItem
+            key={index}
+            className="size-full bg-[oklch(75%_0.01_120)] bg-gradient-to-b from-[oklch(75%_0.01_120)] to-[oklch(95%_0.02_180)]"
+          >
             <NflTennis />
           </CarouselItem>
         ))}

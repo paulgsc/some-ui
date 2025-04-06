@@ -15,7 +15,7 @@ export const ScrollingCredits: FC<ScrollingCreditsProps> = ({
   return (
     <div
       className={cn(
-        "absolute inset-0 overflow-clip bg-gradient-to-br from-gray-100 to-gray-300 invert",
+        "size-full overflow-clip bg-gradient-to-br from-gray-100 to-gray-300 invert",
         className
       )}
     >
