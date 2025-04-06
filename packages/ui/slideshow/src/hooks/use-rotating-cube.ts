@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { Range as ValidNumbers } from "some-types-utils"
 
 type Face = ValidNumbers<6>
@@ -25,6 +25,7 @@ type ReturnOptions = {
   setIsRotating: (arg: boolean) => void
   rotationState: RotationState
   rotateCube: () => void
+  onPause: () => void
 }
 
 // Define adjacency map for each face with valid rotations
@@ -118,6 +119,9 @@ export const useRotatingCube = ({
     yRotation: 0,
   })
   const [rotationAxis, setRotationAxis] = useState<RotationAxis>("Y-axis")
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
 
   const chooseRotationAxis = useCallback((): void => {
     switch (dof) {
@@ -182,18 +186,24 @@ export const useRotatingCube = ({
     })
   }, [dof, rotationAxis])
 
+  const onPause = useCallback(() => {
+    if (intervalRef.current) {
+      clearTimeout(intervalRef.current)
+    }
+  }, [])
+
   useEffect(() => {
     chooseRotationAxis()
   }, [])
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setIsRotating(true)
       chooseRotationAxis()
       rotateCube()
       setTimeout(() => setIsRotating(false), 500)
     }, duration)
-    return (): void => clearInterval(interval)
+    return (): void => clearInterval(intervalRef.current)
   }, [chooseRotationAxis, rotateCube])
 
   return {
@@ -202,5 +212,6 @@ export const useRotatingCube = ({
     isRotating,
     setIsRotating,
     rotateCube,
+    onPause,
   }
 }

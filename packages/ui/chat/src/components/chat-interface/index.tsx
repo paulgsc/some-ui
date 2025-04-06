@@ -12,6 +12,7 @@ type ChatInterfaceProps = {
   characters: AvatarGroupProps["avatars"]
   messages: Array<ChatMessageProps>
   messagesHeight?: number
+  pause?: boolean
 }
 
 export const ChatInterface: FC<ChatInterfaceProps> = ({
@@ -19,6 +20,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   chatMessagesClassName,
   messages,
   characters,
+  pause,
   messagesHeight = 0.92,
 }): React.JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
@@ -51,6 +53,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
         className={chatMessagesClassName}
         messages={messages}
         height={getChatHeight()}
+        pause={pause}
       />
     </div>
   )

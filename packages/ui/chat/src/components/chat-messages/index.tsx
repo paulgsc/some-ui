@@ -8,14 +8,16 @@ type ChatMessagesProps = {
   messages: Array<ChatMessageProps>
   className?: string
   height?: number
+  pause?: boolean
 }
 
 export const ChatMessages: FC<ChatMessagesProps> = ({
   className,
   height,
+  pause,
   messages = [],
 }) => {
-  const { chats } = useChatMessages({ chats: messages })
+  const { chats } = useChatMessages({ pause, chats: messages })
   return (
     <main
       style={
