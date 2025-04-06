@@ -1,10 +1,10 @@
 import type { ReactNode } from "react"
 import { Fragment } from "react"
 import { ScrollingCredits, useGetCredits } from "attributions"
-import { BrickLadderChart, useNflTennis } from "some-ui-nfl"
+import { BrickChartCarousel } from "some-ui-nfl"
 import { getRandomSubarray } from "some-ui-utils"
 
-const EndingCredits = () => {
+const EndingCredits = (): React.JSX.Element => {
   const params = {
     range: "Sheet1!A1:G6",
   }
@@ -18,21 +18,9 @@ const EndingCredits = () => {
   return <ScrollingCredits credits={transform ?? []} />
 }
 
-const NflTennis = () => {
-  const params = {
-    range: "testing!A1:J33",
-  }
-  const { data: response, isLoading } = useNflTennis({ ...params })
-  const { data: points, metadata } = response ?? {}
-  if (isLoading) return <div>Loading...</div>
-  return (
-    <BrickLadderChart {...{ data: points ?? [], title: metadata?.title }} />
-  )
-}
-
 const mainContent: Record<string, Array<ReactNode>> = {
   credits: [<EndingCredits key="credits" />],
-  "nfl-tennis": [<NflTennis key="nfl-tennis" />],
+  "nfl-tennis": [<BrickChartCarousel key="nfl-tennis" />],
 }
 
 export function getMainContent(key: string): ReactNode {

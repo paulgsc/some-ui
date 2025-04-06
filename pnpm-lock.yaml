@@ -755,6 +755,9 @@ importers:
 
   packages/ui/nfl:
     dependencies:
+      embla-carousel-autoplay:
+        specifier: ^8.6.0
+        version: 8.6.0(embla-carousel@8.0.0-rc15)
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../maishatu-fetch-kit
@@ -6082,6 +6085,11 @@ packages:
 
   elliptic@6.6.1:
     resolution: {integrity: sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==}
+
+  embla-carousel-autoplay@8.6.0:
+    resolution: {integrity: sha512-OBu5G3nwaSXkZCo1A6LTaFMZ8EpkYbwIaH+bPqdBnDGQ2fh4+NbzjXjs2SktoPNKCtflfVMc75njaDHOYXcrsA==}
+    peerDependencies:
+      embla-carousel: 8.6.0
 
   embla-carousel-react@8.0.0-rc15:
     resolution: {integrity: sha512-PePOkyPMWsUDNJKYRhUmGScYhex9mfpEiYiKT8OgwP/4K60plW0qk8cAXWvS9N61A/3RkUq7uz+hQsmhAtYMcA==}
@@ -16426,6 +16434,10 @@ snapshots:
       inherits: 2.0.4
       minimalistic-assert: 1.0.1
       minimalistic-crypto-utils: 1.0.1
+
+  embla-carousel-autoplay@8.6.0(embla-carousel@8.0.0-rc15):
+    dependencies:
+      embla-carousel: 8.0.0-rc15
 
   embla-carousel-react@8.0.0-rc15(react@19.0.0):
     dependencies:
