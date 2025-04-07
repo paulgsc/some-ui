@@ -1,4 +1,4 @@
-import type { Options as ChatMessageOptions } from "@chat/components/chat-message"
+import type { ChatMessageProps } from "@chat/types/chat"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 import { formatRelativeTime } from "some-ui-utils"
 
@@ -8,11 +8,12 @@ import { pgdevPng } from "../../../../../../assets"
 type Story = StoryObj<typeof ChatMessages>
 type Meta = MetaObj<typeof ChatMessages>
 
-const mockMessages: Array<ChatMessageOptions> = Array.from(
+const mockMessages: Array<ChatMessageProps> = Array.from(
   { length: 20 },
   (_, index) => ({
     id: `msg-${index}`,
     character: index % 2 === 0 ? "ai" : "pgdev",
+    position: index % 2 === 0 ? "right" : "left",
     content: `This is message ${index + 1}`,
     type: index % 3 === 0 ? "thinking" : "chat",
     timestamp: formatRelativeTime(new Date()),

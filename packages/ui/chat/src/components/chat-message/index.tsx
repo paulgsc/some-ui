@@ -6,9 +6,9 @@ import { cn, formatRelativeTime } from "some-ui-utils"
 export const ChatMessage = ({
   avatarSize = 25,
   avatar,
-  character,
   content,
   timestamp,
+  position,
 }: ChatMessageProps): React.JSX.Element => {
   const displayedContent = useTypingEffect({ content })
   return (
@@ -16,14 +16,15 @@ export const ChatMessage = ({
       className={cn(
         "relative flex size-fit max-w-[75%] flex-col rounded-lg p-1.5 shadow-lg",
         {
-          "bg-indigo-500/20 shadow-indigo-500/50 items-end": character === "ai",
-          "bg-sky-200 shadow-sky-300": character === "pgdev",
+          "bg-indigo-500/20 shadow-indigo-500/50 items-end":
+            position === "right",
+          "bg-sky-200 shadow-sky-300": position === "left",
         }
       )}
     >
       <div
         className={cn("flex items-end space-x-6", {
-          "flex-row-reverse": character === "ai",
+          "flex-row-reverse": position === "right",
         })}
       >
         <WithAvatar
@@ -44,10 +45,10 @@ export const ChatMessage = ({
         className={cn(
           "text-muted-foreground/60 size-fit max-w-xs shrink-0 overflow-clip border-none p-0.5 text-xs tracking-tight",
           {
-            "bg-inherit text-accent-foreground/40": character === "pgdev",
+            "bg-inherit text-accent-foreground/40": position === "left",
           }
         )}
-        variant={character === "ai" ? "outline" : "secondary"}
+        variant={position === "right" ? "outline" : "secondary"}
       >
         {formatRelativeTime(timestamp)}
       </Badge>

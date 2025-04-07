@@ -5,6 +5,7 @@ import { beachedWhale } from "@overlays/data/chatbot-messages/beached-whale"
 import { characters } from "@overlays/data/chatbot-messages/characters"
 import { nflTennis } from "@overlays/data/chatbot-messages/nfl-tennis"
 import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
+import { soManyCrates } from "@overlays/data/chatbot-messages/yet-another-python"
 import { useGanttChapters } from "@overlays/data/gantt-data"
 import { ChatInterface } from "some-ui-chat"
 import { BoredAnimation } from "some-ui-emoji-animations"
@@ -32,6 +33,11 @@ const YoutubeOverlay = (): React.JSX.Element => {
     <ChatInterface
       key={"beachedWhale"}
       messages={nflTennis}
+      characters={characters}
+    />,
+    <ChatInterface
+      key={"soManyCrates"}
+      messages={soManyCrates}
       characters={characters}
     />,
     <ChatInterface

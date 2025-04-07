@@ -1,7 +1,7 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 import { ChatMessage } from "."
-import type { Options } from "."
+import type { ChatMessageProps } from "@chat/types/chat"
 
 type Story = StoryObj<typeof ChatMessage>
 type Meta = MetaObj<typeof ChatMessage>
@@ -12,9 +12,10 @@ const avatar = {
   fallback: "CN",
 }
 
-const message: Options = {
+const message: ChatMessageProps = {
   id: "1",
   character: "ai",
+  position: "right",
   content: "👋 Hi there! How can I help?",
   type: "chat",
   timestamp: "Just now",
