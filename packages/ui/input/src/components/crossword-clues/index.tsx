@@ -1,66 +1,30 @@
-export const Clues = ({
-  clues,
-  activeClue,
-  activeDirection,
-  solvedClues,
-}: {
-  clues: {
-    across: Array<{ num: number; clue: string }>
-    down: Array<{ num: number; clue: string }>
-  }
-  activeClue: number | null
-  activeDirection: "across" | "down" | null
-  solvedClues: Array<number>
-}) => {
-  return (
-    <div className="grid grid-cols-2 gap-8">
-      <div>
-        <h2 className="mb-2 text-xl font-bold">Across</h2>
-        <ul className="space-y-1">
-          {clues.across.map((clue) => {
-            const isActive =
-              activeClue === clue.num && activeDirection === "across"
-            const isSolved = solvedClues.includes(clue.num)
+import type { FC } from "react"
 
-            return (
-              <li
-                key={`across-${clue.num}`}
-                className={`flex rounded p-1 ${isActive ? "bg-yellow-100 font-bold" : ""} ${
-                  isSolved ? "text-green-600" : ""
-                }`}
-              >
-                <span className={`mr-2 ${isActive ? "text-pink-600" : ""}`}>
-                  {clue.num}.
-                </span>
-                <span>{clue.clue}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-      <div>
-        <h2 className="mb-2 text-xl font-bold">Down</h2>
-        <ul className="space-y-1">
-          {clues.down.map((clue) => {
-            const isActive =
-              activeClue === clue.num && activeDirection === "down"
-            const isSolved = solvedClues.includes(clue.num)
-            return (
-              <li
-                key={`down-${clue.num}`}
-                className={`flex rounded p-1 ${isActive ? "bg-yellow-100 font-bold" : ""} ${
-                  isSolved ? "text-green-600" : ""
-                }`}
-              >
-                <span className={`mr-2 ${isActive ? "text-pink-600" : ""}`}>
-                  {clue.num}.
-                </span>
-                <span>{clue.clue}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-    </div>
+type Clue = {
+  num: number
+  clue: string
+}
+
+type CluesProps = {
+  clues: Array<Clue>
+  direction: "across" | "down"
+}
+
+export const Clues: FC<CluesProps> = ({ clues, direction }) => {
+  return (
+    <ul className="grid grid-flow-row items-center justify-center gap-1">
+      <h3 className="text-center text-xl font-bold uppercase">
+        {" "}
+        {direction === "across" ? "Across" : "Down"}{" "}
+      </h3>
+      {clues.map((clue, i) => (
+        <li key={i} className="flex items-end justify-between gap-2.5">
+          <p className="flex size-8 items-end justify-end text-end">
+            {clue.num}
+          </p>
+          <p className="flex-grow">{clue.clue}</p>
+        </li>
+      ))}
+    </ul>
   )
 }

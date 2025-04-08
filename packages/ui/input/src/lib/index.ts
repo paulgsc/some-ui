@@ -1,1 +1,1 @@
-export * "./crossword-grid"
+export * from "./crossword-grid"

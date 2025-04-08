@@ -1,10 +1,17 @@
+import type { FC } from "react"
 import { useCrosswordPuzzle } from "@input/hooks/use-crossword-puzzle"
 import type { CrosswordCell } from "@input/lib/crossword-grid"
+import { cn } from "some-ui-utils"
 
-export const CrosswordGridSvg = ({
-  grid,
-}: {
+type CrosswordGridSvgProps = {
   grid: Array<CrosswordCell>
+  gridSize: number
+  className?: string
+}
+export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
+  grid,
+  gridSize,
+  className,
 }): React.JSX.Element => {
   const {
     answers,
@@ -16,8 +23,11 @@ export const CrosswordGridSvg = ({
     handleKeyDown,
   } = useCrosswordPuzzle(grid)
   return (
-    <svg width="800" height="600" viewBox="0 0 800 600" className="max-w-full">
-      <g transform="translate(100, 20)">
+    <svg
+      viewBox={`0 0 ${30 * gridSize} ${30 * gridSize}`}
+      className={cn("size-full", className)}
+    >
+      <g>
         {grid.map((cell, index) => {
           const cellId = `${cell.x}-${cell.y}`
           const cellSize = 30
@@ -61,7 +71,9 @@ export const CrosswordGridSvg = ({
               >
                 <div className="flex size-full items-center justify-center">
                   <input
-                    ref={(el) => (cellRefs.current[cellId] = el)}
+                    ref={(el) => {
+                      cellRefs.current[cellId] = el
+                    }}
                     type="text"
                     maxLength={1}
                     value={answers[cellId] || ""}

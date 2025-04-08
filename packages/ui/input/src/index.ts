@@ -1,1 +1,3 @@
-export { default } from "@input/components"
+export * from "./components"
+export * from "./lib"
+export * from "./data"

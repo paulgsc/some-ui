@@ -1,7 +1,4 @@
-import {
-  generateCrosswordGrid,
-  generateRandomWords,
-} from "@input/lib/crossword-grid"
+import { createCrossword } from "@input/lib/crossword-grid"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 import { CrosswordGridSvg } from "."
@@ -9,13 +6,38 @@ import { CrosswordGridSvg } from "."
 type Story = StoryObj<typeof CrosswordGridSvg>
 type Meta = MetaObj<typeof CrosswordGridSvg>
 
-const wordLengths = [3, 3, 6, 5, 4, 4, 4, 5, 4, 4]
-const crossword = generateRandomWords(wordLengths)
-const chatgpt = generateCrosswordGrid({ words: crossword })
+const wordList = [
+  "JAVASCRIPT",
+  "TYPESCRIPT",
+  "REACT",
+  "ANGULAR",
+  "VUE",
+  "NODE",
+  "EXPRESS",
+  "MONGODB",
+  "HTML",
+  "CSS",
+  "REDUX",
+  "WEBPACK",
+  "BABEL",
+  "PROGRAMMING",
+  "ALGORITHM",
+  "CODING",
+  "FUNCTION",
+  "VARIABLE",
+  "OBJECT",
+  "ARRAY",
+]
+
+const crossword = createCrossword(wordList, 10)
+const grid = crossword.grid
+const gridSize = crossword.crosswordGrid.size
 
 export const Default: Story = {
   args: {
-    grid: chatgpt,
+    grid,
+    gridSize,
+    className: "absolute inset-0 border border-red-600",
   },
 }
 

@@ -3,20 +3,20 @@ import { Clues } from "@input/components/crossword-clues"
 import { CrosswordGridSvg } from "@input/components/crossword-svg"
 import { CLUES } from "@input/data/crossword"
 import type { CrosswordCell } from "@input/lib/crossword-grid"
-import { Card } from "some-ui-shared"
 
 type CrosswordPuzzleProps = {
-  grid?: Array<CrosswordCell>
+  grid: Array<CrosswordCell>
+  size: number
 }
-export const CrosswordPuzzle: FC<CrosswordPuzzleProps> = ({ grid = [] }) => {
+export const CrosswordPuzzle: FC<CrosswordPuzzleProps> = ({ grid, size }) => {
   return (
-    <Card className="mx-auto max-w-4xl p-6">
+    <div className="size-96 p-6">
       <h1 className="mb-8 text-center text-3xl font-bold">
         Sheet for Kids (Easy)
       </h1>
 
-      <div className="mb-8 flex justify-center">
-        <CrosswordGridSvg grid={grid} />
+      <div className="mb-8 flex size-3/4 justify-center">
+        <CrosswordGridSvg grid={grid} gridSize={size} />
       </div>
 
       <Clues
@@ -25,6 +25,6 @@ export const CrosswordPuzzle: FC<CrosswordPuzzleProps> = ({ grid = [] }) => {
         activeDirection={null}
         solvedClues={[]}
       />
-    </Card>
+    </div>
   )
 }

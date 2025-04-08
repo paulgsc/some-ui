@@ -8,10 +8,8 @@ type Meta = MetaObj<typeof Clues>
 
 export const Default: Story = {
   args: {
-    clues: CLUES,
-    activeClue: null,
-    activeDirection: null,
-    solvedClues: [],
+    clues: CLUES.across,
+    direction: "across",
   },
 }
 
