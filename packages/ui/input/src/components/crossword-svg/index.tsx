@@ -14,7 +14,6 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   className,
 }): React.JSX.Element => {
   const {
-    answers,
     activeClue,
     highlightedCells,
     isAnimating,
@@ -76,7 +75,7 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
                     }}
                     type="text"
                     maxLength={1}
-                    value={answers[cellId] || ""}
+                    value={cell.letter}
                     onChange={(e) => handleInputChange(cellId, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, cell.x, cell.y)}
                     className={`size-full border-none text-center text-lg font-bold uppercase focus:outline-none focus:ring-2 focus:ring-offset-0 ${

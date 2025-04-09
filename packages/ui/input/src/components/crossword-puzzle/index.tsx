@@ -19,12 +19,7 @@ export const CrosswordPuzzle: FC<CrosswordPuzzleProps> = ({ grid, size }) => {
         <CrosswordGridSvg grid={grid} gridSize={size} />
       </div>
 
-      <Clues
-        clues={CLUES}
-        activeClue={null}
-        activeDirection={null}
-        solvedClues={[]}
-      />
+      <Clues direction="across" clues={CLUES.across} />
     </div>
   )
 }

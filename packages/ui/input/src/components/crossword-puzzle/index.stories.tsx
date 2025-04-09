@@ -28,9 +28,7 @@ const wordList = [
   "OBJECT",
   "ARRAY",
 ]
-const crossword = createCrossword(wordList, 10)
-const grid = crossword.grid
-const size = crossword.crosswordGrid.size
+const {size, grid}  = createCrossword(wordList, 10)
 
 export const Default: Story = {
   args: {
