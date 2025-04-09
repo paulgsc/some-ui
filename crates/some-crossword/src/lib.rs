@@ -1,7 +1,31 @@
-// crossword_generator.rs
-use rand::prelude::*;
-use std::collections::{HashMap, HashSet};
+// Cargo.toml contents:
+// [package]
+// name = "crossword-wasm"
+// version = "0.1.0"
+// edition = "2021"
+//
+// [lib]
+// crate-type = ["cdylib"]
+//
+// [dependencies]
+// rand = "0.8"
+// getrandom = { version = "0.2", features = ["js"] }
+// wasm-bindgen = "0.2"
+// js-sys = "0.3"
+// serde = { version = "1.0", features = ["derive"] }
+// serde-wasm-bindgen = "0.4"
+//
+// [dependencies.web-sys]
+// version = "0.3"
+// features = ["console"]
 
+use rand::{prelude::*, rngs::ThreadRng};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use wasm_bindgen::prelude::*;
+
+// Main struct that will be exposed to JavaScript
+#[wasm_bindgen]
 pub struct CrosswordGenerator {
     words: Vec<String>,
     max_group_size: usize,
@@ -12,7 +36,8 @@ pub struct CrosswordGenerator {
     rng: ThreadRng,
 }
 
-#[derive(Debug, Clone)]
+// Make a Serialize and Deserialize version of WordPlacement for JS interop
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WordPlacement {
     word: String,
     start_x: usize,
@@ -27,19 +52,54 @@ struct Position {
     y: usize,
 }
 
+// JavaScript-compatible result type
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct CrosswordResult {
+    grid: Vec<String>,
+    width: usize,
+    height: usize,
+    word_placements: Vec<JsWordPlacement>,
+}
+
+// JavaScript-friendly word placement
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct JsWordPlacement {
+    word: String,
+    start_x: usize,
+    start_y: usize,
+    is_across: bool,
+    group_id: Option<usize>,
+}
+
+// Implementation for JavaScript exports
+#[wasm_bindgen]
 impl CrosswordGenerator {
-    pub fn new(words: Vec<String>, max_group_size: usize) -> Self {
+    // Constructor exposed to JavaScript
+    #[wasm_bindgen(constructor)]
+    pub fn new(words_js: JsValue, max_group_size: usize) -> Result<CrosswordGenerator, JsValue> {
+        // Set up panic hook for better error messages
+        console_error_panic_hook::set_once();
+
+        // Convert JS array of strings to Rust Vec<String>
+        let words: Vec<String> = serde_wasm_bindgen::from_value(words_js).map_err(|e| JsValue::from_str(&format!("Failed to parse words: {}", e)))?;
+
         // Ensure uniqueness and normalize to lowercase
         let normalized_words: Vec<String> = words.into_iter().map(|w| w.to_lowercase()).collect::<HashSet<_>>().into_iter().collect();
+
+        if normalized_words.is_empty() {
+            return Err(JsValue::from_str("No valid words provided"));
+        }
 
         // Determine maximum word length to help with grid sizing
         let max_word_length = normalized_words.iter().map(|word| word.len()).max().unwrap_or(0);
 
         // Initialize grid with reasonable size
-        let initial_size = max_word_length.pow(2).min(1000);
+        let initial_size = max_word_length * 3;
         let grid = vec![vec![' '; initial_size]; initial_size];
 
-        Self {
+        Ok(Self {
             words: normalized_words,
             max_group_size,
             grid,
@@ -47,11 +107,88 @@ impl CrosswordGenerator {
             height: initial_size,
             word_positions: Vec::new(),
             rng: rand::rng(),
+        })
+    }
+
+    // Generate the crossword and return a result object for JavaScript
+    #[wasm_bindgen]
+    pub fn generate(&mut self) -> Result<JsValue, JsValue> {
+        match self.generate_internal() {
+            Ok(_) => {
+                // Convert grid to row strings for easier JS handling
+                let grid_strings: Vec<String> = self.grid.iter().map(|row| row.iter().collect()).collect();
+
+                // Convert word placements to JS-friendly format
+                let js_placements: Vec<JsWordPlacement> = self
+                    .word_positions
+                    .iter()
+                    .map(|p| JsWordPlacement {
+                        word: p.word.clone(),
+                        start_x: p.start_x,
+                        start_y: p.start_y,
+                        is_across: p.is_across,
+                        group_id: p.group_id,
+                    })
+                    .collect();
+
+                // Create result object
+                let result = CrosswordResult {
+                    grid: grid_strings,
+                    width: self.width,
+                    height: self.height,
+                    word_placements: js_placements,
+                };
+
+                // Convert to JS value
+                Ok(serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
+            }
+            Err(msg) => Err(JsValue::from_str(&msg)),
         }
     }
 
+    // Public method to get a display string for debugging
+    #[wasm_bindgen]
+    pub fn display(&self) -> String {
+        let mut result = String::new();
+
+        // Add a horizontal ruler
+        result.push_str(&format!("  "));
+        for x in 0..self.width {
+            result.push_str(&format!("{}", x % 10));
+        }
+        result.push('\n');
+
+        // Add the grid content with row numbers
+        for y in 0..self.height {
+            result.push_str(&format!("{} ", y % 10));
+            for x in 0..self.width {
+                result.push(self.grid[y][x]);
+            }
+            result.push('\n');
+        }
+
+        // Add word placements information
+        result.push_str("\nWord placements:\n");
+        for (i, placement) in self.word_positions.iter().enumerate() {
+            result.push_str(&format!(
+                "{}. '{}' at ({},{}) {} (Group: {:?})\n",
+                i + 1,
+                placement.word,
+                placement.start_x,
+                placement.start_y,
+                if placement.is_across { "across" } else { "down" },
+                placement.group_id
+            ));
+        }
+
+        result
+    }
+}
+
+// Private implementation methods not exposed to JS
+impl CrosswordGenerator {
     // Categorize words based on shared letters
-    pub fn categorize_words(&self) -> (Vec<String>, Vec<String>) {
+    fn categorize_words(&self) -> (Vec<String>, Vec<String>) {
         let mut letter_word_map: HashMap<char, Vec<String>> = HashMap::new();
 
         // Build a map of letters to words containing them
@@ -258,20 +395,20 @@ impl CrosswordGenerator {
         });
     }
 
-    // Generate the crossword puzzle
-    pub fn generate(&mut self) -> Result<(), String> {
+    // Generate the crossword puzzle (internal implementation)
+    fn generate_internal(&mut self) -> Result<(), String> {
         if self.words.is_empty() {
             return Err("No words provided".to_string());
         }
 
-        // Resize grid to be square with side length of max word length * 2
+        // Resize grid to be square with side length of max word length * 3
         let max_word_len = self.words.iter().map(|w| w.len()).max().unwrap();
         let grid_size = max_word_len * 3;
         self.width = grid_size;
         self.height = grid_size;
         self.grid = vec![vec![' '; grid_size]; grid_size];
 
-        // Categorize words - THIS IS WHERE WE USE THE CATEGORIZE_WORDS FUNCTION
+        // Categorize words
         let (shared_words, isolated_words) = self.categorize_words();
 
         // Create sets to track remaining words
@@ -386,7 +523,6 @@ impl CrosswordGenerator {
         }
 
         // Now place isolated words (preferably around edges)
-        // This follows rule #9 from your specification
         let edge_buffer = 1;
         let mut edge_y = edge_buffer;
 
@@ -421,15 +557,23 @@ impl CrosswordGenerator {
 
         for _ in 0..max_attempts {
             let is_across = self.rng.random_bool(0.5);
-            let max_x = if is_across { self.width - word.len() } else { self.width - 1 };
-            let max_y = if is_across { self.height - 1 } else { self.height - word.len() };
+            let max_x = if is_across {
+                self.width.saturating_sub(word.len())
+            } else {
+                self.width.saturating_sub(1)
+            };
+            let max_y = if is_across {
+                self.height.saturating_sub(1)
+            } else {
+                self.height.saturating_sub(word.len())
+            };
 
-            if max_x >= self.width || max_y >= self.height {
+            if max_x == 0 || max_y == 0 {
                 continue;
             }
 
-            let start_x = self.rng.random_range(0..=max_x);
-            let start_y = self.rng.random_range(0..=max_y);
+            let start_x = self.rng.random_range(0..max_x);
+            let start_y = self.rng.random_range(0..max_y);
 
             if self.is_valid_placement(word, start_x, start_y, is_across) {
                 // New disconnected word
@@ -504,53 +648,12 @@ impl CrosswordGenerator {
         self.width = new_width;
         self.height = new_height;
     }
+}
 
-    // Display the crossword grid
-    pub fn display(&self) -> String {
-        let mut result = String::new();
-
-        // Add a horizontal ruler
-        result.push_str(&format!("  "));
-        for x in 0..self.width {
-            result.push_str(&format!("{}", x % 10));
-        }
-        result.push('\n');
-
-        // Add the grid content with row numbers
-        for y in 0..self.height {
-            result.push_str(&format!("{} ", y % 10));
-            for x in 0..self.width {
-                result.push(self.grid[y][x]);
-            }
-            result.push('\n');
-        }
-
-        // Add word placements information
-        result.push_str("\nWord placements:\n");
-        for (i, placement) in self.word_positions.iter().enumerate() {
-            result.push_str(&format!(
-                "{}. '{}' at ({},{}) {} (Group: {:?})\n",
-                i + 1,
-                placement.word,
-                placement.start_x,
-                placement.start_y,
-                if placement.is_across { "across" } else { "down" },
-                placement.group_id
-            ));
-        }
-
-        result
-    }
-
-    // Get the grid
-    pub fn get_grid(&self) -> &Vec<Vec<char>> {
-        &self.grid
-    }
-
-    // Get the word placements
-    pub fn get_word_placements(&self) -> &Vec<WordPlacement> {
-        &self.word_positions
-    }
+// Initialize panic hook for better error messages
+#[wasm_bindgen(start)]
+pub fn start() {
+    console_error_panic_hook::set_once();
 }
 
 #[cfg(test)]
