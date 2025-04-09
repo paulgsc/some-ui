@@ -13,14 +13,6 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   gridSize,
   className,
 }): React.JSX.Element => {
-  const {
-    activeClue,
-    highlightedCells,
-    isAnimating,
-    cellRefs,
-    handleInputChange,
-    handleKeyDown,
-  } = useCrosswordPuzzle(grid)
   return (
     <svg
       viewBox={`0 0 ${30 * gridSize} ${30 * gridSize}`}
@@ -28,11 +20,11 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
     >
       <g>
         {grid.map((cell, index) => {
-          const cellId = `${cell.x}-${cell.y}`
           const cellSize = 30
           const x = cell.x * cellSize
           const y = cell.y * cellSize
-          const isHighlighted = highlightedCells.includes(cellId)
+          const centerX = cell.x * cellSize + cellSize / 2
+          const centerY = cell.y * cellSize + cellSize / 2
 
           return (
             <g key={index}>
@@ -42,7 +34,7 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
                 y={y}
                 width={cellSize}
                 height={cellSize}
-                fill={isHighlighted ? "#FFEB3B" : "white"}
+                fill={"white"}
                 stroke="black"
                 strokeWidth="1"
               />
@@ -54,39 +46,21 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
                   y={y + 8}
                   fontSize="8"
                   textAnchor="start"
-                  fontWeight={activeClue === cell.num ? "bold" : "normal"}
-                  fill={activeClue === cell.num ? "#E91E63" : "black"}
+                  fontWeight={"normal"}
+                  fill={"black"}
                 >
                   {cell.num}
                 </text>
               )}
-
-              {/* Cell input (using foreignObject) */}
-              <foreignObject
-                x={x + 2}
-                y={y + (cell.num ? 8 : 2)}
-                width={cellSize - 4}
-                height={cellSize - (cell.num ? 10 : 4)}
-              >
-                <div className="flex size-full items-center justify-center">
-                  <input
-                    ref={(el) => {
-                      cellRefs.current[cellId] = el
-                    }}
-                    type="text"
-                    maxLength={1}
-                    value={cell.letter}
-                    onChange={(e) => handleInputChange(cellId, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, cell.x, cell.y)}
-                    className={`size-full border-none text-center text-lg font-bold uppercase focus:outline-none focus:ring-2 focus:ring-offset-0 ${
-                      isHighlighted
-                        ? "bg-yellow-100 focus:ring-yellow-500"
-                        : "focus:ring-green-500"
-                    }`}
-                    disabled={isAnimating}
-                  />
-                </div>
-              </foreignObject>
+              <text
+                x={centerX}
+                y={centerY}
+                fontSize="16"
+                fontWeight="bold"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={"black"}
+              ></text>
             </g>
           )
         })}
