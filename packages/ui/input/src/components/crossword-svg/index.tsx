@@ -1,70 +1,56 @@
 import type { FC } from "react"
-import { useCrosswordPuzzle } from "@input/hooks/use-crossword-puzzle"
-import type { CrosswordCell } from "@input/lib/crossword-grid"
+import { useCreateCrosswordPuzzle } from "@input/hooks/use-create-crossword-puzzle"
 import { cn } from "some-ui-utils"
 
+import { CrosswordCellSvg } from "./test"
+
 type CrosswordGridSvgProps = {
-  grid: Array<CrosswordCell>
-  gridSize: number
+  words: Array<string>
   className?: string
 }
 export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
-  grid,
-  gridSize,
+  words,
   className,
 }): React.JSX.Element => {
+  const cellSize = 30
+  const { size, grid } = useCreateCrosswordPuzzle(words)
   return (
-    <svg
-      viewBox={`0 0 ${30 * gridSize} ${30 * gridSize}`}
-      className={cn("size-full", className)}
-    >
-      <g>
-        {grid.map((cell, index) => {
-          const cellSize = 30
-          const x = cell.x * cellSize
-          const y = cell.y * cellSize
-          const centerX = cell.x * cellSize + cellSize / 2
-          const centerY = cell.y * cellSize + cellSize / 2
+    <main>
+      <p>
+        {" "}
+        {grid.length} {size}{" "}
+      </p>
 
-          return (
-            <g key={index}>
-              {/* Cell rectangle */}
-              <rect
-                x={x}
-                y={y}
-                width={cellSize}
-                height={cellSize}
-                fill={"white"}
-                stroke="black"
-                strokeWidth="1"
-              />
-
-              {/* Cell number */}
-              {cell.num && (
-                <text
-                  x={x + 2}
-                  y={y + 8}
-                  fontSize="8"
-                  textAnchor="start"
-                  fontWeight={"normal"}
-                  fill={"black"}
-                >
-                  {cell.num}
-                </text>
-              )}
-              <text
-                x={centerX}
-                y={centerY}
-                fontSize="16"
-                fontWeight="bold"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={"black"}
-              ></text>
-            </g>
-          )
-        })}
-      </g>
-    </svg>
+      <svg
+        viewBox={calculateViewBox(grid)}
+        className={cn("size-full", className)}
+      >
+        <g>
+          {grid.map((cell, index) => {
+            const cellId = `${cell.x}-${cell.y}`
+            return (
+              <CrosswordCellSvg key={cellId} cell={cell} cellSize={cellSize} />
+            )
+          })}
+        </g>
+      </svg>
+    </main>
   )
+}
+function calculateViewBox(gridCells) {
+  if (gridCells.length === 0) return "0 0 100 100" // Default for empty grid
+
+  // Find min and max coordinates
+  const minX = Math.min(...gridCells.map((cell) => cell.x))
+  const maxX = Math.max(...gridCells.map((cell) => cell.x))
+  const minY = Math.min(...gridCells.map((cell) => cell.y))
+  const maxY = Math.max(...gridCells.map((cell) => cell.y))
+
+  // Calculate dimensions with some padding
+  const padding = 10
+  const width = (maxX - minX + 1) * 30 + padding * 2
+  const height = (maxY - minY + 1) * 30 + padding * 2
+
+  // Return viewBox string
+  return `${minX * 30 - padding} ${minY * 30 - padding} ${width} ${height}`
 }

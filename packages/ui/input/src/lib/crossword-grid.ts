@@ -74,14 +74,7 @@ export type CrosswordGrid = {
  * @param wordList List of words to include in the puzzle
  * @param gridSize Maximum size of the grid
  */
-type CreateCrosswordReturnType = {
-  grid: Array<CrosswordCell>
-} & CrosswordGrid
-
-export function createCrossword(
-  wordList: Array<string>,
-  gridSize = 15
-): CreateCrosswordReturnType {
+export function createCrossword(wordList: Array<string>, gridSize = 15) {
   // Filter out empty words and ensure unique entries
   const validWords = [
     ...new Set(wordList.filter((word) => word && word.trim().length > 0)),
@@ -98,7 +91,7 @@ export function createCrossword(
   const grid = convertToGridCells(crosswordLayout.words)
 
   return {
-    ...crosswordLayout,
+    crosswordGrid: crosswordLayout,
     grid,
   }
 }
@@ -199,7 +192,8 @@ function generateCrosswordLayout(
     wordText: string,
     dir: Direction,
     x: number,
-    y: number
+    y: number,
+    requireIntersection: boolean = true
   ): boolean {
     let hasIntersection = false
 
@@ -230,6 +224,7 @@ function generateCrosswordLayout(
 
     // If we need intersections, make sure we have one
     if (
+      requireIntersection &&
       placedWords.length > 0 &&
       !hasIntersection &&
       intersectionCount < maxIntersections
@@ -324,7 +319,7 @@ function generateCrosswordLayout(
               newDir === "down" ? intersectY - newLetterPos : intersectY
 
             // Try to place the word
-            if (canPlaceWord(newWord, newDir, newX, newY)) {
+            if (canPlaceWord(newWord, newDir, newX, newY, true)) {
               placeWord(newWord, newDir, newX, newY)
               intersectionCount++
 
@@ -353,12 +348,20 @@ function generateCrosswordLayout(
     const wordToPlace = availableWords[randomIndex]
 
     // Try multiple random positions
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      // Increased attempts for better placement chance
       const dir: Direction = Math.random() > 0.5 ? "across" : "down"
-      const x = Math.floor(Math.random() * virtualGridSize)
-      const y = Math.floor(Math.random() * virtualGridSize)
+      const x = Math.floor(
+        Math.random() *
+          (virtualGridSize - (dir === "across" ? wordToPlace.length : 0))
+      )
+      const y = Math.floor(
+        Math.random() *
+          (virtualGridSize - (dir === "down" ? wordToPlace.length : 0))
+      )
 
-      if (canPlaceWord(wordToPlace, dir, x, y)) {
+      // Pass false for requireIntersection to allow placement without intersection
+      if (canPlaceWord(wordToPlace, dir, x, y, false)) {
         placeWord(wordToPlace, dir, x, y)
 
         // Update tracking lists
@@ -383,19 +386,24 @@ function generateCrosswordLayout(
     // Sort words by position
     placedWords.sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y))
 
+    // Use a map to track positions that need numbers
+    const numbered = new Map<string, number>()
     let clueNumber = 1
 
+    // First pass: assign numbers to starting positions
     for (const word of placedWords) {
-      // Check if this position already has a number
-      const existingNumbered = placedWords.find(
-        (w) => w.clueNumber !== undefined && w.x === word.x && w.y === word.y
-      )
+      const key = `${word.x}-${word.y}`
 
-      if (existingNumbered) {
-        word.clueNumber = existingNumbered.clueNumber
-      } else {
-        word.clueNumber = clueNumber++
+      // Check if this position already has a number
+      if (!numbered.has(key)) {
+        numbered.set(key, clueNumber++)
       }
+    }
+
+    // Second pass: assign clue numbers to words
+    for (const word of placedWords) {
+      const key = `${word.x}-${word.y}`
+      word.clueNumber = numbered.get(key)
     }
   }
 }
@@ -423,8 +431,8 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
         const cell = grid.get(key)!
 
         // Combine directions
-        cell.across ||= cell.across || direction === "across"
-        cell.down ||= cell.down || direction === "down"
+        cell.across = cell.across || direction === "across"
+        cell.down = cell.down || direction === "down"
 
         // Letter should match at intersections
         if (cell.letter && cell.letter !== letter) {

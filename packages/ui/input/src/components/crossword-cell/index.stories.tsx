@@ -1,9 +1,10 @@
+import { createCrossword } from "@input/lib/crossword-grid"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import { CrosswordGridSvg } from "."
+import { CrosswordCellSvg } from "."
 
-type Story = StoryObj<typeof CrosswordGridSvg>
-type Meta = MetaObj<typeof CrosswordGridSvg>
+type Story = StoryObj<typeof CrosswordCellSvg>
+type Meta = MetaObj<typeof CrosswordCellSvg>
 
 const words = [
   "JAVASCRIPT",
@@ -28,14 +29,21 @@ const words = [
   "ARRAY",
 ]
 
+const { grid } = createCrossword(words, 10)
+
 export const Default: Story = {
   args: {
-    words,
+    cell: grid[0],
     className: "absolute inset-0 border border-red-600",
   },
+  render: (args) => (
+    <svg viewBox="0 0 60 60" className="size-48">
+      <CrosswordCellSvg {...args} />
+    </svg>
+  ),
 }
 
 export default {
-  title: "UI/Input/Components/CrosswordGridSvg",
-  component: CrosswordGridSvg,
+  title: "UI/Input/Components/CrosswordCellSvg",
+  component: CrosswordCellSvg,
 } as Meta
