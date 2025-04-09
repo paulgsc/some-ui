@@ -61,15 +61,12 @@ export function generateCrosswordGrid({
           console.warn(
             `Letter mismatch at (${cx},${cy}): ${cell.letter} vs ${letter}`
           )
-          continue // Skip the rest of the word placement
+          continue // Skip the rest of the word placement.  Important.
         }
 
-        // Update cell with direction
-        if (direction === "across") {
-          cell.across = true
-        } else {
-          cell.down = true
-        }
+        // Update cell with direction.  Combine directions.
+        cell.across = cell.across || direction === "across"
+        cell.down = cell.down || direction === "down"
 
         // Set letter if not set yet
         if (!cell.letter) {
@@ -99,14 +96,6 @@ export function generateCrosswordGrid({
   return Array.from(grid.values())
 }
 
-/**
- * Generates an array of Word objects for a crossword puzzle, attempting to
- * interlock them according to the specified algorithm.
- *
- * @param wordList - The list of words to include in the crossword.
- * @param gridSize - The size of the crossword grid (default: 15).
- * @returns An array of Word objects representing the placed words.  Returns empty array on error.
- */
 export function generateRandomWords(
   wordList: Array<string>,
   _gridSize = 15
@@ -114,8 +103,8 @@ export function generateRandomWords(
   const words: Array<Word> = []
   const occupied = new Map<string, string>() // position -> letter
   const maxWordLength = Math.max(...wordList.map((w) => w.length))
-  const virtualGridSize = 2 * maxWordLength
-  const maxIntersections = 8 // Maximum number of connected words
+  const virtualGridSize = 2 * maxWordLength // Increased to handle longer words.
+  const maxIntersections = 8 // Limit the number of intersections for a cleaner puzzle
   let intersectionCount = 0
 
   /**
@@ -156,30 +145,24 @@ export function generateRandomWords(
 
       // Check adjacent cells - we don't want words side by side.  Important for word search aspect.
       if (!occupied.has(key)) {
+        const adjacentKeys = []
         if (dir === "across") {
-          if (
-            (occupied.has(`${cx}-${cy - 1}`) &&
-              !occupied.has(`${cx - 1}-${cy - 1}`) &&
-              !occupied.has(`${cx + 1}-${cy - 1}`)) ||
-            (occupied.has(`${cx}-${cy + 1}`) &&
-              !occupied.has(`${cx - 1}-${cy + 1}`) &&
-              !occupied.has(`${cx + 1}-${cy + 1}`))
-          ) {
+          adjacentKeys.push(`${cx}-${cy - 1}`, `${cx}-${cy + 1}`)
+          if (i === 0) adjacentKeys.push(`${cx - 1}-${cy}`) //check the cell before the word
+          if (i === wordText.length - 1) adjacentKeys.push(`${cx + 1}-${cy}`) //check the cell after the word
+        } else {
+          adjacentKeys.push(`${cx - 1}-${cy}`, `${cx + 1}-${cy}`)
+          if (i === 0) adjacentKeys.push(`${cx}-${cy - 1}`)
+          if (i === wordText.length - 1) adjacentKeys.push(`${cx}-${cy + 1}`)
+        }
+
+        for (const adjKey of adjacentKeys) {
+          if (occupied.has(adjKey)) {
             return false
           }
-        } else if (
-          (occupied.has(`${cx - 1}-${cy}`) &&
-            !occupied.has(`${cx - 1}-${cy - 1}`) &&
-            !occupied.has(`${cx - 1}-${cy + 1}`)) ||
-          (occupied.has(`${cx + 1}-${cy}`) &&
-            !occupied.has(`${cx + 1}-${cy - 1}`) &&
-            !occupied.has(`${cx + 1}-${cy + 1}`))
-        ) {
-          return false
         }
       }
     }
-
     // For the second word onwards, require an intersection, unless maxIntersections is reached
     if (
       words.length > 0 &&
@@ -192,13 +175,6 @@ export function generateRandomWords(
     return true
   }
 
-  /**
-   * Places a word at the specified coordinates in the given direction.
-   * @param x The starting x-coordinate.
-   * @param y The starting y-coordinate.
-   * @param wordText The word to place.
-   * @param dir The direction to place the word (across or down).
-   */
   function placeWord(
     x: number,
     y: number,
@@ -225,7 +201,10 @@ export function generateRandomWords(
 
   if (validWordList.length === 0) {
     console.error("No valid words found!")
-    return { crosswords: [], size: 0 }
+    return {
+      crosswords: [],
+      size: 0,
+    }
   }
 
   // Place the first word randomly
@@ -236,9 +215,10 @@ export function generateRandomWords(
   const startY = Math.floor(Math.random() * virtualGridSize)
 
   placeWord(startX, startY, firstWord, firstDir)
+  intersectionCount = 0
 
   // Try to place the rest of the words
-  const maxAttempts = 1000 // Increased attempts
+  const maxAttempts = 2000 // Increased attempts for more robust placement
   let overallAttempts = 0
   const placedWords = [firstWord] // Keep track of placed words
   const availableWords = [...validWordList].filter((w) => w !== firstWord)
@@ -325,6 +305,9 @@ export function generateRandomWords(
       }
     }
 
+    if (!placed) {
+      availableWords.splice(availableWords.indexOf(wordToPlace), 1)
+    }
     overallAttempts++
   }
 
@@ -333,6 +316,7 @@ export function generateRandomWords(
       `Exceeded maximum attempts (${maxAttempts}). Some words could not be placed.`
     )
   }
+
   // Number the words for clues
   if (words.length > 0) {
     let clueNumber = 1
@@ -356,12 +340,6 @@ export function generateRandomWords(
   return { crosswords: words, size: virtualGridSize }
 }
 
-/**
- * Creates a crossword puzzle object with words and grid, and provides a method to render it to the console.
- * @param wordList - The list of words to use in the crossword.
- * @param gridSize - The size of the crossword grid (default: 15).
- * @returns An object containing the words, grid, and a renderToConsole function.
- */
 export function createCrossword(wordList: Array<string>, gridSize = 15) {
   const crosswordGrid = generateRandomWords(wordList, gridSize)
   const grid = generateCrosswordGrid({
@@ -375,10 +353,6 @@ export function createCrossword(wordList: Array<string>, gridSize = 15) {
   }
 }
 
-/**
- * Shuffles the elements of an array in place using the Fisher-Yates algorithm.
- * @param array The array to shuffle.
- */
 function shuffleArray<T>(array: Array<T>): void {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
