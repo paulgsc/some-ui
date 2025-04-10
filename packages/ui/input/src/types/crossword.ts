@@ -6,6 +6,7 @@ export type WordPlacement = {
   start_y: number
   is_across: boolean
   group_id: number | null
+  clue_num: number
 }
 
 export type CrosswordResult = {

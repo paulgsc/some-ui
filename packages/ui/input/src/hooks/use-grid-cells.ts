@@ -1,20 +1,12 @@
 import { useCallback } from "react"
-import type {
-  CrosswordCell,
-  CrosswordClues,
-  WordPlacement,
-} from "@input/types/crossword"
+import type { CrosswordCell, WordPlacement } from "@input/types/crossword"
 
-export function useCreateCrosswordPuzzle(
-  p: Array<WordPlacement>,
-  clues: CrosswordClues
-) {
+export function useCreateCrosswordPuzzle(p: Array<WordPlacement>) {
   const convertToGridCells = useCallback(() => {
     const grid = new Map<string, CrosswordCell>()
-    let clue = 0
 
     for (const w of p) {
-      const { start_x: x, start_y: y, is_across, word } = w
+      const { start_x: x, start_y: y, is_across, word, clue_num } = w
 
       // Skip if no word content
       if (!word) continue
@@ -31,7 +23,7 @@ export function useCreateCrosswordPuzzle(
           x: cx,
           y: cy,
           letter,
-          ...(i === 0 ? { num: ++clue } : {}),
+          ...(i === 0 ? { num: clue_num } : {}),
         })
       }
     }
