@@ -16,6 +16,7 @@ export default defineConfig({
         "./packages/ui/attributions/src"
       ),
       "@chat": path.resolve(__dirname, "./packages/ui/chat/src"),
+      "@input": path.resolve(__dirname, "./packages/ui/input/src"),
       "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
