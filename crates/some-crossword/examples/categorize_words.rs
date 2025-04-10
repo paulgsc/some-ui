@@ -11,8 +11,7 @@ fn main() {
         "generator".to_string(),
     ];
 
-    let generator = CrosswordGenerator::new(words, 4);
-    let (isolated_words, intersection_map) = generator.generate_internal();
-    println!("isolated: {:?}", isolated_words);
-    println!("map: {:?}", intersection_map);
+    let mut generator = CrosswordGenerator::new(words, 4).unwrap();
+    let _ = generator.generate_internal();
+    println!("{}", generator.display());
 }

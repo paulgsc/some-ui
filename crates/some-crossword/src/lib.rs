@@ -72,6 +72,7 @@ pub struct JsWordPlacement {
     start_y: usize,
     is_across: bool,
     group_id: Option<usize>,
+    clue_num: i8,
 }
 
 // Implementation for JavaScript exports
@@ -108,6 +109,7 @@ impl CrosswordGenerator {
                         start_y: p.start_y,
                         is_across: p.is_across,
                         group_id: p.group_id,
+                        clue_num: p.clue_num,
                     })
                     .collect();
 
@@ -370,7 +372,7 @@ impl CrosswordGenerator {
     }
 
     // Generate the crossword puzzle (internal implementation)
-    fn generate_internal(&mut self) -> Result<(), String> {
+    pub fn generate_internal(&mut self) -> Result<(), String> {
         if self.words.is_empty() {
             return Err("No words provided".to_string());
         }
@@ -651,10 +653,10 @@ impl CrosswordGenerator {
 
         // Add word placements information
         result.push_str("\nWord placements:\n");
-        for (i, placement) in self.word_positions.iter().enumerate() {
+        for placement in &self.word_positions {
             result.push_str(&format!(
                 "{}. '{}' at ({},{}) {} (Group: {:?})\n",
-                i + 1,
+                placement.clue_num,
                 placement.word,
                 placement.start_x,
                 placement.start_y,
@@ -701,17 +703,17 @@ mod tests {
 
     #[test]
     fn test_empty_input() {
-        let mut generator = CrosswordGenerator::new(vec![], 5);
-        let result = generator.generate();
+        let mut generator = CrosswordGenerator::new(vec![], 5).unwrap();
+        let result = generator.generate_internal();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_single_word() {
         let words = vec!["hello".to_string()];
-        let mut generator = CrosswordGenerator::new(words, 5);
+        let mut generator = CrosswordGenerator::new(words, 5).unwrap();
 
-        let result = generator.generate();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         let placements = generator.get_word_placements();
@@ -722,9 +724,9 @@ mod tests {
     #[test]
     fn test_case_insensitivity() {
         let words = vec!["Hello".to_string(), "hello".to_string(), "HELLO".to_string()];
-        let mut generator = CrosswordGenerator::new(words, 5);
+        let mut generator = CrosswordGenerator::new(words, 5).unwrap();
 
-        let result = generator.generate();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         let placements = generator.get_word_placements();
@@ -734,9 +736,9 @@ mod tests {
     #[test]
     fn test_intersecting_words() {
         let words = vec!["hello".to_string(), "world".to_string()];
-        let mut generator = CrosswordGenerator::new(words, 5);
+        let mut generator = CrosswordGenerator::new(words, 5).unwrap();
 
-        let result = generator.generate();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         // Both words should be placed
@@ -753,9 +755,9 @@ mod tests {
         let words = vec!["apple".to_string(), "pear".to_string(), "plum".to_string(), "peach".to_string(), "apricot".to_string()];
 
         // Set max group size to 3
-        let mut generator = CrosswordGenerator::new(words.clone(), 3);
+        let mut generator = CrosswordGenerator::new(words.clone(), 3).unwrap();
 
-        let result = generator.generate();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         // Check that no group exceeds max size
@@ -776,9 +778,9 @@ mod tests {
     #[test]
     fn test_no_adjacent_words() {
         let words = vec!["hello".to_string(), "world".to_string()];
-        let mut generator = CrosswordGenerator::new(words, 5);
+        let mut generator = CrosswordGenerator::new(words, 5).unwrap();
 
-        let result = generator.generate();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         let grid = generator.get_grid();
@@ -851,8 +853,8 @@ mod tests {
             "qwerty".to_string(), // isolated
         ];
 
-        let mut generator = CrosswordGenerator::new(words, 5);
-        let result = generator.generate();
+        let mut generator = CrosswordGenerator::new(words, 5).unwrap();
+        let result = generator.generate_internal();
         assert!(result.is_ok());
 
         // Check that all words are placed
