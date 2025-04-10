@@ -4,7 +4,7 @@ import init, { CrosswordGenerator } from "some-crossword"
 
 export function useCreateCrosswordWasm(
   wordList: Array<string> = [],
-  maxGroupSize: number = 8
+  maxGroupSize: number = wordList.length * 0.75
 ) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)

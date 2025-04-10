@@ -11,6 +11,7 @@ const words = [
   "TYPESCRIPT",
   "REACT",
   "ANGULAR",
+  "VUE",
   "NODE",
   "EXPRESS",
   "MONGODB",
@@ -24,6 +25,8 @@ const words = [
   "CODING",
   "FUNCTION",
   "VARIABLE",
+  "OBJECT",
+  "ARRAY",
 ]
 
 const clues: CrosswordClues = {

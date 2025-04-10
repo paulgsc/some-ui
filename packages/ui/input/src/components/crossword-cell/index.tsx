@@ -46,7 +46,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
             ? "#E8F5E9"
             : isAnimating && currentLetter
               ? "#FFEBEE"
-              : "white"
+              : "#E9EFF1"
         }
         stroke={
           isHighlighted
