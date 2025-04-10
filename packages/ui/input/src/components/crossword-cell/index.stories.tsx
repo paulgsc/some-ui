@@ -29,15 +29,15 @@ const words = [
   "ARRAY",
 ]
 
-const { grid } = createCrossword(words, 10)
+const { grid, size } = createCrossword(words, 10)
 
 export const Default: Story = {
   args: {
     cell: grid[0],
-    className: "absolute inset-0 border border-red-600",
+    cellSize: size,
   },
   render: (args) => (
-    <svg viewBox="0 0 60 60" className="size-48">
+    <svg viewBox="0 0 60 60" className="size-48 border border-red-500">
       <CrosswordCellSvg {...args} />
     </svg>
   ),

@@ -1,3 +1,4 @@
+import type { CrosswordClues } from "@input/types/crossword"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
 import { CrosswordGridSvg } from "."
@@ -10,7 +11,6 @@ const words = [
   "TYPESCRIPT",
   "REACT",
   "ANGULAR",
-  "VUE",
   "NODE",
   "EXPRESS",
   "MONGODB",
@@ -24,13 +24,25 @@ const words = [
   "CODING",
   "FUNCTION",
   "VARIABLE",
-  "OBJECT",
-  "ARRAY",
 ]
+
+const clues: CrosswordClues = {
+  across: [
+    { id: 1, clue: "Capital of France", answer: "Paris" },
+    { id: 2, clue: "Largest planet in the solar system", answer: "Jupiter" },
+    { id: 3, clue: "Fastest land animal", answer: "Cheetah" },
+  ],
+  down: [
+    { id: 4, clue: "Biggest ocean", answer: "Pacific" },
+    { id: 5, clue: "First man on the moon", answer: "Armstrong" },
+    { id: 6, clue: "Smallest planet", answer: "Mercury" },
+  ],
+}
 
 export const Default: Story = {
   args: {
     words,
+    clues,
     className: "absolute inset-0 border border-red-600",
   },
 }

@@ -2,36 +2,43 @@ import type { FC } from "react"
 import { useTypewriterAnimation } from "@input/hooks/use-typewriter-animation"
 import type { CrosswordCell } from "@input/lib/crossword-grid"
 
-type CrosswordGridSvgProps = {
-  className?: string
+type CrosswordCellSvgProps = {
   cell: CrosswordCell
+  cellSize: number
 }
-export const CrosswordCellSvg: FC<CrosswordGridSvgProps> = ({
-  cell,
-}): React.JSX.Element => {
-  const cellSize = 30
-  const { x, y, num } = cell
-  const solved = false
 
+export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
+  cell,
+  cellSize,
+}) => {
+  const solved = false
+  const x = cell.x * cellSize
+  const y = cell.y * cellSize
+  const centerX = cell.x * cellSize + cellSize / 2
+  const centerY = cell.y * cellSize + cellSize / 2
   const {
     currentLetter,
     isAnimating,
     isValid,
-    isVibrating,
     isHighlighted,
     startAnimation,
     setRef,
   } = useTypewriterAnimation({
-    validLetter: "L",
+    validLetter: cell.letter ?? "",
     onComplete: () => {},
   })
 
   return (
-    <>
+    <g
+      ref={setRef}
+      onClick={() => {
+        startAnimation()
+      }}
+    >
       {/* Cell rectangle */}
       <rect
-        x="0"
-        y="0"
+        x={x}
+        y={y}
         width={cellSize}
         height={cellSize}
         fill={
@@ -57,36 +64,30 @@ export const CrosswordCellSvg: FC<CrosswordGridSvgProps> = ({
         }
       />
 
-      {/* Cell number (if provided) */}
-      {num && (
+      {/* Cell number */}
+      {cell.num && (
         <text
-          x="2"
-          y="8"
+          x={x + 2}
+          y={y + 8}
           fontSize="8"
           textAnchor="start"
-          fontWeight="normal"
-          fill="black"
+          fontWeight={"normal"}
+          fill={"black"}
         >
-          {num}
+          {cell.num}
         </text>
       )}
-
-      {/* Letter text */}
-      {(currentLetter || solved) && (
-        <text
-          x={cellSize / 2}
-          y={cellSize / 2 + 2}
-          fontSize="16"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontWeight="bold"
-          fill={
-            isValid || solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"
-          }
-        >
-          {solved ? letter : currentLetter}
-        </text>
-      )}
-    </>
+      <text
+        x={centerX}
+        y={centerY}
+        fontSize="16"
+        fontWeight="bold"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={isValid || solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"}
+      >
+        {currentLetter.toUpperCase()}
+      </text>
+    </g>
   )
 }
