@@ -44,6 +44,7 @@ pub struct WordPlacement {
     start_y: usize,
     is_across: bool,
     group_id: Option<usize>,
+    clue_num: i8,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -78,36 +79,15 @@ pub struct JsWordPlacement {
 impl CrosswordGenerator {
     // Constructor exposed to JavaScript
     #[wasm_bindgen(constructor)]
-    pub fn new(words_js: JsValue, max_group_size: usize) -> Result<CrosswordGenerator, JsValue> {
+    pub fn new_from_js(words_js: JsValue, max_group_size: usize) -> Result<CrosswordGenerator, JsValue> {
         // Set up panic hook for better error messages
         console_error_panic_hook::set_once();
 
         // Convert JS array of strings to Rust Vec<String>
         let words: Vec<String> = serde_wasm_bindgen::from_value(words_js).map_err(|e| JsValue::from_str(&format!("Failed to parse words: {}", e)))?;
 
-        // Ensure uniqueness and normalize to lowercase
-        let normalized_words: Vec<String> = words.into_iter().map(|w| w.to_lowercase()).collect::<HashSet<_>>().into_iter().collect();
-
-        if normalized_words.is_empty() {
-            return Err(JsValue::from_str("No valid words provided"));
-        }
-
-        // Determine maximum word length to help with grid sizing
-        let max_word_length = normalized_words.iter().map(|word| word.len()).max().unwrap_or(0);
-
-        // Initialize grid with reasonable size
-        let initial_size = max_word_length * 3;
-        let grid = vec![vec![' '; initial_size]; initial_size];
-
-        Ok(Self {
-            words: normalized_words,
-            max_group_size,
-            grid,
-            width: initial_size,
-            height: initial_size,
-            word_positions: Vec::new(),
-            rng: rand::rng(),
-        })
+        // Use the core implementation
+        Self::create(words, max_group_size).map_err(|e| JsValue::from_str(&e))
     }
 
     // Generate the crossword and return a result object for JavaScript
@@ -145,48 +125,41 @@ impl CrosswordGenerator {
             Err(msg) => Err(JsValue::from_str(&msg)),
         }
     }
-
-    // Public method to get a display string for debugging
-    #[wasm_bindgen]
-    pub fn display(&self) -> String {
-        let mut result = String::new();
-
-        // Add a horizontal ruler
-        result.push_str(&format!("  "));
-        for x in 0..self.width {
-            result.push_str(&format!("{}", x % 10));
-        }
-        result.push('\n');
-
-        // Add the grid content with row numbers
-        for y in 0..self.height {
-            result.push_str(&format!("{} ", y % 10));
-            for x in 0..self.width {
-                result.push(self.grid[y][x]);
-            }
-            result.push('\n');
-        }
-
-        // Add word placements information
-        result.push_str("\nWord placements:\n");
-        for (i, placement) in self.word_positions.iter().enumerate() {
-            result.push_str(&format!(
-                "{}. '{}' at ({},{}) {} (Group: {:?})\n",
-                i + 1,
-                placement.word,
-                placement.start_x,
-                placement.start_y,
-                if placement.is_across { "across" } else { "down" },
-                placement.group_id
-            ));
-        }
-
-        result
-    }
 }
 
 // Private implementation methods not exposed to JS
 impl CrosswordGenerator {
+    pub fn new(words: Vec<String>, max_group_size: usize) -> Result<Self, String> {
+        Self::create(words, max_group_size)
+    }
+
+    // Internal constructor that both implementations can use
+    fn create(words: Vec<String>, max_group_size: usize) -> Result<Self, String> {
+        // Ensure uniqueness and normalize to lowercase
+        let normalized_words: Vec<String> = words.into_iter().map(|w| w.to_lowercase()).collect::<HashSet<_>>().into_iter().collect();
+
+        if normalized_words.is_empty() {
+            return Err("No valid words provided".to_string());
+        }
+
+        // Determine maximum word length to help with grid sizing
+        let max_word_length = normalized_words.iter().map(|word| word.len()).max().unwrap_or(0);
+
+        // Initialize grid with reasonable size
+        let initial_size = max_word_length * 3;
+        let grid = vec![vec![' '; initial_size]; initial_size];
+
+        Ok(Self {
+            words: normalized_words,
+            max_group_size,
+            grid,
+            width: initial_size,
+            height: initial_size,
+            word_positions: Vec::new(),
+            rng: rand::rng(),
+        })
+    }
+
     // Categorize words based on shared letters
     fn categorize_words(&self) -> (Vec<String>, Vec<String>) {
         let mut letter_word_map: HashMap<char, Vec<String>> = HashMap::new();
@@ -374,7 +347,7 @@ impl CrosswordGenerator {
     }
 
     // Place a word on the grid
-    fn place_word(&mut self, word: &str, start_x: usize, start_y: usize, is_across: bool, group_id: Option<usize>) {
+    fn place_word(&mut self, word: &str, start_x: usize, start_y: usize, is_across: bool, group_id: Option<usize>, clue_num: i8) {
         let chars: Vec<char> = word.chars().collect();
 
         // Place word on grid
@@ -392,6 +365,7 @@ impl CrosswordGenerator {
             start_y,
             is_across,
             group_id,
+            clue_num,
         });
     }
 
@@ -407,6 +381,8 @@ impl CrosswordGenerator {
         self.width = grid_size;
         self.height = grid_size;
         self.grid = vec![vec![' '; grid_size]; grid_size];
+
+        let mut clue_num: i8 = 0;
 
         // Categorize words
         let (shared_words, isolated_words) = self.categorize_words();
@@ -434,7 +410,8 @@ impl CrosswordGenerator {
         let start_x = if is_across { center - first_word.len() / 2 } else { center };
         let start_y = if is_across { center } else { center - first_word.len() / 2 };
 
-        self.place_word(&first_word, start_x, start_y, is_across, Some(group_counter));
+        clue_num += 1;
+        self.place_word(&first_word, start_x, start_y, is_across, Some(group_counter), clue_num);
         group_counter += 1;
 
         // Try to place words with intersections first
@@ -500,7 +477,8 @@ impl CrosswordGenerator {
                         };
 
                         // Place the word
-                        self.place_word(&next_word, start_x, start_y, is_across, group_id);
+                        clue_num += 1;
+                        self.place_word(&next_word, start_x, start_y, is_across, group_id, clue_num);
                         remaining_shared_words.remove(&next_word);
                         placed = true;
                         break;
@@ -510,13 +488,15 @@ impl CrosswordGenerator {
                 // If word couldn't be placed at any intersection
                 if !placed {
                     // Try random placement as a last resort
-                    if self.try_random_placement(&next_word, &mut group_counter) {
+                    clue_num += 1;
+                    if self.try_random_placement(&next_word, &mut group_counter, clue_num) {
                         remaining_shared_words.remove(&next_word);
                     }
                 }
             } else {
                 // No intersections found, try random placement
-                if self.try_random_placement(&next_word, &mut group_counter) {
+                clue_num += 1;
+                if self.try_random_placement(&next_word, &mut group_counter, clue_num) {
                     remaining_shared_words.remove(&next_word);
                 }
             }
@@ -540,7 +520,8 @@ impl CrosswordGenerator {
                 let new_id = group_counter;
                 group_counter += 1;
 
-                self.place_word(&isolated_word, start_x, start_y, is_across, Some(new_id));
+                clue_num += 1;
+                self.place_word(&isolated_word, start_x, start_y, is_across, Some(new_id), clue_num);
                 edge_y += 2; // Move up for next placement
             }
         }
@@ -552,7 +533,7 @@ impl CrosswordGenerator {
     }
 
     // Try to place a word at a random position
-    fn try_random_placement(&mut self, word: &str, group_counter: &mut usize) -> bool {
+    fn try_random_placement(&mut self, word: &str, group_counter: &mut usize, clue_num: i8) -> bool {
         let max_attempts = 100;
 
         for _ in 0..max_attempts {
@@ -580,7 +561,7 @@ impl CrosswordGenerator {
                 let new_id = *group_counter;
                 *group_counter += 1;
 
-                self.place_word(word, start_x, start_y, is_across, Some(new_id));
+                self.place_word(word, start_x, start_y, is_across, Some(new_id), clue_num);
                 return true;
             }
         }
@@ -647,6 +628,42 @@ impl CrosswordGenerator {
         self.grid = new_grid;
         self.width = new_width;
         self.height = new_height;
+    }
+
+    pub fn display(&self) -> String {
+        let mut result = String::new();
+
+        // Add a horizontal ruler
+        result.push_str(&format!("  "));
+        for x in 0..self.width {
+            result.push_str(&format!("{}", x % 10));
+        }
+        result.push('\n');
+
+        // Add the grid content with row numbers
+        for y in 0..self.height {
+            result.push_str(&format!("{} ", y % 10));
+            for x in 0..self.width {
+                result.push(self.grid[y][x]);
+            }
+            result.push('\n');
+        }
+
+        // Add word placements information
+        result.push_str("\nWord placements:\n");
+        for (i, placement) in self.word_positions.iter().enumerate() {
+            result.push_str(&format!(
+                "{}. '{}' at ({},{}) {} (Group: {:?})\n",
+                i + 1,
+                placement.word,
+                placement.start_x,
+                placement.start_y,
+                if placement.is_across { "across" } else { "down" },
+                placement.group_id
+            ));
+        }
+
+        result
     }
 }
 

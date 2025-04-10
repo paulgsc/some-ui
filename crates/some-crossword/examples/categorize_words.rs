@@ -12,7 +12,7 @@ fn main() {
     ];
 
     let generator = CrosswordGenerator::new(words, 4);
-    let (isolated_words, intersection_map) = generator.categorize_words();
+    let (isolated_words, intersection_map) = generator.generate_internal();
     println!("isolated: {:?}", isolated_words);
     println!("map: {:?}", intersection_map);
 }
