@@ -42,7 +42,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         width={cellSize}
         height={cellSize}
         fill={
-          isValid || cell.solved
+          isValid && cell.solved
             ? "#E8F5E9"
             : isAnimating && currentLetter
               ? "#FFEBEE"
@@ -51,7 +51,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         stroke={
           isHighlighted
             ? "#29B6F6"
-            : isValid || cell.solved
+            : isValid && cell.solved
               ? "#4CAF50"
               : isAnimating && currentLetter
                 ? "#F44336"
@@ -88,7 +88,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         textAnchor="middle"
         dominantBaseline="middle"
         fill={
-          isValid || cell.solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"
+          isValid && cell.solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"
         }
       >
         {currentLetter.toUpperCase()}
