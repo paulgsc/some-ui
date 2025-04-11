@@ -1,7 +1,10 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { CrosswordCell, WordPlacement } from "@input/types/crossword"
 
 export function useCreateCrosswordPuzzle(p: Array<WordPlacement>) {
+  const [grid, setGrid] = useState<Array<CrosswordCell>>([])
+  const [viewBox, setViewBox] = useState<string>("")
+
   const convertToGridCells = useCallback(() => {
     const grid = new Map<string, CrosswordCell>()
 
@@ -23,6 +26,7 @@ export function useCreateCrosswordPuzzle(p: Array<WordPlacement>) {
           x: cx,
           y: cy,
           letter,
+          solved: false,
           ...(i === 0 ? { num: clue_num } : {}),
         })
       }
@@ -49,8 +53,17 @@ export function useCreateCrosswordPuzzle(p: Array<WordPlacement>) {
     return `${minX * 30 - padding} ${minY * 30 - padding} ${width} ${height}`
   }, [])
 
+  useEffect(() => {
+    if (p.length > 0) {
+      const g = convertToGridCells()
+      setGrid(g)
+      setViewBox(calculateViewBox(g))
+    }
+  }, [p])
+
   return {
-    grid: convertToGridCells(),
-    calculateViewBox,
+    grid,
+    setGrid,
+    viewBox,
   }
 }

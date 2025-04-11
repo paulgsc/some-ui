@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type TypewriterAnimationOptions = {
   validLetter: string
   invalidLetters?: Array<string>
   invalidAttempts?: number
   typingSpeed?: number
+  solved: boolean
   invalidDuration?: number
   vibrationDuration?: number
   onComplete?: () => void
@@ -17,6 +18,7 @@ export function useTypewriterAnimation({
   typingSpeed = 150,
   invalidDuration = 300,
   vibrationDuration = 300,
+  solved = false,
   onComplete,
 }: TypewriterAnimationOptions) {
   const [currentLetter, setCurrentLetter] = useState<string>("")
@@ -27,15 +29,15 @@ export function useTypewriterAnimation({
 
   const animationRef = useRef<Animation | null>(null)
   const elementRef = useRef<SVGSVGElement | null>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Function to set the element reference
-  const setRef = (element: SVGSVGElement | null) => {
+  const setRef = (element: SVGSVGElement | null): void => {
     elementRef.current = element
   }
 
   // Clean up any running animations or timeouts
-  const cleanupAnimations = () => {
+  const cleanupAnimations = (): void => {
     if (animationRef.current) {
       animationRef.current.cancel()
       animationRef.current = null
@@ -48,7 +50,7 @@ export function useTypewriterAnimation({
   }
 
   // Start the typewriter animation sequence
-  const startAnimation = () => {
+  const startAnimation = useCallback(() => {
     if (isAnimating || !elementRef.current) return
 
     cleanupAnimations()
@@ -59,7 +61,7 @@ export function useTypewriterAnimation({
 
     // Start the animation sequence
     runAnimationSequence()
-  }
+  }, [solved])
 
   // Run the full animation sequence
   const runAnimationSequence = () => {
@@ -157,10 +159,11 @@ export function useTypewriterAnimation({
 
   // Clean up animations when component unmounts
   useEffect(() => {
-    return () => {
+    if (solved) startAnimation()
+    return (): void => {
       cleanupAnimations()
     }
-  }, [])
+  }, [solved])
 
   return {
     currentLetter,

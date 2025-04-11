@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { useTypewriterAnimation } from "@input/hooks/use-typewriter-animation"
-import type { CrosswordCell } from "@input/lib/crossword-grid"
+import type { CrosswordCell } from "@input/types/crossword"
 
 type CrosswordCellSvgProps = {
   cell: CrosswordCell
@@ -11,7 +11,6 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
   cell,
   cellSize,
 }) => {
-  const solved = false
   const x = cell.x * cellSize
   const y = cell.y * cellSize
   const centerX = cell.x * cellSize + cellSize / 2
@@ -26,6 +25,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
   } = useTypewriterAnimation({
     validLetter: cell.letter ?? "",
     onComplete: () => {},
+    solved: cell.solved,
   })
 
   return (
@@ -42,7 +42,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         width={cellSize}
         height={cellSize}
         fill={
-          isValid || solved
+          isValid || cell.solved
             ? "#E8F5E9"
             : isAnimating && currentLetter
               ? "#FFEBEE"
@@ -51,14 +51,17 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         stroke={
           isHighlighted
             ? "#29B6F6"
-            : isValid || solved
+            : isValid || cell.solved
               ? "#4CAF50"
               : isAnimating && currentLetter
                 ? "#F44336"
                 : "black"
         }
         strokeWidth={
-          isHighlighted || isValid || solved || (isAnimating && currentLetter)
+          isHighlighted ||
+          isValid ||
+          cell.solved ||
+          (isAnimating && currentLetter)
             ? "2"
             : "1"
         }
@@ -84,7 +87,9 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
         fontWeight="bold"
         textAnchor="middle"
         dominantBaseline="middle"
-        fill={isValid || solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"}
+        fill={
+          isValid || cell.solved ? "#2E7D32" : isAnimating ? "#C62828" : "black"
+        }
       >
         {currentLetter.toUpperCase()}
       </text>

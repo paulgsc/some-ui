@@ -20,6 +20,7 @@ export type CrosswordCell = {
   y: number
   num?: number
   letter?: string
+  solved: boolean
 }
 
 type CrosswordClue = {
