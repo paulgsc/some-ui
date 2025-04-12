@@ -68,7 +68,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
       />
 
       {/* Cell number */}
-      {cell.num && (
+      {cell.showClueNum && (
         <text
           x={x + 2}
           y={y + 8}
@@ -77,7 +77,7 @@ export const CrosswordCellSvg: FC<CrosswordCellSvgProps> = ({
           fontWeight={"normal"}
           fill={"black"}
         >
-          {cell.num}
+          {cell.clueNum.at(0)}
         </text>
       )}
       <text

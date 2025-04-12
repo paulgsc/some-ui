@@ -118,14 +118,16 @@ export function useCrosswordWithAnimation(
             y,
             letter: word[i],
             solved: false,
-            ...(i === 0 ? { num: clue_num } : {}),
+            clueNum: [clue_num],
+            showClueNum: i === 0 ? true : false,
           })
         } else {
           const existing = gridMap.get(key)
           if (existing)
             gridMap.set(key, {
               ...existing,
-              num: i === 0 ? clue_num : existing.num,
+              clueNum: [...new Set([...existing.clueNum, clue_num])],
+              showClueNum: i === 0 ? true : existing.showClueNum,
             })
         }
       }

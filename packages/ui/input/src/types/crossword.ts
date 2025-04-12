@@ -18,7 +18,8 @@ export type CrosswordResult = {
 export type CrosswordCell = {
   x: number
   y: number
-  num?: number
+  clueNum: Array<number>
+  showClueNum: boolean
   letter?: string
   solved: boolean
 }
