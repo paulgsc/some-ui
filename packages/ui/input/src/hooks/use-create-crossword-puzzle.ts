@@ -120,6 +120,13 @@ export function useCrosswordWithAnimation(
             solved: false,
             ...(i === 0 ? { num: clue_num } : {}),
           })
+        } else {
+          const existing = gridMap.get(key)
+          if (existing)
+            gridMap.set(key, {
+              ...existing,
+              num: i === 0 ? clue_num : existing.num,
+            })
         }
       }
     }
