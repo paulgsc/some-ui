@@ -19,6 +19,7 @@ const characters = [
 
 export const Default: Story = {
   args: {
+    title: "Buying lots of the tihngs! Going grocery shopping",
     characters,
   },
 }

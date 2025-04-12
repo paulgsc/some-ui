@@ -11,6 +11,7 @@ type ChatInterfaceProps = {
   chatMessagesClassName?: string
   characters: AvatarGroupProps["avatars"]
   messages: Array<ChatMessageProps>
+  messagesTitle?: string
   messagesHeight?: number
   pause?: boolean
 }
@@ -21,6 +22,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   messages,
   characters,
   pause,
+  messagesTitle,
   messagesHeight = 0.92,
 }): React.JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
@@ -48,7 +50,11 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
 
   return (
     <div ref={ref} className={cn("flex size-full flex-col", className)}>
-      <ChatHeader characters={characters} height={getHeaderHeight()} />
+      <ChatHeader
+        title={messagesTitle}
+        characters={characters}
+        height={getHeaderHeight()}
+      />
       <ChatMessages
         className={chatMessagesClassName}
         messages={messages}

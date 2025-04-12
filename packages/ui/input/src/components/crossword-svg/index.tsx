@@ -74,15 +74,24 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   ])
 
   return (
-    <svg viewBox={viewBox.join(" ")} className={cn("size-full", className)}>
-      <g>
-        {grid.map((cell) => {
-          const cellId = `${cell.x}-${cell.y}`
-          return (
-            <CrosswordCellSvg key={cellId} cell={cell} cellSize={cellSize} />
-          )
-        })}
-      </g>
-    </svg>
+    <div
+      className={cn(
+        "relative size-full bg-cover bg-center bg-no-repeat",
+        "bg-gradient-to-br from-[oklch(30%_0.2_330deg)] via-[oklch(50%_0.3_320deg)] to-[oklch(70%_0.25_350deg)]",
+        "bg-[url('http://nixos.local:3000/gdrive/image/1A1rrlrnxlZTuelEygg1iUCW8fR_Bw6cL')]",
+        className
+      )}
+    >
+      <svg viewBox={viewBox.join(" ")} className="size-full">
+        <g>
+          {grid.map((cell) => {
+            const cellId = `${cell.x}-${cell.y}`
+            return (
+              <CrosswordCellSvg key={cellId} cell={cell} cellSize={cellSize} />
+            )
+          })}
+        </g>
+      </svg>
+    </div>
   )
 }
