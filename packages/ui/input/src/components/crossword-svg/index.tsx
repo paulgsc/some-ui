@@ -74,7 +74,7 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   ])
 
   return (
-    <svg viewBox={viewBox} className={cn("size-full", className)}>
+    <svg viewBox={viewBox.join(" ")} className={cn("size-full", className)}>
       <g>
         {grid.map((cell) => {
           const cellId = `${cell.x}-${cell.y}`

@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useReducer, useRef } from "react"
 import type { CrosswordCell, WordPlacement } from "@input/types/crossword"
 
-// Simplified state type
+type ViewBoxTuple = [minX: number, minY: number, width: number, height: number]
 type CrosswordState = {
   grid: Array<CrosswordCell>
-  viewBox: string
+  viewBox: ViewBoxTuple
   isAnimating: boolean
   completionPercentage: number
 }
 
 // Actions for our reducer
 type CrosswordAction =
-  | { type: "INITIALIZE_GRID"; grid: Array<CrosswordCell>; viewBox: string }
+  | {
+      type: "INITIALIZE_GRID"
+      grid: Array<CrosswordCell>
+      viewBox: ViewBoxTuple
+    }
   | { type: "REVEAL_CELL"; x: number; y: number }
   | { type: "RESET_CELLS" }
   | { type: "REVEAL_ALL" }
@@ -62,18 +66,26 @@ function crosswordReducer(
         completionPercentage: action.percentage,
       }
     default:
+      action satisfies never
       return state
   }
 }
 
+type ReturnOptions = {
+  startAnimation: () => (() => void) | undefined
+  stopAnimation: () => void
+  resetCrossword: () => void
+  revealAllCells: () => void
+} & CrosswordState
+
 export function useCrosswordWithAnimation(
   wordPlacements: Array<WordPlacement>,
   animationDuration = 3000
-) {
+): ReturnOptions {
   // Initialize state with our reducer
   const [state, dispatch] = useReducer(crosswordReducer, {
     grid: [],
-    viewBox: "0 0 100 100",
+    viewBox: [0, 0, 100, 100],
     isAnimating: false,
     completionPercentage: 0,
   })
@@ -115,7 +127,7 @@ export function useCrosswordWithAnimation(
     const gridArray = Array.from(gridMap.values())
 
     // Calculate viewBox
-    let viewBox = "0 0 100 100"
+    let viewBox: ViewBoxTuple = [0, 0, 100, 100]
     if (gridArray.length > 0) {
       const minX = Math.min(...gridArray.map((cell) => cell.x))
       const maxX = Math.max(...gridArray.map((cell) => cell.x))
@@ -127,7 +139,12 @@ export function useCrosswordWithAnimation(
       const width = (maxX - minX + 1) * cellSize + padding * 2
       const height = (maxY - minY + 1) * cellSize + padding * 2
 
-      viewBox = `${minX * cellSize - padding} ${minY * cellSize - padding} ${width} ${height}`
+      viewBox = [
+        minX * cellSize - padding,
+        minY * cellSize - padding,
+        width,
+        height,
+      ]
     }
 
     dispatch({ type: "INITIALIZE_GRID", grid: gridArray, viewBox })
@@ -163,7 +180,7 @@ export function useCrosswordWithAnimation(
     dispatch({ type: "SET_ANIMATION", isAnimating: true })
 
     // Start animation frame
-    const animate = (timestamp: number) => {
+    const animate = (timestamp: number): void => {
       if (!startTimeRef.current) startTimeRef.current = timestamp
 
       const elapsed = timestamp - startTimeRef.current
@@ -202,7 +219,7 @@ export function useCrosswordWithAnimation(
 
     animationFrameRef.current = requestAnimationFrame(animate)
 
-    return () => {
+    return (): void => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
@@ -229,7 +246,7 @@ export function useCrosswordWithAnimation(
 
   // Clean up animation on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
