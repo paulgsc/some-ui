@@ -1,6 +1,10 @@
 import type { CSSProperties, FC, ReactNode, RefObject } from "react"
 import { useRef } from "react"
-import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import { useSubscribeToCubeEvents } from "@slideshow/hooks/use-cube-events"
+import type {
+  AllowedRotationAxis,
+  Mode,
+} from "@slideshow/hooks/use-rotating-cube"
 import { useRotatingCube } from "@slideshow/hooks/use-rotating-cube"
 import { BorderBeam } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
@@ -9,24 +13,43 @@ type RotatingCubeProps = {
   perspective?: number
   faces?: Array<ReactNode>
   dof?: AllowedRotationAxis
+  mode?: Mode
   duration?: number
   className?: string
   faceClassName?: string
+  showBeam?: boolean
 }
 
 export const DiceCard: FC<RotatingCubeProps> = ({
   className,
   faceClassName,
+  mode,
   perspective = 1200,
   dof = "Y-axis",
   duration = 10000,
   faces = [],
+  showBeam = true,
 }): React.JSX.Element => {
-  const { isRotating, setIsRotating, rotationState, rotationAxis } =
-    useRotatingCube({
-      dof,
-      duration,
-    })
+  const {
+    isRotating,
+    setIsRotating,
+    rotationState,
+    rotationAxis,
+    rotateNext,
+    rotatePrev,
+    rotateToFace,
+    onTogglePause,
+  } = useRotatingCube({
+    dof,
+    duration,
+    mode,
+  })
+  useSubscribeToCubeEvents({
+    onNext: rotateNext,
+    onPrev: rotatePrev,
+    onTogglePause,
+    onToFace: rotateToFace,
+  })
   const ref = useRef<HTMLDivElement>(null)
 
   const { height, width } = useMeasureRect({
@@ -94,7 +117,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
               }
             )}
           >
-            {rotationState.face === index && (
+            {showBeam && mode !== "manual" && rotationState.face === index && (
               <BorderBeam
                 size={16}
                 duration={duration / 1000}
