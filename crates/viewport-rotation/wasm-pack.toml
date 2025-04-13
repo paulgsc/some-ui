@@ -1,8 +1,7 @@
-
 [package]
-name = "crossword-wasm"
+name = "viewport-rotation"
 version = "0.1.0"
-description = "Crossword puzzle generator for React apps"
+description = "Viewport based slicer"
 repository = "https://github.com/yourusername/crossword-wasm"
 license = "MIT"
 authors = ["Your Name <youremail@example.com>"]
