@@ -15,6 +15,10 @@ type RotationState = {
 }
 
 export type Mode = "autoplay" | "manual"
+type RotateCubeOptions = {
+  rotateTo?: Face
+  reverse?: boolean
+}
 
 type Options = {
   dof?: AllowedRotationAxis
@@ -27,7 +31,7 @@ type ReturnOptions = {
   rotationAxis: RotationAxis
   setIsRotating: (arg: boolean) => void
   rotationState: RotationState
-  rotateCube: () => void
+  rotateCube: ({ reverse, rotateTo }: RotateCubeOptions) => void
   rotateToFace: (targetFace: Face) => void
   rotateNext: () => void
   rotatePrev: () => void
@@ -50,6 +54,12 @@ const ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
   "Y-axis": [0, 3, 2, 1], // Front -> Right -> Back -> Left
 }
 
+// Define reverse cycle sequences for prev operations
+const REVERSE_ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
+  "X-axis": [0, 4, 2, 5], // Front -> Bottom -> Back -> Top
+  "Y-axis": [0, 1, 2, 3], // Front -> Left -> Back -> Right
+}
+
 const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
   const cycle = ROTATION_CYCLES[axis]
   const currentIndex = cycle.indexOf(currentFace)
@@ -57,9 +67,9 @@ const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
 }
 
 const getPrevFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
-  const cycle = ROTATION_CYCLES[axis].reverse()
+  const cycle = REVERSE_ROTATION_CYCLES[axis]
   const currentIndex = cycle.indexOf(currentFace)
-  return cycle[Math.abs(currentIndex + 1) % cycle.length]
+  return cycle[(currentIndex + 1) % cycle.length]
 }
 
 export const useRotatingCube = ({
@@ -94,7 +104,11 @@ export const useRotatingCube = ({
   }, [dof])
 
   const getRotationPath = useCallback(
-    (startFace: Face, targetFace: Face): Array<Rotation> => {
+    (
+      startFace: Face,
+      targetFace: Face,
+      reverse: boolean = false
+    ): Array<Rotation> => {
       if (startFace === targetFace) return []
       const cycles = ROTATION_CYCLES[rotationAxis]
 
@@ -104,7 +118,9 @@ export const useRotatingCube = ({
         let currentFace = startFace
 
         while (currentFace !== targetFace) {
-          const nextFace = getNextFaceInCycle(currentFace, rotationAxis)
+          const nextFace = reverse
+            ? getPrevFaceInCycle(currentFace, rotationAxis)
+            : getNextFaceInCycle(currentFace, rotationAxis)
           path.push({ axis: rotationAxis, face: nextFace })
           currentFace = nextFace
         }
@@ -148,7 +164,7 @@ export const useRotatingCube = ({
   )
 
   const rotateCube = useCallback(
-    (reverse: boolean = false) => {
+    ({ reverse, rotateTo }: RotateCubeOptions) => {
       setRotationState((prev) => {
         let targetFace: Face
 
@@ -158,12 +174,15 @@ export const useRotatingCube = ({
           targetFace = possibleFaces[Math.floor(Math.random() * 6)]
         } else {
           // Get next face in cycle for single-axis rotation
-          targetFace = reverse
-            ? getPrevFaceInCycle(prev.face, rotationAxis)
-            : getNextFaceInCycle(prev.face, rotationAxis)
+          const getFace = (): Face =>
+            reverse
+              ? getPrevFaceInCycle(prev.face, rotationAxis)
+              : getNextFaceInCycle(prev.face, rotationAxis)
+
+          targetFace = rotateTo ?? getFace()
         }
 
-        const rotations = getRotationPath(prev.face, targetFace)
+        const rotations = getRotationPath(prev.face, targetFace, reverse)
         if (rotations.length === 0) return prev
 
         // Apply first rotation
@@ -216,7 +235,7 @@ export const useRotatingCube = ({
   const rotateNext = useCallback(() => {
     if (intervalRef.current) clearTimeout(intervalRef.current)
     setIsPaused(true)
-    rotateCube()
+    rotateCube({})
     if (mode === "autoplay") {
       onTogglePause()
     }
@@ -225,20 +244,23 @@ export const useRotatingCube = ({
   const rotatePrev = useCallback(() => {
     if (intervalRef.current) clearTimeout(intervalRef.current)
     setIsPaused(true)
-    rotateCube(true)
+    rotateCube({ reverse: true })
     if (mode === "autoplay") {
       onTogglePause()
     }
   }, [rotationAxis])
 
-  const rotateToFace = useCallback(() => {
-    if (intervalRef.current) clearTimeout(intervalRef.current)
-    setIsPaused(true)
-    rotateCube()
-    if (mode === "autoplay") {
-      onTogglePause()
-    }
-  }, [])
+  const rotateToFace = useCallback(
+    (face: Face) => {
+      if (intervalRef.current) clearTimeout(intervalRef.current)
+      setIsPaused(true)
+      rotateCube({ rotateTo: face })
+      if (mode === "autoplay") {
+        onTogglePause()
+      }
+    },
+    [rotationAxis]
+  )
 
   const onTogglePause = useCallback(() => {
     setIsPaused((prev) => {
@@ -264,7 +286,7 @@ export const useRotatingCube = ({
     // Only set up interval if in autoplay mode
     if (mode === "autoplay") {
       intervalRef.current = setInterval(() => {
-        rotateCube()
+        rotateCube({})
       }, duration)
     }
 
