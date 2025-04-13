@@ -50,81 +50,16 @@ const ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
   "Y-axis": [0, 3, 2, 1], // Front -> Right -> Back -> Left
 }
 
-// Define reverse cycle sequences for prev operations
-const REVERSE_ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
-  "X-axis": [0, 4, 2, 5], // Front -> Bottom -> Back -> Top
-  "Y-axis": [0, 1, 2, 3], // Front -> Left -> Back -> Right
-}
-
-const getNextFaceInCycle = (
-  currentFace: Face,
-  axis: RotationAxis,
-  reverse = false
-): Face => {
-  const cycle = reverse ? REVERSE_ROTATION_CYCLES[axis] : ROTATION_CYCLES[axis]
+const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
+  const cycle = ROTATION_CYCLES[axis]
   const currentIndex = cycle.indexOf(currentFace)
-  if (currentIndex === -1) {
-    return 0 // Default to front face if nothing else works
-  }
   return cycle[(currentIndex + 1) % cycle.length]
 }
 
-const getRotationPath = (
-  startFace: Face,
-  targetFace: Face,
-  preferredAxis: RotationAxis
-): Array<Rotation> => {
-  if (startFace === targetFace) return []
-
-  // For single-axis rotations, follow the predefined cycle
-  if (
-    ROTATION_CYCLES[preferredAxis].includes(startFace) &&
-    ROTATION_CYCLES[preferredAxis].includes(targetFace)
-  ) {
-    const path: Array<Rotation> = []
-    let currentFace = startFace
-
-    while (currentFace !== targetFace) {
-      const nextFace = getNextFaceInCycle(currentFace, preferredAxis)
-      path.push({ axis: preferredAxis, face: nextFace })
-      currentFace = nextFace
-    }
-
-    return path
-  }
-
-  // For other cases, use BFS to find shortest path
-  const queue: Array<{ face: Face; path: Array<Rotation> }> = [
-    { face: startFace, path: [] },
-  ]
-  const visited = new Set<Face>([startFace])
-
-  while (queue.length > 0) {
-    const { face, path } = queue.shift()!
-
-    // Try preferred axis first
-    const axes: Array<RotationAxis> = [
-      preferredAxis,
-      preferredAxis === "X-axis" ? "Y-axis" : "X-axis",
-    ]
-
-    for (const axis of axes) {
-      const nextFace = FACE_GRAPH[face][axis]
-
-      if (!visited.has(nextFace)) {
-        const newPath = [...path, { axis, face: nextFace }]
-
-        if (nextFace === targetFace) {
-          return newPath
-        }
-
-        visited.add(nextFace)
-        queue.push({ face: nextFace, path: newPath })
-      }
-    }
-  }
-
-  return [] // Should never happen with a valid cube
+const getPrevFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
+  const cycle = ROTATION_CYCLES[axis].reverse()
+  const currentIndex = cycle.indexOf(currentFace)
+  return cycle[Math.abs(currentIndex + 1) % cycle.length]
 }
 
 export const useRotatingCube = ({
@@ -144,13 +79,6 @@ export const useRotatingCube = ({
     undefined
   )
 
-  const isRotatingRef = useRef<boolean>(false)
-
-  // Keep the ref in sync with the state
-  useEffect(() => {
-    isRotatingRef.current = isRotating
-  }, [isRotating])
-
   const chooseRotationAxis = useCallback((): void => {
     switch (dof) {
       case "Y-axis":
@@ -165,62 +93,114 @@ export const useRotatingCube = ({
     }
   }, [dof])
 
-  const performRotation = useCallback(
-    (targetFace: Face, preferredAxis: RotationAxis = rotationAxis) => {
-      if (isRotatingRef.current) return
+  const getRotationPath = useCallback(
+    (startFace: Face, targetFace: Face): Array<Rotation> => {
+      if (startFace === targetFace) return []
+      const cycles = ROTATION_CYCLES[rotationAxis]
 
-      setIsRotating(true)
-      isRotatingRef.current = true
+      // For single-axis rotations, follow the predefined cycle
+      if (cycles.includes(startFace) && cycles.includes(targetFace)) {
+        const path: Array<Rotation> = []
+        let currentFace = startFace
 
-      setRotationState((prev) => {
-        const rotations = getRotationPath(prev.face, targetFace, preferredAxis)
-        if (rotations.length === 0) {
-          setTimeout(() => {
-            setIsRotating(false)
-            isRotatingRef.current = false
-          }, 0)
-          return prev
+        while (currentFace !== targetFace) {
+          const nextFace = getNextFaceInCycle(currentFace, rotationAxis)
+          path.push({ axis: rotationAxis, face: nextFace })
+          currentFace = nextFace
         }
+        return path
+      }
+
+      // For other cases, use BFS to find shortest path
+      const queue: Array<{ face: Face; path: Array<Rotation> }> = [
+        { face: startFace, path: [] },
+      ]
+      const visited = new Set<Face>([startFace])
+
+      while (queue.length > 0) {
+        const { face, path } = queue.shift()!
+
+        // Try preferred axis first
+        const axes: Array<RotationAxis> = [
+          rotationAxis,
+          rotationAxis === "X-axis" ? "Y-axis" : "X-axis",
+        ]
+
+        for (const axis of axes) {
+          const nextFace = FACE_GRAPH[face][axis]
+
+          if (!visited.has(nextFace)) {
+            const newPath = [...path, { axis, face: nextFace }]
+
+            if (nextFace === targetFace) {
+              return newPath
+            }
+
+            visited.add(nextFace)
+            queue.push({ face: nextFace, path: newPath })
+          }
+        }
+      }
+
+      return [] // Should never happen with a valid cube
+    },
+    [rotationAxis]
+  )
+
+  const rotateCube = useCallback(
+    (reverse: boolean = false) => {
+      setRotationState((prev) => {
+        let targetFace: Face
+
+        if (dof === "All") {
+          // Choose random target face for dual-axis rotation
+          const possibleFaces: Array<Face> = [0, 1, 2, 3, 4, 5]
+          targetFace = possibleFaces[Math.floor(Math.random() * 6)]
+        } else {
+          // Get next face in cycle for single-axis rotation
+          targetFace = reverse
+            ? getPrevFaceInCycle(prev.face, rotationAxis)
+            : getNextFaceInCycle(prev.face, rotationAxis)
+        }
+
+        const rotations = getRotationPath(prev.face, targetFace)
+        if (rotations.length === 0) return prev
 
         // Apply first rotation
         const firstRotation = rotations[0]
+        const sign = reverse ? -1 : 1
         const newState = {
           face: firstRotation.face,
           xRotation:
-            prev.xRotation + (firstRotation.axis === "X-axis" ? 90 : 0),
+            prev.xRotation + (firstRotation.axis === "X-axis" ? 90 : 0) * sign,
           yRotation:
-            prev.yRotation + (firstRotation.axis === "Y-axis" ? 90 : 0),
+            prev.yRotation + (firstRotation.axis === "Y-axis" ? 90 : 0) * sign,
         }
 
         // Queue subsequent rotations
         if (rotations.length > 1) {
           let delay = 500 // Match your transition time
-          rotations.slice(1).forEach((rotation, index, array) => {
+          rotations.slice(1).forEach((rotation) => {
             setTimeout(() => {
-              setRotationState((current) => ({
-                face: rotation.face,
-                xRotation:
-                  current.xRotation + (rotation.axis === "X-axis" ? 90 : 0),
-                yRotation:
-                  current.yRotation + (rotation.axis === "Y-axis" ? 90 : 0),
-              }))
-
-              // If it's the last rotation, reset isRotating after transition
-              if (index === array.length - 1) {
-                setTimeout(() => {
-                  setIsRotating(false)
-                  isRotatingRef.current = false
-                }, 500)
-              }
+              setRotationState((current) => {
+                const delayedState = {
+                  face: rotation.face,
+                  xRotation:
+                    current.xRotation +
+                    (rotation.axis === "X-axis" ? 90 : 0) * sign,
+                  yRotation:
+                    current.yRotation +
+                    (rotation.axis === "Y-axis" ? 90 : 0) * sign,
+                }
+                return {
+                  ...delayedState,
+                  xRotation: delayedState.xRotation % 360,
+                  yRotation: delayedState.yRotation % 360,
+                }
+              })
             }, delay)
             delay += 500
           })
-        } else {
-          // If only one rotation, reset isRotating after transition
-          setTimeout(() => {
-            setIsRotating(false)
-            isRotatingRef.current = false
-          }, 500)
         }
 
         return {
@@ -230,54 +210,35 @@ export const useRotatingCube = ({
         }
       })
     },
-    [rotationAxis]
-  )
-
-  const rotateCube = useCallback(() => {
-    setRotationState((prev) => {
-      let targetFace: Face
-
-      if (dof === "All") {
-        // Choose random target face for dual-axis rotation
-        const possibleFaces: Array<Face> = [0, 1, 2, 3, 4, 5]
-        do {
-          targetFace = possibleFaces[Math.floor(Math.random() * 6)]
-        } while (targetFace === prev.face)
-      } else {
-        // Get next face in cycle for single-axis rotation
-        targetFace = getNextFaceInCycle(prev.face, rotationAxis)
-      }
-
-      performRotation(targetFace, rotationAxis)
-      return prev
-    })
-  }, [dof, performRotation])
-
-  const rotateToFace = useCallback(
-    (targetFace: Face) => {
-      if (isRotatingRef.current) return
-      performRotation(targetFace)
-    },
-    [performRotation]
+    [dof, rotationAxis]
   )
 
   const rotateNext = useCallback(() => {
-    if (isRotatingRef.current) return
-    setRotationState((prev) => {
-      const targetFace = getNextFaceInCycle(prev.face, rotationAxis)
-      performRotation(targetFace)
-      return prev
-    })
-  }, [rotationAxis, performRotation])
+    if (intervalRef.current) clearTimeout(intervalRef.current)
+    setIsPaused(true)
+    rotateCube()
+    if (mode === "autoplay") {
+      onTogglePause()
+    }
+  }, [rotationAxis])
 
   const rotatePrev = useCallback(() => {
-    if (isRotatingRef.current) return
-    setRotationState((prev) => {
-      const targetFace = getNextFaceInCycle(prev.face, rotationAxis, true)
-      performRotation(targetFace)
-      return prev
-    })
-  }, [rotationAxis, performRotation])
+    if (intervalRef.current) clearTimeout(intervalRef.current)
+    setIsPaused(true)
+    rotateCube(true)
+    if (mode === "autoplay") {
+      onTogglePause()
+    }
+  }, [rotationAxis])
+
+  const rotateToFace = useCallback(() => {
+    if (intervalRef.current) clearTimeout(intervalRef.current)
+    setIsPaused(true)
+    rotateCube()
+    if (mode === "autoplay") {
+      onTogglePause()
+    }
+  }, [])
 
   const onTogglePause = useCallback(() => {
     setIsPaused((prev) => {
@@ -290,7 +251,7 @@ export const useRotatingCube = ({
 
   useEffect(() => {
     chooseRotationAxis()
-  }, [])
+  }, [dof])
 
   useEffect(() => {
     if (isPaused) return
@@ -303,9 +264,7 @@ export const useRotatingCube = ({
     // Only set up interval if in autoplay mode
     if (mode === "autoplay") {
       intervalRef.current = setInterval(() => {
-        if (!isRotatingRef.current) {
-          rotateCube()
-        }
+        rotateCube()
       }, duration)
     }
 
