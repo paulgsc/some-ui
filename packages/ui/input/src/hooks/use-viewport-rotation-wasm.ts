@@ -4,14 +4,6 @@ import z from "zod"
 
 const FaceSchema = z.array(z.string())
 
-const ViewportSchema = z.object({
-  item_ids: z.array(z.string()),
-  faces: z.array(FaceSchema),
-  current_face: z.number().int().min(0),
-  max_per_face: z.number().int().min(0),
-  current_item_index: z.number().int().min(0),
-})
-
 const ViewportStateSchema = z.object({
   faces: z.array(FaceSchema),
   current_face: z.number().int().min(0),
@@ -19,7 +11,6 @@ const ViewportStateSchema = z.object({
   pending_items: z.array(z.string()),
 })
 
-type ViewportManager = z.infer<typeof ViewportSchema>
 type ViewportState = z.infer<typeof ViewportStateSchema>
 
 type Options = {
@@ -40,7 +31,6 @@ export const useFetchViewportWasm = ({
 
   const initialize = useCallback(async () => {
     try {
-      console.log("this ran: initialize")
       if (rotationManagerRef.current) return
       await init()
 
