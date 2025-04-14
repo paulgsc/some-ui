@@ -288,6 +288,10 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
 
+  crates/some-crossword: {}
+
+  crates/viewport-rotation: {}
+
   packages/eslint:
     dependencies:
       tailwindcss:
@@ -679,9 +683,15 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
+      some-ui-slideshow:
+        specifier: workspace:*
+        version: link:../slideshow
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+      viewport-rotation:
+        specifier: link:../../../crates/viewport-rotation/dist
+        version: link:../../../crates/viewport-rotation/dist
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

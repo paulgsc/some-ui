@@ -1,0 +1,26 @@
+{
+  "name": "some-crossword",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "wasm-pack build --target web --out-dir dist",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
+  },
+  "peerDependencies": {},
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "sideEffects": false,
+  "types": "index.d.ts"
+}

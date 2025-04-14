@@ -8,3 +8,5 @@ packages:
   - packages/eslint
   - packages/maishatu-tw-eslint
   - packages/eslint-plugin-tailwindcss
+  - crates/viewport-rotation
+  - crates/some-crossword
