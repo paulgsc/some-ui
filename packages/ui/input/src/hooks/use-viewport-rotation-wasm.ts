@@ -16,7 +16,7 @@ const ViewportStateSchema = z.object({
   faces: z.array(FaceSchema),
   current_face: z.number().int().min(0),
   current_item_index: z.number().int().min(0),
-  remaining_items: z.array(z.string()),
+  pending_items: z.array(z.string()),
 })
 
 type ViewportManager = z.infer<typeof ViewportSchema>
