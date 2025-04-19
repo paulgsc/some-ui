@@ -1,9 +1,15 @@
 import { apiHooks } from "maishatu-fetch-kit"
 import { z } from "zod"
 
-const quarterPoints = z.object({
+const dataItem = z.object({
   name: z.string(),
   value: z.number(),
+  properties: z.record(z.string(), z.any()).optional(),
+})
+
+const sheetDataItem = z.object({
+  name: z.string(),
+  standings: z.array(dataItem),
 })
 
 const metadata = z.object({
@@ -11,15 +17,15 @@ const metadata = z.object({
   description: z.string().nullable().optional(),
 })
 
-const quarterPointsResponse = z.object({
-  data: z.array(quarterPoints),
+const nflTennisResponse = z.object({
+  data: z.array(sheetDataItem),
   metadata: metadata,
 })
 
-const fileId = "1CN87_6FFZhSS3jYkJ8KobSaXDuUYzCICPRa79lPdc7E"
+const fileId = "1CcNKPheAtAIuLIVn41rsrn6AZ-JkKuNappj-mzMbZqc"
 const url = new URL(`http://nixos.local:3000/get_nfl_tennis/${fileId}`)
 export const useNflTennis = apiHooks.createQueryHook(
   url,
-  quarterPointsResponse,
+  nflTennisResponse,
   "GET"
 )

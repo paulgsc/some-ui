@@ -47,14 +47,14 @@ export const MetallicBorder = () => {
       />
 
       {/* Screws */}
-      <Screw cx="110" cy="15" />
-      <Screw cx="110" cy="205" />
-      <Screw cx="15" cy="110" />
-      <Screw cx="205" cy="110" />
-      <Screw cx="175" cy="45" />
-      <Screw cx="45" cy="175" />
-      <Screw cx="45" cy="45" />
-      <Screw cx="175" cy="175" />
+      <Screw />
+      <Screw />
+      <Screw />
+      <Screw />
+      <Screw />
+      <Screw />
+      <Screw />
+      <Screw />
     </g>
   )
 }

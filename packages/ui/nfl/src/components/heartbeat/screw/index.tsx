@@ -1,4 +1,4 @@
-export const Screw = ({ cx, cy }: { cx: number; cy: number }) => {
+export const Screw = () => {
   return (
     <g id="screwHead">
       <defs>
