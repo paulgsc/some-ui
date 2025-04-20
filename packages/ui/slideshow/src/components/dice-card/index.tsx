@@ -23,7 +23,7 @@ type RotatingCubeProps = {
 export const DiceCard: FC<RotatingCubeProps> = ({
   className,
   faceClassName,
-  mode,
+  mode = "autoplay",
   perspective = 1200,
   dof = "Y-axis",
   duration = 10000,

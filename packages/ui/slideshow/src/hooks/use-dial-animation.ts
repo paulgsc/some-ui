@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-
-export type DialSection = {
-  id: number
-  title: string
-  color: string
-  details: string
-}
-
-export type SectionBounds = Record<"startAngle" | "endAngle", number>
-
-export type AnimationPattern = "linear" | "bounce" | "elastic"
+import type { AnimationPattern, SectionBounds } from "@slideshow/types/dial"
 
 type UseCircularMotionProps = {
   sectionBounds: SectionBounds
