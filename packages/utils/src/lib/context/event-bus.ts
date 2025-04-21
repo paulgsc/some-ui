@@ -12,7 +12,9 @@ type ReturnOptions<Events extends Record<string, unknown>> = {
 }
 
 // Create a functional event bus
-export function createEventBus<Events extends EventMap>(): ReturnOptions {
+export function createEventBus<
+  Events extends EventMap,
+>(): ReturnOptions<Events> {
   // Use a Map to store all event listeners
   const listeners = new Map<keyof Events, Set<Listener<Events[keyof Events]>>>()
 
