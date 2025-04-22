@@ -1,0 +1,80 @@
+import type { ComponentPropsWithoutRef, ElementRef, ReactNode } from "react"
+import { forwardRef } from "react"
+import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { ListTodo, MessageSquare, Milestone } from "lucide-react"
+import { cn } from "some-ui-utils"
+
+const Accordion = AccordionPrimitive.Root
+
+type AccordionItemProps = {
+  icon?: string
+}
+
+const Icons: Record<string, ReactNode> = {
+  todo: <ListTodo className="size-6" />,
+  message: <MessageSquare className="size-6" />,
+  milestone: <Milestone className="size-6" />,
+}
+
+const AccordionItem = forwardRef<
+  ElementRef<typeof AccordionPrimitive.Item>,
+  ComponentPropsWithoutRef<typeof AccordionPrimitive.Item> & AccordionItemProps
+>(({ className, icon, children, ...props }, ref) => (
+  <AccordionPrimitive.Item
+    ref={ref}
+    className={cn(
+      "relative z-0 size-full overflow-clip",
+      "after:absolute",
+      "after:start-6 after:top-12 after:h-full after:w-0.5",
+      "after:max-h-[calc(100%-2rem)]",
+      "after:bg-slate-500/60",
+      "data-[state=closed]:after:hidden",
+      className
+    )}
+    {...props}
+  >
+    <span className={cn("absolute start-3 top-4 z-50 bg-inherit")}>
+      {icon && Icons[icon]}
+    </span>
+
+    {children}
+  </AccordionPrimitive.Item>
+))
+AccordionItem.displayName = "AccordionItem"
+
+const AccordionTrigger = forwardRef<
+  ElementRef<typeof AccordionPrimitive.Trigger>,
+  ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        "ps-12 capitalize",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </AccordionPrimitive.Trigger>
+  </AccordionPrimitive.Header>
+))
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
+
+const AccordionContent = forwardRef<
+  ElementRef<typeof AccordionPrimitive.Content>,
+  ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Content
+    ref={ref}
+    className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden pe-1.5 ps-12 text-left text-sm transition-all"
+    {...props}
+  >
+    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+  </AccordionPrimitive.Content>
+))
+
+AccordionContent.displayName = AccordionPrimitive.Content.displayName
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
