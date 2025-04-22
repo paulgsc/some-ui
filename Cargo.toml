@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 
-members = ["crates/ujinga", "crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword"]
+members = ["crates/ujinga", "crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation"]
 
 exclude = []
 
@@ -14,6 +14,7 @@ cargo = { level = "deny", priority = 2 }
 
 [profile.release]
 lto = true
+opt-level = "s"
 
 [workspace.package]
 version = "0.0.0"

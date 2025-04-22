@@ -21,6 +21,7 @@
       "@makjang/*": ["./packages/ui/makjang/src/"],
       "@umag/*": ["./packages/ui/umag/src/"],
       "@nfl/*": ["./packages/ui/nfl/src/"],
+      "@stepper/*": ["./packages/ui/stepper/src/"],
       "@wireframes/*": ["./packages/ui/wireframes/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/"],
