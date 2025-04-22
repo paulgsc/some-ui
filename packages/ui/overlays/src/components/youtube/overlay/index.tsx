@@ -1,48 +1,70 @@
-import { SplayAnimation, YoutubeMarquee } from "@overlays/components"
+import { useEffect } from "react"
+import { YoutubeMarquee } from "@overlays/components"
 import Logo from "@overlays/components/youtube/logo"
-import { getMainContent } from "@overlays/components/youtube/overlay-content"
+import {
+  getbotLeftContent,
+  getMainContent,
+  gettopLeftContent,
+} from "@overlays/components/youtube/overlay-content"
 import { beachedWhale } from "@overlays/data/chatbot-messages/beached-whale"
 import { characters } from "@overlays/data/chatbot-messages/characters"
+import { farmers } from "@overlays/data/chatbot-messages/farmers"
 import { nflTennis } from "@overlays/data/chatbot-messages/nfl-tennis"
+import { sameWinners } from "@overlays/data/chatbot-messages/the-same-winners"
 import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
 import { soManyCrates } from "@overlays/data/chatbot-messages/yet-another-python"
 import { useGanttChapters } from "@overlays/data/gantt-data"
 import { ChatInterface } from "some-ui-chat"
-import { BoredAnimation } from "some-ui-emoji-animations"
 import { RotatingCube, RotatingNeonSign } from "some-ui-slideshow"
 import { useLocalStorage } from "some-ui-utils"
 import type { WireframeContent } from "wireframes"
 import { WireframeRegion, YoutubeWireframe } from "wireframes"
 
 const YoutubeOverlay = (): React.JSX.Element => {
-  const { value: currentChapterId } = useLocalStorage(
-    "gantt-chapter",
-    "credits"
-  )
   const params = {
     range: "gantt!A1:L20",
   }
   const { data: chapters, isLoading } = useGanttChapters({ ...params })
-
+  const { value: currentChapterId, removeValue } = useLocalStorage(
+    "gantt-chapter",
+    chapters ? "start" : ""
+  )
   const cubeFaces = [
     <ChatInterface
+      key={"farmers"}
+      messagesTitle={"Don't farm me bro!"}
+      messages={farmers}
+      characters={characters}
+    />,
+
+    <ChatInterface
       key={"wai-no-tock"}
+      messagesTitle={"Wai no tock tock"}
       messages={waiNoTockTock}
       characters={characters}
     />,
     <ChatInterface
-      key={"beachedWhale"}
+      key={"nf-tennis"}
+      messagesTitle={"NFL Tennis"}
       messages={nflTennis}
       characters={characters}
     />,
     <ChatInterface
       key={"soManyCrates"}
+      messagesTitle={"Going Grocery Shopping"}
       messages={soManyCrates}
       characters={characters}
     />,
     <ChatInterface
       key={"beachedWhale"}
+      messagesTitle={"Writting on the wall"}
       messages={beachedWhale}
+      characters={characters}
+    />,
+    <ChatInterface
+      key={"sameWinners"}
+      messagesTitle={"It's all a lie"}
+      messages={sameWinners}
       characters={characters}
     />,
   ]
@@ -61,12 +83,16 @@ const YoutubeOverlay = (): React.JSX.Element => {
     ),
     [WireframeRegion.MAIN_CONTENT]: getMainContent(currentChapterId),
     [WireframeRegion.FOOTER_LEFT]: <Logo />,
-    [WireframeRegion.SIDEBAR_TOP]: (
-      <BoredAnimation className="absolute inset-0 size-full" />
-    ),
-    [WireframeRegion.SIDEBAR_BOTTOM]: <SplayAnimation />,
+    [WireframeRegion.SIDEBAR_TOP]: gettopLeftContent(currentChapterId),
+    [WireframeRegion.SIDEBAR_BOTTOM]: getbotLeftContent(currentChapterId),
     [WireframeRegion.FOOTER_RIGHT]: <YoutubeMarquee />,
   }
+
+  useEffect(() => {
+    return (): void => {
+      removeValue()
+    }
+  }, [chapters, removeValue])
 
   if (isLoading) return <div>Loading...</div>
   // if (error) return <div>error...{`${error}`}</div>

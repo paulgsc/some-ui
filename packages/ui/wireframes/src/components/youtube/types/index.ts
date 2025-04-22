@@ -10,13 +10,18 @@ enum WireframeRegion {
   FOOTER_RIGHT = "FOOTER_RIGHT", // Region 7
 }
 
+type PanelContent = {
+  size?: number
+  node: ReactNode
+}
+
 type WireframeContent = {
   [WireframeRegion.VIDEO]: ReactNode
   [WireframeRegion.MARQUEE]: ReactNode
   [WireframeRegion.MAIN_CONTENT]: ReactNode
   [WireframeRegion.FOOTER_LEFT]: ReactNode
-  [WireframeRegion.SIDEBAR_TOP]: ReactNode
-  [WireframeRegion.SIDEBAR_BOTTOM]: ReactNode
+  [WireframeRegion.SIDEBAR_TOP]: PanelContent
+  [WireframeRegion.SIDEBAR_BOTTOM]: PanelContent
   [WireframeRegion.FOOTER_RIGHT]: ReactNode
 }
 

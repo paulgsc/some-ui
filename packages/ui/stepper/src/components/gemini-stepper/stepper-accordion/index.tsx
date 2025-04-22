@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef, ElementRef, ReactNode } from "react"
 import { forwardRef } from "react"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ListTodo, MessageSquare, Milestone } from "lucide-react"
+import { ListTodo, MessageSquare, Milestone, WifiHigh } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 const Accordion = AccordionPrimitive.Root
@@ -14,6 +14,7 @@ const Icons: Record<string, ReactNode> = {
   todo: <ListTodo className="size-6" />,
   message: <MessageSquare className="size-6" />,
   milestone: <Milestone className="size-6" />,
+  progress: <WifiHigh className="size-6 animate-ping" />,
 }
 
 const AccordionItem = forwardRef<

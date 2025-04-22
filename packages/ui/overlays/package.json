@@ -12,6 +12,7 @@
     "some-ui-chat": "workspace:*",
     "some-ui-slideshow": "workspace:*",
     "some-ui-nfl": "workspace:*",
+    "some-ui-input": "workspace:*",
     "some-ui-utils": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "wireframes": "workspace:*"

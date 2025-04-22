@@ -4,7 +4,7 @@ export const accordionData: Array<AccordionSteps> = [
   {
     itemId: "item-1",
     title: "some title",
-    icon: "todo",
+    icon: "progress",
     content: `
         hey me want to test you research capabilities. see ever curious about
         this question, what is the distance relationship between nfl players
