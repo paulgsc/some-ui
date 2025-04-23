@@ -1,0 +1,106 @@
+import type { CSSProperties, FC, HTMLAttributes } from "react"
+import { forwardRef } from "react"
+import { cn } from "@shared/lib/utils"
+
+const Deck = forwardRef<HTMLUListElement, HTMLAttributes<HTMLUListElement>>(
+  ({ className, ...props }, ref) => (
+    <ul
+      ref={ref}
+      style={{} as CSSProperties}
+      className={cn(
+        "grid grid-cols-1 grid-rows-1 will-change-transform",
+        "animate-deck-float",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+
+Deck.displayName = "Deck"
+
+type DeckCardProps = {
+  duration?: number
+  iteration?: "infinite" | number
+  yOffset?: number
+  scaleOffset?: number
+  scale: number
+  index: number
+}
+
+const DeckCard = forwardRef<
+  HTMLLIElement,
+  HTMLAttributes<HTMLLIElement> & DeckCardProps
+>(
+  (
+    {
+      className,
+      duration = 1.2,
+      yOffset = 60,
+      scaleOffset = 0.02,
+      iteration = 3,
+      index,
+      scale,
+      ...props
+    },
+    ref
+  ) => (
+    <li
+      ref={ref}
+      style={
+        {
+          "--y-offset": yOffset,
+          "--animation-duration": `${duration}s`,
+          "--animation-iteration-count": iteration,
+          "--scale-offset": scaleOffset,
+          "--card-scale": scale,
+          "--card-index": -index,
+        } as CSSProperties
+      }
+      className={cn(
+        "col-start-1 col-end-1 row-start-1 row-end-1 flex aspect-[2.5/3.5] w-[23vmin]",
+        "rounded-2xl border border-black/25 bg-gray-100 shadow-lg",
+        "transform transition-transform will-change-transform",
+        "[transform:translateY(calc(var(--card-index)*0.5px))]",
+        "animate-deck-card",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+
+DeckCard.displayName = "DeckCard"
+
+type DeckShuffleProps = {
+  containerClassname?: string
+  cardClassname?: string
+  count: number
+} & DeckCardProps
+
+export const DeckShuffle: FC<DeckShuffleProps> = ({
+  containerClassname,
+  cardClassname,
+  count,
+  scaleOffset = 0.02,
+}) => {
+  return (
+    <Deck className={(cn(containerClassname), "")}>
+      {Array.from({ length: count }).map((_, i) => {
+        const scale =
+          i <= Math.floor(count / 2)
+            ? (i - 1) * scaleOffset
+            : 1 - (count - 1 - i) * scaleOffset
+
+        return (
+          <DeckCard
+            key={i}
+            index={i}
+            className={cn(cardClassname, "")}
+            scale={scale}
+          />
+        )
+      })}
+    </Deck>
+  )
+}

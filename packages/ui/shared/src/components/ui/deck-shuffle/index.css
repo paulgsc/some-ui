@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@layer base {
+  :root {
+    --animation-duration: 4s;
+    --animation-iteration-count: infinite;
+    --animation-offset: 0.5px;
+    --y-offset: 15;
+    --scale-offset: 0.05;
+    --card-count: 5;
+    --card-mid-index: 2;
+    --easing-bounce: cubic-bezier(0.87, 0, 0.13, 1);
+    --easing-container: cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+}
+
+@theme inline {
+  --animate-deck-float: deck-float calc(var(--animation-duration) * 2)
+    var(--easing-container) infinite;
+
+  --animate-deck-card: deck-card-shuffle var(--animation-duration)
+    var(--easing-bounce)
+    calc(var(--card-index) * var(--animation-duration) * 0.03)
+    var(--animation-iteration-count) alternate;
+
+  @keyframes deck-card-shuffle {
+    0% {
+      transform: translateY(0) rotate(0deg) scale(1);
+      opacity: 1;
+    }
+
+    15% {
+      transform: translateY(calc(-1 * var(--y-offset) * 0.5%)) rotate(20deg)
+        scale(1.02);
+    }
+
+    40% {
+      transform: translateY(calc(var(--y-offset) * 1%)) rotate(65deg)
+        scale(var(--card-scale, 1));
+    }
+
+    70% {
+      transform: translateY(calc(-1 * var(--y-offset) / 2 * 1%)) rotate(30deg)
+        scale(1.01);
+    }
+
+    100% {
+      transform: translateY(0) rotate(0deg) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes deck-float {
+    0% {
+      transform: translateY(calc(-1 * var(--y-offset) / 3 * 1%));
+    }
+    50% {
+      transform: translateY(calc(var(--y-offset) / 3 * 1%));
+    }
+    100% {
+      transform: translateY(calc(-1 * var(--y-offset) / 3 * 1%));
+    }
+  }
+}
