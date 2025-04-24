@@ -1,37 +1,57 @@
 import type { FC } from "react"
+import { useCallback } from "react"
 import { cn } from "some-ui-utils"
-
-const VIEWBOX_PARAMS = [0, 0, 100, 100]
 
 type NflPlayerCardProps = {
   className?: string
+  width?: number
+  height?: number
 }
 
-const dimensions = {
-  width: VIEWBOX_PARAMS[3] * 0.35,
-  height: VIEWBOX_PARAMS[3] * 0.5,
-  padding: VIEWBOX_PARAMS[3] * 0.01,
-  borderRadius: VIEWBOX_PARAMS[3] * 0.02,
-} as const
+export const NflPlayerCard: FC<NflPlayerCardProps> = ({
+  width = 100,
+  height = 100,
+  className,
+}) => {
+  const getDimensions = useCallback(() => {
+    const padding = Math.min(height, width) * 0.01
+    const borderRadius = Math.min(height, width) * 0.02
+    const titleHeight = height * 0.1
+    const imageHeight = Math.max(0, height - titleHeight) * 0.35
+    const typeHeight = Math.max(0, height - titleHeight - imageHeight) * 0.075
+    const descriptionHeight =
+      Math.max(0, height - titleHeight - imageHeight - typeHeight) * 0.65
+    const footerHeight =
+      Math.max(
+        0,
+        height - titleHeight - imageHeight - typeHeight - descriptionHeight
+      ) * 0.65
 
-export const NflPlayerCard: FC<NflPlayerCardProps> = ({ className }) => {
-  const { padding, height, width, borderRadius } = dimensions
-  const titleHeight = height * 0.1
-  const imageHeight = Math.max(0, height - titleHeight) * 0.35
-  const typeHeight = Math.max(0, height - titleHeight - imageHeight) * 0.075
-  const descriptionHeight =
-    Math.max(0, height - titleHeight - imageHeight - typeHeight) * 0.65
-  const footerHeight =
-    Math.max(
-      0,
-      height - titleHeight - imageHeight - typeHeight - descriptionHeight
-    ) * 0.65
+    return {
+      padding,
+      borderRadius,
+      titleHeight,
+      imageHeight,
+      typeHeight,
+      descriptionHeight,
+      footerHeight,
+    }
+  }, [width, height])
 
+  const {
+    padding,
+    borderRadius,
+    titleHeight,
+    imageHeight,
+    typeHeight,
+    descriptionHeight,
+    footerHeight,
+  } = getDimensions()
   let y = 0
 
   return (
     <svg
-      viewBox={VIEWBOX_PARAMS.join(" ")}
+      viewBox={[0, 0, width, height].join(" ")}
       preserveAspectRatio="xMidYMid meet"
       className={cn("size-full", className)}
     >
@@ -83,7 +103,12 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({ className }) => {
   )
 }
 
-type CardBorderProps = typeof dimensions
+type CardBorderProps = {
+  borderRadius: number
+  width: number
+  height: number
+  padding: number
+}
 
 const CardBorder: FC<CardBorderProps> = ({ borderRadius, width, height }) => {
   return (
