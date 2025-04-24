@@ -2,20 +2,21 @@ import type { CSSProperties, FC, HTMLAttributes } from "react"
 import { forwardRef } from "react"
 import { cn } from "@shared/lib/utils"
 
-const Deck = forwardRef<HTMLUListElement, HTMLAttributes<HTMLUListElement>>(
-  ({ className, ...props }, ref) => (
-    <ul
-      ref={ref}
-      style={{} as CSSProperties}
-      className={cn(
-        "grid grid-cols-1 grid-rows-1 will-change-transform",
-        "animate-deck-float",
-        className
-      )}
-      {...props}
-    />
-  )
-)
+export const Deck = forwardRef<
+  HTMLUListElement,
+  HTMLAttributes<HTMLUListElement>
+>(({ className, ...props }, ref) => (
+  <ul
+    ref={ref}
+    style={{} as CSSProperties}
+    className={cn(
+      "grid grid-cols-1 grid-rows-1 will-change-transform",
+      "animate-deck-float",
+      className
+    )}
+    {...props}
+  />
+))
 
 Deck.displayName = "Deck"
 
@@ -28,7 +29,7 @@ type DeckCardProps = {
   index: number
 }
 
-const DeckCard = forwardRef<
+export const DeckCard = forwardRef<
   HTMLLIElement,
   HTMLAttributes<HTMLLIElement> & DeckCardProps
 >(
