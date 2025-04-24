@@ -98,7 +98,9 @@ export const DeckShuffle: FC<DeckShuffleProps> = ({
             index={i}
             className={cn(cardClassname, "")}
             scale={scale}
-          />
+          >
+            {`card no. ${i}`}
+          </DeckCard>
         )
       })}
     </Deck>
