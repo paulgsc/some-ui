@@ -1,13 +1,15 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { AccordionSteps } from "@stepper/types/accordion-stepper"
+import { createSequentialCycler } from "some-ui-utils"
 
 export type StepKey = `step_${number}`
 
 type Options = {
+  steps: AccordionSteps
   interval?: number
   autoplay?: boolean
-  totalSteps: number
-  cb?: () => void
+  stepsToShow: number
 }
 
 type ReturnOptions = {
@@ -19,49 +21,48 @@ type ReturnOptions = {
   isPlaying: boolean
   onAutoplay: () => void
   onStopAutoplay: () => void
+  getStepIcon: (index: number) => "done" | "progress" | "milestone"
+  visibleSteps: AccordionSteps["data"]
 }
 
 export const useAccordionStepper = ({
   interval = 3 * 1000,
   autoplay = false,
-  totalSteps,
-  cb,
+  stepsToShow,
+  steps,
 }: Options): ReturnOptions => {
   const [currStepId, setCurrStepId] = useState<StepKey>("step_0")
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
+  const [visibleSteps, setVisibleSteps] = useState<AccordionSteps["data"]>([])
 
   const animationRef = useRef<number | null>(null)
   const lastTimeRef = useRef<number>(0)
   const elapsedTimeRef = useRef<number>(0)
-  const callbackRef = useRef(cb)
+  const cyclerRef = useRef<() => AccordionSteps["data"] | null>(null)
 
   const onNext = useCallback(() => {
     setCurrStepId((prev) => {
       const prevIndex = parseInt(prev.split("_")[1], 0)
-      const i = (prevIndex + 1) % totalSteps
-      if (prevIndex + 1 >= totalSteps) {
-        if (callbackRef.current) callbackRef.current()
-      }
+      const i = (prevIndex + 1) % stepsToShow
+      if (prevIndex + 1 >= stepsToShow) getNextBatchOfSteps()
       return `step_${i}`
     })
-  }, [totalSteps])
+  }, [stepsToShow])
 
   const onPrev = useCallback(() => {
     setCurrStepId((prev) => {
       const prevIndex = parseInt(prev.split("_")[1], 0)
-      const i = Math.abs(prevIndex - 1) % totalSteps
-      if (Math.abs(prevIndex - 1) >= totalSteps) {
-        if (callbackRef.current) callbackRef.current()
-      }
+      const i = Math.abs(prevIndex - 1) % stepsToShow
+      if (Math.abs(prevIndex - 1) >= stepsToShow) getNextBatchOfSteps()
       return `step_${i}`
     })
-  }, [totalSteps])
+  }, [stepsToShow])
 
   const onJumpTo = useCallback(
     (target: number) => {
-      setCurrStepId(`step_${Math.abs(target) % totalSteps}`)
+      setCurrStepId(`step_${Math.abs(target) % stepsToShow}`)
     },
-    [totalSteps]
+    [stepsToShow]
   )
 
   const onAutoplay = useCallback(() => {
@@ -96,6 +97,30 @@ export const useAccordionStepper = ({
     [interval, onNext]
   )
 
+  const getStepIcon = useCallback(
+    (index: number) => {
+      const currentStepNumber = parseInt(currStepId.split("_")[1], 0)
+      if (currentStepNumber > index) return "done"
+      if (currentStepNumber === index) return "progress"
+      return "milestone"
+    },
+    [currStepId]
+  )
+
+  const initializeCycler = useCallback(() => {
+    const cycler = createSequentialCycler(steps.data, stepsToShow)
+    if (!cyclerRef.current) cyclerRef.current = cycler
+  }, [steps, stepsToShow])
+
+  const getNextBatchOfSteps = useCallback(() => {
+    if (cyclerRef.current) setVisibleSteps(cyclerRef.current() ?? [])
+  }, [])
+
+  useEffect(() => {
+    initializeCycler()
+    getNextBatchOfSteps()
+  }, [initializeCycler, getNextBatchOfSteps])
+
   useEffect(() => {
     if (autoplay) {
       onAutoplay()
@@ -119,5 +144,7 @@ export const useAccordionStepper = ({
     isPlaying,
     onAutoplay,
     onStopAutoplay,
+    getStepIcon,
+    visibleSteps,
   }
 }
