@@ -1,4 +1,5 @@
 import type { FC } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Accordion,
   AccordionContent,
@@ -9,7 +10,7 @@ import type { StepKey } from "@stepper/hooks/use-accordion-stepper"
 import { useAccordionStepper } from "@stepper/hooks/use-accordion-stepper"
 import type { AccordionSteps } from "@stepper/types/accordion-stepper"
 import { Card, CardTitle } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, createSequentialCycler } from "some-ui-utils"
 
 type GeminiStepperProps = {
   steps: AccordionSteps
@@ -20,9 +21,27 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
   steps,
   autoplay = false,
 }) => {
+  const k = 3
+  const cyclerRef = useRef<() => AccordionSteps["data"] | null>(null)
+  const [nextKSteps, setNextKSteps] = useState<AccordionSteps["data"]>([])
+  const getNextKSteps = useCallback(() => {
+    const cycler = createSequentialCycler(steps.data, k)
+    if (!cyclerRef.current) cyclerRef.current = cycler
+  }, [steps])
+
+  const nextKCallback = useCallback(() => {
+    if (cyclerRef.current) setNextKSteps(cyclerRef.current() ?? [])
+  }, [steps])
+
+  useEffect(() => {
+    getNextKSteps()
+    if (cyclerRef.current) setNextKSteps(cyclerRef.current() ?? [])
+  }, [])
+
   const { setCurrStepId, currStepId } = useAccordionStepper({
-    totalSteps: 3,
+    totalSteps: k,
     autoplay,
+    cb: nextKCallback,
   })
   return (
     <Card
@@ -43,7 +62,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
           setCurrStepId(step)
         }}
       >
-        {steps.data.map((step, i) => {
+        {nextKSteps.map((step, i) => {
           const curr = parseInt(currStepId.split("_")[1], 0)
           const icon = curr > i ? "done" : curr === i ? "progress" : "milestone"
           return (

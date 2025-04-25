@@ -7,6 +7,7 @@ type Options = {
   interval?: number
   autoplay?: boolean
   totalSteps: number
+  cb?: () => void
 }
 
 type ReturnOptions = {
@@ -24,6 +25,7 @@ export const useAccordionStepper = ({
   interval = 3 * 1000,
   autoplay = false,
   totalSteps,
+  cb,
 }: Options): ReturnOptions => {
   const [currStepId, setCurrStepId] = useState<StepKey>("step_0")
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
@@ -31,11 +33,15 @@ export const useAccordionStepper = ({
   const animationRef = useRef<number | null>(null)
   const lastTimeRef = useRef<number>(0)
   const elapsedTimeRef = useRef<number>(0)
+  const callbackRef = useRef(cb)
 
   const onNext = useCallback(() => {
     setCurrStepId((prev) => {
       const prevIndex = parseInt(prev.split("_")[1], 0)
       const i = (prevIndex + 1) % totalSteps
+      if (prevIndex + 1 >= totalSteps) {
+        if (callbackRef.current) callbackRef.current()
+      }
       return `step_${i}`
     })
   }, [totalSteps])
@@ -44,6 +50,9 @@ export const useAccordionStepper = ({
     setCurrStepId((prev) => {
       const prevIndex = parseInt(prev.split("_")[1], 0)
       const i = Math.abs(prevIndex - 1) % totalSteps
+      if (Math.abs(prevIndex - 1) >= totalSteps) {
+        if (callbackRef.current) callbackRef.current()
+      }
       return `step_${i}`
     })
   }, [totalSteps])

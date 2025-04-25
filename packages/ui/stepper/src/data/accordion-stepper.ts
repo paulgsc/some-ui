@@ -53,5 +53,15 @@ export const accordionData: AccordionSteps = {
       title: "some title",
       content: "some content",
     },
+    {
+      stepId: "item-3",
+      title: "some title",
+      content: "some content",
+    },
+    {
+      stepId: "item-3",
+      title: "some title",
+      content: "some content",
+    },
   ],
 }
