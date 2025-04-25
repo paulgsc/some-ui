@@ -11,6 +11,11 @@ export const Default: Story = {
     steps: accordionData,
     autoplay: true,
   },
+  render: (args) => (
+    <main className="h-96 border border-red-500">
+      <GeminiStepper {...args} />
+    </main>
+  ),
 }
 
 export default {

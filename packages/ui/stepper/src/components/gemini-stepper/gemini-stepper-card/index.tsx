@@ -29,16 +29,16 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
   return (
     <Card
       className={cn(
-        "flex size-full max-w-lg flex-col items-start justify-start gap-y-2.5 bg-slate-200 bg-gradient-to-br p-2.5"
+        "flex size-full max-w-lg flex-col overflow-clip bg-slate-200 bg-gradient-to-br p-2.5"
       )}
     >
-      <CardTitle className="py-2.5 ps-4 font-semibold capitalize tracking-wide">
+      <CardTitle className="h-fit max-h-24 py-2.5 ps-4 font-semibold capitalize tracking-wide">
         {steps.meta.title}
       </CardTitle>
       <Accordion
         type="single"
         collapsible
-        className="w-full max-w-lg bg-slate-200 bg-gradient-to-br"
+        className="size-full flex-1 shrink-0 overflow-hidden bg-slate-200 bg-gradient-to-br pb-3"
         value={currStepId}
         onValueChange={(val) => {
           const step = (/^step_\d+$/.test(val) ? val : "step_0") as StepKey
@@ -52,7 +52,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
             <AccordionItem
               key={`stepper_item_${i}`}
               value={`step_${i}`}
-              className=""
+              className="h-fit w-full"
               icon={icon}
             >
               <AccordionTrigger>{step.title}</AccordionTrigger>
