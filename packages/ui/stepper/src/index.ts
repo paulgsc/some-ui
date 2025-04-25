@@ -1,1 +1,1 @@
-export { default } from "@stepper/components"
+export * from "./components"
