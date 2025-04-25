@@ -1,6 +1,6 @@
 export type AccordionSteps = {
-  itemId: string
-  title: string
-  content: string
-  icon: string
+  meta: {
+    title: string
+  }
+  data: Array<Record<"stepId" | "title" | "content", string>>
 }

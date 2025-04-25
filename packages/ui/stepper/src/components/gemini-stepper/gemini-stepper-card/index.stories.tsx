@@ -9,6 +9,7 @@ type Meta = MetaObj<typeof GeminiStepper>
 export const Default: Story = {
   args: {
     steps: accordionData,
+    autoplay: true,
   },
 }
 

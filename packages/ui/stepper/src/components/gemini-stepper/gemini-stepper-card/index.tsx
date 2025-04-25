@@ -12,13 +12,17 @@ import { Card, CardTitle } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type GeminiStepperProps = {
-  steps: Array<AccordionSteps>
+  steps: AccordionSteps
+  autoplay?: boolean
 }
 
-export const GeminiStepper: FC<GeminiStepperProps> = ({ steps }) => {
+export const GeminiStepper: FC<GeminiStepperProps> = ({
+  steps,
+  autoplay = false,
+}) => {
   const { setCurrStepId, currStepId } = useAccordionStepper({
     totalSteps: 3,
-    autoplay: false,
+    autoplay,
   })
   return (
     <Card
@@ -26,7 +30,9 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({ steps }) => {
         "flex size-full max-w-lg flex-col items-start justify-start gap-y-2.5 bg-slate-200 bg-gradient-to-br p-2.5"
       )}
     >
-      <CardTitle className="py-2.5 ps-4">NFL research plan</CardTitle>
+      <CardTitle className="py-2.5 ps-4 font-semibold capitalize tracking-wide">
+        {steps.meta.title}
+      </CardTitle>
       <Accordion
         type="single"
         collapsible
@@ -37,17 +43,21 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({ steps }) => {
           setCurrStepId(step)
         }}
       >
-        {steps.map((step, i) => (
-          <AccordionItem
-            key={`stepper_item_${i}`}
-            value={`step_${i}`}
-            className=""
-            icon={step.icon}
-          >
-            <AccordionTrigger>{step.title}</AccordionTrigger>
-            <AccordionContent>{step.content}</AccordionContent>
-          </AccordionItem>
-        ))}
+        {steps.data.map((step, i) => {
+          const curr = parseInt(currStepId.split("_")[1], 0)
+          const icon = curr > i ? "done" : curr === i ? "progress" : "milestone"
+          return (
+            <AccordionItem
+              key={`stepper_item_${i}`}
+              value={`step_${i}`}
+              className=""
+              icon={icon}
+            >
+              <AccordionTrigger>{step.title}</AccordionTrigger>
+              <AccordionContent>{step.content}</AccordionContent>
+            </AccordionItem>
+          )
+        })}
       </Accordion>
     </Card>
   )
