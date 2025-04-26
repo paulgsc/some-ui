@@ -26,7 +26,7 @@ type ReturnOptions = {
 }
 
 export const useAccordionStepper = ({
-  interval = 3 * 1000,
+  interval = 60 * 1000,
   autoplay = false,
   stepsToShow,
   steps,

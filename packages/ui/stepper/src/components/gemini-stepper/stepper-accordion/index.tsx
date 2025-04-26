@@ -78,8 +78,10 @@ const AccordionContent = forwardRef<
     ref={ref}
     className={cn(
       "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      "overflow-hidden pe-1.5 ps-12 text-left text-sm transition-all",
-      "size-full pb-2.5"
+      "ms-12 overflow-hidden px-1.5 py-2.5 text-left text-sm transition-all",
+      "text-balance tracking-tight",
+      "size-full pb-2.5",
+      className
     )}
     {...props}
   ></AccordionPrimitive.Content>

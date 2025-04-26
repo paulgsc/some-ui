@@ -14,6 +14,7 @@
     "some-ui-nfl": "workspace:*",
     "some-ui-input": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "some-ui-stepper": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "wireframes": "workspace:*"
   },

@@ -1,9 +1,11 @@
 import type { ReactNode } from "react"
 import { Fragment } from "react"
+import { accordionData } from "@overlays/data/gemini-stepper"
 import { ScrollingCredits, useGetCredits } from "attributions"
 import { BoredAnimation } from "some-ui-emoji-animations"
 import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
 import { BrickChartCarousel } from "some-ui-nfl"
+import { GeminiStepper } from "some-ui-stepper"
 import { getRandomSubarray } from "some-ui-utils"
 
 const EndingCredits = (): React.JSX.Element => {
@@ -80,7 +82,7 @@ const topLeftContent: Record<string, Array<PanelContent>> = {
 
 export function gettopLeftContent(key: string): PanelContent {
   const content = topLeftContent[key] ?? []
-  if (content.length <= 0) return { node: <BoredAnimation /> }
+  if (content.length <= 0) return { node: <BoredAnimation />, size: 40 }
   return getRandomSubarray(content, 1)[0]
 }
 
@@ -97,6 +99,10 @@ const botLeftContent: Record<string, Array<PanelContent>> = {
 
 export function getbotLeftContent(key: string): PanelContent {
   const content = botLeftContent[key] ?? []
-  if (content.length <= 0) return { node: <BoredAnimation /> }
+  if (content.length <= 0)
+    return {
+      node: <GeminiStepper steps={accordionData} autoplay={true} />,
+      size: 60,
+    }
   return getRandomSubarray(content, 1)[0]
 }
