@@ -26,12 +26,10 @@ export const NeonText: FC<NeonTextProps> = ({
   return (
     <div className={cn("relative size-full", className)}>
       <div
-        className="size-full animate-pulse-slow rounded-lg border-4 border-blue-500 px-8 py-4 text-center
+        className="animate-pulse-slow size-full rounded-lg border-4 border-blue-500 px-8 py-4 text-center
                                                                        [box-shadow:0_0_0.5rem_#3b82f6,inset_0_0_0.5rem_#3b82f6]"
       >
-        <span className="size-full flex justify-center items-center text-center text-4xl font-bold tracking-wider">
-          <StyledCharacters text={neonTxt} />
-        </span>
+        <StyledCharacters text={neonTxt} />
         <OverlayInput value={neonTxt} onChange={handleInputChange} />
       </div>
     </div>

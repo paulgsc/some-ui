@@ -17,6 +17,6 @@ export const Default: Story = {
 }
 
 export default {
-  title: "UI/NeonText/NeonText",
+  title: "UI/NeonSign/Components/NeonText",
   component: NeonText,
 } as Meta
