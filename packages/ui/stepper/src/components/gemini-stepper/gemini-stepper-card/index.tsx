@@ -14,22 +14,25 @@ import { cn } from "some-ui-utils"
 type GeminiStepperProps = {
   steps: AccordionSteps
   autoplay?: boolean
+  duration?: number
 }
 
 export const GeminiStepper: FC<GeminiStepperProps> = ({
   steps,
   autoplay = false,
+  duration = 60 * 1000,
 }) => {
   const k = 3
   const { visibleSteps, setCurrStepId, currStepId } = useAccordionStepper({
     stepsToShow: k,
     autoplay,
     steps,
+    interval: duration,
   })
   return (
     <Card
       className={cn(
-        "relative flex size-full max-w-lg flex-col overflow-clip bg-pink-50 bg-gradient-to-br p-2.5",
+        "relative flex size-full max-w-lg flex-col overflow-clip bg-pink-50/20 bg-gradient-to-br p-2.5",
         ""
       )}
     >
@@ -40,7 +43,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
       <Accordion
         type="single"
         collapsible
-        className="size-full flex-1 shrink-0 overflow-hidden bg-gradient-to-br pb-3"
+        className="size-full flex-1 shrink-0 overflow-hidden pb-3"
         value={currStepId}
         onValueChange={(val) => {
           const step = (/^step_\d+$/.test(val) ? val : "step_0") as StepKey
@@ -49,7 +52,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
       >
         {visibleSteps.map((step, i) => {
           const curr = parseInt(currStepId.split("_")[1], 0)
-          const icon = curr > i ? "done" : curr === i ? "progress" : "milestone"
+          const icon = curr === i ? "progress" : step.progress
           return (
             <AccordionItem
               key={`stepper_item_${i}`}
@@ -62,10 +65,11 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
               </AccordionTrigger>
               <AccordionContent
                 className={cn(
-                  "inset-shadow-sm strawberry-moon relative w-11/12 rounded-sm px-2 font-semibold text-white"
+                  "inset-shadow-sm relative z-0 w-11/12 rounded-sm px-2 font-semibold text-rose-950"
                 )}
               >
-                <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-2 bg-pink-50"></div>
+                <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-2 bg-[oklch(85%_0.12_340/_0.3)]"></div>
+                <div className="absolute inset-0 -z-10 bg-fuchsia-200 blur-3xl" />
                 {step.content}
               </AccordionContent>
             </AccordionItem>

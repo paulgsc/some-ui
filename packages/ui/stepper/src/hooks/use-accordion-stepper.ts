@@ -1,6 +1,9 @@
 import type { Dispatch, SetStateAction } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { AccordionSteps } from "@stepper/types/accordion-stepper"
+import type {
+  AccordionSteps,
+  StepStatus,
+} from "@stepper/types/accordion-stepper"
 import { createSequentialCycler } from "some-ui-utils"
 
 export type StepKey = `step_${number}`
@@ -21,7 +24,7 @@ type ReturnOptions = {
   isPlaying: boolean
   onAutoplay: () => void
   onStopAutoplay: () => void
-  getStepIcon: (index: number) => "done" | "progress" | "milestone"
+  getStepIcon: (index: number) => StepStatus["progress"]
   visibleSteps: AccordionSteps["data"]
 }
 
@@ -99,12 +102,9 @@ export const useAccordionStepper = ({
 
   const getStepIcon = useCallback(
     (index: number) => {
-      const currentStepNumber = parseInt(currStepId.split("_")[1], 0)
-      if (currentStepNumber > index) return "done"
-      if (currentStepNumber === index) return "progress"
-      return "milestone"
+      return visibleSteps[index].progress
     },
-    [currStepId]
+    [visibleSteps]
   )
 
   const initializeCycler = useCallback(() => {

@@ -8,6 +8,7 @@ export const accordionData: AccordionSteps = {
     {
       stepId: "item-1",
       title: "some title",
+      progress: "done",
       content: `
       hey me want to test you research capabilities. see ever curious about
       this question, what is the distance relationship between nfl players
@@ -46,21 +47,25 @@ export const accordionData: AccordionSteps = {
     {
       stepId: "item-2",
       title: "some title",
+      progress: "done",
       content: "some content",
     },
     {
       stepId: "item-3",
+      progress: "pending",
       title: "some title",
       content: "some content",
     },
     {
       stepId: "item-3",
       title: "some title",
+      progress: "scheduled",
       content: "some content",
     },
     {
       stepId: "item-3",
       title: "some title",
+      progress: "scheduled",
       content: "some content",
     },
   ],

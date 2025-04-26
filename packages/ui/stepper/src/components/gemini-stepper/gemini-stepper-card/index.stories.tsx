@@ -10,6 +10,7 @@ export const Default: Story = {
   args: {
     steps: accordionData,
     autoplay: true,
+    duration: 3 * 1000,
   },
   render: (args) => (
     <main className="h-96 border border-red-500">

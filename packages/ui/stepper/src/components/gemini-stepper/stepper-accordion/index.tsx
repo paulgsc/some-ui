@@ -17,11 +17,11 @@ type AccordionItemProps = {
 }
 
 const Icons: Record<string, ReactNode> = {
-  todo: <ListTodo className="size-6" />,
-  message: <MessageSquare className="size-6" />,
-  milestone: <Milestone className="size-6" />,
-  done: <CircleCheck className="size-6 fill-sky-500/40" />,
-  progress: <WifiHigh className="size-6 animate-ping" />,
+  pending: <ListTodo className="size-6 stroke-purple-950" />,
+  message: <MessageSquare className="size-6 stroke-purple-950" />,
+  scheduled: <Milestone className="size-6 stroke-purple-950" />,
+  done: <CircleCheck className="size-6 fill-sky-500/40 stroke-purple-950" />,
+  progress: <WifiHigh className="size-6 animate-ping stroke-purple-950" />,
 }
 
 const AccordionItem = forwardRef<
@@ -78,8 +78,8 @@ const AccordionContent = forwardRef<
     ref={ref}
     className={cn(
       "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      "ms-12 overflow-hidden px-1.5 py-2.5 text-left text-sm transition-all",
-      "text-balance tracking-tight",
+      "ms-12 overflow-hidden px-1.5 py-2.5 text-sm transition-all",
+      "text-wrap text-left tracking-tight",
       "size-full pb-2.5",
       className
     )}
