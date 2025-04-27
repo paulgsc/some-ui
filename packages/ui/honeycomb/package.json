@@ -19,12 +19,12 @@
     "react-dom": "18.3.1"
   },
   "dependencies": {
+    "some-hexagon": "link:../../../crates/some-hexagon/dist",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "some-ui-rollup-config": "workspace:*"
   },
   "repository": {
     "type": "git",

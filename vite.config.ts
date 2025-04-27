@@ -31,6 +31,7 @@ export default defineConfig({
       "@umag": path.resolve(__dirname, "./packages/ui/umag/src"),
       "@stepper": path.resolve(__dirname, "./packages/ui/stepper/src"),
       "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),
+      "@honeycomb": path.resolve(__dirname, "./packages/ui/honeycomb/src"),
       "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
       // Add more aliases for other packages as needed
     },
