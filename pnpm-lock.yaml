@@ -835,6 +835,9 @@ importers:
       some-ui-slideshow:
         specifier: workspace:*
         version: link:../slideshow
+      some-ui-stepper:
+        specifier: workspace:*
+        version: link:../stepper
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils

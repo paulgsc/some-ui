@@ -1,6 +1,6 @@
 import type { FC, RefObject } from "react"
 import { useRef } from "react"
-import { NflPlayerCard } from "@nfl/components/player-card"
+import { PlayerCardDialog } from "@nfl/components/player-card-dialog"
 import { Deck, DeckCard } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
@@ -26,16 +26,10 @@ export const NflPlayerCardShuffle: FC = () => {
             key={i}
             ref={ref}
             index={i}
-            className={cn(
-              "pointer-events-none rounded-none border-none bg-none p-0.5"
-            )}
+            className={cn("rounded-none border-none bg-none p-0.5")}
             scale={scale}
           >
-            <NflPlayerCard
-              height={height}
-              width={width}
-              className="absolute-0 inset-0"
-            />
+            <PlayerCardDialog />
           </DeckCard>
         )
       })}

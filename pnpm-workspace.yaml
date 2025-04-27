@@ -10,3 +10,4 @@ packages:
   - packages/eslint-plugin-tailwindcss
   - crates/viewport-rotation
   - crates/some-crossword
+  - crates/some-hexagon

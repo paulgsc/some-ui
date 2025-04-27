@@ -1926,6 +1926,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "some-hexagon"
+version = "0.0.0"
+dependencies = [
+ "console_error_panic_hook",
+ "getrandom 0.3.1",
+ "js-sys",
+ "rand 0.9.0",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -48,8 +48,8 @@ export const PlayerCardDialog = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger className="size-52" asChild>
-        <Button ref={buttonRef} variant="link" className="p-1.5">
+      <DialogTrigger className="size-full" asChild>
+        <Button ref={buttonRef} variant="link" className="cursor-pointer p-1.5">
           <NflPlayerCard
             height={buttonRect.height}
             width={buttonRect.width}
