@@ -82,7 +82,7 @@ const cubeFaces = (): Array<React.JSX.Element> =>
     ).pop()
 
     return (
-      <Card key={index} className="relative size-full overflow-hidden p-6">
+      <Card key={index} className="relative size-full overflow-hidden p-1.5">
         {/* Background pattern */}
         <div
           className="absolute inset-0 opacity-[0.03]"
