@@ -1,21 +1,13 @@
 import type { FC, ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
+import { ClueList } from "@input/components/clues-list"
 import { ClueCard } from "@input/components/crossword-clue"
 import { useFetchViewportWasm } from "@input/hooks/use-viewport-rotation-wasm"
+import type { CrosswordClue } from "@input/types/crossword"
 import { DiceCard } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
-type CardData = {
-  id: number
-  thumbnail: string
-  title: string
-  channelInfo: string
-  updatedTime: string
-  isMix?: boolean
-  mixLabel?: string
-}
-
-const cards: Array<CardData> = [
+const cards: Array<CrosswordClue> = [
   {
     id: 1,
     thumbnail:
@@ -78,8 +70,6 @@ type ClueCarouselProps = {
 }
 
 export const ClueCarousel: FC<ClueCarouselProps> = ({ className }) => {
-  const [activeIndex, setActiveIndex] = useState(0)
-
   const faces: FaceContent = cards.reduce(
     (acc, curr, i) => ({
       ...acc,
@@ -90,7 +80,7 @@ export const ClueCarousel: FC<ClueCarouselProps> = ({ className }) => {
           title={curr.title}
           clue={curr.channelInfo}
           updatedTime={curr.updatedTime}
-          isActive={i === activeIndex}
+          isActive={i === 0}
         />
       ),
     }),
@@ -103,31 +93,16 @@ export const ClueCarousel: FC<ClueCarouselProps> = ({ className }) => {
       maxPerFace: 4,
     })
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => {
-        const n = prevIndex + 1
-        if (n >= 4) rotateNext()
-        return n % 4
-      })
-    }, 3000)
-
-    return (): void => clearInterval(interval)
-  }, [rotateNext])
-
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error.message}</div>
   if (!rotationState) return <div> never began!</div>
 
   return (
     <DiceCard
-      className={cn("bg-red-500", className)}
+      className={cn("size-full", className)}
       dof={"X-axis"}
       mode={"manual"}
-      faces={
-        getFaceItemIds(rotationState.current_face)?.map((k) => faces[k]) ?? []
-      }
-      showBeam={true}
+      faces={Array(6).fill(<ClueList />)}
     />
   )
 }

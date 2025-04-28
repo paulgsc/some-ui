@@ -1,5 +1,7 @@
 import { useRef } from "react"
+import type { FC, MouseEvent } from "react"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import { Button } from "some-ui-shared"
 
 type HexPoint = {
   x: number
@@ -14,25 +16,28 @@ type HexRenderData = {
 }
 
 type HexGridProps = {
-  radius: number
+  cellCount: number
   hexSize: number
   width?: number
   height?: number
   onCellClick?: (x: number, y: number, z: number) => void
 }
 
-export const HexGrid: React.FC<HexGridProps> = ({
-  radius,
+export const HexGrid: FC<HexGridProps> = ({
+  cellCount,
   hexSize,
   width = 800,
   height = 600,
   onCellClick,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null)
-  const { hexCells, isLoading, error } = useHexgridWasm(radius, hexSize)
+  const { hexCells, isLoading, error, hexGridRef } = useHexgridWasm({
+    cellCount,
+    hexSize,
+  })
 
   // Handle cell click
-  const handleCellClick = (event: React.MouseEvent<SVGElement>) => {
+  const handleCellClick = (event: MouseEvent<SVGElement>) => {
     if (!grid || !svgRef.current || !onCellClick) return
 
     // Get click coordinates relative to SVG
@@ -54,27 +59,27 @@ export const HexGrid: React.FC<HexGridProps> = ({
 
   // Create a sample pattern
   const createPattern = (patternType: string) => {
-    if (!grid) return
+    if (!hexGridRef.current) return
 
-    grid.clear_all()
+    hexGridRef.current.clear_all()
 
     switch (patternType) {
       case "overlapping":
-        grid.create_overlapping_pattern(2, 3, 0x3498db)
+        hexGridRef.current.create_overlapping_pattern(2, 3, 0x3498db)
         break
       case "corner-touching":
-        grid.create_corner_touching_pattern(2, 0xe74c3c)
+        hexGridRef.current.create_corner_touching_pattern(2, 0xe74c3c)
         break
       case "hexagon":
-        grid.create_hexagon_pattern(2, 4, 0x2ecc71)
+        hexGridRef.current.create_hexagon_pattern(2, 4, 0x2ecc71)
         break
       default:
         break
     }
 
-    // Update the render data
+    // Wai me do this?!
     try {
-      const renderDataJson = grid.get_all_cells_render_data()
+      const renderDataJson = hexGridRef.current.get_all_cells_render_data()
       const renderData: Array<HexRenderData> = renderDataJson
       setHexCells(renderData)
     } catch (err) {
@@ -108,29 +113,38 @@ export const HexGrid: React.FC<HexGridProps> = ({
 
   return (
     <div>
-      <div className="controls">
-        <button
-          className="cursor-pointer bg-blue-100"
+      <div className="z-50">
+        <Button
+          className="cursor-pointer"
           onClick={() => createPattern("overlapping")}
         >
           Overlapping Pattern
-        </button>
-        <button onClick={() => createPattern("corner-touching")}>
+        </Button>
+        <Button
+          className="cursor-pointer"
+          onClick={() => createPattern("corner-touching")}
+        >
           Corner-Touching Pattern
-        </button>
-        <button onClick={() => createPattern("hexagon")}>
+        </Button>
+        <Button
+          className="cursor-pointer"
+          onClick={() => createPattern("hexagon")}
+        >
           Hexagon Pattern
-        </button>
-        <button onClick={() => grid?.clear_all() && setHexCells([])}>
+        </Button>
+        <Button
+          className="cursor-pointer"
+          onClick={() => grid?.clear_all() && setHexCells([])}
+        >
           Clear
-        </button>
+        </Button>
       </div>
 
       <svg
         ref={svgRef}
         viewBox={viewBox}
         onClick={handleCellClick}
-        className="size-full border border-red-500"
+        className="z-0 size-full border border-red-500"
       >
         <g transform={transform}>
           {hexCells.map((cell) => (

@@ -7,7 +7,7 @@ type Meta = MetaObj<typeof HexGrid>
 
 export const Default: Story = {
   args: {
-    radius: 5,
+    cellCount: 53,
     hexSize: 30,
   },
 }

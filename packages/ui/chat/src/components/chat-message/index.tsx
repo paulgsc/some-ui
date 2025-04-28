@@ -14,7 +14,7 @@ export const ChatMessage = ({
   return (
     <section
       className={cn(
-        "relative flex size-fit max-w-[75%] flex-col rounded-lg p-1.5 shadow-lg",
+        "relative flex size-full max-w-[75%] flex-col rounded-lg p-1.5 shadow-lg",
         {
           "bg-indigo-500/20 shadow-indigo-500/50 items-end":
             position === "right",

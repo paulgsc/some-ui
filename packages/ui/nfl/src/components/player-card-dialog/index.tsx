@@ -11,7 +11,7 @@ type Dimension = {
   bH?: number
 }
 
-export const PlayerCardDialog = () => {
+export const PlayerCardDialog = (): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const buttonRect = useMeasureRect({
@@ -40,7 +40,7 @@ export const PlayerCardDialog = () => {
         }
       }, 50)
 
-      return () => {
+      return (): void => {
         if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
       }
     }

@@ -24,10 +24,11 @@ export type CrosswordCell = {
   solved: boolean
 }
 
-type CrosswordClue = {
+export type CrosswordClue = {
   id: number
   clue: string
   answer: string
+  thumbnail?: string
 }
 
 export type CrosswordClues = Record<Direction, Array<CrosswordClue>>

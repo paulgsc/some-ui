@@ -1,5 +1,7 @@
+import type { RefObject } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
+import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
 import init, { WasmHexGrid } from "some-hexagon"
 import { z } from "zod"
 
@@ -25,15 +27,21 @@ const HexCellSchema = z.object({
 
 const HexGridSchema = z.array(HexCellSchema)
 
+type Options = {
+  cellCount?: number
+  hexSize: number
+}
+
 type ReturnOptions = {
   isLoading: boolean
   error: string | null
   validationWarning: string | null
   hexCells: Array<HexRenderData>
   regenerate: () => Promise<void>
+  hexGridRef: RefObject<WasmHexGrid | null>
 }
 
-export function useHexgridWasm(radius: number, hexSize: number): ReturnOptions {
+export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hexGridRef = useRef<WasmHexGrid | null>(null)
@@ -42,8 +50,13 @@ export function useHexgridWasm(radius: number, hexSize: number): ReturnOptions {
     null
   )
 
+  const getRadius = useCallback(() => {
+    return getHexagonalGridRadiusForCellCount(cellCount ?? 1)
+  }, [cellCount])
+
   const generateHexgrid = useCallback(async () => {
     // Validate inputs with Zod
+    const radius = getRadius()
     try {
       HexgridInputSchema.parse({
         radius,
@@ -79,7 +92,7 @@ export function useHexgridWasm(radius: number, hexSize: number): ReturnOptions {
     } finally {
       setIsLoading(false)
     }
-  }, [radius, hexSize])
+  }, [cellCount, hexSize])
 
   useEffect(() => {
     generateHexgrid()
@@ -87,7 +100,7 @@ export function useHexgridWasm(radius: number, hexSize: number): ReturnOptions {
     return (): void => {
       if (hexGridRef.current) hexGridRef.current = null
     }
-  }, [generateHexgrid, radius, hexSize])
+  }, [generateHexgrid, cellCount, hexSize])
 
   return {
     isLoading,
@@ -95,5 +108,6 @@ export function useHexgridWasm(radius: number, hexSize: number): ReturnOptions {
     hexCells,
     validationWarning,
     regenerate: generateHexgrid,
+    hexGridRef,
   }
 }

@@ -7,11 +7,13 @@ type Meta = MetaObj<typeof ClueCarousel>
 
 export const Default: Story = {
   args: {
-    className: "p-0.5 w-full max-w-md h-96",
+    className: "",
   },
   render: (args) => (
-    <main className="flex min-h-screen flex-1 items-center justify-center">
-      <ClueCarousel {...args} />
+    <main className="absolute inset-0 flex items-center justify-center">
+      <section className="size-120">
+        <ClueCarousel {...args} />
+      </section>
     </main>
   ),
 }

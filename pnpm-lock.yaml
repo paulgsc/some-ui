@@ -290,6 +290,8 @@ importers:
 
   crates/some-crossword: {}
 
+  crates/some-hexagon: {}
+
   crates/viewport-rotation: {}
 
   packages/eslint:
@@ -655,6 +657,12 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      some-hexagon:
+        specifier: link:../../../crates/some-hexagon/dist
+        version: link:../../../crates/some-hexagon/dist
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -662,9 +670,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
-      maishatu-eslint-kit:
-        specifier: 1.3.0
-        version: 1.3.0(eslint@9.18.0(jiti@2.4.2))(tailwindcss@4.0.5)
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../rollup-config
@@ -737,9 +742,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
-      maishatu-eslint-kit:
-        specifier: 1.3.0
-        version: 1.3.0(eslint@9.18.0(jiti@2.4.2))(tailwindcss@4.0.5)
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../rollup-config

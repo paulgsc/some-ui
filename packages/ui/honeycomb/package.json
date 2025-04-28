@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "some-hexagon": "link:../../../crates/some-hexagon/dist",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "workspace:*",
+    "some-ui-shared": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

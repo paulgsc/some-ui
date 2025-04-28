@@ -33,6 +33,7 @@ export const ClueCard = forwardRef<
         ref={ref}
         className={cn(
           "bg-card inset-shadow-sm relative flex size-full overflow-hidden rounded-lg  transition-all duration-300",
+          "p-1.5",
           className,
           {
             "border-4 border-[oklch(50%_0.3_320deg)]": isActive,

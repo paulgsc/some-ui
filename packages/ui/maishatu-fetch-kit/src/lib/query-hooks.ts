@@ -7,7 +7,7 @@ import type {
 import { useMutation, useQuery } from "@tanstack/react-query"
 import type { z } from "zod"
 
-import type { FetchClient, HttpMethod } from "./fetch-client"
+import type { FetchClient, FetchOptions, HttpMethod } from "./fetch-client"
 import { apiClient } from "./fetch-client"
 
 type QueryHookFactory = {
@@ -36,6 +36,17 @@ type QueryHookFactory = {
     params?: Record<string, string | number>,
     options?: Omit<UseMutationOptions<TData, TError, TVariables>, "mutationFn">
   ) => UseMutationResult<TData, TError, TVariables>
+
+  createStreamHook: (
+    endpoint: URL,
+    options?: Omit<
+      FetchOptions,
+      "method" | "body" | "onData" | "chunkSchema"
+    > & {
+      onData: (chunk: Uint8Array) => void
+      chunkSchema?: z.ZodType
+    }
+  ) => () => void
 }
 
 export const createApiHooks = (
@@ -143,6 +154,65 @@ export const createApiHooks = (
           },
           ...defaultOptions,
           ...options,
+        })
+      }
+    },
+
+    createStreamHook: (
+      endpoint: URL,
+      options: Omit<
+        FetchOptions,
+        "method" | "body" | "onData" | "chunkSchema"
+      > & {
+        onData: (chunk: Uint8Array) => void
+        chunkSchema?: z.ZodType
+      }
+    ) => {
+      return () => {
+        const { onData, chunkSchema, ...fetchOptions } = options
+
+        // Use a unique query key for the stream
+        const queryKey = [endpoint.toString(), "stream"]
+
+        //  Use useQuery, but we're not returning data in the traditional sense.
+        useQuery<void, ApiError, void>({
+          // TData is void, we're handling data via onData
+          queryKey,
+          queryFn: async () => {
+            // Call the stream method from the client
+            try {
+              await client.stream(endpoint, {
+                ...fetchOptions,
+                onData,
+                chunkSchema,
+              })
+              // The stream method doesn't return a value, so we return undefined
+              return undefined
+            } catch (error) {
+              //  Important:  Wrap non-ApiError errors.
+              if (error instanceof ApiError) {
+                throw error //  Don't wrap ApiErrors, re-throw them.
+              }
+              throw new ApiError(
+                error instanceof Error ? error.message : "Stream failed",
+                500, //  Use a generic server error code.
+                undefined,
+                false,
+                false
+              )
+            }
+          },
+          //  Set these to prevent retries and caching.  Streaming is typically a
+          //  real-time operation, not something you want to retry or cache.
+          retry: false,
+          cacheTime: 0,
+          staleTime: 0,
+          //  Override any user-provided values for these.
+          ...{
+            retry: false,
+            cacheTime: 0,
+            staleTime: 0,
+          },
         })
       }
     },
