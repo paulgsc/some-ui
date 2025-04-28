@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof Skyline>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Makjang/Skyline",
+  title: "UI/Makjang/Shapes/Skyline",
   component: Skyline,
 } as Meta

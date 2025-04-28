@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof SemiTable>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Makjang/SemiTable",
+  title: "UI/Makjang/Shapes/Tables/SemiTable",
   component: SemiTable,
 } as Meta

@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof StripedBuilding>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Makjang/StripedBuilding",
+  title: "UI/Makjang/Shapes/Buildings/StripedBuilding",
   component: StripedBuilding,
 } as Meta
