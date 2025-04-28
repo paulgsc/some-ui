@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
 
-pub mod utils;
-pub mod wasm_hex;
+mod utils;
+mod wasm_hex;
 
 /// Represents cube coordinates in a hexagonal grid.
 /// x + y + z = 0 must be maintained for valid coordinates.
@@ -306,32 +306,38 @@ impl HexGrid {
 
     /// Create a pattern where hexagons touch at corners
     pub fn create_corner_touching_pattern(&mut self, region_size: i32, color: u32) {
-        // The directions for corner-touching hexagons
+        // In cube coordinates, corners are at twice the distance of edges
+        // These are the six corner directions in cube coordinates
         let directions = [
-            CubeCoord { x: 2, y: -1, z: -1 },
-            CubeCoord { x: 1, y: 1, z: -2 },
-            CubeCoord { x: -1, y: 2, z: -1 },
-            CubeCoord { x: -2, y: 1, z: 1 },
-            CubeCoord { x: -1, y: -1, z: 2 },
-            CubeCoord { x: 1, y: -2, z: 1 },
+            CubeCoord { x: 2, y: -1, z: -1 }, // Northeast corner
+            CubeCoord { x: 1, y: 1, z: -2 },  // East corner
+            CubeCoord { x: -1, y: 2, z: -1 }, // Southeast corner
+            CubeCoord { x: -2, y: 1, z: 1 },  // Southwest corner
+            CubeCoord { x: -1, y: -1, z: 2 }, // West corner
+            CubeCoord { x: 1, y: -2, z: 1 },  // Northwest corner
         ];
+
+        // Start with center
+        let center = self.center();
+        self.fill_region(&center, region_size, color);
+
+        // For each corner direction, calculate the distance needed for proper corner touching
+        let corner_distance = region_size * 2 + 1;
 
         // Use iterative approach instead of recursion
         let mut queue = Vec::new();
         let mut visited = HashMap::new();
 
-        // Start with center
-        let center = self.center();
-        self.fill_region(&center, region_size, color);
         queue.push(center);
         visited.insert(center, true);
 
         while let Some(current) = queue.pop() {
             for dir in &directions {
+                // Scale the direction vector by the proper distance
                 let next = CubeCoord {
-                    x: current.x + dir.x,
-                    y: current.y + dir.y,
-                    z: current.z + dir.z,
+                    x: current.x + dir.x * corner_distance,
+                    y: current.y + dir.y * corner_distance,
+                    z: current.z + dir.z * corner_distance,
                 };
 
                 if self.contains(&next) && !visited.contains_key(&next) {
@@ -350,30 +356,78 @@ impl HexGrid {
 
     /// Create a pattern similar to what's shown in the top image (overlapping hexagons)
     pub fn create_overlapping_pattern(&mut self, region_size: i32, spacing: i32, color: u32) {
+        // These are the six directions in cube coordinates (one for each edge)
+        let directions = [
+            CubeCoord { x: 1, y: -1, z: 0 }, // Northeast edge
+            CubeCoord { x: 0, y: -1, z: 1 }, // East edge
+            CubeCoord { x: -1, y: 0, z: 1 }, // Southeast edge
+            CubeCoord { x: -1, y: 1, z: 0 }, // Southwest edge
+            CubeCoord { x: 0, y: 1, z: -1 }, // West edge
+            CubeCoord { x: 1, y: 0, z: -1 }, // Northwest edge
+        ];
+
         // Start with center hexagon
         let center = self.center();
         self.fill_region(&center, region_size, color);
 
-        // Define spacing directions for overlapping pattern
-        let directions = [
-            CubeCoord { x: spacing, y: -spacing, z: 0 },
-            CubeCoord { x: spacing, y: 0, z: -spacing },
-            CubeCoord { x: 0, y: spacing, z: -spacing },
-            CubeCoord { x: -spacing, y: spacing, z: 0 },
-            CubeCoord { x: -spacing, y: 0, z: spacing },
-            CubeCoord { x: 0, y: -spacing, z: spacing },
-        ];
-
-        // Create hexagons at these positions
+        // Create hexagons at the specified spacing
         for dir in &directions {
+            // Scale the direction by the spacing factor
             let next_center = CubeCoord {
-                x: center.x + dir.x,
-                y: center.y + dir.y,
-                z: center.z + dir.z,
+                x: center.x + dir.x * spacing,
+                y: center.y + dir.y * spacing,
+                z: center.z + dir.z * spacing,
             };
 
             if self.contains(&next_center) {
                 self.fill_region(&next_center, region_size, color);
+            }
+        }
+    }
+
+    /// Create a pattern where hexagons touch along edges
+    pub fn create_edge_touching_pattern(&mut self, region_size: i32, color: u32) {
+        // These are the six directions in cube coordinates (one for each edge)
+        let directions = [
+            CubeCoord { x: 1, y: -1, z: 0 }, // Northeast edge
+            CubeCoord { x: 0, y: -1, z: 1 }, // East edge
+            CubeCoord { x: -1, y: 0, z: 1 }, // Southeast edge
+            CubeCoord { x: -1, y: 1, z: 0 }, // Southwest edge
+            CubeCoord { x: 0, y: 1, z: -1 }, // West edge
+            CubeCoord { x: 1, y: 0, z: -1 }, // Northwest edge
+        ];
+
+        // For a hexagon of radius r, the edge-to-edge distance is 2r+1
+        let edge_distance = 2 * region_size + 1;
+
+        // Start with center
+        let center = self.center();
+        self.fill_region(&center, region_size, color);
+
+        // Use iterative approach
+        let mut queue = Vec::new();
+        let mut visited = HashMap::new();
+
+        queue.push(center);
+        visited.insert(center, true);
+
+        while let Some(current) = queue.pop() {
+            for dir in &directions {
+                let next = CubeCoord {
+                    x: current.x + dir.x * edge_distance,
+                    y: current.y + dir.y * edge_distance,
+                    z: current.z + dir.z * edge_distance,
+                };
+
+                if self.contains(&next) && !visited.contains_key(&next) {
+                    let already_colored = self.cells.values().any(|cell| cell.color.is_some() && cell.coord.distance(&next) <= region_size);
+
+                    if !already_colored {
+                        self.fill_region(&next, region_size, color);
+                        queue.push(next);
+                        visited.insert(next, true);
+                    }
+                }
             }
         }
     }
@@ -876,5 +930,76 @@ mod tests {
         let coord = utils::pixel_to_hex(x, y, size);
         // Due to the rounding in pixel_to_hex, we expect to get back the original cube coord
         assert_eq!(coord, create_coord(1, -2, 1));
+    }
+
+    #[test]
+    fn test_hex_to_pixel_pointy_top() {
+        // Test the center hex
+        let center = CubeCoord::new_unchecked(0, 0, 0);
+        let size = 10.0;
+        let (x, y) = utils::hex_to_pixel(&center, size);
+        assert_eq!(x, 0.0);
+        assert_eq!(y, 0.0);
+
+        // Test q-axis neighbor (pointy-top orientation)
+        let q_neighbor = CubeCoord::new_unchecked(1, -1, 0);
+        let (x, y) = utils::hex_to_pixel(&q_neighbor, size);
+        assert!((x - 3.0 * 10.0 * 0.5_f32.sqrt()).abs() < 0.001);
+        assert_eq!(y, 0.0);
+
+        // Test r-axis neighbor (pointy-top orientation)
+        let r_neighbor = CubeCoord::new_unchecked(0, -1, 1);
+        let (x, y) = utils::hex_to_pixel(&r_neighbor, size);
+        assert!((x - 1.5 * 10.0 * 0.5_f32.sqrt()).abs() < 0.001);
+        assert!((y + 1.5 * 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_pixel_to_hex_pointy_top() {
+        let size = 10.0;
+
+        // Test center
+        let coord = utils::pixel_to_hex(0.0, 0.0, size);
+        assert_eq!(coord.x, 0);
+        assert_eq!(coord.y, 0);
+        assert_eq!(coord.z, 0);
+
+        // Test a point clearly in the first hex neighbor along q-axis
+        let (x, y) = utils::hex_to_pixel(&CubeCoord::new_unchecked(1, -1, 0), size);
+        let coord = utils::pixel_to_hex(x, y, size);
+        assert_eq!(coord.x, 1);
+        assert_eq!(coord.y, -1);
+        assert_eq!(coord.z, 0);
+
+        // Test a point clearly in a hex neighbor along r-axis
+        let (x, y) = utils::hex_to_pixel(&CubeCoord::new_unchecked(0, -1, 1), size);
+        let coord = utils::pixel_to_hex(x, y, size);
+        assert_eq!(coord.x, 0);
+        assert_eq!(coord.y, -1);
+        assert_eq!(coord.z, 1);
+    }
+
+    #[test]
+    fn test_neighbor_pattern_pointy_top() {
+        // For pointy-topped hexagons, neighbors should form a proper pattern
+        let coord = CubeCoord::new_unchecked(0, 0, 0);
+        let neighbors = coord.neighbors();
+
+        // Verify neighbor count
+        assert_eq!(neighbors.len(), 6);
+
+        // For a pointy-topped layout, neighbors should include these coords:
+        let expected_neighbors = [
+            CubeCoord::new_unchecked(1, -1, 0), // Right
+            CubeCoord::new_unchecked(1, 0, -1), // Bottom right
+            CubeCoord::new_unchecked(0, 1, -1), // Bottom left
+            CubeCoord::new_unchecked(-1, 1, 0), // Left
+            CubeCoord::new_unchecked(-1, 0, 1), // Top left
+            CubeCoord::new_unchecked(0, -1, 1), // Top right
+        ];
+
+        for expected in expected_neighbors.iter() {
+            assert!(neighbors.contains(expected));
+        }
     }
 }
