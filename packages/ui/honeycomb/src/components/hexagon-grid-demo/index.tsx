@@ -23,7 +23,7 @@ type HexGridProps = {
   onCellClick?: (x: number, y: number, z: number) => void
 }
 
-export const HexGrid: FC<HexGridProps> = ({
+export const DemoGrid: FC<HexGridProps> = ({
   cellCount,
   hexSize,
   width = 800,
@@ -31,10 +31,11 @@ export const HexGrid: FC<HexGridProps> = ({
   onCellClick,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null)
-  const { hexCells, isLoading, error, hexGridRef } = useHexgridWasm({
-    cellCount,
-    hexSize,
-  })
+  const { hexCells, isLoading, error, hexGridRef, setHexCells } =
+    useHexgridWasm({
+      cellCount,
+      hexSize,
+    })
 
   // Handle cell click
   const handleCellClick = (event: MouseEvent<SVGElement>) => {
@@ -77,10 +78,9 @@ export const HexGrid: FC<HexGridProps> = ({
         break
     }
 
-    // Wai me do this?!
     try {
-      const renderDataJson = hexGridRef.current.get_all_cells_render_data()
-      const renderData: Array<HexRenderData> = renderDataJson
+      const renderData: Array<HexRenderData> =
+        hexGridRef.current.get_all_cells_render_data()
       setHexCells(renderData)
     } catch (err) {
       console.error("Failed to get render data:", err)

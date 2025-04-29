@@ -1,4 +1,4 @@
-import type { RefObject } from "react"
+import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
@@ -39,6 +39,7 @@ type ReturnOptions = {
   hexCells: Array<HexRenderData>
   regenerate: () => Promise<void>
   hexGridRef: RefObject<WasmHexGrid | null>
+  setHexCells: Dispatch<SetStateAction<Array<HexRenderData>>>
 }
 
 export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
@@ -109,5 +110,6 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
     validationWarning,
     regenerate: generateHexgrid,
     hexGridRef,
+    setHexCells,
   }
 }

@@ -1,9 +1,9 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import { HexGrid } from "."
+import { DemoGrid } from "."
 
-type Story = StoryObj<typeof HexGrid>
-type Meta = MetaObj<typeof HexGrid>
+type Story = StoryObj<typeof DemoGrid>
+type Meta = MetaObj<typeof DemoGrid>
 
 export const Default: Story = {
   args: {
@@ -13,6 +13,6 @@ export const Default: Story = {
 }
 
 export default {
-  title: "UI/Honeycomb/Components/HexGrid",
-  component: HexGrid,
+  title: "UI/Honeycomb/Components/DemoGrid",
+  component: DemoGrid,
 } as Meta

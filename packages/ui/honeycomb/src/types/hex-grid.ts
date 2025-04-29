@@ -1,4 +1,4 @@
-type HexPoint = {
+export type HexPoint = {
   x: number
   y: number
 }

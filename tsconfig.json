@@ -19,6 +19,7 @@
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
       "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
+      "@honeycomb/*": ["./packages/ui/honeycomb/src/"],
       "@umag/*": ["./packages/ui/umag/src/"],
       "@nfl/*": ["./packages/ui/nfl/src/"],
       "@stepper/*": ["./packages/ui/stepper/src/"],
