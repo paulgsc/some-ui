@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Fragment } from "react"
 import { accordionData } from "@overlays/data/gemini-stepper"
 import { ScrollingCredits, useGetCredits } from "attributions"
+import { StudyScene } from "makjang"
 import { BoredAnimation } from "some-ui-emoji-animations"
 import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
 import { BrickChartCarousel } from "some-ui-nfl"
@@ -82,7 +83,7 @@ const topLeftContent: Record<string, Array<PanelContent>> = {
 
 export function gettopLeftContent(key: string): PanelContent {
   const content = topLeftContent[key] ?? []
-  if (content.length <= 0) return { node: <BoredAnimation />, size: 40 }
+  if (content.length <= 0) return { node: <StudyScene />, size: 40 }
   return getRandomSubarray(content, 1)[0]
 }
 

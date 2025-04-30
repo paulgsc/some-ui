@@ -49,5 +49,14 @@ export const accordionData: AccordionSteps = {
       progress: "pending",
       content: `Migrate my flakes home pnpm package to v10, and hopefully everything is still working`,
     },
+    {
+      stepId: "item-6",
+      title: "Emoji Animation Context",
+      progress: "pending",
+      content: `Right now I manage the emoji animation context: bored | motivated as a local storage state. This is
+      annoying to work with, since it offers more persistence across sessions than I want. I would use a useState
+      but this requires prop drilling to share across multiple components. Me not like using React context or going
+      grocery shopping so will refactor it to use my own temu version of zustand.`,
+    },
   ],
 }

@@ -810,6 +810,9 @@ importers:
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../maishatu-fetch-kit
+      makjang:
+        specifier: workspace:*
+        version: link:../makjang
       react-d3-tree:
         specifier: 3.6.2
         version: 3.6.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)

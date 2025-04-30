@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useLocalStorage } from "some-ui-utils"
 
 //TODO: Use fucntional types to manage all state: future goal!.
@@ -22,10 +22,12 @@ export const useBatteryState = (
     removeValue: delCharge,
   } = useLocalStorage(chargeKey, initialCharge)
   const [isCharging, setIsCharging] = useState(false)
+  const intervalRef =
+    useRef<ReturnType<typeof setInterval | undefined>>(undefined)
 
   useEffect(() => {
     const intervalTime = (100 / 60) * 60000
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (!isCharging && charge > 0) {
         setCharge((prevCharge) => Math.max(prevCharge - dischargeRate, 0))
       } else if (isCharging && charge < 100) {
@@ -34,7 +36,7 @@ export const useBatteryState = (
     }, intervalTime)
 
     return (): void => {
-      clearInterval(interval)
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [charge, isCharging, dischargeRate])
 

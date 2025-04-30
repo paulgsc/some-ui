@@ -16,6 +16,7 @@
     "some-ui-utils": "workspace:*",
     "some-ui-stepper": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
+    "makjang": "workspace:*",
     "wireframes": "workspace:*"
   },
   "devDependencies": {

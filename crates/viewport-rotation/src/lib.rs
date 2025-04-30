@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 /// Represents a face in the cube
@@ -17,11 +17,11 @@ pub enum RotationAxis {
 /// Struct to manage viewport rotation with cube faces
 #[wasm_bindgen]
 pub struct ViewportRotation {
-    // Queue of items waiting to be displayed
-    pending_items: VecDeque<String>,
+    // Total number of items
+    total_items: usize,
 
-    // Items currently assigned to each face (0-5)
-    faces: Vec<Vec<String>>,
+    // Indices of items assigned to each face (0-5)
+    face_indices: Vec<Vec<usize>>,
 
     // Maximum items per valid face
     max_per_face: usize,
@@ -40,16 +40,25 @@ pub struct ViewportRotation {
 
     // Current position in the rotation cycle
     cycle_position: usize,
+
+    // Next index to be assigned
+    next_index: usize,
 }
 
 /// State that can be serialized and sent to the client
 #[derive(Serialize, Deserialize)]
 pub struct ViewportState {
-    faces: Vec<Vec<String>>,
+    #[serde(rename = "faceIndices")]
+    face_indices: Vec<Vec<usize>>, // Indices for each face
+    #[serde(rename = "currFace")]
     current_face: Face,
+    #[serde(rename = "currIdx")]
     current_item_index: usize,
+    #[serde(rename = "currRotationAxis")]
     current_axis: RotationAxis,
-    pending_items: Vec<String>,
+    #[serde(rename = "pendingCount")]
+    pending_count: usize, // Number of pending items
+    #[serde(rename = "cyclePosition")]
     cycle_position: usize,
 }
 
@@ -57,9 +66,7 @@ pub struct ViewportState {
 impl ViewportRotation {
     /// Creates a new ViewportRotation instance
     #[wasm_bindgen(constructor)]
-    pub fn new(item_ids_json: &str, max_per_face: usize) -> Result<ViewportRotation, JsValue> {
-        let item_ids: Vec<String> = serde_json::from_str(item_ids_json).map_err(|e| JsValue::from_str(&format!("Failed to parse item IDs: {}", e)))?;
-
+    pub fn new(total_items: usize, max_per_face: usize) -> Result<ViewportRotation, JsValue> {
         if max_per_face < 1 || max_per_face > 6 {
             return Err(JsValue::from_str("max_per_face must be between 1 and 6"));
         }
@@ -70,14 +77,15 @@ impl ViewportRotation {
         rotation_cycles.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]); // Front -> Right -> Back -> Left
 
         let mut rotation = Self {
-            pending_items: VecDeque::from(item_ids),
-            faces: vec![Vec::new(); 6], // 6 total faces
+            total_items,
+            face_indices: vec![Vec::new(); 6], // 6 total faces
             max_per_face,
             current_face: 0,
             current_item_index: 0,
-            current_axis: RotationAxis::YAxis, // Default to Y-axis rotation
+            current_axis: RotationAxis::XAxis, // Default to Y-axis rotation
             rotation_cycles,
             cycle_position: 0,
+            next_index: 0,
         };
 
         // Initialize faces with content
@@ -107,29 +115,29 @@ impl ViewportRotation {
         self.get_state()
     }
 
-    /// Get the current item ID
+    /// Get the current item index
     #[wasm_bindgen]
-    pub fn get_current_item_id(&self) -> Option<String> {
-        self.internal_get_current_item_id()
+    pub fn get_current_item_index(&self) -> Option<usize> {
+        self.internal_get_current_item_index()
     }
 
-    /// Get all item IDs for a specific face
+    /// Get all item indices for a specific face
     #[wasm_bindgen]
-    pub fn get_face_item_ids(&self, face_index: usize) -> Result<JsValue, JsValue> {
-        if face_index >= self.faces.len() {
+    pub fn get_face_indices(&self, face_index: usize) -> Result<JsValue, JsValue> {
+        if face_index >= self.face_indices.len() {
             return Err(JsValue::from_str("Face index out of bounds"));
         }
 
-        let items = &self.faces[face_index];
-        Ok(serde_wasm_bindgen::to_value(&items).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
+        Ok(serde_wasm_bindgen::to_value(&self.face_indices[face_index]).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
     }
 
-    /// Get the current items to display in the viewport
+    /// Get the current cycle faces and their indices
     #[wasm_bindgen]
-    pub fn get_current_cycle_items(&self) -> Result<JsValue, JsValue> {
-        let items = self.get_active_cycle_faces().iter().map(|&face| &self.faces[face]).collect::<Vec<_>>();
+    pub fn get_current_cycle_indices(&self) -> Result<JsValue, JsValue> {
+        let cycle_faces = self.get_active_cycle_faces();
+        let indices_map: HashMap<usize, Vec<usize>> = cycle_faces.into_iter().map(|face| (face, self.face_indices[face].clone())).collect();
 
-        Ok(serde_wasm_bindgen::to_value(&items).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
+        Ok(serde_wasm_bindgen::to_value(&indices_map).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
     }
 
     /// Set the rotation axis
@@ -153,18 +161,18 @@ impl ViewportRotation {
     /// Gets the internal state representation
     fn internal_get_state(&self) -> ViewportState {
         ViewportState {
-            faces: self.faces.clone(),
+            face_indices: self.face_indices.clone(),
             current_face: self.current_face,
             current_item_index: self.current_item_index,
             current_axis: self.current_axis,
-            pending_items: self.pending_items.iter().cloned().collect(),
+            pending_count: self.total_items - self.next_index,
             cycle_position: self.cycle_position,
         }
     }
 
     /// Moves to the next item in the current face
     fn internal_next_item(&mut self) -> ViewportState {
-        let face_items_count = self.faces[self.current_face].len();
+        let face_items_count = self.face_indices[self.current_face].len();
 
         if face_items_count > 0 {
             self.current_item_index = (self.current_item_index + 1) % face_items_count;
@@ -188,19 +196,19 @@ impl ViewportRotation {
         self.current_face = cycle[self.cycle_position];
 
         // Check if we're back at the beginning of the cycle and need to replenish items
-        if self.cycle_position == 0 && !self.pending_items.is_empty() {
+        if self.cycle_position == 0 && self.next_index < self.total_items {
             self.cycle_all_faces();
         }
 
         self.internal_get_state()
     }
 
-    /// Get the current item ID
-    fn internal_get_current_item_id(&self) -> Option<String> {
-        if self.faces[self.current_face].is_empty() {
+    /// Get the current item index
+    fn internal_get_current_item_index(&self) -> Option<usize> {
+        if self.face_indices[self.current_face].is_empty() {
             None
         } else {
-            Some(self.faces[self.current_face][self.current_item_index].clone())
+            Some(self.face_indices[self.current_face][self.current_item_index])
         }
     }
 
@@ -215,13 +223,15 @@ impl ViewportRotation {
         }
     }
 
-    /// Fill a face with pending items
+    /// Fill a face with pending item indices
     fn fill_face(&mut self, face_idx: Face) {
-        self.faces[face_idx].clear();
+        self.face_indices[face_idx].clear();
 
+        // Add up to max_per_face indices from available items
         for _ in 0..self.max_per_face {
-            if let Some(item_id) = self.pending_items.pop_front() {
-                self.faces[face_idx].push(item_id);
+            if self.next_index < self.total_items {
+                self.face_indices[face_idx].push(self.next_index);
+                self.next_index += 1;
             } else {
                 break;
             }
@@ -230,7 +240,7 @@ impl ViewportRotation {
 
     /// Cycle items through all active faces
     fn cycle_all_faces(&mut self) {
-        if self.pending_items.is_empty() {
+        if self.next_index >= self.total_items {
             return;
         }
 
@@ -238,24 +248,24 @@ impl ViewportRotation {
         let active_faces = self.get_active_cycle_faces();
 
         for &face_idx in &active_faces {
-            if self.pending_items.is_empty() {
+            if self.next_index >= self.total_items {
                 break;
             }
 
-            let items_to_replace = std::cmp::min(self.faces[face_idx].len(), self.pending_items.len());
+            let items_to_replace = std::cmp::min(self.face_indices[face_idx].len(), self.total_items - self.next_index);
 
-            // Replace existing items first
+            // Replace existing indices first
             for i in 0..items_to_replace {
-                if let Some(new_item) = self.pending_items.pop_front() {
-                    let _ = std::mem::replace(&mut self.faces[face_idx][i], new_item);
-                }
+                self.face_indices[face_idx][i] = self.next_index;
+                self.next_index += 1;
             }
 
-            // Add new items if there's still space
-            let remaining_space = self.max_per_face - self.faces[face_idx].len();
+            // Add new indices if there's still space
+            let remaining_space = self.max_per_face - self.face_indices[face_idx].len();
             for _ in 0..remaining_space {
-                if let Some(item_id) = self.pending_items.pop_front() {
-                    self.faces[face_idx].push(item_id);
+                if self.next_index < self.total_items {
+                    self.face_indices[face_idx].push(self.next_index);
+                    self.next_index += 1;
                 } else {
                     break;
                 }
