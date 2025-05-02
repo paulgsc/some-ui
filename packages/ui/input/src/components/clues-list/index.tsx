@@ -27,16 +27,22 @@ export const ClueList: FC<ClueListProps> = ({
         className
       )}
     >
-      {clues.map((curr, i) => (
-        <li key={`clue_${i}`} className={cn("")}>
-          <ClueCard
-            clue={curr.clue}
-            clueNum={curr.clueNum}
-            word={curr.word}
-            isActive={i === activeIndex}
-          />
-        </li>
-      ))}
+      {clues.map((curr, i) => {
+        const { clue, clueNum, word, thumbnail } = curr
+        const args = {
+          clue,
+          clueNum,
+          word,
+          thumbnail,
+          isActive: i === activeIndex,
+        }
+
+        return (
+          <li key={`clue_${i}`} className={cn("")}>
+            <ClueCard {...args} />
+          </li>
+        )
+      })}
     </ul>
   )
 }

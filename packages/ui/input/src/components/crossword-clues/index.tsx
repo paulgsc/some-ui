@@ -1,30 +1,21 @@
 import type { FC } from "react"
+import { ClueCarousel } from "@input/components/clue-carousel"
+import { CrosswordGridSvg } from "@input/components/crossword-svg"
 
-type Clue = {
-  num: number
-  clue: string
-}
+type CluesProps = {}
 
-type CluesProps = {
-  clues: Array<Clue>
-  direction: "across" | "down"
-}
-
-export const Clues: FC<CluesProps> = ({ clues, direction }) => {
+export const Clues: FC<CluesProps> = () => {
   return (
-    <ul className="grid grid-flow-row items-center justify-center gap-1">
-      <h3 className="text-center text-xl font-bold uppercase">
-        {" "}
-        {direction === "across" ? "Across" : "Down"}{" "}
-      </h3>
-      {clues.map((clue, i) => (
-        <li key={i} className="flex items-end justify-between gap-2.5">
-          <p className="flex size-8 items-end justify-end text-end">
-            {clue.num}
-          </p>
-          <p className="flex-grow">{clue.clue}</p>
-        </li>
-      ))}
-    </ul>
+    <div className="absolute inset-0 grid size-full auto-cols-[2fr_4fr_2fr] grid-flow-col">
+      <aside className="relative flex size-full items-center justify-center border border-red-100">
+        <ClueCarousel cluesDirection="across" className="h-1/2 w-10/12" />
+      </aside>
+      <main className="relative border border-red-100">
+        <CrosswordGridSvg />
+      </main>
+      <aside className="relative flex size-full items-center justify-center border border-red-100">
+        <ClueCarousel cluesDirection="down" className="h-1/2 w-10/12" />
+      </aside>
+    </div>
   )
 }

@@ -3,6 +3,7 @@ import { forwardRef } from "react"
 import { ClueInfo } from "@input/components/clue-info"
 import { ClueThumbnail } from "@input/components/clue-thumbnail"
 import type { CrosswordClueWithNum } from "@input/types/crossword"
+import { PolarSphere } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type ClueCardProps = {
@@ -25,12 +26,20 @@ export const ClueCard = forwardRef<
     },
     ref
   ) => {
+    const powerballArgs = {
+      width: 80,
+      height: 80,
+      radius: 40,
+      rotationSpeed: 1,
+      polarNum: clueNum,
+    }
+
     return (
       <div
         ref={ref}
         className={cn(
-          "bg-card inset-shadow-sm relative flex size-full overflow-hidden rounded-lg  transition-all duration-300",
-          "p-1.5",
+          "bg-card inset-shadow-sm flex size-full overflow-hidden rounded-lg  transition-all duration-300",
+          "relative p-1.5",
           className,
           {
             "border-4 border-[oklch(50%_0.3_320deg)]": isActive,
@@ -50,6 +59,9 @@ export const ClueCard = forwardRef<
           <ClueThumbnail src={thumbnail} alt={word} isActive={isActive} />
 
           <ClueInfo clueNum={clueNum} clue={clue} isActive={isActive} />
+        </div>
+        <div className="inset-y-3/5 absolute start-0 size-12">
+          <PolarSphere {...powerballArgs} />
         </div>
       </div>
     )

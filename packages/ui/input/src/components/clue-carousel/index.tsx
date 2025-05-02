@@ -9,25 +9,27 @@ import { cn } from "some-ui-utils"
 
 type ClueCarouselProps = {
   className?: string
-  direction: Direction
+  cluesDirection: Direction
 }
 
 export const ClueCarousel: FC<ClueCarouselProps> = ({
   className,
-  direction,
+  cluesDirection,
 }) => {
   const {
-    cluesQueue: { cluesAcross, cluesDown },
+    cluesQueue: { cluesAcross, cluesDown, direction },
   } = useClueQueueEvents()
 
-  const queue = direction === "across" ? cluesAcross : cluesDown
+  const queue = cluesDirection === "across" ? cluesAcross : cluesDown
   const { isLoading, error, rotationState } = useFetchViewportWasm({
     totalItems: queue?.length ?? 0,
     maxPerFace: 3,
+    cluesDirection,
+    stateDirection: direction,
   })
 
   const getClues = useCallback(() => {
-    if (!rotationState || !queue) return []
+    if (!rotationState || queue.length === 0) return []
 
     const { faceIndices, currFace, currIdx } = rotationState
 
@@ -42,16 +44,15 @@ export const ClueCarousel: FC<ClueCarouselProps> = ({
       const { key, ...rest } = args
       return <ClueList key={key} {...rest} />
     })
-  }, [rotationState, cluesAcross, cluesDown])
+  }, [queue, rotationState])
 
-  console.log("this ran how many times!")
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
   if (!rotationState) return <div> never began!</div>
 
   return (
     <DiceCard
-      className={cn("size-full", className)}
+      className={cn("size-full w-10/12", className)}
       dof={"X-axis"}
       mode={"manual"}
       faces={getClues()}

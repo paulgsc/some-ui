@@ -22,13 +22,16 @@ export const ClueThumbnail: FC<ClueThumbnailProps> = ({
         }
       )}
     >
-      <div className="relative h-[94px] w-[168px] overflow-hidden rounded-lg">
+      <div className="relative size-20 overflow-hidden rounded-lg">
         <img
-          src={src }
+          src={src}
           alt={alt}
-          className={cn("object-cover transition-all duration-300", {
-            "brightness-110": isActive,
-          })}
+          className={cn(
+            "aspect-square object-cover transition-all duration-300",
+            {
+              "brightness-110": isActive,
+            }
+          )}
           sizes="168px"
         />
       </div>

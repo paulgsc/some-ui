@@ -9,7 +9,7 @@ type Meta = MetaObj<typeof ClueCarousel>
 export const Default: Story = {
   args: {
     className: "",
-    direction: "across",
+    cluesDirection: "across",
   },
   render: (args) => (
     <main className="absolute inset-0 flex items-center justify-center">

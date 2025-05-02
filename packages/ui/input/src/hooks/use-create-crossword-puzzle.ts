@@ -199,6 +199,10 @@ export function useCrosswordWithAnimation(
             x: cellToReveal.x,
             y: cellToReveal.y,
           })
+          clueEvents.setState((prev) => ({
+            ...prev,
+            direction: cellToReveal.direction,
+          }))
           notifyRevealCell(cellToReveal.direction)
         }
         lastRevealedIndexRef.current++
@@ -243,6 +247,7 @@ export function useCrosswordWithAnimation(
           return {
             cluesAcross: [],
             cluesDown: [],
+            direction: unsolvedCellsRef.current.at(0)?.direction,
           }
         }
         if (el.direction === "across") {
@@ -335,6 +340,7 @@ export const notificationEvents = createEventBus<NotificationEventPayloads>()
 type CrosswordClueState = {
   cluesAcross: Array<CrosswordClueWithNum>
   cluesDown: Array<CrosswordClueWithNum>
+  direction?: Direction
 }
 
 type CrosswordClueEventPayloads = {

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { notificationEvents } from "@input/hooks/use-create-crossword-puzzle"
+import {
+  clueEvents,
+  notificationEvents,
+} from "@input/hooks/use-create-crossword-puzzle"
+import type { Direction } from "@input/types/crossword"
 import { cubeEventBus } from "some-ui-slideshow"
 import init, { ViewportRotation } from "viewport-rotation"
 import z from "zod"
@@ -24,12 +28,16 @@ type ViewportState = z.infer<typeof ViewportStateSchema>
 
 type Options = {
   totalItems: number
+  cluesDirection: Direction
+  stateDirection: Direction
   maxPerFace?: number
   onError?: (error: Error) => void
 }
 
 export const useFetchViewportWasm = ({
   totalItems,
+  cluesDirection,
+  stateDirection,
   maxPerFace = 2,
   onError,
 }: Options) => {
@@ -105,6 +113,7 @@ export const useFetchViewportWasm = ({
         ViewportStateSchema.parse(prevJson)
 
       if (faceIndices[currFace].length <= currIdx + 1) {
+        /// TODO: Sadly this triggers the rotation of all cubes in context window?
         cubeEventBus.emit("rotate:next", undefined)
         rotateNext()
         return
@@ -159,20 +168,20 @@ export const useFetchViewportWasm = ({
     const unsubNextAcrossCell = notificationEvents.on(
       "reveal:cell:across",
       () => {
-        getNextItem()
+        if (cluesDirection === stateDirection) getNextItem()
       }
     )
     unsubscribers.push(unsubNextAcrossCell)
 
     const unsubNextDownCell = notificationEvents.on("reveal:cell:down", () => {
-      getNextItem()
+      if (cluesDirection === stateDirection) getNextItem()
     })
     unsubscribers.push(unsubNextDownCell)
 
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [])
+  }, [cluesDirection, stateDirection])
 
   return {
     isLoading,
