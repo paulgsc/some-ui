@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { notificationEvents } from "@input/hooks/use-create-crossword-puzzle"
 import { cubeEventBus } from "some-ui-slideshow"
 import init, { ViewportRotation } from "viewport-rotation"
 import z from "zod"
@@ -8,6 +9,7 @@ const FaceSchema = z.array(z.number().int().min(0))
 const RotationAxisSchema = z.enum(["X-axis", "Y-axis"])
 
 type RotatationAxis = z.infer<typeof RotationAxisSchema>
+type Unsubscribe = () => void
 
 const ViewportStateSchema = z.object({
   faceIndices: z.array(FaceSchema),
@@ -57,14 +59,6 @@ export const useFetchViewportWasm = ({
       setIsLoading(false)
     }
   }, [totalItems, maxPerFace])
-
-  useEffect(() => {
-    initialize()
-
-    return (): void => {
-      rotationManagerRef.current = null
-    }
-  }, [])
 
   const setRotationAxis = useCallback(
     (axis: RotatationAxis) => {
@@ -150,6 +144,35 @@ export const useFetchViewportWasm = ({
     },
     [onError]
   )
+
+  useEffect(() => {
+    initialize()
+
+    return (): void => {
+      rotationManagerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const unsubscribers: Array<Unsubscribe> = []
+
+    const unsubNextAcrossCell = notificationEvents.on(
+      "reveal:cell:across",
+      () => {
+        getNextItem()
+      }
+    )
+    unsubscribers.push(unsubNextAcrossCell)
+
+    const unsubNextDownCell = notificationEvents.on("reveal:cell:down", () => {
+      getNextItem()
+    })
+    unsubscribers.push(unsubNextDownCell)
+
+    return (): void => {
+      unsubscribers.forEach((unsub) => unsub())
+    }
+  }, [])
 
   return {
     isLoading,

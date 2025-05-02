@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef } from "react"
-import type { CrosswordCell, WordPlacement } from "@input/types/crossword"
+import { cluesJson } from "@input/data/clues"
+import type {
+  CrosswordCell,
+  CrosswordClue,
+  CrosswordClueWithNum,
+  Direction,
+  WordPlacement,
+} from "@input/types/crossword"
+import { createEventBus } from "some-ui-utils"
 
 type ViewBoxTuple = [minX: number, minY: number, width: number, height: number]
 type CrosswordState = {
@@ -104,10 +112,11 @@ export function useCrosswordWithAnimation(
     const gridMap = new Map<string, CrosswordCell>()
 
     for (const placement of wordPlacements) {
-      const { start_x, start_y, is_across, word, clue_num } = placement
+      const { start_x, start_y, is_across, clue_num, word } = placement
       if (!word) continue
 
       for (let i = 0; i < word.length; i++) {
+        const direction = is_across ? "across" : "down"
         const x = is_across ? start_x + i : start_x
         const y = !is_across ? start_y + i : start_y
         const key = `${x}-${y}`
@@ -116,6 +125,8 @@ export function useCrosswordWithAnimation(
           gridMap.set(key, {
             x,
             y,
+            direction,
+            word,
             letter: word[i],
             solved: false,
             clueNum: i === 0 ? clue_num : undefined,
@@ -174,6 +185,7 @@ export function useCrosswordWithAnimation(
     // No unsolved cells, nothing to animate
     if (unsolvedCellsRef.current.length === 0) {
       dispatch({ type: "SET_ANIMATION", isAnimating: false })
+      notificationEvents.emit("notification:stop", undefined)
       return
     }
 
@@ -185,8 +197,42 @@ export function useCrosswordWithAnimation(
       unsolvedCellsRef.current[j] = temp
     }
 
+    clueEvents.setState(() => {
+      const cluesAcross: Array<CrosswordClueWithNum> = []
+      const cluesDown: Array<CrosswordClueWithNum> = []
+      for (const el of unsolvedCellsRef.current) {
+        const c: CrosswordClue | undefined = cluesJson.find(
+          (c) => c.word.toLowerCase() === el.word.toLowerCase()
+        )
+        if (!c) {
+          stopAnimation()
+          return {
+            cluesAcross: [],
+            cluesDown: [],
+          }
+        }
+        if (el.direction === "across") {
+          cluesAcross.push({
+            ...c,
+            clueNum: el.clueNum ?? el.clueNums.at(0) ?? 0,
+          })
+        } else {
+          cluesDown.push({
+            ...c,
+            clueNum: el.clueNum ?? el.clueNums.at(0) ?? 0,
+          })
+        }
+      }
+
+      return {
+        cluesAcross,
+        cluesDown,
+      }
+    })
+
     startTimeRef.current = performance.now()
     dispatch({ type: "SET_ANIMATION", isAnimating: true })
+    notificationEvents.emit("notification:start", undefined)
 
     // Start animation frame
     const animate = (timestamp: number): void => {
@@ -209,11 +255,13 @@ export function useCrosswordWithAnimation(
             x: cellToReveal.x,
             y: cellToReveal.y,
           })
+          notifyRevealCell(cellToReveal.direction)
         }
         lastRevealedIndexRef.current++
       }
 
       dispatch({ type: "UPDATE_COMPLETION", percentage: progress * 100 })
+      notificationEvents.emit("notification:complete", undefined)
 
       if (progress < 1) {
         animationFrameRef.current = requestAnimationFrame(animate)
@@ -221,8 +269,10 @@ export function useCrosswordWithAnimation(
         // Ensure all cells are revealed at the end
         unsolvedCellsRef.current.forEach((cell) => {
           dispatch({ type: "REVEAL_CELL", x: cell.x, y: cell.y })
+          notifyRevealCell(cell.direction)
         })
         dispatch({ type: "SET_ANIMATION", isAnimating: false })
+        notificationEvents.emit("notification:stop", undefined)
       }
     }
 
@@ -235,17 +285,34 @@ export function useCrosswordWithAnimation(
     }
   }, [state.grid, animationDuration])
 
+  const notifyRevealCell = useCallback((direction: Direction) => {
+    switch (direction) {
+      case "across": {
+        notificationEvents.emit("reveal:cell:across", undefined)
+        break
+      }
+      case "down": {
+        notificationEvents.emit("reveal:cell:down", undefined)
+        break
+      }
+      default:
+        direction satisfies never
+    }
+  }, [])
+
   const stopAnimation = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
     }
     dispatch({ type: "SET_ANIMATION", isAnimating: false })
+    notificationEvents.emit("notification:stop", undefined)
   }, [])
 
   const resetCrossword = useCallback(() => {
     stopAnimation()
     dispatch({ type: "RESET_CELLS" })
+    notificationEvents.emit("reset:cells", undefined)
   }, [stopAnimation])
 
   const revealAllCells = useCallback(() => {
@@ -273,3 +340,35 @@ export function useCrosswordWithAnimation(
     revealAllCells,
   }
 }
+
+type NotificationEventPayloads = {
+  "reveal:cell:across": undefined
+  "reveal:cell:down": undefined
+  "reset:cells": undefined
+  "notification:start": undefined
+  "notification:stop": undefined
+  "notification:complete": undefined // Auto-added when using state
+}
+
+export const notificationEvents = createEventBus<NotificationEventPayloads>()
+
+type CrosswordClueState = {
+  cluesAcross: Array<CrosswordClueWithNum>
+  cluesDown: Array<CrosswordClueWithNum>
+}
+
+type CrosswordClueEventPayloads = {
+  "clues:update:queue": { clues: Array<CrosswordClueWithNum> }
+  "state:changed": {
+    prevState: CrosswordClueState
+    nextState: CrosswordClueState
+  }
+}
+
+export const clueEvents = createEventBus<
+  CrosswordClueEventPayloads,
+  CrosswordClueState
+>({
+  cluesAcross: [],
+  cluesDown: [],
+})

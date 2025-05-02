@@ -18,6 +18,8 @@ export type CrosswordResult = {
 export type CrosswordCell = {
   x: number
   y: number
+  direction: Direction
+  word: string
   clueNum?: number
   clueNums: Array<number>
   letter?: string
@@ -25,10 +27,13 @@ export type CrosswordCell = {
 }
 
 export type CrosswordClue = {
-  id: number
   clue: string
-  answer: string
+  word: string
   thumbnail?: string
 }
 
-export type CrosswordClues = Record<Direction, Array<CrosswordClue>>
+export type CrosswordClueWithNum = {
+  clueNum: number
+} & CrosswordClue
+
+export type CrosswordClues = Record<Direction, Array<CrosswordClueWithNum>>

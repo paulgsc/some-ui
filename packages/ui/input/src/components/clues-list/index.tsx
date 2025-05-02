@@ -1,13 +1,11 @@
 import type { FC } from "react"
-import { useState } from "react"
 import { ClueCard } from "@input/components/crossword-clue"
-import type { CrosswordClue } from "@input/types/crossword"
-import { cubeEventBus } from "some-ui-slideshow"
+import type { CrosswordClueWithNum } from "@input/types/crossword"
 import { cn } from "some-ui-utils"
 
 type ClueListProps = {
   className?: string
-  clues: Array<CrosswordClue>
+  clues: Array<CrosswordClueWithNum>
   activeIndex?: number
   isActive: boolean
 }
@@ -32,10 +30,9 @@ export const ClueList: FC<ClueListProps> = ({
       {clues.map((curr, i) => (
         <li key={`clue_${i}`} className={cn("")}>
           <ClueCard
-            thumbnail={curr.thumbnail}
-            title={curr.title}
-            clue={curr.channelInfo}
-            updatedTime={curr.updatedTime}
+            clue={curr.clue}
+            clueNum={curr.clueNum}
+            word={curr.word}
             isActive={i === activeIndex}
           />
         </li>

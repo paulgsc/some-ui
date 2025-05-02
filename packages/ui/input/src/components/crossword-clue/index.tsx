@@ -2,16 +2,13 @@ import type { HTMLAttributes } from "react"
 import { forwardRef } from "react"
 import { ClueInfo } from "@input/components/clue-info"
 import { ClueThumbnail } from "@input/components/clue-thumbnail"
+import type { CrosswordClueWithNum } from "@input/types/crossword"
 import { cn } from "some-ui-utils"
 
 type ClueCardProps = {
-  thumbnail: string
-  title: string
-  clue: string
-  updatedTime: string
   isActive?: boolean
   className?: string
-}
+} & CrosswordClueWithNum
 
 export const ClueCard = forwardRef<
   HTMLDivElement,
@@ -20,10 +17,10 @@ export const ClueCard = forwardRef<
   (
     {
       className,
+      clue,
+      clueNum,
+      word,
       thumbnail = "/placeholder.svg?height=94&width=168",
-      title = "Mix - 剪 (Cut) - 李沫菲 (Li Mofei), 吉拉石林 (Jila Shilin)...",
-      clue = "Zhang Yuan, Li Qi, Shang Wenjie, and more",
-      updatedTime = "Updated today",
       isActive = false,
     },
     ref
@@ -41,7 +38,7 @@ export const ClueCard = forwardRef<
         )}
       >
         <div
-          className={cn("flex gap-1.5", {
+          className={cn("flex size-full gap-1.5", {
             "animate-clue-rubber-band bg-blue-50 shadow-md": isActive,
           })}
         >
@@ -50,14 +47,9 @@ export const ClueCard = forwardRef<
             <div className="shimmer-animation absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-blue-300/70 to-transparent" />
           )}
 
-          <ClueThumbnail src={thumbnail} alt={title} isActive={isActive} />
+          <ClueThumbnail src={thumbnail} alt={word} isActive={isActive} />
 
-          <ClueInfo
-            title={title}
-            clue={clue}
-            updatedTime={updatedTime}
-            isActive={isActive}
-          />
+          <ClueInfo clueNum={clueNum} clue={clue} isActive={isActive} />
         </div>
       </div>
     )

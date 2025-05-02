@@ -1,19 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import type { CrosswordResult } from "@input/types/crossword"
+import { cluesJson } from "@input/data/clues"
+import type { CrosswordClue, CrosswordResult } from "@input/types/crossword"
 import init, { CrosswordGenerator } from "some-crossword"
+import { getRandomSubarray } from "some-ui-utils"
 import { z } from "zod"
-
-// Define Zod schemas for input validation
-const WordListSchema = z.array(z.string().trim().min(1)).min(1, {
-  message: "Please add at least one word",
-})
-
-const MaxGroupSizeSchema = z.number().positive().int()
-
-const CrosswordInputSchema = z.object({
-  wordList: WordListSchema,
-  maxGroupSize: MaxGroupSizeSchema.optional(),
-})
 
 // Define Zod schemas for result validation
 const WordPlacementSchema = z.object({
@@ -32,34 +22,16 @@ const CrosswordResultSchema = z.object({
   word_placements: z.array(WordPlacementSchema),
 })
 
-export function useCreateCrosswordWasm(
-  wordList: Array<string> = [],
-  maxGroupSize: number = Math.max(1, Math.floor(wordList.length * 0.75))
-) {
+export function useCreateCrosswordWasm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [crossword, setCrossword] = useState<CrosswordResult | null>(null)
+  const [randomClues, setRandomClues] = useState<Array<CrosswordClue>>([])
   const [validationWarning, setValidationWarning] = useState<string | null>(
     null
   )
 
   const generateCrossword = useCallback(async () => {
-    // Validate inputs with Zod
-    try {
-      CrosswordInputSchema.parse({
-        wordList,
-        maxGroupSize,
-      })
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        const errorMessage = validationError.errors
-          .map((err) => err.message)
-          .join(", ")
-        setError(errorMessage)
-        return
-      }
-    }
-
     setIsLoading(true)
     setError(null)
     setValidationWarning(null)
@@ -69,6 +41,11 @@ export function useCreateCrosswordWasm(
       await init()
 
       // Create a new generator with words and max group size
+      const wordList = randomClues.reduce<Array<string>>(
+        (acc, curr) => [...acc, curr.word],
+        []
+      )
+      const maxGroupSize = Math.max(1, Math.floor(wordList.length * 0.75))
       const generator = new CrosswordGenerator(wordList, maxGroupSize)
 
       // Generate the crossword
@@ -84,17 +61,33 @@ export function useCreateCrosswordWasm(
     } finally {
       setIsLoading(false)
     }
-  }, [wordList, maxGroupSize])
+  }, [randomClues])
+
+  const selectWordList = useCallback(() => {
+    if (randomClues.length > 0) return
+
+    const N = Math.floor(Math.random() * 10) + 6
+    const randClues = getRandomSubarray(
+      cluesJson,
+      Math.min(N, cluesJson.length)
+    )
+    setRandomClues(randClues)
+  }, [cluesJson])
 
   useEffect(() => {
-    if (wordList.length > 0) {
+    if (randomClues.length > 0) {
       generateCrossword()
     }
-  }, [wordList, maxGroupSize, generateCrossword])
+  }, [randomClues, generateCrossword])
+
+  useEffect(() => {
+    selectWordList()
+  }, [selectWordList])
 
   return {
     isLoading,
     error,
+    randomClues,
     crossword,
     validationWarning,
     regenerate: generateCrossword,

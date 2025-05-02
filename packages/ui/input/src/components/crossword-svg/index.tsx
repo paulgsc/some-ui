@@ -6,7 +6,6 @@ import { useCreateCrosswordWasm } from "@input/hooks/use-crossword-wasm"
 import { cn } from "some-ui-utils"
 
 type CrosswordGridSvgProps = {
-  words: Array<string>
   className?: string
   duration?: number
   delay?: number
@@ -15,7 +14,6 @@ type CrosswordGridSvgProps = {
   onAnimationComplete?: () => void
 }
 export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
-  words,
   onAnimationComplete,
   className,
   autoplayOnMount = true,
@@ -25,7 +23,7 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   const cellSize = 30
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-  const { crossword } = useCreateCrosswordWasm(words)
+  const { crossword } = useCreateCrosswordWasm()
   const {
     grid,
     viewBox,
