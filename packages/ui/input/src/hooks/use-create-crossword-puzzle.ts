@@ -176,20 +176,54 @@ export function useCrosswordWithAnimation(
       cancelAnimationFrame(animationFrameRef.current)
     }
 
-    // Reset state for a new animation
-    lastRevealedIndexRef.current = 0
+    if (unsolvedCellsRef.current.length === 0) setUnsolved()
 
-    // Get unsolved cells
-    unsolvedCellsRef.current = state.grid.filter((cell) => !cell.solved)
+    startTimeRef.current = performance.now()
+    dispatch({ type: "SET_ANIMATION", isAnimating: true })
+    notificationEvents.emit("notification:start", undefined)
 
-    // No unsolved cells, nothing to animate
-    if (unsolvedCellsRef.current.length === 0) {
-      dispatch({ type: "SET_ANIMATION", isAnimating: false })
-      notificationEvents.emit("notification:stop", undefined)
-      return
+    // Start animation frame
+    const animate = (timestamp: number): void => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp
+
+      const elapsed = timestamp - startTimeRef.current
+
+      if (elapsed >= animationDuration) {
+        startTimeRef.current = timestamp
+
+        const cellToReveal =
+          unsolvedCellsRef.current[lastRevealedIndexRef.current]
+        if (cellToReveal) {
+          dispatch({
+            type: "REVEAL_CELL",
+            x: cellToReveal.x,
+            y: cellToReveal.y,
+          })
+          notifyRevealCell(cellToReveal.direction)
+        }
+        lastRevealedIndexRef.current++
+      }
+
+      if (lastRevealedIndexRef.current >= unsolvedCellsRef.current.length) {
+        stopAnimation()
+        return
+      }
+      animationFrameRef.current = requestAnimationFrame(animate)
     }
 
-    // Shuffle the unsolved cells for random reveals
+    animationFrameRef.current = requestAnimationFrame(animate)
+
+    return (): void => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [animationDuration, state.grid])
+
+  const setUnsolved = useCallback(() => {
+    lastRevealedIndexRef.current = 0
+    unsolvedCellsRef.current = state.grid.filter((cell) => !cell.solved)
+
     for (let i = unsolvedCellsRef.current.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       const temp = unsolvedCellsRef.current[i]
@@ -229,60 +263,6 @@ export function useCrosswordWithAnimation(
         cluesDown,
       }
     })
-
-    startTimeRef.current = performance.now()
-    dispatch({ type: "SET_ANIMATION", isAnimating: true })
-    notificationEvents.emit("notification:start", undefined)
-
-    // Start animation frame
-    const animate = (timestamp: number): void => {
-      if (!startTimeRef.current) startTimeRef.current = timestamp
-
-      const elapsed = timestamp - startTimeRef.current
-      const progress = Math.min(elapsed / animationDuration, 1)
-
-      // Calculate how many cells should be revealed by now
-      const totalCells = unsolvedCellsRef.current.length
-      const cellsToReveal = Math.floor(progress * totalCells)
-
-      // Only reveal cells that haven't been revealed yet
-      while (lastRevealedIndexRef.current < cellsToReveal) {
-        const cellToReveal =
-          unsolvedCellsRef.current[lastRevealedIndexRef.current]
-        if (cellToReveal) {
-          dispatch({
-            type: "REVEAL_CELL",
-            x: cellToReveal.x,
-            y: cellToReveal.y,
-          })
-          notifyRevealCell(cellToReveal.direction)
-        }
-        lastRevealedIndexRef.current++
-      }
-
-      dispatch({ type: "UPDATE_COMPLETION", percentage: progress * 100 })
-      notificationEvents.emit("notification:complete", undefined)
-
-      if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(animate)
-      } else {
-        // Ensure all cells are revealed at the end
-        unsolvedCellsRef.current.forEach((cell) => {
-          dispatch({ type: "REVEAL_CELL", x: cell.x, y: cell.y })
-          notifyRevealCell(cell.direction)
-        })
-        dispatch({ type: "SET_ANIMATION", isAnimating: false })
-        notificationEvents.emit("notification:stop", undefined)
-      }
-    }
-
-    animationFrameRef.current = requestAnimationFrame(animate)
-
-    return (): void => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
   }, [state.grid, animationDuration])
 
   const notifyRevealCell = useCallback((direction: Direction) => {

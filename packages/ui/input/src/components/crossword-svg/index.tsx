@@ -18,7 +18,7 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   className,
   autoplayOnMount = true,
   repeat = false,
-  duration = 3 * 60 * 1000,
+  duration = 3 * 1000,
 }): React.JSX.Element => {
   const cellSize = 30
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -41,35 +41,8 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   }, [completionPercentage, isAnimating, onAnimationComplete])
 
   useEffect(() => {
-    if (autoplayOnMount) {
-      if (!repeat) {
-        timerRef.current = setTimeout(() => {
-          startAnimation()
-        }, 100)
-      } else {
-        intervalRef.current = setInterval(
-          () => {
-            stopAnimation()
-            resetCrossword()
-            startAnimation()
-          },
-          Math.min(duration * 2, 5 * 60 * 1000)
-        )
-      }
-    }
-    return (): void => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      if (intervalRef.current) clearTimeout(intervalRef.current)
-      stopAnimation()
-    }
-  }, [
-    repeat,
-    resetCrossword,
-    duration,
-    autoplayOnMount,
-    startAnimation,
-    stopAnimation,
-  ])
+    startAnimation()
+  }, [startAnimation, duration, crossword])
 
   return (
     <div
