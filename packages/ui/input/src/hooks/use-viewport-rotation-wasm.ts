@@ -13,6 +13,7 @@ type RotatationAxis = z.infer<typeof RotationAxisSchema>
 type Unsubscribe = () => void
 
 const ViewportStateSchema = z.object({
+  id: z.string(),
   faceIndices: z.array(FaceSchema),
   currFace: UsizeSchema,
   currIdx: UsizeSchema,
@@ -22,7 +23,6 @@ const ViewportStateSchema = z.object({
 })
 
 type ViewportState = z.infer<typeof ViewportStateSchema>
-type DualViewportState = Record<Direction, ViewportState>
 
 type Options = {
   totalItems: number
@@ -31,6 +31,9 @@ type Options = {
   maxPerFace?: number
   onError?: (error: Error) => void
 }
+
+// Cache WASM initialization to prevent multiple initializations
+let wasmInitialized = false
 
 export const useFetchViewportWasm = ({
   totalItems,
@@ -41,194 +44,216 @@ export const useFetchViewportWasm = ({
 }: Options) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const acrossRotationManagerRef = useRef<ViewportRotation | null>(null)
-  const downRotationManagerRef = useRef<ViewportRotation | null>(null)
-  const [rotationState, setRotationState] =
-    useState<Partial<DualViewportState> | null>(null)
+
+  // Use separate refs for managers and states to prevent interference
+  const rotationManagerRef = useRef<ViewportRotation | null>(null)
+  const [viewportState, setViewportState] = useState<ViewportState | null>(null)
+
+  // Create a stable direction reference that won't change
+  const directionRef = useRef(cluesDirection)
+
+  // Keep track of initialization
+  const hasInitialized = useRef(false)
+
+  const lastHandledEventId = useRef<string | null>(null)
 
   const initialize = useCallback(async () => {
+    if (hasInitialized.current) return
+
     try {
-      if (cluesDirection === "across" && acrossRotationManagerRef.current)
-        return
-      if (cluesDirection === "down" && downRotationManagerRef.current) return
-      await init()
+      // Initialize WASM module only once
+      if (!wasmInitialized) {
+        await init()
+        wasmInitialized = true
+      }
 
-      // console.log("ran for dir, items,", cluesDirection, totalItems)
-      const res = new ViewportRotation(totalItems, maxPerFace)
-      if (cluesDirection === "across") acrossRotationManagerRef.current = res
-      if (cluesDirection === "down") downRotationManagerRef.current = res
+      console.log(
+        `Initializing ${cluesDirection} rotation manager with ${totalItems} items, ${maxPerFace} per face`
+      )
 
-      const initialState = res.get_state()
-      setRotationState((prev) => ({
-        ...prev,
-        [cluesDirection]: ViewportStateSchema.parse(initialState),
-      }))
+      // Create a new instance specifically for this direction
+      const manager = new ViewportRotation(totalItems, maxPerFace)
+      rotationManagerRef.current = manager
+
+      // Get and store the initial state
+      const initialState = manager.get_state()
+      const parsedState = ViewportStateSchema.parse(initialState)
+      setViewportState(parsedState)
+
+      hasInitialized.current = true
+      console.log(
+        `Successfully initialized state for wasm id: ${initialState.id}`
+      )
     } catch (err) {
-      console.error("Error generating crossword:", err)
+      console.error(
+        `Error initializing ${cluesDirection} viewport rotation:`,
+        err
+      )
       setError(err instanceof Error ? err.message : "Unknown error")
-      setRotationState(null)
-      acrossRotationManagerRef.current = null
-      downRotationManagerRef.current = null
-      if (onError) onError(error)
+      rotationManagerRef.current = null
+      setViewportState(null)
+
+      if (onError && err instanceof Error) onError(err)
     } finally {
       setIsLoading(false)
     }
-  }, [cluesDirection, totalItems, maxPerFace])
+  }, [totalItems, maxPerFace, onError])
 
   const setRotationAxis = useCallback(
     (axis: RotatationAxis) => {
-      if (cluesDirection === "across" && !acrossRotationManagerRef.current)
-        return
-      if (cluesDirection === "down" && !downRotationManagerRef.current) return
-
       try {
+        const manager = rotationManagerRef.current
+        if (!manager) return
+
         const validatedAxis = RotationAxisSchema.parse(axis)
-        const stateJson =
-          cluesDirection === "across"
-            ? acrossRotationManagerRef.current?.set_rotation_axis(
-                JSON.stringify(validatedAxis)
-              )
-            : downRotationManagerRef.current?.set_rotation_axis(
-                JSON.stringify(validatedAxis)
-              )
-        setRotationState((prev) => ({
-          ...prev,
-          [cluesDirection]: ViewportStateSchema.parse(stateJson),
-        }))
+        const stateJson = manager.set_rotation_axis(
+          JSON.stringify(validatedAxis)
+        )
+        const parsedState = ViewportStateSchema.parse(stateJson)
+
+        setViewportState(parsedState)
       } catch (err) {
-        console.error("Error generating crossword:", err)
+        console.error(`Error setting ${cluesDirection} rotation axis:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
-        setRotationState(null)
-        if (onError) onError(error)
+        if (onError && err instanceof Error) onError(err)
       }
     },
-    [cluesDirection, onError, totalItems, maxPerFace]
+    [onError]
   )
 
   const rotateNext = useCallback(() => {
-    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
-    if (cluesDirection === "down" && !downRotationManagerRef.current) return
-
     try {
-      const stateJson =
-        cluesDirection === "across"
-          ? acrossRotationManagerRef.current?.rotate_next()
-          : downRotationManagerRef.current?.rotate_next()
-      setRotationState((prev) => ({
-        ...prev,
-        [cluesDirection]: ViewportStateSchema.parse(stateJson),
-      }))
+      const manager = rotationManagerRef.current
+      if (!manager) return
+
+      console.log(`${cluesDirection}: Rotating next`)
+      const stateJson = manager.rotate_next()
+      const parsedState = ViewportStateSchema.parse(stateJson)
+
+      setViewportState(parsedState)
     } catch (err) {
-      console.error("Error generating crossword:", err)
+      console.error(`Error rotating ${cluesDirection} to next:`, err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setRotationState(null)
-      if (onError) onError(error)
+      if (onError && err instanceof Error) onError(err)
     }
-  }, [totalItems, maxPerFace, cluesDirection, onError])
+  }, [onError])
 
   const getNextItem = useCallback(() => {
-    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
-    if (cluesDirection === "down" && !downRotationManagerRef.current) return
-
     try {
-      const prevJson =
-        cluesDirection === "across"
-          ? acrossRotationManagerRef.current?.get_state()
-          : downRotationManagerRef.current?.get_state()
-      const { currFace, currIdx, faceIndices } =
+      const manager = rotationManagerRef.current
+      if (!manager) return
+
+      const prevJson = manager.get_state()
+      const { currFace, currIdx, faceIndices, id } =
         ViewportStateSchema.parse(prevJson)
 
+      console.log(`${cluesDirection}: Current i=${currIdx}, f=${currFace}`)
+      console.log(`Getting next for wasm Id: ${id}`)
+
       if (faceIndices[currFace].length <= currIdx + 1) {
-        cubeEvents.emit("rotate:next", {})
+        console.log(`${cluesDirection}: End of face reached, rotating`)
+        cubeEvents.emit("rotate:next", { direction: cluesDirection })
         rotateNext()
         return
       }
 
-      const stateJson =
-        cluesDirection === "across"
-          ? acrossRotationManagerRef.current?.next_item()
-          : downRotationManagerRef.current?.next_item()
-      setRotationState((prev) => ({
-        ...prev,
-        [cluesDirection]: ViewportStateSchema.parse(stateJson),
-      }))
+      console.log(`${cluesDirection}: Moving to next item`)
+      const stateJson = manager.next_item()
+      const parsedState = ViewportStateSchema.parse(stateJson)
+
+      setViewportState(parsedState)
     } catch (err) {
-      console.error("Error generating crossword:", err)
+      console.error(`Error getting ${cluesDirection} next item:`, err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      setRotationState(null)
-      if (onError) onError(error)
+      if (onError && err instanceof Error) onError(err)
     }
-  }, [onError, totalItems, maxPerFace, cluesDirection])
+  }, [onError, rotateNext])
 
   const getCurrentItem = useCallback(() => {
-    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
-    if (cluesDirection === "down" && !downRotationManagerRef.current) return
+    const manager = rotationManagerRef.current
+    if (!manager) return null
 
-    const index =
-      cluesDirection === "across"
-        ? acrossRotationManagerRef.current?.get_current_item_index()
-        : downRotationManagerRef.current?.get_current_item_index()
-
-    return index
-  }, [onError, cluesDirection, totalItems, maxPerFace])
+    return manager.get_current_item_index()
+  }, [])
 
   const getFaceItemIds = useCallback(
     (idx: number) => {
-      if (cluesDirection === "across" && !acrossRotationManagerRef.current)
-        return null
-      if (cluesDirection === "down" && !downRotationManagerRef.current)
-        return null
-
       try {
-        const stateJson =
-          cluesDirection === "across"
-            ? acrossRotationManagerRef.current?.get_face_indices(idx)
-            : downRotationManagerRef.current?.get_face_indices(idx)
+        const manager = rotationManagerRef.current
+        if (!manager) return null
+
+        const stateJson = manager.get_face_indices(idx)
         return FaceSchema.parse(stateJson)
       } catch (err) {
-        console.error("Error generating crossword:", err)
+        console.error(`Error getting ${cluesDirection} face item IDs:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
-        if (onError) onError(error)
+        if (onError && err instanceof Error) onError(err)
         return null
       }
     },
-    [onError, totalItems, maxPerFace, cluesDirection]
+    [onError]
   )
 
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
 
-    const unsubNextAcrossCell = notificationEvents.on(
-      "reveal:cell:across",
-      () => {
-        if (cluesDirection === stateDirection) getNextItem()
-      }
-    )
-    unsubscribers.push(unsubNextAcrossCell)
+    if (cluesDirection === "across") {
+      const unsubNextAcrossCell = notificationEvents.on(
+        "reveal:cell:across",
+        () => {
+          const eventId = `across_${Date.now()}_${Math.random()}`
 
-    const unsubNextDownCell = notificationEvents.on("reveal:cell:down", () => {
-      if (cluesDirection === stateDirection) getNextItem()
-    })
-    unsubscribers.push(unsubNextDownCell)
+          if (lastHandledEventId.current === eventId) {
+            return
+          }
+
+          console.log(`${cluesDirection}: Handling across cell reveal`)
+          lastHandledEventId.current = eventId
+          getNextItem()
+        }
+      )
+      unsubscribers.push(unsubNextAcrossCell)
+    }
+
+    if (cluesDirection === "down") {
+      const unsubNextDownCell = notificationEvents.on(
+        "reveal:cell:down",
+        () => {
+          const eventId = `down_${Date.now()}_${Math.random()}`
+
+          if (lastHandledEventId.current === eventId) {
+            return
+          }
+
+          console.log(`${cluesDirection}: Handling down cell reveal`)
+          lastHandledEventId.current = eventId
+          getNextItem()
+        }
+      )
+      unsubscribers.push(unsubNextDownCell)
+    }
 
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [cluesDirection, stateDirection, totalItems, maxPerFace])
+  }, [cluesDirection, getNextItem])
 
   useEffect(() => {
-    if (totalItems > 0) initialize()
+    if (totalItems > 0) {
+      initialize()
+    }
 
     return (): void => {
-      acrossRotationManagerRef.current = null
-      downRotationManagerRef.current = null
+      rotationManagerRef.current = null
+      hasInitialized.current = false
     }
-  }, [cluesDirection, totalItems, maxPerFace, initialize])
+  }, [totalItems, maxPerFace, initialize])
 
   return {
     isLoading,
     error,
-    rotationState,
+    // Expose the state for this specific direction only
+    rotationState: viewportState,
     setRotationAxis,
     rotateNext,
     getNextItem,
