@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Range as ValidNumbers } from "some-types-utils"
+import { createEventBus } from "some-ui-utils"
+
+type Unsubscribe = () => void
+type CubeState = {
+  id?: number
+}
+type CubeEventPayloads = {
+  "rotate:next": { id?: number }
+  "rotate:prev": { id?: number }
+  "rotate:pause": { id?: number }
+  "rotate:to": { id?: number; face: Face }
+}
 
 type Face = ValidNumbers<6>
 type RotationAxis = "X-axis" | "Y-axis"
@@ -24,11 +36,13 @@ type Options = {
   dof?: AllowedRotationAxis
   duration?: number
   mode?: Mode
+  cubeId?: number
 }
 
 type ReturnOptions = {
   isRotating: boolean
   rotationAxis: RotationAxis
+  cubeState: CubeState
   setIsRotating: (arg: boolean) => void
   rotationState: RotationState
   rotateCube: ({ reverse, rotateTo }: RotateCubeOptions) => void
@@ -73,12 +87,16 @@ const getPrevFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
 }
 
 export const useRotatingCube = ({
+  cubeId,
   dof = "Y-axis",
   duration = 10000,
   mode = "autoplay",
 }: Options): ReturnOptions => {
   const [isRotating, setIsRotating] = useState<boolean>(false)
   const [isPaused, setIsPaused] = useState<boolean>(false)
+  const [cubeState, setCubeState] = useState<CubeState>(() =>
+    cubeEvents.getState()
+  )
   const [rotationState, setRotationState] = useState<RotationState>({
     face: 0,
     xRotation: 0,
@@ -298,9 +316,60 @@ export const useRotatingCube = ({
     }
   }, [isPaused, mode, duration, rotateCube])
 
+  useEffect(() => {
+    const unsubscribers: Array<Unsubscribe> = []
+
+    const unsubCube = cubeEvents.subscribe(
+      (state) => state,
+      (updatedState) => setCubeState(updatedState)
+    )
+    unsubscribers.push(unsubCube)
+
+    return (): void => {
+      unsubscribers.forEach((unsub) => unsub())
+    }
+  }, [])
+
+  useEffect(() => {
+    const unsubscribers: Array<Unsubscribe> = []
+
+    const unsubNext = cubeEvents.on("rotate:next", () => {
+      if (cubeState.id === undefined) {
+        rotateNext()
+      } else if (cubeId === cubeState.id) rotateNext()
+    })
+    unsubscribers.push(unsubNext)
+
+    const unsubPrev = cubeEvents.on("rotate:prev", () => {
+      if (cubeState.id === undefined) {
+        rotatePrev()
+      } else if (cubeId === cubeState.id) rotatePrev()
+    })
+    unsubscribers.push(unsubPrev)
+
+    const unsubPause = cubeEvents.on("rotate:pause", () => {
+      if (cubeState.id === undefined) {
+        onTogglePause()
+      } else if (cubeId === cubeState.id) onTogglePause()
+    })
+    unsubscribers.push(unsubPause)
+
+    const unsubTo = cubeEvents.on("rotate:to", ({ face }) => {
+      if (cubeState.id === undefined) {
+        rotateToFace(face)
+      } else if (cubeId === cubeState.id) rotateToFace(face)
+    })
+    unsubscribers.push(unsubTo)
+
+    return (): void => {
+      unsubscribers.forEach((unsub) => unsub())
+    }
+  }, [rotationAxis, cubeId])
+
   return {
     rotationAxis,
     rotationState,
+    cubeState,
     isRotating,
     setIsRotating,
     rotateCube,
@@ -310,3 +379,5 @@ export const useRotatingCube = ({
     onTogglePause,
   }
 }
+
+export const cubeEvents = createEventBus<CubeEventPayloads, CubeState>({})

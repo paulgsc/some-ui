@@ -1,6 +1,5 @@
 import type { CSSProperties, FC, ReactNode, RefObject } from "react"
 import { useRef } from "react"
-import { useSubscribeToCubeEvents } from "@slideshow/hooks/use-cube-events"
 import type {
   AllowedRotationAxis,
   Mode,
@@ -18,11 +17,13 @@ type RotatingCubeProps = {
   className?: string
   faceClassName?: string
   showBeam?: boolean
+  cubeId?: number
 }
 
 export const DiceCard: FC<RotatingCubeProps> = ({
   className,
   faceClassName,
+  cubeId,
   mode = "autoplay",
   perspective = 1200,
   dof = "Y-axis",
@@ -30,26 +31,13 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   faces = [],
   showBeam = true,
 }): React.JSX.Element => {
-  const {
-    isRotating,
-    setIsRotating,
-    rotationState,
-    rotationAxis,
-    rotateNext,
-    rotatePrev,
-    rotateToFace,
-    onTogglePause,
-  } = useRotatingCube({
-    dof,
-    duration,
-    mode,
-  })
-  useSubscribeToCubeEvents({
-    onNext: rotateNext,
-    onPrev: rotatePrev,
-    onTogglePause,
-    onToFace: rotateToFace,
-  })
+  const { isRotating, setIsRotating, rotationState, rotationAxis } =
+    useRotatingCube({
+      dof,
+      duration,
+      mode,
+      cubeId,
+    })
   const ref = useRef<HTMLDivElement>(null)
 
   const { height, width } = useMeasureRect({
