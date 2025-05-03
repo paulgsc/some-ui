@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import {
-  clueEvents,
-  notificationEvents,
-} from "@input/hooks/use-create-crossword-puzzle"
+import { notificationEvents } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
-import { cubeEventBus } from "some-ui-slideshow"
+import { cubeEvents } from "some-ui-slideshow"
 import init, { ViewportRotation } from "viewport-rotation"
 import z from "zod"
 
@@ -25,6 +22,7 @@ const ViewportStateSchema = z.object({
 })
 
 type ViewportState = z.infer<typeof ViewportStateSchema>
+type DualViewportState = Record<Direction, ViewportState>
 
 type Options = {
   totalItems: number
@@ -43,42 +41,60 @@ export const useFetchViewportWasm = ({
 }: Options) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const rotationManagerRef = useRef<ViewportRotation | null>(null)
-  const [rotationState, setRotationState] = useState<ViewportState | null>(null)
+  const acrossRotationManagerRef = useRef<ViewportRotation | null>(null)
+  const downRotationManagerRef = useRef<ViewportRotation | null>(null)
+  const [rotationState, setRotationState] =
+    useState<Partial<DualViewportState> | null>(null)
 
   const initialize = useCallback(async () => {
     try {
-      if (rotationManagerRef.current) return
+      if (cluesDirection === "across" && acrossRotationManagerRef.current)
+        return
+      if (cluesDirection === "down" && downRotationManagerRef.current) return
       await init()
 
+      // console.log("ran for dir, items,", cluesDirection, totalItems)
       const res = new ViewportRotation(totalItems, maxPerFace)
-      rotationManagerRef.current = res
+      if (cluesDirection === "across") acrossRotationManagerRef.current = res
+      if (cluesDirection === "down") downRotationManagerRef.current = res
 
       const initialState = res.get_state()
-      const validatedState = ViewportStateSchema.parse(initialState)
-      setRotationState(validatedState)
+      setRotationState((prev) => ({
+        ...prev,
+        [cluesDirection]: ViewportStateSchema.parse(initialState),
+      }))
     } catch (err) {
       console.error("Error generating crossword:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
       setRotationState(null)
-      rotationManagerRef.current = null
+      acrossRotationManagerRef.current = null
+      downRotationManagerRef.current = null
       if (onError) onError(error)
     } finally {
       setIsLoading(false)
     }
-  }, [totalItems, maxPerFace])
+  }, [cluesDirection, totalItems, maxPerFace])
 
   const setRotationAxis = useCallback(
     (axis: RotatationAxis) => {
-      if (!rotationManagerRef.current) return
+      if (cluesDirection === "across" && !acrossRotationManagerRef.current)
+        return
+      if (cluesDirection === "down" && !downRotationManagerRef.current) return
 
       try {
         const validatedAxis = RotationAxisSchema.parse(axis)
-        const stateJson = rotationManagerRef.current.set_rotation_axis(
-          JSON.stringify(validatedAxis)
-        )
-        const validatedState = ViewportStateSchema.parse(stateJson)
-        setRotationState(validatedState)
+        const stateJson =
+          cluesDirection === "across"
+            ? acrossRotationManagerRef.current?.set_rotation_axis(
+                JSON.stringify(validatedAxis)
+              )
+            : downRotationManagerRef.current?.set_rotation_axis(
+                JSON.stringify(validatedAxis)
+              )
+        setRotationState((prev) => ({
+          ...prev,
+          [cluesDirection]: ViewportStateSchema.parse(stateJson),
+        }))
       } catch (err) {
         console.error("Error generating crossword:", err)
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -86,63 +102,88 @@ export const useFetchViewportWasm = ({
         if (onError) onError(error)
       }
     },
-    [onError]
+    [cluesDirection, onError, totalItems, maxPerFace]
   )
 
   const rotateNext = useCallback(() => {
-    if (!rotationManagerRef.current) return
+    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
+    if (cluesDirection === "down" && !downRotationManagerRef.current) return
 
     try {
-      const stateJson = rotationManagerRef.current.rotate_next()
-      const validatedState = ViewportStateSchema.parse(stateJson)
-      setRotationState(validatedState)
+      const stateJson =
+        cluesDirection === "across"
+          ? acrossRotationManagerRef.current?.rotate_next()
+          : downRotationManagerRef.current?.rotate_next()
+      setRotationState((prev) => ({
+        ...prev,
+        [cluesDirection]: ViewportStateSchema.parse(stateJson),
+      }))
     } catch (err) {
       console.error("Error generating crossword:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
       setRotationState(null)
       if (onError) onError(error)
     }
-  }, [onError])
+  }, [totalItems, maxPerFace, cluesDirection, onError])
 
   const getNextItem = useCallback(() => {
-    if (!rotationManagerRef.current) return
+    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
+    if (cluesDirection === "down" && !downRotationManagerRef.current) return
 
     try {
-      const prevJson = rotationManagerRef.current.get_state()
+      const prevJson =
+        cluesDirection === "across"
+          ? acrossRotationManagerRef.current?.get_state()
+          : downRotationManagerRef.current?.get_state()
       const { currFace, currIdx, faceIndices } =
         ViewportStateSchema.parse(prevJson)
 
       if (faceIndices[currFace].length <= currIdx + 1) {
-        /// TODO: Sadly this triggers the rotation of all cubes in context window?
-        cubeEventBus.emit("rotate:next", undefined)
+        cubeEvents.emit("rotate:next", {})
         rotateNext()
         return
       }
 
-      const stateJson = rotationManagerRef.current.next_item()
-      const validatedState = ViewportStateSchema.parse(stateJson)
-      setRotationState(validatedState)
+      const stateJson =
+        cluesDirection === "across"
+          ? acrossRotationManagerRef.current?.next_item()
+          : downRotationManagerRef.current?.next_item()
+      setRotationState((prev) => ({
+        ...prev,
+        [cluesDirection]: ViewportStateSchema.parse(stateJson),
+      }))
     } catch (err) {
       console.error("Error generating crossword:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
       setRotationState(null)
       if (onError) onError(error)
     }
-  }, [onError])
+  }, [onError, totalItems, maxPerFace, cluesDirection])
 
   const getCurrentItem = useCallback(() => {
-    console.log("this ran: nextItem")
-    if (!rotationManagerRef.current) return
+    if (cluesDirection === "across" && !acrossRotationManagerRef.current) return
+    if (cluesDirection === "down" && !downRotationManagerRef.current) return
 
-    return rotationManagerRef.current.get_current_item_index()
-  }, [onError])
+    const index =
+      cluesDirection === "across"
+        ? acrossRotationManagerRef.current?.get_current_item_index()
+        : downRotationManagerRef.current?.get_current_item_index()
+
+    return index
+  }, [onError, cluesDirection, totalItems, maxPerFace])
 
   const getFaceItemIds = useCallback(
     (idx: number) => {
-      if (!rotationManagerRef.current) return null
+      if (cluesDirection === "across" && !acrossRotationManagerRef.current)
+        return null
+      if (cluesDirection === "down" && !downRotationManagerRef.current)
+        return null
 
       try {
-        const stateJson = rotationManagerRef.current.get_face_indices(idx)
+        const stateJson =
+          cluesDirection === "across"
+            ? acrossRotationManagerRef.current?.get_face_indices(idx)
+            : downRotationManagerRef.current?.get_face_indices(idx)
         return FaceSchema.parse(stateJson)
       } catch (err) {
         console.error("Error generating crossword:", err)
@@ -151,16 +192,8 @@ export const useFetchViewportWasm = ({
         return null
       }
     },
-    [onError]
+    [onError, totalItems, maxPerFace, cluesDirection]
   )
-
-  useEffect(() => {
-    initialize()
-
-    return (): void => {
-      rotationManagerRef.current = null
-    }
-  }, [])
 
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
@@ -181,7 +214,16 @@ export const useFetchViewportWasm = ({
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [cluesDirection, stateDirection])
+  }, [cluesDirection, stateDirection, totalItems, maxPerFace])
+
+  useEffect(() => {
+    if (totalItems > 0) initialize()
+
+    return (): void => {
+      acrossRotationManagerRef.current = null
+      downRotationManagerRef.current = null
+    }
+  }, [cluesDirection, totalItems, maxPerFace, initialize])
 
   return {
     isLoading,
