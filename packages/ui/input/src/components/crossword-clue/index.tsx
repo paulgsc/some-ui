@@ -58,7 +58,7 @@ export const ClueCard = forwardRef<
 
           <ClueThumbnail src={thumbnail} alt={word} isActive={isActive} />
 
-          <ClueInfo clueNum={clueNum} clue={clue} isActive={isActive} />
+          <ClueInfo clue={clue} isActive={isActive} />
         </div>
         <div className="inset-y-3/5 absolute start-0 size-12">
           <PolarSphere {...powerballArgs} />

@@ -113,13 +113,13 @@ export function useCrosswordWithAnimation(
     const gridMap = new Map<string, CrosswordCell>()
 
     for (const placement of wordPlacements) {
-      const { start_x, start_y, is_across, clue_num, word } = placement
+      const { startX, startY, isAcross, clueNum, word } = placement
       if (!word) continue
 
       for (let i = 0; i < word.length; i++) {
-        const direction = is_across ? "across" : "down"
-        const x = is_across ? start_x + i : start_x
-        const y = !is_across ? start_y + i : start_y
+        const direction = isAcross ? "across" : "down"
+        const x = isAcross ? startX + i : startX
+        const y = !isAcross ? startY + i : startY
         const key = `${x}-${y}`
 
         if (!gridMap.has(key)) {
@@ -130,16 +130,16 @@ export function useCrosswordWithAnimation(
             word,
             letter: word[i],
             solved: false,
-            clueNum: i === 0 ? clue_num : undefined,
-            clueNums: [clue_num],
+            clueNum: i === 0 ? clueNum : undefined,
+            clueNums: [clueNum],
           })
         } else {
           const existing = gridMap.get(key)
           if (existing)
             gridMap.set(key, {
               ...existing,
-              clueNum: i === 0 ? clue_num : existing.clueNum,
-              clueNums: [...new Set([...existing.clueNums, clue_num])],
+              clueNum: i === 0 ? clueNum : existing.clueNum,
+              clueNums: [...new Set([...existing.clueNums, clueNum])],
             })
         }
       }

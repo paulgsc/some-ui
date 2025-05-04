@@ -1,26 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { cluesJson } from "@input/data/clues"
 import type { CrosswordClue, CrosswordResult } from "@input/types/crossword"
+import { CrosswordResultSchema } from "@input/types/crossword"
 import init, { CrosswordGenerator } from "some-crossword"
 import { getRandomSubarray } from "some-ui-utils"
-import { z } from "zod"
 
 // Define Zod schemas for result validation
-const WordPlacementSchema = z.object({
-  word: z.string(),
-  start_x: z.number().int(),
-  start_y: z.number().int(),
-  is_across: z.boolean(),
-  group_id: z.number().int().nullable(),
-  clue_num: z.number().int(),
-})
-
-const CrosswordResultSchema = z.object({
-  grid: z.array(z.string()),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-  word_placements: z.array(WordPlacementSchema),
-})
 
 export function useCreateCrosswordWasm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -66,7 +51,7 @@ export function useCreateCrosswordWasm() {
   const selectWordList = useCallback(() => {
     if (randomClues.length > 0) return
 
-    const N = 1
+    const N = 3
     const randClues = getRandomSubarray(
       cluesJson,
       Math.min(N, cluesJson.length)

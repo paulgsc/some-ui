@@ -20,8 +20,8 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
 }): React.JSX.Element => {
   const cellSize = 30
   const { crossword } = useCreateCrosswordWasm()
-  const { grid, viewBox, isAnimating, completionPercentage, startAnimation } =
-    useCrosswordWithAnimation(crossword?.word_placements ?? [], duration)
+  const { grid, viewBox, isAnimating, completionPercentage } =
+    useCrosswordWithAnimation(crossword?.wordPlacements ?? [], duration)
 
   useEffect(() => {
     if (completionPercentage === 100 && onAnimationComplete && !isAnimating) {

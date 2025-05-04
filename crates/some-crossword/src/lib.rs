@@ -1,24 +1,3 @@
-// Cargo.toml contents:
-// [package]
-// name = "crossword-wasm"
-// version = "0.1.0"
-// edition = "2021"
-//
-// [lib]
-// crate-type = ["cdylib"]
-//
-// [dependencies]
-// rand = "0.8"
-// getrandom = { version = "0.2", features = ["js"] }
-// wasm-bindgen = "0.2"
-// js-sys = "0.3"
-// serde = { version = "1.0", features = ["derive"] }
-// serde-wasm-bindgen = "0.4"
-//
-// [dependencies.web-sys]
-// version = "0.3"
-// features = ["console"]
-
 use rand::{prelude::*, rngs::ThreadRng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -60,6 +39,7 @@ pub struct CrosswordResult {
     grid: Vec<String>,
     width: usize,
     height: usize,
+    #[serde(rename = "wordPlacements")]
     word_placements: Vec<JsWordPlacement>,
 }
 
@@ -68,10 +48,15 @@ pub struct CrosswordResult {
 #[derive(Serialize, Deserialize)]
 pub struct JsWordPlacement {
     word: String,
+    #[serde(rename = "startX")]
     start_x: usize,
+    #[serde(rename = "startY")]
     start_y: usize,
+    #[serde(rename = "isAcross")]
     is_across: bool,
+    #[serde(rename = "groupId")]
     group_id: Option<usize>,
+    #[serde(rename = "clueNum")]
     clue_num: i8,
 }
 

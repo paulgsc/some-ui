@@ -12,16 +12,6 @@ export const Clues: FC<CluesProps> = () => {
   } = useClueQueueEvents()
 
   const { viewportStates, isLoading, error } = useViewportManager({
-    viewports: [
-      {
-        viewId: "across",
-        totalItems: cluesAcross.length,
-      },
-      {
-        viewId: "down",
-        totalItems: cluesDown.length,
-      },
-    ],
     maxPerFace: 3,
     activeCube: direction,
   })

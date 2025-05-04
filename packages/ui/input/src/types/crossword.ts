@@ -1,20 +1,27 @@
+import { z } from "zod"
+
+export const WordPlacementSchema = z.object({
+  word: z.string(),
+  startX: z.number().int(),
+  startY: z.number().int(),
+  isAcross: z.boolean(),
+  groupId: z.number().int().nullable(),
+  clueNum: z.number().int(),
+})
+
+export type WordPlacement = z.infer<typeof WordPlacementSchema>
+
+export const CrosswordResultSchema = z.object({
+  grid: z.array(z.string()),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  wordPlacements: z.array(WordPlacementSchema),
+})
+
+export type CrosswordResult = z.infer<typeof CrosswordResultSchema>
+
 export type Direction = "across" | "down"
 
-export type WordPlacement = {
-  word: string
-  start_x: number
-  start_y: number
-  is_across: boolean
-  group_id: number | null
-  clue_num: number
-}
-
-export type CrosswordResult = {
-  grid: Array<string>
-  width: number
-  height: number
-  word_placements: Array<WordPlacement>
-}
 export type CrosswordCell = {
   x: number
   y: number
