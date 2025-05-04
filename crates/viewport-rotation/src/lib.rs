@@ -15,7 +15,6 @@ pub enum RotationAxis {
 }
 
 /// Struct to manage viewport rotation with cube faces
-#[wasm_bindgen]
 pub struct ViewportRotation {
     // Total number of items
     total_items: usize,
@@ -62,13 +61,21 @@ pub struct ViewportState {
     cycle_position: usize,
 }
 
+/// Manager for multiple viewport rotations
 #[wasm_bindgen]
+pub struct ViewportManager {
+    // Map of viewport ID to ViewportRotation instance
+    viewports: HashMap<String, ViewportRotation>,
+
+    // Currently active viewport ID
+    active_viewport_id: Option<String>,
+}
+
 impl ViewportRotation {
     /// Creates a new ViewportRotation instance
-    #[wasm_bindgen(constructor)]
-    pub fn new(total_items: usize, max_per_face: usize) -> Result<ViewportRotation, JsValue> {
+    pub fn new(total_items: usize, max_per_face: usize) -> Result<ViewportRotation, String> {
         if max_per_face < 1 || max_per_face > 6 {
-            return Err(JsValue::from_str("max_per_face must be between 1 and 6"));
+            return Err("max_per_face must be between 1 and 6".to_string());
         }
 
         // Initialize rotation cycles
@@ -94,72 +101,8 @@ impl ViewportRotation {
         Ok(rotation)
     }
 
-    /// Gets the current state of the viewport
-    #[wasm_bindgen]
-    #[must_use]
-    pub fn get_state(&self) -> Result<JsValue, JsValue> {
-        Ok(serde_wasm_bindgen::to_value(&self.internal_get_state()).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
-    }
-
-    /// Rotate to the next face in the cycle
-    #[wasm_bindgen]
-    pub fn rotate_next(&mut self) -> Result<JsValue, JsValue> {
-        self.internal_rotate_next();
-        self.get_state()
-    }
-
-    /// Move to the next item in the current face
-    #[wasm_bindgen]
-    pub fn next_item(&mut self) -> Result<JsValue, JsValue> {
-        self.internal_next_item();
-        self.get_state()
-    }
-
-    /// Get the current item index
-    #[wasm_bindgen]
-    pub fn get_current_item_index(&self) -> Option<usize> {
-        self.internal_get_current_item_index()
-    }
-
-    /// Get all item indices for a specific face
-    #[wasm_bindgen]
-    pub fn get_face_indices(&self, face_index: usize) -> Result<JsValue, JsValue> {
-        if face_index >= self.face_indices.len() {
-            return Err(JsValue::from_str("Face index out of bounds"));
-        }
-
-        Ok(serde_wasm_bindgen::to_value(&self.face_indices[face_index]).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
-    }
-
-    /// Get the current cycle faces and their indices
-    #[wasm_bindgen]
-    pub fn get_current_cycle_indices(&self) -> Result<JsValue, JsValue> {
-        let cycle_faces = self.get_active_cycle_faces();
-        let indices_map: HashMap<usize, Vec<usize>> = cycle_faces.into_iter().map(|face| (face, self.face_indices[face].clone())).collect();
-
-        Ok(serde_wasm_bindgen::to_value(&indices_map).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
-    }
-
-    /// Set the rotation axis
-    #[wasm_bindgen]
-    pub fn set_rotation_axis(&mut self, axis_json: &str) -> Result<JsValue, JsValue> {
-        let axis: RotationAxis = serde_json::from_str(axis_json).map_err(|e| JsValue::from_str(&format!("Failed to parse rotation axis: {}", e)))?;
-
-        // Only update if the axis is different
-        if self.current_axis != axis {
-            self.current_axis = axis;
-            self.cycle_position = 0;
-            self.current_face = self.rotation_cycles[&self.current_axis][0];
-            self.current_item_index = 0;
-        }
-
-        self.get_state()
-    }
-}
-
-impl ViewportRotation {
     /// Gets the internal state representation
-    fn internal_get_state(&self) -> ViewportState {
+    fn get_state(&self) -> ViewportState {
         ViewportState {
             face_indices: self.face_indices.clone(),
             current_face: self.current_face,
@@ -171,18 +114,18 @@ impl ViewportRotation {
     }
 
     /// Moves to the next item in the current face
-    fn internal_next_item(&mut self) -> ViewportState {
+    fn next_item(&mut self) -> ViewportState {
         let face_items_count = self.face_indices[self.current_face].len();
 
         if face_items_count > 0 {
             self.current_item_index = (self.current_item_index + 1) % face_items_count;
         }
 
-        self.internal_get_state()
+        self.get_state()
     }
 
     /// Rotates to the next face in the cycle
-    fn internal_rotate_next(&mut self) -> ViewportState {
+    fn rotate_next(&mut self) -> ViewportState {
         // Reset current item index when changing faces
         self.current_item_index = 0;
 
@@ -200,11 +143,11 @@ impl ViewportRotation {
             self.cycle_all_faces();
         }
 
-        self.internal_get_state()
+        self.get_state()
     }
 
     /// Get the current item index
-    fn internal_get_current_item_index(&self) -> Option<usize> {
+    fn get_current_item_index(&self) -> Option<usize> {
         if self.face_indices[self.current_face].is_empty() {
             None
         } else {
@@ -276,6 +219,240 @@ impl ViewportRotation {
     /// Get the faces that are part of the active rotation cycle
     fn get_active_cycle_faces(&self) -> Vec<Face> {
         self.rotation_cycles[&self.current_axis].clone()
+    }
+
+    /// Set the rotation axis
+    fn set_rotation_axis(&mut self, axis: RotationAxis) -> ViewportState {
+        // Only update if the axis is different
+        if self.current_axis != axis {
+            self.current_axis = axis;
+            self.cycle_position = 0;
+            self.current_face = self.rotation_cycles[&self.current_axis][0];
+            self.current_item_index = 0;
+        }
+
+        self.get_state()
+    }
+}
+
+/// Response containing both a state and the active viewport ID
+#[derive(Serialize, Deserialize)]
+struct ViewportResponse {
+    #[serde(rename = "viewportId")]
+    viewport_id: String,
+    state: ViewportState,
+}
+
+/// Response for listing all viewports
+#[derive(Serialize, Deserialize)]
+struct ViewportListResponse {
+    #[serde(rename = "viewportIds")]
+    viewport_ids: Vec<String>,
+    #[serde(rename = "activeViewportId")]
+    active_viewport_id: Option<String>,
+}
+
+#[wasm_bindgen]
+impl ViewportManager {
+    /// Creates a new ViewportManager instance
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> ViewportManager {
+        ViewportManager {
+            viewports: HashMap::new(),
+            active_viewport_id: None,
+        }
+    }
+
+    /// Create a new viewport with the given ID
+    #[wasm_bindgen]
+    pub fn create_viewport(&mut self, viewport_id: &str, total_items: usize, max_per_face: usize) -> Result<JsValue, JsValue> {
+        // Check if the viewport ID already exists
+        if self.viewports.contains_key(viewport_id) {
+            return Err(JsValue::from_str(&format!("Viewport with ID '{}' already exists", viewport_id)));
+        }
+
+        // Create a new viewport
+        let viewport = match ViewportRotation::new(total_items, max_per_face) {
+            Ok(v) => v,
+            Err(e) => return Err(JsValue::from_str(&e)),
+        };
+
+        // Add the viewport to the map
+        self.viewports.insert(viewport_id.to_string(), viewport);
+
+        // Set as active if it's the first one
+        if self.active_viewport_id.is_none() {
+            self.active_viewport_id = Some(viewport_id.to_string());
+        }
+
+        // Return the new viewport's state
+        self.get_viewport_state(viewport_id)
+    }
+
+    /// Set the active viewport
+    #[wasm_bindgen]
+    pub fn set_active_viewport(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        if !self.viewports.contains_key(viewport_id) {
+            return Err(JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)));
+        }
+
+        self.active_viewport_id = Some(viewport_id.to_string());
+        self.get_viewport_state(viewport_id)
+    }
+
+    /// Get the active viewport ID
+    #[wasm_bindgen]
+    pub fn get_active_viewport_id(&self) -> Option<String> {
+        self.active_viewport_id.clone()
+    }
+
+    /// List all viewport IDs
+    #[wasm_bindgen]
+    pub fn list_viewports(&self) -> Result<JsValue, JsValue> {
+        let response = ViewportListResponse {
+            viewport_ids: self.viewports.keys().cloned().collect(),
+            active_viewport_id: self.active_viewport_id.clone(),
+        };
+
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Get state for a specific viewport
+    #[wasm_bindgen]
+    pub fn get_viewport_state(&self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport(viewport_id)?;
+
+        let response = ViewportResponse {
+            viewport_id: viewport_id.to_string(),
+            state: viewport.get_state(),
+        };
+
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Remove a viewport
+    #[wasm_bindgen]
+    pub fn remove_viewport(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        if !self.viewports.contains_key(viewport_id) {
+            return Err(JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)));
+        }
+
+        // Remove the viewport
+        self.viewports.remove(viewport_id);
+
+        // If we removed the active viewport, select another one if available
+        if self.active_viewport_id.as_deref() == Some(viewport_id) {
+            self.active_viewport_id = self.viewports.keys().next().cloned();
+        }
+
+        self.list_viewports()
+    }
+
+    /// Rotate a specific viewport to the next face
+    #[wasm_bindgen]
+    pub fn rotate_viewport_next(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport_mut(viewport_id)?;
+
+        let state = viewport.rotate_next();
+
+        let response = ViewportResponse {
+            viewport_id: viewport_id.to_string(),
+            state,
+        };
+
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Move to the next item in a specific viewport
+    #[wasm_bindgen]
+    pub fn viewport_next_item(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport_mut(viewport_id)?;
+
+        let state = viewport.next_item();
+
+        let response = ViewportResponse {
+            viewport_id: viewport_id.to_string(),
+            state,
+        };
+
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Get the current item index in the active viewport
+    #[wasm_bindgen]
+    pub fn get_current_item_index(&self) -> Result<JsValue, JsValue> {
+        let viewport_id = self.get_active_id()?;
+        self.get_viewport_current_item_index(viewport_id)
+    }
+
+    /// Get the current item index in a specific viewport
+    #[wasm_bindgen]
+    pub fn get_viewport_current_item_index(&self, viewport_id: &str) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport(viewport_id)?;
+
+        match viewport.get_current_item_index() {
+            Some(idx) => Ok(JsValue::from_f64(idx as f64)),
+            None => Ok(JsValue::null()),
+        }
+    }
+
+    /// Set the rotation axis for a specific viewport
+    #[wasm_bindgen]
+    pub fn set_viewport_rotation_axis(&mut self, viewport_id: &str, axis_json: &str) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport_mut(viewport_id)?;
+
+        let axis: RotationAxis = serde_json::from_str(axis_json).map_err(|e| JsValue::from_str(&format!("Failed to parse rotation axis: {}", e)))?;
+
+        let state = viewport.set_rotation_axis(axis);
+
+        let response = ViewportResponse {
+            viewport_id: viewport_id.to_string(),
+            state,
+        };
+
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+
+    /// Get all item indices for a specific face in the active viewport
+    #[wasm_bindgen]
+    pub fn get_face_indices(&self, face_index: usize) -> Result<JsValue, JsValue> {
+        let viewport_id = self.get_active_id()?;
+        self.get_viewport_face_indices(viewport_id, face_index)
+    }
+
+    /// Get all item indices for a specific face in a specific viewport
+    #[wasm_bindgen]
+    pub fn get_viewport_face_indices(&self, viewport_id: &str, face_index: usize) -> Result<JsValue, JsValue> {
+        let viewport = self.get_viewport(viewport_id)?;
+
+        if face_index >= 6 {
+            // Hardcoded as 6 faces in a cube
+            return Err(JsValue::from_str("Face index out of bounds"));
+        }
+
+        serde_wasm_bindgen::to_value(&viewport.face_indices[face_index]).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+}
+
+// Helper methods for ViewportManager
+impl ViewportManager {
+    /// Get a reference to a viewport by ID
+    fn get_viewport(&self, viewport_id: &str) -> Result<&ViewportRotation, JsValue> {
+        self.viewports
+            .get(viewport_id)
+            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)))
+    }
+
+    /// Get a mutable reference to a viewport by ID
+    fn get_viewport_mut(&mut self, viewport_id: &str) -> Result<&mut ViewportRotation, JsValue> {
+        self.viewports
+            .get_mut(viewport_id)
+            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)))
+    }
+
+    /// Get the active viewport ID or return an error
+    fn get_active_id(&self) -> Result<&str, JsValue> {
+        self.active_viewport_id.as_deref().ok_or_else(|| JsValue::from_str("No active viewport selected"))
     }
 }
 
@@ -424,6 +601,11 @@ mod tests {
         let items = vec!["1", "2", "3", "4", "5", "6", "7", "8"].iter().map(|s| s.to_string()).collect::<Vec<_>>();
         let items_json = serde_json::to_string(&items).unwrap();
 
+        /// Set the rotation axis for the active viewport
+        /// Set the rotation axis for the active viewport
+        /// Set the rotation axis for the active viewport
+        /// Set the rotation axis for the active viewport
+        /// Set the rotation axis for the active viewport
         let vr = ViewportRotation::new(&items_json, 2).unwrap();
 
         // Get items via the internal method that get_current_cycle_items uses
