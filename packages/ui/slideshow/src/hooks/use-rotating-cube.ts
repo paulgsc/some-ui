@@ -4,7 +4,7 @@ import { createEventBus } from "some-ui-utils"
 
 type Unsubscribe = () => void
 type CubeState = {
-  id?: number
+  id?: number | string
 }
 type CubeEventPayloads = {
   "rotate:next": { id?: number }
@@ -36,7 +36,7 @@ type Options = {
   dof?: AllowedRotationAxis
   duration?: number
   mode?: Mode
-  cubeId?: number
+  cubeId?: number | string
 }
 
 type ReturnOptions = {
@@ -328,7 +328,7 @@ export const useRotatingCube = ({
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [])
+  }, [cubeId, rotationAxis, cubeEvents])
 
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
@@ -364,7 +364,7 @@ export const useRotatingCube = ({
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [rotationAxis, cubeId])
+  }, [rotationAxis, cubeId, cubeState])
 
   return {
     rotationAxis,

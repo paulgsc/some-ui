@@ -17,7 +17,7 @@ type RotatingCubeProps = {
   className?: string
   faceClassName?: string
   showBeam?: boolean
-  cubeId?: number
+  cubeId?: number | string
 }
 
 export const DiceCard: FC<RotatingCubeProps> = ({
