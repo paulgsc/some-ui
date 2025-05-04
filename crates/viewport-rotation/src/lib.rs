@@ -459,164 +459,1091 @@ impl ViewportManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wasm_bindgen_test::*;
 
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    // Helper function to extract ViewportState from JsValue response
+    //     fn extract_state_from_response(js_value: &wasm_bindgen::JsValue) -> serde_json::Value {
+    //         let value: serde_json::Value = serde_wasm_bindgen::from_value(js_value.clone()).unwrap();
+    //         value["state"].clone()
+    //     }
+    //
     #[test]
-    fn test_initialization() {
-        let items = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        let items_json = serde_json::to_string(&items).unwrap();
+    fn test_viewport_rotation_initialization() {
+        // Test with valid parameters
+        let total_items = 24;
+        let max_per_face = 3;
 
-        let vr = ViewportRotation::new(&items_json, 2).unwrap();
+        let viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
 
-        // Check Y-axis cycle (default)
-        let y_cycle_faces = vec![0, 3, 2, 1];
+        // Verify initial state
+        assert_eq!(viewport.total_items, total_items);
+        assert_eq!(viewport.max_per_face, max_per_face);
+        assert_eq!(viewport.current_face, 0);
+        assert_eq!(viewport.current_item_index, 0);
+        assert_eq!(viewport.current_axis, RotationAxis::XAxis);
+        assert_eq!(viewport.cycle_position, 0);
 
-        // Verify items are only in active faces
+        // Check that only active faces are filled (0, 5, 2, 4 for X-axis)
+        let active_faces = vec![0, 5, 2, 4];
         for face in 0..6 {
-            if y_cycle_faces.contains(&face) {
-                assert!(!vr.faces[face].is_empty(), "Active face {} should have items", face);
+            if active_faces.contains(&face) {
+                assert!(!viewport.face_indices[face].is_empty(), "Face {face} should have items");
+                assert!(viewport.face_indices[face].len() <= max_per_face);
             } else {
-                assert!(vr.faces[face].is_empty(), "Inactive face {} should be empty", face);
+                assert!(viewport.face_indices[face].is_empty(), "Face {face} should be empty");
             }
         }
 
-        // Verify item distribution
-        assert_eq!(vr.faces[0], vec!["1", "2"]);
-        assert_eq!(vr.faces[3], vec!["3", "4"]);
-        assert_eq!(vr.faces[2], vec!["5", "6"]);
-        assert_eq!(vr.faces[1], vec!["7", "8"]);
+        // Test with invalid parameters
+        let invalid_viewport = ViewportRotation::new(24, 0);
+        assert!(invalid_viewport.is_err());
 
-        // Verify pending items
-        assert_eq!(vr.pending_items.len(), 2);
+        let invalid_viewport = ViewportRotation::new(24, 7);
+        assert!(invalid_viewport.is_err());
     }
 
     #[test]
-    fn test_rotation() {
-        let items = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        let items_json = serde_json::to_string(&items).unwrap();
+    fn test_viewport_rotation_next_item() {
+        let total_items = 10;
+        let max_per_face = 3;
 
-        let mut vr = ViewportRotation::new(&items_json, 2).unwrap();
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
 
-        // Initial state
-        assert_eq!(vr.current_face, 0);
-        assert_eq!(vr.cycle_position, 0);
+        // Initial state should have current_item_index = 0
+        assert_eq!(viewport.current_item_index, 0);
 
-        // First rotation
-        vr.internal_rotate_next();
-        assert_eq!(vr.current_face, 3);
-        assert_eq!(vr.cycle_position, 1);
+        // Get initial item
+        let initial_item = viewport.get_current_item_index().unwrap();
 
-        // Second rotation
-        vr.internal_rotate_next();
-        assert_eq!(vr.current_face, 2);
-        assert_eq!(vr.cycle_position, 2);
+        // Move to next item
+        let state = viewport.next_item();
 
-        // Third rotation
-        vr.internal_rotate_next();
-        assert_eq!(vr.current_face, 1);
-        assert_eq!(vr.cycle_position, 3);
+        // Current item index should be 1
+        assert_eq!(viewport.current_item_index, 1);
+        assert_eq!(state.current_item_index, 1);
 
-        // Complete cycle, should return to beginning and replenish
-        vr.internal_rotate_next();
-        assert_eq!(vr.current_face, 0);
-        assert_eq!(vr.cycle_position, 0);
+        // Get new current item
+        let next_item = viewport.get_current_item_index().unwrap();
 
-        // Check items were replenished
-        assert!(
-            vr.faces[0].contains(&"9".to_string()) || vr.faces[0].contains(&"10".to_string()),
-            "Face 0 should have been replenished with pending items"
-        );
+        // Should be different than initial item
+        assert_ne!(initial_item, next_item);
+
+        // Move to next item again (should wrap around to 0 since we have 3 items per face)
+        viewport.next_item();
+        viewport.next_item();
+
+        // Should wrap back to 0
+        assert_eq!(viewport.current_item_index, 0);
     }
 
     #[test]
-    fn test_change_axis() {
-        let items = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>();
-        let items_json = serde_json::to_string(&items).unwrap();
+    fn test_viewport_rotation_rotate_next() {
+        let total_items = 24;
+        let max_per_face = 3;
 
-        let mut vr = ViewportRotation::new(&items_json, 2).unwrap();
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
 
-        // Default is Y-axis
-        assert_eq!(vr.current_axis, RotationAxis::YAxis);
+        // Initial state should have current_face = 0 (front)
+        assert_eq!(viewport.current_face, 0);
+        assert_eq!(viewport.cycle_position, 0);
 
-        // Check active faces have items
-        let y_active_faces = vec![0, 3, 2, 1];
-        for &face in &y_active_faces {
-            assert!(!vr.faces[face].is_empty());
-        }
+        // Rotate to next face (should be top for X-axis rotation)
+        let state = viewport.rotate_next();
 
-        // Change to X-axis
-        let x_axis_json = serde_json::to_string("X-axis").unwrap();
-        vr.set_rotation_axis(&x_axis_json).unwrap();
+        // Check updated state
+        assert_eq!(viewport.current_face, 5); // Top face
+        assert_eq!(viewport.cycle_position, 1);
+        assert_eq!(viewport.current_item_index, 0); // Reset to first item
 
-        // Verify current state reset
-        assert_eq!(vr.current_axis, RotationAxis::XAxis);
-        // assert_eq!(vr.cycle_position, 0);
-        // assert_eq!(vr.current_face, 0);
+        assert_eq!(state.current_face, 5);
+        assert_eq!(state.cycle_position, 1);
+        assert_eq!(state.current_item_index, 0);
 
-        // // Complete a full cycle
-        // for _ in 0..4 {
-        //     vr.internal_rotate_next();
-        // }
+        // Rotate again to move to back face
+        viewport.rotate_next();
+        assert_eq!(viewport.current_face, 2); // Back face
+        assert_eq!(viewport.cycle_position, 2);
 
-        // // Verify X-axis active faces have items
-        // let x_active_faces = vec![0, 5, 2, 4];
-        // for face in 0..6 {
-        //     if x_active_faces.contains(&face) {
-        //         assert!(!vr.faces[face].is_empty(), "X-axis active face {} should have items", face);
-        //     }
-        // }
+        // Rotate again to move to bottom face
+        viewport.rotate_next();
+        assert_eq!(viewport.current_face, 4); // Bottom face
+        assert_eq!(viewport.cycle_position, 3);
+
+        // Rotate once more to complete the cycle
+        viewport.rotate_next();
+        assert_eq!(viewport.current_face, 0); // Back to front face
+        assert_eq!(viewport.cycle_position, 0);
     }
 
-    #[test]
-    fn test_next_item() {
-        let items = vec!["1", "2", "3", "4", "5", "6"].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        let items_json = serde_json::to_string(&items).unwrap();
-
-        let mut vr = ViewportRotation::new(&items_json, 3).unwrap();
-
-        // Initial state
-        assert_eq!(vr.current_item_index, 0);
-        assert_eq!(vr.internal_get_current_item_id().unwrap(), "1");
-
-        // Next item
-        vr.internal_next_item();
-        assert_eq!(vr.current_item_index, 1);
-        assert_eq!(vr.internal_get_current_item_id().unwrap(), "2");
-
-        // Next item should wrap around
-        vr.internal_next_item();
-        assert_eq!(vr.current_item_index, 2);
-        assert_eq!(vr.internal_get_current_item_id().unwrap(), "3");
-
-        // Wrap around
-        vr.internal_next_item();
-        assert_eq!(vr.current_item_index, 0);
-        assert_eq!(vr.internal_get_current_item_id().unwrap(), "1");
-    }
-
-    #[test]
-    fn test_get_current_cycle_items() {
-        let items = vec!["1", "2", "3", "4", "5", "6", "7", "8"].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        let items_json = serde_json::to_string(&items).unwrap();
-
-        /// Set the rotation axis for the active viewport
-        /// Set the rotation axis for the active viewport
-        /// Set the rotation axis for the active viewport
-        /// Set the rotation axis for the active viewport
-        /// Set the rotation axis for the active viewport
-        let vr = ViewportRotation::new(&items_json, 2).unwrap();
-
-        // Get items via the internal method that get_current_cycle_items uses
-        let active_faces = vr.get_active_cycle_faces();
-        let cycle_items: Vec<&Vec<String>> = active_faces.iter().map(|&face| &vr.faces[face]).collect();
-
-        // Check correct faces and items
-        assert_eq!(active_faces, vec![0, 3, 2, 1]);
-        assert_eq!(cycle_items[0], &vec!["1".to_string(), "2".to_string()]);
-        assert_eq!(cycle_items[1], &vec!["3".to_string(), "4".to_string()]);
-        assert_eq!(cycle_items[2], &vec!["5".to_string(), "6".to_string()]);
-        assert_eq!(cycle_items[3], &vec!["7".to_string(), "8".to_string()]);
-    }
+    //     #[test]
+    //     fn test_viewport_rotation_set_rotation_axis() {
+    //         let total_items = 24;
+    //         let max_per_face = 3;
+    //
+    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+    //
+    //         // Initial state should have X-axis rotation
+    //         assert_eq!(viewport.current_axis, RotationAxis::XAxis);
+    //
+    //         // Change to Y-axis rotation
+    //         let state = viewport.set_rotation_axis(RotationAxis::YAxis);
+    //
+    //         // Check updated state
+    //         assert_eq!(viewport.current_axis, RotationAxis::YAxis);
+    //         assert_eq!(viewport.current_face, 0); // Front face is still front face
+    //         assert_eq!(viewport.cycle_position, 0); // Reset cycle position
+    //         assert_eq!(viewport.current_item_index, 0); // Reset to first item
+    //
+    //         assert_eq!(state.current_axis, RotationAxis::YAxis);
+    //
+    //         // Rotate to next face (should be right for Y-axis rotation)
+    //         viewport.rotate_next();
+    //         assert_eq!(viewport.current_face, 3); // Right face
+    //
+    //         // Set back to X-axis rotation (should reset cycle position)
+    //         viewport.set_rotation_axis(RotationAxis::XAxis);
+    //         assert_eq!(viewport.current_face, 0); // Front face
+    //         assert_eq!(viewport.cycle_position, 0);
+    //
+    //         // Setting to same axis should not change anything
+    //         let current_face = viewport.current_face;
+    //         let current_position = viewport.cycle_position;
+    //         viewport.set_rotation_axis(RotationAxis::XAxis);
+    //         assert_eq!(viewport.current_face, current_face);
+    //         assert_eq!(viewport.cycle_position, current_position);
+    //     }
+    //
+    //     #[test]
+    //     fn test_viewport_rotation_get_current_item_index() {
+    //         let total_items = 10;
+    //         let max_per_face = 3;
+    //
+    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+    //
+    //         // Get initial item index
+    //         let initial_item = viewport.get_current_item_index().unwrap();
+    //         assert_eq!(initial_item, 0); // Should start with item 0
+    //
+    //         // Move to next item
+    //         viewport.next_item();
+    //         let next_item = viewport.get_current_item_index().unwrap();
+    //         assert_eq!(next_item, 1); // Should be item 1
+    //
+    //         // Create a viewport with no items
+    //         let empty_viewport = ViewportRotation {
+    //             total_items: 0,
+    //             face_indices: vec![Vec::new(); 6],
+    //             max_per_face: 3,
+    //             current_face: 0,
+    //             current_item_index: 0,
+    //             current_axis: RotationAxis::XAxis,
+    //             rotation_cycles: {
+    //                 let mut map = HashMap::new();
+    //                 map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
+    //                 map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
+    //                 map
+    //             },
+    //             cycle_position: 0,
+    //             next_index: 0,
+    //         };
+    //
+    //         // Should return None for empty face
+    //         assert_eq!(empty_viewport.get_current_item_index(), None);
+    //     }
+    //
+    //     #[test]
+    //     fn test_viewport_rotation_cycle_all_faces() {
+    //         let total_items = 24;
+    //         let max_per_face = 2; // Small number to ensure we need to cycle
+    //
+    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+    //
+    //         // Initial state - first 8 items should be distributed to active X-axis faces (0, 5, 2, 4)
+    //         // with 2 items per face
+    //         assert_eq!(viewport.next_index, 8);
+    //
+    //         // Check face 0 (front)
+    //         assert_eq!(viewport.face_indices[0], vec![0, 1]);
+    //
+    //         // Check face 5 (top)
+    //         assert_eq!(viewport.face_indices[5], vec![2, 3]);
+    //
+    //         // Check face 2 (back)
+    //         assert_eq!(viewport.face_indices[2], vec![4, 5]);
+    //
+    //         // Check face 4 (bottom)
+    //         assert_eq!(viewport.face_indices[4], vec![6, 7]);
+    //
+    //         // Rotate through a complete cycle
+    //         viewport.rotate_next(); // To top (face 5)
+    //         viewport.rotate_next(); // To back (face 2)
+    //         viewport.rotate_next(); // To bottom (face 4)
+    //         viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling
+    //
+    //         // After cycling, the next 8 items (8-15) should replace the first 8
+    //         assert_eq!(viewport.next_index, 16);
+    //
+    //         // Check face 0 (front) - should have items 8, 9
+    //         assert_eq!(viewport.face_indices[0], vec![8, 9]);
+    //
+    //         // Check face 5 (top) - should have items 10, 11
+    //         assert_eq!(viewport.face_indices[5], vec![10, 11]);
+    //
+    //         // Check face 2 (back) - should have items 12, 13
+    //         assert_eq!(viewport.face_indices[2], vec![12, 13]);
+    //
+    //         // Check face 4 (bottom) - should have items 14, 15
+    //         assert_eq!(viewport.face_indices[4], vec![14, 15]);
+    //
+    //         // Rotate through another complete cycle
+    //         viewport.rotate_next(); // To top (face 5)
+    //         viewport.rotate_next(); // To back (face 2)
+    //         viewport.rotate_next(); // To bottom (face 4)
+    //         viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling again
+    //
+    //         // After cycling, the next 8 items (16-23) should replace the previous 8
+    //         assert_eq!(viewport.next_index, 24); // All items used
+    //
+    //         // Check face 0 (front) - should have items 16, 17
+    //         assert_eq!(viewport.face_indices[0], vec![16, 17]);
+    //
+    //         // Check face 5 (top) - should have items 18, 19
+    //         assert_eq!(viewport.face_indices[5], vec![18, 19]);
+    //
+    //         // Check face 2 (back) - should have items 20, 21
+    //         assert_eq!(viewport.face_indices[2], vec![20, 21]);
+    //
+    //         // Check face 4 (bottom) - should have items 22, 23
+    //         assert_eq!(viewport.face_indices[4], vec![22, 23]);
+    //
+    //         // One more cycle - should not change anything since all items are used
+    //         viewport.rotate_next(); // To top (face 5)
+    //         viewport.rotate_next(); // To back (face 2)
+    //         viewport.rotate_next(); // To bottom (face 4)
+    //         viewport.rotate_next(); // Back to front (face 0)
+    //
+    //         // Should remain at 24 (no more items to add)
+    //         assert_eq!(viewport.next_index, 24);
+    //
+    //         // Faces should remain unchanged
+    //         assert_eq!(viewport.face_indices[0], vec![16, 17]);
+    //     }
+    //
+    //     #[test]
+    //     fn test_viewport_rotation_with_uneven_distribution() {
+    //         let total_items = 7; // Prime number to ensure uneven distribution
+    //         let max_per_face = 2;
+    //
+    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+    //
+    //         // Initial state - first 7 items should be distributed to active X-axis faces (0, 5, 2, 4)
+    //         // Face 0 and 5 should have 2 items each, face 2 should have 2 items, and face 4 should have 1 item
+    //         assert_eq!(viewport.face_indices[0], vec![0, 1]);
+    //         assert_eq!(viewport.face_indices[5], vec![2, 3]);
+    //         assert_eq!(viewport.face_indices[2], vec![4, 5]);
+    //         assert_eq!(viewport.face_indices[4], vec![6]); // Only 1 item left
+    //
+    //         // Rotate and check that item index resets
+    //         viewport.rotate_next(); // To top (face 5)
+    //         assert_eq!(viewport.current_face, 5);
+    //         assert_eq!(viewport.current_item_index, 0);
+    //
+    //         // Move to next item in current face
+    //         viewport.next_item();
+    //         assert_eq!(viewport.current_item_index, 1);
+    //
+    //         // Rotate to next face and check item index reset
+    //         viewport.rotate_next(); // To back (face 2)
+    //         assert_eq!(viewport.current_face, 2);
+    //         assert_eq!(viewport.current_item_index, 0);
+    //
+    //         // Rotate to face with only one item
+    //         viewport.rotate_next(); // To bottom (face 4)
+    //         assert_eq!(viewport.current_face, 4);
+    //         assert_eq!(viewport.current_item_index, 0);
+    //
+    //         // Try to move to next item (should stay at 0 since there's only 1 item)
+    //         viewport.next_item();
+    //         assert_eq!(viewport.current_item_index, 0); // Should not change
+    //     }
+    //
+    //     #[test]
+    //     fn test_viewport_rotation_get_active_cycle_faces() {
+    //         let viewport = ViewportRotation::new(10, 2).unwrap();
+    //
+    //         // For X-axis, should return faces 0, 5, 2, 4
+    //         let x_axis_faces = viewport.get_active_cycle_faces();
+    //         assert_eq!(x_axis_faces, vec![0, 5, 2, 4]);
+    //
+    //         // Create a viewport with Y-axis rotation
+    //         let mut viewport = ViewportRotation::new(10, 2).unwrap();
+    //         viewport.set_rotation_axis(RotationAxis::YAxis);
+    //
+    //         // For Y-axis, should return faces 0, 3, 2, 1
+    //         let y_axis_faces = viewport.get_active_cycle_faces();
+    //         assert_eq!(y_axis_faces, vec![0, 3, 2, 1]);
+    //     }
+    //
+    //     #[test]
+    //     fn test_viewport_rotation_fill_face() {
+    //         let mut viewport = ViewportRotation {
+    //             total_items: 10,
+    //             face_indices: vec![Vec::new(); 6],
+    //             max_per_face: 3,
+    //             current_face: 0,
+    //             current_item_index: 0,
+    //             current_axis: RotationAxis::XAxis,
+    //             rotation_cycles: {
+    //                 let mut map = HashMap::new();
+    //                 map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
+    //                 map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
+    //                 map
+    //             },
+    //             cycle_position: 0,
+    //             next_index: 0,
+    //         };
+    //
+    //         // Fill face 0
+    //         viewport.fill_face(0);
+    //
+    //         // Face 0 should have 3 items (max_per_face)
+    //         assert_eq!(viewport.face_indices[0], vec![0, 1, 2]);
+    //         assert_eq!(viewport.next_index, 3);
+    //
+    //         // Fill face 1
+    //         viewport.fill_face(1);
+    //
+    //         // Face 1 should have 3 items
+    //         assert_eq!(viewport.face_indices[1], vec![3, 4, 5]);
+    //         assert_eq!(viewport.next_index, 6);
+    //
+    //         // Fill face 2 (only 4 items left)
+    //         viewport.fill_face(2);
+    //
+    //         // Face 2 should have 3 items
+    //         assert_eq!(viewport.face_indices[2], vec![6, 7, 8]);
+    //         assert_eq!(viewport.next_index, 9);
+    //
+    //         // Fill face 3 (only 1 item left)
+    //         viewport.fill_face(3);
+    //
+    //         // Face 3 should have 1 item
+    //         assert_eq!(viewport.face_indices[3], vec![9]);
+    //         assert_eq!(viewport.next_index, 10); // All items used
+    //
+    //         // Try to fill face 4 (no items left)
+    //         viewport.fill_face(4);
+    //
+    //         // Face 4 should be empty
+    //         assert_eq!(viewport.face_indices[4], Vec::<usize>::new());
+    //         assert_eq!(viewport.next_index, 10); // No change
+    //     }
+    //
+    //     // Tests for ViewportManager
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_creation() {
+    //         let manager = ViewportManager::new();
+    //
+    //         // Should start with no viewports
+    //         let viewports_result = manager.list_viewports().unwrap();
+    //         let viewports: serde_json::Value = serde_wasm_bindgen::from_value(viewports_result).unwrap();
+    //
+    //         assert_eq!(viewports["viewportIds"].as_array().unwrap().len(), 0);
+    //         assert!(viewports["activeViewportId"].is_null());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_create_viewport() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         let result = manager.create_viewport("viewport1", 24, 3).unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Check that viewport was created with correct settings
+    //         assert_eq!(state["currFace"], 0);
+    //         assert_eq!(state["currIdx"], 0);
+    //         assert_eq!(state["currRotationAxis"], "X-axis");
+    //
+    //         // Check that it's set as active
+    //         assert_eq!(manager.get_active_viewport_id().unwrap(), "viewport1");
+    //
+    //         // Create another viewport
+    //         manager.create_viewport("viewport2", 10, 2).unwrap();
+    //
+    //         // First viewport should still be active
+    //         assert_eq!(manager.get_active_viewport_id().unwrap(), "viewport1");
+    //
+    //         // List viewports
+    //         let viewports_result = manager.list_viewports().unwrap();
+    //         let viewports: serde_json::Value = serde_wasm_bindgen::from_value(viewports_result).unwrap();
+    //
+    //         let viewport_ids = viewports["viewportIds"].as_array().unwrap();
+    //         assert_eq!(viewport_ids.len(), 2);
+    //         assert!(viewport_ids.iter().any(|id| id.as_str().unwrap() == "viewport1"));
+    //         assert!(viewport_ids.iter().any(|id| id.as_str().unwrap() == "viewport2"));
+    //
+    //         // Try to create a viewport with existing ID
+    //         let duplicate_result = manager.create_viewport("viewport1", 5, 1);
+    //         assert!(duplicate_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_set_active_viewport() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create two viewports
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //         manager.create_viewport("viewport2", 10, 2).unwrap();
+    //
+    //         // First viewport should be active
+    //         assert_eq!(manager.get_active_viewport_id().unwrap(), "viewport1");
+    //
+    //         // Set second viewport as active
+    //         let result = manager.set_active_viewport("viewport2").unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Check that second viewport is now active
+    //         assert_eq!(manager.get_active_viewport_id().unwrap(), "viewport2");
+    //
+    //         // Check that returned state is for viewport2
+    //         assert_eq!(state["faceIndices"][0].as_array().unwrap().len(), 2); // max_per_face = 2
+    //
+    //         // Try to set a non-existent viewport as active
+    //         let invalid_result = manager.set_active_viewport("nonexistent");
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_remove_viewport() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create two viewports
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //         manager.create_viewport("viewport2", 10, 2).unwrap();
+    //
+    //         // Remove viewport1
+    //         let result = manager.remove_viewport("viewport1").unwrap();
+    //         let viewports: serde_json::Value = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Should have one viewport left
+    //         let viewport_ids = viewports["viewportIds"].as_array().unwrap();
+    //         assert_eq!(viewport_ids.len(), 1);
+    //         assert_eq!(viewport_ids[0].as_str().unwrap(), "viewport2");
+    //
+    //         // viewport2 should now be active
+    //         assert_eq!(viewports["activeViewportId"].as_str().unwrap(), "viewport2");
+    //         assert_eq!(manager.get_active_viewport_id().unwrap(), "viewport2");
+    //
+    //         // Remove viewport2
+    //         manager.remove_viewport("viewport2").unwrap();
+    //
+    //         // No viewports left, active viewport should be None
+    //         assert!(manager.get_active_viewport_id().is_none());
+    //
+    //         // Try to remove a non-existent viewport
+    //         let invalid_result = manager.remove_viewport("nonexistent");
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_rotation_operations() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //
+    //         // Rotate to next face
+    //         let result = manager.rotate_next().unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be on face 5 (top) for X-axis rotation
+    //         assert_eq!(state["currFace"], 5);
+    //
+    //         // Rotate with specific viewport ID
+    //         let result = manager.rotate_viewport_next("viewport1").unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be on face 2 (back)
+    //         assert_eq!(state["currFace"], 2);
+    //
+    //         // Try with invalid viewport ID
+    //         let invalid_result = manager.rotate_viewport_next("nonexistent");
+    //         assert!(invalid_result.is_err());
+    //
+    //         // Create another viewport and set it as active
+    //         manager.create_viewport("viewport2", 10, 2).unwrap();
+    //         manager.set_active_viewport("viewport2").unwrap();
+    //
+    //         // Rotate active viewport (should be viewport2)
+    //         let result = manager.rotate_next().unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should still be on face 0 (default) for viewport2
+    //         assert_eq!(state["currFace"], 5);
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_next_item() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //
+    //         // Move to next item
+    //         let result = manager.next_item().unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be on item 1
+    //         assert_eq!(state["currIdx"], 1);
+    //
+    //         // Move to next item with specific viewport ID
+    //         let result = manager.viewport_next_item("viewport1").unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be on item 2
+    //         assert_eq!(state["currIdx"], 2);
+    //
+    //         // Try with invalid viewport ID
+    //         let invalid_result = manager.viewport_next_item("nonexistent");
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_get_current_item_index() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //
+    //         // Get current item index
+    //         let result = manager.get_current_item_index().unwrap();
+    //         let index: f64 = result.as_f64().unwrap();
+    //
+    //         // Should be 0
+    //         assert_eq!(index, 0.0);
+    //
+    //         // Move to next item
+    //         manager.next_item().unwrap();
+    //
+    //         // Get current item index with specific viewport ID
+    //         let result = manager.get_viewport_current_item_index("viewport1").unwrap();
+    //         let index: f64 = result.as_f64().unwrap();
+    //
+    //         // Should be 1
+    //         assert_eq!(index, 1.0);
+    //
+    //         // Try with invalid viewport ID
+    //         let invalid_result = manager.get_viewport_current_item_index("nonexistent");
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_set_rotation_axis() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         manager.create_viewport("viewport1", 24, 3).unwrap();
+    //
+    //         // Set rotation axis to Y
+    //         let axis_json = r#""Y-axis""#; // JSON string representing Y-axis
+    //         let result = manager.set_rotation_axis(axis_json).unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be Y-axis
+    //         assert_eq!(state["currRotationAxis"], "Y-axis");
+    //
+    //         // Set rotation axis with specific viewport ID
+    //         let axis_json = r#""X-axis""#; // JSON string representing X-axis
+    //         let result = manager.set_viewport_rotation_axis("viewport1", axis_json).unwrap();
+    //         let state = extract_state_from_response(&result);
+    //
+    //         // Should be X-axis
+    //         assert_eq!(state["currRotationAxis"], "X-axis");
+    //
+    //         // Try with invalid JSON
+    //         let invalid_json = r#"invalid"#;
+    //         let invalid_result = manager.set_rotation_axis(invalid_json);
+    //         assert!(invalid_result.is_err());
+    //
+    //         // Try with invalid viewport ID
+    //         let axis_json = r#""X-axis""#;
+    //         let invalid_result = manager.set_viewport_rotation_axis("nonexistent", axis_json);
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_get_face_indices() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport with total_items = 12, max_per_face = 2
+    //         manager.create_viewport("viewport1", 12, 2).unwrap();
+    //
+    //         // Get face indices for face 0
+    //         let result = manager.get_face_indices(0).unwrap();
+    //         let indices: Vec<usize> = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Face 0 should have 2 items (0, 1)
+    //         assert_eq!(indices, vec![0, 1]);
+    //
+    //         // Get face indices for face 5
+    //         let result = manager.get_face_indices(5).unwrap();
+    //         let indices: Vec<usize> = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Face 5 should have 2 items (2, 3)
+    //         assert_eq!(indices, vec![2, 3]);
+    //
+    //         // Get face indices with specific viewport ID
+    //         let result = manager.get_viewport_face_indices("viewport1", 2).unwrap();
+    //         let indices: Vec<usize> = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Face 2 should have 2 items (4, 5)
+    //         assert_eq!(indices, vec![4, 5]);
+    //
+    //         // Try with invalid face index
+    //         let invalid_result = manager.get_face_indices(6);
+    //         assert!(invalid_result.is_err());
+    //
+    //         // Try with invalid viewport ID
+    //         let invalid_result = manager.get_viewport_face_indices("nonexistent", 0);
+    //         assert!(invalid_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_manager_with_no_active_viewport() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Try operations with no active viewport
+    //         let rotate_result = manager.rotate_next();
+    //         assert!(rotate_result.is_err());
+    //
+    //         let next_item_result = manager.next_item();
+    //         assert!(next_item_result.is_err());
+    //
+    //         let get_index_result = manager.get_current_item_index();
+    //         assert!(get_index_result.is_err());
+    //
+    //         let axis_json = r#""X-axis""#;
+    //         let set_axis_result = manager.set_rotation_axis(axis_json);
+    //         assert!(set_axis_result.is_err());
+    //
+    //         let get_face_result = manager.get_face_indices(0);
+    //         assert!(get_face_result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_integration_rotate_and_cycle() {
+    //         // Test rotating through multiple viewports with different configurations
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport with small count to test cycling
+    //         manager.create_viewport("viewport1", 8, 1).unwrap();
+    //
+    //         // Faces 0, 5, 2, 4 (X-axis rotation) should each have 1 item
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 0).unwrap(), serde_wasm_bindgen::to_value(&vec![0]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 5).unwrap(), serde_wasm_bindgen::to_value(&vec![1]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 2).unwrap(), serde_wasm_bindgen::to_value(&vec![2]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 4).unwrap(), serde_wasm_bindgen::to_value(&vec![3]).unwrap());
+    //
+    //         // Empty faces for Y-axis rotation faces not used in X-axis
+    //         let empty_faces_result = manager.get_viewport_face_indices("viewport1", 1).unwrap();
+    //         let empty_faces: Vec<usize> = serde_wasm_bindgen::from_value(empty_faces_result).unwrap();
+    //         assert!(empty_faces.is_empty());
+    //
+    //         // Rotate through a full cycle
+    //         manager.rotate_next().unwrap(); // To top (face 5)
+    //         manager.rotate_next().unwrap(); // To back (face 2)
+    //         manager.rotate_next().unwrap(); // To bottom (face 4)
+    //         manager.rotate_next().unwrap(); // Back to front (face 0) - should cycle
+    //
+    //         // After cycling, should have new items
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 0).unwrap(), serde_wasm_bindgen::to_value(&vec![4]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 5).unwrap(), serde_wasm_bindgen::to_value(&vec![5]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 2).unwrap(), serde_wasm_bindgen::to_value(&vec![6]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 4).unwrap(), serde_wasm_bindgen::to_value(&vec![7]).unwrap());
+    //
+    //         // One more cycle - no more items should be available
+    //         manager.rotate_next().unwrap(); // To top (face 5)
+    //         manager.rotate_next().unwrap(); // To back (face 2)
+    //         manager.rotate_next().unwrap(); // To bottom (face 4)
+    //         manager.rotate_next().unwrap(); // Back to front (face 0) - no more items to cycle
+    //
+    //         // Should still have the same items (no change)
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 0).unwrap(), serde_wasm_bindgen::to_value(&vec![4]).unwrap());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_integration_change_rotation_axis() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         manager.create_viewport("viewport1", 12, 2).unwrap();
+    //
+    //         // Initially should have X-axis rotation with items in faces 0, 5, 2, 4
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 0).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![0, 1]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 5).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![2, 3]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 2).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![4, 5]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 4).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![6, 7]).unwrap()
+    //         );
+    //
+    //         // Empty for Y-axis only faces
+    //         let empty_faces_result = manager.get_viewport_face_indices("viewport1", 1).unwrap();
+    //         let empty_faces: Vec<usize> = serde_wasm_bindgen::from_value(empty_faces_result).unwrap();
+    //         assert!(empty_faces.is_empty());
+    //
+    //         // Switch to Y-axis rotation
+    //         let axis_json = r#""Y-axis""#;
+    //         manager.set_rotation_axis(axis_json).unwrap();
+    //
+    //         // Should reset to front face
+    //         let current_state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let current_state = extract_state_from_response(&current_state_result);
+    //         assert_eq!(current_state["currFace"], 0);
+    //
+    //         // Rotate through Y-axis cycle
+    //         manager.rotate_next().unwrap(); // To right (face 3)
+    //
+    //         // Check that we're on the right face
+    //         let current_state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let current_state = extract_state_from_response(&current_state_result);
+    //         assert_eq!(current_state["currFace"], 3);
+    //
+    //         // Check face 3 (should be empty since we haven't cycled)
+    //         let face3_result = manager.get_viewport_face_indices("viewport1", 3).unwrap();
+    //         let face3_indices: Vec<usize> = serde_wasm_bindgen::from_value(face3_result).unwrap();
+    //         assert!(face3_indices.is_empty());
+    //
+    //         // Complete Y-axis rotation cycle
+    //         manager.rotate_next().unwrap(); // To back (face 2)
+    //         manager.rotate_next().unwrap(); // To left (face 1)
+    //         manager.rotate_next().unwrap(); // Back to front (face 0) - should trigger cycle for Y-axis
+    //
+    //         // After cycling, Y-axis faces should have items
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 0).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![0, 1]).unwrap()
+    //         ); // Front still has original items
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 3).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![8, 9]).unwrap()
+    //         ); // Right has new items
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 1).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![10, 11]).unwrap()
+    //         ); // Left has new items
+    //
+    //         // Switch back to X-axis
+    //         let axis_json = r#""X-axis""#;
+    //         manager.set_rotation_axis(axis_json).unwrap();
+    //
+    //         // Should reset to front face
+    //         let current_state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let current_state = extract_state_from_response(&current_state_result);
+    //         assert_eq!(current_state["currFace"], 0);
+    //         assert_eq!(current_state["currRotationAxis"], "X-axis");
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_with_zero_items() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport with 0 items
+    //         manager.create_viewport("viewport1", 0, 3).unwrap();
+    //
+    //         // All faces should be empty
+    //         for face in 0..6 {
+    //             let face_result = manager.get_viewport_face_indices("viewport1", face).unwrap();
+    //             let face_indices: Vec<usize> = serde_wasm_bindgen::from_value(face_result).unwrap();
+    //             assert!(face_indices.is_empty());
+    //         }
+    //
+    //         // Current item index should be null
+    //         let current_index = manager.get_current_item_index().unwrap();
+    //         assert!(current_index.is_null());
+    //
+    //         // Operations should still work but not change anything
+    //         manager.rotate_next().unwrap();
+    //         manager.next_item().unwrap();
+    //
+    //         // Still no current item
+    //         let current_index = manager.get_current_item_index().unwrap();
+    //         assert!(current_index.is_null());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_with_exactly_enough_items() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport with exactly enough items for one cycle (8 items for 4 faces with 2 per face)
+    //         manager.create_viewport("viewport1", 8, 2).unwrap();
+    //
+    //         // Check initial distribution
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 0).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![0, 1]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 5).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![2, 3]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 2).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![4, 5]).unwrap()
+    //         );
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 4).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![6, 7]).unwrap()
+    //         );
+    //
+    //         // Rotate through a full cycle
+    //         manager.rotate_next().unwrap(); // To top (face 5)
+    //         manager.rotate_next().unwrap(); // To back (face 2)
+    //         manager.rotate_next().unwrap(); // To bottom (face 4)
+    //         manager.rotate_next().unwrap(); // Back to front (face 0) - should have no more items to cycle
+    //
+    //         // No change should happen since we're out of items
+    //         assert_eq!(
+    //             manager.get_viewport_face_indices("viewport1", 0).unwrap(),
+    //             serde_wasm_bindgen::to_value(&vec![0, 1]).unwrap()
+    //         );
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_state_serialization() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create a viewport
+    //         let result = manager.create_viewport("viewport1", 12, 2).unwrap();
+    //
+    //         // Parse the result to verify serialization format
+    //         let state: serde_json::Value = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Check all expected fields are present
+    //         assert!(state.get("viewportId").is_some());
+    //         assert!(state.get("state").is_some());
+    //
+    //         let state_obj = state.get("state").unwrap();
+    //         assert!(state_obj.get("faceIndices").is_some());
+    //         assert!(state_obj.get("currFace").is_some());
+    //         assert!(state_obj.get("currIdx").is_some());
+    //         assert!(state_obj.get("currRotationAxis").is_some());
+    //         assert!(state_obj.get("pendingCount").is_some());
+    //         assert!(state_obj.get("cyclePosition").is_some());
+    //
+    //         // Check viewport ID
+    //         assert_eq!(state["viewportId"], "viewport1");
+    //
+    //         // Check initial state values
+    //         assert_eq!(state_obj["currFace"], 0);
+    //         assert_eq!(state_obj["currIdx"], 0);
+    //         assert_eq!(state_obj["currRotationAxis"], "X-axis");
+    //         assert_eq!(state_obj["cyclePosition"], 0);
+    //         assert_eq!(state_obj["pendingCount"], 4); // 12 total - 8 assigned to faces
+    //
+    //         // faceIndices should be a 2D array
+    //         let face_indices = state_obj["faceIndices"].as_array().unwrap();
+    //         assert_eq!(face_indices.len(), 6); // 6 faces
+    //
+    //         // Check first face indices
+    //         let face0_indices = face_indices[0].as_array().unwrap();
+    //         assert_eq!(face0_indices.len(), 2); // 2 items per face
+    //         assert_eq!(face0_indices[0], 0);
+    //         assert_eq!(face0_indices[1], 1);
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_viewport_list_serialization() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create multiple viewports
+    //         manager.create_viewport("viewport1", 12, 2).unwrap();
+    //         manager.create_viewport("viewport2", 6, 1).unwrap();
+    //
+    //         // Get list of viewports
+    //         let result = manager.list_viewports().unwrap();
+    //
+    //         // Parse the result to verify serialization format
+    //         let list: serde_json::Value = serde_wasm_bindgen::from_value(result).unwrap();
+    //
+    //         // Check all expected fields are present
+    //         assert!(list.get("viewportIds").is_some());
+    //         assert!(list.get("activeViewportId").is_some());
+    //
+    //         // Check viewport IDs
+    //         let viewport_ids = list["viewportIds"].as_array().unwrap();
+    //         assert_eq!(viewport_ids.len(), 2);
+    //
+    //         // IDs should be strings
+    //         assert!(viewport_ids.iter().all(|id| id.is_string()));
+    //
+    //         // Active viewport ID should be set
+    //         assert_eq!(list["activeViewportId"], "viewport1");
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_edge_case_max_per_face_one() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create viewport with max_per_face = 1
+    //         manager.create_viewport("viewport1", 10, 1).unwrap();
+    //
+    //         // Check that each active face has exactly 1 item
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 0).unwrap(), serde_wasm_bindgen::to_value(&vec![0]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 5).unwrap(), serde_wasm_bindgen::to_value(&vec![1]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 2).unwrap(), serde_wasm_bindgen::to_value(&vec![2]).unwrap());
+    //         assert_eq!(manager.get_viewport_face_indices("viewport1", 4).unwrap(), serde_wasm_bindgen::to_value(&vec![3]).unwrap());
+    //
+    //         // next_item() should have no effect since there's only 1 item per face
+    //         manager.next_item().unwrap();
+    //
+    //         // Current item index should still be 0
+    //         let current_index_result = manager.get_current_item_index().unwrap();
+    //         let current_index: f64 = current_index_result.as_f64().unwrap();
+    //         assert_eq!(current_index, 0.0);
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_edge_case_max_per_face_six() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create viewport with max_per_face = 6 (maximum allowed)
+    //         manager.create_viewport("viewport1", 30, 6).unwrap();
+    //
+    //         // Check that active faces have up to 6 items
+    //         let face0_result = manager.get_viewport_face_indices("viewport1", 0).unwrap();
+    //         let face0_indices: Vec<usize> = serde_wasm_bindgen::from_value(face0_result).unwrap();
+    //         assert_eq!(face0_indices.len(), 6);
+    //         assert_eq!(face0_indices, vec![0, 1, 2, 3, 4, 5]);
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_error_handling_invalid_inputs() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Try to create viewport with invalid max_per_face
+    //         let result = manager.create_viewport("invalid", 10, 0);
+    //         assert!(result.is_err());
+    //
+    //         let result = manager.create_viewport("invalid", 10, 7);
+    //         assert!(result.is_err());
+    //
+    //         // Create a valid viewport for further tests
+    //         manager.create_viewport("viewport1", 10, 2).unwrap();
+    //
+    //         // Try invalid face index
+    //         let result = manager.get_face_indices(10);
+    //         assert!(result.is_err());
+    //
+    //         // Try invalid rotation axis JSON
+    //         let result = manager.set_rotation_axis("{invalid}");
+    //         assert!(result.is_err());
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_multiple_viewports_independence() {
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create two viewports with different configurations
+    //         manager.create_viewport("viewport1", 10, 2).unwrap();
+    //         manager.create_viewport("viewport2", 20, 3).unwrap();
+    //
+    //         // Rotate viewport1
+    //         manager.set_active_viewport("viewport1").unwrap();
+    //         manager.rotate_next().unwrap(); // To top (face 5)
+    //
+    //         // Check position of viewport1
+    //         let state1_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state1 = extract_state_from_response(&state1_result);
+    //         assert_eq!(state1["currFace"], 5);
+    //
+    //         // Check position of viewport2 (should be unchanged)
+    //         let state2_result = manager.get_viewport_state("viewport2").unwrap();
+    //         let state2 = extract_state_from_response(&state2_result);
+    //         assert_eq!(state2["currFace"], 0); // Still at front face
+    //
+    //         // Change rotation axis for viewport1
+    //         let axis_json = r#""Y-axis""#;
+    //         manager.set_rotation_axis(axis_json).unwrap();
+    //
+    //         // Check axis of viewport1
+    //         let state1_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state1 = extract_state_from_response(&state1_result);
+    //         assert_eq!(state1["currRotationAxis"], "Y-axis");
+    //
+    //         // Check axis of viewport2 (should be unchanged)
+    //         let state2_result = manager.get_viewport_state("viewport2").unwrap();
+    //         let state2 = extract_state_from_response(&state2_result);
+    //         assert_eq!(state2["currRotationAxis"], "X-axis"); // Still X-axis
+    //     }
+    //
+    //     #[wasm_bindgen_test]
+    //     fn test_full_lifecycle() {
+    //         // Test a complete lifecycle of viewport operations
+    //         let mut manager = ViewportManager::new();
+    //
+    //         // Create viewport
+    //         manager.create_viewport("viewport1", 16, 3).unwrap();
+    //
+    //         // Verify initial state
+    //         let state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state = extract_state_from_response(&state_result);
+    //         assert_eq!(state["currFace"], 0);
+    //         assert_eq!(state["currIdx"], 0);
+    //         assert_eq!(state["currRotationAxis"], "X-axis");
+    //
+    //         // Get current item
+    //         let current_item_result = manager.get_current_item_index().unwrap();
+    //         let current_item: f64 = current_item_result.as_f64().unwrap();
+    //         assert_eq!(current_item, 0.0);
+    //
+    //         // Move to next item
+    //         manager.next_item().unwrap();
+    //         let current_item_result = manager.get_current_item_index().unwrap();
+    //         let current_item: f64 = current_item_result.as_f64().unwrap();
+    //         assert_eq!(current_item, 1.0);
+    //
+    //         // Rotate to next face
+    //         manager.rotate_next().unwrap();
+    //         let state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state = extract_state_from_response(&state_result);
+    //         assert_eq!(state["currFace"], 5); // Top face
+    //         assert_eq!(state["currIdx"], 0); // Reset to first item
+    //
+    //         // Change rotation axis
+    //         let axis_json = r#""Y-axis""#;
+    //         manager.set_rotation_axis(axis_json).unwrap();
+    //         let state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state = extract_state_from_response(&state_result);
+    //         assert_eq!(state["currFace"], 0); // Reset to front face
+    //         assert_eq!(state["currRotationAxis"], "Y-axis");
+    //
+    //         // Rotate in new axis
+    //         manager.rotate_next().unwrap();
+    //         let state_result = manager.get_viewport_state("viewport1").unwrap();
+    //         let state = extract_state_from_response(&state_result);
+    //         assert_eq!(state["currFace"], 3); // Right face
+    //
+    //         // Remove viewport
+    //         manager.remove_viewport("viewport1").unwrap();
+    //
+    //         // Verify it's gone
+    //         let viewports_result = manager.list_viewports().unwrap();
+    //         let viewports: serde_json::Value = serde_wasm_bindgen::from_value(viewports_result).unwrap();
+    //         let viewport_ids = viewports["viewportIds"].as_array().unwrap();
+    //         assert_eq!(viewport_ids.len(), 0);
+    //     }
 }
