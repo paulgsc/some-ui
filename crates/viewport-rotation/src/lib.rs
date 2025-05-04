@@ -89,7 +89,7 @@ impl ViewportRotation {
             max_per_face,
             current_face: 0,
             current_item_index: 0,
-            current_axis: RotationAxis::XAxis, // Default to Y-axis rotation
+            current_axis: RotationAxis::YAxis, // Default to Y-axis rotation
             rotation_cycles,
             cycle_position: 0,
             next_index: 0,
@@ -482,13 +482,12 @@ mod tests {
         assert_eq!(viewport.max_per_face, max_per_face);
         assert_eq!(viewport.current_face, 0);
         assert_eq!(viewport.current_item_index, 0);
-        assert_eq!(viewport.current_axis, RotationAxis::XAxis);
+        assert_eq!(viewport.current_axis, RotationAxis::YAxis);
         assert_eq!(viewport.cycle_position, 0);
 
         // Check that only active faces are filled (0, 5, 2, 4 for X-axis)
-        let active_faces = vec![0, 5, 2, 4];
         for face in 0..6 {
-            if active_faces.contains(&face) {
+            if viewport.get_active_cycle_faces().contains(&face) {
                 assert!(!viewport.face_indices[face].is_empty(), "Face {face} should have items");
                 assert!(viewport.face_indices[face].len() <= max_per_face);
             } else {
@@ -553,22 +552,22 @@ mod tests {
         let state = viewport.rotate_next();
 
         // Check updated state
-        assert_eq!(viewport.current_face, 5); // Top face
+        assert_eq!(viewport.current_face, 3); 
         assert_eq!(viewport.cycle_position, 1);
         assert_eq!(viewport.current_item_index, 0); // Reset to first item
 
-        assert_eq!(state.current_face, 5);
+        assert_eq!(state.current_face, 3);
         assert_eq!(state.cycle_position, 1);
         assert_eq!(state.current_item_index, 0);
 
         // Rotate again to move to back face
         viewport.rotate_next();
-        assert_eq!(viewport.current_face, 2); // Back face
+        assert_eq!(viewport.current_face, 2); 
         assert_eq!(viewport.cycle_position, 2);
 
         // Rotate again to move to bottom face
         viewport.rotate_next();
-        assert_eq!(viewport.current_face, 4); // Bottom face
+        assert_eq!(viewport.current_face, 1); 
         assert_eq!(viewport.cycle_position, 3);
 
         // Rotate once more to complete the cycle
@@ -577,270 +576,269 @@ mod tests {
         assert_eq!(viewport.cycle_position, 0);
     }
 
-    //     #[test]
-    //     fn test_viewport_rotation_set_rotation_axis() {
-    //         let total_items = 24;
-    //         let max_per_face = 3;
-    //
-    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
-    //
-    //         // Initial state should have X-axis rotation
-    //         assert_eq!(viewport.current_axis, RotationAxis::XAxis);
-    //
-    //         // Change to Y-axis rotation
-    //         let state = viewport.set_rotation_axis(RotationAxis::YAxis);
-    //
-    //         // Check updated state
-    //         assert_eq!(viewport.current_axis, RotationAxis::YAxis);
-    //         assert_eq!(viewport.current_face, 0); // Front face is still front face
-    //         assert_eq!(viewport.cycle_position, 0); // Reset cycle position
-    //         assert_eq!(viewport.current_item_index, 0); // Reset to first item
-    //
-    //         assert_eq!(state.current_axis, RotationAxis::YAxis);
-    //
-    //         // Rotate to next face (should be right for Y-axis rotation)
-    //         viewport.rotate_next();
-    //         assert_eq!(viewport.current_face, 3); // Right face
-    //
-    //         // Set back to X-axis rotation (should reset cycle position)
-    //         viewport.set_rotation_axis(RotationAxis::XAxis);
-    //         assert_eq!(viewport.current_face, 0); // Front face
-    //         assert_eq!(viewport.cycle_position, 0);
-    //
-    //         // Setting to same axis should not change anything
-    //         let current_face = viewport.current_face;
-    //         let current_position = viewport.cycle_position;
-    //         viewport.set_rotation_axis(RotationAxis::XAxis);
-    //         assert_eq!(viewport.current_face, current_face);
-    //         assert_eq!(viewport.cycle_position, current_position);
-    //     }
-    //
-    //     #[test]
-    //     fn test_viewport_rotation_get_current_item_index() {
-    //         let total_items = 10;
-    //         let max_per_face = 3;
-    //
-    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
-    //
-    //         // Get initial item index
-    //         let initial_item = viewport.get_current_item_index().unwrap();
-    //         assert_eq!(initial_item, 0); // Should start with item 0
-    //
-    //         // Move to next item
-    //         viewport.next_item();
-    //         let next_item = viewport.get_current_item_index().unwrap();
-    //         assert_eq!(next_item, 1); // Should be item 1
-    //
-    //         // Create a viewport with no items
-    //         let empty_viewport = ViewportRotation {
-    //             total_items: 0,
-    //             face_indices: vec![Vec::new(); 6],
-    //             max_per_face: 3,
-    //             current_face: 0,
-    //             current_item_index: 0,
-    //             current_axis: RotationAxis::XAxis,
-    //             rotation_cycles: {
-    //                 let mut map = HashMap::new();
-    //                 map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
-    //                 map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
-    //                 map
-    //             },
-    //             cycle_position: 0,
-    //             next_index: 0,
-    //         };
-    //
-    //         // Should return None for empty face
-    //         assert_eq!(empty_viewport.get_current_item_index(), None);
-    //     }
-    //
-    //     #[test]
-    //     fn test_viewport_rotation_cycle_all_faces() {
-    //         let total_items = 24;
-    //         let max_per_face = 2; // Small number to ensure we need to cycle
-    //
-    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
-    //
-    //         // Initial state - first 8 items should be distributed to active X-axis faces (0, 5, 2, 4)
-    //         // with 2 items per face
-    //         assert_eq!(viewport.next_index, 8);
-    //
-    //         // Check face 0 (front)
-    //         assert_eq!(viewport.face_indices[0], vec![0, 1]);
-    //
-    //         // Check face 5 (top)
-    //         assert_eq!(viewport.face_indices[5], vec![2, 3]);
-    //
-    //         // Check face 2 (back)
-    //         assert_eq!(viewport.face_indices[2], vec![4, 5]);
-    //
-    //         // Check face 4 (bottom)
-    //         assert_eq!(viewport.face_indices[4], vec![6, 7]);
-    //
-    //         // Rotate through a complete cycle
-    //         viewport.rotate_next(); // To top (face 5)
-    //         viewport.rotate_next(); // To back (face 2)
-    //         viewport.rotate_next(); // To bottom (face 4)
-    //         viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling
-    //
-    //         // After cycling, the next 8 items (8-15) should replace the first 8
-    //         assert_eq!(viewport.next_index, 16);
-    //
-    //         // Check face 0 (front) - should have items 8, 9
-    //         assert_eq!(viewport.face_indices[0], vec![8, 9]);
-    //
-    //         // Check face 5 (top) - should have items 10, 11
-    //         assert_eq!(viewport.face_indices[5], vec![10, 11]);
-    //
-    //         // Check face 2 (back) - should have items 12, 13
-    //         assert_eq!(viewport.face_indices[2], vec![12, 13]);
-    //
-    //         // Check face 4 (bottom) - should have items 14, 15
-    //         assert_eq!(viewport.face_indices[4], vec![14, 15]);
-    //
-    //         // Rotate through another complete cycle
-    //         viewport.rotate_next(); // To top (face 5)
-    //         viewport.rotate_next(); // To back (face 2)
-    //         viewport.rotate_next(); // To bottom (face 4)
-    //         viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling again
-    //
-    //         // After cycling, the next 8 items (16-23) should replace the previous 8
-    //         assert_eq!(viewport.next_index, 24); // All items used
-    //
-    //         // Check face 0 (front) - should have items 16, 17
-    //         assert_eq!(viewport.face_indices[0], vec![16, 17]);
-    //
-    //         // Check face 5 (top) - should have items 18, 19
-    //         assert_eq!(viewport.face_indices[5], vec![18, 19]);
-    //
-    //         // Check face 2 (back) - should have items 20, 21
-    //         assert_eq!(viewport.face_indices[2], vec![20, 21]);
-    //
-    //         // Check face 4 (bottom) - should have items 22, 23
-    //         assert_eq!(viewport.face_indices[4], vec![22, 23]);
-    //
-    //         // One more cycle - should not change anything since all items are used
-    //         viewport.rotate_next(); // To top (face 5)
-    //         viewport.rotate_next(); // To back (face 2)
-    //         viewport.rotate_next(); // To bottom (face 4)
-    //         viewport.rotate_next(); // Back to front (face 0)
-    //
-    //         // Should remain at 24 (no more items to add)
-    //         assert_eq!(viewport.next_index, 24);
-    //
-    //         // Faces should remain unchanged
-    //         assert_eq!(viewport.face_indices[0], vec![16, 17]);
-    //     }
-    //
-    //     #[test]
-    //     fn test_viewport_rotation_with_uneven_distribution() {
-    //         let total_items = 7; // Prime number to ensure uneven distribution
-    //         let max_per_face = 2;
-    //
-    //         let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
-    //
-    //         // Initial state - first 7 items should be distributed to active X-axis faces (0, 5, 2, 4)
-    //         // Face 0 and 5 should have 2 items each, face 2 should have 2 items, and face 4 should have 1 item
-    //         assert_eq!(viewport.face_indices[0], vec![0, 1]);
-    //         assert_eq!(viewport.face_indices[5], vec![2, 3]);
-    //         assert_eq!(viewport.face_indices[2], vec![4, 5]);
-    //         assert_eq!(viewport.face_indices[4], vec![6]); // Only 1 item left
-    //
-    //         // Rotate and check that item index resets
-    //         viewport.rotate_next(); // To top (face 5)
-    //         assert_eq!(viewport.current_face, 5);
-    //         assert_eq!(viewport.current_item_index, 0);
-    //
-    //         // Move to next item in current face
-    //         viewport.next_item();
-    //         assert_eq!(viewport.current_item_index, 1);
-    //
-    //         // Rotate to next face and check item index reset
-    //         viewport.rotate_next(); // To back (face 2)
-    //         assert_eq!(viewport.current_face, 2);
-    //         assert_eq!(viewport.current_item_index, 0);
-    //
-    //         // Rotate to face with only one item
-    //         viewport.rotate_next(); // To bottom (face 4)
-    //         assert_eq!(viewport.current_face, 4);
-    //         assert_eq!(viewport.current_item_index, 0);
-    //
-    //         // Try to move to next item (should stay at 0 since there's only 1 item)
-    //         viewport.next_item();
-    //         assert_eq!(viewport.current_item_index, 0); // Should not change
-    //     }
-    //
-    //     #[test]
-    //     fn test_viewport_rotation_get_active_cycle_faces() {
-    //         let viewport = ViewportRotation::new(10, 2).unwrap();
-    //
-    //         // For X-axis, should return faces 0, 5, 2, 4
-    //         let x_axis_faces = viewport.get_active_cycle_faces();
-    //         assert_eq!(x_axis_faces, vec![0, 5, 2, 4]);
-    //
-    //         // Create a viewport with Y-axis rotation
-    //         let mut viewport = ViewportRotation::new(10, 2).unwrap();
-    //         viewport.set_rotation_axis(RotationAxis::YAxis);
-    //
-    //         // For Y-axis, should return faces 0, 3, 2, 1
-    //         let y_axis_faces = viewport.get_active_cycle_faces();
-    //         assert_eq!(y_axis_faces, vec![0, 3, 2, 1]);
-    //     }
-    //
-    //     #[test]
-    //     fn test_viewport_rotation_fill_face() {
-    //         let mut viewport = ViewportRotation {
-    //             total_items: 10,
-    //             face_indices: vec![Vec::new(); 6],
-    //             max_per_face: 3,
-    //             current_face: 0,
-    //             current_item_index: 0,
-    //             current_axis: RotationAxis::XAxis,
-    //             rotation_cycles: {
-    //                 let mut map = HashMap::new();
-    //                 map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
-    //                 map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
-    //                 map
-    //             },
-    //             cycle_position: 0,
-    //             next_index: 0,
-    //         };
-    //
-    //         // Fill face 0
-    //         viewport.fill_face(0);
-    //
-    //         // Face 0 should have 3 items (max_per_face)
-    //         assert_eq!(viewport.face_indices[0], vec![0, 1, 2]);
-    //         assert_eq!(viewport.next_index, 3);
-    //
-    //         // Fill face 1
-    //         viewport.fill_face(1);
-    //
-    //         // Face 1 should have 3 items
-    //         assert_eq!(viewport.face_indices[1], vec![3, 4, 5]);
-    //         assert_eq!(viewport.next_index, 6);
-    //
-    //         // Fill face 2 (only 4 items left)
-    //         viewport.fill_face(2);
-    //
-    //         // Face 2 should have 3 items
-    //         assert_eq!(viewport.face_indices[2], vec![6, 7, 8]);
-    //         assert_eq!(viewport.next_index, 9);
-    //
-    //         // Fill face 3 (only 1 item left)
-    //         viewport.fill_face(3);
-    //
-    //         // Face 3 should have 1 item
-    //         assert_eq!(viewport.face_indices[3], vec![9]);
-    //         assert_eq!(viewport.next_index, 10); // All items used
-    //
-    //         // Try to fill face 4 (no items left)
-    //         viewport.fill_face(4);
-    //
-    //         // Face 4 should be empty
-    //         assert_eq!(viewport.face_indices[4], Vec::<usize>::new());
-    //         assert_eq!(viewport.next_index, 10); // No change
-    //     }
-    //
+    #[test]
+    fn test_viewport_rotation_set_rotation_axis() {
+        let total_items = 24;
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        assert_eq!(viewport.current_axis, RotationAxis::YAxis);
+
+        // Change to Y-axis rotation
+        let state = viewport.set_rotation_axis(RotationAxis::XAxis);
+
+        // Check updated state
+        assert_eq!(viewport.current_axis, RotationAxis::XAxis);
+        assert_eq!(viewport.current_face, 0); // Front face is still front face
+        assert_eq!(viewport.cycle_position, 0); // Reset cycle position
+        assert_eq!(viewport.current_item_index, 0); // Reset to first item
+
+        assert_eq!(state.current_axis, RotationAxis::XAxis);
+
+        // Rotate to next face (should be right for Y-axis rotation)
+        viewport.rotate_next();
+        assert_eq!(viewport.current_face, 5); // Right face
+
+        // Set back to X-axis rotation (should reset cycle position)
+        viewport.set_rotation_axis(RotationAxis::YAxis);
+        assert_eq!(viewport.current_face, 0); // Front face
+        assert_eq!(viewport.cycle_position, 0);
+
+        // Setting to same axis should not change anything
+        let current_face = viewport.current_face;
+        let current_position = viewport.cycle_position;
+        viewport.set_rotation_axis(RotationAxis::YAxis);
+        assert_eq!(viewport.current_face, current_face);
+        assert_eq!(viewport.cycle_position, current_position);
+    }
+
+    #[test]
+    fn test_viewport_rotation_get_current_item_index() {
+        let total_items = 10;
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Get initial item index
+        let initial_item = viewport.get_current_item_index().unwrap();
+        assert_eq!(initial_item, 0); // Should start with item 0
+
+        // Move to next item
+        viewport.next_item();
+        let next_item = viewport.get_current_item_index().unwrap();
+        assert_eq!(next_item, 1); // Should be item 1
+
+        // Create a viewport with no items
+        let empty_viewport = ViewportRotation {
+            total_items: 0,
+            face_indices: vec![Vec::new(); 6],
+            max_per_face: 3,
+            current_face: 0,
+            current_item_index: 0,
+            current_axis: RotationAxis::XAxis,
+            rotation_cycles: {
+                let mut map = HashMap::new();
+                map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
+                map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
+                map
+            },
+            cycle_position: 0,
+            next_index: 0,
+        };
+
+        // Should return None for empty face
+        assert_eq!(empty_viewport.get_current_item_index(), None);
+    }
+
+    #[test]
+    fn test_viewport_rotation_cycle_all_faces() {
+        let total_items = 24;
+        let max_per_face = 2; // Small number to ensure we need to cycle
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state - first 8 items should be distributed to active X-axis faces (0, 5, 2, 4)
+        // with 2 items per face
+        assert_eq!(viewport.next_index, 8);
+
+        // Check face 0 (front)
+        assert_eq!(viewport.face_indices[0], vec![0, 1]);
+
+        // Check face 5 (top)
+        assert_eq!(viewport.face_indices[3], vec![2, 3]);
+
+        // Check face 2 (back)
+        assert_eq!(viewport.face_indices[2], vec![4, 5]);
+
+        // Check face 4 (bottom)
+        assert_eq!(viewport.face_indices[1], vec![6, 7]);
+
+        // Rotate through a complete cycle
+        viewport.rotate_next(); // To top (face 5)
+        viewport.rotate_next(); // To back (face 2)
+        viewport.rotate_next(); // To bottom (face 4)
+        viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling
+
+        // After cycling, the next 8 items (8-15) should replace the first 8
+        assert_eq!(viewport.next_index, 16);
+
+        // Check face 0 (front) - should have items 8, 9
+        assert_eq!(viewport.face_indices[0], vec![8, 9]);
+
+        // Check face 5 (top) - should have items 10, 11
+        assert_eq!(viewport.face_indices[3], vec![10, 11]);
+
+        // Check face 2 (back) - should have items 12, 13
+        assert_eq!(viewport.face_indices[2], vec![12, 13]);
+
+        // Check face 4 (bottom) - should have items 14, 15
+        assert_eq!(viewport.face_indices[1], vec![14, 15]);
+
+        // Rotate through another complete cycle
+        viewport.rotate_next(); // To top (face 5)
+        viewport.rotate_next(); // To back (face 2)
+        viewport.rotate_next(); // To bottom (face 4)
+        viewport.rotate_next(); // Back to front (face 0) - this should trigger cycling again
+
+        // After cycling, the next 8 items (16-23) should replace the previous 8
+        assert_eq!(viewport.next_index, 24); // All items used
+
+        // Check face 0 (front) - should have items 16, 17
+        assert_eq!(viewport.face_indices[0], vec![16, 17]);
+
+        // Check face 5 (top) - should have items 18, 19
+        assert_eq!(viewport.face_indices[3], vec![18, 19]);
+
+        // Check face 2 (back) - should have items 20, 21
+        assert_eq!(viewport.face_indices[2], vec![20, 21]);
+
+        // Check face 4 (bottom) - should have items 22, 23
+        assert_eq!(viewport.face_indices[1], vec![22, 23]);
+
+        // One more cycle - should not change anything since all items are used
+        viewport.rotate_next(); // To top (face 5)
+        viewport.rotate_next(); // To back (face 2)
+        viewport.rotate_next(); // To bottom (face 4)
+        viewport.rotate_next(); // Back to front (face 0)
+
+        // Should remain at 24 (no more items to add)
+        assert_eq!(viewport.next_index, 24);
+
+        // Faces should remain unchanged
+        assert_eq!(viewport.face_indices[0], vec![16, 17]);
+    }
+
+    #[test]
+    fn test_viewport_rotation_with_uneven_distribution() {
+        let total_items = 7; // Prime number to ensure uneven distribution
+        let max_per_face = 2;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state - first 7 items should be distributed to active Y-axis faces (0, 3, 2, 1)
+        // Face 0 and 5 should have 2 items each, face 2 should have 2 items, and face 4 should have 1 item
+        assert_eq!(viewport.face_indices[0], vec![0, 1]);
+        assert_eq!(viewport.face_indices[3], vec![2, 3]);
+        assert_eq!(viewport.face_indices[2], vec![4, 5]);
+        assert_eq!(viewport.face_indices[1], vec![6]); // Only 1 item left
+
+        // Rotate and check that item index resets
+        viewport.rotate_next(); // To top (face 5)
+        assert_eq!(viewport.current_face, 3);
+        assert_eq!(viewport.current_item_index, 0);
+
+        // Move to next item in current face
+        viewport.next_item();
+        assert_eq!(viewport.current_item_index, 1);
+
+        // Rotate to next face and check item index reset
+        viewport.rotate_next(); // To back (face 2)
+        assert_eq!(viewport.current_face, 2);
+        assert_eq!(viewport.current_item_index, 0);
+
+        // Rotate to face with only one item
+        viewport.rotate_next(); // To bottom (face 4)
+        assert_eq!(viewport.current_face, 1);
+        assert_eq!(viewport.current_item_index, 0);
+
+        // Try to move to next item (should stay at 0 since there's only 1 item)
+        viewport.next_item();
+        assert_eq!(viewport.current_item_index, 0); // Should not change
+    }
+
+    #[test]
+    fn test_viewport_rotation_get_active_cycle_faces() {
+        let viewport = ViewportRotation::new(10, 2).unwrap();
+
+        // For X-axis, should return faces 0, 5, 2, 4
+        let y_axis_faces = viewport.get_active_cycle_faces();
+        assert_eq!(y_axis_faces, vec![0, 3, 2, 1]);
+
+        // Create a viewport with Y-axis rotation
+        let mut viewport = ViewportRotation::new(10, 2).unwrap();
+        viewport.set_rotation_axis(RotationAxis::XAxis);
+
+        // For Y-axis, should return faces 0, 3, 2, 1
+        let x_axis_faces = viewport.get_active_cycle_faces();
+        assert_eq!(x_axis_faces, vec![0, 5, 2, 4]);
+    }
+
+    #[test]
+    fn test_viewport_rotation_fill_face() {
+        let mut viewport = ViewportRotation {
+            total_items: 10,
+            face_indices: vec![Vec::new(); 6],
+            max_per_face: 3,
+            current_face: 0,
+            current_item_index: 0,
+            current_axis: RotationAxis::XAxis,
+            rotation_cycles: {
+                let mut map = HashMap::new();
+                map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
+                map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
+                map
+            },
+            cycle_position: 0,
+            next_index: 0,
+        };
+
+        // Fill face 0
+        viewport.fill_face(0);
+
+        // Face 0 should have 3 items (max_per_face)
+        assert_eq!(viewport.face_indices[0], vec![0, 1, 2]);
+        assert_eq!(viewport.next_index, 3);
+
+        // Fill face 1
+        viewport.fill_face(1);
+
+        // Face 1 should have 3 items
+        assert_eq!(viewport.face_indices[1], vec![3, 4, 5]);
+        assert_eq!(viewport.next_index, 6);
+
+        // Fill face 2 (only 4 items left)
+        viewport.fill_face(2);
+
+        // Face 2 should have 3 items
+        assert_eq!(viewport.face_indices[2], vec![6, 7, 8]);
+        assert_eq!(viewport.next_index, 9);
+
+        // Fill face 3 (only 1 item left)
+        viewport.fill_face(3);
+
+        // Face 3 should have 1 item
+        assert_eq!(viewport.face_indices[3], vec![9]);
+        assert_eq!(viewport.next_index, 10); // All items used
+
+        // Try to fill face 4 (no items left)
+        viewport.fill_face(4);
+
+        // Face 4 should be empty
+        assert_eq!(viewport.face_indices[4], Vec::<usize>::new());
+        assert_eq!(viewport.next_index, 10); // No change
+    }
+
     //     // Tests for ViewportManager
     //
     //     #[wasm_bindgen_test]
