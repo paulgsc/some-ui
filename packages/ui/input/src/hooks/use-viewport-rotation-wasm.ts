@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { notificationEvents } from "@input/hooks/use-create-crossword-puzzle"
+import type { CrosswordClueState } from "@input/hooks/use-create-crossword-puzzle"
+import {
+  clueEvents,
+  notificationEvents,
+} from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
 import { cubeEvents } from "some-ui-slideshow"
 import init, { ViewportManager } from "viewport-rotation"
@@ -37,7 +41,6 @@ type ViewportOption = {
   totalItems: number
 }
 type Options = {
-  viewports: Array<ViewportOption>
   maxPerFace?: number
   activeCube?: Direction
   onError?: (error: Error) => void
@@ -46,46 +49,60 @@ type Options = {
 // Cache WASM initialization to prevent multiple initializations
 
 export const useViewportManager = ({
-  viewports,
   maxPerFace = 2,
   activeCube,
   onError,
 }: Options) => {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewportIds, setViewportIds] = useState<Array<string>>([])
   const [activeViewportId, setActiveViewportId] = useState<string | null>(null)
+  const [cluesQueue, setCluesQueue] = useState<CrosswordClueState>(() =>
+    clueEvents.getState()
+  )
 
   // Use a ref for the manager to ensure it persists across renders
   const managerRef = useRef<ViewportManager | null>(null)
+  const hasInitialized = useRef(false)
 
   // Keep track of viewport states for each direction
   const [viewportStates, setViewportStates] = useState<
     Record<string, ViewportResponse["state"]>
   >({})
 
-  // Keep track of initialization
-
   const lastHandledEventId = useRef<string | null>(null)
 
   // Initialize the WASM module and create viewports
   const initialize = useCallback(async () => {
-    if (viewports.length === 0) return
-    if (managerRef.current) return
+    setIsLoading(true)
+    const { cluesAcross, cluesDown } = cluesQueue
+    if (cluesAcross.length === 0 && cluesDown.length === 0) {
+      setIsLoading(false)
+      return
+    }
+    const viewports: Array<ViewportOption> = []
+    viewports.push({
+      viewId: "across",
+      totalItems: cluesAcross.length,
+    })
+    viewports.push({
+      viewId: "down",
+      totalItems: cluesDown.length,
+    })
 
     try {
-      await init()
-
-      managerRef.current = new ViewportManager()
+      if (!managerRef.current) {
+        await init()
+        managerRef.current = new ViewportManager()
+      } else {
+        managerRef.current.reset()
+      }
 
       // Create a viewport for each direction
       const statesMap: Record<string, ViewportResponse["state"]> = {}
 
       for (const v of viewports) {
-        if (v.totalItems <= 0) {
-          managerRef.current = null
-          return
-        }
+        if (v.totalItems <= 0) continue
         console.log(
           `Creating viewport for ${v.viewId} with ${v.totalItems} items, ${maxPerFace} per face`
         )
@@ -103,6 +120,11 @@ export const useViewportManager = ({
         )
       }
 
+      if (Object.entries(statesMap).length === 0) {
+        managerRef.current = null
+        return
+      }
+
       // Get the list of all viewports
       const listResponse = managerRef.current.list_viewports()
       const parsedList = ViewportListSchema.parse(listResponse)
@@ -110,6 +132,8 @@ export const useViewportManager = ({
       setViewportIds(parsedList.viewportIds)
       setActiveViewportId(parsedList.activeViewportId)
       setViewportStates(statesMap)
+
+      hasInitialized.current = true
     } catch (err) {
       console.error("Error initializing viewport manager:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -119,7 +143,7 @@ export const useViewportManager = ({
     } finally {
       setIsLoading(false)
     }
-  }, [viewports, maxPerFace, onError])
+  }, [cluesQueue.cluesAcross, cluesQueue.cluesDown, maxPerFace, onError])
 
   // Set active viewport
   const setActiveViewport = useCallback(
@@ -284,6 +308,12 @@ export const useViewportManager = ({
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
 
+    const unsubClueQueue = clueEvents.subscribe(
+      (state) => state,
+      (updatedState) => setCluesQueue(updatedState)
+    )
+    unsubscribers.push(unsubClueQueue)
+
     const unsubNextAcrossCell = notificationEvents.on(
       "reveal:cell:across",
       () => {
@@ -321,7 +351,9 @@ export const useViewportManager = ({
   // Initialize when totalItems is available
   useEffect(() => {
     initialize()
-  }, [initialize, viewports, maxPerFace, activeCube])
+
+    return (): void => {}
+  }, [initialize])
 
   return {
     isLoading,

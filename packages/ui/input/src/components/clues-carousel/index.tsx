@@ -21,15 +21,35 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
 }) => {
   const getClues = useCallback(() => {
     if (!rotationState || directionalClues.length === 0) return []
-    const { faceIndices, currFace, currIdx } = rotationState
 
+    const { faceIndices, currFace, currIdx } = rotationState
     if (faceIndices.length === 0) return []
 
-    return faceIndices.map((indices, i) => {
-      const clues = indices.map((indice) => {
-        if (indice >= directionalClues.length) new Error("welp!")
-        return directionalClues[indice]
-      })
+    const result: Array<React.JSX.Element> = []
+
+    for (let i = 0; i < faceIndices.length; i++) {
+      const indices = faceIndices[i]
+      const clues: Array<CrosswordClueWithNum> = []
+
+      for (let j = 0; j < indices.length; j++) {
+        const indice = indices[j]
+        const clue = directionalClues[indice]
+
+        if (!clue) {
+          console.error(
+            `Invalid clue index: directionalClues[${indice}] is undefined at faceIndices[${i}][${j}].`
+          )
+          console.info(
+            "faceIndices, directionalClues",
+            faceIndices,
+            directionalClues
+          )
+          return []
+        }
+
+        clues.push(clue)
+      }
+
       const args = {
         key: `crossword_clues_${i}`,
         testIdx: i,
@@ -37,9 +57,12 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
         isActive: currFace === i,
         activeIndex: currIdx,
       }
+
       const { key, ...rest } = args
-      return <ClueList key={key} {...rest} />
-    })
+      result.push(<ClueList key={key} {...rest} />)
+    }
+
+    return result
   }, [rotationState, directionalClues])
 
   return (

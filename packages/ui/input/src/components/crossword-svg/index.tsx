@@ -29,10 +29,6 @@ export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
     }
   }, [completionPercentage, isAnimating, onAnimationComplete])
 
-  useEffect(() => {
-    startAnimation()
-  }, [startAnimation, duration, crossword])
-
   return (
     <div
       className={cn(

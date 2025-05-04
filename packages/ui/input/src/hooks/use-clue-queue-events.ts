@@ -21,7 +21,7 @@ export function useClueQueueEvents() {
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [clueEvents])
+  }, [])
 
   return {
     cluesQueue,

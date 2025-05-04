@@ -240,6 +240,7 @@ export function useCrosswordWithAnimation(
       unsolvedCellsRef.current[j] = temp
     }
 
+    // TODO: Do I need to keep track of the current pending items pointer?
     clueEvents.setState(() => {
       const cluesAcross: Array<CrosswordClueWithNum> = []
       const cluesDown: Array<CrosswordClueWithNum> = []
@@ -300,7 +301,7 @@ export function useCrosswordWithAnimation(
       animationFrameRef.current = null
     }
     dispatch({ type: "SET_ANIMATION", isAnimating: false })
-  }, [])
+  }, [animationDuration, state.grid])
 
   const resetCrossword = useCallback(() => {
     stopAnimation()
@@ -315,12 +316,13 @@ export function useCrosswordWithAnimation(
 
   // Clean up animation on unmount
   useEffect(() => {
+    startAnimation()
     return (): void => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [])
+  }, [startAnimation])
 
   return {
     grid: state.grid,
@@ -346,7 +348,7 @@ type NotificationEventPayloads = {
 
 export const notificationEvents = createEventBus<NotificationEventPayloads>()
 
-type CrosswordClueState = {
+export type CrosswordClueState = {
   cluesAcross: Array<CrosswordClueWithNum>
   cluesDown: Array<CrosswordClueWithNum>
   direction?: Direction
