@@ -7,6 +7,7 @@ import type {
   Direction,
   WordPlacement,
 } from "@input/types/crossword"
+import { cubeEvents } from "some-ui-slideshow"
 import { createEventBus } from "some-ui-utils"
 
 type ViewBoxTuple = [minX: number, minY: number, width: number, height: number]
@@ -194,6 +195,8 @@ export function useCrosswordWithAnimation(
         const cellToReveal =
           unsolvedCellsRef.current[lastRevealedIndexRef.current]
         if (cellToReveal) {
+          if (lastRevealedIndexRef.current > 0)
+            notifyRevealCell(cellToReveal.direction)
           dispatch({
             type: "REVEAL_CELL",
             x: cellToReveal.x,
@@ -203,7 +206,9 @@ export function useCrosswordWithAnimation(
             ...prev,
             direction: cellToReveal.direction,
           }))
-          notifyRevealCell(cellToReveal.direction)
+          cubeEvents.setState(() => ({
+            id: cellToReveal.direction,
+          }))
         }
         lastRevealedIndexRef.current++
       }
@@ -247,7 +252,6 @@ export function useCrosswordWithAnimation(
           return {
             cluesAcross: [],
             cluesDown: [],
-            direction: unsolvedCellsRef.current.at(0)?.direction,
           }
         }
         if (el.direction === "across") {
@@ -266,8 +270,13 @@ export function useCrosswordWithAnimation(
       return {
         cluesAcross,
         cluesDown,
+        direction: unsolvedCellsRef.current.at(0)?.direction,
       }
     })
+
+    cubeEvents.setState(() => ({
+      id: unsolvedCellsRef.current.at(0)?.direction,
+    }))
   }, [state.grid, animationDuration])
 
   const notifyRevealCell = useCallback((direction: Direction) => {
@@ -291,7 +300,6 @@ export function useCrosswordWithAnimation(
       animationFrameRef.current = null
     }
     dispatch({ type: "SET_ANIMATION", isAnimating: false })
-    notificationEvents.emit("notification:stop", undefined)
   }, [])
 
   const resetCrossword = useCallback(() => {
@@ -330,6 +338,7 @@ type NotificationEventPayloads = {
   "reveal:cell:across": undefined
   "reveal:cell:down": undefined
   "reset:cells": undefined
+  "animation:pause": undefined
   "notification:start": undefined
   "notification:stop": undefined
   "notification:complete": undefined // Auto-added when using state

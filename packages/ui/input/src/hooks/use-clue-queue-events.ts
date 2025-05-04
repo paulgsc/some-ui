@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import type { CrosswordClueState } from "@input/hooks/use-create-crossword-puzzle"
 import { clueEvents } from "@input/hooks/use-create-crossword-puzzle"
-import type { CrosswordClueWithNum, Direction } from "@input/types/crossword"
 
 type Unsubscribe = () => void
 
@@ -22,7 +21,7 @@ export function useClueQueueEvents() {
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [])
+  }, [clueEvents])
 
   return {
     cluesQueue,

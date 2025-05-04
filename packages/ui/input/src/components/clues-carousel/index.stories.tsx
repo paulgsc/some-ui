@@ -1,15 +1,14 @@
 import { CrosswordGridSvg } from "@input/components/crossword-svg"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import { ClueCarousel } from "."
+import { CluesCarousel } from "."
 
-type Story = StoryObj<typeof ClueCarousel>
-type Meta = MetaObj<typeof ClueCarousel>
+type Story = StoryObj<typeof CluesCarousel>
+type Meta = MetaObj<typeof CluesCarousel>
 
 export const Default: Story = {
   args: {
     className: "",
-    cluesDirection: "across",
   },
   render: (args) => (
     <main className="absolute inset-0 flex items-center justify-center">
@@ -17,13 +16,13 @@ export const Default: Story = {
         <CrosswordGridSvg />
       </div>
       <section className="size-120">
-        <ClueCarousel {...args} />
+        <CluesCarousel {...args} />
       </section>
     </main>
   ),
 }
 
 export default {
-  title: "UI/Input/Components/ClueCarousel",
-  component: ClueCarousel,
+  title: "UI/Input/Components/CluesCarousel",
+  component: CluesCarousel,
 } as Meta

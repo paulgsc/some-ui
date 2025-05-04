@@ -8,6 +8,7 @@ type Meta = MetaObj<typeof CrosswordGridSvg>
 export const Default: Story = {
   args: {
     className: "absolute inset-0 border border-red-600",
+    duration: 15 * 1000,
   },
 }
 

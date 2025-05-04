@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { notificationEvents } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
 import { cubeEvents } from "some-ui-slideshow"
-import init, { ViewportRotation } from "viewport-rotation"
+import init, { ViewportManager } from "viewport-rotation"
 import z from "zod"
 
 const UsizeSchema = z.number().int().min(0)
@@ -12,108 +12,135 @@ const RotationAxisSchema = z.enum(["X-axis", "Y-axis"])
 type RotatationAxis = z.infer<typeof RotationAxisSchema>
 type Unsubscribe = () => void
 
+// Revised schema to match the new ViewportManager response format
 const ViewportStateSchema = z.object({
-  id: z.string(),
-  faceIndices: z.array(FaceSchema),
-  currFace: UsizeSchema,
-  currIdx: UsizeSchema,
-  currRotationAxis: RotationAxisSchema,
-  pendingCount: UsizeSchema,
-  cyclePosition: UsizeSchema,
+  viewportId: z.string(),
+  state: z.object({
+    faceIndices: z.array(FaceSchema),
+    currFace: UsizeSchema,
+    currIdx: UsizeSchema,
+    currRotationAxis: RotationAxisSchema,
+    pendingCount: UsizeSchema,
+    cyclePosition: UsizeSchema,
+  }),
 })
 
-type ViewportState = z.infer<typeof ViewportStateSchema>
+export type ViewportResponse = z.infer<typeof ViewportStateSchema>
 
-type Options = {
+const ViewportListSchema = z.object({
+  viewportIds: z.array(z.string()),
+  activeViewportId: z.string().nullable(),
+})
+
+type ViewportOption = {
+  viewId: Direction
   totalItems: number
-  cluesDirection: Direction
-  stateDirection: Direction
+}
+type Options = {
+  viewports: Array<ViewportOption>
   maxPerFace?: number
+  activeCube?: Direction
   onError?: (error: Error) => void
 }
 
 // Cache WASM initialization to prevent multiple initializations
-let wasmInitialized = false
 
-export const useFetchViewportWasm = ({
-  totalItems,
-  cluesDirection,
-  stateDirection,
+export const useViewportManager = ({
+  viewports,
   maxPerFace = 2,
+  activeCube,
   onError,
 }: Options) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewportIds, setViewportIds] = useState<Array<string>>([])
+  const [activeViewportId, setActiveViewportId] = useState<string | null>(null)
 
-  // Use separate refs for managers and states to prevent interference
-  const rotationManagerRef = useRef<ViewportRotation | null>(null)
-  const [viewportState, setViewportState] = useState<ViewportState | null>(null)
+  // Use a ref for the manager to ensure it persists across renders
+  const managerRef = useRef<ViewportManager | null>(null)
 
-  // Create a stable direction reference that won't change
-  const directionRef = useRef(cluesDirection)
+  // Keep track of viewport states for each direction
+  const [viewportStates, setViewportStates] = useState<
+    Record<string, ViewportResponse["state"]>
+  >({})
 
   // Keep track of initialization
-  const hasInitialized = useRef(false)
 
   const lastHandledEventId = useRef<string | null>(null)
 
+  // Initialize the WASM module and create viewports
   const initialize = useCallback(async () => {
-    if (hasInitialized.current) return
+    if (viewports.length === 0) return
+    if (managerRef.current) return
 
     try {
-      // Initialize WASM module only once
-      if (!wasmInitialized) {
-        await init()
-        wasmInitialized = true
+      await init()
+
+      managerRef.current = new ViewportManager()
+
+      // Create a viewport for each direction
+      const statesMap: Record<string, ViewportResponse["state"]> = {}
+
+      for (const v of viewports) {
+        if (v.totalItems <= 0) {
+          managerRef.current = null
+          return
+        }
+        console.log(
+          `Creating viewport for ${v.viewId} with ${v.totalItems} items, ${maxPerFace} per face`
+        )
+
+        const response = managerRef.current.create_viewport(
+          v.viewId,
+          v.totalItems,
+          maxPerFace
+        )
+        const parsedResponse = ViewportStateSchema.parse(response)
+
+        statesMap[v.viewId] = parsedResponse.state
+        console.log(
+          `Successfully initialized viewport for id: ${parsedResponse.viewportId}`
+        )
       }
 
-      console.log(
-        `Initializing ${cluesDirection} rotation manager with ${totalItems} items, ${maxPerFace} per face`
-      )
+      // Get the list of all viewports
+      const listResponse = managerRef.current.list_viewports()
+      const parsedList = ViewportListSchema.parse(listResponse)
 
-      // Create a new instance specifically for this direction
-      const manager = new ViewportRotation(totalItems, maxPerFace)
-      rotationManagerRef.current = manager
-
-      // Get and store the initial state
-      const initialState = manager.get_state()
-      const parsedState = ViewportStateSchema.parse(initialState)
-      setViewportState(parsedState)
-
-      hasInitialized.current = true
-      console.log(
-        `Successfully initialized state for wasm id: ${initialState.id}`
-      )
+      setViewportIds(parsedList.viewportIds)
+      setActiveViewportId(parsedList.activeViewportId)
+      setViewportStates(statesMap)
     } catch (err) {
-      console.error(
-        `Error initializing ${cluesDirection} viewport rotation:`,
-        err
-      )
+      console.error("Error initializing viewport manager:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
-      rotationManagerRef.current = null
-      setViewportState(null)
+      managerRef.current = null
 
       if (onError && err instanceof Error) onError(err)
     } finally {
       setIsLoading(false)
     }
-  }, [totalItems, maxPerFace, onError])
+  }, [viewports, maxPerFace, onError])
 
-  const setRotationAxis = useCallback(
-    (axis: RotatationAxis) => {
+  // Set active viewport
+  const setActiveViewport = useCallback(
+    (direction: Direction) => {
       try {
-        const manager = rotationManagerRef.current
+        const manager = managerRef.current
         if (!manager) return
 
-        const validatedAxis = RotationAxisSchema.parse(axis)
-        const stateJson = manager.set_rotation_axis(
-          JSON.stringify(validatedAxis)
-        )
-        const parsedState = ViewportStateSchema.parse(stateJson)
+        console.log(`Setting active viewport to ${direction}`)
+        const response = manager.set_active_viewport(direction)
+        const parsedResponse = ViewportStateSchema.parse(response)
 
-        setViewportState(parsedState)
+        setActiveViewportId(parsedResponse.viewportId)
+
+        // Update the state for this direction
+        setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
       } catch (err) {
-        console.error(`Error setting ${cluesDirection} rotation axis:`, err)
+        console.error(`Error setting active viewport to ${direction}:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
       }
@@ -121,71 +148,108 @@ export const useFetchViewportWasm = ({
     [onError]
   )
 
-  const rotateNext = useCallback(() => {
-    try {
-      const manager = rotationManagerRef.current
-      if (!manager) return
-
-      console.log(`${cluesDirection}: Rotating next`)
-      const stateJson = manager.rotate_next()
-      const parsedState = ViewportStateSchema.parse(stateJson)
-
-      setViewportState(parsedState)
-    } catch (err) {
-      console.error(`Error rotating ${cluesDirection} to next:`, err)
-      setError(err instanceof Error ? err.message : "Unknown error")
-      if (onError && err instanceof Error) onError(err)
-    }
-  }, [onError])
-
-  const getNextItem = useCallback(() => {
-    try {
-      const manager = rotationManagerRef.current
-      if (!manager) return
-
-      const prevJson = manager.get_state()
-      const { currFace, currIdx, faceIndices, id } =
-        ViewportStateSchema.parse(prevJson)
-
-      console.log(`${cluesDirection}: Current i=${currIdx}, f=${currFace}`)
-      console.log(`Getting next for wasm Id: ${id}`)
-
-      if (faceIndices[currFace].length <= currIdx + 1) {
-        console.log(`${cluesDirection}: End of face reached, rotating`)
-        cubeEvents.emit("rotate:next", { direction: cluesDirection })
-        rotateNext()
-        return
-      }
-
-      console.log(`${cluesDirection}: Moving to next item`)
-      const stateJson = manager.next_item()
-      const parsedState = ViewportStateSchema.parse(stateJson)
-
-      setViewportState(parsedState)
-    } catch (err) {
-      console.error(`Error getting ${cluesDirection} next item:`, err)
-      setError(err instanceof Error ? err.message : "Unknown error")
-      if (onError && err instanceof Error) onError(err)
-    }
-  }, [onError, rotateNext])
-
-  const getCurrentItem = useCallback(() => {
-    const manager = rotationManagerRef.current
-    if (!manager) return null
-
-    return manager.get_current_item_index()
-  }, [])
-
-  const getFaceItemIds = useCallback(
-    (idx: number) => {
+  // Set rotation axis for a specific viewport
+  const setRotationAxis = useCallback(
+    (direction: Direction, axis: RotatationAxis) => {
       try {
-        const manager = rotationManagerRef.current
+        const manager = managerRef.current
+        if (!manager) return
+
+        const validatedAxis = RotationAxisSchema.parse(axis)
+        const response = manager.set_viewport_rotation_axis(
+          direction,
+          JSON.stringify(validatedAxis)
+        )
+        const parsedResponse = ViewportStateSchema.parse(response)
+
+        // Update state for this direction
+        setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+      } catch (err) {
+        console.error(`Error setting ${direction} rotation axis:`, err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        if (onError && err instanceof Error) onError(err)
+      }
+    },
+    [onError]
+  )
+
+  // Rotate a specific viewport
+  const rotateViewport = useCallback(
+    (direction: Direction) => {
+      try {
+        const manager = managerRef.current
+        if (!manager) return
+
+        console.log(`${direction}: Rotating next`)
+        const response = manager.rotate_viewport_next(direction)
+        const parsedResponse = ViewportStateSchema.parse(response)
+
+        // Update state for this direction
+        setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+      } catch (err) {
+        console.error(`Error rotating ${direction} to next:`, err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        if (onError && err instanceof Error) onError(err)
+      }
+    },
+    [onError]
+  )
+
+  // Get next item for a specific viewport
+  const getNextViewportItem = useCallback(
+    (direction: Direction) => {
+      try {
+        const manager = managerRef.current
+        if (!manager) return
+
+        const currentState = viewportStates[direction]
+        if (!currentState) return
+
+        const { currFace, currIdx, faceIndices } = currentState
+
+        console.log(`${direction}: Current i=${currIdx}, f=${currFace}`)
+
+        if (faceIndices[currFace].length <= currIdx + 1) {
+          console.log(`${direction}: End of face reached, rotating`)
+          cubeEvents.emit("rotate:next", { id: 1 })
+          rotateViewport(direction)
+          return
+        }
+
+        console.log(`${direction}: Moving to next item`)
+        const response = manager.viewport_next_item(direction)
+        const parsedResponse = ViewportStateSchema.parse(response)
+
+        // Update state for this direction
+        setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+      } catch (err) {
+        console.error(`Error getting ${direction} next item:`, err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        if (onError && err instanceof Error) onError(err)
+      }
+    },
+    [activeCube, onError, rotateViewport, viewportStates]
+  )
+
+  // Get current item index for a specific viewport
+  const getCurrentViewportItem = useCallback(
+    (direction: Direction) => {
+      try {
+        const manager = managerRef.current
         if (!manager) return null
 
-        const stateJson = manager.get_face_indices(idx)
-        return FaceSchema.parse(stateJson)
+        return manager.get_viewport_current_item_index(direction)
       } catch (err) {
-        console.error(`Error getting ${cluesDirection} face item IDs:`, err)
+        console.error(`Error getting ${direction} current item:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
         return null
@@ -194,70 +258,82 @@ export const useFetchViewportWasm = ({
     [onError]
   )
 
+  // Get face indices for a specific viewport and face
+  const getViewportFaceIndices = useCallback(
+    (direction: Direction, faceIndex: number) => {
+      try {
+        const manager = managerRef.current
+        if (!manager) return null
+
+        const indicesJson = manager.get_viewport_face_indices(
+          direction,
+          faceIndex
+        )
+        return FaceSchema.parse(indicesJson)
+      } catch (err) {
+        console.error(`Error getting ${direction} face item IDs:`, err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        if (onError && err instanceof Error) onError(err)
+        return null
+      }
+    },
+    [onError]
+  )
+
+  // Set up event listeners for each direction
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
 
-    if (cluesDirection === "across") {
-      const unsubNextAcrossCell = notificationEvents.on(
-        "reveal:cell:across",
-        () => {
-          const eventId = `across_${Date.now()}_${Math.random()}`
+    const unsubNextAcrossCell = notificationEvents.on(
+      "reveal:cell:across",
+      () => {
+        const eventId = `across_${Date.now()}_${Math.random()}`
 
-          if (lastHandledEventId.current === eventId) {
-            return
-          }
-
-          console.log(`${cluesDirection}: Handling across cell reveal`)
-          lastHandledEventId.current = eventId
-          getNextItem()
+        if (lastHandledEventId.current === eventId) {
+          return
         }
-      )
-      unsubscribers.push(unsubNextAcrossCell)
-    }
 
-    if (cluesDirection === "down") {
-      const unsubNextDownCell = notificationEvents.on(
-        "reveal:cell:down",
-        () => {
-          const eventId = `down_${Date.now()}_${Math.random()}`
+        console.log("Handling across cell reveal")
+        lastHandledEventId.current = eventId
+        getNextViewportItem("across")
+      }
+    )
+    unsubscribers.push(unsubNextAcrossCell)
 
-          if (lastHandledEventId.current === eventId) {
-            return
-          }
+    const unsubNextDownCell = notificationEvents.on("reveal:cell:down", () => {
+      const eventId = `down_${Date.now()}_${Math.random()}`
 
-          console.log(`${cluesDirection}: Handling down cell reveal`)
-          lastHandledEventId.current = eventId
-          getNextItem()
-        }
-      )
-      unsubscribers.push(unsubNextDownCell)
-    }
+      if (lastHandledEventId.current === eventId) {
+        return
+      }
+
+      console.log("Handling down cell reveal")
+      lastHandledEventId.current = eventId
+      getNextViewportItem("down")
+    })
+    unsubscribers.push(unsubNextDownCell)
 
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [cluesDirection, getNextItem])
+  }, [getNextViewportItem, activeCube])
 
+  // Initialize when totalItems is available
   useEffect(() => {
-    if (totalItems > 0) {
-      initialize()
-    }
-
-    return (): void => {
-      rotationManagerRef.current = null
-      hasInitialized.current = false
-    }
-  }, [totalItems, maxPerFace, initialize])
+    initialize()
+  }, [initialize, viewports, maxPerFace, activeCube])
 
   return {
     isLoading,
     error,
-    // Expose the state for this specific direction only
-    rotationState: viewportState,
+    viewportIds,
+    activeViewportId,
+    viewportStates,
+    setActiveViewport,
     setRotationAxis,
-    rotateNext,
-    getNextItem,
-    getCurrentItem,
-    getFaceItemIds,
+    rotateViewport,
+    getNextViewportItem,
+    getCurrentViewportItem,
+    getViewportFaceIndices,
   }
 }

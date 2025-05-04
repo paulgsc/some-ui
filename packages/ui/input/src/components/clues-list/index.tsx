@@ -4,6 +4,7 @@ import type { CrosswordClueWithNum } from "@input/types/crossword"
 import { cn } from "some-ui-utils"
 
 type ClueListProps = {
+  testIdx: number
   className?: string
   clues: Array<CrosswordClueWithNum>
   activeIndex?: number
@@ -11,22 +12,26 @@ type ClueListProps = {
 }
 
 export const ClueList: FC<ClueListProps> = ({
+  testIdx,
   clues,
   className,
-  isActive = false,
+  isActive = true,
   activeIndex = 0,
 }) => {
-  if (!isActive)
-    return <div className="size-full rounded-lg bg-white shadow-md" />
+  //if (!activeIndex) return <div className="size-full rounded-lg bg-white shadow-md" />
 
   return (
     <ul
       className={cn(
-        "bg-card flex size-full flex-col items-center gap-3 overflow-clip px-2.5 py-2",
+        "flex size-full flex-col items-center gap-3 overflow-clip bg-zinc-50 px-2.5 py-2",
         "justify-around rounded-lg shadow-md backdrop-blur-sm",
-        className
+        className,
+        {
+          "size-fit": clues.length === 0,
+        }
       )}
     >
+      <h1 className="text-lg font-bold">face {testIdx} </h1>
       {clues.map((curr, i) => {
         const { clue, clueNum, word, thumbnail } = curr
         const args = {

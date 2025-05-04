@@ -66,7 +66,7 @@ export function useCreateCrosswordWasm() {
   const selectWordList = useCallback(() => {
     if (randomClues.length > 0) return
 
-    const N = Math.floor(Math.random() * 10) + 6
+    const N = 6
     const randClues = getRandomSubarray(
       cluesJson,
       Math.min(N, cluesJson.length)

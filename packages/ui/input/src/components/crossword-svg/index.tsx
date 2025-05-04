@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { CrosswordCellSvg } from "@input/components/crossword-cell"
 import { useCrosswordWithAnimation } from "@input/hooks/use-create-crossword-puzzle"
 import { useCreateCrosswordWasm } from "@input/hooks/use-crossword-wasm"
@@ -16,23 +16,12 @@ type CrosswordGridSvgProps = {
 export const CrosswordGridSvg: FC<CrosswordGridSvgProps> = ({
   onAnimationComplete,
   className,
-  autoplayOnMount = true,
-  repeat = false,
   duration = 3 * 1000,
 }): React.JSX.Element => {
   const cellSize = 30
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
   const { crossword } = useCreateCrosswordWasm()
-  const {
-    grid,
-    viewBox,
-    isAnimating,
-    completionPercentage,
-    startAnimation,
-    stopAnimation,
-    resetCrossword,
-  } = useCrosswordWithAnimation(crossword?.word_placements ?? [], duration)
+  const { grid, viewBox, isAnimating, completionPercentage, startAnimation } =
+    useCrosswordWithAnimation(crossword?.word_placements ?? [], duration)
 
   useEffect(() => {
     if (completionPercentage === 100 && onAnimationComplete && !isAnimating) {
