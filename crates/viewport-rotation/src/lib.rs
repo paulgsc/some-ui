@@ -122,27 +122,30 @@ impl ViewportRotation {
         }
     }
 
-    /// Attempts to calc queue index
+    /// This method calculates which queue index we should be at based on our current state
+    /// The queue index represents our position in the external N-sized array
     fn q_index(&mut self) {
-        // Calculate how many complete sets of P items we've gone through
-        let p = self.max_per_face * 4; // Total items per complete rotation
+        // Each face can hold max_per_face items
+        // We need to determine which item in the overall queue we're pointing to
 
-        // Calculate which "batch" we're in
-        let batch_index = self.next_index / p;
+        // Get the active cycle for current rotation axis
+        let active_cycle = &self.rotation_cycles[&self.current_axis];
 
-        // Calculate the offset within the current face
-        let face_offset = self.current_face * self.max_per_face;
-        let offset = face_offset + self.current_item_index;
+        // Calculate the face index in the cycle (not the actual face number)
+        let face_cycle_index = active_cycle.iter().position(|&f| f == self.current_face).unwrap_or(0);
 
-        // Calculate the queue index
-        let q = batch_index * p + offset;
+        // Calculate how many items we've "seen" in previous cycle faces
+        let items_in_previous_cycle_faces = face_cycle_index * self.max_per_face;
 
-        // Ensure we don't exceed total items
-        self.current_index = std::cmp::min(q, self.total_items - 1);
+        // Add the current item index within this face
+        let index = items_in_previous_cycle_faces + self.current_item_index;
+
+        // Ensure we don't exceed total items (0-based indexing)
+        self.current_index = std::cmp::min(index, self.total_items - 1);
 
         println!(
-            "p={}, batch_index={}, face_offset={}, item_index={}, offset={}, q={}",
-            p, batch_index, face_offset, self.current_item_index, offset, q
+            "cycle_face_idx={}, items_prev_faces={}, item_index={}, index={}",
+            face_cycle_index, items_in_previous_cycle_faces, self.current_item_index, index
         );
     }
 
@@ -622,6 +625,8 @@ mod tests {
         assert_eq!(viewport.cycle_position, 0);
     }
 
+    /// Queue Index Tests
+
     #[test]
     fn test_viewport_queue_index() {
         let total_items = 7;
@@ -660,10 +665,194 @@ mod tests {
         // Enforce that we update on rotation
         assert_eq!(state.current_index, 3);
 
-        // let state = viewport.rotate_next();
+        let state = viewport.rotate_next();
 
-        // // Enforce that we update on rotation
-        // assert_eq!(state.current_index, 6);
+        // Enforce that we update on rotation
+        assert_eq!(state.current_index, 6);
+    }
+
+    #[test]
+    fn test_edge_case_single_item_per_face() {
+        // Test with only 1 item per face
+        let total_items = 4;
+        let max_per_face = 1;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state
+        assert_eq!(viewport.current_index, 0);
+
+        // First next_item call should cycle back to index 0 (since there's only 1 item)
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 0);
+
+        // Rotate should move to next face and index 1
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 1);
+
+        // Another next_item call should still be at index 1
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 1);
+
+        // Rotate again
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 2);
+
+        // Rotate again
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 3);
+
+        // Rotate once more should wrap around to first face
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 0);
+    }
+
+    #[test]
+    fn test_edge_case_empty_face() {
+        // Create a viewport with not enough items to fill all faces
+        let total_items = 2;
+        let max_per_face = 1;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state
+        assert_eq!(viewport.current_index, 0);
+
+        // Rotate to next face
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 1);
+
+        // Rotate to a face that might not have items
+        let state = viewport.rotate_next();
+        // Due to our implementation, we expect index 2, but it should be clamped to total_items-1
+        assert_eq!(state.current_index, 1);
+
+        // Another rotation
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 1);
+    }
+
+    #[test]
+    fn test_multiple_full_rotations() {
+        // Test with enough items to go through multiple rotations
+        let total_items = 20;
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state
+        assert_eq!(viewport.current_index, 0);
+
+        // Go through first face
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 1);
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 2);
+
+        // Rotate to next face
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 3);
+
+        // Go through all faces in cycle
+        for i in 1..4 {
+            for j in 0..3 {
+                if j > 0 {
+                    let state = viewport.next_item();
+                    assert_eq!(state.current_index, i * 3 + j);
+                }
+            }
+            if i < 3 {
+                let state = viewport.rotate_next();
+                assert_eq!(state.current_index, (i + 1) * 3);
+            }
+        }
+
+        // Complete the full rotation cycle
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 0);
+
+        // Items should now be refreshed (next_index should have advanced)
+        assert!(viewport.next_index > 12);
+    }
+
+    #[test]
+    fn test_axis_change() {
+        // Test changing the rotation axis
+        let total_items = 12;
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state - Y axis by default
+        assert_eq!(viewport.current_axis, RotationAxis::YAxis);
+        assert_eq!(viewport.current_index, 0);
+
+        // Change to X axis
+        let state = viewport.set_rotation_axis(RotationAxis::XAxis);
+        assert_eq!(state.current_axis, RotationAxis::XAxis);
+        assert_eq!(state.current_index, 0); // Should reset to first face and item
+
+        // Test rotation on X axis
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_face, 5); // According to X axis cycle
+        assert_eq!(state.current_index, 3); // 1 * max_per_face
+    }
+
+    #[test]
+    fn test_full_cycle_with_remainder() {
+        // Test a full rotation cycle with remainder items
+        let total_items = 14; // More than 12 (4 faces * 3 items)
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Go through a full rotation
+        for _ in 0..4 {
+            viewport.rotate_next();
+        }
+
+        // After a full rotation, next_index should be at total_items
+        assert_eq!(viewport.next_index, 14);
+
+        // Current index should be back at 0
+        assert_eq!(viewport.current_index, 0);
+    }
+
+    #[test]
+    fn test_complex_navigation_sequence() {
+        // Test a complex navigation sequence
+        let total_items = 10;
+        let max_per_face = 2;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Initial state
+        assert_eq!(viewport.current_index, 0);
+
+        // Navigate: next, next, rotate, next, rotate, next, next, rotate
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 1);
+
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 0); // Cycles back to 0
+
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 2);
+
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 3);
+
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 4);
+
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 5);
+
+        let state = viewport.next_item();
+        assert_eq!(state.current_index, 4); // Cycles back
+
+        let state = viewport.rotate_next();
+        assert_eq!(state.current_index, 6);
     }
 
     #[test]

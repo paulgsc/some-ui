@@ -195,17 +195,29 @@ export function useCrosswordWithAnimation(
         const cellToReveal =
           unsolvedCellsRef.current[lastRevealedIndexRef.current]
         if (cellToReveal) {
-          if (lastRevealedIndexRef.current > 0)
-            notifyRevealCell(cellToReveal.direction)
           dispatch({
             type: "REVEAL_CELL",
             x: cellToReveal.x,
             y: cellToReveal.y,
           })
-          clueEvents.setState((prev) => ({
-            ...prev,
-            direction: cellToReveal.direction,
-          }))
+
+          clueEvents.setState((prev): CrosswordClueState => {
+            const isAcross = cellToReveal.direction === "across"
+
+            return {
+              ...prev,
+              direction: cellToReveal.direction,
+              lastRevealedAcrossIndex: isAcross
+                ? prev.lastRevealedAcrossIndex + 1
+                : prev.lastRevealedAcrossIndex,
+              lastRevealedDownIndex: isAcross
+                ? prev.lastRevealedDownIndex
+                : prev.lastRevealedDownIndex + 1,
+            }
+          })
+
+          notifyRevealCell(cellToReveal.direction)
+
           cubeEvents.setState(() => ({
             id: cellToReveal.direction,
           }))
@@ -240,8 +252,7 @@ export function useCrosswordWithAnimation(
       unsolvedCellsRef.current[j] = temp
     }
 
-    // TODO: Do I need to keep track of the current pending items pointer?
-    clueEvents.setState(() => {
+    clueEvents.setState((prev: CrosswordClueState) => {
       const cluesAcross: Array<CrosswordClueWithNum> = []
       const cluesDown: Array<CrosswordClueWithNum> = []
       for (const el of unsolvedCellsRef.current) {
@@ -269,6 +280,7 @@ export function useCrosswordWithAnimation(
       }
 
       return {
+        ...prev,
         cluesAcross,
         cluesDown,
         direction: unsolvedCellsRef.current.at(0)?.direction,
@@ -352,6 +364,8 @@ export type CrosswordClueState = {
   cluesAcross: Array<CrosswordClueWithNum>
   cluesDown: Array<CrosswordClueWithNum>
   direction?: Direction
+  lastRevealedAcrossIndex: number
+  lastRevealedDownIndex: number
 }
 
 type CrosswordClueEventPayloads = {
@@ -368,4 +382,6 @@ export const clueEvents = createEventBus<
 >({
   cluesAcross: [],
   cluesDown: [],
+  lastRevealedAcrossIndex: 0,
+  lastRevealedDownIndex: 0,
 })

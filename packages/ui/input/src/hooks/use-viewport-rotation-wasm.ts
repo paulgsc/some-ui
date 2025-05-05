@@ -26,6 +26,7 @@ const ViewportStateSchema = z.object({
     currRotationAxis: RotationAxisSchema,
     pendingCount: UsizeSchema,
     cyclePosition: UsizeSchema,
+    queueIdx: UsizeSchema,
   }),
 })
 
@@ -233,9 +234,23 @@ export const useViewportManager = ({
         if (!manager) return
 
         const currentState = viewportStates[direction]
-        if (!currentState) return
+        if (Object.entries(currentState).length === 0) return
 
-        const { currFace, currIdx, faceIndices } = currentState
+        const { currFace, currIdx, faceIndices, queueIdx } = currentState
+        const { lastRevealedAcrossIndex, lastRevealedDownIndex } = cluesQueue
+
+        const lastRevealedIndex =
+          direction === "across"
+            ? lastRevealedAcrossIndex
+            : lastRevealedDownIndex
+        if (lastRevealedIndex === undefined) {
+          console.error(
+            "lastIndex update has not propogated to viewport",
+            lastRevealedIndex
+          )
+          return
+        }
+        if (lastRevealedIndex === queueIdx) return
 
         console.log(`${direction}: Current i=${currIdx}, f=${currFace}`)
 
@@ -261,7 +276,13 @@ export const useViewportManager = ({
         if (onError && err instanceof Error) onError(err)
       }
     },
-    [activeCube, onError, rotateViewport, viewportStates]
+    [
+      onError,
+      viewportStates,
+      cluesQueue.lastRevealedAcrossIndex,
+      cluesQueue.lastRevealedDownIndex,
+      activeCube,
+    ]
   )
 
   // Get current item index for a specific viewport
@@ -346,7 +367,7 @@ export const useViewportManager = ({
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [getNextViewportItem, activeCube])
+  }, [getNextViewportItem])
 
   // Initialize when totalItems is available
   useEffect(() => {
