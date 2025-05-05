@@ -42,6 +42,9 @@ pub struct ViewportRotation {
 
     // Next index to be assigned
     next_index: usize,
+
+    // Current index in queue
+    current_index: usize,
 }
 
 /// State that can be serialized and sent to the client
@@ -56,9 +59,13 @@ pub struct ViewportState {
     #[serde(rename = "currRotationAxis")]
     current_axis: RotationAxis,
     #[serde(rename = "pendingCount")]
-    pending_count: usize, // Number of pending items
+    /// This as the remaining items that will need to be placed on a face card on next rotation
+    /// This is calculated independent of the sudoku letter queue and is mutated by calling next rotation
+    pending_count: usize, // Number of pending unplaced items on faces
     #[serde(rename = "cyclePosition")]
     cycle_position: usize,
+    #[serde(rename = "queueIdx")]
+    current_index: usize,
 }
 
 /// Manager for multiple viewport rotations
@@ -93,6 +100,7 @@ impl ViewportRotation {
             rotation_cycles,
             cycle_position: 0,
             next_index: 0,
+            current_index: 0,
         };
 
         // Initialize faces with content
@@ -110,7 +118,32 @@ impl ViewportRotation {
             current_axis: self.current_axis,
             pending_count: self.total_items - self.next_index,
             cycle_position: self.cycle_position,
+            current_index: self.current_index,
         }
+    }
+
+    /// Attempts to calc queue index
+    fn q_index(&mut self) {
+        // Calculate how many complete sets of P items we've gone through
+        let p = self.max_per_face * 4; // Total items per complete rotation
+
+        // Calculate which "batch" we're in
+        let batch_index = self.next_index / p;
+
+        // Calculate the offset within the current face
+        let face_offset = self.current_face * self.max_per_face;
+        let offset = face_offset + self.current_item_index;
+
+        // Calculate the queue index
+        let q = batch_index * p + offset;
+
+        // Ensure we don't exceed total items
+        self.current_index = std::cmp::min(q, self.total_items - 1);
+
+        println!(
+            "p={}, batch_index={}, face_offset={}, item_index={}, offset={}, q={}",
+            p, batch_index, face_offset, self.current_item_index, offset, q
+        );
     }
 
     /// Moves to the next item in the current face
@@ -120,6 +153,9 @@ impl ViewportRotation {
         if face_items_count > 0 {
             self.current_item_index = (self.current_item_index + 1) % face_items_count;
         }
+
+        // Update queue index after updating face item index
+        self.q_index();
 
         self.get_state()
     }
@@ -142,6 +178,9 @@ impl ViewportRotation {
         if self.cycle_position == 0 && self.next_index < self.total_items {
             self.cycle_all_faces();
         }
+
+        // We mutate the queue index after updating placements
+        self.q_index();
 
         self.get_state()
     }
@@ -256,8 +295,8 @@ struct ViewportListResponse {
 impl ViewportManager {
     /// Creates a new ViewportManager instance
     #[wasm_bindgen(constructor)]
-    pub fn new() -> ViewportManager {
-        ViewportManager {
+    pub fn new() -> Self {
+        Self {
             viewports: HashMap::new(),
             active_viewport_id: None,
         }
@@ -346,6 +385,13 @@ impl ViewportManager {
         }
 
         self.list_viewports()
+    }
+
+    /// Remove everything at once
+    #[wasm_bindgen]
+    pub fn reset(&mut self) {
+        self.viewports = HashMap::new(); // O(1) replacement
+        self.active_viewport_id = None;
     }
 
     /// Rotate a specific viewport to the next face
@@ -485,7 +531,7 @@ mod tests {
         assert_eq!(viewport.current_axis, RotationAxis::YAxis);
         assert_eq!(viewport.cycle_position, 0);
 
-        // Check that only active faces are filled (0, 5, 2, 4 for X-axis)
+        // Check that only active faces are filled (0, 3, 2, 1 for Y-axis)
         for face in 0..6 {
             if viewport.get_active_cycle_faces().contains(&face) {
                 assert!(!viewport.face_indices[face].is_empty(), "Face {face} should have items");
@@ -552,7 +598,7 @@ mod tests {
         let state = viewport.rotate_next();
 
         // Check updated state
-        assert_eq!(viewport.current_face, 3); 
+        assert_eq!(viewport.current_face, 3);
         assert_eq!(viewport.cycle_position, 1);
         assert_eq!(viewport.current_item_index, 0); // Reset to first item
 
@@ -562,18 +608,62 @@ mod tests {
 
         // Rotate again to move to back face
         viewport.rotate_next();
-        assert_eq!(viewport.current_face, 2); 
+        assert_eq!(viewport.current_face, 2);
         assert_eq!(viewport.cycle_position, 2);
 
         // Rotate again to move to bottom face
         viewport.rotate_next();
-        assert_eq!(viewport.current_face, 1); 
+        assert_eq!(viewport.current_face, 1);
         assert_eq!(viewport.cycle_position, 3);
 
         // Rotate once more to complete the cycle
         viewport.rotate_next();
         assert_eq!(viewport.current_face, 0); // Back to front face
         assert_eq!(viewport.cycle_position, 0);
+    }
+
+    #[test]
+    fn test_viewport_queue_index() {
+        let total_items = 7;
+        let max_per_face = 3;
+
+        let mut viewport = ViewportRotation::new(total_items, max_per_face).unwrap();
+
+        // Enforce that staring pointer is at 0
+        assert_eq!(viewport.current_index, 0);
+
+        // Total items placed P should be 7
+        assert_eq!(viewport.next_index, 7);
+
+        let state = viewport.next_item();
+
+        // Enforce that we increment after per face item
+        assert_eq!(state.current_index, 1);
+
+        let state = viewport.next_item();
+
+        // Enforce that we increment after per face item
+        assert_eq!(state.current_index, 2);
+
+        let state = viewport.next_item();
+
+        // If we remain in curr Face, Enforce that we cycle through i % K
+        assert_eq!(state.current_index, 0);
+
+        let state = viewport.next_item();
+
+        // If we remain in curr Face, Enforce that we cycle through i % K
+        assert_eq!(state.current_index, 1);
+
+        let state = viewport.rotate_next();
+
+        // Enforce that we update on rotation
+        assert_eq!(state.current_index, 3);
+
+        // let state = viewport.rotate_next();
+
+        // // Enforce that we update on rotation
+        // assert_eq!(state.current_index, 6);
     }
 
     #[test]
@@ -645,6 +735,7 @@ mod tests {
             },
             cycle_position: 0,
             next_index: 0,
+            current_index: 0,
         };
 
         // Should return None for empty face
@@ -801,6 +892,7 @@ mod tests {
             },
             cycle_position: 0,
             next_index: 0,
+            current_index: 0,
         };
 
         // Fill face 0
@@ -837,6 +929,48 @@ mod tests {
         // Face 4 should be empty
         assert_eq!(viewport.face_indices[4], Vec::<usize>::new());
         assert_eq!(viewport.next_index, 10); // No change
+    }
+
+    #[test]
+    fn test_initialize_faces() {
+        let mut viewport = ViewportRotation {
+            total_items: 6,
+            face_indices: vec![Vec::new(); 6],
+            max_per_face: 3,
+            current_face: 0,
+            current_item_index: 0,
+            current_axis: RotationAxis::YAxis,
+            rotation_cycles: {
+                let mut map = HashMap::new();
+                map.insert(RotationAxis::XAxis, vec![0, 5, 2, 4]);
+                map.insert(RotationAxis::YAxis, vec![0, 3, 2, 1]);
+                map
+            },
+            cycle_position: 0,
+            next_index: 0,
+            current_index: 0,
+        };
+
+        // Initialize Faces
+        viewport.initialize_faces();
+
+        // Face 0 should have 3 items (max_per_face)
+        assert_eq!(viewport.face_indices[0], vec![0, 1, 2]);
+        assert_eq!(viewport.next_index, 6);
+
+        // Face 3 should have 3 items
+        assert_eq!(viewport.face_indices[3], vec![3, 4, 5]);
+
+        assert_eq!(viewport.face_indices[2], Vec::<usize>::new());
+
+        // Face 1 should be empty
+        assert_eq!(viewport.face_indices[1], Vec::<usize>::new());
+
+        // Face 4 should be empty
+        assert_eq!(viewport.face_indices[4], Vec::<usize>::new());
+
+        // Face 5 should be empty
+        assert_eq!(viewport.face_indices[5], Vec::<usize>::new());
     }
 
     //     // Tests for ViewportManager
