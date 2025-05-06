@@ -16,6 +16,7 @@ import { soManyCrates } from "@overlays/data/chatbot-messages/yet-another-python
 import { useGanttChapters } from "@overlays/data/gantt-data"
 import { ChatInterface } from "some-ui-chat"
 import { RotatingCube, RotatingNeonSign } from "some-ui-slideshow"
+import { LivestreamTopicNotification } from "some-ui-stepper"
 import { useLocalStorage } from "some-ui-utils"
 import type { WireframeContent } from "wireframes"
 import { WireframeRegion, YoutubeWireframe } from "wireframes"
@@ -101,11 +102,14 @@ const YoutubeOverlay = (): React.JSX.Element => {
     chapters?.reduce((max, chapter) => Math.max(max, chapter.endTime), 0) ?? 0
 
   return (
-    <YoutubeWireframe
-      chapters={chapters ?? []}
-      totalDuration={totalDuration}
-      content={overlayContent}
-    />
+    <>
+      <YoutubeWireframe
+        chapters={chapters ?? []}
+        totalDuration={totalDuration}
+        content={overlayContent}
+      />
+      <LivestreamTopicNotification />
+    </>
   )
 }
 

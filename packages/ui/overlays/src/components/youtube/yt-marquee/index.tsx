@@ -3,21 +3,21 @@ import { cn } from "some-ui-utils"
 
 const reviews = [
   {
-    name: "This song is fire🔥🔥🔥",
-    username: "@mujik",
-    body: "房东的猫 - 所念皆星河「所念皆星河，辗转里反侧」【動態歌詞/Lyrics Video",
+    name: "Leetcode",
+    username: "@boring as ...",
+    body: "day n of planning to grind leetcode, but never doing it.",
     img: "https://avatar.vercel.sh/jack",
   },
   {
-    name: "This song is da bomb💣💣💣🔥🔥🔥",
-    username: "@lfg",
-    body: "買辣椒也用券 - 起風了 (新版)【動態歌詞Lyrics】",
+    name: "Liverpool won but...",
+    username: "@dead inside",
+    body: "Yay! Liverpool won the league again! So wai me no feel no nothing? sadness!😔",
     img: "https://avatar.vercel.sh/jill",
   },
   {
-    name: "It's not rain, I'm just pissed!",
-    username: "@cindarella",
-    body: "No boys, no flowers, just focus on revenge Go Ana!",
+    name: "You've only got 7 days left",
+    username: "namecheap",
+    body: "One or more of your domains will expire in 7 days. Luckily, i'ts easy to renew just by clicking the button below.",
     img: "https://avatar.vercel.sh/john",
   },
   {
@@ -27,22 +27,16 @@ const reviews = [
     img: "https://avatar.vercel.sh/jane",
   },
   {
-    name: "Sankyu Kindly! 🫠",
-    username: "@vaibhavtanwar442",
-    body: "Dude u r savior",
-    img: "https://avatar.vercel.sh/jenny",
-  },
-  {
     name: "What is even the point?!",
     username: "@emotion",
     body: "Not joy, just pain, frustration and humiliation, is this real life!",
     img: "https://avatar.vercel.sh/james",
   },
   {
-    name: "smooth brained boyo",
-    username: "@ast",
-    body: "I'm building a tailwindcss linter from scratch, but I don't even know how an ast is working. I hate everything.",
-    img: "https://avatar.vercel.sh/tim",
+    name: "I come to you again",
+    username: "browser",
+    body: "I'm a browser refugee. Google chrome is no more for boyo, currently coping with mozilla, but feels like google throttles it on sites like youtebe. I'm I really destined to be sad boi?!",
+    img: "https://www.mozilla.org/favicon.ico",
   },
 ]
 

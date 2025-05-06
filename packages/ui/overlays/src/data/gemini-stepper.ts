@@ -7,56 +7,42 @@ export const accordionData: AccordionSteps = {
   data: [
     {
       stepId: "item-1",
-      title: "Hexagon wasm",
-      progress: "pending",
-      content: `I've wanted to build a honeycomb/hexagon ui chart for a while. At first I thought this meant grocery shopping.
-          Meaning, pip/npm install some deps. But me not enjoy this very much, so pushed it off for a while now.
-          But with vibe coding now, I'm able to build my own hexagon svg ui. The core logic is in rust, and 
-        today I'm consuming the wasm and setting up the usehooks and component ui.
-        `,
+      title: "Sudoku Visual",
+      progress: "done",
+      content: `I'm going to have a sudoku puzzle visual component that allows me to communicate factoids and silly knowlegdet nuggets
+      about just anything I find amusing. From own intrerests, to pithy remarks, opinions and general sentiments about whatever. This 
+      will be an animated sudoku crossword puzzle that slowly reveals the answer to some clue on a topic of interest.`,
     },
     {
       stepId: "item-2",
-      title: "NFL 53 man roster chart",
-      progress: "pending",
-      content: `As part of my collection of overlays that tell data stories about the nfl. I'm building a chart the renders
-      a team's 53-man roster in a hexagon/honeycomb chart. Why a hexagon, why not? Most likely won't finish today,
-      and for now focusing on the ui not the data.`,
+      title: "Sudoku wasm Implement Grid map",
+      progress: "scheduled",
+      content: `As part of building the sudoku visual, the core logic is in a rust wasm api. When first built I let the implementation 
+      for the specific position of each letter be handled by the client with the api only defining the schema for each word's start (x,y).
+          But I realize that it's rather trivial for the api to do this as well and just generate the entire grid map itself.`,
     },
     {
       stepId: "item-3",
-      title: "Some emoji animation",
+      title: "Sudoku Visual Overlay",
       progress: "pending",
-      content: `For my no talk talk coding livestreams, I've always wanted to visually communicate my current emotional
-      state. Ideally, I would do this with an animated 3-d character from a blender export, that I can animate in different
-      actions, emotions etc. But sadly me not know blender, me not know threejs me not have drawing skills. Instead I've
-      settled for the wish.com version of using an emoji, but I kinda hate it. Today me look to see if I can give it more
-        expressions.`,
+      content: `To render the sudoku visual so that it can be visible on the obs  overlay I need to add it to may overlays packages. This is
+    proving kinda tricky because of how the context is implemented. The sudoku grid and the clues are own first class citizen compoonents.
+      But the grid owns the context of active cell so it creating confounding factors.`,
     },
     {
       stepId: "item-4",
-      title: "Foo scheduler thingy",
+      title: "To DB or not to DB",
       progress: "scheduled",
-      content: `I have the scaffold for an async background scheduler, that I'm not quite sure what to use it for. I believe
-        I want to be able to automatically scheduled pre-produced react overlays, so that as part of my livestream, I can
-      basically run the stream like a T.V production, where on a pre-planned scheduled certain overlays are triggered
-      to run for a defined period, in a sequence. The scheduler will be the one running this. Problem is I haven't touched it for 
-        so long I forgot how it's working.`,
+      content: `If I should get around to finishing implementing the sudoku visual overlay within this stream - highly unlikely but who knows.
+      Then I would like to ponder on how I want to handle the sudoku clues data. Currently just using a json file, but the clues will grow in size and does this mean I should use a db, maybe store it gdrive and fetch. I'll have to ponder this with my bestie - the vibe gods.`,
     },
     {
       stepId: "item-5",
-      title: "NixOS pnpm upgrade to v10",
+      title: "Sudoku Init Bug",
       progress: "pending",
-      content: `Migrate my flakes home pnpm package to v10, and hopefully everything is still working`,
-    },
-    {
-      stepId: "item-6",
-      title: "Emoji Animation Context",
-      progress: "pending",
-      content: `Right now I manage the emoji animation context: bored | motivated as a local storage state. This is
-      annoying to work with, since it offers more persistence across sessions than I want. I would use a useState
-      but this requires prop drilling to share across multiple components. Me not like using React context or going
-      grocery shopping so will refactor it to use my own temu version of zustand.`,
+      content: `The sudoku clues animation work by traversing a queue of randomly shuffled letters of the clue answeres. Since this is an
+      array, we need to ensure that we access a valid index at each next pointer. Problem is the sudoku grid animation and clues queue
+      is misplaced offset by one, due to non-synced start times. Need to figure this out.`,
     },
   ],
 }
