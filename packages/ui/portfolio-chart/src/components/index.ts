@@ -1,2 +1,1 @@
-
-export * from "./ticks-showcase"
+export * from "./grind-charts"
