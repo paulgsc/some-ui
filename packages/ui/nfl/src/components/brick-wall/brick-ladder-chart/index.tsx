@@ -1,10 +1,17 @@
-import type { FC, ReactNode, RefObject } from "react"
-import { useCallback, useRef } from "react"
+/*
+ *
+ // TODO: This is an embarrasingly bad, hodge podge implementation
+ // need to complete rewrite logic as rust api, and consume as wasm instead
+ *
+*/
+
+import type { FC, ReactNode } from "react"
+import { useCallback } from "react"
 import { Brick } from "@nfl/components/brick-wall/brick"
 import { Crown } from "@nfl/components/brick-wall/crown"
 import { Medal } from "@nfl/components/brick-wall/medal"
 import { calculateBrickPositions } from "@nfl/utils/brick-positions"
-import { cn, useMeasureRect } from "some-ui-utils"
+import { cn } from "some-ui-utils"
 
 type DataItem = {
   name: string
@@ -13,23 +20,19 @@ type DataItem = {
 
 type BrickLadderChartProps = {
   data: Array<DataItem>
+  canvasWidth: number
+  canvasHeight: number
   title?: string
   className?: string
 }
 
 export const BrickLadderChart: FC<BrickLadderChartProps> = ({
   data,
-  title = "Some title...",
+  canvasWidth,
+  canvasHeight,
   className,
+  title = "Some title...",
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { height, width } = useMeasureRect({
-    ref: containerRef as RefObject<HTMLElement>,
-  })
-
-  const canvasWidth = width ?? 0
-  const canvasHeight = height ?? 0
-
   const padding = Math.max(20, Math.min(50, canvasWidth * 0.05)) // Responsive padding
 
   const processedData = [...data].sort((a, b) => a.value - b.value)
@@ -63,10 +66,12 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
       maxRequiredElements = Math.max(maxRequiredElements, requiredElements)
     }
 
-    const spacing = 0.15
+    const spacing = 0.05
     const availableWidth = canvasWidth - padding * 2
+    const layerDepthFactor = uniqueValues.length / 4 // layesrs of four render nicely?
     const maxBrickWidth =
-      availableWidth / (maxRequiredElements * (1 + spacing) - spacing)
+      availableWidth /
+      (layerDepthFactor * maxRequiredElements * (1 + spacing) - spacing)
 
     return { width: maxBrickWidth, height: maxBrickWidth * 0.4 }
   }, [canvasWidth, uniqueValues, groupedData, padding])
@@ -250,55 +255,53 @@ export const BrickLadderChart: FC<BrickLadderChartProps> = ({
   const textY = rectY + rectHeight / 2 + titleFontSize * 0.35 // Adjust for visual centering
 
   return (
-    <div ref={containerRef} className="size-full">
-      <svg
-        className={cn("size-full", className)}
-        viewBox={`0 0 ${1.2 * canvasWidth} ${1.2 * canvasHeight}`}
-        preserveAspectRatio="xMidYMid meet"
+    <svg
+      className={cn("size-full", className)}
+      viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      {/* Title */}
+      <rect
+        x={rectX}
+        y={rectY}
+        width={rectWidth}
+        height={rectHeight}
+        rx="6"
+        fill="#555"
+        stroke="#000"
+        strokeWidth="2"
+      />
+
+      <text
+        x={textX}
+        y={textY}
+        textAnchor="middle"
+        fontFamily="Arial"
+        fontWeight="bold"
+        fill="white"
+        fontSize={titleFontSize}
       >
-        {/* Title */}
-        <rect
-          x={rectX}
-          y={rectY}
-          width={rectWidth}
-          height={rectHeight}
-          rx="6"
-          fill="#555"
-          stroke="#000"
-          strokeWidth="2"
-        />
+        {title}
+      </text>
 
-        <text
-          x={textX}
-          y={textY}
-          textAnchor="middle"
-          fontFamily="Arial"
-          fontWeight="bold"
-          fill="white"
-          fontSize={titleFontSize}
-        >
-          {title}
-        </text>
+      {/* Base platform */}
+      <rect
+        x={padding}
+        y={canvasHeight - padding}
+        width={canvasWidth - padding * 2}
+        height={Math.max(5, canvasHeight * 0.01)}
+        fill="#555"
+        stroke="#000"
+        strokeWidth="2"
+      />
 
-        {/* Base platform */}
-        <rect
-          x={padding}
-          y={canvasHeight - padding}
-          width={canvasWidth - padding * 2}
-          height={Math.max(5, canvasHeight * 0.01)}
-          fill="#555"
-          stroke="#000"
-          strokeWidth="2"
-        />
+      {/* Render medals */}
+      {renderMedals()}
+      {/* Render all bricks */}
+      {renderBricks()}
 
-        {/* Render medals */}
-        {renderMedals()}
-        {/* Render all bricks */}
-        {renderBricks()}
-
-        {/* Render crown for the winner */}
-        {renderCrown()}
-      </svg>
-    </div>
+      {/* Render crown for the winner */}
+      {renderCrown()}
+    </svg>
   )
 }
