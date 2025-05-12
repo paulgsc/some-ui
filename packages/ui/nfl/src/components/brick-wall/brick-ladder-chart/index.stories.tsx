@@ -1,16 +1,19 @@
 import { useNflTennis } from "@nfl/data/brick-data"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react"
 
-import { BrickLadderChart } from "."
+import { BrickWallChart } from "."
 
-type Story = StoryObj<typeof BrickLadderChart>
-type Meta = MetaObj<typeof BrickLadderChart>
+type Story = StoryObj<typeof BrickWallChart>
+type Meta = MetaObj<typeof BrickWallChart>
 
 export const Default: Story = {
   args: {},
   render: (args) => {
     const params = {
       range: "testing!A1:J33",
+      layoutMode: "wall",
+      horizontalSpacingRatio: 0.15,
+      verticalSpacingRatio: 0.5,
     }
     const { data: response, isLoading, error } = useNflTennis({ ...params })
     const { data: points, metadata } = response ?? {}
@@ -18,7 +21,7 @@ export const Default: Story = {
     if (error) return <div>error...{`${error}`}</div>
     return (
       <main className="h-screen w-full border border-red-600">
-        <BrickLadderChart
+        <BrickWallChart
           {...{ ...args, data: points ?? [], title: metadata?.title }}
         />
       </main>
@@ -28,5 +31,5 @@ export const Default: Story = {
 
 export default {
   title: "UI/NFL/Components/BrickChart",
-  component: BrickLadderChart,
+  component: BrickWallChart,
 } as Meta
