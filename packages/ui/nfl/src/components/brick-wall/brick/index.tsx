@@ -1,4 +1,6 @@
 import { BrickTexture } from "@nfl/components/brick-wall/brick-texture"
+import type { NFLTeam } from "@nfl/components/nfl-team-icon"
+import { NFLTeamIcon } from "@nfl/components/nfl-team-icon"
 import type { BrickData } from "@nfl/types/brick-wall"
 import { getTextColor, interpolateOklch } from "@nfl/utils/color-intensity"
 
@@ -45,8 +47,8 @@ export const Brick: React.FC<BrickProps> = ({ brick }) => {
   )
   const textColor = getTextColor(lightness)
 
-  const nameFontSize = Math.max(8, Math.min(12, width / 8))
-  const valueFontSize = Math.max(6, Math.min(10, width / 10))
+  const valueFontSize = Math.max(12, Math.min(10, width / 10))
+  const iconSize = Math.min(width * 0.65, height * 0.65)
 
   return (
     <g>
@@ -60,20 +62,20 @@ export const Brick: React.FC<BrickProps> = ({ brick }) => {
         strokeWidth="2"
       />
       <BrickTexture brick={brick} color={color} />
-      <text
-        x={x + width / 2}
-        y={y + height / 2}
-        textAnchor="middle"
-        fontFamily="Arial"
-        fontSize={nameFontSize}
-        fontWeight="bold"
-        fill={textColor}
+      <foreignObject
+        x={x + width / 2 - iconSize / 2}
+        y={y + height / 2 - iconSize / 2}
+        width={iconSize}
+        height={iconSize}
       >
-        {item.name}
-      </text>
+        <NFLTeamIcon
+          team={item.name as NFLTeam}
+          size={iconSize}
+        />
+      </foreignObject>
       <text
         x={x + width / 2}
-        y={y + height / 2 + nameFontSize + 2}
+        y={y + height - valueFontSize}
         textAnchor="middle"
         fontFamily="Arial"
         fontSize={valueFontSize}

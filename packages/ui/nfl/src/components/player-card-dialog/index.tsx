@@ -39,10 +39,9 @@ export const PlayerCardDialog = (): React.JSX.Element => {
           }))
         }
       }, 50)
-
-      return (): void => {
-        if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
-      }
+    }
+    return (): void => {
+      if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
     }
   }, [isOpen])
 
@@ -53,7 +52,6 @@ export const PlayerCardDialog = (): React.JSX.Element => {
           <NflPlayerCard
             height={buttonRect.height}
             width={buttonRect.width}
-            open={isOpen}
             className=""
           />
         </Button>

@@ -15,8 +15,10 @@ export const Default: Story = {
         height: 80,
       },
       item: {
-        name: "49ers",
+        name: "SF",
         value: 11,
+        imageUrl:
+          "https://t3.gstatic.com/faviconV2?url=https://www.49ers.com/&client=BARD&type=FAVICON&size=256&fallback_opts=TYPE,SIZE,URL",
       },
       color_intensity: 5,
     },

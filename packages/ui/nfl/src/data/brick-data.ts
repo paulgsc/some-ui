@@ -4,6 +4,7 @@ import { z } from "zod"
 const dataItem = z.object({
   name: z.string(),
   value: z.number(),
+  imageUrl: z.string(),
   properties: z.record(z.string(), z.any()).optional(),
 })
 

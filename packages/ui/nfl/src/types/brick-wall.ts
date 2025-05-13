@@ -1,6 +1,7 @@
 export type DataItem = {
   name: string
   value: number
+  imageUrl?: string
 }
 
 export type BrickPosition = {

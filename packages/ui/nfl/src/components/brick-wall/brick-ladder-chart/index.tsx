@@ -3,16 +3,12 @@ import { useRef } from "react"
 import { Brick } from "@nfl/components/brick-wall/brick"
 import { Crown } from "@nfl/components/brick-wall/crown"
 import { Medal } from "@nfl/components/brick-wall/medal"
+import type { DataItem } from "@nfl/types/brick-wall"
 import {
   calculateBrickPositions,
   calculateMaxLayerWidth,
 } from "@nfl/utils/brick-layout"
 import { cn, useMeasureRect } from "some-ui-utils"
-
-type DataItem = {
-  name: string
-  value: number
-}
 
 type BrickWallChartProps = {
   data: Array<DataItem>
