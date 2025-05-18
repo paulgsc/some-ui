@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
-use crate::{CubeCoord, HexGrid};
+use crate::{hex_grid::HexGrid, CubeCoord};
 
 #[wasm_bindgen]
 extern "C" {
@@ -71,6 +71,12 @@ impl WasmHexGrid {
         self.grid.clear_all();
     }
 
+    /// Place text in a row
+    #[wasm_bindgen]
+    pub fn place_text(&mut self, text: &str, row: i32, direction: u32, color: Option<u32>) {
+        self.grid.place_text_in_row(text, row, direction.into(), color);
+    }
+
     /// Fill a region with a color
     #[wasm_bindgen]
     pub fn fill_region(&mut self, center_x: i32, center_y: i32, center_z: i32, radius: i32, color: u32) -> bool {
@@ -93,24 +99,6 @@ impl WasmHexGrid {
             }
             Err(_) => false,
         }
-    }
-
-    /// Create an overlapping pattern
-    #[wasm_bindgen]
-    pub fn create_overlapping_pattern(&mut self, region_size: i32, spacing: i32, color: u32) {
-        self.grid.create_overlapping_pattern(region_size, spacing, color);
-    }
-
-    /// Create a corner-touching pattern
-    #[wasm_bindgen]
-    pub fn create_corner_touching_pattern(&mut self, region_size: i32, color: u32) {
-        self.grid.create_corner_touching_pattern(region_size, color);
-    }
-
-    /// Create a hexagon pattern
-    #[wasm_bindgen]
-    pub fn create_hexagon_pattern(&mut self, region_size: i32, spacing: i32, color: u32) {
-        self.grid.create_hexagon_pattern(region_size, spacing, color);
     }
 
     /// Set the color of a specific cell
