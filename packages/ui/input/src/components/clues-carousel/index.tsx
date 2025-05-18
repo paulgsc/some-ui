@@ -1,26 +1,34 @@
 import type { FC } from "react"
 import { useCallback } from "react"
 import { ClueList } from "@input/components/clues-list"
-import type { ViewportResponse } from "@input/hooks/use-viewport-rotation-wasm"
-import type { CrosswordClueWithNum } from "@input/types/crossword"
+import { useClueQueueEvents } from "@input/hooks/use-clue-queue-events"
+import type { CrosswordClueWithNum, Direction } from "@input/types/crossword"
 import { DiceCard } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
 type ClueCarouselProps = {
   className?: string
-  clueCardId?: number | string
-  rotationState: ViewportResponse["state"] | undefined
-  directionalClues: Array<CrosswordClueWithNum>
+  direction: Direction
 }
 
 export const CluesCarousel: FC<ClueCarouselProps> = ({
   className,
-  clueCardId,
-  rotationState,
-  directionalClues,
+  direction,
 }) => {
+  const {
+    viewportStates: { across, down },
+    cluesQueue: { cluesAcross, cluesDown },
+  } = useClueQueueEvents()
+
   const getClues = useCallback(() => {
-    if (!rotationState || directionalClues.length === 0) return []
+    const rotationState = direction === "across" ? across : down
+    const directionalClues = direction === "across" ? cluesAcross : cluesDown
+    if (
+      !rotationState ||
+      Object.entries(rotationState).length === 0 ||
+      directionalClues.length === 0
+    )
+      return []
 
     const { faceIndices, currFace, currIdx } = rotationState
     if (faceIndices.length === 0) return []
@@ -52,9 +60,8 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
 
       const args = {
         key: `crossword_clues_${i}`,
-        testIdx: i,
+        title: direction === "across" ? "Across" : "Down",
         clues,
-        isActive: currFace === i,
         activeIndex: currIdx,
       }
 
@@ -63,7 +70,7 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
     }
 
     return result
-  }, [rotationState, directionalClues])
+  }, [across, down, cluesAcross, cluesDown])
 
   return (
     <DiceCard
@@ -71,7 +78,7 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
       dof={"Y-axis"}
       mode={"manual"}
       faces={getClues()}
-      cubeId={clueCardId}
+      cubeId={direction}
     />
   )
 }

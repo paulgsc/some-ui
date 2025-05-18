@@ -29,7 +29,7 @@ export function useChatMessages({ chats, pause }: Options): Options {
         setMessages([])
         return 0
       })
-    }, 10000)
+    }, 10 * 1000)
   }, [chats])
 
   useEffect(() => {

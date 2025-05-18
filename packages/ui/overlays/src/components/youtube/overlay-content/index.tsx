@@ -3,9 +3,11 @@ import { Fragment } from "react"
 import { accordionData } from "@overlays/data/gemini-stepper"
 import { ScrollingCredits, useGetCredits } from "attributions"
 import { StudyScene } from "makjang"
-import { BoredAnimation } from "some-ui-emoji-animations"
+import { GrindPieChart } from "portfolio-chart"
+import { LivestreamSchedule } from "some-ui-calendar"
 import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
 import { BrickChartCarousel } from "some-ui-nfl"
+import { DiceCard } from "some-ui-slideshow"
 import { GeminiStepper } from "some-ui-stepper"
 import { getRandomSubarray } from "some-ui-utils"
 
@@ -83,7 +85,7 @@ const topLeftContent: Record<string, Array<PanelContent>> = {
 
 export function gettopLeftContent(key: string): PanelContent {
   const content = topLeftContent[key] ?? []
-  if (content.length <= 0) return { node: <StudyScene />, size: 40 }
+  if (content.length <= 0) return { node: <TopRightContent />, size: 40 }
   return getRandomSubarray(content, 1)[0]
 }
 
@@ -106,4 +108,48 @@ export function getbotLeftContent(key: string): PanelContent {
       size: 60,
     }
   return getRandomSubarray(content, 1)[0]
+}
+
+export const TopRightContent = () => {
+  // Sample data
+  const sampleJobApplications = [
+    { name: "Hopium", value: 42, color: "#3B82F6" },
+    { name: "Crickets", value: 15, color: "#10B981" },
+    { name: "Never began", value: 3, color: "#F59E0B" },
+    { name: "Society Wins Again", value: 24, color: "#EF4444" },
+  ]
+
+  const sampleLeetcodeStats = [
+    { name: "Easy", value: 65, color: "#10B981" },
+    { name: "Medium", value: 47, color: "#F59E0B" },
+    { name: "Hard", value: 23, color: "#EF4444" },
+  ]
+
+  const jobsArgs = {
+    stats: sampleJobApplications,
+    title: "job application",
+  }
+
+  const leetcodeArgs = {
+    stats: sampleLeetcodeStats,
+    title: "leetcode grind",
+  }
+
+  const cubeFaces = [
+    <StudyScene key={1} />,
+    <GrindPieChart key={2} {...jobsArgs} />,
+    <LivestreamSchedule key={3} />,
+    <GrindPieChart key={4} {...leetcodeArgs} />,
+    "",
+    "",
+  ]
+
+  return (
+    <DiceCard
+      className="relative size-full"
+      dof={"Y-axis"}
+      faces={cubeFaces}
+      showBeam={false}
+    />
+  )
 }

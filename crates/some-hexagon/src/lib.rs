@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::fmt;
 
+mod shader;
 mod utils;
 mod wasm_hex;
+mod wasm_shader;
 
 /// Represents cube coordinates in a hexagonal grid.
 /// x + y + z = 0 must be maintained for valid coordinates.

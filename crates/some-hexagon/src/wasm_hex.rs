@@ -26,8 +26,8 @@ pub struct HexRenderData {
 
 #[wasm_bindgen]
 pub struct WasmHexGrid {
-    grid: HexGrid,
-    hex_size: f64,
+    pub(crate) grid: HexGrid,
+    pub(crate) hex_size: f64,
 }
 
 #[wasm_bindgen]

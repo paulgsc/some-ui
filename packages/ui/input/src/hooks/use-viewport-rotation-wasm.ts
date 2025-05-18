@@ -6,6 +6,7 @@ import {
 } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
 import { cubeEvents } from "some-ui-slideshow"
+import { createEventBus } from "some-ui-utils"
 import init, { ViewportManager } from "viewport-rotation"
 import z from "zod"
 
@@ -43,17 +44,12 @@ type ViewportOption = {
 }
 type Options = {
   maxPerFace?: number
-  activeCube?: Direction
   onError?: (error: Error) => void
 }
 
 // Cache WASM initialization to prevent multiple initializations
 
-export const useViewportManager = ({
-  maxPerFace = 2,
-  activeCube,
-  onError,
-}: Options) => {
+export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewportIds, setViewportIds] = useState<Array<string>>([])
@@ -104,10 +100,6 @@ export const useViewportManager = ({
 
       for (const v of viewports) {
         if (v.totalItems <= 0) continue
-        console.log(
-          `Creating viewport for ${v.viewId} with ${v.totalItems} items, ${maxPerFace} per face`
-        )
-
         const response = managerRef.current.create_viewport(
           v.viewId,
           v.totalItems,
@@ -116,9 +108,6 @@ export const useViewportManager = ({
         const parsedResponse = ViewportStateSchema.parse(response)
 
         statesMap[v.viewId] = parsedResponse.state
-        console.log(
-          `Successfully initialized viewport for id: ${parsedResponse.viewportId}`
-        )
       }
 
       if (Object.entries(statesMap).length === 0) {
@@ -133,6 +122,7 @@ export const useViewportManager = ({
       setViewportIds(parsedList.viewportIds)
       setActiveViewportId(parsedList.activeViewportId)
       setViewportStates(statesMap)
+      viewportEvents.setState((prev) => ({ ...prev, statesMap }))
 
       hasInitialized.current = true
     } catch (err) {
@@ -153,7 +143,6 @@ export const useViewportManager = ({
         const manager = managerRef.current
         if (!manager) return
 
-        console.log(`Setting active viewport to ${direction}`)
         const response = manager.set_active_viewport(direction)
         const parsedResponse = ViewportStateSchema.parse(response)
 
@@ -161,6 +150,10 @@ export const useViewportManager = ({
 
         // Update the state for this direction
         setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+        viewportEvents.setState((prev) => ({
           ...prev,
           [direction]: parsedResponse.state,
         }))
@@ -192,6 +185,10 @@ export const useViewportManager = ({
           ...prev,
           [direction]: parsedResponse.state,
         }))
+        viewportEvents.setState((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
       } catch (err) {
         console.error(`Error setting ${direction} rotation axis:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -208,12 +205,15 @@ export const useViewportManager = ({
         const manager = managerRef.current
         if (!manager) return
 
-        console.log(`${direction}: Rotating next`)
         const response = manager.rotate_viewport_next(direction)
         const parsedResponse = ViewportStateSchema.parse(response)
 
         // Update state for this direction
         setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+        viewportEvents.setState((prev) => ({
           ...prev,
           [direction]: parsedResponse.state,
         }))
@@ -252,21 +252,21 @@ export const useViewportManager = ({
         }
         if (lastRevealedIndex === queueIdx) return
 
-        console.log(`${direction}: Current i=${currIdx}, f=${currFace}`)
-
         if (faceIndices[currFace].length <= currIdx + 1) {
-          console.log(`${direction}: End of face reached, rotating`)
           cubeEvents.emit("rotate:next", { id: 1 })
           rotateViewport(direction)
           return
         }
 
-        console.log(`${direction}: Moving to next item`)
         const response = manager.viewport_next_item(direction)
         const parsedResponse = ViewportStateSchema.parse(response)
 
         // Update state for this direction
         setViewportStates((prev) => ({
+          ...prev,
+          [direction]: parsedResponse.state,
+        }))
+        viewportEvents.setState((prev) => ({
           ...prev,
           [direction]: parsedResponse.state,
         }))
@@ -278,10 +278,10 @@ export const useViewportManager = ({
     },
     [
       onError,
-      viewportStates,
+      viewportStates.direction,
       cluesQueue.lastRevealedAcrossIndex,
       cluesQueue.lastRevealedDownIndex,
-      activeCube,
+      cluesQueue.direction,
     ]
   )
 
@@ -344,7 +344,6 @@ export const useViewportManager = ({
           return
         }
 
-        console.log("Handling across cell reveal")
         lastHandledEventId.current = eventId
         getNextViewportItem("across")
       }
@@ -358,7 +357,6 @@ export const useViewportManager = ({
         return
       }
 
-      console.log("Handling down cell reveal")
       lastHandledEventId.current = eventId
       getNextViewportItem("down")
     })
@@ -382,6 +380,7 @@ export const useViewportManager = ({
     viewportIds,
     activeViewportId,
     viewportStates,
+    cluesQueue,
     setActiveViewport,
     setRotationAxis,
     rotateViewport,
@@ -390,3 +389,6 @@ export const useViewportManager = ({
     getViewportFaceIndices,
   }
 }
+
+export type ViewportEventState = Record<string, ViewportResponse["state"]>
+export const viewportEvents = createEventBus<ViewportEventState, {}>({})

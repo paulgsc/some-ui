@@ -13,6 +13,7 @@ import { nflTennis } from "@overlays/data/chatbot-messages/nfl-tennis"
 import { sameWinners } from "@overlays/data/chatbot-messages/the-same-winners"
 import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
 import { soManyCrates } from "@overlays/data/chatbot-messages/yet-another-python"
+import { digitalHellscape } from "@overlays/data/chatbot-messages/youtube"
 import { useGanttChapters } from "@overlays/data/gantt-data"
 import { ChatInterface } from "some-ui-chat"
 import { RotatingCube, RotatingNeonSign } from "some-ui-slideshow"
@@ -25,16 +26,23 @@ const YoutubeOverlay = (): React.JSX.Element => {
   const params = {
     range: "gantt!A1:L20",
   }
-  const { data: chapters, isLoading } = useGanttChapters({ ...params })
+  const { data: chapters } = useGanttChapters({ ...params })
   const { value: currentChapterId, removeValue } = useLocalStorage(
     "gantt-chapter",
-    chapters ? "start" : ""
+    chapters ? "nfl-tennis" : "nfl-tennis"
   )
   const cubeFaces = [
     <ChatInterface
       key={"farmers"}
       messagesTitle={"Don't farm me bro!"}
       messages={farmers}
+      characters={characters}
+    />,
+
+    <ChatInterface
+      key={"youtube"}
+      messagesTitle={"I call it Youtube"}
+      messages={digitalHellscape}
       characters={characters}
     />,
 
@@ -71,7 +79,7 @@ const YoutubeOverlay = (): React.JSX.Element => {
   ]
   const overlayContent: WireframeContent = {
     [WireframeRegion.VIDEO]: (
-      <RotatingCube content={cubeFaces} duration={1 * 60 * 1000} />
+      <RotatingCube content={cubeFaces} duration={5 * 60 * 1000} />
     ),
     [WireframeRegion.MARQUEE]: (
       <RotatingNeonSign
@@ -95,7 +103,7 @@ const YoutubeOverlay = (): React.JSX.Element => {
     }
   }, [chapters, removeValue])
 
-  if (isLoading) return <div>Loading...</div>
+  //  if (isLoading) return <div>Loading...</div>
   // if (error) return <div>error...{`${error}`}</div>
 
   const totalDuration =

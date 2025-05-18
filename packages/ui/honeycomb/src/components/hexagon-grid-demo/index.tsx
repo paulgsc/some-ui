@@ -66,7 +66,7 @@ export const DemoGrid: FC<HexGridProps> = ({
 
     switch (patternType) {
       case "overlapping":
-        hexGridRef.current.create_overlapping_pattern(2, 3, 0x3498db)
+        hexGridRef.current.render_text("CONGRATS BROCK!", 0, 0, 0, 3, 0xe74c3c)
         break
       case "corner-touching":
         hexGridRef.current.create_corner_touching_pattern(2, 0xe74c3c)

@@ -14,7 +14,9 @@
     "some-ui-nfl": "workspace:*",
     "some-ui-input": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "portfolio-chart": "workspace:*",
     "some-ui-stepper": "workspace:*",
+    "some-ui-calendar": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "makjang": "workspace:*",
     "wireframes": "workspace:*"

@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 
-members = ["crates/ujinga", "crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation", "crates/some-hexagon"]
+members = ["crates/ujinga", "crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation", "crates/some-hexagon", "crates/leaderboard", "crates/some-racer"]
 
 exclude = []
 
