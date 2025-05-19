@@ -1,6 +1,7 @@
 use std::fmt;
 
 mod hex_cell;
+mod hex_layout;
 mod hex_grid;
 mod hex_pattern;
 mod utils;

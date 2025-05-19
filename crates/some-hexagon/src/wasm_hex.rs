@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
-use crate::{hex_grid::HexGrid, CubeCoord};
+use crate::{hex_grid::HexGrid, hex_layout::SymmetricHexLayout, CubeCoord};
 
 #[wasm_bindgen]
 extern "C" {
@@ -28,6 +28,7 @@ pub struct HexRenderData {
 pub struct WasmHexGrid {
     pub(crate) grid: HexGrid,
     pub(crate) hex_size: f64,
+    layout_manager: Option<SymmetricHexLayout>,
 }
 
 #[wasm_bindgen]
@@ -38,6 +39,7 @@ impl WasmHexGrid {
         Self {
             grid: HexGrid::new(radius),
             hex_size,
+            layout_manager: None,
         }
     }
 
@@ -190,6 +192,28 @@ impl WasmHexGrid {
                 }
             }
             Err(_) => Err(JsValue::from_str("Invalid cube coordinates")),
+        }
+    }
+
+    /// Set the symmetric layout manager
+    #[wasm_bindgen]
+    pub fn set_layout_manager(&mut self, symmetry_direction: u32, title: Option<String>, center_color: Option<u32>) {
+        self.layout_manager = Some(SymmetricHexLayout::new(symmetry_direction.into(), title, center_color));
+    }
+
+    /// Layout data using the symmetric layout manager
+    #[wasm_bindgen]
+    pub fn layout_symmetric_data(&mut self, data: JsValue) -> Result<(), JsValue> {
+        if let Some(layout) = &self.layout_manager {
+            match serde_wasm_bindgen::from_value(data) {
+                Ok(hex_data_vec) => {
+                    let _ = layout.layout_data(&mut self.grid, hex_data_vec);
+                    Ok(())
+                }
+                Err(_) => Err(JsValue::from_str("Failed to deserialize HexData array")),
+            }
+        } else {
+            Err(JsValue::from_str("Layout manager not initialized"))
         }
     }
 

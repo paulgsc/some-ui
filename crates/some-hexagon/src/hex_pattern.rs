@@ -129,7 +129,7 @@ impl HexGrid {
     }
 
     /// Get information about a row: its width and starting coordinate
-    fn get_row_info(&self, row: i32, direction: Direction) -> (usize, CubeCoord) {
+    pub(super) fn get_row_info(&self, row: i32, direction: Direction) -> (usize, CubeCoord) {
         // Get grid bounds
         let ((min_q, min_r), (max_q, max_r)) = self.bounds();
 
