@@ -1,1 +1,2 @@
-export { default } from "@resume/components"
+
+export * from "./components"
