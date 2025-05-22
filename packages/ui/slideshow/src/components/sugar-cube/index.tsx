@@ -1,5 +1,6 @@
 import type { CSSProperties, FC, RefObject } from "react"
 import { useRef } from "react"
+import { TVStaticAnimation } from "@slideshow/components/tv-animation"
 import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import { cn, useMeasureRect } from "some-ui-utils"
 
@@ -74,7 +75,9 @@ export const SugarCube: FC<RotatingCubeProps> = ({
                   index === 5,
               }
             )}
-          ></div>
+          >
+            <TVStaticAnimation />
+          </div>
         ))}
       </div>
     </div>
