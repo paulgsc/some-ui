@@ -8,7 +8,7 @@ type Story = StoryObj<typeof ScrollingCredits>
 export const Default: Story = {
   render: () => {
     const params = {
-      range: "Sheet1!A1:G6",
+      range: "attributions!A1:G6",
     }
     const { data, isLoading, error } = useGetCredits({ ...params })
     if (isLoading) return <div>Loading...</div>

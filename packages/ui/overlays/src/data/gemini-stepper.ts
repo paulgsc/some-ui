@@ -7,22 +7,22 @@ export const accordionData: AccordionSteps = {
   data: [
     {
       stepId: "item-1",
-      title: "Praying to the Vibe Gods",
+      title: "Wai peeps like tutorials",
       progress: "pending",
-      content: `I want to do a thing, kinda complicated so don't even know what it is. So, I'll be paying tributes to the vibe gods,
-    hoping they can bless me with great providence.`,
+      content: `me can't understand why tutorials, specifically youtube tutorial videos are so popular. Why is there such an 
+      avaricous appetite for tutorials!. Like why? make it make sense.`,
     },
     {
       stepId: "item-2",
-      title: "Hexagon Math",
+      title: "NINER's Projected 53 Man roster hexagon ui",
       progress: "pending",
-      content: `Learn some hexagon math, and by learn I mean hallucinate some prompts for claude to do a thing.`,
+      content: `Render some projection of an nfl roster as a hexagon ui thingy. We try to get it done in vidya.`,
     },
     {
       stepId: "item-3",
-      title: "Research Sound Effects",
+      title: "Graveyard Projects UI",
       progress: "pending",
-      content: `Can it be possible for me to create own sound effects?`,
+      content: `Suppose I work on many repos, and many packages. Supose many are dead. Suppose me sad about this.`,
     },
     {
       stepId: "item-4",
@@ -31,6 +31,12 @@ export const accordionData: AccordionSteps = {
       content: `In a depature from type, we do talk in this stream, mostly because for once I'm working
       on something that I have zero clue how to do. No idea on what really as well.
       `,
+    },
+    {
+      stepId: "item-5",
+      title: "Some vim practice",
+      progress: "pending",
+      content: `Suppose we care somewhat about improving our vim motions. Suppose we spend some time doing just that.`,
     },
   ],
 }

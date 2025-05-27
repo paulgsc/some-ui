@@ -33,6 +33,7 @@ export default defineConfig({
       "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),
       "@honeycomb": path.resolve(__dirname, "./packages/ui/honeycomb/src"),
       "@calendar": path.resolve(__dirname, "./packages/ui/calendar/src"),
+      "@resume": path.resolve(__dirname, "./packages/ui/resume/src"),
       "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
       // Add more aliases for other packages as needed
     },

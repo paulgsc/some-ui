@@ -1,4 +1,4 @@
-use ra_ap_syntax::{tokenize, Parse, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
+use ra_ap_syntax::{tokenize, Edition, Parse, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 use rand::seq::SliceRandom;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -52,7 +52,7 @@ impl StochasticVerifier {
 
     /// Parse Rust code string into a syntax tree
     fn parse_code(&self, code: &str) -> Result<Parse<SourceFile>, VerificationError> {
-        let parse = SourceFile::parse(code);
+        let parse = SourceFile::parse(code, Edition::Edition2021);
         if parse.errors().is_empty() {
             Ok(parse)
         } else {
