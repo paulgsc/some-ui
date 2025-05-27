@@ -21,6 +21,7 @@
   "dependencies": {
     "some-hexagon": "link:../../../crates/some-hexagon/dist",
     "some-ui-utils": "workspace:*",
+    "maishatu-fetch-kit": "workspace:*",
     "some-ui-shared": "workspace:*"
   },
   "devDependencies": {

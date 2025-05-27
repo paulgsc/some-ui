@@ -1,7 +1,8 @@
 import { useRef } from "react"
 import type { FC, MouseEvent } from "react"
+import { useNflRoster } from "@honeycomb/data/nfl-roster"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
-import { Button } from "some-ui-shared"
+import { Button, NFLJersey } from "some-ui-shared"
 
 type HexPoint = {
   x: number
@@ -30,6 +31,7 @@ export const DemoGrid: FC<HexGridProps> = ({
   height = 600,
   onCellClick,
 }) => {
+  const { data: response, error: fetchError } = useNflRoster({})
   const svgRef = useRef<SVGSVGElement>(null)
   const { hexCells, isLoading, error, hexGridRef, setHexCells } =
     useHexgridWasm({
@@ -37,43 +39,41 @@ export const DemoGrid: FC<HexGridProps> = ({
       hexSize,
     })
 
-  // Handle cell click
-  const handleCellClick = (event: MouseEvent<SVGElement>) => {
-    if (!grid || !svgRef.current || !onCellClick) return
-
-    // Get click coordinates relative to SVG
-    const svgRect = svgRef.current.getBoundingClientRect()
-    const x = event.clientX - svgRect.left
-    const y = event.clientY - svgRect.top
-
-    try {
-      // Convert pixel coordinates to hex coordinates
-      const hexCoordJson = grid.pixel_to_hex(x, y)
-      const [cubeX, cubeY, cubeZ] = hexCoordJson
-
-      // Call the callback with the cube coordinates
-      onCellClick(cubeX, cubeY, cubeZ)
-    } catch (err) {
-      console.error("Error converting pixel to hex coordinates:", err)
-    }
-  }
-
   // Create a sample pattern
   const createPattern = (patternType: string) => {
     if (!hexGridRef.current) return
+    if (!response) return
 
     hexGridRef.current.clear_all()
 
     switch (patternType) {
       case "overlapping":
-        hexGridRef.current.render_text("CONGRATS BROCK!", 0, 0, 0, 3, 0xe74c3c)
+        const size = hexGridRef.current.radius()
+        hexGridRef.current.place_text("BROCK", -size, 1, 0xe74c3c)
         break
-      case "corner-touching":
-        hexGridRef.current.create_corner_touching_pattern(2, 0xe74c3c)
+      case "foo": {
+        type HexData = {
+          color: number // RGB as 0xRRGGBB
+          weight: number
+          label: string
+          value: string
+        }
+
+        const data: Array<HexData> = response.reduce((acc, curr) => {
+          const { weight, color, label, id } = curr
+          const next: HexData = {
+            color,
+            weight,
+            label,
+            value: `${id}`,
+          }
+          return [...acc, next]
+        }, [])
+
+        hexGridRef.current.set_layout_manager(0, "CENTER", 0xffff00)
+        hexGridRef.current.layout_symmetric_data(data)
         break
-      case "hexagon":
-        hexGridRef.current.create_hexagon_pattern(2, 4, 0x2ecc71)
-        break
+      }
       default:
         break
     }
@@ -111,6 +111,9 @@ export const DemoGrid: FC<HexGridProps> = ({
   // SVG transform to center the grid
   const transform = `translate(${width / 2}, ${height / 2})`
 
+  if (fetchError || !response || response.length === 0)
+    return <div> {`error fetching ${fetchError}`}</div>
+
   return (
     <div>
       <div className="z-50">
@@ -120,21 +123,15 @@ export const DemoGrid: FC<HexGridProps> = ({
         >
           Overlapping Pattern
         </Button>
-        <Button
-          className="cursor-pointer"
-          onClick={() => createPattern("corner-touching")}
-        >
-          Corner-Touching Pattern
+        <Button className="cursor-pointer" onClick={() => createPattern("foo")}>
+          foofooo
         </Button>
+
         <Button
           className="cursor-pointer"
-          onClick={() => createPattern("hexagon")}
-        >
-          Hexagon Pattern
-        </Button>
-        <Button
-          className="cursor-pointer"
-          onClick={() => grid?.clear_all() && setHexCells([])}
+          onClick={() => {
+            hexGridRef.current?.clear_all()
+          }}
         >
           Clear
         </Button>
@@ -143,41 +140,55 @@ export const DemoGrid: FC<HexGridProps> = ({
       <svg
         ref={svgRef}
         viewBox={viewBox}
-        onClick={handleCellClick}
         className="z-0 size-full border border-red-500"
       >
         <g transform={transform}>
-          {hexCells.map((cell) => (
-            <g key={cell.id}>
-              <path
-                d={pointsToPath(cell.points)}
-                fill={
-                  cell.color
-                    ? `#${cell.color.toString(16).padStart(6, "0")}`
-                    : "none"
-                }
-                stroke="#999"
-                strokeWidth="1"
-              />
-              {cell.content && (
-                <text
-                  x={
-                    cell.points.reduce((sum, point) => sum + point.x, 0) /
-                    cell.points.length
+          {hexCells.map((cell, i) => {
+            const centerX =
+              cell.points.reduce((sum, point) => sum + point.x, 0) /
+              cell.points.length
+            const centerY =
+              cell.points.reduce((sum, point) => sum + point.y, 0) /
+              cell.points.length
+
+            // Calculate cell size (approximate width of the hex)
+            const cellWidth =
+              Math.max(...cell.points.map((p) => p.x)) -
+              Math.min(...cell.points.map((p) => p.x))
+            const cellHeight =
+              Math.max(...cell.points.map((p) => p.y)) -
+              Math.min(...cell.points.map((p) => p.y))
+
+            // Scale jersey to fit in the cell (using 70% of cell width)
+            const scale = (cellWidth * 0.7) / 300 // 300 is the original jersey width
+            const { jerseyNumber, name } = response[i % response.length]
+
+            return (
+              <g key={cell.id}>
+                <path
+                  d={pointsToPath(cell.points)}
+                  fill={
+                    cell.color
+                      ? `#${cell.color.toString(16).padStart(6, "0")}`
+                      : "none"
                   }
-                  y={
-                    cell.points.reduce((sum, point) => sum + point.y, 0) /
-                    cell.points.length
-                  }
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="10"
-                >
-                  {cell.content}
-                </text>
-              )}
-            </g>
-          ))}
+                  stroke="#999"
+                  strokeWidth="1"
+                />
+                {cell.content && (
+                  <>
+                    <NFLJersey
+                      centerX={centerX}
+                      centerY={centerY}
+                      scale={scale}
+                      name={name}
+                      number={jerseyNumber}
+                    />
+                  </>
+                )}
+              </g>
+            )
+          })}
         </g>
       </svg>
     </div>

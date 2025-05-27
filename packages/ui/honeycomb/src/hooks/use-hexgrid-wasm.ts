@@ -40,6 +40,7 @@ type ReturnOptions = {
   regenerate: () => Promise<void>
   hexGridRef: RefObject<WasmHexGrid | null>
   setHexCells: Dispatch<SetStateAction<Array<HexRenderData>>>
+  getRadius: () => number 
 }
 
 export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
@@ -111,5 +112,6 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
     regenerate: generateHexgrid,
     hexGridRef,
     setHexCells,
+    getRadius,
   }
 }

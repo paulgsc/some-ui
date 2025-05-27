@@ -9,7 +9,7 @@ export const Default: Story = {
   args: {
     cellCount: 53,
     hexSize: 30,
-    viewBoxFactor: 0.65,
+    viewBoxFactor: 0.5,
   },
 }
 
