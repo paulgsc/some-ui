@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, HTMLAttributes } from "react"
+import type { CSSProperties, FC, HTMLAttributes, ReactNode } from "react"
 import { forwardRef } from "react"
 import { cn } from "@shared/lib/utils"
 
@@ -77,17 +77,19 @@ type DeckShuffleProps = {
   containerClassname?: string
   cardClassname?: string
   count: number
+  contents: Array<ReactNode>
 } & DeckCardProps
 
 export const DeckShuffle: FC<DeckShuffleProps> = ({
   containerClassname,
   cardClassname,
   count,
+  contents,
   scaleOffset = 0.02,
 }) => {
   return (
     <Deck className={(cn(containerClassname), "")}>
-      {Array.from({ length: count }).map((_, i) => {
+      {contents.map((content, i) => {
         const scale =
           i <= Math.floor(count / 2)
             ? (i - 1) * scaleOffset
@@ -100,7 +102,7 @@ export const DeckShuffle: FC<DeckShuffleProps> = ({
             className={cn(cardClassname, "")}
             scale={scale}
           >
-            {`card no. ${i}`}
+            {content}
           </DeckCard>
         )
       })}
