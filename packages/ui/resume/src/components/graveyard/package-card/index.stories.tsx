@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof PackageCard>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/PackageCard",
+  title: "UI/Resume/Components/Graveyard/PackageCard",
   component: PackageCard,
 } as Meta

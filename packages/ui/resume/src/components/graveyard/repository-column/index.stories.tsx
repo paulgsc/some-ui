@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof RepositoryColumn>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/RepositoryColumn",
+  title: "UI/Resume/Components/Graveyard/RepositoryColumn",
   component: RepositoryColumn,
 } as Meta

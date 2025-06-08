@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof Legend>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/Legend",
+  title: "UI/Resume/Components/Graveyard/Legend",
   component: Legend,
 } as Meta

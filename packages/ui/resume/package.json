@@ -61,6 +61,7 @@
   "dependencies": {
     "lucide-react": "^0.511.0",
     "some-ui-shared": "workspace:*",
+    "some-ui-nfl": "workspace:*",
     "some-ui-utils": "workspace:*"
   }
 }

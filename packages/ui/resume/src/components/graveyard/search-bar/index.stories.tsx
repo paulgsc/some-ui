@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof SearchBar>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/SearchBar",
+  title: "UI/Resume/Components/Graveyard/SearchBar",
   component: SearchBar,
 } as Meta

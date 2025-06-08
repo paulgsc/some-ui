@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof SortButton>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/SortButton",
+  title: "UI/Resume/Components/Graveyard/SortButton",
   component: SortButton,
 } as Meta

@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof Header>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Resume/Components/Header",
+  title: "UI/Resume/Components/Graveyard/Header",
   component: Header,
 } as Meta
