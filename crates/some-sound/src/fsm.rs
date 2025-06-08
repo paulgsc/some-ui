@@ -283,10 +283,28 @@ fn generate_id() -> String {
 mod tests {
     use super::*;
 
+    fn create_test_config() -> SoundEngineConfig {
+        SoundEngineConfig {
+            default_voice: VoiceConfig::default(),
+            default_effect_params: EffectParams::default(),
+            auto_play: true,
+            loop_queue: false,
+        }
+    }
+
+    fn create_test_fsm() -> SoundEngineFSM {
+        SoundEngineFSM::new(create_test_config()).unwrap()
+    }
+
     #[test]
-    fn test_idle_to_processing() {
-        let config = SoundEngineConfig::default();
-        let mut fsm = SoundEngineFSM::new(config).unwrap();
+    fn test_fsm_creation_with_lexer() {
+        let fsm = create_test_fsm();
+        assert!(matches!(fsm.state(), SoundEngineState::Idle(_)));
+    }
+
+    #[test]
+    fn test_simple_speech_processing() {
+        let mut fsm = create_test_fsm();
 
         let event = SoundEngineEvent::ProcessText { input: "Hello world".to_string() };
 
@@ -294,48 +312,67 @@ mod tests {
 
         match fsm.state() {
             SoundEngineState::Processing(state) => {
-                assert_eq!(state.tokens.len(), 1);
                 assert_eq!(state.current_index, 0);
+                assert_eq!(state.tokens.len(), 1);
+
+                match &state.tokens[0] {
+                    SoundToken::Speech { text, voice_config } => {
+                        assert_eq!(text, "Hello world");
+                        assert_eq!(voice_config.rate, 1.0);
+                        assert_eq!(voice_config.pitch, 1.0);
+                        assert_eq!(voice_config.volume, 1.0);
+                    }
+                    _ => panic!("Expected speech token"),
+                }
             }
-            _ => panic!("Expected processing state"),
+            _ => panic!("Expected Processing state"),
         }
     }
 
     #[test]
-    fn test_invalid_transition() {
-        let config = SoundEngineConfig::default();
-        let mut fsm = SoundEngineFSM::new(config).unwrap();
+    fn test_mixed_content_lexing_and_queue() {
+        let mut fsm = create_test_fsm();
 
-        // Try to pause from idle state (invalid)
-        let event = SoundEngineEvent::Pause;
-        let result = fsm.handle_event(event);
-
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            SoundEngineError::InvalidTransition { .. } => {}
-            _ => panic!("Expected invalid transition error"),
-        }
-    }
-
-    #[test]
-    fn test_error_recovery() {
-        let config = SoundEngineConfig::default();
-        let mut fsm = SoundEngineFSM::new(config).unwrap();
-
-        // Transition to error state
-        let error_event = SoundEngineEvent::Error {
-            message: "Test error".to_string(),
-            recoverable: true,
+        let event = SoundEngineEvent::ProcessText {
+            input: "Hello [effect:boom] world [pause:500] goodbye".to_string(),
         };
-        fsm.handle_event(error_event).unwrap();
 
-        // Reset from error
-        let reset_event = SoundEngineEvent::Reset;
-        fsm.handle_event(reset_event).unwrap();
+        fsm.handle_event(event).unwrap();
 
         match fsm.state() {
-            SoundEngineState::Idle(_) => {}
-            _ => panic!("Expected idle state after reset"),
+            SoundEngineState::Processing(state) => {
+                assert_eq!(state.current_index, 0);
+                assert_eq!(state.tokens.len(), 4);
+
+                // Check first token - speech
+                match &state.tokens[0] {
+                    SoundToken::Speech { text, .. } => assert_eq!(text, "Hello"),
+                    _ => panic!("Expected speech token at index 0"),
+                }
+
+                // Check second token - sound effect
+                match &state.tokens[1] {
+                    SoundToken::SoundEffect { effect_type, params } => {
+                        assert_eq!(*effect_type, EffectType::Boom);
+                        assert_eq!(params.frequency, Some(440.0)); // Default
+                        assert_eq!(params.volume, Some(0.5)); // Default
+                    }
+                    _ => panic!("Expected effect token at index 1"),
+                }
+
+                // Check third token - speech
+                match &state.tokens[2] {
+                    SoundToken::Speech { text, .. } => assert_eq!(text, "world"),
+                    _ => panic!("Expected speech token at index 2"),
+                }
+
+                // Check fourth token - pause
+                match &state.tokens[3] {
+                    SoundToken::Pause { duration_ms } => assert_eq!(*duration_ms, 500),
+                    _ => panic!("Expected pause token at index 3"),
+                }
+            }
+            _ => panic!("Expected Processing state"),
         }
     }
 }

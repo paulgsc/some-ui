@@ -14,17 +14,17 @@ pub struct SoundLexer {
 impl SoundLexer {
     pub fn new() -> Result<Self, SoundEngineError> {
         Ok(Self {
-            // Match speech text (default case)
-            speech_pattern: Regex::new(r"[^[\]{}]+").map_err(|e| SoundEngineError::LexerError(format!("Invalid speech regex: {}", e)))?,
+            // Match speech text (default case) - fixed regex
+            speech_pattern: Regex::new(r"[^\[\]{}]+").map_err(|e| SoundEngineError::LexerError(format!("Invalid speech regex: {e}")))?,
 
             // Match sound effects: [effect:type] or [effect:type:param1=val1,param2=val2]
-            effect_pattern: Regex::new(r"\[effect:(\w+)(?::([^\]]+))?\]").map_err(|e| SoundEngineError::LexerError(format!("Invalid effect regex: {}", e)))?,
+            effect_pattern: Regex::new(r"\[effect:(\w+)(?::([^\]]+))?\]").map_err(|e| SoundEngineError::LexerError(format!("Invalid effect regex: {e}")))?,
 
             // Match pauses: [pause:duration_ms]
-            pause_pattern: Regex::new(r"\[pause:(\d+)\]").map_err(|e| SoundEngineError::LexerError(format!("Invalid pause regex: {}", e)))?,
+            pause_pattern: Regex::new(r"\[pause:(\d+)\]").map_err(|e| SoundEngineError::LexerError(format!("Invalid pause regex: {e}")))?,
 
             // Match voice config: {voice:rate=1.0,pitch=1.0,volume=1.0,name=voice_name}
-            voice_config_pattern: Regex::new(r"\{voice:([^}]+)\}").map_err(|e| SoundEngineError::LexerError(format!("Invalid voice config regex: {}", e)))?,
+            voice_config_pattern: Regex::new(r"\{voice:([^}]+)\}").map_err(|e| SoundEngineError::LexerError(format!("Invalid voice config regex: {e}")))?,
         })
     }
 
@@ -198,6 +198,30 @@ mod tests {
             SoundToken::Speech { text, .. } => assert_eq!(text, "Hello world"),
             _ => panic!("Expected speech token"),
         }
+    }
+
+    #[test]
+    fn test_tokens() {
+        let lexer = SoundLexer::new().unwrap();
+        let tokens = lexer.tokenize("[pause:500]").unwrap();
+
+        assert_eq!(tokens.len(), 1);
+        match tokens[0] {
+            SoundToken::Pause { duration_ms } => assert_eq!(duration_ms, 500),
+            _ => panic!("Expected pause token"),
+        }
+
+        let tokens = lexer.tokenize("[effect:boom]").unwrap();
+
+        assert_eq!(tokens.len(), 1);
+        match &tokens[0] {
+            SoundToken::SoundEffect { effect_type, .. } => assert_eq!(*effect_type, EffectType::Boom),
+            _ => panic!("Expected effect token"),
+        }
+
+        let tokens = lexer.tokenize("Hello [effect:boom]").unwrap();
+
+        assert_eq!(tokens.len(), 2);
     }
 
     #[test]
