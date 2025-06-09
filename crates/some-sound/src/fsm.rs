@@ -342,7 +342,7 @@ mod tests {
         match fsm.state() {
             SoundEngineState::Processing(state) => {
                 assert_eq!(state.current_index, 0);
-                assert_eq!(state.tokens.len(), 4);
+                assert_eq!(state.tokens.len(), 5);
 
                 // Check first token - speech
                 match &state.tokens[0] {
@@ -370,6 +370,10 @@ mod tests {
                 match &state.tokens[3] {
                     SoundToken::Pause { duration_ms } => assert_eq!(*duration_ms, 500),
                     _ => panic!("Expected pause token at index 3"),
+                }
+                match &state.tokens[4] {
+                    SoundToken::Speech { text, .. } => assert_eq!(text, "goodbye"),
+                    _ => panic!("Expected speech token at index 0"),
                 }
             }
             _ => panic!("Expected Processing state"),
