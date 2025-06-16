@@ -1,82 +1,122 @@
-
 {
-    description = "My first Rust nixos dev env";
+  description = "My first Rust nixos dev env";
 
-    inputs = {
-        nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-        rust-overlay = {
-            url = "github:oxalica/rust-overlay";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
-        flake-utils.url = "github:numtide/flake-utils";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
+    flake-utils.url = "github:numtide/flake-utils";
+  };
 
-    outputs = { self, rust-overlay, nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-        let
-            overlays = [ rust-overlay.overlays.default ];
-            pkgs = import nixpkgs {
-                inherit system overlays;
-            };
+  outputs = {
+    self,
+    rust-overlay,
+    nixpkgs,
+    flake-utils,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        overlays = [rust-overlay.overlays.default];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
 
-            rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-                extensions = [
-                    "rust-src"
-                    "rust-analyzer"
-                    "clippy"
-                ];
-                targets = [
-                    "x86_64-unknown-linux-gnu"
-                     "wasm32-unknown-unknown"
-                ];
-            };
-        in
-        {
-            devShells.default = pkgs.mkShell {
-                buildInputs = with pkgs; [
-                    rustToolchain
-                    wasm-pack
+        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+            "clippy"
+          ];
+          targets = [
+            "x86_64-unknown-linux-gnu"
+            "wasm32-unknown-unknown"
+          ];
+        };
+      in {
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            rustToolchain
+            wasm-pack
 
-                    # Build essentials
-                    pkg-config
-                    openssl
-                    openssl.dev
-                    # cmake
-                    # gcc
-                    # libiconv
+            # Build essentials
+            pkg-config
+            openssl
+            openssl.dev
+            # cmake
+            # gcc
+            # libiconv
 
-                    # Dev Tools
-                    rust-analyzer
-                    cargo-audit
-                    cargo-edit
-                    cargo-watch
-                    cargo-expand
-                    cargo-flamegraph
-                    sqlx-cli
-                    # cargo-tarpaulin
+            # Dev Tools
+            rust-analyzer
+            cargo-audit
+            cargo-edit
+            cargo-watch
+            cargo-expand
+            cargo-flamegraph
+            sqlx-cli
+            # cargo-tarpaulin
 
-                    # DB
-                    sqlite
-                    # postgresql
+            # DB
+            sqlite
+            # postgresql
 
-                    # Audio
-                    alsa-lib
+            # Audio
+            alsa-lib
 
-                ];
+            # Slint
+            slint-lsp
 
-                shellHook = ''
-                    export RUST_BACKTRACE=1
-                    export RUST_LOG=debug
-                    # export DATABASE_URL=""
+            xorg.libX11 # core X11 support
+            xorg.libXcursor # cursors
+            xorg.libXrandr # resizing
+            xorg.libXrender # drawing enhancements
+            xorg.libxcb # modern X11 protocol
+            xorg.libXi # input devices
+            xorg.libXext # extensions
+            freetype # font rendering
+            fontconfig # font lookup
+            libGL # OpenGL API
+            mesa # software renderer for OpenGL
 
-                    echo "Rust env has loaded!"
-                '';
+            # XKB dependencies
+            libxkbcommon
+            xorg.libxkbfile
+          ];
 
-                RUST_BACKTRACE = 1;
-                RUST_LOG = "debug";
-            };
-        }
+          # Required for Slint/Winit to dynamically load libraries at runtime
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXrandr
+            xorg.libXrender
+            xorg.libxcb
+            xorg.libXi
+            xorg.libXext
+            xorg.libXfixes
+            freetype
+            fontconfig
+            libGL
+            mesa
+            libxkbcommon
+            xorg.libxkbfile
+            wayland # For potential Wayland support
+          ]);
+
+          shellHook = ''
+            export RUST_BACKTRACE=1
+            export RUST_LOG=debug
+            # export DATABASE_URL=""
+
+            echo "✅ Rust env with X11 + GL is ready"
+
+          '';
+
+          RUST_BACKTRACE = 1;
+          RUST_LOG = "debug";
+        };
+      }
     );
 }
-
-
