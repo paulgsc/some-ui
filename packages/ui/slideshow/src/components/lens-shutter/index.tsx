@@ -76,7 +76,7 @@ export const LensShutter = ({
                 } as CSSProperties
               }
               className={cn(
-                "z-10 size-[calc(var(--aperture-size)*1%)] rounded-full border-4 border-white bg-white",
+                "z-10 size-[calc(var(--aperture-size)*1%)] rounded-full border-4 border-white bg-gray-600",
                 "duration-2000 rotate-[calc(var(--aperture-rotation)*1deg)] transition-all ease-in-out"
               )}
             />

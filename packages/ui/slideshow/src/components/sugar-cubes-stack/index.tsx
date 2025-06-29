@@ -11,7 +11,7 @@ export const SugarCubesStack: FC<SugarCubesStackProps> = ({ className }) => {
     <div className={cn("relative aspect-square size-full", className)}>
       {/* Bottom left cube */}
       <div
-        className="absolute left-[12.5%] top-[50%] size-[37.5%]"
+        className="absolute left-[12.5%] top-1/2 size-[37.5%]"
         style={{
           filter: "drop-shadow(5px 10px 8px rgba(0, 0, 0, 0.3))",
         }}
@@ -19,7 +19,7 @@ export const SugarCubesStack: FC<SugarCubesStackProps> = ({ className }) => {
         <SugarCube
           perspective={1000}
           className="border-[3px] border-black bg-white"
-          rotationAxis="Y-Axis"
+          rotationAxis="Y-axis"
         />
       </div>
 
@@ -33,7 +33,7 @@ export const SugarCubesStack: FC<SugarCubesStackProps> = ({ className }) => {
         <SugarCube
           perspective={1000}
           className="border-[3px] border-black bg-white"
-          rotationAxis="Y-Axis"
+          rotationAxis="Y-axis"
         />
       </div>
 
@@ -47,7 +47,7 @@ export const SugarCubesStack: FC<SugarCubesStackProps> = ({ className }) => {
         <SugarCube
           perspective={1000}
           className="border-[3px] border-black bg-white"
-          rotationAxis="Y-Axis"
+          rotationAxis="Y-axis"
         />
       </div>
     </div>
