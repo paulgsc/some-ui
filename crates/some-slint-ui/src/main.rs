@@ -7,11 +7,11 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
 
     // Initialize with some default data
-    ui.set_stream_title("Weekly Tech Discussion".into());
-    ui.set_short_description("Exploring the latest in technology and innovation".into());
+    ui.set_stream_title("Some stream title...".into());
+    ui.set_short_description("Some desc...".into());
     ui.set_stream_date_time("2024-06-15 14:00 PST".into());
-    ui.set_host_name("Alex Thompson".into());
-    ui.set_host_role("Senior Developer".into());
+    ui.set_host_name("Boyo PGDev".into());
+    ui.set_host_role("NPC".into());
 
     // Set up callbacks for data handling
     // let ui_handle = ui.as_weak();

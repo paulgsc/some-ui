@@ -5,9 +5,9 @@ component TabButton inherits Rectangle {
     in property <int> tab-number;
     in property <string> tab-text;
     in property <bool> is-active;
-    
+
     callback clicked;
-    
+
     background: is-active ? #3b82f6 : transparent;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
@@ -15,18 +15,18 @@ component TabButton inherits Rectangle {
     border-bottom-right-radius: 0px;
     border-width: is-active ? 0px : 2px;
     border-color: #e5e7eb;
-    
+
     touch := TouchArea {
         clicked => { root.clicked(); }
     }
-    
+
     HorizontalLayout {
         padding-top: 16px;
         padding-right: 24px;
         padding-bottom: 16px;
         padding-left: 24px;
         spacing: 8px;
-        
+
         // Tab number circle
         Rectangle {
             width: 24px;
@@ -36,7 +36,7 @@ component TabButton inherits Rectangle {
             border-top-right-radius: 12px;
             border-bottom-left-radius: 12px;
             border-bottom-right-radius: 12px;
-            
+
             Text {
                 text: root.tab-number + 1;
                 color: is-active ? #3b82f6 : white;
@@ -46,7 +46,7 @@ component TabButton inherits Rectangle {
                 vertical-alignment: center;
             }
         }
-        
+
         // Tab text
         Text {
             text: root.tab-text;
@@ -56,7 +56,7 @@ component TabButton inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    
+
     states [
         hover when touch.has-hover: {
             background: is-active ? #2563eb : #f3f4f6;
@@ -67,34 +67,34 @@ component TabButton inherits Rectangle {
 // Export TabBar component AFTER TabButton is defined
 export component TabBar inherits Rectangle {
     in-out property <int> current-tab: 0;
-    
+
     background: transparent;
     height: 60px;
-    
+
     HorizontalLayout {
         spacing: 0px;
-        
+
         TabButton {
             tab-number: 0;
             tab-text: "General Info";
             is-active: root.current-tab == 0;
             clicked => { root.current-tab = 0; }
         }
-        
+
         TabButton {
             tab-number: 1;
             tab-text: "Topic Breakdown";
             is-active: root.current-tab == 1;
             clicked => { root.current-tab = 1; }
         }
-        
+
         TabButton {
             tab-number: 2;
             tab-text: "Related Streams";
             is-active: root.current-tab == 2;
             clicked => { root.current-tab = 2; }
         }
-        
+
         TabButton {
             tab-number: 3;
             tab-text: "Satellite Context";

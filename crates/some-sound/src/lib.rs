@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+mod engine;
 mod fsm;
 mod lexer;
 mod types;
