@@ -1,20 +1,15 @@
 import type { FC } from "react"
-import { useObsWebSocket } from "@overlays/hooks/use-obs-socket"
+import { useObsStatusWebSocket } from "@overlays/hooks/use-obs-socket"
 
 type ObsStatusPanelProps = {
   serverUrl?: string
 }
 
-export const ObsStatusPanel: FC<ObsStatusPanelProps> = ({
-  serverUrl = `ws://${window.location.hostname}:${3000}/ws/obs`,
-}) => {
+export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
   const { status, isConnected, isConnecting, error, connect, disconnect } =
-    useObsWebSocket({
-      url: serverUrl,
-      onConnect: () => console.log("Connected to OBS WebSocket"),
-      onDisconnect: () => console.log("Disconnected from OBS WebSocket"),
-      onError: (e) => console.error("OBS WebSocket error:", e),
-    })
+    useObsStatusWebSocket()
+
+  console.info("status", status)
 
   return (
     <div className="obs-status-panel">

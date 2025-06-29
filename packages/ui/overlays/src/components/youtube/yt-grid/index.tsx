@@ -3,7 +3,7 @@ import { YTGridThumbnail } from "@overlays/components/youtube/yt-grid-thumbnail"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
-import { LensShutter } from "some-ui-slideshow"
+import { LensShutter, SugarCubesStack } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
 export const YtGrid = (): React.JSX.Element => {
@@ -79,14 +79,16 @@ export const YtGrid = (): React.JSX.Element => {
                     >
                       <div
                         className={cn(
-                          "relative flex  items-center justify-center rounded-full bg-blue-500",
+                          "relative flex  items-center justify-center rounded-full",
                           "aspect-square h-[min(100%,100vw)] w-[min(100%,100vh)]"
                         )}
                       >
                         {showLens &&
                         expandedPanel?.row === i &&
                         expandedPanel.col === k ? (
-                          <LensShutter />
+                          <LensShutter>
+                            <SugarCubesStack />
+                          </LensShutter>
                         ) : (
                           <YTGridThumbnail />
                         )}

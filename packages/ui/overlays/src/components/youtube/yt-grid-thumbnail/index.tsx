@@ -7,7 +7,9 @@ export const YTGridThumbnail = (): React.JSX.Element => {
     <img
       src={src}
       alt={alt}
-      className={cn("size-full rounded-full bg-cover brightness-90")}
+      className={cn(
+        "size-full rounded-full bg-rose-200 bg-cover brightness-90"
+      )}
     />
   )
 }

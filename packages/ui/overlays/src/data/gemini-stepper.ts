@@ -7,16 +7,19 @@ export const accordionData: AccordionSteps = {
   data: [
     {
       stepId: "item-1",
-      title: "Wai peeps like tutorials",
+      title: "Github API Handler",
       progress: "pending",
-      content: `me can't understand why tutorials, specifically youtube tutorial videos are so popular. Why is there such an 
-      avaricous appetite for tutorials!. Like why? make it make sense.`,
+      content: `This is an axum server handler. And I want to be able to ping github so I can get metadata on my repositories
+      and packages. The purpose for this is so that I can keep track of graveyard projects. In essence, I want to see the last
+        time I worked on a specific repo/package. And what packages are becoming dead packages.`,
     },
     {
       stepId: "item-2",
-      title: "NINER's Projected 53 Man roster hexagon ui",
+      title: "Grafana Docker Setup",
       progress: "pending",
-      content: `Render some projection of an nfl roster as a hexagon ui thingy. We try to get it done in vidya.`,
+      content: `So, I want to instrument my server, so that I can have telemetry and insights on my server. And a milestone towards
+      this end is having a working prometheus/grafana dashboard setup. Today, the goal is to get grafana/prometheus picking up the 
+      instrumentations from my handler requests.`,
     },
     {
       stepId: "item-3",
@@ -26,17 +29,9 @@ export const accordionData: AccordionSteps = {
     },
     {
       stepId: "item-4",
-      title: "This vidya has some tock tock",
+      title: "Watching drama",
       progress: "pending",
-      content: `In a depature from type, we do talk in this stream, mostly because for once I'm working
-      on something that I have zero clue how to do. No idea on what really as well.
-      `,
-    },
-    {
-      stepId: "item-5",
-      title: "Some vim practice",
-      progress: "pending",
-      content: `Suppose we care somewhat about improving our vim motions. Suppose we spend some time doing just that.`,
+      content: `I'm going to be watchig a drama, while doing all this, so there will be weird pauses, as well.`,
     },
   ],
 }
