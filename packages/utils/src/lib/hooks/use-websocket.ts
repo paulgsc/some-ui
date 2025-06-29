@@ -4,33 +4,33 @@ import { z } from "zod"
 /**
  * Generic WebSocket hook options
  */
-type UseWebSocketOptions<TIncomingSchema, TOutgoingSchema> = {
+export type UseWebSocketOptions<I, U> = {
   url: string
-  incomingMessageSchema: z.ZodType<TIncomingSchema>
-  outgoingMessageSchema?: z.ZodType<TOutgoingSchema>
+  incomingMessageSchema: z.ZodType<I>
+  outgoingMessageSchema?: z.ZodType<U>
   autoReconnect?: boolean
   reconnectInterval?: number
   onConnect?: () => void
   onDisconnect?: () => void
   onError?: (error: Event | Error) => void
-  onIncomingMessage?: (message: TIncomingSchema) => void
+  onIncomingMessage?: (message: I) => void
   debugMode?: boolean
 }
 
-type UseWebSocketReturn<TIncomingSchema, TOutgoingSchema> = {
-  lastMessage: TIncomingSchema | null
-  messages: Array<TIncomingSchema>
+export type UseWebSocketReturn<I, U> = {
+  lastMessage: I | null
+  messages: Array<I>
   isConnected: boolean
   isConnecting: boolean
   error: string | null
   parseErrors: Array<z.ZodError>
-  sendMessage: (message: TOutgoingSchema) => void
+  sendMessage: (message: U) => void
   connect: () => void
   disconnect: () => void
   clearMessages: () => void
 }
 
-export function useWebSocket<TIncomingSchema, TOutgoingSchema = unknown>({
+export function useWebSocket<I, U = unknown>({
   url,
   incomingMessageSchema,
   outgoingMessageSchema,
@@ -41,12 +41,9 @@ export function useWebSocket<TIncomingSchema, TOutgoingSchema = unknown>({
   onError,
   onIncomingMessage,
   debugMode = false,
-}: UseWebSocketOptions<TIncomingSchema, TOutgoingSchema>): UseWebSocketReturn<
-  TIncomingSchema,
-  TOutgoingSchema
-> {
-  const [lastMessage, setLastMessage] = useState<TIncomingSchema | null>(null)
-  const [messages, setMessages] = useState<Array<TIncomingSchema>>([])
+}: UseWebSocketOptions<I, U>): UseWebSocketReturn<I, U> {
+  const [lastMessage, setLastMessage] = useState<I | null>(null)
+  const [messages, setMessages] = useState<Array<I>>([])
   const [parseErrors, setParseErrors] = useState<Array<z.ZodError>>([])
 
   const [isConnected, setIsConnected] = useState(false)
@@ -57,7 +54,7 @@ export function useWebSocket<TIncomingSchema, TOutgoingSchema = unknown>({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   const clearReconnectTimer = useCallback(() => {
-    if (reconnectTimerRef.current !== null) {
+    if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current)
       reconnectTimerRef.current = null
     }
@@ -73,7 +70,7 @@ export function useWebSocket<TIncomingSchema, TOutgoingSchema = unknown>({
   )
 
   const sendMessage = useCallback(
-    (message: TOutgoingSchema) => {
+    (message: U) => {
       if (
         !socketRef.current ||
         socketRef.current.readyState !== WebSocket.OPEN
