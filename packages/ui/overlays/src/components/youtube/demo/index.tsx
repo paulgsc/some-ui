@@ -52,7 +52,7 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
             >
               {status.streaming ? "LIVE" : "Offline"}
               {status.streaming && (
-                <span className="timecode"> ({status.stream_timecode})</span>
+                <span className="timecode"> ({status.streamTimecode})</span>
               )}
             </div>
           </div>
@@ -64,14 +64,14 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
             >
               {status.recording ? "Recording" : "Not Recording"}
               {status.recording && (
-                <span className="timecode"> ({status.recording_timecode})</span>
+                <span className="timecode"> ({status.recordTimecode})</span>
               )}
             </div>
           </div>
 
           <div className="status-row">
             <div className="status-label">Current Scene:</div>
-            <div className="status-value">{status.current_scene}</div>
+            <div className="status-value">{status.currentScene}</div>
           </div>
 
           <div className="scenes-list">
@@ -82,10 +82,10 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
                   <li
                     key={scene}
                     className={
-                      scene === status.current_scene ? "active-scene" : ""
+                      scene === status.currentScene ? "active-scene" : ""
                     }
                   >
-                    {scene}
+                    scene
                   </li>
                 ))}
               </ul>

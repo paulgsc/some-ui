@@ -168,175 +168,177 @@ const IdentifiedDataSchema = z.object({})
 export const ObsEventSchema = z.discriminatedUnion("type", [
   // Stream and Recording Status
   z.object({
-    type: z.literal("StreamStatusResponse"),
+    type: z.literal("streamStatusResponse"),
     data: StreamStatusResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("RecordingStatusResponse"),
+    type: z.literal("recordingStatusResponse"),
     data: RecordingStatusResponseDataSchema.partial(),
   }),
   // Scene Management
   z.object({
-    type: z.literal("SceneListResponse"),
+    type: z.literal("sceneListResponse"),
     data: SceneListResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("CurrentSceneResponse"),
+    type: z.literal("currentSceneResponse"),
     data: CurrentSceneResponseDataSchema.partial(),
   }),
   // Source Management
   z.object({
-    type: z.literal("SourcesListResponse"),
+    type: z.literal("sourcesListResponse"),
     data: SourcesListResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("InputListResponse"),
+    type: z.literal("inputListResponse"),
     data: InputListResponseDataSchema.partial(),
   }),
   // Audio Management
   z.object({
-    type: z.literal("AudioMuteResponse"),
+    type: z.literal("audioMuteResponse"),
     data: AudioMuteResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("AudioVolumeResponse"),
+    type: z.literal("audioVolumeResponse"),
     data: AudioVolumeResponseDataSchema.partial(),
   }),
   // Profile and Collection Management
   z.object({
-    type: z.literal("ProfileListResponse"),
+    type: z.literal("profileListResponse"),
     data: ProfileListResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("CurrentProfileResponse"),
+    type: z.literal("currentProfileResponse"),
     data: CurrentProfileResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("SceneCollectionListResponse"),
+    type: z.literal("sceneCollectionListResponse"),
     data: SceneCollectionListResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("CurrentCollectionResponse"),
+    type: z.literal("currentCollectionResponse"),
     data: CurrentCollectionResponseDataSchema.partial(),
   }),
   // Virtual Camera
   z.object({
-    type: z.literal("VirtualCamStatusResponse"),
+    type: z.literal("virtualCamStatusResponse"),
     data: VirtualCamStatusResponseDataSchema.partial(),
   }),
   // Replay Buffer
   z.object({
-    type: z.literal("ReplayBufferStatusResponse"),
+    type: z.literal("replayBufferStatusResponse"),
     data: ReplayBufferStatusResponseDataSchema.partial(),
   }),
   // Studio Mode
   z.object({
-    type: z.literal("StudioModeResponse"),
+    type: z.literal("studioModeResponse"),
     data: StudioModeResponseDataSchema.partial(),
   }),
   // Statistics
   z.object({
-    type: z.literal("StatsResponse"),
+    type: z.literal("statsResponse"),
     data: StatsResponseDataSchema.partial(),
   }),
   // Transitions
   z.object({
-    type: z.literal("CurrentTransitionResponse"),
+    type: z.literal("currentTransitionResponse"),
     data: CurrentTransitionResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("TransitionListResponse"),
+    type: z.literal("transitionListResponse"),
     data: TransitionListResponseDataSchema.partial(),
   }),
   // Filters
   z.object({
-    type: z.literal("FilterListResponse"),
+    type: z.literal("filterListResponse"),
     data: FilterListResponseDataSchema.partial(),
   }),
   // Hotkeys
   z.object({
-    type: z.literal("HotkeyListResponse"),
+    type: z.literal("hotkeyListResponse"),
     data: HotkeyListResponseDataSchema.partial(),
   }),
   // Version
   z.object({
-    type: z.literal("VersionResponse"),
+    type: z.literal("versionResponse"),
     data: VersionResponseDataSchema.partial(),
   }),
   // Real-time events (op: 5)
   z.object({
-    type: z.literal("StreamStateChanged"),
+    type: z.literal("streamStateChanged"),
     data: StreamStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("RecordStateChanged"),
+    type: z.literal("recordStateChanged"),
     data: RecordStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("CurrentProgramSceneChanged"),
+    type: z.literal("currentProgramSceneChanged"),
     data: CurrentProgramSceneChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("SceneItemEnableStateChanged"),
+    type: z.literal("sceneItemEnableStateChanged"),
     data: SceneItemEnableStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("InputMuteStateChanged"),
+    type: z.literal("inputMuteStateChanged"),
     data: InputMuteStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("InputVolumeChanged"),
+    type: z.literal("inputVolumeChanged"),
     data: InputVolumeChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("VirtualcamStateChanged"),
+    type: z.literal("virtualcamStateChanged"),
     data: VirtualcamStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("ReplayBufferStateChanged"),
+    type: z.literal("replayBufferStateChanged"),
     data: ReplayBufferStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("StudioModeStateChanged"),
+    type: z.literal("studioModeStateChanged"),
     data: StudioModeStateChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("CurrentSceneTransitionChanged"),
+    type: z.literal("currentSceneTransitionChanged"),
     data: CurrentSceneTransitionChangedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("SceneTransitionStarted"),
+    type: z.literal("sceneTransitionStarted"),
     data: SceneTransitionStartedDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("SceneTransitionEnded"),
+    type: z.literal("sceneTransitionEnded"),
     data: SceneTransitionEndedDataSchema.partial(),
   }),
   // Generic events for unhandled cases
   z.object({
-    type: z.literal("UnknownResponse"),
+    type: z.literal("unknownResponse"),
     data: UnknownResponseDataSchema.partial(),
   }),
   z.object({
-    type: z.literal("UnknownEvent"),
+    type: z.literal("unknownEvent"),
     data: UnknownEventDataSchema.partial(),
   }),
   // Connection events
-  z.object({ type: z.literal("Hello"), data: HelloDataSchema.partial() }),
+  z.object({ type: z.literal("hello"), data: HelloDataSchema.partial() }),
   z.object({
-    type: z.literal("Identified"),
+    type: z.literal("identified"),
     data: IdentifiedDataSchema.partial(),
   }),
 ])
 
+export type ObsEvent = z.infer<typeof ObsEventSchema>
+
 export const IncomingObsEventSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.literal("obs_status"),
+    type: z.literal("obsStatus"),
     status: ObsEventSchema,
   }),
 
   z.object({
-    type: z.literal("client_count"),
+    type: z.literal("clientCount"),
     count: z.number().int().nonnegative(),
   }),
 

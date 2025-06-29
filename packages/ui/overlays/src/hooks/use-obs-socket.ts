@@ -4,6 +4,7 @@ import type {
   IncomingObsEvent,
 } from "@overlays/types/obs-websocket"
 import { IncomingObsEventSchema } from "@overlays/types/obs-websocket"
+import { updateClientObsState } from "@overlays/utils/obs-websocket"
 import type { UseWebSocketOptions, UseWebSocketReturn } from "some-ui-utils"
 import { useWebSocket } from "some-ui-utils"
 import { z } from "zod"
@@ -27,22 +28,27 @@ type UseObsStatusWebSocketOptions = Omit<
   "incomingMessageSchema" | "outgoingMessageSchema"
 >
 
-const defaultObsStatus: ClientObsState = {
+export const defaultClientObsState: ClientObsState = {
+  obsVersion: "Unknown",
+  websocketVersion: "Unknown",
+  identified: false,
   streaming: false,
+  streamTimecode: "00:00:00.000",
   recording: false,
-  streamTimecode: "",
-  recordingTimecode: "",
+  recordTimecode: "00:00:00.000",
   scenes: [],
-  currentScene: "",
+  currentScene: "Unknown",
   sources: [],
   inputs: [],
-  virtualCamera: false,
-  replayBuffer: false,
-  studioMode: false,
-  currentProfile: "",
-  currentCollection: "",
-  currentTransition: "",
-  version: "",
+  audioMutes: {},
+  audioVolumes: {},
+  profiles: [],
+  currentProfile: "Unknown",
+  collections: [],
+  currentCollection: "Unknown",
+  virtualCamActive: false,
+  replayBufferActive: false,
+  studioModeEnabled: false,
   stats: {
     cpuUsage: 0,
     memoryUsage: 0,
@@ -56,14 +62,23 @@ const defaultObsStatus: ClientObsState = {
     webSocketSessionIncomingMessages: 0,
     webSocketSessionOutgoingMessages: 0,
   },
+  currentTransitionName: "Cut",
+  currentTransitionDuration: 300,
+  transitions: [],
+  sourceFilters: {},
+  hotkeys: [],
+  sceneItemEnableStates: {},
 }
+
 export function useObsStatusWebSocket(
   options: UseObsStatusWebSocketOptions = {
     url: `ws://${window.location.hostname}:${3000}/ws`,
     debugMode: true,
   }
 ): UseObsWebSocketReturn {
-  const [fullStatus, setFullStatus] = useState<ObsStatus>(defaultObsStatus)
+  const [fullStatus, setFullStatus] = useState<ClientObsState>(
+    defaultClientObsState
+  )
 
   const wsHook = useWebSocket<IncomingObsEvent, ObsCommand>({
     url: options.url,
@@ -81,9 +96,8 @@ export function useObsStatusWebSocket(
         options.onIncomingMessage(update)
       }
 
-      setFullStatus((prev) => {
-        return { ...prev, ...update }
-      })
+      if (update.type === "obsStatus")
+        setFullStatus((prev) => updateClientObsState(prev, update.status))
     },
   })
 
