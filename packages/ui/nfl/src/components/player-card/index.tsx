@@ -6,11 +6,17 @@ type NflPlayerCardProps = {
   className?: string
   width?: number
   height?: number
+  title?: string
+  href?: string
+  description?: string
 }
 
 export const NflPlayerCard: FC<NflPlayerCardProps> = ({
   width = 100,
   height = 100,
+  title = "Some title",
+  href = "",
+  description = "Some description",
   className,
 }) => {
   const getDimensions = useCallback(() => {
@@ -62,7 +68,7 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
         borderRadius={borderRadius}
       />
       <CardTitle
-        title="Exodia the Forbidden One"
+        title={title}
         stars={5}
         width={width - padding * 2}
         height={titleHeight}
@@ -72,6 +78,7 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
       <CardImage
         width={width - padding * 2}
         height={imageHeight}
+        href={href}
         x={padding}
         y={(y += titleHeight * 1.05)}
       />
@@ -84,7 +91,7 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
       />
 
       <CardDescription
-        description="A forbidden right leg sealed by magic. Whosoever breaks this seal will know infinite power."
+        description={description}
         width={width - padding * 2}
         height={descriptionHeight}
         x={padding}
@@ -168,10 +175,10 @@ type CardImageProps = {
   alt?: string
 }
 
-const CardImage: FC<CardImageProps> = ({ width, height, x, y }) => {
+const CardImage: FC<CardImageProps> = ({ width, height, href, x, y }) => {
   return (
     <image
-      href="https://www.cbssports.com/_next/image?url=https%3A%2F%2Fsportshub.cbsistatic.com%2Fi%2Fsports%2Fplayer%2Fheadshot%2F28873918.png%3Fwidth%3D200&w=1920&q=75"
+      href={href}
       x={x}
       y={y}
       width={width}

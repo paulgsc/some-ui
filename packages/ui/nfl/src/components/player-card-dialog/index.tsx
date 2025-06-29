@@ -1,4 +1,4 @@
-import type { RefObject } from "react"
+import type { FC, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import { NflPlayerCard } from "@nfl/components/player-card"
 import { Button, Dialog, DialogContent, DialogTrigger } from "some-ui-shared"
@@ -11,7 +11,17 @@ type Dimension = {
   bH?: number
 }
 
-export const PlayerCardDialog = (): React.JSX.Element => {
+type PlayerCardDialogPrps = {
+  title: string
+  href: string
+  description: string
+}
+
+export const PlayerCardDialog: FC<PlayerCardDialogPrps> = ({
+  title,
+  href,
+  description,
+}): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const buttonRect = useMeasureRect({
@@ -45,6 +55,12 @@ export const PlayerCardDialog = (): React.JSX.Element => {
     }
   }, [isOpen])
 
+  const contentProps = {
+    title,
+    href,
+    description,
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger className="size-full" asChild>
@@ -53,6 +69,7 @@ export const PlayerCardDialog = (): React.JSX.Element => {
             height={buttonRect.height}
             width={buttonRect.width}
             className=""
+            {...contentProps}
           />
         </Button>
       </DialogTrigger>
@@ -64,6 +81,7 @@ export const PlayerCardDialog = (): React.JSX.Element => {
           height={dimensions.cH}
           width={dimensions.cW}
           className="size-full"
+          {...contentProps}
         />
       </DialogContent>
     </Dialog>
