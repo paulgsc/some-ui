@@ -7,14 +7,14 @@ export const SceneInfoSchema = z.object({
 
 export const SourceInfoSchema = z.object({
   name: z.string(),
-  type_id: z.string(),
+  typeId: z.string(),
   kind: z.string(),
 })
 
 export const InputInfoSchema = z.object({
   name: z.string(),
   kind: z.string(),
-  unversioned_kind: z.string(),
+  unversionedKind: z.string(),
 })
 
 export const TransitionInfoSchema = z.object({
@@ -36,17 +36,17 @@ export const HotkeyInfoSchema = z.object({
 })
 
 export const ObsStatsSchema = z.object({
-  cpu_usage: z.number(),
-  memory_usage: z.number(),
-  available_disk_space: z.number(),
-  active_fps: z.number(),
-  average_frame_time: z.number(),
-  render_total_frames: z.number(),
-  render_missed_frames: z.number(),
-  output_total_frames: z.number(),
-  output_skipped_frames: z.number(),
-  web_socket_session_incoming_messages: z.number(),
-  web_socket_session_outgoing_messages: z.number(),
+  cpuUsage: z.number(),
+  memoryUsage: z.number(),
+  availableDiskSpace: z.number(),
+  activeFps: z.number(),
+  averageFrameTime: z.number(),
+  renderTotalFrames: z.number(),
+  renderMissedFrames: z.number(),
+  outputTotalFrames: z.number(),
+  outputSkippedFrames: z.number(),
+  webSocketSessionIncomingMessages: z.number(),
+  webSocketSessionOutgoingMessages: z.number(),
 })
 
 const StreamStatusResponseDataSchema = z.object({
@@ -59,9 +59,9 @@ const RecordingStatusResponseDataSchema = z.object({
 })
 const SceneListResponseDataSchema = z.object({
   scenes: z.array(SceneInfoSchema),
-  current_scene: z.string(),
+  currentScene: z.string(),
 })
-const CurrentSceneResponseDataSchema = z.object({ scene_name: z.string() })
+const CurrentSceneResponseDataSchema = z.object({ sceneName: z.string() })
 const SourcesListResponseDataSchema = z.object({
   sources: z.array(SourceInfoSchema),
 })
@@ -69,25 +69,25 @@ const InputListResponseDataSchema = z.object({
   inputs: z.array(InputInfoSchema),
 })
 const AudioMuteResponseDataSchema = z.object({
-  input_name: z.string(),
+  inputName: z.string(),
   muted: z.boolean(),
 })
 const AudioVolumeResponseDataSchema = z.object({
-  input_name: z.string(),
-  volume_db: z.number(),
-  volume_mul: z.number(),
+  inputName: z.string(),
+  volumeDb: z.number(),
+  volumeMul: z.number(),
 })
 const ProfileListResponseDataSchema = z.object({
   profiles: z.array(z.string()),
-  current_profile: z.string(),
+  currentProfile: z.string(),
 })
-const CurrentProfileResponseDataSchema = z.object({ profile_name: z.string() })
+const CurrentProfileResponseDataSchema = z.object({ profileName: z.string() })
 const SceneCollectionListResponseDataSchema = z.object({
   collections: z.array(z.string()),
-  current_collection: z.string(),
+  currentCollection: z.string(),
 })
 const CurrentCollectionResponseDataSchema = z.object({
-  collection_name: z.string(),
+  collectionName: z.string(),
 })
 const VirtualCamStatusResponseDataSchema = z.object({ active: z.boolean() })
 
@@ -98,22 +98,22 @@ const StudioModeResponseDataSchema = z.object({ enabled: z.boolean() })
 const StatsResponseDataSchema = z.object({ stats: ObsStatsSchema })
 
 const CurrentTransitionResponseDataSchema = z.object({
-  transition_name: z.string(),
-  transition_duration: z.number(),
+  transitionName: z.string(),
+  transitionDuration: z.number(),
 })
 const TransitionListResponseDataSchema = z.object({
   transitions: z.array(TransitionInfoSchema),
 })
 const FilterListResponseDataSchema = z.object({
-  source_name: z.string(),
+  sourceName: z.string(),
   filters: z.array(FilterInfoSchema),
 })
 const HotkeyListResponseDataSchema = z.object({
   hotkeys: z.array(HotkeyInfoSchema),
 })
 const VersionResponseDataSchema = z.object({
-  obs_version: z.string(),
-  websocket_version: z.string(),
+  obsVersion: z.string(),
+  websocketVersion: z.string(),
 })
 const StreamStateChangedDataSchema = z.object({
   streaming: z.boolean(),
@@ -124,21 +124,21 @@ const RecordStateChangedDataSchema = z.object({
   timecode: z.string().optional(),
 })
 const CurrentProgramSceneChangedDataSchema = z.object({
-  scene_name: z.string(),
+  sceneName: z.string(),
 })
 const SceneItemEnableStateChangedDataSchema = z.object({
-  scene_name: z.string(),
-  item_id: z.number(),
+  sceneName: z.string(),
+  itemId: z.number(),
   enabled: z.boolean(),
 })
 const InputMuteStateChangedDataSchema = z.object({
-  input_name: z.string(),
+  inputName: z.string(),
   muted: z.boolean(),
 })
 const InputVolumeChangedDataSchema = z.object({
-  input_name: z.string(),
-  volume_db: z.number(),
-  volume_mul: z.number(),
+  inputName: z.string(),
+  volumeDb: z.number(),
+  volumeMul: z.number(),
 })
 const VirtualcamStateChangedDataSchema = z.object({ active: z.boolean() })
 
@@ -147,21 +147,21 @@ const ReplayBufferStateChangedDataSchema = z.object({ active: z.boolean() })
 const StudioModeStateChangedDataSchema = z.object({ enabled: z.boolean() })
 
 const CurrentSceneTransitionChangedDataSchema = z.object({
-  transition_name: z.string(),
+  transitionName: z.string(),
 })
 const SceneTransitionStartedDataSchema = z.object({
-  transition_name: z.string(),
+  transitionName: z.string(),
 })
-const SceneTransitionEndedDataSchema = z.object({ transition_name: z.string() })
+const SceneTransitionEndedDataSchema = z.object({ transitionName: z.string() })
 const UnknownResponseDataSchema = z.object({
-  request_type: z.string(),
+  requestType: z.string(),
   data: z.any(),
 })
 const UnknownEventDataSchema = z.object({
-  event_type: z.string(),
+  eventType: z.string(),
   data: z.any(),
 })
-const HelloDataSchema = z.object({ obs_version: z.string() })
+const HelloDataSchema = z.object({ obsVersion: z.string() })
 
 const IdentifiedDataSchema = z.object({})
 
@@ -361,14 +361,14 @@ export type SceneInfo = {
 
 export type SourceInfo = {
   name: string
-  type_id: string
+  typeId: string
   kind: string
 }
 
 export type InputInfo = {
   name: string
   kind: string
-  unversioned_kind: string
+  unversionedKind: string
 }
 
 export type TransitionInfo = {
@@ -390,79 +390,79 @@ export type HotkeyInfo = {
 }
 
 export type ObsStats = {
-  cpu_usage: number
-  memory_usage: number
-  available_disk_space: number
-  active_fps: number
-  average_frame_time: number
-  render_total_frames: number
-  render_missed_frames: number
-  output_total_frames: number
-  output_skipped_frames: number
-  web_socket_session_incoming_messages: number
-  web_socket_session_outgoing_messages: number
+  cpuUsage: number
+  memoryUsage: number
+  availableDiskSpace: number
+  activeFps: number
+  averageFrameTime: number
+  renderTotalFrames: number
+  renderMissedFrames: number
+  outputTotalFrames: number
+  outputSkippedFrames: number
+  webSocketSessionIncomingMessages: number
+  webSocketSessionOutgoingMessages: number
 }
 
 export type ClientObsState = {
-  obs_version: string
+  obsVersion: string
 
-  websocket_version: string
+  websocketVersion: string
 
   identified: boolean
 
   streaming: boolean
 
-  stream_timecode: string
+  streamTimecode: string
 
   recording: boolean
 
-  record_timecode: string
+  recordTimecode: string
 
   scenes: Array<SceneInfo>
 
-  current_scene: string
+  currentScene: string
 
   sources: Array<SourceInfo>
 
   inputs: Array<InputInfo>
 
-  audio_mutes: Record<string, boolean>
+  audioMutes: Record<string, boolean>
 
-  audio_volumes: Record<string, { volume_db: number; volume_mul: number }>
+  audioVolumes: Record<string, { volumeDb: number; volumeMul: number }>
 
   profiles: Array<string>
 
-  current_profile: string
+  currentProfile: string
 
   collections: Array<string>
 
-  current_collection: string
+  currentCollection: string
 
-  virtual_cam_active: boolean
+  virtualCamActive: boolean
 
-  replay_buffer_active: boolean
+  replayBufferActive: boolean
 
-  studio_mode_enabled: boolean
+  studioModeEnabled: boolean
 
   stats: ObsStats
 
-  current_transition_name: string
+  currentTransitionName: string
 
-  current_transition_duration: number
+  currentTransitionDuration: number
 
   transitions: Array<TransitionInfo>
 
-  last_transition_started_name?: string
+  lastTransitionStartedName?: string
 
-  last_transition_ended_name?: string
+  lastTransitionEndedName?: string
 
-  source_filters: Record<string, Array<FilterInfo>>
+  sourceFilters: Record<string, Array<FilterInfo>>
 
   hotkeys: Array<HotkeyInfo>
 
-  scene_item_enable_states: Record<string, Record<number, boolean>>
+  sceneItemEnableStates: Record<string, Record<number, boolean>>
 
-  last_unknown_response?: { request_type: string; data: unknown }
+  lastUnknownResponse?: { requestType: string; data: unknown }
 
-  last_unknown_event?: { event_type: string; data: unknown }
+  lastUnknownEvent?: { eventType: string; data: unknown }
 }
