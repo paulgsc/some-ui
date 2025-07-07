@@ -52,7 +52,12 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({ className }) => {
 
       <div className="relative z-10 flex h-full items-center gap-6">
         {/* Vinyl Record Section */}
-        <VinylRecord ref={vinylRecordRef} thumbnail={thumbnail} title={title} />
+        <VinylRecord
+          ref={vinylRecordRef}
+          thumbnail={thumbnail}
+          title={title}
+          onConnect={isConnected ? disconnect : connect}
+        />
 
         {/* Song Info Section */}
         <SongInfo ref={songInfoRef} title={title} channel={channel} />

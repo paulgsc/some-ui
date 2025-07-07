@@ -11,6 +11,8 @@
 
   .animate-spin-slow {
     animation: spin-slow 8s linear infinite;
+    pointer-events: auto;
+    will-change: transform;
   }
 
   /* Heartbeat pulse for album art */
@@ -28,6 +30,8 @@
 
   .animate-pulse-heartbeat {
     animation: pulse-heartbeat 2s ease-in-out infinite;
+    pointer-events: auto;
+    will-change: transform;
   }
 
   /* Neon glow pulse */

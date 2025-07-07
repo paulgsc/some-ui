@@ -1,50 +1,60 @@
 import type { HTMLAttributes } from "react"
 import { forwardRef } from "react"
+import type { NowPlayingType } from "@umag/types/now-playing"
 import { Play } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type VinylRecordProps = {
-  albumArtUrl?: string
-  title?: string
-} & HTMLAttributes<HTMLDivElement>
+  onConnect: () => void
+} & NowPlayingType &
+  HTMLAttributes<HTMLDivElement>
 
 export const VinylRecord = forwardRef<HTMLDivElement, VinylRecordProps>(
   (
     {
       className,
       title = "some title...",
-      albumArtUrl = "some thumbnail...",
+      thumbnail = "some thumbnail...",
+      onConnect,
       ...props
     },
     ref
   ) => {
     return (
       <div
+        role="button"
+        tabIndex={0}
         ref={ref}
-        className={cn(className, "relative flex-shrink-0")}
+        className={cn(className, "relative max-w-fit cursor-pointer")}
         {...props}
+        onClick={onConnect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            onConnect()
+          }
+        }}
       >
         {/* Outer vinyl disc */}
-        <div className="animate-spin-slow animate-pulse-heartbeat relative size-32 overflow-hidden rounded-full border-2 border-purple-500/50 bg-gradient-to-br from-gray-900 to-black">
+        <div className="animate-pulse-heartbeat relative size-32 overflow-hidden rounded-full border-2 border-purple-500/50 bg-gradient-to-br from-gray-900 to-black">
           {/* Vinyl grooves */}
-          <div className="absolute inset-2 rounded-full border border-gray-700/50" />
-          <div className="absolute inset-4 rounded-full border border-gray-600/30" />
-          <div className="absolute inset-6 rounded-full border border-gray-500/20" />
+          <div className="pointer-events-none absolute inset-2 z-0 rounded-full border border-gray-700/50" />
+          <div className="pointer-events-none absolute inset-4 z-0 rounded-full border border-gray-600/30" />
+          <div className="pointer-events-none absolute inset-6 z-0 rounded-full border border-gray-500/20" />
 
           {/* Center album art */}
-          <div className="absolute inset-8 overflow-hidden rounded-full border-2 border-purple-400/60">
+          <div className="animate-spin-slow absolute inset-8 overflow-hidden rounded-full border-2 border-purple-400/60">
             <img
-              src={albumArtUrl || "/placeholder.svg"}
+              src={thumbnail || "/placeholder.svg"}
               alt={`${title} album art`}
-              className="size-full object-cover"
+              className="pointer-events-none z-0 size-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement
                 target.src = "/placeholder.svg?height=64&width=64"
               }}
             />
             {/* Play icon overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <Play className="size-6 fill-white text-white" />
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-red-500/60">
+              <Play className="z-50 size-6 fill-white text-white" />
             </div>
           </div>
         </div>
