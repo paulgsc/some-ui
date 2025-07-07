@@ -4,30 +4,22 @@ import { BackgroundGlow } from "@umag/components/now-playing/background-glow"
 import { SongInfo } from "@umag/components/now-playing/song-info"
 import { StreamingNotes } from "@umag/components/now-playing/streaming-notes"
 import { VinylRecord } from "@umag/components/now-playing/vinyl-record"
-import { useNowPlaying } from "@umag/hooks/use-now-playing"
+import { useNowPlayingWebSocket } from "@umag/hooks/use-now-playing-socket"
 import { cn } from "some-ui-utils"
 
 type NowPlayingProps = {
-  title?: string
-  artist?: string
-  albumArtUrl?: string
-  subtitle?: string
   className?: string
 }
 
-export const NowPlayingCard: FC<NowPlayingProps> = ({
-  title = "some title...",
-  artist = "some artist...",
-  albumArtUrl = "some albumArtUrl...",
-  subtitle = "some subtitle...",
-  className,
-}) => {
-  const { processedData } = useNowPlaying({
-    title,
-    artist,
-    albumArtUrl,
-    subtitle,
-  })
+export const NowPlayingCard: FC<NowPlayingProps> = ({ className }) => {
+  const {
+    status: { title, channel, thumbnail },
+    isConnected,
+    isConnecting,
+    error,
+    connect,
+    disconnect,
+  } = useNowPlayingWebSocket()
 
   // Refs for each component
   const containerRef = useRef<HTMLDivElement>(null)
@@ -36,12 +28,20 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
   const vinylRecordRef = useRef<HTMLDivElement>(null)
   const songInfoRef = useRef<HTMLDivElement>(null)
 
+  if (error) {
+    return <div> welp...</div>
+  }
+
+  if (isConnecting) {
+    return <div> loading...</div>
+  }
+
   return (
     <div
       ref={containerRef}
       className={cn(
         className,
-        "relative overflow-hidden rounded-2xl rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6"
+        "relative overflow-hidden rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6"
       )}
     >
       {/* Background glow effect */}
@@ -52,19 +52,10 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
 
       <div className="relative z-10 flex h-full items-center gap-6">
         {/* Vinyl Record Section */}
-        <VinylRecord
-          ref={vinylRecordRef}
-          albumArtUrl={processedData.albumArtUrl}
-          title={processedData.title}
-        />
+        <VinylRecord ref={vinylRecordRef} thumbnail={thumbnail} title={title} />
 
         {/* Song Info Section */}
-        <SongInfo
-          ref={songInfoRef}
-          title={processedData.title}
-          artist={processedData.artist}
-          subtitle={processedData.subtitle}
-        />
+        <SongInfo ref={songInfoRef} title={title} channel={channel} />
       </div>
     </div>
   )

@@ -1,21 +1,17 @@
 import type { HTMLAttributes } from "react"
 import { forwardRef } from "react"
+import type { NowPlayingType } from "@umag/types/now-playing"
 import { Marquee } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-type SongInfoProps = {
-  title?: string
-  artist?: string
-  subtitle?: string
-} & HTMLAttributes<HTMLDivElement>
+type SongInfoProps = NowPlayingType & HTMLAttributes<HTMLDivElement>
 
 export const SongInfo = forwardRef<HTMLDivElement, SongInfoProps>(
   (
     {
       className,
       title = "some title...",
-      artist = "some artist...",
-      subtitle = "some subtitle...",
+      channel = "some channel...",
       ...props
     },
     ref
@@ -42,18 +38,8 @@ export const SongInfo = forwardRef<HTMLDivElement, SongInfoProps>(
 
         {/* Artist Name */}
         <Marquee pauseOnHover className="w-full rounded-full [--duration:20s]">
-          <p className="text-lg capitalize text-purple-300">{artist}</p>
+          <p className="text-lg capitalize text-purple-300">{channel}</p>
         </Marquee>
-
-        {/* Subtitle */}
-        {subtitle && (
-          <Marquee
-            pauseOnHover
-            className="w-full rounded-full [--duration:20s]"
-          >
-            <p className="animate-marquee text-sm text-gray-400">{subtitle}</p>
-          </Marquee>
-        )}
       </div>
     )
   }
