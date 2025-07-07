@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type {
   ClientObsState,
   IncomingObsEvent,
@@ -8,6 +8,49 @@ import { updateClientObsState } from "@overlays/utils/obs-websocket"
 import type { UseWebSocketOptions, UseWebSocketReturn } from "some-ui-utils"
 import { useWebSocket } from "some-ui-utils"
 import { z } from "zod"
+
+// Enum that matches your `EventType` Rust enum
+export const EventTypeSchema = z.enum([
+  "ping",
+  "pong",
+  "error",
+  "obsStatus",
+  "tabMetaData",
+])
+
+// Schema for `NowPlaying` struct
+export const NowPlayingSchema = z.object({
+  title: z.string(),
+  channel: z.string(),
+  video_id: z.string(),
+  current_time: z.number().int().nonnegative(),
+  duration: z.number().int().nonnegative(),
+  thumbnail: z.string(),
+})
+
+// Discriminated union for `Event` enum
+export const EventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("ping"),
+  }),
+  z.object({
+    type: z.literal("pong"),
+  }),
+  z.object({
+    type: z.literal("error"),
+    message: z.string(),
+  }),
+  z.object({
+    type: z.literal("subscribe"),
+    event_types: z.array(EventTypeSchema),
+  }),
+  z.object({
+    type: z.literal("unsubscribe"),
+    event_types: z.array(EventTypeSchema),
+  }),
+])
+
+type WsEvents = z.infer<typeof EventSchema>
 
 const ObsCommandSchema = z.object({
   action: z.enum([
@@ -24,7 +67,10 @@ const ObsCommandSchema = z.object({
 type ObsCommand = z.infer<typeof ObsCommandSchema>
 
 type UseObsStatusWebSocketOptions = Omit<
-  UseWebSocketOptions<z.infer<typeof IncomingObsEventSchema>, ObsCommand>,
+  UseWebSocketOptions<
+    z.infer<typeof IncomingObsEventSchema>,
+    ObsCommand | WsEvents
+  >,
   "incomingMessageSchema" | "outgoingMessageSchema"
 >
 
@@ -80,7 +126,7 @@ export function useObsStatusWebSocket(
     defaultClientObsState
   )
 
-  const wsHook = useWebSocket<IncomingObsEvent, ObsCommand>({
+  const wsHook = useWebSocket<IncomingObsEvent>({
     url: options.url,
     incomingMessageSchema: IncomingObsEventSchema,
     outgoingMessageSchema: ObsCommandSchema,
@@ -102,6 +148,10 @@ export function useObsStatusWebSocket(
   })
 
   // Send helpers
+  const subscribe = useCallback(() => {
+    wsHook.sendMessage({ type: "subscribe", event_types: ["obsStatus"] })
+  }, [wsHook])
+
   const startStreaming = useCallback(() => {
     wsHook.sendMessage({ action: "startStreaming" })
   }, [wsHook])
@@ -132,19 +182,21 @@ export function useObsStatusWebSocket(
     [wsHook]
   )
 
-  const isSceneAvailable = useCallback([fullStatus.scenes])
+  useEffect(() => {
+    subscribe()
+  }, [subscribe])
 
   return useMemo(
     () => ({
       ...wsHook,
       status: fullStatus,
+      subscribe,
       startStreaming,
       stopStreaming,
       startRecording,
       stopRecording,
       toggleStudioMode,
       setScene,
-      isSceneAvailable,
     }),
     [
       wsHook,
@@ -155,7 +207,6 @@ export function useObsStatusWebSocket(
       stopRecording,
       toggleStudioMode,
       setScene,
-      isSceneAvailable,
     ]
   )
 }
@@ -163,15 +214,15 @@ export function useObsStatusWebSocket(
 // Types
 
 type UseObsWebSocketReturn = UseWebSocketReturn<
-  z.infer<typeof ObsStatusPartialSchema>,
-  ObsCommand
+  IncomingObsEvent,
+  ObsCommand | WsEvents
 > & {
-  status: ObsStatus
+  status: ClientObsState
+  subscribe: () => void
   startStreaming: () => void
   stopStreaming: () => void
   startRecording: () => void
   stopRecording: () => void
   toggleStudioMode: () => void
   setScene: (sceneName: string) => void
-  isSceneAvailable: (sceneName: string) => boolean
 }
