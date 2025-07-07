@@ -9,8 +9,6 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
   const { status, isConnected, isConnecting, error, connect, disconnect } =
     useObsStatusWebSocket()
 
-  console.info("status", status)
-
   return (
     <div className="obs-status-panel">
       <h2>OBS Status</h2>

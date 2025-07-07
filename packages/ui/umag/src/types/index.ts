@@ -1,2 +1,1 @@
-
-export * "./now-playing"
+export * from "./now-playing"

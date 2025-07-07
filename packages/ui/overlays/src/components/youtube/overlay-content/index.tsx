@@ -4,12 +4,12 @@ import { accordionData } from "@overlays/data/gemini-stepper"
 import { ScrollingCredits, useGetCredits } from "attributions"
 import { StudyScene } from "makjang"
 import { GrindPieChart } from "portfolio-chart"
-import {NowPlayingCard} from "umag"
 import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
 import { BrickChartCarousel } from "some-ui-nfl"
 import { DiceCard } from "some-ui-slideshow"
 import { GeminiStepper } from "some-ui-stepper"
 import { getRandomSubarray } from "some-ui-utils"
+import { NowPlayingCard } from "umag"
 
 const EndingCredits = (): React.JSX.Element => {
   const params = {
@@ -138,13 +138,7 @@ export const TopRightContent = () => {
   const cubeFaces = [
     <StudyScene key={1} />,
     <GrindPieChart key={2} {...jobsArgs} />,
-    <NowPlayingCard
-      key={3}
-      title="The Sound of Silence (Simon & Garfunkel Cover) - Extended Version"
-      artist="Disturbed featuring the London Symphony Orchestra"
-      albumArtUrl="/placeholder.svg?height=200&width=200"
-      subtitle="Immortalized: Deluxe Edition with Bonus Tracks"
-    />,
+    <NowPlayingCard key={3} />,
     <GrindPieChart key={4} {...leetcodeArgs} />,
     "",
     "",

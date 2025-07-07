@@ -26,6 +26,7 @@ export function useNowPlayingWebSocket(
   options: UseNowPlayingWebSocketOptions = {
     url: `ws://${window.location.hostname}:${3000}/ws`,
     debugMode: true,
+    reconnectInterval: 1000 * 60 * 60,
   }
 ): UseNowPlayingWebSocketReturn {
   const [fullStatus, setFullStatus] =
