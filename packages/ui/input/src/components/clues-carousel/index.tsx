@@ -30,7 +30,7 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
     )
       return []
 
-    const { faceIndices, currFace, currIdx } = rotationState
+    const { faceIndices, currIdx } = rotationState
     if (faceIndices.length === 0) return []
 
     const result: Array<React.JSX.Element> = []

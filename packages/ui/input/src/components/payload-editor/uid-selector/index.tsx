@@ -65,7 +65,7 @@ export const UIDSelector = ({ value, onChange, show }: UIDSelectorProps) => {
 
       <Tabs
         value={mode}
-        onValueChange={(value: "search" | "manual") => setMode(value)}
+        onValueChange={(value) => setMode(value as "search" | "manual")}
       >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="search" className="gap-2">

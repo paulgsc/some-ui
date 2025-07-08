@@ -264,6 +264,8 @@ export function useCrosswordWithAnimation(
           return {
             cluesAcross: [],
             cluesDown: [],
+            lastRevealedAcrossIndex: -1,
+            lastRevealedDownIndex: -1,
           }
         }
         if (el.direction === "across") {

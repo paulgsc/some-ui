@@ -126,15 +126,8 @@ export const TimelineEditor = () => {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Timeline Event Manager</h1>
-        <p className="text-muted-foreground">
-          Create and send events to your live chapters timeline system
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
+    <div className="size-full">
+      <div className="grid size-full gap-6 md:grid-cols-2">
         <EventBuilderForm
           eventType={eventType}
           onEventTypeChange={setEventType}
