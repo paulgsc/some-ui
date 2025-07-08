@@ -90,7 +90,7 @@ export const LivestreamTopicNotification: FC<
   }, [currentTime, activeToast])
 
   return (
-    <div className="pointer-events-none absolute inset-0 opacity-95">
+    <div className="absolute inset-0 opacity-95">
       <div className="relative size-full overflow-hidden bg-none">
         {/* Progress bar at bottom of screen */}
         <div className="absolute inset-x-0 bottom-0 h-8 bg-none">
