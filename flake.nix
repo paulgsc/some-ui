@@ -103,6 +103,10 @@
             libxkbcommon
             xorg.libxkbfile
             wayland # For potential Wayland support
+
+            vulkan-loader # For Iced's wgpu backend
+            alsa-lib # For audio support if needed
+            udev # For input device detection
           ]);
 
           shellHook = ''
@@ -110,7 +114,17 @@
             export RUST_LOG=debug
             # export DATABASE_URL=""
 
-            echo "✅ Rust env with X11 + GL is ready"
+            # X11 forwarding check
+              if [ -n "$DISPLAY" ]; then
+                  echo "✅ X11 forwarding detected: $DISPLAY"
+                    else
+                  echo "❌ No X11 forwarding - set DISPLAY manually if needed"
+                          fi
+
+                            # Force X11 backend (disable Wayland if auto-detected)
+                              export WINIT_UNIX_BACKEND=x11
+
+                                echo "✅ Rust env with X11 + GL is ready"
 
           '';
 
