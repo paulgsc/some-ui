@@ -93,7 +93,7 @@ export const LivestreamTopicNotification: FC<
     <div className="absolute inset-0 opacity-95">
       <div className="relative size-full overflow-hidden bg-none">
         {/* Progress bar at bottom of screen */}
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-none">
+        <div className="absolute inset-x-0 bottom-1/2 h-8 bg-none">
           <div
             ref={progressBarRef}
             className="relative mx-2 mt-4 h-1 cursor-pointer bg-gray-700"
