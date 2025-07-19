@@ -1,5 +1,5 @@
 import { attributionData } from "@attributions/data/attribution-data"
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import { apiHooks } from "maishatu-fetch-kit"
 import { z } from "zod"
 

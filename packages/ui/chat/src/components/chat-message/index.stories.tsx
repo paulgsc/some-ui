@@ -1,4 +1,4 @@
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { ChatMessage } from "."
 import type { ChatMessageProps } from "@chat/types/chat"

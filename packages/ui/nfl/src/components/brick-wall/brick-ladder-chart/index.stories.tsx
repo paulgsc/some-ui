@@ -1,5 +1,5 @@
 import { useNflTennis } from "@nfl/data/brick-data"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { BrickWallChart } from "."
 

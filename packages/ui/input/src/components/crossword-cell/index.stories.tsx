@@ -1,5 +1,5 @@
 import { createCrossword } from "@input/lib/crossword-grid"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { CrosswordCellSvg } from "."
 

@@ -1,5 +1,5 @@
 import { useGetCredits } from "@attributions/data/fetched-attribution-data"
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ScrollingCredits } from "."
 

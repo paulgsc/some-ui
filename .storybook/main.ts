@@ -1,5 +1,4 @@
 import { dirname, join } from "path"
-import { fileURLToPath } from "url"
 import type { StorybookConfig } from "@storybook/react-vite"
 
 /**
@@ -19,10 +18,9 @@ const config: StorybookConfig = {
   addons: [
     getAbsolutePath("@storybook/addon-onboarding"),
     getAbsolutePath("@storybook/addon-links"),
-    getAbsolutePath("@storybook/addon-essentials"),
     getAbsolutePath("@chromatic-com/storybook"),
-    getAbsolutePath("@storybook/addon-interactions"),
     getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-docs"),
   ],
 
   framework: getAbsolutePath("@storybook/react-vite"),
@@ -46,8 +44,7 @@ const config: StorybookConfig = {
 export default config
 
 function getAbsolutePath(value: string): string {
-  // Resolve the URL to the package.json file.
-  const pkgUrl = import.meta.resolve(join(value, "package.json"))
-  // Convert the URL to a file path, then get its directory name.
-  return dirname(fileURLToPath(pkgUrl))
+  // Resolve the absolute path to package.json using CommonJS-compatible method
+  const pkgPath = require.resolve(join(value, "package.json"))
+  return dirname(pkgPath)
 }

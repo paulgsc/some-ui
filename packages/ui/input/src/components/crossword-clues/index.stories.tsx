@@ -1,5 +1,5 @@
 import { CLUES } from "@input/data/crossword"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { Clues } from "."
 

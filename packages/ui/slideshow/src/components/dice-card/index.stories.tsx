@@ -1,5 +1,5 @@
 import { cubeEvents } from "@slideshow/hooks/use-rotating-cube"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { DiceCard } from "."
 

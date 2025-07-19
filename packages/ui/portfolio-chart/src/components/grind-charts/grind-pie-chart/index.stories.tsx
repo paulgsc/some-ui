@@ -1,5 +1,5 @@
 import type { JobApplication } from "@portfolio-chart/types/grind-charts"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { GrindPieChart } from "."
 

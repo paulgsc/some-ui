@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ResizableLayout } from "@wireframes/components/youtube/resizable-wireframe"
 
 const meta: Meta<typeof ResizableLayout.Root> = {

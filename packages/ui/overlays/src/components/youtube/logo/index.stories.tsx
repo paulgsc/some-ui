@@ -1,5 +1,5 @@
 import Logo from "@overlays/components/youtube/logo"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 type Story = StoryObj<typeof Logo>
 type Meta = MetaObj<typeof Logo>

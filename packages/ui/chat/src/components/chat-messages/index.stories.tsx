@@ -1,5 +1,5 @@
 import type { ChatMessageProps } from "@chat/types/chat"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { formatRelativeTime } from "some-ui-utils"
 
 import { ChatMessages } from "."

@@ -1,4 +1,4 @@
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { YoutubeWireframe } from "@wireframes/components/youtube/youtube-wireframe"
 import type { Chapter } from "some-ui-slideshow"
 

@@ -1,5 +1,5 @@
 import { mockMessages } from "@chat/data/chat-messages"
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { ChatInterface } from "."
 
