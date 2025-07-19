@@ -1,5 +1,6 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
+import { useTextToSpeech } from "some-ui-utils"
 
 type Topic = {
   id: string | number
@@ -50,11 +51,13 @@ export const LivestreamTopicNotification: FC<
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
+  const { speak, speaking } = useTextToSpeech()
+
   // Auto-advance time (simulating video playback)
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setCurrentTime((prevTime) => {
-        const newTime = prevTime + playbackSpeed / 10
+        const newTime = speaking ? prevTime : prevTime + playbackSpeed / 10
         if (newTime >= totalDuration) {
           return 0 // Loop back to beginning
         }
@@ -65,7 +68,7 @@ export const LivestreamTopicNotification: FC<
     return (): void => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [playbackSpeed, totalDuration])
+  }, [playbackSpeed, speaking, totalDuration])
 
   // Show toast notification when reaching a new topic
   useEffect(() => {
@@ -77,17 +80,20 @@ export const LivestreamTopicNotification: FC<
     if (currentTopic && (!activeToast || activeToast.id !== currentTopic.id)) {
       setActiveToast(currentTopic)
       setToastVisible(true)
+      speak(currentTopic.title)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
 
-      // Hide toast after 3 seconds
+    if (!speaking) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = setTimeout(() => {
         setToastVisible(false)
-      }, 3000)
+      }, 50)
     }
     return (): void => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
-  }, [currentTime, activeToast])
+  }, [currentTime, activeToast, speaking, speak])
 
   return (
     <div className="absolute inset-0 opacity-95">
