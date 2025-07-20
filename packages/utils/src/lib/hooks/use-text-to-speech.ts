@@ -295,7 +295,8 @@ const synthesizeTTS = async (
   const cacheKey = `${config.provider}-${voice.id}-${text.slice(0, 100)}`
 
   if (config.cacheAudio !== false && cache.has(cacheKey)) {
-    return cache.get(cacheKey)!
+    const cachedAudioData = cache.get(cacheKey)!
+    return cachedAudioData.slice(0) // This
   }
 
   const apiConfig = TTS_API_CONFIGS[config.provider]
@@ -315,12 +316,6 @@ const synthesizeTTS = async (
     credentials: "omit",
   })
 
-  console.log("TTS Response:", {
-    status: response.status,
-    statusText: response.statusText,
-    headers: Object.fromEntries(response.headers.entries()),
-  })
-
   if (!response.ok) {
     const errorText = await response.text().catch(() => "Unknown error")
     throw new Error(
@@ -329,10 +324,6 @@ const synthesizeTTS = async (
   }
 
   const audioData = await apiConfig.processResponse(response)
-  console.log("Audio data received:", {
-    size: audioData.byteLength,
-    type: typeof audioData,
-  })
 
   if (config.cacheAudio !== false) {
     cache.set(cacheKey, audioData)
@@ -461,19 +452,33 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
         !selectedVoice ||
         !audioContextRef.current
       ) {
+        console.warn("TTS speak aborted: conditions not met.", {
+          supported,
+          textTrimmed: text.trim().length > 0,
+          selectedVoice: !!selectedVoice,
+          audioContext: !!audioContextRef.current,
+        })
         return
       }
 
       try {
         setLoading(true)
-        cleanupNodes()
+        cleanupNodes() // Resume AudioContext if suspended
 
-        // Resume AudioContext if suspended
         if (audioContextRef.current.state === "suspended") {
+          console.log("AudioContext is suspended, attempting to resume...")
           await audioContextRef.current.resume()
-        }
+          console.log(
+            "AudioContext state after resume:",
+            audioContextRef.current.state
+          )
+        } else {
+          console.log(
+            "AudioContext state is already:",
+            audioContextRef.current.state
+          )
+        } // Get audio data
 
-        // Get audio data
         console.log("Starting TTS synthesis...")
         const audioData = await synthesizeTTS(
           text,
@@ -482,11 +487,14 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
           cacheRef.current
         )
 
-        console.log("TTS synthesis complete, decoding audio...")
+        console.log(
+          "TTS synthesis complete, audioData size:",
+          audioData.byteLength
+        ) // Decode audio
 
-        // Decode audio - this is where CORS issues typically occur
         let audioBuffer: AudioBuffer
         try {
+          console.log("Attempting to decode audio data...")
           audioBuffer = await audioContextRef.current.decodeAudioData(audioData)
           console.log("Audio decoded successfully:", {
             duration: audioBuffer.duration,
@@ -494,46 +502,48 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
             sampleRate: audioBuffer.sampleRate,
           })
         } catch (decodeError) {
-          console.error("Audio decode error (likely CORS):", decodeError)
+          console.error("Audio decode error:", decodeError) // Removed "(likely CORS)" as we ruled that out
           throw new Error(
-            `Audio decoding failed: ${decodeError}. This is likely a CORS issue.`
+            `Audio decoding failed: ${decodeError}.` // Updated message
           )
-        }
+        } // Create and connect nodes
 
-        // Create and connect nodes
         const sourceNode = audioContextRef.current.createBufferSource()
         const gainNode = audioContextRef.current.createGain()
 
-        sourceNode.buffer = audioBuffer
+        sourceNode.buffer = audioBuffer // This is the core connection
         gainNode.gain.value = optionsRef.current.volume
+        console.log("Gain node volume set to:", gainNode.gain.value)
 
         sourceNode.connect(gainNode)
         gainNode.connect(audioContextRef.current.destination)
+        console.log("Audio nodes connected to destination.") // Store references
 
-        // Store references
         sourceNodeRef.current = sourceNode
-        gainNodeRef.current = gainNode
+        gainNodeRef.current = gainNode // Set duration and start playback
 
-        // Set duration and start playback
         setDuration(audioBuffer.duration)
         setCurrentTime(0)
         setSpeaking(true)
         setPaused(false)
         setLoading(false)
 
-        startTimeRef.current = audioContextRef.current.currentTime
+        startTimeRef.current = audioContextRef.current.currentTime // Add ended event listener
 
-        // Add ended event listener
         sourceNode.onended = () => {
-          console.log("Audio playback ended")
+          console.log(
+            "Audio playback ended (onended event fired). Context time:",
+            audioContextRef.current?.currentTime
+          )
           setSpeaking(false)
           setPaused(false)
           setCurrentTime(0)
           optionsRef.current.onEnd?.()
         }
 
+        console.log("Calling sourceNode.start(0)...")
         sourceNode.start(0)
-        console.log("Audio playback started")
+        console.log("Audio playback initiated.") // This means start() was called
 
         optionsRef.current.onStart?.()
         updateTime()
