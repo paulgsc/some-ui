@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioTTS } from "some-ui-utils"
 
 type Topic = {
@@ -8,6 +8,7 @@ type Topic = {
   timestamp: number
   duration: number
 }
+
 // Sample data for video topics
 const sampleTopics: Array<Topic> = [
   { id: 1, title: "Setting up the project", timestamp: 0, duration: 15 },
@@ -35,24 +36,27 @@ const formatTime = (minutes: number): string => {
 
 type LivestreamTopicNotificationProps = {
   playbackSpeed?: number
+  speechIntervalMinutes?: number
 }
 
 export const LivestreamTopicNotification: FC<
   LivestreamTopicNotificationProps
-> = ({ playbackSpeed = 5 }): React.JSX.Element => {
+> = ({ playbackSpeed = 5, speechIntervalMinutes = 5 }): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
   const [activeToast, setActiveToast] = useState<Topic | null>(null)
   const [toastVisible, setToastVisible] = useState<boolean>(false)
-  const [canSpeak, setCanSpeak] = useState<boolean>(true)
+  const [lastSpeechTime, setLastSpeechTime] = useState(0)
+
   const totalDuration = sampleTopics.reduce(
     (total, topic) => Math.max(total, topic.timestamp + topic.duration),
     0
   )
+
   const progressBarRef = useRef(null)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const speechTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const hideToastTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
+  // Initialize TTS with proper configuration
   const { speak, speaking } = useAudioTTS({
     service: {
       provider: "openai",
@@ -60,68 +64,127 @@ export const LivestreamTopicNotification: FC<
       apiKey: "your_dummy_api_key_here",
       format: "mp3",
     },
-    autoPlay: false,
-    onStart: () => console.log("Speech started!"),
-    onEnd: () => console.log("Speech ended!"),
-    onError: (error) => console.error("TTS Error:", error),
+    volume: 1.0,
+    autoPlay: true, // Set to true for immediate playback
+    onStart: () => {
+      console.log("Speech started!")
+      setToastVisible(true)
+    },
+    onEnd: () => {
+      console.log("Speech ended!")
+      // Schedule toast to hide after speech ends
+      if (hideToastTimeoutRef.current) {
+        clearTimeout(hideToastTimeoutRef.current)
+      }
+      hideToastTimeoutRef.current = setTimeout(() => {
+        setToastVisible(false)
+      }, 1500) // Hide 1.5s after speech ends
+    },
+    onError: (error) => {
+      console.error("TTS Error:", error)
+      setToastVisible(false)
+    },
   })
 
-  // Auto-advance time (simulating video playback)
+  // Check if enough time has passed since last speech
+  const shouldSpeak = useCallback(
+    (currentTime: number): boolean => {
+      const timeSinceLastSpeech = currentTime - lastSpeechTime
+      console.log("delta;  ", timeSinceLastSpeech)
+      return (
+        timeSinceLastSpeech >= speechIntervalMinutes || lastSpeechTime === 0
+      )
+    },
+    [speechIntervalMinutes, lastSpeechTime]
+  )
+
+  // Handle topic announcement
+  const announceTopicIfNeeded = useCallback(
+    async (topic: Topic) => {
+      if (shouldSpeak(currentTime) && !speaking) {
+        try {
+          await speak(topic.title)
+          setLastSpeechTime(currentTime)
+          setActiveToast(topic)
+        } catch (error) {
+          console.error("Failed to announce topic:", error)
+        }
+      } else if (!speaking) {
+        // Show toast without speech
+        setActiveToast(topic)
+        setToastVisible(true)
+        if (hideToastTimeoutRef.current) {
+          clearTimeout(hideToastTimeoutRef.current)
+        }
+        hideToastTimeoutRef.current = setTimeout(() => {
+          setToastVisible(false)
+        }, 3000) // Show for 3s without speech
+      }
+    },
+    [currentTime, shouldSpeak, speaking, speak]
+  )
+
+  // Main time progression and topic detection effect
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setCurrentTime((prevTime) => {
-        const newTime = speaking ? prevTime : prevTime + playbackSpeed / 10
-        if (newTime >= totalDuration) {
-          setCanSpeak(true)
-          return 0 // Loop back to beginning
+        // Pause progression while speaking
+        if (speaking) {
+          return prevTime
         }
+
+        const newTime = prevTime + playbackSpeed / 10
+
+        // Loop back to beginning when reaching end
+        if (newTime >= totalDuration) {
+          return 0
+        }
+
+        // Check for topic at current timestamp
+        const currentTopic = sampleTopics.find(
+          (topic) =>
+            newTime >= topic.timestamp &&
+            newTime < topic.timestamp + 0.5 && // Only trigger at start of topic
+            (!activeToast || activeToast.id !== topic.id) // Avoid duplicate announcements
+        )
+
+        if (currentTopic) {
+          // Use setTimeout to avoid state update during render
+          setTimeout(() => announceTopicIfNeeded(currentTopic), 0)
+        }
+
         return newTime
       })
     }, 120)
 
-    return (): void => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
     }
-  }, [playbackSpeed, speaking, totalDuration])
+  }, [
+    playbackSpeed,
+    speaking,
+    totalDuration,
+    activeToast,
+    announceTopicIfNeeded,
+  ])
 
-  // Show toast notification when reaching a new topic
+  // Reset speech timing when looping
   useEffect(() => {
-    const currentTopic = sampleTopics.find(
-      (topic) =>
-        currentTime >= topic.timestamp && currentTime < topic.timestamp + 0.5 // Show toast only at the start of a topic
-    )
-
-    if (currentTopic && (!activeToast || activeToast.id !== currentTopic.id)) {
-      setActiveToast(currentTopic)
-      setToastVisible(true)
-      if (canSpeak) speak(currentTopic.title)
+    if (currentTime === 0) {
+      setLastSpeechTime(0)
+      setActiveToast(null)
+      setToastVisible(false)
     }
-  }, [currentTime, canSpeak, activeToast, speaking, speak])
+  }, [currentTime])
 
+  // Cleanup timeouts
   useEffect(() => {
-    if (!speaking && toastVisible) {
-      const delay = 1.5 * 1000
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => {
-        setToastVisible(false)
-      }, delay)
-    }
-    return (): void => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
-  }, [toastVisible, speaking])
-
-  useEffect(() => {
-    if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current)
-    speechTimeoutRef.current = setTimeout(
-      () => {
-        setCanSpeak(true)
-      },
-      3 * 60 * 1000
-    )
-
-    return (): void => {
-      if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current)
+    return () => {
+      if (hideToastTimeoutRef.current) {
+        clearTimeout(hideToastTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -157,6 +220,24 @@ export const LivestreamTopicNotification: FC<
               style={{ left: `${(currentTime / totalDuration) * 100}%` }}
             />
           </div>
+
+          {/* Speech indicator */}
+          {speaking && (
+            <div className="absolute right-4 top-1 flex items-center space-x-2">
+              <div className="flex space-x-1">
+                <div className="h-2 w-1 animate-pulse bg-red-500"></div>
+                <div
+                  className="h-2 w-1 animate-pulse bg-red-500"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="h-2 w-1 animate-pulse bg-red-500"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+              </div>
+              <span className="text-xs text-white">Speaking...</span>
+            </div>
+          )}
         </div>
 
         {/* Topic toast notification */}
@@ -194,6 +275,12 @@ export const LivestreamTopicNotification: FC<
                     <h3 className="text-sm font-medium text-white">
                       {activeToast.title}
                     </h3>
+                    {speaking && (
+                      <div className="ml-2 flex items-center">
+                        <div className="mr-1 size-1 animate-pulse rounded-full bg-green-400"></div>
+                        <span className="text-xs text-green-400">Speaking</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
