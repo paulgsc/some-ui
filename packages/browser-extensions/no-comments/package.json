@@ -2,32 +2,26 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {
-    "lucide-react": "^0.477.0",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "maishatu-fetch-kit": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*",
     "some-ui-rollup-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/attributions.esm.js"
+        "default": "./dist/esm/some-ui-utils.esm.js",
+        "types": "./dist/esm/index.d.ts"
       },
       "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/attributions.cjs.js"
+        "default": "./dist/cjs/some-ui-utils.cjs.js",
+        "types": "./dist/cjs/index.d.ts"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "attributions*",
+    "some-ui-utils*",
     "./dist/src/**/*",
     "index.d.ts",
     "./dist/esm/**/*",
@@ -36,26 +30,22 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/attributions.umd.js",
-  "module": "./dist/esm/attributions.esm.js",
-  "name": "attributions",
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-resizable-panels": "^2.1.0"
-  },
+  "main": "./dist/some-ui-utils.umd.js",
+  "module": "./dist/esm/some-ui-utils.esm.js",
+  "name": "no-comments",
+  "peerDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "build": "chmod +x build.sh && ./build.sh",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "test": "vitest",
     "typecheck": "tsc --noEmit",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
@@ -63,6 +53,6 @@
   "sideEffects": false,
   "type": "module",
   "types": "index.d.ts",
-  "unpkg": "attributions.umd.js",
-  "version": "0.0.5"
+  "unpkg": "some-ui-utils.umd.js",
+  "version": "1.1.0"
 }

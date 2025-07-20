@@ -2,12 +2,7 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "nuqs": "1.18.0",
-    "tailwind-merge": "^2.4.0",
-    "usehooks-ts": "3.1.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "some-ui-rollup-config": "workspace:*"
@@ -38,21 +33,13 @@
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
   "name": "some-tab-meta",
-  "peerDependencies": {
-    "clsx": "^2.1.1",
-    "nuqs": "1.18.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "tailwind-merge": "^2.4.0",
-    "usehooks-ts": "3.1.0"
-  },
+  "peerDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "build": "chmod +x build.sh && ./build.sh",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
