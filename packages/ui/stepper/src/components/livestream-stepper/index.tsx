@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
-import { useTextToSpeech } from "some-ui-utils"
+import { useAudioTTS } from "some-ui-utils"
 
 type Topic = {
   id: string | number
@@ -42,7 +42,8 @@ export const LivestreamTopicNotification: FC<
 > = ({ playbackSpeed = 5 }): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
   const [activeToast, setActiveToast] = useState<Topic | null>(null)
-  const [toastVisible, setToastVisible] = useState(false)
+  const [toastVisible, setToastVisible] = useState<boolean>(false)
+  const [canSpeak, setCanSpeak] = useState<boolean>(true)
   const totalDuration = sampleTopics.reduce(
     (total, topic) => Math.max(total, topic.timestamp + topic.duration),
     0
@@ -50,8 +51,20 @@ export const LivestreamTopicNotification: FC<
   const progressBarRef = useRef(null)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const speechTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
-  const { speak, speaking } = useTextToSpeech()
+  const { speak, speaking } = useAudioTTS({
+    service: {
+      provider: "openai",
+      apiUrl: "http://nixos.local:5050/v1/audio/speech",
+      apiKey: "your_dummy_api_key_here",
+      format: "mp3",
+    },
+    autoPlay: false,
+    onStart: () => console.log("Speech started!"),
+    onEnd: () => console.log("Speech ended!"),
+    onError: (error) => console.error("TTS Error:", error),
+  })
 
   // Auto-advance time (simulating video playback)
   useEffect(() => {
@@ -59,11 +72,12 @@ export const LivestreamTopicNotification: FC<
       setCurrentTime((prevTime) => {
         const newTime = speaking ? prevTime : prevTime + playbackSpeed / 10
         if (newTime >= totalDuration) {
+          setCanSpeak(true)
           return 0 // Loop back to beginning
         }
         return newTime
       })
-    }, 100)
+    }, 120)
 
     return (): void => {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -80,26 +94,42 @@ export const LivestreamTopicNotification: FC<
     if (currentTopic && (!activeToast || activeToast.id !== currentTopic.id)) {
       setActiveToast(currentTopic)
       setToastVisible(true)
-      speak(currentTopic.title)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (canSpeak) speak(currentTopic.title)
     }
+  }, [currentTime, canSpeak, activeToast, speaking, speak])
 
-    if (!speaking) {
+  useEffect(() => {
+    if (!speaking && toastVisible) {
+      const delay = 1.5 * 1000
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = setTimeout(() => {
         setToastVisible(false)
-      }, 50)
+      }, delay)
     }
     return (): void => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
-  }, [currentTime, activeToast, speaking, speak])
+  }, [toastVisible, speaking])
+
+  useEffect(() => {
+    if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current)
+    speechTimeoutRef.current = setTimeout(
+      () => {
+        setCanSpeak(true)
+      },
+      3 * 60 * 1000
+    )
+
+    return (): void => {
+      if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current)
+    }
+  }, [])
 
   return (
     <div className="absolute inset-0 opacity-95">
       <div className="relative size-full overflow-hidden bg-none">
         {/* Progress bar at bottom of screen */}
-        <div className="absolute inset-x-0 bottom-1/2 h-8 bg-none">
+        <div className="absolute inset-x-0 bottom-0 h-8 bg-none">
           <div
             ref={progressBarRef}
             className="relative mx-2 mt-4 h-1 cursor-pointer bg-gray-700"
