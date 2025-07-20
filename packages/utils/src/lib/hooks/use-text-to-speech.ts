@@ -5,82 +5,82 @@ type TTSProvider = "elevenlabs" | "openai" | "google" | "azure" | "custom"
 
 // Voice configuration for different providers
 type VoiceConfig = {
-  id: string
-  name: string
-  provider: TTSProvider
-  language?: string
-  gender?: "male" | "female" | "neutral"
-  style?: string
+  readonly id: string
+  readonly name: string
+  readonly provider: TTSProvider
+  readonly language?: string
+  readonly gender?: "male" | "female" | "neutral"
+  readonly style?: string
 }
 
 // Audio format options
-type AudioFormat = "mp3" | "ogg" | "wav" | "aac" | "flac" | "pcm" // Added more formats
-
-// Generic constraint for TTS options
-type TTSOptions = {
-  volume?: number
-  playbackRate?: number
-  crossOrigin?: "anonymous" | "use-credentials"
-}
+type AudioFormat = "mp3" | "ogg" | "wav" | "aac" | "flac" | "pcm"
 
 // TTS service configuration
 type TTSServiceConfig = {
-  provider: TTSProvider
-  apiKey?: string // For our local server, this can be a dummy key or not used if REQUIRE_API_KEY is False
-  apiUrl?: string // This will be our local server URL
-  format?: AudioFormat
-  sampleRate?: number
-  quality?: "low" | "medium" | "high"
-  cacheAudio?: boolean
+  readonly provider: TTSProvider
+  readonly apiKey?: string
+  readonly apiUrl?: string
+  readonly format?: AudioFormat
+  readonly sampleRate?: number
+  readonly quality?: "low" | "medium" | "high"
+  readonly cacheAudio?: boolean
 }
 
-// Hook options extending base TTS options
-type UseAudioTTSOptions<T extends TTSOptions = TTSOptions> = {
-  service: TTSServiceConfig
-  autoPlay?: boolean
-  preloadVoices?: boolean
-  cacheAudio?: boolean
-  onStart?: () => void
-  onEnd?: () => void
-  onError?: (error: Error) => void
-  onProgress?: (currentTime: number, duration: number) => void
-} & T
+// Base TTS options
+type TTSOptions = {
+  readonly volume?: number
+  readonly playbackRate?: number
+  readonly crossOrigin?: "anonymous" | "use-credentials"
+}
 
-// Return interface with proper constraints
-type UseAudioTTSReturn<T extends TTSOptions = TTSOptions> = {
-  speak: (text: string) => Promise<void>
-  stop: () => void
-  pause: () => void
-  resume: () => void
-  setVolume: (volume: number) => void
-  setPlaybackRate: (rate: number) => void
-  speaking: boolean
-  paused: boolean
-  loading: boolean
-  supported: boolean
-  currentTime: number
-  duration: number
-  voices: ReadonlyArray<VoiceConfig>
-  selectedVoice: VoiceConfig | null
-  setSelectedVoice: (voice: VoiceConfig | null) => void
-  updateOptions: (newOptions: Partial<T>) => void
-  audioContext: AudioContext | null
+// Hook options
+type UseAudioTTSOptions = TTSOptions & {
+  readonly service: TTSServiceConfig
+  readonly autoPlay?: boolean
+  readonly preloadVoices?: boolean
+  readonly onStart?: () => void
+  readonly onEnd?: () => void
+  readonly onError?: (error: Error) => void
+  readonly onProgress?: (currentTime: number, duration: number) => void
+}
+
+// Return interface
+type UseAudioTTSReturn = {
+  readonly speak: (text: string) => Promise<void>
+  readonly stop: () => void
+  readonly pause: () => void
+  readonly resume: () => void
+  readonly setVolume: (volume: number) => void
+  readonly setPlaybackRate: (rate: number) => void
+  readonly speaking: boolean
+  readonly paused: boolean
+  readonly loading: boolean
+  readonly supported: boolean
+  readonly currentTime: number
+  readonly duration: number
+  readonly voices: ReadonlyArray<VoiceConfig>
+  readonly selectedVoice: VoiceConfig | null
+  readonly setSelectedVoice: (voice: VoiceConfig | null) => void
+  readonly audioContext: AudioContext | null
 }
 
 // Default options
-const DEFAULT_OPTIONS = {
+const DEFAULT_OPTIONS: Required<
+  Pick<
+    UseAudioTTSOptions,
+    "volume" | "playbackRate" | "crossOrigin" | "autoPlay" | "preloadVoices"
+  >
+> = {
   volume: 1,
   playbackRate: 1,
-  crossOrigin: "anonymous" as const,
+  crossOrigin: "anonymous",
   autoPlay: true,
   preloadVoices: true,
-  cacheAudio: true,
 } as const
 
-// Built-in voice configurations for different providers
-// Note: For 'openai', these are the OpenAI standard voices,
-// travisvn/openai-edge-tts maps these to Edge TTS voices.
-const BUILTIN_VOICES: Record<TTSProvider, Array<VoiceConfig>> = {
+// Built-in voice configurations
+const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
   elevenlabs: [
     {
       id: "rachel",
@@ -154,9 +154,6 @@ const BUILTIN_VOICES: Record<TTSProvider, Array<VoiceConfig>> = {
       language: "en-US",
       gender: "female",
     },
-    // You can also add specific Edge TTS voices here if you want to use them directly
-    // { id: 'en-US-AvaNeural', name: 'Ava (Edge)', provider: 'openai', language: 'en-US', gender: 'female' },
-    // { id: 'en-US-GuyNeural', name: 'Guy (Edge)', provider: 'openai', language: 'en-US', gender: 'male' },
   ],
   google: [
     {
@@ -191,7 +188,7 @@ const BUILTIN_VOICES: Record<TTSProvider, Array<VoiceConfig>> = {
     },
   ],
   custom: [],
-}
+} as const
 
 // Type guard for AudioContext support
 const isAudioContextSupported = (): boolean =>
@@ -199,188 +196,163 @@ const isAudioContextSupported = (): boolean =>
   (window.AudioContext !== undefined ||
     (window as any).webkitAudioContext !== undefined)
 
-// TTS Service implementations
-class TTSService {
-  private cache = new Map<string, ArrayBuffer>()
-  constructor(
-    private config: TTSServiceConfig,
-    private onProgress?: (loaded: number, total: number) => void
-  ) {}
-
-  async synthesize(text: string, voice: VoiceConfig): Promise<ArrayBuffer> {
-    const cacheKey = `${voice.id}-${text.slice(0, 100)}` // Use first 100 chars as cache key
-
-    if (this.config.cacheAudio !== false && this.cache.has(cacheKey)) {
-      // Check cacheAudio option
-      return this.cache.get(cacheKey)!
-    }
-    let audioData: ArrayBuffer
-    switch (this.config.provider) {
-      case "elevenlabs":
-        audioData = await this.synthesizeElevenLabs(text, voice)
-        break
-      case "openai":
-        audioData = await this.synthesizeOpenAI(text, voice)
-        break
-      case "google":
-        audioData = await this.synthesizeGoogle(text, voice)
-        break
-      case "azure":
-        audioData = await this.synthesizeAzure(text, voice)
-        break
-      case "custom":
-        audioData = await this.synthesizeCustom(text, voice)
-        break
-      default:
-        throw new Error(`Unsupported TTS provider: ${this.config.provider}`)
-    }
-    if (this.config.cacheAudio !== false) {
-      this.cache.set(cacheKey, audioData)
-    }
-    return audioData
-  }
-
-  private async synthesizeElevenLabs(
+// TTS API configuration for each provider
+type TTSAPIConfig = {
+  readonly url: (config: TTSServiceConfig, voice: VoiceConfig) => string
+  readonly headers: (config: TTSServiceConfig) => Record<string, string>
+  readonly body: (
     text: string,
-    voice: VoiceConfig
-  ): Promise<ArrayBuffer> {
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice.id}`,
-      {
-        method: "POST",
-        headers: {
-          Accept: "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": this.config.apiKey,
-        },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-          },
-        }),
-      }
-    )
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.statusText}`)
-    }
-    return response.arrayBuffer()
-  }
-
-  private async synthesizeOpenAI(
-    text: string,
-    voice: VoiceConfig
-  ): Promise<ArrayBuffer> {
-    // Crucial change: Use the apiUrl provided in the service config
-    // The travisvn/openai-edge-tts container exposes an OpenAI-compatible endpoint
-    const apiUrl = this.config.apiUrl || "http://localhost:5050/v1/audio/speech" // Default to our local server
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.apiKey || "your_dummy_api_key_here"}`, // Use the provided API key or dummy
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "tts-1", // travisvn/openai-edge-tts supports this model
-        input: text,
-        voice: voice.id, // Use the selected OpenAI-compatible voice ID
-        response_format: this.config.format || "mp3",
-        speed: 1.0, // Speed can be adjusted via the hook's setPlaybackRate
-      }),
-    })
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(
-        `OpenAI (Edge TTS) API error: ${response.status} ${response.statusText} - ${errorText}`
-      )
-    }
-    return response.arrayBuffer()
-  }
-
-  private async synthesizeGoogle(
-    text: string,
-    voice: VoiceConfig
-  ): Promise<ArrayBuffer> {
-    const response = await fetch(
-      `${this.config.apiUrl || "https://texttospeech.googleapis.com/v1/text:synthesize"}?key=${this.config.apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          input: { text },
-          voice: {
-            languageCode: voice.language || "en-US",
-            name: voice.id,
-          },
-          audioConfig: {
-            audioEncoding: this.config.format.toUpperCase() || "MP3",
-            sampleRateHertz: this.config.sampleRate || 24000,
-          },
-        }),
-      }
-    )
-    if (!response.ok) {
-      throw new Error(`Google TTS API error: ${response.statusText}`)
-    }
-    const data = await response.json()
-    return Uint8Array.from(atob(data.audioContent), (c) => c.charCodeAt(0))
-      .buffer
-  }
-
-  private async synthesizeAzure(
-    text: string,
-    voice: VoiceConfig
-  ): Promise<ArrayBuffer> {
-    const ssml = `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${voice.language || "en-US"}">
-      <voice name="${voice.id}">${text}</voice>
-    </speak>`
-    const response = await fetch(this.config.apiUrl, {
-      method: "POST",
-      headers: {
-        "Ocp-Apim-Subscription-Key": this.config.apiKey,
-        "Content-Type": "application/ssml+xml",
-        "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
-      },
-      body: ssml,
-    })
-    if (!response.ok) {
-      throw new Error(`Azure TTS API error: ${response.statusText}`)
-    }
-    return response.arrayBuffer()
-  }
-
-  private async synthesizeCustom(
-    text: string,
-    voice: VoiceConfig
-  ): Promise<ArrayBuffer> {
-    const response = await fetch(this.config.apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(this.config.apiKey && {
-          Authorization: `Bearer ${this.config.apiKey}`,
-        }),
-      },
-      body: JSON.stringify({ text, voice: voice.id }),
-    })
-    if (!response.ok) {
-      throw new Error(`Custom TTS API error: ${response.statusText}`)
-    }
-    return response.arrayBuffer()
-  }
+    voice: VoiceConfig,
+    config: TTSServiceConfig
+  ) => string
+  readonly processResponse: (response: Response) => Promise<ArrayBuffer>
 }
 
-export function useAudioTTS<T extends TTSOptions = TTSOptions>(
-  initialOptions: UseAudioTTSOptions<T>
-): UseAudioTTSReturn<T> {
-  // Merge options with defaults
-  const options = { ...DEFAULT_OPTIONS, ...initialOptions }
-  // State management
+// API configurations for different providers
+const TTS_API_CONFIGS: Record<TTSProvider, TTSAPIConfig> = {
+  elevenlabs: {
+    url: (_, voice) =>
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice.id}`,
+    headers: (config) => ({
+      Accept: "audio/mpeg",
+      "Content-Type": "application/json",
+      "xi-api-key": config.apiKey || "",
+    }),
+    body: (text) =>
+      JSON.stringify({
+        text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: { stability: 0.5, similarity_boost: 0.5 },
+      }),
+    processResponse: (response) => response.arrayBuffer(),
+  },
+  openai: {
+    url: (config) => config.apiUrl || "http://localhost:5050/v1/audio/speech",
+    headers: (config) => ({
+      Authorization: `Bearer ${config.apiKey || "your_dummy_api_key_here"}`,
+      "Content-Type": "application/json",
+    }),
+    body: (text, voice, config) =>
+      JSON.stringify({
+        model: "tts-1",
+        input: text,
+        voice: voice.id,
+        response_format: config.format || "mp3",
+        speed: 1.0,
+      }),
+    processResponse: (response) => response.arrayBuffer(),
+  },
+  google: {
+    url: (config) =>
+      `${config.apiUrl || "https://texttospeech.googleapis.com/v1/text:synthesize"}?key=${config.apiKey}`,
+    headers: () => ({ "Content-Type": "application/json" }),
+    body: (text, voice, config) =>
+      JSON.stringify({
+        input: { text },
+        voice: { languageCode: voice.language || "en-US", name: voice.id },
+        audioConfig: {
+          audioEncoding: config.format?.toUpperCase() || "MP3",
+          sampleRateHertz: config.sampleRate || 24000,
+        },
+      }),
+    processResponse: async (response) => {
+      const data = await response.json()
+      return Uint8Array.from(atob(data.audioContent), (c) => c.charCodeAt(0))
+        .buffer
+    },
+  },
+  azure: {
+    url: (config) => config.apiUrl || "",
+    headers: (config) => ({
+      "Ocp-Apim-Subscription-Key": config.apiKey || "",
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
+    }),
+    body: (text, voice) =>
+      `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${voice.language || "en-US"}">
+          <voice name="${voice.id}">${text}</voice>
+        </speak>`,
+    processResponse: (response) => response.arrayBuffer(),
+  },
+  custom: {
+    url: (config) => config.apiUrl || "",
+    headers: (config) => ({
+      "Content-Type": "application/json",
+      ...(config.apiKey && { Authorization: `Bearer ${config.apiKey}` }),
+    }),
+    body: (text, voice) => JSON.stringify({ text, voice: voice.id }),
+    processResponse: (response) => response.arrayBuffer(),
+  },
+}
+
+// Functional TTS synthesis
+const synthesizeTTS = async (
+  text: string,
+  voice: VoiceConfig,
+  config: TTSServiceConfig,
+  cache: Map<string, ArrayBuffer>
+): Promise<ArrayBuffer> => {
+  const cacheKey = `${config.provider}-${voice.id}-${text.slice(0, 100)}`
+
+  if (config.cacheAudio !== false && cache.has(cacheKey)) {
+    return cache.get(cacheKey)!
+  }
+
+  const apiConfig = TTS_API_CONFIGS[config.provider]
+  const url = apiConfig.url(config, voice)
+  const headers = apiConfig.headers(config)
+  const body = apiConfig.body(text, voice, config)
+
+  // Debug logging
+  console.log("TTS Request:", { url, method: "POST", headers, body })
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body,
+    // Add CORS mode explicitly
+    mode: "cors",
+    credentials: "omit",
+  })
+
+  console.log("TTS Response:", {
+    status: response.status,
+    statusText: response.statusText,
+    headers: Object.fromEntries(response.headers.entries()),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error")
+    throw new Error(
+      `${config.provider} TTS API error: ${response.status} ${response.statusText} - ${errorText}`
+    )
+  }
+
+  const audioData = await apiConfig.processResponse(response)
+  console.log("Audio data received:", {
+    size: audioData.byteLength,
+    type: typeof audioData,
+  })
+
+  if (config.cacheAudio !== false) {
+    cache.set(cacheKey, audioData)
+  }
+
+  return audioData
+}
+
+// Create AudioContext helper
+const createAudioContext = (): AudioContext => {
+  const AudioContextClass =
+    window.AudioContext || (window as any).webkitAudioContext
+  return new AudioContextClass()
+}
+
+// Main hook
+export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
+  const mergedOptions = { ...DEFAULT_OPTIONS, ...options }
+
+  // State
   const [speaking, setSpeaking] = useState(false)
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -389,58 +361,48 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
   const [duration, setDuration] = useState(0)
   const [voices, setVoices] = useState<ReadonlyArray<VoiceConfig>>([])
   const [selectedVoice, setSelectedVoice] = useState<VoiceConfig | null>(null)
-  const [currentOptions, setCurrentOptions] = useState<T>(initialOptions as T)
-  // Audio references
+
+  // Refs
   const audioContextRef = useRef<AudioContext | null>(null)
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null)
   const gainNodeRef = useRef<GainNode | null>(null)
-  const audioBufferRef = useRef<AudioBuffer | null>(null)
-  const ttsServiceRef = useRef<TTSService | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
   const pauseTimeRef = useRef<number>(0)
-  const optionsRef = useRef(options)
+  const cacheRef = useRef(new Map<string, ArrayBuffer>())
+  const optionsRef = useRef(mergedOptions)
 
-  // Update options ref when they change
+  // Update options ref
   useEffect(() => {
-    optionsRef.current = { ...optionsRef.current, ...currentOptions }
-  }, [currentOptions])
+    optionsRef.current = mergedOptions
+  }, [mergedOptions])
 
-  // Initialize AudioContext and TTS service
+  // Initialize
   useEffect(() => {
-    const { service, cacheAudio } = optionsRef.current
-
     if (!isAudioContextSupported()) {
       setSupported(false)
       return
     }
+
     setSupported(true)
+
     // Initialize AudioContext
-    const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext
     if (
       !audioContextRef.current ||
       audioContextRef.current.state === "closed"
     ) {
-      audioContextRef.current = new AudioContextClass()
+      audioContextRef.current = createAudioContext()
     }
 
-    // Initialize TTS service
-    // Pass the cacheAudio option to the TTSService constructor
-    ttsServiceRef.current = new TTSService(
-      { ...service, cacheAudio },
-      optionsRef.current.onProgress
-    )
-
     // Load voices
-    const availableVoices = BUILTIN_VOICES[service.provider]
+    const availableVoices = BUILTIN_VOICES[options.service.provider]
     setVoices(availableVoices)
+
     if (availableVoices.length > 0 && !selectedVoice) {
-      // Set a default voice from the available OpenAI voices if not already selected
-      setSelectedVoice(
+      const defaultVoice =
         availableVoices.find((v) => v.provider === "openai") ??
-          availableVoices[0]
-      )
+        availableVoices[0]
+      setSelectedVoice(defaultVoice)
     }
 
     return () => {
@@ -454,12 +416,7 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [
-    optionsRef.current.service,
-    selectedVoice,
-    optionsRef.current.onProgress,
-    optionsRef.current.cacheAudio,
-  ]) // Add service.apiUrl and cacheAudio to dependencies
+  }, [options.service.provider, selectedVoice])
 
   // Time tracking
   const updateTime = useCallback(() => {
@@ -471,7 +428,6 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
       if (elapsed < duration) {
         animationFrameRef.current = requestAnimationFrame(updateTime)
       } else {
-        // Audio finished playing
         setSpeaking(false)
         setPaused(false)
         setCurrentTime(0)
@@ -481,125 +437,130 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
         optionsRef.current.onEnd?.()
       }
     }
-  }, [
-    speaking,
-    paused,
-    duration,
-    optionsRef.current.onProgress,
-    optionsRef.current.onEnd,
-  ]) // Add onEnd to dependencies
+  }, [speaking, paused, duration])
 
-  // Enhanced speak function
+  // Cleanup audio nodes
+  const cleanupNodes = useCallback(() => {
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.stop()
+        sourceNodeRef.current.disconnect()
+      } catch (error) {
+        // Node may already be stopped/disconnected
+      }
+      sourceNodeRef.current = null
+    }
+  }, [])
+
+  // Speak function
   const speak = useCallback(
     async (text: string): Promise<void> => {
       if (
         !supported ||
         !text.trim() ||
         !selectedVoice ||
-        !ttsServiceRef.current ||
         !audioContextRef.current
       ) {
-        console.warn("TTS not ready or unsupported. Check prerequisites:", {
-          supported,
-          textTrimmed: text.trim().length > 0,
-          selectedVoice,
-          ttsServiceRef: !!ttsServiceRef.current,
-          audioContext: !!audioContextRef.current,
-        })
-        return Promise.resolve()
+        return
       }
+
       try {
         setLoading(true)
+        cleanupNodes()
 
-        // Stop any ongoing playback
-        if (sourceNodeRef.current) {
-          sourceNodeRef.current.stop()
-          sourceNodeRef.current.disconnect()
-          sourceNodeRef.current = null // Clear the reference
-        }
         // Resume AudioContext if suspended
         if (audioContextRef.current.state === "suspended") {
           await audioContextRef.current.resume()
         }
 
-        // Get audio data from TTS service
-        const audioData = await ttsServiceRef.current.synthesize(
+        // Get audio data
+        console.log("Starting TTS synthesis...")
+        const audioData = await synthesizeTTS(
           text,
-          selectedVoice
+          selectedVoice,
+          optionsRef.current.service,
+          cacheRef.current
         )
 
-        // Decode audio data
-        const audioBuffer =
-          await audioContextRef.current.decodeAudioData(audioData)
-        audioBufferRef.current = audioBuffer
-        // Create audio nodes
+        console.log("TTS synthesis complete, decoding audio...")
+
+        // Decode audio - this is where CORS issues typically occur
+        let audioBuffer: AudioBuffer
+        try {
+          audioBuffer = await audioContextRef.current.decodeAudioData(audioData)
+          console.log("Audio decoded successfully:", {
+            duration: audioBuffer.duration,
+            channels: audioBuffer.numberOfChannels,
+            sampleRate: audioBuffer.sampleRate,
+          })
+        } catch (decodeError) {
+          console.error("Audio decode error (likely CORS):", decodeError)
+          throw new Error(
+            `Audio decoding failed: ${decodeError}. This is likely a CORS issue.`
+          )
+        }
+
+        // Create and connect nodes
         const sourceNode = audioContextRef.current.createBufferSource()
         const gainNode = audioContextRef.current.createGain()
+
         sourceNode.buffer = audioBuffer
         gainNode.gain.value = optionsRef.current.volume
-        // Connect nodes
+
         sourceNode.connect(gainNode)
         gainNode.connect(audioContextRef.current.destination)
+
         // Store references
         sourceNodeRef.current = sourceNode
         gainNodeRef.current = gainNode
-        // Set up event handlers
-        sourceNode.onended = () => {
-          // This onended will be called when the audio naturally finishes.
-          // The updateTime cleanup will also handle this.
-          // No need to set speaking/paused here directly, updateTime will do it.
-        }
+
         // Set duration and start playback
         setDuration(audioBuffer.duration)
         setCurrentTime(0)
         setSpeaking(true)
         setPaused(false)
         setLoading(false)
+
         startTimeRef.current = audioContextRef.current.currentTime
+
+        // Add ended event listener
+        sourceNode.onended = () => {
+          console.log("Audio playback ended")
+          setSpeaking(false)
+          setPaused(false)
+          setCurrentTime(0)
+          optionsRef.current.onEnd?.()
+        }
+
         sourceNode.start(0)
+        console.log("Audio playback started")
 
         optionsRef.current.onStart?.()
         updateTime()
       } catch (error) {
+        console.error("TTS Error:", error)
         setLoading(false)
         setSpeaking(false)
-        optionsRef.current.onError?.(
+        const errorObj =
           error instanceof Error ? error : new Error("TTS synthesis failed")
-        )
-        console.error("TTS Speak Error:", error)
-        throw error
+        optionsRef.current.onError?.(errorObj)
+        throw errorObj
       }
     },
-    [
-      supported,
-      selectedVoice,
-      optionsRef.current.volume,
-      optionsRef.current.onStart,
-      optionsRef.current.onEnd,
-      optionsRef.current.onError,
-      updateTime,
-      optionsRef.current.service.apiUrl,
-      optionsRef.current.service.apiKey,
-      optionsRef.current.service.format,
-    ] // Added relevant service options to dependencies
+    [supported, selectedVoice, cleanupNodes, updateTime]
   )
 
-  // Control functions (remain mostly the same)
+  // Control functions
   const stop = useCallback((): void => {
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.stop()
-      sourceNodeRef.current.disconnect()
-      sourceNodeRef.current = null
-    }
+    cleanupNodes()
     setSpeaking(false)
     setPaused(false)
     setCurrentTime(0)
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
     }
-    // Also explicitly call onEnd here if stopping prematurely
     optionsRef.current.onEnd?.()
-  }, [optionsRef.current.onEnd])
+  }, [cleanupNodes])
 
   const pause = useCallback((): void => {
     if (!speaking || paused || !audioContextRef.current) return
@@ -641,11 +602,6 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
     }
   }, [])
 
-  // Dynamic options update
-  const updateOptions = useCallback((newOptions: Partial<T>): void => {
-    setCurrentOptions((prev) => ({ ...prev, ...newOptions }))
-  }, [])
-
   return {
     speak,
     stop,
@@ -662,7 +618,6 @@ export function useAudioTTS<T extends TTSOptions = TTSOptions>(
     voices,
     selectedVoice,
     setSelectedVoice,
-    updateOptions,
     audioContext: audioContextRef.current,
-  } as UseAudioTTSReturn<T>
+  }
 }
