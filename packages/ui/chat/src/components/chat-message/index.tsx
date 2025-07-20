@@ -1,7 +1,9 @@
 import { useTypingEffect } from "@chat/hooks/use-typing-effect"
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 import { Badge, WithAvatar } from "some-ui-shared"
 import { cn, formatRelativeTime } from "some-ui-utils"
+
+type ChatMessageProps = Message
 
 export const ChatMessage = ({
   avatarSize = 25,
@@ -11,6 +13,7 @@ export const ChatMessage = ({
   position,
 }: ChatMessageProps): React.JSX.Element => {
   const displayedContent = useTypingEffect({ content })
+
   return (
     <section
       className={cn(

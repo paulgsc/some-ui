@@ -1,11 +1,12 @@
 import type { CSSProperties, FC } from "react"
+import { useEffect, useRef } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
-import type { ChatMessageProps } from "@chat/types/chat"
-import { cn } from "some-ui-utils"
+import type { Message } from "@chat/types/chat"
+import { cn, useAudioTTS } from "some-ui-utils"
 
 type ChatMessagesProps = {
-  messages: Array<ChatMessageProps>
+  messages: Array<Message>
   className?: string
   height?: number
   pause?: boolean
@@ -14,10 +15,68 @@ type ChatMessagesProps = {
 export const ChatMessages: FC<ChatMessagesProps> = ({
   className,
   height,
-  pause,
   messages = [],
 }) => {
-  const { chats } = useChatMessages({ pause, chats: messages })
+  const lastSpokenRef = useRef<{ index: number; content: string } | null>(null)
+
+  const {
+    speak,
+    speaking,
+    voices,
+    selectedVoice,
+    stop: stopChat,
+  } = useAudioTTS({
+    service: {
+      provider: "openai",
+      apiUrl: "http://nixos.local:5050/v1/audio/speech",
+      apiKey: "your_dummy_api_key_here",
+      format: "mp3",
+    },
+    volume: 1.0,
+    autoPlay: true, // Set to true for immediate playback
+    onStart: () => {},
+    onEnd: () => {},
+    onError: (error) => {
+      console.error("TTS Error:", error)
+      stopChat()
+    },
+  })
+  const { chats, currentIndex } = useChatMessages({
+    pause: speaking,
+    chats: messages,
+  })
+
+  useEffect(() => {
+    const currentChat = chats[currentIndex - 1]
+    if (!currentChat || speaking) {
+      return
+    }
+
+    const { content } = currentChat
+    const currentItem = { index: currentIndex - 1, content }
+
+    // Don't speak the same content again
+    if (
+      lastSpokenRef.current &&
+      lastSpokenRef.current.index === currentItem.index &&
+      lastSpokenRef.current.content === currentItem.content
+    ) {
+      return
+    }
+
+    const speakContent = async () => {
+      try {
+        lastSpokenRef.current = currentItem
+        await speak(content)
+      } catch (error) {
+        console.error("Failed to announce topic:", error)
+      }
+    }
+
+    console.log(" Voices: ", voices, selectedVoice)
+    speakContent()
+  }, [chats, currentIndex, speak, speaking])
+
   return (
     <main
       style={

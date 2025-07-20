@@ -2,7 +2,7 @@ import type { AvatarOptions } from "some-ui-shared"
 
 export type MessageType = "chat" | "thinking"
 
-export type ChatMessageProps = {
+export type Message = {
   id: string
   character: string
   position: "left" | "right"

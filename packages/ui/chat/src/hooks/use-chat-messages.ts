@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 
 type Options = {
-  chats: Array<ChatMessageProps>
+  chats: Array<Message>
   pause?: boolean
 }
 
-export function useChatMessages({ chats, pause }: Options): Options {
-  const [messages, setMessages] = useState<Array<ChatMessageProps>>([])
-  const [_currentIndex, setCurrentIndex] = useState(0)
+type ReturnOptions = {
+  currentIndex: number
+} & Options
+
+export function useChatMessages({ chats, pause }: Options): ReturnOptions {
+  const [messages, setMessages] = useState<Array<Message>>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
@@ -45,5 +49,6 @@ export function useChatMessages({ chats, pause }: Options): Options {
 
   return {
     chats: messages,
+    currentIndex,
   }
 }
