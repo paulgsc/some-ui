@@ -290,13 +290,19 @@ const synthesizeTTS = async (
   text: string,
   voice: VoiceConfig,
   config: TTSServiceConfig,
-  cache: Map<string, ArrayBuffer>
+  cache: Map<string, string>
 ): Promise<ArrayBuffer> => {
   const cacheKey = `${config.provider}-${voice.id}-${text.slice(0, 100)}`
 
   if (config.cacheAudio !== false && cache.has(cacheKey)) {
-    const cachedAudioData = cache.get(cacheKey)!
-    return cachedAudioData.slice(0) // This
+    const cachedBase64 = cache.get(cacheKey)!
+    // Convert base64 back to ArrayBuffer
+    const binaryString = atob(cachedBase64)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return bytes.buffer
   }
 
   const apiConfig = TTS_API_CONFIGS[config.provider]
@@ -304,14 +310,10 @@ const synthesizeTTS = async (
   const headers = apiConfig.headers(config)
   const body = apiConfig.body(text, voice, config)
 
-  // Debug logging
-  console.log("TTS Request:", { url, method: "POST", headers, body })
-
   const response = await fetch(url, {
     method: "POST",
     headers,
     body,
-    // Add CORS mode explicitly
     mode: "cors",
     credentials: "omit",
   })
@@ -326,7 +328,14 @@ const synthesizeTTS = async (
   const audioData = await apiConfig.processResponse(response)
 
   if (config.cacheAudio !== false) {
-    cache.set(cacheKey, audioData)
+    // Convert to base64 for reliable storage
+    const uint8Array = new Uint8Array(audioData)
+    let binary = ""
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64 = btoa(binary)
+    cache.set(cacheKey, base64)
   }
 
   return audioData
@@ -360,7 +369,7 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
   const animationFrameRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
   const pauseTimeRef = useRef<number>(0)
-  const cacheRef = useRef(new Map<string, ArrayBuffer>())
+  const cacheRef = useRef(new Map<string, string>())
   const optionsRef = useRef(mergedOptions)
 
   // Update options ref
