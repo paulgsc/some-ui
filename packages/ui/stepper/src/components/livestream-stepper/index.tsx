@@ -9,22 +9,35 @@ type Topic = {
   duration: number
 }
 
-// Sample data for video topics
 const sampleTopics: Array<Topic> = [
-  { id: 1, title: "Setting up the project", timestamp: 0, duration: 15 },
-  { id: 2, title: "React component basics", timestamp: 15, duration: 20 },
+  {
+    id: 1,
+    title:
+      "Distracted studying. Can it be possible to watch drama, while studying. Well it doesn't matter, it's all meaningless anyhow",
+    timestamp: 0,
+    duration: 60,
+  },
+  {
+    id: 2,
+    title:
+      "Typeracer: Why do we bother practicing how to type, couldn't tell ya! More meaningless slop",
+    timestamp: 60,
+    duration: 75,
+  },
   {
     id: 3,
-    title: "Implementing state management",
-    timestamp: 35,
-    duration: 25,
+    title:
+      "We hopefully learned enough so that I understand how the hyper crate is working. Suppose this is pure cope",
+    timestamp: 75,
+    duration: 115,
   },
-  { id: 4, title: "Responsive design patterns", timestamp: 60, duration: 30 },
-  { id: 5, title: "API integration", timestamp: 90, duration: 20 },
-  { id: 6, title: "Testing React components", timestamp: 110, duration: 25 },
-  { id: 7, title: "Performance optimization", timestamp: 135, duration: 15 },
-  { id: 8, title: "Deployment strategies", timestamp: 150, duration: 20 },
-  { id: 9, title: "Q&A session", timestamp: 170, duration: 10 },
+  {
+    id: 4,
+    title:
+      "Can it be possible that I can now fix some compiler error. Only future me knows, but I hazard a guess the answer is ...",
+    timestamp: 115,
+    duration: 145,
+  },
 ]
 
 // Format minutes to HH:MM:SS
@@ -36,25 +49,33 @@ const formatTime = (minutes: number): string => {
 
 type LivestreamTopicNotificationProps = {
   playbackSpeed?: number
-  speechIntervalMinutes?: number
+  speechIntervalLoops?: number // Speak every N loops instead of time-based
+  updateIntervalMs?: number // How often to update the timeline (milliseconds)
 }
 
 export const LivestreamTopicNotification: FC<
   LivestreamTopicNotificationProps
-> = ({ playbackSpeed = 5, speechIntervalMinutes = 5 }): React.JSX.Element => {
+> = ({
+  playbackSpeed = 5,
+  speechIntervalLoops = 6,
+  updateIntervalMs = 120,
+}): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
   const [activeToast, setActiveToast] = useState<Topic | null>(null)
   const [toastVisible, setToastVisible] = useState<boolean>(false)
-  const [lastSpeechTime, setLastSpeechTime] = useState(0)
+
+  // Track loops and segments separately
+  const loopCountRef = useRef(0)
+  const lastAnnouncedSegmentRef = useRef<string | number | null>(null)
+  const lastShownSegmentRef = useRef<string | number | null>(null)
+  const currentSpeechLoopRef = useRef<number>(-1) // Track which speech loop we're in
+  const hideToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const totalDuration = sampleTopics.reduce(
     (total, topic) => Math.max(total, topic.timestamp + topic.duration),
     0
   )
-
-  const progressBarRef = useRef(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-  const hideToastTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Initialize TTS with proper configuration
   const { speak, speaking } = useAudioTTS({
@@ -65,10 +86,9 @@ export const LivestreamTopicNotification: FC<
       format: "mp3",
     },
     volume: 1.0,
-    autoPlay: true, // Set to true for immediate playback
+    autoPlay: true,
     onStart: () => {
       console.log("Speech started!")
-      setToastVisible(true)
     },
     onEnd: () => {
       console.log("Speech ended!")
@@ -78,53 +98,68 @@ export const LivestreamTopicNotification: FC<
       }
       hideToastTimeoutRef.current = setTimeout(() => {
         setToastVisible(false)
-      }, 1500) // Hide 1.5s after speech ends
+        setActiveToast(null)
+      }, 1500)
     },
     onError: (error) => {
       console.error("TTS Error:", error)
       setToastVisible(false)
+      setActiveToast(null)
     },
   })
 
-  // Check if enough time has passed since last speech
-  const shouldSpeak = useCallback(
-    (currentTime: number): boolean => {
-      const timeSinceLastSpeech = currentTime - lastSpeechTime
-      console.log("delta;  ", timeSinceLastSpeech)
-      return (
-        timeSinceLastSpeech >= speechIntervalMinutes || lastSpeechTime === 0
-      )
+  // Find current topic based on timestamp
+  const getCurrentTopic = useCallback((time: number): Topic | null => {
+    return (
+      sampleTopics.find(
+        (topic) =>
+          time >= topic.timestamp && time < topic.timestamp + topic.duration
+      ) || null
+    )
+  }, [])
+
+  // Show toast notification (without speech)
+  const showToastNotification = useCallback(
+    (topic: Topic) => {
+      setActiveToast(topic)
+      setToastVisible(true)
+      lastShownSegmentRef.current = topic.id
+
+      // Auto-hide toast after 3 seconds if not speaking
+      if (hideToastTimeoutRef.current) {
+        clearTimeout(hideToastTimeoutRef.current)
+      }
+      hideToastTimeoutRef.current = setTimeout(() => {
+        if (!speaking) {
+          setToastVisible(false)
+          setActiveToast(null)
+        }
+      }, 3000)
     },
-    [speechIntervalMinutes, lastSpeechTime]
+    [speaking]
   )
 
-  // Handle topic announcement
-  const announceTopicIfNeeded = useCallback(
+  // Announce topic with speech
+  const announceTopicWithSpeech = useCallback(
     async (topic: Topic) => {
-      if (shouldSpeak(currentTime) && !speaking) {
-        try {
-          await speak(topic.title)
-          setLastSpeechTime(currentTime)
-          setActiveToast(topic)
-        } catch (error) {
-          console.error("Failed to announce topic:", error)
-        }
-      } else if (!speaking) {
-        // Show toast without speech
+      if (speaking) return // Don't interrupt current speech
+
+      try {
         setActiveToast(topic)
         setToastVisible(true)
-        if (hideToastTimeoutRef.current) {
-          clearTimeout(hideToastTimeoutRef.current)
-        }
-        hideToastTimeoutRef.current = setTimeout(() => {
-          setToastVisible(false)
-        }, 3000) // Show for 3s without speech
+        lastAnnouncedSegmentRef.current = topic.id
+        lastShownSegmentRef.current = topic.id
+        await speak(topic.title)
+      } catch (error) {
+        console.error("Failed to announce topic:", error)
+        // Fallback to showing toast without speech
+        showToastNotification(topic)
       }
     },
-    [currentTime, shouldSpeak, speaking, speak]
+    [speaking, speak, showToastNotification]
   )
 
-  // Main time progression and topic detection effect
+  // Main timeline progression effect
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setCurrentTime((prevTime) => {
@@ -133,29 +168,65 @@ export const LivestreamTopicNotification: FC<
           return prevTime
         }
 
-        const newTime = prevTime + playbackSpeed / 10
+        let newTime = prevTime + playbackSpeed / 10
 
-        // Loop back to beginning when reaching end
+        // Handle loop completion
         if (newTime >= totalDuration) {
-          return 0
+          newTime = 0
+          loopCountRef.current += 1
+
+          // Reset visual tracking when looping
+          lastShownSegmentRef.current = null
+
+          // Check if this is a new speech loop
+          if (
+            loopCountRef.current > 0 &&
+            loopCountRef.current % speechIntervalLoops === 0
+          ) {
+            // Starting a new speech loop - reset speech tracking
+            lastAnnouncedSegmentRef.current = null
+            currentSpeechLoopRef.current = loopCountRef.current
+            console.log(`Starting speech loop ${loopCountRef.current}`)
+          }
+
+          console.log(`Completed loop ${loopCountRef.current}`)
         }
 
-        // Check for topic at current timestamp
-        const currentTopic = sampleTopics.find(
-          (topic) =>
-            newTime >= topic.timestamp &&
-            newTime < topic.timestamp + 0.5 && // Only trigger at start of topic
-            (!activeToast || activeToast.id !== topic.id) // Avoid duplicate announcements
-        )
+        // Find current topic
+        const currentTopic = getCurrentTopic(newTime)
 
         if (currentTopic) {
-          // Use setTimeout to avoid state update during render
-          setTimeout(() => announceTopicIfNeeded(currentTopic), 0)
+          // Check if we should speak - we're in a speech loop and haven't announced this segment yet in this speech loop
+          const isCurrentlySpeechLoop =
+            currentSpeechLoopRef.current === loopCountRef.current
+          const shouldSpeak =
+            isCurrentlySpeechLoop &&
+            lastAnnouncedSegmentRef.current !== currentTopic.id
+
+          const shouldShowToast =
+            lastShownSegmentRef.current !== currentTopic.id
+
+          if (shouldSpeak) {
+            // Announce with speech (will also show toast)
+            console.log(
+              `Speaking on loop ${loopCountRef.current} for topic: ${currentTopic.title}`
+            )
+            setTimeout(() => announceTopicWithSpeech(currentTopic), 0)
+          } else if (shouldShowToast) {
+            // Show toast without speech
+            setTimeout(() => showToastNotification(currentTopic), 0)
+          }
+        } else if (!currentTopic && activeToast) {
+          // We've moved out of any topic segment, hide toast
+          setTimeout(() => {
+            setToastVisible(false)
+            setActiveToast(null)
+          }, 0)
         }
 
         return newTime
       })
-    }, 120)
+    }, updateIntervalMs)
 
     return () => {
       if (intervalRef.current) {
@@ -164,22 +235,17 @@ export const LivestreamTopicNotification: FC<
     }
   }, [
     playbackSpeed,
+    updateIntervalMs,
     speaking,
     totalDuration,
+    speechIntervalLoops,
+    getCurrentTopic,
+    announceTopicWithSpeech,
+    showToastNotification,
     activeToast,
-    announceTopicIfNeeded,
   ])
 
-  // Reset speech timing when looping
-  useEffect(() => {
-    if (currentTime === 0) {
-      setLastSpeechTime(0)
-      setActiveToast(null)
-      setToastVisible(false)
-    }
-  }, [currentTime])
-
-  // Cleanup timeouts
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (hideToastTimeoutRef.current) {
@@ -188,15 +254,23 @@ export const LivestreamTopicNotification: FC<
     }
   }, [])
 
+  // Reset state on component mount/remount
+  useEffect(() => {
+    loopCountRef.current = 0
+    lastAnnouncedSegmentRef.current = null
+    lastShownSegmentRef.current = null
+    currentSpeechLoopRef.current = -1
+    setCurrentTime(0)
+    setActiveToast(null)
+    setToastVisible(false)
+  }, [])
+
   return (
     <div className="absolute inset-0 opacity-95">
       <div className="relative size-full overflow-hidden bg-none">
         {/* Progress bar at bottom of screen */}
         <div className="absolute inset-x-0 bottom-0 h-8 bg-none">
-          <div
-            ref={progressBarRef}
-            className="relative mx-2 mt-4 h-1 cursor-pointer bg-gray-700"
-          >
+          <div className="relative mx-2 mt-4 h-1 cursor-pointer bg-gray-700">
             {/* Progress indicator */}
             <div
               className="absolute left-0 top-0 h-full bg-red-600 transition-all duration-100"
@@ -219,6 +293,16 @@ export const LivestreamTopicNotification: FC<
               className="absolute top-0 -ml-1.5 -mt-1 size-3 rounded-full bg-red-500 transition-all duration-100"
               style={{ left: `${(currentTime / totalDuration) * 100}%` }}
             />
+          </div>
+
+          {/* Loop and speech indicators */}
+          <div className="absolute left-4 top-1 flex items-center space-x-4 text-xs text-white">
+            <span>Loop: {loopCountRef.current}</span>
+            <span>
+              Next speech: Loop{" "}
+              {Math.ceil((loopCountRef.current + 1) / speechIntervalLoops) *
+                speechIntervalLoops}
+            </span>
           </div>
 
           {/* Speech indicator */}
