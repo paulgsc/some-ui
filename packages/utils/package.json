@@ -16,22 +16,27 @@
 		"test": "vitest"
 	},
 	"peerDependencies": {
+		"@tanstack/react-query": "^5.66.11",
 		"clsx": "^2.1.1",
 		"nuqs": "1.18.0",
 		"react": "18.3.1",
 		"react-dom": "18.3.1",
 		"tailwind-merge": "^2.4.0",
-		"usehooks-ts": "3.1.0"
+		"usehooks-ts": "3.1.0",
+		"zod": "^4.0.5"
 	},
 	"dependencies": {
 		"clsx": "^2.1.1",
 		"nuqs": "1.18.0",
 		"tailwind-merge": "^2.4.0",
+		"maishatu-fetch-kit": "workspace:*",
 		"usehooks-ts": "3.1.0"
 	},
 	"devDependencies": {
+		"@some-ui/tsconfig": "workspace:*",
+		"@tanstack/react-query": "^5.66.11",
 		"some-ui-rollup-config": "workspace:*",
-		"@some-ui/tsconfig": "workspace:*"
+		"zod": "^4.0.5"
 	},
 	"repository": {
 		"type": "git",

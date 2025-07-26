@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 // TTS Service providers
 type TTSProvider = "elevenlabs" | "openai" | "google" | "azure" | "custom"
 
 // Voice configuration for different providers
-type VoiceConfig = {
+export type VoiceConfig = {
   readonly id: string
   readonly name: string
   readonly provider: TTSProvider
@@ -46,7 +47,7 @@ type UseAudioTTSOptions = TTSOptions & {
 }
 
 // Return interface
-type UseAudioTTSReturn = {
+export type UseAudioTTSReturn = {
   readonly speak: (text: string) => Promise<void>
   readonly stop: () => void
   readonly pause: () => void
@@ -65,16 +66,11 @@ type UseAudioTTSReturn = {
   readonly audioContext: AudioContext | null
 }
 
-// Default options
-const DEFAULT_OPTIONS: Required<
-  Pick<
-    UseAudioTTSOptions,
-    "volume" | "playbackRate" | "crossOrigin" | "autoPlay" | "preloadVoices"
-  >
-> = {
+// Default options - memoized to prevent recreation
+const DEFAULT_OPTIONS = {
   volume: 1,
   playbackRate: 1,
-  crossOrigin: "anonymous",
+  crossOrigin: "anonymous" as const,
   autoPlay: true,
   preloadVoices: true,
 } as const
@@ -113,11 +109,11 @@ const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
   ],
   openai: [
     {
-      id: "alloy",
-      name: "Alloy",
+      id: "onyx",
+      name: "Onyx",
       provider: "openai",
       language: "en-US",
-      gender: "neutral",
+      gender: "male",
     },
     {
       id: "echo",
@@ -127,18 +123,18 @@ const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
       gender: "male",
     },
     {
-      id: "fable",
-      name: "Fable",
+      id: "alloy",
+      name: "Alloy",
       provider: "openai",
       language: "en-US",
       gender: "neutral",
     },
     {
-      id: "onyx",
-      name: "Onyx",
+      id: "fable",
+      name: "Fable",
       provider: "openai",
       language: "en-US",
-      gender: "male",
+      gender: "neutral",
     },
     {
       id: "nova",
@@ -270,8 +266,8 @@ const TTS_API_CONFIGS: Record<TTSProvider, TTSAPIConfig> = {
     }),
     body: (text, voice) =>
       `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${voice.language || "en-US"}">
-          <voice name="${voice.id}">${text}</voice>
-        </speak>`,
+                                                                                                                                                                                                                                                                                                                                                            <voice name="${voice.id}">${text}</voice>
+                                                                                                                                                                                                                                                                                                                                                        </speak>`,
     processResponse: (response) => response.arrayBuffer(),
   },
   custom: {
@@ -285,60 +281,67 @@ const TTS_API_CONFIGS: Record<TTSProvider, TTSAPIConfig> = {
   },
 }
 
-// Functional TTS synthesis
+// Generate query key for TanStack Query
+const tinyHash = (str: string): string => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash).toString(36)
+}
+const createTTSQueryKey = (
+  text: string,
+  voice: VoiceConfig,
+  config: TTSServiceConfig
+): Array<string> => {
+  // Truncate text for cache key to prevent excessively long keys
+  const textKey = tinyHash(text)
+  return [
+    "tts",
+    config.provider,
+    voice.id,
+    textKey,
+    config.format || "mp3",
+    config.quality || "medium",
+  ]
+}
+
+// TTS synthesis function for TanStack Query
 const synthesizeTTS = async (
   text: string,
   voice: VoiceConfig,
-  config: TTSServiceConfig,
-  cache: Map<string, string>
+  config: TTSServiceConfig
 ): Promise<ArrayBuffer> => {
-  const cacheKey = `${config.provider}-${voice.id}-${text.slice(0, 100)}`
-
-  if (config.cacheAudio !== false && cache.has(cacheKey)) {
-    const cachedBase64 = cache.get(cacheKey)!
-    // Convert base64 back to ArrayBuffer
-    const binaryString = atob(cachedBase64)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    return bytes.buffer
-  }
-
   const apiConfig = TTS_API_CONFIGS[config.provider]
   const url = apiConfig.url(config, voice)
   const headers = apiConfig.headers(config)
   const body = apiConfig.body(text, voice, config)
+  console.info("Attempting fetch!")
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body,
-    mode: "cors",
-    credentials: "omit",
-  })
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      mode: "cors",
+      credentials: "omit",
+    })
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Unknown error")
-    throw new Error(
-      `${config.provider} TTS API error: ${response.status} ${response.statusText} - ${errorText}`
-    )
-  }
-
-  const audioData = await apiConfig.processResponse(response)
-
-  if (config.cacheAudio !== false) {
-    // Convert to base64 for reliable storage
-    const uint8Array = new Uint8Array(audioData)
-    let binary = ""
-    for (let i = 0; i < uint8Array.length; i++) {
-      binary += String.fromCharCode(uint8Array[i])
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unknown error")
+      console.error(
+        `${config.provider} TTS API error: ${response.status} ${response.statusText} - ${errorText}`
+      )
+      throw new Error(
+        `${config.provider} TTS API error: ${response.status} ${response.statusText} - ${errorText}`
+      )
     }
-    const base64 = btoa(binary)
-    cache.set(cacheKey, base64)
-  }
 
-  return audioData
+    const result = await apiConfig.processResponse(response)
+    return result
+  } catch (error) {
+    throw error
+  }
 }
 
 // Create AudioContext helper
@@ -350,7 +353,25 @@ const createAudioContext = (): AudioContext => {
 
 // Main hook
 export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
-  const mergedOptions = { ...DEFAULT_OPTIONS, ...options }
+  const queryClient = useQueryClient()
+
+  // Memoize merged options to prevent recreation
+  const mergedOptions = useMemo(() => {
+    return { ...DEFAULT_OPTIONS, ...options }
+  }, [
+    options.volume,
+    options.playbackRate,
+    options.crossOrigin,
+    options.autoPlay,
+    options.preloadVoices,
+    options.service.provider,
+    options.service.apiKey,
+    options.service.apiUrl,
+    options.service.format,
+    options.service.sampleRate,
+    options.service.quality,
+    options.service.cacheAudio,
+  ])
 
   // State
   const [speaking, setSpeaking] = useState(false)
@@ -361,23 +382,115 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
   const [duration, setDuration] = useState(0)
   const [voices, setVoices] = useState<ReadonlyArray<VoiceConfig>>([])
   const [selectedVoice, setSelectedVoice] = useState<VoiceConfig | null>(null)
+  const [userInteracted, setUserInteracted] = useState(false)
 
-  // Refs
+  // Refs - stable across renders
   const audioContextRef = useRef<AudioContext | null>(null)
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null)
   const gainNodeRef = useRef<GainNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
   const pauseTimeRef = useRef<number>(0)
-  const cacheRef = useRef(new Map<string, string>())
-  const optionsRef = useRef(mergedOptions)
+  const currentRequestRef = useRef<string | null>(null)
 
-  // Update options ref
+  // Store callbacks in refs to avoid recreation and prevent stale closures
+  const callbacksRef = useRef({
+    onStart: options.onStart,
+    onEnd: options.onEnd,
+    onError: options.onError,
+    onProgress: options.onProgress,
+  })
+
+  // Update callbacks ref when they change
   useEffect(() => {
-    optionsRef.current = mergedOptions
-  }, [mergedOptions])
+    callbacksRef.current = {
+      onStart: options.onStart,
+      onEnd: options.onEnd,
+      onError: options.onError,
+      onProgress: options.onProgress,
+    }
+  }, [options.onStart, options.onEnd, options.onError, options.onProgress])
 
-  // Initialize
+  // Memoize available voices to prevent recreation
+  const availableVoices = useMemo(() => {
+    return BUILTIN_VOICES[mergedOptions.service.provider]
+  }, [mergedOptions.service.provider])
+
+  // Cleanup audio nodes - stable callback
+  const cleanupNodes = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.stop()
+        sourceNodeRef.current.disconnect()
+      } catch (error) {
+        // Node may already be stopped/disconnected
+      }
+      sourceNodeRef.current = null
+    }
+
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect()
+      } catch (error) {
+        // Node may already be disconnected
+      }
+      gainNodeRef.current = null
+    }
+  }, [])
+
+  // Time tracking - stable callback
+  const updateTime = useCallback(() => {
+    if (audioContextRef.current && speaking && !paused) {
+      const elapsed = audioContextRef.current.currentTime - startTimeRef.current
+      setCurrentTime(elapsed)
+      callbacksRef.current.onProgress?.(elapsed, duration)
+
+      if (elapsed < duration) {
+        animationFrameRef.current = requestAnimationFrame(updateTime)
+      } else {
+        setSpeaking(false)
+        setPaused(false)
+        setCurrentTime(0)
+        currentRequestRef.current = null
+        callbacksRef.current.onEnd?.()
+      }
+    }
+  }, [speaking, paused, duration])
+
+  const initializeAudioWithUserGesture = useCallback(async () => {
+    if (!isAudioContextSupported()) {
+      setSupported(false)
+      return false
+    }
+
+    try {
+      if (
+        !audioContextRef.current ||
+        audioContextRef.current.state === "closed"
+      ) {
+        audioContextRef.current = createAudioContext()
+      }
+
+      // Ensure context is running
+      if (audioContextRef.current.state === "suspended") {
+        await audioContextRef.current.resume()
+      }
+
+      setUserInteracted(true)
+      setSupported(true)
+      return true
+    } catch (error) {
+      console.error("Failed to initialize AudioContext:", error)
+      setSupported(false)
+      return false
+    }
+  }, [])
+  // Initialize AudioContext and voices
   useEffect(() => {
     if (!isAudioContextSupported()) {
       setSupported(false)
@@ -395,73 +508,60 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
     }
 
     // Load voices
-    const availableVoices = BUILTIN_VOICES[options.service.provider]
     setVoices(availableVoices)
 
+    // Set default voice only if none is selected and voices are available
     if (availableVoices.length > 0 && !selectedVoice) {
       const defaultVoice =
         availableVoices.find((v) => v.provider === "openai") ??
         availableVoices[0]
       setSelectedVoice(defaultVoice)
     }
+  }, [availableVoices, selectedVoice])
 
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
+      cleanupNodes()
+
       if (
         audioContextRef.current &&
         audioContextRef.current.state !== "closed"
       ) {
         audioContextRef.current.close()
+        audioContextRef.current = null
       }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
+
+      // Reset state
+      setSpeaking(false)
+      setPaused(false)
+      setLoading(false)
+      setCurrentTime(0)
+      setDuration(0)
+      currentRequestRef.current = null
     }
-  }, [options.service.provider, selectedVoice])
+  }, [cleanupNodes])
 
-  // Time tracking
-  const updateTime = useCallback(() => {
-    if (audioContextRef.current && speaking && !paused) {
-      const elapsed = audioContextRef.current.currentTime - startTimeRef.current
-      setCurrentTime(elapsed)
-      optionsRef.current.onProgress?.(elapsed, duration)
-
-      if (elapsed < duration) {
-        animationFrameRef.current = requestAnimationFrame(updateTime)
-      } else {
-        setSpeaking(false)
-        setPaused(false)
-        setCurrentTime(0)
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current)
-        }
-        optionsRef.current.onEnd?.()
-      }
-    }
-  }, [speaking, paused, duration])
-
-  // Cleanup audio nodes
-  const cleanupNodes = useCallback(() => {
-    if (sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current.stop()
-        sourceNodeRef.current.disconnect()
-      } catch (error) {
-        // Node may already be stopped/disconnected
-      }
-      sourceNodeRef.current = null
-    }
-  }, [])
-
-  // Speak function
+  // Speak function with race condition prevention
   const speak = useCallback(
     async (text: string): Promise<void> => {
+      if (!userInteracted) {
+        // Try to initialize on first use
+        const initialized = await initializeAudioWithUserGesture()
+        if (!initialized) {
+          throw new Error(
+            "AudioContext requires user interaction to initialize"
+          )
+        }
+      }
+
       if (
         !supported ||
         !text.trim() ||
         !selectedVoice ||
         !audioContextRef.current
       ) {
-        console.warn("TTS speak aborted: conditions not met.", {
+        console.error("TTS speak aborted: conditions not met.", {
           supported,
           textTrimmed: text.trim().length > 0,
           selectedVoice: !!selectedVoice,
@@ -470,66 +570,67 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
         return
       }
 
+      // Prevent race conditions by tracking current request
+      const requestId = `${Date.now()}-${Math.random()}`
+      currentRequestRef.current = requestId
+
       try {
         setLoading(true)
-        cleanupNodes() // Resume AudioContext if suspended
+        cleanupNodes()
 
         if (audioContextRef.current.state === "suspended") {
-          console.log("AudioContext is suspended, attempting to resume...")
           await audioContextRef.current.resume()
-          console.log(
-            "AudioContext state after resume:",
-            audioContextRef.current.state
-          )
-        } else {
-          console.log(
-            "AudioContext state is already:",
-            audioContextRef.current.state
-          )
-        } // Get audio data
+        }
 
-        console.log("Starting TTS synthesis...")
-        const audioData = await synthesizeTTS(
+        // Generate query key and fetch from cache or API
+        const queryKey = createTTSQueryKey(
           text,
           selectedVoice,
-          optionsRef.current.service,
-          cacheRef.current
+          mergedOptions.service
         )
 
-        console.log(
-          "TTS synthesis complete, audioData size:",
-          audioData.byteLength
-        ) // Decode audio
+        const audioData = await queryClient.fetchQuery({
+          queryKey,
+          queryFn: () =>
+            synthesizeTTS(text, selectedVoice, mergedOptions.service),
+          staleTime: 5 * 60 * 1000,
+          gcTime: 30 * 60 * 1000,
+        })
+
+        // Check if this request is still current
+        if (currentRequestRef.current !== requestId) {
+          return // Request was superseded
+        }
 
         let audioBuffer: AudioBuffer
         try {
-          console.log("Attempting to decode audio data...")
-          audioBuffer = await audioContextRef.current.decodeAudioData(audioData)
-          console.log("Audio decoded successfully:", {
-            duration: audioBuffer.duration,
-            channels: audioBuffer.numberOfChannels,
-            sampleRate: audioBuffer.sampleRate,
-          })
-        } catch (decodeError) {
-          console.error("Audio decode error:", decodeError) // Removed "(likely CORS)" as we ruled that out
-          throw new Error(
-            `Audio decoding failed: ${decodeError}.` // Updated message
+          audioBuffer = await audioContextRef.current.decodeAudioData(
+            audioData.slice()
           )
-        } // Create and connect nodes
+        } catch (decodeError) {
+          console.error("Audio decode error:", decodeError)
+          throw new Error(`Audio decoding failed: ${decodeError}`)
+        }
+
+        // Check again after async operation
+        if (
+          currentRequestRef.current !== requestId ||
+          !audioContextRef.current
+        ) {
+          return // Request was superseded or context was destroyed
+        }
 
         const sourceNode = audioContextRef.current.createBufferSource()
         const gainNode = audioContextRef.current.createGain()
 
-        sourceNode.buffer = audioBuffer // This is the core connection
-        gainNode.gain.value = optionsRef.current.volume
-        console.log("Gain node volume set to:", gainNode.gain.value)
+        sourceNode.buffer = audioBuffer
+        gainNode.gain.value = mergedOptions.volume
 
         sourceNode.connect(gainNode)
         gainNode.connect(audioContextRef.current.destination)
-        console.log("Audio nodes connected to destination.") // Store references
 
         sourceNodeRef.current = sourceNode
-        gainNodeRef.current = gainNode // Set duration and start playback
+        gainNodeRef.current = gainNode
 
         setDuration(audioBuffer.duration)
         setCurrentTime(0)
@@ -537,48 +638,56 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
         setPaused(false)
         setLoading(false)
 
-        startTimeRef.current = audioContextRef.current.currentTime // Add ended event listener
+        startTimeRef.current = audioContextRef.current.currentTime
 
         sourceNode.onended = () => {
-          console.log(
-            "Audio playback ended (onended event fired). Context time:",
-            audioContextRef.current?.currentTime
-          )
-          setSpeaking(false)
-          setPaused(false)
-          setCurrentTime(0)
-          optionsRef.current.onEnd?.()
+          if (currentRequestRef.current === requestId) {
+            setSpeaking(false)
+            setPaused(false)
+            setCurrentTime(0)
+            currentRequestRef.current = null
+            callbacksRef.current.onEnd?.()
+          }
         }
 
-        console.log("Calling sourceNode.start(0)...")
         sourceNode.start(0)
-        console.log("Audio playback initiated.") // This means start() was called
-
-        optionsRef.current.onStart?.()
+        callbacksRef.current.onStart?.()
         updateTime()
       } catch (error) {
-        console.error("TTS Error:", error)
-        setLoading(false)
-        setSpeaking(false)
-        const errorObj =
-          error instanceof Error ? error : new Error("TTS synthesis failed")
-        optionsRef.current.onError?.(errorObj)
-        throw errorObj
+        if (currentRequestRef.current === requestId) {
+          console.error("TTS Error:", error)
+          setLoading(false)
+          setSpeaking(false)
+          currentRequestRef.current = null
+
+          const errorObj =
+            error instanceof Error ? error : new Error("TTS synthesis failed")
+          callbacksRef.current.onError?.(errorObj)
+          throw errorObj
+        }
       }
     },
-    [supported, selectedVoice, cleanupNodes, updateTime]
+    [
+      supported,
+      selectedVoice,
+      cleanupNodes,
+      updateTime,
+      mergedOptions.service,
+      mergedOptions.volume,
+      queryClient,
+      userInteracted,
+      initializeAudioWithUserGesture,
+    ]
   )
 
-  // Control functions
+  // Control functions - all stable callbacks
   const stop = useCallback((): void => {
     cleanupNodes()
     setSpeaking(false)
     setPaused(false)
     setCurrentTime(0)
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-    }
-    optionsRef.current.onEnd?.()
+    currentRequestRef.current = null
+    callbacksRef.current.onEnd?.()
   }, [cleanupNodes])
 
   const pause = useCallback((): void => {
@@ -590,6 +699,7 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
       pauseTimeRef.current = audioContextRef.current.currentTime
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
       }
     }
   }, [speaking, paused])

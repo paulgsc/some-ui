@@ -128,7 +128,7 @@ export function useWebSocket<I, U = unknown>({
             outgoingSchemaRef.current.parse(message)
           } catch (err) {
             if (err instanceof z.ZodError) {
-              const errorMessage = `Invalid outgoing message: ${err.errors.map((e) => e.message).join(", ")}`
+              const errorMessage = `Invalid outgoing message: ${err.issues.map((e) => e.message).join(", ")}`
               setError(errorMessage)
               log("Message validation error:", err)
               return
