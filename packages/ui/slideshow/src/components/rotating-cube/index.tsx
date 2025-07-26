@@ -21,6 +21,7 @@ type RotatingCubeProps = {
   className?: string
   content?: Array<React.JSX.Element>
   duration?: number
+  hideBackface?: boolean
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
@@ -28,6 +29,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
   dof = "Y-axis",
   content = [],
   duration = 3000,
+  hideBackface = false,
   className,
 }): React.JSX.Element => {
   const getFaces = useCallback(() => {
@@ -42,6 +44,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
       faces={getFaces()}
       perspective={perspective}
       duration={duration}
+      hideBackface={hideBackface}
     />
   )
 }

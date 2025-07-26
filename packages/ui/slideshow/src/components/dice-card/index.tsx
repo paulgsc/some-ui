@@ -1,5 +1,5 @@
 import type { CSSProperties, FC, ReactNode, RefObject } from "react"
-import { useRef } from "react"
+import { Fragment, useRef } from "react"
 import type {
   AllowedRotationAxis,
   Mode,
@@ -18,6 +18,7 @@ type RotatingCubeProps = {
   faceClassName?: string
   showBeam?: boolean
   cubeId?: number | string
+  hideBackface?: boolean
 }
 
 export const DiceCard: FC<RotatingCubeProps> = ({
@@ -30,6 +31,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   duration = 10000,
   faces = [],
   showBeam = true,
+  hideBackface = false,
 }): React.JSX.Element => {
   const { isRotating, setIsRotating, rotationState, rotationAxis } =
     useRotatingCube({
@@ -118,8 +120,13 @@ export const DiceCard: FC<RotatingCubeProps> = ({
                 trailFadeDuration={duration / 2}
               />
             )}
-
-            {face}
+            {!hideBackface || rotationState.face === index ? (
+              face
+            ) : !hideBackface && rotationState.face !== index ? (
+              face
+            ) : (
+              <Fragment />
+            )}
           </div>
         ))}
       </div>
