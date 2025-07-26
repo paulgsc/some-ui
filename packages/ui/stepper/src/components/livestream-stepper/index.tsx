@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useAudioTTS } from "some-ui-utils"
+import { useSpeechQueue } from "some-ui-utils"
 
 type Topic = {
   id: string | number
@@ -33,21 +33,21 @@ const sampleTopics: Array<Topic> = [
       synchronize this, by having them subscribe to an event bus queue. The end result is a well ochestrated
     symphony of ai speech utterance.`,
     timestamp: 5,
-    duration: 195,
+    duration: 210,
   },
   {
     id: 3,
     title: "Break",
     description: "I take break...",
-    timestamp: 200,
-    duration: 30,
+    timestamp: 215,
+    duration: 35,
   },
   {
     id: 4,
     title: "Android APK",
     description: `I want to have my own temu apk, simple reminder app. Can it be possible that the entire process
     is rusty. We find out today.`,
-    timestamp: 230,
+    timestamp: 250,
     duration: 60,
   },
 ]
@@ -65,16 +65,19 @@ type LivestreamTopicNotificationProps = {
   updateIntervalMs?: number // How often to update the timeline (milliseconds)
 }
 
+const COMPONENT_ID = "livestream-timeline"
+
 export const LivestreamTopicNotification: FC<
   LivestreamTopicNotificationProps
 > = ({
   playbackSpeed = 5,
-  speechIntervalLoops = 1,
+  speechIntervalLoops = 3,
   updateIntervalMs = 120,
 }): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
   const [activeToast, setActiveToast] = useState<Topic | null>(null)
   const [toastVisible, setToastVisible] = useState<boolean>(false)
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
 
   // Track loops and segments separately
   const loopCountRef = useRef(0)
@@ -89,37 +92,7 @@ export const LivestreamTopicNotification: FC<
     0
   )
 
-  // Initialize TTS with proper configuration
-  const { speak, speaking } = useAudioTTS({
-    service: {
-      provider: "openai",
-      apiUrl: "http://nixos.local:5050/v1/audio/speech",
-      apiKey: "your_dummy_api_key_here",
-      format: "mp3",
-      cacheAudio: true,
-    },
-    volume: 1.0,
-    autoPlay: true,
-    onStart: () => {
-      console.log("Speech started!")
-    },
-    onEnd: () => {
-      console.log("Speech ended!")
-      // Schedule toast to hide after speech ends
-      if (hideToastTimeoutRef.current) {
-        clearTimeout(hideToastTimeoutRef.current)
-      }
-      hideToastTimeoutRef.current = setTimeout(() => {
-        setToastVisible(false)
-        setActiveToast(null)
-      }, 1500)
-    },
-    onError: (error) => {
-      console.error("TTS Error:", error)
-      setToastVisible(false)
-      setActiveToast(null)
-    },
-  })
+  const { speak, queueStatus } = useSpeechQueue(COMPONENT_ID)
 
   // Find current topic based on timestamp
   const getCurrentTopic = useCallback((time: number): Topic | null => {
@@ -143,33 +116,58 @@ export const LivestreamTopicNotification: FC<
         clearTimeout(hideToastTimeoutRef.current)
       }
       hideToastTimeoutRef.current = setTimeout(() => {
-        if (!speaking) {
+        if (!isSpeaking) {
           setToastVisible(false)
           setActiveToast(null)
         }
       }, 3000)
     },
-    [speaking]
+    [isSpeaking]
   )
 
   // Announce topic with speech
   const announceTopicWithSpeech = useCallback(
     async (topic: Topic) => {
-      if (speaking) return // Don't interrupt current speech
+      if (isSpeaking) return // Don't interrupt current speech
 
       try {
         setActiveToast(topic)
         setToastVisible(true)
         lastAnnouncedSegmentRef.current = topic.id
         lastShownSegmentRef.current = topic.id
-        await speak(topic.description)
+
+        const options = {
+          volume: 1.0,
+          onStart: (): void => {
+            setIsSpeaking(true)
+          },
+          onEnd: (): void => {
+            setIsSpeaking(false)
+            // Schedule toast to hide after speech ends
+            if (hideToastTimeoutRef.current) {
+              clearTimeout(hideToastTimeoutRef.current)
+            }
+            hideToastTimeoutRef.current = setTimeout(() => {
+              setToastVisible(false)
+              setActiveToast(null)
+            }, 1500)
+          },
+          onError: (error: Error): void => {
+            console.error("TTS Error:", error)
+            setToastVisible(false)
+            setActiveToast(null)
+          },
+        }
+
+        await speak(topic.description, ++queueStatus.maxPriority, options)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         // Fallback to showing toast without speech
         showToastNotification(topic)
+        setIsSpeaking(false)
       }
     },
-    [speaking, speak, showToastNotification]
+    [isSpeaking, speak, showToastNotification, queueStatus.maxPriority]
   )
 
   // Main timeline progression effect
@@ -177,7 +175,7 @@ export const LivestreamTopicNotification: FC<
     intervalRef.current = setInterval(() => {
       setCurrentTime((prevTime) => {
         // Pause progression while speaking
-        if (speaking) {
+        if (isSpeaking) {
           return prevTime
         }
 
@@ -199,10 +197,7 @@ export const LivestreamTopicNotification: FC<
             // Starting a new speech loop - reset speech tracking
             lastAnnouncedSegmentRef.current = null
             currentSpeechLoopRef.current = loopCountRef.current
-            console.log(`Starting speech loop ${loopCountRef.current}`)
           }
-
-          console.log(`Completed loop ${loopCountRef.current}`)
         }
 
         // Find current topic
@@ -221,9 +216,6 @@ export const LivestreamTopicNotification: FC<
 
           if (shouldSpeak) {
             // Announce with speech (will also show toast)
-            console.log(
-              `Speaking on loop ${loopCountRef.current} for topic: ${currentTopic.title}`
-            )
             setTimeout(() => announceTopicWithSpeech(currentTopic), 0)
           } else if (shouldShowToast) {
             // Show toast without speech
@@ -249,7 +241,7 @@ export const LivestreamTopicNotification: FC<
   }, [
     playbackSpeed,
     updateIntervalMs,
-    speaking,
+    isSpeaking,
     totalDuration,
     speechIntervalLoops,
     getCurrentTopic,
@@ -319,7 +311,7 @@ export const LivestreamTopicNotification: FC<
           </div>
 
           {/* Speech indicator */}
-          {speaking && (
+          {isSpeaking && (
             <div className="absolute right-4 top-1 flex items-center space-x-2">
               <div className="flex space-x-1">
                 <div className="h-2 w-1 animate-pulse bg-red-500"></div>
@@ -372,7 +364,7 @@ export const LivestreamTopicNotification: FC<
                     <h3 className="text-sm font-medium text-white">
                       {activeToast.title}
                     </h3>
-                    {speaking && (
+                    {isSpeaking && (
                       <div className="ml-2 flex items-center">
                         <div className="mr-1 size-1 animate-pulse rounded-full bg-green-400"></div>
                         <span className="text-xs text-green-400">Speaking</span>

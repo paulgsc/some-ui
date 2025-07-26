@@ -54,6 +54,7 @@ export type UseAudioTTSReturn = {
   readonly resume: () => void
   readonly setVolume: (volume: number) => void
   readonly setPlaybackRate: (rate: number) => void
+  readonly updateOptions: (newOptions: Partial<UseAudioTTSOptions>) => void
   readonly speaking: boolean
   readonly paused: boolean
   readonly loading: boolean
@@ -355,6 +356,9 @@ const createAudioContext = (): AudioContext => {
 export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
   const queryClient = useQueryClient()
 
+  const [currentOptions, setCurrentOptions] =
+    useState<UseAudioTTSOptions>(options)
+
   // Memoize merged options to prevent recreation
   const mergedOptions = useMemo(() => {
     return { ...DEFAULT_OPTIONS, ...options }
@@ -393,6 +397,11 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
   const pauseTimeRef = useRef<number>(0)
   const currentRequestRef = useRef<string | null>(null)
 
+  const activeSpeechPromiseRef = useRef<{
+    resolve: () => void
+    reject: (error: Error) => void
+  } | null>(null)
+
   // Store callbacks in refs to avoid recreation and prevent stale closures
   const callbacksRef = useRef({
     onStart: options.onStart,
@@ -404,12 +413,35 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
   // Update callbacks ref when they change
   useEffect(() => {
     callbacksRef.current = {
-      onStart: options.onStart,
-      onEnd: options.onEnd,
-      onError: options.onError,
-      onProgress: options.onProgress,
+      onStart: currentOptions.onStart,
+      onEnd: currentOptions.onEnd,
+      onError: currentOptions.onError,
+      onProgress: currentOptions.onProgress,
     }
-  }, [options.onStart, options.onEnd, options.onError, options.onProgress])
+  }, [
+    currentOptions.onStart,
+    currentOptions.onEnd,
+    currentOptions.onError,
+    currentOptions.onProgress,
+  ])
+
+  // Imperatively update options
+  const updateOptions = useCallback(
+    (newOptions: Partial<UseAudioTTSOptions>) => {
+      setCurrentOptions((prev) => {
+        const updatedService = newOptions.service
+          ? { ...prev.service, ...newOptions.service }
+          : prev.service
+
+        return {
+          ...prev,
+          ...newOptions,
+          service: updatedService,
+        }
+      })
+    },
+    []
+  )
 
   // Memoize available voices to prevent recreation
   const availableVoices = useMemo(() => {
@@ -443,6 +475,22 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
     }
   }, [])
 
+  // NEW: Helper to resolve active speech promise
+  const resolveActiveSpeechPromise = useCallback(() => {
+    if (activeSpeechPromiseRef.current) {
+      activeSpeechPromiseRef.current.resolve()
+      activeSpeechPromiseRef.current = null
+    }
+  }, [])
+
+  // NEW: Helper to reject active speech promise
+  const rejectActiveSpeechPromise = useCallback((error: Error) => {
+    if (activeSpeechPromiseRef.current) {
+      activeSpeechPromiseRef.current.reject(error)
+      activeSpeechPromiseRef.current = null
+    }
+  }, [])
+
   // Time tracking - stable callback
   const updateTime = useCallback(() => {
     if (audioContextRef.current && speaking && !paused) {
@@ -458,9 +506,10 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
         setCurrentTime(0)
         currentRequestRef.current = null
         callbacksRef.current.onEnd?.()
+        resolveActiveSpeechPromise()
       }
     }
-  }, [speaking, paused, duration])
+  }, [speaking, paused, duration, resolveActiveSpeechPromise])
 
   const initializeAudioWithUserGesture = useCallback(async () => {
     if (!isAudioContextSupported()) {
@@ -490,6 +539,7 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
       return false
     }
   }, [])
+
   // Initialize AudioContext and voices
   useEffect(() => {
     if (!isAudioContextSupported()) {
@@ -524,6 +574,11 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
     return () => {
       cleanupNodes()
 
+      // NEW: Reject any pending speech promise on cleanup
+      if (activeSpeechPromiseRef.current) {
+        rejectActiveSpeechPromise(new Error("Component unmounted"))
+      }
+
       if (
         audioContextRef.current &&
         audioContextRef.current.state !== "closed"
@@ -540,11 +595,28 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
       setDuration(0)
       currentRequestRef.current = null
     }
-  }, [cleanupNodes])
+  }, [cleanupNodes, rejectActiveSpeechPromise])
 
-  // Speak function with race condition prevention
   const speak = useCallback(
     async (text: string): Promise<void> => {
+      // NEW: Return existing promise if already speaking
+      if (activeSpeechPromiseRef.current) {
+        return new Promise((resolve, reject) => {
+          const existingPromise = activeSpeechPromiseRef.current!
+          const originalResolve = existingPromise.resolve
+          const originalReject = existingPromise.reject
+
+          existingPromise.resolve = () => {
+            originalResolve()
+            resolve()
+          }
+          existingPromise.reject = (error) => {
+            originalReject(error)
+            reject(error)
+          }
+        })
+      }
+
       if (!userInteracted) {
         // Try to initialize on first use
         const initialized = await initializeAudioWithUserGesture()
@@ -570,102 +642,118 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
         return
       }
 
-      // Prevent race conditions by tracking current request
-      const requestId = `${Date.now()}-${Math.random()}`
-      currentRequestRef.current = requestId
+      // NEW: Create promise that will resolve when speech ends
+      return new Promise<void>(async (resolve, reject) => {
+        // Store the promise resolvers
+        activeSpeechPromiseRef.current = { resolve, reject }
 
-      try {
-        setLoading(true)
-        cleanupNodes()
+        // Prevent race conditions by tracking current request
+        const requestId = `${Date.now()}-${Math.random()}`
+        currentRequestRef.current = requestId
 
-        if (audioContextRef.current.state === "suspended") {
-          await audioContextRef.current.resume()
-        }
-
-        // Generate query key and fetch from cache or API
-        const queryKey = createTTSQueryKey(
-          text,
-          selectedVoice,
-          mergedOptions.service
-        )
-
-        const audioData = await queryClient.fetchQuery({
-          queryKey,
-          queryFn: () =>
-            synthesizeTTS(text, selectedVoice, mergedOptions.service),
-          staleTime: 5 * 60 * 1000,
-          gcTime: 30 * 60 * 1000,
-        })
-
-        // Check if this request is still current
-        if (currentRequestRef.current !== requestId) {
-          return // Request was superseded
-        }
-
-        let audioBuffer: AudioBuffer
         try {
-          audioBuffer = await audioContextRef.current.decodeAudioData(
-            audioData.slice()
+          setLoading(true)
+          cleanupNodes()
+
+          if (audioContextRef.current!.state === "suspended") {
+            await audioContextRef.current!.resume()
+          }
+
+          // Generate query key and fetch from cache or API
+          const queryKey = createTTSQueryKey(
+            text,
+            selectedVoice,
+            mergedOptions.service
           )
-        } catch (decodeError) {
-          console.error("Audio decode error:", decodeError)
-          throw new Error(`Audio decoding failed: ${decodeError}`)
-        }
 
-        // Check again after async operation
-        if (
-          currentRequestRef.current !== requestId ||
-          !audioContextRef.current
-        ) {
-          return // Request was superseded or context was destroyed
-        }
+          const audioData = await queryClient.fetchQuery({
+            queryKey,
+            queryFn: () =>
+              synthesizeTTS(text, selectedVoice, mergedOptions.service),
+            staleTime: 5 * 60 * 1000,
+            gcTime: 30 * 60 * 1000,
+          })
 
-        const sourceNode = audioContextRef.current.createBufferSource()
-        const gainNode = audioContextRef.current.createGain()
+          // Check if this request is still current
+          if (currentRequestRef.current !== requestId) {
+            activeSpeechPromiseRef.current = null
+            return // Request was superseded
+          }
 
-        sourceNode.buffer = audioBuffer
-        gainNode.gain.value = mergedOptions.volume
+          let audioBuffer: AudioBuffer
+          try {
+            audioBuffer = await audioContextRef.current!.decodeAudioData(
+              audioData.slice()
+            )
+          } catch (decodeError) {
+            console.error("Audio decode error:", decodeError)
+            const error = new Error(`Audio decoding failed: ${decodeError}`)
+            rejectActiveSpeechPromise(error)
+            throw error
+          }
 
-        sourceNode.connect(gainNode)
-        gainNode.connect(audioContextRef.current.destination)
+          // Check again after async operation
+          if (
+            currentRequestRef.current !== requestId ||
+            !audioContextRef.current
+          ) {
+            activeSpeechPromiseRef.current = null
+            return // Request was superseded or context was destroyed
+          }
 
-        sourceNodeRef.current = sourceNode
-        gainNodeRef.current = gainNode
+          const sourceNode = audioContextRef.current.createBufferSource()
+          const gainNode = audioContextRef.current.createGain()
 
-        setDuration(audioBuffer.duration)
-        setCurrentTime(0)
-        setSpeaking(true)
-        setPaused(false)
-        setLoading(false)
+          sourceNode.buffer = audioBuffer
+          gainNode.gain.value = mergedOptions.volume
 
-        startTimeRef.current = audioContextRef.current.currentTime
+          sourceNode.connect(gainNode)
+          gainNode.connect(audioContextRef.current.destination)
 
-        sourceNode.onended = () => {
+          sourceNodeRef.current = sourceNode
+          gainNodeRef.current = gainNode
+
+          setDuration(audioBuffer.duration)
+          setCurrentTime(0)
+          setSpeaking(true)
+          setPaused(false)
+          setLoading(false)
+
+          startTimeRef.current = audioContextRef.current.currentTime
+
+          // MODIFIED: Enhanced onended handler
+          sourceNode.onended = () => {
+            if (currentRequestRef.current === requestId) {
+              setSpeaking(false)
+              setPaused(false)
+              setCurrentTime(0)
+              currentRequestRef.current = null
+              callbacksRef.current.onEnd?.()
+              // NEW: Resolve the promise when audio ends
+              resolveActiveSpeechPromise()
+            }
+          }
+
+          sourceNode.start(0)
+          callbacksRef.current.onStart?.()
+          updateTime()
+        } catch (error) {
           if (currentRequestRef.current === requestId) {
+            console.error("TTS Error:", error)
+            setLoading(false)
             setSpeaking(false)
-            setPaused(false)
-            setCurrentTime(0)
             currentRequestRef.current = null
-            callbacksRef.current.onEnd?.()
+
+            const errorObj =
+              error instanceof Error ? error : new Error("TTS synthesis failed")
+            callbacksRef.current.onError?.(errorObj)
+
+            // NEW: Reject the promise on error
+            rejectActiveSpeechPromise(errorObj)
+            // Don't throw here since we're already rejecting the promise
           }
         }
-
-        sourceNode.start(0)
-        callbacksRef.current.onStart?.()
-        updateTime()
-      } catch (error) {
-        if (currentRequestRef.current === requestId) {
-          console.error("TTS Error:", error)
-          setLoading(false)
-          setSpeaking(false)
-          currentRequestRef.current = null
-
-          const errorObj =
-            error instanceof Error ? error : new Error("TTS synthesis failed")
-          callbacksRef.current.onError?.(errorObj)
-          throw errorObj
-        }
-      }
+      })
     },
     [
       supported,
@@ -677,10 +765,12 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
       queryClient,
       userInteracted,
       initializeAudioWithUserGesture,
+      resolveActiveSpeechPromise,
+      rejectActiveSpeechPromise,
     ]
   )
 
-  // Control functions - all stable callbacks
+  // MODIFIED: Control functions - updated to handle speech promises
   const stop = useCallback((): void => {
     cleanupNodes()
     setSpeaking(false)
@@ -688,7 +778,9 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
     setCurrentTime(0)
     currentRequestRef.current = null
     callbacksRef.current.onEnd?.()
-  }, [cleanupNodes])
+    // NEW: Resolve any pending speech promise when stopped
+    resolveActiveSpeechPromise()
+  }, [cleanupNodes, resolveActiveSpeechPromise])
 
   const pause = useCallback((): void => {
     if (!speaking || paused || !audioContextRef.current) return
@@ -738,6 +830,7 @@ export function useAudioTTS(options: UseAudioTTSOptions): UseAudioTTSReturn {
     resume,
     setVolume,
     setPlaybackRate,
+    updateOptions,
     speaking,
     paused,
     loading,

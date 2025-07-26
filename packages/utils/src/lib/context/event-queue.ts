@@ -45,16 +45,20 @@ type QueueCommand =
   | { type: "SET_STRATEGY"; strategy: QueueStrategy }
 
 // Queue states using discriminated unions
+type BaseQueueState = {
+  currentItem: QueueItem | null
+  size: number
+  maxPriority: number
+}
+
+type QueueStatus = "processing" | "paused" | "error"
+
 type QueueState =
-  | { status: "idle"; currentItem: null; size: 0 }
-  | { status: "processing"; currentItem: QueueItem; size: number }
-  | { status: "paused"; currentItem: QueueItem | null; size: number }
+  | { status: "idle"; currentItem: null; size: 0; maxPriority: -1 }
   | {
-      status: "error"
-      currentItem: QueueItem | null
-      size: number
-      error: Error
-    }
+      [K in Exclude<QueueStatus, "error">]: { status: K } & BaseQueueState
+    }[Exclude<QueueStatus, "error">]
+  | ({ status: "error"; error: Error } & BaseQueueState)
 
 // Queue strategies
 type QueueStrategyType = "lazy" | "greedy"
@@ -105,7 +109,7 @@ const createLazyStrategy = <TPayload>(
   type: "lazy",
   overflow,
   shouldPreempt: () => false, // Never preempts in lazy mode
-  onItemAdded: (item, queue) => {
+  onItemAdded: (item, queue): Array<QueueItem<TPayload>> => {
     // Simple append for lazy strategy
     return [...queue, item]
   },
@@ -116,11 +120,11 @@ const createGreedyStrategy = <TPayload>(
 ): QueueStrategy<TPayload> => ({
   type: "greedy",
   overflow,
-  shouldPreempt: (newItem, currentItem) => {
+  shouldPreempt: (newItem, currentItem): boolean => {
     // Preempt if new item has higher priority or is newer
     return currentItem ? newItem.priority > currentItem.priority : false
   },
-  onItemAdded: (item, queue) => {
+  onItemAdded: (item, queue): Array<QueueItem<TPayload>> => {
     // Insert by priority for greedy strategy
     const insertIndex = queue.findIndex(
       (existing) => existing.priority < item.priority
@@ -199,27 +203,38 @@ export function createQueueManager<TPayload = unknown>(
 
   // Get current state
   const getState = (): QueueState => {
+    const { priority: maxPriority = -1 } =
+      queue[0] ?? ({} as QueueItem<TPayload>)
     if (isPaused) {
-      return { status: "paused", currentItem, size: queue.length }
+      return { status: "paused", currentItem, size: queue.length, maxPriority }
     }
     if (currentItem) {
-      return { status: "processing", currentItem, size: queue.length }
+      return {
+        status: "processing",
+        currentItem,
+        size: queue.length,
+        maxPriority,
+      }
     }
-    return { status: "idle", currentItem: null, size: 0 }
+    return {
+      status: "idle",
+      currentItem: null,
+      size: 0,
+      maxPriority: -1,
+    }
   }
 
   // Emit state change
-  const emitStateChange = () => {
+  const emitStateChange = (): void => {
     eventBus.emit("queue:state:changed", getState())
   }
 
   // Process next item in queue
   const processNext = async (): Promise<void> => {
-    console.log("state of process: ", isPaused, isProcessing, queue.length)
     if (isPaused || isProcessing || queue.length === 0) return
 
-    console.log("🚀 Calling processNext")
     try {
+      // We do a FIFO
       currentItem = queue.shift()!
       isProcessing = true
       emitStateChange()
@@ -307,18 +322,6 @@ export function createQueueManager<TPayload = unknown>(
       "id" | "timestamp" | "retryCount" | "controller"
     >
   ): string => {
-    console.log("📥 [ENQUEUE] Starting enqueue process", {
-      componentId: itemData.componentId,
-      priority: itemData.priority,
-      payload:
-        typeof itemData.payload === "object"
-          ? {
-              ...itemData.payload,
-              text: (itemData.payload as any).text?.substring(0, 50) + "...",
-            }
-          : itemData.payload,
-    })
-
     const item: QueueItem<TPayload> = {
       ...itemData,
       id: generateId(),
@@ -328,133 +331,48 @@ export function createQueueManager<TPayload = unknown>(
       maxRetries: itemData.maxRetries ?? finalConfig.maxRetries,
     }
 
-    console.log("🆔 [ENQUEUE] Created queue item", {
-      id: item.id,
-      timestamp: item.timestamp,
-      maxRetries: item.maxRetries,
-    })
-
-    console.log("📊 [ENQUEUE] Queue state before processing", {
-      currentQueueSize: queue.length,
-      isProcessing,
-      isPaused,
-      currentItemId: currentItem?.id || "none",
-      strategy: currentStrategy.type,
-      overflow: currentStrategy.overflow,
-    })
-
     // Check if we should preempt current item
     const shouldPreempt = currentStrategy.shouldPreempt(item, currentItem)
-    console.log("🔄 [ENQUEUE] Preemption check", {
-      shouldPreempt,
-      currentItemId: currentItem?.id || "none",
-      newItemPriority: item.priority,
-      currentItemPriority: currentItem?.priority || "none",
-    })
 
     if (shouldPreempt) {
-      console.log("⚡ [ENQUEUE] Preempting current item", {
-        preemptedItemId: currentItem?.id,
-        newItemId: item.id,
-      })
-
-      // Cancel current item and add it back to queue
       if (currentItem) {
-        console.log(
-          "❌ [ENQUEUE] Aborting current item and adding back to queue"
-        )
         currentItem.controller.abort()
         queue.unshift(currentItem)
       }
     }
 
-    // Add item using strategy
-    console.log("📋 [ENQUEUE] Adding item using strategy", {
-      strategyType: currentStrategy.type,
-      queueSizeBeforeAdd: queue.length,
-    })
-
     queue = currentStrategy.onItemAdded(item, queue)
-
-    console.log("📋 [ENQUEUE] Item added to queue", {
-      queueSizeAfterAdd: queue.length,
-      itemPosition: queue.findIndex((q) => q.id === item.id),
-      queueIds: queue.map((q) => ({ id: q.id, priority: q.priority })),
-    })
 
     // Handle overflow
     const previousSize = queue.length
-    console.log("🌊 [ENQUEUE] Checking overflow", {
-      currentSize: previousSize,
-      maxSize: finalConfig.maxSize,
-      overflowStrategy: currentStrategy.overflow,
-    })
 
     queue = handleOverflow(queue, finalConfig.maxSize, currentStrategy.overflow)
 
     // Emit overflow events for removed items
     if (queue.length < previousSize) {
       const removedCount = previousSize - queue.length
-      console.log("🗑️ [ENQUEUE] Overflow occurred - items removed", {
-        removedCount,
-        previousSize,
-        newSize: queue.length,
-      })
 
       for (let i = 0; i < removedCount; i++) {
         const overflowId = `overflow_${Date.now()}_${i}`
-        console.log("🗑️ [ENQUEUE] Emitting overflow removal event", {
-          overflowId,
-        })
         eventBus.emit("queue:item:removed", {
           id: overflowId,
           reason: "overflow",
         })
       }
-    } else {
-      console.log("✅ [ENQUEUE] No overflow - all items retained")
     }
 
-    console.log("📡 [ENQUEUE] Emitting queue:item:added event", {
-      itemId: item.id,
-    })
     eventBus.emit("queue:item:added", item)
 
-    console.log("📊 [ENQUEUE] Emitting state change")
     emitStateChange()
 
     // Start processing if not already
     const shouldStartProcessing = !isProcessing && !isPaused
-    console.log("🚀 [ENQUEUE] Processing decision", {
-      shouldStartProcessing,
-      isProcessing,
-      isPaused,
-      queueLength: queue.length,
-    })
 
     if (shouldStartProcessing) {
-      console.log("⏰ [ENQUEUE] Scheduling processNext with setTimeout")
       setTimeout(() => {
-        console.log(
-          "⏰ [ENQUEUE] setTimeout callback executing - calling processNext"
-        )
         processNext()
       }, 0)
-    } else {
-      console.log("⏸️ [ENQUEUE] Not starting processing", {
-        reason: isProcessing
-          ? "already processing"
-          : isPaused
-            ? "paused"
-            : "unknown",
-      })
     }
-
-    console.log("✅ [ENQUEUE] Enqueue completed", {
-      returnedId: item.id,
-      finalQueueSize: queue.length,
-      finalQueueIds: queue.map((q) => q.id),
-    })
 
     return item.id
   }
@@ -562,16 +480,16 @@ export function createQueueManager<TPayload = unknown>(
 
     // State inspection
     getState,
-    getQueueSize: () => queue.length,
-    getCurrentItem: () => currentItem,
-    getQueue: () => [...queue], // Return copy to prevent external mutation
+    getQueueSize: (): number => queue.length,
+    getCurrentItem: (): QueueItem<TPayload> | null => currentItem,
+    getQueue: (): Array<QueueItem<TPayload>> => [...queue], // Return copy to prevent external mutation
 
     // Event bus for listening to queue events
     on: eventBus.on,
     onWithSelector: eventBus.onWithSelector,
 
     // Cleanup
-    destroy: () => {
+    destroy: (): void => {
       clear()
       // Note: EventBus doesn't expose a destroy method, but all listeners will be GC'd
     },
@@ -587,104 +505,15 @@ export function createSpeechQueue(
     text: string
     options?: AudioTTSOptions
   }>(async (payload, signal) => {
-    console.log("🎵 Starting TTS for:", payload.text.substring(0, 50))
+    if (signal.aborted) {
+      throw new DOMException("Aborted", "AbortError")
+    }
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("TTS timeout after 10 seconds"))
-      }, 10000)
-    })
+    if (payload.options) {
+      ttsHook.updateOptions(payload.options)
+    }
 
-    const ttsPromise = new Promise<void>((resolve, reject) => {
-      if (signal.aborted) {
-        console.log("❌ Signal already aborted before starting")
-        reject(new DOMException("Aborted", "AbortError"))
-        return
-      }
-
-      // Store original settings to restore later
-      const originalVoice = ttsHook.selectedVoice
-
-      // Apply options if provided
-      if (payload.options) {
-        if (payload.options.voice !== undefined) {
-          ttsHook.setSelectedVoice(payload.options.voice)
-        }
-        if (payload.options.volume !== undefined) {
-          ttsHook.setVolume(payload.options.volume)
-        }
-        if (payload.options.playbackRate !== undefined) {
-          ttsHook.setPlaybackRate(payload.options.playbackRate)
-        }
-      }
-
-      // Handle abort signal
-      const abortHandler = () => {
-        console.log("❌ Abort signal received, stopping TTS")
-        ttsHook.stop()
-        // Restore original settings
-        ttsHook.setSelectedVoice(originalVoice)
-        reject(new DOMException("Aborted", "AbortError"))
-      }
-      signal.addEventListener("abort", abortHandler)
-
-      // Set up completion handlers
-      let hasStarted = false
-      let hasEnded = false
-
-      const checkCompletion = () => {
-        console.log(
-          "🔍 Checking completion - speaking:",
-          ttsHook.speaking,
-          "hasStarted:",
-          hasStarted,
-          "hasEnded:",
-          hasEnded
-        )
-
-        if (!ttsHook.speaking && hasStarted && !hasEnded) {
-          console.log("✅ TTS completed successfully")
-          hasEnded = true
-          signal.removeEventListener("abort", abortHandler)
-          // Restore original settings
-          ttsHook.setSelectedVoice(originalVoice)
-          payload.options?.onEnd?.()
-          resolve()
-        } else if (ttsHook.speaking && !hasStarted) {
-          console.log("🎤 TTS started speaking")
-          hasStarted = true
-          payload.options?.onStart?.()
-        }
-
-        // Continue monitoring if still in progress
-        if (hasStarted && !hasEnded) {
-          console.log("recursing on completion")
-          setTimeout(checkCompletion, 50)
-        }
-      }
-
-      // Start the speech synthesis
-      console.log("🚀 Calling ttsHook.speak()")
-      ttsHook
-        .speak(payload.text)
-        .then(() => {
-          // speak() resolved, start monitoring for completion
-          console.log("✅ ttsHook.speak() resolved, starting monitoring")
-          setTimeout(checkCompletion, 10)
-        })
-        .catch((error) => {
-          console.log("❌ ttsHook.speak() rejected:", error)
-          if (!hasEnded) {
-            hasEnded = true
-            signal.removeEventListener("abort", abortHandler)
-            ttsHook.setSelectedVoice(originalVoice)
-            payload.options?.onError?.(error)
-            reject(new Error(`TTS synthesis error: ${error.message}`))
-          }
-        })
-    })
-
-    return Promise.race([ttsPromise, timeoutPromise])
+    await ttsHook.speak(payload.text)
   }, config)
 }
 

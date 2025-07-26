@@ -22,17 +22,18 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   const lastSpokenRef = useRef<{ index: number; content: string } | null>(null)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
 
-  const { speak, queueStatus, isActive } = useSpeechQueue(COMPONENT_ID)
+  const { speak, isActive, queueStatus } = useSpeechQueue(COMPONENT_ID)
 
   const { chats, currentIndex } = useChatMessages({
-    pause: isSpeaking,
+    pause:
+      isSpeaking ||
+      (isActive && queueStatus.currentItem?.componentId !== COMPONENT_ID),
     chats: messages,
   })
 
   useEffect(() => {
     const currentChat = chats[currentIndex - 1]
     if (!currentChat || isSpeaking) {
-      console.log("claims we are still speaking", isSpeaking, currentChat)
       return
     }
 
@@ -45,12 +46,10 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
       lastSpokenRef.current.index === currentItem.index &&
       lastSpokenRef.current.content === currentItem.content
     ) {
-      console.log("early return")
       return
     }
 
     const speakContent = async () => {
-      console.log("this invoked!")
       try {
         lastSpokenRef.current = currentItem
         const options = {
@@ -61,14 +60,15 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           onEnd: (): void => {
             setIsSpeaking(false)
           },
-          onError: (error) => {
+          onError: (error: Error) => {
+            setIsSpeaking(false)
             console.error("TTS Error:", error)
           },
         }
         await speak(content, 0, options)
-        console.log("we should have spoken", content)
       } catch (error) {
         console.error("Failed to announce topic:", error)
+        setIsSpeaking(false)
       }
     }
 
