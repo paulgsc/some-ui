@@ -5,6 +5,7 @@ import { useAudioTTS } from "some-ui-utils"
 type Topic = {
   id: string | number
   title: string
+  description: string
   timestamp: number
   duration: number
 }
@@ -12,31 +13,42 @@ type Topic = {
 const sampleTopics: Array<Topic> = [
   {
     id: 1,
-    title:
-      "Distracted studying. Can it be possible to watch drama, while studying. Well it doesn't matter, it's all meaningless anyhow",
+    title: "Introduction",
+    description: `⚠️ **DISCLAIMER: This is not a tutorial, guide, or polished content.**
+    This stream is part of a long-term public ledger of my real-time software development process — 
+    unfiltered, uncut, and sometimes unproductive. It may contain:
+    - contextless googling
+    - long debugging spirals
+    - unstructured thought
+    - tangents, breaks, and vibes
+    - lots of the things going on.`,
     timestamp: 0,
-    duration: 60,
+    duration: 5,
   },
   {
     id: 2,
-    title:
-      "Typeracer: Why do we bother practicing how to type, couldn't tell ya! More meaningless slop",
-    timestamp: 60,
-    duration: 75,
+    title: "Event Queue",
+    description: `Implementing the event queue bus for scheduling and executing the speech api.
+        We have independent UI components that can trigger a speech utterance. I need to coordinate and
+      synchronize this, by having them subscribe to an event bus queue. The end result is a well ochestrated
+    symphony of ai speech utterance.`,
+    timestamp: 5,
+    duration: 195,
   },
   {
     id: 3,
-    title:
-      "We hopefully learned enough so that I understand how the hyper crate is working. Suppose this is pure cope",
-    timestamp: 75,
-    duration: 115,
+    title: "Break",
+    description: "I take break...",
+    timestamp: 200,
+    duration: 30,
   },
   {
     id: 4,
-    title:
-      "Can it be possible that I can now fix some compiler error. Only future me knows, but I hazard a guess the answer is ...",
-    timestamp: 115,
-    duration: 145,
+    title: "Android APK",
+    description: `I want to have my own temu apk, simple reminder app. Can it be possible that the entire process
+    is rusty. We find out today.`,
+    timestamp: 230,
+    duration: 60,
   },
 ]
 
@@ -57,7 +69,7 @@ export const LivestreamTopicNotification: FC<
   LivestreamTopicNotificationProps
 > = ({
   playbackSpeed = 5,
-  speechIntervalLoops = 6,
+  speechIntervalLoops = 1,
   updateIntervalMs = 120,
 }): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
@@ -84,6 +96,7 @@ export const LivestreamTopicNotification: FC<
       apiUrl: "http://nixos.local:5050/v1/audio/speech",
       apiKey: "your_dummy_api_key_here",
       format: "mp3",
+      cacheAudio: true,
     },
     volume: 1.0,
     autoPlay: true,
@@ -149,7 +162,7 @@ export const LivestreamTopicNotification: FC<
         setToastVisible(true)
         lastAnnouncedSegmentRef.current = topic.id
         lastShownSegmentRef.current = topic.id
-        await speak(topic.title)
+        await speak(topic.description)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         // Fallback to showing toast without speech
