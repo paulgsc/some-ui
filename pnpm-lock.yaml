@@ -258,8 +258,8 @@ importers:
         specifier: ^2.1.8
         version: 2.1.8(@types/node@22.13.0)(happy-dom@17.1.8)(jsdom@26.0.0)(lightningcss@1.29.1)(terser@5.37.0)
       zod:
-        specifier: ^3.24.2
-        version: 3.24.2
+        specifier: ^4.0.5
+        version: 4.0.5
 
   crates/some-crossword: {}
 
@@ -418,9 +418,6 @@ importers:
       unist-builder:
         specifier: 3.0.0
         version: 3.0.0
-      zod:
-        specifier: 3.23.8
-        version: 3.23.8
     devDependencies:
       '@shikijs/compat':
         specifier: ^1.1.7
@@ -530,8 +527,8 @@ importers:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
       zod:
-        specifier: 3.24.2
-        version: 3.24.2
+        specifier: ^4.0.5
+        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -704,9 +701,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.66.11(react@19.1.0)
-      zod:
-        specifier: ^3.24.2
-        version: 3.24.2
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -905,9 +899,6 @@ importers:
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../rollup-config
-      zod:
-        specifier: ^3.24.1
-        version: 3.24.2
 
   packages/ui/resume:
     dependencies:
@@ -1107,8 +1098,8 @@ importers:
         specifier: workspace:*
         version: link:../../utils
       zod:
-        specifier: 3.24.2
-        version: 3.24.2
+        specifier: ^4.0.5
+        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1230,6 +1221,9 @@ importers:
       usehooks-ts:
         specifier: 3.1.0
         version: 3.1.0(react@18.3.1)
+      zod:
+        specifier: ^4.0.5
+        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1240,9 +1234,6 @@ importers:
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../rollup-config
-      zod:
-        specifier: ^4.0.5
-        version: 4.0.5
 
 packages:
 
@@ -9203,9 +9194,6 @@ packages:
   yocto-queue@1.1.1:
     resolution: {integrity: sha512-b4JR1PFR10y1mKjhHY9LaGo6tmrgjit7hxVIeAmyMw3jegXR4dhYqLaQF5zMXZxY7tLpMyJeLjr1C4rLmkVe8g==}
     engines: {node: '>=12.20'}
-
-  zod@3.23.8:
-    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
   zod@3.24.2:
     resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
@@ -18533,8 +18521,6 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yocto-queue@1.1.1: {}
-
-  zod@3.23.8: {}
 
   zod@3.24.2: {}
 

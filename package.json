@@ -117,8 +117,9 @@
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^2.1.8",
-    "zod": "^3.24.2",
-    "@storybook/addon-docs": "^9.0.17"
+    "zod": "^4.0.5",
+    "@storybook/addon-docs": "^9.0.17",
+    "some-ui-utils": "workspace:*"
   },
   "pnpm": {
     "overrides": {

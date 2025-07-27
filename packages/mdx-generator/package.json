@@ -29,8 +29,7 @@
     "next-contentlayer2": "^0.4.6",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "unist-builder": "3.0.0",
-    "zod": "3.23.8"
+    "unist-builder": "3.0.0"
   },
   "devDependencies": {
     "@shikijs/compat": "^1.1.7",
