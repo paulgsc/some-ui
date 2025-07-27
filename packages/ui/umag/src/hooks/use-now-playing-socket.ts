@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   IncomingEvent,
   NowPlayingType,
@@ -32,6 +32,8 @@ export function useNowPlayingWebSocket(
   const [fullStatus, setFullStatus] =
     useState<NowPlayingType>(defaultNowPlaying)
 
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
+
   const wsHook = useWebSocket<WsEvents>({
     url: options.url,
     incomingMessageSchema: EventSchema,
@@ -57,9 +59,27 @@ export function useNowPlayingWebSocket(
     wsHook.sendMessage({ type: "subscribe", event_types: ["tabMetaData"] })
   }, [wsHook])
 
+  // Handle subscription separately
   useEffect(() => {
     subscribe()
   }, [subscribe])
+
+  // Handle ping interval separately - only reset when connection state changes
+  useEffect(() => {
+    const keepAlive = 1000 * 90 // Server makes connection stale after 120s
+
+    if (wsHook.isConnected) {
+      intervalRef.current = setInterval(() => {
+        if (wsHook.isConnected) {
+          wsHook.sendMessage({ type: "pong" })
+        }
+      }, keepAlive)
+    }
+
+    return (): void => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [wsHook.isConnected]) // Only depend on connection state
 
   return useMemo(
     () => ({

@@ -4,6 +4,7 @@ export const EventTypeSchema = z.enum([
   "ping",
   "pong",
   "error",
+  "clientCount",
   "obsStatus",
   "tabMetaData",
 ])
@@ -40,6 +41,11 @@ export const EventSchema = z.discriminatedUnion("type", [
     type: z.literal("unsubscribe"),
     event_types: z.array(EventTypeSchema),
   }),
+  z.object({
+    type: z.literal("clientCount"),
+    count: z.number().nonnegative(),
+  }),
+
   z.object({
     type: z.literal("tabMetaData"),
     data: NowPlayingSchema,
