@@ -196,7 +196,7 @@ export const MegaphoneSpectrum: FC<MegaphoneSpectrumProps> = memo(
             const nextIndex = prevIndex + 1
             if (nextIndex >= shuffledPresets.length) {
               // Reshuffle when we reach the end
-              const newShuffled = shuffleArray(COLOR_PRESETS)
+              const newShuffled = shuffleArray([...COLOR_PRESETS])
               setShuffledPresets(newShuffled)
               // Schedule callback for next frame to avoid render cycle issues
               setTimeout(() => onColorChange?.(newShuffled[0]), 0)
@@ -229,7 +229,7 @@ export const MegaphoneSpectrum: FC<MegaphoneSpectrumProps> = memo(
         // Set initial color when becoming active
         setTimeout(() => onColorChange(shuffledPresets[currentPresetIndex]), 0)
       }
-    }, [isActive]) // Only depend on isActive to avoid infinite loops
+    }, [isActive, currentPresetIndex, onColorChange, shuffledPresets]) // Only depend on isActive to avoid infinite loops
 
     return (
       <div
@@ -238,48 +238,23 @@ export const MegaphoneSpectrum: FC<MegaphoneSpectrumProps> = memo(
           "rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
           className,
           {
-            "opacity-100 scale-110 z-50": isActive,
-            "opacity-0 scale-90 -z-10": !isActive,
+            // "opacity-100 scale-110 z-50": isActive,
+            // "opacity-0 scale-90 -z-10": !isActive,
+            heartbeat: isActive && enableHeartbeat,
           }
         )}
-        style={{
-          width: normalizedProps.size,
-          height: normalizedProps.size,
-          // Heartbeat scale animation
-          animation:
-            isActive && enableHeartbeat
-              ? `heartbeat-${normalizedProps.size} ${2.4 / speed}s ease-in-out infinite`
-              : "none",
-        }}
+        style={
+          {
+            width: normalizedProps.size,
+            height: normalizedProps.size,
+            "--heartbeat-scale1": `${1 + heartbeatIntensity * 0.08}`,
+            "--heartbeat-scale2": `${1 + heartbeatIntensity * 0.12}`,
+            "--heartbeat-duration": `${2.4 / speed}s`,
+          } as React.CSSProperties
+        }
         role="img"
         aria-label={ariaLabel}
       >
-        {/* Heartbeat keyframes style injection */}
-        {isActive && enableHeartbeat && (
-          <style jsx>{`
-            @keyframes heartbeat-${normalizedProps.size} {
-              0% {
-                transform: scale(1);
-              }
-              14% {
-                transform: scale(${1 + heartbeatIntensity * 0.08});
-              }
-              28% {
-                transform: scale(1);
-              }
-              42% {
-                transform: scale(${1 + heartbeatIntensity * 0.12});
-              }
-              70% {
-                transform: scale(1);
-              }
-              100% {
-                transform: scale(1);
-              }
-            }
-          `}</style>
-        )}
-
         <svg
           ref={svgRef}
           viewBox={`0 0 ${normalizedProps.size} ${normalizedProps.size}`}

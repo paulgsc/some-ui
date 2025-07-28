@@ -24,11 +24,31 @@ export const ElementInfoSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => val ?? undefined),
-  name: z.string().optional(),
-  className: z.string().optional(),
-  placeholder: z.string().optional(),
-  formAction: z.string().optional(),
-  formMethod: z.string().optional(),
+  name: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val ?? undefined),
+  className: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val ?? undefined),
+  placeholder: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val ?? undefined),
+  formMethod: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val ?? undefined),
+  formAction: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => val ?? undefined),
   formId: z
     .string()
     .optional()

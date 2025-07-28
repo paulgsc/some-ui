@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { Fragment, useCallback, useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { MegaphoneSpectrum } from "@umag/components/megaphone-spectrum"
 import {
   ErrorBoundaryFallback,
@@ -28,42 +28,37 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     error,
   } = useUtteranceWebSocket()
 
-  const { speak, isActive, pauseQueue, resumeQueue } =
-    useSpeechQueue(COMPONENT_ID)
+  const { speak } = useSpeechQueue(COMPONENT_ID)
 
-  const speakContent = useCallback(async () => {
-    if (!text) return // Avoid speaking empty text
-
-    try {
-      const options = {
-        volume: 1.0,
-        onStart: (): void => {
-          setIsSpeaking(true)
-        },
-        onEnd: (): void => {
-          setIsSpeaking(false)
-          resumeQueue()
-        },
-        onError: (error: Error): void => {
-          setIsSpeaking(false)
-          console.error("TTS Error:", error)
-        },
-      }
-
-      // if (isActive) pauseQueue()
-      await speak(text, Infinity, options)
-    } catch (error) {
-      console.error("Failed to announce topic:", error)
-      setIsSpeaking(false)
-    }
-  }, [text, speak, pauseQueue, isActive])
-
-  // Trigger speech when new text arrives
+  // Remove the useCallback entirely and put logic in useEffect
   useEffect(() => {
-    if (isConnected && text) {
-      speakContent()
+    const speakContent = async () => {
+      if (!text || !isConnected) return
+
+      try {
+        const options = {
+          volume: 1.0,
+          onStart: (): void => {
+            setIsSpeaking(true)
+          },
+          onEnd: (): void => {
+            setIsSpeaking(false)
+          },
+          onError: (error: Error): void => {
+            setIsSpeaking(false)
+            console.error("TTS Error:", error)
+          },
+        }
+
+        await speak(text, Infinity, options)
+      } catch (error) {
+        console.error("Failed to announce topic:", error)
+        setIsSpeaking(false)
+      }
     }
-  }, [isConnected, text, speakContent])
+
+    speakContent()
+  }, [isConnected, text, speak])
 
   if (error) {
     return showErrorFallback ? (
@@ -77,7 +72,5 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     return <LoadingCard />
   }
 
-  return (
-      <MegaphoneSpectrum className={className} isActive={isSpeaking} />
-  )
+  return <MegaphoneSpectrum className={className} isActive={isSpeaking} />
 }
