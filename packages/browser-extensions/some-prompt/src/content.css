@@ -1,0 +1,32 @@
+#typing-mirror-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  max-width: 300px;
+  max-height: 200px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-family: "Courier New", "Monaco", "Consolas", monospace;
+  font-size: 12px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 999999;
+  pointer-events: none;
+  word-wrap: break-word;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  display: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+#typing-mirror-overlay.visible {
+  display: block;
+  opacity: 1;
+}
+
+#typing-mirror-overlay.hidden {
+  opacity: 0;
+}

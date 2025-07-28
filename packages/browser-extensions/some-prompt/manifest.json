@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "Live Typing Mirror",
+  "version": "1.0.0",
+  "description": "Mirror typing in real-time with floating overlay and POST on Enter",
+
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "<all_urls>",
+    "http://nixos.local:3000/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
+  ],
+
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ]
+}
