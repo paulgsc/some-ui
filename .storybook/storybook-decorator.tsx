@@ -29,6 +29,7 @@ const TTSWrapper = ({ children }: { children: React.ReactNode }) => {
       apiUrl: "http://nixos.local:5050/v1/audio/speech",
       apiKey: "your_dummy_api_key_here",
       format: "mp3",
+      timeout: 30 * 1000, // 30 seconds
     },
     autoPlay: true,
   })
