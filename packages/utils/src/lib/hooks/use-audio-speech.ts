@@ -1,0 +1,303 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+
+type AudioSpeechCallbacks = {
+  onStart?: () => void
+  onEnd?: () => void
+  onError?: (error: Error) => void
+  onProgress?: (currentTime: number, duration: number) => void
+}
+
+type AudioSpeechOptions = {
+  volume?: number
+  playbackRate?: number
+  callbacks?: AudioSpeechCallbacks
+}
+
+type AudioSpeechReturn = {
+  play: (audioBuffer: ArrayBuffer) => Promise<void>
+  stop: () => void
+  pause: () => void
+  resume: () => void
+  setVolume: (volume: number) => void
+  setPlaybackRate: (rate: number) => void
+  speaking: boolean
+  paused: boolean
+  loading: boolean
+  supported: boolean
+  currentTime: number
+  duration: number
+}
+
+// Check AudioContext support
+const isAudioContextSupported = (): boolean =>
+  typeof window !== "undefined" &&
+  (window.AudioContext !== undefined ||
+    (window as any).webkitAudioContext !== undefined)
+
+// Create AudioContext
+const createAudioContext = (): AudioContext => {
+  const AudioContextClass =
+    window.AudioContext || (window as any).webkitAudioContext
+  return new AudioContextClass()
+}
+
+export function useAudioSpeech(
+  options: AudioSpeechOptions = {}
+): AudioSpeechReturn {
+  const { volume = 1, playbackRate = 1, callbacks } = options
+
+  // State
+  const [speaking, setSpeaking] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [supported, setSupported] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  // Refs
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null)
+  const gainNodeRef = useRef<GainNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const startTimeRef = useRef<number>(0)
+  const pauseTimeRef = useRef<number>(0)
+  const speechQueueRef = useRef<Promise<void>>(Promise.resolve())
+
+  // Initialize AudioContext
+  useEffect(() => {
+    const supported = isAudioContextSupported()
+    setSupported(supported)
+
+    if (supported && !audioContextRef.current) {
+      try {
+        audioContextRef.current = createAudioContext()
+      } catch (error) {
+        console.error("Failed to create AudioContext:", error)
+        setSupported(false)
+      }
+    }
+
+    return (): void => {
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  // Cleanup audio nodes
+  const cleanupNodes = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.stop()
+        sourceNodeRef.current.disconnect()
+      } catch (error) {
+        // Node may already be stopped
+      }
+      sourceNodeRef.current = null
+    }
+
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect()
+      } catch (error) {
+        // Node may already be disconnected
+      }
+      gainNodeRef.current = null
+    }
+  }, [])
+
+  // Update time and progress
+  const updateTime = useCallback(() => {
+    if (audioContextRef.current && speaking && !paused) {
+      const elapsed = audioContextRef.current.currentTime - startTimeRef.current
+      setCurrentTime(elapsed)
+      callbacks?.onProgress?.(elapsed, duration)
+
+      if (elapsed < duration) {
+        animationFrameRef.current = requestAnimationFrame(updateTime)
+      }
+    }
+  }, [speaking, paused, duration, callbacks])
+
+  // Play audio buffer
+  const play = useCallback(
+    async (audioBuffer: ArrayBuffer): Promise<void> => {
+      // Queue the speech to prevent overlapping
+      const newSpeechPromise = new Promise<void>(async (resolve, reject) => {
+        try {
+          // Wait for previous speech to complete
+          await speechQueueRef.current
+
+          if (!supported || !audioContextRef.current) {
+            throw new Error("AudioContext not supported or not initialized")
+          }
+
+          setLoading(true)
+          cleanupNodes()
+
+          // Resume context if suspended
+          if (audioContextRef.current.state === "suspended") {
+            await audioContextRef.current.resume()
+          }
+
+          // Decode audio data
+          let decodedBuffer: AudioBuffer
+          try {
+            decodedBuffer = await audioContextRef.current.decodeAudioData(
+              audioBuffer.slice()
+            )
+          } catch (error) {
+            throw new Error(`Audio decoding failed: ${error}`)
+          }
+
+          // Create and connect audio nodes
+          const sourceNode = audioContextRef.current.createBufferSource()
+          const gainNode = audioContextRef.current.createGain()
+
+          sourceNode.buffer = decodedBuffer
+          gainNode.gain.value = volume
+          sourceNode.playbackRate.value = playbackRate
+
+          sourceNode.connect(gainNode)
+          gainNode.connect(audioContextRef.current.destination)
+
+          sourceNodeRef.current = sourceNode
+          gainNodeRef.current = gainNode
+
+          // Set duration and reset time
+          setDuration(decodedBuffer.duration)
+          setCurrentTime(0)
+          setSpeaking(true)
+          setPaused(false)
+          setLoading(false)
+
+          startTimeRef.current = audioContextRef.current.currentTime
+
+          // Handle audio end
+          sourceNode.onended = () => {
+            setSpeaking(false)
+            setPaused(false)
+            setCurrentTime(0)
+            callbacks?.onEnd?.()
+            resolve()
+          }
+
+          // Start playback
+          sourceNode.start(0)
+          callbacks?.onStart?.()
+          updateTime()
+        } catch (error) {
+          setLoading(false)
+          setSpeaking(false)
+          const errorObj =
+            error instanceof Error ? error : new Error("Audio playback failed")
+          callbacks?.onError?.(errorObj)
+          reject(errorObj)
+        }
+      })
+
+      // Update queue with error handling
+      speechQueueRef.current = newSpeechPromise.catch(() => {
+        // Allow queue to continue even if this speech fails
+      })
+
+      return newSpeechPromise
+    },
+    [supported, volume, playbackRate, callbacks, cleanupNodes, updateTime]
+  )
+
+  // Stop playback
+  const stop = useCallback(() => {
+    cleanupNodes()
+    setSpeaking(false)
+    setPaused(false)
+    setCurrentTime(0)
+
+    // Clear the queue by setting it to a rejected promise
+    speechQueueRef.current = Promise.reject(new Error("Stopped"))
+    speechQueueRef.current.catch(() => {}) // Prevent unhandled rejection
+
+    callbacks?.onEnd?.()
+  }, [cleanupNodes, callbacks])
+
+  // Pause playback
+  const pause = useCallback(() => {
+    if (!speaking || paused || !audioContextRef.current) return
+
+    if (audioContextRef.current.state === "running") {
+      audioContextRef.current.suspend()
+      setPaused(true)
+      pauseTimeRef.current = audioContextRef.current.currentTime
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
+  }, [speaking, paused])
+
+  // Resume playback
+  const resume = useCallback(() => {
+    if (!paused || !audioContextRef.current) return
+
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume()
+      setPaused(false)
+      startTimeRef.current +=
+        audioContextRef.current.currentTime - pauseTimeRef.current
+      updateTime()
+    }
+  }, [paused, updateTime])
+
+  // Set volume
+  const setVolume = useCallback((newVolume: number) => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = Math.max(0, Math.min(1, newVolume))
+    }
+  }, [])
+
+  // Set playback rate
+  const setPlaybackRate = useCallback((rate: number) => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.playbackRate.value = Math.max(
+        0.1,
+        Math.min(4, rate)
+      )
+    }
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupNodes()
+      setSpeaking(false)
+      setPaused(false)
+      setLoading(false)
+      setCurrentTime(0)
+      setDuration(0)
+    }
+  }, [cleanupNodes])
+
+  return {
+    play,
+    stop,
+    pause,
+    resume,
+    setVolume,
+    setPlaybackRate,
+    speaking,
+    paused,
+    loading,
+    supported,
+    currentTime,
+    duration,
+  }
+}

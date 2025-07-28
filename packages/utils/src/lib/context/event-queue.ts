@@ -1,10 +1,7 @@
 // Event Queue Context Manager with Type-Safe State Pattern
 // Built on top of the EventBus for speech API coordination
 
-import type {
-  UseAudioTTSReturn,
-  VoiceConfig,
-} from "@utils/lib/hooks/use-text-to-speech"
+import type { UseAudioTTSReturn, VoiceConfig } from "@utils/types/tts-types"
 
 import { createEventBus } from "./event-bus"
 

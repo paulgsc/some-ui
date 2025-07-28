@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import type {
-  UseAudioTTSReturn,
-  VoiceConfig,
-} from "@utils/lib/hooks/use-text-to-speech"
+import type { UseAudioTTSReturn, VoiceConfig } from "@utils/types/tts-types"
 
 import { createEventBus } from "./event-bus"
 import type { QueueState } from "./event-queue"

@@ -9,4 +9,7 @@ export { useLocalStorage } from "./use-local-storage"
 export * from "./use-fetch"
 export * from "./use-interval"
 export * from "./use-websocket"
-export * from "./use-text-to-speech"
+export { useAudioTTS } from "./use-audio-tts"
+
+export { useTTSFetch } from "./use-tts-fetch"
+export { useAudioSpeech } from "./use-audio-speech"
