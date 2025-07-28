@@ -76,7 +76,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({ className }) => {
   )
 }
 
-const LoadingCard = () => {
+export const LoadingCard = () => {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardContent className="flex items-center justify-center p-8">
@@ -94,7 +94,7 @@ const LoadingCard = () => {
   )
 }
 
-const ErrorBoundaryFallback = ({
+export const ErrorBoundaryFallback = ({
   error,
   resetError,
 }: {
