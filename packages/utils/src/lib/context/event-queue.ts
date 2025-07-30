@@ -1,7 +1,7 @@
 // Event Queue Context Manager with Type-Safe State Pattern
 // Built on top of the EventBus for speech API coordination
 
-import type { UseAudioTTSReturn, VoiceConfig } from "@utils/types/tts-types"
+import type { TTSOptions, UseAudioTTSReturn } from "@utils/types/tts-types"
 
 import { createEventBus } from "./event-bus"
 
@@ -87,16 +87,6 @@ type QueueConfig = {
   retryDelay: number
   strategy: QueueStrategyType
   overflow: OverflowStrategy
-}
-
-type AudioTTSOptions = {
-  voice?: VoiceConfig | null
-  volume?: number
-  playbackRate?: number
-  onStart?: () => void
-  onEnd?: () => void
-  onError?: (error: Error) => void
-  onProgress?: (currentTime: number, duration: number) => void
 }
 
 // Default strategies implementation
@@ -500,7 +490,7 @@ export function createSpeechQueue(
 ) {
   return createQueueManager<{
     text: string
-    options?: AudioTTSOptions
+    options?: TTSOptions
   }>(async (payload, signal) => {
     if (signal.aborted) {
       throw new DOMException("Aborted", "AbortError")

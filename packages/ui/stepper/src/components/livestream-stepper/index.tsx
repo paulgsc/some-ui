@@ -1,6 +1,7 @@
 import type { FC } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSpeechQueue } from "some-ui-utils"
+import type { TTSOptions } from "some-ui-utils"
 
 type Topic = {
   id: string | number
@@ -27,28 +28,11 @@ const sampleTopics: Array<Topic> = [
   },
   {
     id: 2,
-    title: "Event Queue",
-    description: `Implementing the event queue bus for scheduling and executing the speech api.
-        We have independent UI components that can trigger a speech utterance. I need to coordinate and
-      synchronize this, by having them subscribe to an event bus queue. The end result is a well ochestrated
-    symphony of ai speech utterance.`,
+    title: "Dockerfile",
+    description: `To make our server always availble, setting up a Dockerfile for my 
+    axum server.`,
     timestamp: 5,
-    duration: 210,
-  },
-  {
-    id: 3,
-    title: "Break",
-    description: "I take break...",
-    timestamp: 215,
-    duration: 35,
-  },
-  {
-    id: 4,
-    title: "Android APK",
-    description: `I want to have my own temu apk, simple reminder app. Can it be possible that the entire process
-    is rusty. We find out today.`,
-    timestamp: 250,
-    duration: 60,
+    duration: 200,
   },
 ]
 
@@ -139,6 +123,7 @@ export const LivestreamTopicNotification: FC<
         const options = {
           volume: 1.0,
           onStart: (): void => {
+            console.log("onStart was updated and invoked!")
             setIsSpeaking(true)
           },
           onEnd: (): void => {
@@ -158,7 +143,6 @@ export const LivestreamTopicNotification: FC<
             setActiveToast(null)
           },
         }
-
         await speak(topic.description, ++queueStatus.maxPriority, options)
       } catch (error) {
         console.error("Failed to announce topic:", error)

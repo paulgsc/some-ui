@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-
-type AudioSpeechCallbacks = {
-  onStart?: () => void
-  onEnd?: () => void
-  onError?: (error: Error) => void
-  onProgress?: (currentTime: number, duration: number) => void
-}
-
-type AudioSpeechOptions = {
-  volume?: number
-  playbackRate?: number
-  callbacks?: AudioSpeechCallbacks
-}
+import type { UseAudioTTSOptions } from "@utils/types/tts-types"
 
 type AudioSpeechReturn = {
   play: (audioBuffer: ArrayBuffer) => Promise<void>
@@ -41,11 +29,7 @@ const createAudioContext = (): AudioContext => {
   return new AudioContextClass()
 }
 
-export function useAudioSpeech(
-  options: AudioSpeechOptions = {}
-): AudioSpeechReturn {
-  const { volume = 1, playbackRate = 1, callbacks } = options
-
+export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   // State
   const [speaking, setSpeaking] = useState(false)
   const [paused, setPaused] = useState(false)
@@ -62,6 +46,11 @@ export function useAudioSpeech(
   const startTimeRef = useRef<number>(0)
   const pauseTimeRef = useRef<number>(0)
   const speechQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const currentOptionsRef = useRef(options)
+
+  useEffect(() => {
+    currentOptionsRef.current = options
+  }, [options])
 
   // Initialize AudioContext
   useEffect(() => {
@@ -119,13 +108,13 @@ export function useAudioSpeech(
     if (audioContextRef.current && speaking && !paused) {
       const elapsed = audioContextRef.current.currentTime - startTimeRef.current
       setCurrentTime(elapsed)
-      callbacks?.onProgress?.(elapsed, duration)
+      currentOptionsRef.current.onProgress?.(elapsed, duration)
 
       if (elapsed < duration) {
         animationFrameRef.current = requestAnimationFrame(updateTime)
       }
     }
-  }, [speaking, paused, duration, callbacks])
+  }, [speaking, paused, duration])
 
   // Play audio buffer
   const play = useCallback(
@@ -163,8 +152,9 @@ export function useAudioSpeech(
           const gainNode = audioContextRef.current.createGain()
 
           sourceNode.buffer = decodedBuffer
-          gainNode.gain.value = volume
-          sourceNode.playbackRate.value = playbackRate
+          gainNode.gain.value = currentOptionsRef.current.volume ?? 1
+          sourceNode.playbackRate.value =
+            currentOptionsRef.current.playbackRate ?? 1
 
           sourceNode.connect(gainNode)
           gainNode.connect(audioContextRef.current.destination)
@@ -182,24 +172,25 @@ export function useAudioSpeech(
           startTimeRef.current = audioContextRef.current.currentTime
 
           // Handle audio end
-          sourceNode.onended = () => {
+          sourceNode.onended = (): void => {
             setSpeaking(false)
             setPaused(false)
             setCurrentTime(0)
-            callbacks?.onEnd?.()
+            currentOptionsRef.current.onEnd?.()
             resolve()
           }
 
           // Start playback
           sourceNode.start(0)
-          callbacks?.onStart?.()
+          currentOptionsRef.current.onStart?.()
           updateTime()
         } catch (error) {
+          console.error(error)
           setLoading(false)
           setSpeaking(false)
           const errorObj =
             error instanceof Error ? error : new Error("Audio playback failed")
-          callbacks?.onError?.(errorObj)
+          currentOptionsRef.current.onError?.(errorObj)
           reject(errorObj)
         }
       })
@@ -211,7 +202,7 @@ export function useAudioSpeech(
 
       return newSpeechPromise
     },
-    [supported, volume, playbackRate, callbacks, cleanupNodes, updateTime]
+    [supported, cleanupNodes, updateTime]
   )
 
   // Stop playback
@@ -225,8 +216,8 @@ export function useAudioSpeech(
     speechQueueRef.current = Promise.reject(new Error("Stopped"))
     speechQueueRef.current.catch(() => {}) // Prevent unhandled rejection
 
-    callbacks?.onEnd?.()
-  }, [cleanupNodes, callbacks])
+    currentOptionsRef.current.onEnd?.()
+  }, [cleanupNodes])
 
   // Pause playback
   const pause = useCallback(() => {

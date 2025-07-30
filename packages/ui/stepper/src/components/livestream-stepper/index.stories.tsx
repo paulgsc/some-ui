@@ -6,7 +6,9 @@ type Story = StoryObj<typeof LivestreamTopicNotification>
 type Meta = MetaObj<typeof LivestreamTopicNotification>
 
 export const Default: Story = {
-  args: {},
+  args: {
+    speechIntervalLoops: 1,
+  },
 }
 
 export default {

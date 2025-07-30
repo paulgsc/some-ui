@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import type { UseAudioTTSReturn, VoiceConfig } from "@utils/types/tts-types"
+import type { TTSOptions, UseAudioTTSReturn } from "@utils/types/tts-types"
 
 import { createEventBus } from "./event-bus"
 import type { QueueState } from "./event-queue"
@@ -11,15 +11,7 @@ type AppEventMap = {
     componentId: string
     text: string
     priority?: number
-    options?: {
-      voice?: VoiceConfig | null
-      volume?: number
-      playbackRate?: number
-      onStart?: () => void
-      onEnd?: () => void
-      onError?: (error: Error) => void
-      onProgress?: (currentTime: number, duration: number) => void
-    }
+    options?: TTSOptions
   }
   "speech:cancel": { componentId: string; itemId?: string }
   "speech:queue:status": { status: string; queueSize: number }
@@ -59,13 +51,9 @@ class SpeechContextManager {
           payload: {
             text,
             options: {
+              ...options,
               volume: options?.volume ?? 0.8,
               playbackRate: options?.playbackRate ?? 1.0,
-              voice: options?.voice,
-              onStart: options?.onStart,
-              onEnd: options?.onEnd,
-              onError: options?.onError,
-              onProgress: options?.onProgress,
             },
           },
           componentId,
