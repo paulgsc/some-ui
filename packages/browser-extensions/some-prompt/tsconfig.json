@@ -1,16 +1,26 @@
 {
-  "extends": "../tsconfig/rollupconfig.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
-    "declarationDir": "./",
-    "composite": true,
-    "rootDir": "./src",
-    "outDir": "./dist",
     "paths": {
-      "@utils/*": ["./src/*"]
+      "@prompt/*": ["src/*"]
     },
-    "types": ["vitest/globals"]
+    "types": ["chrome"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "build", "dist"]
+  "include": ["src/**/*"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

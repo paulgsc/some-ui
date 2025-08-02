@@ -6,7 +6,7 @@
 
   "permissions": [
     "activeTab",
-    "tabs",
+    "storage",
     "<all_urls>",
     "http://nixos.local:3000/*",
     "http://localhost:3000/*",
@@ -15,15 +15,20 @@
 
   "background": {
     "scripts": ["background.js"],
-    "persistent": false
+    "persistent": false,
+    "type": "module"
   },
 
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "Typing Mirror Settings"
+  },
+  "web_accessible_resources": ["styles/*"]
 }
