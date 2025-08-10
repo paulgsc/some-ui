@@ -1,7 +1,9 @@
+import { useEffect, useRef } from "react"
 import type { MoodEvent } from "@nfl/types/hopium-tracker"
 import { computeStreak } from "@nfl/utils/mood"
 import { Flame, Sparkles } from "lucide-react"
-import { Card, CardContent } from "some-ui-shared"
+import type { SparkleBurstHandle } from "some-ui-shared"
+import { Card, CardContent, SparkleBurst } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type Props = {
@@ -9,21 +11,83 @@ type Props = {
   index: number
 }
 
+const SUCCESS_COLORS = ["#FDE68A", "#A7F3D0", "#C7D2FE", "#A5F3FC", "#FCD34D"]
+
 export const StreakCard = ({ events, index }: Props) => {
   const { direction, count, bestUp, bestDown } = computeStreak(events, index)
+  const burstRef = useRef<SparkleBurstHandle>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const lastMilestoneCount = useRef(0)
+
   const milestone = count > 0 && count % 5 === 0
   const up = direction === "up"
   const down = direction === "down"
+
+  useEffect(() => {
+    // Cancel any running sequence when component unmounts
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    // Only run if we hit a new milestone
+    if (!milestone || count === lastMilestoneCount.current) return
+
+    // Cancel any existing sequence
+    abortControllerRef.current?.abort()
+
+    // Start new sequence
+    lastMilestoneCount.current = count
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          controller.signal.throwIfAborted() // Check if aborted before resolving
+          resolve()
+        }, ms)
+
+        controller.signal.addEventListener("abort", () => {
+          clearTimeout(timeout)
+          reject(new DOMException("Aborted", "AbortError"))
+        })
+      })
+
+    const runSequence = async () => {
+      try {
+        burstRef.current?.burstAtPercent(0.15, 0.25)
+        await wait(250)
+        burstRef.current?.burstAtPercent(0.85, 0.25)
+        await wait(250)
+        burstRef.current?.burstAtPercent(0.2, 0.75)
+        await wait(250)
+        burstRef.current?.burstAtPercent(0.8, 0.75)
+        await wait(300)
+        burstRef.current?.burstAtPercent(0.5, 0.5)
+      } catch (error) {
+        // Sequence was aborted, which is fine
+        if (error.name !== "AbortError") {
+          console.error("Sequence error:", error)
+        }
+      }
+    }
+
+    runSequence()
+  }, [milestone, count])
 
   return (
     <Card
       className={cn(
         "relative size-full overflow-hidden border",
-        up &&
-          "border-emerald-600/30 bg-gradient-to-br from-emerald-900/40 to-cyan-900/30",
-        down &&
-          "border-rose-600/30 bg-gradient-to-br from-rose-900/40 to-orange-900/30",
-        !up && !down && "border-white/10 bg-slate-900/60"
+        "border-white/10 bg-slate-900/60",
+        {
+          "border-emerald-600/30 bg-gradient-to-br from-emerald-900/40 to-cyan-900/30":
+            up,
+          "border-rose-600/30 bg-gradient-to-br from-rose-900/40 to-orange-900/30":
+            down,
+        }
       )}
     >
       {/* Glow ring on milestone */}
@@ -41,7 +105,19 @@ export const StreakCard = ({ events, index }: Props) => {
       {/* Sparkles on milestone */}
       {milestone && (
         <div className="pointer-events-none absolute inset-0">
-          <SparkleBurst />
+          <SparkleBurst
+            ref={burstRef}
+            autoPlay={false}
+            particleCount={160}
+            spread={110}
+            gravity={0.22}
+            drag={0.985}
+            startVelocity={7.2}
+            colors={SUCCESS_COLORS}
+            origin="center"
+            maxDurationMs={1700}
+            showControls={false}
+          />
         </div>
       )}
 
@@ -97,24 +173,5 @@ export const StreakCard = ({ events, index }: Props) => {
         )}
       </CardContent>
     </Card>
-  )
-}
-
-const SparkleBurst = () => {
-  // Simple CSS-based sparkle burst
-  return (
-    <>
-      <span className="absolute left-6 top-6 size-1 animate-[sparkle_1200ms_ease-in-out_infinite] rounded-full bg-amber-300" />
-      <span className="absolute right-8 top-10 size-1.5 animate-[sparkle_1400ms_ease-in-out_infinite_200ms] rounded-full bg-fuchsia-300" />
-      <span className="absolute bottom-6 left-12 size-1 animate-[sparkle_1000ms_ease-in-out_infinite_100ms] rounded-full bg-cyan-300" />
-      <span className="absolute bottom-4 right-5 size-1 animate-[sparkle_1300ms_ease-in-out_infinite_50ms] rounded-full bg-rose-300" />
-      <style>{`
-                                                    @keyframes sparkle {
-                                                                0% { transform: translateY(0) scale(0.8); opacity: 0.9; }
-                                                                          50% { transform: translateY(-6px) scale(1.1); opacity: 1; }
-                                                                                    100% { transform: translateY(0) scale(0.8); opacity: 0.9; }
-                                                                                            }
-                                                                                                  `}</style>
-    </>
   )
 }

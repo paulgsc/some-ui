@@ -1,20 +1,8 @@
-type BackgroundMessage = {
-  type: "POST_UTTERANCE" | "GET_SETTINGS" | "UPDATE_SETTINGS"
-  payload?: any
-}
-
-type BackgroundResponse = {
-  success: boolean
-  data?: any
-  error?: string
-}
-type ExtensionSettings = {
-  enabled: boolean
-  maxUtteranceLength: number
-  minUtteranceLength: number
-  serverUrl: string
-  postThrottleMs: number
-}
+import type {
+  BackgroundMessage,
+  BackgroundResponse,
+  ExtensionSettings,
+} from "@prompt/types/storage"
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
   enabled: true,
