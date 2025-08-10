@@ -100,30 +100,40 @@ class TypingMirror {
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
-    if (
-      e.key === "Enter" &&
-      this.currentElement &&
-      DOMUtils.isInputElement(this.currentElement)
-    ) {
-      // Check if it's a textarea and not using Shift+Enter
+    console.log("🪵 [handleKeyDown] Event fired:", {
+      key: e.key,
+      shiftKey: e.shiftKey,
+      currentElement: this.currentElement,
+      currentText: this.currentText,
+    })
+
+    try {
       if (
-        this.currentElement.tagName.toLowerCase() === "textarea" &&
-        !e.shiftKey
+        e.key === "Enter" &&
+        this.currentElement &&
+        DOMUtils.isInputElement(this.currentElement)
       ) {
-        return
-      }
+        const tagName = this.currentElement.tagName.toLowerCase()
 
-      const utteranceText = TextProcessor.prepareTextForUtterance(
-        this.currentText,
-        this.settings.maxUtteranceLength,
-        this.settings.minUtteranceLength
-      )
+        // Handle textarea without Shift+Enter
+        if (tagName === "textarea" && !e.shiftKey) return
 
-      if (utteranceText && this.shouldPost()) {
-        if (this.currentElement.tagName.toLowerCase() === "input") {
-          e.preventDefault()
+        const utteranceText = TextProcessor.prepareTextForUtterance(
+          this.currentText,
+          this.settings.maxUtteranceLength,
+          this.settings.minUtteranceLength
+        )
+
+        if (utteranceText && this.shouldPost()) {
+          if (tagName === "input") {
+            e.preventDefault()
+          }
+          this.postText(utteranceText)
         }
-        this.postText(utteranceText)
+      }
+    } catch (err) {
+      if (err instanceof Error && err.stack) {
+        console.error("📜 Stack trace:", err.stack)
       }
     }
   }
@@ -156,7 +166,10 @@ class TypingMirror {
       this.settings.minUtteranceLength
     )
 
-    if (!utteranceText) return
+    if (!utteranceText) {
+      console.warn("🚫 prepareTextForUtterance returned null")
+      return
+    }
 
     this.lastPostTime = Date.now()
 
@@ -165,6 +178,8 @@ class TypingMirror {
         text: utteranceText,
         metadata: this.getMetadata(),
       }
+
+      console.log("📦 Sending message to background:", payload)
 
       const message: BackgroundMessage = {
         type: "POST_UTTERANCE",

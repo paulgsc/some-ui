@@ -12,7 +12,7 @@ export default defineConfig({
         background: resolve(__dirname, "src/background/background.ts"),
       },
       output: {
-        manualChunks: undefined,
+        manualChunks: () => {}, // prevents shared chunks
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "content") return "content.js"
           if (chunkInfo.name === "background") return "background.js"
