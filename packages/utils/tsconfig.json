@@ -2,10 +2,12 @@
   "extends": "../tsconfig/rollupconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "declarationDir": "./",
     "composite": true,
     "rootDir": "./src",
     "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "./",
+    "noEmit": true,
     "paths": {
       "@utils/*": ["./src/*"]
     },

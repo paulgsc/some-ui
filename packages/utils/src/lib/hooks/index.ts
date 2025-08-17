@@ -13,3 +13,4 @@ export { useAudioTTS } from "./use-audio-tts"
 
 export { useTTSFetch } from "./use-tts-fetch"
 export { useAudioSpeech } from "./use-audio-speech"
+export { useAudioFromStorage } from "./use-audio-storage"
