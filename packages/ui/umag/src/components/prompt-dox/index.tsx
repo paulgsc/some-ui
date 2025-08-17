@@ -5,7 +5,9 @@ import {
   ErrorBoundaryFallback,
   LoadingCard,
 } from "@umag/components/now-playing/now-playing-card"
+import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
 import { useUtteranceWebSocket } from "@umag/hooks/use-prompt-utterance"
+import type { TTSOptions, VoiceConfig } from "some-ui-utils"
 import { useSpeechQueue } from "some-ui-utils"
 
 type DoxPromptProps = {
@@ -28,16 +30,21 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     error,
   } = useUtteranceWebSocket()
 
-  const { speak } = useSpeechQueue(COMPONENT_ID)
+  const {
+    speak,
+    ttsHook: { voices, selectedVoice },
+  } = useSpeechQueue(COMPONENT_ID)
+  const [voice, setVoice] = useState<VoiceConfig | null>(selectedVoice)
 
   // Remove the useCallback entirely and put logic in useEffect
   useEffect(() => {
-    const speakContent = async () => {
-      if (!text || !isConnected) return
+    const speakContent = async (): Promise<void> => {
+      if (!text || !isConnected || !voice) return
 
       try {
-        const options = {
+        const options: TTSOptions = {
           volume: 1.0,
+          voice,
           onStart: (): void => {
             setIsSpeaking(true)
           },
@@ -58,7 +65,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     }
 
     speakContent()
-  }, [isConnected, text, speak])
+  }, [isConnected, text, speak, voice])
 
   if (error) {
     return showErrorFallback ? (
@@ -72,5 +79,18 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     return <LoadingCard />
   }
 
-  return <MegaphoneSpectrum className={className} isActive={isSpeaking} />
+  return (
+    <VoiceSelectorTrigger
+      voices={[...voices]}
+      selectedVoice={selectedVoice}
+      onVoiceSelect={(voice) => {
+        setVoice(voice)
+        console.log(`[v0] Voice selected: ${voice.name} (${voice.provider})`)
+      }}
+      className={className}
+    >
+      <p> voice {voice?.name} </p>
+      <MegaphoneSpectrum className="size-full" isActive={isSpeaking} />
+    </VoiceSelectorTrigger>
+  )
 }

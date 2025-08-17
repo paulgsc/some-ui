@@ -48,6 +48,7 @@ export type TTSOptions = {
   readonly volume?: number
   readonly playbackRate?: number
   readonly autoPlay?: boolean
+  readonly voice?: VoiceConfig
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void

@@ -19,9 +19,13 @@ import { cn } from "some-ui-utils"
 
 type NowPlayingProps = {
   className?: string
+  showError?: boolean
 }
 
-export const NowPlayingCard: FC<NowPlayingProps> = ({ className }) => {
+export const NowPlayingCard: FC<NowPlayingProps> = ({
+  className,
+  showError = true,
+}) => {
   const {
     status: { title, channel, thumbnail },
     isConnected,
@@ -38,7 +42,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({ className }) => {
   const vinylRecordRef = useRef<HTMLDivElement>(null)
   const songInfoRef = useRef<HTMLDivElement>(null)
 
-  if (error) {
+  if (error && showError) {
     return <ErrorBoundaryFallback error={error} />
   }
 
