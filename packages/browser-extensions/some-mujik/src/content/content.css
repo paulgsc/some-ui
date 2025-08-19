@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure our dropdown doesn't interfere with YouTube's styles */
+#youtube-session-tracker-dropdown {
+  font-family: "Roboto", "Noto", sans-serif;
+  color: #0f0f0f;
+}
+
+#youtube-session-tracker-dropdown * {
+  box-sizing: border-box;
+}
+
+/* Reset any YouTube-specific styles that might interfere */
+#youtube-session-tracker-dropdown button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Ensure dropdown content appears above YouTube elements */
+#youtube-session-tracker-dropdown [role="menu"] {
+  z-index: 2147483647 !important;
+}

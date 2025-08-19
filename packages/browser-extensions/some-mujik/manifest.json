@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "YouTube Session Tracker",
+  "version": "1.0.0",
+  "description": "Track YouTube session metadata with customizable dropdown controls",
+
+  "permissions": ["storage", "activeTab", "https://www.youtube.com/*"],
+
+  "background": {
+    "scripts": ["dist/background.js"],
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["dist/content.js"],
+      "css": ["dist/style.css"],
+      "run_at": "document_end"
+    }
+  ],
+
+  "browser_action": {
+    "default_popup": "dist/popup.html",
+    "default_title": "YouTube Session Tracker"
+  },
+
+  "web_accessible_resources": ["styles/*"]
+}
