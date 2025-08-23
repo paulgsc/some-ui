@@ -8,6 +8,11 @@ export default createViteConfig({
     "@overlays": resolve(__dirname, "src"),
   },
   dtsOptions: {
-    exclude: ["**/data/**", "**/demo/**", "../../../assets/**/*"],
+    exclude: [
+      "**/data/**",
+      "**/demo/**",
+      "../../../assets/**/*",
+      "**/overlay-content/**",
+    ],
   },
 })

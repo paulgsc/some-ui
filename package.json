@@ -130,5 +130,8 @@
     "extends": [
       "plugin:storybook/recommended"
     ]
+  },
+  "dependencies": {
+    "turbo": "^2.5.6"
   }
 }

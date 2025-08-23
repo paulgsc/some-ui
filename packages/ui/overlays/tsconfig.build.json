@@ -6,6 +6,7 @@
     "**/*.stories.ts",
     "../../../assets/**/*",
     "**/data/**",
-    "**/demo/**"
+    "**/demo/**",
+    "**/overlay-content/**"
   ]
 }

@@ -27,30 +27,21 @@
     "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/overlays.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/overlays.cjs.js"
-      }
+      "types": "./dist/some-ui-overlays.d.ts",
+      "import": "./dist/some-ui-overlays.es.js",
+      "require": "./dist/some-ui-overlays.cjs.js",
+      "default": "./dist/some-ui-overlays.es.js"
     }
   },
   "files": [
-    "overlays*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/overlays.umd.js",
-  "module": "./dist/esm/overlays.esm.js",
+  "main": "./dist/some-ui-overlays.cjs.js",
+  "module": "./dist/some-ui-overlays.es.js",
   "name": "overlays",
   "repository": {
     "type": "git",
@@ -70,7 +61,7 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/some-ui-overlays.d.ts",
   "unpkg": "overlays.umd.js",
   "version": "0.0.5"
 }

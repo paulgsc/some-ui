@@ -122,13 +122,18 @@ export function updateClientObsState(
         stats: event.data.stats ?? state.stats,
       }
     case "currentTransitionResponse":
-    case "currentSceneTransitionChanged":
       return {
         ...state,
         currentTransitionName:
           event.data.transitionName ?? state.currentTransitionName,
         currentTransitionDuration:
           event.data.transitionDuration ?? state.currentTransitionDuration,
+      }
+    case "currentSceneTransitionChanged":
+      return {
+        ...state,
+        currentTransitionName:
+          event.data.transitionName ?? state.currentTransitionName,
       }
     case "transitionListResponse":
       return {
@@ -162,11 +167,15 @@ export function updateClientObsState(
         hotkeys: event.data.hotkeys ?? state.hotkeys,
       }
     case "versionResponse":
-    case "hello":
       return {
         ...state,
         obsVersion: event.data.obsVersion ?? state.obsVersion,
         websocketVersion: event.data.websocketVersion ?? state.websocketVersion,
+      }
+    case "hello":
+      return {
+        ...state,
+        obsVersion: event.data.obsVersion ?? state.obsVersion,
       }
     case "identified":
       return {
@@ -191,7 +200,7 @@ export function updateClientObsState(
         }
       }
       return state
-    case "UnknownResponse":
+    case "unknownResponse":
       return {
         ...state,
         lastUnknownResponse: {
@@ -199,7 +208,7 @@ export function updateClientObsState(
           data: event.data.data,
         },
       }
-    case "UnknownEvent":
+    case "unknownEvent":
       return {
         ...state,
         lastUnknownEvent: {
