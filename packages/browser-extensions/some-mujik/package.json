@@ -43,6 +43,9 @@
   },
   "scripts": {
     "build": "tsc && vite build",
+    "build:popup": "tsc && vite build --config vite.config.popup.ts",
+    "build:content": "tsc && vite build --config vite.config.content.ts",
+    "build:background": "tsc && vite build --config vite.config.background.ts",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "dev": "vite",

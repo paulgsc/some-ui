@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
+import type { FC } from "react"
 import { Button } from "@mujik/components/ui/button"
 import { Switch } from "@mujik/components/ui/switch"
 import { Activity, Music, Settings } from "lucide-react"
 
-export const Popup: React.FC = () => {
+export const Popup: FC = () => {
   const [isEnabled, setIsEnabled] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [sessionCount, setSessionCount] = useState(0)

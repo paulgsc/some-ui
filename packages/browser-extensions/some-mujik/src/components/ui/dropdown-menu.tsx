@@ -1,23 +1,24 @@
-import * as React from "react"
+import type { FC, ReactNode } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { cn } from "@mujik/lib/utils"
 
 type DropdownMenuProps = {
-  children: React.ReactNode
-  trigger: React.ReactNode
+  children: ReactNode
+  trigger: ReactNode
 }
 
 type DropdownMenuContentProps = {
-  children: React.ReactNode
+  children: ReactNode
   align?: "start" | "center" | "end"
 }
 
 type DropdownMenuItemProps = {
-  children: React.ReactNode
+  children: ReactNode
   onClick?: () => void
   disabled?: boolean
 }
 
-const DropdownMenuContext = React.createContext<{
+const DropdownMenuContext = createContext<{
   isOpen: boolean
   setIsOpen: (open: boolean) => void
 }>({
@@ -25,14 +26,11 @@ const DropdownMenuContext = React.createContext<{
   setIsOpen: () => {},
 })
 
-export const DropdownMenu: React.FC<DropdownMenuProps> = ({
-  children,
-  trigger,
-}) => {
-  const [isOpen, setIsOpen] = React.useState(false)
-  const dropdownRef = React.useRef<HTMLDivElement>(null)
+export const DropdownMenu: FC<DropdownMenuProps> = ({ children, trigger }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -56,17 +54,17 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   )
 }
 
-export const DropdownMenuTrigger: React.FC<{ children: React.ReactNode }> = ({
+export const DropdownMenuTrigger: FC<{ children: ReactNode }> = ({
   children,
 }) => {
   return <>{children}</>
 }
 
-export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
+export const DropdownMenuContent: FC<DropdownMenuContentProps> = ({
   children,
   align = "start",
 }) => {
-  const { isOpen } = React.useContext(DropdownMenuContext)
+  const { isOpen } = useContext(DropdownMenuContext)
 
   if (!isOpen) return null
 
@@ -92,12 +90,12 @@ export const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
   )
 }
 
-export const DropdownMenuItem: React.FC<DropdownMenuItemProps> = ({
+export const DropdownMenuItem: FC<DropdownMenuItemProps> = ({
   children,
   onClick,
   disabled = false,
 }) => {
-  const { setIsOpen } = React.useContext(DropdownMenuContext)
+  const { setIsOpen } = useContext(DropdownMenuContext)
 
   const handleClick = () => {
     if (!disabled && onClick) {

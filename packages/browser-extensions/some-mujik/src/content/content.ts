@@ -1,11 +1,6 @@
-import React from "react"
-import ReactDOM from "react-dom/client"
-
+// src/content/content.ts - Vanilla JS version
 import "./content.css"
 
-import { YouTubeDropdown } from "./youtube-dropdown"
-
-// src/content/content.ts
 console.log("[DEBUG] Content script file is loading...")
 
 type VideoMetadata = {
@@ -16,9 +11,110 @@ type VideoMetadata = {
   url: string
 }
 
+type DropdownAction = "save" | "bookmark" | "share" | "download"
+
+class YouTubeDropdown {
+  private container: HTMLElement
+  private isOpen = false
+
+  constructor(
+    container: HTMLElement,
+    onAction: (action: DropdownAction) => void
+  ) {
+    this.container = container
+    this.render(onAction)
+  }
+
+  private render(onAction: (action: DropdownAction) => void): void {
+    // Create dropdown button
+    const button = document.createElement("button")
+    button.className = "yt-dropdown-btn"
+    button.innerHTML = `
+                                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                                            </svg>
+                                                                `
+
+    // Create dropdown menu
+    const menu = document.createElement("div")
+    menu.className = "yt-dropdown-menu"
+    menu.style.display = "none"
+
+    const actions: Array<{
+      action: DropdownAction
+      label: string
+      icon: string
+    }> = [
+      { action: "save", label: "Save to Session", icon: "💾" },
+      { action: "bookmark", label: "Bookmark", icon: "⭐" },
+      { action: "share", label: "Share", icon: "🔗" },
+      { action: "download", label: "Download Info", icon: "⬇️" },
+    ]
+
+    actions.forEach(({ action, label, icon }) => {
+      const item = document.createElement("button")
+      item.className = "yt-dropdown-item"
+      item.innerHTML = `<span class="icon">${icon}</span><span>${label}</span>`
+      item.addEventListener("click", (e) => {
+        e.stopPropagation()
+        this.close()
+        onAction(action)
+      })
+      menu.appendChild(item)
+    })
+
+    // Toggle functionality
+    button.addEventListener("click", (e) => {
+      e.stopPropagation()
+      this.toggle()
+    })
+
+    // Close when clicking outside
+    document.addEventListener("click", () => {
+      this.close()
+    })
+
+    // Prevent menu clicks from closing
+    menu.addEventListener("click", (e) => {
+      e.stopPropagation()
+    })
+
+    this.container.appendChild(button)
+    this.container.appendChild(menu)
+  }
+
+  private toggle(): void {
+    this.isOpen ? this.close() : this.open()
+  }
+
+  private open(): void {
+    const menu = this.container.querySelector(
+      ".yt-dropdown-menu"
+    ) as HTMLElement
+    if (menu) {
+      menu.style.display = "block"
+      this.isOpen = true
+    }
+  }
+
+  private close(): void {
+    const menu = this.container.querySelector(
+      ".yt-dropdown-menu"
+    ) as HTMLElement
+    if (menu) {
+      menu.style.display = "none"
+      this.isOpen = false
+    }
+  }
+
+  public destroy(): void {
+    this.container.innerHTML = ""
+  }
+}
+
 class YouTubeContentScript {
   private isExtensionEnabled = true
-  private dropdownRoot: ReactDOM.Root | null = null
+  private dropdown: YouTubeDropdown | null = null
   private containerElement: HTMLElement | null = null
   private observer: MutationObserver | null = null
 
@@ -184,8 +280,6 @@ class YouTubeContentScript {
     this.containerElement.style.display = this.isExtensionEnabled
       ? "block"
       : "none"
-
-    // Optional: Add a data attribute for easier debugging
     this.containerElement.setAttribute("data-injected", "true")
 
     console.log(
@@ -218,34 +312,22 @@ class YouTubeContentScript {
 
     console.log("[YouTubeExtension] Confirmed dropdown is in DOM:", insertedEl)
 
-    // Create React root
+    // Create vanilla JS dropdown (no React)
     try {
-      this.dropdownRoot = ReactDOM.createRoot(insertedEl)
-      console.log("[YouTubeExtension] Created React root:", this.dropdownRoot)
-    } catch (err) {
-      console.error("[YouTubeExtension] Failed to create React root:", err)
-      return
-    }
-
-    // Render component
-    try {
-      this.dropdownRoot.render(
-        React.createElement(YouTubeDropdown, {
-          onAction: this.handleDropdownAction.bind(this),
-        })
+      this.dropdown = new YouTubeDropdown(
+        insertedEl,
+        this.handleDropdownAction.bind(this)
       )
-      console.log(
-        "[YouTubeExtension] Successfully rendered React component into dropdown"
-      )
+      console.log("[YouTubeExtension] Successfully created vanilla dropdown")
     } catch (err) {
-      console.error("[YouTubeExtension] Failed to render React component:", err)
+      console.error("[YouTubeExtension] Failed to create dropdown:", err)
     }
   }
 
   private removeDropdown(): void {
-    if (this.dropdownRoot) {
-      this.dropdownRoot.unmount()
-      this.dropdownRoot = null
+    if (this.dropdown) {
+      this.dropdown.destroy()
+      this.dropdown = null
     }
     if (this.containerElement) {
       this.containerElement.remove()
@@ -261,7 +343,7 @@ class YouTubeContentScript {
     }
   }
 
-  private async handleDropdownAction(action: string): Promise<void> {
+  private async handleDropdownAction(action: DropdownAction): Promise<void> {
     const metadata = this.extractVideoMetadata()
     if (!metadata) {
       console.error("Could not extract video metadata")

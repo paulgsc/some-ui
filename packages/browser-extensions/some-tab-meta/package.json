@@ -39,7 +39,6 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "chmod +x build.sh && ./build.sh",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

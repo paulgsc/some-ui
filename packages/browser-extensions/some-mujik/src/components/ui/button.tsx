@@ -1,11 +1,12 @@
+import type { ButtonHTMLAttributes, FC } from "react"
 import { cn } from "@mujik/lib/utils"
 
 type ButtonProps = {
   variant?: "default" | "outline" | "ghost"
   size?: "sm" | "md" | "lg"
-} & React.ButtonHTMLAttributes<HTMLButtonElement>
+} & ButtonHTMLAttributes<HTMLButtonElement>
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: FC<ButtonProps> = ({
   children,
   variant = "default",
   size = "md",

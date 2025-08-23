@@ -1,3 +1,4 @@
+import type { FC } from "react"
 import { cn } from "@mujik/lib/utils"
 
 type SwitchProps = {
@@ -6,7 +7,7 @@ type SwitchProps = {
   disabled?: boolean
 }
 
-export const Switch: React.FC<SwitchProps> = ({
+export const Switch: FC<SwitchProps> = ({
   checked,
   onCheckedChange,
   disabled = false,
