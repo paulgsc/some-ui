@@ -1,36 +1,84 @@
+import type { ComponentProps, FC, ReactNode } from "react"
 import { useRef } from "react"
 import { BrickWallChart } from "@nfl/components/brick-wall/brick-ladder-chart"
-import { useNflTennis } from "@nfl/data/brick-data"
 import Autoplay from "embla-carousel-autoplay"
 import { Carousel, CarouselContent, CarouselItem } from "some-ui-shared"
 
-export const BrickChartCarousel = (): React.JSX.Element => {
-  const contentRef = useRef<HTMLDivElement>(null)
+type Standing = {
+  name: string
+  value: number
+  imageUrl: string
+  properties: Record<"string", number | string | object>
+}
 
-  const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: true }))
-  const { data: response, isLoading } = useNflTennis({})
-  const { data: allWeeks, metadata } = response ?? {}
+export type BrickChartData = {
+  standings: Array<Standing>
+  weekLabel?: string
+  [key: string]: unknown // Allow extra metadata
+}
 
-  if (isLoading) return <div>Loading...</div>
+export type BrickChartCarouselProps = {
+  data: Array<BrickChartData>
+  title?: string
+  isLoading?: boolean
+  /**
+   * Optional autoplay delay in ms
+   * @default 2000
+   */
+  autoplayDelay?: number
+  /**
+   * Whether to stop autoplay on user interaction
+   * @default true
+   */
+  stopOnInteraction?: boolean
+  /**
+   * Custom loader component while loading
+   */
+  loader?: ReactNode
+  /**
+   * Additional props to pass to BrickWallChart
+   */
+  chartProps?: Omit<ComponentProps<typeof BrickWallChart>, "data" | "title">
+}
+
+/**
+ * A reusable carousel component for displaying brick wall charts (e.g., ladder/standings).
+ * Designed for dynamic data input — ideal for integration in NPM packages.
+ */
+export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
+  data,
+  title,
+  isLoading = false,
+  autoplayDelay = 2000,
+  stopOnInteraction = true,
+  loader = <div>Loading...</div>,
+  chartProps,
+}): React.JSX.Element => {
+  const plugin = useRef(Autoplay({ delay: autoplayDelay, stopOnInteraction }))
+
+  if (isLoading) return <>{loader}</>
+
+  if (!data || data.length === 0) {
+    return <></> // or a fallback UI
+  }
 
   return (
     <Carousel
       plugins={[plugin.current]}
       className="size-full"
-      onMouseEnter={plugin.current.stop}
+      onMouseEnter={stopOnInteraction ? plugin.current.stop : undefined}
       onMouseLeave={plugin.current.reset}
     >
-      <CarouselContent ref={contentRef}>
-        {allWeeks?.map(({ standings }, index) => (
+      <CarouselContent>
+        {data.map((item, index) => (
           <CarouselItem
             key={index}
             className="size-full bg-[oklch(75%_0.01_120)] bg-gradient-to-b from-[oklch(75%_0.01_120)] to-[oklch(95%_0.02_180)]"
           >
             <BrickWallChart
-              {...{
-                data: standings,
-                title: metadata?.title,
-              }}
+              data={item.standings}
+              title={title}
+              {...chartProps}
             />
           </CarouselItem>
         ))}
@@ -38,3 +86,5 @@ export const BrickChartCarousel = (): React.JSX.Element => {
     </Carousel>
   )
 }
+
+BrickChartCarousel.displayName = "BrickChartCarousel"

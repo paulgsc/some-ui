@@ -7,4 +7,7 @@ export default createViteConfig({
   alias: {
     "@attributions": resolve(__dirname, "src"),
   },
+  dtsOptions: {
+    exclude: ["**/data/**"],
+  },
 })

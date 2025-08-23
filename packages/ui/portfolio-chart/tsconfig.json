@@ -13,7 +13,6 @@
     "tailwind.config.ts",
     "eslint.config.js",
     "../../../assets/**/*",
-    "setupVitest.ts",
     "src"
   ],
   "exclude": ["node_modules", "build", "dist"]
