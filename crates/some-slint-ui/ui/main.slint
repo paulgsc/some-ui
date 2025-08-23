@@ -13,7 +13,7 @@ export component MainWindow inherits Window {
     background: #f5f5f5;
 
     in-out property <int> current-tab: 0;
-    
+
     // Data properties
     in-out property <string> stream-title;
     in-out property <string> short-description;
@@ -23,7 +23,7 @@ export component MainWindow inherits Window {
 
     VerticalLayout {
         spacing: 0px;
-        
+
         // Main content area with card styling
         Rectangle {
             background: white;
@@ -32,11 +32,11 @@ export component MainWindow inherits Window {
             drop-shadow-offset-x: 0px;
             drop-shadow-offset-y: 2px;
             border-radius: 12px;
-            
+
             VerticalLayout {
                 padding: 32px;
                 spacing: 24px;
-                
+
                 // Header
                 Text {
                     text: "Livestream Context Configurator";
@@ -45,16 +45,16 @@ export component MainWindow inherits Window {
                     color: #1f2937;
                     horizontal-alignment: left;
                 }
-                
+
                 // Tab navigation
                 TabBar {
                     current-tab <=> root.current-tab;
                 }
-                
+
                 // Tab content area
                 Rectangle {
                     background: transparent;
-                    
+
                     if root.current-tab == 0: GeneralInfoTab {
                         stream-title <=> root.stream-title;
                         short-description <=> root.short-description;
@@ -62,24 +62,24 @@ export component MainWindow inherits Window {
                         host-name <=> root.host-name;
                         host-role <=> root.host-role;
                     }
-                    
+
                     if root.current-tab == 1: TopicBreakdownTab {
-                        
+
                     }
-                    
+
                     if root.current-tab == 2: RelatedStreamsTab {
-                        
+
                     }
-                    
+
                     if root.current-tab == 3: SatelliteContextTab {
-                        
+
                     }
                 }
-                
+
                 // Navigation buttons
                 HorizontalLayout {
                     alignment: space-between;
-                    
+
                     Button {
                         text: "← Back";
                         enabled: root.current-tab > 0;
@@ -89,7 +89,7 @@ export component MainWindow inherits Window {
                             }
                         }
                     }
-                    
+
                     Button {
                         text: root.current-tab == 3 ? "Finish" : "Next →";
                         primary: true;
