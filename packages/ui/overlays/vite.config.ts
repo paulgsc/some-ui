@@ -7,4 +7,7 @@ export default createViteConfig({
   alias: {
     "@overlays": resolve(__dirname, "src"),
   },
+  dtsOptions: {
+    exclude: ["**/data/**", "**/demo/**", "../../../assets/**/*"],
+  },
 })

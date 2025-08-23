@@ -1,8 +1,8 @@
-import type { ChatMessageProps } from "some-ui-chat"
+import type { Message } from "some-ui-chat"
 
 import { pgdevPng } from "../../../../../../assets"
 
-export const waiNoTockTock: Array<ChatMessageProps> = [
+export const waiNoTockTock: Array<Message> = [
   {
     id: "1",
     character: "ai",

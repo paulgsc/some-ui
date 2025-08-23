@@ -1,10 +1,10 @@
-import type { ChatMessageProps } from "some-ui-chat"
+import type { Message } from "some-ui-chat"
 
 const pioneer = "1-Y8MeFBDKMrOpGV4ke2R4ZXVFlRDHzv-"
 const cynic = "1j8bMU1XvGfIW73a99w_mjUKpu4kJCFft"
 const sage = "19JRxAp6S7L0p2-2PPPkUNfLXs51QYe9u"
 
-export const sameWinners: Array<ChatMessageProps> = [
+export const sameWinners: Array<Message> = [
   {
     id: "1",
     character: "Pioneer",

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Fragment } from "react"
 import { accordionData } from "@overlays/data/gemini-stepper"
+import type { PanelContent } from "@overlays/types/panels"
 import { ScrollingCredits, useGetCredits } from "attributions"
 import { StudyScene } from "makjang"
 import { GrindPieChart } from "portfolio-chart"
@@ -64,10 +65,6 @@ export function getMainContent(key: string): ReactNode {
   return getRandomSubarray(content, 1)[0]
 }
 
-type PanelContent = {
-  size?: number
-  node: ReactNode
-}
 const topLeftContent: Record<string, Array<PanelContent>> = {
   crossword: [
     {

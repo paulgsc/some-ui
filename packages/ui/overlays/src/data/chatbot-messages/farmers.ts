@@ -1,7 +1,7 @@
-import type { ChatMessageProps } from "some-ui-chat"
+import type { Message } from "some-ui-chat"
 
 const pgdev = "1Rt9d8v-c_ajfM_vmeGgycONNpBffdB0J"
-export const farmers: Array<ChatMessageProps> = [
+export const farmers: Array<Message> = [
   {
     id: "1",
     character: "neo",

@@ -1,8 +1,8 @@
-import type { ChatMessageProps } from "some-ui-chat"
+import type { Message } from "some-ui-chat"
 
 const pgdev = "1Rt9d8v-c_ajfM_vmeGgycONNpBffdB0J"
 
-export const digitalHellscape: Array<ChatMessageProps> = [
+export const digitalHellscape: Array<Message> = [
   {
     id: "1",
     character: "neo",
