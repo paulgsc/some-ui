@@ -2,6 +2,7 @@ packages:
   - packages/ui/*
   - packages/browser-extensions/*
   - packages/tsconfig
+  - packages/some-vite-config
   - packages/rollup-config
   - packages/utils
   - packages/mdx-generator

@@ -1,11 +1,12 @@
-import path from "path"
+import path, { resolve } from "path"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
+import dts from "vite-plugin-dts"
 import topLevelAwait from "vite-plugin-top-level-await"
 import wasm from "vite-plugin-wasm"
 
 export default defineConfig({
-  plugins: [wasm(), topLevelAwait(), react()],
+  plugins: [wasm(), topLevelAwait(), react(), dts({ include: ["src"] })],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

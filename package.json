@@ -13,7 +13,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo",
+    "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo && rimraf .rollup.cache",
     "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
     "build": "turbo run build",
     "build:wasm": "cargo run --manifest-path crates/ujinga/Cargo.toml",
@@ -47,6 +47,7 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@ianvs/prettier-plugin-sort-imports": "4.4.0",
+    "@storybook/addon-docs": "^9.0.17",
     "@storybook/addon-links": "^9.0.17",
     "@storybook/addon-onboarding": "^9.0.17",
     "@storybook/react-vite": "^9.0.17",
@@ -96,6 +97,7 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.30.1",
     "some-ui-rollup-config": "workspace:*",
+    "some-ui-utils": "workspace:*",
     "storybook": "^9.0.17",
     "stylelint": "16.12.0",
     "stylelint-config-standard": "36.0.1",
@@ -113,13 +115,12 @@
     "typescript-language-server": "^4.3.3",
     "typescript-transform-paths": "^3.5.3",
     "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.5.4",
     "vite-plugin-top-level-await": "^1.5.0",
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^2.1.8",
-    "zod": "^4.0.5",
-    "@storybook/addon-docs": "^9.0.17",
-    "some-ui-utils": "workspace:*"
+    "zod": "^4.0.5"
   },
   "pnpm": {
     "overrides": {
