@@ -3,7 +3,7 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -14,17 +14,18 @@
   },
   "peerDependencies": {
     "framer-motion": "11.15.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
     "framer-motion": "11.15.0",
+    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "usehooks-ts": "3.1.0"
   },
   "devDependencies": {
-    "some-ui-rollup-config": "workspace:*",
-    "@some-ui/tsconfig": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -37,28 +38,19 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-emoji-animations*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "sideEffects": false,
   "unpkg": "some-ui-emoji-animations.umd.js",
-  "main": "./dist/some-ui-emoji-animations.umd.js",
-  "module": "./dist/esm/some-ui-emoji-animations.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-emoji-animations.cjs.js",
+  "module": "./dist/some-ui-emoji-animations.es.js",
+  "types": "./dist/some-ui-emoji-animations.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-emoji-animations.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-emoji-animations.cjs.js"
-      }
+      "types": "./dist/some-ui-emoji-animations.d.ts",
+      "import": "./dist/some-ui-emoji-animations.es.js",
+      "require": "./dist/some-ui-emoji-animations.cjs.js",
+      "default": "./dist/some-ui-emoji-animations.es.js"
     }
   }
 }

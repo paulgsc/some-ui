@@ -19,8 +19,8 @@
     "@tanstack/react-query": "^5.66.11",
     "clsx": "^2.1.1",
     "nuqs": "1.18.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tailwind-merge": "^2.4.0",
     "usehooks-ts": "3.1.0",
     "zod": "^4.0.5"
@@ -35,7 +35,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@tanstack/react-query": "^5.66.11",
-    "some-ui-rollup-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -52,14 +52,15 @@
   ],
   "sideEffects": false,
   "unpkg": "some-ui-utils.umd.js",
-  "main": "./dist/some-ui-utils.umd.cjs",
-  "module": "./dist/some-ui-utils.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/some-ui-utils.cjs.js",
+  "module": "./dist/some-ui-utils.es.js",
+  "types": "./dist/some-ui-utils.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/some-ui-utils.js",
-      "require": "./dist/some-ui-utils.umd.cjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/some-ui-utils.d.ts",
+      "import": "./dist/some-ui-utils.es.js",
+      "require": "./dist/some-ui-utils.cjs.js",
+      "default": "./dist/some-ui-utils.es.js"
     }
   }
 }

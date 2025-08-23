@@ -9,11 +9,6 @@
       "@slideshow/*": ["./src/*"]
     }
   },
-  "include": [
-    "eslint.config.js",
-    "../../../assets/**/*",
-    "src",
-    "src/data/*.json"
-  ],
+  "include": ["../../../assets/**/*", "**/data/*.json", "src"],
   "exclude": ["node_modules", "build", "dist"]
 }

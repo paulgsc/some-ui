@@ -3,7 +3,7 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
@@ -25,6 +25,7 @@
     "@radix-ui/react-popover": "^1.1.5",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-select": "^2.1.1",
+    "@radix-ui/react-progress": "^1.1.1",
     "@radix-ui/react-separator": "^1.0.3",
     "@radix-ui/react-slider": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
@@ -70,9 +71,9 @@
     "@some-ui/tsconfig": "workspace:*",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-typescript": "3.7.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "some-ui-rollup-config": "workspace:*"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@some-ui/vite-config": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -85,28 +86,18 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-shared*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "sideEffects": false,
-  "unpkg": "some-ui-shared.umd.js",
-  "main": "./dist/some-ui-shared.umd.js",
-  "module": "./dist/esm/some-ui-shared.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-shared.cjs.js",
+  "module": "./dist/some-ui-shared.es.js",
+  "types": "./dist/some-ui-shared.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-shared.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-shared.cjs.js"
-      }
+      "types": "./dist/some-ui-shared.d.ts",
+      "import": "./dist/some-ui-shared.es.js",
+      "require": "./dist/some-ui-shared.cjs.js",
+      "default": "./dist/some-ui-shared.es.js"
     }
   }
 }

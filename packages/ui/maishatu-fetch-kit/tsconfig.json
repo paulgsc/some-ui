@@ -7,7 +7,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@overlays/*": ["./src/*"]
+      "@fkit/*": ["./src/*"]
     }
   },
   "include": ["eslint.config.js", "tailwind.config.ts", "src"],

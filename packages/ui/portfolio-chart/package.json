@@ -15,45 +15,35 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*",
-    "zod": "^3.24.1"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/portfolio-chart.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/portfolio-chart.cjs.js"
-      }
+      "types": "./dist/some-ui-portfolio-chart.d.ts",
+      "import": "./dist/some-ui-portfolio-chart.es.js",
+      "require": "./dist/some-ui-portfolio-chart.cjs.js",
+      "default": "./dist/some-ui-portfolio-chart.es.js"
     }
   },
   "files": [
-    "portfolio-chart*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/portfolio-chart.umd.js",
-  "module": "./dist/esm/portfolio-chart.esm.js",
+  "main": "./dist/some-ui-portfolio-chart.cjs.js",
+  "module": "./dist/some-ui-portfolio-chart.es.js",
   "name": "portfolio-chart",
   "peerDependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -67,7 +57,7 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/some-ui-portfolio-chart.d.ts",
   "unpkg": "portfolio-chart.umd.js",
   "version": "0.0.5"
 }

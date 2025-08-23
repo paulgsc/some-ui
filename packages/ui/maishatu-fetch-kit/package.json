@@ -3,45 +3,35 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.66.11",
-    "zod": "^3.24.2"
+    "@tanstack/react-query": "^5.66.11"
   },
   "devDependencies": {
-    "some-ui-rollup-config": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/maishatu-fetch-kit.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/maishatu-fetch-kit.cjs.js"
-      }
+      "types": "./dist/maishatu-fetch-kit.d.ts",
+      "import": "./dist/maishatu-fetch-kit.es.js",
+      "require": "./dist/maishatu-fetch-kit.cjs.js",
+      "default": "./dist/maishatu-fetch-kit.es.js"
     }
   },
   "files": [
-    "maishatu-fetch-kit*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/maishatu-fetch-kit.umd.js",
-  "module": "./dist/esm/maishatu-fetch-kit.esm.js",
+  "main": "./dist/maishatu-fetch-kit.cjs.js",
+  "module": "./dist/maishatu-fetch-kit.es.js",
   "name": "maishatu-fetch-kit",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -54,7 +44,7 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/maishatu-fetch-kit.d.ts",
   "unpkg": "maishatu-fetch-kit.umd.js",
   "version": "0.0.5"
 }

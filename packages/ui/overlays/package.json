@@ -3,29 +3,28 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "attributions": "workspace:*",
+    "maishatu-fetch-kit": "workspace:*",
+    "makjang": "workspace:*",
+    "portfolio-chart": "workspace:*",
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
-    "attributions": "workspace:*",
-    "some-ui-emoji-animations": "workspace:*",
-    "some-ui-neon-sign": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-ui-chat": "workspace:*",
-    "umag": "workspace:*",
-    "some-ui-slideshow": "workspace:*",
-    "some-ui-nfl": "workspace:*",
-    "some-ui-input": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "portfolio-chart": "workspace:*",
-    "some-ui-stepper": "workspace:*",
-    "some-ui-calendar": "workspace:*",
-    "maishatu-fetch-kit": "workspace:*",
     "some-types-utils": "workspace:*",
-    "makjang": "workspace:*",
+    "some-ui-calendar": "workspace:*",
+    "some-ui-chat": "workspace:*",
+    "some-ui-emoji-animations": "workspace:*",
+    "some-ui-input": "workspace:*",
+    "some-ui-nfl": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
+    "some-ui-stepper": "workspace:*",
+    "some-ui-shared": "workspace:*",
+    "some-ui-utils": "workspace:*",
+    "umag": "workspace:*",
     "wireframes": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -58,7 +57,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
