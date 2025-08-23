@@ -164,7 +164,7 @@ export function createQueueManager<TPayload = unknown>(
     maxSize: 10,
     maxRetries: 3,
     retryDelay: 1000,
-    strategy: "lazy",
+    strategy: "greedy",
     overflow: "fifo",
     ...config,
   }
