@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
-import type { MoodEvent } from "@nfl/types/hopium-tracker"
-import { computeStreak } from "@nfl/utils/mood"
+import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
+import { computeStreak } from "@nfl/utils/hopium/mood"
 import { Flame, Sparkles } from "lucide-react"
 import type { SparkleBurstHandle } from "some-ui-shared"
 import { Card, CardContent, SparkleBurst } from "some-ui-shared"

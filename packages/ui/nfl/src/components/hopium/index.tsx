@@ -2,35 +2,22 @@ import { useMemo } from "react"
 import { BentoWireframe } from "@nfl/components/hopium/bento-grid"
 import { EventCard } from "@nfl/components/hopium/event-card"
 import { Header } from "@nfl/components/hopium/header"
-import { ReplayControls } from "@nfl/components/hopium/replay-controls"
 import { RollercoasterChart } from "@nfl/components/hopium/rollercoaster"
 import { StreakCard } from "@nfl/components/hopium/streak-card"
 import { SummarySidebar } from "@nfl/components/hopium/summary-sidebar"
-import { buildMoodEvents } from "@nfl/data/events"
-import { useReplayTimeline } from "@nfl/hooks/use-replay-timeline"
+import { buildMoodEvents } from "@nfl/data/hopium/events"
+import { useReplayTimeline } from "@nfl/hooks/hopium/use-replay-timeline"
 
 export const Hopium = () => {
   const seasonEvents = useMemo(() => buildMoodEvents(), [])
 
-  const {
-    index,
-    current,
-    currentWeek,
-    playing,
-    toggle,
-    next,
-    prev,
-    reset,
-    speed,
-    setSpeed,
-    animationDuration,
-    summaries,
-  } = useReplayTimeline(seasonEvents, {
-    animateMs: 600,
-    pauseMs: 900,
-    loop: true,
-    speedMultiplier: 1,
-  })
+  const { index, current, currentWeek, animationDuration, summaries } =
+    useReplayTimeline(seasonEvents, {
+      animateMs: 600,
+      pauseMs: 900,
+      loop: true,
+      speedMultiplier: 1,
+    })
 
   return (
     <BentoWireframe

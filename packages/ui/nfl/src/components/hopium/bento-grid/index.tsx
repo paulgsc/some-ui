@@ -1,13 +1,13 @@
-import * as React from "react"
+import type { ReactNode } from "react"
 import { cn } from "some-ui-utils"
 
 type BentoWireframeProps = {
-  top?: React.ReactNode // 3
-  bar?: React.ReactNode // 2
-  main?: React.ReactNode // 1
-  asideTop?: React.ReactNode // 4
-  asideMid?: React.ReactNode // 5
-  asideBottom?: React.ReactNode // 6
+  top?: ReactNode // 3
+  bar?: ReactNode // 2
+  main?: ReactNode // 1
+  asideTop?: ReactNode // 4
+  asideMid?: ReactNode // 5
+  asideBottom?: ReactNode // 6
   className?: string
 }
 
@@ -25,7 +25,6 @@ export const BentoWireframe = ({
   bar,
   main,
   asideTop,
-  asideMid,
   asideBottom,
   className,
 }: BentoWireframeProps) => {
