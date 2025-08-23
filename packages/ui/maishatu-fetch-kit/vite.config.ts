@@ -2,9 +2,9 @@ import { resolve } from "path"
 import { createViteConfig } from "@some-ui/vite-config"
 
 export default createViteConfig({
-  packageName: "some-ui-utils",
-  libraryName: "SomeUIUtils",
+  packageName: "maishatu-fetch-kit",
+  libraryName: "SomeFetchKit",
   alias: {
-    "@utils": resolve(__dirname, "src"),
+    "@fkit": resolve(__dirname, "src"),
   },
 })

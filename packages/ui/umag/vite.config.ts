@@ -2,9 +2,9 @@ import { resolve } from "path"
 import { createViteConfig } from "@some-ui/vite-config"
 
 export default createViteConfig({
-  packageName: "some-ui-utils",
-  libraryName: "SomeUIUtils",
+  packageName: "umag",
+  libraryName: "SomeUIUmag",
   alias: {
-    "@utils": resolve(__dirname, "src"),
+    "@umag": resolve(__dirname, "src"),
   },
 })

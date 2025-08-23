@@ -2,9 +2,9 @@ import { resolve } from "path"
 import { createViteConfig } from "@some-ui/vite-config"
 
 export default createViteConfig({
-  packageName: "some-ui-utils",
-  libraryName: "SomeUIUtils",
+  packageName: "some-ui-stepper",
+  libraryName: "SomeUIStepper",
   alias: {
-    "@utils": resolve(__dirname, "src"),
+    "@stepper": resolve(__dirname, "src"),
   },
 })

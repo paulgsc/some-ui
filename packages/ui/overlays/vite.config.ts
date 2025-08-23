@@ -2,9 +2,9 @@ import { resolve } from "path"
 import { createViteConfig } from "@some-ui/vite-config"
 
 export default createViteConfig({
-  packageName: "some-ui-utils",
-  libraryName: "SomeUIUtils",
+  packageName: "some-ui-overlays",
+  libraryName: "SomeUIOverlays",
   alias: {
-    "@utils": resolve(__dirname, "src"),
+    "@overlays": resolve(__dirname, "src"),
   },
 })

@@ -2,9 +2,9 @@ import { resolve } from "path"
 import { createViteConfig } from "@some-ui/vite-config"
 
 export default createViteConfig({
-  packageName: "some-ui-utils",
-  libraryName: "SomeUIUtils",
+  packageName: "some-ui-portfolio-chart",
+  libraryName: "SomeUIPortfolio",
   alias: {
-    "@utils": resolve(__dirname, "src"),
+    "@portfolio-chart": resolve(__dirname, "src"),
   },
 })

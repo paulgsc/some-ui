@@ -1,0 +1,48 @@
+{
+  "name": "@some-ui/vite-config",
+  "version": "1.0.0",
+  "description": "Shared Vite configuration for monorepo packages",
+  "type": "module",
+  "main": "./dist/esm/src/index.js",
+  "types": "src/index.ts",
+  "files": [
+    "dist/**"
+  ],
+  "keywords": [
+    "vite",
+    "config",
+    "monorepo",
+    "shared"
+  ],
+  "scripts": {
+    "build:esm": "tsc --outDir dist/esm",
+    "build": "pnpm build:esm",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.7"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/src/index.js",
+      "require": "./dist/esm/src/index.js"
+    },
+    "./lib": {
+      "import": "./dist/esm/src/lib/index.js",
+      "require": "./dist/esm/src/lib/index.js"
+    }
+  }
+}

@@ -13,7 +13,6 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
-      external: ["chrome"],
       input: {
         popup: path.resolve(__dirname, "src/popup/popup.html"),
         content: path.resolve(__dirname, "src/content/content.ts"),
@@ -40,7 +39,6 @@ export default defineConfig({
       },
     },
     cssCodeSplit: false,
-    assetsInlineLimit: 0,
   },
   define: {
     global: "globalThis",
