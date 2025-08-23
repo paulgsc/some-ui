@@ -70,11 +70,6 @@ export type FetchClient = {
     options?: Omit<FetchOptions, "method" | "body">,
     schema?: z.ZodType<T>
   ) => (variables: TVariables) => Promise<T>
-
-  stream: (
-    url: URL,
-    options?: Omit<FetchOptions, "method" | "body">
-  ) => Promise<void>
 }
 
 /**
@@ -163,7 +158,7 @@ export const createFetchClient = (
         if (error instanceof z.ZodError) {
           throw new ApiError("Response validation failed", 400, {
             data,
-            validation: error.errors,
+            validation: error.issues,
           })
         }
         throw error
@@ -392,129 +387,6 @@ export const createFetchClient = (
           schema
         )
       }
-    },
-    async stream(
-      url: URL,
-      options: Omit<FetchOptions, "method" | "body"> = {}
-    ): Promise<void> {
-      const { onData, chunkSchema, ...fetchOptions } = options
-      const response = await fetch(url, {
-        ...fetchOptions,
-        method: "GET", //  For streaming, typically GET is used, but you might need to adjust.
-        headers: {
-          ...options.headers,
-          // Important:  Ask the server for a stream of data.  The specific value
-          // might need to change depending on your server's API.
-          Accept: "application/octet-stream", // Or "application/x-ndjson", or whatever your server sends.
-        },
-      })
-
-      if (!response.ok) {
-        //  Handle errors as before.  Include the *entire* response body
-        //  in the error message if possible.
-        let errorData: any
-        try {
-          errorData = await response.json()
-        } catch (jsonError) {
-          // If it's not JSON, try to get the text.
-          try {
-            errorData = await response.text()
-          } catch (textError) {
-            // If we can't get JSON or text, just use a generic message.
-            errorData = `(Unable to parse error response: ${response.statusText})`
-          }
-        }
-        throw new ApiError(
-          `Stream request failed with status ${response.status}`,
-          response.status,
-          errorData
-        )
-      }
-
-      if (!response.body) {
-        throw new ApiError("Response body is null", 500) // Or a more appropriate code.
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = new Uint8Array()
-
-      const processStream = async (): Promise<void> => {
-        const { done, value } = await reader.read()
-
-        if (value) {
-          //  Concatenate the new data.  This is crucial for handling
-          //  chunk boundaries correctly.
-          const newBuffer = new Uint8Array(buffer.length + value.length)
-          newBuffer.set(buffer)
-          newBuffer.set(value, buffer.length)
-          buffer = newBuffer
-
-          // Process the data, splitting if necessary
-          let lastIndex = 0
-          for (let i = 0; i < buffer.length; i++) {
-            if (buffer[i] === 10) {
-              //  Newline character (or whatever delimiter you use)
-              const chunk = buffer.slice(lastIndex, i)
-              lastIndex = i + 1 // Move past the delimiter
-
-              if (onData) {
-                //  Validate the chunk if a schema is provided.
-                if (chunkSchema) {
-                  try {
-                    chunkSchema.parse(chunk) //  Parse, don't stringify
-                  } catch (error) {
-                    if (error instanceof z.ZodError) {
-                      console.error("Chunk validation error:", error)
-                      //  Decide how to handle the error:
-                      //  1.  Throw an error to stop the stream.
-                      //  2.  Skip this chunk and continue.
-                      //  3.  Collect errors and process later.
-                      //  For this example, we'll throw.
-                      throw new ApiError("Chunk validation failed", 400, {
-                        chunk: chunk,
-                        validationErrors: error.errors,
-                      })
-                    }
-                    //  Rethrow other errors.
-                    throw error
-                  }
-                }
-                onData(chunk)
-              }
-            }
-          }
-          // Keep the remaining part in the buffer
-          buffer = buffer.slice(lastIndex)
-          // Continue reading
-          if (!done) {
-            await processStream()
-          }
-        }
-
-        if (done) {
-          // Process any remaining data in the buffer
-          if (buffer.length > 0 && onData) {
-            if (chunkSchema) {
-              try {
-                chunkSchema.parse(buffer)
-              } catch (error) {
-                if (error instanceof z.ZodError) {
-                  console.error("Final chunk validation error", error)
-                  throw new ApiError("Final chunk validation failed", 400, {
-                    chunk: buffer,
-                    validationErrors: error.errors,
-                  })
-                }
-                throw error
-              }
-            }
-            onData(buffer)
-          }
-          //  No need to close the reader; it's done automatically.
-        }
-      }
-      await processStream()
     },
   }
 }

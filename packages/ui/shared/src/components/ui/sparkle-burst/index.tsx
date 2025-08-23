@@ -23,7 +23,6 @@ type Options = {
   origin?: { x: number; y: number } | "center"
   // timing
   maxDurationMs?: number
-  showControls?: boolean
 }
 
 type ParticleBase = {
@@ -150,7 +149,6 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
       autoPlay = true,
       origin = "center",
       maxDurationMs = 1600,
-      showControls = true,
     } = props
 
     const containerRef = useRef<HTMLDivElement | null>(null)
@@ -587,21 +585,6 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
       >
         {/* Canvas */}
         <canvas ref={canvasRef} className="absolute inset-0 block" />
-
-        {showControls ? (
-          <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-3">
-            <button
-              onClick={() => burst()}
-              className="rounded-full bg-amber-200/80 px-4 py-2 text-sm font-medium text-amber-900 shadow-sm transition-colors hover:bg-amber-200"
-              aria-label="Replay celebration"
-            >
-              Celebrate again
-            </button>
-            <span className="text-xs text-zinc-500">
-              Tip: click anywhere to burst
-            </span>
-          </div>
-        ) : null}
       </div>
     )
   }

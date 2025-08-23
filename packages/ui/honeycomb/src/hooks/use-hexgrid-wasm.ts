@@ -40,7 +40,7 @@ type ReturnOptions = {
   regenerate: () => Promise<void>
   hexGridRef: RefObject<WasmHexGrid | null>
   setHexCells: Dispatch<SetStateAction<Array<HexRenderData>>>
-  getRadius: () => number 
+  getRadius: () => number
 }
 
 export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
@@ -59,19 +59,13 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
   const generateHexgrid = useCallback(async () => {
     // Validate inputs with Zod
     const radius = getRadius()
-    try {
-      HexgridInputSchema.parse({
-        radius,
-        hexSize,
-      })
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        const errorMessage = validationError.errors
-          .map((err) => err.message)
-          .join(", ")
-        setError(errorMessage)
-        return
-      }
+
+    const result = HexgridInputSchema.safeParse({ radius, hexSize })
+
+    if (!result.success) {
+      const errorMessage = result.error.flatten().formErrors.join(", ")
+      setError(errorMessage)
+      return
     }
 
     setIsLoading(true)

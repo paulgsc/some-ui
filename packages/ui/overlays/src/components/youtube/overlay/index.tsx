@@ -29,7 +29,7 @@ const YoutubeOverlay = (): React.JSX.Element => {
   const { data: chapters } = useGanttChapters({ ...params })
   const { value: currentChapterId, removeValue } = useLocalStorage(
     "gantt-chapter",
-    chapters ? "nfl-tennis" : "nfl-tennis"
+    chapters ? "none" : "none"
   )
   const cubeFaces = [
     <ChatInterface
@@ -79,7 +79,11 @@ const YoutubeOverlay = (): React.JSX.Element => {
   ]
   const overlayContent: WireframeContent = {
     [WireframeRegion.VIDEO]: (
-      <RotatingCube content={cubeFaces} duration={5 * 60 * 1000} />
+      <RotatingCube
+        content={cubeFaces}
+        duration={10 * 60 * 1000}
+        hideBackface={true}
+      />
     ),
     [WireframeRegion.MARQUEE]: (
       <RotatingNeonSign

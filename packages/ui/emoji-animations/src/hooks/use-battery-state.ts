@@ -22,8 +22,7 @@ export const useBatteryState = (
     removeValue: delCharge,
   } = useLocalStorage(chargeKey, initialCharge)
   const [isCharging, setIsCharging] = useState(false)
-  const intervalRef =
-    useRef<ReturnType<typeof setInterval | undefined>>(undefined)
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined)
 
   useEffect(() => {
     const intervalTime = (100 / 60) * 60000

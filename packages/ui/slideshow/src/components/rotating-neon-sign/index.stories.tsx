@@ -7,7 +7,7 @@ type Meta = MetaObj<typeof RotatingNeonSign>
 
 export const Default: Story = {
   args: {
-    className: "w-96 h-32",
+    className: "w-full max-w-xl h-32",
     faceClassName: "bg-sky-200",
     perspective: 1250,
     dof: "X-axis",

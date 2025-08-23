@@ -24,7 +24,7 @@ export const HexGrid: FC<HexGridProps> = ({
   const svgRef = useRef<SVGSVGElement>(null)
   const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { hexGridRef, hexCells, isLoading, error } = useHexgridWasm({
+  const { hexCells, isLoading, error } = useHexgridWasm({
     cellCount,
     hexSize,
   })
@@ -85,9 +85,9 @@ export const HexGrid: FC<HexGridProps> = ({
           const cellWidth =
             Math.max(...cell.points.map((p) => p.x)) -
             Math.min(...cell.points.map((p) => p.x))
-          const cellHeight =
-            Math.max(...cell.points.map((p) => p.y)) -
-            Math.min(...cell.points.map((p) => p.y))
+          // const cellHeight =
+          //   Math.max(...cell.points.map((p) => p.y)) -
+          //   Math.min(...cell.points.map((p) => p.y))
 
           // Scale jersey to fit in the cell (using 70% of cell width)
           const scale = (cellWidth * 0.7) / 300 // 300 is the original jersey width
@@ -108,6 +108,8 @@ export const HexGrid: FC<HexGridProps> = ({
               {cell.content && (
                 <>
                   <NFLJersey
+                    number={"13"}
+                    name={"pgdev"}
                     centerX={centerX}
                     centerY={centerY}
                     scale={scale}

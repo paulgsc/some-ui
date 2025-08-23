@@ -15,24 +15,25 @@ const sampleTopics: Array<Topic> = [
   {
     id: 1,
     title: "Introduction",
-    description: `⚠️ **DISCLAIMER: This is not a tutorial, guide, or polished content.**
-    This stream is part of a long-term public ledger of my real-time software development process — 
-    unfiltered, uncut, and sometimes unproductive. It may contain:
-    - contextless googling
-    - long debugging spirals
-    - unstructured thought
-    - tangents, breaks, and vibes
-    - lots of the things going on.`,
+    description: `This Is Not a Tutorial. This Is Not for You.
+        You are witnessing a transmission never meant for broadcast.
+        This is an archival signal, not content. Not a show. Not for consumption.
+        It is not intended for discovery, search, or recommendation.
+        If you found this through an algorithm, you are not the intended recipient.
+        This stream is part of a personal public record.
+        Any unwanted attention terminates the signal.
+        Do not clip. Do not share. Do not engage.
+        Respect the archive. Respect the silence.
+        `,
     timestamp: 0,
     duration: 5,
   },
   {
     id: 2,
-    title: "Dockerfile",
-    description: `To make our server always availble, setting up a Dockerfile for my 
-    axum server.`,
+    title: "Struggling with Rust",
+    description: `Spend hours struggling to do build some rust thingy.`,
     timestamp: 5,
-    duration: 200,
+    duration: 240,
   },
 ]
 
@@ -55,7 +56,7 @@ export const LivestreamTopicNotification: FC<
   LivestreamTopicNotificationProps
 > = ({
   playbackSpeed = 5,
-  speechIntervalLoops = 3,
+  speechIntervalLoops = 6,
   updateIntervalMs = 120,
 }): React.JSX.Element => {
   const [currentTime, setCurrentTime] = useState(0)
@@ -120,7 +121,7 @@ export const LivestreamTopicNotification: FC<
         lastAnnouncedSegmentRef.current = topic.id
         lastShownSegmentRef.current = topic.id
 
-        const options = {
+        const options: TTSOptions = {
           volume: 1.0,
           onStart: (): void => {
             console.log("onStart was updated and invoked!")

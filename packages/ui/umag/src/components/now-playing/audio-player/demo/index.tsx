@@ -296,10 +296,10 @@ export const AudioStorageExample = () => {
             </div>
           </div>
 
-          {error && (
+          {(error as Error | undefined) && (
             <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
               <p className="text-sm font-medium text-red-800">Error:</p>
-              <p className="text-sm text-red-600">{error.message}</p>
+              <p className="text-sm text-red-600">{(error as Error).message}</p>
             </div>
           )}
         </div>

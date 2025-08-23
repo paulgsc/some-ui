@@ -2,7 +2,7 @@ import type { FC, RefObject } from "react"
 import { useCallback, useRef } from "react"
 import { ChatHeader } from "@chat/components/chat-header"
 import { ChatMessages } from "@chat/components/chat-messages"
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 import type { AvatarGroupProps } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
@@ -10,7 +10,7 @@ type ChatInterfaceProps = {
   className?: string
   chatMessagesClassName?: string
   characters: AvatarGroupProps["avatars"]
-  messages: Array<ChatMessageProps>
+  messages: Array<Message>
   messagesTitle?: string
   messagesHeight?: number
   pause?: boolean

@@ -9,7 +9,7 @@ import { BrickChartCarousel } from "some-ui-nfl"
 import { DiceCard } from "some-ui-slideshow"
 import { GeminiStepper } from "some-ui-stepper"
 import { getRandomSubarray } from "some-ui-utils"
-import { NowPlayingCard } from "umag"
+import { DoxPrompt, NowPlayingCard } from "umag"
 
 const EndingCredits = (): React.JSX.Element => {
   const params = {
@@ -104,7 +104,12 @@ export function getbotLeftContent(key: string): PanelContent {
   const content = botLeftContent[key] ?? []
   if (content.length <= 0)
     return {
-      node: <GeminiStepper steps={accordionData} autoplay={true} />,
+      node: (
+        <>
+          <GeminiStepper steps={accordionData} autoplay={true} />{" "}
+          <DoxPrompt className="fixed bottom-24 end-4" />
+        </>
+      ),
       size: 60,
     }
   return getRandomSubarray(content, 1)[0]

@@ -22,7 +22,11 @@ export const NflPlayerCardShuffle: FC = () => {
             className={cn("rounded-none border-none bg-none p-0.5")}
             scale={scale}
           >
-            <PlayerCardDialog />
+            <PlayerCardDialog
+              title="title"
+              href="href"
+              description="description"
+            />
           </DeckCard>
         )
       })}

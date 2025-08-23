@@ -3,6 +3,7 @@ import { Fragment } from "react"
 import { DiceCard } from "@slideshow/components/dice-card"
 import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import { NeonText } from "some-ui-neon-sign"
+import { NowPlayingCard } from "umag"
 
 type RotatingNeonSignProps = {
   perspective?: number
@@ -33,7 +34,7 @@ export const RotatingNeonSign: FC<RotatingNeonSignProps> = ({
 
 const sections = [
   {
-    className: "  size-full",
+    className: "absolute inset-0 size-full",
   },
   {
     className: "  size-full",
@@ -56,11 +57,15 @@ const cubeFaces = (): Array<React.JSX.Element> =>
   sections.map((section, index) => {
     return (
       <Fragment key={index}>
-        <NeonText
-          storageKey={`neon_${index}`}
-          initialText={"change me..."}
-          className={section.className}
-        />
+        {index === -1 ? (
+          <NowPlayingCard className={section.className} showError={false} />
+        ) : (
+          <NeonText
+            storageKey={`neon_${index}`}
+            initialText={"change me..."}
+            className={section.className}
+          />
+        )}
       </Fragment>
     )
   })

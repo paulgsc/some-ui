@@ -1,8 +1,8 @@
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 
 import { pgdevPng } from "../../../../../assets"
 
-export const mockMessages: Array<ChatMessageProps> = [
+export const mockMessages: Array<Message> = [
   {
     id: "1",
     character: "ai",
