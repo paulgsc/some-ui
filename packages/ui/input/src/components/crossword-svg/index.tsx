@@ -5,6 +5,8 @@ import { useCrosswordWithAnimation } from "@input/hooks/use-create-crossword-puz
 import { useCreateCrosswordWasm } from "@input/hooks/use-crossword-wasm"
 import { cn } from "some-ui-utils"
 
+import "./index.css"
+
 type CrosswordGridSvgProps = {
   className?: string
   duration?: number
