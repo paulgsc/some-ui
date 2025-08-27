@@ -7,4 +7,5 @@ export default createViteConfig({
   alias: {
     "@shared": resolve(__dirname, "src"),
   },
+  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

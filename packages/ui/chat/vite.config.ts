@@ -10,4 +10,5 @@ export default createViteConfig({
   dtsOptions: {
     exclude: ["**/data/**", "../../../assets/**/*"],
   },
+  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

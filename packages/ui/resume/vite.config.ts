@@ -7,4 +7,5 @@ export default createViteConfig({
   alias: {
     "@resume": resolve(__dirname, "src"),
   },
+  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

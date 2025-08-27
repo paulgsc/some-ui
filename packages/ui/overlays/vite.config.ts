@@ -15,4 +15,5 @@ export default createViteConfig({
       "**/overlay-content/**",
     ],
   },
+  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })
