@@ -1,39 +1,20 @@
-import { createFileRoute } from '@tanstack/react-router'
-import logo from '../logo.svg'
+import { createFileRoute } from "@tanstack/react-router"
+import { ClueCard } from "some-ui-input"
 
-export const Route = createFileRoute('/')({
+import "some-ui-input/style.css"
+
+export const Route = createFileRoute("/")({
   component: App,
 })
 
-function App() {
-  return (
-    <div className="text-center">
-      <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
-        <img
-          src={logo}
-          className="h-[40vmin] pointer-events-none animate-[spin_20s_linear_infinite]"
-          alt="logo"
-        />
-        <p>
-          Edit <code>src/routes/index.tsx</code> and save to reload.
-        </p>
-        <a
-          className="text-[#61dafb] hover:underline"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <a
-          className="text-[#61dafb] hover:underline"
-          href="https://tanstack.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn TanStack
-        </a>
-      </header>
-    </div>
-  )
+const App = () => {
+  const args = {
+    isActive: true,
+    thumbnail:
+      "https://dramanice.cyou/wp-content/uploads/2025/04/Duo-Tian-Que-2025-220x220.jpg",
+    className: "size-full max-w-md",
+    clue: "This should be a very long clue, how is it rendered? Let use see. Adding some more words to make it longer.",
+    clueNum: 12,
+  }
+  return <ClueCard {...args} />
 }

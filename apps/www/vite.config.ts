@@ -1,8 +1,8 @@
 import { resolve } from "node:path"
-import tailwindcss from "@tailwindcss/vite"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
+import tsconfigPaths from "vite-tsconfig-paths"
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -15,7 +15,12 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact(),
-    tailwindcss(),
+    tsconfigPaths({
+      projects: [
+        "./tsconfig.json",
+        "../../packages/some-content/tsconfig.json",
+      ],
+    }),
   ],
   test: {
     globals: true,
