@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   ClientObsState,
   IncomingObsEvent,
+  ObsCommand,
 } from "@overlays/types/obs-websocket"
-import { IncomingObsEventSchema } from "@overlays/types/obs-websocket"
+import {
+  IncomingObsEventSchema,
+  ObsCommandSchema,
+} from "@overlays/types/obs-websocket"
 import { updateClientObsState } from "@overlays/utils/obs-websocket"
 import type { UseWebSocketOptions, UseWebSocketReturn } from "some-ui-utils"
 import { useWebSocket } from "some-ui-utils"
@@ -48,29 +52,16 @@ export const EventSchema = z.discriminatedUnion("type", [
     type: z.literal("unsubscribe"),
     event_types: z.array(EventTypeSchema),
   }),
+  z.object({
+    type: z.literal("obsCmd"),
+    cmd: ObsCommandSchema,
+  }),
 ])
 
 type WsEvents = z.infer<typeof EventSchema>
 
-const ObsCommandSchema = z.object({
-  action: z.enum([
-    "startStreaming",
-    "stopStreaming",
-    "startRecording",
-    "stopRecording",
-    "setScene",
-    "toggleStudioMode",
-  ]),
-  params: z.record(z.string(), z.unknown()).optional(),
-})
-
-type ObsCommand = z.infer<typeof ObsCommandSchema>
-
 type UseObsStatusWebSocketOptions = Omit<
-  UseWebSocketOptions<
-    z.infer<typeof IncomingObsEventSchema>,
-    ObsCommand | WsEvents
-  >,
+  UseWebSocketOptions<IncomingObsEvent, WsEvents>,
   "incomingMessageSchema" | "outgoingMessageSchema"
 >
 
@@ -126,10 +117,12 @@ export function useObsStatusWebSocket(
     defaultClientObsState
   )
 
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
+
   const wsHook = useWebSocket<IncomingObsEvent>({
     url: options.url,
     incomingMessageSchema: IncomingObsEventSchema,
-    outgoingMessageSchema: ObsCommandSchema,
+    outgoingMessageSchema: EventSchema,
     autoReconnect: options.autoReconnect ?? true,
     reconnectInterval: options.reconnectInterval ?? 5000,
     onConnect: options.onConnect,
@@ -153,19 +146,24 @@ export function useObsStatusWebSocket(
   }, [wsHook])
 
   const startStreaming = useCallback(() => {
-    wsHook.sendMessage({ action: "startStreaming" })
+    wsHook.sendMessage({
+      type: "obsCmd",
+      cmd: {
+        type: "startStream",
+      },
+    })
   }, [wsHook])
 
   const stopStreaming = useCallback(() => {
-    wsHook.sendMessage({ action: "stopStreaming" })
+    wsHook.sendMessage({ type: "obsCmd", cmd: { type: "stopStream" } })
   }, [wsHook])
 
   const startRecording = useCallback(() => {
-    wsHook.sendMessage({ action: "startRecording" })
+    wsHook.sendMessage({ type: "obsCmd", cmd: { type: "startRecording" } })
   }, [wsHook])
 
   const stopRecording = useCallback(() => {
-    wsHook.sendMessage({ action: "stopRecording" })
+    wsHook.sendMessage({ type: "obsCmd", cmd: { type: "stopRecording" } })
   }, [wsHook])
 
   const toggleStudioMode = useCallback(() => {
@@ -185,6 +183,23 @@ export function useObsStatusWebSocket(
   useEffect(() => {
     subscribe()
   }, [subscribe])
+
+  // Handle ping interval separately - only reset when connection state changes
+  useEffect(() => {
+    const keepAlive = 1000 * 90 // Server makes connection stale after 120s
+
+    if (wsHook.isConnected) {
+      intervalRef.current = setInterval(() => {
+        if (wsHook.isConnected) {
+          wsHook.sendMessage({ type: "pong" })
+        }
+      }, keepAlive)
+    }
+
+    return (): void => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [wsHook.isConnected]) // Only depend on connection state
 
   return useMemo(
     () => ({

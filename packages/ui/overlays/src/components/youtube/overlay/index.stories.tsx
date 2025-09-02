@@ -2,17 +2,16 @@ import {
   getbotLeftContent,
   getMainContent,
   gettopLeftContent,
-} from "@overlays/components/youtube/overlay-content"
-// Import demo data (stories only)
-import { beachedWhale } from "@overlays/data/chatbot-messages/beached-whale"
-import { characters } from "@overlays/data/chatbot-messages/characters"
-import { farmers } from "@overlays/data/chatbot-messages/farmers"
-import { nflTennis } from "@overlays/data/chatbot-messages/nfl-tennis"
-import { sameWinners } from "@overlays/data/chatbot-messages/the-same-winners"
-import { waiNoTockTock } from "@overlays/data/chatbot-messages/wai-no-tock-tock"
-import { soManyCrates } from "@overlays/data/chatbot-messages/yet-another-python"
-import { digitalHellscape } from "@overlays/data/chatbot-messages/youtube"
-import { useGanttChapters } from "@overlays/data/gantt-data"
+} from "@some-ui/content/components/overlay"
+import { beachedWhale } from "@some-ui/content/data/chatbot-messages/beached-whale"
+import { characters } from "@some-ui/content/data/chatbot-messages/characters"
+import { farmers } from "@some-ui/content/data/chatbot-messages/farmers"
+import { nflTennis } from "@some-ui/content/data/chatbot-messages/nfl-tennis"
+import { sameWinners } from "@some-ui/content/data/chatbot-messages/the-same-winners"
+import { waiNoTockTock } from "@some-ui/content/data/chatbot-messages/wai-no-tock-tock"
+import { soManyCrates } from "@some-ui/content/data/chatbot-messages/yet-another-python"
+import { digitalHellscape } from "@some-ui/content/data/chatbot-messages/youtube"
+import { useGanttChapters } from "@some-ui/content/data/gantt-data"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { YoutubeOverlay } from "."

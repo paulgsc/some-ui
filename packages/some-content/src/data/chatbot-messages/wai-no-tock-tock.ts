@@ -1,7 +1,7 @@
 import type { Message } from "some-ui-chat"
 
-import { pgdevPng } from "../../../../../../assets"
 
+const pgdevPng = "1Rt9d8v-c_ajfM_vmeGgycONNpBffdB0J"
 export const waiNoTockTock: Array<Message> = [
   {
     id: "1",

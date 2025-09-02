@@ -1,13 +1,21 @@
 import type { FC } from "react"
 import { useObsStatusWebSocket } from "@overlays/hooks/use-obs-socket"
+import { Button } from "some-ui-shared"
 
 type ObsStatusPanelProps = {
   serverUrl?: string
 }
 
 export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
-  const { status, isConnected, isConnecting, error, connect, disconnect } =
-    useObsStatusWebSocket()
+  const {
+    status,
+    isConnected,
+    isConnecting,
+    error,
+    connect,
+    disconnect,
+    stopStreaming,
+  } = useObsStatusWebSocket()
 
   return (
     <div className="obs-status-panel">
@@ -38,6 +46,9 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
             {isConnected ? "Disconnect" : "Connect"}
           </button>
         </div>
+        <Button onClick={stopStreaming} disabled={!isConnected}>
+          Stop Streaming
+        </Button>
       </div>
 
       {/* OBS Status */}

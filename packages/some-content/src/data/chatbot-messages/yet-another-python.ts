@@ -1,7 +1,5 @@
 import type { Message } from "some-ui-chat"
 
-import { pgdevPng } from "../../../../../../assets"
-
 export const soManyCrates: Array<Message> = [
   {
     id: "1",

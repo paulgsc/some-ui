@@ -12,7 +12,7 @@ export default createViteConfig({
       "**/data/**",
       "**/demo/**",
       "../../../assets/**/*",
-      "**/overlay-content/**",
+      "../../some-content/src/**/*",
     ],
   },
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },

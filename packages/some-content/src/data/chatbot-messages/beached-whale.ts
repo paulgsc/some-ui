@@ -1,7 +1,6 @@
 import type { Message } from "some-ui-chat"
 
-import { pgdevPng } from "../../../../../../assets"
-
+const pgdev = "1Rt9d8v-c_ajfM_vmeGgycONNpBffdB0J"
 export const beachedWhale: Array<Message> = [
   {
     id: "1",
@@ -12,7 +11,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -24,7 +23,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -37,7 +36,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -49,7 +48,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: "generic_avatar_2.png",
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -62,7 +61,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -74,7 +73,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -87,7 +86,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -99,7 +98,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -112,7 +111,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -124,7 +123,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -137,7 +136,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -149,7 +148,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -161,7 +160,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -173,7 +172,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -186,7 +185,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -198,7 +197,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -211,7 +210,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -223,7 +222,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -236,7 +235,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -249,7 +248,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -262,7 +261,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -274,7 +273,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -287,7 +286,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -299,7 +298,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -312,7 +311,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -324,7 +323,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -337,7 +336,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -349,7 +348,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -362,7 +361,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -374,7 +373,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -387,7 +386,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -399,7 +398,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -412,7 +411,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -424,7 +423,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -437,7 +436,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -449,7 +448,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -462,7 +461,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -474,7 +473,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -487,7 +486,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -499,7 +498,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -512,7 +511,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -524,7 +523,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -537,7 +536,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -549,7 +548,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -562,7 +561,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -574,7 +573,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -587,7 +586,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -599,7 +598,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -612,7 +611,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },
@@ -624,7 +623,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "ai",
     },
   },
@@ -636,7 +635,7 @@ export const beachedWhale: Array<Message> = [
     type: "chat",
     timestamp: "a few seconds ago",
     avatar: {
-      src: pgdevPng,
+      src: `http://nixos.local:3000/gdrive/image/${pgdev}`,
       alt: "pgdev",
     },
   },

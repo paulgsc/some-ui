@@ -8,14 +8,17 @@
     "outDir": "./dist",
     "paths": {
       "@overlays/*": ["./src/*"],
-      "@some-ui/*": ["../../../assets/*"]
+      "@some-ui/*": ["../../../assets/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../../some-content/src"]
     }
   },
   "include": [
     "eslint.config.js",
     "tailwind.config.ts",
     "src",
-    "../../../assets/**/*"
+    "../../../assets/**/*",
+    "../../some-content/src/**/*"
   ],
   "exclude": ["node_modules", "build", "dist"]
 }

@@ -4,7 +4,6 @@
   },
   "dependencies": {
     "attributions": "workspace:*",
-    "maishatu-fetch-kit": "workspace:*",
     "makjang": "workspace:*",
     "portfolio-chart": "workspace:*",
     "react-d3-tree": "3.6.2",
@@ -23,6 +22,7 @@
     "wireframes": "workspace:*"
   },
   "devDependencies": {
+    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },
