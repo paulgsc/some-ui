@@ -16,6 +16,7 @@ export type ViteConfigOptions = {
     insertTypesEntry?: boolean
     exclude?: Array<string>
   }
+  tsConfigPaths?: Record<"projects", Array<string>>
   /** Build formats to generate */
   formats?: Array<"es" | "cjs" | "umd" | "iife">
   /** Additional plugins */

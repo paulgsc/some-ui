@@ -72,10 +72,11 @@ export function generatePackageJsonFields(
         : undefined,
     module: hasESM ? `./dist/${packageName}.es.js` : undefined,
     types: `./dist/${packageName}.d.ts`,
+    style: `./dist/${packageName}.css`,
     exports: Object.keys(exports).length > 0 ? exports : undefined,
     files: ["dist"],
     type: hasESM && !hasCJS ? "module" : undefined,
-    sideEffects: false,
+    sideEffects: ["*.css"],
   }
 }
 

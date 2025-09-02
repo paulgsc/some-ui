@@ -27,7 +27,8 @@
   "dependencies": {
     "@vitejs/plugin-react": "^4.0.0",
     "vite": "^6.0.7",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vite-tsconfig-paths": "^5.1.4"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*"
