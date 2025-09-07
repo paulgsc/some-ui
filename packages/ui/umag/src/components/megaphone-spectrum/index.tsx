@@ -1,3 +1,5 @@
+import "./index.css"
+
 import type { FC } from "react"
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import type { SpectrumBarConfig } from "@umag/types/spectrum" // Declare the SpectrumBarConfig variable

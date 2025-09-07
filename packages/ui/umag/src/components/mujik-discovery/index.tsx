@@ -1,3 +1,6 @@
+
+import "./index.css"
+
 import type { ComponentType } from "react"
 import { useState } from "react"
 import { Clock, Heart, Sparkles, Star, Trophy, Zap } from "lucide-react"

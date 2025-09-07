@@ -5,6 +5,7 @@
   "dependencies": {
     "lucide-react": "^0.522.0",
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
@@ -17,7 +18,8 @@
       "import": "./dist/umag.es.js",
       "require": "./dist/umag.cjs.js",
       "default": "./dist/umag.es.js"
-    }
+    },
+    "./style.css": "./dist/umag.css"
   },
   "files": [
     "dist"
@@ -49,9 +51,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
   "types": "./dist/umag.d.ts",
+  "style": "./dist/umag.css",
   "unpkg": "umag.umd.js",
   "version": "0.0.5"
 }

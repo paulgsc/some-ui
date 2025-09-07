@@ -27,11 +27,7 @@ export const AudioStorageExample = () => {
       service: {
         provider: "openai",
         // Your storage endpoint - expecting structure like /audio/:id
-        storageEndpoint: "https://api.yourdomain.com/audio",
-        headers: {
-          Authorization: "Bearer your-api-key",
-          "Content-Type": "application/json",
-        },
+        storageEndpoint: "http://nixos.local:3000/get_audio",
         retryConfig: {
           maxRetries: 3,
           delay: 1000,
