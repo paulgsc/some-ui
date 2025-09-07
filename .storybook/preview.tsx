@@ -1,6 +1,6 @@
 import type { Preview } from "@storybook/react-vite"
 
-import "../tailwind.css"
+import "./index.css"
 
 import { withProviders } from "./storybook-decorator"
 

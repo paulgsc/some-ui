@@ -1,4 +1,4 @@
-import { dirname, join } from "path"
+import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
 
 /**
@@ -7,7 +7,10 @@ import type { StorybookConfig } from "@storybook/react-vite"
  */
 
 const config: StorybookConfig = {
-  stories: ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+  ],
   logLevel: "error",
 
   core: {
@@ -30,6 +33,16 @@ const config: StorybookConfig = {
       ...config.define,
       "process.env": {
         STORYBOOK: JSON.stringify(process.env.STORYBOOK),
+      },
+    }
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...(config.resolve?.alias ?? {}),
+        "webextension-polyfill": resolve(
+          __dirname,
+          "../__mocks__/webextension-polyfill.ts"
+        ),
       },
     }
     return config
