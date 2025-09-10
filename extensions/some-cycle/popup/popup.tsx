@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react"
 import { createRoot } from "react-dom/client"
+import browser from "webextension-polyfill"
 
 const TaskPopup: FC = () => {
   const [taskEvent, setTaskEvent] = useState<TaskEvent | null>(null)

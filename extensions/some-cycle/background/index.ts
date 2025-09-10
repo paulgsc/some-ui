@@ -1,5 +1,6 @@
 // Background script for handling tab events and API communication
 import type { Task, TaskEvent } from "@/types"
+import browser from "webextension-polyfill"
 
 class TaskTracker {
   private apiEndpoint = "http://localhost:3000/api/tasks"

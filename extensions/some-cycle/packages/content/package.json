@@ -4,43 +4,35 @@
   },
   "dependencies": {
     "@some-ui/styles": "workspace:*",
-    "@some-cycle/content": "workspace:*",
-    "lucide-react": "^0.263.1"
+    "@some-cycle/types": "workspace:*",
+    "lucide-react": "^0.263.1",
+    "preact": "^10.27.1"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@preact/preset-vite": "^2.10.2",
     "@types/firefox-webext-browser": "^120.0.4",
     "@types/webextension-polyfill": "^0.10.0",
-    "some-ui-rollup-config": "workspace:*",
     "web-ext": "^7.6.2",
     "webextension-polyfill": "^0.10.0"
   },
   "exports": {
     ".": {
-      "import": {
-        "default": "./dist/esm/some-ui-utils.esm.js",
-        "types": "./dist/esm/index.d.ts"
-      },
-      "require": {
-        "default": "./dist/cjs/some-ui-utils.cjs.js",
-        "types": "./dist/cjs/index.d.ts"
-      }
-    },
-    "./package.json": "./package.json"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
   },
   "files": [
-    "some-ui-utils*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/some-ui-utils.umd.js",
-  "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "some-cycle",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "name": "@some-cycle/content",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
@@ -60,7 +52,6 @@
   },
   "sideEffects": false,
   "type": "module",
-  "types": "index.d.ts",
   "unpkg": "some-ui-utils.umd.js",
   "version": "1.1.0"
 }
