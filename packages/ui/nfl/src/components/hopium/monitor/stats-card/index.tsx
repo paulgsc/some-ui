@@ -33,7 +33,7 @@ export const StatsCard = ({
 
   return (
     <Card
-      className={`cursor-pointer p-3 transition-all hover:shadow-md ${isActive ? `ring-2 ${ringColor}` : ""}`}
+      className={`cursor-pointer bg-[oklch(0.984_0.024_83.915)] p-3 transition-all hover:shadow-md ${isActive ? `ring-2 ${ringColor}` : ""}`}
       onClick={() => onClick(filter)}
     >
       <div className="flex items-center gap-2">

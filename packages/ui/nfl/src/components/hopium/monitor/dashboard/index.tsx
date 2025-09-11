@@ -121,7 +121,7 @@ export const SatelliteDashboard = ({
             <Button
               onClick={handleRefreshAll}
               disabled={isRefreshing}
-              className="gap-2"
+              className="gap-2 bg-[oklch(0.647_0.204_50.847)]"
             >
               <RefreshCw
                 className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}

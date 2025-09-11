@@ -23,7 +23,7 @@ export function SatelliteCard<T>({ item, onClick }: SatelliteCardProps<T>) {
 
   return (
     <Card
-      className={`cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${urgencyClass} flex flex-col`}
+      className={`cursor-pointer bg-[oklch(0.984_0.024_83.915)] transition-all duration-300 hover:scale-105 hover:shadow-lg ${urgencyClass} flex flex-col`}
       onClick={() => onClick(item)}
     >
       <CardHeader className="flex-none pb-2">
