@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { StrictMode, useEffect, useState } from "react"
 import type { Decorator } from "@storybook/react-vite"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cn, initializeSpeechContext, useAudioTTS } from "some-ui-utils"
@@ -69,10 +69,12 @@ export const withProviders: Decorator = (Story, context) => {
   const queryClient = createQueryClient()
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TTSWrapper>
-        <Story {...context} />
-      </TTSWrapper>
-    </QueryClientProvider>
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <TTSWrapper>
+          <Story {...context} />
+        </TTSWrapper>
+      </QueryClientProvider>
+    </StrictMode>
   )
 }

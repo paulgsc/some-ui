@@ -43,6 +43,9 @@ const config: StorybookConfig = {
           __dirname,
           "../__mocks__/webextension-polyfill.ts"
         ),
+        "preact/hooks": "react",
+        "preact/compat": "react",
+        preact: "react",
       },
     }
     return config
