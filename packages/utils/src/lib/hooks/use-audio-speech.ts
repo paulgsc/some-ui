@@ -22,13 +22,6 @@ const isAudioContextSupported = (): boolean =>
   (window.AudioContext !== undefined ||
     (window as any).webkitAudioContext !== undefined)
 
-// Create AudioContext
-const createAudioContext = (): AudioContext => {
-  const AudioContextClass =
-    window.AudioContext || (window as any).webkitAudioContext
-  return new AudioContextClass()
-}
-
 export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   // State
   const [speaking, setSpeaking] = useState(false)
@@ -56,25 +49,19 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   useEffect(() => {
     const supported = isAudioContextSupported()
     setSupported(supported)
-
-    if (supported && !audioContextRef.current) {
-      try {
-        audioContextRef.current = createAudioContext()
-      } catch (error) {
-        console.error("Failed to create AudioContext:", error)
-        setSupported(false)
-      }
-    }
-
-    return (): void => {
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== "closed"
-      ) {
-        audioContextRef.current.close()
-      }
-    }
   }, [])
+
+  const getOrCreateAudioContext = (): AudioContext => {
+    if (
+      !audioContextRef.current ||
+      audioContextRef.current.state === "closed"
+    ) {
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext
+      audioContextRef.current = new AudioContextClass()
+    }
+    return audioContextRef.current
+  }
 
   // Cleanup audio nodes
   const cleanupNodes = useCallback(() => {
@@ -105,8 +92,9 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
 
   // Update time and progress
   const updateTime = useCallback(() => {
-    if (audioContextRef.current && speaking && !paused) {
-      const elapsed = audioContextRef.current.currentTime - startTimeRef.current
+    const ctx = getOrCreateAudioContext()
+    if (ctx && speaking && !paused) {
+      const elapsed = ctx.currentTime - startTimeRef.current
       setCurrentTime(elapsed)
       currentOptionsRef.current.onProgress?.(elapsed, duration)
 
@@ -125,6 +113,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
           // Wait for previous speech to complete
           await speechQueueRef.current
 
+          getOrCreateAudioContext()
           if (!supported || !audioContextRef.current) {
             throw new Error("AudioContext not supported or not initialized")
           }
