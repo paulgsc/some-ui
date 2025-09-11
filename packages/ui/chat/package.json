@@ -18,6 +18,7 @@
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.3",
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
@@ -37,7 +38,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-chat.umd.js",
   "main": "./dist/some-ui-chat.cjs.js",
   "module": "./dist/some-ui-chat.es.js",
@@ -48,6 +51,8 @@
       "import": "./dist/some-ui-chat.es.js",
       "require": "./dist/some-ui-chat.cjs.js",
       "default": "./dist/some-ui-chat.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-chat.css"
+  },
+  "style": "./dist/some-ui-chat.css"
 }

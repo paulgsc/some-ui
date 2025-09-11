@@ -22,12 +22,9 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   const lastSpokenRef = useRef<{ index: number; content: string } | null>(null)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
 
-  const { speak, isActive, queueStatus } = useSpeechQueue(COMPONENT_ID)
+  const { speak } = useSpeechQueue(COMPONENT_ID)
 
-  const { chats, currentIndex } = useChatMessages({
-    pause:
-      isSpeaking ||
-      (isActive && queueStatus.currentItem?.componentId !== COMPONENT_ID),
+  const { chats, currentIndex, onPause, onResume } = useChatMessages({
     chats: messages,
   })
 
@@ -56,9 +53,11 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           volume: 1.0,
           onStart: (): void => {
             setIsSpeaking(true)
+            onPause()
           },
           onEnd: (): void => {
             setIsSpeaking(false)
+            onResume()
           },
           onError: (error: Error) => {
             setIsSpeaking(false)
@@ -73,7 +72,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     }
 
     speakContent()
-  }, [chats, currentIndex, isSpeaking, speak])
+  }, [chats, currentIndex, isSpeaking, speak, onResume, onPause])
 
   return (
     <main
@@ -92,13 +91,13 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     >
       <div className="absolute inset-0 h-1/4" />
       <div className="absolute bottom-0 end-0 start-0  h-1/4" />
-      {chats.map((msg) => {
+      {chats.map((msg, i) => {
         const { position, id } = msg
         const t = 15 * 1000
         const timestamp = new Date(Date.now() - t).toString()
         return (
           <section
-            key={id}
+            key={`${id}_${i}`}
             className={cn("flex w-full", {
               "justify-start": position === "left",
               "justify-end": position === "right",
