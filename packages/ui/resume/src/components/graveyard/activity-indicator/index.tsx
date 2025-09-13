@@ -1,6 +1,5 @@
-import { SunIcon, Zap } from "lucide-react"
-
 import type { PackageStatus } from "@resume/types/graveyard"
+import { SunIcon, Zap } from "lucide-react"
 
 type ActivityIndicatorProps = {
   status: PackageStatus

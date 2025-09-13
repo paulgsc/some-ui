@@ -1,5 +1,5 @@
 // import { useEffect, useState } from "react"
-// 
+//
 // export const ConnectingLine = ({
 //   startX,
 //   startY,
@@ -9,7 +9,7 @@
 //   delay = 0,
 // }) => {
 //   const [progress, setProgress] = useState(animated ? 0 : 1)
-// 
+//
 //   useEffect(() => {
 //     if (animated) {
 //       const timer = setTimeout(() => {
@@ -18,11 +18,11 @@
 //       return () => clearTimeout(timer)
 //     }
 //   }, [animated, delay])
-// 
+//
 //   // Calculate the current endpoint based on progress
 //   const currentEndX = startX + (endX - startX) * progress
 //   const currentEndY = startY + (endY - startY) * progress
-// 
+//
 //   return (
 //     <line
 //       x1={startX}

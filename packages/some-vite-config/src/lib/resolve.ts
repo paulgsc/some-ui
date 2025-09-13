@@ -1,4 +1,5 @@
 import { resolve } from "path"
+
 import type { ViteConfigOptions } from "../types/index.js"
 
 export function createResolveConfig(

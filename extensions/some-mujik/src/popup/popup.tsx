@@ -8,6 +8,4 @@ const root = ReactDOM.createRoot(
   document.getElementById("popup-root") as HTMLElement
 )
 
-root.render(
-    <Popup />
-)
+root.render(<Popup />)

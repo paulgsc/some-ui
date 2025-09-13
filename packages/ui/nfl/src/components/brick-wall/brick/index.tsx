@@ -68,10 +68,7 @@ export const Brick: React.FC<BrickProps> = ({ brick }) => {
         width={iconSize}
         height={iconSize}
       >
-        <NFLTeamIcon
-          team={item.name as NFLTeam}
-          size={iconSize}
-        />
+        <NFLTeamIcon team={item.name as NFLTeam} size={iconSize} />
       </foreignObject>
       <text
         x={x + width / 2}

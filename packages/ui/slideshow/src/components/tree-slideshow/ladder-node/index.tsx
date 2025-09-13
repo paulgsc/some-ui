@@ -1,5 +1,5 @@
 // import { useEffect, useState } from "react"
-// 
+//
 // export const LadderNode = ({
 //   id,
 //   x,
@@ -11,7 +11,7 @@
 // }) => {
 //   const [opacity, setOpacity] = useState(animated ? 0 : 1)
 //   const [scale, setScale] = useState(animated ? 0.5 : 1)
-// 
+//
 //   useEffect(() => {
 //     if (animated) {
 //       const timer = setTimeout(() => {
@@ -21,10 +21,10 @@
 //       return () => clearTimeout(timer)
 //     }
 //   }, [animated, delay])
-// 
+//
 //   const transition =
 //     "opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-// 
+//
 //   return (
 //     <g
 //       transform={`translate(${x - width / 2}, ${y - height / 2}) scale(${scale})`}

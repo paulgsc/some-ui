@@ -2,7 +2,7 @@
 // import { ConnectingLine } from "@slideshow/components/tree-slideshow/connecting-line"
 // import { LadderNode } from "@slideshow/components/tree-slideshow/ladder-node"
 // import { useAnimatedNodes, useLadderTree } from "@slideshow/hooks/node-tree"
-// 
+//
 // export const LadderTreeSVG = (): React.JSX.Element => {
 //   // Default parameters
 //   const [params, setParams] = useState({
@@ -12,28 +12,28 @@
 //     alpha: 45, // angle in degrees for even points (relative to vertical)
 //     beta: -45, // angle in degrees for odd points (relative to vertical)
 //   })
-// 
+//
 //   // Elements in the ladder
 //   const elements = ["A", "B", "C", "D", "E"]
-// 
+//
 //   // Animation speed in milliseconds
 //   const [animationSpeed, setAnimationSpeed] = useState(800)
-// 
+//
 //   // Use the custom hook to get calculated points and dimensions
 //   const { points, svgBounds } = useLadderTree(elements, params)
-// 
+//
 //   // Animation control
 //   const { visibleCount, startAnimation, resetAnimation, animating } =
 //     useAnimatedNodes(elements.length, animationSpeed)
-// 
+//
 //   // Update parameters via UI slider
 //   const handleParamChange = (param, value) => {
 //     setParams((prev) => ({ ...prev, [param]: Number(value) }))
 //   }
-// 
+//
 //   // Calculate the viewBox based on the points
 //   const viewBox = `${svgBounds.minX} ${svgBounds.minY} ${svgBounds.maxX - svgBounds.minX} ${svgBounds.maxY - svgBounds.minY}`
-// 
+//
 //   return (
 //     <div className="flex flex-col items-center">
 //       <div className="w-full max-w-4xl">
@@ -56,7 +56,7 @@
 //               </div>
 //             ))}
 //           </div>
-// 
+//
 //           <div className="mt-4">
 //             <label className="text-sm font-medium">
 //               Animation Speed: {animationSpeed}ms
@@ -71,7 +71,7 @@
 //               className="w-full"
 //             />
 //           </div>
-// 
+//
 //           <div className="mt-4 flex gap-4">
 //             <button
 //               onClick={startAnimation}
@@ -84,7 +84,7 @@
 //                   ? "Animating..."
 //                   : "Start Animation"}
 //             </button>
-// 
+//
 //             <button
 //               onClick={resetAnimation}
 //               className="rounded bg-gray-500 px-4 py-2 text-white"
@@ -93,7 +93,7 @@
 //             </button>
 //           </div>
 //         </div>
-// 
+//
 //         <div className="rounded-lg border border-gray-300 bg-white">
 //           <svg
 //             width="100%"
@@ -116,7 +116,7 @@
 //                 />
 //               )
 //             })}
-// 
+//
 //             {/* Draw nodes */}
 //             {points.slice(0, visibleCount).map((point, i) => (
 //               <LadderNode
@@ -130,7 +130,7 @@
 //                 delay={i * animationSpeed - animationSpeed / 2}
 //               />
 //             ))}
-// 
+//
 //             {/* Draw the dots at midpoints of lines */}
 //             {points.slice(0, visibleCount).map((point, i) => {
 //               if (i === 0) return null // Skip the first point as it has no incoming line
@@ -150,7 +150,7 @@
 //                 />
 //               )
 //             })}
-// 
+//
 //             <style>
 //               {`
 //               @keyframes fadeIn {

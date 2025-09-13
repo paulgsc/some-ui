@@ -1,4 +1,3 @@
-
 import "./index.css"
 
 import type { CSSProperties, FC, HTMLAttributes, ReactNode } from "react"

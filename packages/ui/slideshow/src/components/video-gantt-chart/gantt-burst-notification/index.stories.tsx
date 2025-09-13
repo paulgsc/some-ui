@@ -36,7 +36,7 @@ const notifications = [
 export const Default: Story = {
   args: {
     notifications,
-    isPlaying: true
+    isPlaying: true,
   },
 }
 

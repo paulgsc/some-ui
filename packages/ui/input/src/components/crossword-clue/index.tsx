@@ -5,6 +5,7 @@ import { ClueThumbnail } from "@input/components/clue-thumbnail"
 import type { CrosswordClueWithNum } from "@input/types/crossword"
 import { PolarSphere } from "some-ui-shared"
 import { cn } from "some-ui-utils"
+
 import "./index.css"
 
 type ClueCardProps = {

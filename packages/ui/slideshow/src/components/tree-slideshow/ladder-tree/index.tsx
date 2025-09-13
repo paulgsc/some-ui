@@ -3,12 +3,12 @@
 // import { LadderNode } from "@slideshow/components/tree-slideshow/ladder-node"
 // import { useAnimatedNodes, useLadderTree } from "@slideshow/hooks/node-tree"
 // import { cn } from "some-ui-utils"
-// 
+//
 // type LadderTreeSvgProps = {
 //   elements?: Array<ReactNode>
 //   className?: string
 // }
-// 
+//
 // export const LadderTreeSvg: FC<LadderTreeSvgProps> = ({
 //   elements = [],
 //   className,
@@ -39,7 +39,7 @@
 //           />
 //         )
 //       })}
-// 
+//
 //       {/* Draw nodes */}
 //       {points.slice(0, visibleCount).map((point, i) => (
 //         <LadderNode
@@ -53,7 +53,7 @@
 //           delay={i * animationSpeed - animationSpeed / 2}
 //         />
 //       ))}
-// 
+//
 //       {/* Draw the dots at midpoints of lines */}
 //       {points.slice(0, visibleCount).map((point, i) => {
 //         if (i === 0) return null // Skip the first point as it has no incoming line
@@ -73,7 +73,7 @@
 //           />
 //         )
 //       })}
-// 
+//
 //       <style>
 //         {`
 //                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @keyframes fadeIn {

@@ -18,4 +18,3 @@ export const useActiveIndices = (totalCount: number, activeCount: number) => {
 
   return activeIndices
 }
-
