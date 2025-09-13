@@ -22,7 +22,6 @@
     "embla-carousel-autoplay": "^8.6.0",
     "lucide-react": "^0.536.0",
     "maishatu-fetch-kit": "workspace:*",
-    "recharts": "2.12.7",
     "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
@@ -45,7 +44,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-nfl.umd.js",
   "main": "./dist/some-ui-nfl.cjs.js",
   "module": "./dist/some-ui-nfl.es.js",
@@ -56,6 +57,8 @@
       "import": "./dist/some-ui-nfl.es.js",
       "require": "./dist/some-ui-nfl.cjs.js",
       "default": "./dist/some-ui-nfl.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-nfl.css"
+  },
+  "style": "./dist/some-ui-nfl.css"
 }

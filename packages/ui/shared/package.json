@@ -2,6 +2,9 @@
   "name": "some-ui-shared",
   "version": "0.0.5",
   "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
@@ -23,9 +26,9 @@
     "@radix-ui/react-dropdown-menu": "^2.1.1",
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-popover": "^1.1.5",
+    "@radix-ui/react-progress": "^1.1.1",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-select": "^2.1.1",
-    "@radix-ui/react-progress": "^1.1.1",
     "@radix-ui/react-separator": "^1.0.3",
     "@radix-ui/react-slider": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
@@ -39,7 +42,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-resizable-panels": "^2.1.0",
-    "recharts": "2.12.7",
     "tailwind-merge": "^2.4.0"
   },
   "dependencies": {
@@ -56,24 +58,24 @@
     "@radix-ui/react-tabs": "1.1.1",
     "@radix-ui/react-toast": "^1.2.14",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@some-ui/styles": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "framer-motion": "^12.23.0",
     "lucide-react": "^0.378.0",
     "react-resizable-panels": "^2.1.9",
-    "recharts": "2.12.7",
     "some-ui-utils": "workspace:*",
     "tailwind-merge": "^2.6.0",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-typescript": "3.7.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@some-ui/vite-config": "workspace:*"
+    "react-dom": "^19.0.0"
   },
   "repository": {
     "type": "git",
@@ -88,7 +90,6 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "main": "./dist/some-ui-shared.cjs.js",
   "module": "./dist/some-ui-shared.es.js",
   "types": "./dist/some-ui-shared.d.ts",
@@ -98,6 +99,8 @@
       "import": "./dist/some-ui-shared.es.js",
       "require": "./dist/some-ui-shared.cjs.js",
       "default": "./dist/some-ui-shared.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-shared.css"
+  },
+  "style": "./dist/some-ui-shared.css"
 }

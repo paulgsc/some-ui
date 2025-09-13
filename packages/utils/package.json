@@ -50,7 +50,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-utils.umd.js",
   "main": "./dist/some-ui-utils.cjs.js",
   "module": "./dist/some-ui-utils.es.js",
@@ -61,6 +63,8 @@
       "import": "./dist/some-ui-utils.es.js",
       "require": "./dist/some-ui-utils.cjs.js",
       "default": "./dist/some-ui-utils.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-utils.css"
+  },
+  "style": "./dist/some-ui-utils.css"
 }

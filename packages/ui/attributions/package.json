@@ -18,7 +18,8 @@
       "import": "./dist/attributions.es.js",
       "require": "./dist/attributions.cjs.js",
       "default": "./dist/attributions.es.js"
-    }
+    },
+    "./style.css": "./dist/attributions.css"
   },
   "files": [
     "dist"
@@ -50,9 +51,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
   "types": "./dist/attributions.d.ts",
   "unpkg": "attributions.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/attributions.css"
 }

@@ -27,6 +27,7 @@
     "some-types-utils": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*",
     "umag": "workspace:*"
   },
@@ -47,7 +48,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-slideshow.umd.js",
   "main": "./dist/some-ui-slideshow.cjs.js",
   "module": "./dist/some-ui-slideshow.es.js",
@@ -58,6 +61,8 @@
       "import": "./dist/some-ui-slideshow.es.js",
       "require": "./dist/some-ui-slideshow.cjs.js",
       "default": "./dist/some-ui-slideshow.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-slideshow.css"
+  },
+  "style": "./dist/some-ui-slideshow.css"
 }

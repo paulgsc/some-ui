@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
@@ -39,7 +40,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-neon-sign.umd.js",
   "main": "./dist/some-ui-neon-sign.cjs.js",
   "module": "./dist/some-ui-neon-sign.es.js",
@@ -50,6 +53,8 @@
       "import": "./dist/some-ui-neon-sign.es.js",
       "require": "./dist/some-ui-neon-sign.cjs.js",
       "default": "./dist/some-ui-neon-sign.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-neon-sign.css"
+  },
+  "style": "./dist/some-ui-neon-sign.css"
 }

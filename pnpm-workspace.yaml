@@ -1,15 +1,7 @@
+---
 packages:
   - packages/ui/*
-  - packages/browser-extensions/*
-  - packages/tsconfig
-  - packages/some-vite-config
-  - packages/rollup-config
-  - packages/utils
-  - packages/mdx-generator
-  - packages/types
-  - packages/eslint
-  - packages/maishatu-tw-eslint
-  - packages/eslint-plugin-tailwindcss
-  - crates/viewport-rotation
-  - crates/some-crossword
-  - crates/some-hexagon
+  - apps/*
+  - extensions/**
+  - packages/*
+  - crates/*

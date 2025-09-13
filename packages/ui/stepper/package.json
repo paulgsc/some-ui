@@ -29,6 +29,7 @@
     "lucide-react": "^0.503.0",
     "some-ui-shared": "workspace:*",
     "some-ui-input": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
@@ -48,17 +49,21 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-stepper.umd.js",
   "main": "./dist/some-ui-stepper.cjs.js",
   "module": "./dist/some-ui-stepper.es.js",
   "types": "./dist/some-ui-stepper.d.ts",
+  "style": "./dist/some-ui-stepper.css",
   "exports": {
     ".": {
       "types": "./dist/some-ui-stepper.d.ts",
       "import": "./dist/some-ui-stepper.es.js",
       "require": "./dist/some-ui-stepper.cjs.js",
       "default": "./dist/some-ui-stepper.es.js"
-    }
+    },
+    "./style.css": "./dist/some-ui-stepper.css"
   }
 }

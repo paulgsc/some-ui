@@ -45,7 +45,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-searchbar.umd.js",
   "main": "./dist/some-ui-searchbar.cjs.js",
   "module": "./dist/some-ui-searchbar.es.js",
@@ -56,6 +58,8 @@
       "import": "./dist/some-ui-searchbar.es.js",
       "require": "./dist/some-ui-searchbar.cjs.js",
       "default": "./dist/some-ui-searchbar.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-searchbar.css"
+  },
+  "style": "./dist/some-ui-searchbar.css"
 }

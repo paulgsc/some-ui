@@ -36,7 +36,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "main": "./dist/some-types-utils.cjs.js",
   "module": "./dist/some-types-utils.es.js",
   "types": "./dist/some-types-utils.d.ts",
@@ -46,6 +48,8 @@
       "import": "./dist/some-types-utils.es.js",
       "require": "./dist/some-types-utils.cjs.js",
       "default": "./dist/some-types-utils.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-types-utils.css"
+  },
+  "style": "./dist/some-types-utils.css"
 }

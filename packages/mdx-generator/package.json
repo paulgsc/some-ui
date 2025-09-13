@@ -59,7 +59,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-mdx.umd.js",
   "main": "./dist/some-ui-mdx.cjs.js",
   "module": "./dist/some-ui-mdx.es.js",
@@ -70,6 +72,8 @@
       "import": "./dist/some-ui-mdx.es.js",
       "require": "./dist/some-ui-mdx.cjs.js",
       "default": "./dist/some-ui-mdx.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-mdx.css"
+  },
+  "style": "./dist/some-ui-mdx.css"
 }

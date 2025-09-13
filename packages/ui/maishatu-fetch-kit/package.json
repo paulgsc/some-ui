@@ -15,7 +15,8 @@
       "import": "./dist/maishatu-fetch-kit.es.js",
       "require": "./dist/maishatu-fetch-kit.cjs.js",
       "default": "./dist/maishatu-fetch-kit.es.js"
-    }
+    },
+    "./style.css": "./dist/maishatu-fetch-kit.css"
   },
   "files": [
     "dist"
@@ -42,9 +43,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
   "types": "./dist/maishatu-fetch-kit.d.ts",
   "unpkg": "maishatu-fetch-kit.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/maishatu-fetch-kit.css"
 }

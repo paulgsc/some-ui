@@ -6,6 +6,7 @@
     "react-resizable-panels": "^2.1.0",
     "some-ui-slideshow": "workspace:*",
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
@@ -18,7 +19,8 @@
       "import": "./dist/wireframes.es.js",
       "require": "./dist/wireframes.cjs.js",
       "default": "./dist/wireframes.es.js"
-    }
+    },
+    "./style.css": "./dist/wireframes.css"
   },
   "files": [
     "dist"
@@ -50,9 +52,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
   "types": "./dist/wireframes.d.ts",
   "unpkg": "wireframes.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/wireframes.css"
 }

@@ -40,7 +40,9 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-emoji-animations.umd.js",
   "main": "./dist/some-ui-emoji-animations.cjs.js",
   "module": "./dist/some-ui-emoji-animations.es.js",
@@ -51,6 +53,8 @@
       "import": "./dist/some-ui-emoji-animations.es.js",
       "require": "./dist/some-ui-emoji-animations.cjs.js",
       "default": "./dist/some-ui-emoji-animations.es.js"
-    }
-  }
+    },
+    "./style.css": "./dist/some-ui-emoji-animations.css"
+  },
+  "style": "./dist/some-ui-emoji-animations.css"
 }
