@@ -3,6 +3,7 @@
 If you're using a private Git repository as a dependency in your Rust project and encounter authentication issues, follow these steps to ensure Cargo can authenticate using SSH.
 
 ## **1. Start the SSH Agent**
+
 Cargo may fail to authenticate if the SSH agent is not running. Start it with:
 
 ```sh
@@ -10,6 +11,7 @@ eval "$(ssh-agent -s)"
 ```
 
 ## **2. Add Your SSH Key**
+
 Add your private SSH key to the agent:
 
 ```sh
@@ -19,6 +21,7 @@ ssh-add ~/.ssh/id_ed25519
 If you're using a different key, adjust the path accordingly.
 
 ## **3. Verify the SSH Connection**
+
 Test if authentication works:
 
 ```sh
@@ -32,6 +35,7 @@ Hi <your-github-username>! You've successfully authenticated, but GitHub does no
 ```
 
 ## **4. Configure Cargo to Use SSH**
+
 If you are using `https` instead of `ssh` in your `Cargo.toml`, switch it to:
 
 ```toml
@@ -47,6 +51,7 @@ echo '[net] git-fetch-with-cli = true' >> ~/.cargo/config.toml
 ```
 
 ## **5. Run Cargo**
+
 Now, try running:
 
 ```sh
@@ -65,5 +70,3 @@ Host github.com
   IdentityFile ~/.ssh/id_ed25519
   PreferredAuthentications publickey
 ```
-
-
