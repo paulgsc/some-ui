@@ -1,11 +1,17 @@
+#Ignore the Dockerfile
+Dockerfile
 
 # dependencies
 node_modules
+npm-debug.log
 .pnp
 .pnp.js
 
 # testing
 coverage
+tests
+test
+spec
 
 # next.js
 .next/
@@ -16,6 +22,7 @@ dist
 # misc
 .DS_Store
 *.pem
+README.md
 
 # debug
 npm-debug.log*
@@ -24,6 +31,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -60,3 +68,15 @@ bin
 
 # Github
 .github
+
+# Ignore build output
+**/.next/
+**/out/
+
+# Ignore editor directories and files
+.vscode/
+.suo
+.ntvs*
+.njsproj
+.sln
+.sw?

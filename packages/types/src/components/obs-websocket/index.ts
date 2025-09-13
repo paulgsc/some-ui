@@ -468,3 +468,67 @@ export type ClientObsState = {
 
   lastUnknownEvent?: { eventType: string; data: unknown }
 }
+
+// Define the individual variant schemas
+const StartStreamSchema = z.object({
+  type: z.literal("startStream"),
+})
+
+const StopStreamSchema = z.object({
+  type: z.literal("stopStream"),
+})
+
+const StartRecordingSchema = z.object({
+  type: z.literal("startRecording"),
+})
+
+const StopRecordingSchema = z.object({
+  type: z.literal("stopRecording"),
+})
+
+const SwitchSceneSchema = z.object({
+  type: z.literal("switchScene"),
+  data: z.string(),
+})
+
+const SetInputMuteSchema = z.object({
+  type: z.literal("setInputMute"),
+  data: z.tuple([z.string(), z.boolean()]),
+})
+
+const SetInputVolumeSchema = z.object({
+  type: z.literal("setInputVolume"),
+  data: z.tuple([z.string(), z.number()]),
+})
+
+const ToggleStudioModeSchema = z.object({
+  type: z.literal("toggleStudioMode"),
+})
+
+const ToggleVirtualCameraSchema = z.object({
+  type: z.literal("toggleVirtualCamera"),
+})
+
+const ToggleReplayBufferSchema = z.object({
+  type: z.literal("toggleReplayBuffer"),
+})
+
+const CustomSchema = z.object({
+  type: z.literal("custom"),
+  data: z.unknown(), // or z.any() if you want to allow anything
+})
+
+// Union of all variants
+export const ObsCommandSchema = z.discriminatedUnion("type", [
+  StartStreamSchema,
+  StopStreamSchema,
+  StartRecordingSchema,
+  StopRecordingSchema,
+  SwitchSceneSchema,
+  SetInputMuteSchema,
+  SetInputVolumeSchema,
+  ToggleStudioModeSchema,
+  ToggleVirtualCameraSchema,
+  ToggleReplayBufferSchema,
+  CustomSchema,
+])

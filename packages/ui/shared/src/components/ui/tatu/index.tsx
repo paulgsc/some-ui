@@ -1,3 +1,5 @@
+import "./index.css"
+
 import { cn } from "some-ui-utils"
 
 const cards = [

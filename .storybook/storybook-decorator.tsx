@@ -69,12 +69,10 @@ export const withProviders: Decorator = (Story, context) => {
   const queryClient = createQueryClient()
 
   return (
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <TTSWrapper>
-          <Story {...context} />
-        </TTSWrapper>
-      </QueryClientProvider>
-    </StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <TTSWrapper>
+        <Story {...context} />
+      </TTSWrapper>
+    </QueryClientProvider>
   )
 }

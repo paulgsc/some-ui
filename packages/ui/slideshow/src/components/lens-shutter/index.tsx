@@ -1,3 +1,5 @@
+import "./index.css"
+
 import type { CSSProperties, ReactNode } from "react"
 import { useCallback, useState } from "react"
 import { useAperture } from "@slideshow/hooks/use-aperture"

@@ -1,3 +1,5 @@
+import "./index.css"
+
 import { useEffect, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import { AntSvg } from "@shared/components/icons/ant-svg"
@@ -80,7 +82,7 @@ export const BorderBeam = ({
   return (
     <div
       ref={containerRef}
-      className="z-[1000] pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+      className="pointer-events-none absolute inset-0 z-[1000] overflow-hidden rounded-[inherit]"
       style={cssVars}
     >
       {/* Pheromone Trail */}

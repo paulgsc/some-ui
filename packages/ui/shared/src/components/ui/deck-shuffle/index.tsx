@@ -1,3 +1,6 @@
+
+import "./index.css"
+
 import type { CSSProperties, FC, HTMLAttributes, ReactNode } from "react"
 import { forwardRef } from "react"
 import { cn } from "@shared/lib/utils"

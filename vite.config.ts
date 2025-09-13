@@ -36,6 +36,11 @@ export default defineConfig({
       "@calendar": path.resolve(__dirname, "./packages/ui/calendar/src"),
       "@resume": path.resolve(__dirname, "./packages/ui/resume/src"),
       "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
+      "@content": path.resolve(__dirname, "./packages/some-content/src"),
+      "@some-ui/content": path.resolve(
+        __dirname,
+        "./packages/some-content/src"
+      ),
       // Add more aliases for other packages as needed
     },
   },

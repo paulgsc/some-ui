@@ -7,5 +7,8 @@ export default createViteConfig({
   alias: {
     "@umag": resolve(__dirname, "src"),
   },
+  dtsOptions: {
+    exclude: ["**/voice-ui/**"],
+  },
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

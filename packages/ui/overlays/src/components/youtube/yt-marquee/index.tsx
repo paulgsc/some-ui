@@ -1,3 +1,5 @@
+import "./index.css"
+
 import { Marquee } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 

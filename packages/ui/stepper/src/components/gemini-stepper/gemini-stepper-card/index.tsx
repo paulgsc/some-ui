@@ -1,3 +1,5 @@
+import "./index.css"
+
 import type { FC } from "react"
 import {
   Accordion,

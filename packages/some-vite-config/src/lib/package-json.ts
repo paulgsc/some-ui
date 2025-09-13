@@ -8,10 +8,11 @@ export type PackageJsonFields = {
   main?: string
   module?: string
   types?: string
+  style?: string
   exports?: Record<string, any>
   files?: Array<string>
   type?: "module" | "commonjs"
-  sideEffects?: boolean
+  sideEffects?: boolean | Array<string>
 }
 
 export function generatePackageJsonFields(
@@ -36,6 +37,8 @@ export function generatePackageJsonFields(
       require: `./dist/${packageName}.cjs.js`,
       default: `./dist/${packageName}.es.js`,
     }
+    // Add style.css to exports
+    exports["./style.css"] = `./dist/${packageName}.css`
     distFiles.push(
       `dist/${packageName}.es.js`,
       `dist/${packageName}.cjs.js`,
@@ -48,6 +51,8 @@ export function generatePackageJsonFields(
       import: `./dist/${packageName}.es.js`,
       default: `./dist/${packageName}.es.js`,
     }
+    // Add style.css to exports
+    exports["./style.css"] = `./dist/${packageName}.css`
     distFiles.push(`dist/${packageName}.es.js`, `dist/${packageName}.d.ts`)
   } else if (hasCJS) {
     // CJS only
@@ -56,6 +61,8 @@ export function generatePackageJsonFields(
       require: `./dist/${packageName}.cjs.js`,
       default: `./dist/${packageName}.cjs.js`,
     }
+    // Add style.css to exports
+    exports["./style.css"] = `./dist/${packageName}.css`
     distFiles.push(`dist/${packageName}.cjs.js`, `dist/${packageName}.d.ts`)
   }
 
