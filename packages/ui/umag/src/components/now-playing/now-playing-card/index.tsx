@@ -4,7 +4,6 @@ import { BackgroundGlow } from "@umag/components/now-playing/background-glow"
 import { SongInfo } from "@umag/components/now-playing/song-info"
 import { StreamingNotes } from "@umag/components/now-playing/streaming-notes"
 import { VinylRecord } from "@umag/components/now-playing/vinyl-record"
-import { useNowPlayingWebSocket } from "@umag/hooks/use-now-playing-socket"
 import { AlertCircle, Home, Loader2, RefreshCw } from "lucide-react"
 import {
   Button,
@@ -15,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, useNowPlayingWebSocket } from "some-ui-utils"
 
 type NowPlayingProps = {
   className?: string

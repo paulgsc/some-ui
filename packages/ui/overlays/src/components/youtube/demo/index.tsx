@@ -1,6 +1,6 @@
 import type { FC } from "react"
-import { useObsStatusWebSocket } from "@overlays/hooks/use-obs-socket"
 import { Button } from "some-ui-shared"
+import { useObsStatusWebSocket } from "some-ui-utils"
 
 type ObsStatusPanelProps = {
   serverUrl?: string

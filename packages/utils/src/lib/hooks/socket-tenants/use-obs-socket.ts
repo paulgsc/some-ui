@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
-  ClientObsState,
-  IncomingObsEvent,
-  ObsCommand,
-} from "@overlays/types/obs-websocket"
-import {
-  IncomingObsEventSchema,
-  ObsCommandSchema,
-} from "@overlays/types/obs-websocket"
-import { updateClientObsState } from "@overlays/utils/obs-websocket"
-import type { UseWebSocketOptions, UseWebSocketReturn } from "some-ui-utils"
-import { useWebSocket } from "some-ui-utils"
+  UseWebSocketQueryOptions,
+  UseWebSocketQueryReturn,
+} from "@utils/lib/hooks/use-websocket"
+import { useWebSocketQuery } from "@utils/lib/hooks/use-websocket"
+import { updateClientObsState } from "@utils/lib/obs"
+import type { ClientObsState } from "some-types-utils"
+import { IncomingObsEventSchema, ObsCommandSchema } from "some-types-utils"
 import { z } from "zod"
 
+type IncomingObsEvent = z.infer<typeof IncomingObsEventSchema>
+type ObsCommand = z.infer<typeof ObsCommandSchema>
 // Enum that matches your `EventType` Rust enum
 export const EventTypeSchema = z.enum([
   "ping",
@@ -61,7 +59,7 @@ export const EventSchema = z.discriminatedUnion("type", [
 type WsEvents = z.infer<typeof EventSchema>
 
 type UseObsStatusWebSocketOptions = Omit<
-  UseWebSocketOptions<IncomingObsEvent, WsEvents>,
+  UseWebSocketQueryOptions<IncomingObsEvent, WsEvents>,
   "incomingMessageSchema" | "outgoingMessageSchema"
 >
 
@@ -110,6 +108,8 @@ export const defaultClientObsState: ClientObsState = {
 export function useObsStatusWebSocket(
   options: UseObsStatusWebSocketOptions = {
     url: `ws://${window.location.hostname}:${3000}/ws`,
+    queryKey: ["obs_socket"],
+    updateStrategy: "append",
     debugMode: true,
   }
 ): UseObsWebSocketReturn {
@@ -119,8 +119,10 @@ export function useObsStatusWebSocket(
 
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
 
-  const wsHook = useWebSocket<IncomingObsEvent>({
+  const wsHook = useWebSocketQuery<IncomingObsEvent>({
     url: options.url,
+    queryKey: options.queryKey,
+    updateStrategy: options.updateStrategy,
     incomingMessageSchema: IncomingObsEventSchema,
     outgoingMessageSchema: EventSchema,
     autoReconnect: options.autoReconnect ?? true,
@@ -228,7 +230,7 @@ export function useObsStatusWebSocket(
 
 // Types
 
-type UseObsWebSocketReturn = UseWebSocketReturn<
+type UseObsWebSocketReturn = UseWebSocketQueryReturn<
   IncomingObsEvent,
   ObsCommand | WsEvents
 > & {

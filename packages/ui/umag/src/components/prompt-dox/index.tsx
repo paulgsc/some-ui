@@ -6,9 +6,8 @@ import {
   LoadingCard,
 } from "@umag/components/now-playing/now-playing-card"
 import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
-import { useUtteranceWebSocket } from "@umag/hooks/use-prompt-utterance"
+import { useSpeechQueue, useUtteranceWebSocket } from "some-ui-utils"
 import type { TTSOptions, VoiceConfig } from "some-ui-utils"
-import { useSpeechQueue } from "some-ui-utils"
 
 type DoxPromptProps = {
   className?: string

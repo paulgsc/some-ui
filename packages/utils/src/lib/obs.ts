@@ -1,4 +1,4 @@
-import type { ClientObsState, ObsEvent } from "@overlays/types/obs-websocket"
+import type { ClientObsState, ObsEvent } from "some-types-utils"
 
 export function updateClientObsState(
   state: ClientObsState,

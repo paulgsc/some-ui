@@ -30,6 +30,7 @@
     "nuqs": "1.18.0",
     "tailwind-merge": "^2.4.0",
     "maishatu-fetch-kit": "workspace:*",
+    "some-types-utils": "workspace:*",
     "usehooks-ts": "3.1.0"
   },
   "devDependencies": {

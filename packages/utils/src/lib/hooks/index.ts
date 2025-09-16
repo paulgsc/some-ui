@@ -8,9 +8,14 @@ export { useIsMobile } from "./use-mobile"
 export { useLocalStorage } from "./use-local-storage"
 export * from "./use-fetch"
 export * from "./use-interval"
-export * from "./use-websocket"
+export { useWebSocketQuery, useWebSocket } from "./use-websocket"
 export { useAudioTTS } from "./use-audio-tts"
 
 export { useTTSFetch } from "./use-tts-fetch"
 export { useAudioSpeech } from "./use-audio-speech"
 export { useAudioFromStorage } from "./use-audio-storage"
+export {
+  useUtteranceWebSocket,
+  useObsStatusWebSocket,
+  useNowPlayingWebSocket,
+} from "./socket-tenants"
