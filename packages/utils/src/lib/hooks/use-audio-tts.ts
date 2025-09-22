@@ -64,8 +64,8 @@ export function useAudioTTS(
         // Fetch audio data
         const audioData = await fetchTTS(
           text,
-          currentOptions.voice ?? selectedVoice,
-          initialOptions.service
+          initialOptions.service,
+          currentOptions.voice ?? selectedVoice
         )
 
         await audioSpeech.play(audioData)

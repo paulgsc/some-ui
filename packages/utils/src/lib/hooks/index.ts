@@ -19,3 +19,4 @@ export {
   useObsStatusWebSocket,
   useNowPlayingWebSocket,
 } from "./socket-tenants"
+export { useSpeechQueue, useSpeechQueueMetrics } from "./use-speech-queue"

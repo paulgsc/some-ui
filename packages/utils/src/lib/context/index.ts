@@ -1,3 +1,3 @@
 export * from "./event-bus"
-export * from "./event-queue"
-export * from "./speech-context"
+export { createStore, useStore } from "./ochestra"
+export { initializeSpeechQueue } from "./speech-queue"

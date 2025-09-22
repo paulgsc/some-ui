@@ -9,7 +9,7 @@ import { z } from "zod"
 class WebSocketManager {
   private static instances = new Map<string, WebSocketManager>()
   private socket: WebSocket | null = null
-  private listeners = new Set<(data: any) => void>()
+  private listeners = new Set<(data: unknown) => void>()
   private connectionListeners = new Set<(connected: boolean) => void>()
   private errorListeners = new Set<(error: Event | Error) => void>()
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -46,37 +46,37 @@ class WebSocketManager {
     return this.instances.get(url)!
   }
 
-  private log(...args: Array<any>) {
+  private log(...args: Array<unknown>): void {
     if (this.debugMode) {
       console.log(`[WebSocket ${this.url}]`, ...args)
     }
   }
 
-  addMessageListener(callback: (data: any) => void) {
+  addMessageListener(callback: (data: unknown) => void): void {
     this.listeners.add(callback)
   }
 
-  removeMessageListener(callback: (data: any) => void) {
+  removeMessageListener(callback: (data: unknown) => void): void {
     this.listeners.delete(callback)
   }
 
-  addConnectionListener(callback: (connected: boolean) => void) {
+  addConnectionListener(callback: (connected: boolean) => void): void {
     this.connectionListeners.add(callback)
   }
 
-  removeConnectionListener(callback: (connected: boolean) => void) {
+  removeConnectionListener(callback: (connected: boolean) => void): void {
     this.connectionListeners.delete(callback)
   }
 
-  addErrorListener(callback: (error: Event | Error) => void) {
+  addErrorListener(callback: (error: Event | Error) => void): void {
     this.errorListeners.add(callback)
   }
 
-  removeErrorListener(callback: (error: Event | Error) => void) {
+  removeErrorListener(callback: (error: Event | Error) => void): void {
     this.errorListeners.delete(callback)
   }
 
-  connect() {
+  connect(): void {
     if (
       this.connectionState === "connecting" ||
       this.connectionState === "connected"
@@ -91,13 +91,13 @@ class WebSocketManager {
     try {
       this.socket = new WebSocket(this.url)
 
-      this.socket.onopen = () => {
+      this.socket.onopen = (): void => {
         this.connectionState = "connected"
         this.log("Connected")
         this.connectionListeners.forEach((cb) => cb(true))
       }
 
-      this.socket.onmessage = (event) => {
+      this.socket.onmessage = (event): void => {
         try {
           const data = JSON.parse(event.data)
           this.listeners.forEach((cb) => cb(data))
@@ -107,7 +107,7 @@ class WebSocketManager {
         }
       }
 
-      this.socket.onclose = () => {
+      this.socket.onclose = (): void => {
         this.connectionState = "disconnected"
         this.log("Disconnected")
         this.connectionListeners.forEach((cb) => cb(false))
@@ -121,7 +121,7 @@ class WebSocketManager {
         }
       }
 
-      this.socket.onerror = (error) => {
+      this.socket.onerror = (error): void => {
         this.log("Connection error:", error)
         this.errorListeners.forEach((cb) => cb(error))
       }
@@ -132,7 +132,7 @@ class WebSocketManager {
     }
   }
 
-  disconnect() {
+  disconnect(): void {
     this.manualDisconnect = true
     this.clearReconnectTimer()
 
@@ -144,22 +144,22 @@ class WebSocketManager {
     this.connectionState = "disconnected"
   }
 
-  sendMessage(message: any) {
+  sendMessage(message: unknown): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket is not connected")
     }
     this.socket.send(JSON.stringify(message))
   }
 
-  get isConnected() {
+  get isConnected(): boolean {
     return this.connectionState === "connected"
   }
 
-  get isConnecting() {
+  get isConnecting(): boolean {
     return this.connectionState === "connecting"
   }
 
-  private clearReconnectTimer() {
+  private clearReconnectTimer(): void {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
@@ -167,7 +167,7 @@ class WebSocketManager {
   }
 
   // Cleanup method for when no components are using this connection
-  cleanup() {
+  cleanup(): void {
     if (this.listeners.size === 0 && this.connectionListeners.size === 0) {
       this.disconnect()
       WebSocketManager.instances.delete(this.url)
@@ -248,7 +248,7 @@ export function useWebSocketQuery<I, U = unknown>({
       reconnectInterval,
       debugMode,
     })
-    return () => {
+    return (): void => {
       // Cleanup when component unmounts
       if (managerRef.current) {
         managerRef.current.cleanup()
@@ -312,7 +312,7 @@ export function useWebSocketQuery<I, U = unknown>({
   )
 
   const handleMessage = useCallback(
-    (data: any) => {
+    (data: unknown) => {
       try {
         const result = incomingMessageSchema.safeParse(data)
 

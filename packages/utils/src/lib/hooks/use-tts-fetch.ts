@@ -167,13 +167,21 @@ const synthesizeTTS = async (
 }
 
 // Hook for fetching TTS audio data
-export function useTTSFetch() {
+type TTSFetch = {
+  fetchTTS: (
+    text: string,
+    config: TTSServiceConfig,
+    voice?: VoiceConfig
+  ) => Promise<ArrayBuffer>
+}
+
+export function useTTSFetch(): TTSFetch {
   const queryClient = useQueryClient()
 
   const fetchTTS = async (
     text: string,
-    voice: VoiceConfig,
-    config: TTSServiceConfig
+    config: TTSServiceConfig,
+    voice?: VoiceConfig
   ): Promise<ArrayBuffer> => {
     if (!text.trim()) {
       throw new Error("Text cannot be empty")
