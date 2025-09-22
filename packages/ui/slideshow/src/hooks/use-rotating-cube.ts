@@ -93,7 +93,6 @@ export const useRotatingCube = ({
   mode = "autoplay",
 }: Options): ReturnOptions => {
   const [isRotating, setIsRotating] = useState<boolean>(false)
-  const [isPaused, setIsPaused] = useState<boolean>(false)
   const [cubeState, setCubeState] = useState<CubeState>(() =>
     cubeEvents.getState()
   )
@@ -251,42 +250,39 @@ export const useRotatingCube = ({
   )
 
   const rotateNext = useCallback(() => {
-    if (intervalRef.current) clearTimeout(intervalRef.current)
-    setIsPaused(true)
     rotateCube({})
-    if (mode === "autoplay") {
-      onTogglePause()
-    }
   }, [rotationAxis])
 
   const rotatePrev = useCallback(() => {
-    if (intervalRef.current) clearTimeout(intervalRef.current)
-    setIsPaused(true)
     rotateCube({ reverse: true })
-    if (mode === "autoplay") {
-      onTogglePause()
-    }
   }, [rotationAxis])
 
   const rotateToFace = useCallback(
     (face: Face) => {
-      if (intervalRef.current) clearTimeout(intervalRef.current)
-      setIsPaused(true)
+      stopAutoplay()
       rotateCube({ rotateTo: face })
-      if (mode === "autoplay") {
-        onTogglePause()
-      }
+      startAutoplay()
     },
     [rotationAxis]
   )
 
   const onTogglePause = useCallback(() => {
-    setIsPaused((prev) => {
-      if (intervalRef.current && !prev) {
-        clearTimeout(intervalRef.current)
-      }
-      return !prev
-    })
+    stopAutoplay()
+  }, [])
+
+  const startAutoplay = useCallback(() => {
+    if (mode !== "autoplay") return
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(() => {
+      rotateCube({})
+    }, duration)
+  }, [rotateCube, duration, mode])
+
+  const stopAutoplay = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = undefined
+    }
   }, [])
 
   useEffect(() => {
@@ -294,27 +290,11 @@ export const useRotatingCube = ({
   }, [dof])
 
   useEffect(() => {
-    if (isPaused) return
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = undefined
-    }
-
-    // Only set up interval if in autoplay mode
     if (mode === "autoplay") {
-      intervalRef.current = setInterval(() => {
-        rotateCube({})
-      }, duration)
+      startAutoplay()
     }
-
-    return (): void => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = undefined
-      }
-    }
-  }, [isPaused, mode, duration, rotateCube])
+    return (): void => stopAutoplay()
+  }, [mode, startAutoplay, stopAutoplay])
 
   useEffect(() => {
     const unsubscribers: Array<Unsubscribe> = []
@@ -330,41 +310,32 @@ export const useRotatingCube = ({
     }
   }, [cubeId, rotationAxis, cubeEvents])
 
+  // Handle cube events
   useEffect(() => {
-    const unsubscribers: Array<Unsubscribe> = []
+    const unsubscribers: Array<Unsubscribe> = [
+      cubeEvents.subscribe((state) => state, setCubeState),
 
-    const unsubNext = cubeEvents.on("rotate:next", () => {
-      if (cubeState.id === undefined) {
-        rotateNext()
-      } else if (cubeId === cubeState.id) rotateNext()
-    })
-    unsubscribers.push(unsubNext)
+      cubeEvents.on("rotate:next", ({ id }) => {
+        if (id === undefined || cubeId === id) rotateNext()
+      }),
 
-    const unsubPrev = cubeEvents.on("rotate:prev", () => {
-      if (cubeState.id === undefined) {
-        rotatePrev()
-      } else if (cubeId === cubeState.id) rotatePrev()
-    })
-    unsubscribers.push(unsubPrev)
+      cubeEvents.on("rotate:prev", ({ id }) => {
+        if (id === undefined || cubeId === id) rotatePrev()
+      }),
 
-    const unsubPause = cubeEvents.on("rotate:pause", () => {
-      if (cubeState.id === undefined) {
-        onTogglePause()
-      } else if (cubeId === cubeState.id) onTogglePause()
-    })
-    unsubscribers.push(unsubPause)
+      cubeEvents.on("rotate:pause", ({ id }) => {
+        if (id === undefined || cubeId === id) onTogglePause()
+      }),
 
-    const unsubTo = cubeEvents.on("rotate:to", ({ face }) => {
-      if (cubeState.id === undefined) {
-        rotateToFace(face)
-      } else if (cubeId === cubeState.id) rotateToFace(face)
-    })
-    unsubscribers.push(unsubTo)
+      cubeEvents.on("rotate:to", ({ face, id }) => {
+        if (id === undefined || cubeId === id) rotateToFace(face)
+      }),
+    ]
 
     return (): void => {
       unsubscribers.forEach((unsub) => unsub())
     }
-  }, [rotationAxis, cubeId, cubeState])
+  }, [cubeId, rotateNext, rotatePrev, onTogglePause, rotateToFace])
 
   return {
     rotationAxis,

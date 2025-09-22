@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Fragment } from "react"
+import { Fragment, useEffect } from "react"
 import { useGetCredits } from "@content/data/attributions"
 import { accordionData } from "@content/data/gemini-stepper"
 import type { PanelContent } from "@content/types/panels"
@@ -8,9 +8,9 @@ import { StudyScene } from "makjang"
 import { GrindPieChart } from "portfolio-chart"
 import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
 import { BrickChartCarousel } from "some-ui-nfl"
-import { DiceCard } from "some-ui-slideshow"
+import { cubeEvents, DiceCard } from "some-ui-slideshow"
 import { GeminiStepper } from "some-ui-stepper"
-import { getRandomSubarray } from "some-ui-utils"
+import { getRandomSubarray, useNowPlayingWebSocket } from "some-ui-utils"
 import { DoxPrompt, NowPlayingCard } from "umag"
 
 const EndingCredits = (): React.JSX.Element => {
@@ -147,12 +147,20 @@ export const TopRightContent = () => {
     "",
   ]
 
+  const { status } = useNowPlayingWebSocket()
+
+  useEffect(() => {
+    cubeEvents.emit("rotate:to", { id: 13, face: 2 })
+  }, [status])
+
   return (
     <DiceCard
+      cubeId={13}
       className="relative size-full"
       dof={"Y-axis"}
       faces={cubeFaces}
       showBeam={false}
+      duration={30_000}
     />
   )
 }

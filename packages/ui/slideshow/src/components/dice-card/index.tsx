@@ -33,13 +33,12 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   showBeam = true,
   hideBackface = false,
 }): React.JSX.Element => {
-  const { isRotating, setIsRotating, rotationState, rotationAxis } =
-    useRotatingCube({
-      dof,
-      duration,
-      mode,
-      cubeId,
-    })
+  const { isRotating, rotationState, rotationAxis } = useRotatingCube({
+    dof,
+    duration,
+    mode,
+    cubeId,
+  })
   const ref = useRef<HTMLDivElement>(null)
 
   const { height, width } = useMeasureRect({
@@ -66,8 +65,6 @@ export const DiceCard: FC<RotatingCubeProps> = ({
             "--cube-y-rotation": rotationState.yRotation,
           } as CSSProperties
         }
-        onMouseEnter={() => setIsRotating(false)}
-        onMouseLeave={() => setIsRotating(true)}
       >
         {faces.map((face, index) => (
           <div

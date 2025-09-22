@@ -14,6 +14,8 @@
   },
   "description": "Shared Vite configuration for monorepo packages",
   "devDependencies": {
+    "node-fetch": "^3.3.2",
+    "@types/node-fetch": "^2.6.11",
     "@some-ui/tsconfig": "workspace:*"
   },
   "exports": {
@@ -43,6 +45,7 @@
     "vite": "^6.0.7"
   },
   "scripts": {
+    "seed": "tsx src/scripts/mood-events/seed.ts",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

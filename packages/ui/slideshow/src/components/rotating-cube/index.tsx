@@ -2,7 +2,10 @@ import type { FC } from "react"
 import { useCallback } from "react"
 import { DiceCard } from "@slideshow/components/dice-card"
 import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
-import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import type {
+  AllowedRotationAxis,
+  Mode,
+} from "@slideshow/hooks/use-rotating-cube"
 import type { CubeJson, Question } from "@slideshow/types"
 import { processArray } from "@slideshow/utils/rotating-cube"
 import { Bot, Code2, LineChart, Server } from "lucide-react"
@@ -18,6 +21,7 @@ import {
 type RotatingCubeProps = {
   perspective?: number
   dof?: AllowedRotationAxis
+  mode?: Mode
   className?: string
   content?: Array<React.JSX.Element>
   duration?: number
@@ -27,6 +31,7 @@ type RotatingCubeProps = {
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
   dof = "Y-axis",
+  mode = "autoplay",
   content = [],
   duration = 3000,
   hideBackface = false,
@@ -41,6 +46,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
     <DiceCard
       className={className}
       dof={dof}
+      mode={mode}
       faces={getFaces()}
       perspective={perspective}
       duration={duration}
