@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useState } from "react"
 import type { Decorator } from "@storybook/react-vite"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cn, initializeSpeechContext, useAudioTTS } from "some-ui-utils"
+import { cn, initializeSpeechQueue, useAudioTTS } from "some-ui-utils"
 
 const createQueryClient = (): QueryClient =>
   new QueryClient({
@@ -37,7 +37,7 @@ const TTSWrapper = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (ttsHook.supported) {
       try {
-        initializeSpeechContext(ttsHook)
+        initializeSpeechQueue(ttsHook)
         console.log("Speech context initialized for Storybook")
       } catch (error) {
         console.log("Speech context already initialized or error:", error)

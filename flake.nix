@@ -57,6 +57,7 @@
             cargo-expand
             cargo-flamegraph
             sqlx-cli
+            jq
             # cargo-tarpaulin
 
             # DB
