@@ -20,9 +20,10 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
   messages = [],
 }) => {
   const lastSpokenRef = useRef<{ index: number; content: string } | null>(null)
+  const priorityCounter = useRef<number>(0)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
 
-  const { speak } = useSpeechQueue(COMPONENT_ID)
+  const { speak, isActive, currentItem } = useSpeechQueue(COMPONENT_ID)
 
   const { chats, currentIndex, onPause, onResume } = useChatMessages({
     chats: messages,
@@ -64,7 +65,10 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
             console.error("TTS Error:", error)
           },
         }
-        await speak(content, 0, options)
+
+        // increment counter for each speak invocation
+        const priority = ++priorityCounter.current
+        await speak(content, options, priority)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         setIsSpeaking(false)
@@ -73,6 +77,12 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
 
     speakContent()
   }, [chats, currentIndex, isSpeaking, speak, onResume, onPause])
+
+  useEffect(() => {
+    const { componentId } = currentItem ?? {}
+    if (isActive && componentId !== COMPONENT_ID) onPause()
+    if (!isActive) onResume()
+  }, [currentItem, onPause, onResume, isActive])
 
   return (
     <main

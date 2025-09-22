@@ -77,7 +77,7 @@ export const LivestreamTopicNotification: FC<
     0
   )
 
-  const { speak, queueStatus } = useSpeechQueue(COMPONENT_ID)
+  const { speak } = useSpeechQueue(COMPONENT_ID)
 
   // Find current topic based on timestamp
   const getCurrentTopic = useCallback((time: number): Topic | null => {
@@ -144,7 +144,7 @@ export const LivestreamTopicNotification: FC<
             setActiveToast(null)
           },
         }
-        await speak(topic.description, ++queueStatus.maxPriority, options)
+        await speak(topic.description,  options, Infinity)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         // Fallback to showing toast without speech
@@ -152,7 +152,7 @@ export const LivestreamTopicNotification: FC<
         setIsSpeaking(false)
       }
     },
-    [isSpeaking, speak, showToastNotification, queueStatus.maxPriority]
+    [isSpeaking, speak, showToastNotification]
   )
 
   // Main timeline progression effect

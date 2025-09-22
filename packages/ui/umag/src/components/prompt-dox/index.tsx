@@ -56,7 +56,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
           },
         }
 
-        await speak(text, Infinity, options)
+        await speak(text, options, Infinity)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         setIsSpeaking(false)
