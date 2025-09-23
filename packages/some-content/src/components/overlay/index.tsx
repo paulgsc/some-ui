@@ -1,166 +1,126 @@
 import type { ReactNode } from "react"
-import { Fragment, useEffect } from "react"
-import { useGetCredits } from "@content/data/attributions"
+import { Fragment, lazy, Suspense } from "react"
 import { accordionData } from "@content/data/gemini-stepper"
 import type { PanelContent } from "@content/types/panels"
-import { ScrollingCredits } from "attributions"
-import { StudyScene } from "makjang"
-import { GrindPieChart } from "portfolio-chart"
-import { CLUES, Clues, CrosswordGridSvg } from "some-ui-input"
-import { BrickChartCarousel } from "some-ui-nfl"
-import { cubeEvents, DiceCard } from "some-ui-slideshow"
-import { GeminiStepper } from "some-ui-stepper"
-import { getRandomSubarray, useNowPlayingWebSocket } from "some-ui-utils"
-import { DoxPrompt, NowPlayingCard } from "umag"
+import { getRandomSubarray } from "some-ui-utils"
 
-const EndingCredits = (): React.JSX.Element => {
-  const params = {
-    range: "Sheet1!A1:G6",
-  }
-  const { data, isLoading } = useGetCredits({ ...params })
-  if (isLoading) return <div>Loading...</div>
-  const transform = data?.map(({ source_type, thanks, ...rest }) => ({
-    sourceType: source_type,
-    thankYouMessage: thanks,
-    ...rest,
-  }))
-  return <ScrollingCredits credits={transform ?? []} />
-}
+// Lazy load all heavy components
+const LazyEndingCredits = lazy(() => import("./ending-credits"))
+const LazyBrickChartCarousel = lazy(() => import("./brick-chart-carousel"))
+const LazyCrosswordPuzzle = lazy(() => import("./crossword-puzzle"))
+const LazyCluesAcross = lazy(() => import("./clues-across"))
+const LazyCluesDown = lazy(() => import("./clues-down"))
+const LazyTopRightContent = lazy(() => import("./top-right-content"))
+const LazyGeminiStepper = lazy(() => import("./gemini-stepper-with-prompt"))
 
-const CrosswordPuzzle = (): React.JSX.Element => {
-  const wordList = [
-    "JAVASCRIPT",
-    "TYPESCRIPT",
-    "REACT",
-    "ANGULAR",
-    "VUE",
-    "NODE",
-    "EXPRESS",
-    "MONGODB",
-    "HTML",
-    "CSS",
-    "REDUX",
-    "WEBPACK",
-    "BABEL",
-    "PROGRAMMING",
-    "ALGORITHM",
-    "CODING",
-    "FUNCTION",
-    "VARIABLE",
-    "OBJECT",
-    "ARRAY",
-  ]
+// Loading fallbacks
+const LoadingSpinner = (): ReactNode => (
+  <div className="animate-pulse">Loading...</div>
+)
+const LoadingCredits = (): ReactNode => (
+  <div className="animate-pulse">Loading credits...</div>
+)
+const LoadingChart = (): ReactNode => (
+  <div className="h-48 animate-pulse rounded bg-gray-200">Loading chart...</div>
+)
+const LoadingPuzzle = (): ReactNode => (
+  <div className="h-96 animate-pulse rounded bg-gray-100">
+    Loading crossword...
+  </div>
+)
+const LoadingClues = (): ReactNode => (
+  <div className="animate-pulse space-y-2">
+    <div className="h-4 w-3/4 rounded bg-gray-200"></div>
+    <div className="h-4 w-1/2 rounded bg-gray-200"></div>
+    <div className="h-4 w-5/6 rounded bg-gray-200"></div>
+  </div>
+)
+const LoadingContent = (): ReactNode => (
+  <div className="h-full animate-pulse rounded bg-gray-100">Loading...</div>
+)
 
-  return <CrosswordGridSvg words={wordList} />
-}
+// Factory functions that return lazy-wrapped components
+const createLazyComponent = (
+  LazyComponent: React.LazyExoticComponent<any>,
+  fallback: ReactNode,
+  props: any = {}
+) => (
+  <Suspense fallback={fallback}>
+    <LazyComponent {...props} />
+  </Suspense>
+)
 
-const mainContent: Record<string, Array<ReactNode>> = {
-  credits: [<EndingCredits key="credits" />],
-  "nfl-tennis": [<BrickChartCarousel key="nfl-tennis" />],
-  crossword: [<CrosswordPuzzle key="crossword" />],
+// Main content factory functions
+const createEndingCredits = (): ReactNode =>
+  createLazyComponent(LazyEndingCredits, <LoadingCredits />)
+
+const createBrickChartCarousel = (): ReactNode =>
+  createLazyComponent(LazyBrickChartCarousel, <LoadingChart />)
+
+const createCrosswordPuzzle = (): ReactNode =>
+  createLazyComponent(LazyCrosswordPuzzle, <LoadingPuzzle />)
+
+// Content configuration with factory functions
+const mainContentFactories: Record<string, Array<() => ReactNode>> = {
+  credits: [createEndingCredits],
+  "nfl-tennis": [createBrickChartCarousel],
+  crossword: [createCrosswordPuzzle],
 }
 
 export function getMainContent(key: string): ReactNode {
-  const content = mainContent[key] ?? []
-  if (content.length <= 0) return <Fragment />
-  return getRandomSubarray(content, 1)[0]
+  const factories = mainContentFactories[key] ?? []
+  if (factories.length <= 0) return <Fragment />
+
+  // Get random factory and execute it to create the lazy component
+  const randomFactory = getRandomSubarray(factories, 1)[0]
+  return randomFactory()
 }
 
-const topLeftContent: Record<string, Array<PanelContent>> = {
-  crossword: [
-    {
-      size: 50,
-      node: (
-        <Clues
-          direction="across"
-          clues={CLUES.across}
-          key="cosswords-clues-across"
-        />
-      ),
-    },
-  ],
+// Panel content factories
+const createCluesAcross = (): PanelContent => ({
+  size: 50,
+  node: createLazyComponent(LazyCluesAcross, <LoadingClues />),
+})
+
+const createCluesDown = (): PanelContent => ({
+  size: 50,
+  node: createLazyComponent(LazyCluesDown, <LoadingClues />),
+})
+
+const createTopRightContent = (): PanelContent => ({
+  size: 40,
+  node: createLazyComponent(LazyTopRightContent, <LoadingContent />),
+})
+
+const createGeminiStepperWithPrompt = (): PanelContent => ({
+  size: 60,
+  node: createLazyComponent(LazyGeminiStepper, <LoadingSpinner />, {
+    steps: accordionData,
+    autoplay: true,
+  }),
+})
+
+// Panel content configuration with factory functions
+const topLeftContentFactories: Record<string, Array<() => PanelContent>> = {
+  crossword: [createCluesAcross],
 }
 
 export function gettopLeftContent(key: string): PanelContent {
-  const content = topLeftContent[key] ?? []
-  if (content.length <= 0) return { node: <TopRightContent />, size: 40 }
-  return getRandomSubarray(content, 1)[0]
+  const factories = topLeftContentFactories[key] ?? []
+  if (factories.length <= 0) return createTopRightContent()
+
+  const randomFactory = getRandomSubarray(factories, 1)[0]
+  return randomFactory()
 }
 
-const botLeftContent: Record<string, Array<PanelContent>> = {
-  crossword: [
-    {
-      size: 50,
-      node: (
-        <Clues direction="down" clues={CLUES.down} key="cosswords-clues-down" />
-      ),
-    },
-  ],
+const botLeftContentFactories: Record<string, Array<() => PanelContent>> = {
+  crossword: [createCluesDown],
 }
 
 export function getbotLeftContent(key: string): PanelContent {
-  const content = botLeftContent[key] ?? []
-  if (content.length <= 0)
-    return {
-      node: (
-        <>
-          <GeminiStepper steps={accordionData} autoplay={true} />{" "}
-          <DoxPrompt className="fixed bottom-24 end-4" />
-        </>
-      ),
-      size: 60,
-    }
-  return getRandomSubarray(content, 1)[0]
-}
+  const factories = botLeftContentFactories[key] ?? []
+  if (factories.length <= 0) return createGeminiStepperWithPrompt()
 
-export const TopRightContent = () => {
-  // Sample data
-  const sampleJobApplications = [
-    { name: "Hopium", value: 42, color: "#3B82F6" },
-    { name: "Crickets", value: 15, color: "#10B981" },
-    { name: "Never began", value: 3, color: "#F59E0B" },
-    { name: "Society Wins Again", value: 24, color: "#EF4444" },
-  ]
-
-  const sampleLeetcodeStats = [
-    { name: "Easy", value: 65, color: "#10B981" },
-    { name: "Medium", value: 47, color: "#F59E0B" },
-    { name: "Hard", value: 23, color: "#EF4444" },
-  ]
-
-  const jobsArgs = {
-    stats: sampleJobApplications,
-    title: "job application",
-  }
-
-  const leetcodeArgs = {
-    stats: sampleLeetcodeStats,
-    title: "leetcode grind",
-  }
-
-  const cubeFaces = [
-    <StudyScene key={1} />,
-    <GrindPieChart key={2} {...jobsArgs} />,
-    <NowPlayingCard key={3} />,
-    <GrindPieChart key={4} {...leetcodeArgs} />,
-    "",
-    "",
-  ]
-
-  const { status } = useNowPlayingWebSocket()
-
-  useEffect(() => {
-    cubeEvents.emit("rotate:to", { id: 13, face: 2 })
-  }, [status])
-
-  return (
-    <DiceCard
-      cubeId={13}
-      className="relative size-full"
-      dof={"Y-axis"}
-      faces={cubeFaces}
-      showBeam={false}
-      duration={30_000}
-    />
-  )
+  const randomFactory = getRandomSubarray(factories, 1)[0]
+  return randomFactory()
 }
