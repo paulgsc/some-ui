@@ -48,6 +48,13 @@ const config: StorybookConfig = {
         preact: "react",
       },
     }
+
+    config.server = {
+      ...config.server,
+      host: "0.0.0.0", // bind all interfaces so both nixos.local + localhost resolve
+      allowedHosts: ["nixos.local", "localhost", "127.0.0.1"],
+    }
+
     return config
   },
 
