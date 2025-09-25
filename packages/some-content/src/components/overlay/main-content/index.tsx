@@ -2,8 +2,6 @@ import type { FC, ReactNode } from "react"
 import { Fragment, lazy, Suspense, useMemo } from "react"
 import { getRandomSubarray, useObsOrchestrator } from "some-ui-utils"
 
-// Your orchestrator hook
-
 // Lazy load all heavy components
 const LazyEndingCredits = lazy(
   () => import("@content/components/overlay/ending-credits")
@@ -143,49 +141,33 @@ export const OrchestratedMainContent: FC<OrchestratedMainContentProps> = ({
     return randomFactory()
   }, [orchestrator.currentActiveScene, contentScenes, fallbackContent])
 
-  return (
-    <div className="orchestrated-main-content">
-      {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="fixed right-4 top-4 z-50 rounded bg-black bg-opacity-75 p-2 text-xs text-white">
-          <div>Scene: {orchestrator.currentActiveScene || "None"}</div>
-          <div>Progress: {Math.round(orchestrator.sceneProgress * 100)}%</div>
-          <div>
-            Streaming: {orchestrator.obs.status.streaming ? "Yes" : "No"}
-          </div>
-          <div>Time: {orchestrator.obs.status.streamTimecode}</div>
-        </div>
-      )}
+  return activeContent
+}
 
-      {/* Main content area */}
-      <div className="size-full">{activeContent}</div>
+// Export orchestrator hook and data for use in stories
+export const useOrchestratedContent = (props: OrchestratedMainContentProps) => {
+  const {
+    contentScenes = DEFAULT_CONTENT_SCENES,
+    onSceneChange,
+    onStreamEnd,
+    obsWebSocketUrl,
+    autoStart = true,
+  } = props
 
-      {/* Optional controls - remove or conditionally show in production */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="fixed bottom-4 right-4 z-50 flex gap-2">
-          <button
-            onClick={orchestrator.startStream}
-            disabled={orchestrator.obs.status.streaming}
-            className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-          >
-            Start Stream
-          </button>
-          <button
-            onClick={orchestrator.stopStream}
-            disabled={!orchestrator.obs.status.streaming}
-            className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-          >
-            Stop Stream
-          </button>
-          <button
-            onClick={orchestrator.skipCurrentScene}
-            disabled={!orchestrator.currentActiveScene}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
-          >
-            Skip Scene
-          </button>
-        </div>
-      )}
-    </div>
+  const obsScenes = useMemo(
+    () =>
+      contentScenes.map((scene) => ({
+        sceneName: scene.key,
+        duration: scene.duration,
+      })),
+    [contentScenes]
   )
+
+  return useObsOrchestrator({
+    scenes: obsScenes,
+    obsWebSocketUrl,
+    autoStart,
+    onSceneChange,
+    onStreamEnd,
+  })
 }
