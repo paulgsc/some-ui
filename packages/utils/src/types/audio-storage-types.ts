@@ -1,4 +1,6 @@
 // Audio Storage Types
+import { z } from "zod"
+
 import type { TTSProvider, VoiceConfig } from "./tts-types"
 
 export type AudioStorageService = {
@@ -31,7 +33,7 @@ export type UseAudioStorageOptions = {
   service: AudioStorageService
 } & AudioStorageOptions
 
-export type UseAudioStorageReturn = {
+export type UseAudioStorageReturn<T> = {
   speak: (text: string) => Promise<void>
   stop: () => void
   pause: () => void
@@ -39,7 +41,11 @@ export type UseAudioStorageReturn = {
   setVolume: (volume: number) => void
   setPlaybackRate: (rate: number) => void
   updateOptions: (options: AudioStorageOptions) => void
-  searchAudio: (searchQuery: string) => Promise<Array<string>>
+  searchAudio: (limit?: number, page?: number) => Promise<T>
+  getAudioById: (
+    id: string,
+    forceRefresh?: boolean
+  ) => Promise<CachedAudio | null>
 
   // State
   speaking: boolean
@@ -49,6 +55,8 @@ export type UseAudioStorageReturn = {
   currentTime: number
   duration: number
   currentAudioId: string | null
+  currentAudioData?: CachedAudio
+  searchResults?: T
 
   // Voice management
   voices: Array<VoiceConfig>
@@ -59,3 +67,18 @@ export type UseAudioStorageReturn = {
   error: unknown
   refetch: () => Promise<unknown>
 }
+
+const cachedAudioSchema = z.object({
+  id: z.string(),
+  data: z.string(), // base64 encoded audio data
+  metadata: z
+    .object({
+      text: z.string().optional(),
+      voice: z.string().optional(),
+      created_at: z.string().optional(),
+      file_size: z.number().optional(),
+    })
+    .optional(),
+})
+
+export type CachedAudio = z.infer<typeof cachedAudioSchema>

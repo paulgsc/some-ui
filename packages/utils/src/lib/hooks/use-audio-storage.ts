@@ -24,8 +24,38 @@ const DEFAULT_FETCH_OPTIONS: Partial<UseAudioStorageOptions> = {
   staleTime: 5 * 60 * 1000, // 5 minutes
   cacheTime: 10 * 60 * 1000, // 10 minutes
 } as const
-// Schema for validating audio response (ArrayBuffer)
-const audioArrayBufferSchema = z.instanceof(ArrayBuffer)
+
+// Schema for CachedAudio response from your backend
+const cachedAudioSchema = z.object({
+  id: z.string(),
+  data: z.string(), // base64 encoded audio data
+  metadata: z
+    .object({
+      text: z.string().optional(),
+      voice: z.string().optional(),
+      created_at: z.string().optional(),
+      file_size: z.number().optional(),
+    })
+    .optional(),
+})
+
+// Schema for search response
+const audioSearchResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string().optional(),
+      voice: z.string().optional(),
+      score: z.number().optional(),
+    })
+  ),
+  total: z.number(),
+  page: z.number().optional(),
+  limit: z.number().optional(),
+})
+
+type CachedAudio = z.infer<typeof cachedAudioSchema>
+type AudioSearchResponse = z.infer<typeof audioSearchResponseSchema>
 
 type Options = {
   ttsOptions: UseAudioTTSOptions
@@ -38,10 +68,20 @@ const generateAudioId = (text: string, voice: VoiceConfig): string => {
   return `${voiceId}_${textHash}`
 }
 
+// Helper function to convert base64 to ArrayBuffer
+const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
 export function useAudioFromStorage({
   ttsOptions,
   fetchOptions,
-}: Options): UseAudioStorageReturn {
+}: Options): UseAudioStorageReturn<AudioSearchResponse> {
   const [options, setOptions] = useState<Options>(() => ({
     ttsOptions: { ...DEFAULT_TTS_OPTIONS, ...ttsOptions },
     fetchOptions: { ...DEFAULT_FETCH_OPTIONS, ...fetchOptions },
@@ -73,51 +113,65 @@ export function useAudioFromStorage({
   const useAudioQuery = useMemo(() => {
     const baseEndpoint = new URL(options.fetchOptions.service.storageEndpoint)
 
-    return apiHooks.createQueryHook(
-      baseEndpoint,
-      audioArrayBufferSchema,
-      "GET",
-      {
-        staleTime: options.fetchOptions.staleTime,
-        // cacheTime: options.cacheTime,
-        enabled: false, // We'll enable it manually
-        retry: (failureCount) => {
-          if (options.fetchOptions.service.retryConfig) {
-            return (
-              failureCount < options.fetchOptions.service.retryConfig.maxRetries
-            )
-          }
-          return failureCount < 3
-        },
-        retryDelay: (attemptIndex) => {
-          if (options.fetchOptions.service.retryConfig?.delay) {
-            return (
-              options.fetchOptions.service.retryConfig.delay *
-              Math.pow(2, attemptIndex)
-            )
-          }
-          return Math.min(1000 * 2 ** attemptIndex, 30000)
-        },
-      }
-    )
+    return apiHooks.createQueryHook(baseEndpoint, cachedAudioSchema, "GET", {
+      staleTime: options.fetchOptions.staleTime,
+      enabled: false, // We'll enable it manually
+      retry: (failureCount) => {
+        if (options.fetchOptions.service.retryConfig) {
+          return (
+            failureCount < options.fetchOptions.service.retryConfig.maxRetries
+          )
+        }
+        return failureCount < 3
+      },
+      retryDelay: (attemptIndex) => {
+        if (options.fetchOptions.service.retryConfig?.delay) {
+          return (
+            options.fetchOptions.service.retryConfig.delay *
+            Math.pow(2, attemptIndex)
+          )
+        }
+        return Math.min(1000 * 2 ** attemptIndex, 30000)
+      },
+    })
   }, [
     options.fetchOptions.service.storageEndpoint,
     options.fetchOptions.staleTime,
     options.fetchOptions.service.retryConfig,
   ])
 
+  // Create search query hook
+  const useSearchQuery = useMemo(() => {
+    const baseEndpoint = new URL(options.fetchOptions.service.storageEndpoint)
+
+    return apiHooks.createQueryHook(
+      baseEndpoint,
+      audioSearchResponseSchema,
+      "GET",
+      {
+        staleTime: options.fetchOptions.staleTime,
+        enabled: false,
+        retry: (failureCount) => failureCount < 2,
+      }
+    )
+  }, [
+    options.fetchOptions.service.storageEndpoint,
+    options.fetchOptions.staleTime,
+  ])
+
   // Use the query hook with current audio parameters
   const audioQuery = useAudioQuery(
     currentAudioId
       ? {
-          // Use ID as path parameter (assuming endpoint like /audio/:id)
-          id: currentAudioId,
-          // Add search query parameter for fuzzy matching
+          // Use the correct endpoint path
+          endpoint: `get_audio/${currentAudioId}`,
+          // Add query parameters as strings
           ...(currentText && { q: currentText.slice(0, 100) }),
           // Add voice parameter for additional filtering
           ...(selectedVoice && {
             voice: selectedVoice.id || selectedVoice.name,
           }),
+          force_refresh: "false", // Convert boolean to string
         }
       : {},
     {
@@ -125,7 +179,9 @@ export function useAudioFromStorage({
     }
   )
 
-  // Handle query errors using the modern approach
+  const searchQuery = useSearchQuery({}, { enabled: false })
+
+  // Handle query errors
   useEffect(() => {
     if (audioQuery.error) {
       console.error("Audio fetch error:", audioQuery.error)
@@ -140,12 +196,24 @@ export function useAudioFromStorage({
   // Effect to play audio when data is available
   useEffect(() => {
     if (audioQuery.data && options.fetchOptions.autoPlay) {
-      audioSpeech.play(audioQuery.data).catch((error) => {
-        console.error("Audio play error:", error)
+      try {
+        // Convert base64 data to ArrayBuffer
+        const audioBuffer = base64ToArrayBuffer(audioQuery.data.data)
+
+        audioSpeech.play(audioBuffer).catch((error) => {
+          console.error("Audio play error:", error)
+          const errorObj =
+            error instanceof Error ? error : new Error("Audio playback failed")
+          optionsRef.current.fetchOptions.onError?.(errorObj)
+        })
+      } catch (error) {
+        console.error("Audio data conversion error:", error)
         const errorObj =
-          error instanceof Error ? error : new Error("Audio playback failed")
+          error instanceof Error
+            ? error
+            : new Error("Audio data conversion failed")
         optionsRef.current.fetchOptions.onError?.(errorObj)
-      })
+      }
     }
   }, [audioQuery.data, options.fetchOptions.autoPlay, audioSpeech])
 
@@ -171,7 +239,8 @@ export function useAudioFromStorage({
           // Wait for the query to complete
           const result = await audioQuery.refetch()
           if (result.data) {
-            await audioSpeech.play(result.data)
+            const audioBuffer = base64ToArrayBuffer(result.data.data)
+            await audioSpeech.play(audioBuffer)
           }
         }
       } catch (error) {
@@ -194,29 +263,49 @@ export function useAudioFromStorage({
 
   // Function to search for existing audio files
   const searchAudio = useCallback(
-    async (searchQuery: string): Promise<Array<string>> => {
+    async (limit?: number, page?: number): Promise<AudioSearchResponse> => {
       try {
-        // This would use a separate search endpoint
-        // You might want to create another query hook for search
-        const searchEndpoint = new URL(
-          `${options.fetchOptions.service.storageEndpoint}/search`
-        )
-        const response = await fetch(
-          `${searchEndpoint}?q=${encodeURIComponent(searchQuery)}`
-        )
+        const result = await searchQuery.refetch()
 
-        if (!response.ok) {
-          throw new Error(`Search failed: ${response.status}`)
+        if (result.data) {
+          return result.data
         }
-
-        const results = await response.json()
-        return Array.isArray(results) ? results : []
+        throw new Error("No search results returned")
       } catch (error) {
         console.error("Audio search error:", error)
-        return []
+        // Return empty response on error
+        return {
+          results: [],
+          total: 0,
+          page: page || 1,
+          limit: limit || 10,
+        }
       }
     },
-    [options.fetchOptions.service.storageEndpoint]
+    [searchQuery, selectedVoice]
+  )
+
+  // Function to get audio by specific ID
+  const getAudioById = useCallback(
+    async (id: string): Promise<CachedAudio | null> => {
+      try {
+        const prevAudioId = currentAudioId
+        setCurrentAudioId(id)
+
+        const result = await audioQuery.refetch()
+
+        // Restore previous audio ID if this was just a fetch
+        if (prevAudioId !== id) {
+          setCurrentAudioId(prevAudioId)
+        }
+
+        return result.data ?? null
+      } catch (error) {
+        console.error("Get audio by ID error:", error)
+        return null
+      }
+    },
+    [audioQuery, currentAudioId]
   )
 
   return {
@@ -229,7 +318,8 @@ export function useAudioFromStorage({
     updateOptions,
     speaking: audioSpeech.speaking,
     paused: audioSpeech.paused,
-    loading: audioSpeech.loading || audioQuery.isLoading,
+    loading:
+      audioSpeech.loading || audioQuery.isLoading || searchQuery.isLoading,
     supported: audioSpeech.supported,
     currentTime: audioSpeech.currentTime,
     duration: audioSpeech.duration,
@@ -237,9 +327,13 @@ export function useAudioFromStorage({
     selectedVoice,
     setSelectedVoice,
     // Storage-specific functionality
-    error: audioQuery.error,
+    error: audioQuery.error || searchQuery.error,
     refetch: audioQuery.refetch,
     searchAudio,
+    getAudioById,
     currentAudioId,
+    // Additional data access
+    currentAudioData: audioQuery.data,
+    searchResults: searchQuery.data,
   }
 }

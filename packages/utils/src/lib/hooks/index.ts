@@ -18,5 +18,6 @@ export {
   useUtteranceWebSocket,
   useObsStatusWebSocket,
   useNowPlayingWebSocket,
+  useObsOrchestrator,
 } from "./socket-tenants"
 export { useSpeechQueue, useSpeechQueueMetrics } from "./use-speech-queue"
