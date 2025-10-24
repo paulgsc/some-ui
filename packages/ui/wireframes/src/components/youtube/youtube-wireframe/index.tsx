@@ -24,11 +24,11 @@ export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
 
   return (
     <>
-      <div className="absolute inset-0 -z-10 animate-pulse rounded-lg border-8 border-[oklch(75%_0.22_340)] bg-none" />
+      <div className="absolute inset-0 -z-10 animate-pulse rounded-lg border-8 border-[oklch(75%_0.22_340)] bg-transparent" />
       <main
         className={cn(
           "absolute inset-0 grid size-full grid-flow-col grid-rows-6 gap-0.5 rounded-md",
-          "border bg-none p-2.5 shadow-md",
+          "border bg-transparent p-2.5 shadow-md",
           "box-border",
           className
         )}
@@ -36,7 +36,7 @@ export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
         <div className="bg-muted relative row-span-5 flex items-center justify-center rounded-md">
           {content[WireframeRegion.VIDEO]}
         </div>
-        <div className="relative col-span-3 col-start-2 row-span-5 rounded-md bg-none">
+        <div className="relative col-span-3 col-start-2 row-span-5 rounded-md bg-transparent">
           <ResizableLayout.Root direction="vertical">
             <ResizableLayout.PanelA
               defaultSize={12}
@@ -47,13 +47,13 @@ export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
             <ResizableLayout.PanelB
               defaultSize={88}
               minSize={88}
-              className="z-10 bg-none"
+              className="z-10 bg-transparent"
             >
               {content[WireframeRegion.MAIN_CONTENT]}
             </ResizableLayout.PanelB>
           </ResizableLayout.Root>
         </div>
-        <div className="bg-accent relative z-0 col-start-5 row-span-6 row-start-1 rounded-md">
+        <div className="bg-transparent relative z-0 col-start-5 row-span-6 row-start-1 rounded-md">
           <ResizableLayout.Root direction="vertical">
             <ResizableLayout.PanelA
               defaultSize={sidebarTop?.size ?? 50}
