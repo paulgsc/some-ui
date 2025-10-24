@@ -54,21 +54,25 @@ export type ContentScene = {
   factories: Array<() => ReactNode>
 }
 
+function toMilliseconds(hours: number, minutes: number): number {
+  return hours * 60 * 60 * 1000 + minutes * 60 * 1000
+}
+
 // Default content configuration - you can customize this
 const DEFAULT_CONTENT_SCENES: Array<ContentScene> = [
   {
     key: "intro",
-    duration: 30000, // 30 seconds
+    duration: toMilliseconds(3, 42), // 30 seconds
     factories: [() => <Fragment />], // Empty intro for now
   },
   {
     key: "crossword",
-    duration: 15 * 60 * 1000, // 15 minutes
+    duration: 15 * 1000,
     factories: [createCrosswordPuzzle],
   },
   {
     key: "nfl-tennis",
-    duration: 10 * 60 * 1000, // 10 minutes
+    duration: 60 * 1000,
     factories: [createBrickChartCarousel],
   },
   {

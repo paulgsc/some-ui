@@ -34,7 +34,7 @@ const TopRightContent = (): React.JSX.Element => {
     <StudyScene key={1} />,
     <GrindPieChart key={2} {...jobsArgs} />,
     <NowPlayingCard key={3} />,
-    <GrindPieChart key={4} {...leetcodeArgs} />,
+    "",
     "",
     "",
   ]
@@ -48,7 +48,7 @@ const TopRightContent = (): React.JSX.Element => {
   return (
     <DiceCard
       cubeId={13}
-      className="relative size-full"
+      className="bg-transparent relative size-full"
       dof={"Y-axis"}
       faces={cubeFaces}
       showBeam={false}

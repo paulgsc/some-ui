@@ -16,7 +16,7 @@ const OrchestratedContentWithDebugUI = (
   const orchestrator = useOrchestratedContent(props)
 
   return (
-    <div className="orchestrated-main-content-demo">
+    <div className="inset-0 absolute">
       {/* Debug info */}
       <div className="fixed right-4 top-4 z-50 rounded bg-black bg-opacity-75 p-2 text-xs text-white">
         <div>Scene: {orchestrator.currentActiveScene || "None"}</div>
