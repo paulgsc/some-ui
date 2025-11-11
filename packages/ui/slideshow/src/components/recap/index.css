@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* custom dark variant */
+@custom-variant dark (&:is(.dark *));
+
+@layer utilities {
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes progress {
+    0% {
+      width: 0%;
+    }
+    95% {
+      width: 100%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  @keyframes float {
+    from {
+      transform: translateY(100vh) rotate(0deg);
+    }
+    to {
+      transform: translateY(-100px) rotate(360deg);
+    }
+  }
+
+  .ui-recap .animate-slide-in {
+    animation: slide-in 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .ui-recap .animate-progress {
+    animation: progress 5s linear;
+  }
+
+  .ui-recap .animate-float {
+    animation: float 20s linear infinite;
+  }
+}
