@@ -28,7 +28,8 @@ type HexGridProps<T = any> = {
     cell: HexRenderData & HexCellData<T>,
     centerX: number,
     centerY: number,
-    cellWidth: number
+    cellWidth: number,
+    hexPath: string
   ) => ReactNode
   backgroundOpacity?: number
 }
@@ -160,8 +161,8 @@ export function HexGrid<T = any>({
               d={pointsToPath(cell.points)}
               fill="none"
               stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-gray-600"
+              strokeWidth="1.5"
+              className="text-gray-950"
             />
           ))}
         </g>
@@ -199,7 +200,14 @@ export function HexGrid<T = any>({
                 opacity={theme?.opacity ?? 1}
                 filter={theme?.filter}
               />
-              {renderCell && renderCell(cell, centerX, centerY, cellWidth)}
+              {renderCell &&
+                renderCell(
+                  cell,
+                  centerX,
+                  centerY,
+                  cellWidth,
+                  pointsToPath(cell.points)
+                )}
             </g>
           )
         })}

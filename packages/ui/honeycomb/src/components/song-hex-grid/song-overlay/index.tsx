@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { HexGrid, type HexCellData } from "@honeycomb/components/hex-grid"
+import { SongHexCell } from "@honeycomb/components/song-hex-grid/song-hex-cell"
 
 // Song-specific implementation
 export type Song = {
@@ -9,6 +10,7 @@ export type Song = {
   color: string
   releaseYear: number
   playedAt: number
+  albumArtUrl?: string
 }
 
 type ActiveSongCell = {
@@ -33,42 +35,49 @@ export function SongHexGrid() {
         artist: "Queen",
         color: "#3b82f6",
         releaseYear: 1975,
+        albumArtUrl: "https://picsum.photos/seed/queen/300/300",
       },
       {
         title: "Stairway to Heaven",
         artist: "Led Zeppelin",
         color: "#10b981",
         releaseYear: 1971,
+        albumArtUrl: "https://picsum.photos/seed/zeppelin/300/300",
       },
       {
         title: "Hotel California",
         artist: "Eagles",
         color: "#f59e0b",
         releaseYear: 1976,
+        albumArtUrl: "https://picsum.photos/seed/eagles/300/300",
       },
       {
         title: "Imagine",
         artist: "John Lennon",
         color: "#ef4444",
         releaseYear: 1971,
+        albumArtUrl: "https://picsum.photos/seed/lennon/300/300",
       },
       {
         title: "Smells Like Teen Spirit",
         artist: "Nirvana",
         color: "#8b5cf6",
         releaseYear: 1991,
+        albumArtUrl: "https://picsum.photos/seed/nirvana/300/300",
       },
       {
         title: "Sweet Child O' Mine",
         artist: "Guns N' Roses",
         color: "#ec4899",
         releaseYear: 1987,
+        albumArtUrl: "https://picsum.photos/seed/gnr/300/300",
       },
       {
         title: "Billie Jean",
         artist: "Michael Jackson",
         color: "#14b8a6",
         releaseYear: 1982,
+        albumArtUrl: "https://picsum.photos/seed/mj/300/300",
       },
     ]
 
@@ -193,71 +202,61 @@ export function SongHexGrid() {
     theme: {
       fill: cell.song.color,
       stroke: cell.song.color,
-      strokeWidth: 2,
-      opacity: cell.isFading ? cell.fillLevel * 0.6 : 0.6,
-      filter: "url(#glow)",
+      strokeWidth: 2.5,
+      opacity: cell.isFading ? cell.fillLevel * 0.75 : 0.75,
+      filter: "url(#metallic-glow)",
     },
   }))
 
   return (
-    <div className="relative h-screen w-full bg-gray-950">
+    <div className="relative h-screen w-full overflow-hidden">
+      {/* Animated gradient overlay */}
+      <div
+        className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-transparent to-amber-500/20 animate-pulse"
+        style={{ animationDuration: "8s" }}
+      />
       <HexGrid
-        cellCount={37}
-        hexSize={50}
+        cellCount={67}
+        hexSize={70}
         viewBoxFactor={1.2}
         cells={hexCells}
-        backgroundOpacity={0.15}
-        renderCell={(cell, centerX, centerY) => (
-          <g opacity={cell.theme?.opacity || 1}>
-            {/* Outer glow effect */}
-            <circle
-              cx={centerX}
-              cy={centerY}
-              r="40"
-              fill={cell.data.color}
-              opacity="0.3"
-              filter="url(#strong-glow)"
-            />
-
-            {/* Song title */}
-            <text
-              x={centerX}
-              y={centerY - 6}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="8"
-              fontWeight="600"
-              fill="white"
-              className="font-sans"
-              style={{
-                textShadow: `0 0 8px ${cell.data.color}, 0 0 16px ${cell.data.color}`,
-              }}
-            >
-              {cell.data.title.slice(0, 12)}
-            </text>
-
-            {/* Artist name */}
-            <text
-              x={centerX}
-              y={centerY + 6}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="6"
-              fill="white"
-              opacity="0.7"
-              className="font-sans"
-            >
-              {cell.data.artist}
-            </text>
-          </g>
+        backgroundOpacity={0.12}
+        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => (
+          <SongHexCell
+            song={cell.data}
+            centerX={centerX}
+            centerY={centerY}
+            cellWidth={cellWidth}
+            opacity={cell.theme?.opacity}
+            imageUrl={cell.data.albumArtUrl}
+            hexPath={hexPath}
+          />
         )}
       />
 
-      {/* Song counter */}
-      <div className="absolute bottom-8 left-8 rounded-lg bg-gray-900/80 px-4 py-2 text-white backdrop-blur-sm">
-        <div className="text-sm text-gray-400">Songs Played</div>
-        <div className="text-2xl font-bold">{songs.length}</div>
+      {/* Song counter with glass morphism */}
+      <div className="absolute bottom-8 left-8 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl float-animation">
+        <div className="text-sm font-medium text-white/80 tracking-wide">
+          Songs Played
+        </div>
+        <div className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+          {songs.length}
+        </div>
       </div>
+
+      {/* Decorative floating particles */}
+      <div
+        className="absolute top-10 right-20 w-2 h-2 bg-white/40 rounded-full blur-sm animate-pulse"
+        style={{ animationDuration: "3s" }}
+      />
+      <div
+        className="absolute top-32 right-40 w-3 h-3 bg-cyan-400/30 rounded-full blur-sm animate-pulse"
+        style={{ animationDuration: "4s", animationDelay: "1s" }}
+      />
+      <div
+        className="absolute bottom-24 left-32 w-2 h-2 bg-pink-400/40 rounded-full blur-sm animate-pulse"
+        style={{ animationDuration: "5s", animationDelay: "2s" }}
+      />
     </div>
   )
 }
