@@ -30,6 +30,13 @@ export const StreakCard = ({ events, index }: Props) => {
     }
   }, [])
 
+  // Reset milestone when streak is no longer at a milestone
+  useEffect(() => {
+    if (!milestone) {
+      lastMilestoneCount.current = 0
+    }
+  }, [milestone])
+
   useEffect(() => {
     // Only run if we hit a new milestone
     if (!milestone || count === lastMilestoneCount.current) return
