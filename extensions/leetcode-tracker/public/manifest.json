@@ -6,11 +6,13 @@
   "permissions": [
     "storage",
     "tabs",
+    "activeTab",
     "http://localhost:3000/*",
     "https://leetcode.com/*"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["background.js"],
+    "persistent": false
   },
   "content_scripts": [
     {

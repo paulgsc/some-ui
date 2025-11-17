@@ -1,79 +1,66 @@
-// Background script for managing state and API calls (Manifest V2 compatible)
-
-const DB_API_URL = 'http://localhost:3000/api';
+// Background script (MV2, lazy & lightweight)
+const DB_API_URL = "http://localhost:3000/api"
 
 interface StreakData {
-  leetcode: number;
-  lastUpdated: string;
+  leetcode: number
+  lastUpdated: string
 }
 
-// Listen for messages from content script
+// Default settings on install
+browser.runtime.onInstalled.addListener(() => {
+  browser.storage.local.set({ enabled: true })
+})
+
+// Handle messages from content
 browser.runtime.onMessage.addListener((message, _sender) => {
-  if (message.type === 'UPDATE_STREAK') {
+  if (message.type === "UPDATE_STREAK") {
     return updateStreakInDB(message.platform, message.streak)
-      .then(result => ({ success: true, data: result }))
-      .catch(error => ({ success: false, error: error.message }));
+      .then((result) => ({ success: true, data: result }))
+      .catch((err) => ({ success: false, error: err.message }))
   }
 
-  if (message.type === 'GET_STREAK') {
+  if (message.type === "GET_STREAK") {
     return getStreakFromDB(message.platform)
-      .then(result => ({ success: true, data: result }))
-      .catch(error => ({ success: false, error: error.message }));
+      .then((result) => ({ success: true, data: result }))
+      .catch((err) => ({ success: false, error: err.message }))
   }
 
-  if (message.type === 'GET_SETTINGS') {
-    return browser.storage.local.get(['enabled']).then((result) => {
-      return { enabled: result.enabled !== false }; // Default to true
-    });
+  if (message.type === "GET_SETTINGS") {
+    return browser.storage.local.get(["enabled"]).then((res) => ({
+      enabled: res.enabled !== false,
+    }))
   }
-});
+})
 
-// Listen for tab changes to trigger streak refresh
-browser.tabs.onActivated.addListener(async (activeInfo) => {
-  const tab = await browser.tabs.get(activeInfo.tabId);
-  if (tab.url?.includes('leetcode.com')) {
-    // Send message to content script to refresh streak display
-    browser.tabs.sendMessage(activeInfo.tabId, { type: 'REFRESH_STREAK' }).catch(() => {
-      // Ignore errors if content script not ready
-    });
+// Lazy refresh: only when a new tab is activated and it's LeetCode
+browser.tabs.onActivated.addListener(async ({ tabId }) => {
+  const tab = await browser.tabs.get(tabId)
+  if (tab.url?.includes("leetcode.com")) {
+    browser.tabs.sendMessage(tabId, { type: "CHECK_TODAY" }).catch(() => {})
   }
-});
+})
 
-// API functions
-async function updateStreakInDB(platform: string, streak: number): Promise<StreakData> {
-  const response = await fetch(`${DB_API_URL}/streak`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+// DB helpers
+async function updateStreakInDB(
+  platform: string,
+  streak: number
+): Promise<StreakData> {
+  const resp = await fetch(`${DB_API_URL}/streak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       platform,
       streak,
       lastUpdated: new Date().toISOString(),
     }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to update streak in database');
-  }
-
-  return response.json();
+  })
+  if (!resp.ok) throw new Error("Failed to update streak")
+  return resp.json()
 }
 
 async function getStreakFromDB(platform: string): Promise<number> {
-  const response = await fetch(`${DB_API_URL}/streak/${platform}`);
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch streak from database');
-  }
-
-  const data = await response.json();
-  return data.streak || 0;
+  const resp = await fetch(`${DB_API_URL}/streak/${platform}`)
+  if (!resp.ok) throw new Error("Failed to fetch streak")
+  const data = await resp.json()
+  return data.streak ?? 0
 }
-
-// Initialize default settings
-browser.runtime.onInstalled.addListener(() => {
-  browser.storage.local.set({ enabled: true });
-});
-
-export {}
