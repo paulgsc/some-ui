@@ -1,30 +1,35 @@
-use enum_name_derive::EnumFilename;
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{Error, ErrorKind, Result as IoResult};
 use std::path::Path;
 
-#[derive(Clone, Eq, PartialEq, EnumFilename)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum ConfigFile {
-    #[filename = "tsconfig.json"]
     Tsconfig,
-    #[filename = "package.json"]
     PackageJson,
-    #[filename = "rollup.config.js"]
     RollupConfig,
-    #[filename = "eslint.config.js"]
     EslintConfig,
-    #[filename = "tsconfig.build.json"]
     TsconfigBuildConfig,
-    #[filename = "vite.config.js"]
     ViteConfig,
-    #[filename = "jest.config.js"]
     JestConfig,
-    #[filename = ".gitignore"]
     GitIgnore,
 }
 
 impl ConfigFile {
+    /// Returns the filename for this config file
+    pub fn filename(&self) -> &str {
+        match self {
+            Self::Tsconfig => "tsconfig.json",
+            Self::PackageJson => "package.json",
+            Self::RollupConfig => "rollup.config.js",
+            Self::EslintConfig => "eslint.config.js",
+            Self::TsconfigBuildConfig => "tsconfig.build.json",
+            Self::ViteConfig => "vite.config.js",
+            Self::JestConfig => "jest.config.js",
+            Self::GitIgnore => ".gitignore",
+        }
+    }
+
     /// Returns all available config files
     pub fn all() -> Vec<Self> {
         vec![
