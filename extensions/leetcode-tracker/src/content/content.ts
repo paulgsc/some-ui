@@ -1,221 +1,219 @@
+// Content script for LeetCode pages (optimized, Manifest V2 compatible)
 import "./content.css"
+
+interface WidgetPosition {
+  top?: string
+  right?: string
+  bottom?: string
+  left?: string
+}
 
 let currentStreak = 0
 let isEnabled = true
-
-// Initialize
-init()
+let widget: HTMLElement | null = null
 
 async function init() {
+  // Check if feature is enabled
   const settings = await browser.runtime.sendMessage({ type: "GET_SETTINGS" })
   isEnabled = settings.enabled
   if (!isEnabled) return
 
-  createStreakIndicator()
-  await startStreakMonitoring()
-}
-
-// Listen for messages from background
-browser.runtime.onMessage.addListener((msg) => {
-  if (msg.type === "CHECK_TODAY") {
-    startStreakMonitoring()
-  }
-})
-
-// Fetch streak lazily (once per day)
-async function startStreakMonitoring() {
-  if (!window.location.hostname.includes("leetcode.com")) return
-
-  const today = new Date().toISOString().slice(0, 10)
-  const { lastCheckDate, lastStreak } = await browser.storage.local.get([
-    "lastCheckDate",
-    "lastStreak",
-  ])
-
-  if (lastCheckDate === today) {
-    currentStreak = lastStreak ?? 0
-    updateStreakIndicator(currentStreak)
-    return
+  // Fetch streak once per day
+  const today = new Date().toISOString().split("T")[0]
+  const lastFetch = (await browser.storage.local.get("lastFetch"))?.lastFetch
+  if (lastFetch !== today) {
+    await fetchAndUpdateStreak()
+    await browser.storage.local.set({ lastFetch: today })
   }
 
-  const streakElement = document.querySelector(
-    'a[href*="daily-question"] span.text-brand-orange, a[href*="daily-question"] span.text-dark-brand-orange'
-  )
-  if (!streakElement) return
+  // Create floating streak indicator
+  createWidget()
 
-  const newStreak = parseInt(streakElement.textContent?.trim() || "0", 10)
-  if (isNaN(newStreak)) return
+  // Setup fullscreen auto-hide
+  setupFullscreenAutoHide()
 
-  currentStreak = newStreak
-  updateStreakIndicator(newStreak)
+  // Setup drag
+  makeDraggable(widget!)
 
-  browser.storage.local.set({ lastCheckDate: today, lastStreak: newStreak })
-  updateStreakInDB(newStreak)
+  // Observe DOM for streak changes (very lightweight)
+  observeStreakElement()
 }
 
-async function updateStreakInDB(streak: number) {
+// Fetch streak from background
+async function fetchAndUpdateStreak() {
   try {
-    await browser.runtime.sendMessage({
-      type: "UPDATE_STREAK",
+    const response = await browser.runtime.sendMessage({
+      type: "GET_STREAK",
       platform: "leetcode",
-      streak,
     })
-  } catch (err) {
-    console.error(err)
+    if (response.success) currentStreak = response.data
+    updateWidget(currentStreak)
+  } catch (e) {
+    console.error("Failed to fetch streak:", e)
+    currentStreak = 0
+    updateWidget(currentStreak)
   }
 }
 
-// Create floating widget
-function createStreakIndicator() {
-  removeStreakIndicator()
-  const container = document.createElement("div")
-  container.id = "streak-tracker-widget"
-  container.className = "streak-tracker-widget"
+// Create the floating widget
+function createWidget() {
+  removeWidget()
 
-  container.innerHTML = `
+  widget = document.createElement("div")
+  widget.id = "streak-tracker-widget"
+  widget.className = "streak-tracker-widget"
+
+  // Load saved position
+  browser.storage.local.get("widgetPosition").then((res) => {
+    if (res.widgetPosition) {
+      applyPosition(widget!, res.widgetPosition)
+    } else {
+      widget!.style.top = "20px"
+      widget!.style.right = "20px"
+    }
+  })
+
+  widget.innerHTML = `
     <div class="streak-content">
-      <div class="streak-icon drag-handle">🔥</div>
+      <div class="streak-icon drag-handle">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M9.588 2.085a1 1 0 01.97.092c2.85 1.966 4.498 4.744 5.31 6.67l.854-.885a1 1 0 011.56.154c2.177 3.38 2.211 7.383.521 10.3C17.039 21.459 13.583 22 11.977 22c-1.569 0-4.905-.27-6.825-3.584-.832-1.435-1.27-3.053-1.125-4.704.146-1.66.876-3.284 2.264-4.721.86-.891 1.505-2.122 1.957-3.322.449-1.193.68-2.278.752-2.806a1 1 0 01.588-.778z" fill="url(#flame-gradient)"/>
+          <defs>
+            <linearGradient id="flame-gradient" x1="12" x2="12" y1="2" y2="22" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#FFA116"/>
+              <stop offset="1" stop-color="#F9772E"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
       <div class="streak-number" id="streak-number">0</div>
     </div>
   `
 
-  document.body.appendChild(container)
-  makeDraggable(container)
-  updateStreakIndicator(currentStreak)
+  document.body.appendChild(widget)
+  updateWidget(currentStreak)
 }
 
-function updateStreakIndicator(streak: number) {
-  const numberEl = document.getElementById("streak-number")
-  if (numberEl) numberEl.textContent = streak.toString()
-}
-
-function removeStreakIndicator() {
+// Remove existing widget
+function removeWidget() {
   const existing = document.getElementById("streak-tracker-widget")
   if (existing) existing.remove()
 }
 
-// Drag support
-function makeDraggable(widget: HTMLElement) {
-  const dragHandle = widget.querySelector(".drag-handle") as HTMLElement
-  if (!dragHandle) return
+// Update widget display
+function updateWidget(streak: number) {
+  const numberEl = document.getElementById("streak-number")
+  if (numberEl) numberEl.textContent = streak.toString()
+}
 
-  dragHandle.style.cursor = "grab"
+// Apply stored position
+function applyPosition(el: HTMLElement, pos: WidgetPosition) {
+  el.style.top = pos.top ?? "auto"
+  el.style.bottom = pos.bottom ?? "auto"
+  el.style.left = pos.left ?? "auto"
+  el.style.right = pos.right ?? "auto"
+}
 
-  let isDragging = false
-  let startX = 0
-  let startY = 0
-  let origX = 0
-  let origY = 0
+// Make the widget draggable to any corner
+function makeDraggable(el: HTMLElement) {
+  const handle = el.querySelector(".drag-handle") as HTMLElement
+  if (!handle) return
 
-  // Start drag
-  const startDrag = (e: MouseEvent | TouchEvent) => {
-    isDragging = true
-    widget.classList.add("dragging") // ✅ disable CSS transitions
-    dragHandle.style.cursor = "grabbing"
-    dragHandle.style.cursor = "grabbing"
+  let offsetX = 0
+  let offsetY = 0
+  let dragging = false
 
-    const rect = widget.getBoundingClientRect()
+  handle.style.cursor = "grab"
 
-    origX = rect.left
-    origY = rect.top
+  const onMouseMove = (e: MouseEvent) => {
+    if (!dragging) return
+    let x = e.clientX - offsetX
+    let y = e.clientY - offsetY
 
-    if ("touches" in e) {
-      startX = e.touches[0].clientX
-      startY = e.touches[0].clientY
-    } else {
-      startX = e.clientX
-      startY = e.clientY
-    }
+    // constrain within viewport
+    x = Math.max(0, Math.min(x, window.innerWidth - el.offsetWidth))
+    y = Math.max(0, Math.min(y, window.innerHeight - el.offsetHeight))
 
-    // Fix position for dragging
-    widget.style.top = `${origY}px`
-    widget.style.left = `${origX}px`
-    widget.style.right = "auto"
-    widget.style.bottom = "auto"
-
-    document.addEventListener("mousemove", onDrag)
-    document.addEventListener("touchmove", onDrag, { passive: false })
-    document.addEventListener("mouseup", stopDrag)
-    document.addEventListener("touchend", stopDrag)
-
-    e.preventDefault()
+    el.style.left = `${x}px`
+    el.style.top = `${y}px`
+    el.style.right = "auto"
+    el.style.bottom = "auto"
   }
 
-  // During drag
-  const onDrag = (e: MouseEvent | TouchEvent) => {
-    if (!isDragging) return
+  const onMouseUp = () => {
+    if (!dragging) return
+    dragging = false
+    handle.style.cursor = "grab"
 
-    let clientX = "touches" in e ? e.touches[0].clientX : e.clientX
-    let clientY = "touches" in e ? e.touches[0].clientY : e.clientY
-
-    let newX = origX + (clientX - startX)
-    let newY = origY + (clientY - startY)
-
-    // Keep within viewport
-    newX = Math.max(0, Math.min(newX, window.innerWidth - widget.offsetWidth))
-    newY = Math.max(0, Math.min(newY, window.innerHeight - widget.offsetHeight))
-
-    widget.style.left = `${newX}px`
-    widget.style.top = `${newY}px`
-
-    e.preventDefault()
-  }
-
-  // Stop drag & snap to corner
-  const stopDrag = () => {
-    if (!isDragging) return
-    isDragging = false
-    widget.classList.remove("dragging") // ✅ restore transitions
-    dragHandle.style.cursor = "grab"
-    dragHandle.style.cursor = "grab"
-
-    document.removeEventListener("mousemove", onDrag)
-    document.removeEventListener("touchmove", onDrag)
-    document.removeEventListener("mouseup", stopDrag)
-    document.removeEventListener("touchend", stopDrag)
-
-    snapToCorner(widget)
-  }
-
-  // Snap to nearest corner
-  const snapToCorner = (widget: HTMLElement) => {
-    const rect = widget.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-
-    const margin = 20
-    const isLeft = centerX < window.innerWidth / 2
-    const isTop = centerY < window.innerHeight / 2
-
-    widget.style.top = isTop
-      ? `${margin}px`
-      : `${window.innerHeight - rect.height - margin}px`
-    widget.style.left = isLeft
-      ? `${margin}px`
-      : `${window.innerWidth - rect.width - margin}px`
-
-    // Persist position
+    // Save position
     browser.storage.local.set({
       widgetPosition: {
-        top: widget.style.top,
-        left: widget.style.left,
+        top: el.style.top,
+        left: el.style.left,
       },
     })
+
+    document.removeEventListener("mousemove", onMouseMove)
+    document.removeEventListener("mouseup", onMouseUp)
   }
 
-  // Event listeners
-  dragHandle.addEventListener("mousedown", startDrag)
-  dragHandle.addEventListener("touchstart", startDrag, { passive: false })
+  handle.addEventListener("mousedown", (e) => {
+    dragging = true
+    handle.style.cursor = "grabbing"
+    const rect = el.getBoundingClientRect()
+    offsetX = e.clientX - rect.left
+    offsetY = e.clientY - rect.top
 
-  // Load saved position
-  browser.storage.local.get(["widgetPosition"]).then((res) => {
-    if (res.widgetPosition) {
-      widget.style.top = res.widgetPosition.top
-      widget.style.left = res.widgetPosition.left
-      widget.style.right = "auto"
-      widget.style.bottom = "auto"
-    }
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
   })
 }
 
+// Auto-hide when fullscreen
+function setupFullscreenAutoHide() {
+  if (!widget) return
+
+  const toggleVisibility = () => {
+    const isFullscreen =
+      !!document.fullscreenElement ||
+      !!(document as any).webkitFullscreenElement ||
+      !!(document as any).mozFullScreenElement ||
+      !!(document as any).msFullscreenElement
+
+    widget!.style.opacity = isFullscreen ? "0" : "1"
+    widget!.style.pointerEvents = isFullscreen ? "none" : "auto"
+  }
+
+  document.addEventListener("fullscreenchange", toggleVisibility)
+  document.addEventListener("webkitfullscreenchange", toggleVisibility)
+  document.addEventListener("mozfullscreenchange", toggleVisibility)
+  document.addEventListener("MSFullscreenChange", toggleVisibility)
+
+  toggleVisibility()
+}
+
+// Lightweight DOM observation for streak changes
+function observeStreakElement() {
+  const streakEl = document.querySelector(
+    'a[href*="daily-question"] span.text-brand-orange, a[href*="daily-question"] span.text-dark-brand-orange'
+  )
+  if (!streakEl) return
+
+  const observer = new MutationObserver(() => {
+    const newStreak = parseInt(streakEl.textContent?.trim() || "0", 10)
+    if (!isNaN(newStreak) && newStreak !== currentStreak) {
+      currentStreak = newStreak
+      updateWidget(newStreak)
+      browser.runtime.sendMessage({
+        type: "UPDATE_STREAK",
+        platform: "leetcode",
+        streak: newStreak,
+      })
+    }
+  })
+
+  observer.observe(streakEl, { characterData: true, subtree: true })
+}
+
+init()
 export {}
