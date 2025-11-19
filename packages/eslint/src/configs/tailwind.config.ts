@@ -1,5 +1,5 @@
 //@ts-check
-import tailwindPlugin from "eslint-plugin-tailwindcss"
+import * as tailwindPlugin from "eslint-plugin-tailwindcss"
 import type { ConfigWithExtends } from "typescript-eslint"
 
 export default <Array<ConfigWithExtends>>[
@@ -13,11 +13,12 @@ export default <Array<ConfigWithExtends>>[
       },
     },
     rules: {
-      "tailwindcss/classnames-order": "warn",
-      "tailwindcss/enforces-shorthand": "warn",
-      "tailwindcss/no-custom-classname": "warn",
-      "tailwindcss/no-contradicting-classname": "error",
-      "tailwindcss/no-unnecessary-arbitrary-value": "error",
+      // removed rules that no longer exist in beta
+      // "tailwindcss/classnames-order": "warn",
+      // "tailwindcss/enforces-shorthand": "warn",
+      // "tailwindcss/no-custom-classname": "warn",
+      // "tailwindcss/no-contradicting-classname": "error",
+      // "tailwindcss/no-unnecessary-arbitrary-value": "error",
     },
   },
 ]
