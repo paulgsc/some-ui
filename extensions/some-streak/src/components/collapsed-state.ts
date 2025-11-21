@@ -4,64 +4,65 @@ export type CollapsedStateData = {
   streak: number
   todayComplete: number
   todayTotal: number
+  categoryIcon: string
+  categoryColor: string
 }
 
 /**
  * Creates the collapsed state UI component
  */
-export function createCollapsedState(data: CollapsedStateData): HTMLElement {
+export function createCollapsedState(
+  data: CollapsedStateData,
+  onPrevCategory: () => void,
+  onNextCategory: () => void
+): HTMLElement {
   const container = createElement("div", {
-    className: "streak-collapsed",
+    className: "streak-collapsed drag-handle",
   })
 
   const inner = createElement("div", {
-    className: "streak-collapsed-inner",
+    className: `streak-collapsed-inner color-${data.categoryColor}`,
   })
 
-  // Flame icon with badge
-  const flameContainer = createFlameIcon(data.streak)
+  // Category icon with badge
+  const iconContainer = createCategoryIcon(data.categoryIcon, data.streak)
 
   // Progress ring
-  const progressRing = createProgressRing(data.todayComplete, data.todayTotal)
+  const progressRing = createProgressRing(
+    data.todayComplete,
+    data.todayTotal,
+    data.categoryColor
+  )
 
-  inner.appendChild(flameContainer)
+  // Navigation buttons
+  const navButtons = createNavButtons(onPrevCategory, onNextCategory)
+
+  inner.appendChild(iconContainer)
   inner.appendChild(progressRing)
+  inner.appendChild(navButtons)
   container.appendChild(inner)
 
   return container
 }
 
 /**
- * Creates the flame icon with optional badge
+ * Creates the category icon with optional badge
  */
-function createFlameIcon(streak: number): HTMLElement {
+function createCategoryIcon(icon: string, streak: number): HTMLElement {
   const container = createElement("div", {
-    className: `flame-icon ${streak > 0 ? "active" : "inactive"}`,
+    className: "category-icon",
   })
 
-  // Create flame SVG (lucide-react Flame icon)
-  const svg = createSVGElement("svg", {
-    width: "24",
-    height: "24",
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    "stroke-width": "2",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
+  const iconText = createElement("span", {
+    children: [icon],
   })
 
-  const path1 = createSVGElement("path", {
-    d: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
-  })
-
-  svg.appendChild(path1)
-  container.appendChild(svg)
+  container.appendChild(iconText)
 
   // Add badge if streak > 0
   if (streak > 0) {
     const badge = createElement("span", {
-      className: "flame-badge",
+      className: "streak-badge",
       children: [String(streak)],
     })
     container.appendChild(badge)
@@ -73,7 +74,11 @@ function createFlameIcon(streak: number): HTMLElement {
 /**
  * Creates the circular progress ring
  */
-function createProgressRing(complete: number, total: number): HTMLElement {
+function createProgressRing(
+  complete: number,
+  total: number,
+  color: string
+): HTMLElement {
   const container = createElement("div", {
     className: "progress-ring",
   })
@@ -101,7 +106,9 @@ function createProgressRing(complete: number, total: number): HTMLElement {
     cx: "16",
     cy: "16",
     r: "14",
-    class: `progress-ring-fill ${progressPercent === 100 ? "complete" : "primary"}`,
+    class: `progress-ring-fill ${
+      progressPercent === 100 ? "complete" : `color-${color}`
+    }`,
     "stroke-dasharray": String(circumference),
     "stroke-dashoffset": String(offset),
   })
@@ -117,6 +124,78 @@ function createProgressRing(complete: number, total: number): HTMLElement {
 
   container.appendChild(svg)
   container.appendChild(countText)
+
+  return container
+}
+
+/**
+ * Creates navigation buttons for category switching
+ */
+function createNavButtons(onPrev: () => void, onNext: () => void): HTMLElement {
+  const container = createElement("div", {
+    className: "nav-buttons",
+  })
+
+  // Previous button
+  const prevButton = createElement("button", {
+    className: "nav-button",
+    attributes: {
+      "aria-label": "Previous category",
+    },
+  })
+
+  const prevIcon = createSVGElement("svg", {
+    width: "16",
+    height: "16",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  })
+  const prevPath = createSVGElement("path", {
+    d: "m15 18-6-6 6-6",
+  })
+  prevIcon.appendChild(prevPath)
+  prevButton.appendChild(prevIcon)
+
+  prevButton.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onPrev()
+  })
+
+  // Next button
+  const nextButton = createElement("button", {
+    className: "nav-button",
+    attributes: {
+      "aria-label": "Next category",
+    },
+  })
+
+  const nextIcon = createSVGElement("svg", {
+    width: "16",
+    height: "16",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  })
+  const nextPath = createSVGElement("path", {
+    d: "m9 18 6-6-6-6",
+  })
+  nextIcon.appendChild(nextPath)
+  nextButton.appendChild(nextIcon)
+
+  nextButton.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onNext()
+  })
+
+  container.appendChild(prevButton)
+  container.appendChild(nextButton)
 
   return container
 }

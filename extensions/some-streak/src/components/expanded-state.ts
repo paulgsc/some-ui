@@ -6,40 +6,70 @@ export type Task = {
   done: boolean
 }
 
-export type ExpandedStateData = {
-  streak: number
-  todayComplete: number
-  todayTotal: number
+export type Category = {
+  id: string
+  name: string
+  icon: string
+  color: string
   tasks: Array<Task>
+}
+
+export type ExpandedStateData = {
+  currentCategory: Category
+  categories: Array<Category>
+  currentCategoryIndex: number
+  totalStreak: number
   lastActivity: Date | null
 }
 
 /**
  * Creates the expanded state UI component
  */
-export function createExpandedState(data: ExpandedStateData): HTMLElement {
+export function createExpandedState(
+  data: ExpandedStateData,
+  onPrevCategory: () => void,
+  onNextCategory: () => void,
+  onCategorySwitch: (index: number) => void
+): HTMLElement {
   const container = createElement("div", {
     className: "streak-expanded",
   })
 
   const inner = createElement("div", {
-    className: "streak-expanded-inner",
+    className: `streak-expanded-inner color-${data.currentCategory.color}`,
   })
 
+  const todayComplete = data.currentCategory.tasks.filter((t) => t.done).length
+  const todayTotal = data.currentCategory.tasks.length
+
   // Header
-  const header = createHeader(data.streak)
+  const header = createHeader(
+    data.currentCategory,
+    data.totalStreak,
+    data.categories.length,
+    onPrevCategory,
+    onNextCategory
+  )
 
   // Progress section
   const progressSection = createProgressSection(
-    data.todayComplete,
-    data.todayTotal
+    todayComplete,
+    todayTotal,
+    data.currentCategory.color
   )
 
-  // Task list
-  const taskList = createTaskList(data.tasks)
+  // Task list (static for now)
+  const taskList = createTaskList(data.currentCategory.tasks)
 
   // Last activity
   const lastActivity = createLastActivity(data.lastActivity)
+
+  // Category indicators
+  const indicators = createCategoryIndicators(
+    data.categories,
+    data.currentCategoryIndex,
+    onCategorySwitch
+  )
 
   // Reset button
   const resetButton = createResetButton()
@@ -48,6 +78,7 @@ export function createExpandedState(data: ExpandedStateData): HTMLElement {
   inner.appendChild(progressSection)
   inner.appendChild(taskList)
   inner.appendChild(lastActivity)
+  inner.appendChild(indicators)
   inner.appendChild(resetButton)
   container.appendChild(inner)
 
@@ -55,9 +86,15 @@ export function createExpandedState(data: ExpandedStateData): HTMLElement {
 }
 
 /**
- * Creates the header with flame icon and title
+ * Creates the header with category icon, title, and navigation
  */
-function createHeader(streak: number): HTMLElement {
+function createHeader(
+  category: Category,
+  totalStreak: number,
+  totalCategories: number,
+  onPrev: () => void,
+  onNext: () => void
+): HTMLElement {
   const header = createElement("div", {
     className: "streak-header",
   })
@@ -66,14 +103,51 @@ function createHeader(streak: number): HTMLElement {
     className: "streak-header-content",
   })
 
-  // Flame icon
-  const flameContainer = createElement("div", {
-    className: `flame-icon large ${streak > 0 ? "active" : "inactive"}`,
+  // Icon container
+  const iconContainer = createElement("div", {
+    className: `category-icon-container color-${category.color}`,
   })
 
-  const svg = createSVGElement("svg", {
-    width: "28",
-    height: "28",
+  const icon = createElement("div", {
+    className: "category-icon large",
+    children: [category.icon],
+  })
+
+  iconContainer.appendChild(icon)
+
+  // Title and subtitle
+  const textContainer = createElement("div")
+  const title = createElement("h3", {
+    className: "streak-title",
+    children: [category.name],
+  })
+  const subtitle = createElement("p", {
+    className: "streak-subtitle",
+    children: [`${totalStreak}/${totalCategories} categories complete`],
+  })
+
+  textContainer.appendChild(title)
+  textContainer.appendChild(subtitle)
+
+  headerContent.appendChild(iconContainer)
+  headerContent.appendChild(textContainer)
+
+  // Navigation buttons
+  const navButtons = createElement("div", {
+    className: "nav-buttons",
+  })
+
+  // Previous button
+  const prevButton = createElement("button", {
+    className: "nav-button large",
+    attributes: {
+      "aria-label": "Previous category",
+    },
+  })
+
+  const prevIcon = createSVGElement("svg", {
+    width: "16",
+    height: "16",
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
@@ -81,39 +155,51 @@ function createHeader(streak: number): HTMLElement {
     "stroke-linecap": "round",
     "stroke-linejoin": "round",
   })
+  const prevPath = createSVGElement("path", {
+    d: "m15 18-6-6 6-6",
+  })
+  prevIcon.appendChild(prevPath)
+  prevButton.appendChild(prevIcon)
 
-  const path = createSVGElement("path", {
-    d: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
+  prevButton.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onPrev()
   })
 
-  svg.appendChild(path)
-  flameContainer.appendChild(svg)
-
-  if (streak > 0) {
-    const badge = createElement("span", {
-      className: "flame-badge large",
-      children: [String(streak)],
-    })
-    flameContainer.appendChild(badge)
-  }
-
-  // Title and subtitle
-  const textContainer = createElement("div")
-  const title = createElement("h3", {
-    className: "streak-title",
-    children: [`${streak} Day Streak`],
-  })
-  const subtitle = createElement("p", {
-    className: "streak-subtitle",
-    children: ["Keep it going!"],
+  // Next button
+  const nextButton = createElement("button", {
+    className: "nav-button large",
+    attributes: {
+      "aria-label": "Next category",
+    },
   })
 
-  textContainer.appendChild(title)
-  textContainer.appendChild(subtitle)
+  const nextIcon = createSVGElement("svg", {
+    width: "16",
+    height: "16",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  })
+  const nextPath = createSVGElement("path", {
+    d: "m9 18 6-6-6-6",
+  })
+  nextIcon.appendChild(nextPath)
+  nextButton.appendChild(nextIcon)
 
-  headerContent.appendChild(flameContainer)
-  headerContent.appendChild(textContainer)
+  nextButton.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onNext()
+  })
+
+  navButtons.appendChild(prevButton)
+  navButtons.appendChild(nextButton)
+
   header.appendChild(headerContent)
+  header.appendChild(navButtons)
 
   return header
 }
@@ -121,7 +207,11 @@ function createHeader(streak: number): HTMLElement {
 /**
  * Creates the progress bar section
  */
-function createProgressSection(complete: number, total: number): HTMLElement {
+function createProgressSection(
+  complete: number,
+  total: number,
+  color: string
+): HTMLElement {
   const section = createElement("div", {
     className: "progress-section",
   })
@@ -152,7 +242,9 @@ function createProgressSection(complete: number, total: number): HTMLElement {
   })
 
   const barFill = createElement("div", {
-    className: `progress-bar-fill ${progressPercent === 100 ? "complete" : "primary"}`,
+    className: `progress-bar-fill ${
+      progressPercent === 100 ? "complete" : `color-${color}`
+    }`,
     styles: {
       width: `${progressPercent}%`,
     },
@@ -290,12 +382,43 @@ function createLastActivity(date: Date | null): HTMLElement {
 }
 
 /**
+ * Creates category indicator dots
+ */
+function createCategoryIndicators(
+  categories: Array<Category>,
+  currentIndex: number,
+  onSwitch: (index: number) => void
+): HTMLElement {
+  const container = createElement("div", {
+    className: "category-indicators",
+  })
+
+  categories.forEach((cat, idx) => {
+    const dot = createElement("button", {
+      className: `category-dot ${idx === currentIndex ? "active" : "inactive"}`,
+      attributes: {
+        "aria-label": `Switch to ${cat.name}`,
+      },
+    })
+
+    dot.addEventListener("click", (e) => {
+      e.stopPropagation()
+      onSwitch(idx)
+    })
+
+    container.appendChild(dot)
+  })
+
+  return container
+}
+
+/**
  * Creates the reset button
  */
 function createResetButton(): HTMLElement {
   return createElement("button", {
     className: "reset-button",
-    children: ["Reset Today (Demo)"],
+    children: ["Reset All (Demo)"],
   })
 }
 
