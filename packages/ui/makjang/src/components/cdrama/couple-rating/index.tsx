@@ -1,6 +1,7 @@
+import type { FC } from "react"
 import { Heart } from "lucide-react"
 
-interface CoupleRatingProps {
+type CoupleRatingProps = {
   coupleName: string
   rating: number
   hypeVsActual: number
@@ -8,13 +9,13 @@ interface CoupleRatingProps {
   flRank: number
 }
 
-export function CoupleRating({
+export const CoupleRating: FC<CoupleRatingProps> = ({
   coupleName,
   rating,
   hypeVsActual,
   mlRank,
   flRank,
-}: CoupleRatingProps) {
+}): React.JSX.Element => {
   const hypePercentage = ((hypeVsActual + 1) / 2) * 100
 
   return (
