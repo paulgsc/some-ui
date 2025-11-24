@@ -1,35 +1,47 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { TrendingUp } from "lucide-react"
+import { cn } from "some-ui-utils"
 
-interface EmotionalDataPoint {
+type EmotionalDataPoint = {
   minute: number
   emotion: string
   intensity: number
   notes: string
 }
 
-interface EmotionalGraphProps {
-  data: EmotionalDataPoint[]
+type EmotionalGraphProps = {
+  data: Array<EmotionalDataPoint>
   currentMinute: number
 }
 
-const emotionColors: Record<string, string> = {
-  joy: "#22d3ee",
-  sadness: "#818cf8",
-  fear: "#f472b6",
-  anger: "#fb923c",
-  surprise: "#a78bfa",
-  disgust: "#4ade80",
-  neutral: "#94a3b8",
+const emotionConfig: Record<
+  string,
+  { color: string; emoji: string; label: string }
+> = {
+  joy: { color: "#fbbf24", emoji: "😊", label: "Joy" },
+  sadness: { color: "#818cf8", emoji: "😢", label: "Sadness" },
+  fear: { color: "#f472b6", emoji: "😰", label: "Fear" },
+  anger: { color: "#fb923c", emoji: "😠", label: "Anger" },
+  surprise: { color: "#a78bfa", emoji: "😲", label: "Surprise" },
+  disgust: { color: "#4ade80", emoji: "🤢", label: "Disgust" },
+  neutral: { color: "#94a3b8", emoji: "😐", label: "Neutral" },
 }
 
-export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
+export const EmotionalGraph = ({
+  data,
+  currentMinute,
+}: EmotionalGraphProps) => {
+  const [mounted, setMounted] = useState(false)
   const maxIntensity = 1
   const graphHeight = 300
   const graphWidth = 800
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const points = useMemo(() => {
-    return data.map((point, index) => {
+    return data.map((point) => {
       const x = (point.minute / 45) * graphWidth
       const y = graphHeight - (point.intensity / maxIntensity) * graphHeight
       return { x, y, ...point }
@@ -52,36 +64,53 @@ export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
   const currentX = (currentMinute / 45) * graphWidth
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/90 via-blue-900/70 to-purple-900/90 p-6 backdrop-blur-xl">
-      <div className="mb-4 flex items-center justify-between">
+    <div
+      className={cn(
+        "cdrama relative overflow-hidden rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        "border-[color:var(--cdrama-accent)]",
+        "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
+        mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+      )}
+    >
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <TrendingUp className="h-5 w-5 text-cyan-400" />
-          <h2 className="font-mono text-lg font-bold uppercase tracking-wider text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[color:var(--cdrama-accent)] to-[color:var(--cdrama-blossom)] shadow-lg">
+            <TrendingUp className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="font-serif text-xl font-bold text-[color:var(--foreground)]">
             Emotional Roller Coaster
           </h2>
         </div>
-        <div className="flex gap-2">
-          {Object.entries(emotionColors).map(([emotion, color]) => (
-            <div key={emotion} className="flex items-center gap-1">
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-3">
+          {Object.entries(emotionConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-lg">{config.emoji}</span>
               <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: color }}
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: config.color }}
               />
-              <span className="font-mono text-xs text-slate-400">
-                {emotion}
+              <span className="font-mono text-xs text-[color:var(--muted-foreground)]">
+                {config.label}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="relative" style={{ height: graphHeight }}>
+      {/* Graph */}
+      <div
+        className="relative rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4"
+        style={{ height: graphHeight + 40 }}
+      >
         <svg
           width="100%"
           height={graphHeight}
           viewBox={`0 0 ${graphWidth} ${graphHeight}`}
           preserveAspectRatio="none"
-          className="absolute inset-0"
+          className="absolute left-0 top-0"
         >
           {/* Grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map((intensity) => (
@@ -91,12 +120,14 @@ export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
               y1={graphHeight - intensity * graphHeight}
               x2={graphWidth}
               y2={graphHeight - intensity * graphHeight}
-              stroke="rgba(100, 200, 255, 0.1)"
+              stroke="currentColor"
               strokeWidth="1"
+              className="text-[color:var(--border)]"
+              opacity="0.3"
             />
           ))}
 
-          {/* Gradient fill under curve */}
+          {/* Gradient definitions */}
           <defs>
             <linearGradient
               id="graphGradient"
@@ -105,54 +136,68 @@ export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
               x2="0%"
               y2="100%"
             >
-              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.05" />
+              <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#a78bfa" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#f472b6" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#fbbf24" />
+              <stop offset="33%" stopColor="#a78bfa" />
+              <stop offset="66%" stopColor="#f472b6" />
+              <stop offset="100%" stopColor="#fbbf24" />
             </linearGradient>
           </defs>
 
           {/* Area under curve */}
-          <path
-            d={`${pathD} L ${graphWidth} ${graphHeight} L 0 ${graphHeight} Z`}
-            fill="url(#graphGradient)"
-          />
+          {mounted && (
+            <path
+              d={`${pathD} L ${graphWidth} ${graphHeight} L 0 ${graphHeight} Z`}
+              fill="url(#graphGradient)"
+              className="transition-all duration-1000"
+            />
+          )}
 
           {/* Main line */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke="url(#lineGradient)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-
-          <defs>
-            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#22d3ee" />
-              <stop offset="50%" stopColor="#a78bfa" />
-              <stop offset="100%" stopColor="#f472b6" />
-            </linearGradient>
-          </defs>
+          {mounted && (
+            <path
+              d={pathD}
+              fill="none"
+              stroke="url(#lineGradient)"
+              strokeWidth="4"
+              strokeLinecap="round"
+              className="transition-all duration-1000"
+            />
+          )}
 
           {/* Data points */}
-          {points.map((point, index) => (
-            <g key={index}>
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="6"
-                fill={emotionColors[point.emotion]}
-                className="drop-shadow-lg"
-              />
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="10"
-                fill={emotionColors[point.emotion]}
-                opacity="0.2"
-                className="animate-pulse"
-              />
-            </g>
-          ))}
+          {mounted &&
+            points.map((point, index) => {
+              const config =
+                emotionConfig[point.emotion] || emotionConfig.neutral
+              return (
+                <g
+                  key={index}
+                  className="transition-all duration-500"
+                  style={{ transitionDelay: `${index * 50}ms` }}
+                >
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="8"
+                    fill={config.color}
+                    className="drop-shadow-lg transition-all duration-300 hover:r-12"
+                  />
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="12"
+                    fill={config.color}
+                    opacity="0.3"
+                    className="animate-pulse"
+                  />
+                </g>
+              )
+            })}
 
           {/* Current time indicator */}
           <line
@@ -161,14 +206,14 @@ export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
             x2={currentX}
             y2={graphHeight}
             stroke="#ef4444"
-            strokeWidth="2"
-            strokeDasharray="5,5"
-            className="animate-pulse"
+            strokeWidth="3"
+            strokeDasharray="8,4"
+            className="animate-pulse transition-all duration-300"
           />
         </svg>
 
         {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 flex h-full flex-col justify-between py-2 text-xs text-slate-400">
+        <div className="absolute left-2 top-4 flex h-[300px] flex-col justify-between font-mono text-xs text-[color:var(--muted-foreground)]">
           <span>1.0</span>
           <span>0.75</span>
           <span>0.5</span>
@@ -178,7 +223,7 @@ export function EmotionalGraph({ data, currentMinute }: EmotionalGraphProps) {
       </div>
 
       {/* X-axis */}
-      <div className="mt-2 flex justify-between text-xs text-slate-400">
+      <div className="mt-4 flex justify-between px-4 font-mono text-xs text-[color:var(--muted-foreground)]">
         <span>0:00</span>
         <span>15:00</span>
         <span>30:00</span>

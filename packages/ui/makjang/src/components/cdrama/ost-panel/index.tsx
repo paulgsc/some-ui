@@ -1,73 +1,163 @@
-import { Music, Star } from "lucide-react"
+import type { FC } from "react"
+import { useEffect, useState } from "react"
+import { Disc3, Music, Star } from "lucide-react"
+import { cn } from "some-ui-utils"
 
-interface OSTPanelProps {
+type OSTPanelProps = {
   score: number
   ranking: number
   favoriteTrack: string
 }
 
-export function OSTPanel({ score, ranking, favoriteTrack }: OSTPanelProps) {
+const getOSTEmoji = (score: number): string => {
+  if (score >= 9) return "🎵"
+  if (score >= 7.5) return "🎼"
+  if (score >= 6) return "🎶"
+  return "🎤"
+}
+
+export const OSTPanel: FC<OSTPanelProps> = ({
+  score,
+  ranking,
+  favoriteTrack,
+}): React.JSX.Element => {
+  const [mounted, setMounted] = useState(false)
+  const [visualizerBars, setVisualizerBars] = useState<Array<number>>([])
+
+  useEffect(() => {
+    setMounted(true)
+    // Initialize visualizer bars
+    setVisualizerBars(
+      Array(16)
+        .fill(0)
+        .map(() => Math.random() * 100)
+    )
+
+    // Animate visualizer bars
+    const interval = setInterval(() => {
+      setVisualizerBars((prev) => prev.map(() => Math.random() * 100))
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [])
+
   return (
-    <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-slate-900/90 via-purple-900/40 to-blue-900/90 p-6 backdrop-blur-xl">
-      <div className="mb-4 flex items-center gap-3">
-        <Music className="h-5 w-5 text-purple-400" />
-        <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-purple-400">
+    <div
+      className={cn(
+        "cdrama space-y-5 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        "border-[color:var(--cdrama-accent)]",
+        "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
+        mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[color:var(--cdrama-accent)] to-[color:var(--cdrama-blossom)] shadow-lg">
+          <Music className="h-5 w-5 text-white" />
+        </div>
+        <h2 className="font-serif text-xl font-bold text-[color:var(--foreground)]">
           OST Evaluation
         </h2>
       </div>
 
       <div className="space-y-4">
-        {/* Score */}
-        <div className="rounded-xl border border-purple-400/20 bg-slate-900/50 p-4">
+        {/* Score - Featured */}
+        <div
+          className={cn(
+            "group relative overflow-hidden rounded-2xl border-2 p-5 transition-all duration-300",
+            "border-[color:var(--cdrama-accent)]",
+            "bg-gradient-to-br from-[color:var(--cdrama-surface)] to-[color:var(--card)]",
+            "hover:scale-[1.02] hover:shadow-lg hover:shadow-[color:var(--cdrama-accent)]/20"
+          )}
+        >
           <div className="flex items-center justify-between">
-            <span className="font-mono text-sm text-slate-300">Score</span>
-            <div className="flex items-center gap-2">
-              <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              <span className="font-mono text-2xl font-bold text-white">
-                {score.toFixed(1)}
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{getOSTEmoji(score)}</span>
+              <span className="font-mono text-sm font-medium text-[color:var(--foreground)]">
+                OST Score
               </span>
-              <span className="font-mono text-sm text-slate-400">/ 10</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Star className="h-6 w-6 fill-[color:var(--cdrama-accent)] text-[color:var(--cdrama-accent)]" />
+              <div className="text-right">
+                <span className="font-mono text-4xl font-bold text-[color:var(--foreground)]">
+                  {score.toFixed(1)}
+                </span>
+                <span className="ml-1 font-mono text-sm text-[color:var(--muted-foreground)]">
+                  / 10
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Ranking */}
-        <div className="rounded-xl border border-purple-400/20 bg-slate-900/50 p-4">
+        <div
+          className={cn(
+            "rounded-xl border p-4 transition-all duration-300",
+            "border-[color:var(--border)]",
+            "bg-[color:var(--card)]",
+            "hover:border-[color:var(--cdrama-accent)] hover:shadow-md"
+          )}
+        >
           <div className="flex items-center justify-between">
-            <span className="font-mono text-sm text-slate-300">
+            <span className="font-mono text-sm font-medium text-[color:var(--foreground)]">
               Personal Ranking
             </span>
-            <span className="font-mono text-2xl font-bold text-purple-400">
-              #{ranking}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-3xl font-bold text-[color:var(--cdrama-accent)]">
+                #{ranking}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Favorite Track */}
-        <div className="rounded-xl border border-purple-400/20 bg-slate-900/50 p-4">
-          <div className="mb-2 font-mono text-xs text-slate-400">
+        <div
+          className={cn(
+            "group rounded-xl border p-4 transition-all duration-300",
+            "border-[color:var(--border)]",
+            "bg-[color:var(--card)]",
+            "hover:border-[color:var(--cdrama-blossom)] hover:shadow-md"
+          )}
+        >
+          <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-[color:var(--muted-foreground)]">
+            <Disc3 className="h-3 w-3" />
             Favorite Track
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-purple-400" />
-            <span className="font-mono text-sm text-white">
+          <div className="flex items-center gap-3">
+            <div className="relative h-3 w-3">
+              <div className="absolute inset-0 animate-ping rounded-full bg-[color:var(--cdrama-blossom)] opacity-75" />
+              <div className="relative h-3 w-3 rounded-full bg-[color:var(--cdrama-blossom)]" />
+            </div>
+            <span className="font-mono text-sm font-medium text-[color:var(--foreground)] group-hover:text-[color:var(--cdrama-blossom)]">
               {favoriteTrack}
             </span>
           </div>
         </div>
 
         {/* Visualizer */}
-        <div className="flex h-16 items-end justify-center gap-1 rounded-xl border border-purple-400/20 bg-slate-900/50 p-4">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="w-1 rounded-full bg-gradient-to-t from-purple-500 to-cyan-400"
-              style={{
-                height: `${Math.random() * 100}%`,
-                animation: `pulse ${0.5 + Math.random()}s ease-in-out infinite`,
-              }}
-            />
-          ))}
+        <div
+          className={cn(
+            "rounded-xl border p-4 transition-all duration-300",
+            "border-[color:var(--border)]",
+            "bg-[color:var(--card)]"
+          )}
+        >
+          <div className="flex h-20 items-end justify-center gap-1">
+            {visualizerBars.map((height, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-1.5 rounded-full transition-all duration-500 ease-out",
+                  "bg-gradient-to-t from-[color:var(--cdrama-accent)] via-[color:var(--cdrama-blossom)] to-[color:var(--cdrama-accent)]"
+                )}
+                style={{
+                  height: `${height}%`,
+                  opacity: 0.7 + (height / 100) * 0.3,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
