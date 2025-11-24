@@ -40,6 +40,7 @@ export default <Array<ConfigWithExtends>>[
         ...globals.es2020,
         ...globals.node,
         ...globals.browser,
+        browser: "readonly",
       },
     },
     rules: {
