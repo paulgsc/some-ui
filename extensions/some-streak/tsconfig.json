@@ -19,7 +19,7 @@
     "paths": {
       "@streak/*": ["src/*"]
     },
-    "types": ["chrome"]
+    "types": ["firefox-webext-browser"]
   },
   "include": ["src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]

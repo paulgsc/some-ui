@@ -7,57 +7,6 @@ import type {
 import { createExpandedState } from "@streak/components/expanded-state"
 import { createElement } from "@streak/utils/create-element"
 
-const DEFAULT_CATEGORIES: Array<Category> = [
-  {
-    id: "jobs",
-    name: "Job Search",
-    icon: "💼",
-    color: "blue",
-    tasks: [
-      { id: "1", label: "Morning Applications (5-8)", done: true },
-      { id: "2", label: "Midday Profile Update", done: true },
-      { id: "3", label: "Evening Strategic Search", done: false },
-    ],
-  },
-  {
-    id: "leetcode",
-    name: "LeetCode",
-    icon: "💻",
-    color: "orange",
-    tasks: [
-      { id: "1", label: "Easy Problem", done: false },
-      { id: "2", label: "Medium Problem", done: false },
-    ],
-  },
-  {
-    id: "duolingo",
-    name: "Duolingo",
-    icon: "🦉",
-    color: "green",
-    tasks: [
-      { id: "1", label: "Daily Lesson", done: true },
-      { id: "2", label: "Practice Round", done: false },
-    ],
-  },
-  {
-    id: "typing",
-    name: "Typing",
-    icon: "⌨️",
-    color: "purple",
-    tasks: [{ id: "1", label: "10min Speed Practice", done: false }],
-  },
-  {
-    id: "coding",
-    name: "Coding",
-    icon: "🚀",
-    color: "pink",
-    tasks: [
-      { id: "1", label: "Personal Project Work", done: false },
-      { id: "2", label: "Code Review/Learning", done: false },
-    ],
-  },
-]
-
 type OverlayState = {
   currentCategoryIndex: number
   categories: Array<Category>
@@ -70,11 +19,11 @@ type OverlayState = {
  */
 export function createStreakOverlay(): HTMLElement {
   // State
-  const state: OverlayState = {
+  let state: OverlayState = {
     currentCategoryIndex: 0,
-    categories: DEFAULT_CATEGORIES,
+    categories: [],
     isExpanded: false,
-    lastActivity: new Date(Date.now() - 1000 * 60 * 45), // 45 minutes ago
+    lastActivity: null,
   }
 
   // Main container
@@ -82,11 +31,33 @@ export function createStreakOverlay(): HTMLElement {
     className: "streak-overlay",
   })
 
-  let collapsedState: HTMLElement
-  let expandedState: HTMLElement
+  let collapsedState: HTMLElement | null
+  let expandedState: HTMLElement | null
+
+  // Load initial data from background
+  const loadData = async (): Promise<void> => {
+    try {
+      const response = await browser.runtime.sendMessage({ type: "GET_DATA" })
+      if (response.success) {
+        state = {
+          currentCategoryIndex: response.data.currentCategoryIndex,
+          categories: response.data.categories,
+          isExpanded: false,
+          lastActivity: response.data.lastActivity
+            ? new Date(response.data.lastActivity)
+            : null,
+        }
+        render()
+      }
+    } catch (error) {
+      console.error("[Content] Error loading data:", error)
+    }
+  }
 
   // Render functions
-  const render = () => {
+  const render = (): void => {
+    if (state.categories.length === 0) return
+
     const currentCategory = state.categories[state.currentCategoryIndex]
     const todayComplete = currentCategory.tasks.filter((t) => t.done).length
     const todayTotal = currentCategory.tasks.length
@@ -127,7 +98,9 @@ export function createStreakOverlay(): HTMLElement {
       expandedData,
       handlePrevCategory,
       handleNextCategory,
-      handleCategorySwitch
+      handleCategorySwitch,
+      handleTaskToggle,
+      handleResetAll
     )
 
     // Apply expanded/collapsed state
@@ -143,52 +116,124 @@ export function createStreakOverlay(): HTMLElement {
       toggleExpanded()
     })
 
-    // Add click outside handler for expanded state
-    document.addEventListener("click", handleClickOutside)
-
     container.appendChild(collapsedState)
     container.appendChild(expandedState)
   }
 
   // Event handlers
-  const handlePrevCategory = () => {
-    state.currentCategoryIndex =
+  const handlePrevCategory = async (): Promise<void> => {
+    const newIndex =
       state.currentCategoryIndex === 0
         ? state.categories.length - 1
         : state.currentCategoryIndex - 1
-    render()
-  }
 
-  const handleNextCategory = () => {
-    state.currentCategoryIndex =
-      (state.currentCategoryIndex + 1) % state.categories.length
-    render()
-  }
-
-  const handleCategorySwitch = (index: number) => {
-    state.currentCategoryIndex = index
-    render()
-  }
-
-  const toggleExpanded = () => {
-    state.isExpanded = !state.isExpanded
-    if (state.isExpanded) {
-      collapsedState.classList.add("hidden")
-      expandedState.classList.add("visible")
-    } else {
-      collapsedState.classList.remove("hidden")
-      expandedState.classList.remove("visible")
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "SWITCH_CATEGORY",
+        index: newIndex,
+      })
+      if (response.success) {
+        updateState(response.data)
+      }
+    } catch (error) {
+      console.error("[Content] Error switching category:", error)
     }
   }
 
-  const handleClickOutside = (e: MouseEvent) => {
+  const handleNextCategory = async (): Promise<void> => {
+    const newIndex = (state.currentCategoryIndex + 1) % state.categories.length
+
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "SWITCH_CATEGORY",
+        index: newIndex,
+      })
+      if (response.success) {
+        updateState(response.data)
+      }
+    } catch (error) {
+      console.error("[Content] Error switching category:", error)
+    }
+  }
+
+  const handleCategorySwitch = async (index: number): Promise<void> => {
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "SWITCH_CATEGORY",
+        index,
+      })
+      if (response.success) {
+        updateState(response.data)
+      }
+    } catch (error) {
+      console.error("[Content] Error switching category:", error)
+    }
+  }
+
+  const handleTaskToggle = async (categoryId: string, taskId: string): void => {
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "TOGGLE_TASK",
+        categoryId,
+        taskId,
+      })
+      if (response.success) {
+        updateState(response.data)
+      }
+    } catch (error) {
+      console.error("[Content] Error toggling task:", error)
+    }
+  }
+
+  const handleResetAll = async (): Promise<void> => {
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "RESET_ALL",
+      })
+      if (response.success) {
+        updateState(response.data)
+      }
+    } catch (error) {
+      console.error("[Content] Error resetting tasks:", error)
+    }
+  }
+
+  const toggleExpanded = (): void => {
+    state.isExpanded = !state.isExpanded
+    if (state.isExpanded) {
+      if (collapsedState) collapsedState.classList.add("hidden")
+      if (expandedState) expandedState.classList.add("visible")
+    } else {
+      if (collapsedState) collapsedState.classList.remove("hidden")
+      if (expandedState) expandedState.classList.remove("visible")
+    }
+  }
+
+  const handleClickOutside = (e: MouseEvent): void => {
     if (!state.isExpanded) return
     if (!container.contains(e.target as Node)) {
       state.isExpanded = false
-      collapsedState.classList.remove("hidden")
-      expandedState.classList.remove("visible")
+      if (collapsedState) collapsedState.classList.remove("hidden")
+      if (expandedState) expandedState.classList.remove("visible")
     }
   }
+
+  const updateState = (data: any): void => {
+    state.currentCategoryIndex = data.currentCategoryIndex
+    state.categories = data.categories
+    state.lastActivity = data.lastActivity ? new Date(data.lastActivity) : null
+    render()
+  }
+
+  // Listen for state updates from background
+  browser.runtime.onMessage.addListener((message) => {
+    if (message.type === "STATE_UPDATE") {
+      updateState(message.data)
+    }
+  })
+
+  // Add click outside listener
+  document.addEventListener("click", handleClickOutside)
 
   // Setup dragging
   setupDraggable(container)
@@ -196,8 +241,8 @@ export function createStreakOverlay(): HTMLElement {
   // Setup fullscreen auto-hide
   setupFullscreenAutoHide(container)
 
-  // Initial render
-  render()
+  // Initial load
+  loadData()
 
   return container
 }
@@ -205,12 +250,12 @@ export function createStreakOverlay(): HTMLElement {
 /**
  * Makes the overlay draggable
  */
-function setupDraggable(container: HTMLElement) {
+function setupDraggable(container: HTMLElement): void {
   let isDragging = false
   let offsetX = 0
   let offsetY = 0
 
-  const onMouseMove = (e: MouseEvent) => {
+  const onMouseMove = (e: MouseEvent): void => {
     if (!isDragging) return
 
     let x = e.clientX - offsetX
@@ -226,7 +271,7 @@ function setupDraggable(container: HTMLElement) {
     container.style.bottom = "auto"
   }
 
-  const onMouseUp = () => {
+  const onMouseUp = (): void => {
     if (!isDragging) return
     isDragging = false
     container.classList.remove("dragging")
@@ -254,8 +299,8 @@ function setupDraggable(container: HTMLElement) {
 /**
  * Auto-hide overlay when in fullscreen mode
  */
-function setupFullscreenAutoHide(container: HTMLElement) {
-  const toggleVisibility = () => {
+function setupFullscreenAutoHide(container: HTMLElement): void {
+  const toggleVisibility = (): void => {
     const isFullscreen =
       !!document.fullscreenElement ||
       !!(document as any).webkitFullscreenElement ||

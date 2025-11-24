@@ -29,7 +29,9 @@ export function createExpandedState(
   data: ExpandedStateData,
   onPrevCategory: () => void,
   onNextCategory: () => void,
-  onCategorySwitch: (index: number) => void
+  onCategorySwitch: (index: number) => void,
+  onTaskToggle: (categoryId: string, taskId: string) => void,
+  onResetAll: () => void
 ): HTMLElement {
   const container = createElement("div", {
     className: "streak-expanded",
@@ -58,8 +60,12 @@ export function createExpandedState(
     data.currentCategory.color
   )
 
-  // Task list (static for now)
-  const taskList = createTaskList(data.currentCategory.tasks)
+  // Task list with click handlers
+  const taskList = createTaskList(
+    data.currentCategory.tasks,
+    data.currentCategory.id,
+    onTaskToggle
+  )
 
   // Last activity
   const lastActivity = createLastActivity(data.lastActivity)
@@ -72,7 +78,7 @@ export function createExpandedState(
   )
 
   // Reset button
-  const resetButton = createResetButton()
+  const resetButton = createResetButton(onResetAll)
 
   inner.appendChild(header)
   inner.appendChild(progressSection)
@@ -259,15 +265,19 @@ function createProgressSection(
 }
 
 /**
- * Creates the task list
+ * Creates the task list with click handlers
  */
-function createTaskList(tasks: Array<Task>): HTMLElement {
+function createTaskList(
+  tasks: Array<Task>,
+  categoryId: string,
+  onToggle: (categoryId: string, taskId: string) => void
+): HTMLElement {
   const container = createElement("div", {
     className: "task-list",
   })
 
   tasks.forEach((task) => {
-    const taskItem = createTaskItem(task)
+    const taskItem = createTaskItem(task, categoryId, onToggle)
     container.appendChild(taskItem)
   })
 
@@ -275,9 +285,13 @@ function createTaskList(tasks: Array<Task>): HTMLElement {
 }
 
 /**
- * Creates a single task item
+ * Creates a single task item with click handler
  */
-function createTaskItem(task: Task): HTMLElement {
+function createTaskItem(
+  task: Task,
+  categoryId: string,
+  onToggle: (categoryId: string, taskId: string) => void
+): HTMLElement {
   const button = createElement("button", {
     className: "task-item",
   })
@@ -328,6 +342,12 @@ function createTaskItem(task: Task): HTMLElement {
 
   button.appendChild(iconContainer)
   button.appendChild(text)
+
+  // Add click handler
+  button.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onToggle(categoryId, task.id)
+  })
 
   return button
 }
@@ -413,13 +433,20 @@ function createCategoryIndicators(
 }
 
 /**
- * Creates the reset button
+ * Creates the reset button with click handler
  */
-function createResetButton(): HTMLElement {
-  return createElement("button", {
+function createResetButton(onReset: () => void): HTMLElement {
+  const button = createElement("button", {
     className: "reset-button",
     children: ["Reset All (Demo)"],
   })
+
+  button.addEventListener("click", (e) => {
+    e.stopPropagation()
+    onReset()
+  })
+
+  return button
 }
 
 /**

@@ -2,9 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {},
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@types/firefox-webext-browser": "^120.0.4",
     "some-ui-rollup-config": "workspace:*"
   },
   "exports": {
@@ -33,7 +33,6 @@
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
   "name": "some-streak",
-  "peerDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
