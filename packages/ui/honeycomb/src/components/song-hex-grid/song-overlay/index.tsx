@@ -23,9 +23,11 @@ type ActiveSongCell = {
 const FADE_DURATION = 8000 // 8 seconds
 const MAX_ACTIVE_CELLS = 37
 
-export function SongHexGrid() {
-  const [songs, setSongs] = useState<Song[]>([])
-  const [activeSongCells, setActiveSongCells] = useState<ActiveSongCell[]>([])
+export const SongHexGrid = (): React.JSX.Element => {
+  const [songs, setSongs] = useState<Array<Song>>([])
+  const [activeSongCells, setActiveSongCells] = useState<Array<ActiveSongCell>>(
+    []
+  )
 
   // Simulate songs being played
   useEffect(() => {
@@ -109,7 +111,7 @@ export function SongHexGrid() {
       // Generate all possible cell IDs matching WASM output format
       // WASM uses format: "hex_q_r_s" (e.g., "hex_-2_0_2")
       const rings = 3
-      const availableCells: string[] = []
+      const availableCells: Array<string> = []
 
       for (let ring = 0; ring <= rings; ring++) {
         if (ring === 0) {
@@ -190,13 +192,13 @@ export function SongHexGrid() {
       )
     }, 100)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [])
 
   // Convert active song cells to HexCellData
   // Use WASM's ID format: "hex_q_r_s" (e.g., "hex_-2_0_2")
   // The HexGrid component will match these IDs with WASM cells
-  const hexCells: HexCellData<Song>[] = activeSongCells.map((cell) => ({
+  const hexCells: Array<HexCellData<Song>> = activeSongCells.map((cell) => ({
     id: cell.cellId, // This ID matches WASM format: "hex_q_r_s"
     data: cell.song,
     theme: {
