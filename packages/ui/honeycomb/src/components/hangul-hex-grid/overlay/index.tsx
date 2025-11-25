@@ -281,7 +281,8 @@ export const HangulHexGrid = (): React.JSX.Element => {
         hexSize={70}
         viewBoxFactor={1.2}
         cells={hexCells}
-        backgroundOpacity={0.08}
+        backgroundOpacity={0.8}
+        className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
         renderCell={(cell, centerX, centerY, cellWidth, hexPath) => (
           <HangulHexCell
             character={{

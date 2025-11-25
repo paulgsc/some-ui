@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -144,7 +146,10 @@ impl HangulGameCore {
     #[wasm_bindgen(js_name = spawnCharacter)]
     pub fn spawn_character(&mut self, hangul: String, expected_key: String, revealed_at_ms: u64, available_cell_ids: Vec<String>) -> JsValue {
         // Find first available cell (not in active_reveals)
-        let cell_id = available_cell_ids.into_iter().find(|id| !self.active_reveals.iter().any(|r| &r.cell_id == id));
+        let available: Vec<String> = available_cell_ids.into_iter().filter(|id| !self.active_reveals.iter().any(|r| &r.cell_id == id)).collect();
+
+        // Pick a random cell from available ones
+        let cell_id = available.choose(&mut thread_rng()).cloned();
 
         match cell_id {
             Some(cell_id) => {

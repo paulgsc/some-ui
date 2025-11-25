@@ -23,7 +23,7 @@ type HexGridProps<T = any> = {
   hexSize: number
   viewBoxFactor?: number
   className?: string
-  cells?: HexCellData<T>[]
+  cells?: Array<HexCellData<T>>
   renderCell?: (
     cell: HexRenderData & HexCellData<T>,
     centerX: number,
@@ -58,7 +58,7 @@ export function HexGrid<T = any>({
     hexSize,
   })
 
-  const pointsToPath = useCallback((points: HexPoint[]): string => {
+  const pointsToPath = useCallback((points: Array<HexPoint>): string => {
     return `M${points[0].x},${points[0].y} ${points
       .slice(1)
       .map((p) => `L${p.x},${p.y}`)
