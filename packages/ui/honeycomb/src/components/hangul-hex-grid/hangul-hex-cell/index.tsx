@@ -1,4 +1,3 @@
-import type { FC } from "react"
 import { useState } from "react"
 import type { HangulCharacter } from "@honeycomb/types/hangul-types"
 
@@ -10,9 +9,10 @@ type HangulHexCellProps = {
   hexPath: string
   opacity?: number
   timeRemaining: number // 0 to 1
+  showRomanization?: boolean // Whether to show hints
 }
 
-export const HangulHexCell: FC<HangulHexCellProps> = ({
+export const HangulHexCell = ({
   character,
   centerX,
   centerY,
@@ -20,13 +20,14 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   hexPath,
   opacity = 1,
   timeRemaining,
-}): React.JSX.Element => {
+  showRomanization = true,
+}: HangulHexCellProps) => {
   const [isHovered, setIsHovered] = useState(false)
-  // const uniqueId = `cell-${character.id}`
+  const uniqueId = `cell-${character.id}`
 
   const hangulFontSize = Math.max(16, cellWidth * 0.35)
   const qwertyFontSize = Math.max(10, cellWidth * 0.18)
-  // const romanizationFontSize = Math.max(6, cellWidth * 0.1)
+  const romanizationFontSize = Math.max(6, cellWidth * 0.1)
 
   // Progress ring
   const ringRadius = cellWidth * 0.42
@@ -123,7 +124,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
       </text>
 
       {/* Hover popup with romanization */}
-      {isHovered && (
+      {isHovered && showRomanization && (
         <foreignObject
           x={centerX - cellWidth * 0.6}
           y={centerY - cellWidth * 1.2}

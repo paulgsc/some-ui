@@ -21,6 +21,7 @@
   "dependencies": {
     "maishatu-fetch-kit": "workspace:*",
     "some-hexagon": "link:../../../crates/some-hexagon/dist",
+    "hangul-game-core": "link:../../../crates/hangul-game-core/dist",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },

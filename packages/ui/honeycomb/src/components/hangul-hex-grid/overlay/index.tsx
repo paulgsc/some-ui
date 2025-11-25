@@ -1,134 +1,261 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { HangulHexCell } from "@honeycomb/components/hangul-hex-grid/hangul-hex-cell"
-import { HexGrid, type HexCellData } from "@honeycomb/components/hex-grid"
-import { HangulGameManager } from "@honeycomb/lib/hangul/game-manager"
-import type { GameStats, HangulCharacter } from "@honeycomb/types/hangul-types"
-import { DEFAULT_GAME_SETTINGS } from "@honeycomb/types/hangul-types"
+import type { HexCellData } from "@honeycomb/components/hex-grid"
+import { HexGrid } from "@honeycomb/components/hex-grid"
+import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
+import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
+import type {
+  DisplayCharacter,
+  GameStats,
+  TimingParams,
+} from "@honeycomb/lib/hangul/wasm-game-bridge"
+
+type CharacterWithLifetime = DisplayCharacter & { timeRemaining: number }
 
 export const HangulHexGrid = (): React.JSX.Element => {
-  const [gameManager] = useState(
-    () => new HangulGameManager(DEFAULT_GAME_SETTINGS)
-  )
-  const [activeCells, setActiveCells] = useState<
-    Array<HexCellData<HangulCharacter>>
-  >([])
-  const [stats, setStats] = useState<GameStats>(gameManager.getStats())
+  const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
+    autoStart: true,
+  })
+
+  const [keyboardManager] = useState(() => new KeyboardInputManager())
+  const [activeCharacters, setActiveCharacters] = useState<
+    Map<string, CharacterWithLifetime>
+  >(new Map())
+  const [stats, setStats] = useState<GameStats & { accuracy: number }>({
+    score: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    totalCorrect: 0,
+    totalMissed: 0,
+    accuracy: 0,
+  })
+  const [timingParams, setTimingParams] = useState<TimingParams>({
+    spawnIntervalMs: 1500,
+    characterLifetimeMs: 3000,
+    showRomanization: true,
+  })
   const [isPaused, setIsPaused] = useState(false)
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false)
   const [lastPoints, setLastPoints] = useState(0)
-  const [feedbackPosition, setFeedbackPosition] = useState({ x: 0, y: 0 })
+  const [keyBuffer, setKeyBuffer] = useState("")
 
-  const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Update active cells display
-  const updateCells = useCallback(() => {
-    const expired = gameManager.update()
+  // ========================================================================
+  // SPAWN CHARACTER
+  // ========================================================================
 
-    if (expired.length > 0) {
-      setStats(gameManager.getStats())
-    }
+  const spawnCharacter = useCallback(() => {
+    if (!gameBridge) return
 
-    const cells = gameManager.getActiveCells()
-    const now = Date.now()
+    const char = gameBridge.spawnCharacter()
+    if (!char) return // Grid full
 
-    setActiveCells(
-      cells.map((cell) => {
-        const age = now - cell.character.spawnedAt
-        const timeRemaining = Math.max(0, 1 - age / cell.character.timeLimit)
-
-        return {
-          id: cell.cellId,
-          data: { ...cell.character, timeRemaining },
-          theme: {
-            fill: cell.character.color,
-            stroke: cell.character.color,
-            strokeWidth: 2,
-            opacity: cell.opacity,
-          },
-        }
+    setActiveCharacters((prev) => {
+      const next = new Map(prev)
+      next.set(char.cellId, {
+        ...char,
+        timeRemaining: 1,
       })
-    )
-  }, [gameManager])
+      return next
+    })
 
-  // Spawn new characters periodically
-  useEffect(() => {
-    if (isPaused) return
+    setTimingParams(gameBridge.getTimingParams())
+  }, [gameBridge])
 
-    spawnTimerRef.current = setInterval(() => {
-      gameManager.spawnCharacter()
-      updateCells()
-    }, DEFAULT_GAME_SETTINGS.spawnInterval)
+  // ========================================================================
+  // UPDATE LIFETIMES & CHECK EXPIRATION
+  // ========================================================================
 
-    return (): void => {
-      if (spawnTimerRef.current) {
-        clearInterval(spawnTimerRef.current)
-      }
+  const updateCharacters = useCallback(() => {
+    if (!gameBridge) return
+
+    const expiredResult = gameBridge.checkExpired()
+    const now = Date.now()
+    const currentWindow = gameBridge.getCurrentTimeWindow()
+
+    setActiveCharacters((prev) => {
+      const next = new Map(prev)
+
+      // Remove expired
+      expiredResult.cellIds.forEach((cellId) => next.delete(cellId))
+
+      // Update time remaining for active
+      next.forEach((char, cellId) => {
+        const age = now - char.spawnedAt
+        const timeRemaining = Math.max(0, 1 - age / currentWindow)
+        next.set(cellId, { ...char, timeRemaining })
+      })
+
+      return next
+    })
+
+    if (expiredResult.count > 0) {
+      setStats(gameBridge.getStats())
+      setTimingParams(gameBridge.getTimingParams())
     }
-  }, [gameManager, updateCells, isPaused])
+  }, [gameBridge])
 
-  // Update cells periodically
+  // ========================================================================
+  // KEYBOARD INPUT
+  // ========================================================================
+
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || !gameBridge || !isInitialized) return
 
-    updateTimerRef.current = setInterval(() => {
-      updateCells()
-    }, 100)
-
-    return (): void => {
-      if (updateTimerRef.current) {
-        clearInterval(updateTimerRef.current)
-      }
-    }
-  }, [updateCells, isPaused])
-
-  // Handle keyboard input
-  useEffect(() => {
-    if (isPaused) return
-
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      // Ignore modifier keys and special keys
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return
+      if (e.key === " ") return
 
-      const result = gameManager.handleKeyPress(e.key)
+      const now = Date.now()
+      const match = keyboardManager.addKey(e.key, now)
 
-      if (result.hit) {
-        // Show success feedback at mouse position or center
-        setLastPoints(result.points)
-        setFeedbackPosition({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-        })
-        setShowSuccessFeedback(true)
-        setTimeout(() => setShowSuccessFeedback(false), 500)
+      setKeyBuffer(keyboardManager.getBuffer())
+
+      if (match) {
+        const result = gameBridge.processKeyPress(match.keys)
+
+        if (result.matched) {
+          setActiveCharacters((prev) => {
+            const next = new Map(prev)
+            next.delete(result.cellId)
+            return next
+          })
+
+          setLastPoints(result.points)
+          setShowSuccessFeedback(true)
+          setTimeout(() => setShowSuccessFeedback(false), 500)
+
+          keyboardManager.clearBuffer()
+          setKeyBuffer("")
+        }
+
+        setStats(gameBridge.getStats())
+        setTimingParams(gameBridge.getTimingParams())
       }
 
-      setStats(gameManager.getStats())
-      updateCells()
+      setTimeout(() => {
+        if (keyboardManager.shouldClearBuffer(Date.now())) {
+          keyboardManager.clearBuffer()
+          setKeyBuffer("")
+        }
+      }, 350)
     }
 
     window.addEventListener("keydown", handleKeyDown)
-    return (): void => window.removeEventListener("keydown", handleKeyDown)
-  }, [gameManager, updateCells, isPaused])
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [gameBridge, keyboardManager, isPaused, isInitialized])
 
-  // Reset game
-  const handleReset = (): void => {
-    gameManager.reset()
-    setStats(gameManager.getStats())
-    setActiveCells([])
+  // ========================================================================
+  // SPAWN TIMER
+  // ========================================================================
+
+  useEffect(() => {
+    if (isPaused || !gameBridge || !isInitialized) return
+
+    spawnCharacter() // Initial spawn
+    spawnTimerRef.current = setInterval(
+      spawnCharacter,
+      timingParams.spawnIntervalMs
+    )
+
+    return () => {
+      if (spawnTimerRef.current) clearInterval(spawnTimerRef.current)
+    }
+  }, [
+    spawnCharacter,
+    timingParams.spawnIntervalMs,
+    isPaused,
+    gameBridge,
+    isInitialized,
+  ])
+
+  // ========================================================================
+  // UPDATE TIMER
+  // ========================================================================
+
+  useEffect(() => {
+    if (isPaused || !gameBridge || !isInitialized) return
+
+    updateTimerRef.current = setInterval(updateCharacters, 50)
+
+    return () => {
+      if (updateTimerRef.current) clearInterval(updateTimerRef.current)
+    }
+  }, [updateCharacters, isPaused, gameBridge, isInitialized])
+
+  // ========================================================================
+  // RESET
+  // ========================================================================
+
+  const handleReset = useCallback(() => {
+    if (!gameBridge) return
+
+    gameBridge.reset()
+    keyboardManager.reset()
+    setActiveCharacters(new Map())
+    setStats(gameBridge.getStats())
+    setTimingParams(gameBridge.getTimingParams())
+    setKeyBuffer("")
     setIsPaused(false)
+  }, [gameBridge, keyboardManager])
+
+  // ========================================================================
+  // LOADING STATE
+  // ========================================================================
+
+  if (isLoading) {
+    return (
+      <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="glass-effect rounded-3xl px-12 py-8 text-white text-center">
+          <div className="text-2xl font-bold mb-4">Loading WASM...</div>
+          <div className="text-white/70">Initializing game core</div>
+        </div>
+      </div>
+    )
   }
 
-  // Toggle pause
-  const handleTogglePause = (): void => {
-    setIsPaused((prev) => !prev)
+  // ========================================================================
+  // ERROR STATE
+  // ========================================================================
+
+  if (error || !gameBridge) {
+    return (
+      <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="glass-effect rounded-3xl px-12 py-8 text-white text-center max-w-md">
+          <div className="text-2xl font-bold mb-4 text-red-400">Error</div>
+          <div className="text-white/70 mb-4">
+            {error || "Failed to initialize game"}
+          </div>
+          <div className="text-sm text-white/50">
+            Make sure the WASM module is built and available.
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const accuracy = gameManager.getAccuracy()
+  // ========================================================================
+  // RENDER
+  // ========================================================================
+
+  const hexCells: Array<HexCellData<CharacterWithLifetime>> = Array.from(
+    activeCharacters.values()
+  ).map((char) => ({
+    id: char.cellId,
+    data: char,
+    theme: {
+      fill: char.color,
+      stroke: char.color,
+      strokeWidth: 2,
+      opacity: 0.75,
+    },
+  }))
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      {/* Animated background particles */}
+    <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Animated background */}
       <div
         className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 animate-pulse"
         style={{ animationDuration: "8s" }}
@@ -139,8 +266,8 @@ export const HangulHexGrid = (): React.JSX.Element => {
         <div
           className="absolute text-4xl font-bold text-green-400 pointer-events-none z-50 animate-ping"
           style={{
-            left: feedbackPosition.x,
-            top: feedbackPosition.y,
+            left: "50%",
+            top: "50%",
             transform: "translate(-50%, -50%)",
           }}
         >
@@ -153,24 +280,29 @@ export const HangulHexGrid = (): React.JSX.Element => {
         cellCount={67}
         hexSize={70}
         viewBoxFactor={1.2}
-        cells={activeCells}
+        cells={hexCells}
         backgroundOpacity={0.08}
-        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
-          const timeRemaining =
-            (cell.data as HangulCharacter & { timeRemaining?: number })
-              .timeRemaining ?? 1
-          return (
-            <HangulHexCell
-              character={cell.data}
-              centerX={centerX}
-              centerY={centerY}
-              cellWidth={cellWidth}
-              opacity={cell.theme?.opacity}
-              hexPath={hexPath}
-              timeRemaining={timeRemaining}
-            />
-          )
-        }}
+        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => (
+          <HangulHexCell
+            character={{
+              id: cell.data.cellId,
+              hangul: cell.data.hangul,
+              qwertyKey: cell.data.qwertyKey,
+              romanization: cell.data.romanization,
+              color: cell.data.color,
+              spawnedAt: cell.data.spawnedAt,
+              releaseYear: 0,
+              playedAt: cell.data.spawnedAt,
+            }}
+            centerX={centerX}
+            centerY={centerY}
+            cellWidth={cellWidth}
+            opacity={cell.theme?.opacity}
+            hexPath={hexPath}
+            timeRemaining={cell.data.timeRemaining}
+            showRomanization={timingParams.showRomanization}
+          />
+        )}
       />
 
       {/* Stats Panel */}
@@ -190,9 +322,15 @@ export const HangulHexGrid = (): React.JSX.Element => {
           <div className="flex justify-between">
             <span className="text-white/70">Accuracy:</span>
             <span
-              className={`font-bold ${accuracy >= 80 ? "text-green-400" : accuracy >= 60 ? "text-yellow-400" : "text-red-400"}`}
+              className={`font-bold ${
+                stats.accuracy >= 80
+                  ? "text-green-400"
+                  : stats.accuracy >= 60
+                    ? "text-yellow-400"
+                    : "text-red-400"
+              }`}
             >
-              {accuracy.toFixed(1)}%
+              {stats.accuracy.toFixed(1)}%
             </span>
           </div>
 
@@ -208,20 +346,43 @@ export const HangulHexGrid = (): React.JSX.Element => {
 
           <div className="flex justify-between text-xs mt-3 pt-3 border-t border-white/10">
             <span className="text-white/50">Correct:</span>
-            <span className="text-green-400">{stats.correctAttempts}</span>
+            <span className="text-green-400">{stats.totalCorrect}</span>
           </div>
 
           <div className="flex justify-between text-xs">
             <span className="text-white/50">Missed:</span>
-            <span className="text-red-400">{stats.missedCharacters}</span>
+            <span className="text-red-400">{stats.totalMissed}</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="text-xs text-white/50 mb-1">Difficulty:</div>
+            <div className="text-xs text-cyan-400">
+              {timingParams.characterLifetimeMs < 2000
+                ? "🔥 Hard"
+                : timingParams.characterLifetimeMs < 3000
+                  ? "⚡ Medium"
+                  : "🌱 Easy"}
+            </div>
+            <div className="text-xs text-white/40 mt-1">
+              {timingParams.showRomanization ? "💡 Hints ON" : "🎯 Hints OFF"}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Key Buffer */}
+      {keyBuffer && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40">
+          <div className="glass-effect rounded-xl px-6 py-3 text-white text-2xl font-mono font-bold">
+            {keyBuffer}
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="absolute top-6 right-6 flex gap-3">
         <button
-          onClick={handleTogglePause}
+          onClick={() => setIsPaused((prev) => !prev)}
           className="glass-effect rounded-xl px-5 py-3 text-white font-semibold hover:bg-white/20 transition-all shadow-lg"
         >
           {isPaused ? "▶ Resume" : "⏸ Pause"}
@@ -234,6 +395,21 @@ export const HangulHexGrid = (): React.JSX.Element => {
         </button>
       </div>
 
+      {/* Instructions */}
+      <div className="absolute bottom-6 left-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl max-w-md">
+        <div className="text-sm space-y-2">
+          <div className="font-bold text-cyan-400 mb-2">How to Play:</div>
+          <p className="text-white/80 text-xs leading-relaxed">
+            Type the QWERTY keys for each Hangul character before time runs out!
+            Some characters need multiple keys (like{" "}
+            <span className="font-mono">ho</span> → ㅙ).
+          </p>
+          <p className="text-white/60 text-xs mt-2">
+            💡 Build streaks to increase difficulty and hide hints!
+          </p>
+        </div>
+      </div>
+
       {/* Pause Overlay */}
       {isPaused && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-40">
@@ -244,7 +420,7 @@ export const HangulHexGrid = (): React.JSX.Element => {
         </div>
       )}
 
-      {/* Decorative elements */}
+      {/* Decorative particles */}
       <div
         className="absolute top-32 right-20 w-3 h-3 bg-cyan-400/40 rounded-full blur-sm animate-pulse"
         style={{ animationDuration: "3s" }}
