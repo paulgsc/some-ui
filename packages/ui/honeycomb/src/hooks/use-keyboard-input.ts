@@ -12,7 +12,6 @@ type UseKeyboardInputProps = {
   isInitialized: boolean
   isPaused: boolean
   keyboardManager: KeyboardInputManager
-  activeCharacters: Map<string, CharacterWithLifetime>
   setActiveCharacters: React.Dispatch<
     React.SetStateAction<Map<string, CharacterWithLifetime>>
   >
@@ -30,7 +29,6 @@ export const useKeyboardInput = ({
   isInitialized,
   isPaused,
   keyboardManager,
-  activeCharacters,
   setActiveCharacters,
   setStats,
   setTimingParams,
@@ -47,44 +45,40 @@ export const useKeyboardInput = ({
 
       const now = Date.now()
 
-      // Convert your Map<string, CharacterWithLifetime> to Set<string> of hangul chars
-      const activeHangulChars = new Set(
-        Array.from(activeCharacters.values()).map((char) => char.hangul)
-      )
+      // Add to local display buffer
+      keyboardManager.addKey(e.key, now)
 
-      // Process the key with greedy matching
-      const result = keyboardManager.addKey(e.key, now, activeHangulChars)
+      // Send to Rust WASM core for processing
+      const result = gameBridge.processKeyPress(e.key, now)
 
-      // Always update the visible buffer
-      setKeyBuffer(keyboardManager.getBuffer())
+      // Update display buffer from result or local manager
+      setKeyBuffer(result.currentBuffer || keyboardManager.getBuffer())
 
-      if (result.matched && result.hangul && result.keys) {
-        // Successful match! Tell game bridge to process it
-        const gameResult = gameBridge.processKeyPress(result.keys)
+      if (result.matched) {
+        // Successful match!
+        setActiveCharacters((prev) => {
+          const next = new Map(prev)
+          next.delete(result.cellId)
+          return next
+        })
 
-        if (gameResult.matched) {
-          setActiveCharacters((prev) => {
-            const next = new Map(prev)
-            next.delete(gameResult.cellId)
-            return next
-          })
+        setLastPoints(result.points)
+        setShowSuccessFeedback(true)
+        setTimeout(() => setShowSuccessFeedback(false), 500)
 
-          setLastPoints(gameResult.points)
-          setShowSuccessFeedback(true)
-          setTimeout(() => setShowSuccessFeedback(false), 500)
-        }
-
-        setStats(gameBridge.getStats())
-        setTimingParams(gameBridge.getTimingParams())
-      } else if (
-        !result.isPartialMatch &&
-        keyboardManager.getBuffer().length > 0
-      ) {
-        // Buffer exists but isn't building toward any active character
-        // Clear it since it's invalid
+        // Clear local buffer on match
+        keyboardManager.clearBuffer()
+        setKeyBuffer("")
+      } else if (result.shouldClearBuffer) {
+        // Invalid input - clear local buffer and sync UI
         keyboardManager.clearBuffer()
         setKeyBuffer("")
       }
+      // else: partial match, keep buffer and wait for more keys
+
+      // Always sync stats and timing after any key press
+      setStats(gameBridge.getStats())
+      setTimingParams(gameBridge.getTimingParams())
 
       // Auto-clear on timeout
       setTimeout(() => {
@@ -102,7 +96,6 @@ export const useKeyboardInput = ({
     keyboardManager,
     isPaused,
     isInitialized,
-    activeCharacters,
     setActiveCharacters,
     setStats,
     setTimingParams,

@@ -66,7 +66,6 @@ export const HangulHexGrid = (): React.JSX.Element => {
     isInitialized,
     isPaused,
     keyboardManager,
-    activeCharacters,
     setActiveCharacters,
     setStats,
     setTimingParams,

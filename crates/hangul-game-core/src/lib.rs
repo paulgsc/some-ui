@@ -115,6 +115,26 @@ struct ActiveReveal {
     cell_id: String,
 }
 
+#[derive(Debug, Clone)]
+struct KeyBufferEntry {
+    key: char,
+    timestamp_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyPressResult {
+    pub matched: bool,
+    pub is_partial_match: bool,
+    pub should_clear_buffer: bool,
+    pub hangul: String,
+    pub cell_id: String,
+    pub points: i32,
+    pub time_gap_ms: u32,
+    pub is_high_quality: bool,
+    pub current_buffer: String,
+}
+
 // ============================================================================
 // GAME CORE
 // ============================================================================
@@ -125,6 +145,8 @@ pub struct HangulGameCore {
     active_reveals: Vec<ActiveReveal>,
     current_time_window_ms: u32,
     stats: GameStats,
+    key_buffer: Vec<KeyBufferEntry>,
+    buffer_timeout_ms: u64,
 }
 
 #[wasm_bindgen]
@@ -138,6 +160,8 @@ impl HangulGameCore {
             config,
             active_reveals: Vec::new(),
             stats: GameStats::new(),
+            key_buffer: Vec::new(),
+            buffer_timeout_ms: 300,
         })
     }
 
@@ -175,15 +199,34 @@ impl HangulGameCore {
         }
     }
 
-    /// Process a key press
-    /// Returns MatchResult
+    /// Process a single key press with buffer management
+    /// Handles greedy matching, partial matches, and buffer clearing
     #[wasm_bindgen(js_name = processKeyPress)]
-    pub fn process_key_press(&mut self, keys_pressed: String, pressed_at_ms: u64) -> JsValue {
-        // Find first matching reveal
-        let matched_idx = self.active_reveals.iter().position(|r| r.expected_key == keys_pressed);
+    pub fn process_key_press(&mut self, key: String, pressed_at_ms: u64) -> JsValue {
+        // Clean old keys from buffer based on timeout
+        self.key_buffer.retain(|entry| pressed_at_ms.saturating_sub(entry.timestamp_ms) < self.buffer_timeout_ms);
 
-        let result = match matched_idx {
-            Some(idx) => {
+        // Add new key to buffer
+        if let Some(key_char) = key.chars().next() {
+            self.key_buffer.push(KeyBufferEntry {
+                key: key_char,
+                timestamp_ms: pressed_at_ms,
+            });
+        }
+
+        // Get current buffer as string
+        let current_buffer: String = self.key_buffer.iter().map(|e| e.key).collect();
+
+        // Try to match with greedy approach (longest first)
+        // Sort active reveals by expected_key length (descending)
+        let mut sorted_indices: Vec<usize> = (0..self.active_reveals.len()).collect();
+        sorted_indices.sort_by(|&a, &b| self.active_reveals[b].expected_key.len().cmp(&self.active_reveals[a].expected_key.len()));
+
+        // Check for complete match
+        for &idx in &sorted_indices {
+            let reveal = &self.active_reveals[idx];
+            if current_buffer == reveal.expected_key {
+                // MATCH FOUND!
                 let reveal = self.active_reveals.swap_remove(idx);
                 let time_gap = pressed_at_ms.saturating_sub(reveal.revealed_at_ms);
                 let is_high_quality = time_gap <= self.config.correctness_threshold_ms as u64;
@@ -203,32 +246,76 @@ impl HangulGameCore {
                     self.adjust_difficulty_faster();
                 }
 
-                MatchResult {
-                    matched: true,
-                    cell_id: reveal.cell_id,
-                    hangul: reveal.hangul,
-                    time_gap_ms: time_gap as u32,
-                    points,
-                    is_high_quality,
-                }
-            }
-            None => {
-                // Wrong key - reset streak and slow down
-                self.stats.current_streak = 0;
-                self.adjust_difficulty_slower();
+                // Clear buffer after successful match
+                self.key_buffer.clear();
 
-                MatchResult {
-                    matched: false,
-                    cell_id: String::new(),
-                    hangul: String::new(),
-                    time_gap_ms: 0,
-                    points: 0,
-                    is_high_quality: false,
-                }
+                let result = KeyPressResult {
+                    matched: true,
+                    is_partial_match: false,
+                    should_clear_buffer: true,
+                    hangul: reveal.hangul,
+                    cell_id: reveal.cell_id,
+                    points,
+                    time_gap_ms: time_gap as u32,
+                    is_high_quality,
+                    current_buffer: String::new(),
+                };
+
+                return serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL);
             }
+        }
+
+        // No complete match - check if this is a valid partial sequence
+        let is_partial = self
+            .active_reveals
+            .iter()
+            .any(|reveal| reveal.expected_key.starts_with(&current_buffer) && reveal.expected_key.len() > current_buffer.len());
+
+        if is_partial {
+            // Valid partial match - keep buffer, wait for more keys
+            let result = KeyPressResult {
+                matched: false,
+                is_partial_match: true,
+                should_clear_buffer: false,
+                hangul: String::new(),
+                cell_id: String::new(),
+                points: 0,
+                time_gap_ms: 0,
+                is_high_quality: false,
+                current_buffer: current_buffer.clone(),
+            };
+
+            return serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL);
+        }
+
+        // Invalid sequence - no match and not building toward anything
+        // Reset streak, penalize, and clear buffer
+        self.stats.current_streak = 0;
+        self.adjust_difficulty_slower();
+        self.key_buffer.clear();
+
+        let result = KeyPressResult {
+            matched: false,
+            is_partial_match: false,
+            should_clear_buffer: true,
+            hangul: String::new(),
+            cell_id: String::new(),
+            points: 0,
+            time_gap_ms: 0,
+            is_high_quality: false,
+            current_buffer: String::new(),
         };
 
         serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
+    }
+
+    /// Reset game state including key buffer
+    #[wasm_bindgen]
+    pub fn reset(&mut self) {
+        self.active_reveals.clear();
+        self.current_time_window_ms = self.config.max_time_window_ms;
+        self.stats = GameStats::new();
+        self.key_buffer.clear();
     }
 
     /// Check for expired reveals and remove them
@@ -298,14 +385,6 @@ impl HangulGameCore {
     #[wasm_bindgen(js_name = getActiveCount)]
     pub fn get_active_count(&self) -> usize {
         self.active_reveals.len()
-    }
-
-    /// Reset game state
-    #[wasm_bindgen]
-    pub fn reset(&mut self) {
-        self.active_reveals.clear();
-        self.current_time_window_ms = self.config.max_time_window_ms;
-        self.stats = GameStats::new();
     }
 }
 
