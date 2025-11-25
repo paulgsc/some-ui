@@ -239,8 +239,8 @@ export class WasmGameBridge {
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   minTimeWindowMs: 1500,
   maxTimeWindowMs: 4000,
-  correctnessThresholdMs: 1000,
-  speedIncreaseEveryNCorrect: 3,
+  correctnessThresholdMs: 2000,
+  speedIncreaseEveryNCorrect: 1,
   timeWindowStepMs: 200,
   hideRomanizationStreak: 5,
   pointsPerCorrect: 10,

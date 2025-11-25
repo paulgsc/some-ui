@@ -407,13 +407,37 @@ impl HangulGameCore {
     }
 
     fn calculate_spawn_interval(&self) -> u32 {
-        let ratio = self.current_time_window_ms as f32 / self.config.max_time_window_ms as f32;
-        let base_interval = 1500;
-        let min_interval = 800;
-        let max_interval = 2500;
+        // 1. Define the spawn interval range (these values determine max character density)
+        let min_interval = 800.0; // Fastest spawn (Hardest difficulty)
+        let max_interval: f32 = 2500.0; // Slowest spawn (Easiest difficulty)
 
-        let interval = (base_interval as f32 * ratio) as u32;
-        interval.clamp(min_interval, max_interval)
+        // 2. Define the difficulty range (based on character lifetime)
+        let max_time = self.config.max_time_window_ms as f32;
+        let min_time = self.config.min_time_window_ms as f32;
+        let current_time = self.current_time_window_ms as f32;
+
+        // Total possible reduction in time window
+        let total_time_range = max_time - min_time;
+
+        // Handle edge case where max and min are the same to prevent division by zero
+        if total_time_range <= 0.0 {
+            return max_interval.round() as u32;
+        }
+
+        // 3. Calculate Normalized Difficulty Ratio (0.0 = Easiest, 1.0 = Hardest)
+        // How much has the current time window been reduced from the max?
+        let difficulty_increase_ratio = (max_time - current_time) / total_time_range;
+
+        let normalized_ratio = difficulty_increase_ratio.max(0.0).min(1.0);
+
+        // 4. Interpolate the Spawn Interval (Linear Scaling)
+        // Interval = Max Interval - (Range * Normalized Ratio)
+        let interval_range = max_interval - min_interval;
+
+        let interval = max_interval - (interval_range * normalized_ratio);
+
+        // Clamp to ensure it stays within the defined min/max and return as u32
+        interval.clamp(min_interval, max_interval).round() as u32
     }
 }
 

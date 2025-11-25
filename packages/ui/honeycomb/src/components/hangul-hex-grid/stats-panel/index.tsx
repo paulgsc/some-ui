@@ -15,8 +15,15 @@ export const StatsPanel = ({
   currentTimeWindow,
 }: StatsPanelProps): React.JSX.Element => {
   const getDifficultyLabel = () => {
-    if (timingParams.characterLifetimeMs < 2000) return "🔥 Hard"
-    if (timingParams.characterLifetimeMs < 3000) return "⚡ Medium"
+    // Current Time Window starts at 4000ms by default
+
+    // Hard: When the window is 2500ms or less
+    if (timingParams.characterLifetimeMs <= 2500) return "🔥 Hard"
+
+    // Medium: When the window is between 2501ms and 3500ms
+    if (timingParams.characterLifetimeMs <= 3500) return "⚡ Medium"
+
+    // Easy: When the window is 3501ms or more (up to the max 4000ms)
     return "🌱 Easy"
   }
 
