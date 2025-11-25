@@ -1,16 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
+import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
+import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
+import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
 import { HangulHexCell } from "@honeycomb/components/hangul-hex-grid/hangul-hex-cell"
+import { InstructionsPanel } from "@honeycomb/components/hangul-hex-grid/instructions-panel"
+import { KeyBufferDisplay } from "@honeycomb/components/hangul-hex-grid/key-buffer-display"
+import { LoadingState } from "@honeycomb/components/hangul-hex-grid/loading-state"
+import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overlay"
+import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
+import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
 import type { HexCellData } from "@honeycomb/components/hex-grid"
 import { HexGrid } from "@honeycomb/components/hex-grid"
+import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
+import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
-  DisplayCharacter,
   GameStats,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-
-type CharacterWithLifetime = DisplayCharacter & { timeRemaining: number }
+import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
 
 export const HangulHexGrid = (): React.JSX.Element => {
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
@@ -39,155 +48,31 @@ export const HangulHexGrid = (): React.JSX.Element => {
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
 
-  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-  // ========================================================================
-  // SPAWN CHARACTER
-  // ========================================================================
-
-  const spawnCharacter = useCallback(() => {
-    if (!gameBridge) return
-
-    const char = gameBridge.spawnCharacter()
-    if (!char) return // Grid full
-
-    setActiveCharacters((prev) => {
-      const next = new Map(prev)
-      next.set(char.cellId, {
-        ...char,
-        timeRemaining: 1,
-      })
-      return next
-    })
-
-    setTimingParams(gameBridge.getTimingParams())
-  }, [gameBridge])
-
-  // ========================================================================
-  // UPDATE LIFETIMES & CHECK EXPIRATION
-  // ========================================================================
-
-  const updateCharacters = useCallback(() => {
-    if (!gameBridge) return
-
-    const expiredResult = gameBridge.checkExpired()
-    const now = Date.now()
-    const currentWindow = gameBridge.getCurrentTimeWindow()
-
-    setActiveCharacters((prev) => {
-      const next = new Map(prev)
-
-      // Remove expired
-      expiredResult.cellIds.forEach((cellId) => next.delete(cellId))
-
-      // Update time remaining for active
-      next.forEach((char, cellId) => {
-        const age = now - char.spawnedAt
-        const timeRemaining = Math.max(0, 1 - age / currentWindow)
-        next.set(cellId, { ...char, timeRemaining })
-      })
-
-      return next
-    })
-
-    if (expiredResult.count > 0) {
-      setStats(gameBridge.getStats())
-      setTimingParams(gameBridge.getTimingParams())
-    }
-  }, [gameBridge])
-
-  // ========================================================================
-  // KEYBOARD INPUT
-  // ========================================================================
-
-  useEffect(() => {
-    if (isPaused || !gameBridge || !isInitialized) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return
-      if (e.key === " ") return
-
-      const now = Date.now()
-      const match = keyboardManager.addKey(e.key, now)
-
-      setKeyBuffer(keyboardManager.getBuffer())
-
-      if (match) {
-        const result = gameBridge.processKeyPress(match.keys)
-
-        if (result.matched) {
-          setActiveCharacters((prev) => {
-            const next = new Map(prev)
-            next.delete(result.cellId)
-            return next
-          })
-
-          setLastPoints(result.points)
-          setShowSuccessFeedback(true)
-          setTimeout(() => setShowSuccessFeedback(false), 500)
-
-          keyboardManager.clearBuffer()
-          setKeyBuffer("")
-        }
-
-        setStats(gameBridge.getStats())
-        setTimingParams(gameBridge.getTimingParams())
-      }
-
-      setTimeout(() => {
-        if (keyboardManager.shouldClearBuffer(Date.now())) {
-          keyboardManager.clearBuffer()
-          setKeyBuffer("")
-        }
-      }, 350)
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [gameBridge, keyboardManager, isPaused, isInitialized])
-
-  // ========================================================================
-  // SPAWN TIMER
-  // ========================================================================
-
-  useEffect(() => {
-    if (isPaused || !gameBridge || !isInitialized) return
-
-    spawnCharacter() // Initial spawn
-    spawnTimerRef.current = setInterval(
-      spawnCharacter,
-      timingParams.spawnIntervalMs
-    )
-
-    return () => {
-      if (spawnTimerRef.current) clearInterval(spawnTimerRef.current)
-    }
-  }, [
-    spawnCharacter,
-    timingParams.spawnIntervalMs,
-    isPaused,
+  // Game loop hook
+  useGameLoop({
     gameBridge,
     isInitialized,
-  ])
+    isPaused,
+    timingParams,
+    activeCharacters,
+    setActiveCharacters,
+    setStats,
+    setTimingParams,
+  })
 
-  // ========================================================================
-  // UPDATE TIMER
-  // ========================================================================
-
-  useEffect(() => {
-    if (isPaused || !gameBridge || !isInitialized) return
-
-    updateTimerRef.current = setInterval(updateCharacters, 50)
-
-    return () => {
-      if (updateTimerRef.current) clearInterval(updateTimerRef.current)
-    }
-  }, [updateCharacters, isPaused, gameBridge, isInitialized])
-
-  // ========================================================================
-  // RESET
-  // ========================================================================
+  // Keyboard input hook
+  useKeyboardInput({
+    gameBridge,
+    isInitialized,
+    isPaused,
+    keyboardManager,
+    setActiveCharacters,
+    setStats,
+    setTimingParams,
+    setKeyBuffer,
+    setShowSuccessFeedback,
+    setLastPoints,
+  })
 
   const handleReset = useCallback(() => {
     if (!gameBridge) return
@@ -201,44 +86,17 @@ export const HangulHexGrid = (): React.JSX.Element => {
     setIsPaused(false)
   }, [gameBridge, keyboardManager])
 
-  // ========================================================================
-  // LOADING STATE
-  // ========================================================================
+  const handleTogglePause = useCallback(() => {
+    setIsPaused((prev) => !prev)
+  }, [])
 
   if (isLoading) {
-    return (
-      <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="glass-effect rounded-3xl px-12 py-8 text-white text-center">
-          <div className="text-2xl font-bold mb-4">Loading WASM...</div>
-          <div className="text-white/70">Initializing game core</div>
-        </div>
-      </div>
-    )
+    return <LoadingState />
   }
-
-  // ========================================================================
-  // ERROR STATE
-  // ========================================================================
 
   if (error || !gameBridge) {
-    return (
-      <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="glass-effect rounded-3xl px-12 py-8 text-white text-center max-w-md">
-          <div className="text-2xl font-bold mb-4 text-red-400">Error</div>
-          <div className="text-white/70 mb-4">
-            {error || "Failed to initialize game"}
-          </div>
-          <div className="text-sm text-white/50">
-            Make sure the WASM module is built and available.
-          </div>
-        </div>
-      </div>
-    )
+    return <ErrorState error={error} />
   }
-
-  // ========================================================================
-  // RENDER
-  // ========================================================================
 
   const hexCells: Array<HexCellData<CharacterWithLifetime>> = Array.from(
     activeCharacters.values()
@@ -255,27 +113,13 @@ export const HangulHexGrid = (): React.JSX.Element => {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Animated background */}
       <div
         className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 animate-pulse"
         style={{ animationDuration: "8s" }}
       />
 
-      {/* Success feedback */}
-      {showSuccessFeedback && (
-        <div
-          className="absolute text-4xl font-bold text-green-400 pointer-events-none z-50 animate-ping"
-          style={{
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          +{lastPoints}
-        </div>
-      )}
+      <SuccessFeedback show={showSuccessFeedback} points={lastPoints} />
 
-      {/* Hex Grid */}
       <HexGrid
         cellCount={67}
         hexSize={70}
@@ -306,156 +150,25 @@ export const HangulHexGrid = (): React.JSX.Element => {
         )}
       />
 
-      {/* Stats Panel */}
-      <div className="absolute top-6 left-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl min-w-[280px]">
-        <div className="text-2xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-          한글 타이핑
-        </div>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-white/70">Score:</span>
-            <span className="font-bold text-xl text-cyan-400">
-              {stats.score}
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-white/70">Accuracy:</span>
-            <span
-              className={`font-bold ${
-                stats.accuracy >= 80
-                  ? "text-green-400"
-                  : stats.accuracy >= 60
-                    ? "text-yellow-400"
-                    : "text-red-400"
-              }`}
-            >
-              {stats.accuracy.toFixed(1)}%
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-white/70">Streak:</span>
-            <span className="font-bold text-purple-400">
-              {stats.currentStreak}{" "}
-              <span className="text-xs text-white/50">
-                (best: {stats.bestStreak})
-              </span>
-            </span>
-          </div>
-
-          <div className="flex justify-between text-xs mt-3 pt-3 border-t border-white/10">
-            <span className="text-white/50">Correct:</span>
-            <span className="text-green-400">{stats.totalCorrect}</span>
-          </div>
-
-          <div className="flex justify-between text-xs">
-            <span className="text-white/50">Missed:</span>
-            <span className="text-red-400">{stats.totalMissed}</span>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-white/10">
-            <div className="text-xs text-white/50 mb-1">Difficulty:</div>
-            <div className="text-xs text-cyan-400">
-              {timingParams.characterLifetimeMs < 2000
-                ? "🔥 Hard"
-                : timingParams.characterLifetimeMs < 3000
-                  ? "⚡ Medium"
-                  : "🌱 Easy"}
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-white/50">Time Window:</span>
-              <span className="text-cyan-400">
-                {gameBridge.getCurrentTimeWindow()}ms
-              </span>
-            </div>
-            <div className="text-xs text-white/40 mt-1">
-              {timingParams.showRomanization ? "💡 Hints ON" : "🎯 Hints OFF"}
-            </div>
-          </div>
-          <div className="flex justify-between text-xs border-t border-white/10 pt-2 mt-2">
-            <span className="text-white/50">Romanization:</span>
-            <span
-              className={
-                timingParams.showRomanization
-                  ? "text-yellow-400"
-                  : "text-green-400"
-              }
-            >
-              {timingParams.showRomanization ? "SHOWN" : "HIDDEN"}
-            </span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-white/50">Streak for hiding:</span>
-            <span className="text-cyan-400">{stats.currentStreak} / 5</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Key Buffer */}
-      {keyBuffer && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40">
-          <div className="glass-effect rounded-xl px-6 py-3 text-white text-2xl font-mono font-bold">
-            {keyBuffer}
-          </div>
-        </div>
-      )}
-
-      {/* Controls */}
-      <div className="absolute top-6 right-6 flex gap-3">
-        <button
-          onClick={() => setIsPaused((prev) => !prev)}
-          className="glass-effect rounded-xl px-5 py-3 text-white font-semibold hover:bg-white/20 transition-all shadow-lg"
-        >
-          {isPaused ? "▶ Resume" : "⏸ Pause"}
-        </button>
-        <button
-          onClick={handleReset}
-          className="glass-effect rounded-xl px-5 py-3 text-white font-semibold hover:bg-white/20 transition-all shadow-lg"
-        >
-          🔄 Reset
-        </button>
-      </div>
-
-      {/* Instructions */}
-      <div className="absolute bottom-6 left-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl max-w-md">
-        <div className="text-sm space-y-2">
-          <div className="font-bold text-cyan-400 mb-2">How to Play:</div>
-          <p className="text-white/80 text-xs leading-relaxed">
-            Type the QWERTY keys for each Hangul character before time runs out!
-            Some characters need multiple keys (like{" "}
-            <span className="font-mono">ho</span> → ㅙ).
-          </p>
-          <p className="text-white/60 text-xs mt-2">
-            💡 Build streaks to increase difficulty and hide hints!
-          </p>
-        </div>
-      </div>
-
-      {/* Pause Overlay */}
-      {isPaused && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-40">
-          <div className="glass-effect rounded-3xl px-12 py-8 text-white text-center">
-            <div className="text-4xl font-bold mb-4">⏸ Paused</div>
-            <div className="text-white/70">Press Resume to continue</div>
-          </div>
-        </div>
-      )}
-
-      {/* Decorative particles */}
-      <div
-        className="absolute top-32 right-20 w-3 h-3 bg-cyan-400/40 rounded-full blur-sm animate-pulse"
-        style={{ animationDuration: "3s" }}
+      <StatsPanel
+        stats={stats}
+        timingParams={timingParams}
+        currentTimeWindow={gameBridge.getCurrentTimeWindow()}
       />
-      <div
-        className="absolute bottom-40 right-32 w-2 h-2 bg-purple-400/50 rounded-full blur-sm animate-pulse"
-        style={{ animationDuration: "4s", animationDelay: "1s" }}
+
+      <KeyBufferDisplay buffer={keyBuffer} />
+
+      <ControlButtons
+        isPaused={isPaused}
+        onTogglePause={handleTogglePause}
+        onReset={handleReset}
       />
-      <div
-        className="absolute top-1/2 left-20 w-2 h-2 bg-pink-400/40 rounded-full blur-sm animate-pulse"
-        style={{ animationDuration: "5s", animationDelay: "2s" }}
-      />
+
+      <InstructionsPanel />
+
+      <PauseOverlay isPaused={isPaused} onResume={handleTogglePause} />
+
+      <DecorativeParticles />
     </div>
   )
 }
