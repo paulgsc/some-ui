@@ -120,7 +120,7 @@ export const HangulHexCell = ({
         fill="rgba(255,255,255,0.5)"
         className="font-mono pointer-events-none"
       >
-        {character.qwertyKey}
+        {showRomanization && character.qwertyKey}
       </text>
 
       {/* Hover popup with romanization */}

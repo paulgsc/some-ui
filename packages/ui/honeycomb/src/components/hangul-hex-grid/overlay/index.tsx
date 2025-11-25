@@ -364,9 +364,31 @@ export const HangulHexGrid = (): React.JSX.Element => {
                   ? "⚡ Medium"
                   : "🌱 Easy"}
             </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-white/50">Time Window:</span>
+              <span className="text-cyan-400">
+                {gameBridge.getCurrentTimeWindow()}ms
+              </span>
+            </div>
             <div className="text-xs text-white/40 mt-1">
               {timingParams.showRomanization ? "💡 Hints ON" : "🎯 Hints OFF"}
             </div>
+          </div>
+          <div className="flex justify-between text-xs border-t border-white/10 pt-2 mt-2">
+            <span className="text-white/50">Romanization:</span>
+            <span
+              className={
+                timingParams.showRomanization
+                  ? "text-yellow-400"
+                  : "text-green-400"
+              }
+            >
+              {timingParams.showRomanization ? "SHOWN" : "HIDDEN"}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-white/50">Streak for hiding:</span>
+            <span className="text-cyan-400">{stats.currentStreak} / 5</span>
           </div>
         </div>
       </div>
