@@ -46,6 +46,11 @@
   --chart-4: oklch(0.76 0.11 280);
   --chart-5: oklch(0.74 0.13 10);
 
+  /* Cdrama specific tokens */
+  --cdrama-blossom: oklch(0.75 0.15 20);
+  --cdrama-accent: oklch(0.72 0.18 15);
+  --cdrama-surface: oklch(0.95 0.02 40);
+
   /* Extras — soft romantic glows */
   --glow-primary: 0 0 20px oklch(0.75 0.15 20 / 0.35);
   --glow-accent: 0 0 24px oklch(0.72 0.18 15 / 0.4);
@@ -79,6 +84,11 @@
   --glow-primary: 0 0 24px oklch(0.78 0.16 25 / 0.5);
   --glow-accent: 0 0 28px oklch(0.75 0.19 18 / 0.55);
   --glow-card: 0 0 16px oklch(0.88 0.03 280 / 0.3);
+
+  /* Adding dark mode variants of cdrama-specific tokens */
+  --cdrama-blossom: oklch(0.78 0.16 25);
+  --cdrama-accent: oklch(0.75 0.19 18);
+  --cdrama-surface: oklch(0.25 0.03 30);
 }
 
 .cdrama * {
@@ -131,5 +141,30 @@
   50% {
     opacity: 1;
     transform: scale(1) rotate(180deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ease-out-quart {
+  0% {
+    animation-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
   }
 }
