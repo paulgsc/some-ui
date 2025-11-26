@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react"
+import type { AudioEvent } from "@honeycomb/hooks/use-game-audio"
 import type {
   GameStats,
   TimingParams,
@@ -6,13 +7,11 @@ import type {
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
 
-
 type UseGameLoopProps = {
   gameBridge: WasmGameBridge | null
   isInitialized: boolean
   isPaused: boolean
   timingParams: TimingParams
-  activeCharacters: Map<string, CharacterWithLifetime>
   setActiveCharacters: React.Dispatch<
     React.SetStateAction<Map<string, CharacterWithLifetime>>
   >
@@ -20,6 +19,7 @@ type UseGameLoopProps = {
     React.SetStateAction<GameStats & { accuracy: number }>
   >
   setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
+  playSound: (event: AudioEvent) => void
 }
 
 export const useGameLoop = ({
@@ -27,19 +27,23 @@ export const useGameLoop = ({
   isInitialized,
   isPaused,
   timingParams,
-  activeCharacters,
   setActiveCharacters,
   setStats,
   setTimingParams,
+  playSound,
 }: UseGameLoopProps) => {
-  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const spawnCharacter = useCallback(() => {
     if (!gameBridge) return
 
     const char = gameBridge.spawnCharacter()
     if (!char) return // Grid full
+
+    if (char.playSpawnSound) {
+      playSound("character_spawn")
+    }
 
     setActiveCharacters((prev) => {
       const next = new Map(prev)
@@ -57,6 +61,9 @@ export const useGameLoop = ({
     if (!gameBridge) return
 
     const expiredResult = gameBridge.checkExpired()
+    if (expiredResult.playExpireSound) {
+      playSound("character_expire")
+    }
     const now = Date.now()
     const currentWindow = gameBridge.getCurrentTimeWindow()
 

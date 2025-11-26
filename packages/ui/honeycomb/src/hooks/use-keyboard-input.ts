@@ -1,4 +1,6 @@
 import { useEffect } from "react"
+import type { AudioEvent } from "@honeycomb/hooks/use-game-audio"
+import { processAudioEvents } from "@honeycomb/hooks/use-game-audio"
 import type { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
   GameStats,
@@ -22,6 +24,7 @@ type UseKeyboardInputProps = {
   setKeyBuffer: React.Dispatch<React.SetStateAction<string>>
   setShowSuccessFeedback: React.Dispatch<React.SetStateAction<boolean>>
   setLastPoints: React.Dispatch<React.SetStateAction<number>>
+  playSound: (event: AudioEvent) => void
 }
 
 export const useKeyboardInput = ({
@@ -35,6 +38,7 @@ export const useKeyboardInput = ({
   setKeyBuffer,
   setShowSuccessFeedback,
   setLastPoints,
+  playSound,
 }: UseKeyboardInputProps) => {
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
@@ -49,9 +53,12 @@ export const useKeyboardInput = ({
       keyboardManager.addKey(e.key, now)
 
       // Send to Rust WASM core for processing
-      const result = gameBridge.processKeyPress(e.key, now)
+      const result = gameBridge.processKeyPress(e.key)
 
-      // Update display buffer from result or local manager
+      // Play audio events from Rust
+      processAudioEvents(result.audioEvents, playSound)
+
+      // Update display buffer
       setKeyBuffer(result.currentBuffer || keyboardManager.getBuffer())
 
       if (result.matched) {
@@ -66,15 +73,12 @@ export const useKeyboardInput = ({
         setShowSuccessFeedback(true)
         setTimeout(() => setShowSuccessFeedback(false), 500)
 
-        // Clear local buffer on match
         keyboardManager.clearBuffer()
         setKeyBuffer("")
       } else if (result.shouldClearBuffer) {
-        // Invalid input - clear local buffer and sync UI
         keyboardManager.clearBuffer()
         setKeyBuffer("")
       }
-      // else: partial match, keep buffer and wait for more keys
 
       // Always sync stats and timing after any key press
       setStats(gameBridge.getStats())
@@ -96,6 +100,7 @@ export const useKeyboardInput = ({
     keyboardManager,
     isPaused,
     isInitialized,
+    playSound,
     setActiveCharacters,
     setStats,
     setTimingParams,

@@ -75,6 +75,7 @@ pub struct SpawnResult {
     pub hangul: String,
     pub expected_key: String,
     pub revealed_at_ms: u64,
+    pub play_spawn_sound: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,6 +94,7 @@ pub struct MatchResult {
 pub struct ExpiredResult {
     pub cell_ids: Vec<String>,
     pub count: usize,
+    pub play_expire_sound: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,6 +103,30 @@ pub struct TimingParams {
     pub spawn_interval_ms: u32,
     pub character_lifetime_ms: u32,
     pub show_romanization: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioEvents {
+    pub match_correct: bool,
+    pub match_perfect: bool,
+    pub match_miss: bool,
+    pub character_expired: bool,
+    pub streak_milestone: bool,
+    pub difficulty_changed: bool,
+}
+
+impl AudioEvents {
+    fn new() -> Self {
+        Self {
+            match_correct: false,
+            match_perfect: false,
+            match_miss: false,
+            character_expired: false,
+            streak_milestone: false,
+            difficulty_changed: false,
+        }
+    }
 }
 
 // ============================================================================
@@ -133,6 +159,7 @@ pub struct KeyPressResult {
     pub time_gap_ms: u32,
     pub is_high_quality: bool,
     pub current_buffer: String,
+    pub audio_events: AudioEvents,
 }
 
 // ============================================================================
@@ -147,6 +174,7 @@ pub struct HangulGameCore {
     stats: GameStats,
     key_buffer: Vec<KeyBufferEntry>,
     buffer_timeout_ms: u64,
+    last_difficulty_timestamp: u64,
 }
 
 #[wasm_bindgen]
@@ -162,6 +190,7 @@ impl HangulGameCore {
             stats: GameStats::new(),
             key_buffer: Vec::new(),
             buffer_timeout_ms: 300,
+            last_difficulty_timestamp: 0,
         })
     }
 
@@ -191,6 +220,7 @@ impl HangulGameCore {
                     hangul,
                     expected_key,
                     revealed_at_ms,
+                    play_spawn_sound: true,
                 };
 
                 serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
@@ -222,6 +252,9 @@ impl HangulGameCore {
         let mut sorted_indices: Vec<usize> = (0..self.active_reveals.len()).collect();
         sorted_indices.sort_by(|&a, &b| self.active_reveals[b].expected_key.len().cmp(&self.active_reveals[a].expected_key.len()));
 
+        let prev_streak = self.stats.current_streak;
+        let mut audio_events = AudioEvents::new();
+
         // Check for complete match
         for &idx in &sorted_indices {
             let reveal = &self.active_reveals[idx];
@@ -243,9 +276,15 @@ impl HangulGameCore {
 
                 // Adjust difficulty on high quality hits
                 if is_high_quality {
+                    audio_events.match_perfect = true;
                     self.adjust_difficulty_faster();
+                    audio_events.difficulty_changed = self.current_time_window_ms != self.config.max_time_window_ms;
+                } else {
+                    audio_events.match_correct = true;
                 }
 
+                // Check for streak milestone
+                audio_events.streak_milestone = self.stats.current_streak > 0 && self.stats.current_streak % 5 == 0 && self.stats.current_streak != prev_streak;
                 // Clear buffer after successful match
                 self.key_buffer.clear();
 
@@ -259,6 +298,7 @@ impl HangulGameCore {
                     time_gap_ms: time_gap as u32,
                     is_high_quality,
                     current_buffer: String::new(),
+                    audio_events,
                 };
 
                 return serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL);
@@ -283,6 +323,7 @@ impl HangulGameCore {
                 time_gap_ms: 0,
                 is_high_quality: false,
                 current_buffer: current_buffer.clone(),
+                audio_events,
             };
 
             return serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL);
@@ -292,6 +333,8 @@ impl HangulGameCore {
         // Reset streak, penalize, and clear buffer
         self.stats.current_streak = 0;
         self.adjust_difficulty_slower();
+        audio_events.match_miss = true;
+        audio_events.difficulty_changed = true;
         self.key_buffer.clear();
 
         let result = KeyPressResult {
@@ -304,6 +347,7 @@ impl HangulGameCore {
             time_gap_ms: 0,
             is_high_quality: false,
             current_buffer: String::new(),
+            audio_events,
         };
 
         serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
@@ -316,6 +360,7 @@ impl HangulGameCore {
         self.current_time_window_ms = self.config.max_time_window_ms;
         self.stats = GameStats::new();
         self.key_buffer.clear();
+        self.last_difficulty_timestamp = 0;
     }
 
     /// Check for expired reveals and remove them
@@ -338,6 +383,8 @@ impl HangulGameCore {
 
         // Update stats for each expiration
         let count = expired_cells.len();
+        let play_sound = count > 0;
+
         if count > 0 {
             self.stats.total_missed += count;
             self.stats.current_streak = 0;
@@ -352,7 +399,11 @@ impl HangulGameCore {
             }
         }
 
-        let result = ExpiredResult { cell_ids: expired_cells, count };
+        let result = ExpiredResult {
+            cell_ids: expired_cells,
+            count,
+            play_expire_sound: play_sound,
+        };
 
         serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
     }

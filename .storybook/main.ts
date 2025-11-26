@@ -13,6 +13,8 @@ const config: StorybookConfig = {
   ],
   logLevel: "error",
 
+  staticDirs: ["../packages/ui/honeycomb/public"],
+
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,

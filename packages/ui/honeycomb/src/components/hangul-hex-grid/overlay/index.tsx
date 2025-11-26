@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
@@ -14,6 +14,7 @@ import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
+import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
   GameStats,
@@ -48,16 +49,19 @@ export const HangulHexGrid = (): React.JSX.Element => {
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
 
+  // Initialize audio
+  const { playSound } = useGameAudio({ enabled: true, volume: 0.5 })
+
   // Game loop hook
   useGameLoop({
     gameBridge,
     isInitialized,
     isPaused,
     timingParams,
-    activeCharacters,
     setActiveCharacters,
     setStats,
     setTimingParams,
+    playSound,
   })
 
   // Keyboard input hook
@@ -72,6 +76,7 @@ export const HangulHexGrid = (): React.JSX.Element => {
     setKeyBuffer,
     setShowSuccessFeedback,
     setLastPoints,
+    playSound,
   })
 
   const handleReset = useCallback(() => {

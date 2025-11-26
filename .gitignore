@@ -63,3 +63,6 @@ tsconfig.tsbuildinfo
 
 # bin - rust binaries
 bin
+
+# Static files
+packages/**/public

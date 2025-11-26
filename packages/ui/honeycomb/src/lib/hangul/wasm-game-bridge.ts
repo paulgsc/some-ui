@@ -28,25 +28,42 @@ const GameStatsSchema = z.object({
   totalMissed: z.number().int().nonnegative(),
 })
 
+// NEW: Audio events schema
+const AudioEventsSchema = z.object({
+  matchCorrect: z.boolean(),
+  matchPerfect: z.boolean(),
+  matchMiss: z.boolean(),
+  characterExpired: z.boolean(),
+  streakMilestone: z.boolean(),
+  difficultyChanged: z.boolean(),
+})
+
 const SpawnResultSchema = z.object({
   cellId: z.string(),
   hangul: z.string(),
   expectedKey: z.string(),
   revealedAtMs: z.number().int().nonnegative(),
+  playSpawnSound: z.boolean(),
 })
 
-const MatchResultSchema = z.object({
+// UPDATED: KeyPressResult with audio events
+const KeyPressResultSchema = z.object({
   matched: z.boolean(),
-  cellId: z.string(),
+  isPartialMatch: z.boolean(),
+  shouldClearBuffer: z.boolean(),
   hangul: z.string(),
-  timeGapMs: z.number().int().nonnegative(),
+  cellId: z.string(),
   points: z.number().int(),
+  timeGapMs: z.number().int().nonnegative(),
   isHighQuality: z.boolean(),
+  currentBuffer: z.string(),
+  audioEvents: AudioEventsSchema,
 })
 
 const ExpiredResultSchema = z.object({
   cellIds: z.array(z.string()),
   count: z.number().int().nonnegative(),
+  playExpireSound: z.boolean(),
 })
 
 const TimingParamsSchema = z.object({
@@ -57,8 +74,9 @@ const TimingParamsSchema = z.object({
 
 export type GameConfig = z.infer<typeof GameConfigSchema>
 export type GameStats = z.infer<typeof GameStatsSchema>
+export type AudioEvents = z.infer<typeof AudioEventsSchema>
 export type SpawnResult = z.infer<typeof SpawnResultSchema>
-export type MatchResult = z.infer<typeof MatchResultSchema>
+export type KeyPressResult = z.infer<typeof KeyPressResultSchema>
 export type ExpiredResult = z.infer<typeof ExpiredResultSchema>
 export type TimingParams = z.infer<typeof TimingParamsSchema>
 
@@ -74,7 +92,7 @@ type WasmHangulGameCore = {
     availableCellIds: Array<string>
   ): any // Returns SpawnResult or null via serde-wasm-bindgen
 
-  processKeyPress(keysPressed: string, pressedAtMs: bigint): any // Returns MatchResult
+  processKeyPress(key: string, pressedAtMs: bigint): any // Returns KeyPressResult
 
   checkExpired(currentTimeMs: bigint): any // Returns ExpiredResult
 
@@ -174,12 +192,12 @@ export class WasmGameBridge {
   }
 
   /**
-   * Process a key press
+   * Process a key press (single character)
    */
-  processKeyPress(keys: string): MatchResult {
+  processKeyPress(key: string): KeyPressResult {
     const now = BigInt(Date.now())
-    const result = this.wasmCore.processKeyPress(keys, now)
-    return MatchResultSchema.parse(result)
+    const result = this.wasmCore.processKeyPress(key, now)
+    return KeyPressResultSchema.parse(result)
   }
 
   /**
