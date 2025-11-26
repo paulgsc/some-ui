@@ -170,7 +170,10 @@ export function createStreakOverlay(): HTMLElement {
     }
   }
 
-  const handleTaskToggle = async (categoryId: string, taskId: string): void => {
+  const handleTaskToggle = async (
+    categoryId: string,
+    taskId: string
+  ): Promise<void> => {
     try {
       const response = await browser.runtime.sendMessage({
         type: "TOGGLE_TASK",

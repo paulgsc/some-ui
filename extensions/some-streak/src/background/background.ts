@@ -34,14 +34,29 @@ type ResetAllMessage = {
   type: "RESET_ALL"
 }
 
+type AutoCompleteTaskMessage = {
+  type: "AUTO_COMPLETE_TASK"
+  categoryId: string
+  taskId: string
+}
+
+type CheckTaskStatusMessage = {
+  type: "CHECK_TASK_STATUS"
+  categoryId: string
+  taskId: string
+}
+
 type IncomingMessage =
   | GetDataMessage
   | ToggleTaskMessage
   | SwitchCategoryMessage
   | ResetAllMessage
+  | AutoCompleteTaskMessage
+  | CheckTaskStatusMessage
 
 type MessageResponse =
   | { success: true; data: StorageData }
+  | { success: true; isCompleted: boolean }
   | { success: false; error: string }
 
 /* -------------------------------------------------------
@@ -164,6 +179,55 @@ async function toggleTask(
   return data
 }
 
+async function autoCompleteTask(
+  categoryId: string,
+  taskId: string
+): Promise<StorageData> {
+  const data = await getData()
+
+  const category = data.categories.find((cat) => cat.id === categoryId)
+  if (!category) {
+    throw new Error(`Category ${categoryId} not found`)
+  }
+
+  const task = category.tasks.find((t) => t.id === taskId)
+  if (!task) {
+    throw new Error(`Task ${taskId} not found in category ${categoryId}`)
+  }
+
+  // Only auto-complete if not already done
+  if (!task.done) {
+    task.done = true
+    data.lastActivity = new Date().toISOString()
+
+    await saveData(data)
+    console.log(
+      `[Background] Auto-completed task ${taskId} in category ${categoryId}`
+    )
+  }
+
+  return data
+}
+
+async function checkTaskStatus(
+  categoryId: string,
+  taskId: string
+): Promise<boolean> {
+  const data = await getData()
+
+  const category = data.categories.find((cat) => cat.id === categoryId)
+  if (!category) {
+    return false
+  }
+
+  const task = category.tasks.find((t) => t.id === taskId)
+  if (!task) {
+    return false
+  }
+
+  return task.done
+}
+
 async function switchCategory(index: number): Promise<StorageData> {
   const data = await getData()
 
@@ -238,7 +302,7 @@ async function broadcastUpdate(data: StorageData): Promise<void> {
 browser.runtime.onMessage.addListener(
   (
     message: IncomingMessage,
-    _sender: browser.runtime.MessageSender, // unused → prefixed
+    _sender: browser.runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void
   ): true => {
     ;(async () => {
@@ -254,6 +318,25 @@ browser.runtime.onMessage.addListener(
             const updated = await toggleTask(message.categoryId, message.taskId)
             sendResponse({ success: true, data: updated })
             broadcastUpdate(updated)
+            break
+          }
+
+          case "AUTO_COMPLETE_TASK": {
+            const updated = await autoCompleteTask(
+              message.categoryId,
+              message.taskId
+            )
+            sendResponse({ success: true, data: updated })
+            broadcastUpdate(updated)
+            break
+          }
+
+          case "CHECK_TASK_STATUS": {
+            const isCompleted = await checkTaskStatus(
+              message.categoryId,
+              message.taskId
+            )
+            sendResponse({ success: true, isCompleted })
             break
           }
 
