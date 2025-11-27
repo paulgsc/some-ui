@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { GameConfig } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import type {
+  GameConfig,
+  GameMode,
+  WasmHangulGameCore,
+} from "@honeycomb/lib/hangul/wasm-game-bridge"
 import {
   DEFAULT_GAME_CONFIG,
   WasmGameBridge,
@@ -9,27 +13,14 @@ import {
 // WASM MODULE TYPE
 // ============================================================================
 
-type WasmHangulGameCore = {
-  new (config: GameConfig): WasmHangulGameCore
-  spawnCharacter(
-    hangul: string,
-    expectedKey: string,
-    revealedAtMs: number,
-    availableCellIds: Array<string>
-  ): any
-  processKeyPress(keysPressed: string, pressedAtMs: number): any
-  checkExpired(currentTimeMs: number): any
-  getStats(): any
-  getTimingParams(): any
-  getCurrentTimeWindow(): number
-  getActiveCount(): number
-  reset(): void
-}
-
 type WasmModule = {
   default: () => Promise<void>
   HangulGameCore: {
-    new (config: GameConfig): WasmHangulGameCore
+    new (
+      config: GameConfig,
+      mode: GameMode,
+      gameDurationSeconds?: number
+    ): WasmHangulGameCore
   }
 }
 
@@ -40,6 +31,8 @@ type WasmModule = {
 export type UseHangulGameWasmOptions = {
   config?: Partial<GameConfig>
   autoStart?: boolean
+  mode: GameMode
+  gameDurationSeconds?: number
 }
 
 export type UseHangulGameWasmReturn = {
@@ -76,8 +69,10 @@ async function loadWasmModule(): Promise<WasmModule> {
 
 export function useHangulGameWasm({
   config,
+  mode,
+  gameDurationSeconds,
   autoStart = true,
-}: UseHangulGameWasmOptions = {}): UseHangulGameWasmReturn {
+}: UseHangulGameWasmOptions): UseHangulGameWasmReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -107,11 +102,15 @@ export function useHangulGameWasm({
       }
 
       console.log("Creating game core with config:", finalConfig)
-      const core = new wasmModule.HangulGameCore(finalConfig)
+      const core = new wasmModule.HangulGameCore(
+        finalConfig,
+        mode,
+        gameDurationSeconds
+      )
       wasmCoreRef.current = core
 
       console.log("Creating game bridge...")
-      const bridge = new WasmGameBridge(core)
+      const bridge = new WasmGameBridge(core, mode)
       gameBridgeRef.current = bridge
 
       setIsInitialized(true)

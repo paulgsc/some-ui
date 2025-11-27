@@ -1,4 +1,6 @@
 import type {
+  GameMode,
+  GameProgress,
   GameStats,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
@@ -7,23 +9,22 @@ type StatsPanelProps = {
   stats: GameStats & { accuracy: number }
   timingParams: TimingParams
   currentTimeWindow: number
+  mode: GameMode
+  timeRemaining?: number
+  progress?: GameProgress
 }
 
 export const StatsPanel = ({
   stats,
   timingParams,
   currentTimeWindow,
+  mode,
+  timeRemaining,
+  progress,
 }: StatsPanelProps): React.JSX.Element => {
   const getDifficultyLabel = () => {
-    // Current Time Window starts at 4000ms by default
-
-    // Hard: When the window is 2500ms or less
-    if (timingParams.characterLifetimeMs <= 2500) return "🔥 Hard"
-
-    // Medium: When the window is between 2501ms and 3500ms
-    if (timingParams.characterLifetimeMs <= 3500) return "⚡ Medium"
-
-    // Easy: When the window is 3501ms or more (up to the max 4000ms)
+    if (timingParams.characterLifetimeMs < 2000) return "🔥 Hard"
+    if (timingParams.characterLifetimeMs < 3000) return "⚡ Medium"
     return "🌱 Easy"
   }
 
@@ -33,11 +34,54 @@ export const StatsPanel = ({
     return "text-red-400"
   }
 
+  const formatTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
+  }
+
   return (
     <div className="absolute top-6 left-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl min-w-[280px]">
-      <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-        한글 타이핑
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+          한글 타이핑
+        </h2>
+        <div className="text-xs px-2 py-1 rounded-full bg-white/10 text-cyan-400 font-semibold">
+          {mode === "completion" ? "📋 Complete" : "♾️ Endless"}
+        </div>
+      </div>
+
+      {/* Timer and Progress (Completion Mode) */}
+      {mode === "completion" && (
+        <div className="mb-3 pb-3 border-b border-white/10">
+          {timeRemaining !== undefined && (
+            <div className="flex justify-between items-baseline mb-2">
+              <span className="text-white/70 text-sm">Time:</span>
+              <span className="font-mono text-xl font-bold text-yellow-400">
+                {formatTime(timeRemaining)}
+              </span>
+            </div>
+          )}
+
+          {progress && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-white/70">Progress:</span>
+                <span className="text-cyan-400 font-semibold">
+                  {progress.completedKeys} / {progress.totalKeys}
+                </span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-purple-400 transition-all duration-300"
+                  style={{ width: `${progress.completionPercentage}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between items-baseline">

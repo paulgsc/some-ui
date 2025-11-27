@@ -1,12 +1,8 @@
 import {
+  ALL_MAPPINGS,
   getHangulColor,
-  getRandomHangul,
 } from "@honeycomb/utils/hangul-keyboard-mapping"
 import { z } from "zod"
-
-// ============================================================================
-// TYPE DEFINITIONS (matching Rust structs)
-// ============================================================================
 
 const GameConfigSchema = z.object({
   minTimeWindowMs: z.number().positive(),
@@ -19,6 +15,25 @@ const GameConfigSchema = z.object({
   pointsPerMiss: z.number().int(),
   streakBonusDivisor: z.number().positive(),
 })
+
+const GameProgressSchema = z.object({
+  totalKeys: z.number().int().nonnegative(),
+  completedKeys: z.number().int().nonnegative(),
+  remainingKeys: z.number().int().nonnegative(),
+  completionPercentage: z.number(),
+  keysCompletedList: z.array(z.string()),
+})
+
+const GameStatusSchema = z.object({
+  isComplete: z.boolean(),
+  isTimedOut: z.boolean(),
+  timeRemainingMs: z.number().int().nonnegative(),
+  progress: GameProgressSchema,
+})
+
+export type GameProgress = z.infer<typeof GameProgressSchema>
+export type GameStatus = z.infer<typeof GameStatusSchema>
+export type GameMode = "endless" | "completion"
 
 const GameStatsSchema = z.object({
   score: z.number().int(),
@@ -58,6 +73,7 @@ const KeyPressResultSchema = z.object({
   isHighQuality: z.boolean(),
   currentBuffer: z.string(),
   audioEvents: AudioEventsSchema,
+  countsTowardCompletion: z.boolean(),
 })
 
 const ExpiredResultSchema = z.object({
@@ -84,13 +100,19 @@ export type TimingParams = z.infer<typeof TimingParamsSchema>
 // WASM INTERFACE (from wasm-bindgen generated .d.ts)
 // ============================================================================
 
-type WasmHangulGameCore = {
-  spawnCharacter(
-    hangul: string,
-    expectedKey: string,
-    revealedAtMs: bigint,
-    availableCellIds: Array<string>
-  ): any // Returns SpawnResult or null via serde-wasm-bindgen
+export type WasmHangulGameCore = {
+  // Updated constructor signature
+  new (
+    config: GameConfig,
+    mode: string,
+    gameDurationSeconds?: number
+  ): WasmHangulGameCore
+
+  startTimer(currentTimeMs: bigint): void
+
+  getGameStatus(currentTimeMs: bigint): any // Returns GameStatus
+
+  spawnCharacter(revealedAtMs: bigint, availableCellIds: Array<string>): any
 
   processKeyPress(key: string, pressedAtMs: bigint): any // Returns KeyPressResult
 
@@ -127,10 +149,70 @@ export type DisplayCharacter = {
 export class WasmGameBridge {
   private wasmCore: WasmHangulGameCore
   private availableCells: ReadonlyArray<string>
+  private gameMode: GameMode
 
-  constructor(wasmCore: WasmHangulGameCore) {
+  constructor(wasmCore: WasmHangulGameCore, mode: GameMode = "completion") {
     this.wasmCore = wasmCore
     this.availableCells = this.generateCellIds()
+    this.gameMode = mode
+  }
+
+  /**
+   * Start the game timer (for timed modes)
+   */
+  startTimer(): void {
+    const now = BigInt(Date.now())
+    this.wasmCore.startTimer(now)
+  }
+
+  /**
+   * Get current game status (completion, timeout, progress)
+   */
+  getGameStatus(): GameStatus {
+    const now = BigInt(Date.now())
+    const result = this.wasmCore.getGameStatus(now)
+    return GameStatusSchema.parse(result)
+  }
+
+  /**
+   * Spawn a new character (game mode determines which character)
+   */
+  spawnCharacter(): (DisplayCharacter & { playSpawnSound: boolean }) | null {
+    const now = BigInt(Date.now())
+
+    const result = this.wasmCore.spawnCharacter(now, [...this.availableCells])
+
+    if (result === null || result === undefined) {
+      return null
+    }
+
+    const spawn = SpawnResultSchema.parse(result)
+
+    // Get mapping info for display
+    const mapping = this.getHangulMapping(spawn.hangul)
+
+    return {
+      cellId: spawn.cellId,
+      hangul: spawn.hangul,
+      qwertyKey: spawn.expectedKey,
+      romanization: mapping.romanization,
+      color: getHangulColor(spawn.hangul),
+      spawnedAt: spawn.revealedAtMs,
+      playSpawnSound: spawn.playSpawnSound,
+    }
+  }
+
+  /**
+   * Get the game mode
+   */
+  getMode(): GameMode {
+    return this.gameMode
+  }
+
+  private getHangulMapping(hangul: string) {
+    // Get mapping from your utils
+    const mapping = ALL_MAPPINGS.find((m) => m.hangul === hangul)
+    return mapping || { qwerty: "", hangul, romanization: "" }
   }
 
   /**
@@ -157,38 +239,6 @@ export class WasmGameBridge {
     }
 
     return cells
-  }
-
-  /**
-   * Spawn a new character
-   * Returns display character if successful, null if grid is full
-   */
-  spawnCharacter(): DisplayCharacter | null {
-    const mapping = getRandomHangul()
-    const now = BigInt(Date.now())
-
-    const result = this.wasmCore.spawnCharacter(
-      mapping.hangul,
-      mapping.qwerty,
-      now,
-      [...this.availableCells]
-    )
-
-    if (result === null || result === undefined) {
-      return null
-    }
-
-    // WASM returns SpawnResult via serde-wasm-bindgen
-    const spawn = SpawnResultSchema.parse(result)
-
-    return {
-      cellId: spawn.cellId,
-      hangul: spawn.hangul,
-      qwertyKey: spawn.expectedKey,
-      romanization: mapping.romanization,
-      color: getHangulColor(spawn.hangul),
-      spawnedAt: spawn.revealedAtMs,
-    }
   }
 
   /**

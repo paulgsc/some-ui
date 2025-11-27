@@ -2,6 +2,7 @@ import { useCallback, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
+import { GameOverModal } from "@honeycomb/components/hangul-hex-grid/game-over-modal"
 import { HangulHexCell } from "@honeycomb/components/hangul-hex-grid/hangul-hex-cell"
 import { InstructionsPanel } from "@honeycomb/components/hangul-hex-grid/instructions-panel"
 import { KeyBufferDisplay } from "@honeycomb/components/hangul-hex-grid/key-buffer-display"
@@ -11,20 +12,33 @@ import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
 import type { HexCellData } from "@honeycomb/components/hex-grid"
 import { HexGrid } from "@honeycomb/components/hex-grid"
+import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
+import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
-import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
+  GameMode,
   GameStats,
+  GameStatus,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
 
-export const HangulHexGrid = (): React.JSX.Element => {
+type HangulHexGridProps = {
+  mode?: GameMode
+  gameDurationSeconds?: number
+}
+
+export const HangulHexGrid = ({
+  mode = "completion",
+  gameDurationSeconds = 3 * 60,
+}: HangulHexGridProps): React.JSX.Element => {
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
     autoStart: true,
+    mode,
+    gameDurationSeconds,
   })
 
   const [keyboardManager] = useState(() => new KeyboardInputManager())
@@ -48,6 +62,23 @@ export const HangulHexGrid = (): React.JSX.Element => {
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false)
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
+
+  // Game timer hook (for timed modes)
+  const { isGameOver, timeRemainingMs, progress } = useGameTimer({
+    gameBridge,
+    isInitialized,
+    isPaused,
+    onComplete: (status) => {
+      playSound("game_complete")
+      setIsPaused(true)
+      console.log("🎉 Game completed!", status)
+    },
+    onTimeout: (status) => {
+      playSound("game_timeout")
+      setIsPaused(true)
+      console.log("⏰ Time ran out!", status)
+    },
+  })
 
   // Initialize audio
   const { playSound } = useGameAudio({ enabled: true, volume: 0.5 })
@@ -89,11 +120,22 @@ export const HangulHexGrid = (): React.JSX.Element => {
     setTimingParams(gameBridge.getTimingParams())
     setKeyBuffer("")
     setIsPaused(false)
-  }, [gameBridge, keyboardManager])
+
+    // Restart timer for timed modes
+    if (mode === "completion") {
+      gameBridge.startTimer()
+    }
+  }, [gameBridge, keyboardManager, mode])
 
   const handleTogglePause = useCallback(() => {
-    setIsPaused((prev) => !prev)
-  }, [])
+    if (!isGameOver) {
+      setIsPaused((prev) => !prev)
+    }
+  }, [isGameOver])
+
+  const handleContinue = useCallback(() => {
+    handleReset()
+  }, [handleReset])
 
   if (isLoading) {
     return <LoadingState />
@@ -159,19 +201,33 @@ export const HangulHexGrid = (): React.JSX.Element => {
         stats={stats}
         timingParams={timingParams}
         currentTimeWindow={gameBridge.getCurrentTimeWindow()}
+        mode={mode}
+        timeRemaining={timeRemainingMs}
+        progress={progress}
       />
 
       <KeyBufferDisplay buffer={keyBuffer} />
 
       <ControlButtons
         isPaused={isPaused}
+        isGameOver={isGameOver}
         onTogglePause={handleTogglePause}
         onReset={handleReset}
       />
 
-      <InstructionsPanel />
+      <InstructionsPanel mode={mode} />
 
-      <PauseOverlay isPaused={isPaused} onResume={handleTogglePause} />
+      <PauseOverlay
+        isPaused={isPaused && !isGameOver}
+        onResume={handleTogglePause}
+      />
+
+      <GameOverModal
+        isOpen={isGameOver}
+        status={"game-over"}
+        stats={stats}
+        onContinue={handleContinue}
+      />
 
       <DecorativeParticles />
     </div>
