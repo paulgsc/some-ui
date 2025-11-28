@@ -1,0 +1,184 @@
+/* BOYO Content Masking Styles */
+
+/* Base masking layer - applied to all video elements */
+ytd-video-renderer:not(.boyo-revealed),
+ytd-rich-item-renderer:not(.boyo-revealed),
+ytd-grid-video-renderer:not(.boyo-revealed),
+ytd-compact-video-renderer:not(.boyo-revealed) {
+  position: relative !important;
+}
+
+/* Masked state - complete information blackout */
+.boyo-masked {
+  filter: blur(20px) grayscale(100%) !important;
+  opacity: 0.3 !important;
+  pointer-events: auto !important;
+  transition:
+    filter 0.1s ease,
+    opacity 0.1s ease !important;
+}
+
+/* Revealed state - full access */
+.boyo-revealed {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Overlay - covers masked content */
+.boyo-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100 !important;
+  cursor: pointer !important;
+  border-radius: 12px !important;
+  transition: background 0.2s ease !important;
+}
+
+.boyo-overlay:hover {
+  background: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Default instruction text */
+.boyo-overlay::before {
+  content: "🔒 Click to reveal" !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  margin-bottom: 12px !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Metadata display - Level 1 */
+.boyo-metadata {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  padding: 12px 20px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  margin: 8px !important;
+  backdrop-filter: blur(5px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.boyo-metadata-item {
+  margin: 6px 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Title display - Level 2 */
+.boyo-title {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  max-width: 80% !important;
+  padding: 12px 20px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  margin: 8px !important;
+  backdrop-filter: blur(5px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  line-height: 1.5 !important;
+}
+
+/* Progressive instruction updates */
+.boyo-overlay[data-level="1"]::before {
+  content: "🔍 Hover for details • Click for title" !important;
+}
+
+.boyo-overlay[data-level="2"]::before {
+  content: "👆 Double-click to fully reveal" !important;
+  animation: pulse 2s ease-in-out infinite !important;
+}
+
+/* Pulse animation for final reveal prompt */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Smooth transitions between states */
+.boyo-metadata,
+.boyo-title {
+  animation: fadeIn 0.3s ease !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover state enhancement */
+.boyo-overlay:hover .boyo-metadata,
+.boyo-overlay:hover .boyo-title {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Active click state */
+.boyo-overlay:active {
+  background: rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Ensure overlay doesn't interfere with scrolling */
+.boyo-overlay * {
+  pointer-events: none !important;
+}
+
+/* Responsive sizing for different video layouts */
+@media (max-width: 768px) {
+  .boyo-overlay::before {
+    font-size: 12px !important;
+  }
+
+  .boyo-metadata {
+    font-size: 11px !important;
+    padding: 10px 16px !important;
+  }
+
+  .boyo-title {
+    font-size: 12px !important;
+    padding: 10px 16px !important;
+  }
+}
+
+/* Grid layout adjustments */
+ytd-rich-item-renderer .boyo-overlay {
+  border-radius: 8px !important;
+}
+
+/* Compact video renderer adjustments */
+ytd-compact-video-renderer .boyo-overlay {
+  border-radius: 6px !important;
+}
+
+ytd-compact-video-renderer .boyo-overlay::before {
+  font-size: 11px !important;
+}
+
+ytd-compact-video-renderer .boyo-metadata,
+ytd-compact-video-renderer .boyo-title {
+  font-size: 10px !important;
+  padding: 8px 12px !important;
+}
