@@ -3,6 +3,8 @@ import { storageAPI } from "@censor/utils/storage-api"
 
 import { VideoManager } from "./video-manager"
 
+import "@censor/styles/content.css"
+
 class ContentController {
   private videoManager: VideoManager
   private initialized = false
@@ -17,7 +19,7 @@ class ContentController {
     if (this.initialized) return
     console.log("[BOYO] Initializing content script")
     await storageAPI.initialize()
-    this.injectCSS()
+    // CSS is now loaded via manifest.json — no need to inject manually
     this.waitForYouTube()
     this.initialized = true
   }
@@ -39,118 +41,6 @@ class ContentController {
         childList: true,
         subtree: true,
       })
-    }
-  }
-
-  private injectCSS(): void {
-    // Check if already injected
-    if (document.querySelector("style#boyo-censor")) return
-
-    const style = document.createElement("style")
-    style.id = "boyo-censor"
-    style.textContent = `
-      /* Critical: Apply immediately */
-        ytd-video-renderer:not(.boyo-revealed),
-      ytd-rich-item-renderer:not(.boyo-revealed),
-      ytd-grid-video-renderer:not(.boyo-revealed),
-      ytd-compact-video-renderer:not(.boyo-revealed) {
-        position: relative !important;
-      }
-
-      .boyo-masked {
-        filter: blur(20px) grayscale(100%) !important;
-        opacity: 0.3 !important;
-        pointer-events: auto !important;
-        transition: filter 0.1s ease, opacity 0.1s ease !important;
-      }
-
-      .boyo-revealed {
-        filter: none !important;
-        opacity: 1 !important;
-      }
-
-      .boyo-overlay {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        background: rgba(0, 0, 0, 0.8) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        z-index: 100 !important;
-        cursor: pointer !important;
-        border-radius: 12px !important;
-      }
-
-      .boyo-overlay::before {
-        content: "🔒 Click to reveal" !important;
-        color: #fff !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        margin-bottom: 12px !important;
-      }
-
-      .boyo-metadata,
-      .boyo-title {
-        color: #fff !important;
-        font-size: 12px !important;
-        text-align: center !important;
-        padding: 8px 16px !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
-        margin: 4px !important;
-      }
-
-      .boyo-metadata-item {
-        margin: 4px 0 !important;
-      }
-
-      .boyo-title {
-        font-size: 14px !important;
-        max-width: 80% !important;
-      }
-
-      .boyo-overlay[data-level="1"]::before {
-        content: "🔍 Hover for details • Click to reveal" !important;
-      }
-
-      .boyo-overlay[data-level="2"]::before {
-        content: "👆 Double-click to reveal fully" !important;
-      }
-
-      /* Compact styling for sidebar videos */
-          ytd-compact-video-renderer.boyo-masked .boyo-overlay {
-          font-size: 11px !important;
-          padding: 8px !important;
-      }
-
-      ytd-compact-video-renderer.boyo-masked .boyo-metadata-item {
-          font-size: 10px !important;
-            margin: 2px 0 !important;
-      }
-
-      ytd-compact-video-renderer.boyo-masked .boyo-title {
-          font-size: 11px !important;
-            padding: 4px 8px !important;
-      }
-
-      /* Playlist panel styling */
-      ytd-playlist-panel-video-renderer.boyo-masked .boyo-overlay {
-          font-size: 11px !important;
-            padding: 8px !important;
-      }
-      `
-
-    // Inject into head immediately
-    ;(document.head || document.documentElement).appendChild(style)
-
-    // Verify injection
-    if (!document.querySelector("style#boyo-censor")) {
-      console.error("[BOYO] Protection layer failed to load")
-      document.body.style.opacity = "0"
     }
   }
 
