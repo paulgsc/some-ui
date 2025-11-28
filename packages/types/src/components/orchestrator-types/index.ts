@@ -15,7 +15,7 @@ export type SceneConfig = z.infer<typeof SceneConfigSchema>
 // --- StreamStatus ---
 export const StreamStatusSchema = z.object({
   isStreaming: z.boolean(),
-  stream_time: z.number().int().nonnegative(),
+  streamTime: z.number().int().nonnegative(),
   timecode: z.string(),
 })
 
