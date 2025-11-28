@@ -5,18 +5,19 @@ export const VIDEO_SELECTORS = [
   "ytd-rich-item-renderer",
   "ytd-grid-video-renderer",
   "ytd-compact-video-renderer",
+  "ytd-playlist-panel-video-renderer",
 ]
+
+export const VIDEO_SELECTOR_STRING = VIDEO_SELECTORS.join(", ")
+
+export function getAllVideoElements(): Array<Element> {
+  const elements = Array.from(document.querySelectorAll(VIDEO_SELECTOR_STRING))
+  console.log(`[DOM] Found ${elements.length} video elements`)
+  return elements
+}
 
 export function isVideoElement(element: Element): boolean {
   return VIDEO_SELECTORS.some((selector) => element.matches(selector))
-}
-
-export function getAllVideoElements(): Array<Element> {
-  const elements = VIDEO_SELECTORS.flatMap((selector) =>
-    Array.from(document.querySelectorAll(selector))
-  )
-  console.log(`[DOM] Found ${elements.length} video elements`)
-  return elements
 }
 
 export function extractVideoId(element: Element): string | null {

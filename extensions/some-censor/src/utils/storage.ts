@@ -82,5 +82,3 @@ export class StorageManager {
     await browser.storage.local.set({ settings: this.cache!.settings })
   }
 }
-
-export const storage = new StorageManager()

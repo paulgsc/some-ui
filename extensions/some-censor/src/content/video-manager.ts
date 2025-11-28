@@ -9,7 +9,7 @@ import {
   extractTitle,
   extractVideoId,
 } from "@censor/utils/dom"
-import { storage } from "@censor/utils/storage"
+import { storageAPI } from "@censor/utils/storage-api"
 
 export class VideoManager {
   private videos = new Map<string, VideoElement>()
@@ -36,7 +36,7 @@ export class VideoManager {
 
     console.log(`[BOYO] Processing video ${videoId} from channel ${channelId}`)
 
-    const isWhitelisted = await storage.isWhitelisted(channelId)
+    const isWhitelisted = await storageAPI.isWhitelisted(channelId)
 
     const videoEl: VideoElement = {
       element,
@@ -113,7 +113,7 @@ export class VideoManager {
     console.log(`[BOYO] handleDoubleClick for ${videoId}`)
     this.reveal(videoId)
 
-    await storage.updateVideoState(videoId, {
+    await storageAPI.updateVideoState(videoId, {
       videoId,
       revealed: true,
       timestamp: Date.now(),
@@ -148,7 +148,7 @@ export class VideoManager {
     const metadata = extractMetadata(video.element)
     if (!metadata) return
 
-    await storage.addToWhitelist({
+    await storageAPI.addToWhitelist({
       channelId: video.channelId,
       channelName: metadata.channelName,
       addedAt: Date.now(),

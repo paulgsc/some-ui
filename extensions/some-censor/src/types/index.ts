@@ -45,6 +45,10 @@ export type MessageType =
   | "GET_WHITELIST"
   | "CLEAR_SESSION"
   | "UPDATE_SETTINGS"
+  | "IS_WHITELISTED"
+  | "UPDATE_VIDEO_STATE"
+  | "GET_SETTINGS"
+  | "GET_SESSION_STATE"
 
 export type Message = {
   type: MessageType

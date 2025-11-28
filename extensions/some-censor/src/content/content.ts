@@ -1,5 +1,5 @@
-import { getAllVideoElements } from "@censor/utils/dom"
-import { storage } from "@censor/utils/storage"
+import { getAllVideoElements, VIDEO_SELECTOR_STRING } from "@censor/utils/dom"
+import { storageAPI } from "@censor/utils/storage-api"
 
 import { VideoManager } from "./video-manager"
 
@@ -16,7 +16,7 @@ class ContentController {
   async initialize(): Promise<void> {
     if (this.initialized) return
     console.log("[BOYO] Initializing content script")
-    await storage.initialize()
+    await storageAPI.initialize()
     this.injectCSS()
     this.waitForYouTube()
     this.initialized = true
@@ -119,6 +119,28 @@ class ContentController {
 
       .boyo-overlay[data-level="2"]::before {
         content: "👆 Double-click to reveal fully" !important;
+      }
+
+      /* Compact styling for sidebar videos */
+          ytd-compact-video-renderer.boyo-masked .boyo-overlay {
+          font-size: 11px !important;
+          padding: 8px !important;
+      }
+
+      ytd-compact-video-renderer.boyo-masked .boyo-metadata-item {
+          font-size: 10px !important;
+            margin: 2px 0 !important;
+      }
+
+      ytd-compact-video-renderer.boyo-masked .boyo-title {
+          font-size: 11px !important;
+            padding: 4px 8px !important;
+      }
+
+      /* Playlist panel styling */
+      ytd-playlist-panel-video-renderer.boyo-masked .boyo-overlay {
+          font-size: 11px !important;
+            padding: 8px !important;
       }
       `
 
@@ -244,17 +266,11 @@ class ContentController {
         for (const node of mutation.addedNodes) {
           if (!(node instanceof HTMLElement)) continue
 
-          if (
-            node.matches(
-              "ytd-video-renderer, ytd-rich-item-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer"
-            )
-          ) {
+          if (node.matches(VIDEO_SELECTOR_STRING)) {
             this.videoManager.processVideo(node)
           } else {
             node
-              .querySelectorAll(
-                "ytd-video-renderer, ytd-rich-item-renderer, ytd-grid-video-renderer, ytd-compact-video-renderer"
-              )
+              .querySelectorAll(VIDEO_SELECTOR_STRING)
               .forEach((video) => this.videoManager.processVideo(video))
           }
         }

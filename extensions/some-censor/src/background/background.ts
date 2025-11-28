@@ -1,5 +1,7 @@
 import type { Message } from "@censor/types"
-import { storage } from "@censor/utils/storage"
+import { StorageManager } from "@censor/utils/storage"
+
+const storage = new StorageManager()
 
 class BackgroundController {
   constructor() {
@@ -10,7 +12,7 @@ class BackgroundController {
     console.log("[BOYO Background] Initializing")
 
     // Initialize storage
-    storage.initialize()
+    storage.initialize().catch(console.error)
 
     // Listen for messages from content script and popup
     browser.runtime.onMessage.addListener(this.handleMessage.bind(this))
@@ -38,11 +40,30 @@ class BackgroundController {
         const whitelist = await storage.getWhitelist()
         return { whitelist }
 
+      case "IS_WHITELISTED":
+        const isWhitelisted = await storage.isWhitelisted(message.payload)
+        return { isWhitelisted }
+
+      case "GET_SESSION_STATE":
+        const sessionState = await storage.getSessionState()
+        return { sessionState }
+
+      case "UPDATE_VIDEO_STATE":
+        await storage.updateVideoState(
+          message.payload.videoId,
+          message.payload.state
+        )
+        return { success: true }
+
       case "CLEAR_SESSION":
         await storage.clearSession()
         // Notify all tabs to refresh
         this.notifyAllTabs("SESSION_CLEARED")
         return { success: true }
+
+      case "GET_SETTINGS":
+        const settings = await storage.getSettings()
+        return { settings }
 
       case "UPDATE_SETTINGS":
         await storage.updateSettings(message.payload)

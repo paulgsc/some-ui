@@ -38,7 +38,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "pnpm clean:build && tsc && pnpm run build:background && pnpm run build:content && pnpm run build:popup",
+    "build": "tsc && vite build",
     "build:background": "BUILD_TARGET=background vite build",
     "build:content": "BUILD_TARGET=content vite build",
     "build:popup": "vite build",
