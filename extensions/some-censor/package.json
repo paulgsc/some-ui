@@ -38,7 +38,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:background": "BUILD_TARGET=background vite build",
     "build:content": "BUILD_TARGET=content vite build",
     "build:popup": "vite build",

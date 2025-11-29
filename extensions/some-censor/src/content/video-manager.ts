@@ -14,133 +14,187 @@ import { storageAPI } from "@censor/utils/storage-api"
 export class VideoManager {
   private videos = new Map<string, VideoElement>()
 
-  async processVideo(element: Element): Promise<void> {
-    console.log("[BOYO] processVideo called for element:", element)
+  /**
+   * Idempotent video processing - safe to call multiple times
+   * Handles element reuse in SPA by tracking both videoId AND element
+   */
+  async upsert(element: Element): Promise<void> {
+    if (!(element instanceof HTMLElement)) return
 
     const videoId = extractVideoId(element)
-    if (!videoId) {
-      console.warn("[BOYO] Could not extract videoId from element:", element)
-      return
-    }
-
-    if (this.videos.has(videoId)) {
-      console.log(`[BOYO] Video ${videoId} already processed, skipping`)
-      return
-    }
-
     const channelId = extractChannelId(element)
-    if (!channelId) {
-      console.warn(`[BOYO] Could not extract channelId for video ${videoId}`)
+
+    if (!videoId || !channelId) {
       return
     }
 
-    console.log(`[BOYO] Processing video ${videoId} from channel ${channelId}`)
+    // Check if this exact element was already processed for this videoId
+    const existing = this.videos.get(videoId)
+    if (existing && existing.element === element) {
+      return
+    }
+
+    // Element reuse detected - clean up old tracking
+    if (existing && existing.element !== element) {
+      console.log(`[BOYO] Element reuse detected for ${videoId}`)
+      this.cleanup(videoId)
+    }
+
+    console.log(`[BOYO] Upserting video ${videoId} from channel ${channelId}`)
 
     const isWhitelisted = await storageAPI.isWhitelisted(channelId)
+    const initialLevel = isWhitelisted
+      ? DisclosureLevel.REVEALED
+      : DisclosureLevel.MASKED
 
-    const videoEl: VideoElement = {
+    this.videos.set(videoId, {
       element,
       videoId,
       channelId,
-      level: isWhitelisted ? DisclosureLevel.REVEALED : DisclosureLevel.MASKED,
-    }
-
-    this.videos.set(videoId, videoEl)
-
-    if (isWhitelisted) {
-      console.log(`[BOYO] Channel ${channelId} is whitelisted, revealing`)
-      this.reveal(videoId)
-    } else {
-      console.log(`[BOYO] Applying mask to video ${videoId}`)
-      this.applyMask(element, videoId)
-    }
-  }
-
-  private applyMask(element: Element, videoId: string): void {
-    console.log(`[BOYO] applyMask called for ${videoId}`)
-    if (!(element instanceof HTMLElement)) return
-
-    element.classList.add("boyo-masked")
-
-    const overlay = createOverlay(videoId)
-    element.appendChild(overlay)
-
-    console.log(`[BOYO] Mask applied to ${videoId}`)
-  }
-
-  async handleHover(videoId: string): Promise<void> {
-    const video = this.videos.get(videoId)
-    if (!video || video.level >= DisclosureLevel.METADATA) return
-
-    console.log(`[BOYO] handleHover for ${videoId}`)
-    const metadata = extractMetadata(video.element)
-    if (!metadata) return
-
-    video.level = DisclosureLevel.METADATA
-
-    const overlay = video.element.querySelector(".boyo-overlay")
-    if (overlay && overlay instanceof HTMLElement) {
-      const metadataDisplay = createMetadataDisplay(metadata)
-      overlay.appendChild(metadataDisplay)
-      overlay.dataset.level = "1"
-      console.log(`[BOYO] Metadata displayed for ${videoId}`)
-    }
-  }
-
-  async handleClick(videoId: string): Promise<void> {
-    const video = this.videos.get(videoId)
-    if (!video || video.level >= DisclosureLevel.TITLE) return
-
-    console.log(`[BOYO] handleClick for ${videoId}`)
-    const title = extractTitle(video.element)
-    if (!title) return
-
-    video.level = DisclosureLevel.TITLE
-
-    const overlay = video.element.querySelector(".boyo-overlay")
-    if (overlay && overlay instanceof HTMLElement) {
-      const titleDisplay = createTitleDisplay(title, true)
-      overlay.appendChild(titleDisplay)
-      overlay.dataset.level = "2"
-      console.log(`[BOYO] Title displayed for ${videoId}`)
-    }
-  }
-
-  async handleDoubleClick(videoId: string): Promise<void> {
-    const video = this.videos.get(videoId)
-    if (!video) return
-
-    console.log(`[BOYO] handleDoubleClick for ${videoId}`)
-    this.reveal(videoId)
-
-    await storageAPI.updateVideoState(videoId, {
-      videoId,
-      revealed: true,
-      timestamp: Date.now(),
+      level: initialLevel,
     })
-    console.log(`[BOYO] Video ${videoId} revealed and stored`)
+
+    // Ensure overlay exists
+    this.ensureOverlay(element, videoId)
+
+    // Apply initial state
+    this.applyLevel(videoId)
   }
 
-  private reveal(videoId: string): void {
+  /**
+   * FSM transition - single source of truth
+   */
+  transition(videoId: string, event: "HOVER" | "CLICK" | "DBLCLICK"): void {
+    const video = this.videos.get(videoId)
+    if (!video) {
+      return
+    }
+
+    const currentLevel = video.level
+    const nextLevel = this.nextLevel(currentLevel, event)
+
+    if (nextLevel === currentLevel) {
+      return
+    }
+
+    console.log(
+      `[BOYO] ${videoId}: ${DisclosureLevel[currentLevel]} --${event}--> ${DisclosureLevel[nextLevel]}`
+    )
+
+    video.level = nextLevel
+    this.applyLevel(videoId)
+  }
+
+  /**
+   * FSM transition table - authoritative
+   */
+  private nextLevel(current: DisclosureLevel, event: string): DisclosureLevel {
+    // Double-click always reveals from any state
+    if (event === "DBLCLICK") {
+      return DisclosureLevel.REVEALED
+    }
+
+    // Click advances from METADATA to TITLE
+    if (event === "CLICK" && current === DisclosureLevel.METADATA) {
+      return DisclosureLevel.TITLE
+    }
+
+    // Hover advances from MASKED to METADATA
+    if (event === "HOVER" && current === DisclosureLevel.MASKED) {
+      return DisclosureLevel.METADATA
+    }
+
+    // No valid transition
+    return current
+  }
+
+  /**
+   * Apply level to DOM - idempotent
+   */
+  private applyLevel(videoId: string): void {
     const video = this.videos.get(videoId)
     if (!video) return
 
-    console.log(`[BOYO] reveal called for ${videoId}`)
-    video.level = DisclosureLevel.REVEALED
+    const overlay = video.element.querySelector(".boyo-overlay") as HTMLElement
+    if (!overlay) {
+      return
+    }
 
-    if (video.element instanceof HTMLElement) {
+    // Update data attribute for CSS styling
+    overlay.dataset.level = String(video.level)
+
+    // Clear existing content
+    overlay.innerHTML = ""
+
+    // Build up overlay content based on level
+    if (video.level >= DisclosureLevel.METADATA) {
+      const metadata = extractMetadata(video.element)
+      if (metadata) {
+        overlay.appendChild(createMetadataDisplay(metadata))
+      }
+    }
+
+    if (video.level >= DisclosureLevel.TITLE) {
+      const title = extractTitle(video.element)
+      if (title) {
+        overlay.appendChild(createTitleDisplay(title, true))
+      }
+    }
+
+    if (video.level === DisclosureLevel.REVEALED) {
       video.element.classList.remove("boyo-masked")
       video.element.classList.add("boyo-revealed")
-
-      const overlay = video.element.querySelector(".boyo-overlay")
-      if (overlay) overlay.remove()
+      overlay.remove()
     }
   }
 
-  getVideo(videoId: string): VideoElement | undefined {
-    return this.videos.get(videoId)
+  /**
+   * Ensure overlay exists - idempotent
+   */
+  private ensureOverlay(element: HTMLElement, videoId: string): void {
+    // Remove any stale overlays first
+    const existingOverlay = element.querySelector(".boyo-overlay")
+    if (existingOverlay) {
+      existingOverlay.remove()
+    }
+
+    element.classList.add("boyo-masked")
+    const overlay = createOverlay(videoId)
+    element.appendChild(overlay)
   }
 
+  /**
+   * Clean up tracking for a video
+   */
+  private cleanup(videoId: string): void {
+    const video = this.videos.get(videoId)
+    if (video) {
+      const overlay = video.element.querySelector(".boyo-overlay")
+      if (overlay) {
+        overlay.remove()
+      }
+      video.element.classList.remove("boyo-masked", "boyo-revealed")
+    }
+    this.videos.delete(videoId)
+  }
+
+  /**
+   * Reset all tracked videos - for navigation events
+   */
+  reset(): void {
+    console.log(`[BOYO] Resetting ${this.videos.size} tracked videos`)
+
+    // Clean up all overlays
+    for (const [videoId] of this.videos) {
+      this.cleanup(videoId)
+    }
+
+    this.videos.clear()
+  }
+
+  /**
+   * Add channel to whitelist and reveal all its videos
+   */
   async addChannelToWhitelist(videoId: string): Promise<void> {
     const video = this.videos.get(videoId)
     if (!video) return
@@ -154,8 +208,19 @@ export class VideoManager {
       addedAt: Date.now(),
     })
 
-    console.log(`[BOYO] Channel ${video.channelId} added to whitelist`)
-    this.reveal(videoId)
+    console.log(`[BOYO] Channel ${video.channelId} whitelisted`)
+
+    // Reveal all videos from this channel
+    for (const [vid, v] of this.videos.entries()) {
+      if (v.channelId === video.channelId) {
+        v.level = DisclosureLevel.REVEALED
+        this.applyLevel(vid)
+      }
+    }
+  }
+
+  getVideo(videoId: string): VideoElement | undefined {
+    return this.videos.get(videoId)
   }
 
   getVideoCount(): number {
