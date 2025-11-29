@@ -137,7 +137,7 @@ export class VideoManager {
     if (video.level >= DisclosureLevel.TITLE) {
       const title = extractTitle(video.element)
       if (title) {
-        overlay.appendChild(createTitleDisplay(title, true))
+        overlay.appendChild(createTitleDisplay(title, false))
       }
     }
 

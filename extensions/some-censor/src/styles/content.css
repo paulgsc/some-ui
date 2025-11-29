@@ -123,13 +123,13 @@ ytd-compact-video-renderer.boyo-revealed {
    INSTRUCTION TEXT - Progressive states
    ============================================ */
 
-.boyo-overlay::before {
+/* Level 0 (MASKED): Show initial instruction centered */
+.boyo-overlay[data-level="0"]::before {
   content: "🔒 Hover to preview" !important;
   color: rgba(255, 255, 255, 0.95) !important;
   font-size: 15px !important;
   font-weight: 600 !important;
   letter-spacing: 0.3px !important;
-  margin-bottom: 16px !important;
   padding: 10px 20px !important;
   background: rgba(255, 255, 255, 0.08) !important;
   border-radius: 20px !important;
@@ -138,40 +138,86 @@ ytd-compact-video-renderer.boyo-revealed {
   display: block !important;
   transition: all 0.3s ease !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10 !important;
+  white-space: nowrap !important;
 }
 
-.boyo-overlay:hover::before {
+.boyo-overlay[data-level="0"]:hover::before {
   background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
-  transform: scale(1.05) !important;
+  transform: translate(-50%, -50%) scale(1.05) !important;
 }
 
-/* Level 1: Metadata visible */
+/* Level 1 (METADATA): Show "Click for title" at top */
 .boyo-overlay[data-level="1"]::before {
   content: "👆 Click for title" !important;
   background: rgba(59, 130, 246, 0.15) !important;
-  border-color: rgba(59, 130, 246, 0.25) !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
   color: rgba(147, 197, 253, 1) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  display: block !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  backdrop-filter: blur(8px) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  transition: all 0.3s ease !important;
 }
 
-/* Level 2: Title visible */
+.boyo-overlay[data-level="1"]:hover::before {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  transform: translateX(-50%) scale(1.05) !important;
+}
+
+/* Level 2 (TITLE): Show "Double-click to reveal" at top */
 .boyo-overlay[data-level="2"]::before {
   content: "👆 Double-click to reveal" !important;
   background: rgba(168, 85, 247, 0.15) !important;
-  border-color: rgba(168, 85, 247, 0.25) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
   color: rgba(216, 180, 254, 1) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  display: block !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  backdrop-filter: blur(8px) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
   animation: gentlePulse 2.5s ease-in-out infinite !important;
+}
+
+.boyo-overlay[data-level="2"]:hover::before {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
 }
 
 @keyframes gentlePulse {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
   }
   50% {
     opacity: 0.85;
-    transform: scale(1.03);
+    transform: translateX(-50%) scale(1.03);
   }
 }
 
@@ -199,6 +245,13 @@ ytd-compact-video-renderer.boyo-revealed {
   pointer-events: none !important;
   animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   min-width: 200px !important;
+
+  /* CRITICAL: Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
 }
 
 .boyo-metadata-item {
@@ -241,6 +294,13 @@ ytd-compact-video-renderer.boyo-revealed {
   line-height: 1.6 !important;
   pointer-events: none !important;
   animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+
+  /* CRITICAL: Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
 }
 
 @keyframes slideUpFade {
@@ -295,14 +355,11 @@ ytd-compact-video-renderer.boyo-revealed {
   left: 0 !important;
   right: 0 !important;
   height: 3px !important;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(59, 130, 246, 0.4) 50%,
-    transparent 100%
-  ) !important;
+  background: transparent !important;
   opacity: 0 !important;
   transition: opacity 0.3s ease !important;
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
 }
 
 .boyo-overlay[data-level="1"]::after {
@@ -342,9 +399,11 @@ ytd-compact-video-renderer.boyo-revealed {
    ============================================ */
 
 @media (max-width: 768px) {
-  .boyo-overlay::before {
-    font-size: 13px !important;
-    padding: 8px 16px !important;
+  .boyo-overlay[data-level="0"]::before,
+  .boyo-overlay[data-level="1"]::before,
+  .boyo-overlay[data-level="2"]::before {
+    font-size: 12px !important;
+    padding: 6px 14px !important;
   }
 
   .boyo-metadata {
@@ -373,9 +432,11 @@ ytd-compact-video-renderer .boyo-overlay {
   border-radius: 8px !important;
 }
 
-ytd-compact-video-renderer .boyo-overlay::before {
-  font-size: 12px !important;
-  padding: 6px 14px !important;
+ytd-compact-video-renderer .boyo-overlay[data-level="0"]::before,
+ytd-compact-video-renderer .boyo-overlay[data-level="1"]::before,
+ytd-compact-video-renderer .boyo-overlay[data-level="2"]::before {
+  font-size: 11px !important;
+  padding: 6px 12px !important;
 }
 
 ytd-compact-video-renderer .boyo-metadata,

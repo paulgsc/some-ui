@@ -174,31 +174,46 @@ export function obfuscateTitle(title: string): string {
     .join(" ")
 }
 
-export function createOverlay(videoId: string): HTMLDivElement {
-  const overlay = document.createElement("div")
-  overlay.className = "boyo-overlay"
-  overlay.dataset.videoId = videoId
-  overlay.dataset.level = "0"
-  return overlay
-}
+export function createMetadataDisplay(metadata: {
+  channelName: string
+  views?: string
+  uploadDate?: string
+  duration?: string
+}): HTMLElement {
+  const container = document.createElement("div")
+  container.className = "boyo-metadata"
 
-export function createMetadataDisplay(metadata: VideoMetadata): HTMLDivElement {
-  const display = document.createElement("div")
-  display.className = "boyo-metadata"
-  display.innerHTML = `
-    <div class="boyo-metadata-item">📺 ${metadata.channelName}</div>
-    ${metadata.duration ? `<div class="boyo-metadata-item">⏱️ ${metadata.duration}</div>` : ""}
-    ${metadata.uploadDate ? `<div class="boyo-metadata-item">📅 ${metadata.uploadDate}</div>` : ""}
-  `
-  return display
+  const items = [
+    { label: "Channel", value: metadata.channelName },
+    metadata.views && { label: "Views", value: metadata.views },
+    metadata.uploadDate && { label: "Uploaded", value: metadata.uploadDate },
+    metadata.duration && { label: "Duration", value: metadata.duration },
+  ].filter(Boolean) as Array<{ label: string; value: string }>
+
+  items.forEach((item) => {
+    const itemEl = document.createElement("div")
+    itemEl.className = "boyo-metadata-item"
+    itemEl.innerHTML = `<strong>${item.label}:</strong> ${item.value}`
+    container.appendChild(itemEl)
+  })
+
+  return container
 }
 
 export function createTitleDisplay(
   title: string,
-  obfuscated: boolean = true
-): HTMLDivElement {
-  const display = document.createElement("div")
-  display.className = "boyo-title"
-  display.textContent = obfuscated ? obfuscateTitle(title) : title
-  return display
+  _fade?: boolean
+): HTMLElement {
+  const titleEl = document.createElement("div")
+  titleEl.className = "boyo-title" // CRITICAL: CSS expects this class
+  titleEl.textContent = title
+  return titleEl
+}
+
+export function createOverlay(videoId: string): HTMLElement {
+  const overlay = document.createElement("div")
+  overlay.className = "boyo-overlay"
+  overlay.dataset.videoId = videoId
+  overlay.dataset.level = "0" // Start at MASKED level
+  return overlay
 }
