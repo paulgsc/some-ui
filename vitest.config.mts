@@ -24,7 +24,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**", "packages/*/test/**"],
+      include: ["packages/*/src/**", "packages/*/test/**", "extensions/*/**"],
       exclude: ["packages/tsconfig/**", "packages/rollup-config/**"],
     },
     restoreMocks: true,
