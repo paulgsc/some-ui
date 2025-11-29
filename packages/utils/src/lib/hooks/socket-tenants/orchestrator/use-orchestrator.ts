@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useWebSocketQuery } from "@utils/lib/hooks/use-websocket"
 import type {
   IncomingOrchestratorEvent,
   OrchestratorCommand,
   OrchestratorState,
   OutgoingMessage,
   SceneConfig,
-} from "@/schemas/orchestrator-schemas"
+} from "some-types-utils"
 import {
   defaultOrchestratorState,
   IncomingOrchestratorEventSchema,
   OutgoingMessageSchema,
-} from "@/schemas/orchestrator-schemas"
-import { useWebSocketQuery } from "@utils/lib/hooks/use-websocket"
-
-// adjust path
+} from "some-types-utils"
 
 export type UseOrchestratorConfig = {
   scenes: Array<SceneConfig>
@@ -29,7 +27,7 @@ export type UseOrchestratorReturn = {
   state: OrchestratorState
   isConnected: boolean
   isReconnecting: boolean
-  error: Error | null
+  error: string | null
 
   // Derived state
   isRunning: boolean
@@ -38,9 +36,10 @@ export type UseOrchestratorReturn = {
   currentTime: number
   timeRemaining: number
   activeElements: Array<string>
-  scheduledElements: typeof defaultOrchestratorState.scheduled_elements
-  streamStatus: typeof defaultOrchestratorState.stream_status
+  scheduledElements: typeof defaultOrchestratorState.scheduledElements
+  streamStatus: typeof defaultOrchestratorState.streamStatus
   totalDuration: number
+  scenes: Array<SceneConfig>
 
   // Actions
   start: () => void
@@ -65,20 +64,42 @@ export type UseOrchestratorReturn = {
 export function useOrchestrator({
   scenes,
   orchestratorUrl,
-  autoStart = true,
+  autoStart = false,
   onSceneChange,
   onStreamEnd,
   onError,
 }: UseOrchestratorConfig): UseOrchestratorReturn {
-  const [state, setState] = useState<OrchestratorState>(
-    defaultOrchestratorState
+  // Calculate initial total duration from scenes
+  const initialTotalDuration = scenes.reduce(
+    (sum, scene) => sum + scene.duration,
+    0
   )
+
+  const [state, setState] = useState<OrchestratorState>({
+    ...defaultOrchestratorState,
+    scenes,
+    totalDuration: initialTotalDuration,
+    timeRemaining: initialTotalDuration,
+  })
+
+  const [localScenes, setLocalScenes] = useState<Array<SceneConfig>>(scenes)
   const configuredRef = useRef(false)
   const previousSceneRef = useRef<string | null>(null)
 
-  const ws = useWebSocketQuery<OrchestratorEvent, OutgoingMessage>({
-    url:
-      orchestratorUrl || `ws://${window.location.hostname}:3001/orchestrator`,
+  // Update local scenes and recalculate duration when scenes prop changes
+  useEffect(() => {
+    setLocalScenes(scenes)
+    const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration, 0)
+    setState((prev) => ({
+      ...prev,
+      scenes,
+      totalDuration,
+      timeRemaining: totalDuration - prev.currentTime,
+    }))
+  }, [scenes])
+
+  const ws = useWebSocketQuery<IncomingOrchestratorEvent, OutgoingMessage>({
+    url: orchestratorUrl || `ws://${window.location.hostname}:3000/ws`,
     queryKey: ["orchestrator"],
     incomingMessageSchema: IncomingOrchestratorEventSchema,
     outgoingMessageSchema: OutgoingMessageSchema,
@@ -89,17 +110,27 @@ export function useOrchestrator({
       if (event.type === "orchestratorState") {
         const prevState = state
         const newState = event.state
-        setState(newState)
+        setState((prev) => ({
+          ...newState,
+          // Preserve local scenes if server doesn't send them
+          scenes: newState.scenes.length > 0 ? newState.scenes : prev.scenes,
+          totalDuration:
+            newState.totalDuration > 0
+              ? newState.totalDuration
+              : prev.totalDuration,
+        }))
 
         // Detect scene change for callback
-        if (prevState.currentActiveScene !== newState.currentActiveScene) {
-          onSceneChange?.(
-            prevState.currentActiveScene,
-            newState.currentActiveScene
-          )
+        if (
+          prevState.currentActiveScene !== newState.currentActiveScene &&
+          previousSceneRef.current !== newState.currentActiveScene
+        ) {
+          if (onSceneChange)
+            onSceneChange(previousSceneRef.current, newState.currentActiveScene)
+          previousSceneRef.current = newState.currentActiveScene
         }
       } else if (event.type === "error") {
-        onError?.(event.message)
+        if (onError) onError(event.message)
       }
     },
   })
@@ -115,26 +146,42 @@ export function useOrchestrator({
     })
 
     // Configure if scenes provided
-    if (scenes.length > 0) {
+    if (localScenes.length > 0) {
       ws.sendMessage({
         type: "command",
         cmd: {
-          type: "Reconfigure",
+          type: "reconfigure",
           config: {
-            scenes,
+            scenes: localScenes,
           },
         },
       })
       configuredRef.current = true
     }
-  }, [ws.isConnected, scenes, ws])
+  }, [ws.isConnected, localScenes, ws])
 
   // Reset config flag on disconnect
   useEffect(() => {
     if (!ws.isConnected) {
       configuredRef.current = false
+      previousSceneRef.current = null
     }
   }, [ws.isConnected])
+
+  // Reconfigure when scenes change and connected
+  useEffect(() => {
+    if (ws.isConnected && configuredRef.current && localScenes.length > 0) {
+      ws.sendMessage({
+        type: "command",
+        cmd: {
+          type: "reconfigure",
+          config: {
+            scenes: localScenes,
+          },
+        },
+      })
+    }
+  }, [localScenes, ws.isConnected, ws])
 
   // --- Action Helpers ---
   const sendCommand = useCallback(
@@ -144,64 +191,79 @@ export function useOrchestrator({
     [ws]
   )
 
-  const start = useCallback(() => sendCommand({ type: "Start" }), [sendCommand])
-  const stop = useCallback(() => sendCommand({ type: "Stop" }), [sendCommand])
-  const reset = useCallback(() => {
-    sendCommand({ type: "Reset" })
-    configuredRef.current = false
+  const start = useCallback(() => sendCommand({ type: "start" }), [sendCommand])
+
+  const stop = useCallback(() => {
+    sendCommand({ type: "stop" })
+    previousSceneRef.current = null
   }, [sendCommand])
-  const pause = useCallback(() => sendCommand({ type: "Pause" }), [sendCommand])
+
+  const reset = useCallback(() => {
+    sendCommand({ type: "reset" })
+    configuredRef.current = false
+    previousSceneRef.current = null
+  }, [sendCommand])
+
+  const pause = useCallback(() => sendCommand({ type: "pause" }), [sendCommand])
+
   const resume = useCallback(
-    () => sendCommand({ type: "Resume" }),
+    () => sendCommand({ type: "resume" }),
     [sendCommand]
   )
+
   const forceScene = useCallback(
-    (scene: string) => sendCommand({ type: "ForceScene", scene }),
+    (scene: string) => {
+      sendCommand({ type: "forceScene", scene })
+      previousSceneRef.current = scene
+    },
     [sendCommand]
   )
+
   const skipCurrentScene = useCallback(
-    () => sendCommand({ type: "SkipCurrentScene" }),
+    () => sendCommand({ type: "skipCurrentScene" }),
     [sendCommand]
   )
 
   const updateStreamStatus = useCallback(
     (isStreaming: boolean, streamTime: number, timecode: string) => {
       sendCommand({
-        type: "UpdateStreamStatus",
-        is_streaming: isStreaming,
-        stream_time: streamTime,
+        type: "updateStreamStatus",
+        isStreaming: isStreaming,
+        streamTime: streamTime,
         timecode,
       })
 
+      // Auto-start/stop based on stream status
       if (autoStart) {
-        if (isStreaming && !state.is_running) {
+        if (isStreaming && !state.isRunning) {
           start()
-        } else if (!isStreaming && state.is_running) {
+        } else if (!isStreaming && state.isRunning) {
           stop()
-          onStreamEnd()
+          if (onStreamEnd) onStreamEnd()
         }
       }
     },
-    [sendCommand, autoStart, state.is_running, start, stop, onStreamEnd]
+    [sendCommand, autoStart, state.isRunning, start, stop, onStreamEnd]
   )
 
   return {
     // WebSocket state
     isConnected: ws.isConnected,
-    isReconnecting: ws.isReconnecting,
+    isReconnecting: ws.isConnecting,
     error: ws.error,
 
     // Orchestrator state
     state,
-    isRunning: state.is_running,
-    currentActiveScene: state.current_active_scene,
+    isRunning: state.isRunning,
+    currentActiveScene: state.currentActiveScene,
     progress: state.progress,
-    currentTime: state.current_time,
-    timeRemaining: state.time_remaining,
-    activeElements: state.active_elements,
-    scheduledElements: state.scheduled_elements,
-    streamStatus: state.stream_status,
-    totalDuration: state.total_duration,
+    currentTime: state.currentTime,
+    timeRemaining: state.timeRemaining,
+    activeElements: state.activeElements,
+    scheduledElements: state.scheduledElements,
+    streamStatus: state.streamStatus,
+    totalDuration: state.totalDuration,
+    scenes: state.scenes,
 
     // Actions
     start,
