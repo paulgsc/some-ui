@@ -84,21 +84,9 @@ export function useOrchestrator({
     timeRemaining: initialTotalDuration,
   })
 
-  const [localScenes, setLocalScenes] = useState<Array<SceneConfig>>(scenes)
   const configuredRef = useRef(false)
   const previousSceneRef = useRef<string | null>(null)
-
-  // Update local scenes and recalculate duration when scenes prop changes
-  useEffect(() => {
-    setLocalScenes(scenes)
-    const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration, 0)
-    setState((prev) => ({
-      ...prev,
-      scenes,
-      totalDuration,
-      timeRemaining: totalDuration - prev.currentTime,
-    }))
-  }, [scenes])
+  const lastConfiguredScenesRef = useRef<string>("")
 
   const ws = useWebSocketQuery<IncomingOrchestratorEvent, OutgoingMessage>({
     url: orchestratorUrl || `ws://${window.location.hostname}:3000/ws`,
@@ -138,9 +126,21 @@ export function useOrchestrator({
     },
   })
 
-  // Auto configure & subscribe on connect
+  // Helper to check if scenes actually changed
+  const haveScenesChanged = useCallback((newScenes: Array<SceneConfig>) => {
+    const newHash = JSON.stringify(newScenes)
+    if (newHash === lastConfiguredScenesRef.current) {
+      return false
+    }
+    lastConfiguredScenesRef.current = newHash
+    return true
+  }, [])
+
+  // Auto configure & subscribe on connect (only once per connection)
   useEffect(() => {
     if (!ws.isConnected || configuredRef.current) return
+
+    console.log("Initial configuration on connect")
 
     // Subscribe
     ws.sendMessage({
@@ -149,54 +149,73 @@ export function useOrchestrator({
     })
 
     // Configure if scenes provided
-    if (localScenes.length > 0) {
+    if (scenes.length > 0) {
       ws.sendMessage({
         type: "tickCommand",
         streamId,
         command: {
           Reconfigure: {
-            scenes: localScenes,
+            scenes: scenes,
           },
         },
       })
+      lastConfiguredScenesRef.current = JSON.stringify(scenes)
       configuredRef.current = true
     }
-  }, [ws.isConnected, localScenes, ws])
+  }, [ws.isConnected, streamId, ws.sendMessage]) // ✅ Don't include scenes here
 
   // Reset config flag on disconnect
   useEffect(() => {
     if (!ws.isConnected) {
       configuredRef.current = false
       previousSceneRef.current = null
+      lastConfiguredScenesRef.current = ""
     }
   }, [ws.isConnected])
 
-  // Reconfigure when scenes change and connected
+  // Reconfigure when scenes actually change (deep comparison)
   useEffect(() => {
-    if (ws.isConnected && configuredRef.current && localScenes.length > 0) {
+    if (!ws.isConnected || !configuredRef.current || scenes.length === 0) {
+      return
+    }
+
+    // Only reconfigure if scenes actually changed
+    if (haveScenesChanged(scenes)) {
+      console.log("Scenes changed, sending reconfigure")
       ws.sendMessage({
         type: "tickCommand",
         streamId,
         command: {
           Reconfigure: {
-            scenes: localScenes,
+            scenes: scenes,
           },
         },
       })
     }
-  }, [localScenes, ws.isConnected, ws])
+  }, [scenes, ws.isConnected, streamId, ws.sendMessage, haveScenesChanged])
+
+  // Update local state when scenes prop changes
+  useEffect(() => {
+    const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration, 0)
+    setState((prev) => ({
+      ...prev,
+      scenes,
+      totalDuration,
+      timeRemaining: totalDuration - prev.currentTime,
+    }))
+  }, [scenes])
 
   // --- Action Helpers ---
   const sendCommand = useCallback(
     (command: OrchestratorCommand) => {
       ws.sendMessage({ type: "tickCommand", streamId, command })
     },
-    [ws]
+    [ws.sendMessage, streamId]
   )
 
   const start = useCallback(
-    () => sendCommand({ Start: { scenes: localScenes } }),
-    [sendCommand]
+    () => sendCommand({ Start: { scenes: scenes } }),
+    [sendCommand, scenes]
   )
 
   const stop = useCallback(() => {
@@ -208,6 +227,7 @@ export function useOrchestrator({
     sendCommand({ Reset: null })
     configuredRef.current = false
     previousSceneRef.current = null
+    lastConfiguredScenesRef.current = ""
   }, [sendCommand])
 
   const pause = useCallback(() => sendCommand({ Pause: null }), [sendCommand])
