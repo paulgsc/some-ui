@@ -6,7 +6,7 @@ export type SceneId = string
 
 // --- SceneConfig ---
 export const SceneConfigSchema = z.object({
-  sceneName: z.string(),
+  scene_name: z.string(),
   duration: z.number().int().positive(),
 })
 
@@ -52,33 +52,44 @@ export const OrchestratorStateSchema = z.object({
 export type OrchestratorState = z.infer<typeof OrchestratorStateSchema>
 
 // --- Commands (TickCommand equivalent) ---
-export const OrchestratorCommandSchema = z.discriminatedUnion("type", [
+export const OrchestratorCommandSchema = z.union([
   z.object({
-    type: z.literal("start"),
-    config: z
-      .object({
-        scenes: z.array(SceneConfigSchema),
-        tickIntervalMs: z.number().int().nonnegative().optional(),
-        loopScenes: z.boolean().optional(),
-        streamGracePeriodMs: z.number().int().nonnegative().optional(),
-      })
+    Start: z
+      .union([
+        z.object({
+          scenes: z.array(SceneConfigSchema),
+          tickIntervalMs: z.number().int().nonnegative().optional(),
+          loopScenes: z.boolean().optional(),
+          streamGracePeriodMs: z.number().int().nonnegative().optional(),
+        }),
+        z.string(),
+        z.null(),
+      ])
       .optional(),
   }),
-  z.object({ type: z.literal("stop") }),
-  z.object({ type: z.literal("pause") }),
-  z.object({ type: z.literal("resume") }),
-  z.object({ type: z.literal("reset") }),
-  z.object({ type: z.literal("forceScene"), scene: z.string() }),
-  z.object({ type: z.literal("skipCurrentScene") }),
+
+  z.object({ Stop: z.null() }),
+
+  z.object({ Pause: z.null() }),
+
+  z.object({ Resume: z.null() }),
+
+  z.object({ Reset: z.null() }),
+
+  z.object({ ForceScene: z.string() }),
+
+  z.object({ SkipCurrentScene: z.null() }),
+
   z.object({
-    type: z.literal("updateStreamStatus"),
-    isStreaming: z.boolean(),
-    streamTime: z.number().int(),
-    timecode: z.string(),
+    UpdateStreamStatus: z.object({
+      isStreaming: z.boolean(),
+      streamTime: z.number().int(),
+      timecode: z.string(),
+    }),
   }),
+
   z.object({
-    type: z.literal("reconfigure"),
-    config: z.object({
+    Reconfigure: z.object({
       scenes: z.array(SceneConfigSchema),
       tickIntervalMs: z.number().int().nonnegative().optional(),
       loopScenes: z.boolean().optional(),
@@ -123,7 +134,11 @@ export type IncomingOrchestratorEvent = z.infer<
 export const OutgoingMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ping") }),
   z.object({ type: z.literal("pong") }),
-  z.object({ type: z.literal("command"), cmd: OrchestratorCommandSchema }),
+  z.object({
+    type: z.literal("tickCommand"),
+    streamId: z.string(),
+    command: OrchestratorCommandSchema,
+  }),
   z.object({
     type: z.literal("subscribe"),
     event_types: z.array(z.string()).optional(),

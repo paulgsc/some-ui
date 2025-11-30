@@ -3,8 +3,6 @@ import { useEffect, useRef } from "react"
 import { useObsStatusWebSocket } from "./use-obs-socket"
 import {
   useOrchestrator,
-  type OrchestratorConfig,
-  type SceneConfig,
 } from "./use-orchestrator"
 
 export type CombinedStreamConfig = {

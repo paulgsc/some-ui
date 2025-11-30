@@ -14,6 +14,7 @@ import {
 } from "some-types-utils"
 
 export type UseOrchestratorConfig = {
+  streamId: string
   scenes: Array<SceneConfig>
   orchestratorUrl?: string
   autoStart?: boolean
@@ -62,6 +63,7 @@ export type UseOrchestratorReturn = {
 }
 
 export function useOrchestrator({
+  streamId,
   scenes,
   orchestratorUrl,
   autoStart = false,
@@ -110,6 +112,7 @@ export function useOrchestrator({
       if (event.type === "orchestratorState") {
         const prevState = state
         const newState = event.state
+        console.log("new event state recv: ", newState)
         setState((prev) => ({
           ...newState,
           // Preserve local scenes if server doesn't send them
@@ -142,16 +145,16 @@ export function useOrchestrator({
     // Subscribe
     ws.sendMessage({
       type: "subscribe",
-      event_types: ["stateUpdate", "sceneChange", "error"],
+      event_types: ["orchestratorState"],
     })
 
     // Configure if scenes provided
     if (localScenes.length > 0) {
       ws.sendMessage({
-        type: "command",
-        cmd: {
-          type: "reconfigure",
-          config: {
+        type: "tickCommand",
+        streamId,
+        command: {
+          Reconfigure: {
             scenes: localScenes,
           },
         },
@@ -172,10 +175,10 @@ export function useOrchestrator({
   useEffect(() => {
     if (ws.isConnected && configuredRef.current && localScenes.length > 0) {
       ws.sendMessage({
-        type: "command",
-        cmd: {
-          type: "reconfigure",
-          config: {
+        type: "tickCommand",
+        streamId,
+        command: {
+          Reconfigure: {
             scenes: localScenes,
           },
         },
@@ -185,52 +188,53 @@ export function useOrchestrator({
 
   // --- Action Helpers ---
   const sendCommand = useCallback(
-    (cmd: OrchestratorCommand) => {
-      ws.sendMessage({ type: "command", cmd })
+    (command: OrchestratorCommand) => {
+      ws.sendMessage({ type: "tickCommand", streamId, command })
     },
     [ws]
   )
 
-  const start = useCallback(() => sendCommand({ type: "start" }), [sendCommand])
+  const start = useCallback(
+    () => sendCommand({ Start: { scenes: localScenes } }),
+    [sendCommand]
+  )
 
   const stop = useCallback(() => {
-    sendCommand({ type: "stop" })
+    sendCommand({ Stop: null })
     previousSceneRef.current = null
   }, [sendCommand])
 
   const reset = useCallback(() => {
-    sendCommand({ type: "reset" })
+    sendCommand({ Reset: null })
     configuredRef.current = false
     previousSceneRef.current = null
   }, [sendCommand])
 
-  const pause = useCallback(() => sendCommand({ type: "pause" }), [sendCommand])
+  const pause = useCallback(() => sendCommand({ Pause: null }), [sendCommand])
 
-  const resume = useCallback(
-    () => sendCommand({ type: "resume" }),
-    [sendCommand]
-  )
+  const resume = useCallback(() => sendCommand({ Resume: null }), [sendCommand])
 
   const forceScene = useCallback(
     (scene: string) => {
-      sendCommand({ type: "forceScene", scene })
+      sendCommand({ ForceScene: scene })
       previousSceneRef.current = scene
     },
     [sendCommand]
   )
 
   const skipCurrentScene = useCallback(
-    () => sendCommand({ type: "skipCurrentScene" }),
+    () => sendCommand({ SkipCurrentScene: null }),
     [sendCommand]
   )
 
   const updateStreamStatus = useCallback(
     (isStreaming: boolean, streamTime: number, timecode: string) => {
       sendCommand({
-        type: "updateStreamStatus",
-        isStreaming: isStreaming,
-        streamTime: streamTime,
-        timecode,
+        UpdateStreamStatus: {
+          isStreaming: isStreaming,
+          streamTime: streamTime,
+          timecode,
+        },
       })
 
       // Auto-start/stop based on stream status
