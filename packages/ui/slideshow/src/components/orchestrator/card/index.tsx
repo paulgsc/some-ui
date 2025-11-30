@@ -21,30 +21,30 @@ import {
   ScheduledElementsList,
 } from "@slideshow/components"
 import { Plus } from "lucide-react"
+import type { SceneConfig } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
-
-import { useOrchestrator, type SceneConfig } from "./use-orchestrator"
+import { useOrchestrator } from "some-ui-utils"
 
 // Mock demo data
-const DEMO_SCENES: SceneConfig[] = [
-  { sceneName: "Opening Sequence", duration: 30 },
-  { sceneName: "Main Content Block", duration: 120 },
-  { sceneName: "Transition Graphics", duration: 15 },
-  { sceneName: "Interview Segment", duration: 180 },
-  { sceneName: "Product Showcase", duration: 90 },
-  { sceneName: "Closing Credits", duration: 45 },
+const DEMO_SCENES: Array<SceneConfig> = [
+  { scene_name: "Opening Sequence", duration: 30 },
+  { scene_name: "Main Content Block", duration: 120 },
+  { scene_name: "Transition Graphics", duration: 15 },
+  { scene_name: "Interview Segment", duration: 180 },
+  { scene_name: "Product Showcase", duration: 90 },
+  { scene_name: "Closing Credits", duration: 45 },
 ]
 
-export function OrchestratorDemo() {
-  const [scenes, setScenes] = useState<SceneConfig[]>(DEMO_SCENES)
+export const OrchestratorDemo = () => {
+  const [scenes, setScenes] = useState<Array<SceneConfig>>(DEMO_SCENES)
   const [editingScene, setEditingScene] = useState<{
     scene: SceneConfig
     index: number
   } | null>(null)
 
   const orchestrator = useOrchestrator({
+    streamId: "test",
     scenes,
-    orchestratorUrl: undefined, // Will use mock data
     autoStart: false,
     onSceneChange: (from, to) => {
       console.log("[v0] Scene changed:", from, "→", to)
@@ -152,7 +152,7 @@ export function OrchestratorDemo() {
                   <OrchestratorTimeline
                     scenes={scenes}
                     currentSceneIndex={
-                      orchestrator.state?.currentSceneIndex || 0
+                      orchestrator.state.currentSceneIndex || 0
                     }
                     progress={orchestrator.progress}
                     currentTime={orchestrator.currentTime}
