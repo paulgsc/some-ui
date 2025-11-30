@@ -20,17 +20,19 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "lucide-react": "^0.525.0",
-    "some-crossword": "link:../../../crates/some-crossword/dist",
-    "some-ui-slideshow": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*",
     "@some-ui/styles": "workspace:*",
+    "lucide-react": "^0.525.0",
+    "prismjs": "^1.30.0",
+    "some-crossword": "link:../../../crates/some-crossword/dist",
+    "some-ui-shared": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
+    "some-ui-utils": "workspace:*",
     "viewport-rotation": "link:../../../crates/viewport-rotation/dist"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "@types/prismjs": "^1.26.5"
   },
   "repository": {
     "type": "git",
