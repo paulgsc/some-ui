@@ -1,5 +1,7 @@
 import type { FC } from "react"
 import { useEffect, useRef } from "react"
+import type { CanonicalUnit } from "@input/types/leetype"
+import { buildIndexMap } from "@input/utils/leetype"
 import Prism from "prismjs"
 
 // Import Prism.js and its components in the correct order
@@ -11,11 +13,12 @@ import "prismjs/components/prism-rust"
 
 type CodeDisplayProps = {
   code: string // Original formatted code for display
-  userInput: string // Normalized user input
+  userInput: string // Raw user input
   language: string
   displayMode: "shown" | "hidden"
   gameState: "idle" | "playing" | "finished" | "timeout"
-  normalizedCode: string // Normalized target code for comparison
+  targetUnits: Array<CanonicalUnit>
+  userUnits: Array<CanonicalUnit>
 }
 
 export const CodeDisplay: FC<CodeDisplayProps> = ({
@@ -24,7 +27,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   language,
   displayMode,
   gameState,
-  normalizedCode,
+  targetUnits,
+  userUnits,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<HTMLSpanElement>(null)
@@ -47,71 +51,34 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     }
   }, [userInput, gameState])
 
-  // Build a map from display code positions to normalized code positions
-  const buildPositionMap = (displayCode: string, normalized: string) => {
-    const map: Array<number> = [] // map[displayIndex] = normalizedIndex
-    let normalizedIndex = 0
-
-    for (let i = 0; i < displayCode.length; i++) {
-      const char = displayCode[i]
-
-      // Skip leading whitespace at the start of lines
-      if (i === 0 || displayCode[i - 1] === "\n") {
-        // We're at the start of a line
-        let leadingSpaces = 0
-        let j = i
-        while (
-          j < displayCode.length &&
-          (displayCode[j] === " " || displayCode[j] === "\t")
-        ) {
-          leadingSpaces++
-          j++
-        }
-
-        // Skip leading whitespace in mapping
-        if ((leadingSpaces > 0 && char === " ") || char === "\t") {
-          map.push(-1) // Mark as skipped
-          continue
-        }
-      }
-
-      map.push(normalizedIndex)
-
-      // Only increment normalized index for non-skipped characters
-      if (
-        (char !== " " && char !== "\t") ||
-        (i > 0 &&
-          displayCode[i - 1] !== "\n" &&
-          displayCode[i - 1] !== " " &&
-          displayCode[i - 1] !== "\t")
-      ) {
-        normalizedIndex++
-      }
-    }
-
-    return map
-  }
-
   const renderHighlightedCode = () => {
+    // Build mapping from display code positions to canonical units
+    const displayIndexMap = buildIndexMap(code, targetUnits)
+    const userCurrentUnit = userUnits.length
+
     if (displayMode === "hidden" && gameState === "playing") {
       // Hidden mode: show only typed characters
-      const positionMap = buildPositionMap(code, normalizedCode)
-
       return code.split("").map((char, idx) => {
-        const normalizedIdx = positionMap[idx]
+        const unitIdx = displayIndexMap[idx]
 
-        if (normalizedIdx === -1) {
-          // Leading whitespace - always show as dim
-          return (
-            <span key={idx} className="text-muted-foreground/30">
-              {char}
-            </span>
-          )
-        }
+        if (unitIdx < userCurrentUnit) {
+          // Already typed - check if correct
+          const targetUnit = targetUnits[unitIdx]
+          const userUnit = userUnits[unitIdx]
 
-        if (normalizedIdx < userInput.length) {
-          const isCorrect =
-            userInput[normalizedIdx] === normalizedCode[normalizedIdx]
+          let isCorrect = true
+          if (targetUnit && userUnit) {
+            if (targetUnit.kind !== userUnit.kind) {
+              isCorrect = false
+            } else if (
+              targetUnit.kind === "char" &&
+              userUnit.kind === "char" &&
+              targetUnit.value !== userUnit.value
+            ) {
+              isCorrect = false
+            }
+          }
+
           return (
             <span
               key={idx}
@@ -123,7 +90,9 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             </span>
           )
         }
-        if (normalizedIdx === userInput.length) {
+
+        if (unitIdx === userCurrentUnit) {
+          // Current cursor position
           return (
             <span
               key={idx}
@@ -134,6 +103,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             </span>
           )
         }
+
+        // Not yet typed
         return (
           <span key={idx} className="text-transparent select-none">
             {char === "\n" ? "\n" : char}
@@ -153,33 +124,37 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     const grammar = Prism.languages[languageMap[language]]
     const tokens = Prism.tokenize(code, grammar)
 
-    const positionMap = buildPositionMap(code, normalizedCode)
     let charIndex = 0
 
     const renderToken = (token: string | Prism.Token, key: number): any => {
       if (typeof token === "string") {
         return token.split("").map((char) => {
           const currentIdx = charIndex++
-          const normalizedIdx = positionMap[currentIdx]
+          const unitIdx = displayIndexMap[currentIdx]
           let className = ""
 
-          // Leading whitespace
-          if (normalizedIdx === -1) {
-            return (
-              <span key={currentIdx} className="text-muted-foreground/50">
-                {char}
-              </span>
-            )
-          }
+          // Determine highlighting based on canonical unit progress
+          if (unitIdx < userCurrentUnit) {
+            const targetUnit = targetUnits[unitIdx]
+            const userUnit = userUnits[unitIdx]
 
-          // Highlight based on user input
-          if (normalizedIdx < userInput.length) {
-            const isCorrect =
-              userInput[normalizedIdx] === normalizedCode[normalizedIdx]
+            let isCorrect = true
+            if (targetUnit && userUnit) {
+              if (targetUnit.kind !== userUnit.kind) {
+                isCorrect = false
+              } else if (
+                targetUnit.kind === "char" &&
+                userUnit.kind === "char" &&
+                targetUnit.value !== userUnit.value
+              ) {
+                isCorrect = false
+              }
+            }
+
             className = isCorrect
               ? "bg-green-500/10"
               : "bg-red-500/30 text-red-400"
-          } else if (normalizedIdx === userInput.length) {
+          } else if (unitIdx === userCurrentUnit) {
             return (
               <span
                 key={currentIdx}
@@ -212,25 +187,30 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         <span key={key} className={`token ${token.type}`}>
           {content.split("").map((char) => {
             const currentIdx = charIndex++
-            const normalizedIdx = positionMap[currentIdx]
+            const unitIdx = displayIndexMap[currentIdx]
             let className = ""
 
-            // Leading whitespace
-            if (normalizedIdx === -1) {
-              return (
-                <span key={currentIdx} className="opacity-50">
-                  {char}
-                </span>
-              )
-            }
+            if (unitIdx < userCurrentUnit) {
+              const targetUnit = targetUnits[unitIdx]
+              const userUnit = userUnits[unitIdx]
 
-            if (normalizedIdx < userInput.length) {
-              const isCorrect =
-                userInput[normalizedIdx] === normalizedCode[normalizedIdx]
+              let isCorrect = true
+              if (targetUnit && userUnit) {
+                if (targetUnit.kind !== userUnit.kind) {
+                  isCorrect = false
+                } else if (
+                  targetUnit.kind === "char" &&
+                  userUnit.kind === "char" &&
+                  targetUnit.value !== userUnit.value
+                ) {
+                  isCorrect = false
+                }
+              }
+
               className = isCorrect
                 ? "bg-green-500/10"
                 : "bg-red-500/30 text-red-400"
-            } else if (normalizedIdx === userInput.length) {
+            } else if (unitIdx === userCurrentUnit) {
               return (
                 <span
                   key={currentIdx}

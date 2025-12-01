@@ -12,3 +12,5 @@ export type CodeSample = {
 export type CodeSamplesMap = {
   [L in Language]: CodeSample
 }
+
+export type CanonicalUnit = { kind: "char"; value: string } | { kind: "sep" }

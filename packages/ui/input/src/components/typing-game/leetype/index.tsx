@@ -17,7 +17,7 @@ type LeetypeProps = {
   source: CodeSamplesMap
 }
 
-export const Leetype: FC<LeetypeProps> = ({ source }) => {
+export const Leetype: FC<TypingGameProps> = ({ source }) => {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [language, setLanguage] = useState<Language>("typescript")
@@ -95,12 +95,13 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
             </Badge>
           </div>
           <CodeDisplay
-            code={currentCode}
+            code={typingGame.displayCode}
             userInput={typingGame.userInput}
             language={language}
             displayMode={displayMode}
             gameState={gameState}
-            normalizedCode={typingGame.normalizedCode}
+            targetUnits={typingGame.targetUnits}
+            userUnits={typingGame.userUnits}
           />
         </Card>
 
