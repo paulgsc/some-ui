@@ -10,11 +10,12 @@ import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
 type CodeDisplayProps = {
-  code: string
-  userInput: string
+  code: string // Original formatted code for display
+  userInput: string // Normalized user input
   language: string
   displayMode: "shown" | "hidden"
   gameState: "idle" | "playing" | "finished" | "timeout"
+  normalizedCode: string // Normalized target code for comparison
 }
 
 export const CodeDisplay: FC<CodeDisplayProps> = ({
@@ -23,6 +24,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   language,
   displayMode,
   gameState,
+  normalizedCode,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<HTMLSpanElement>(null)
@@ -45,12 +47,71 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     }
   }, [userInput, gameState])
 
+  // Build a map from display code positions to normalized code positions
+  const buildPositionMap = (displayCode: string, normalized: string) => {
+    const map: Array<number> = [] // map[displayIndex] = normalizedIndex
+    let normalizedIndex = 0
+
+    for (let i = 0; i < displayCode.length; i++) {
+      const char = displayCode[i]
+
+      // Skip leading whitespace at the start of lines
+      if (i === 0 || displayCode[i - 1] === "\n") {
+        // We're at the start of a line
+        let leadingSpaces = 0
+        let j = i
+        while (
+          j < displayCode.length &&
+          (displayCode[j] === " " || displayCode[j] === "\t")
+        ) {
+          leadingSpaces++
+          j++
+        }
+
+        // Skip leading whitespace in mapping
+        if ((leadingSpaces > 0 && char === " ") || char === "\t") {
+          map.push(-1) // Mark as skipped
+          continue
+        }
+      }
+
+      map.push(normalizedIndex)
+
+      // Only increment normalized index for non-skipped characters
+      if (
+        (char !== " " && char !== "\t") ||
+        (i > 0 &&
+          displayCode[i - 1] !== "\n" &&
+          displayCode[i - 1] !== " " &&
+          displayCode[i - 1] !== "\t")
+      ) {
+        normalizedIndex++
+      }
+    }
+
+    return map
+  }
+
   const renderHighlightedCode = () => {
     if (displayMode === "hidden" && gameState === "playing") {
       // Hidden mode: show only typed characters
+      const positionMap = buildPositionMap(code, normalizedCode)
+
       return code.split("").map((char, idx) => {
-        if (idx < userInput.length) {
-          const isCorrect = userInput[idx] === char
+        const normalizedIdx = positionMap[idx]
+
+        if (normalizedIdx === -1) {
+          // Leading whitespace - always show as dim
+          return (
+            <span key={idx} className="text-muted-foreground/30">
+              {char}
+            </span>
+          )
+        }
+
+        if (normalizedIdx < userInput.length) {
+          const isCorrect =
+            userInput[normalizedIdx] === normalizedCode[normalizedIdx]
           return (
             <span
               key={idx}
@@ -62,7 +123,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             </span>
           )
         }
-        if (idx === userInput.length) {
+        if (normalizedIdx === userInput.length) {
           return (
             <span
               key={idx}
@@ -92,20 +153,33 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     const grammar = Prism.languages[languageMap[language]]
     const tokens = Prism.tokenize(code, grammar)
 
+    const positionMap = buildPositionMap(code, normalizedCode)
     let charIndex = 0
+
     const renderToken = (token: string | Prism.Token, key: number): any => {
       if (typeof token === "string") {
         return token.split("").map((char) => {
           const currentIdx = charIndex++
+          const normalizedIdx = positionMap[currentIdx]
           let className = ""
 
+          // Leading whitespace
+          if (normalizedIdx === -1) {
+            return (
+              <span key={currentIdx} className="text-muted-foreground/50">
+                {char}
+              </span>
+            )
+          }
+
           // Highlight based on user input
-          if (currentIdx < userInput.length) {
-            const isCorrect = userInput[currentIdx] === char
+          if (normalizedIdx < userInput.length) {
+            const isCorrect =
+              userInput[normalizedIdx] === normalizedCode[normalizedIdx]
             className = isCorrect
               ? "bg-green-500/10"
               : "bg-red-500/30 text-red-400"
-          } else if (currentIdx === userInput.length) {
+          } else if (normalizedIdx === userInput.length) {
             return (
               <span
                 key={currentIdx}
@@ -138,14 +212,25 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         <span key={key} className={`token ${token.type}`}>
           {content.split("").map((char) => {
             const currentIdx = charIndex++
+            const normalizedIdx = positionMap[currentIdx]
             let className = ""
 
-            if (currentIdx < userInput.length) {
-              const isCorrect = userInput[currentIdx] === char
+            // Leading whitespace
+            if (normalizedIdx === -1) {
+              return (
+                <span key={currentIdx} className="opacity-50">
+                  {char}
+                </span>
+              )
+            }
+
+            if (normalizedIdx < userInput.length) {
+              const isCorrect =
+                userInput[normalizedIdx] === normalizedCode[normalizedIdx]
               className = isCorrect
                 ? "bg-green-500/10"
                 : "bg-red-500/30 text-red-400"
-            } else if (currentIdx === userInput.length) {
+            } else if (normalizedIdx === userInput.length) {
               return (
                 <span
                   key={currentIdx}
