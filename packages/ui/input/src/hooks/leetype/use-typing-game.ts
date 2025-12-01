@@ -25,7 +25,7 @@ type UseTypingGameReturn = {
   handleInputChange: (input: string) => void
   reset: () => void
   start: () => void
-  dismissWarning: () => void
+  onDismiss: () => void
 }
 
 export function useTypingGame({
@@ -39,6 +39,7 @@ export function useTypingGame({
   const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const [showErrorAlert, setShowErrorAlert] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
+  const [lastValidatedLength, setLastValidatedLength] = useState(0)
 
   // Canonicalize target code once
   const targetUnits = useMemo(() => canonicalize(targetCode), [targetCode])
@@ -53,10 +54,11 @@ export function useTypingGame({
       const newUnits = canonicalize(input)
       const previousUnits = userUnits
 
-      // If input is shorter (backspace), reset consecutive errors
+      // If input is shorter (backspace), reset consecutive errors and validation point
       if (newUnits.length < previousUnits.length) {
         setConsecutiveErrors(0)
         setShowErrorAlert(false)
+        setLastValidatedLength(Math.min(lastValidatedLength, newUnits.length))
         setRawUserInput(input)
         return
       }
@@ -67,29 +69,55 @@ export function useTypingGame({
         return // Don't allow new input, must backspace
       }
 
-      let newConsecutiveErrors = consecutiveErrors
-      let hasError = false
+      // Helper to find token boundaries
+      const findTokenStart = (
+        units: Array<CanonicalUnit>,
+        endIndex: number
+      ): number => {
+        for (let i = endIndex - 1; i >= 0; i--) {
+          if (units[i].kind === "sep") {
+            return i + 1
+          }
+        }
+        return 0
+      }
 
-      // Check only newly added units for errors
+      const findTokenEnd = (
+        units: Array<CanonicalUnit>,
+        startIndex: number
+      ): number => {
+        for (let i = startIndex; i < units.length; i++) {
+          if (units[i].kind === "sep") {
+            return i
+          }
+        }
+        return units.length
+      }
+
+      let newConsecutiveErrors = consecutiveErrors
+      let totalNewErrors = 0
+      let hasErrorInCurrentToken = false
+
+      // Check newly added units
       if (newUnits.length > previousUnits.length) {
-        for (let i = previousUnits.length; i < newUnits.length; i++) {
+        const tokenStart = findTokenStart(newUnits, newUnits.length)
+        const tokenEnd = findTokenEnd(newUnits, tokenStart)
+
+        // Check if current token has any errors
+        for (let i = tokenStart; i < tokenEnd; i++) {
           const expected = targetUnits[i]
           const actual = newUnits[i]
 
           // Check if we've exceeded target length
           if (!expected) {
-            setErrors((e) => e + 1)
-            newConsecutiveErrors++
-            hasError = true
-            continue
+            hasErrorInCurrentToken = true
+            break
           }
 
           // Check for unit mismatch
           if (expected.kind !== actual.kind) {
-            setErrors((e) => e + 1)
-            newConsecutiveErrors++
-            hasError = true
-            continue
+            hasErrorInCurrentToken = true
+            break
           }
 
           // Check character mismatch
@@ -98,13 +126,41 @@ export function useTypingGame({
             actual.kind === "char" &&
             expected.value !== actual.value
           ) {
-            setErrors((e) => e + 1)
-            newConsecutiveErrors++
-            hasError = true
-          } else if (!hasError) {
-            // Correct character typed, reset consecutive errors
-            newConsecutiveErrors = 0
+            hasErrorInCurrentToken = true
+            break
           }
+        }
+
+        // If there's an error in the current token, count all characters from the error point
+        if (hasErrorInCurrentToken) {
+          // Count how many new characters were added since last validation
+          const newCharsAdded =
+            newUnits.length -
+            Math.max(previousUnits.length, lastValidatedLength)
+
+          // All new characters are errors since the token has an error
+          totalNewErrors = newCharsAdded
+          newConsecutiveErrors += newCharsAdded
+
+          setErrors((e) => e + totalNewErrors)
+        } else {
+          // Current token is correct - check if we completed a token
+          const previousTokenStart = findTokenStart(
+            previousUnits,
+            previousUnits.length
+          )
+          const currentTokenStart = findTokenStart(newUnits, newUnits.length)
+
+          // If we've moved to a new token (typed a separator), validate the previous token
+          if (
+            currentTokenStart > previousTokenStart ||
+            newUnits[newUnits.length - 1]?.kind === "sep"
+          ) {
+            // Previous token was completed successfully, reset consecutive errors
+            newConsecutiveErrors = 0
+            setLastValidatedLength(newUnits.length)
+          }
+          // Otherwise, we're still in the same token and it's correct so far
         }
       }
 
@@ -119,7 +175,14 @@ export function useTypingGame({
 
       setRawUserInput(input)
     },
-    [gameState, userUnits, targetUnits, consecutiveErrors, maxConsecutiveErrors]
+    [
+      gameState,
+      userUnits,
+      targetUnits,
+      consecutiveErrors,
+      maxConsecutiveErrors,
+      lastValidatedLength,
+    ]
   )
 
   const reset = useCallback(() => {
@@ -128,6 +191,7 @@ export function useTypingGame({
     setConsecutiveErrors(0)
     setShowErrorAlert(false)
     setStartTime(null)
+    setLastValidatedLength(0)
   }, [])
 
   const start = useCallback(() => {
@@ -136,9 +200,10 @@ export function useTypingGame({
     setConsecutiveErrors(0)
     setShowErrorAlert(false)
     setStartTime(Date.now())
+    setLastValidatedLength(0)
   }, [])
 
-  const dismissWarning = useCallback(() => {
+  const onDismiss = useCallback(() => {
     setShowErrorAlert(false)
   }, [])
   // Check for completion
@@ -201,6 +266,6 @@ export function useTypingGame({
     handleInputChange,
     reset,
     start,
-    dismissWarning,
+    onDismiss
   }
 }

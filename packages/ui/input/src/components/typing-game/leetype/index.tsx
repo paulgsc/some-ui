@@ -119,7 +119,7 @@ export const Leetype: FC<TypingGameProps> = ({ source }) => {
         />
         <TypingErrorAlert
           consecutiveErrors={typingGame.consecutiveErrors}
-          onDismiss={typingGame.dismissWarning}
+          onDismiss={typingGame.onDismiss}
           showErrorAlert={typingGame.showErrorAlert}
         />
       </div>

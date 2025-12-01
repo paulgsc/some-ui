@@ -39,7 +39,6 @@ function buildIndexMap(
 
   for (let i = 0; i < input.length; i++) {
     const char = input[i]
-
     if (/\s/.test(char)) {
       if (!inWhitespace) {
         map.push(unitIndex)
@@ -81,5 +80,96 @@ export function getRawPositionForCanonicalIndex(
   return map.findIndex((idx) => idx === canonicalIndex)
 }
 
-// Export for use in CodeDisplay
+/**
+ * Finds the start index of the token containing the given position
+ * A token is a sequence of non-separator units
+ */
+export function findTokenStart(
+  units: Array<CanonicalUnit>,
+  position: number
+): number {
+  for (let i = position - 1; i >= 0; i--) {
+    if (units[i].kind === "sep") {
+      return i + 1
+    }
+  }
+  return 0
+}
+
+/**
+ * Finds the end index of the token starting at the given position
+ * Returns the index of the next separator or end of array
+ */
+export function findTokenEnd(
+  units: Array<CanonicalUnit>,
+  startIndex: number
+): number {
+  for (let i = startIndex; i < units.length; i++) {
+    if (units[i].kind === "sep") {
+      return i
+    }
+  }
+  return units.length
+}
+
+/**
+ * Compares two token sequences and returns detailed mismatch information
+ * Returns null if tokens match, or an object with error details
+ */
+export function compareTokens(
+  userUnits: Array<CanonicalUnit>,
+  targetUnits: Array<CanonicalUnit>,
+  tokenStart: number,
+  tokenEnd: number
+): {
+  hasError: boolean
+  firstErrorIndex: number | null
+  errorCount: number
+} {
+  let hasError = false
+  let firstErrorIndex: number | null = null
+  let errorCount = 0
+
+  for (let i = tokenStart; i < tokenEnd; i++) {
+    const expected = targetUnits[i]
+    const actual = userUnits[i]
+
+    // Check if we've exceeded target length
+    if (!expected) {
+      if (!hasError) {
+        hasError = true
+        firstErrorIndex = i
+      }
+      errorCount++
+      continue
+    }
+
+    // Check for unit mismatch
+    if (expected.kind !== actual.kind) {
+      if (!hasError) {
+        hasError = true
+        firstErrorIndex = i
+      }
+      errorCount++
+      continue
+    }
+
+    // Check character mismatch
+    if (
+      expected.kind === "char" &&
+      actual.kind === "char" &&
+      expected.value !== actual.value
+    ) {
+      if (!hasError) {
+        hasError = true
+        firstErrorIndex = i
+      }
+      errorCount++
+    }
+  }
+
+  return { hasError, firstErrorIndex, errorCount }
+}
+
+// Export for use in CodeDisplay and typing game
 export { canonicalize, buildIndexMap }
