@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { CodeDisplay } from "@input/components/typing-game/code-display"
 import { SettingsCard } from "@input/components/typing-game/settings-card"
 import { StatsBar } from "@input/components/typing-game/stats-bar"
+import { TypingErrorAlert } from "@input/components/typing-game/typing-error-alert"
 import { TypingInputCard } from "@input/components/typing-game/typing-input-card"
 import { useGameTimer, useTypingGame } from "@input/hooks"
 import type {
@@ -115,6 +116,11 @@ export const Leetype: FC<TypingGameProps> = ({ source }) => {
           onReset={handleReset}
           onInputChange={typingGame.handleInputChange}
           inputRef={inputRef}
+        />
+        <TypingErrorAlert
+          consecutiveErrors={typingGame.consecutiveErrors}
+          onDismiss={typingGame.dismissWarning}
+          showErrorAlert={typingGame.showErrorAlert}
         />
       </div>
     </div>

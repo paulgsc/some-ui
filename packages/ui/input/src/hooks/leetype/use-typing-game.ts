@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { CanonicalUnit, GameState } from "@input/types/leetype"
 import { canonicalize } from "@input/utils/leetype"
-
-// ============================================================================
-// TYPING GAME HOOK
-// ============================================================================
 
 type UseTypingGameProps = {
   targetCode: string
   gameState: GameState
   onComplete: () => void
+  maxConsecutiveErrors?: number
 }
 
 type UseTypingGameReturn = {
@@ -19,6 +16,8 @@ type UseTypingGameReturn = {
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
   errors: number
+  consecutiveErrors: number
+  showErrorAlert: boolean
   progress: number
   accuracy: number
   wpm: number
@@ -26,15 +25,19 @@ type UseTypingGameReturn = {
   handleInputChange: (input: string) => void
   reset: () => void
   start: () => void
+  dismissWarning: () => void
 }
 
 export function useTypingGame({
   targetCode,
   gameState,
   onComplete,
+  maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
   const [rawUserInput, setRawUserInput] = useState("")
   const [errors, setErrors] = useState(0)
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0)
+  const [showErrorAlert, setShowErrorAlert] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
 
   // Canonicalize target code once
@@ -43,56 +46,101 @@ export function useTypingGame({
   // Canonicalize user input on every change
   const userUnits = useMemo(() => canonicalize(rawUserInput), [rawUserInput])
 
-  const handleInputChange = (input: string) => {
-    if (gameState !== "playing") return
+  const handleInputChange = useCallback(
+    (input: string) => {
+      if (gameState !== "playing") return
 
-    const newUnits = canonicalize(input)
-    const previousUnits = userUnits
+      const newUnits = canonicalize(input)
+      const previousUnits = userUnits
 
-    // Check only newly added units for errors
-    if (newUnits.length > previousUnits.length) {
-      for (let i = previousUnits.length; i < newUnits.length; i++) {
-        const expected = targetUnits[i]
-        const actual = newUnits[i]
+      // If input is shorter (backspace), reset consecutive errors
+      if (newUnits.length < previousUnits.length) {
+        setConsecutiveErrors(0)
+        setShowErrorAlert(false)
+        setRawUserInput(input)
+        return
+      }
 
-        // Check if we've exceeded target length
-        if (!expected) {
-          setErrors((e) => e + 1)
-          continue
-        }
+      // Check if we've hit max consecutive errors - block further input
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        setShowErrorAlert(true)
+        return // Don't allow new input, must backspace
+      }
 
-        // Check for unit mismatch
-        if (expected.kind !== actual.kind) {
-          setErrors((e) => e + 1)
-          continue
-        }
+      let newConsecutiveErrors = consecutiveErrors
+      let hasError = false
 
-        // Check character mismatch
-        if (
-          expected.kind === "char" &&
-          actual.kind === "char" &&
-          expected.value !== actual.value
-        ) {
-          setErrors((e) => e + 1)
+      // Check only newly added units for errors
+      if (newUnits.length > previousUnits.length) {
+        for (let i = previousUnits.length; i < newUnits.length; i++) {
+          const expected = targetUnits[i]
+          const actual = newUnits[i]
+
+          // Check if we've exceeded target length
+          if (!expected) {
+            setErrors((e) => e + 1)
+            newConsecutiveErrors++
+            hasError = true
+            continue
+          }
+
+          // Check for unit mismatch
+          if (expected.kind !== actual.kind) {
+            setErrors((e) => e + 1)
+            newConsecutiveErrors++
+            hasError = true
+            continue
+          }
+
+          // Check character mismatch
+          if (
+            expected.kind === "char" &&
+            actual.kind === "char" &&
+            expected.value !== actual.value
+          ) {
+            setErrors((e) => e + 1)
+            newConsecutiveErrors++
+            hasError = true
+          } else if (!hasError) {
+            // Correct character typed, reset consecutive errors
+            newConsecutiveErrors = 0
+          }
         }
       }
-    }
 
-    setRawUserInput(input)
-  }
+      setConsecutiveErrors(newConsecutiveErrors)
 
-  const reset = () => {
+      // Show alert if we've reached the limit
+      if (newConsecutiveErrors >= maxConsecutiveErrors) {
+        setShowErrorAlert(true)
+      } else {
+        setShowErrorAlert(false)
+      }
+
+      setRawUserInput(input)
+    },
+    [gameState, userUnits, targetUnits, consecutiveErrors, maxConsecutiveErrors]
+  )
+
+  const reset = useCallback(() => {
     setRawUserInput("")
     setErrors(0)
+    setConsecutiveErrors(0)
+    setShowErrorAlert(false)
     setStartTime(null)
-  }
+  }, [])
 
-  const start = () => {
+  const start = useCallback(() => {
     setRawUserInput("")
     setErrors(0)
+    setConsecutiveErrors(0)
+    setShowErrorAlert(false)
     setStartTime(Date.now())
-  }
+  }, [])
 
+  const dismissWarning = useCallback(() => {
+    setShowErrorAlert(false)
+  }, [])
   // Check for completion
   useEffect(() => {
     if (
@@ -144,6 +192,8 @@ export function useTypingGame({
     targetUnits,
     userUnits,
     errors,
+    consecutiveErrors,
+    showErrorAlert,
     progress,
     accuracy,
     wpm,
@@ -151,5 +201,6 @@ export function useTypingGame({
     handleInputChange,
     reset,
     start,
+    dismissWarning,
   }
 }
