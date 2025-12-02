@@ -27,7 +27,8 @@
     "some-ui-shared": "workspace:*",
     "some-ui-slideshow": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "viewport-rotation": "link:../../../crates/viewport-rotation/dist"
+    "viewport-rotation": "link:../../../crates/viewport-rotation/dist",
+    "leetype-wasm": "link:../../../crates/leetype_wasm/dist"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

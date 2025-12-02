@@ -5,7 +5,8 @@ import { SettingsCard } from "@input/components/typing-game/settings-card"
 import { StatsBar } from "@input/components/typing-game/stats-bar"
 import { TypingErrorAlert } from "@input/components/typing-game/typing-error-alert"
 import { TypingInputCard } from "@input/components/typing-game/typing-input-card"
-import { useGameTimer, useTypingGame } from "@input/hooks"
+import { useGameTimer } from "@input/hooks"
+import { useTypingGame } from "@input/hooks/leetype/use-typing-game-wasm"
 import type {
   CodeSamplesMap,
   DisplayMode,
@@ -18,7 +19,7 @@ type LeetypeProps = {
   source: CodeSamplesMap
 }
 
-export const Leetype: FC<TypingGameProps> = ({ source }) => {
+export const Leetype: FC<LeetypeProps> = ({ source }) => {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [language, setLanguage] = useState<Language>("typescript")
@@ -96,12 +97,10 @@ export const Leetype: FC<TypingGameProps> = ({ source }) => {
             </Badge>
           </div>
           <CodeDisplay
-            code={typingGame.displayCode}
-            userInput={typingGame.userInput}
+            displayCode={typingGame.displayCode}
             language={language}
-            displayMode={displayMode}
-            gameState={gameState}
             targetUnits={typingGame.targetUnits}
+            cursorUnitIndex={typingGame.cursorUnitIndex}
             userUnits={typingGame.userUnits}
           />
         </Card>

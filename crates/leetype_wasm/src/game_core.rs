@@ -21,6 +21,8 @@ pub struct GameStats {
     pub elapsed_time: f64,
     pub total_errors: usize,
     pub consecutive_errors: usize,
+    pub show_error_alert: bool,
+    pub cursor: usize,
     pub is_complete: bool,
 }
 
@@ -62,6 +64,7 @@ impl TypingGameCore {
 
             self.state.raw_input = input.to_string();
             self.state.user_units = new_units;
+            self.state.cursor = self.state.user_units.len();
 
             return InputChangeResult {
                 accepted: true,
@@ -100,6 +103,7 @@ impl TypingGameCore {
 
         self.state.raw_input = input.to_string();
         self.state.user_units = new_units;
+        self.state.cursor = self.state.user_units.len();
 
         let show_alert = self.state.consecutive_errors >= self.max_consecutive_errors;
 
@@ -119,6 +123,8 @@ impl TypingGameCore {
         let accuracy = stats::calculate_accuracy(chars_typed, self.state.total_errors);
         let wpm = stats::calculate_wpm(chars_typed, elapsed_time);
         let is_complete = validation::check_completion(&self.state.user_units, &self.target_units);
+        let show_alert = self.state.consecutive_errors >= self.max_consecutive_errors;
+        let cursor = self.state.cursor;
 
         GameStats {
             progress,
@@ -127,6 +133,8 @@ impl TypingGameCore {
             elapsed_time,
             total_errors: self.state.total_errors,
             consecutive_errors: self.state.consecutive_errors,
+            show_error_alert: show_alert,
+            cursor,
             is_complete,
         }
     }
@@ -141,5 +149,9 @@ impl TypingGameCore {
 
     pub fn get_user_units(&self) -> &[CanonicalUnit] {
         &self.state.user_units
+    }
+
+    pub fn get_cursor(&self) -> usize {
+        self.state.cursor
     }
 }

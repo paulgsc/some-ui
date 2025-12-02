@@ -43,6 +43,10 @@ impl TypingGame {
         self.core.get_user_input()
     }
 
+    pub fn get_cursor(&self) -> usize {
+        self.core.get_cursor()
+    }
+
     pub fn get_target_units(&self) -> JsValue {
         serde_wasm_bindgen::to_value(self.core.get_target_units()).unwrap()
     }
@@ -57,4 +61,40 @@ impl TypingGame {
 pub fn canonicalize_text(input: &str) -> JsValue {
     let units = canonicalize(input);
     serde_wasm_bindgen::to_value(&units).unwrap()
+}
+
+// Build a display index map directly from source code.
+// For each displayed char in `input`, return the canonical unit index it belongs to.
+#[wasm_bindgen]
+pub fn build_display_map_from_code(input: &str) -> Vec<usize> {
+    let units = crate::leetype::canonicalize(input);
+    let mut map = Vec::with_capacity(input.len());
+    let mut unit_index = 0usize;
+
+    for unit in &units {
+        match unit {
+            crate::leetype::CanonicalUnit::Char { .. } => {
+                // single char unit - map 1 display char -> this unit
+                map.push(unit_index);
+                unit_index += 1;
+            }
+            crate::leetype::CanonicalUnit::Separator { value } => {
+                // separator holds the exact whitespace string that was in the source
+                for _ch in value.chars() {
+                    map.push(unit_index);
+                }
+                unit_index += 1;
+            }
+        }
+    }
+
+    // Edge case: if input contained characters that canonicalize to fewer units
+    // (shouldn't happen if canonicalize used same input), ensure length matches input.
+    // If input.len() > map.len(), push final unit index for remaining chars (defensive).
+    while map.len() < input.chars().count() {
+        // append last unit index
+        map.push(unit_index.saturating_sub(1));
+    }
+
+    map
 }
