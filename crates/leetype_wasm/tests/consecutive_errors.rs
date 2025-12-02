@@ -2,7 +2,7 @@ use leetype_wasm::TypingGameCore;
 
 #[test]
 fn test_consecutive_errors_increment_on_each_wrong_char() {
-    let mut game = TypingGameCore::new("abc", Some(5));
+    let mut game = TypingGameCore::new("abcdefgh", Some(5));
     game.start(1000.0);
 
     // Type correct "a"
@@ -14,15 +14,15 @@ fn test_consecutive_errors_increment_on_each_wrong_char() {
     assert_eq!(result.consecutive_errors, 1, "First wrong char should increment to 1");
 
     // Second wrong character
-    let result = game.handle_input("axy");
+    let result = game.handle_input("axc");
     assert_eq!(result.consecutive_errors, 2, "Second wrong char should increment to 2");
 
     // Third wrong character
-    let result = game.handle_input("axyz");
+    let result = game.handle_input("axcd");
     assert_eq!(result.consecutive_errors, 3, "Third wrong char should increment to 3");
 
     // Fourth wrong character
-    let result = game.handle_input("axyzw");
+    let result = game.handle_input("axcde");
     assert_eq!(result.consecutive_errors, 4, "Fourth wrong char should increment to 4");
 }
 
@@ -136,25 +136,23 @@ fn test_backspace_multiple_chars_at_once() {
 
 #[test]
 fn test_cannot_exploit_backspace_to_reset_errors() {
-    let mut game = TypingGameCore::new("abc", Some(3));
+    let mut game = TypingGameCore::new("foo bar zar", Some(3));
     game.start(1000.0);
 
-    // Make 2 errors
-    game.handle_input("ax"); // error 1
-    let result = game.handle_input("axx"); // error 2
+    let result = game.handle_input("foo bzz"); // error 2
     assert_eq!(result.consecutive_errors, 2);
 
     // Try the exploit: type another error then backspace
-    let result = game.handle_input("axxx"); // error 3 - at limit
+    let result = game.handle_input("foo bzr z"); // error 3 - at limit
     assert_eq!(result.consecutive_errors, 3);
     assert_eq!(result.show_error_alert, true);
 
     // Backspace once - should still have 2 consecutive errors
-    let result = game.handle_input("axx");
+    let result = game.handle_input("foo bzr");
     assert_eq!(result.consecutive_errors, 2, "Should still have 2 errors, not reset to 0");
 
     // Can't type more without fixing - would hit limit again
-    let result = game.handle_input("axxz"); // error 3 again
+    let result = game.handle_input("foo bzr z"); // error 3 again
     assert_eq!(result.consecutive_errors, 3);
 }
 
