@@ -164,7 +164,42 @@ export function extractMetadata(element: Element): VideoMetadata | null {
 }
 
 export function extractTitle(element: Element): string | null {
-  return element.querySelector("#video-title")?.textContent?.trim() || null
+  // Try multiple selectors in order of specificity
+  const selectors = [
+    "#video-title", // Standard video renderer
+    "a#video-title", // Sometimes wrapped in anchor
+    "#video-title-link", // Alternative ID
+    "yt-formatted-string#video-title", // With element type
+    "h3 a", // Generic heading link
+    "[aria-label*='title']", // Accessibility label
+  ]
+
+  for (const selector of selectors) {
+    const titleEl = element.querySelector(selector)
+    if (titleEl) {
+      const title = titleEl.textContent?.trim()
+      if (title) {
+        console.log(`[DOM] extractTitle: found "${title}" via ${selector}`)
+        return title
+      }
+
+      // Also check aria-label attribute
+      const ariaLabel = titleEl.getAttribute("aria-label")
+      if (ariaLabel) {
+        console.log(
+          `[DOM] extractTitle: found "${ariaLabel}" via aria-label on ${selector}`
+        )
+        return ariaLabel
+      }
+    }
+  }
+
+  console.warn("[DOM] extractTitle: NO title found for element:", element)
+  console.warn(
+    "[DOM] extractTitle: Element HTML:",
+    element.innerHTML.substring(0, 200)
+  )
+  return null
 }
 
 export function obfuscateTitle(title: string): string {

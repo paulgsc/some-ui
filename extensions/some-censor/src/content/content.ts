@@ -1,11 +1,12 @@
 import { getAllVideoElements, VIDEO_SELECTOR_STRING } from "@censor/utils/dom"
 import { storageAPI } from "@censor/utils/storage-api"
+
 import { VideoManager } from "./video-manager"
+
 import "@censor/styles/content.css"
 
 class ContentController {
   private videoManager: VideoManager
-  private scanDebounceTimer: number | null = null
   private lastUrl: string = location.href
 
   constructor() {
@@ -15,7 +16,7 @@ class ContentController {
   async initialize(): Promise<void> {
     console.log("[BOYO] Initializing content script")
     await storageAPI.initialize()
-    
+
     this.waitForYouTube()
   }
 
@@ -41,16 +42,16 @@ class ContentController {
 
   private setup(): void {
     console.log("[BOYO] Setting up BOYO")
-    
+
     // Initial scan
     this.scan()
-    
+
     // Event delegation
     this.listen()
-    
+
     // Continuous observation
     this.observe()
-    
+
     // SPA navigation handling - CRITICAL for YouTube
     this.handleSPANavigation()
   }
@@ -63,24 +64,24 @@ class ContentController {
   private scan(): void {
     const videos = getAllVideoElements()
     console.log(`[BOYO] Scanning ${videos.length} videos`)
-    
-    videos.forEach(video => {
+
+    // Remove this line - it's not needed
+    // const fragment = document.createDocumentFragment()
+
+    videos.forEach((video) => {
       this.videoManager.upsert(video)
     })
-  }
 
-  /**
-   * Debounced scan - prevents excessive processing during rapid changes
-   */
-  private debouncedScan(): void {
-    if (this.scanDebounceTimer) {
-      clearTimeout(this.scanDebounceTimer)
+    // Single forced reflow after all updates
+    if (videos.length > 0) {
+      requestAnimationFrame(() => {
+        videos.forEach((v) => {
+          if (v instanceof HTMLElement) {
+            void v.offsetHeight
+          }
+        })
+      })
     }
-    
-    this.scanDebounceTimer = window.setTimeout(() => {
-      this.scan()
-      this.scanDebounceTimer = null
-    }, 300)
   }
 
   /**
@@ -89,58 +90,74 @@ class ContentController {
    */
   private listen(): void {
     // Hover → show metadata
-    document.addEventListener("mouseover", (e) => {
-      const target = e.target as HTMLElement
-      const overlay = target.closest(".boyo-overlay") as HTMLElement
-      if (!overlay || !overlay.dataset.videoId) return
-      
-      console.log("[BOYO] Hover detected on", overlay.dataset.videoId)
-      this.videoManager.transition(overlay.dataset.videoId, "HOVER")
-    }, { capture: true, passive: true }) // Use options object for better control
+    document.addEventListener(
+      "mouseover",
+      (e) => {
+        const target = e.target as HTMLElement
+        const overlay = target.closest(".boyo-overlay") as HTMLElement
+        if (!overlay || !overlay.dataset.videoId) return
+
+        console.log("[BOYO] Hover detected on", overlay.dataset.videoId)
+        this.videoManager.transition(overlay.dataset.videoId, "HOVER")
+      },
+      { capture: true, passive: true }
+    ) // Use options object for better control
 
     // CRITICAL FIX: Single click needs to check current level
     // If already at METADATA, advance to TITLE
-    document.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement
-      const overlay = target.closest(".boyo-overlay") as HTMLElement
-      if (!overlay || !overlay.dataset.videoId) return
-      
-      console.log("[BOYO] Click detected on", overlay.dataset.videoId)
-      
-      // Stop YouTube from handling the click
-      e.preventDefault()
-      e.stopPropagation()
-      e.stopImmediatePropagation() // CRITICAL: Stop other handlers
-      
-      this.videoManager.transition(overlay.dataset.videoId, "CLICK")
-    }, { capture: true }) // Capture phase is critical
+    document.addEventListener(
+      "click",
+      (e) => {
+        const target = e.target as HTMLElement
+        const overlay = target.closest(".boyo-overlay") as HTMLElement
+        if (!overlay || !overlay.dataset.videoId) return
+
+        console.log("[BOYO] Click detected on", overlay.dataset.videoId)
+
+        // Stop YouTube from handling the click
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation() // CRITICAL: Stop other handlers
+
+        this.videoManager.transition(overlay.dataset.videoId, "CLICK")
+      },
+      { capture: true }
+    ) // Capture phase is critical
 
     // Double-click → full reveal
-    document.addEventListener("dblclick", (e) => {
-      const target = e.target as HTMLElement
-      const overlay = target.closest(".boyo-overlay") as HTMLElement
-      if (!overlay || !overlay.dataset.videoId) return
-      
-      console.log("[BOYO] Double-click detected on", overlay.dataset.videoId)
-      
-      e.preventDefault()
-      e.stopPropagation()
-      e.stopImmediatePropagation()
-      
-      this.videoManager.transition(overlay.dataset.videoId, "DBLCLICK")
-    }, { capture: true })
+    document.addEventListener(
+      "dblclick",
+      (e) => {
+        const target = e.target as HTMLElement
+        const overlay = target.closest(".boyo-overlay") as HTMLElement
+        if (!overlay || !overlay.dataset.videoId) return
+
+        console.log("[BOYO] Double-click detected on", overlay.dataset.videoId)
+
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+
+        this.videoManager.transition(overlay.dataset.videoId, "DBLCLICK")
+      },
+      { capture: true }
+    )
 
     // Right-click → whitelist menu
-    document.addEventListener("contextmenu", (e) => {
-      const target = e.target as HTMLElement
-      const overlay = target.closest(".boyo-overlay") as HTMLElement
-      if (!overlay || !overlay.dataset.videoId) return
-      
-      console.log("[BOYO] Context menu on", overlay.dataset.videoId)
-      
-      e.preventDefault()
-      this.showContextMenu(e, overlay.dataset.videoId)
-    }, { capture: true })
+    document.addEventListener(
+      "contextmenu",
+      (e) => {
+        const target = e.target as HTMLElement
+        const overlay = target.closest(".boyo-overlay") as HTMLElement
+        if (!overlay || !overlay.dataset.videoId) return
+
+        console.log("[BOYO] Context menu on", overlay.dataset.videoId)
+
+        e.preventDefault()
+        this.showContextMenu(e, overlay.dataset.videoId)
+      },
+      { capture: true }
+    )
   }
 
   /**
@@ -149,49 +166,33 @@ class ContentController {
    */
   private observe(): void {
     const observer = new MutationObserver((mutations) => {
-      let hasNewVideos = false
-      
+      // Process synchronously within the same task
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (!(node instanceof HTMLElement)) continue
 
-          // Direct match
           if (node.matches(VIDEO_SELECTOR_STRING)) {
             this.videoManager.upsert(node)
-            hasNewVideos = true
-          } 
-          // Children match
-          else {
+            // Force immediate render for this node
+            void node.offsetHeight
+          } else {
             const videos = node.querySelectorAll(VIDEO_SELECTOR_STRING)
-            if (videos.length > 0) {
-              videos.forEach(video => this.videoManager.upsert(video))
-              hasNewVideos = true
-            }
+            videos.forEach((video) => {
+              this.videoManager.upsert(video)
+              if (video instanceof HTMLElement) {
+                void video.offsetHeight
+              }
+            })
           }
         }
-      }
-
-      // Also check for attribute changes (YouTube often reuses elements)
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
-          const target = mutation.target
-          if (target.matches(VIDEO_SELECTOR_STRING)) {
-            this.videoManager.upsert(target)
-          }
-        }
-      }
-
-      // Debounced full scan if we saw changes
-      if (hasNewVideos) {
-        this.debouncedScan()
       }
     })
 
-    observer.observe(document.body, { 
-      childList: true, 
+    observer.observe(document.body, {
+      childList: true,
       subtree: true,
-      attributes: true, // Watch for attribute changes (element reuse)
-      attributeFilter: ['href', 'video-id', 'data-context-item-id'] // YouTube-specific attributes
+      attributes: true,
+      attributeFilter: ["href", "video-id", "data-context-item-id"],
     })
   }
 
@@ -207,10 +208,10 @@ class ContentController {
 
     window.addEventListener("yt-navigate-finish", () => {
       console.log("[BOYO] YouTube navigation finished, rescanning")
-      
+
       // Reset state on navigation
       this.videoManager.reset()
-      
+
       // Scan new content
       setTimeout(() => this.scan(), 500)
     })
@@ -226,9 +227,14 @@ class ContentController {
     setInterval(() => {
       const currentUrl = location.href
       if (currentUrl !== this.lastUrl) {
-        console.log("[BOYO] URL change detected:", this.lastUrl, "→", currentUrl)
+        console.log(
+          "[BOYO] URL change detected:",
+          this.lastUrl,
+          "→",
+          currentUrl
+        )
         this.lastUrl = currentUrl
-        
+
         // Reset and rescan
         this.videoManager.reset()
         setTimeout(() => this.scan(), 500)
@@ -253,7 +259,7 @@ class ContentController {
 
     const result = confirm(
       "Add this channel to whitelist?\n\n" +
-      "(Always show content from this channel)"
+        "(Always show content from this channel)"
     )
 
     if (result) {

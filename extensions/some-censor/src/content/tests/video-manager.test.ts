@@ -26,6 +26,23 @@ vi.mock("@censor/utils/storage-api", () => ({
   },
 }))
 
+/**
+ * Helper to quickly create and upsert a video element into the manager.
+ */
+const seedVideo = (
+  manager: VideoManager,
+  videoId: string,
+  channelId: string = "chan1"
+) => {
+  const el = document.createElement("div")
+  el.dataset.videoId = videoId
+  el.dataset.channelId = channelId // Must be awaited in a real test context, but for the helper,
+  // it's okay to let it run in the background if the test flow allows.
+  // Since the new test is sync after the setup, a manual await in the test is cleaner.
+  manager.upsert(el)
+  return el
+}
+
 describe("VideoManager Invariants", () => {
   let manager: VideoManager
   let videoEl: HTMLElement
@@ -36,9 +53,8 @@ describe("VideoManager Invariants", () => {
     videoEl = document.createElement("div")
     videoEl.dataset.videoId = "vid1"
     videoEl.dataset.channelId = "chan1"
-  })
+  }) // --- Upsert Idempotency ---
 
-  // --- Upsert Idempotency ---
   it("upsert is idempotent for same element", async () => {
     await manager.upsert(videoEl)
     expect(manager.getVideoCount()).toBe(1)
@@ -57,9 +73,8 @@ describe("VideoManager Invariants", () => {
     await manager.upsert(newEl)
     expect(manager.getVideo("vid1")?.element).toBe(newEl)
     expect(videoEl.querySelector(".boyo-overlay")).toBeNull()
-  })
+  }) // --- FSM Transitions ---
 
-  // --- FSM Transitions ---
   it("FSM transitions correctly for HOVER -> METADATA -> CLICK -> TITLE -> DBLCLICK -> REVEALED", async () => {
     await manager.upsert(videoEl)
 
@@ -78,9 +93,25 @@ describe("VideoManager Invariants", () => {
 
     manager.transition("vid1", "CLICK") // MASKED + CLICK => no transition
     expect(manager.getVideo("vid1")?.level).toBe(DisclosureLevel.MASKED)
-  })
+  }) // 🆕 NEW TEST CASE 🆕
 
-  // --- Overlay consistency ---
+  it("never reacts to hover after reaching METADATA", async () => {
+    // Using the helper for setup
+    const vm = new VideoManager()
+    await seedVideo(vm, "vid1") // Await added for completeness with upsert
+
+    vm.transition("vid1", "HOVER") // MASKED → METADATA
+    expect(vm.getVideo("vid1")!.level).toBe(DisclosureLevel.METADATA) // Transition further to another level past METADATA
+    vm.transition("vid1", "CLICK") // METADATA → TITLE
+
+    const levelBeforeHover = vm.getVideo("vid1")!.level // Should be TITLE (2)
+
+    vm.transition("vid1", "HOVER") // Should be ignored at level > MASKED
+
+    expect(vm.getVideo("vid1")!.level).toBe(levelBeforeHover)
+    expect(vm.getVideo("vid1")!.level).toBe(DisclosureLevel.TITLE) // Explicitly check the expected level
+  }) // --- Overlay consistency ---
+
   it("overlay exists for MASKED, METADATA, TITLE, removed only for REVEALED", async () => {
     await manager.upsert(videoEl)
     expect(videoEl.querySelector(".boyo-overlay")).not.toBeNull()
@@ -103,9 +134,8 @@ describe("VideoManager Invariants", () => {
     manager.transition("vid1", "HOVER")
     overlay = videoEl.querySelector(".boyo-overlay") as HTMLElement
     expect(overlay.dataset.level).toBe(String(DisclosureLevel.METADATA))
-  })
+  }) // --- Reset behavior ---
 
-  // --- Reset behavior ---
   it("reset cleans up all videos and overlays", async () => {
     await manager.upsert(videoEl)
     expect(manager.getVideoCount()).toBe(1)
@@ -113,9 +143,8 @@ describe("VideoManager Invariants", () => {
     manager.reset()
     expect(manager.getVideoCount()).toBe(0)
     expect(videoEl.querySelector(".boyo-overlay")).toBeNull()
-  })
+  }) // --- Whitelist behavior ---
 
-  // --- Whitelist behavior ---
   it("adding channel to whitelist reveals all videos of that channel", async () => {
     await manager.upsert(videoEl)
 
@@ -129,9 +158,8 @@ describe("VideoManager Invariants", () => {
     expect(manager.getVideo("vid1")?.level).toBe(DisclosureLevel.REVEALED)
     expect(manager.getVideo("vid2")?.level).toBe(DisclosureLevel.REVEALED)
     expect(storageAPI.addToWhitelist).toHaveBeenCalled()
-  })
+  }) // --- Edge cases ---
 
-  // --- Edge cases ---
   it("non-HTMLElement upsert is ignored", async () => {
     // @ts-expect-error passing invalid type
     await manager.upsert({})

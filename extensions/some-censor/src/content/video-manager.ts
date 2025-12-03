@@ -88,24 +88,35 @@ export class VideoManager {
   /**
    * FSM transition table - authoritative
    */
-  private nextLevel(current: DisclosureLevel, event: string): DisclosureLevel {
-    // Double-click always reveals from any state
-    if (event === "DBLCLICK") {
-      return DisclosureLevel.REVEALED
-    }
+  private nextLevel(
+    current: DisclosureLevel,
+    event: "HOVER" | "CLICK" | "DBLCLICK"
+  ): DisclosureLevel {
+    switch (event) {
+      case "DBLCLICK":
+        // Always reveal from any state
+        return DisclosureLevel.REVEALED
 
-    // Click advances from METADATA to TITLE
-    if (event === "CLICK" && current === DisclosureLevel.METADATA) {
-      return DisclosureLevel.TITLE
-    }
+      case "HOVER":
+        // ✅ INVARIANT: hover only works from MASKED
+        if (current === DisclosureLevel.MASKED) {
+          return DisclosureLevel.METADATA
+        }
+        return current
 
-    // Hover advances from MASKED to METADATA
-    if (event === "HOVER" && current === DisclosureLevel.MASKED) {
-      return DisclosureLevel.METADATA
-    }
+      case "CLICK":
+        // ✅ INVARIANT: click only advances from METADATA
+        if (current === DisclosureLevel.METADATA) {
+          return DisclosureLevel.TITLE
+        }
+        return current
 
-    // No valid transition
-    return current
+      default: {
+        // Exhaustiveness check (will error if a new event is added)
+        event satisfies never
+        return current
+      }
+    }
   }
 
   /**
@@ -117,11 +128,15 @@ export class VideoManager {
 
     const overlay = video.element.querySelector(".boyo-overlay") as HTMLElement
     if (!overlay) {
+      console.warn(`[BOYO] No overlay found for ${videoId}`)
       return
     }
 
     // Update data attribute for CSS styling
     overlay.dataset.level = String(video.level)
+
+    // 2. FORCE RENDER - Critical for CSS transitions
+    this.forceRender(video.element)
 
     // Clear existing content
     overlay.innerHTML = ""
@@ -130,22 +145,54 @@ export class VideoManager {
     if (video.level >= DisclosureLevel.METADATA) {
       const metadata = extractMetadata(video.element)
       if (metadata) {
-        overlay.appendChild(createMetadataDisplay(metadata))
+        const metadataEl = createMetadataDisplay(metadata)
+        console.log(`[BOYO] Adding metadata element:`, metadataEl.className)
+        overlay.appendChild(metadataEl)
+        this.forceRender(video.element)
       }
     }
 
     if (video.level >= DisclosureLevel.TITLE) {
       const title = extractTitle(video.element)
+      console.log(
+        `[BOYO] extractTitle returned:`,
+        title,
+        `for element:`,
+        video.element
+      )
       if (title) {
-        overlay.appendChild(createTitleDisplay(title, false))
+        const titleEl = createTitleDisplay(title, false) // FIXED: Don't obfuscate at TITLE level
+        console.log(
+          `[BOYO] Adding title element:`,
+          titleEl.className,
+          titleEl.textContent
+        )
+        overlay.appendChild(titleEl)
+        this.forceRender(video.element)
+      } else {
+        console.warn(
+          `[BOYO] No title found for ${videoId}, element:`,
+          video.element
+        )
+        console.warn(
+          `[BOYO] Tried selector: #video-title, found:`,
+          video.element.querySelector("#video-title")
+        )
       }
     }
 
     if (video.level === DisclosureLevel.REVEALED) {
+      console.log(`[BOYO] Revealing ${videoId}`)
       video.element.classList.remove("boyo-masked")
       video.element.classList.add("boyo-revealed")
+      this.forceRender(video.element)
       overlay.remove()
     }
+
+    console.log(
+      `[BOYO] Overlay content after update:`,
+      overlay.innerHTML.substring(0, 100)
+    )
   }
 
   /**
@@ -176,6 +223,22 @@ export class VideoManager {
       video.element.classList.remove("boyo-masked", "boyo-revealed")
     }
     this.videos.delete(videoId)
+  }
+
+  /**
+   * Force browser to apply styles synchronously
+   * Triggers reflow/repaint before returning
+   */
+  private forceRender(element: Element): void {
+    if (!(element instanceof HTMLElement)) return
+    // Reading offsetHeight forces a synchronous reflow
+    void element.offsetHeight
+
+    // Force the overlay specifically
+    const overlay = element.querySelector(".boyo-overlay") as HTMLElement
+    if (overlay) {
+      void overlay.offsetHeight
+    }
   }
 
   /**
