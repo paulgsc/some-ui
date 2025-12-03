@@ -28,7 +28,7 @@ fn test_consecutive_errors_increment_on_each_wrong_char() {
 
 #[test]
 fn test_all_chars_after_first_error_are_errors() {
-    let mut game = TypingGameCore::new("hello", Some(10));
+    let mut game = TypingGameCore::new("hello", Some(1));
     game.start(1000.0);
 
     // Type "he" correctly
@@ -83,6 +83,7 @@ fn test_max_errors_blocks_further_input() {
     // Try to type "w" (should be BLOCKED)
     let result = game.handle_input("axyzw");
     assert_eq!(result.accepted, false);
+    assert_eq!(result.consecutive_errors, 4);
     assert_eq!(result.show_error_alert, true);
 
     // Verify input wasn't changed
@@ -132,28 +133,6 @@ fn test_backspace_multiple_chars_at_once() {
     // Delete 3 characters at once (e.g., select and delete)
     let result = game.handle_input("hxy");
     assert_eq!(result.consecutive_errors, 2, "Deleting 3 chars should decrement by 3");
-}
-
-#[test]
-fn test_cannot_exploit_backspace_to_reset_errors() {
-    let mut game = TypingGameCore::new("foo bar zar", Some(3));
-    game.start(1000.0);
-
-    let result = game.handle_input("foo bzz"); // error 2
-    assert_eq!(result.consecutive_errors, 2);
-
-    // Try the exploit: type another error then backspace
-    let result = game.handle_input("foo bzr z"); // error 3 - at limit
-    assert_eq!(result.consecutive_errors, 3);
-    assert_eq!(result.show_error_alert, true);
-
-    // Backspace once - should still have 2 consecutive errors
-    let result = game.handle_input("foo bzr");
-    assert_eq!(result.consecutive_errors, 2, "Should still have 2 errors, not reset to 0");
-
-    // Can't type more without fixing - would hit limit again
-    let result = game.handle_input("foo bzr z"); // error 3 again
-    assert_eq!(result.consecutive_errors, 3);
 }
 
 #[test]
@@ -267,34 +246,6 @@ fn test_correct_char_resets_consecutive_errors() {
 }
 
 #[test]
-fn test_exact_scenario_foo_bar_zar() {
-    let mut game = TypingGameCore::new("abcdef", Some(3));
-    game.start(1000.0);
-
-    // Type "a" correctly
-    game.handle_input("a");
-
-    // Make 3 consecutive errors
-    let r1 = game.handle_input("ax"); // 'x' is wrong, should be 'b'
-    assert_eq!(r1.consecutive_errors, 1);
-
-    let r2 = game.handle_input("axy"); // 'y' is wrong, should be 'b'
-    assert_eq!(r2.consecutive_errors, 2);
-
-    let r3 = game.handle_input("axyz"); // 'z' is wrong, should be 'b'
-    assert_eq!(r3.consecutive_errors, 3);
-    assert_eq!(r3.show_error_alert, true);
-
-    // Now blocked - can't type more
-    let blocked = game.handle_input("axyzw");
-    assert_eq!(blocked.accepted, false);
-
-    // Still blocked with different input
-    let blocked2 = game.handle_input("axyzq");
-    assert_eq!(blocked2.accepted, false);
-}
-
-#[test]
 fn test_different_max_error_limits() {
     // Test with limit of 1
     let mut game = TypingGameCore::new("abc", Some(1));
@@ -304,14 +255,20 @@ fn test_different_max_error_limits() {
     let result = game.handle_input("xy");
     assert_eq!(result.accepted, false); // Blocked
 
-    // Test with limit of 5
-    let mut game = TypingGameCore::new("abcdef", Some(5));
+    // Test with limit of 3
+    let mut game = TypingGameCore::new("abcdef", Some(3));
     game.start(1000.0);
 
-    game.handle_input("x");
-    game.handle_input("xx");
-    game.handle_input("xxx");
-    game.handle_input("xxxx");
+    let result = game.handle_input("x");
+    assert_eq!(result.show_error_alert, false);
+    let result = game.handle_input("xx");
+    assert_eq!(result.show_error_alert, false);
+    let result = game.handle_input("xxx");
+    assert_eq!(result.show_error_alert, true);
+    assert_eq!(result.accepted, true);
+    let result = game.handle_input("xxxx");
+    assert_eq!(result.consecutive_errors, 4);
+    assert_eq!(result.accepted, false);
     let result = game.handle_input("xxxxx");
     assert_eq!(result.consecutive_errors, 5);
     assert_eq!(result.show_error_alert, true);

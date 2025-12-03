@@ -10,7 +10,6 @@ pub enum CanonicalUnit {
 }
 
 impl CanonicalUnit {
-    #[allow(dead_code)]
     pub fn char_value(&self) -> Option<char> {
         match self {
             CanonicalUnit::Char { value } => Some(*value),
@@ -31,33 +30,26 @@ impl CanonicalUnit {
     }
 }
 
+/// Canonicalize input into a sequence of characters and separators.
+/// Rules:
+/// 1. Non-whitespace chars become Char units
+/// 2. Sequences of whitespace between chars become Separator units
+/// 3. Leading/trailing whitespace is ignored
 pub fn canonicalize(input: &str) -> Vec<CanonicalUnit> {
     let mut units = Vec::new();
-    let mut chars = input.chars().peekable();
-    let mut whitespace_buffer = String::new();
-    let mut seen_char = false;
+    let mut pending_whitespace = String::new();
 
-    while let Some(ch) = chars.next() {
+    for ch in input.chars() {
         if ch.is_whitespace() {
-            whitespace_buffer.push(ch);
-
-            // Look ahead to see if more whitespace follows
-            while let Some(&next_ch) = chars.peek() {
-                if next_ch.is_whitespace() {
-                    whitespace_buffer.push(next_ch);
-                    chars.next();
-                } else {
-                    break;
-                }
-            }
-
-            // Only add separator if there are non-whitespace chars after
-            if seen_char && chars.peek().is_some() {
-                units.push(CanonicalUnit::Separator { value: whitespace_buffer.clone() });
-            }
-            whitespace_buffer.clear();
+            pending_whitespace.push(ch);
         } else {
-            seen_char = true;
+            // Flush pending whitespace if we already have chars
+            if !units.is_empty() && !pending_whitespace.is_empty() {
+                units.push(CanonicalUnit::Separator {
+                    value: pending_whitespace.clone(),
+                });
+            }
+            pending_whitespace.clear();
             units.push(CanonicalUnit::Char { value: ch });
         }
     }

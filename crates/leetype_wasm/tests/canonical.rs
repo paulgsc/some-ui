@@ -1,218 +1,200 @@
 use leetype_wasm::{canonicalize, CanonicalUnit};
 
-fn is_char(u: &CanonicalUnit) -> bool {
-    matches!(u, CanonicalUnit::Char { .. })
+fn char_unit(c: char) -> CanonicalUnit {
+    CanonicalUnit::Char { value: c }
 }
 
-fn is_separator(u: &CanonicalUnit) -> bool {
-    matches!(u, CanonicalUnit::Separator { .. })
+fn sep_unit(s: &str) -> CanonicalUnit {
+    CanonicalUnit::Separator { value: s.to_string() }
+}
+
+// ============================================================================
+// BASIC FUNCTIONALITY TESTS
+// ============================================================================
+
+#[test]
+fn test_simple_word() {
+    assert_eq!(canonicalize("hello"), vec![char_unit('h'), char_unit('e'), char_unit('l'), char_unit('l'), char_unit('o')]);
 }
 
 #[test]
-fn test_canonicalize_basic_text() {
-    let units = canonicalize("hello");
-
+fn test_two_words_single_space() {
     assert_eq!(
-        units,
+        canonicalize("foo bar"),
         vec![
-            CanonicalUnit::Char { value: 'h' },
-            CanonicalUnit::Char { value: 'e' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'o' },
+            char_unit('f'),
+            char_unit('o'),
+            char_unit('o'),
+            sep_unit(" "),
+            char_unit('b'),
+            char_unit('a'),
+            char_unit('r')
         ]
     );
 }
 
 #[test]
-fn test_canonicalize_with_spaces() {
-    let units = canonicalize("foo bar");
+fn test_multiple_words() {
+    let result = canonicalize("the quick fox");
+    // Should have: t h e <sep> q u i c k <sep> f o x
+    assert_eq!(result.len(), 13); // 11 chars + 2 separators
+    assert!(result[3] == sep_unit(" "));
+    assert!(result[9] == sep_unit(" "));
+}
 
+// ============================================================================
+// WHITESPACE HANDLING TESTS
+// ============================================================================
+
+#[test]
+fn test_multiple_spaces_preserved() {
     assert_eq!(
-        units,
+        canonicalize("foo   bar"),
         vec![
-            CanonicalUnit::Char { value: 'f' },
-            CanonicalUnit::Char { value: 'o' },
-            CanonicalUnit::Char { value: 'o' },
-            CanonicalUnit::Separator { value: " ".into() },
-            CanonicalUnit::Char { value: 'b' },
-            CanonicalUnit::Char { value: 'a' },
-            CanonicalUnit::Char { value: 'r' },
+            char_unit('f'),
+            char_unit('o'),
+            char_unit('o'),
+            sep_unit("   "),
+            char_unit('b'),
+            char_unit('a'),
+            char_unit('r')
         ]
     );
 }
 
 #[test]
-fn test_canonicalize_multiple_spaces() {
-    let units = canonicalize("foo   bar");
+fn test_tabs_as_separator() {
+    let result = canonicalize("foo\tbar");
+    assert_eq!(result[3], sep_unit("\t"));
+}
 
+#[test]
+fn test_newlines_as_separator() {
+    let result = canonicalize("foo\nbar");
+    assert_eq!(result[3], sep_unit("\n"));
+}
+
+#[test]
+fn test_mixed_whitespace_preserved() {
+    let result = canonicalize("foo \t\n bar");
+    assert_eq!(result[3], sep_unit(" \t\n "));
+}
+
+#[test]
+fn test_leading_whitespace_ignored() {
     assert_eq!(
-        units,
-        vec![
-            CanonicalUnit::Char { value: 'f' },
-            CanonicalUnit::Char { value: 'o' },
-            CanonicalUnit::Char { value: 'o' },
-            CanonicalUnit::Separator { value: "   ".into() },
-            CanonicalUnit::Char { value: 'b' },
-            CanonicalUnit::Char { value: 'a' },
-            CanonicalUnit::Char { value: 'r' },
-        ]
+        canonicalize("   hello"),
+        vec![char_unit('h'), char_unit('e'), char_unit('l'), char_unit('l'), char_unit('o')]
     );
 }
 
 #[test]
-fn test_canonicalize_trailing_spaces() {
-    let units = canonicalize("hello   ");
-
+fn test_trailing_whitespace_ignored() {
     assert_eq!(
-        units,
-        vec![
-            CanonicalUnit::Char { value: 'h' },
-            CanonicalUnit::Char { value: 'e' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'o' },
-        ]
+        canonicalize("hello   "),
+        vec![char_unit('h'), char_unit('e'), char_unit('l'), char_unit('l'), char_unit('o')]
     );
 }
 
 #[test]
-fn test_canonicalize_leading_spaces() {
-    let units = canonicalize("   hello");
+fn test_only_whitespace() {
+    assert_eq!(canonicalize("   \t\n  "), vec![]);
+}
 
-    // Leading whitespace is ignored (no trailing content)
-    assert_eq!(
-        units,
-        vec![
-            CanonicalUnit::Char { value: 'h' },
-            CanonicalUnit::Char { value: 'e' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'l' },
-            CanonicalUnit::Char { value: 'o' },
-        ]
-    );
+// ============================================================================
+// SPECIAL CHARACTER TESTS
+// ============================================================================
+
+#[test]
+fn test_punctuation() {
+    let result = canonicalize("hello, world!");
+    assert_eq!(result[5], char_unit(','));
+    assert_eq!(result[12], char_unit('!'));
 }
 
 #[test]
-fn test_canonicalize_newlines() {
-    let units = canonicalize("foo\nbar");
-
-    assert_eq!(units[3], CanonicalUnit::Separator { value: "\n".into() });
+fn test_symbols() {
+    let result = canonicalize("foo@bar#baz");
+    assert_eq!(result[3], char_unit('@'));
+    assert_eq!(result[7], char_unit('#'));
 }
 
 #[test]
-fn test_canonicalize_tabs() {
-    let units = canonicalize("foo\tbar");
-
-    assert_eq!(units[3], CanonicalUnit::Separator { value: "\t".into() });
+fn test_unicode_chars() {
+    let result = canonicalize("hello 世界");
+    assert_eq!(result[6], char_unit('世'));
+    assert_eq!(result[7], char_unit('界'));
 }
 
 #[test]
-fn test_canonicalize_mixed_whitespace() {
-    let units = canonicalize("foo \t\n bar");
+fn test_emoji() {
+    let result = canonicalize("hi 👋 bye");
+    assert_eq!(result[3], char_unit('👋'));
+}
 
-    assert_eq!(units[3], CanonicalUnit::Separator { value: " \t\n ".into() });
+// ============================================================================
+// EDGE CASES
+// ============================================================================
+
+#[test]
+fn test_empty_string() {
+    assert_eq!(canonicalize(""), vec![]);
 }
 
 #[test]
-fn test_canonicalize_special_characters() {
-    let units = canonicalize("foo@#$%bar");
-
-    assert_eq!(units[3], CanonicalUnit::Char { value: '@' });
-    assert_eq!(units[4], CanonicalUnit::Char { value: '#' });
-    assert_eq!(units[5], CanonicalUnit::Char { value: '$' });
-    assert_eq!(units[6], CanonicalUnit::Char { value: '%' });
+fn test_single_char() {
+    assert_eq!(canonicalize("a"), vec![char_unit('a')]);
 }
 
-#[test]
-fn test_canonicalize_unicode() {
-    let units = canonicalize("hello 世界");
-
-    assert_eq!(units[6], CanonicalUnit::Char { value: '世' });
-    assert_eq!(units[7], CanonicalUnit::Char { value: '界' });
-}
+// ============================================================================
+// STRUCTURAL INVARIANTS
+// ============================================================================
 
 #[test]
-fn test_canonicalize_emoji() {
-    let units = canonicalize("hi 👋 bye");
-
-    assert!(units.iter().any(|u| matches!(u, CanonicalUnit::Char { value: '👋' })));
-}
-
-#[test]
-fn test_canonicalize_empty_string() {
-    let units = canonicalize("");
-
-    assert!(units.is_empty());
-}
-
-#[test]
-fn test_canonicalize_only_spaces() {
-    let units = canonicalize("   ");
-
-    assert!(units.is_empty());
-}
-
-#[test]
-fn canonicalize_structural_invariants_hold() {
-    let inputs = [
+fn test_structural_invariants() {
+    let test_cases = vec![
         "",
+        "a",
         "hello",
+        "hello world",
         "   hello",
         "hello   ",
-        "hello world",
         "foo   bar",
-        " foo \t\n bar ",
-        "\n\thello\t\n",
-        "👋 hello 🌍",
-        "a b  c   d",
+        "foo\n\tbar",
+        "a b c d",
+        "hello 世界 👋",
     ];
 
-    for input in inputs {
+    for input in test_cases {
         let units = canonicalize(input);
 
-        // 1️⃣ No leading separator
+        // No leading separator
         if let Some(first) = units.first() {
-            assert!(is_char(first), "leading separator found for input: {:?}, units: {:?}", input, units);
+            assert!(first.is_char(), "Leading separator in: {:?}", input);
         }
 
-        // 2️⃣ No trailing separator
+        // No trailing separator
         if let Some(last) = units.last() {
-            assert!(is_char(last), "trailing separator found for input: {:?}, units: {:?}", input, units);
+            assert!(last.is_char(), "Trailing separator in: {:?}", input);
         }
 
-        // 3️⃣ Separators are always between characters
-        for window in units.windows(3) {
-            if is_separator(&window[1]) {
-                assert!(
-                    is_char(&window[0]) && is_char(&window[2]),
-                    "separator not between chars for input: {:?}, window: {:?}",
-                    input,
-                    window
-                );
+        // No consecutive separators
+        for window in units.windows(2) {
+            let both_sep = matches!(window[0], CanonicalUnit::Separator { .. }) && matches!(window[1], CanonicalUnit::Separator { .. });
+            assert!(!both_sep, "Consecutive separators in: {:?}", input);
+        }
+
+        // All separators are non-empty whitespace
+        for unit in &units {
+            if let CanonicalUnit::Separator { value } = unit {
+                assert!(!value.is_empty(), "Empty separator in: {:?}", input);
+                assert!(value.chars().all(|c| c.is_whitespace()), "Non-whitespace in separator: {:?}", value);
             }
         }
 
-        // 4️⃣ Every separator is non-empty whitespace
-        for u in &units {
-            if let CanonicalUnit::Separator { value } = u {
-                assert!(!value.is_empty(), "empty separator for input: {:?}", input);
-                assert!(
-                    value.chars().all(|c| c.is_whitespace()),
-                    "separator contains non-whitespace for input: {:?}, value: {:?}",
-                    input,
-                    value
-                );
-            }
-        }
-
-        // 5️⃣ All non-whitespace chars preserved in order
+        // Character order preserved
         let input_chars: Vec<char> = input.chars().filter(|c| !c.is_whitespace()).collect();
-        let output_chars: Vec<char> = units
-            .iter()
-            .filter_map(|u| if let CanonicalUnit::Char { value } = u { Some(*value) } else { None })
-            .collect();
-
-        assert_eq!(input_chars, output_chars, "character stream mismatch for input: {:?}", input);
+        let output_chars: Vec<char> = units.iter().filter_map(|u| u.char_value()).collect();
+        assert_eq!(input_chars, output_chars, "Char order mismatch for: {:?}", input);
     }
 }

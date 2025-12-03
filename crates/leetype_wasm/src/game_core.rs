@@ -54,28 +54,35 @@ impl TypingGameCore {
     pub fn handle_input(&mut self, input: &str) -> InputChangeResult {
         let new_units = canonicalize(input);
 
-        // Check for backspace
+        // Handle backspace case
         if new_units.len() < self.state.user_units.len() {
-            let chars_deleted = self.state.user_units.len() - new_units.len();
-
-            // Decrement consecutive errors by the number of characters deleted
-            // but don't go below 0
-            self.state.consecutive_errors = self.state.consecutive_errors.saturating_sub(chars_deleted);
-
-            self.state.raw_input = input.to_string();
-            self.state.user_units = new_units;
-            self.state.cursor = self.state.user_units.len();
-
-            return InputChangeResult {
-                accepted: true,
-                show_error_alert: false,
-                total_errors: self.state.total_errors,
-                consecutive_errors: self.state.consecutive_errors,
-            };
+            return self.handle_backspace(input, new_units);
         }
 
-        // Validate input
-        let validation = validation::validate_input(
+        // Handle forward typing case
+        self.handle_forward_input(input, new_units)
+    }
+
+    fn handle_backspace(&mut self, input: &str, new_units: Vec<CanonicalUnit>) -> InputChangeResult {
+        // Recalculate consecutive errors after backspace
+        let consecutive_errors = validation::calculate_consecutive_errors(&new_units, &self.target_units);
+
+        self.state.raw_input = input.to_string();
+        self.state.user_units = new_units;
+        self.state.cursor = self.state.user_units.len();
+        self.state.consecutive_errors = consecutive_errors;
+
+        InputChangeResult {
+            accepted: true,
+            show_error_alert: consecutive_errors >= self.max_consecutive_errors,
+            total_errors: self.state.total_errors,
+            consecutive_errors,
+        }
+    }
+
+    fn handle_forward_input(&mut self, input: &str, new_units: Vec<CanonicalUnit>) -> InputChangeResult {
+        // Validate the input change
+        let validation_result = validation::validate_input(
             &self.state.user_units,
             &new_units,
             &self.target_units,
@@ -83,7 +90,15 @@ impl TypingGameCore {
             self.max_consecutive_errors,
         );
 
-        if validation.should_block {
+        // Update total errors
+        self.state.total_errors += validation_result.new_errors;
+
+        // Recalculate consecutive errors from the entire sequence
+        let consecutive_errors = validation::calculate_consecutive_errors(&new_units, &self.target_units);
+        self.state.consecutive_errors = consecutive_errors;
+
+        // Block if validation says so
+        if validation_result.should_block {
             return InputChangeResult {
                 accepted: false,
                 show_error_alert: true,
@@ -93,25 +108,15 @@ impl TypingGameCore {
         }
 
         // Update state
-        self.state.total_errors += validation.new_errors;
-
-        if validation.new_errors > 0 {
-            self.state.consecutive_errors += validation.new_errors;
-        } else if validation.is_valid {
-            self.state.consecutive_errors = 0;
-        }
-
         self.state.raw_input = input.to_string();
         self.state.user_units = new_units;
         self.state.cursor = self.state.user_units.len();
 
-        let show_alert = self.state.consecutive_errors >= self.max_consecutive_errors;
-
         InputChangeResult {
             accepted: true,
-            show_error_alert: show_alert,
+            show_error_alert: consecutive_errors >= self.max_consecutive_errors,
             total_errors: self.state.total_errors,
-            consecutive_errors: self.state.consecutive_errors,
+            consecutive_errors,
         }
     }
 
