@@ -22,16 +22,11 @@ export async function loadWasm(): Promise<WasmModule> {
   if (wasmModule) {
     return wasmModule
   }
-
   if (wasmLoadPromise) {
     return wasmLoadPromise
   }
-
   wasmLoadPromise = (async () => {
     try {
-      // Adjust the path based on your build setup
-      // For Vite: /leetype_wasm_bg.wasm
-      // For webpack: require('./leetype_wasm_bg.wasm')
       const wasm = await import("leetype-wasm")
       await wasm.default() // Initialize the WASM module
       wasmModule = wasm as unknown as WasmModule
@@ -44,15 +39,16 @@ export async function loadWasm(): Promise<WasmModule> {
       )
     }
   })()
-
   return wasmLoadPromise
 }
 
 /**
- * Type-safe wrapper around the WASM TypingGame
+ * Type-safe wrapper around the WASM TypingGame with React subscription support
  */
 export class TypedTypingGame {
   private instance: TypingGameWasm
+  private listeners = new Set<() => void>()
+  private cachedStats: GameStats | null = null
 
   constructor(targetCode: string, maxConsecutiveErrors?: number) {
     if (!wasmModule) {
@@ -61,22 +57,53 @@ export class TypedTypingGame {
     this.instance = new wasmModule.TypingGame(targetCode, maxConsecutiveErrors)
   }
 
+  /**
+   * Subscribe to stats changes (for React external store)
+   * Returns an unsubscribe function
+   */
+  subscribeStats(callback: () => void): () => void {
+    this.listeners.add(callback)
+    return () => {
+      this.listeners.delete(callback)
+    }
+  }
+
+  /**
+   * Notify all subscribers that stats have changed
+   * Also invalidates the cached stats
+   */
+  private notifyListeners(): void {
+    this.cachedStats = null // Invalidate cache
+    this.listeners.forEach((cb) => cb())
+  }
+
   start(timestamp: number): void {
     this.instance.start(timestamp)
+    this.notifyListeners()
   }
 
   reset(): void {
     this.instance.reset()
+    this.notifyListeners()
   }
 
   handleInput(input: string): InputResult {
     const result = this.instance.handle_input(input)
+    // Notify after input is processed so React can re-read stats
+    this.notifyListeners()
     return InputResultSchema.parse(result)
   }
 
   getStats(currentTimestamp: number): GameStats {
+    // Return cached stats if available to maintain referential equality
+    if (this.cachedStats) {
+      return this.cachedStats
+    }
+
     const stats = this.instance.get_stats(currentTimestamp)
-    return GameStatsSchema.parse(stats)
+    const parsed = GameStatsSchema.parse(stats)
+    this.cachedStats = parsed
+    return parsed
   }
 
   getUserInput(): string {
@@ -98,7 +125,15 @@ export class TypedTypingGame {
     return z.array(CanonicalUnitSchema).parse(units)
   }
 
+  dismissError(): void {
+    // If your WASM has a dismiss_error method, call it here
+    // Otherwise, this is handled via getStats
+    this.notifyListeners()
+  }
+
   free(): void {
+    this.listeners.clear()
+    this.cachedStats = null
     this.instance.free()
   }
 }

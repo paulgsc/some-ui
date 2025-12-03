@@ -198,7 +198,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 
     return tokens.map((token, i) => renderToken(token, i))
   }
-  console.log("cursorUnitIndex: ", cursorUnitIndex)
 
   return (
     <div

@@ -1,16 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createTypingGameStore } from "@input/lib/leetype/game-store"
 import {
-  buildDisplayMap,
   canonicalizeText,
+  isWasmLoaded,
   loadWasm,
   TypedTypingGame,
 } from "@input/lib/leetype/leetype-wasm-loader"
-import type {
-  CanonicalUnit,
-  GameState,
-  GameStats,
-  InputResult,
-} from "@input/types/leetype"
+import type { CanonicalUnit, InputResult } from "@input/types/leetype"
+import { deriveCursorIndex, deriveDisplayMap } from "@input/utils/leetype"
+
+type GameState = "idle" | "playing" | "paused" | "complete"
 
 type UseTypingGameProps = {
   targetCode: string
@@ -48,160 +47,158 @@ export function useTypingGame({
   onComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
+  const gameRef = useRef<TypedTypingGame | null>(null)
+  const completedRef = useRef(false)
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const gameInstanceRef = useRef<TypedTypingGame | null>(null)
-
-  const [stats, setStats] = useState<GameStats>({
-    progress: 0,
-    accuracy: 100,
-    wpm: 0,
-    elapsed_time: 0,
-    total_errors: 0,
-    consecutive_errors: 0,
-    show_error_alert: false,
-    is_complete: false,
-  })
-
   const [rawUserInput, setRawUserInput] = useState("")
-  const [targetUnits, setTargetUnits] = useState<Array<CanonicalUnit>>([])
   const [userUnits, setUserUnits] = useState<Array<CanonicalUnit>>([])
-  const [displayMap, setDisplayMap] = useState<Array<number>>([])
+  const [targetUnits, setTargetUnits] = useState<Array<CanonicalUnit>>([])
 
-  // Initialize WASM and game instance
+  // Create store once - it will access gameRef.current dynamically
+  const store = useMemo(() => createTypingGameStore(gameRef), [])
+
+  /* ---------- INIT ---------- */
+
   useEffect(() => {
-    let mounted = true
+    let alive = true
 
-    const initWasm = async () => {
+    ;(async () => {
       try {
         setIsLoading(true)
         setError(null)
-        await loadWasm()
 
-        if (!mounted) return
+        await loadWasm()
+        if (!alive) return
 
         const game = new TypedTypingGame(targetCode, maxConsecutiveErrors)
-        gameInstanceRef.current = game
+        gameRef.current = game
+        completedRef.current = false
 
-        // Initialize canonical units & display map
-        const units = canonicalizeText(targetCode)
-        const map = buildDisplayMap(targetCode)
-
-        setTargetUnits(units)
-        setDisplayMap(map)
+        setTargetUnits(canonicalizeText(targetCode))
         setIsLoading(false)
-      } catch (err) {
-        if (!mounted) return
-        setError(
-          err instanceof Error ? err : new Error("Failed to initialize WASM")
-        )
+      } catch (e) {
+        if (!alive) return
+        setError(e instanceof Error ? e : new Error("WASM init failed"))
         setIsLoading(false)
       }
-    }
+    })()
 
-    initWasm()
     return () => {
-      mounted = false
-      if (gameInstanceRef.current) {
-        gameInstanceRef.current.free()
-        gameInstanceRef.current = null
-      }
+      alive = false
+      gameRef.current?.free()
+      gameRef.current = null
     }
   }, [targetCode, maxConsecutiveErrors])
 
-  // Periodic stats update
-  useEffect(() => {
-    if (gameState !== "playing" || !gameInstanceRef.current) return
-    const interval = setInterval(() => {
-      if (gameInstanceRef.current) {
-        setStats(gameInstanceRef.current.getStats(Date.now()))
-      }
-    }, 100)
-    return () => clearInterval(interval)
-  }, [gameState])
+  /* ---------- STATS SUBSCRIPTION ---------- */
+
+  // Always call the hook unconditionally
+  // Store dynamically accesses gameRef.current
+  const stats = store.useStats()
+
+  /* ---------- DERIVED ---------- */
+
+  // Guard displayMap derivation until WASM is loaded
+  const displayMap = useMemo(() => {
+    if (!isWasmLoaded()) return []
+    return deriveDisplayMap(rawUserInput)
+  }, [rawUserInput])
+
+  const cursorUnitIndex = stats ? deriveCursorIndex(stats) : 0
+
+  /* ---------- INPUT ---------- */
 
   const handleInputChange = useCallback(
     (input: string) => {
-      if (gameState !== "playing" || !gameInstanceRef.current) return
-      try {
-        const result: InputResult = gameInstanceRef.current.handleInput(input)
+      const game = gameRef.current
+      if (!game || gameState !== "playing") return
 
-        if (result.accepted) {
-          setRawUserInput(input)
-          const newUserUnits = gameInstanceRef.current.getUserUnits()
-          setUserUnits(newUserUnits)
+      const result: InputResult = game.handleInput(input)
+      if (!result.accepted) return
 
-          // Refresh display map for cursor-aware rendering
-          const newDisplayMap = buildDisplayMap(input)
-          setDisplayMap(newDisplayMap)
-
-          setStats(gameInstanceRef.current.getStats(Date.now()))
-        }
-      } catch (err) {
-        console.error("Error handling input:", err)
-      }
+      setRawUserInput(input)
+      setUserUnits(game.getUserUnits())
+      // stats update automatically via external store
     },
     [gameState]
   )
 
-  const reset = useCallback(() => {
-    if (!gameInstanceRef.current) return
-    gameInstanceRef.current.reset()
+  /* ---------- CONTROL ---------- */
+
+  const resetInternal = () => {
+    completedRef.current = false
     setRawUserInput("")
     setUserUnits([])
-    setDisplayMap([])
-    setStats({
-      progress: 0,
-      accuracy: 100,
-      wpm: 0,
-      elapsed_time: 0,
-      total_errors: 0,
-      consecutive_errors: 0,
-      show_error_alert: false,
-      is_complete: false,
-    })
+  }
+
+  const reset = useCallback(() => {
+    gameRef.current?.reset()
+    resetInternal()
   }, [])
 
   const start = useCallback(() => {
-    if (!gameInstanceRef.current) return
-    gameInstanceRef.current.start(Date.now())
-    setRawUserInput("")
-    setUserUnits([])
-    setDisplayMap([])
-    setStats({
-      progress: 0,
-      accuracy: 100,
-      wpm: 0,
-      elapsed_time: 0,
-      total_errors: 0,
-      consecutive_errors: 0,
-      show_error_alert: false,
-      is_complete: false,
-    })
+    gameRef.current?.start(Date.now())
+    resetInternal()
   }, [])
 
   const onDismiss = useCallback(() => {
-    setStats((prev) => ({ ...prev, show_error_alert: false }))
+    gameRef.current?.dismissError()
   }, [])
 
-  // Check for completion
+  /* ---------- COMPLETION ---------- */
+
   useEffect(() => {
     if (
-      gameState === "playing" &&
-      userUnits.length > 0 &&
-      targetUnits.length > 0 &&
-      userUnits.length === targetUnits.length
+      completedRef.current ||
+      gameState !== "playing" ||
+      !stats ||
+      userUnits.length !== targetUnits.length
     ) {
-      const allMatch = userUnits.every((unit, i) => {
-        const target = targetUnits[i]
-        return (
-          unit.kind === target.kind &&
-          (unit.kind !== "char" || unit.value === target.value)
-        )
-      })
-      if (allMatch) onComplete()
+      return
     }
-  }, [userUnits, targetUnits, gameState, onComplete])
+
+    for (let i = 0; i < targetUnits.length; i++) {
+      const u = userUnits[i]
+      const t = targetUnits[i]
+      if (u.kind !== t.kind || (u.kind === "char" && u.value !== t.value)) {
+        return
+      }
+    }
+
+    completedRef.current = true
+    onComplete()
+  }, [userUnits, targetUnits, stats, gameState, onComplete])
+
+  /* ---------- FALLBACK FOR LOADING STATE ---------- */
+
+  if (!stats) {
+    return {
+      userInput: "",
+      rawUserInput: "",
+      displayCode: targetCode,
+      targetUnits,
+      userUnits: [],
+      cursorUnitIndex: 0,
+      displayMap: [],
+      errors: 0,
+      consecutiveErrors: 0,
+      showErrorAlert: false,
+      progress: 0,
+      accuracy: 100,
+      wpm: 0,
+      elapsedTime: 0,
+      handleInputChange,
+      reset,
+      start,
+      onDismiss,
+      isLoading,
+      error,
+    }
+  }
+
+  /* ---------- PUBLIC API ---------- */
 
   return {
     userInput: rawUserInput,
@@ -209,7 +206,7 @@ export function useTypingGame({
     displayCode: targetCode,
     targetUnits,
     userUnits,
-    cursorUnitIndex: stats.cursor,
+    cursorUnitIndex,
     displayMap,
     errors: stats.total_errors,
     consecutiveErrors: stats.consecutive_errors,

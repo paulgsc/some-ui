@@ -1,4 +1,5 @@
-import type { CanonicalUnit } from "@input/types/leetype"
+import { buildDisplayMap } from "@input/lib/leetype/leetype-wasm-loader"
+import type { CanonicalUnit, GameStats } from "@input/types/leetype"
 
 /**
  * Converts code into canonical token stream where:
@@ -170,6 +171,22 @@ export function compareTokens(
 
   return { hasError, firstErrorIndex, errorCount }
 }
+
+/**
+ * Derive cursor index from game stats
+  */
+  export function deriveCursorIndex(stats: GameStats): number {
+      return stats.cursor ?? 0
+  }
+
+  /**
+     * Derive display map from user input
+      * Returns empty array if input is empty
+       */
+      export function deriveDisplayMap(input: string): Array<number> {
+          if (!input) return []
+              return Array.from(buildDisplayMap(input))
+      }
 
 // Export for use in CodeDisplay and typing game
 export { canonicalize, buildIndexMap }

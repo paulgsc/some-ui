@@ -73,3 +73,22 @@ export type WasmModule = {
   canonicalize_text(input: string): unknown
   build_display_map_from_code(input: string): Array<number>
 }
+
+export type TypedTypingGame = {
+  start(timestamp: number): void
+  reset(): void
+  handleInput(input: string): InputResult
+  getStats(currentTimestamp: number): GameStats
+  getUserInput(): string
+  getTargetUnits(): Array<CanonicalUnit>
+  getUserUnits(): Array<CanonicalUnit>
+  getCursor(): Array<CanonicalUnit>
+  dismissError(): void
+  free(): void
+
+  // New subscription API for React external store
+  subscribeStats(callback: () => void): () => void
+}
+
+// If you need to update the ref type used in createTypingGameStore:
+export type GameRef = { current: TypedTypingGame | null }
