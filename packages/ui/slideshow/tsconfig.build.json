@@ -4,6 +4,8 @@
     "eslint.config.js",
     "../../../assets/**/*",
     "**/*.stories.tsx",
-    "**/*.stories.ts"
+    "**/*.stories.ts",
+    "**/orchestrator/**",
+    "**/recap/**"
   ]
 }
