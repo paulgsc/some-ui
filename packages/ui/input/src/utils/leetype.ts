@@ -172,21 +172,35 @@ export function compareTokens(
   return { hasError, firstErrorIndex, errorCount }
 }
 
+export function codeToUnits(code: string): Array<CanonicalUnit> {
+  return Array.from(code).map((char) => ({
+    kind: "char",
+    value: char,
+  }))
+}
+
+export function sliceUserUnits(
+  target: Array<CanonicalUnit>,
+  typedChars: number
+): Array<CanonicalUnit> {
+  return target.slice(0, typedChars)
+}
+
 /**
  * Derive cursor index from game stats
-  */
-  export function deriveCursorIndex(stats: GameStats): number {
-      return stats.cursor ?? 0
-  }
+ */
+export function deriveCursorIndex(stats: GameStats): number {
+  return stats.cursor ?? 0
+}
 
-  /**
-     * Derive display map from user input
-      * Returns empty array if input is empty
-       */
-      export function deriveDisplayMap(input: string): Array<number> {
-          if (!input) return []
-              return Array.from(buildDisplayMap(input))
-      }
+/**
+ * Derive display map from user input
+ * Returns empty array if input is empty
+ */
+export function deriveDisplayMap(input: string): Array<number> {
+  if (!input) return []
+  return Array.from(buildDisplayMap(input))
+}
 
 // Export for use in CodeDisplay and typing game
 export { canonicalize, buildIndexMap }

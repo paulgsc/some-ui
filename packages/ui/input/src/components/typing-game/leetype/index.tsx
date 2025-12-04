@@ -1,36 +1,45 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
 import { CodeDisplay } from "@input/components/typing-game/code-display"
+import { ErrorCodeState } from "@input/components/typing-game/error-code-state"
+import { LoadingCodeState } from "@input/components/typing-game/loading-code-state"
 import { SettingsCard } from "@input/components/typing-game/settings-card"
 import { StatsBar } from "@input/components/typing-game/stats-bar"
 import { TypingErrorAlert } from "@input/components/typing-game/typing-error-alert"
 import { TypingInputCard } from "@input/components/typing-game/typing-input-card"
 import { useGameTimer } from "@input/hooks"
-import { useTypingGame } from "@input/hooks/leetype/use-typing-game-wasm"
-import type {
-  CodeSamplesMap,
-  DisplayMode,
-  GameState,
-  Language,
-} from "@input/types/leetype"
+import { useTypingGame } from "@input/hooks/leetype"
+import { useFormattedCode } from "@input/hooks/leetype/use-formatted-code"
+import type { DisplayMode, GameState, Language } from "@input/types/leetype"
 import { Badge, Card } from "some-ui-shared"
 
 type LeetypeProps = {
-  source: CodeSamplesMap
+  codePaths: Record<Language, string>
 }
 
-export const Leetype: FC<LeetypeProps> = ({ source }) => {
+const PRETTIER_PARSER_MAP: Record<Language, string> = {
+  typescript: "typescript",
+  rust: "rust",
+  cpp: "babel",
+  c: "typescript",
+}
+
+export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [language, setLanguage] = useState<Language>("typescript")
   const [duration, setDuration] = useState(300)
   const [settingsExpanded, setSettingsExpanded] = useState(true)
-  const [currentCode, setCurrentCode] = useState(source[language].code)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  // Load code from file
+  const codeState = useFormattedCode(codePaths[language], {
+    prettierParser: PRETTIER_PARSER_MAP[language] as any,
+  })
+
   const typingGame = useTypingGame({
-    targetCode: currentCode,
+    targetCode: codeState.status === "SUCCESS" ? codeState.code : "",
     gameState,
     onComplete: () => setGameState("finished"),
   })
@@ -41,14 +50,19 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
     onTimeout: () => setGameState("timeout"),
   })
 
-  // Load code sample when language changes
+  // Reset game when language changes or code loads
   useEffect(() => {
-    const sample = source[language]
-    setCurrentCode(sample.code)
-    typingGame.reset()
-  }, [language])
+    if (codeState.status === "SUCCESS") {
+      typingGame.reset()
+      if (gameState === "playing") {
+        setGameState("idle")
+        setSettingsExpanded(true)
+      }
+    }
+  }, [language, codeState.status])
 
   const handleStart = () => {
+    if (codeState.status !== "SUCCESS") return
     setGameState("playing")
     typingGame.start()
     setSettingsExpanded(false)
@@ -61,6 +75,12 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
     setSettingsExpanded(true)
   }
 
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang)
+    setGameState("idle")
+    setSettingsExpanded(true)
+  }
+
   return (
     <div className="code absolute inset-0">
       {gameState === "idle" && (
@@ -69,7 +89,7 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
           displayMode={displayMode}
           duration={duration}
           expanded={settingsExpanded}
-          onLanguageChange={(lang) => setLanguage(lang)}
+          onLanguageChange={handleLanguageChange}
           onDisplayModeChange={(mode) => setDisplayMode(mode)}
           onDurationChange={setDuration}
           onToggleExpanded={() => setSettingsExpanded(!settingsExpanded)}
@@ -96,13 +116,25 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
               {language}
             </Badge>
           </div>
-          <CodeDisplay
-            displayCode={typingGame.displayCode}
-            language={language}
-            targetUnits={typingGame.targetUnits}
-            cursorUnitIndex={typingGame.cursorUnitIndex}
-            userUnits={typingGame.userUnits}
-          />
+          {codeState.status === "LOADING" ? (
+            <LoadingCodeState attempt={codeState.attempt} />
+          ) : codeState.status === "ERROR" ? (
+            <ErrorCodeState
+              error={codeState.error}
+              path={codePaths[language]}
+              onRetry={() => handleLanguageChange(language)}
+            />
+          ) : codeState.status === "SUCCESS" ? (
+            <CodeDisplay
+              displayCode={typingGame.displayCode}
+              language={language}
+              targetUnits={typingGame.targetUnits}
+              cursorUnitIndex={typingGame.cursorUnitIndex}
+              userUnits={typingGame.userUnits}
+            />
+          ) : (
+            <LoadingCodeState attempt={0} />
+          )}
         </Card>
 
         <TypingInputCard
@@ -115,7 +147,9 @@ export const Leetype: FC<LeetypeProps> = ({ source }) => {
           onReset={handleReset}
           onInputChange={typingGame.handleInputChange}
           inputRef={inputRef}
+          disabled={codeState.status !== "SUCCESS"}
         />
+
         <TypingErrorAlert
           consecutiveErrors={typingGame.consecutiveErrors}
           onDismiss={typingGame.onDismiss}

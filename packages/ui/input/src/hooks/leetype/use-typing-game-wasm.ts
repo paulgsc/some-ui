@@ -6,10 +6,9 @@ import {
   loadWasm,
   TypedTypingGame,
 } from "@input/lib/leetype/leetype-wasm-loader"
-import type { CanonicalUnit, InputResult } from "@input/types/leetype"
+import type { GameState, CanonicalUnit, InputResult } from "@input/types/leetype"
 import { deriveCursorIndex, deriveDisplayMap } from "@input/utils/leetype"
 
-type GameState = "idle" | "playing" | "paused" | "complete"
 
 type UseTypingGameProps = {
   targetCode: string

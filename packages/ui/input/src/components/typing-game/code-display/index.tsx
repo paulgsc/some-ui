@@ -202,7 +202,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`code-display font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
+      className={`font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
         className || ""
       }`}
     >

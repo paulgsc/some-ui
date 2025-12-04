@@ -20,7 +20,7 @@ const config: StorybookConfig = {
   ],
   logLevel: "error",
 
-  staticDirs: ["../packages/ui/honeycomb/public"],
+  staticDirs: ["../packages/ui/honeycomb/public", "../packages/ui/input/public"],
 
   core: {
     disableTelemetry: true,
