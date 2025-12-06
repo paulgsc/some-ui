@@ -1,7 +1,7 @@
-import { CLUES, Clues } from "some-ui-input"
+import { Clues } from "some-ui-input"
 
 const CluesAcross = (): React.JSX.Element => {
-  return <Clues direction="across" clues={CLUES.across} />
+  return <Clues />
 }
 
 export default CluesAcross

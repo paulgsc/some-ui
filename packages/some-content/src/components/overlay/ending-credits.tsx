@@ -9,13 +9,15 @@ const EndingCredits = (): React.JSX.Element => {
 
   if (isLoading) return <div>Loading...</div>
 
-  const transform = data?.map(({ source_type, thanks, ...rest }) => ({
-    sourceType: source_type,
-    thankYouMessage: thanks,
-    ...rest,
-  }))
+  const transform = (data ?? [])
+    .flat()
+    .map(({ source_type, thanks, ...rest }) => ({
+      ...rest,
+      sourceType: source_type,
+      thankYouMessage: thanks,
+    }))
 
-  return <ScrollingCredits credits={transform ?? []} />
+  return <ScrollingCredits credits={transform} />
 }
 
 export default EndingCredits
