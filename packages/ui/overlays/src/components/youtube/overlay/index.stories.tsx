@@ -7,6 +7,7 @@ import { beachedWhale } from "@some-ui/content/data/chatbot-messages/beached-wha
 import { characters } from "@some-ui/content/data/chatbot-messages/characters"
 import { farmers } from "@some-ui/content/data/chatbot-messages/farmers"
 import { nflTennis } from "@some-ui/content/data/chatbot-messages/nfl-tennis"
+import { sacredScrolls } from "@some-ui/content/data/chatbot-messages/sacred-scrolls"
 import { sameWinners } from "@some-ui/content/data/chatbot-messages/the-same-winners"
 import { waiNoTockTock } from "@some-ui/content/data/chatbot-messages/wai-no-tock-tock"
 import { soManyCrates } from "@some-ui/content/data/chatbot-messages/yet-another-python"
@@ -36,6 +37,11 @@ const demoChats = [
     key: "wai-no-tock",
     messagesTitle: "Wai no tock tock",
     messages: waiNoTockTock,
+  },
+  {
+    key: "sacred-scrolls",
+    messagesTitle: "199USD",
+    messages: sacredScrolls,
   },
   {
     key: "nfl-tennis",

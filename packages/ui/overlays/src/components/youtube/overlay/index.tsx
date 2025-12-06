@@ -5,10 +5,9 @@ import Logo from "@overlays/components/youtube/logo"
 import type { PanelContent } from "@overlays/types/panels"
 import type { Message } from "some-ui-chat"
 import { ChatInterface } from "some-ui-chat"
-import type { AllowedRotationAxis, Chapter } from "some-ui-slideshow"
+import type { AllowedRotationAxis } from "some-ui-slideshow"
 import { RotatingCube, RotatingNeonSign } from "some-ui-slideshow"
 import { LivestreamTopicNotification } from "some-ui-stepper"
-import { useLocalStorage } from "some-ui-utils"
 import type { WireframeContent } from "wireframes"
 import { WireframeRegion, YoutubeWireframe } from "wireframes"
 
@@ -41,9 +40,7 @@ export type YoutubeOverlayProps = {
   /** Characters data for chat interface */
   characters: Array<Character> // Replace with proper character type
   /** Hook for fetching gantt chapters data */
-  useGanttChapters: (params: GanttParams) => { data: Array<Chapter> | null }
   /** Gantt chart parameters */
-  ganttParams?: GanttParams
   /** Function to get main content based on chapter ID */
   getMainContent: (chapterId: string) => ReactNode
   /** Function to get top left content based on chapter ID */
@@ -57,7 +54,6 @@ export type YoutubeOverlayProps = {
   /** Neon sign configuration */
   neonSignConfig?: NeonSignConfig
   /** Local storage key for current chapter */
-  chapterStorageKey?: string
   /** Custom logo component */
   logoComponent?: ReactNode
   /** Custom marquee component */
@@ -79,8 +75,6 @@ export type YoutubeOverlayProps = {
 export const YoutubeOverlay: FC<YoutubeOverlayProps> = ({
   chatData,
   characters,
-  useGanttChapters,
-  ganttParams = { range: "gantt!A1:L20" },
   getMainContent,
   getTopLeftContent,
   getBottomLeftContent,
@@ -92,7 +86,6 @@ export const YoutubeOverlay: FC<YoutubeOverlayProps> = ({
     perspective: 1250,
     dof: "X-axis",
   },
-  chapterStorageKey = "gantt-chapter",
   logoComponent = <Logo />,
   marqueeComponent = <YoutubeMarquee />,
   showLivestreamNotification = true,
@@ -102,12 +95,6 @@ export const YoutubeOverlay: FC<YoutubeOverlayProps> = ({
   errorComponent = null,
   onUnmount,
 }) => {
-  const { data: chapters } = useGanttChapters(ganttParams)
-  const { value: currentChapterId, removeValue } = useLocalStorage(
-    chapterStorageKey,
-    chapters ? "none" : "none"
-  )
-
   const cubeFaces = chatData.map(({ key, messagesTitle, messages }) => (
     <ChatInterface
       key={key}
@@ -134,33 +121,25 @@ export const YoutubeOverlay: FC<YoutubeOverlayProps> = ({
         duration={neonSignDuration}
       />
     ),
-    [WireframeRegion.MAIN_CONTENT]: getMainContent(currentChapterId),
+    [WireframeRegion.MAIN_CONTENT]: getMainContent(""),
     [WireframeRegion.FOOTER_LEFT]: logoComponent,
-    [WireframeRegion.SIDEBAR_TOP]: getTopLeftContent(currentChapterId),
-    [WireframeRegion.SIDEBAR_BOTTOM]: getBottomLeftContent(currentChapterId),
+    [WireframeRegion.SIDEBAR_TOP]: getTopLeftContent(""),
+    [WireframeRegion.SIDEBAR_BOTTOM]: getBottomLeftContent(""),
     [WireframeRegion.FOOTER_RIGHT]: marqueeComponent,
   }
 
   useEffect(() => {
     return (): void => {
-      removeValue()
       onUnmount?.()
     }
-  }, [chapters, removeValue, onUnmount])
+  }, [onUnmount])
 
   if (isLoading) return loadingComponent
   if (error) return errorComponent || <div>Error: {error}</div>
 
-  const totalDuration =
-    chapters?.reduce((max, chapter) => Math.max(max, chapter.endTime), 0) ?? 0
-
   return (
     <>
-      <YoutubeWireframe
-        chapters={chapters ?? []}
-        totalDuration={totalDuration}
-        content={overlayContent}
-      />
+      <YoutubeWireframe content={overlayContent} />
       {showLivestreamNotification && <LivestreamTopicNotification />}
     </>
   )
