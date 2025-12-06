@@ -8,7 +8,7 @@ type Standing = {
   name: string
   value: number
   imageUrl: string
-  properties: Record<"string", number | string | object>
+  properties?: Record<string, string | number | object>
 }
 
 export type BrickChartData = {
