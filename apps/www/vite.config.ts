@@ -22,13 +22,10 @@ export default defineConfig({
       ],
     }),
   ],
-  test: {
-    globals: true,
-    environment: "jsdom",
-  },
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      "@content": resolve(__dirname, "../../packages/some-content/src"),
     },
   },
   build: {

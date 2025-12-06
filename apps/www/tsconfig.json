@@ -22,13 +22,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@some-ui/content/*": ["../../packages/some-content/src/*"]
+      "@some-ui/content/*": ["../../packages/some-content/src/*"],
+      "@some-ui/content": ["../../packages/some-content/src"],
+      "@content/*": ["../../packages/some-content/src/*"]
     }
   },
   "include": [
     "eslint.config.js",
     "**/*.ts",
     "**/*.tsx",
-    "../../some-content/src/**/*"
+    "../../packages/some-content/src/**/*"
   ]
 }
