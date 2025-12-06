@@ -11,7 +11,6 @@ import { sameWinners } from "@some-ui/content/data/chatbot-messages/the-same-win
 import { waiNoTockTock } from "@some-ui/content/data/chatbot-messages/wai-no-tock-tock"
 import { soManyCrates } from "@some-ui/content/data/chatbot-messages/yet-another-python"
 import { digitalHellscape } from "@some-ui/content/data/chatbot-messages/youtube"
-import { useGanttChapters } from "@some-ui/content/data/gantt-data"
 import { createFileRoute } from "@tanstack/react-router"
 import { YoutubeOverlay } from "overlays"
 
@@ -61,6 +60,27 @@ type YouTubeOverlaySearch = {
   showLivestreamNotification?: boolean
 }
 
+const YouTubeOverlayRoute = () => {
+  const { cubeDuration, neonSignDuration, showLivestreamNotification } =
+    Route.useSearch()
+
+  return (
+    <div className="h-screen w-screen">
+      <YoutubeOverlay
+        chatData={demoChats}
+        characters={characters}
+        getMainContent={getMainContent}
+        getTopLeftContent={gettopLeftContent}
+        getBottomLeftContent={getbotLeftContent}
+        cubeDuration={cubeDuration}
+        neonSignDuration={neonSignDuration}
+        showLivestreamNotification={showLivestreamNotification}
+        onUnmount={() => {}}
+      />
+    </div>
+  )
+}
+
 export const Route = createFileRoute("/overlays/youtube")({
   validateSearch: (search: Record<string, unknown>): YouTubeOverlaySearch => {
     return {
@@ -75,29 +95,3 @@ export const Route = createFileRoute("/overlays/youtube")({
   },
   component: YouTubeOverlayRoute,
 })
-
-const YouTubeOverlayRoute = () => {
-  const { cubeDuration, neonSignDuration, showLivestreamNotification } =
-    Route.useSearch()
-
-  const handleUnmount = () => {
-    console.log("YouTube Overlay component unmounted")
-  }
-
-  return (
-    <div className="h-screen w-screen">
-      <YoutubeOverlay
-        chatData={demoChats}
-        characters={characters}
-        useGanttChapters={useGanttChapters}
-        getMainContent={getMainContent}
-        getTopLeftContent={gettopLeftContent}
-        getBottomLeftContent={getbotLeftContent}
-        cubeDuration={cubeDuration}
-        neonSignDuration={neonSignDuration}
-        showLivestreamNotification={showLivestreamNotification}
-        onUnmount={handleUnmount}
-      />
-    </div>
-  )
-}
