@@ -65,15 +65,16 @@ export function useFormattedCode(
             )
           )
 
-          const fetchAndFormatPromise = async () => {
+          const fetchAndFormatPromise = async (): Promise<string> => {
             // Step 1: Load File
             const raw = await loadCodeFile(path) // Step 2: Load Prettier Plugins (using Promise.all for concurrent loading)
 
-            const [{ format }, typescript, estree] = await Promise.all([
-              import("prettier/standalone"),
-              import("prettier/parser-typescript"),
-              import("prettier/plugins/estree"),
-            ]) // Step 3: Format Code
+            const [{ format }, { default: typescript }, { default: estree }] =
+              await Promise.all([
+                import("prettier/standalone"),
+                import("prettier/parser-typescript"),
+                import("prettier/plugins/estree"),
+              ]) // Step 3: Format Code
 
             return format(raw, {
               parser: prettierParser,

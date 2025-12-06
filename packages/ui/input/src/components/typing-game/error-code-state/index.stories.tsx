@@ -1,4 +1,6 @@
+import { useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+
 import { ErrorCodeState } from "."
 
 const meta: Meta<typeof ErrorCodeState> = {
@@ -353,8 +355,8 @@ export const InteractiveRetry: Story = {
     path: "/code-samples/fibonacci.ts",
   },
   render: (args) => {
-    const [retryCount, setRetryCount] = React.useState(0)
-    
+    const [retryCount, setRetryCount] = useState(0)
+
     return (
       <div className="space-y-4">
         <div className="text-center text-sm text-muted-foreground">
@@ -363,7 +365,7 @@ export const InteractiveRetry: Story = {
         <ErrorCodeState
           {...args}
           onRetry={() => {
-            setRetryCount(prev => prev + 1)
+            setRetryCount((prev) => prev + 1)
             console.log(`Retry attempt ${retryCount + 1}`)
           }}
         />
@@ -390,7 +392,8 @@ export const ScreenReaderFriendly: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Error state with proper ARIA labels and semantic HTML for screen readers",
+        story:
+          "Error state with proper ARIA labels and semantic HTML for screen readers",
       },
     },
   },

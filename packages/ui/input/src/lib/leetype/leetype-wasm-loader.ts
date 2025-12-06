@@ -152,7 +152,7 @@ export function canonicalizeText(input: string): Array<CanonicalUnit> {
 /**
  * Build the display map (JS-friendly)
  */
-export function buildDisplayMap(input: string): Array<number> {
+export function buildDisplayMap(input: string): Uint32Array {
   if (!wasmModule) {
     throw new Error("WASM module not loaded. Call loadWasm() first.")
   }

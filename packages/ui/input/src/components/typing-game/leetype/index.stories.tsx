@@ -56,7 +56,7 @@ export const RustSample: Story = {
   args: {
     codePaths: defaultCodePaths,
   },
-  play: async ({ canvasElement }) => {
+  play: async () => {
     // Simulate language change to Rust
     // Note: You'd need to implement interaction testing if needed
   },

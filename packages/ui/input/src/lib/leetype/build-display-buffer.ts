@@ -8,7 +8,7 @@ export type DisplayChar = {
 
 export function buildDisplayBuffer(code: string): Array<DisplayChar> {
   // buildDisplayMap returns an array of unitIndex (one per character)
-  const map: Array<number> = buildDisplayMap(code) // from wasm
+  const map: Array<number> = Array.from(buildDisplayMap(code))
 
   const chars = Array.from(code) // preserves multi-codepoint characters
   // defensive: ensure map length == chars.length

@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, RefObject } from "react"
 import type { GameState } from "@input/types/leetype"
 import { Play, RotateCcw } from "lucide-react"
 import { Button, Card } from "some-ui-shared"
@@ -6,6 +6,7 @@ import { cn } from "some-ui-utils"
 
 type TypingInputCardProps = {
   gameState: GameState
+  disabled: boolean
   userInput: string
   elapsedTime: number
   accuracy: number
@@ -13,11 +14,12 @@ type TypingInputCardProps = {
   onStart: () => void
   onReset: () => void
   onInputChange: (value: string) => void
-  inputRef: React.RefObject<HTMLTextAreaElement>
+  inputRef: RefObject<HTMLTextAreaElement | null>
 }
 
 export const TypingInputCard: FC<TypingInputCardProps> = ({
   gameState,
+  disabled,
   userInput,
   elapsedTime,
   accuracy,
@@ -27,7 +29,7 @@ export const TypingInputCard: FC<TypingInputCardProps> = ({
   onInputChange,
   inputRef,
 }) => {
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
@@ -76,7 +78,7 @@ export const TypingInputCard: FC<TypingInputCardProps> = ({
             ref={inputRef}
             value={userInput}
             onChange={(e) => onInputChange(e.target.value)}
-            disabled={gameState !== "playing"}
+            disabled={disabled}
             className={cn(
               "w-full h-[500px] p-4 font-mono text-sm",
               "bg-secondary text-secondary-foreground",

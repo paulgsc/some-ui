@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, ReactNode } from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   buildDisplayMap,
@@ -39,18 +39,21 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const caretRef = useRef<HTMLSpanElement>(null)
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval>>(null)
   const [wasmReady, setWasmReady] = useState(isWasmLoaded())
 
   // Wait for WASM to be ready
   useEffect(() => {
     if (!wasmReady) {
-      const checkInterval = setInterval(() => {
+      checkIntervalRef.current = setInterval(() => {
         if (isWasmLoaded()) {
           setWasmReady(true)
-          clearInterval(checkInterval)
+          if (checkIntervalRef.current) clearInterval(checkIntervalRef.current)
         }
       }, 50)
-      return () => clearInterval(checkInterval)
+    }
+    return (): void => {
+      if (checkIntervalRef.current) clearInterval(checkIntervalRef.current)
     }
   }, [wasmReady])
 
@@ -59,7 +62,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     if (!wasmReady) return null
 
     try {
-      const map: Array<number> = buildDisplayMap(displayCode)
+      const map: Array<number> = Array.from(buildDisplayMap(displayCode))
       const chars = Array.from(displayCode)
 
       // Defensive: ensure map length matches chars length
@@ -97,7 +100,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     }
   }, [cursorUnitIndex])
 
-  const renderHighlightedCode = () => {
+  const renderHighlightedCode = (): ReactNode => {
     if (!displayBuffer) {
       // Fallback: render plain code while waiting for WASM
       return displayCode
@@ -117,7 +120,10 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 
     let charIndex = 0
 
-    const renderToken = (token: string | Prism.Token, key: number): any => {
+    const renderToken = (
+      token: string | Prism.Token,
+      key: number
+    ): ReactNode => {
       if (typeof token === "string") {
         return token.split("").map(() => {
           const displayChar = displayBuffer[charIndex++]
