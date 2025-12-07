@@ -25,9 +25,12 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
   const {
     prompt: { text },
     isConnected,
-    isConnecting,
+    isInitializing,
     error,
-  } = useUtteranceWebSocket()
+  } = useUtteranceWebSocket({
+    url: `ws://${window.location.hostname}:3000/ws`,
+    queryKey: ["utterance"],
+  })
 
   const {
     speak,
@@ -74,7 +77,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     )
   }
 
-  if (isConnecting) {
+  if (isInitializing) {
     return <LoadingCard />
   }
 

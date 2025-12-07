@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useWebSocketQuery } from "@utils/lib/hooks/use-websocket"
+import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
   IncomingOrchestratorEvent,
   OrchestratorCommand,
@@ -12,7 +12,6 @@ import {
   IncomingOrchestratorEventSchema,
   OutgoingMessageSchema,
 } from "some-types-utils"
-import type { z } from "zod"
 
 export type UseOrchestratorConfig = {
   stream_id: string
@@ -28,7 +27,7 @@ export type UseOrchestratorReturn = {
   // State
   state: OrchestratorState
   isConnected: boolean
-  isReconnecting: boolean
+  isInitializing: boolean
   error: string | null
 
   // Actions
@@ -44,14 +43,16 @@ export type UseOrchestratorReturn = {
     streamTime: number,
     timecode: string
   ) => void
-
-  // Raw access
-  parseErrors: Array<z.ZodError>
-  rawSocket: ReturnType<
-    typeof useWebSocketQuery<IncomingOrchestratorEvent, OutgoingMessage>
-  >
 }
 
+/**
+ * Orchestrator hook - declarative protocol layer over WebSocket
+ *
+ * Guarantees:
+ * - Single initialization per URL across all components
+ * - Serialized protocol commands
+ * - No duplicate subscriptions or configurations
+ */
 export function useOrchestrator({
   stream_id,
   scenes,
@@ -74,27 +75,55 @@ export function useOrchestrator({
     time_remaining: initialTotalDuration,
   })
 
-  const configuredRef = useRef(false)
   const previousSceneRef = useRef<string | null>(null)
-  const lastConfiguredScenesRef = useRef<string>("")
 
-  const ws = useWebSocketQuery<IncomingOrchestratorEvent, OutgoingMessage>({
+  // Store callbacks in ref to avoid dependency issues
+  const callbacksRef = useRef({ onSceneChange, onStreamEnd, onError })
+  useEffect(() => {
+    callbacksRef.current = { onSceneChange, onStreamEnd, onError }
+  }, [onSceneChange, onStreamEnd, onError])
+
+  // WebSocket with atomic init - runs ONCE per URL
+  const ws = useWebSocket<IncomingOrchestratorEvent, OutgoingMessage>({
     url: orchestratorUrl || `ws://${window.location.hostname}:3000/ws`,
-    queryKey: ["orchestrator"],
     incomingMessageSchema: IncomingOrchestratorEventSchema,
     outgoingMessageSchema: OutgoingMessageSchema,
     autoReconnect: true,
     reconnectInterval: 3000,
     debugMode: true,
+
+    // Init callback - runs ONCE atomically on first acquire
+    init: async (manager) => {
+      console.log("🚀 Orchestrator init (atomic, singleton)")
+
+      // Subscribe to state updates
+      await manager.sendSerialized({
+        type: "subscribe",
+        event_types: ["orchestratorState"],
+      })
+
+      // Configure with initial scenes
+      if (scenes.length > 0) {
+        await manager.sendSerialized({
+          type: "tickCommand",
+          stream_id,
+          command: {
+            Reconfigure: { scenes },
+          },
+        })
+      }
+    },
+
     onIncomingMessage: (event) => {
       if (event.type === "orchestratorState") {
         const prevState = state
         const newState = event.state
+
         setState((prev) => ({
           ...newState,
           // Preserve local scenes if server doesn't send them
           scenes: newState.scenes.length > 0 ? newState.scenes : prev.scenes,
-          totalDuration:
+          total_duration:
             newState.total_duration > 0
               ? newState.total_duration
               : prev.total_duration,
@@ -105,86 +134,43 @@ export function useOrchestrator({
           prevState.current_active_scene !== newState.current_active_scene &&
           previousSceneRef.current !== newState.current_active_scene
         ) {
-          if (onSceneChange)
-            onSceneChange(
+          if (callbacksRef.current.onSceneChange) {
+            callbacksRef.current.onSceneChange(
               previousSceneRef.current,
               newState.current_active_scene
             )
+          }
           previousSceneRef.current = newState.current_active_scene
         }
       } else if (event.type === "error") {
-        if (onError) onError(event.message)
+        if (callbacksRef.current.onError) {
+          callbacksRef.current.onError(event.message)
+        }
       }
     },
   })
 
-  // Helper to check if scenes actually changed
-  const haveScenesChanged = useCallback((newScenes: Array<SceneConfig>) => {
-    const newHash = JSON.stringify(newScenes)
-    if (newHash === lastConfiguredScenesRef.current) {
-      return false
-    }
-    lastConfiguredScenesRef.current = newHash
-    return true
-  }, [])
-
-  // Auto configure & subscribe on connect (only once per connection)
+  // Reconfigure when scenes change (serialized)
+  const previousScenesRef = useRef<string>("")
   useEffect(() => {
-    if (!ws.isConnected || configuredRef.current) return
+    if (!ws.isConnected || scenes.length === 0) return
 
-    console.log("Initial configuration on connect")
+    const scenesHash = JSON.stringify(scenes)
+    if (scenesHash === previousScenesRef.current) return
 
-    // Subscribe
-    ws.sendMessage({
-      type: "subscribe",
-      event_types: ["orchestratorState"],
+    console.log("📝 Scenes changed, reconfiguring...")
+    previousScenesRef.current = scenesHash
+
+    ws.sendSerialized({
+      type: "tickCommand",
+      stream_id,
+      command: {
+        Reconfigure: { scenes },
+      },
+    }).catch((err) => {
+      console.error("Failed to reconfigure:", err)
     })
-
-    // Configure if scenes provided
-    if (scenes.length > 0) {
-      ws.sendMessage({
-        type: "tickCommand",
-        stream_id,
-        command: {
-          Reconfigure: {
-            scenes: scenes,
-          },
-        },
-      })
-      lastConfiguredScenesRef.current = JSON.stringify(scenes)
-      configuredRef.current = true
-    }
-  }, [ws.isConnected, stream_id, ws.sendMessage]) // ✅ Don't include scenes here
-
-  // Reset config flag on disconnect
-  useEffect(() => {
-    if (!ws.isConnected) {
-      configuredRef.current = false
-      previousSceneRef.current = null
-      lastConfiguredScenesRef.current = ""
-    }
-  }, [ws.isConnected])
-
-  // Reconfigure when scenes actually change (deep comparison)
-  useEffect(() => {
-    if (!ws.isConnected || !configuredRef.current || scenes.length === 0) {
-      return
-    }
-
-    // Only reconfigure if scenes actually changed
-    if (haveScenesChanged(scenes)) {
-      console.log("Scenes changed, sending reconfigure")
-      ws.sendMessage({
-        type: "tickCommand",
-        stream_id,
-        command: {
-          Reconfigure: {
-            scenes: scenes,
-          },
-        },
-      })
-    }
-  }, [scenes, ws.isConnected, stream_id, ws.sendMessage, haveScenesChanged])
+  }, [scenes, ws.isConnected, stream_id, ws.sendSerialized])
 
   // Update local state when scenes prop changes
   useEffect(() => {
@@ -192,21 +178,27 @@ export function useOrchestrator({
     setState((prev) => ({
       ...prev,
       scenes,
-      totalDuration,
+      total_duration: totalDuration,
       time_remaining: totalDuration - prev.current_time,
     }))
   }, [scenes])
 
-  // --- Action Helpers ---
+  // --- Serialized Command Helpers ---
   const sendCommand = useCallback(
     (command: OrchestratorCommand) => {
-      ws.sendMessage({ type: "tickCommand", stream_id, command })
+      ws.sendSerialized({
+        type: "tickCommand",
+        stream_id,
+        command,
+      }).catch((err) => {
+        console.error("Failed to send command:", err)
+      })
     },
-    [ws.sendMessage, stream_id]
+    [ws.sendSerialized, stream_id]
   )
 
   const start = useCallback(
-    () => sendCommand({ Start: { scenes: scenes } }),
+    () => sendCommand({ Start: { scenes } }),
     [sendCommand, scenes]
   )
 
@@ -217,9 +209,7 @@ export function useOrchestrator({
 
   const reset = useCallback(() => {
     sendCommand({ Reset: null })
-    configuredRef.current = false
     previousSceneRef.current = null
-    lastConfiguredScenesRef.current = ""
   }, [sendCommand])
 
   const pause = useCallback(() => sendCommand({ Pause: null }), [sendCommand])
@@ -255,23 +245,25 @@ export function useOrchestrator({
           start()
         } else if (!is_streaming && state.is_running) {
           stop()
-          if (onStreamEnd) onStreamEnd()
+          if (callbacksRef.current.onStreamEnd) {
+            callbacksRef.current.onStreamEnd()
+          }
         }
       }
     },
-    [sendCommand, autoStart, start, stop, onStreamEnd]
+    [sendCommand, autoStart, start, stop, state.is_running]
   )
 
   return {
     // WebSocket state
     isConnected: ws.isConnected,
-    isReconnecting: ws.isConnecting,
+    isInitializing: ws.isInitializing,
     error: ws.error,
 
     // Orchestrator state
     state,
 
-    // Actions
+    // Actions (all serialized)
     start,
     stop,
     reset,
@@ -282,7 +274,5 @@ export function useOrchestrator({
     updateStreamStatus,
 
     // Raw
-    parseErrors: ws.parseErrors,
-    rawSocket: ws,
   }
 }

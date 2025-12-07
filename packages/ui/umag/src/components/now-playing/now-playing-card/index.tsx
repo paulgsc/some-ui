@@ -28,11 +28,12 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
   const {
     status: { title, channel, thumbnail },
     isConnected,
-    isConnecting,
+    isInitializing,
     error,
-    connect,
-    disconnect,
-  } = useNowPlayingWebSocket()
+  } = useNowPlayingWebSocket({
+    url: `ws://${window.location.hostname}:3000/ws`,
+    queryKey: ["now_playing"],
+  })
 
   // Refs for each component
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,7 +46,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
     return <ErrorBoundaryFallback error={error} />
   }
 
-  if (isConnecting) {
+  if (isInitializing) {
     return <LoadingCard />
   }
 
@@ -87,7 +88,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
             ref={vinylRecordRef}
             thumbnail={thumbnail}
             title={title}
-            onConnect={isConnected ? disconnect : connect}
+            onConnect={isConnected ? () => {} : () => {}}
           />
 
           {/* Song Info Section */}

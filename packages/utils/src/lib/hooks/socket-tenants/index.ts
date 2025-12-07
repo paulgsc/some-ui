@@ -1,5 +1,4 @@
-export { useObsStatusWebSocket } from "./use-obs-socket"
-export { useNowPlayingWebSocket } from "./use-now-playing-socket"
-export { useUtteranceWebSocket } from "./use-prompt-utterance"
-export { useObsOrchestrator } from "./use-obs-orchestrator"
+export { useObsStatus as useObsStatusWebSocket } from "./use-obs-socket"
+export { useNowPlaying as useNowPlayingWebSocket } from "./use-now-playing-socket"
+export { useUtterance as useUtteranceWebSocket } from "./use-prompt-utterance"
 export { useOrchestrator } from "./orchestrator"

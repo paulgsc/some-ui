@@ -1,0 +1,371 @@
+import { LifecycleStateMachine } from "./lifecycle"
+import { ListenerRegistry } from "./listener-registry"
+import { MutationQueue } from "./mutation-queue"
+import { ReferenceCounter } from "./ref-counter"
+
+export type WebSocketManagerOptions = {
+  autoReconnect?: boolean
+  reconnectInterval?: number
+  debugMode?: boolean
+}
+
+export type InitFunction = (manager: WebSocketManager) => void | Promise<void>
+
+export type WebSocketSnapshot<I = unknown> = {
+  isConnected: boolean
+  isInitializing: boolean
+  error: string | null
+  lastMessage: I | null
+  parseErrorCount: number
+}
+
+/**
+ * Singleton WebSocket manager with lifecycle coordination
+ */
+export class WebSocketManager {
+  private static instances = new Map<string, WebSocketManager>()
+
+  private socket: WebSocket | null = null
+  private readonly lifecycle = new LifecycleStateMachine()
+  private readonly refCounter: ReferenceCounter
+  private readonly mutationQueue = new MutationQueue()
+
+  private readonly messageListeners = new ListenerRegistry<unknown>()
+  private readonly connectionListeners = new ListenerRegistry<boolean>()
+  private readonly errorListeners = new ListenerRegistry<Event | Error>()
+
+  // External store for React
+  private storeListeners = new Set<() => void>()
+  private snapshot: WebSocketSnapshot = {
+    isConnected: false,
+    isInitializing: false,
+    error: null,
+    lastMessage: null,
+    parseErrorCount: 0,
+  }
+  private emitScheduled = false
+
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private manualDisconnect = false
+  private initPromise: Promise<void> | null = null
+  private initFunction: InitFunction | null = null
+
+  private constructor(
+    private readonly url: string,
+    private readonly options: WebSocketManagerOptions = {}
+  ) {
+    this.refCounter = new ReferenceCounter({
+      onZero: () => this.dispose(),
+    })
+  }
+
+  static getInstance(
+    url: string,
+    options?: WebSocketManagerOptions
+  ): WebSocketManager {
+    if (!this.instances.has(url)) {
+      this.instances.set(url, new WebSocketManager(url, options))
+    }
+    return this.instances.get(url)!
+  }
+
+  private log(...args: Array<unknown>): void {
+    if (this.options.debugMode) {
+      console.log(`[WebSocket ${this.url}]`, ...args)
+    }
+  }
+
+  // External store API for React
+  subscribe = (listener: () => void): (() => void) => {
+    this.storeListeners.add(listener)
+    return () => this.storeListeners.delete(listener)
+  }
+
+  getSnapshot = <I = unknown>(): WebSocketSnapshot<I> => {
+    return this.snapshot as WebSocketSnapshot<I>
+  }
+
+  private emitStoreChange(): void {
+    if (this.emitScheduled) return
+    this.emitScheduled = true
+
+    queueMicrotask(() => {
+      this.emitScheduled = false
+      for (const listener of this.storeListeners) {
+        listener()
+      }
+    })
+  }
+
+  private updateSnapshot(patch: Partial<WebSocketSnapshot>): void {
+    this.snapshot = { ...this.snapshot, ...patch }
+    this.emitStoreChange()
+  }
+
+  /**
+   * Acquire a reference to this manager
+   * Guarantees atomic initialization with serialized init callback
+   */
+  async acquire(init?: InitFunction): Promise<void> {
+    const count = this.refCounter.acquire()
+
+    // Store init function on first acquire
+    if (count === 1 && init) {
+      this.initFunction = init
+    }
+
+    // Already initialized - just return
+    if (this.lifecycle.is("initialized")) {
+      return
+    }
+
+    // Currently initializing - wait for existing init
+    if (this.lifecycle.is("initializing")) {
+      this.log("Waiting for existing initialization...")
+      await this.initPromise
+      return
+    }
+
+    // Start initialization
+    this.lifecycle.transitionTo("initializing")
+    this.updateSnapshot({ isInitializing: true })
+
+    this.initPromise = (async () => {
+      try {
+        this.log("Starting initialization...")
+
+        // Connect socket
+        await this.connectSocket()
+
+        // Run init callback if provided
+        if (this.initFunction) {
+          this.log("Running init callback...")
+          await this.initFunction(this)
+        }
+
+        this.lifecycle.transitionTo("initialized")
+        this.updateSnapshot({
+          isInitializing: false,
+          isConnected: true,
+          error: null,
+        })
+        this.log("Initialization complete")
+      } catch (err) {
+        this.log("Initialization failed:", err)
+        this.lifecycle.transitionTo("idle")
+        this.updateSnapshot({
+          isInitializing: false,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        this.initPromise = null
+        throw err
+      }
+    })()
+
+    await this.initPromise
+  }
+
+  /**
+   * Release a reference to this manager
+   * Automatically disposes when ref count reaches zero
+   */
+  release(): void {
+    const count = this.refCounter.release()
+    this.log(`Released reference (count: ${count})`)
+  }
+
+  /**
+   * Connect the underlying WebSocket
+   */
+  private async connectSocket(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.manualDisconnect = false
+      this.clearReconnectTimer()
+
+      try {
+        this.socket = new WebSocket(this.url)
+
+        this.socket.onopen = () => {
+          this.log("Connected")
+          this.connectionListeners.notify(true)
+          this.updateSnapshot({ isConnected: true, error: null })
+          resolve()
+        }
+
+        this.socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            this.messageListeners.notify(data)
+            this.snapshot.lastMessage = data
+            this.emitStoreChange()
+          } catch (err) {
+            this.log("Failed to parse message:", err)
+            this.errorListeners.notify(err as Error)
+            this.updateSnapshot({
+              parseErrorCount: this.snapshot.parseErrorCount + 1,
+            })
+          }
+        }
+
+        this.socket.onclose = () => {
+          this.log("Disconnected")
+          this.connectionListeners.notify(false)
+          this.updateSnapshot({ isConnected: false })
+
+          if (
+            this.options.autoReconnect &&
+            !this.manualDisconnect &&
+            this.lifecycle.is("initialized")
+          ) {
+            const interval = this.options.reconnectInterval ?? 5000
+            this.log("Reconnecting in", interval, "ms")
+            this.reconnectTimer = setTimeout(() => this.reconnect(), interval)
+          }
+        }
+
+        this.socket.onerror = (error) => {
+          this.log("Connection error:", error)
+          this.errorListeners.notify(error)
+          this.updateSnapshot({ error: "WebSocket connection error" })
+          reject(error)
+        }
+      } catch (err) {
+        this.log("Connection setup error:", err)
+        this.errorListeners.notify(err as Error)
+        reject(err)
+      }
+    })
+  }
+
+  /**
+   * Reconnect after disconnect
+   */
+  private async reconnect(): Promise<void> {
+    if (this.lifecycle.is("initialized") && !this.isConnected) {
+      try {
+        await this.connectSocket()
+        // Re-run init callback after reconnect
+        if (this.initFunction) {
+          await this.initFunction(this)
+        }
+      } catch (err) {
+        this.log("Reconnect failed:", err)
+      }
+    }
+  }
+
+  /**
+   * Disconnect the socket
+   */
+  private disconnect(): void {
+    this.manualDisconnect = true
+    this.clearReconnectTimer()
+
+    if (this.socket) {
+      this.socket.close()
+      this.socket = null
+    }
+  }
+
+  /**
+   * Dispose of this manager (called when ref count reaches zero)
+   */
+  private dispose(): void {
+    if (this.lifecycle.is("disposing")) return
+
+    this.log("Disposing manager...")
+
+    // Allow dispose from any state (handle cancellation)
+    this.lifecycle.transitionTo("disposing")
+
+    this.disconnect()
+    this.messageListeners.clear()
+    this.connectionListeners.clear()
+    this.errorListeners.clear()
+    this.mutationQueue.clear()
+    this.storeListeners.clear()
+    this.initFunction = null
+    this.initPromise = null
+
+    this.lifecycle.reset()
+    this.refCounter.reset()
+    this.updateSnapshot({
+      isConnected: false,
+      isInitializing: false,
+      error: null,
+      lastMessage: null,
+      parseErrorCount: 0,
+    })
+
+    WebSocketManager.instances.delete(this.url)
+    this.log("Manager disposed")
+  }
+
+  /**
+   * Send a message immediately (not serialized)
+   */
+  sendMessage(message: unknown): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected")
+    }
+    this.socket.send(JSON.stringify(message))
+  }
+
+  /**
+   * Send a message with serialization guarantee
+   */
+  sendSerialized(message: unknown): Promise<void> {
+    return this.mutationQueue.enqueue(() => this.sendMessage(message))
+  }
+
+  /**
+   * Enqueue a custom mutation
+   */
+  enqueueMutation<T>(fn: () => T | Promise<T>): Promise<T> {
+    return this.mutationQueue.enqueue(fn)
+  }
+
+  // Listener management
+  addMessageListener(callback: (data: unknown) => void): () => void {
+    this.messageListeners.add(callback)
+    return () => this.messageListeners.remove(callback)
+  }
+
+  addConnectionListener(callback: (connected: boolean) => void): () => void {
+    this.connectionListeners.add(callback)
+    return () => this.connectionListeners.remove(callback)
+  }
+
+  addErrorListener(callback: (error: Event | Error) => void): () => void {
+    this.errorListeners.add(callback)
+    return () => this.errorListeners.remove(callback)
+  }
+
+  // State accessors
+  get isConnected(): boolean {
+    return this.socket?.readyState === WebSocket.OPEN
+  }
+
+  get isInitializing(): boolean {
+    return this.lifecycle.is("initializing")
+  }
+
+  get isInitialized(): boolean {
+    return this.lifecycle.is("initialized")
+  }
+
+  get lifecycleState(): string {
+    return this.lifecycle.current
+  }
+
+  get referenceCount(): number {
+    return this.refCounter.current
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+  }
+}

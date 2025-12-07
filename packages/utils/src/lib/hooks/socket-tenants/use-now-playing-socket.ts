@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type {
-  UseWebSocketQueryOptions,
-  UseWebSocketQueryReturn,
-} from "@utils/lib/hooks/use-websocket"
-import { useWebSocketQuery } from "@utils/lib/hooks/use-websocket"
+import { useMemo, useState } from "react"
+import { useWebSocket } from "@utils/lib/hooks/websocket"
+import type { UseWebSocketOptions } from "@utils/lib/hooks/websocket"
 import { z } from "zod"
 
 const EventTypeSchema = z.enum([
@@ -15,7 +12,6 @@ const EventTypeSchema = z.enum([
   "tabMetaData",
 ])
 
-// Schema for `NowPlaying` struct
 const NowPlayingSchema = z.object({
   title: z.string().optional(),
   channel: z.string().optional(),
@@ -25,20 +21,12 @@ const NowPlayingSchema = z.object({
   thumbnail: z.string().optional(),
 })
 
-type NowPlayingType = z.infer<typeof NowPlayingSchema>
+export type NowPlayingType = z.infer<typeof NowPlayingSchema>
 
-// Discriminated union for `Event` enum
 const EventSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("ping"),
-  }),
-  z.object({
-    type: z.literal("pong"),
-  }),
-  z.object({
-    type: z.literal("error"),
-    message: z.string(),
-  }),
+  z.object({ type: z.literal("ping") }),
+  z.object({ type: z.literal("pong") }),
+  z.object({ type: z.literal("error"), message: z.string() }),
   z.object({
     type: z.literal("subscribe"),
     event_types: z.array(EventTypeSchema),
@@ -51,7 +39,6 @@ const EventSchema = z.discriminatedUnion("type", [
     type: z.literal("clientCount"),
     count: z.number().nonnegative(),
   }),
-
   z.object({
     type: z.literal("tabMetaData"),
     data: NowPlayingSchema,
@@ -59,12 +46,11 @@ const EventSchema = z.discriminatedUnion("type", [
 ])
 
 type IncomingEvent = z.infer<typeof EventSchema>
-
 type WsEvents = z.infer<typeof EventSchema>
 
-type UseNowPlayingWebSocketOptions = Omit<
-  UseWebSocketQueryOptions<IncomingEvent, WsEvents>,
-  "incomingMessageSchema" | "outgoingMessageSchema"
+type UseNowPlayingOptions = Omit<
+  UseWebSocketOptions<IncomingEvent, WsEvents>,
+  "incomingMessageSchema" | "outgoingMessageSchema" | "init"
 >
 
 export const defaultNowPlaying: NowPlayingType = {
@@ -76,83 +62,56 @@ export const defaultNowPlaying: NowPlayingType = {
   thumbnail: "some thumbnail...",
 }
 
-export function useNowPlayingWebSocket(
-  options: UseNowPlayingWebSocketOptions = {
-    url: `ws://${window.location.hostname}:${3000}/ws`,
-    queryKey: ["nowPlaying"],
-    updateStrategy: "append",
-    debugMode: true,
-    reconnectInterval: 1000 * 60 * 60,
-  }
-): UseNowPlayingWebSocketReturn {
-  const [fullStatus, setFullStatus] =
-    useState<NowPlayingType>(defaultNowPlaying)
+export function useNowPlaying(options: UseNowPlayingOptions) {
+  const [status, setStatus] = useState<NowPlayingType>(defaultNowPlaying)
 
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-
-  const wsHook = useWebSocketQuery<WsEvents>({
+  const ws = useWebSocket<IncomingEvent, WsEvents>({
     url: options.url,
-    queryKey: options.queryKey,
-    updateStrategy: options.updateStrategy,
     incomingMessageSchema: EventSchema,
     outgoingMessageSchema: EventSchema,
     autoReconnect: options.autoReconnect ?? true,
-    reconnectInterval: options.reconnectInterval ?? 5000,
+    reconnectInterval: options.reconnectInterval ?? 3600000, // 1 hour
+    debugMode: options.debugMode ?? false,
+
+    // Atomic init - runs once
+    init: async (manager) => {
+      console.log("🎵 NowPlaying init (atomic, singleton)")
+
+      // Subscribe to tab metadata
+      await manager.sendSerialized({
+        type: "subscribe",
+        event_types: ["tabMetaData"],
+      })
+
+      // Start keepalive pings
+      const keepAlive = 90000 // 90s (server timeout: 120s)
+      setInterval(() => {
+        if (manager.isConnected) {
+          manager.sendMessage({ type: "pong" })
+        }
+      }, keepAlive)
+    },
+
+    onIncomingMessage: (event) => {
+      if (options.onIncomingMessage) {
+        options.onIncomingMessage(event)
+      }
+
+      if (event.type === "tabMetaData") {
+        setStatus(event.data)
+      }
+    },
+
     onConnect: options.onConnect,
     onDisconnect: options.onDisconnect,
     onError: options.onError,
-    debugMode: options.debugMode ?? false,
-    onIncomingMessage: (update) => {
-      console.debug("update: ", update)
-      if (options.onIncomingMessage) {
-        options.onIncomingMessage(update)
-      }
-
-      if (update.type === "tabMetaData") setFullStatus(update.data)
-    },
   })
-
-  // Send helpers
-  const subscribe = useCallback(() => {
-    wsHook.sendMessage({ type: "subscribe", event_types: ["tabMetaData"] })
-  }, [wsHook])
-
-  // Handle subscription separately
-  useEffect(() => {
-    subscribe()
-  }, [subscribe])
-
-  // Handle ping interval separately - only reset when connection state changes
-  useEffect(() => {
-    const keepAlive = 1000 * 90 // Server makes connection stale after 120s
-
-    if (wsHook.isConnected) {
-      intervalRef.current = setInterval(() => {
-        if (wsHook.isConnected) {
-          wsHook.sendMessage({ type: "pong" })
-        }
-      }, keepAlive)
-    }
-
-    return (): void => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [wsHook.isConnected]) // Only depend on connection state
 
   return useMemo(
     () => ({
-      ...wsHook,
-      status: fullStatus,
-      subscribe,
+      ...ws,
+      status,
     }),
-    [wsHook, fullStatus]
+    [ws, status]
   )
-}
-
-type UseNowPlayingWebSocketReturn = UseWebSocketQueryReturn<
-  IncomingEvent,
-  WsEvents
-> & {
-  status: NowPlayingType
-  subscribe: () => void
 }

@@ -37,7 +37,6 @@ export const OrchestratorDemo = ({
   } | null>(null)
 
   const {
-    parseErrors,
     isConnected,
     isReconnecting,
     state: {
@@ -67,13 +66,6 @@ export const OrchestratorDemo = ({
       console.error("[v0] Orchestrator error:", error)
     },
   })
-
-  useEffect(() => {
-    if (parseErrors.length > 0) {
-      const latestError = parseErrors[parseErrors.length - 1]
-      console.error("Orchestrator Zod validation error:", latestError)
-    }
-  }, [parseErrors])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
