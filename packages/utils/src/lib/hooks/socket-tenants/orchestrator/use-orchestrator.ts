@@ -12,9 +12,10 @@ import {
   IncomingOrchestratorEventSchema,
   OutgoingMessageSchema,
 } from "some-types-utils"
+import type { z } from "zod"
 
 export type UseOrchestratorConfig = {
-  streamId: string
+  stream_id: string
   scenes: Array<SceneConfig>
   orchestratorUrl?: string
   autoStart?: boolean
@@ -29,18 +30,6 @@ export type UseOrchestratorReturn = {
   isConnected: boolean
   isReconnecting: boolean
   error: string | null
-
-  // Derived state
-  isRunning: boolean
-  currentActiveScene: string | null
-  progress: number
-  currentTime: number
-  timeRemaining: number
-  activeElements: Array<string>
-  scheduledElements: typeof defaultOrchestratorState.scheduledElements
-  streamStatus: typeof defaultOrchestratorState.streamStatus
-  totalDuration: number
-  scenes: Array<SceneConfig>
 
   // Actions
   start: () => void
@@ -57,13 +46,14 @@ export type UseOrchestratorReturn = {
   ) => void
 
   // Raw access
+  parseErrors: Array<z.ZodError>
   rawSocket: ReturnType<
     typeof useWebSocketQuery<IncomingOrchestratorEvent, OutgoingMessage>
   >
 }
 
 export function useOrchestrator({
-  streamId,
+  stream_id,
   scenes,
   orchestratorUrl,
   autoStart = false,
@@ -80,8 +70,8 @@ export function useOrchestrator({
   const [state, setState] = useState<OrchestratorState>({
     ...defaultOrchestratorState,
     scenes,
-    totalDuration: initialTotalDuration,
-    timeRemaining: initialTotalDuration,
+    total_duration: initialTotalDuration,
+    time_remaining: initialTotalDuration,
   })
 
   const configuredRef = useRef(false)
@@ -100,25 +90,27 @@ export function useOrchestrator({
       if (event.type === "orchestratorState") {
         const prevState = state
         const newState = event.state
-        console.log("new event state recv: ", newState)
         setState((prev) => ({
           ...newState,
           // Preserve local scenes if server doesn't send them
           scenes: newState.scenes.length > 0 ? newState.scenes : prev.scenes,
           totalDuration:
-            newState.totalDuration > 0
-              ? newState.totalDuration
-              : prev.totalDuration,
+            newState.total_duration > 0
+              ? newState.total_duration
+              : prev.total_duration,
         }))
 
         // Detect scene change for callback
         if (
-          prevState.currentActiveScene !== newState.currentActiveScene &&
-          previousSceneRef.current !== newState.currentActiveScene
+          prevState.current_active_scene !== newState.current_active_scene &&
+          previousSceneRef.current !== newState.current_active_scene
         ) {
           if (onSceneChange)
-            onSceneChange(previousSceneRef.current, newState.currentActiveScene)
-          previousSceneRef.current = newState.currentActiveScene
+            onSceneChange(
+              previousSceneRef.current,
+              newState.current_active_scene
+            )
+          previousSceneRef.current = newState.current_active_scene
         }
       } else if (event.type === "error") {
         if (onError) onError(event.message)
@@ -152,7 +144,7 @@ export function useOrchestrator({
     if (scenes.length > 0) {
       ws.sendMessage({
         type: "tickCommand",
-        streamId,
+        stream_id,
         command: {
           Reconfigure: {
             scenes: scenes,
@@ -162,7 +154,7 @@ export function useOrchestrator({
       lastConfiguredScenesRef.current = JSON.stringify(scenes)
       configuredRef.current = true
     }
-  }, [ws.isConnected, streamId, ws.sendMessage]) // ✅ Don't include scenes here
+  }, [ws.isConnected, stream_id, ws.sendMessage]) // ✅ Don't include scenes here
 
   // Reset config flag on disconnect
   useEffect(() => {
@@ -184,7 +176,7 @@ export function useOrchestrator({
       console.log("Scenes changed, sending reconfigure")
       ws.sendMessage({
         type: "tickCommand",
-        streamId,
+        stream_id,
         command: {
           Reconfigure: {
             scenes: scenes,
@@ -192,7 +184,7 @@ export function useOrchestrator({
         },
       })
     }
-  }, [scenes, ws.isConnected, streamId, ws.sendMessage, haveScenesChanged])
+  }, [scenes, ws.isConnected, stream_id, ws.sendMessage, haveScenesChanged])
 
   // Update local state when scenes prop changes
   useEffect(() => {
@@ -201,16 +193,16 @@ export function useOrchestrator({
       ...prev,
       scenes,
       totalDuration,
-      timeRemaining: totalDuration - prev.currentTime,
+      time_remaining: totalDuration - prev.current_time,
     }))
   }, [scenes])
 
   // --- Action Helpers ---
   const sendCommand = useCallback(
     (command: OrchestratorCommand) => {
-      ws.sendMessage({ type: "tickCommand", streamId, command })
+      ws.sendMessage({ type: "tickCommand", stream_id, command })
     },
-    [ws.sendMessage, streamId]
+    [ws.sendMessage, stream_id]
   )
 
   const start = useCallback(
@@ -248,26 +240,26 @@ export function useOrchestrator({
   )
 
   const updateStreamStatus = useCallback(
-    (isStreaming: boolean, streamTime: number, timecode: string) => {
+    (is_streaming: boolean, stream_time: number, timecode: string) => {
       sendCommand({
         UpdateStreamStatus: {
-          isStreaming: isStreaming,
-          streamTime: streamTime,
+          is_streaming,
+          stream_time,
           timecode,
         },
       })
 
       // Auto-start/stop based on stream status
       if (autoStart) {
-        if (isStreaming && !state.isRunning) {
+        if (is_streaming && !state.is_running) {
           start()
-        } else if (!isStreaming && state.isRunning) {
+        } else if (!is_streaming && state.is_running) {
           stop()
           if (onStreamEnd) onStreamEnd()
         }
       }
     },
-    [sendCommand, autoStart, state.isRunning, start, stop, onStreamEnd]
+    [sendCommand, autoStart, start, stop, onStreamEnd]
   )
 
   return {
@@ -278,16 +270,6 @@ export function useOrchestrator({
 
     // Orchestrator state
     state,
-    isRunning: state.isRunning,
-    currentActiveScene: state.currentActiveScene,
-    progress: state.progress,
-    currentTime: state.currentTime,
-    timeRemaining: state.timeRemaining,
-    activeElements: state.activeElements,
-    scheduledElements: state.scheduledElements,
-    streamStatus: state.streamStatus,
-    totalDuration: state.totalDuration,
-    scenes: state.scenes,
 
     // Actions
     start,
@@ -300,6 +282,7 @@ export function useOrchestrator({
     updateStreamStatus,
 
     // Raw
+    parseErrors: ws.parseErrors,
     rawSocket: ws,
   }
 }
