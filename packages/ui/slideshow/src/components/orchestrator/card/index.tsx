@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   closestCenter,
   DndContext,
@@ -19,31 +19,45 @@ import {
   OrchestratorControls,
   OrchestratorTimeline,
   ScheduledElementsList,
-} from "@slideshow/components"
+} from "@slideshow/components/orchestrator"
 import { Plus } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
 import { useOrchestrator } from "some-ui-utils"
 
-// Mock demo data
-const DEMO_SCENES: Array<SceneConfig> = [
-  { scene_name: "Opening Sequence", duration: 30 },
-  { scene_name: "Main Content Block", duration: 120 },
-  { scene_name: "Transition Graphics", duration: 15 },
-  { scene_name: "Interview Segment", duration: 180 },
-  { scene_name: "Product Showcase", duration: 90 },
-  { scene_name: "Closing Credits", duration: 45 },
-]
-
-export const OrchestratorDemo = () => {
-  const [scenes, setScenes] = useState<Array<SceneConfig>>(DEMO_SCENES)
+export const OrchestratorDemo = ({
+  initialScenes = [],
+}: {
+  initialScenes?: Array<SceneConfig>
+}) => {
+  const [scenes, setScenes] = useState<Array<SceneConfig>>(initialScenes)
   const [editingScene, setEditingScene] = useState<{
     scene: SceneConfig
     index: number
   } | null>(null)
 
-  const orchestrator = useOrchestrator({
-    streamId: "test",
+  const {
+    parseErrors,
+    isConnected,
+    isReconnecting,
+    state: {
+      is_running,
+      progress,
+      current_time,
+      total_duration,
+      current_scene_index,
+      scheduled_elements,
+      stream_status: { timecode, is_streaming },
+    },
+    start,
+    pause,
+    resume,
+    forceScene,
+    stop,
+    reset,
+    skipCurrentScene,
+  } = useOrchestrator({
+    stream_id: "test",
     scenes,
     autoStart: false,
     onSceneChange: (from, to) => {
@@ -54,6 +68,13 @@ export const OrchestratorDemo = () => {
     },
   })
 
+  useEffect(() => {
+    if (parseErrors.length > 0) {
+      const latestError = parseErrors[parseErrors.length - 1]
+      console.error("Orchestrator Zod validation error:", latestError)
+    }
+  }, [parseErrors])
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -61,28 +82,29 @@ export const OrchestratorDemo = () => {
     })
   )
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent): Array<SceneConfig> => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
       setScenes((items) => {
         const oldIndex = items.findIndex(
-          (item, i) => `${item.sceneName}-${i}` === active.id
+          (item, i) => `${item.scene_name}-${i}` === active.id
         )
         const newIndex = items.findIndex(
-          (item, i) => `${item.sceneName}-${i}` === over.id
+          (item, i) => `${item.scene_name}-${i}` === over.id
         )
 
         return arrayMove(items, oldIndex, newIndex)
       })
     }
+    return []
   }
 
-  const handleEditScene = (index: number) => {
+  const handleEditScene = (index: number): void => {
     setEditingScene({ scene: scenes[index], index })
   }
 
-  const handleSaveScene = (updatedScene: SceneConfig) => {
+  const handleSaveScene = (updatedScene: SceneConfig): void => {
     if (editingScene === null) return
 
     const newScenes = [...scenes]
@@ -91,9 +113,9 @@ export const OrchestratorDemo = () => {
     setEditingScene(null)
   }
 
-  const handleAddScene = () => {
+  const handleAddScene = (): void => {
     const newScene: SceneConfig = {
-      sceneName: `New Scene ${scenes.length + 1}`,
+      scene_name: `New Scene ${scenes.length + 1}`,
       duration: 60,
     }
     setScenes([...scenes, newScene])
@@ -124,17 +146,17 @@ export const OrchestratorDemo = () => {
           <div className="space-y-6 lg:col-span-2">
             {/* Controls */}
             <OrchestratorControls
-              isRunning={orchestrator.isRunning}
-              isConnected={orchestrator.isConnected}
-              isReconnecting={orchestrator.isReconnecting}
-              isStreaming={orchestrator.streamStatus.isStreaming}
-              streamTimecode={orchestrator.streamStatus.timecode}
-              onStart={orchestrator.start}
-              onPause={orchestrator.pause}
-              onResume={orchestrator.resume}
-              onStop={orchestrator.stop}
-              onReset={orchestrator.reset}
-              onSkip={orchestrator.skipCurrentScene}
+              isRunning={is_running}
+              isConnected={isConnected}
+              isReconnecting={isReconnecting}
+              isStreaming={is_streaming}
+              streamTimecode={timecode}
+              onStart={start}
+              onPause={pause}
+              onResume={resume}
+              onStop={stop}
+              onReset={reset}
+              onSkip={skipCurrentScene}
             />
 
             {/* Timeline */}
@@ -151,13 +173,11 @@ export const OrchestratorDemo = () => {
                 >
                   <OrchestratorTimeline
                     scenes={scenes}
-                    currentSceneIndex={
-                      orchestrator.state.currentSceneIndex || 0
-                    }
-                    progress={orchestrator.progress}
-                    currentTime={orchestrator.currentTime}
-                    totalDuration={orchestrator.totalDuration}
-                    onSceneClick={orchestrator.forceScene}
+                    currentSceneIndex={current_scene_index || 0}
+                    progress={progress}
+                    currentTime={current_time}
+                    totalDuration={total_duration}
+                    onSceneClick={forceScene}
                     onEditScene={handleEditScene}
                   />
                 </SortableContext>
@@ -168,8 +188,8 @@ export const OrchestratorDemo = () => {
           {/* Right Column - Scheduled Elements */}
           <div className="lg:col-span-1">
             <ScheduledElementsList
-              elements={orchestrator.scheduledElements}
-              currentTime={orchestrator.currentTime}
+              elements={scheduled_elements}
+              currentTime={current_time}
             />
           </div>
         </div>
@@ -179,7 +199,7 @@ export const OrchestratorDemo = () => {
       <EditSceneDialog
         open={editingScene !== null}
         onOpenChange={(open) => !open && setEditingScene(null)}
-        scene={editingScene?.scene || null}
+        scene={editingScene?.scene ?? null}
         onSave={handleSaveScene}
       />
     </div>

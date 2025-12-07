@@ -1,97 +1,135 @@
-import { Layers } from "lucide-react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { ChevronDown, Layers } from "lucide-react"
 
-import { cn } from "some-ui-utils"
-import { Badge } from "some-ui-shared"
-import { Card } from "some-ui-shared"
-import { ScrollArea } from "some-ui-shared"
-
-interface ScheduledElement {
+type ScheduledElement = {
   id: string
-  sceneName: string
-  startTime: number
-  endTime?: number
+  scene_name: string
+  start_time: number
+  end_time?: number
   duration: number
-  isActive: boolean
+  is_active: boolean
+  metadata?: {
+    title?: string
+    subtitle?: string
+    description?: string
+    [key: string]: any
+  }
 }
 
-interface ScheduledElementsListProps {
-  elements: ScheduledElement[]
+type ScheduledElementsListProps = {
+  elements: Array<ScheduledElement>
   currentTime: number
 }
 
-export function ScheduledElementsList({
+export const ScheduledElementsList = ({
   elements,
   currentTime,
-}: ScheduledElementsListProps) {
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+}: ScheduledElementsListProps) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const upcomingProbeRef = useRef<HTMLDivElement>(null)
+  const [maxUpcoming, setMaxUpcoming] = useState(1)
 
-  const activeElements = elements.filter((el) => el.isActive)
+  const activeElements = elements.filter((el) => el.is_active)
   const upcomingElements = elements.filter(
-    (el) => !el.isActive && el.startTime > currentTime
+    (el) => !el.is_active && el.start_time > currentTime
   )
   const pastElements = elements.filter(
-    (el) => !el.isActive && el.endTime && el.endTime <= currentTime
+    (el) => !el.is_active && el.end_time && el.end_time <= currentTime
   )
 
+  const activeElement = activeElements[0] || null
+  const completedElement = pastElements[pastElements.length - 1] || null
+
+  // Measure available height and determine how many upcoming elements fit
+  useLayoutEffect(() => {
+    if (!containerRef.current || !upcomingProbeRef.current) return
+    if (upcomingElements.length === 0) return
+
+    const containerHeight = containerRef.current.clientHeight
+
+    const fixedSectionsHeight = Array.from(
+      containerRef.current.querySelectorAll("[data-fixed-section]")
+    ).reduce((sum, el) => sum + (el as HTMLElement).offsetHeight, 0)
+
+    const remaining = containerHeight - fixedSectionsHeight
+    const cardHeight = upcomingProbeRef.current.offsetHeight
+
+    if (cardHeight <= 0) return
+
+    const fit = Math.max(1, Math.floor(remaining / (cardHeight + 8))) // +8 for gap
+    setMaxUpcoming(fit)
+  }, [
+    activeElement,
+    completedElement,
+    upcomingElements.length,
+    elements.length,
+  ])
+
+  const renderUpcoming = upcomingElements.slice(0, maxUpcoming)
+
   return (
-    <Card className="flex h-full flex-col">
+    <div className="flex h-full flex-col rounded-lg border bg-card">
       <div className="border-b p-4">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted-foreground" />
           <h3 className="font-semibold">Scheduled Elements</h3>
-          <Badge variant="secondary" className="ml-auto">
+          <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
             {elements.length}
-          </Badge>
+          </span>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="space-y-4 p-4">
-          {/* Active Elements */}
+      <div ref={containerRef} className="flex-1 overflow-hidden">
+        <div className="h-full p-4 space-y-3">
+          {/* Active Element */}
           {activeElements.length > 0 && (
-            <div className="space-y-2">
+            <div data-fixed-section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Active Now
               </h4>
-              {activeElements.map((element) => (
-                <ElementCard
-                  key={element.id}
-                  element={element}
-                  status="active"
-                />
-              ))}
+              <ElementCard
+                key={activeElement.id}
+                element={activeElement}
+                currentTime={currentTime}
+                status="active"
+              />
             </div>
           )}
 
-          {/* Upcoming Elements */}
+          {/* Completed Element */}
+          {pastElements.length > 0 && (
+            <div data-fixed-section className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Completed
+              </h4>
+              <ElementCard
+                key={completedElement.id}
+                element={completedElement}
+                currentTime={currentTime}
+                status="past"
+              />
+            </div>
+          )}
+
+          {/* Upcoming Elements - only renders what fits */}
           {upcomingElements.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Upcoming
               </h4>
-              {upcomingElements.slice(0, 5).map((element) => (
-                <ElementCard
-                  key={element.id}
-                  element={element}
-                  status="upcoming"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Past Elements */}
-          {pastElements.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Completed
-              </h4>
-              {pastElements.slice(-3).map((element) => (
-                <ElementCard key={element.id} element={element} status="past" />
-              ))}
+              <div className="space-y-2">
+                {renderUpcoming.map((element, index) => (
+                  <ElementCard
+                    key={element.id}
+                    element={element}
+                    currentTime={currentTime}
+                    status="upcoming"
+                    style={{
+                      animationDelay: `${index * 50}ms`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -100,33 +138,119 @@ export function ScheduledElementsList({
               No scheduled elements
             </div>
           )}
+
+          {/* Hidden probe card for height measurement */}
+          {upcomingElements.length > 0 && (
+            <div className="absolute invisible pointer-events-none">
+              <div ref={upcomingProbeRef}>
+                <ElementCard
+                  element={upcomingElements[0]}
+                  currentTime={currentTime}
+                  status="upcoming"
+                />
+              </div>
+            </div>
+          )}
         </div>
-      </ScrollArea>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-interface ElementCardProps {
+type ElementCardProps = {
   element: ScheduledElement
+  currentTime: number
   status: "active" | "upcoming" | "past"
+  style?: React.CSSProperties
 }
 
-function ElementCard({ element, status }: ElementCardProps) {
+const ElementCard = ({
+  element,
+  currentTime,
+  status,
+  style,
+}: ElementCardProps) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const hasMetadata = !!(
+    element.metadata?.title ||
+    element.metadata?.subtitle ||
+    element.metadata?.description
+  )
+
+  // Only active cards with metadata are expandable
+  const expandable = status === "active" && hasMetadata
+
+  const progress =
+    status === "active" && element.end_time
+      ? ((currentTime - element.start_time) /
+          (element.end_time - element.start_time)) *
+        100
+      : 0
+
+  useEffect(() => {
+    // Clear any pending timers
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current)
+      expandTimerRef.current = null
+    }
+
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current)
+      collapseTimerRef.current = null
+    }
+
+    if (expandable) {
+      expandTimerRef.current = setTimeout(() => {
+        setIsExpanded(true)
+      }, 500)
+
+      collapseTimerRef.current = setTimeout(() => {
+        setIsExpanded(false)
+      }, 4000)
+    }
+
+    return () => {
+      if (expandTimerRef.current) {
+        clearTimeout(expandTimerRef.current)
+        expandTimerRef.current = null
+      }
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current)
+        collapseTimerRef.current = null
+      }
+    }
+  }, [expandable])
+
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
     const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
+
+    return hours > 0
+      ? `${hours}:${mins.toString().padStart(2, "0")}:${secs
+          .toString()
+          .padStart(2, "0")}`
+      : `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
+  const cardClasses = [
+    "rounded-lg border p-3 transition-all duration-500",
+    status === "active" &&
+      "border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 via-cyan-500/5 to-blue-500/10 shadow-lg shadow-emerald-500/10 animate-in fade-in slide-in-from-bottom-2",
+    status === "upcoming" &&
+      "border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 hover:border-amber-500/50 hover:shadow-md hover:shadow-amber-500/10 animate-in fade-in slide-in-from-bottom-1",
+    status === "past" &&
+      "border-green-500/30 bg-gradient-to-br from-green-500/10 to-emerald-500/5 opacity-70",
+  ]
+    .filter(Boolean)
+    .join(" ")
+
   return (
-    <div
-      className={cn(
-        "rounded-lg border p-3 transition-colors",
-        status === "active" && "border-primary bg-primary/5",
-        status === "upcoming" && "border-border bg-card",
-        status === "past" && "border-muted bg-muted/30 opacity-60"
-      )}
-    >
+    <div style={style} className={cardClasses}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2">
@@ -134,23 +258,95 @@ function ElementCard({ element, status }: ElementCardProps) {
               {element.id}
             </span>
             {status === "active" && (
-              <Badge
-                variant="default"
-                className="h-5 bg-primary/20 text-primary"
-              >
-                Active
-              </Badge>
+              <span className="rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-xs font-medium animate-pulse">
+                Live
+              </span>
+            )}
+            {status === "past" && (
+              <span className="rounded-full bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/30 px-2 py-0.5 text-xs font-medium">
+                Done
+              </span>
             )}
           </div>
-          <p className="text-sm font-medium">{element.sceneName}</p>
+          <p className="text-sm font-medium">{element.scene_name}</p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatTime(element.startTime)}</span>
+            <span>{formatTime(element.start_time)}</span>
             <span>→</span>
-            <span>{element.endTime ? formatTime(element.endTime) : "—"}</span>
+            <span>{element.end_time ? formatTime(element.end_time) : "—"}</span>
             <span className="ml-auto">({formatTime(element.duration)})</span>
           </div>
         </div>
+
+        {expandable && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Toggle metadata"
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-300 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
       </div>
+
+      {status === "active" && element.end_time && (
+        <div className="mt-2 h-1 bg-emerald-500/10 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-1000 ease-linear"
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          />
+        </div>
+      )}
+
+      {expandable && (
+        <div
+          className={`grid transition-all duration-500 ease-in-out ${
+            isExpanded
+              ? "grid-rows-[1fr] opacity-100 mt-3"
+              : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="pt-3 border-t border-emerald-500/20 space-y-2">
+              {element.metadata?.title && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                    Title
+                  </p>
+                  <p className="text-sm text-foreground">
+                    {element.metadata.title}
+                  </p>
+                </div>
+              )}
+
+              {element.metadata?.subtitle && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                    Subtitle
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {element.metadata.subtitle}
+                  </p>
+                </div>
+              )}
+
+              {element.metadata?.description && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                    Description
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {element.metadata.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
