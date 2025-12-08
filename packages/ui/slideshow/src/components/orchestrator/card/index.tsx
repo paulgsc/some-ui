@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
   closestCenter,
   DndContext,
@@ -38,7 +38,7 @@ export const OrchestratorDemo = ({
 
   const {
     isConnected,
-    isReconnecting,
+    isInitializing,
     state: {
       is_running,
       progress,
@@ -50,7 +50,6 @@ export const OrchestratorDemo = ({
     },
     start,
     pause,
-    resume,
     forceScene,
     stop,
     reset,
@@ -140,12 +139,11 @@ export const OrchestratorDemo = ({
             <OrchestratorControls
               isRunning={is_running}
               isConnected={isConnected}
-              isReconnecting={isReconnecting}
+              isReconnecting={isInitializing}
               isStreaming={is_streaming}
               streamTimecode={timecode}
               onStart={start}
               onPause={pause}
-              onResume={resume}
               onStop={stop}
               onReset={reset}
               onSkip={skipCurrentScene}
@@ -160,7 +158,7 @@ export const OrchestratorDemo = ({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={scenes.map((scene, i) => `${scene.sceneName}-${i}`)}
+                  items={scenes.map((scene, i) => `${scene.scene_name}-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   <OrchestratorTimeline

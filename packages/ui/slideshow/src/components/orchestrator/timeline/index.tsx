@@ -1,21 +1,21 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { SceneConfig } from "@slideshow/components/orchestrator/card/use-orchestrator"
 import { Clock, Edit2 } from "lucide-react"
+import type { SceneConfig } from "some-types-utils"
 import { Card } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-interface OrchestratorTimelineProps {
-  scenes: SceneConfig[]
+type OrchestratorTimelineProps = {
+  scenes: Array<SceneConfig>
   currentSceneIndex: number
   progress: number
   currentTime: number
   totalDuration: number
-  onSceneClick: (sceneName: string) => void
+  onSceneClick: (scene_name: string) => void
   onEditScene: (index: number) => void
 }
 
-export function OrchestratorTimeline({
+export const OrchestratorTimeline = ({
   scenes,
   currentSceneIndex,
   progress,
@@ -23,7 +23,7 @@ export function OrchestratorTimeline({
   totalDuration,
   onSceneClick,
   onEditScene,
-}: OrchestratorTimelineProps) {
+}: OrchestratorTimelineProps) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -68,7 +68,7 @@ export function OrchestratorTimeline({
 
           return (
             <TimelineScene
-              key={`${scene.sceneName}-${index}`}
+              key={`${scene.scene_name}-${index}`}
               scene={scene}
               index={index}
               isActive={isActive}
@@ -86,7 +86,7 @@ export function OrchestratorTimeline({
   )
 }
 
-interface TimelineSceneProps {
+type TimelineSceneProps = {
   scene: SceneConfig
   index: number
   isActive: boolean
@@ -94,11 +94,11 @@ interface TimelineSceneProps {
   isFuture: boolean
   sceneStart: number
   sceneEnd: number
-  onSceneClick: (sceneName: string) => void
+  onSceneClick: (scene_name: string) => void
   onEditScene: (index: number) => void
 }
 
-function TimelineScene({
+const TimelineScene = ({
   scene,
   index,
   isActive,
@@ -108,7 +108,7 @@ function TimelineScene({
   sceneEnd,
   onSceneClick,
   onEditScene,
-}: TimelineSceneProps) {
+}: TimelineSceneProps) => {
   const {
     attributes,
     listeners,
@@ -117,7 +117,7 @@ function TimelineScene({
     transition,
     isDragging,
   } = useSortable({
-    id: `${scene.sceneName}-${index}`,
+    id: `${scene.scene_name}-${index}`,
   })
 
   const style = {
@@ -125,7 +125,7 @@ function TimelineScene({
     transition,
   }
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
@@ -141,7 +141,7 @@ function TimelineScene({
           isFuture && "border-border bg-card",
           isDragging && "opacity-50"
         )}
-        onClick={() => onSceneClick(scene.sceneName)}
+        onClick={() => onSceneClick(scene.scene_name)}
       >
         <div className="flex items-center gap-4 p-4">
           {/* Drag Handle */}
@@ -172,7 +172,7 @@ function TimelineScene({
                 #{index + 1}
               </span>
               <h3 className={cn("font-semibold", isActive && "text-primary")}>
-                {scene.sceneName}
+                {scene.scene_name}
               </h3>
             </div>
             <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import type { SceneConfig } from "@slideshow/components/orchestrator/card/use-orchestrator"
+import type { SceneConfig } from "some-types-utils"
 import {
   Button,
   Dialog,
@@ -12,40 +12,40 @@ import {
   Label,
 } from "some-ui-shared"
 
-interface EditSceneDialogProps {
+type EditSceneDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   scene: SceneConfig | null
   onSave: (scene: SceneConfig) => void
 }
 
-export function EditSceneDialog({
+export const EditSceneDialog = ({
   open,
   onOpenChange,
   scene,
   onSave,
-}: EditSceneDialogProps) {
-  const [sceneName, setSceneName] = useState("")
+}: EditSceneDialogProps) => {
+  const [scene_name, setSceneName] = useState("")
   const [duration, setDuration] = useState("")
 
   useEffect(() => {
     if (scene) {
-      setSceneName(scene.sceneName)
+      setSceneName(scene.scene_name)
       setDuration(scene.duration.toString())
     }
   }, [scene])
 
   const handleSave = () => {
-    if (!scene || !sceneName || !duration) return
+    if (!scene || !scene_name || !duration) return
 
     onSave({
-      sceneName,
+      scene_name,
       duration: Number.parseInt(duration, 10),
     })
     onOpenChange(false)
   }
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}m ${secs}s`
@@ -67,7 +67,7 @@ export function EditSceneDialog({
             <Label htmlFor="scene-name">Scene Name</Label>
             <Input
               id="scene-name"
-              value={sceneName}
+              value={scene_name}
               onChange={(e) => setSceneName(e.target.value)}
               placeholder="Enter scene name"
             />
@@ -98,7 +98,7 @@ export function EditSceneDialog({
           <Button
             onClick={handleSave}
             disabled={
-              !sceneName || !duration || Number.parseInt(duration, 10) <= 0
+              !scene_name || !duration || Number.parseInt(duration, 10) <= 0
             }
           >
             Save Changes

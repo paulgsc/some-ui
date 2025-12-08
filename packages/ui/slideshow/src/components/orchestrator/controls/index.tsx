@@ -9,7 +9,7 @@ import {
 import { Badge, Button, Card } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-interface OrchestratorControlsProps {
+type OrchestratorControlsProps = {
   isRunning: boolean
   isConnected: boolean
   isReconnecting: boolean
@@ -17,13 +17,12 @@ interface OrchestratorControlsProps {
   streamTimecode: string
   onStart: () => void
   onPause: () => void
-  onResume: () => void
   onStop: () => void
   onReset: () => void
   onSkip: () => void
 }
 
-export function OrchestratorControls({
+export const OrchestratorControls = ({
   isRunning,
   isConnected,
   isReconnecting,
@@ -31,11 +30,10 @@ export function OrchestratorControls({
   streamTimecode,
   onStart,
   onPause,
-  onResume,
   onStop,
   onReset,
   onSkip,
-}: OrchestratorControlsProps) {
+}: OrchestratorControlsProps) => {
   return (
     <Card className="p-6">
       <div className="space-y-6">
