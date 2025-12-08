@@ -1,33 +1,66 @@
+// index.tsx
 import type { ReactNode } from "react"
-import { Fragment, lazy, Suspense } from "react"
+import { Component, Fragment, lazy, Suspense } from "react"
 import { accordionData } from "@content/data/gemini-stepper"
 import type { PanelContent } from "@content/types/panels"
 import { getRandomSubarray } from "some-ui-utils"
+
+// ✅ ErrorBoundary for catching render crashes
+class PanelErrorBoundary extends Component<
+  { fallback?: ReactNode; children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  state = { hasError: false, error: undefined }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Panel crashed:", error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback ?? (
+          <div className="flex items-center justify-center h-full text-red-500">
+            Panel failed to load
+          </div>
+        )
+      )
+    }
+    return this.props.children
+  }
+}
 
 // Lazy load all heavy components
 const LazyEndingCredits = lazy(() => import("./ending-credits"))
 const LazyBrickChartCarousel = lazy(() => import("./brick-chart-carousel"))
 const LazyCrosswordPuzzle = lazy(() => import("./crossword-puzzle"))
-const LazyCluesAcross = lazy(() => import("./clues-across"))
 const LazyCluesDown = lazy(() => import("./clues-down"))
+const LazyScheduleElements = lazy(() => import("./scheduled-elements"))
 const LazyTopRightContent = lazy(() => import("./top-right-content"))
-const LazyGeminiStepper = lazy(() => import("./gemini-stepper-with-prompt"))
 
 // Loading fallbacks
 const LoadingSpinner = (): ReactNode => (
   <div className="animate-pulse">Loading...</div>
 )
+
 const LoadingCredits = (): ReactNode => (
   <div className="animate-pulse">Loading credits...</div>
 )
+
 const LoadingChart = (): ReactNode => (
   <div className="h-48 animate-pulse rounded bg-gray-200">Loading chart...</div>
 )
+
 const LoadingPuzzle = (): ReactNode => (
   <div className="h-96 animate-pulse rounded bg-gray-100">
     Loading crossword...
   </div>
 )
+
 const LoadingClues = (): ReactNode => (
   <div className="animate-pulse space-y-2">
     <div className="h-4 w-3/4 rounded bg-gray-200"></div>
@@ -35,19 +68,27 @@ const LoadingClues = (): ReactNode => (
     <div className="h-4 w-5/6 rounded bg-gray-200"></div>
   </div>
 )
+
 const LoadingContent = (): ReactNode => (
   <div className="h-full animate-pulse rounded bg-gray-100">Loading...</div>
 )
 
-// Factory functions that return lazy-wrapped components
 const createLazyComponent = (
   LazyComponent: React.LazyExoticComponent<any>,
   fallback: ReactNode,
   props: any = {}
 ) => (
-  <Suspense fallback={fallback}>
-    <LazyComponent {...props} />
-  </Suspense>
+  <PanelErrorBoundary
+    fallback={
+      <div className="flex items-center justify-center h-full text-red-500">
+        Failed to load component
+      </div>
+    }
+  >
+    <Suspense fallback={fallback}>
+      <LazyComponent {...props} />
+    </Suspense>
+  </PanelErrorBoundary>
 )
 
 // Main content factory functions
@@ -76,51 +117,20 @@ export function getMainContent(key: string): ReactNode {
   return randomFactory()
 }
 
-// Panel content factories
-const createCluesAcross = (): PanelContent => ({
-  size: 50,
-  node: createLazyComponent(LazyCluesAcross, <LoadingClues />),
-})
-
-const createCluesDown = (): PanelContent => ({
-  size: 50,
-  node: createLazyComponent(LazyCluesDown, <LoadingClues />),
+const createSchedulePanel = (): PanelContent => ({
+  size: 65,
+  node: createLazyComponent(LazyScheduleElements, <LoadingClues />),
 })
 
 const createTopRightContent = (): PanelContent => ({
-  size: 40,
+  size: 35,
   node: createLazyComponent(LazyTopRightContent, <LoadingContent />),
 })
 
-const createGeminiStepperWithPrompt = (): PanelContent => ({
-  size: 60,
-  node: createLazyComponent(LazyGeminiStepper, <LoadingSpinner />, {
-    steps: accordionData,
-    autoplay: true,
-  }),
-})
-
-// Panel content configuration with factory functions
-const topLeftContentFactories: Record<string, Array<() => PanelContent>> = {
-  crossword: [createCluesAcross],
+export function gettopRightContent(): PanelContent {
+  return createTopRightContent()
 }
 
-export function gettopLeftContent(key: string): PanelContent {
-  const factories = topLeftContentFactories[key] ?? []
-  if (factories.length <= 0) return createTopRightContent()
-
-  const randomFactory = getRandomSubarray(factories, 1)[0]
-  return randomFactory()
-}
-
-const botLeftContentFactories: Record<string, Array<() => PanelContent>> = {
-  crossword: [createCluesDown],
-}
-
-export function getbotLeftContent(key: string): PanelContent {
-  const factories = botLeftContentFactories[key] ?? []
-  if (factories.length <= 0) return createGeminiStepperWithPrompt()
-
-  const randomFactory = getRandomSubarray(factories, 1)[0]
-  return randomFactory()
+export function getbotLeftContent(): PanelContent {
+  return createSchedulePanel()
 }

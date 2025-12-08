@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { StudyScene } from "makjang"
 import type { GrindStats } from "portfolio-chart"
 import { GrindPieChart } from "portfolio-chart"
@@ -6,41 +6,40 @@ import { cubeEvents, DiceCard } from "some-ui-slideshow"
 import { useNowPlayingWebSocket } from "some-ui-utils"
 import { NowPlayingCard } from "umag"
 
-const TopRightContent = (): React.JSX.Element => {
-  // Sample data
-  const sampleJobApplications: Array<GrindStats> = [
-    { name: "Hopium", value: 42, color: "#3B82F6" },
-    { name: "Crickets", value: 15, color: "#10B981" },
-    { name: "Never began", value: 3, color: "#F59E0B" },
-    { name: "Society Wins Again", value: 24, color: "#EF4444" },
-  ]
+const TopRightContentClient = (): React.JSX.Element => {
+  const sampleJobApplications: Array<GrindStats> = useMemo(
+    () => [
+      { name: "Hopium", value: 42, color: "#3B82F6" },
+      { name: "Crickets", value: 15, color: "#10B981" },
+      { name: "Never began", value: 3, color: "#F59E0B" },
+      { name: "Society Wins Again", value: 24, color: "#EF4444" },
+    ],
+    []
+  )
 
-  // const sampleLeetcodeStats = [
-  //   { name: "Easy", value: 65, color: "#10B981" },
-  //   { name: "Medium", value: 47, color: "#F59E0B" },
-  //   { name: "Hard", value: 23, color: "#EF4444" },
-  // ]
+  const jobsArgs = useMemo(
+    () => ({ stats: sampleJobApplications, title: "job application" }),
+    [sampleJobApplications]
+  )
 
-  const jobsArgs = {
-    stats: sampleJobApplications,
-    title: "job application",
-  }
+  const cubeFaces = useMemo(
+    () => [
+      <StudyScene key={1} />,
+      <GrindPieChart key={2} {...jobsArgs} />,
+      <NowPlayingCard key={3} />,
+      "",
+      "",
+      "",
+    ],
+    [jobsArgs]
+  )
 
-  // const leetcodeArgs = {
-  //   stats: sampleLeetcodeStats,
-  //   title: "leetcode grind",
-  // }
+  const wsOptions = useMemo(
+    () => ({ url: `ws://${window.location.hostname}:3000/ws` }),
+    []
+  )
 
-  const cubeFaces = [
-    <StudyScene key={1} />,
-    <GrindPieChart key={2} {...jobsArgs} />,
-    <NowPlayingCard key={3} />,
-    "",
-    "",
-    "",
-  ]
-
-  const { status } = useNowPlayingWebSocket()
+  const { status } = useNowPlayingWebSocket(wsOptions)
 
   useEffect(() => {
     cubeEvents.emit("rotate:to", { id: 13, face: 2 })
@@ -50,13 +49,23 @@ const TopRightContent = (): React.JSX.Element => {
     <DiceCard
       cubeId={13}
       className="bg-transparent relative size-full"
-      dof={"Y-axis"}
+      dof="Y-axis"
       faces={cubeFaces}
       showBeam={false}
       duration={30_000}
-      hideBackface={true}
+      hideBackface
     />
   )
+}
+
+const TopRightContent = (): React.JSX.Element => {
+  const isBrowser = typeof window !== "undefined"
+
+  if (!isBrowser) {
+    return <div aria-hidden="true" />
+  }
+
+  return <TopRightContentClient />
 }
 
 export default TopRightContent
