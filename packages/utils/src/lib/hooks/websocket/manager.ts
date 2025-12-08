@@ -53,11 +53,9 @@ export class WebSocketManager {
   private reconnectAttempts = 0
   private manualDisconnect = false
 
-  // ✅ Shared promise for all acquire() callers
   private initPromise: Promise<void> | null = null
   private initFunction: InitFunction | null = null
 
-  // ✅ Track last init error to prevent cascading retries
   private lastInitError: Error | null = null
   private initErrorTime: number = 0
 
@@ -237,7 +235,6 @@ export class WebSocketManager {
 
         this.socket.onopen = () => {
           this.log("Connected")
-          // ✅ Reset retry counter on successful connection
           this.reconnectAttempts = 0
           this.updateSnapshot({ reconnectAttempts: 0 })
 
@@ -273,7 +270,6 @@ export class WebSocketManager {
           ) {
             const max = this.options.maxReconnectAttempts ?? 3
 
-            // ✅ Check retry limit
             if (this.reconnectAttempts >= max) {
               this.log("Reconnect limit reached, giving up")
               this.updateSnapshot({
@@ -282,7 +278,6 @@ export class WebSocketManager {
               return
             }
 
-            // ✅ Calculate exponential backoff with jitter
             const delay = this.getBackoffDelay()
             this.reconnectAttempts++
             this.updateSnapshot({ reconnectAttempts: this.reconnectAttempts })

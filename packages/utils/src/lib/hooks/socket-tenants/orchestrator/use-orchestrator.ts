@@ -113,6 +113,14 @@ export function useOrchestrator({
   >(null)
 
   const handleIncoming = useCallback((event: IncomingOrchestratorEvent) => {
+    // Auto-respond to ping with pong
+    if (event.type === "ping") {
+      sendSerializedRef.current?.({ type: "pong" }).catch((err: Error) => {
+        console.error("Failed to send pong:", err)
+      })
+      return
+    }
+
     if (event.type === "orchestratorState") {
       const incomingState = event.state
 
