@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useState } from "react"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
-import type { UseWebSocketOptions } from "@utils/lib/hooks/websocket"
+import type {
+  UseWebSocketOptions,
+  WebSocketManager,
+} from "@utils/lib/hooks/websocket"
 import { updateClientObsState } from "@utils/lib/obs"
 import type { ClientObsState } from "some-types-utils"
 import { IncomingObsEventSchema, ObsCommandSchema } from "some-types-utils"
@@ -86,6 +89,15 @@ export const defaultClientObsState: ClientObsState = {
 export function useObsStatus(options: UseObsStatusOptions) {
   const [status, setStatus] = useState<ClientObsState>(defaultClientObsState)
 
+  const init = useCallback(async (manager: WebSocketManager) => {
+    console.log("🎥 OBS init (atomic, singleton)")
+
+    await manager.sendSerialized({
+      type: "subscribe",
+      event_types: ["obsStatus"],
+    })
+  }, [])
+
   const ws = useWebSocket<IncomingObsEvent, WsEvents>({
     url: options.url,
     incomingMessageSchema: IncomingObsEventSchema,
@@ -94,24 +106,7 @@ export function useObsStatus(options: UseObsStatusOptions) {
     reconnectInterval: options.reconnectInterval ?? 5000,
     debugMode: options.debugMode ?? false,
 
-    // Atomic init - runs once
-    init: async (manager) => {
-      console.log("🎥 OBS init (atomic, singleton)")
-
-      // Subscribe to status updates
-      await manager.sendSerialized({
-        type: "subscribe",
-        event_types: ["obsStatus"],
-      })
-
-      // Start keepalive pings
-      const keepAlive = 90000 // 90s (server timeout: 120s)
-      setInterval(() => {
-        if (manager.isConnected) {
-          manager.sendMessage({ type: "pong" })
-        }
-      }, keepAlive)
-    },
+    init,
 
     onIncomingMessage: (event) => {
       if (options.onIncomingMessage) {
@@ -163,7 +158,6 @@ export function useObsStatus(options: UseObsStatusOptions) {
       cmd: { type: "toggleStudioMode" },
     })
   }, [ws.sendSerialized])
-
 
   return useMemo(
     () => ({

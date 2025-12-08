@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
-import type { UseWebSocketOptions } from "@utils/lib/hooks/websocket"
+import type {
+  UseWebSocketOptions,
+  WebSocketManager,
+} from "@utils/lib/hooks/websocket"
 import { z } from "zod"
 
 const EventTypeSchema = z.enum([
@@ -65,6 +68,15 @@ export const defaultNowPlaying: NowPlayingType = {
 export function useNowPlaying(options: UseNowPlayingOptions) {
   const [status, setStatus] = useState<NowPlayingType>(defaultNowPlaying)
 
+  const init = useCallback(async (manager: WebSocketManager) => {
+    console.log("🎵 NowPlaying init (atomic, singleton)")
+
+    await manager.sendSerialized({
+      type: "subscribe",
+      event_types: ["tabMetaData"],
+    })
+  }, [])
+
   const ws = useWebSocket<IncomingEvent, WsEvents>({
     url: options.url,
     incomingMessageSchema: EventSchema,
@@ -73,24 +85,7 @@ export function useNowPlaying(options: UseNowPlayingOptions) {
     reconnectInterval: options.reconnectInterval ?? 3600000, // 1 hour
     debugMode: options.debugMode ?? false,
 
-    // Atomic init - runs once
-    init: async (manager) => {
-      console.log("🎵 NowPlaying init (atomic, singleton)")
-
-      // Subscribe to tab metadata
-      await manager.sendSerialized({
-        type: "subscribe",
-        event_types: ["tabMetaData"],
-      })
-
-      // Start keepalive pings
-      const keepAlive = 90000 // 90s (server timeout: 120s)
-      setInterval(() => {
-        if (manager.isConnected) {
-          manager.sendMessage({ type: "pong" })
-        }
-      }, keepAlive)
-    },
+    init,
 
     onIncomingMessage: (event) => {
       if (options.onIncomingMessage) {

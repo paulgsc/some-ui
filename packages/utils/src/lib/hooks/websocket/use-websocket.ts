@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from "react"
-import { z } from "zod"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react"
+import type { z } from "zod"
+
 import { WebSocketManager, type InitFunction } from "./manager"
 
 export type UseWebSocketOptions<I, O> = {
@@ -8,14 +15,14 @@ export type UseWebSocketOptions<I, O> = {
   outgoingMessageSchema?: z.ZodType<O>
   autoReconnect?: boolean
   reconnectInterval?: number
-  
+
   // Lifecycle callbacks
   init?: InitFunction
   onConnect?: () => void
   onDisconnect?: () => void
   onError?: (error: Event | Error) => void
   onIncomingMessage?: (message: I) => void
-  
+
   debugMode?: boolean
 }
 
@@ -25,17 +32,17 @@ export type UseWebSocketReturn<I, O> = {
   isInitializing: boolean
   error: string | null
   parseErrorCount: number
-  
+
   sendMessage: (message: O) => void
   sendSerialized: (message: O) => Promise<void>
-  
+
   // Direct manager access for advanced use
   manager: WebSocketManager
 }
 
 /**
  * Generic WebSocket hook with singleton coordination
- * 
+ *
  * Guarantees:
  * - One WebSocket connection per URL across all components
  * - Atomic initialization with serialized init callback

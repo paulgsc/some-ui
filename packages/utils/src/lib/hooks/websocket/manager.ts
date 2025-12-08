@@ -6,6 +6,8 @@ import { ReferenceCounter } from "./ref-counter"
 export type WebSocketManagerOptions = {
   autoReconnect?: boolean
   reconnectInterval?: number
+  maxReconnectAttempts?: number
+  maxReconnectInterval?: number
   debugMode?: boolean
 }
 
@@ -17,6 +19,7 @@ export type WebSocketSnapshot<I = unknown> = {
   error: string | null
   lastMessage: I | null
   parseErrorCount: number
+  reconnectAttempts: number
 }
 
 /**
@@ -42,13 +45,21 @@ export class WebSocketManager {
     error: null,
     lastMessage: null,
     parseErrorCount: 0,
+    reconnectAttempts: 0,
   }
   private emitScheduled = false
 
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private reconnectAttempts = 0
   private manualDisconnect = false
+
+  // ✅ Shared promise for all acquire() callers
   private initPromise: Promise<void> | null = null
   private initFunction: InitFunction | null = null
+
+  // ✅ Track last init error to prevent cascading retries
+  private lastInitError: Error | null = null
+  private initErrorTime: number = 0
 
   private constructor(
     private readonly url: string,
@@ -103,8 +114,22 @@ export class WebSocketManager {
   }
 
   /**
+   * Calculate exponential backoff delay with jitter
+   */
+  private getBackoffDelay(): number {
+    const base = this.options.reconnectInterval ?? 1000
+    const max = this.options.maxReconnectInterval ?? 30000
+
+    const exp = Math.min(base * 2 ** this.reconnectAttempts, max)
+
+    // ±20% jitter to prevent thundering herd
+    const jitter = exp * (Math.random() * 0.4 - 0.2)
+    return Math.max(0, exp + jitter)
+  }
+
+  /**
    * Acquire a reference to this manager
-   * Guarantees atomic initialization with serialized init callback
+   * ✅ Guarantees ONE initialization for N callers (thundering herd protection)
    */
   async acquire(init?: InitFunction): Promise<void> {
     const count = this.refCounter.acquire()
@@ -119,14 +144,25 @@ export class WebSocketManager {
       return
     }
 
-    // Currently initializing - wait for existing init
+    // ✅ If there was a recent init failure, throw it immediately
+    // This prevents cascading retries from multiple callers
+    if (this.lastInitError && Date.now() - this.initErrorTime < 5000) {
+      this.log("Rejecting acquire() - recent init failure")
+      throw this.lastInitError
+    }
+
+    // ✅ Currently initializing - ALL callers wait on the SAME promise
     if (this.lifecycle.is("initializing")) {
       this.log("Waiting for existing initialization...")
+      if (!this.initPromise) {
+        throw new Error("Initialization in progress but no promise found")
+      }
+      // This is the key: everyone waits on the same promise
       await this.initPromise
       return
     }
 
-    // Start initialization
+    // ✅ Start initialization - create ONE promise for all waiters
     this.lifecycle.transitionTo("initializing")
     this.updateSnapshot({ isInitializing: true })
 
@@ -149,19 +185,33 @@ export class WebSocketManager {
           isConnected: true,
           error: null,
         })
+
+        // ✅ Clear error state on success
+        this.lastInitError = null
+        this.initErrorTime = 0
+
         this.log("Initialization complete")
       } catch (err) {
         this.log("Initialization failed:", err)
+
+        // ✅ Store error to prevent cascading retries
+        this.lastInitError = err instanceof Error ? err : new Error(String(err))
+        this.initErrorTime = Date.now()
+
         this.lifecycle.transitionTo("idle")
         this.updateSnapshot({
           isInitializing: false,
           error: err instanceof Error ? err.message : String(err),
         })
+
+        // ✅ Clear promise so next acquire can try again (after debounce period)
         this.initPromise = null
+
         throw err
       }
     })()
 
+    // ✅ All callers wait on this same promise
     await this.initPromise
   }
 
@@ -187,6 +237,10 @@ export class WebSocketManager {
 
         this.socket.onopen = () => {
           this.log("Connected")
+          // ✅ Reset retry counter on successful connection
+          this.reconnectAttempts = 0
+          this.updateSnapshot({ reconnectAttempts: 0 })
+
           this.connectionListeners.notify(true)
           this.updateSnapshot({ isConnected: true, error: null })
           resolve()
@@ -217,9 +271,27 @@ export class WebSocketManager {
             !this.manualDisconnect &&
             this.lifecycle.is("initialized")
           ) {
-            const interval = this.options.reconnectInterval ?? 5000
-            this.log("Reconnecting in", interval, "ms")
-            this.reconnectTimer = setTimeout(() => this.reconnect(), interval)
+            const max = this.options.maxReconnectAttempts ?? 3
+
+            // ✅ Check retry limit
+            if (this.reconnectAttempts >= max) {
+              this.log("Reconnect limit reached, giving up")
+              this.updateSnapshot({
+                error: "Reconnect limit reached",
+              })
+              return
+            }
+
+            // ✅ Calculate exponential backoff with jitter
+            const delay = this.getBackoffDelay()
+            this.reconnectAttempts++
+            this.updateSnapshot({ reconnectAttempts: this.reconnectAttempts })
+
+            this.log(
+              `Reconnect attempt ${this.reconnectAttempts}/${max} in ${delay.toFixed(0)}ms`
+            )
+
+            this.reconnectTimer = setTimeout(() => this.reconnect(), delay)
           }
         }
 
@@ -241,16 +313,18 @@ export class WebSocketManager {
    * Reconnect after disconnect
    */
   private async reconnect(): Promise<void> {
-    if (this.lifecycle.is("initialized") && !this.isConnected) {
-      try {
-        await this.connectSocket()
-        // Re-run init callback after reconnect
-        if (this.initFunction) {
-          await this.initFunction(this)
-        }
-      } catch (err) {
-        this.log("Reconnect failed:", err)
+    if (!this.lifecycle.is("initialized") || this.isConnected) return
+
+    try {
+      await this.connectSocket()
+
+      // Re-run init callback after reconnect
+      if (this.initFunction) {
+        await this.initFunction(this)
       }
+    } catch (err) {
+      this.log("Reconnect failed:", err)
+      // Failure already counted in reconnectAttempts
     }
   }
 
@@ -286,6 +360,9 @@ export class WebSocketManager {
     this.storeListeners.clear()
     this.initFunction = null
     this.initPromise = null
+    this.lastInitError = null
+    this.initErrorTime = 0
+    this.reconnectAttempts = 0
 
     this.lifecycle.reset()
     this.refCounter.reset()
@@ -295,6 +372,7 @@ export class WebSocketManager {
       error: null,
       lastMessage: null,
       parseErrorCount: 0,
+      reconnectAttempts: 0,
     })
 
     WebSocketManager.instances.delete(this.url)
