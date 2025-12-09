@@ -1,11 +1,9 @@
 // index.tsx
 import type { ReactNode } from "react"
 import { Component, Fragment, lazy, Suspense } from "react"
-import { accordionData } from "@content/data/gemini-stepper"
 import type { PanelContent } from "@content/types/panels"
 import { getRandomSubarray } from "some-ui-utils"
 
-// ✅ ErrorBoundary for catching render crashes
 class PanelErrorBoundary extends Component<
   { fallback?: ReactNode; children: ReactNode },
   { hasError: boolean; error?: Error }

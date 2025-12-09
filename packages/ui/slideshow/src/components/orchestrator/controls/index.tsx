@@ -1,39 +1,22 @@
-import {
-  Pause,
-  Play,
-  Radio,
-  RotateCcw,
-  SkipForward,
-  Square,
-} from "lucide-react"
+import type { FC } from "react"
+import { Pause, Play, RotateCcw, SkipForward, Square } from "lucide-react"
+import type { SceneConfig } from "some-types-utils"
 import { Badge, Button, Card } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, selectIsRunning, useOrchestratorStore } from "some-ui-utils"
 
-type OrchestratorControlsProps = {
-  isRunning: boolean
-  isConnected: boolean
-  isReconnecting: boolean
-  isStreaming: boolean
-  streamTimecode: string
-  onStart: () => void
-  onPause: () => void
-  onStop: () => void
-  onReset: () => void
-  onSkip: () => void
-}
+type OrchestratorControlsProps = { scenes: Array<SceneConfig> }
 
-export const OrchestratorControls = ({
-  isRunning,
-  isConnected,
-  isReconnecting,
-  isStreaming,
-  streamTimecode,
-  onStart,
-  onPause,
-  onStop,
-  onReset,
-  onSkip,
-}: OrchestratorControlsProps) => {
+export const OrchestratorControls: FC<OrchestratorControlsProps> = ({
+  scenes,
+}) => {
+  const isRunning = useOrchestratorStore(selectIsRunning)
+  const isConnected = useOrchestratorStore((s) => s.isConnected)
+  const isInitializing = useOrchestratorStore((s) => s.isInitializing)
+  const onStart = useOrchestratorStore((s) => s.start)
+  const onPause = useOrchestratorStore((s) => s.pause)
+  const onStop = useOrchestratorStore((s) => s.stop)
+  const onReset = useOrchestratorStore((s) => s.reset)
+  const onSkip = useOrchestratorStore((s) => s.skipCurrentScene)
   return (
     <Card className="p-6">
       <div className="space-y-6">
@@ -56,36 +39,20 @@ export const OrchestratorControls = ({
                     : "bg-muted-foreground"
                 )}
               />
-              {isReconnecting
+              {isInitializing
                 ? "Reconnecting..."
                 : isConnected
                   ? "Connected"
                   : "Disconnected"}
             </Badge>
-
-            {isStreaming && (
-              <Badge
-                variant="default"
-                className="gap-1.5 bg-red-500/10 text-red-600 dark:text-red-400"
-              >
-                <Radio className="h-3 w-3 animate-pulse" />
-                Live
-              </Badge>
-            )}
           </div>
-
-          {isStreaming && (
-            <div className="font-mono text-sm text-muted-foreground">
-              {streamTimecode}
-            </div>
-          )}
         </div>
 
         {/* Transport Controls */}
         <div className="flex items-center gap-2">
           {!isRunning ? (
             <Button
-              onClick={onStart}
+              onClick={() => onStart(scenes)}
               disabled={!isConnected}
               size="lg"
               className="flex-1 gap-2"

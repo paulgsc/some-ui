@@ -3,25 +3,22 @@ import { CSS } from "@dnd-kit/utilities"
 import { Clock, Edit2 } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import { Card } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import {
+  cn,
+  selectCurrentSceneIndex,
+  selectCurrentTime,
+  selectProgress,
+  selectTotalDuration,
+  useOrchestratorStore,
+} from "some-ui-utils"
 
 type OrchestratorTimelineProps = {
   scenes: Array<SceneConfig>
-  currentSceneIndex: number
-  progress: number
-  currentTime: number
-  totalDuration: number
-  onSceneClick: (scene_name: string) => void
   onEditScene: (index: number) => void
 }
 
 export const OrchestratorTimeline = ({
   scenes,
-  currentSceneIndex,
-  progress,
-  currentTime,
-  totalDuration,
-  onSceneClick,
   onEditScene,
 }: OrchestratorTimelineProps) => {
   const formatTime = (seconds: number) => {
@@ -29,6 +26,12 @@ export const OrchestratorTimeline = ({
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
+
+  const currentSceneIndex = useOrchestratorStore(selectCurrentSceneIndex)
+  const currentTime = useOrchestratorStore(selectCurrentTime)
+  const progress = useOrchestratorStore(selectProgress)
+  const totalDuration = useOrchestratorStore(selectTotalDuration)
+  const forceScene = useOrchestratorStore((s) => s.forceScene)
 
   let cumulativeTime = 0
 
@@ -76,7 +79,7 @@ export const OrchestratorTimeline = ({
               isFuture={isFuture}
               sceneStart={sceneStart}
               sceneEnd={sceneEnd}
-              onSceneClick={onSceneClick}
+              onSceneClick={forceScene}
               onEditScene={onEditScene}
             />
           )

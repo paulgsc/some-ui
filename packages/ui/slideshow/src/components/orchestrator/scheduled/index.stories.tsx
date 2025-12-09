@@ -150,51 +150,6 @@ export const AllCompleted: Story = {
   },
 }
 
-export const LiveProgress: Story = {
-  render: () => {
-    const [currentTime, setCurrentTime] = useState(0)
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setCurrentTime((prev) => (prev >= 195 ? 0 : prev + 1))
-      }, 1000)
-
-      return () => clearInterval(interval)
-    }, [])
-
-    const elements = [
-      createMockElement("scene_1", "Opening Scene", 0, 30, {
-        title: "Welcome",
-        subtitle: "Getting started",
-        description: "Introduction to today's stream",
-      }),
-      createMockElement("scene_2", "Main Content", 30, 120, {
-        title: "The Main Event",
-        subtitle: "Core presentation",
-        description:
-          "Detailed exploration of our topic with examples and demonstrations.",
-      }),
-      createMockElement("scene_3", "Closing Scene", 150, 45, {
-        title: "Wrap Up",
-        subtitle: "Final thoughts",
-        description: "Summary and next steps",
-      }),
-    ]
-
-    const activeElements = elements.map((el) => ({
-      ...el,
-      is_active: currentTime >= el.start_time && currentTime < el.end_time,
-    }))
-
-    return (
-      <ScheduledElementsList
-        elements={activeElements}
-        currentTime={currentTime}
-      />
-    )
-  },
-}
-
 export const WithLongDurations: Story = {
   args: {
     elements: [

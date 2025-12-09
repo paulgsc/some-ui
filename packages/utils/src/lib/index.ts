@@ -7,5 +7,15 @@ export {
   createEventBus,
   initializeSpeechQueue,
   getSpeechQueue,
+  selectCompletedScene,
+  selectCurrentScene,
+  selectCurrentSceneIndex,
+  selectProgress,
+  selectIsRunning,
+  selectTotalDuration,
+  selectCurrentTime,
+  selectConnectionStatus,
+  selectScheduledScenes,
+  useOrchestratorStore,
 } from "./context"
 export type { SpeechQueueState } from "./context"

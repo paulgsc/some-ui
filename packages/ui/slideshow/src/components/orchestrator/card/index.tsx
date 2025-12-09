@@ -23,7 +23,6 @@ import {
 import { Plus } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
-import { useOrchestrator } from "some-ui-utils"
 
 export const OrchestratorDemo = ({
   initialScenes = [],
@@ -35,36 +34,6 @@ export const OrchestratorDemo = ({
     scene: SceneConfig
     index: number
   } | null>(null)
-
-  const {
-    isConnected,
-    isInitializing,
-    state: {
-      is_running,
-      progress,
-      current_time,
-      total_duration,
-      current_scene_index,
-      scheduled_elements,
-      stream_status: { timecode, is_streaming },
-    },
-    start,
-    pause,
-    forceScene,
-    stop,
-    reset,
-    skipCurrentScene,
-  } = useOrchestrator({
-    stream_id: "test",
-    scenes,
-    autoStart: false,
-    onSceneChange: (from, to) => {
-      console.log("[v0] Scene changed:", from, "→", to)
-    },
-    onError: (error) => {
-      console.error("[v0] Orchestrator error:", error)
-    },
-  })
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -136,18 +105,7 @@ export const OrchestratorDemo = ({
           {/* Left Column - Timeline & Controls */}
           <div className="space-y-6 lg:col-span-2">
             {/* Controls */}
-            <OrchestratorControls
-              isRunning={is_running}
-              isConnected={isConnected}
-              isReconnecting={isInitializing}
-              isStreaming={is_streaming}
-              streamTimecode={timecode}
-              onStart={start}
-              onPause={pause}
-              onStop={stop}
-              onReset={reset}
-              onSkip={skipCurrentScene}
-            />
+            <OrchestratorControls scenes={scenes} />
 
             {/* Timeline */}
             <Card className="p-6">
@@ -163,11 +121,6 @@ export const OrchestratorDemo = ({
                 >
                   <OrchestratorTimeline
                     scenes={scenes}
-                    currentSceneIndex={current_scene_index || 0}
-                    progress={progress}
-                    currentTime={current_time}
-                    totalDuration={total_duration}
-                    onSceneClick={forceScene}
                     onEditScene={handleEditScene}
                   />
                 </SortableContext>
@@ -177,10 +130,7 @@ export const OrchestratorDemo = ({
 
           {/* Right Column - Scheduled Elements */}
           <div className="lg:col-span-1">
-            <ScheduledElementsList
-              elements={scheduled_elements}
-              currentTime={current_time}
-            />
+            <ScheduledElementsList />
           </div>
         </div>
       </div>

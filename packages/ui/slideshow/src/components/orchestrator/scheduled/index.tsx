@@ -1,5 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import type { FC } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, Layers } from "lucide-react"
+import {
+  selectCompletedScene,
+  selectCurrentScene,
+  selectCurrentSceneIndex,
+  selectCurrentTime,
+  selectScheduledScenes,
+  useOrchestratorStore,
+} from "some-ui-utils"
 
 type ScheduledElement = {
   id: string
@@ -16,34 +25,29 @@ type ScheduledElement = {
   }
 }
 
-type ScheduledElementsListProps = {
-  elements: Array<ScheduledElement>
-  currentTime: number
-}
+type ScheduledElementsListProps = {}
 
-export const ScheduledElementsList = ({
-  elements,
-  currentTime,
-}: ScheduledElementsListProps) => {
+export const ScheduledElementsList: FC<ScheduledElementsListProps> = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const upcomingProbeRef = useRef<HTMLDivElement>(null)
   const [maxUpcoming, setMaxUpcoming] = useState(1)
 
-  const activeElements = elements.filter((el) => el.is_active)
-  const upcomingElements = elements.filter(
-    (el) => !el.is_active && el.start_time > currentTime
-  )
-  const pastElements = elements.filter(
-    (el) => !el.is_active && el.end_time && el.end_time <= currentTime
+  const currentTime = useOrchestratorStore(selectCurrentTime)
+
+  const currentScene = useOrchestratorStore(selectCurrentScene)
+  const scheduledScenes = useOrchestratorStore(selectScheduledScenes)
+  const currentIndex = useOrchestratorStore(selectCurrentSceneIndex)
+  const completedScene = useOrchestratorStore(selectCompletedScene)
+
+  const upcomingScenes = useMemo(
+    () => scheduledScenes.slice(currentIndex + 1).slice(0, maxUpcoming),
+    [scheduledScenes, currentIndex, maxUpcoming]
   )
 
-  const activeElement = activeElements[0] || null
-  const completedElement = pastElements[pastElements.length - 1] || null
-
-  // Measure available height and determine how many upcoming elements fit
+  // Measure available height and determine how many upcoming scenes fit
   useLayoutEffect(() => {
     if (!containerRef.current || !upcomingProbeRef.current) return
-    if (upcomingElements.length === 0) return
+    if (scheduledScenes.length === 0) return
 
     const containerHeight = containerRef.current.clientHeight
 
@@ -58,14 +62,7 @@ export const ScheduledElementsList = ({
 
     const fit = Math.max(1, Math.floor(remaining / (cardHeight + 8))) // +8 for gap
     setMaxUpcoming(fit)
-  }, [
-    activeElement,
-    completedElement,
-    upcomingElements.length,
-    elements.length,
-  ])
-
-  const renderUpcoming = upcomingElements.slice(0, maxUpcoming)
+  }, [currentScene, completedScene, scheduledScenes.length])
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-card">
@@ -74,7 +71,7 @@ export const ScheduledElementsList = ({
           <Layers className="h-4 w-4 text-muted-foreground" />
           <h3 className="font-semibold">Scheduled Elements</h3>
           <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-            {elements.length}
+            {scheduledScenes.length}
           </span>
         </div>
       </div>
@@ -82,14 +79,14 @@ export const ScheduledElementsList = ({
       <div ref={containerRef} className="flex-1 overflow-hidden">
         <div className="h-full p-4 space-y-3">
           {/* Active Element */}
-          {activeElements.length > 0 && (
+          {currentScene && (
             <div data-fixed-section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Active Now
               </h4>
               <ElementCard
-                key={activeElement.id}
-                element={activeElement}
+                key={currentScene.id}
+                element={currentScene}
                 currentTime={currentTime}
                 status="active"
               />
@@ -97,14 +94,14 @@ export const ScheduledElementsList = ({
           )}
 
           {/* Completed Element */}
-          {pastElements.length > 0 && (
+          {completedScene && (
             <div data-fixed-section className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Completed
               </h4>
               <ElementCard
-                key={completedElement.id}
-                element={completedElement}
+                key={completedScene.id}
+                element={completedScene}
                 currentTime={currentTime}
                 status="past"
               />
@@ -112,13 +109,13 @@ export const ScheduledElementsList = ({
           )}
 
           {/* Upcoming Elements - only renders what fits */}
-          {upcomingElements.length > 0 && (
+          {scheduledScenes.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Upcoming
               </h4>
               <div className="space-y-2">
-                {renderUpcoming.map((element, index) => (
+                {upcomingScenes.map((element, index) => (
                   <ElementCard
                     key={element.id}
                     element={element}
@@ -133,18 +130,18 @@ export const ScheduledElementsList = ({
             </div>
           )}
 
-          {elements.length === 0 && (
+          {scheduledScenes.length === 0 && (
             <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-              No scheduled elements
+              No scheduled scenes
             </div>
           )}
 
           {/* Hidden probe card for height measurement */}
-          {upcomingElements.length > 0 && (
+          {scheduledScenes.length > 0 && (
             <div className="absolute invisible pointer-events-none">
               <div ref={upcomingProbeRef}>
                 <ElementCard
-                  element={upcomingElements[0]}
+                  element={scheduledScenes[0]}
                   currentTime={currentTime}
                   status="upcoming"
                 />
