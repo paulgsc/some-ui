@@ -74,3 +74,9 @@ impl Polyhedron {
         &self.cycles[index % self.cycles.len()]
     }
 }
+
+impl Default for Polyhedron {
+    fn default() -> Self {
+        Self::cube()
+    }
+}

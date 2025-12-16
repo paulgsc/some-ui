@@ -29,6 +29,7 @@
     "clsx": "^2.1.1",
     "maishatu-fetch-kit": "workspace:*",
     "nuqs": "1.18.0",
+    "polyhedron": "link:../../crates/polyhedron/dist",
     "some-types-utils": "workspace:*",
     "tailwind-merge": "^2.4.0",
     "usehooks-ts": "3.1.0",
