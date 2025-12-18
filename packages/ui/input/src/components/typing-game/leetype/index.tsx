@@ -61,7 +61,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     }
   }, [language, codeState.status])
 
-  const handleStart = () => {
+  const handleStart = (): void => {
     if (codeState.status !== "SUCCESS") return
     setGameState("playing")
     typingGame.start()
@@ -69,13 +69,13 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     setGameState("idle")
     typingGame.reset()
     setSettingsExpanded(true)
   }
 
-  const handleLanguageChange = (lang: Language) => {
+  const handleLanguageChange = (lang: Language): void => {
     setLanguage(lang)
     setGameState("idle")
     setSettingsExpanded(true)
