@@ -10,3 +10,7 @@ export * from "./use-dial-sections"
 export * from "./use-dial-drag"
 export * from "./use-audio-feedback"
 export * from "./use-dial-animation"
+export type {
+  RegistryEntry,
+  ComponentRegistry,
+} from "./use-viewport-preload-hints"

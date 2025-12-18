@@ -33,7 +33,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   showBeam = true,
   hideBackface = false,
 }): React.JSX.Element => {
-  const { isRotating, rotationState, rotationAxis } = useRotatingCube({
+  const { rotationState, rotationAxis } = useRotatingCube({
     dof,
     duration,
     mode,
@@ -50,12 +50,14 @@ export const DiceCard: FC<RotatingCubeProps> = ({
       style={{ "--perspective": perspective } as CSSProperties}
       className={cn(
         "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]",
+        "bg-transparent",
         className
       )}
     >
       <div
         ref={ref}
         className={cn(
+          "bg-transparent",
           "transform-3d relative size-full transition-transform duration-500",
           "[transform:rotateX(calc(var(--cube-x-rotation)*1deg))_rotateY(calc(var(--cube-y-rotation)*1deg))]"
         )}
@@ -77,7 +79,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
               } as CSSProperties
             }
             className={cn(
-              "absolute z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
+              "absolute bg-transparent z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
               faceClassName,
               {
                 "[transform:translateZ(calc(var(--face-width)*1px))]":
@@ -100,7 +102,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
                   (index === 1 || index === 3) &&
                   width !== height &&
                   rotationAxis === "X-axis",
-                "backface-visible": isRotating,
+                "backface-hidden": hideBackface,
               }
             )}
           >
@@ -117,9 +119,9 @@ export const DiceCard: FC<RotatingCubeProps> = ({
                 trailFadeDuration={duration / 2}
               />
             )}
-            {!hideBackface || rotationState.face === index ? (
+            {rotationState.face === index ? (
               face
-            ) : !hideBackface && rotationState.face !== index ? (
+            ) : rotationState.face !== index ? (
               face
             ) : (
               <Fragment />

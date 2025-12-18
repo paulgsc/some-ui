@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { DialPieSection } from "@slideshow/components/dial-components/dial-section"
-import { useDialAnimation } from "@slideshow/hooks/use-dial-animation"
 import { useSectionCalculations } from "@slideshow/hooks/use-dial-sections"
 import type { AnimationPattern, DialSection } from "@slideshow/types/dial"
 import {
@@ -12,17 +11,17 @@ import { cn } from "some-ui-utils"
 
 type DialProps = {
   center: number
-  animationDuration: number
-  animationPattern: AnimationPattern
+  animationDuration?: number
+  animationPattern?: AnimationPattern
   uniformSections: boolean
   sections: Array<DialSection>
   className?: string
 }
 
+const TOPIC_ANGLE = 180 + 36 * 1
+
 export const Dial = ({
   center,
-  animationDuration,
-  animationPattern,
   uniformSections,
   sections,
   className,
@@ -37,12 +36,6 @@ export const Dial = ({
   const { sectionBoundaries } = useSectionCalculations({
     sections,
     uniformSections,
-  })
-
-  const { currentAngle } = useDialAnimation({
-    animationDuration,
-    animationPattern,
-    sectionBounds: sectionBoundaries[2],
   })
 
   return (
@@ -150,13 +143,13 @@ export const Dial = ({
       />
 
       {/* Pointer */}
-      <g transform={`rotate(${currentAngle}, ${center}, ${center})`}>
+      <g transform={`rotate(${TOPIC_ANGLE}, ${center}, ${center})`}>
         <polygon
           points={calculateTrianglePoints(
             center,
             center,
             outerRadius * 0.95,
-            currentAngle,
+            TOPIC_ANGLE,
             tHW,
             tHW
           )}

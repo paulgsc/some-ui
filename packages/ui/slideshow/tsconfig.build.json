@@ -5,7 +5,6 @@
     "../../../assets/**/*",
     "**/*.stories.tsx",
     "**/*.stories.ts",
-    "**/orchestrator/**",
     "**/recap/**"
   ]
 }

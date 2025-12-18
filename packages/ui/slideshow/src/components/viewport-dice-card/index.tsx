@@ -1,28 +1,46 @@
-import type { FC, ReactNode } from "react"
-import { Fragment, useEffect } from "react"
+import type { FC } from "react"
+import { Fragment, Suspense, useCallback } from "react"
 import { CubeGeometry } from "@slideshow/components/cube-geometry"
+import type { ComponentRegistry } from "@slideshow/hooks/use-viewport-preload-hints"
+import { useViewportPreloadHints } from "@slideshow/hooks/use-viewport-preload-hints"
 import type { ViewportConfig } from "some-types-utils"
 import { BorderBeam } from "some-ui-shared"
 import { useCycleRotationAdapter, useViewport } from "some-ui-utils"
 
 export type ViewportDiceCardProps = {
   viewportConfig: ViewportConfig
-  renderContent: (index: number, isActive: boolean) => ReactNode
+  registry: ComponentRegistry
   perspective?: number
   className?: string
   faceClassName?: string
   showBeam?: boolean
   hideBackface?: boolean
+  facesAhead?: number
 }
 
+/**
+ * ViewportDiceCard - Pure geometry + scheduling renderer
+ *
+ * Responsibilities:
+ * - Viewport timing/scheduling (via useViewport)
+ * - 3D geometry/rotation (via CubeGeometry)
+ * - Component registry resolution
+ * - Preload hints for upcoming faces
+ *
+ * Does NOT:
+ * - Define content rendering logic
+ * - Include loading UI chrome
+ * - Make state-based component decisions
+ */
 export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
   viewportConfig,
-  renderContent,
+  registry,
   perspective,
   className,
   faceClassName,
   showBeam = true,
   hideBackface = false,
+  facesAhead = 1,
 }) => {
   const { faces, state, isLoading, error } = useViewport(viewportConfig, {
     autoTick: true,
@@ -36,13 +54,35 @@ export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
     axis: "Y-axis",
   })
 
-  useEffect(() => {
-    console.log(`xrotation: ${xRotation}, yrotation: ${yRotation}`)
-    console.log("state: ", state)
-  }, [xRotation, yRotation, state])
+  /**
+   * Accumulated duration of the currently visible face
+   */
+  const faceDurationMs = useCallback(() => {
+    if (!state) return 0
 
-  if (isLoading) return <div>Loading…</div>
-  if (error) return <div>Error: {error}</div>
+    const { items, faceCapacity } = viewportConfig
+    const faceIndex = Math.floor(state.cursor / faceCapacity)
+
+    const start = faceIndex * faceCapacity
+    const end = start + faceCapacity
+
+    return items
+      .slice(start, end)
+      .reduce((sum, item) => sum + item.durationMs, 0)
+  }, [state?.cursor, viewportConfig])
+
+  // Preload upcoming face components (side-effect only)
+  useViewportPreloadHints({
+    viewportConfig,
+    cursor: state?.cursor ?? 0,
+    facesAhead,
+    registry,
+  })
+
+  // Minimal early return - upstream decides rendering
+  if (isLoading || error || !state) {
+    return null
+  }
 
   return (
     <CubeGeometry
@@ -55,15 +95,29 @@ export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
       faces={faces.map((face, faceIndex) => ({
         key: faceIndex,
         content: (
-          <div className="size-full p-4">
+          <div className="size-full">
             {showBeam && face.isActive && (
-              <BorderBeam size={16} duration={0.5} />
+              <BorderBeam size={16} duration={faceDurationMs() / 1_000} />
             )}
-            {face.contentIndices.map((idx) => (
-              <Fragment key={idx}>
-                {renderContent(idx, state?.cursor === idx)}
-              </Fragment>
-            ))}
+
+            {face.contentIndices.map((itemIndex) => {
+              const descriptor = viewportConfig.items[itemIndex]
+              const { kind, props } = descriptor
+              if (!kind) return null
+
+              const entry = registry[kind]
+              if (!entry) return null
+
+              const { Component } = entry
+
+              return (
+                <Fragment key={itemIndex}>
+                  <Suspense fallback={null}>
+                    <Component {...props} />
+                  </Suspense>
+                </Fragment>
+              )
+            })}
           </div>
         ),
       }))}
