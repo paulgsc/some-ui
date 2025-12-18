@@ -8,6 +8,7 @@ import { getWasmManager, isWasmLoaded, resetWasmRuntime } from "./wasm-runtime"
 export class ViewportManager {
   private viewports: Map<string, Viewport> = new Map()
   private factory: ViewportFactory | null = null
+  private wasmRefCount = 0
 
   /**
    * Initialize manager (idempotent, async)
@@ -71,6 +72,7 @@ export class ViewportManager {
     console.log(`🆕 [ViewportManager] Creating viewport: ${validConfig.id}`)
     const viewport = await this.factory.create(validConfig)
     this.viewports.set(validConfig.id, viewport)
+    this.wasmRefCount++
 
     return viewport
   }
@@ -104,6 +106,13 @@ export class ViewportManager {
 
     // Remove from registry
     this.viewports.delete(id)
+    this.wasmRefCount--
+
+    if (this.wasmRefCount === 0) {
+      console.log("🗑️ No active viewports, freeing WASM runtime...")
+      resetWasmRuntime()
+      this.factory = null
+    }
 
     console.log(`🗑️ [ViewportManager] Removed viewport: ${id}`)
     return true
@@ -145,6 +154,9 @@ export class ViewportManager {
 
     // Clear registry
     this.viewports.clear()
+    this.wasmRefCount = 0
+    resetWasmRuntime()
+    this.factory = null
 
     console.log("✅ [ViewportManager] All viewports cleared")
   }

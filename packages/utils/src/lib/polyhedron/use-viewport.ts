@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ViewportEngine } from "./viewport-engine"
 import type {
   ViewportConfig,
   WasmTransition,
@@ -8,6 +7,7 @@ import type {
 import { TransitionFactory } from "some-types-utils"
 
 import type { Viewport } from "./viewport"
+import { ViewportEngine } from "./viewport-engine"
 import { getViewportManager } from "./viewport-manager"
 
 export type UseViewportOptions = {
@@ -69,6 +69,8 @@ export function useViewport(
   const [isPaused, setIsPaused] = useState(false)
 
   // Store options in ref to avoid recreating engine on callback changes
+  const viewportRef = useRef<Viewport | null>(null)
+  const engineRef = useRef<ViewportEngine | null>(null)
   const optionsRef = useRef(options)
   optionsRef.current = options
 
@@ -94,6 +96,10 @@ export function useViewport(
           onContentAdvance: optionsRef.current.onContentAdvance,
           onError: setError,
         })
+
+        // Store in refs for cleanup
+        viewportRef.current = vp
+        engineRef.current = eng
 
         setViewport(vp)
         setEngine(eng)
@@ -127,9 +133,22 @@ export function useViewport(
 
     initEngine()
 
-    return () => {
+    return (): void => {
       mounted = false
-      eng?.dispose()
+
+      const eng = engineRef.current
+      const vp = viewportRef.current
+
+      if (eng) {
+        eng.dispose()
+        engineRef.current = null
+      }
+
+      if (vp) {
+        const manager = getViewportManager()
+        manager.removeViewport(vp.getId())
+        viewportRef.current = null
+      }
     }
   }, [config.id, autoRefresh, autoTick, tickIntervalMs])
 
