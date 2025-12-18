@@ -29,7 +29,6 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     error,
   } = useUtteranceWebSocket({
     url: `ws://${window.location.hostname}:3000/ws`,
-    queryKey: ["utterance"],
   })
 
   const {

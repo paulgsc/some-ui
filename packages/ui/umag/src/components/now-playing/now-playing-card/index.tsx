@@ -32,7 +32,6 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
     error,
   } = useNowPlayingWebSocket({
     url: `ws://${window.location.hostname}:3000/ws`,
-    queryKey: ["now_playing"],
   })
 
   // Refs for each component
