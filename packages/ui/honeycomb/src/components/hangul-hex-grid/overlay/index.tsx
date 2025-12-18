@@ -10,7 +10,6 @@ import { LoadingState } from "@honeycomb/components/hangul-hex-grid/loading-stat
 import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overlay"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
-import type { HexCellData } from "@honeycomb/components/hex-grid"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
@@ -21,10 +20,10 @@ import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manag
 import type {
   GameMode,
   GameStats,
-  GameStatus,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 type HangulHexGridProps = {
   mode?: GameMode
@@ -64,10 +63,9 @@ export const HangulHexGrid = ({
   const [keyBuffer, setKeyBuffer] = useState("")
 
   // Game timer hook (for timed modes)
-  const { isGameOver, timeRemainingMs, progress } = useGameTimer({
+  const { gameStatus, isGameOver, timeRemainingMs, progress } = useGameTimer({
     gameBridge,
     isInitialized,
-    isPaused,
     onComplete: (status) => {
       playSound("game_complete")
       setIsPaused(true)
@@ -88,7 +86,6 @@ export const HangulHexGrid = ({
     gameBridge,
     isInitialized,
     isPaused,
-    timingParams,
     setActiveCharacters,
     setStats,
     setTimingParams,
@@ -145,16 +142,19 @@ export const HangulHexGrid = ({
     return <ErrorState error={error} />
   }
 
-  const hexCells: Array<HexCellData<CharacterWithLifetime>> = Array.from(
-    activeCharacters.values()
-  ).map((char) => ({
+  const cellContent: Array<{
+    id: string
+    content: HexCellData<CharacterWithLifetime>
+  }> = Array.from(activeCharacters.values()).map((char) => ({
     id: char.cellId,
-    data: char,
-    theme: {
-      fill: char.color,
-      stroke: char.color,
-      strokeWidth: 2,
-      opacity: 0.75,
+    content: {
+      data: char,
+      theme: {
+        fill: char.color,
+        stroke: char.color,
+        strokeWidth: 2,
+        opacity: 0.75,
+      },
     },
   }))
 
@@ -171,30 +171,45 @@ export const HangulHexGrid = ({
         cellCount={67}
         hexSize={70}
         viewBoxFactor={1.2}
-        cells={hexCells}
+        cellContent={cellContent}
         backgroundOpacity={0.8}
         className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
-        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => (
-          <HangulHexCell
-            character={{
-              id: cell.data.cellId,
-              hangul: cell.data.hangul,
-              qwertyKey: cell.data.qwertyKey,
-              romanization: cell.data.romanization,
-              color: cell.data.color,
-              spawnedAt: cell.data.spawnedAt,
-              releaseYear: 0,
-              playedAt: cell.data.spawnedAt,
-            }}
-            centerX={centerX}
-            centerY={centerY}
-            cellWidth={cellWidth}
-            opacity={cell.theme?.opacity}
-            hexPath={hexPath}
-            timeRemaining={cell.data.timeRemaining}
-            showRomanization={timingParams.showRomanization}
-          />
-        )}
+        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
+          const { id, content } = cell
+          if (!content) return null
+          const {
+            data: {
+              color,
+              hangul,
+              qwertyKey,
+              romanization,
+              spawnedAt,
+              timeRemaining,
+            },
+            theme: { opacity },
+          } = content
+          return (
+            <HangulHexCell
+              character={{
+                id,
+                hangul: hangul,
+                qwertyKey: qwertyKey,
+                romanization: romanization,
+                color: color,
+                spawnedAt: spawnedAt,
+                releaseYear: 0,
+                playedAt: spawnedAt,
+              }}
+              centerX={centerX}
+              centerY={centerY}
+              cellWidth={cellWidth}
+              opacity={opacity}
+              hexPath={hexPath}
+              timeRemaining={timeRemaining}
+              showRomanization={timingParams.showRomanization}
+            />
+          )
+        }}
       />
 
       <StatsPanel
@@ -210,7 +225,6 @@ export const HangulHexGrid = ({
 
       <ControlButtons
         isPaused={isPaused}
-        isGameOver={isGameOver}
         onTogglePause={handleTogglePause}
         onReset={handleReset}
       />
@@ -224,7 +238,7 @@ export const HangulHexGrid = ({
 
       <GameOverModal
         isOpen={isGameOver}
-        status={"game-over"}
+        status={gameStatus}
         stats={stats}
         onContinue={handleContinue}
       />

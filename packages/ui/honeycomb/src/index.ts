@@ -1,1 +1,2 @@
-export {}
+
+export { HangulHexGrid } from "./components"

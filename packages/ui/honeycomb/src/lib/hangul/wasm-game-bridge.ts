@@ -96,10 +96,6 @@ export type KeyPressResult = z.infer<typeof KeyPressResultSchema>
 export type ExpiredResult = z.infer<typeof ExpiredResultSchema>
 export type TimingParams = z.infer<typeof TimingParamsSchema>
 
-// ============================================================================
-// WASM INTERFACE (from wasm-bindgen generated .d.ts)
-// ============================================================================
-
 export type WasmHangulGameCore = {
   // Updated constructor signature
   new (
@@ -129,10 +125,6 @@ export type WasmHangulGameCore = {
   reset(): void
 }
 
-// ============================================================================
-// DISPLAY CHARACTER TYPE (for UI layer)
-// ============================================================================
-
 export type DisplayCharacter = {
   cellId: string
   hangul: string
@@ -142,14 +134,14 @@ export type DisplayCharacter = {
   spawnedAt: number
 }
 
-// ============================================================================
-// BRIDGE CLASS
-// ============================================================================
+type StatusListener = () => void
 
 export class WasmGameBridge {
   private wasmCore: WasmHangulGameCore
   private availableCells: ReadonlyArray<string>
   private gameMode: GameMode
+  private statusListeners = new Set<StatusListener>()
+  private lastStatus: GameStatus | null = null
 
   constructor(wasmCore: WasmHangulGameCore, mode: GameMode = "completion") {
     this.wasmCore = wasmCore
@@ -158,11 +150,65 @@ export class WasmGameBridge {
   }
 
   /**
+   * Subscribe to status changes
+   * Returns unsubscribe function
+   */
+  subscribeToStatus(listener: StatusListener): () => void {
+    this.statusListeners.add(listener)
+    return () => {
+      this.statusListeners.delete(listener)
+    }
+  }
+
+  /**
+   * Get current status snapshot for useSyncExternalStore
+   */
+  getStatusSnapshot(): GameStatus | null {
+    return this.lastStatus
+  }
+
+  /**
+   * Internal: notify all subscribers that status changed
+   */
+  private notifyStatusChange(): void {
+    this.statusListeners.forEach((listener) => listener())
+  }
+
+  /**
    * Start the game timer (for timed modes)
    */
   startTimer(): void {
     const now = BigInt(Date.now())
     this.wasmCore.startTimer(now)
+    this.updateStatus()
+  }
+
+  /**
+   * Update status and notify if changed
+   * Call this from your game loop/tick
+   */
+  updateStatus(): void {
+    const now = BigInt(Date.now())
+    const newStatus = GameStatusSchema.parse(this.wasmCore.getGameStatus(now))
+
+    // Only notify if status actually changed
+    if (!this.statusEquals(this.lastStatus, newStatus)) {
+      this.lastStatus = newStatus
+      this.notifyStatusChange()
+    }
+  }
+
+  /**
+   * Compare two statuses for equality
+   */
+  private statusEquals(a: GameStatus | null, b: GameStatus): boolean {
+    if (!a) return false
+    return (
+      a.isComplete === b.isComplete &&
+      a.isTimedOut === b.isTimedOut &&
+      a.timeRemainingMs === b.timeRemainingMs &&
+      a.progress.completedKeys === b.progress.completedKeys
+    )
   }
 
   /**
@@ -297,6 +343,8 @@ export class WasmGameBridge {
    */
   reset(): void {
     this.wasmCore.reset()
+    this.lastStatus = null
+    this.notifyStatusChange()
   }
 }
 

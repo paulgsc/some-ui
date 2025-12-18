@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
-import { HexGrid, type HexCellData } from "@honeycomb/components/hex-grid"
+import { HexGrid } from "@honeycomb/components/hex-grid"
 import { SongHexCell } from "@honeycomb/components/song-hex-grid/song-hex-cell"
+import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 // Song-specific implementation
 export type Song = {
@@ -95,7 +96,7 @@ export const SongHexGrid = (): React.JSX.Element => {
       ])
     }, 3000)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [])
 
   // Convert songs to active cells
@@ -195,18 +196,20 @@ export const SongHexGrid = (): React.JSX.Element => {
     return (): void => clearInterval(interval)
   }, [])
 
-  // Convert active song cells to HexCellData
-  // Use WASM's ID format: "hex_q_r_s" (e.g., "hex_-2_0_2")
-  // The HexGrid component will match these IDs with WASM cells
-  const hexCells: Array<HexCellData<Song>> = activeSongCells.map((cell) => ({
-    id: cell.cellId, // This ID matches WASM format: "hex_q_r_s"
-    data: cell.song,
-    theme: {
-      fill: cell.song.color,
-      stroke: cell.song.color,
-      strokeWidth: 2.5,
-      opacity: cell.isFading ? cell.fillLevel * 0.75 : 0.75,
-      filter: "url(#metallic-glow)",
+  const cellContent: Array<{
+    id: string
+    content: HexCellData<Song>
+  }> = activeSongCells.map((cell) => ({
+    id: cell.cellId,
+    content: {
+      data: cell.song,
+      theme: {
+        fill: cell.song.color,
+        stroke: cell.song.color,
+        strokeWidth: 2.5,
+        opacity: cell.isFading ? cell.fillLevel * 0.75 : 0.75,
+        filter: "url(#metallic-glow)",
+      },
     },
   }))
 
@@ -221,19 +224,28 @@ export const SongHexGrid = (): React.JSX.Element => {
         cellCount={67}
         hexSize={70}
         viewBoxFactor={1.2}
-        cells={hexCells}
+        cellContent={cellContent}
         backgroundOpacity={0.12}
-        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => (
-          <SongHexCell
-            song={cell.data}
-            centerX={centerX}
-            centerY={centerY}
-            cellWidth={cellWidth}
-            opacity={cell.theme?.opacity}
-            imageUrl={cell.data.albumArtUrl}
-            hexPath={hexPath}
-          />
-        )}
+        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
+          const { content } = cell
+          if (!content) return null
+
+          const {
+            data,
+            theme: { opacity },
+          } = content
+          return (
+            <SongHexCell
+              song={data}
+              centerX={centerX}
+              centerY={centerY}
+              cellWidth={cellWidth}
+              opacity={opacity}
+              imageUrl={data.albumArtUrl}
+              hexPath={hexPath}
+            />
+          )
+        }}
       />
 
       {/* Song counter with glass morphism */}

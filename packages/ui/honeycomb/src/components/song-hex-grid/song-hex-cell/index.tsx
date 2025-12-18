@@ -11,7 +11,7 @@ type SongHexCellProps = {
   imageUrl?: string
 }
 
-export function SongHexCell({
+export const SongHexCell = ({
   song,
   centerX,
   centerY,
@@ -19,7 +19,7 @@ export function SongHexCell({
   hexPath,
   opacity = 1,
   imageUrl,
-}: SongHexCellProps) {
+}: SongHexCellProps) => {
   const [isHovered, setIsHovered] = useState(false)
   const uniqueId = `cell-${song.id}`
 
@@ -29,7 +29,7 @@ export function SongHexCell({
   const hexRadius = cellWidth * 0.45
 
   const textFill = "white"
-  const truncated = (str: string, max: number) =>
+  const truncated = (str: string, max: number): string =>
     str.length > max ? str.slice(0, max - 2) + "…" : str
 
   return (
@@ -141,9 +141,6 @@ export function SongHexCell({
             <span className="opacity-60 text-[10px] mt-1">
               {song.releaseYear}
             </span>
-            {song.genre && (
-              <span className="opacity-70 mt-1 italic">{song.genre}</span>
-            )}
           </div>
         </foreignObject>
       )}

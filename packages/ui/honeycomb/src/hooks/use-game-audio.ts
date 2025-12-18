@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type { AudioEvents } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 export type AudioEvent =
@@ -9,6 +9,8 @@ export type AudioEvent =
   | "streak_milestone" // Every 5 or 10 streak
   | "character_spawn" // New character appears
   | "difficulty_increase" // Speed increased
+  | "game_complete" // Game completion
+  | "game_timeout" // Game over - timeout
 
 type UseGameAudioProps = {
   enabled?: boolean
@@ -34,6 +36,8 @@ export const useGameAudio = ({
       streak_milestone: "/sfx/level-up.mp3",
       character_spawn: "/sfx/minimal-pop.mp3",
       difficulty_increase: "/sfx/minimal-pop.mp3",
+      game_complete: "/sfx/minimal-pop.mp3",
+      game_timeout: "/sfx/minimal-pop.mp3",
     }
 
     const audioMap = new Map<AudioEvent, HTMLAudioElement>()
@@ -66,19 +70,22 @@ export const useGameAudio = ({
     })
   }, [volume])
 
-  const playSound = (event: AudioEvent) => {
-    if (!enabled) return
+  const playSound = useCallback(
+    (event: AudioEvent) => {
+      if (!enabled) return
 
-    const audio = audioContextRef.current.get(event)
-    if (!audio) return
+      const audio = audioContextRef.current.get(event)
+      if (!audio) return
 
-    // Clone and play to allow overlapping sounds
-    const clone = audio.cloneNode() as HTMLAudioElement
-    clone.volume = volume
-    clone.play().catch((err) => {
-      console.warn(`Failed to play audio: ${event}`, err)
-    })
-  }
+      // Clone and play to allow overlapping sounds
+      const clone = audio.cloneNode() as HTMLAudioElement
+      clone.volume = volume
+      clone.play().catch((err) => {
+        console.warn(`Failed to play audio: ${event}`, err)
+      })
+    },
+    [enabled, volume]
+  )
 
   return { playSound }
 }

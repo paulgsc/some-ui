@@ -11,7 +11,6 @@ type UseGameLoopProps = {
   gameBridge: WasmGameBridge | null
   isInitialized: boolean
   isPaused: boolean
-  timingParams: TimingParams
   setActiveCharacters: React.Dispatch<
     React.SetStateAction<Map<string, CharacterWithLifetime>>
   >
@@ -26,7 +25,6 @@ export const useGameLoop = ({
   gameBridge,
   isInitialized,
   isPaused,
-  timingParams,
   setActiveCharacters,
   setStats,
   setTimingParams,
@@ -87,28 +85,20 @@ export const useGameLoop = ({
       setStats(gameBridge.getStats())
       setTimingParams(gameBridge.getTimingParams())
     }
+
+    gameBridge.updateStatus()
   }, [gameBridge, setActiveCharacters, setStats, setTimingParams])
 
-  // Spawn timer
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
 
-    spawnCharacter() // Initial spawn
     spawnTimerRef.current = setInterval(
       spawnCharacter,
-      timingParams.spawnIntervalMs
+      gameBridge.getTimingParams().spawnIntervalMs
     )
 
-    return () => {
-      if (spawnTimerRef.current) clearInterval(spawnTimerRef.current)
-    }
-  }, [
-    spawnCharacter,
-    timingParams.spawnIntervalMs,
-    isPaused,
-    gameBridge,
-    isInitialized,
-  ])
+    return (): void => clearInterval(spawnTimerRef.current!)
+  }, [spawnCharacter, isPaused, gameBridge, isInitialized])
 
   // Update timer
   useEffect(() => {

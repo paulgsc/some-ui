@@ -1,31 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
-import type { HexPoint, HexRenderData } from "@honeycomb/types/hex-grid"
+import type {
+  HexCellData,
+  HexPoint,
+  HexRenderData,
+} from "@honeycomb/types/hex-grid"
 
-// Extended type for theming/content
-export type HexCellTheme = {
-  fill?: string
-  stroke?: string
-  strokeWidth?: number
-  opacity?: number
-  filter?: string
-}
-
-export type HexCellData<T = any> = {
-  id: string
-  data?: T
-  theme?: HexCellTheme
-}
-
-type HexGridProps<T = any> = {
+type HexGridProps<T = unknown> = {
   cellCount: number
   hexSize: number
   viewBoxFactor?: number
   className?: string
-  cells?: Array<HexCellData<T>>
+  cellContent?: Array<{
+    id: string
+    content: HexCellData<T>
+  }>
   renderCell?: (
-    cell: HexRenderData & HexCellData<T>,
+    cell: HexRenderData<T>,
     centerX: number,
     centerY: number,
     cellWidth: number,
@@ -39,7 +31,7 @@ export function HexGrid<T = any>({
   cellCount,
   hexSize,
   viewBoxFactor = 1,
-  cells = [],
+  cellContent = [],
   renderCell,
   backgroundOpacity = 0.15,
 }: HexGridProps<T>) {
@@ -82,34 +74,29 @@ export function HexGrid<T = any>({
       }
     }, 50)
 
-    return () => {
+    return (): void => {
       if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
     }
   }, [getViewBox])
 
-  // Create a map of cell data by ID for quick lookup
-  // Support multiple ID formats: "hex_-2_0_2", "-2-0-2", or normalized "q-r-s"
-  const cellDataMap = new Map<string, HexCellData<T>>()
+  const contentMap = useMemo(() => {
+    const map = new Map<string, HexCellData<T>>()
+    cellContent.forEach(({ id, content }) => {
+      map.set(id, content)
+      const m = id.match(/(-?\d+)[_-](-?\d+)[_-](-?\d+)/)
+      if (m) {
+        const [, q, r, s] = m
+        map.set(`hex_${q}_${r}_${s}`, content)
+        map.set(`${q}-${r}-${s}`, content)
+      }
+    })
+    return map
+  }, [cellContent])
 
-  cells.forEach((cell) => {
-    cellDataMap.set(cell.id, cell)
-
-    // Also index by normalized coordinate format
-    // Extract q, r, s from various formats
-    const coordMatch = cell.id.match(/(-?\d+)[_-](-?\d+)[_-](-?\d+)/)
-    if (coordMatch) {
-      const [, q, r, s] = coordMatch
-      // Store with multiple key formats for flexible matching
-      cellDataMap.set(`hex_${q}_${r}_${s}`, cell)
-      cellDataMap.set(`${q}-${r}-${s}`, cell)
-    }
-  })
-
-  // Merge WASM cells with provided cell data/theme
-  const mergedCells = hexCells.map((wasmCell) => {
-    const cellData = cellDataMap.get(wasmCell.id)
-    return cellData ? { ...wasmCell, ...cellData } : wasmCell
-  })
+  const mergedCells: Array<HexRenderData<T>> = hexCells.map((wasmCell) => ({
+    ...wasmCell,
+    content: contentMap.get(wasmCell.id),
+  }))
 
   if (isLoading) {
     return (
@@ -180,10 +167,10 @@ export function HexGrid<T = any>({
             Math.max(...cell.points.map((p) => p.x)) -
             Math.min(...cell.points.map((p) => p.x))
 
-          const theme = cell.theme
+          const { content: { theme, data } = {} } = cell
 
           // Only render themed cells (cells with theme or data)
-          if (!theme && !cell.data) return null
+          if (!theme && !data) return null
 
           return (
             <g key={cell.id}>

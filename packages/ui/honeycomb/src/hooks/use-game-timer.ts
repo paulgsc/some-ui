@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useSyncExternalStore } from "react"
 import type {
   GameStatus,
   WasmGameBridge,
@@ -7,26 +7,31 @@ import type {
 type UseGameTimerProps = {
   gameBridge: WasmGameBridge | null
   isInitialized: boolean
-  isPaused: boolean
   onComplete?: (status: GameStatus) => void
   onTimeout?: (status: GameStatus) => void
-  pollIntervalMs?: number
 }
 
 export function useGameTimer({
   gameBridge,
   isInitialized,
-  isPaused,
   onComplete,
   onTimeout,
-  pollIntervalMs = 100,
 }: UseGameTimerProps) {
-  const [gameStatus, setGameStatus] = useState<GameStatus | null>(null)
-  const [isGameOver, setIsGameOver] = useState(false)
+  // Subscribe to WASM status changes
+  const gameStatus = useSyncExternalStore(
+    (callback) => {
+      if (!gameBridge) return () => {}
+      return gameBridge.subscribeToStatus(callback)
+    },
+    () => (gameBridge ? gameBridge.getStatusSnapshot() : null),
+    () => null // Server snapshot (not used)
+  )
 
-  // Has startTimer been called?
+  // Track if timer has been started
   const hasStartedRef = useRef(false)
-  const intervalRef = useRef<number | null>(null)
+
+  // Track if terminal callbacks have fired
+  const terminalFiredRef = useRef(false)
 
   /**
    * Start timer exactly once per initialization
@@ -34,66 +39,38 @@ export function useGameTimer({
   useEffect(() => {
     if (!gameBridge || !isInitialized || hasStartedRef.current) return
 
-    gameBridge.startTimer(Date.now())
+    gameBridge.startTimer()
     hasStartedRef.current = true
   }, [gameBridge, isInitialized])
 
   /**
-   * Poll game status
-   */
-  const pollStatus = useCallback(() => {
-    if (!gameBridge || isPaused || isGameOver) return
-
-    const now = Date.now()
-    const status = gameBridge.getGameStatus(now)
-
-    setGameStatus(status)
-
-    if (status.isComplete) {
-      setIsGameOver(true)
-      onComplete?.(status)
-    } else if (status.isTimedOut) {
-      setIsGameOver(true)
-      onTimeout?.(status)
-    }
-  }, [gameBridge, isPaused, isGameOver, onComplete, onTimeout])
-
-  /**
-   * Polling lifecycle
+   * Handle terminal states (complete/timeout)
+   * Fire callbacks only once
    */
   useEffect(() => {
-    if (!gameBridge || !isInitialized || isPaused || isGameOver) return
+    if (!gameStatus || terminalFiredRef.current) return
 
-    // Poll immediately for responsiveness
-    pollStatus()
-
-    intervalRef.current = window.setInterval(pollStatus, pollIntervalMs)
-
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+    if (gameStatus.isComplete) {
+      terminalFiredRef.current = true
+      onComplete?.(gameStatus)
+    } else if (gameStatus.isTimedOut) {
+      terminalFiredRef.current = true
+      onTimeout?.(gameStatus)
     }
-  }, [
-    gameBridge,
-    isInitialized,
-    isPaused,
-    isGameOver,
-    pollStatus,
-    pollIntervalMs,
-  ])
+  }, [gameStatus, onComplete, onTimeout])
 
   /**
-   * Reset internal state when game resets
+   * Reset terminal flag when game resets
    */
   useEffect(() => {
-    if (isInitialized) return
-
-    setGameStatus(null)
-    setIsGameOver(false)
-    hasStartedRef.current = false
+    if (!isInitialized) {
+      terminalFiredRef.current = false
+      hasStartedRef.current = false
+    }
   }, [isInitialized])
+
+  const isGameOver =
+    !!gameStatus && (gameStatus.isComplete || gameStatus.isTimedOut)
 
   return {
     gameStatus,
