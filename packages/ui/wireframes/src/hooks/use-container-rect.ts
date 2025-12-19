@@ -1,0 +1,29 @@
+import { useLayoutEffect, useRef, useState } from "react"
+
+export function useContainerRect() {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [rect, setRect] = useState<Rect | null>(null)
+
+  useLayoutEffect(() => {
+    if (!ref.current) return
+
+    const measure = () => {
+      const r = ref.current!.getBoundingClientRect()
+      setRect({
+        x: 0,
+        y: 0,
+        width: r.width,
+        height: r.height,
+      })
+    }
+
+    measure()
+
+    const ro = new ResizeObserver(measure)
+    ro.observe(ref.current)
+
+    return () => ro.disconnect()
+  }, [])
+
+  return { ref, rect }
+}

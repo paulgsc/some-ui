@@ -2,21 +2,15 @@ import type { FC } from "react"
 import { ResizableLayout } from "@wireframes/components/youtube/resizable-wireframe"
 import type { WireframeContent } from "@wireframes/components/youtube/types"
 import { WireframeRegion } from "@wireframes/components/youtube/types"
-import type { Chapter } from "some-ui-slideshow"
-import { GanttDrawer } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
 type YoutubeWireframeProps = {
   content?: WireframeContent
-  chapters: Array<Chapter>
-  totalDuration: number
   className?: string
 }
 
 export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
   content = {},
-  chapters,
-  totalDuration,
   className,
 }) => {
   const sidebarTop = content[WireframeRegion.SIDEBAR_TOP]
@@ -81,7 +75,6 @@ export const YoutubeWireframe: FC<YoutubeWireframeProps> = ({
           </ResizableLayout.Root>
         </div>
       </main>
-      <GanttDrawer chapters={chapters} totalDuration={totalDuration} />
     </>
   )
 }
