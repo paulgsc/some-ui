@@ -61,7 +61,7 @@ export const OrchestratorTimeline = ({
         uiComponents: Array.from(
           new Set(
             scene.ui.flatMap((u) =>
-              Object.values(u.content || {}).map((c) => c.registryKey)
+              Object.values(u.panels ?? {}).map((c) => c.registryKey)
             )
           )
         ),

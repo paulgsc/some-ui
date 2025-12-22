@@ -4,12 +4,14 @@
     "baseUrl": ".",
     "declarationDir": "./",
     "composite": true,
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@wireframes/*": ["./src/*"]
+      "@wireframes/*": ["./src/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../../some-content/src"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../../some-content/src/**/*"],
   "exclude": ["node_modules", "build", "dist"]
 }

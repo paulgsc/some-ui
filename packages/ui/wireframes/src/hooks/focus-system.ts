@@ -1,14 +1,6 @@
+import type { YouTubeRegion } from "some-types-utils"
 import { z } from "zod"
 import { create } from "zustand"
-
-export type YouTubeRegion =
-  | "video"
-  | "title"
-  | "mainContent"
-  | "footerLeft"
-  | "sidebarTop"
-  | "sidebarBottom"
-  | "footerRight"
 
 // Focus Proposal Schema
 export const FocusProposalSchema = z.object({

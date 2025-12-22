@@ -131,7 +131,7 @@ const LifetimeCard = ({
   const elapsedMs = currentTime - lifetime.started_at
   const progress = isScene ? Math.min(100, (elapsedMs / duration) * 100) : 0
 
-  const formatTime = (ms: number) => {
+  const formatTime = (ms: number): string => {
     const s = Math.floor(Math.abs(ms) / 1000)
     return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`
   }
@@ -190,30 +190,35 @@ const LifetimeCard = ({
             </div>
             {uiIntents.map((ui, i) => (
               <div key={i} className="bg-muted/50 rounded p-2">
-                {ui.content &&
-                  Object.entries(ui.content).map(([key, placement]) => (
-                    <div
-                      key={key}
-                      className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
-                    >
-                      <span className="font-mono text-muted-foreground">
-                        {key}:
-                      </span>
-                      <Badge variant="outline" className="text-[9px] h-4 py-0">
-                        {placement.registryKey}
-                      </Badge>
-                    </div>
+                {ui.panels &&
+                  Object.entries(ui.panels).map(([key, placement]) => (
+                    <>
+                      <div
+                        key={key}
+                        className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
+                      >
+                        <span className="font-mono text-muted-foreground">
+                          {key}:
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] h-4 py-0"
+                        >
+                          {placement.registryKey}
+                        </Badge>
+                      </div>
+                      {placement.focus && (
+                        <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
+                          <span className="text-muted-foreground italic">
+                            Focus: {placement.focus.region}
+                          </span>
+                          <span className="text-primary">
+                            {(placement.focus.intensity * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )}
+                    </>
                   ))}
-                {ui.focus && (
-                  <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
-                    <span className="text-muted-foreground italic">
-                      Focus: {ui.focus.region}
-                    </span>
-                    <span className="text-primary">
-                      {(ui.focus.intensity * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                )}
               </div>
             ))}
           </div>

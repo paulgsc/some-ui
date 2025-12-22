@@ -1,106 +1,188 @@
 import { useEffect, useState } from "react"
+import { componentRegistry } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { OrchestratorState, SceneConfig } from "some-types-utils"
 
 import { OrchestratedYouTubeViewport } from "."
-import { mockComponentRegistry } from "./mock-component-registry"
 
 // ============================================================================
 // Mock Scene Registry
 // ============================================================================
 
 const mockSceneRegistry: Record<string, SceneConfig> = {
-  learning: {
-    scene_name: "learning",
+  // Single parent per panel, no children
+  basicLayout: {
+    scene_name: "basicLayout",
     duration: 30_000,
     start_time: 0,
     ui: [
       {
-        content: {
-          title: { registryKey: "staticTitle" },
-          video: { registryKey: "hangul" },
-          mainContent: { registryKey: "brickChart" },
-          sidebarTop: { registryKey: "scheduleElements" },
-          sidebarBottom: { registryKey: "topRightContent" },
-          footerLeft: { registryKey: "footerLeft" },
-          footerRight: { registryKey: "footerRight" },
-        },
-        focus: {
-          region: "video",
-          intensity: 0.6,
+        panels: {
+          title: {
+            registryKey: "cube",
+            props: { region: "title", faceCapacity: 1 },
+          },
+          video: {
+            registryKey: "cube",
+            props: { region: "video", faceCapacity: 1 },
+            focus: { region: "video", intensity: 0.7 },
+          },
+          mainContent: {
+            registryKey: "cube",
+            props: { region: "mainContent", faceCapacity: 1 },
+          },
+          sidebarTop: {
+            registryKey: "cube",
+            props: { region: "mainContent", faceCapacity: 1 },
+          },
+          sidebarBottom: {
+            registryKey: "cube",
+            props: { region: "mainContent", faceCapacity: 1 },
+          },
+          footerLeft: {
+            registryKey: "cube",
+            props: { region: "mainContent", faceCapacity: 1 },
+          },
+          footerRight: {
+            registryKey: "cube",
+            props: { region: "mainContent", faceCapacity: 1 },
+          },
         },
       },
     ],
   },
 
-  practice: {
-    scene_name: "practice",
+  // Parent with children, focus inheritance
+  nestedComponents: {
+    scene_name: "nestedComponents",
     duration: 45_000,
     start_time: 0,
     ui: [
       {
-        content: {
+        panels: {
           title: { registryKey: "staticTitle" },
           video: {
-            registryKey: "leetype",
-            props: {
-              placeholder: "Type your answer...",
-              autoFocus: true,
-            },
+            registryKey: "hangul",
+            focus: { region: "video", intensity: 0.9 },
+            children: [
+              {
+                registryKey: "overlayBadge",
+                props: { text: "LIVE" },
+                duration: 5000,
+              },
+              {
+                registryKey: "progressBar",
+                props: { percentage: 75 },
+                duration: 10000,
+              },
+              { registryKey: "controlsOverlay", duration: 15000 },
+            ],
           },
-          mainContent: { registryKey: "cluesDown" },
-          sidebarTop: { registryKey: "scheduleElements" },
+          mainContent: {
+            registryKey: "brickChart",
+            children: [
+              {
+                registryKey: "tooltipHelper",
+                props: { hint: "Click to interact" },
+                duration: 8000,
+              },
+            ],
+          },
+          sidebarTop: {
+            registryKey: "scheduleElements",
+            children: [
+              {
+                registryKey: "notificationBadge",
+                props: { count: 3 },
+                duration: 12000,
+              },
+            ],
+          },
           sidebarBottom: { registryKey: "topRightContent" },
           footerLeft: { registryKey: "footerLeft" },
           footerRight: { registryKey: "footerRight" },
-        },
-        focus: {
-          region: "video",
-          intensity: 0.9,
         },
       },
     ],
   },
 
-  review: {
-    scene_name: "review",
+  // Multiple focus regions, complex hierarchy
+  multiFocus: {
+    scene_name: "multiFocus",
     duration: 20_000,
     start_time: 0,
     ui: [
       {
-        content: {
-          title: { registryKey: "staticTitle" },
-          video: { registryKey: "hangul" },
-          mainContent: { registryKey: "brickChart" },
-          sidebarTop: { registryKey: "topRightContent" },
-          sidebarBottom: { registryKey: "scheduleElements" },
-          footerLeft: { registryKey: "footerLeft" },
+        panels: {
+          title: {
+            registryKey: "staticTitle",
+            focus: { region: "title", intensity: 0.3 },
+          },
+          video: {
+            registryKey: "leetype",
+            props: { placeholder: "Type here...", autoFocus: true },
+            focus: { region: "video", intensity: 0.8 },
+            children: [
+              { registryKey: "inputHelper", duration: 6000 },
+              {
+                registryKey: "characterCount",
+                props: { max: 100 },
+                duration: 20000,
+              },
+            ],
+          },
+          mainContent: {
+            registryKey: "cluesDown",
+            focus: { region: "mainContent", intensity: 0.5 },
+            children: [{ registryKey: "highlighter", duration: 15000 }],
+          },
+          sidebarTop: { registryKey: "scheduleElements" },
+          sidebarBottom: { registryKey: "topRightContent" },
+          footerLeft: {
+            registryKey: "footerLeft",
+            children: [
+              {
+                registryKey: "statusIndicator",
+                props: { status: "active" },
+                duration: 20000,
+              },
+            ],
+          },
           footerRight: { registryKey: "footerRight" },
-        },
-        focus: {
-          region: "mainContent",
-          intensity: 0.4,
         },
       },
     ],
   },
 
-  idle: {
-    scene_name: "idle",
-    duration: 10_000,
+  // No focus, children only
+  childrenOnly: {
+    scene_name: "childrenOnly",
+    duration: 15_000,
     start_time: 0,
     ui: [
       {
-        content: {
+        panels: {
           title: { registryKey: "staticTitle" },
-          video: { registryKey: "hangul" },
-          mainContent: { registryKey: "brickChart" },
+          video: {
+            registryKey: "hangul",
+            children: [
+              {
+                registryKey: "watermark",
+                props: { position: "bottomRight" },
+                duration: 15000,
+              },
+              { registryKey: "timer", duration: 15000 },
+            ],
+          },
+          mainContent: {
+            registryKey: "brickChart",
+            children: [{ registryKey: "gridOverlay", duration: 15000 }],
+          },
           sidebarTop: { registryKey: "scheduleElements" },
           sidebarBottom: { registryKey: "topRightContent" },
           footerLeft: { registryKey: "footerLeft" },
           footerRight: { registryKey: "footerRight" },
         },
-        focus: null,
       },
     ],
   },
@@ -111,7 +193,7 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
 // ============================================================================
 
 const meta = {
-  title: "Layout/OrchestratedYouTubeViewport",
+  title: "UI/Wireframes/OrchestratedYouTubeViewport",
   component: OrchestratedYouTubeViewport,
   parameters: {
     layout: "fullscreen",
@@ -120,28 +202,25 @@ const meta = {
         component: `
 # Orchestrated YouTube Viewport
 
-A deterministic, time-indexed layout projection system that combines:
-- **Static viewport tree** (client-owned)
-- **Dynamic content mapping** (server-driven)
-- **Focus proposals** (server + component-originated)
-- **Resizable layout solving** (constraint-based)
+**Key Architecture Insight**: Each panel is a parent component that can contain multiple time-limited children.
 
-## Key Features
-
-- 🎯 **Server-Authoritative Focus**: Server focus (priority 10) overrides component focus (priority 1)
-- 🔒 **Component Sandboxing**: Components can only request focus on their own region
-- ⏱️ **Time-Indexed Intents**: Layout evolves deterministically through scene timelines
-- 🎨 **Lazy-Loaded Components**: Registry-based component loading with error boundaries
-- 🧪 **Fully Deterministic**: Same (time, scene) → same layout
+- 🎯 **Panel = Parent + Focus**: Each panel has one parent component (registryKey) and optional focus
+- 🌲 **Hierarchical Children**: Parents can contain multiple children with individual durations
+- ⏱️ **Time-Scoped Components**: Children have \`duration\` fields controlling their lifecycle
+- 🔒 **Focus Inheritance**: Focus applies to the entire panel (parent + all children)
 
 ## Architecture
 
 \`\`\`
-Server Intent (t) → Resolve UI Intent → Focus Accumulation → 
-Resolve Focus → Project Constraints → Solve Layout → Render
+Panel {
+  registryKey: "parentComponent",  // The parent/base component
+  focus: { region, intensity },     // Optional focus for entire panel
+  children: [                       // Optional nested components
+    { registryKey, props, duration },
+    { registryKey, props, duration }
+  ]
+}
 \`\`\`
-
-Click on any component to see component-originated focus in action!
         `,
       },
     },
@@ -149,7 +228,6 @@ Click on any component to see component-originated focus in action!
   argTypes: {
     transitionMs: {
       control: { type: "range", min: 0, max: 1000, step: 50 },
-      description: "Animation transition duration in milliseconds",
     },
   },
   tags: ["autodocs"],
@@ -164,32 +242,41 @@ type Story = StoryObj<typeof meta>
 
 function useAnimatedOrchestrator(
   sceneName: string,
-  duration: number,
-  isRunning: boolean = true
+  duration: number
 ): OrchestratorState {
   const [currentTime, setCurrentTime] = useState(0)
 
   useEffect(() => {
-    if (!isRunning) return
-
     const startTime = Date.now()
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime
-      const time = elapsed % duration
-      setCurrentTime(time)
-    }, 100) // Update every 100ms
-
+      setCurrentTime(elapsed % duration)
+    }, 100)
     return () => clearInterval(interval)
-  }, [duration, isRunning])
+  }, [duration])
+
+  const sceneConfig = mockSceneRegistry[sceneName]
 
   return {
-    is_running: isRunning,
+    is_running: true,
     is_paused: false,
     current_time: currentTime,
     total_duration: duration,
     progress: currentTime / duration,
     time_remaining: duration - currentTime,
-    active_lifetimes: [],
+    active_lifetimes: [
+      {
+        id: 1,
+        kind: {
+          type: "Scene",
+          scene_id: sceneName,
+          scene_name: sceneName,
+          duration: duration,
+          ui: sceneConfig.ui[0],
+        },
+        started_at: 0,
+      },
+    ],
     current_active_scene: sceneName,
     stream_status: {
       is_streaming: false,
@@ -200,7 +287,7 @@ function useAnimatedOrchestrator(
 }
 
 // ============================================================================
-// Story Wrappers
+// Story Wrapper
 // ============================================================================
 
 const AnimatedStory = ({
@@ -211,278 +298,111 @@ const AnimatedStory = ({
   transitionMs?: number
 }) => {
   const sceneConfig = mockSceneRegistry[scene]
-  const orchestratorState = useAnimatedOrchestrator(
-    scene,
-    sceneConfig.duration,
-    true
-  )
+  const orchestratorState = useAnimatedOrchestrator(scene, sceneConfig.duration)
 
   return (
     <div className="w-full h-screen">
       <OrchestratedYouTubeViewport
         orchestratorState={orchestratorState}
         sceneRegistry={mockSceneRegistry}
-        componentRegistry={mockComponentRegistry}
+        componentRegistry={componentRegistry}
         transitionMs={transitionMs}
       />
-
-      {/* Debug overlay */}
-      <div className="fixed bottom-4 left-4 bg-black/80 text-white px-4 py-2 rounded text-xs font-mono">
-        <div>Scene: {scene}</div>
+      <div className="fixed bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-xs font-mono">
         <div>
-          Time: {Math.floor(orchestratorState.current_time / 1000)}s /{" "}
+          {scene}: {Math.floor(orchestratorState.current_time / 1000)}s /{" "}
           {Math.floor(orchestratorState.total_duration / 1000)}s
         </div>
-        <div>Progress: {Math.floor(orchestratorState.progress * 100)}%</div>
       </div>
     </div>
   )
 }
 
-const StaticStory = ({
-  scene,
-  time = 0,
-  transitionMs = 300,
-}: {
-  scene: string
-  time?: number
-  transitionMs?: number
-}) => {
-  const sceneConfig = mockSceneRegistry[scene]
-
-  // Since ui is now an array of UILayoutIntent without 'at' field,
-  // we'll just use the first one for static stories
-  const uiIntent = sceneConfig.ui[0]
-
-  const orchestratorState: OrchestratorState = {
-    is_running: false,
-    is_paused: false,
-    current_time: time,
-    total_duration: sceneConfig.duration,
-    progress: time / sceneConfig.duration,
-    time_remaining: sceneConfig.duration - time,
-    active_lifetimes: [],
-    current_active_scene: scene,
-    stream_status: {
-      is_streaming: false,
-      stream_time: 0,
-      timecode: "00:00:00.000",
-    },
-  }
-
-  return (
-    <div className="w-full h-screen">
-      <OrchestratedYouTubeViewport
-        orchestratorState={orchestratorState}
-        sceneRegistry={mockSceneRegistry}
-        componentRegistry={mockComponentRegistry}
-        transitionMs={transitionMs}
-      />
-    </div>
-  )
-}
-
 // ============================================================================
-// Stories
+// Stories - Focused Edge Case Coverage
 // ============================================================================
 
-export const LearningSceneAnimated: Story = {
+export const BasicLayout: Story = {
   render: (args) => (
-    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
+    <AnimatedStory scene="basicLayout" transitionMs={args.transitionMs} />
   ),
-  args: {
-    transitionMs: 300,
-  },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
         story: `
-**Learning Scene** with animated progression (30 seconds loop)
+**Basic Layout** - Single parent per panel, single focus
 
-- Focus on video region (hangul grid) at 60% intensity throughout
-
-Note: Since the updated schema has \`ui\` as a simple array of UILayoutIntent (without time-indexed \`at\` field),
-this scene now maintains consistent focus. For time-based transitions, the server would need to send new scene 
-configurations or the ActiveLifetime would include time-indexed UI intents.
-
-Click any component to trigger component-originated focus!
+- Each panel has only a parent component (no children)
+- Video panel has focus at 70% intensity
+- Demonstrates simple parent-only panel structure
         `,
       },
     },
   },
 }
 
-export const PracticeSceneAnimated: Story = {
+export const NestedComponents: Story = {
   render: (args) => (
-    <AnimatedStory scene="practice" transitionMs={args.transitionMs} />
+    <AnimatedStory scene="nestedComponents" transitionMs={args.transitionMs} />
   ),
-  args: {
-    transitionMs: 300,
-  },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
         story: `
-**Practice Scene** with heavy focus on typing input (45 seconds)
+**Nested Components** - Parents with multiple children
 
-- Focus on video region (typing input) at 90% intensity
-- Demonstrates high-intensity focus effect
-- Try clicking the input to see component focus interaction
+- Video panel: parent (hangul) + 3 children (badge, progress, controls)
+- MainContent panel: parent (brickChart) + 1 child (tooltip)
+- SidebarTop panel: parent (scheduleElements) + 1 child (notification)
+- Children have individual durations (5s, 10s, 15s, etc.)
+- Focus on video panel applies to parent + all children
         `,
       },
     },
   },
 }
 
-export const ReviewSceneAnimated: Story = {
+export const MultiFocus: Story = {
   render: (args) => (
-    <AnimatedStory scene="review" transitionMs={args.transitionMs} />
+    <AnimatedStory scene="multiFocus" transitionMs={args.transitionMs} />
   ),
-  args: {
-    transitionMs: 300,
-  },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
         story: `
-**Review Scene** with gentle focus (20 seconds loop)
+**Multiple Focus Regions** - Complex hierarchy with competing focus
 
-- Focus on mainContent (40% intensity) throughout
-
-With the updated schema, focus remains consistent unless the server sends new ActiveLifetime data
-with different UI intents. This demonstrates stable, gentle focus on the main content area.
+- Title panel: 30% focus intensity
+- Video panel: 80% focus intensity + 2 children
+- MainContent panel: 50% focus intensity + 1 child
+- FooterLeft panel: no focus + 1 child
+- Demonstrates focus resolution with multiple competing regions
         `,
       },
     },
   },
 }
 
-export const IdleScene: Story = {
+export const ChildrenOnly: Story = {
   render: (args) => (
-    <AnimatedStory scene="idle" transitionMs={args.transitionMs} />
+    <AnimatedStory scene="childrenOnly" transitionMs={args.transitionMs} />
   ),
-  args: {
-    transitionMs: 300,
-  },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
         story: `
-**Idle Scene** with no server focus
+**Children Without Focus** - Pure hierarchical composition
 
-- No server-driven focus (focus = null)
-- All components have equal emphasis
-- Component-originated focus is still active (click any component!)
-- Demonstrates the base layout without focus constraints
+- No panels declare focus (all equal emphasis)
+- Video panel: parent + 2 children (watermark, timer)
+- MainContent panel: parent + 1 child (gridOverlay)
+- All children span full scene duration (15s)
+- Demonstrates children can exist without focus
         `,
-      },
-    },
-  },
-}
-
-export const LearningSceneStart: Story = {
-  render: (args) => (
-    <StaticStory scene="learning" time={0} transitionMs={args.transitionMs} />
-  ),
-  args: {
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Learning scene (video focused at 60%)",
-      },
-    },
-  },
-}
-
-export const LearningSceneMidpoint: Story = {
-  render: (args) => (
-    <StaticStory
-      scene="learning"
-      time={15_000}
-      transitionMs={args.transitionMs}
-    />
-  ),
-  args: {
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Learning scene at t=15s (same UI intent - video focused at 60%)",
-      },
-    },
-  },
-}
-
-export const ReviewScenePeakFocus: Story = {
-  render: (args) => (
-    <StaticStory
-      scene="review"
-      time={10_000}
-      transitionMs={args.transitionMs}
-    />
-  ),
-  args: {
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Review scene (mainContent at 40% focus intensity)",
-      },
-    },
-  },
-}
-
-export const FastTransitions: Story = {
-  render: (args) => (
-    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
-  ),
-  args: {
-    transitionMs: 100,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Learning scene with fast transitions (100ms) - snappy focus changes",
-      },
-    },
-  },
-}
-
-export const SlowTransitions: Story = {
-  render: (args) => (
-    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
-  ),
-  args: {
-    transitionMs: 800,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Learning scene with slow transitions (800ms) - smooth, cinematic focus changes",
-      },
-    },
-  },
-}
-
-export const NoTransitions: Story = {
-  render: (args) => (
-    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
-  ),
-  args: {
-    transitionMs: 0,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Learning scene with instant transitions (0ms) - immediate layout changes",
       },
     },
   },

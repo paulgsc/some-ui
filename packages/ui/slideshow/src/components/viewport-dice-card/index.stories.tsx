@@ -1,3 +1,4 @@
+import { componentRegistry } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { ViewportConfig } from "some-types-utils"
 import { PolyhedronFactory } from "some-types-utils"
@@ -42,60 +43,22 @@ const simpleCubeConfig: ViewportConfig = {
   id: "simple-cube",
   items: [
     {
-      kind: "simple-card",
+      kind: "neon",
       contentIndex: 0,
-      durationMs: 3000,
-      props: {
-        index: 0,
-        bgColors: [
-          "bg-gradient-to-br from-blue-500 to-purple-600",
-          "bg-gradient-to-br from-emerald-500 to-teal-600",
-          "bg-gradient-to-br from-rose-500 to-pink-600",
-          "bg-gradient-to-br from-amber-500 to-orange-600",
-        ],
-      },
+      durationMs: 30_000,
+      props: {},
     },
     {
-      kind: "simple-card",
+      kind: "neon",
       contentIndex: 1,
-      durationMs: 3000,
-      props: {
-        index: 1,
-        bgColors: [
-          "bg-gradient-to-br from-blue-500 to-purple-600",
-          "bg-gradient-to-br from-emerald-500 to-teal-600",
-          "bg-gradient-to-br from-rose-500 to-pink-600",
-          "bg-gradient-to-br from-amber-500 to-orange-600",
-        ],
-      },
+      durationMs: 30_000,
+      props: {},
     },
     {
-      kind: "simple-card",
+      kind: "neon",
       contentIndex: 2,
-      durationMs: 3000,
-      props: {
-        index: 2,
-        bgColors: [
-          "bg-gradient-to-br from-blue-500 to-purple-600",
-          "bg-gradient-to-br from-emerald-500 to-teal-600",
-          "bg-gradient-to-br from-rose-500 to-pink-600",
-          "bg-gradient-to-br from-amber-500 to-orange-600",
-        ],
-      },
-    },
-    {
-      kind: "simple-card",
-      contentIndex: 3,
-      durationMs: 3000,
-      props: {
-        index: 3,
-        bgColors: [
-          "bg-gradient-to-br from-blue-500 to-purple-600",
-          "bg-gradient-to-br from-emerald-500 to-teal-600",
-          "bg-gradient-to-br from-rose-500 to-pink-600",
-          "bg-gradient-to-br from-amber-500 to-orange-600",
-        ],
-      },
+      durationMs: 30_000,
+      props: {},
     },
   ],
   polyhedron: PolyhedronFactory.cube(),
@@ -169,6 +132,7 @@ const galleryConfig: ViewportConfig = {
 export const SimpleCube: Story = {
   args: {
     viewportConfig: simpleCubeConfig,
+    registry: componentRegistry,
     perspective: 1200,
     showBeam: true,
     hideBackface: false,

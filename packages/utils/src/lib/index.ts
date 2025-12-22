@@ -8,15 +8,18 @@ export {
   createEventBus,
   initializeSpeechQueue,
   getSpeechQueue,
-  selectCompletedScene,
-  selectCurrentScene,
-  selectCurrentSceneIndex,
   selectProgress,
   selectIsRunning,
   selectTotalDuration,
   selectCurrentTime,
   selectConnectionStatus,
-  selectScheduledScenes,
+  selectActiveLifetimes,
   useOrchestratorStore,
 } from "./context"
 export type { SpeechQueueState } from "./context"
+export {
+  preloadRegistryComponents,
+  lazyWithPreload,
+  renderRegistryComponent,
+} from "./registry"
+export type { ComponentEnhancer } from "./registry"

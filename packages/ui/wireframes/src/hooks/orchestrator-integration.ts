@@ -8,83 +8,91 @@ import type {
   OrchestratorState,
   SceneConfig,
   UILayoutIntent,
+  YouTubeRegion,
 } from "some-types-utils"
+
+/* -----------------------------------------------------------
+ * Intent resolution
+ * --------------------------------------------------------- */
 
 export function resolveUILayoutIntent(
   activeLifetimes: Array<ActiveLifetime>
-): UILayoutIntent {
-  // Find the active scene lifetime
+): UILayoutIntent | undefined {
   const sceneLifetime = activeLifetimes.find(
     (lifetime) => lifetime.kind.type === "Scene"
   )
 
   if (!sceneLifetime || sceneLifetime.kind.type !== "Scene") {
-    return {}
+    return undefined
   }
 
-  // Return the UI intent from the active scene
-  return sceneLifetime.kind.ui ?? {}
+  return sceneLifetime.kind.ui
 }
 
 export function resolveUILayoutIntentFromScene(
   scene: SceneConfig
-): UILayoutIntent {
-  return scene.ui[0] ?? {}
+): UILayoutIntent | undefined {
+  return scene.ui[0]
 }
 
-// Scene registry type
+/* -----------------------------------------------------------
+ * Scene registry
+ * --------------------------------------------------------- */
+
 export type SceneRegistry = Record<string, SceneConfig>
+
+/* -----------------------------------------------------------
+ * Hook: resolve active UI intent
+ * --------------------------------------------------------- */
 
 export function useResolvedUIIntent(
   orchestratorState: OrchestratorState,
   sceneRegistry: SceneRegistry
-): UILayoutIntent {
+): UILayoutIntent | undefined {
   return useMemo(() => {
-    // First priority: check active_lifetimes for Scene with ui intent
-    if (orchestratorState.active_lifetimes.length > 0) {
-      const intent = resolveUILayoutIntent(orchestratorState.active_lifetimes)
+    // Priority 1: active lifetime
+    const liveIntent = resolveUILayoutIntent(orchestratorState.active_lifetimes)
 
-      if (intent.content || intent.focus !== undefined) {
-        return intent
-      }
+    if (hasAnyPanelContent(liveIntent)) {
+      return liveIntent
     }
 
-    // Fallback: lookup scene in registry and use its UI config
+    // Priority 2: scene registry fallback
     const sceneName = orchestratorState.current_active_scene
-    if (!sceneName) return {}
+    if (!sceneName) return undefined
 
     const scene = sceneRegistry[sceneName]
     if (!scene) {
       console.warn(`Scene "${sceneName}" not found in registry`)
-      return {}
+      return undefined
     }
 
     return resolveUILayoutIntentFromScene(scene)
   }, [
     orchestratorState.active_lifetimes,
     orchestratorState.current_active_scene,
-    orchestratorState.current_time,
     sceneRegistry,
   ])
 }
 
-export function useSyncServerFocus(intent: UILayoutIntent) {
-  const emit = useFocusStore((s) => s.emit)
 
-  useEffect(() => {
-    if (!intent.focus) return
+/* -----------------------------------------------------------
+ * Helpers
+ * --------------------------------------------------------- */
 
-    emit({
-      source: "server",
-      region: intent.focus.region,
-      intensity: intent.focus.intensity,
-      priority: 10, // Server always wins
-    })
-  }, [intent.focus, emit])
+function hasAnyPanelContent(intent: UILayoutIntent | undefined): boolean {
+  if (!intent?.panels) return false
+
+  return Object.values(intent.panels).some(
+    (panel) => panel.children?.length || panel.focus !== undefined
+  )
 }
 
-// Hook: Prune expired focus proposals
-export function useFocusPruning(intervalMs = 100) {
+/* -----------------------------------------------------------
+ * Focus pruning / resolution
+ * --------------------------------------------------------- */
+
+export function useFocusPruning(intervalMs = 100): void {
   const prune = useFocusStore((s) => s.prune)
 
   useEffect(() => {
@@ -93,7 +101,6 @@ export function useFocusPruning(intervalMs = 100) {
   }, [prune, intervalMs])
 }
 
-// Hook: Get resolved focus with current time
 export function useCurrentResolvedFocus() {
   return useFocusStore(useMemo(() => selectResolvedFocus(Date.now()), []))
 }

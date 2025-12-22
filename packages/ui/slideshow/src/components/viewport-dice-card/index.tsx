@@ -1,15 +1,17 @@
-import type { FC } from "react"
-import { Fragment, Suspense, useCallback } from "react"
+import { Fragment, useCallback } from "react"
 import { CubeGeometry } from "@slideshow/components/cube-geometry"
-import type { ComponentRegistry } from "@slideshow/hooks/use-viewport-preload-hints"
 import { useViewportPreloadHints } from "@slideshow/hooks/use-viewport-preload-hints"
-import type { ViewportConfig } from "some-types-utils"
+import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
 import { BorderBeam } from "some-ui-shared"
-import { useCycleRotationAdapter, useViewport } from "some-ui-utils"
+import {
+  renderRegistryComponent,
+  useCycleRotationAdapter,
+  useViewport,
+} from "some-ui-utils"
 
-export type ViewportDiceCardProps = {
+export type ViewportDiceCardProps<K extends string> = {
   viewportConfig: ViewportConfig
-  registry: ComponentRegistry
+  registry: ComponentRegistry<K>
   perspective?: number
   className?: string
   faceClassName?: string
@@ -32,7 +34,7 @@ export type ViewportDiceCardProps = {
  * - Include loading UI chrome
  * - Make state-based component decisions
  */
-export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
+export const ViewportDiceCard = <K extends string>({
   viewportConfig,
   registry,
   perspective,
@@ -41,7 +43,7 @@ export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
   showBeam = true,
   hideBackface = false,
   facesAhead = 1,
-}) => {
+}: ViewportDiceCardProps<K>) => {
   const { faces, state, isLoading, error } = useViewport(viewportConfig, {
     autoTick: true,
     tickIntervalMs: 100,
@@ -58,7 +60,7 @@ export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
    * Accumulated duration of the currently visible face
    */
   const faceDurationMs = useCallback(() => {
-    if (!state) return 0
+    if (!state?.cursor) return 0
 
     const { items, faceCapacity } = viewportConfig
     const faceIndex = Math.floor(state.cursor / faceCapacity)
@@ -105,16 +107,13 @@ export const ViewportDiceCard: FC<ViewportDiceCardProps> = ({
               const { kind, props } = descriptor
               if (!kind) return null
 
-              const entry = registry[kind]
-              if (!entry) return null
-
-              const { Component } = entry
-
+              // Use shared registry renderer with minimal policy
               return (
                 <Fragment key={itemIndex}>
-                  <Suspense fallback={null}>
-                    <Component {...props} />
-                  </Suspense>
+                  {renderRegistryComponent(registry, kind as K, props, {
+                    withSuspense: true,
+                    fallback: null,
+                  })}
                 </Fragment>
               )
             })}

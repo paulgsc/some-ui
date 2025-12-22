@@ -1,25 +1,34 @@
 import type { ReactNode } from "react"
 import { useMemo } from "react"
+import type { RegionContentMap } from "@wireframes/components/layout-projection"
+import { useResolvedContent } from "@wireframes/components/layout-projection"
 import { RenderSolved } from "@wireframes/components/layout-renderer"
-import type { YouTubeRegion } from "@wireframes/hooks/focus-system"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import {
   useCurrentResolvedFocus,
   useFocusPruning,
   useResolvedUIIntent,
-  useSyncServerFocus,
 } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
-import { useResolvedContent } from "@wireframes/lib/layout-projection"
 import type {
   Constraint,
   ConstraintKey,
   LayoutNode,
 } from "@wireframes/lib/resizable-layout"
 import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
-import type { ComponentRegistry, OrchestratorState } from "some-types-utils"
+import type {
+  ComponentRegistry,
+  OrchestratorState,
+  YouTubeRegion,
+} from "some-types-utils"
 
-// YouTube tree definition (static, client-owned)
+/**
+ * YouTube layout tree definition (static, client-owned)
+ *
+ * Defines the hierarchical structure of the YouTube-like interface:
+ * - Title bar at top
+ * - Main content area split into left (video + footer) and right (sidebar)
+ */
 const youtubeTree: LayoutNode<YouTubeRegion> = {
   type: "split",
   axis: "col",
@@ -73,7 +82,12 @@ const youtubeTree: LayoutNode<YouTubeRegion> = {
   ],
 }
 
-// Default constraints (static)
+/**
+ * Default layout constraints (static)
+ *
+ * Defines ideal proportions for each region and split
+ * These are adjusted dynamically based on focus state
+ */
 const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
   ["title", { ideal: 8, min: 0, max: 100 }],
   ["content", { ideal: 88, min: 0, max: 100 }],
@@ -96,6 +110,22 @@ type OrchestratedViewportProps<K extends string> = {
   transitionMs?: number
 }
 
+/**
+ * OrchestratedYouTubeViewport
+ *
+ * Main orchestrated layout component that:
+ * 1. Resolves UI intent from orchestrator state
+ * 2. Syncs and resolves focus (server + client proposals)
+ * 3. Resolves content from intent using registry renderer
+ * 4. Computes focus-adjusted layout constraints
+ * 5. Solves and renders the layout with smooth transitions
+ *
+ * This component is the integration point between:
+ * - Orchestrator (state machine)
+ * - Registry renderer (component resolution)
+ * - Layout solver (constraint-based positioning)
+ * - Focus system (dynamic layout adjustment)
+ */
 export const OrchestratedYouTubeViewport = <K extends string>({
   orchestratorState,
   sceneRegistry,
@@ -107,9 +137,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   // 1. Resolve UI intent from orchestrator state + scene registry
   const uiIntent = useResolvedUIIntent(orchestratorState, sceneRegistry)
 
-  // 2. Sync server focus to focus store
-  useSyncServerFocus(uiIntent)
-
   // 3. Prune expired focus proposals
   useFocusPruning()
 
@@ -117,7 +144,11 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const resolvedFocus = useCurrentResolvedFocus()
 
   // 5. Resolve content from intent + registry
-  const content = useResolvedContent(uiIntent, componentRegistry)
+  // Now uses shared renderRegistryComponent internally
+  const content: RegionContentMap = useResolvedContent(
+    uiIntent,
+    componentRegistry
+  )
 
   // 6. Compute focus-adjusted constraints
   const constraints = useMemo(
@@ -131,17 +162,17 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     [resolvedFocus]
   )
 
-  // 7. Solve layout
+  // 7. Solve layout based on constraints and container dimensions
   const layout = useMemo(() => {
     if (!rect) return null
     return solveLayout(youtubeTree, constraints, rect)
   }, [rect, constraints])
 
-  // 8. Render leaf function
+  // 8. Render leaf function - wraps content with transition styling
   const renderLeaf = useMemo(() => {
     const RenderLeaf = (id: YouTubeRegion): ReactNode => {
       return (
-        <div className="relative size-full transition-all">
+        <div className="bg-none relative size-full transition-all">
           {content[id] ?? <div className="w-full h-full" />}
         </div>
       )

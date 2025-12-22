@@ -1,45 +1,59 @@
 import { useEffect } from "react"
-import type { ComponentType, LazyExoticComponent } from "react"
-import type { ViewportConfig } from "some-types-utils"
+import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
+import { preloadRegistryComponents } from "some-ui-utils"
 
-export type RegistryEntry = {
-  Component: LazyExoticComponent<ComponentType<any>>
-  preload: () => Promise<{ default: ComponentType<any> }>
-}
-
-export type ComponentRegistry = Record<string, RegistryEntry>
-
-type Args = {
+type UseViewportPreloadHintsArgs<K extends string> = {
   viewportConfig: ViewportConfig
   cursor: number
   facesAhead: number
-  registry: ComponentRegistry
+  registry: ComponentRegistry<K>
 }
 
-export function useViewportPreloadHints({
+/**
+ * useViewportPreloadHints
+ *
+ * Preloads components for upcoming viewport faces
+ *
+ * Strategy:
+ * - Looks ahead N faces from current cursor position
+ * - Collects unique component kinds in those faces
+ * - Delegates to preloadRegistryComponents for actual preloading
+ *
+ * This prevents loading spinners when components come into view
+ *
+ * Separation of concerns:
+ * - This hook: Viewport-aware lookahead calculation
+ * - preloadRegistryComponents: Generic batch preloading
+ */
+export function useViewportPreloadHints<K extends string>({
   viewportConfig,
   cursor,
   facesAhead,
   registry,
-}: Args) {
+}: UseViewportPreloadHintsArgs<K>) {
   useEffect(() => {
     const { items, faceCapacity } = viewportConfig
     const currentFace = Math.floor(cursor / faceCapacity)
 
-    const kinds = new Set<string>()
+    // Collect unique component kinds from upcoming faces
+    const kinds = new Set<K>()
 
     for (let i = 1; i <= facesAhead; i++) {
-      const start = (currentFace + i) * faceCapacity
+      const faceIndex = currentFace + i
+      const start = faceIndex * faceCapacity
       const end = Math.min(start + faceCapacity, items.length)
 
       for (let j = start; j < end; j++) {
-        const kind = items[j]?.kind
-        if (kind) kinds.add(kind)
+        const kind = items[j]?.kind as K | undefined
+        if (kind) {
+          kinds.add(kind)
+        }
       }
     }
 
-    kinds.forEach((kind) => {
-      registry[kind].preload()
-    })
+    // Delegate to shared preload utility
+    if (kinds.size > 0) {
+      preloadRegistryComponents(registry, Array.from(kinds))
+    }
   }, [cursor, facesAhead, viewportConfig, registry])
 }
