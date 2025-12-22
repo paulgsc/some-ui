@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react"
-import { Clock, Info, Tag } from "lucide-react"
-import type { SceneConfig } from "some-types-utils"
+import { AlertCircle, Clock, Code, Layers, Save } from "lucide-react"
+import type { SceneConfig, UILayoutIntent } from "some-types-utils"
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -15,22 +15,15 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
 } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 type EditSceneDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   scene: SceneConfig | null
   onSave: (scene: SceneConfig) => void
-}
-
-const secondsToMs = (seconds: number) => seconds * 1_000
-const msToSeconds = (ms: number) => Math.floor(ms / 1_000)
-
-const formatDuration = (seconds: number) => {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}m ${s}s`
 }
 
 export const EditSceneDialog = ({
@@ -40,217 +33,168 @@ export const EditSceneDialog = ({
   onSave,
 }: EditSceneDialogProps) => {
   const [sceneName, setSceneName] = useState("")
-  const [durationMinutes, setDurationMinutes] = useState("")
-  const [durationSeconds, setDurationSeconds] = useState("")
+  const [durationSec, setDurationSec] = useState(0)
+  const [startTimeSec, setStartTimeSec] = useState<number | undefined>(
+    undefined
+  )
 
-  const [metaTitle, setMetaTitle] = useState("")
-  const [metaSubtitle, setMetaSubtitle] = useState("")
-  const [metaDescription, setMetaDescription] = useState("")
+  // JSON Editor State
+  const [uiJson, setUiJson] = useState("")
+  const [jsonError, setJsonError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!scene) return
-
     setSceneName(scene.scene_name)
-    const totalSeconds = msToSeconds(scene.duration)
-    setDurationMinutes(Math.floor(totalSeconds / 60).toString())
-    setDurationSeconds((totalSeconds % 60).toString())
+    setDurationSec(Math.floor(scene.duration / 1000))
+    setStartTimeSec(
+      scene.start_time !== undefined
+        ? Math.floor(scene.start_time / 1000)
+        : undefined
+    )
 
-    setMetaTitle(scene.metadata?.title ?? "")
-    setMetaSubtitle(scene.metadata?.subtitle ?? "")
-    setMetaDescription(scene.metadata?.description ?? "")
+    // Format existing UI intents for the JSON editor
+    setUiJson(JSON.stringify(scene.ui || [], null, 2))
+    setJsonError(null)
   }, [scene])
 
-  const minutes = Number.parseInt(durationMinutes, 10) || 0
-  const seconds = Number.parseInt(durationSeconds, 10) || 0
-  const totalSeconds = minutes * 60 + seconds
+  const validateAndSave = () => {
+    try {
+      const parsedUi = JSON.parse(uiJson)
+      if (!Array.isArray(parsedUi))
+        throw new Error("UI Intents must be an array")
 
-  const handleSave = () => {
-    if (!scene || !sceneName || totalSeconds <= 0) return
-
-    onSave({
-      ...scene,
-      scene_name: sceneName,
-      duration: secondsToMs(totalSeconds),
-      metadata: {
-        ...scene.metadata, // preserve unknown keys
-        title: metaTitle || undefined,
-        subtitle: metaSubtitle || undefined,
-        description: metaDescription || undefined,
-      },
-    })
-
-    onOpenChange(false)
+      onSave({
+        ...scene!,
+        scene_name: sceneName,
+        duration: durationSec * 1000,
+        start_time: startTimeSec ?? 0,
+        ui: parsedUi as Array<UILayoutIntent>,
+      })
+      onOpenChange(false)
+    } catch (e: any) {
+      setJsonError(e.message || "Invalid JSON format")
+    }
   }
-
-  const hasMetadata = metaTitle || metaSubtitle || metaDescription
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[540px]">
-        <DialogHeader>
-          <DialogTitle>Edit Scene</DialogTitle>
-          <DialogDescription>
-            Configure scene properties and optional metadata
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[800px] h-[85vh] flex flex-col p-0 overflow-hidden bg-card">
+        <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              Scene Orchestrator
+            </DialogTitle>
+            {scene && (
+              <Badge variant="outline" className="font-mono text-[10px]">
+                REV_{scene.duration}
+              </Badge>
+            )}
+          </div>
         </DialogHeader>
 
-        <Tabs defaultValue="properties" className="mt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="properties" className="gap-2">
-              <Tag className="h-4 w-4" />
-              Properties
-            </TabsTrigger>
-            <TabsTrigger value="metadata" className="gap-2 relative">
-              <Info className="h-4 w-4" />
-              Metadata
-              {hasMetadata && (
-                <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" />
-              )}
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="layout" className="flex-1 flex flex-col min-h-0">
+          <div className="px-6 pt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="layout" className="gap-2">
+                <Code className="w-4 h-4" /> Rich Intent Editor
+              </TabsTrigger>
+              <TabsTrigger value="config" className="gap-2">
+                <Clock className="w-4 h-4" /> Timeline Config
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="properties" className="space-y-5 pt-4">
-            {/* Scene Name */}
-            <div className="space-y-2">
-              <Label htmlFor="scene-name" className="text-sm font-medium">
-                Scene Name
-                <span className="text-destructive ml-1">*</span>
-              </Label>
-              <Input
-                id="scene-name"
-                value={sceneName}
-                onChange={(e) => setSceneName(e.target.value)}
-                placeholder="e.g., Opening Credits, Act 1"
-                className="h-10"
-              />
+          {/* Layout Tab: The JSON Workspace */}
+          <TabsContent
+            value="layout"
+            className="flex-1 flex flex-col min-h-0 p-6 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h4 className="text-sm font-semibold">Intent Stack</h4>
+                <p className="text-xs text-muted-foreground">
+                  Paste your `UILayoutIntent` array here to define regions,
+                  content, and focus.
+                </p>
+              </div>
+              {jsonError && (
+                <Badge variant="destructive" className="animate-pulse gap-1">
+                  <AlertCircle className="w-3 h-3" /> Syntax Error
+                </Badge>
+              )}
             </div>
 
-            {/* Duration */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Duration
-                <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={durationMinutes}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        if (!v || /^\d+$/.test(v)) setDurationMinutes(v)
-                      }}
-                      placeholder="0"
-                      className="h-10 pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      min
-                    </span>
-                  </div>
+            <div className="flex-1 relative font-mono text-sm">
+              <Textarea
+                value={uiJson}
+                onChange={(e) => {
+                  setUiJson(e.target.value)
+                  if (jsonError) setJsonError(null)
+                }}
+                className={cn(
+                  "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors focus-visible:ring-0",
+                  jsonError ? "border-destructive/50" : "border-border"
+                )}
+                placeholder="[ { 'intent': { ... } } ]"
+                spellCheck={false}
+              />
+              {jsonError && (
+                <div className="absolute bottom-4 left-4 right-4 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive-foreground">
+                  {jsonError}
                 </div>
-                <span className="text-muted-foreground">:</span>
-                <div className="flex-1">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="59"
-                      value={durationSeconds}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        const num = Number.parseInt(v, 10)
-                        if (!v || (/^\d+$/.test(v) && num <= 59))
-                          setDurationSeconds(v)
-                      }}
-                      placeholder="0"
-                      className="h-10 pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      sec
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {totalSeconds > 0 && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span className="inline-block h-1 w-1 rounded-full bg-muted-foreground" />
-                  Total: {formatDuration(totalSeconds)} ({totalSeconds}s)
-                </p>
               )}
             </div>
           </TabsContent>
 
-          <TabsContent value="metadata" className="space-y-4 pt-4">
-            <div className="rounded-lg border border-border bg-muted/30 p-3 mb-4">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Metadata is optional supplementary information that can be used
-                for display or organizational purposes.
-              </p>
-            </div>
-
-            <div className="space-y-4">
+          {/* Config Tab: Standard Properties */}
+          <TabsContent value="config" className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="meta-title" className="text-sm font-medium">
-                  Title
-                </Label>
+                <Label>Scene Display Name</Label>
                 <Input
-                  id="meta-title"
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                  placeholder="Display title for this scene"
-                  className="h-10"
+                  value={sceneName}
+                  onChange={(e) => setSceneName(e.target.value)}
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="meta-subtitle" className="text-sm font-medium">
-                  Subtitle
-                </Label>
+                <Label>Layer Persistence</Label>
+                <div className="h-10 flex items-center px-3 rounded-md bg-muted/50 text-xs text-muted-foreground">
+                  Standard Transition (Ease-In-Out)
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Start Time (Seconds)</Label>
                 <Input
-                  id="meta-subtitle"
-                  value={metaSubtitle}
-                  onChange={(e) => setMetaSubtitle(e.target.value)}
-                  placeholder="Additional context or tagline"
-                  className="h-10"
+                  type="number"
+                  placeholder="0 (Sequential)"
+                  value={startTimeSec ?? ""}
+                  onChange={(e) =>
+                    setStartTimeSec(
+                      e.target.value ? Number(e.target.value) : undefined
+                    )
+                  }
                 />
               </div>
-
               <div className="space-y-2">
-                <Label
-                  htmlFor="meta-description"
-                  className="text-sm font-medium"
-                >
-                  Description
-                </Label>
+                <Label>Total Duration (Seconds)</Label>
                 <Input
-                  id="meta-description"
-                  value={metaDescription}
-                  onChange={(e) => setMetaDescription(e.target.value)}
-                  placeholder="Detailed description or notes"
-                  className="h-10"
+                  type="number"
+                  value={durationSec}
+                  onChange={(e) => setDurationSec(Number(e.target.value))}
                 />
               </div>
             </div>
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="sm:w-auto"
-          >
-            Cancel
+        <DialogFooter className="p-6 bg-muted/10 border-t gap-3">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Discard
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!sceneName || totalSeconds <= 0}
-            className="sm:w-auto"
-          >
-            Save Changes
+          <Button onClick={validateAndSave} className="gap-2">
+            <Save className="w-4 h-4" />
+            Sync to Timeline
           </Button>
         </DialogFooter>
       </DialogContent>

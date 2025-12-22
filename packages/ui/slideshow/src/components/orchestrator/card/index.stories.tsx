@@ -1,5 +1,5 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig, TimeMs } from "some-types-utils"
 
 import { OrchestratorDemo } from "."
 
@@ -7,203 +7,214 @@ type Story = StoryObj<typeof OrchestratorDemo>
 type Meta = MetaObj<typeof OrchestratorDemo>
 
 /* -----------------------------------------------------
-   Shared mock data (ALL DURATIONS IN MILLISECONDS)
+    Mock Factory: Handles mandatory start_time math
 ----------------------------------------------------- */
-const BASE_SCENES_MS: Array<SceneConfig> = [
-  {
-    scene_name: "Opening Sequence",
-    duration: 30_000,
-    metadata: {
-      title: "Welcome",
-      subtitle: "Stream Introduction",
-      description: "Dynamic opening with logo animation and music",
-    },
-  },
-  {
-    scene_name: "Main Content Block",
-    duration: 120_000,
-    metadata: {
-      title: "Featured Content",
-      description: "Primary content segment with audience engagement",
-    },
-  },
-  {
-    scene_name: "Transition Graphics",
-    duration: 15_000,
-    metadata: {
-      subtitle: "Scene Transition",
-      description: "Animated transition effect",
-    },
-  },
-  {
-    scene_name: "Interview Segment",
-    duration: 180_000,
-    metadata: {
-      title: "Guest Interview",
-      subtitle: "Special Guest Appearance",
-      description: "In-depth conversation with industry expert",
-    },
-  },
-  {
-    scene_name: "Product Showcase",
-    duration: 90_000,
-    metadata: {
-      title: "Product Demo",
-      subtitle: "New Release Spotlight",
-      description: "Detailed walkthrough of latest features",
-    },
-  },
-  {
-    scene_name: "Closing Credits",
-    duration: 45_000,
-    metadata: {
-      title: "Thank You",
-      subtitle: "See You Next Time",
-      description: "Credits roll with social media links",
-    },
-  },
-]
-
-/* -----------------------------------------------------
-   Stories
------------------------------------------------------ */
-export const Default: Story = {
-  name: "Idle / Default",
-  args: {},
-}
-
-/**
- * Confirms the UI behaves correctly when durations are large
- * and clearly in milliseconds (not seconds).
- */
-export const WithLongScenesMs: Story = {
-  name: "Long Scenes (ms)",
-  render: () => (
-    <OrchestratorDemo
-      key="long-ms"
-      initialScenes={[
-        {
-          scene_name: "Marathon Stream",
-          duration: 3_600_000,
-          metadata: {
-            title: "Extended Session",
-            subtitle: "60 Minute Special",
-            description: "Long-form content with multiple segments",
-          },
-        },
-        {
-          scene_name: "Intermission",
-          duration: 900_000,
-          metadata: {
-            title: "Break Time",
-            subtitle: "15 Minute Pause",
-            description: "Refreshment break with ambient music",
-          },
-        },
-        {
-          scene_name: "Encore",
-          duration: 1_800_000,
-          metadata: {
-            title: "Bonus Content",
-            subtitle: "30 Minute Encore",
-            description: "Additional content by popular demand",
-          },
-        },
-      ]}
-    />
-  ),
-}
-
-/**
- * Stress test: many scenes, short durations
- */
-export const ManyScenesStress: Story = {
-  name: "Many Scenes Stress Test",
-  render: () => (
-    <OrchestratorDemo
-      key="many-scenes"
-      initialScenes={Array.from({ length: 25 }).map((_, i) => ({
-        scene_name: `Scene ${i + 1}`,
-        duration: 10_000 + i * 1000,
-        metadata: {
-          title: `Scene ${i + 1}`,
-          description: `Auto-generated scene #${i + 1}`,
-        },
-      }))}
-    />
-  ),
-}
-
-/**
- * Empty state handling
- */
-export const ZeroScenes: Story = {
-  name: "No Scenes",
-  render: () => <OrchestratorDemo key="empty-scenes" initialScenes={[]} />,
-}
-
-/**
- * Simulated running state
- * Useful for visual QA of progress bars & timecodes
- */
-export const LiveRunning: Story = {
-  name: "Live / Running",
-  parameters: {
-    controls: { disable: true },
-  },
-}
-
-/**
- * Paused mid-stream
- */
-export const PausedMidStream: Story = {
-  name: "Paused Mid-Stream",
-  parameters: {
-    controls: { disable: true },
-  },
-}
-
-/**
- * Validates DnD reordering reflects immediately
- */
-export const ReorderedScenes: Story = {
-  name: "Reordered Scenes",
-  render: () => (
-    <OrchestratorDemo
-      key="reordered"
-      initialScenes={[...BASE_SCENES_MS].reverse()}
-    />
-  ),
-}
-
-/**
- * Validates edit dialog wiring
- */
-export const EditingScene: Story = {
-  name: "Editing Scene",
-  play: async ({ canvasElement }) => {
-    // Intentionally left light — manual verification
-    // Story ensures dialog mounts correctly
-  },
-}
-
-/**
- * Stream auto status story (isStreaming true/false)
- */
-export const StreamingAutoStatus: Story = {
-  name: "Streaming Status Toggle",
-  parameters: {
-    controls: { disable: true },
-  },
+const createMockTimeline = (
+  scenes: Array<Partial<SceneConfig>>
+): Array<SceneConfig> => {
+  let currentTime: TimeMs = 0
+  return scenes.map((s) => {
+    const scene: SceneConfig = {
+      scene_name: s.scene_name ?? "Untitled Scene",
+      duration: s.duration ?? 30_000,
+      start_time: currentTime,
+      ui: s.ui ?? [],
+    }
+    currentTime += scene.duration
+    return scene
+  })
 }
 
 /* -----------------------------------------------------
-   Meta
+    Stories
+----------------------------------------------------- */
+
+/**
+ * Empty State
+ */
+export const Empty: Story = {
+  name: "State: No Scenes",
+  args: {
+    initialScenes: [],
+  },
+}
+
+/**
+ * Standard Production Workflow
+ * Showcases a mix of simple scenes and scenes with UI overlays/props
+ */
+export const ProductionWorkflow: Story = {
+  name: "Workflow: Live Production",
+  args: {
+    initialScenes: createMockTimeline([
+      {
+        scene_name: "Pre-stream Loop",
+        duration: 60_000,
+        ui: [
+          {
+            content: {
+              background: {
+                registryKey: "MotionGraphics",
+                props: { pattern: "dots", speed: "slow", color: "#3b82f6" },
+              },
+              overlay: {
+                registryKey: "CountdownTimer",
+                props: {
+                  targetDate: "2025-12-31T23:59:59",
+                  label: "Starting Soon",
+                },
+              },
+            },
+          },
+        ],
+      },
+      {
+        scene_name: "Host Intro",
+        duration: 120_000,
+        ui: [
+          {
+            content: {
+              main: {
+                registryKey: "CameraFeed",
+                props: { source: "Cam-01", filter: "none" },
+              },
+              lower_third: {
+                registryKey: "SocialCard",
+                props: {
+                  name: "Alex Rivera",
+                  handle: "@arivera_dev",
+                  platform: "twitter",
+                },
+              },
+            },
+            focus: { region: "bottom-left", intensity: 0.8 },
+          },
+        ],
+      },
+      {
+        scene_name: "Code Walkthrough",
+        duration: 300_000,
+        ui: [
+          {
+            content: {
+              main: {
+                registryKey: "ScreenShare",
+                props: { window: "VS Code", zoom: 1.2 },
+              },
+              pip: {
+                registryKey: "CameraFeed",
+                props: { source: "Cam-01", size: "small" },
+              },
+            },
+            focus: { region: "center", intensity: 1.0 },
+          },
+        ],
+      },
+    ]),
+  },
+}
+
+/**
+ * Layout Intensity & Focus Intent
+ * Specifically showcases how the 'focus' field changes the UI priority
+ */
+export const SpatialFocusTesting: Story = {
+  name: "UI: Focus Intent Testing",
+  args: {
+    initialScenes: createMockTimeline([
+      {
+        scene_name: "High Intensity Left",
+        duration: 30_000,
+        ui: [
+          {
+            content: {
+              sidebar: { registryKey: "ChatStream", props: { theme: "glass" } },
+            },
+            focus: { region: "left", intensity: 0.95 },
+          },
+        ],
+      },
+      {
+        scene_name: "Subtle Background Focus",
+        duration: 30_000,
+        ui: [
+          {
+            content: {
+              bg: { registryKey: "Ambience", props: { type: "ocean" } },
+            },
+            focus: { region: "center", intensity: 0.1 },
+          },
+        ],
+      },
+    ]),
+  },
+}
+
+/**
+ * Complex Multi-Intent Scene
+ * A single scene containing multiple layout intents (multi-step UI)
+ */
+export const MultiIntentScene: Story = {
+  name: "UI: Multiple Intents per Scene",
+  args: {
+    initialScenes: createMockTimeline([
+      {
+        scene_name: "Interview with Guest",
+        duration: 180_000,
+        ui: [
+          {
+            // First Layout Intent: Split Screen
+            content: {
+              left: {
+                registryKey: "CameraFeed",
+                props: { source: "Cam-Host" },
+              },
+              right: {
+                registryKey: "CameraFeed",
+                props: { source: "Cam-Guest" },
+              },
+            },
+          },
+          {
+            // Second Layout Intent: Add shared ticker
+            content: {
+              footer: {
+                registryKey: "NewsTicker",
+                props: { items: ["Breaking news...", "Stock market up"] },
+              },
+            },
+            focus: { region: "bottom", intensity: 0.6 },
+          },
+        ],
+      },
+    ]),
+  },
+}
+
+/**
+ * Reordered / Reverse Check
+ */
+export const ReverseTimeline: Story = {
+  name: "Workflow: Reordered Timeline",
+  args: {
+    initialScenes: createMockTimeline([
+      { scene_name: "The End", duration: 15_000 },
+      { scene_name: "The Middle", duration: 45_000 },
+      { scene_name: "The Beginning", duration: 30_000 },
+    ]),
+  },
+}
+
+/* -----------------------------------------------------
+    Meta Configuration
 ----------------------------------------------------- */
 export default {
   title: "UI/Slideshow/Orchestrator/OrchestratorDemo",
   component: OrchestratorDemo,
   parameters: {
     layout: "fullscreen",
+  },
+  argTypes: {
+    initialScenes: { control: "object" },
   },
 } as Meta

@@ -26,7 +26,7 @@ export const RenderSolved = <T extends string>({
         out.push(
           <div
             key={current.id}
-            onClick={() => onLeafClick(current.id)}
+            onClick={() => onLeafClick?.(current.id)}
             style={{
               position: "absolute",
               left: x,

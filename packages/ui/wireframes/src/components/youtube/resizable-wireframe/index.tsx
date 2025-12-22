@@ -1,33 +1,25 @@
-import type { FC, ReactNode } from "react"
-import { useCallback, useMemo } from "react"
+import type { ReactNode } from "react"
+import { useMemo } from "react"
 import { RenderSolved } from "@wireframes/components/layout-renderer"
+import type { YouTubeRegion } from "@wireframes/hooks/focus-system"
+import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
+import {
+  useCurrentResolvedFocus,
+  useFocusPruning,
+  useResolvedUIIntent,
+  useSyncServerFocus,
+} from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
+import { useResolvedContent } from "@wireframes/lib/layout-projection"
 import type {
   Constraint,
   ConstraintKey,
   LayoutNode,
 } from "@wireframes/lib/resizable-layout"
 import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
+import type { ComponentRegistry, OrchestratorState } from "some-types-utils"
 
-export type YouTubeRegion =
-  | "video"
-  | "title"
-  | "mainContent"
-  | "footerLeft"
-  | "sidebarTop"
-  | "sidebarBottom"
-  | "footerRight"
-
-type YouTubeContent = Partial<Record<YouTubeRegion, ReactNode>>
-
-type YouTubeWireframeProps = {
-  content?: YouTubeContent
-  focusRegion?: YouTubeRegion | null
-  focusIntensity?: number // 0 to 1 (0 = normal, 1 = fully focused)
-  transitionMs?: number
-  onRegionClick?: (region: YouTubeRegion) => void
-}
-
+// YouTube tree definition (static, client-owned)
 const youtubeTree: LayoutNode<YouTubeRegion> = {
   type: "split",
   axis: "col",
@@ -81,6 +73,7 @@ const youtubeTree: LayoutNode<YouTubeRegion> = {
   ],
 }
 
+// Default constraints (static)
 const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
   ["title", { ideal: 8, min: 0, max: 100 }],
   ["content", { ideal: 88, min: 0, max: 100 }],
@@ -96,43 +89,65 @@ const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
   ["sidebarBottom", { ideal: 70, min: 0, max: 100 }],
 ])
 
-Object.freeze(defaultConstraints)
+type OrchestratedViewportProps<K extends string> = {
+  orchestratorState: OrchestratorState
+  sceneRegistry: SceneRegistry
+  componentRegistry: ComponentRegistry<K>
+  transitionMs?: number
+}
 
-export const YouTubeWireframe: FC<YouTubeWireframeProps> = ({
-  content = {},
-  focusRegion = null,
-  focusIntensity = 1,
+export const OrchestratedYouTubeViewport = <K extends string>({
+  orchestratorState,
+  sceneRegistry,
+  componentRegistry,
   transitionMs = 300,
-  onRegionClick,
-}) => {
+}: OrchestratedViewportProps<K>) => {
   const { ref, rect } = useContainerRect()
 
+  // 1. Resolve UI intent from orchestrator state + scene registry
+  const uiIntent = useResolvedUIIntent(orchestratorState, sceneRegistry)
+
+  // 2. Sync server focus to focus store
+  useSyncServerFocus(uiIntent)
+
+  // 3. Prune expired focus proposals
+  useFocusPruning()
+
+  // 4. Get resolved focus (server + component proposals)
+  const resolvedFocus = useCurrentResolvedFocus()
+
+  // 5. Resolve content from intent + registry
+  const content = useResolvedContent(uiIntent, componentRegistry)
+
+  // 6. Compute focus-adjusted constraints
   const constraints = useMemo(
     () =>
       focusConstraints(
         youtubeTree,
         defaultConstraints,
-        focusRegion,
-        focusIntensity
+        resolvedFocus?.region ?? null,
+        resolvedFocus?.intensity ?? 0
       ),
-    [focusRegion, focusIntensity]
+    [resolvedFocus]
   )
 
+  // 7. Solve layout
   const layout = useMemo(() => {
     if (!rect) return null
-
-    // Solve layout with focused constraints
     return solveLayout(youtubeTree, constraints, rect)
   }, [rect, constraints])
 
-  const renderLeaf = useCallback(
-    (id: YouTubeRegion) => {
+  // 8. Render leaf function
+  const renderLeaf = useMemo(() => {
+    const RenderLeaf = (id: YouTubeRegion): ReactNode => {
       return (
-        <div className={`relative size-full transition-all`}>{content[id]}</div>
+        <div className="relative size-full transition-all">
+          {content[id] ?? <div className="w-full h-full" />}
+        </div>
       )
-    },
-    [content]
-  )
+    }
+    return RenderLeaf
+  }, [content])
 
   return (
     <div className="absolute inset-0 flex-1 size-full" ref={ref}>
@@ -140,7 +155,6 @@ export const YouTubeWireframe: FC<YouTubeWireframeProps> = ({
         <RenderSolved
           node={layout}
           renderLeaf={renderLeaf}
-          onLeafClick={onRegionClick}
           transitionMs={transitionMs}
         />
       )}

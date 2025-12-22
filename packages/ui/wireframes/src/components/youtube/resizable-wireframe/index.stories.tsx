@@ -1,501 +1,409 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import type { OrchestratorState, SceneConfig } from "some-types-utils"
 
-import { YouTubeWireframe } from "."
-import type { YouTubeRegion } from "."
+import { OrchestratedYouTubeViewport } from "."
+import { mockComponentRegistry } from "./mock-component-registry"
 
-const meta: Meta<typeof YouTubeWireframe> = {
-  title: "UI/Wireframes/YouTubeWireframe",
-  component: YouTubeWireframe,
+// ============================================================================
+// Mock Scene Registry
+// ============================================================================
+
+const mockSceneRegistry: Record<string, SceneConfig> = {
+  learning: {
+    scene_name: "learning",
+    duration: 30_000,
+    start_time: 0,
+    ui: [
+      {
+        content: {
+          title: { registryKey: "staticTitle" },
+          video: { registryKey: "hangul" },
+          mainContent: { registryKey: "brickChart" },
+          sidebarTop: { registryKey: "scheduleElements" },
+          sidebarBottom: { registryKey: "topRightContent" },
+          footerLeft: { registryKey: "footerLeft" },
+          footerRight: { registryKey: "footerRight" },
+        },
+        focus: {
+          region: "video",
+          intensity: 0.6,
+        },
+      },
+    ],
+  },
+
+  practice: {
+    scene_name: "practice",
+    duration: 45_000,
+    start_time: 0,
+    ui: [
+      {
+        content: {
+          title: { registryKey: "staticTitle" },
+          video: {
+            registryKey: "leetype",
+            props: {
+              placeholder: "Type your answer...",
+              autoFocus: true,
+            },
+          },
+          mainContent: { registryKey: "cluesDown" },
+          sidebarTop: { registryKey: "scheduleElements" },
+          sidebarBottom: { registryKey: "topRightContent" },
+          footerLeft: { registryKey: "footerLeft" },
+          footerRight: { registryKey: "footerRight" },
+        },
+        focus: {
+          region: "video",
+          intensity: 0.9,
+        },
+      },
+    ],
+  },
+
+  review: {
+    scene_name: "review",
+    duration: 20_000,
+    start_time: 0,
+    ui: [
+      {
+        content: {
+          title: { registryKey: "staticTitle" },
+          video: { registryKey: "hangul" },
+          mainContent: { registryKey: "brickChart" },
+          sidebarTop: { registryKey: "topRightContent" },
+          sidebarBottom: { registryKey: "scheduleElements" },
+          footerLeft: { registryKey: "footerLeft" },
+          footerRight: { registryKey: "footerRight" },
+        },
+        focus: {
+          region: "mainContent",
+          intensity: 0.4,
+        },
+      },
+    ],
+  },
+
+  idle: {
+    scene_name: "idle",
+    duration: 10_000,
+    start_time: 0,
+    ui: [
+      {
+        content: {
+          title: { registryKey: "staticTitle" },
+          video: { registryKey: "hangul" },
+          mainContent: { registryKey: "brickChart" },
+          sidebarTop: { registryKey: "scheduleElements" },
+          sidebarBottom: { registryKey: "topRightContent" },
+          footerLeft: { registryKey: "footerLeft" },
+          footerRight: { registryKey: "footerRight" },
+        },
+        focus: null,
+      },
+    ],
+  },
+}
+
+// ============================================================================
+// Meta Configuration
+// ============================================================================
+
+const meta = {
+  title: "Layout/OrchestratedYouTubeViewport",
+  component: OrchestratedYouTubeViewport,
   parameters: {
     layout: "fullscreen",
-    controls: {
-      exclude: ["content", "youtubeTree", "layout", "constraints"],
+    docs: {
+      description: {
+        component: `
+# Orchestrated YouTube Viewport
+
+A deterministic, time-indexed layout projection system that combines:
+- **Static viewport tree** (client-owned)
+- **Dynamic content mapping** (server-driven)
+- **Focus proposals** (server + component-originated)
+- **Resizable layout solving** (constraint-based)
+
+## Key Features
+
+- 🎯 **Server-Authoritative Focus**: Server focus (priority 10) overrides component focus (priority 1)
+- 🔒 **Component Sandboxing**: Components can only request focus on their own region
+- ⏱️ **Time-Indexed Intents**: Layout evolves deterministically through scene timelines
+- 🎨 **Lazy-Loaded Components**: Registry-based component loading with error boundaries
+- 🧪 **Fully Deterministic**: Same (time, scene) → same layout
+
+## Architecture
+
+\`\`\`
+Server Intent (t) → Resolve UI Intent → Focus Accumulation → 
+Resolve Focus → Project Constraints → Solve Layout → Render
+\`\`\`
+
+Click on any component to see component-originated focus in action!
+        `,
+      },
     },
   },
   argTypes: {
-    // Completely disable content from args table
-    content: { table: { disable: true } },
-    youtubeTree: { table: { disable: true } },
-    layout: { table: { disable: true } },
-    constraints: { table: { disable: true } },
-
-    focusRegion: {
-      control: "select",
-      options: [
-        null,
-        "video",
-        "title",
-        "mainContent",
-        "footerLeft",
-        "footerRight",
-        "sidebarTop",
-        "sidebarBottom",
-      ],
-      description: "Which region to focus (null = no focus)",
-    },
-    focusIntensity: {
-      control: { type: "range", min: 0, max: 1, step: 0.05 },
-      description: "Focus intensity (0 = normal layout, 1 = fully focused)",
-    },
     transitionMs: {
-      control: { type: "number", min: 0, step: 50 },
-      description: "Transition duration in milliseconds",
+      control: { type: "range", min: 0, max: 1000, step: 50 },
+      description: "Animation transition duration in milliseconds",
     },
   },
-}
+  tags: ["autodocs"],
+} satisfies Meta<typeof OrchestratedYouTubeViewport>
 
 export default meta
-type Story = StoryObj<typeof YouTubeWireframe>
+type Story = StoryObj<typeof meta>
 
-/* -----------------------------------------------------
- * Helper: Default content for stories
- * Hoisted to module level for stability
- * --------------------------------------------------- */
-const createDefaultContent = (showLabels = true) => ({
-  video: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-100 to-purple-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">VIDEO</div>
-          <div className="text-xs text-gray-500">🎬 Video Player</div>
-        </div>
-      )}
-    </div>
-  ),
-  title: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-yellow-100 to-amber-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">TITLE</div>
-          <div className="text-xs text-gray-500">🔥 Breaking News</div>
-        </div>
-      )}
-    </div>
-  ),
-  mainContent: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-cyan-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-2">MAIN CONTENT</div>
-          <ul className="text-xs text-gray-500 space-y-1">
-            <li>• Recommended video</li>
-            <li>• Recommended video</li>
-            <li>• Recommended video</li>
-          </ul>
-        </div>
-      )}
-    </div>
-  ),
-  footerLeft: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-slate-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">FOOTER LEFT</div>
-          <div className="text-xs text-gray-500">© 2025</div>
-        </div>
-      )}
-    </div>
-  ),
-  footerRight: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-slate-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">FOOTER RIGHT</div>
-          <div className="text-xs text-gray-500">⚙️ Settings</div>
-        </div>
-      )}
-    </div>
-  ),
-  sidebarTop: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-emerald-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">SIDEBAR TOP</div>
-          <div className="text-xs text-gray-500">⬆️ Suggested</div>
-        </div>
-      )}
-    </div>
-  ),
-  sidebarBottom: (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-amber-100">
-      {showLabels && (
-        <div className="text-center">
-          <div className="font-semibold text-gray-700 mb-1">SIDEBAR BOTTOM</div>
-          <div className="text-xs text-gray-500">⬇️ Shorts</div>
-        </div>
-      )}
-    </div>
-  ),
-})
+// ============================================================================
+// Helper: Animated Orchestrator State
+// ============================================================================
 
-// Hoist content objects at module level for stability
-const defaultContent = createDefaultContent()
+function useAnimatedOrchestrator(
+  sceneName: string,
+  duration: number,
+  isRunning: boolean = true
+): OrchestratorState {
+  const [currentTime, setCurrentTime] = useState(0)
 
-const minimalContent = {
-  video: (
-    <div className="w-full h-full bg-black flex items-center justify-center">
-      <div className="text-white text-sm">▶ Video</div>
-    </div>
-  ),
-  title: (
-    <div className="w-full h-full bg-gray-900 text-white px-4 py-2 text-sm font-medium">
-      Video Title Goes Here
-    </div>
-  ),
-  mainContent: (
-    <div className="w-full h-full bg-white p-4 overflow-auto">
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded">
-            <div className="w-32 h-20 bg-gray-300 rounded flex-shrink-0" />
-            <div>
-              <div className="font-medium text-sm">Recommended Video {i}</div>
-              <div className="text-xs text-gray-500">Channel • 1M views</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-  sidebarTop: (
-    <div className="w-full h-full bg-gray-50 p-3 overflow-auto">
-      <div className="text-xs font-semibold text-gray-700 mb-2">Comments</div>
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="text-xs text-gray-600">
-            User {i}: Great video!
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-  sidebarBottom: (
-    <div className="w-full h-full bg-gray-100 p-3">
-      <div className="text-xs font-semibold text-gray-700">Live Chat</div>
-    </div>
-  ),
-  footerLeft: (
-    <div className="w-full h-full bg-white border-t border-gray-200 px-4 py-2 flex items-center text-xs text-gray-500">
-      © 2025 VideoApp
-    </div>
-  ),
-  footerRight: (
-    <div className="w-full h-full bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-end gap-2 text-xs">
-      <button className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200">
-        Settings
-      </button>
-    </div>
-  ),
-}
+  useEffect(() => {
+    if (!isRunning) return
 
-const richContent = {
-  video: (
-    <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
-      <div className="text-center text-white">
-        <div className="text-6xl mb-4">▶</div>
-        <div className="text-sm opacity-80">4K Video Player</div>
-      </div>
-    </div>
-  ),
-  title: (
-    <div className="w-full h-full bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-3 flex items-center justify-between">
-      <div className="font-bold">🔥 TRENDING: Amazing Content Here</div>
-      <div className="text-sm opacity-90">• LIVE</div>
-    </div>
-  ),
-  mainContent: (
-    <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 p-6 overflow-auto">
-      <h3 className="font-bold text-lg mb-4">Recommended for You</h3>
-      <div className="grid grid-cols-1 gap-4">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex gap-4">
-              <div className="w-40 h-24 bg-gradient-to-br from-purple-200 to-pink-200 rounded flex-shrink-0" />
-              <div>
-                <div className="font-semibold">Video Title {i}</div>
-                <div className="text-sm text-gray-500">Channel Name</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  1.2M views • 2 days ago
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-  sidebarTop: (
-    <div className="w-full h-full bg-gradient-to-br from-green-50 to-emerald-50 p-4 overflow-auto">
-      <h4 className="font-bold text-sm mb-3">💬 Live Comments</h4>
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded p-2 text-xs">
-            <div className="font-semibold text-emerald-600">@user{i}</div>
-            <div className="text-gray-600">This is amazing! 🔥</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
-  sidebarBottom: (
-    <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 p-4">
-      <h4 className="font-bold text-sm mb-3">⚡ Shorts</h4>
-      <div className="grid grid-cols-2 gap-2">
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="aspect-[9/16] bg-gradient-to-br from-orange-200 to-red-200 rounded"
-          />
-        ))}
-      </div>
-    </div>
-  ),
-  footerLeft: (
-    <div className="w-full h-full bg-gray-900 text-white px-6 py-3 flex items-center text-xs">
-      © 2025 VideoApp • Terms • Privacy
-    </div>
-  ),
-  footerRight: (
-    <div className="w-full h-full bg-gray-900 text-white px-6 py-3 flex items-center justify-end gap-3">
-      <button className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors">
-        Settings
-      </button>
-      <button className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors">
-        Help
-      </button>
-    </div>
-  ),
-}
+    const startTime = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      const time = elapsed % duration
+      setCurrentTime(time)
+    }, 100) // Update every 100ms
 
-/* -----------------------------------------------------
- * Base / Default
- * --------------------------------------------------- */
-export const Default: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: null,
-    focusIntensity: 0,
-    transitionMs: 300,
-  },
-}
+    return () => clearInterval(interval)
+  }, [duration, isRunning])
 
-/* -----------------------------------------------------
- * Focused modes
- * --------------------------------------------------- */
-export const VideoFocused: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "video",
-    focusIntensity: 1,
-    transitionMs: 300,
-  },
-}
-
-export const MainContentFocused: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "mainContent",
-    focusIntensity: 1,
-    transitionMs: 300,
-  },
-}
-
-export const SidebarFocused: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "sidebarTop",
-    focusIntensity: 1,
-    transitionMs: 300,
-  },
-}
-
-export const TitleFocused: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "title",
-    focusIntensity: 1,
-    transitionMs: 300,
-  },
-}
-
-/* -----------------------------------------------------
- * Partial focus (0 < intensity < 1)
- * --------------------------------------------------- */
-export const VideoPartialFocus: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "video",
-    focusIntensity: 0.5,
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "50% focus - video grows but doesn't dominate",
-      },
+  return {
+    is_running: isRunning,
+    is_paused: false,
+    current_time: currentTime,
+    total_duration: duration,
+    progress: currentTime / duration,
+    time_remaining: duration - currentTime,
+    active_lifetimes: [],
+    current_active_scene: sceneName,
+    stream_status: {
+      is_streaming: false,
+      stream_time: 0,
+      timecode: "00:00:00.000",
     },
-  },
+  }
 }
 
-export const VideoSubtleFocus: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "video",
-    focusIntensity: 0.25,
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "25% focus - gentle emphasis on video",
-      },
-    },
-  },
-}
+// ============================================================================
+// Story Wrappers
+// ============================================================================
 
-export const MainContentStrongFocus: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
-  args: {
-    focusRegion: "mainContent",
-    focusIntensity: 0.85,
-    transitionMs: 300,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "85% focus - strong emphasis while keeping sidebars visible",
-      },
-    },
-  },
-}
+const AnimatedStory = ({
+  scene,
+  transitionMs = 300,
+}: {
+  scene: string
+  transitionMs?: number
+}) => {
+  const sceneConfig = mockSceneRegistry[scene]
+  const orchestratorState = useAnimatedOrchestrator(
+    scene,
+    sceneConfig.duration,
+    true
+  )
 
-/* -----------------------------------------------------
- * Custom content examples
- * --------------------------------------------------- */
-export const MinimalContent: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={minimalContent} />,
-  args: {
-    focusRegion: null,
-    focusIntensity: 0,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Example with more realistic content styling",
-      },
-    },
-  },
-}
-
-export const RichContent: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={richContent} />,
-  args: {
-    focusRegion: null,
-    focusIntensity: 0,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Rich, colorful content with gradients and interactive elements",
-      },
-    },
-  },
-}
-
-/* -----------------------------------------------------
- * Interactive (click to focus)
- * --------------------------------------------------- */
-export const ClickToFocus: Story = {
-  render: (args) => {
-    const [focusRegion, setFocusRegion] = useState<YouTubeRegion | null>(null)
-
-    return (
-      <YouTubeWireframe
-        {...args}
-        content={defaultContent}
-        focusRegion={focusRegion}
-        focusIntensity={1}
-        transitionMs={250}
-        onRegionClick={(region) => {
-          // Toggle: click same region to unfocus
-          setFocusRegion(focusRegion === region ? null : region)
-        }}
+  return (
+    <div className="w-full h-screen">
+      <OrchestratedYouTubeViewport
+        orchestratorState={orchestratorState}
+        sceneRegistry={mockSceneRegistry}
+        componentRegistry={mockComponentRegistry}
+        transitionMs={transitionMs}
       />
-    )
+
+      {/* Debug overlay */}
+      <div className="fixed bottom-4 left-4 bg-black/80 text-white px-4 py-2 rounded text-xs font-mono">
+        <div>Scene: {scene}</div>
+        <div>
+          Time: {Math.floor(orchestratorState.current_time / 1000)}s /{" "}
+          {Math.floor(orchestratorState.total_duration / 1000)}s
+        </div>
+        <div>Progress: {Math.floor(orchestratorState.progress * 100)}%</div>
+      </div>
+    </div>
+  )
+}
+
+const StaticStory = ({
+  scene,
+  time = 0,
+  transitionMs = 300,
+}: {
+  scene: string
+  time?: number
+  transitionMs?: number
+}) => {
+  const sceneConfig = mockSceneRegistry[scene]
+
+  // Since ui is now an array of UILayoutIntent without 'at' field,
+  // we'll just use the first one for static stories
+  const uiIntent = sceneConfig.ui[0]
+
+  const orchestratorState: OrchestratorState = {
+    is_running: false,
+    is_paused: false,
+    current_time: time,
+    total_duration: sceneConfig.duration,
+    progress: time / sceneConfig.duration,
+    time_remaining: sceneConfig.duration - time,
+    active_lifetimes: [],
+    current_active_scene: scene,
+    stream_status: {
+      is_streaming: false,
+      stream_time: 0,
+      timecode: "00:00:00.000",
+    },
+  }
+
+  return (
+    <div className="w-full h-screen">
+      <OrchestratedYouTubeViewport
+        orchestratorState={orchestratorState}
+        sceneRegistry={mockSceneRegistry}
+        componentRegistry={mockComponentRegistry}
+        transitionMs={transitionMs}
+      />
+    </div>
+  )
+}
+
+// ============================================================================
+// Stories
+// ============================================================================
+
+export const LearningSceneAnimated: Story = {
+  render: (args) => (
+    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 300,
   },
   parameters: {
     docs: {
       description: {
-        story: "Click any region to fully focus it. Click again to unfocus.",
+        story: `
+**Learning Scene** with animated progression (30 seconds loop)
+
+- Focus on video region (hangul grid) at 60% intensity throughout
+
+Note: Since the updated schema has \`ui\` as a simple array of UILayoutIntent (without time-indexed \`at\` field),
+this scene now maintains consistent focus. For time-based transitions, the server would need to send new scene 
+configurations or the ActiveLifetime would include time-indexed UI intents.
+
+Click any component to trigger component-originated focus!
+        `,
       },
     },
   },
 }
 
-export const ClickToFocusWithControls: Story = {
-  render: (args) => {
-    const [focusRegion, setFocusRegion] = useState<YouTubeRegion | null>(null)
-    const [intensity, setIntensity] = useState(0.8)
-
-    return (
-      <div className="relative w-full h-screen">
-        <YouTubeWireframe
-          {...args}
-          content={defaultContent}
-          focusRegion={focusRegion}
-          focusIntensity={intensity}
-          onRegionClick={(region) => {
-            setFocusRegion(focusRegion === region ? null : region)
-          }}
-        />
-
-        {/* Control Panel */}
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-4 rounded-lg shadow-lg space-y-3 min-w-[200px]">
-          <div className="text-sm font-semibold text-gray-700">
-            Focus Controls
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs text-gray-600 block">
-              Intensity: {Math.round(intensity * 100)}%
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={intensity}
-              onChange={(e) => setIntensity(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="text-xs text-gray-500">
-            {focusRegion ? (
-              <>
-                Focused: <strong>{focusRegion}</strong>
-              </>
-            ) : (
-              "Click any region to focus"
-            )}
-          </div>
-
-          {focusRegion && (
-            <button
-              onClick={() => setFocusRegion(null)}
-              className="w-full text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded transition-colors"
-            >
-              Reset Focus
-            </button>
-          )}
-        </div>
-      </div>
-    )
+export const PracticeSceneAnimated: Story = {
+  render: (args) => (
+    <AnimatedStory scene="practice" transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 300,
   },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Practice Scene** with heavy focus on typing input (45 seconds)
+
+- Focus on video region (typing input) at 90% intensity
+- Demonstrates high-intensity focus effect
+- Try clicking the input to see component focus interaction
+        `,
+      },
+    },
+  },
+}
+
+export const ReviewSceneAnimated: Story = {
+  render: (args) => (
+    <AnimatedStory scene="review" transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 300,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Review Scene** with gentle focus (20 seconds loop)
+
+- Focus on mainContent (40% intensity) throughout
+
+With the updated schema, focus remains consistent unless the server sends new ActiveLifetime data
+with different UI intents. This demonstrates stable, gentle focus on the main content area.
+        `,
+      },
+    },
+  },
+}
+
+export const IdleScene: Story = {
+  render: (args) => (
+    <AnimatedStory scene="idle" transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 300,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Idle Scene** with no server focus
+
+- No server-driven focus (focus = null)
+- All components have equal emphasis
+- Component-originated focus is still active (click any component!)
+- Demonstrates the base layout without focus constraints
+        `,
+      },
+    },
+  },
+}
+
+export const LearningSceneStart: Story = {
+  render: (args) => (
+    <StaticStory scene="learning" time={0} transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 300,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Learning scene (video focused at 60%)",
+      },
+    },
+  },
+}
+
+export const LearningSceneMidpoint: Story = {
+  render: (args) => (
+    <StaticStory
+      scene="learning"
+      time={15_000}
+      transitionMs={args.transitionMs}
+    />
+  ),
   args: {
     transitionMs: 300,
   },
@@ -503,140 +411,78 @@ export const ClickToFocusWithControls: Story = {
     docs: {
       description: {
         story:
-          "Interactive demo with intensity slider. Click regions to focus, adjust intensity from 0-100%.",
+          "Learning scene at t=15s (same UI intent - video focused at 60%)",
       },
     },
   },
 }
 
-/* -----------------------------------------------------
- * Animation speed comparisons
- * --------------------------------------------------- */
-export const FastTransition: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
+export const ReviewScenePeakFocus: Story = {
+  render: (args) => (
+    <StaticStory
+      scene="review"
+      time={10_000}
+      transitionMs={args.transitionMs}
+    />
+  ),
   args: {
-    focusRegion: "mainContent",
-    focusIntensity: 1,
-    transitionMs: 150,
+    transitionMs: 300,
   },
   parameters: {
     docs: {
       description: {
-        story: "Quick, snappy transition (150ms)",
+        story: "Review scene (mainContent at 40% focus intensity)",
       },
     },
   },
 }
 
-export const SlowTransition: Story = {
-  render: (args) => <YouTubeWireframe {...args} content={defaultContent} />,
+export const FastTransitions: Story = {
+  render: (args) => (
+    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
+  ),
   args: {
-    focusRegion: "video",
-    focusIntensity: 1,
+    transitionMs: 100,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Learning scene with fast transitions (100ms) - snappy focus changes",
+      },
+    },
+  },
+}
+
+export const SlowTransitions: Story = {
+  render: (args) => (
+    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
+  ),
+  args: {
     transitionMs: 800,
   },
   parameters: {
     docs: {
       description: {
-        story: "Slow, dramatic transition (800ms)",
+        story:
+          "Learning scene with slow transitions (800ms) - smooth, cinematic focus changes",
       },
     },
   },
 }
 
-/* -----------------------------------------------------
- * Animated intensity progression
- * --------------------------------------------------- */
-export const AnimatedIntensity: Story = {
-  render: (args) => {
-    const [intensity, setIntensity] = useState(0)
-
-    const handleNext = () => {
-      setIntensity((prev) => {
-        const next = prev + 0.25
-        return next > 1 ? 0 : next
-      })
-    }
-
-    return (
-      <div className="relative w-full h-screen">
-        <YouTubeWireframe
-          {...args}
-          content={defaultContent}
-          focusRegion="video"
-          focusIntensity={intensity}
-          transitionMs={400}
-        />
-
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg space-x-4 flex items-center">
-          <div className="text-sm text-gray-600">
-            Intensity: <strong>{Math.round(intensity * 100)}%</strong>
-          </div>
-          <button
-            onClick={handleNext}
-            className="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-          >
-            Next Step
-          </button>
-        </div>
-      </div>
-    )
+export const NoTransitions: Story = {
+  render: (args) => (
+    <AnimatedStory scene="learning" transitionMs={args.transitionMs} />
+  ),
+  args: {
+    transitionMs: 0,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Cycles through intensity levels: 0% → 25% → 50% → 75% → 100%. Click to advance.",
-      },
-    },
-  },
-}
-
-/* -----------------------------------------------------
- * Multi-region sequence
- * --------------------------------------------------- */
-export const AnimatedSequence: Story = {
-  render: (args) => {
-    const [step, setStep] = useState(0)
-
-    const sequence: Array<{ region: YouTubeRegion | null; intensity: number }> =
-      [
-        { region: null, intensity: 0 },
-        { region: "video", intensity: 0.6 },
-        { region: "video", intensity: 1 },
-        { region: "mainContent", intensity: 0.8 },
-        { region: "sidebarTop", intensity: 1 },
-        { region: null, intensity: 0 },
-      ]
-
-    const current = sequence[step % sequence.length]
-
-    return (
-      <div className="relative w-full h-screen">
-        <YouTubeWireframe
-          {...args}
-          content={defaultContent}
-          focusRegion={current.region}
-          focusIntensity={current.intensity}
-          transitionMs={500}
-        />
-
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg">
-          <button
-            onClick={() => setStep((s) => s + 1)}
-            className="text-sm font-medium text-gray-700 hover:text-gray-900"
-          >
-            Next Step ({(step % sequence.length) + 1}/{sequence.length})
-          </button>
-        </div>
-      </div>
-    )
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Cycles through different focus states with varying intensities. Click to advance.",
+          "Learning scene with instant transitions (0ms) - immediate layout changes",
       },
     },
   },

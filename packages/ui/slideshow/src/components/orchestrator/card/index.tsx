@@ -15,13 +15,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import {
+  ActiveLifetimesPanel,
   EditSceneDialog,
   OrchestratorControls,
   OrchestratorTimeline,
-  ScheduledElementsList,
 } from "@slideshow/components/orchestrator"
 import { Plus } from "lucide-react"
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig, TimeMs } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
 
 export const OrchestratorDemo = ({
@@ -42,22 +42,33 @@ export const OrchestratorDemo = ({
     })
   )
 
-  const handleDragEnd = (event: DragEndEvent): Array<SceneConfig> => {
+  /**
+   * Helper to recalculate start times based on durations
+   * Essential since your new type schema includes start_time
+   */
+  const recalculateTimeline = (
+    updatedScenes: Array<SceneConfig>
+  ): Array<SceneConfig> => {
+    let currentAccumulator: TimeMs = 0
+    return updatedScenes.map((scene) => {
+      const sceneWithStart = { ...scene, start_time: currentAccumulator }
+      currentAccumulator += scene.duration
+      return sceneWithStart
+    })
+  }
+
+  const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
       setScenes((items) => {
-        const oldIndex = items.findIndex(
-          (item, i) => `${item.scene_name}-${i}` === active.id
-        )
-        const newIndex = items.findIndex(
-          (item, i) => `${item.scene_name}-${i}` === over.id
-        )
+        const oldIndex = items.findIndex((_, i) => `scene-${i}` === active.id)
+        const newIndex = items.findIndex((_, i) => `scene-${i}` === over.id)
 
-        return arrayMove(items, oldIndex, newIndex)
+        const movedArray = arrayMove(items, oldIndex, newIndex)
+        return recalculateTimeline(movedArray)
       })
     }
-    return []
   }
 
   const handleEditScene = (index: number): void => {
@@ -69,14 +80,19 @@ export const OrchestratorDemo = ({
 
     const newScenes = [...scenes]
     newScenes[editingScene.index] = updatedScene
-    setScenes(newScenes)
+    setScenes(recalculateTimeline(newScenes))
     setEditingScene(null)
   }
 
   const handleAddScene = (): void => {
+    const lastScene = scenes[scenes.length - 1]
+    const startTime = lastScene ? lastScene.start_time + lastScene.duration : 0
+
     const newScene: SceneConfig = {
       scene_name: `New Scene ${scenes.length + 1}`,
-      duration: 60,
+      duration: 60_000, // 1 minute default
+      start_time: startTime,
+      ui: [], // Initializing empty UI array as per UILayoutIntentSchema
     }
     setScenes([...scenes, newScene])
   }
@@ -91,7 +107,7 @@ export const OrchestratorDemo = ({
               Orchestrator Control
             </h1>
             <p className="text-muted-foreground">
-              Manage scenes, timeline, and live streaming workflow
+              Manage {scenes.length} scenes and live streaming workflow
             </p>
           </div>
           <Button onClick={handleAddScene} className="gap-2">
@@ -102,12 +118,9 @@ export const OrchestratorDemo = ({
 
         {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Timeline & Controls */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Controls */}
             <OrchestratorControls scenes={scenes} />
 
-            {/* Timeline */}
             <Card className="p-6">
               <h2 className="mb-4 text-lg font-semibold">Scene Timeline</h2>
               <DndContext
@@ -116,7 +129,8 @@ export const OrchestratorDemo = ({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={scenes.map((scene, i) => `${scene.scene_name}-${i}`)}
+                  // Using index-based IDs for stability during renames
+                  items={scenes.map((_, i) => `scene-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   <OrchestratorTimeline
@@ -128,14 +142,12 @@ export const OrchestratorDemo = ({
             </Card>
           </div>
 
-          {/* Right Column - Scheduled Elements */}
           <div className="lg:col-span-1">
-            <ScheduledElementsList />
+            <ActiveLifetimesPanel />
           </div>
         </div>
       </div>
 
-      {/* Edit Scene Dialog */}
       <EditSceneDialog
         open={editingScene !== null}
         onOpenChange={(open) => !open && setEditingScene(null)}

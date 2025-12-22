@@ -12,11 +12,19 @@ export const OrchestratorControls: FC<OrchestratorControlsProps> = ({
   const isRunning = useOrchestratorStore(selectIsRunning)
   const isConnected = useOrchestratorStore((s) => s.isConnected)
   const isInitializing = useOrchestratorStore((s) => s.isInitializing)
+
+  const configure = useOrchestratorStore((s) => s.configure)
   const onStart = useOrchestratorStore((s) => s.start)
   const onPause = useOrchestratorStore((s) => s.pause)
   const onStop = useOrchestratorStore((s) => s.stop)
   const onReset = useOrchestratorStore((s) => s.reset)
   const onSkip = useOrchestratorStore((s) => s.skipCurrentScene)
+
+  const handleStart = async (): Promise<void> => {
+    await configure(scenes)
+    await onStart()
+  }
+
   return (
     <Card className="p-6">
       <div className="space-y-6">
@@ -52,7 +60,7 @@ export const OrchestratorControls: FC<OrchestratorControlsProps> = ({
         <div className="flex items-center gap-2">
           {!isRunning ? (
             <Button
-              onClick={() => onStart(scenes)}
+              onClick={handleStart}
               disabled={!isConnected}
               size="lg"
               className="flex-1 gap-2"

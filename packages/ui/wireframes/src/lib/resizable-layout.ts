@@ -6,7 +6,7 @@ export type Constraint = {
   max: number
 }
 
-type Rect = {
+export type Rect = {
   x: number
   y: number
   width: number
@@ -84,11 +84,11 @@ function getFocusPath<T>(
   }
 
   // Backtrack to root
-  let curr = targetNode
+  let curr: LayoutNode<T> | null = targetNode
   while (curr) {
     const key = curr.type === "leaf" ? curr.id : curr.splitId
     pathSet.add(key)
-    curr = parents.get(curr)
+    curr = parents.get(curr) ?? null
   }
 
   return pathSet

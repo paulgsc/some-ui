@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react"
+import type { Rect } from "@wireframes/lib/resizable-layout"
 
 export function useContainerRect() {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -22,7 +23,7 @@ export function useContainerRect() {
     const ro = new ResizeObserver(measure)
     ro.observe(ref.current)
 
-    return () => ro.disconnect()
+    return (): void => ro.disconnect()
   }, [])
 
   return { ref, rect }
