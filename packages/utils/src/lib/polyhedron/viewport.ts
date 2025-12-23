@@ -1,6 +1,7 @@
 import type { WasmViewportManager } from "polyhedron"
 import type {
   ViewportConfig,
+  WasmCycleName,
   WasmTransition,
   WasmViewportState,
 } from "some-types-utils"
@@ -109,6 +110,12 @@ export class Viewport {
 
   async switchCycle(index: number): Promise<WasmViewportState> {
     return this.transition(TransitionFactory.switchCycle(index))
+  }
+
+  async switchCycleByKind(
+    cycleName: WasmCycleName
+  ): Promise<WasmViewportState> {
+    return this.transition(TransitionFactory.switchCycleByKind(cycleName))
   }
 
   async jumpToContent(index: number): Promise<WasmViewportState> {
@@ -251,7 +258,8 @@ export class ViewportFactory {
         validConfig.id,
         validItems,
         validPolyhedron,
-        validConfig.faceCapacity
+        validConfig.faceCapacity,
+        validConfig.cycleName
       )
 
       const state = validateWasmViewportState(initialState)

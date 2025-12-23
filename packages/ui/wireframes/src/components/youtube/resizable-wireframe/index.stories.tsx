@@ -20,7 +20,32 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
         panels: {
           title: {
             registryKey: "cube",
-            props: { region: "title", faceCapacity: 1 },
+            props: {
+              region: "title",
+              faceCapacity: 1,
+              children: [
+                {
+                  registryKey: "neon",
+                  duration: 30_000,
+                  props: { className: "size-full" },
+                },
+                {
+                  registryKey: "neon",
+                  duration: 30_000,
+                  props: { className: "size-full" },
+                },
+                {
+                  registryKey: "neon",
+                  duration: 30_000,
+                  props: { className: "size-full" },
+                },
+                {
+                  registryKey: "neon",
+                  duration: 30_000,
+                  props: { className: "size-full" },
+                },
+              ],
+            },
           },
           video: {
             registryKey: "cube",

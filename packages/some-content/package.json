@@ -7,9 +7,12 @@
     "some-ui-utils": "workspace:*",
     "some-ui-input": "workspace:*",
     "some-ui-slideshow": "workspace:*",
+    "some-ui-honeycomb": "workspace:*",
     "portfolio-chart": "workspace:*",
+    "some-types-utils": "workspace:*",
     "makjang": "workspace:*",
     "umag": "workspace:*",
+    "some-ui-neon-sign": "workspace:*",
     "some-ui-chat": "workspace:*"
   },
   "description": "Shared Vite configuration for monorepo packages",

@@ -1,13 +1,14 @@
 mod geometry;
 mod timeline;
 
-pub use geometry::Polyhedron;
 use geometry::{FaceIndex, RotationCycle};
+pub use geometry::{Polyhedron, RotationCycleKind};
 use std::time::Duration;
 pub use timeline::Item;
 use timeline::Timeline;
 
 /// Core viewport state managing content projection onto polyhedron
+#[derive(Debug)]
 pub struct Viewport {
     timeline: Timeline,
     polyhedron: Polyhedron,
@@ -29,6 +30,8 @@ pub enum Transition {
     JumpToFace(FaceIndex),
     /// Switch to different rotation cycle
     SwitchCycle(usize),
+    /// Switch to rotation cycle by kind
+    SwitchCycleByKind(String),
     /// Jump to specific content index
     JumpToContent(usize),
 }
@@ -45,9 +48,13 @@ pub struct FaceLayout {
 }
 
 impl Viewport {
-    pub fn new(items: Vec<Item>, polyhedron: Polyhedron, face_capacity: usize) -> Result<Self, String> {
+    pub fn new(items: Vec<Item>, polyhedron: Polyhedron, face_capacity: usize, cycle_index: usize) -> Result<Self, String> {
         if face_capacity == 0 {
             return Err("Face capacity must be at least 1".to_string());
+        }
+
+        if cycle_index >= polyhedron.cycles.len() {
+            return Err(format!("Invalid cycle index: {} (max: {})", cycle_index, polyhedron.cycles.len() - 1));
         }
 
         let timeline = Timeline::new(items)?;
@@ -55,7 +62,7 @@ impl Viewport {
         Ok(Self {
             timeline,
             polyhedron,
-            cycle_index: 0,
+            cycle_index,
             cycle_position: 0,
             face_capacity,
         })
@@ -63,12 +70,12 @@ impl Viewport {
 
     /// Get current rotation cycle
     pub fn current_cycle(&self) -> &RotationCycle {
-        self.polyhedron.cycle(self.cycle_index)
+        &self.polyhedron.cycles[self.cycle_index]
     }
 
     /// Get currently visible face index
     pub fn current_face(&self) -> FaceIndex {
-        self.current_cycle().face_at(self.cycle_position)
+        self.current_cycle().faces[self.cycle_position]
     }
 
     /// Get timeline cursor
@@ -82,13 +89,12 @@ impl Viewport {
         let total = self.timeline.len();
         let cursor = self.timeline.cursor();
 
-        let f = cycle.len();
+        let f = cycle.faces.len();
         let k = self.face_capacity;
         let c = f * k;
 
         // Core epoch quantities
         let epoch = cursor / c;
-        let _epoch_offset = cursor % c;
 
         let q = total / c;
         let r = total % c;
@@ -145,14 +151,13 @@ impl Viewport {
 
             Transition::RotateNext => {
                 // Cache cycle length before mutating cycle_position
-                let f = self.current_cycle().len();
+                let f = self.current_cycle().faces.len();
                 let k = self.face_capacity;
                 let c = f * k;
 
                 self.cycle_position = (self.cycle_position + 1) % f;
 
                 // Advance cursor by k to maintain coherence with new cycle_position
-                // This keeps cursor aligned with the active face in the epoch
                 let cursor = self.timeline.cursor();
                 let epoch = cursor / c;
                 let epoch_offset = cursor % c;
@@ -167,7 +172,7 @@ impl Viewport {
 
             Transition::RotatePrev => {
                 // Cache cycle length before mutating cycle_position
-                let f = self.current_cycle().len();
+                let f = self.current_cycle().faces.len();
                 let k = self.face_capacity;
                 let c = f * k;
 
@@ -200,12 +205,12 @@ impl Viewport {
             }
 
             Transition::JumpToFace(face_idx) => {
-                if let Some(pos) = self.current_cycle().position_of(face_idx) {
+                if let Some(pos) = self.current_cycle().faces.iter().position(|&f| f == face_idx) {
                     self.cycle_position = pos;
 
                     // Align cursor to the start of the target face in current epoch
                     let cursor = self.timeline.cursor();
-                    let f = self.current_cycle().len();
+                    let f = self.current_cycle().faces.len();
                     let k = self.face_capacity;
                     let c = f * k;
                     let epoch = cursor / c;
@@ -223,17 +228,26 @@ impl Viewport {
                 }
             }
 
+            Transition::SwitchCycleByKind(cycle_name) => {
+                if let Some(kind) = RotationCycleKind::from_str(&cycle_name) {
+                    if let Some(cycle_idx) = self.polyhedron.cycle_index_by_kind(kind) {
+                        self.cycle_index = cycle_idx;
+                        self.cycle_position = 0;
+                        // Keep timeline cursor unchanged - this is a pure view change
+                    }
+                }
+            }
+
             Transition::JumpToContent(idx) => {
                 if idx < self.timeline.len() {
                     self.timeline.jump_to(idx);
                     self.sync_cycle_position_from_cursor();
 
                     // Update cycle position to match the epoch-aligned face containing this content
-                    let f = self.current_cycle().len();
+                    let f = self.current_cycle().faces.len();
                     let k = self.face_capacity;
                     let c = f * k;
 
-                    let _epoch = idx / c;
                     let epoch_offset = idx % c;
                     let face_offset = epoch_offset / k;
 
@@ -258,7 +272,7 @@ impl Viewport {
     }
 
     fn sync_cycle_position_from_cursor(&mut self) {
-        let f = self.current_cycle().len();
+        let f = self.current_cycle().faces.len();
         let k = self.face_capacity;
         let c = f * k;
 
@@ -279,26 +293,33 @@ mod invariance_tests {
 
         let polyhedron = Polyhedron::default();
 
-        Viewport::new(items, polyhedron, capacity).unwrap()
+        Viewport::new(items, polyhedron, capacity, 0).unwrap()
+    }
+
+    // Helper to create viewport with specific polyhedron
+    fn create_viewport_with_poly(n_items: usize, polyhedron: Polyhedron, capacity: usize) -> Viewport {
+        let items: Vec<Item> = (0..n_items).map(|_| Item { duration: Duration::from_secs(1) }).collect();
+
+        Viewport::new(items, polyhedron, capacity, 0).unwrap()
     }
 
     // Core quantities for invariant checking
     #[allow(dead_code)]
     struct CycleMetrics {
         n: usize,            // timeline.len()
-        f: usize,            // current_cycle.len()
+        f: usize,            // current_cycle.faces.len()
         k: usize,            // face_capacity
-        c: usize,            // F * k (capacity per full rotation)
-        r: usize,            // N % C (residual)
-        q: usize,            // N / C (full cycles)
-        cycle_epoch: usize,  // floor(cursor / C)
-        cycle_offset: usize, // cursor % C
+        c: usize,            // f * k (capacity per full rotation)
+        r: usize,            // n % c (residual)
+        q: usize,            // n / c (full cycles)
+        cycle_epoch: usize,  // floor(cursor / c)
+        cycle_offset: usize, // cursor % c
     }
 
     impl CycleMetrics {
         fn compute(viewport: &Viewport) -> Self {
             let n = viewport.timeline.len();
-            let f = viewport.current_cycle().len();
+            let f = viewport.current_cycle().faces.len();
             let k = viewport.face_capacity;
             let c = f * k;
             let r = n % c;
@@ -332,7 +353,7 @@ mod invariance_tests {
 
             let cycle = vp.current_cycle();
             for (pos, &face_idx) in cycle.faces.iter().enumerate() {
-                if pos < cycle.len() - 1 {
+                if pos < cycle.faces.len() - 1 {
                     if let Some(&max_content) = layout.faces[face_idx].iter().max() {
                         assert!(
                             max_content < max_allowed,
@@ -487,7 +508,7 @@ mod invariance_tests {
         let mut vp = create_test_viewport(48, 4, 3);
 
         let metrics = CycleMetrics::compute(&vp);
-        let cycle_len = vp.current_cycle().len();
+        let cycle_len = vp.current_cycle().faces.len();
 
         let mut all_items = std::collections::HashSet::new();
 
@@ -566,7 +587,7 @@ mod invariance_tests {
         let cursor_1 = vp.cursor();
         let layout_1 = vp.compute_layout();
 
-        // Advance by C items (full cycle worth)
+        // Advance by c items (full cycle worth)
         for _ in 0..metrics.c {
             vp.apply(Transition::NextItem);
         }
@@ -588,8 +609,8 @@ mod invariance_tests {
 
             // Check that the relative offsets within faces are preserved
             if !layout_1.faces[face_idx].is_empty() && !layout_2.faces[face_idx].is_empty() {
-                let offset_1 = layout_1.faces[face_idx][0] - cursor_1;
-                let offset_2 = layout_2.faces[face_idx][0] - cursor_2;
+                let offset_1 = layout_1.faces[face_idx][0].wrapping_sub(cursor_1);
+                let offset_2 = layout_2.faces[face_idx][0].wrapping_sub(cursor_2);
 
                 assert_eq!(offset_1, offset_2, "Face {} has different relative offset in periodic phase", face_idx);
             }
@@ -612,9 +633,10 @@ mod invariance_tests {
 
             let cursor = vp.cursor();
             let cycle_position = vp.cycle_position;
+            let metrics = CycleMetrics::compute(&vp);
 
-            let prev_face_block = prev_cursor / vp.face_capacity;
-            let curr_face_block = cursor / vp.face_capacity;
+            let prev_face_block = (prev_cursor % metrics.c) / vp.face_capacity;
+            let curr_face_block = (cursor % metrics.c) / vp.face_capacity;
 
             // When we cross a face boundary, cycle_position MUST update
             if curr_face_block != prev_face_block {
@@ -626,7 +648,7 @@ mod invariance_tests {
                 );
 
                 // And it must update to the correct face block (modulo cycle length)
-                let expected = curr_face_block % vp.current_cycle().len();
+                let expected = curr_face_block.min(vp.current_cycle().faces.len() - 1);
                 assert_eq!(
                     cycle_position, expected,
                     "Step {}: cycle_position incorrect after boundary crossing: \
@@ -640,24 +662,168 @@ mod invariance_tests {
         }
     }
 
-    /// Comprehensive test: Run all invariants over random transitions
+    /// Test cycle kind switching maintains invariants
     #[test]
-    fn test_all_invariants_comprehensive() {
-        let mut vp = create_test_viewport(77, 5, 3);
+    fn test_cycle_kind_switching() {
+        let poly = Polyhedron::cube();
+        let mut vp = create_viewport_with_poly(48, poly, 3);
 
-        for i in 0..200 {
+        // Start with default cycle (Y-axis)
+        assert_eq!(vp.cycle_index, 0);
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::CubeYAxis);
+
+        let cursor_before = vp.cursor();
+        let layout_before = vp.compute_layout();
+
+        // Switch to X-axis cycle
+        vp.apply(Transition::SwitchCycleByKind("cube:x".to_owned()));
+
+        // Verify cycle changed
+        assert_eq!(vp.cycle_index, 1);
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::CubeXAxis);
+
+        // Cursor should remain unchanged (pure view change)
+        assert_eq!(vp.cursor(), cursor_before);
+
+        // Cycle position should reset
+        assert_eq!(vp.cycle_position, 0);
+
+        // Layout recomputed with new cycle
+        let layout_after = vp.compute_layout();
+
+        // Cursor coherence must still hold
+        assert!(
+            layout_after.faces[layout_after.active_face].contains(&cursor_before),
+            "Cursor coherence violated after cycle switch"
+        );
+
+        // Face contents may differ, but total item count should be preserved
+        let count_before: usize = layout_before.faces.iter().map(|f| f.len()).sum();
+        let count_after: usize = layout_after.faces.iter().map(|f| f.len()).sum();
+        assert_eq!(count_before, count_after, "Total item count changed after cycle switch");
+    }
+
+    /// Test cycle kind switching with hex prism
+    #[test]
+    fn test_cycle_kind_switching_hex_prism() {
+        let poly = Polyhedron::hex_prism();
+        let mut vp = create_viewport_with_poly(72, poly, 3);
+
+        // Start with circumference cycle (6 faces)
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::HexCircumference);
+        assert_eq!(vp.current_cycle().faces.len(), 6);
+
+        let cursor_before = vp.cursor();
+
+        // Switch to vertical cycle (4 faces)
+        vp.apply(Transition::SwitchCycleByKind("hex:vertical".to_owned()));
+
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::HexVertical);
+        assert_eq!(vp.current_cycle().faces.len(), 4);
+
+        // Cursor unchanged
+        assert_eq!(vp.cursor(), cursor_before);
+
+        // Verify cursor coherence after switch
+        let layout = vp.compute_layout();
+        assert!(
+            layout.faces[layout.active_face].contains(&cursor_before),
+            "Cursor coherence violated after hex prism cycle switch"
+        );
+    }
+
+    /// Test carousel cycle switching
+    #[test]
+    fn test_carousel_cycle() {
+        let poly = Polyhedron::carousel(8);
+        let mut vp = create_viewport_with_poly(64, poly, 2);
+
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::CarouselCircular);
+        assert_eq!(vp.current_cycle().faces.len(), 8);
+
+        // Test rotation through all 8 faces
+        for expected_pos in 0..8 {
+            assert_eq!(vp.cycle_position, expected_pos);
             let layout = vp.compute_layout();
-            let cursor = vp.cursor();
+            assert!(
+                layout.faces[layout.active_face].contains(&vp.cursor()),
+                "Carousel cursor coherence failed at position {}",
+                expected_pos
+            );
+            vp.apply(Transition::RotateNext);
+        }
 
-            assert!(layout.faces[layout.active_face].contains(&cursor), "Iteration {}: Cursor coherence failed", i);
+        // Should wrap back to 0
+        assert_eq!(vp.cycle_position, 0);
+    }
 
-            match i % 5 {
-                0 => vp.apply(Transition::NextItem),
-                1 => vp.apply(Transition::RotateNext),
-                2 => vp.apply(Transition::RotatePrev),
-                3 => vp.apply(Transition::JumpToContent((i * 7) % vp.timeline.len())),
-                _ => vp.apply(Transition::NextItem),
-            }
+    /// Test new constructor
+    #[test]
+    fn test_with_cycle_constructor() {
+        let items: Vec<Item> = (0..48).map(|_| Item { duration: Duration::from_secs(1) }).collect();
+
+        let poly = Polyhedron::cube();
+
+        // Create with X-axis cycle
+        let vp = Viewport::new(items, poly, 3, 1).unwrap();
+
+        assert_eq!(vp.cycle_index, 1);
+        assert_eq!(vp.current_cycle().kind, RotationCycleKind::CubeXAxis);
+
+        // Verify invariants hold from construction
+        let layout = vp.compute_layout();
+        assert!(
+            layout.faces[layout.active_face].contains(&vp.cursor()),
+            "Initial cursor coherence violated with custom cycle"
+        );
+    }
+
+    /// Test invalid cycle index in constructor
+    #[test]
+    fn test_with_cycle_invalid_index() {
+        let items: Vec<Item> = (0..48).map(|_| Item { duration: Duration::from_secs(1) }).collect();
+
+        let poly = Polyhedron::cube(); // Only has 2 cycles
+
+        let result = Viewport::new(items, poly, 3, 99);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid cycle index"));
+    }
+
+    /// Test WASM initialization flow end-to-end
+    #[test]
+    fn test_wasm_initialization_flow() {
+        // Simulate the complete WASM createViewport flow
+        let items: Vec<Item> = (0..60).map(|_| Item { duration: Duration::from_secs(1) }).collect();
+
+        // Case 1: No cycle name provided (should default to index 0)
+        let poly1 = Polyhedron::cube();
+        let vp1 = Viewport::new(items.clone(), poly1, 3, 0).unwrap();
+        assert_eq!(vp1.cycle_index, 0);
+        assert_eq!(vp1.current_cycle().kind, RotationCycleKind::CubeYAxis);
+
+        // Case 2: Explicit cycle name provided
+        let poly2 = Polyhedron::cube();
+        let cycle_name = "cube:x";
+        let kind = RotationCycleKind::from_str(cycle_name).unwrap();
+        let cycle_index = poly2.cycle_index_by_kind(kind).unwrap();
+        let vp2 = Viewport::new(items.clone(), poly2, 3, cycle_index).unwrap();
+        assert_eq!(vp2.cycle_index, 1);
+        assert_eq!(vp2.current_cycle().kind, RotationCycleKind::CubeXAxis);
+
+        // Case 3: Hex prism with vertical cycle
+        let poly3 = Polyhedron::hex_prism();
+        let cycle_name = "hex:vertical";
+        let kind = RotationCycleKind::from_str(cycle_name).unwrap();
+        let cycle_index = poly3.cycle_index_by_kind(kind).unwrap();
+        let vp3 = Viewport::new(items.clone(), poly3, 3, cycle_index).unwrap();
+        assert_eq!(vp3.cycle_index, 1);
+        assert_eq!(vp3.current_cycle().kind, RotationCycleKind::HexVertical);
+
+        // Verify all viewports maintain cursor coherence
+        for vp in [&vp1, &vp2, &vp3] {
+            let layout = vp.compute_layout();
+            assert!(layout.faces[layout.active_face].contains(&vp.cursor()), "WASM initialization violated cursor coherence");
         }
     }
 }

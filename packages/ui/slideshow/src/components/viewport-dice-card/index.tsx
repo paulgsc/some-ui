@@ -53,7 +53,7 @@ export const ViewportDiceCard = <K extends string>({
   const { xRotation, yRotation } = useCycleRotationAdapter({
     cyclePosition: state?.cyclePosition ?? 0,
     cycleLength: state?.cycleLength ?? faces.length,
-    axis: "Y-axis",
+    axis: state?.cycleName ?? "cube:y",
   })
 
   /**

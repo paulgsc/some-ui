@@ -63,6 +63,7 @@ const simpleCubeConfig: ViewportConfig = {
   ],
   polyhedron: PolyhedronFactory.cube(),
   faceCapacity: 1,
+  cycleName: "cube:y",
 }
 
 const multiItemCubeConfig: ViewportConfig = {
@@ -75,6 +76,7 @@ const multiItemCubeConfig: ViewportConfig = {
   })),
   polyhedron: PolyhedronFactory.cube(),
   faceCapacity: 2,
+  cycleName: "cube:y",
 }
 
 const carouselConfig: ViewportConfig = {
@@ -87,6 +89,7 @@ const carouselConfig: ViewportConfig = {
   })),
   polyhedron: PolyhedronFactory.carousel(6),
   faceCapacity: 1,
+  cycleName: "cube:y",
 }
 
 const richContentConfig: ViewportConfig = {
@@ -99,6 +102,7 @@ const richContentConfig: ViewportConfig = {
   })),
   polyhedron: PolyhedronFactory.cube(),
   faceCapacity: 1,
+  cycleName: "cube:y",
 }
 
 const dashboardConfig: ViewportConfig = {
@@ -111,6 +115,7 @@ const dashboardConfig: ViewportConfig = {
   })),
   polyhedron: PolyhedronFactory.cube(),
   faceCapacity: 1,
+  cycleName: "cube:y",
 }
 
 const galleryConfig: ViewportConfig = {
@@ -123,6 +128,7 @@ const galleryConfig: ViewportConfig = {
   })),
   polyhedron: PolyhedronFactory.carousel(6),
   faceCapacity: 1,
+  cycleName: "cube:y",
 }
 
 // ============================================================================

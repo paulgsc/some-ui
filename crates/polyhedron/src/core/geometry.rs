@@ -1,32 +1,41 @@
 pub type FaceIndex = usize;
 
-/// Describes a rotation cycle through polyhedron faces
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RotationCycle {
-    /// Ordered sequence of face indices in this rotation
-    pub faces: Vec<FaceIndex>,
-    /// Human-readable name
-    pub name: String,
+pub enum RotationCycleKind {
+    CubeYAxis,
+    CubeXAxis,
+    HexCircumference,
+    HexVertical,
+    CarouselCircular,
 }
 
-impl RotationCycle {
-    pub fn new(name: impl Into<String>, faces: Vec<FaceIndex>) -> Self {
-        Self { name: name.into(), faces }
+impl RotationCycleKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::CubeYAxis => "cube:y",
+            Self::CubeXAxis => "cube:x",
+            Self::HexCircumference => "hex:circumference",
+            Self::HexVertical => "hex:vertical",
+            Self::CarouselCircular => "carousel:circular",
+        }
     }
 
-    pub fn len(&self) -> usize {
-        self.faces.len()
+    pub fn from_str(s: &str) -> Option<Self> {
+        Some(match s {
+            "cube:y" => Self::CubeYAxis,
+            "cube:x" => Self::CubeXAxis,
+            "hex:circumference" => Self::HexCircumference,
+            "hex:vertical" => Self::HexVertical,
+            "carousel:circular" => Self::CarouselCircular,
+            _ => return None,
+        })
     }
+}
 
-    /// Get face at cycle position
-    pub fn face_at(&self, position: usize) -> FaceIndex {
-        self.faces[position % self.faces.len()]
-    }
-
-    /// Find position of face in cycle (if present)
-    pub fn position_of(&self, face: FaceIndex) -> Option<usize> {
-        self.faces.iter().position(|&f| f == face)
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct RotationCycle {
+    pub kind: RotationCycleKind,
+    pub faces: Vec<FaceIndex>,
 }
 
 /// Defines the topology of a polyhedron
@@ -39,39 +48,50 @@ pub struct Polyhedron {
 }
 
 impl Polyhedron {
-    /// Standard cube with 6 faces
+    pub fn cycle_index_by_kind(&self, kind: RotationCycleKind) -> Option<usize> {
+        self.cycles.iter().position(|c| c.kind == kind)
+    }
+
     pub fn cube() -> Self {
         Self {
             face_count: 6,
             cycles: vec![
-                RotationCycle::new("Y-axis", vec![0, 3, 2, 1]), // Front->Right->Back->Left
-                RotationCycle::new("X-axis", vec![0, 5, 2, 4]), // Front->Top->Back->Bottom
+                RotationCycle {
+                    kind: RotationCycleKind::CubeYAxis,
+                    faces: vec![0, 3, 2, 1],
+                },
+                RotationCycle {
+                    kind: RotationCycleKind::CubeXAxis,
+                    faces: vec![0, 5, 2, 4],
+                },
             ],
         }
     }
 
-    /// Hexagonal prism (6 sides + 2 caps)
     pub fn hex_prism() -> Self {
         Self {
             face_count: 8,
             cycles: vec![
-                RotationCycle::new("Circumference", vec![0, 1, 2, 3, 4, 5]),
-                RotationCycle::new("Vertical", vec![0, 6, 3, 7]), // Through caps
+                RotationCycle {
+                    kind: RotationCycleKind::HexCircumference,
+                    faces: vec![0, 1, 2, 3, 4, 5],
+                },
+                RotationCycle {
+                    kind: RotationCycleKind::HexVertical,
+                    faces: vec![0, 6, 3, 7],
+                },
             ],
         }
     }
 
-    /// Simple carousel (all faces in one cycle)
     pub fn carousel(face_count: usize) -> Self {
         Self {
             face_count,
-            cycles: vec![RotationCycle::new("Circular", (0..face_count).collect())],
+            cycles: vec![RotationCycle {
+                kind: RotationCycleKind::CarouselCircular,
+                faces: (0..face_count).collect(),
+            }],
         }
-    }
-
-    /// Get cycle by index
-    pub fn cycle(&self, index: usize) -> &RotationCycle {
-        &self.cycles[index % self.cycles.len()]
     }
 }
 

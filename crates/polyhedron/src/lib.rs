@@ -6,7 +6,7 @@ mod core;
 mod manager;
 
 use crate::core::{Transition as CoreTransition, Viewport};
-use core::{Item, Polyhedron};
+use core::{Item, Polyhedron, RotationCycleKind};
 use manager::ViewportManager;
 
 /// Content item for WASM boundary
@@ -67,6 +67,8 @@ pub enum WasmTransition {
     JumpToFace { face: usize },
     #[serde(rename = "switchCycle")]
     SwitchCycle { index: usize },
+    #[serde(rename = "switchCycleByKind")]
+    SwitchCycleByKind { cycle_name: String },
     #[serde(rename = "jumpToContent")]
     JumpToContent { index: usize },
 }
@@ -79,6 +81,7 @@ impl From<WasmTransition> for CoreTransition {
             WasmTransition::RotatePrev => CoreTransition::RotatePrev,
             WasmTransition::JumpToFace { face } => CoreTransition::JumpToFace(face),
             WasmTransition::SwitchCycle { index } => CoreTransition::SwitchCycle(index),
+            WasmTransition::SwitchCycleByKind { cycle_name } => CoreTransition::SwitchCycleByKind(cycle_name),
             WasmTransition::JumpToContent { index } => CoreTransition::JumpToContent(index),
         }
     }
@@ -102,7 +105,7 @@ impl WasmViewportManager {
 
     /// Create new viewport - uses serde_wasm_bindgen for items and polyhedron
     #[wasm_bindgen(js_name = createViewport)]
-    pub fn create_viewport(&mut self, id: &str, items: JsValue, polyhedron: JsValue, face_capacity: usize) -> Result<JsValue, JsValue> {
+    pub fn create_viewport(&mut self, id: &str, items: JsValue, polyhedron: JsValue, face_capacity: usize, cycle_name: Option<String>) -> Result<JsValue, JsValue> {
         let wasm_items: Vec<WasmItem> = serde_wasm_bindgen::from_value(items).map_err(|e| JsValue::from_str(&format!("Invalid items: {}", e)))?;
 
         let poly_type: WasmPolyhedronType = serde_wasm_bindgen::from_value(polyhedron).map_err(|e| JsValue::from_str(&format!("Invalid polyhedron: {}", e)))?;
@@ -121,11 +124,18 @@ impl WasmViewportManager {
             WasmPolyhedronType::Carousel { faces } => Polyhedron::carousel(faces),
         };
 
-        // Create viewport
-        let viewport = Viewport::new(items, polyhedron, face_capacity).map_err(|e| JsValue::from_str(&e))?;
+        let cycle_index = if let Some(name) = cycle_name {
+            let kind = RotationCycleKind::from_str(&name).ok_or_else(|| JsValue::from_str(&format!("Invalid cycle name: {}", name)))?;
+            polyhedron
+                .cycle_index_by_kind(kind)
+                .ok_or_else(|| JsValue::from_str(&format!("Cycle '{}' not supported by this polyhedron", name)))?
+        } else {
+            0
+        };
+
+        let viewport = Viewport::new(items, polyhedron, face_capacity, cycle_index).map_err(|e| JsValue::from_str(&e))?;
 
         self.inner.create(id.to_string(), viewport);
-
         self.get_state(id)
     }
 
@@ -144,8 +154,8 @@ impl WasmViewportManager {
             cursor: vp.cursor(),
             cycle_index: vp.cycle_index,
             cycle_position: vp.cycle_position,
-            cycle_length: cycle.len(),
-            cycle_name: cycle.name.clone(),
+            cycle_length: cycle.faces.len(),
+            cycle_name: cycle.kind.as_str().to_string(),
             progress: vp.progress(),
         };
 
@@ -179,6 +189,15 @@ impl WasmViewportManager {
         let vp = self.inner.get_mut(id).ok_or_else(|| JsValue::from_str("Viewport not found"))?;
 
         vp.apply(CoreTransition::SwitchCycle(cycle_index));
+        self.get_state(id)
+    }
+
+    /// Switch to a different rotation cycle by name
+    #[wasm_bindgen(js_name = switchCycleByKind)]
+    pub fn switch_cycle_by_kind(&mut self, id: &str, cycle_name: &str) -> Result<JsValue, JsValue> {
+        let vp = self.inner.get_mut(id).ok_or_else(|| JsValue::from_str("Viewport not found"))?;
+        vp.apply(CoreTransition::SwitchCycleByKind(cycle_name.to_owned()));
+
         self.get_state(id)
     }
 

@@ -172,7 +172,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const renderLeaf = useMemo(() => {
     const RenderLeaf = (id: YouTubeRegion): ReactNode => {
       return (
-        <div className="bg-none relative size-full transition-all">
+        <div className="border border-pink-100 relative size-full transition-all">
           {content[id] ?? <div className="w-full h-full" />}
         </div>
       )

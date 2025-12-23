@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from "react"
+import type { WasmCycleName } from "some-types-utils"
 
 type Rotation = {
   xRotation: number
   yRotation: number
 }
 
-type RotationAxis = "X-axis" | "Y-axis"
-
 export function useCycleRotationAdapter({
   cyclePosition,
   cycleLength,
-  axis = "Y-axis",
+  axis = "cube:y",
 }: {
   cyclePosition: number
   cycleLength: number
-  axis?: RotationAxis
+  axis?: WasmCycleName
 }): Rotation {
   const prevAngleRef = useRef(0)
   const [angle, setAngle] = useState(0)
@@ -37,7 +36,7 @@ export function useCycleRotationAdapter({
     setAngle(nextAngle)
   }, [cyclePosition, cycleLength])
 
-  return axis === "X-axis"
+  return axis === "cube:x"
     ? { xRotation: angle, yRotation: 0 }
     : { xRotation: 0, yRotation: angle }
 }

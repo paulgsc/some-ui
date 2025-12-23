@@ -1,5 +1,6 @@
 export { createEnumSchema } from "./create-enum-zod-schema"
 export * from "./range"
+export * from "./polyhedron"
 export * from "./obs-websocket"
 export * from "./orchestrator-types"
 export type { ClientObsState, ObsEvent } from "./obs-websocket"

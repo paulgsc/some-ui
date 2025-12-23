@@ -5,6 +5,8 @@ import { z } from "zod"
  * Content item schema - mirrors WasmItem in Rust
  */
 export const WasmItemSchema = z.object({
+  kind: z.string().optional(),
+  props: z.record(z.string(), z.unknown()).optional(),
   contentIndex: z.number().int().nonnegative(),
   durationMs: z.number().int().nonnegative(),
 })
@@ -25,6 +27,16 @@ export const WasmPolyhedronTypeSchema = z.discriminatedUnion("type", [
 
 export type WasmPolyhedronType = z.infer<typeof WasmPolyhedronTypeSchema>
 
+export const WasmCycleNameSchema = z.enum([
+  "cube:y",
+  "cube:x",
+  "hex:circumference",
+  "hex:vertical",
+  "carousel:circular",
+])
+
+export type WasmCycleName = z.infer<typeof WasmCycleNameSchema>
+
 /**
  * Transition schema - mirrors WasmTransition in Rust
  */
@@ -39,6 +51,10 @@ export const WasmTransitionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("switchCycle"),
     index: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("switchCycleByKind"),
+    cycle_name: WasmCycleNameSchema,
   }),
   z.object({
     type: z.literal("jumpToContent"),
@@ -58,7 +74,8 @@ export const WasmViewportStateSchema = z.object({
   cursor: z.number().int().nonnegative(),
   cycleIndex: z.number().int().nonnegative(),
   cyclePosition: z.number().int().nonnegative(),
-  cycleName: z.string(),
+  cycleLength: z.number().int().nonnegative(),
+  cycleName: WasmCycleNameSchema,
   progress: z.number().min(0).max(1),
 })
 
@@ -71,6 +88,7 @@ export const ViewportConfigSchema = z.object({
   id: z.string().min(1),
   items: z.array(WasmItemSchema).min(1),
   polyhedron: WasmPolyhedronTypeSchema,
+  cycleName: WasmCycleNameSchema,
   faceCapacity: z.number().int().min(1),
 })
 
@@ -175,6 +193,10 @@ export const TransitionFactory = {
   switchCycle: (index: number): WasmTransition => ({
     type: "switchCycle",
     index,
+  }),
+  switchCycleByKind: (cycle_name: WasmCycleName): WasmTransition => ({
+    type: "switchCycleByKind",
+    cycle_name,
   }),
   jumpToContent: (index: number): WasmTransition => ({
     type: "jumpToContent",
