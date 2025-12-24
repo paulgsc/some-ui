@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
 import { preloadRegistryComponents } from "some-ui-utils"
 
@@ -31,11 +31,11 @@ export function useViewportPreloadHints<K extends string>({
   facesAhead,
   registry,
 }: UseViewportPreloadHintsArgs<K>) {
-  useEffect(() => {
+  // Create a stable key that changes only when the actual kinds change
+  const preloadKey = useMemo(() => {
     const { items, faceCapacity } = viewportConfig
     const currentFace = Math.floor(cursor / faceCapacity)
 
-    // Collect unique component kinds from upcoming faces
     const kinds = new Set<K>()
 
     for (let i = 1; i <= facesAhead; i++) {
@@ -51,9 +51,14 @@ export function useViewportPreloadHints<K extends string>({
       }
     }
 
-    // Delegate to shared preload utility
-    if (kinds.size > 0) {
-      preloadRegistryComponents(registry, Array.from(kinds))
-    }
-  }, [cursor, facesAhead, viewportConfig, registry])
+    // Return sorted string key for stable comparison
+    return Array.from(kinds).sort().join(",")
+  }, [cursor, facesAhead, viewportConfig.items, viewportConfig.faceCapacity])
+
+  useEffect(() => {
+    if (!preloadKey) return
+
+    const kinds = preloadKey.split(",") as Array<K>
+    preloadRegistryComponents(registry, kinds)
+  }, [preloadKey, registry])
 }

@@ -18,7 +18,7 @@ export type UseOrchestratorConfig = {
   scenes: Array<SceneConfig>
   orchestratorUrl?: string
   onSceneChange?: (from: string | null, to: string | null) => void
-  onError?: (error: string) => void
+  onError?: (error: Event | Error) => void
 }
 
 export function useOrchestrator({
@@ -88,7 +88,7 @@ export function useOrchestrator({
 
       if (event.type === "error") {
         _setError(event.message)
-        callbacksRef.current.onError?.(event.message)
+        callbacksRef.current.onError?.(new Error(event.message))
       }
     },
     [_setState, _setError]
@@ -102,6 +102,7 @@ export function useOrchestrator({
     reconnectInterval: 3000,
     init,
     onIncomingMessage: onIncoming,
+    onError: callbacksRef.current.onError,
   })
 
   useEffect(() => {

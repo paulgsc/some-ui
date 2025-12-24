@@ -1,13 +1,11 @@
-import type { ReactNode } from "react"
 import { useMemo } from "react"
-import type { RegionContentMap } from "@wireframes/components/layout-projection"
-import { useResolvedContent } from "@wireframes/components/layout-projection"
+import type { ReactNode } from "react"
+import { withFocus } from "@wireframes/components/focus-enhancer"
 import { RenderSolved } from "@wireframes/components/layout-renderer"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import {
   useCurrentResolvedFocus,
   useFocusPruning,
-  useResolvedUIIntent,
 } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import type {
@@ -17,27 +15,20 @@ import type {
 } from "@wireframes/lib/resizable-layout"
 import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
 import type {
+  ActiveLifetime,
   ComponentRegistry,
-  OrchestratorState,
+  UILayoutIntent,
   YouTubeRegion,
 } from "some-types-utils"
+import { renderRegistryComponent } from "some-ui-utils"
 
-/**
- * YouTube layout tree definition (static, client-owned)
- *
- * Defines the hierarchical structure of the YouTube-like interface:
- * - Title bar at top
- * - Main content area split into left (video + footer) and right (sidebar)
- */
+// --- YouTube layout tree and default constraints ---
 const youtubeTree: LayoutNode<YouTubeRegion> = {
   type: "split",
   axis: "col",
   splitId: "root",
   children: [
-    {
-      type: "leaf",
-      id: "title",
-    },
+    { type: "leaf", id: "title" },
     {
       type: "split",
       axis: "row",
@@ -82,12 +73,6 @@ const youtubeTree: LayoutNode<YouTubeRegion> = {
   ],
 }
 
-/**
- * Default layout constraints (static)
- *
- * Defines ideal proportions for each region and split
- * These are adjusted dynamically based on focus state
- */
 const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
   ["title", { ideal: 8, min: 0, max: 100 }],
   ["content", { ideal: 88, min: 0, max: 100 }],
@@ -104,7 +89,7 @@ const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
 ])
 
 type OrchestratedViewportProps<K extends string> = {
-  orchestratorState: OrchestratorState
+  activeLifetimes: Array<ActiveLifetime>
   sceneRegistry: SceneRegistry
   componentRegistry: ComponentRegistry<K>
   transitionMs?: number
@@ -113,44 +98,52 @@ type OrchestratedViewportProps<K extends string> = {
 /**
  * OrchestratedYouTubeViewport
  *
- * Main orchestrated layout component that:
- * 1. Resolves UI intent from orchestrator state
- * 2. Syncs and resolves focus (server + client proposals)
- * 3. Resolves content from intent using registry renderer
- * 4. Computes focus-adjusted layout constraints
- * 5. Solves and renders the layout with smooth transitions
- *
- * This component is the integration point between:
- * - Orchestrator (state machine)
- * - Registry renderer (component resolution)
- * - Layout solver (constraint-based positioning)
- * - Focus system (dynamic layout adjustment)
+ * Resolves panels for each region directly from active lifetimes.
+ * Panel components themselves handle rendering of children.
  */
 export const OrchestratedYouTubeViewport = <K extends string>({
-  orchestratorState,
-  sceneRegistry,
+  activeLifetimes,
   componentRegistry,
   transitionMs = 300,
 }: OrchestratedViewportProps<K>) => {
   const { ref, rect } = useContainerRect()
 
-  // 1. Resolve UI intent from orchestrator state + scene registry
-  const uiIntent = useResolvedUIIntent(orchestratorState, sceneRegistry)
-
-  // 3. Prune expired focus proposals
+  // Prune expired focus proposals
   useFocusPruning()
-
-  // 4. Get resolved focus (server + component proposals)
   const resolvedFocus = useCurrentResolvedFocus()
 
-  // 5. Resolve content from intent + registry
-  // Now uses shared renderRegistryComponent internally
-  const content: RegionContentMap = useResolvedContent(
-    uiIntent,
-    componentRegistry
-  )
+  // Merge panels per region from all active lifetimes
+  const mergedPanels: Record<YouTubeRegion, ReactNode> = useMemo(() => {
+    const panels: Partial<Record<YouTubeRegion, Array<ReactNode>>> = {}
 
-  // 6. Compute focus-adjusted constraints
+    for (const lifetime of activeLifetimes) {
+      const scene = lifetime.kind.Scene
+      if (!scene || !scene.ui) continue
+
+      for (const layout of scene.ui) {
+        const panelEntries = Object.entries(layout.panels ?? {}) as Array<
+          [YouTubeRegion, UILayoutIntent["panels"][string]]
+        >
+        for (const [region, panel] of panelEntries) {
+          if (!panel) continue
+          const panelNode = renderRegistryComponent(
+            componentRegistry,
+            panel.registry_key,
+            panel.props ?? {},
+            { enhanceComponent: withFocus(region) }
+          )
+          if (!panels[region]) panels[region] = []
+          panels[region].push(panelNode)
+        }
+      }
+    }
+
+    // Flatten arrays into single ReactNode per region
+    return Object.fromEntries(
+      Object.entries(panels).map(([k, v]) => [k, <>{v}</>])
+    ) as Record<YouTubeRegion, ReactNode>
+  }, [activeLifetimes, componentRegistry])
+
   const constraints = useMemo(
     () =>
       focusConstraints(
@@ -162,23 +155,21 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     [resolvedFocus]
   )
 
-  // 7. Solve layout based on constraints and container dimensions
   const layout = useMemo(() => {
     if (!rect) return null
     return solveLayout(youtubeTree, constraints, rect)
   }, [rect, constraints])
 
-  // 8. Render leaf function - wraps content with transition styling
   const renderLeaf = useMemo(() => {
     const RenderLeaf = (id: YouTubeRegion): ReactNode => {
       return (
         <div className="border border-pink-100 relative size-full transition-all">
-          {content[id] ?? <div className="w-full h-full" />}
+          {mergedPanels[id] ?? <div className="w-full h-full" />}
         </div>
       )
     }
     return RenderLeaf
-  }, [content])
+  }, [mergedPanels])
 
   return (
     <div className="absolute inset-0 flex-1 size-full" ref={ref}>

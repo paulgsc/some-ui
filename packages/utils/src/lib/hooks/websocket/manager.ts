@@ -247,7 +247,6 @@ export class WebSocketManager {
           try {
             const data = JSON.parse(event.data)
             this.messageListeners.notify(data)
-            this.snapshot.lastMessage = data
             this.emitStoreChange()
           } catch (err) {
             this.log("Failed to parse message:", err)

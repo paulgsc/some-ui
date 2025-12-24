@@ -2,6 +2,12 @@ import { useEffect, useState } from "react"
 import { componentRegistry } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { OrchestratorState, SceneConfig } from "some-types-utils"
+import {
+  selectCurrentTime,
+  selectTotalDuration,
+  useOrchestratorStore,
+  useSceneLifetimes,
+} from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."
 
@@ -19,28 +25,28 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
       {
         panels: {
           title: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: {
               region: "title",
               faceCapacity: 1,
               children: [
                 {
-                  registryKey: "neon",
+                  registry_key: "neon",
                   duration: 30_000,
                   props: { className: "size-full" },
                 },
                 {
-                  registryKey: "neon",
+                  registry_key: "neon",
                   duration: 30_000,
                   props: { className: "size-full" },
                 },
                 {
-                  registryKey: "neon",
+                  registry_key: "neon",
                   duration: 30_000,
                   props: { className: "size-full" },
                 },
                 {
-                  registryKey: "neon",
+                  registry_key: "neon",
                   duration: 30_000,
                   props: { className: "size-full" },
                 },
@@ -48,28 +54,28 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
             },
           },
           video: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "video", faceCapacity: 1 },
             focus: { region: "video", intensity: 0.7 },
           },
           mainContent: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "mainContent", faceCapacity: 1 },
           },
           sidebarTop: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "mainContent", faceCapacity: 1 },
           },
           sidebarBottom: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "mainContent", faceCapacity: 1 },
           },
           footerLeft: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "mainContent", faceCapacity: 1 },
           },
           footerRight: {
-            registryKey: "cube",
+            registry_key: "cube",
             props: { region: "mainContent", faceCapacity: 1 },
           },
         },
@@ -85,47 +91,47 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
     ui: [
       {
         panels: {
-          title: { registryKey: "staticTitle" },
+          title: { registry_key: "staticTitle" },
           video: {
-            registryKey: "hangul",
+            registry_key: "hangul",
             focus: { region: "video", intensity: 0.9 },
             children: [
               {
-                registryKey: "overlayBadge",
+                registry_key: "overlayBadge",
                 props: { text: "LIVE" },
                 duration: 5000,
               },
               {
-                registryKey: "progressBar",
+                registry_key: "progressBar",
                 props: { percentage: 75 },
                 duration: 10000,
               },
-              { registryKey: "controlsOverlay", duration: 15000 },
+              { registry_key: "controlsOverlay", duration: 15000 },
             ],
           },
           mainContent: {
-            registryKey: "brickChart",
+            registry_key: "brickChart",
             children: [
               {
-                registryKey: "tooltipHelper",
+                registry_key: "tooltipHelper",
                 props: { hint: "Click to interact" },
                 duration: 8000,
               },
             ],
           },
           sidebarTop: {
-            registryKey: "scheduleElements",
+            registry_key: "scheduleElements",
             children: [
               {
-                registryKey: "notificationBadge",
+                registry_key: "notificationBadge",
                 props: { count: 3 },
                 duration: 12000,
               },
             ],
           },
-          sidebarBottom: { registryKey: "topRightContent" },
-          footerLeft: { registryKey: "footerLeft" },
-          footerRight: { registryKey: "footerRight" },
+          sidebarBottom: { registry_key: "topRightContent" },
+          footerLeft: { registry_key: "footerLeft" },
+          footerRight: { registry_key: "footerRight" },
         },
       },
     ],
@@ -140,40 +146,40 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
       {
         panels: {
           title: {
-            registryKey: "staticTitle",
+            registry_key: "staticTitle",
             focus: { region: "title", intensity: 0.3 },
           },
           video: {
-            registryKey: "leetype",
+            registry_key: "leetype",
             props: { placeholder: "Type here...", autoFocus: true },
             focus: { region: "video", intensity: 0.8 },
             children: [
-              { registryKey: "inputHelper", duration: 6000 },
+              { registry_key: "inputHelper", duration: 6000 },
               {
-                registryKey: "characterCount",
+                registry_key: "characterCount",
                 props: { max: 100 },
                 duration: 20000,
               },
             ],
           },
           mainContent: {
-            registryKey: "cluesDown",
+            registry_key: "cluesDown",
             focus: { region: "mainContent", intensity: 0.5 },
-            children: [{ registryKey: "highlighter", duration: 15000 }],
+            children: [{ registry_key: "highlighter", duration: 15000 }],
           },
-          sidebarTop: { registryKey: "scheduleElements" },
-          sidebarBottom: { registryKey: "topRightContent" },
+          sidebarTop: { registry_key: "scheduleElements" },
+          sidebarBottom: { registry_key: "topRightContent" },
           footerLeft: {
-            registryKey: "footerLeft",
+            registry_key: "footerLeft",
             children: [
               {
-                registryKey: "statusIndicator",
+                registry_key: "statusIndicator",
                 props: { status: "active" },
                 duration: 20000,
               },
             ],
           },
-          footerRight: { registryKey: "footerRight" },
+          footerRight: { registry_key: "footerRight" },
         },
       },
     ],
@@ -187,26 +193,26 @@ const mockSceneRegistry: Record<string, SceneConfig> = {
     ui: [
       {
         panels: {
-          title: { registryKey: "staticTitle" },
+          title: { registry_key: "staticTitle" },
           video: {
-            registryKey: "hangul",
+            registry_key: "hangul",
             children: [
               {
-                registryKey: "watermark",
+                registry_key: "watermark",
                 props: { position: "bottomRight" },
                 duration: 15000,
               },
-              { registryKey: "timer", duration: 15000 },
+              { registry_key: "timer", duration: 15000 },
             ],
           },
           mainContent: {
-            registryKey: "brickChart",
-            children: [{ registryKey: "gridOverlay", duration: 15000 }],
+            registry_key: "brickChart",
+            children: [{ registry_key: "gridOverlay", duration: 15000 }],
           },
-          sidebarTop: { registryKey: "scheduleElements" },
-          sidebarBottom: { registryKey: "topRightContent" },
-          footerLeft: { registryKey: "footerLeft" },
-          footerRight: { registryKey: "footerRight" },
+          sidebarTop: { registry_key: "scheduleElements" },
+          sidebarBottom: { registry_key: "topRightContent" },
+          footerLeft: { registry_key: "footerLeft" },
+          footerRight: { registry_key: "footerRight" },
         },
       },
     ],
@@ -229,7 +235,7 @@ const meta = {
 
 **Key Architecture Insight**: Each panel is a parent component that can contain multiple time-limited children.
 
-- 🎯 **Panel = Parent + Focus**: Each panel has one parent component (registryKey) and optional focus
+- 🎯 **Panel = Parent + Focus**: Each panel has one parent component (registry_key) and optional focus
 - 🌲 **Hierarchical Children**: Parents can contain multiple children with individual durations
 - ⏱️ **Time-Scoped Components**: Children have \`duration\` fields controlling their lifecycle
 - 🔒 **Focus Inheritance**: Focus applies to the entire panel (parent + all children)
@@ -238,11 +244,11 @@ const meta = {
 
 \`\`\`
 Panel {
-  registryKey: "parentComponent",  // The parent/base component
+  registry_key: "parentComponent",  // The parent/base component
   focus: { region, intensity },     // Optional focus for entire panel
   children: [                       // Optional nested components
-    { registryKey, props, duration },
-    { registryKey, props, duration }
+    { registry_key, props, duration },
+    { registry_key, props, duration }
   ]
 }
 \`\`\`
@@ -322,21 +328,22 @@ const AnimatedStory = ({
   scene: string
   transitionMs?: number
 }) => {
-  const sceneConfig = mockSceneRegistry[scene]
-  const orchestratorState = useAnimatedOrchestrator(scene, sceneConfig.duration)
+  const totalDuration = useOrchestratorStore(selectTotalDuration)
+  const currTime = useOrchestratorStore(selectCurrentTime)
+  const activeLifetimes = useSceneLifetimes()
 
   return (
     <div className="w-full h-screen">
       <OrchestratedYouTubeViewport
-        orchestratorState={orchestratorState}
+        activeLifetimes={activeLifetimes}
         sceneRegistry={mockSceneRegistry}
         componentRegistry={componentRegistry}
         transitionMs={transitionMs}
       />
       <div className="fixed bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-xs font-mono">
         <div>
-          {scene}: {Math.floor(orchestratorState.current_time / 1000)}s /{" "}
-          {Math.floor(orchestratorState.total_duration / 1000)}s
+          {scene}: {Math.floor(currTime / 1000)}s /{" "}
+          {Math.floor(totalDuration / 1000)}s
         </div>
       </div>
     </div>

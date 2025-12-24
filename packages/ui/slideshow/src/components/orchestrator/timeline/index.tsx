@@ -3,7 +3,7 @@ import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { AlertCircle, Edit2, Layers, Layout } from "lucide-react"
-import type { ActiveLifetime, SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "some-types-utils"
 import {
   Badge,
   Card,
@@ -14,8 +14,8 @@ import {
 } from "some-ui-shared"
 import {
   cn,
-  selectActiveLifetimes,
   selectCurrentTime,
+  useSceneLifetimes,
   selectTotalDuration,
   useOrchestratorStore,
 } from "some-ui-utils"
@@ -31,7 +31,7 @@ export const OrchestratorTimeline = ({
 }: OrchestratorTimelineProps) => {
   const currentTime = useOrchestratorStore(selectCurrentTime)
   const totalDuration = useOrchestratorStore(selectTotalDuration)
-  const activeLifetimes = useOrchestratorStore(selectActiveLifetimes)
+  const activeLifetimes = useSceneLifetimes()
   const forceScene = useOrchestratorStore((s) => s.forceScene)
 
   const formatTime = (ms: number): string => {
@@ -61,7 +61,7 @@ export const OrchestratorTimeline = ({
         uiComponents: Array.from(
           new Set(
             scene.ui.flatMap((u) =>
-              Object.values(u.panels ?? {}).map((c) => c.registryKey)
+              Object.values(u.panels ?? {}).map((c) => c.registry_key)
             )
           )
         ),
@@ -75,12 +75,7 @@ export const OrchestratorTimeline = ({
   )
 
   const activeSceneIds = new Set(
-    activeLifetimes
-      .filter(
-        (lt): lt is ActiveLifetime & { kind: { type: "Scene" } } =>
-          lt.kind.type === "Scene"
-      )
-      .map((lt) => lt.kind.scene_id)
+    activeLifetimes.map((lt) => lt.kind.Scene.scene_id)
   )
 
   return (

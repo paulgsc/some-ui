@@ -6,9 +6,8 @@ import type {
   WasmCycleName,
   YouTubeRegion,
 } from "some-types-utils"
-import { PolyhedronFactory } from "some-types-utils"
 import { ViewportDiceCard } from "some-ui-slideshow"
-import { useOrchestratorStore } from "some-ui-utils"
+import { useSceneLifetimes } from "some-ui-utils"
 
 type CubeContentProps = {
   region: YouTubeRegion
@@ -16,62 +15,30 @@ type CubeContentProps = {
   rotationAxis?: WasmCycleName
 }
 
-const simpleCubeConfig: ViewportConfig = {
-  id: "simple-cube",
-  items: [
-    {
-      kind: "neon",
-      contentIndex: 0,
-      durationMs: 3000,
-      props: {},
-    },
-    {
-      kind: "neon",
-      contentIndex: 1,
-      durationMs: 3000,
-      props: {},
-    },
-    {
-      kind: "neon",
-      contentIndex: 2,
-      durationMs: 3000,
-      props: {},
-    },
-    {
-      kind: "neon",
-      contentIndex: 3,
-      durationMs: 3000,
-      props: {},
-    },
-  ],
-  polyhedron: PolyhedronFactory.cube(),
-  faceCapacity: 1,
-  cycleName: "cube:y",
-}
-
 const CubeContent = ({
   region,
   faceCapacity = 1,
   rotationAxis = "cube:y",
 }: CubeContentProps): React.JSX.Element => {
-  const orchestratorState = useOrchestratorStore((s) => s.state)
+  // Use shallow comparison to prevent unnecessary re-renders
+  const activeLifetimes = useSceneLifetimes()
 
   const viewportConfig = useMemo<ViewportConfig>(() => {
-    return {
-      ...buildViewportConfigForRegion(
-        orchestratorState,
-        region,
-        faceCapacity,
-        rotationAxis
-      ),
-    }
-  }, [orchestratorState, region, faceCapacity])
+    return buildViewportConfigForRegion(
+      activeLifetimes,
+      region,
+      faceCapacity,
+      rotationAxis
+    )
+  }, [activeLifetimes, region, faceCapacity, rotationAxis])
 
-  ///if (orchestratorState.active_lifetimes.length <= 0) return <Fragment />
+  if (activeLifetimes.length <= 0) return <Fragment />
+
+  console.log("orchestate: ", activeLifetimes)
 
   return (
     <ViewportDiceCard
-      viewportConfig={simpleCubeConfig}
+      viewportConfig={viewportConfig}
       registry={componentRegistry}
       hideBackface={true}
     />

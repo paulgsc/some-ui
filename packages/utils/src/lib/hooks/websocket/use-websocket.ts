@@ -102,20 +102,22 @@ export function useWebSocket<I, O = unknown>({
 
   const handleMessage = useCallback(
     (data: unknown) => {
-      try {
-        const result = incomingMessageSchema.safeParse(data)
+      const result = incomingMessageSchema.safeParse(data)
 
-        if (result.success) {
-          const validatedMessage = result.data
+      if (!result.success) {
+        console.warn("WebSocket schema mismatch", {
+          data,
+          error: result.error.format(),
+        })
 
-          if (callbacksRef.current.onIncomingMessage) {
-            callbacksRef.current.onIncomingMessage(validatedMessage)
-          }
-        }
-        // Parse errors are tracked in manager snapshot
-      } catch (err) {
-        console.error("Failed to process message:", err)
+        callbacksRef.current.onError?.(
+          new Error("Incoming message schema mismatch")
+        )
+
+        return
       }
+
+      callbacksRef.current.onIncomingMessage?.(result.data)
     },
     [incomingMessageSchema]
   )
@@ -151,7 +153,7 @@ export function useWebSocket<I, O = unknown>({
 
     acquire()
 
-    return () => {
+    return (): void => {
       // Only release if we successfully acquired
       if (acquired) {
         manager.release()
@@ -165,7 +167,7 @@ export function useWebSocket<I, O = unknown>({
     const removeConnection = manager.addConnectionListener(handleConnection)
     const removeError = manager.addErrorListener(handleError)
 
-    return () => {
+    return (): void => {
       removeMessage()
       removeConnection()
       removeError()

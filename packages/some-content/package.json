@@ -2,24 +2,24 @@
   "dependencies": {
     "attributions": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
-    "some-ui-nfl": "workspace:*",
-    "some-ui-stepper": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "some-ui-input": "workspace:*",
-    "some-ui-slideshow": "workspace:*",
-    "some-ui-honeycomb": "workspace:*",
+    "makjang": "workspace:*",
     "portfolio-chart": "workspace:*",
     "some-types-utils": "workspace:*",
-    "makjang": "workspace:*",
-    "umag": "workspace:*",
+    "some-ui-chat": "workspace:*",
+    "some-ui-honeycomb": "workspace:*",
+    "some-ui-input": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
-    "some-ui-chat": "workspace:*"
+    "some-ui-nfl": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
+    "some-ui-stepper": "workspace:*",
+    "some-ui-utils": "workspace:*",
+    "umag": "workspace:*"
   },
   "description": "Shared Vite configuration for monorepo packages",
   "devDependencies": {
-    "node-fetch": "^3.3.2",
+    "@some-ui/tsconfig": "workspace:*",
     "@types/node-fetch": "^2.6.11",
-    "@some-ui/tsconfig": "workspace:*"
+    "node-fetch": "^3.3.2"
   },
   "exports": {
     ".": {

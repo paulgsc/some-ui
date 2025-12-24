@@ -19,7 +19,7 @@ export type LifetimeId = z.infer<typeof LifetimeIdSchema>
 
 // --- Metadata & Config ---
 export const ComponentPlacementSchema = z.object({
-  registryKey: z.string(),
+  registry_key: z.string(),
   props: z.record(z.string(), z.unknown()).optional(),
   duration: TimeMsSchema,
 })
@@ -36,7 +36,7 @@ export type FocusIntent = z.infer<typeof FocusIntentSchema>
 
 // --- Panel intent (root of a region) ---
 export const PanelIntentSchema = z.object({
-  registryKey: z.string(),
+  registry_key: z.string(),
   props: z.record(z.string(), z.unknown()).optional(),
   focus: FocusIntentSchema.nullable().optional(),
   children: z.array(ComponentPlacementSchema).optional(),
@@ -75,17 +75,18 @@ export const StreamStatusSchema = z.object({
 
 export type StreamStatus = z.infer<typeof StreamStatusSchema>
 
+const LifetimeKindSchema = z.object({
+  Scene: z.object({
+    scene_id: z.string(),
+    scene_name: z.string(),
+    duration: TimeMsSchema,
+    ui: z.array(UILayoutIntentSchema).optional(),
+  }),
+})
+
 export const ActiveLifetimeSchema = z.object({
   id: LifetimeIdSchema,
-  kind: z.discriminatedUnion("type", [
-    z.object({
-      type: z.literal("Scene"),
-      scene_id: z.string(),
-      scene_name: z.string(),
-      duration: TimeMsSchema,
-      ui: UILayoutIntentSchema.optional(),
-    }),
-  ]),
+  kind: LifetimeKindSchema,
   started_at: TimeMsSchema,
 })
 

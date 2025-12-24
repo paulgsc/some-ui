@@ -1,5 +1,5 @@
 import type {
-  OrchestratorState,
+  ActiveLifetime,
   ViewportConfig,
   WasmCycleName,
   WasmItem,
@@ -10,45 +10,40 @@ import { PolyhedronFactory } from "some-types-utils"
 /**
  * Build viewport config for a single region
  *
- * This function is intentionally region-scoped so callers can
- * build independent viewports per region.
+ * Region-scoped: each region gets its own viewport.
  */
 export function buildViewportConfigForRegion(
-  state: OrchestratorState,
+  activeLifetimes: Array<ActiveLifetime>,
   region: YouTubeRegion,
   faceCapacity: number,
   rotationAxis: WasmCycleName
 ): ViewportConfig {
   const items: Array<WasmItem> = []
 
-  for (const lifetime of state.active_lifetimes) {
-    if (lifetime.kind.type !== "Scene") continue
+  for (const lifetime of activeLifetimes) {
+    const scene = lifetime.kind.Scene
+    if (!scene.ui) continue
 
-    const ui = lifetime.kind.ui
-    const panel = ui?.panels?.[region]
-    if (!panel?.children) continue
+    for (const layout of scene.ui) {
+      const panel = layout.panels?.[region]
+      if (!panel?.children) continue
 
-    const elapsed = state.current_time - lifetime.started_at
+      panel.children.forEach((child, index) => {
+        let durationMs = child.duration
 
-    panel.children.forEach((child, index) => {
-      let durationMs = child.duration
-
-      if (elapsed > 0 && elapsed < child.duration) {
-        durationMs = child.duration - elapsed
-      }
-
-      items.push({
-        kind: child.registryKey,
-        props: child.props ?? {},
-        durationMs,
-        contentIndex: index,
+        items.push({
+          kind: child.registry_key,
+          props: child.props ?? {},
+          durationMs,
+          contentIndex: index,
+        })
       })
-    })
+    }
   }
 
   return {
-    items,
     id: region,
+    items,
     faceCapacity,
     polyhedron: PolyhedronFactory.cube(),
     cycleName: rotationAxis,

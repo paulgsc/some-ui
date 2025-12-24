@@ -5,16 +5,16 @@ import type { ActiveLifetime } from "some-types-utils"
 import { Badge, Card, ScrollArea } from "some-ui-shared"
 import {
   cn,
-  selectActiveLifetimes,
   selectCurrentTime,
   useOrchestratorStore,
+  useSceneLifetimes,
 } from "some-ui-utils"
 
 export const ActiveLifetimesPanel: FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [maxVisible, setMaxVisible] = useState(3)
 
-  const activeLifetimes = useOrchestratorStore(selectActiveLifetimes)
+  const activeLifetimes = useSceneLifetimes()
   const currentTime = useOrchestratorStore(selectCurrentTime)
 
   // Memoize grouping to avoid layout thrashing
@@ -123,13 +123,16 @@ const LifetimeCard = ({
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Logic updated for new Discriminated Union
-  const isScene = lifetime.kind.type === "Scene"
-  const sceneName = isScene ? lifetime.kind.scene_name : "Unknown Entity"
-  const duration = isScene ? lifetime.kind.duration : 0
-  const uiIntents = isScene ? (lifetime.kind.ui ? [lifetime.kind.ui] : []) : []
+  const {
+    kind: {
+      Scene: { ui, duration, scene_name },
+    },
+  } = lifetime
+  const sceneName = scene_name
+  const uiIntents = ui
 
   const elapsedMs = currentTime - lifetime.started_at
-  const progress = isScene ? Math.min(100, (elapsedMs / duration) * 100) : 0
+  const progress = Math.min(100, (elapsedMs / duration) * 100)
 
   const formatTime = (ms: number): string => {
     const s = Math.floor(Math.abs(ms) / 1000)
@@ -183,44 +186,45 @@ const LifetimeCard = ({
         </div>
 
         {/* Ergonomic UI Intent Summary */}
-        {isExpanded && isScene && (
+        {isExpanded && (
           <div className="mt-3 space-y-2 border-t pt-2 animate-in fade-in slide-in-from-top-1">
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               <LayoutGrid size={12} /> UI Composition
             </div>
-            {uiIntents.map((ui, i) => (
-              <div key={i} className="bg-muted/50 rounded p-2">
-                {ui.panels &&
-                  Object.entries(ui.panels).map(([key, placement]) => (
-                    <>
-                      <div
-                        key={key}
-                        className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
-                      >
-                        <span className="font-mono text-muted-foreground">
-                          {key}:
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className="text-[9px] h-4 py-0"
+            {uiIntents &&
+              uiIntents.map((ui, i) => (
+                <div key={i} className="bg-muted/50 rounded p-2">
+                  {ui.panels &&
+                    Object.entries(ui.panels).map(([key, placement]) => (
+                      <>
+                        <div
+                          key={key}
+                          className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
                         >
-                          {placement.registryKey}
-                        </Badge>
-                      </div>
-                      {placement.focus && (
-                        <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
-                          <span className="text-muted-foreground italic">
-                            Focus: {placement.focus.region}
+                          <span className="font-mono text-muted-foreground">
+                            {key}:
                           </span>
-                          <span className="text-primary">
-                            {(placement.focus.intensity * 100).toFixed(0)}%
-                          </span>
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] h-4 py-0"
+                          >
+                            {placement.registry_key}
+                          </Badge>
                         </div>
-                      )}
-                    </>
-                  ))}
-              </div>
-            ))}
+                        {placement.focus && (
+                          <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
+                            <span className="text-muted-foreground italic">
+                              Focus: {placement.focus.region}
+                            </span>
+                            <span className="text-primary">
+                              {(placement.focus.intensity * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ))}
+                </div>
+              ))}
           </div>
         )}
       </div>

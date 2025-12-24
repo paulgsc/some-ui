@@ -13,7 +13,7 @@ export {
   selectTotalDuration,
   selectCurrentTime,
   selectConnectionStatus,
-  selectActiveLifetimes,
+  useSceneLifetimes,
   useOrchestratorStore,
 } from "./context"
 export type { SpeechQueueState } from "./context"
