@@ -71,6 +71,22 @@ export type RegistryRenderPolicy = {
   enhanceComponent?: ComponentEnhancer
 }
 
+const enhancedCache = new WeakMap<ComponentType<any>, ComponentType<any>>()
+
+function getEnhanced<P>(
+  Component: ComponentType<P>,
+  enhance?: ComponentEnhancer<P>
+): ComponentType<P> {
+  if (!enhance) return Component
+
+  const cached = enhancedCache.get(Component)
+  if (cached) return cached
+
+  const Enhanced = enhance(Component)
+  enhancedCache.set(Component, Enhanced)
+  return Enhanced
+}
+
 /**
  * Core registry component renderer
  *
@@ -97,6 +113,8 @@ export function renderRegistryComponent<K extends string>(
   assertIsValidProps(props)
 
   let Component = entry.Component
+
+  Component = getEnhanced(Component, policy.enhanceComponent)
 
   // Apply enhancement if provided (dependency inversion point)
   if (policy.enhanceComponent) {

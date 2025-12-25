@@ -12,12 +12,12 @@ import type {
   Constraint,
   ConstraintKey,
   LayoutNode,
+  SolvedNode,
 } from "@wireframes/lib/resizable-layout"
 import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
 import type {
   ActiveLifetime,
   ComponentRegistry,
-  UILayoutIntent,
   YouTubeRegion,
 } from "some-types-utils"
 import { renderRegistryComponent } from "some-ui-utils"
@@ -113,35 +113,47 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const resolvedFocus = useCurrentResolvedFocus()
 
   // Merge panels per region from all active lifetimes
-  const mergedPanels: Record<YouTubeRegion, ReactNode> = useMemo(() => {
-    const panels: Partial<Record<YouTubeRegion, Array<ReactNode>>> = {}
+  const mergedPanels = useMemo(() => {
+    const panels: Partial<Record<YouTubeRegion, Array<() => ReactNode>>> = {}
 
     for (const lifetime of activeLifetimes) {
       const scene = lifetime.kind.Scene
-      if (!scene || !scene.ui) continue
+      if (!scene.ui) continue
 
       for (const layout of scene.ui) {
-        const panelEntries = Object.entries(layout.panels ?? {}) as Array<
-          [YouTubeRegion, UILayoutIntent["panels"][string]]
-        >
-        for (const [region, panel] of panelEntries) {
+        for (const [region, panel] of Object.entries(
+          layout.panels ?? {}
+        ) as any) {
           if (!panel) continue
-          const panelNode = renderRegistryComponent(
-            componentRegistry,
-            panel.registry_key,
-            panel.props ?? {},
-            { enhanceComponent: withFocus(region) }
-          )
-          if (!panels[region]) panels[region] = []
-          panels[region].push(panelNode)
+
+          const factory = () =>
+            renderRegistryComponent(
+              componentRegistry,
+              panel.registry_key,
+              panel.props ?? {},
+              { enhanceComponent: withFocus(region) }
+            )
+
+          panels[region] ??= []
+          panels[region]!.push(factory)
         }
       }
     }
 
-    // Flatten arrays into single ReactNode per region
     return Object.fromEntries(
-      Object.entries(panels).map(([k, v]) => [k, <>{v}</>])
-    ) as Record<YouTubeRegion, ReactNode>
+      Object.entries(panels).map(([k, factories]) => [
+        k,
+        () => (
+          <div className="size-full">
+            {factories.map((f, i) => (
+              <div key={i} className="size-full">
+                {f()}
+              </div>
+            ))}
+          </div>
+        ),
+      ])
+    ) as Record<YouTubeRegion, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
 
   const constraints = useMemo(
@@ -149,24 +161,23 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       focusConstraints(
         youtubeTree,
         defaultConstraints,
+        // "mainContent",
+        // 1
         resolvedFocus?.region ?? null,
         resolvedFocus?.intensity ?? 0
       ),
     [resolvedFocus]
   )
 
-  const layout = useMemo(() => {
-    if (!rect) return null
+  const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
+    if (!rect) return
     return solveLayout(youtubeTree, constraints, rect)
-  }, [rect, constraints])
+  }, [constraints, rect])
 
   const renderLeaf = useMemo(() => {
     const RenderLeaf = (id: YouTubeRegion): ReactNode => {
-      return (
-        <div className="border border-pink-100 relative size-full transition-all">
-          {mergedPanels[id] ?? <div className="w-full h-full" />}
-        </div>
-      )
+      if (!mergedPanels[id]) return <div className="size-full" />
+      return mergedPanels[id]()
     }
     return RenderLeaf
   }, [mergedPanels])

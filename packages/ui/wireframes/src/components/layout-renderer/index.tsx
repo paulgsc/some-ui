@@ -7,11 +7,13 @@ export const RenderSolved = <T extends string>({
   renderLeaf,
   onLeafClick,
   transitionMs = 300,
+  debug = true,
 }: {
   node: SolvedNode<T>
   renderLeaf: (id: T) => ReactNode
   onLeafClick?: (id: T) => void
   transitionMs?: number
+  debug?: boolean
 }) => {
   // Iterative render using useMemo for performance
   const elements = useMemo(() => {
@@ -23,6 +25,19 @@ export const RenderSolved = <T extends string>({
 
       if (current.type === "leaf") {
         const { x, y, width, height } = current.rect
+
+        // Debug logging
+        if (debug) {
+          console.log(`Rendering leaf ${current.id}:`, {
+            x,
+            y,
+            width,
+            height,
+            right: x + width,
+            bottom: y + height,
+          })
+        }
+
         out.push(
           <div
             key={current.id}
@@ -36,9 +51,10 @@ export const RenderSolved = <T extends string>({
               cursor: onLeafClick ? "pointer" : "default",
               transition: `all ${transitionMs}ms ease-in-out`,
             }}
-            className="flex-1 relative overflow-hidden"
+            className="border border-pink-100 overflow-hidden"
+            data-pane-id={current.id}
           >
-            {renderLeaf(current.id)}
+            <div className="size-full relative">{renderLeaf(current.id)}</div>
           </div>
         )
       } else {
@@ -50,7 +66,7 @@ export const RenderSolved = <T extends string>({
     }
 
     return out
-  }, [node, renderLeaf, onLeafClick, transitionMs])
+  }, [node, renderLeaf, onLeafClick, transitionMs, debug])
 
   return <>{elements}</>
 }

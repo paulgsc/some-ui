@@ -1,6 +1,5 @@
-import type { CSSProperties, FC, ReactNode, RefObject } from "react"
-import { useRef } from "react"
-import { cn, useMeasureRect } from "some-ui-utils"
+import type { CSSProperties, FC, ReactNode } from "react"
+import { cn, useContainerRect } from "some-ui-utils"
 
 export type CubeGeometryProps = {
   perspective?: number
@@ -24,14 +23,14 @@ export const CubeGeometry: FC<CubeGeometryProps> = ({
   faceClassName,
   hideBackface = false,
 }) => {
-  const ref = useRef<HTMLDivElement>(null)
+  const { rect, ref } = useContainerRect()
+  if (!rect) return <div ref={ref} className="size-full" />
 
-  const { width = 0, height = 0 } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
+  const { width, height } = rect
 
   return (
     <div
+      ref={ref}
       style={{ "--perspective": perspective } as CSSProperties}
       className={cn(
         "flex size-full items-center justify-center",
@@ -40,7 +39,6 @@ export const CubeGeometry: FC<CubeGeometryProps> = ({
       )}
     >
       <div
-        ref={ref}
         className={cn(
           "relative size-full transform-3d transition-transform duration-500"
         )}

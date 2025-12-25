@@ -97,7 +97,7 @@ export const ViewportDiceCard = <K extends string>({
       faces={faces.map((face, faceIndex) => ({
         key: faceIndex,
         content: (
-          <div className="size-full">
+          <div className="relative size-full">
             {showBeam && face.isActive && (
               <BorderBeam size={16} duration={faceDurationMs() / 1_000} />
             )}

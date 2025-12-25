@@ -1,5 +1,11 @@
 import { useLayoutEffect, useRef, useState } from "react"
-import type { Rect } from "@wireframes/lib/resizable-layout"
+
+export type Rect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 export function useContainerRect() {
   const ref = useRef<HTMLDivElement | null>(null)
