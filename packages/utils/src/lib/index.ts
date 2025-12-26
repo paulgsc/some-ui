@@ -15,6 +15,8 @@ export {
   selectConnectionStatus,
   useSceneLifetimes,
   useOrchestratorStore,
+  useRegionRectStore,
+  useRegionRect,
 } from "./context"
 export type { SpeechQueueState } from "./context"
 export {

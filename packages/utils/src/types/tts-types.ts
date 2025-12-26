@@ -126,6 +126,20 @@ export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
       language: "en-US",
       gender: "female",
     },
+    {
+      id: "ko-KR-SunHiNeural",
+      name: "Sun-Hi (Korean Female)",
+      provider: "openai",
+      language: "ko-KR",
+      gender: "female",
+    },
+    {
+      id: "ko-KR-InJoonNeural",
+      name: "In-Joon (Korean Male)",
+      provider: "openai",
+      language: "ko-KR",
+      gender: "male",
+    },
   ],
   google: [
     {

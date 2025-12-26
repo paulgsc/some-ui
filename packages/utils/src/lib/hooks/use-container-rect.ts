@@ -1,11 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react"
-
-export type Rect = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import type { Rect } from "@utils/types/resizable"
 
 export function useContainerRect() {
   const ref = useRef<HTMLDivElement | null>(null)
