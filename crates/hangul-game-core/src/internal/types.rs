@@ -1,6 +1,20 @@
-
 use serde::{Deserialize, Serialize};
 
+/// An active character reveal in the game
+#[derive(Debug, Clone)]
+pub struct ActiveReveal {
+    pub hangul: String,
+    pub expected_key: String,
+    pub revealed_at_ms: u64,
+    pub cell_id: String,
+}
+
+/// A key press in the input buffer
+#[derive(Debug, Clone)]
+pub struct KeyBufferEntry {
+    pub key: char,
+    pub timestamp_ms: u64,
+}
 /// Configuration for game behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +28,8 @@ pub struct GameConfig {
     pub points_per_correct: i32,
     pub points_per_miss: i32,
     pub streak_bonus_divisor: usize,
+    pub game_duration_ms: u64,
+    pub buffer_timeout_ms: u64,
 }
 
 impl Default for GameConfig {
@@ -28,6 +44,8 @@ impl Default for GameConfig {
             points_per_correct: 10,
             points_per_miss: -5,
             streak_bonus_divisor: 5,
+            buffer_timeout_ms: 300,
+            game_duration_ms: 180_000,
         }
     }
 }
@@ -53,15 +71,6 @@ impl GameStats {
             total_missed: 0,
         }
     }
-
-    pub fn accuracy(&self) -> f64 {
-        let total = self.total_correct + self.total_missed;
-        if total == 0 {
-            0.0
-        } else {
-            (self.total_correct as f64 / total as f64) * 100.0
-        }
-    }
 }
 
 /// Result of spawning a new character
@@ -75,15 +84,6 @@ pub struct SpawnResult {
     pub play_spawn_sound: bool,
 }
 
-/// Result of checking for expired characters
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExpiredResult {
-    pub cell_ids: Vec<String>,
-    pub count: usize,
-    pub play_expire_sound: bool,
-}
-
 /// Timing parameters for the game
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,48 +91,6 @@ pub struct TimingParams {
     pub spawn_interval_ms: u32,
     pub character_lifetime_ms: u32,
     pub show_romanization: bool,
-}
-
-/// Audio events to trigger
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AudioEvents {
-    pub match_correct: bool,
-    pub match_perfect: bool,
-    pub match_miss: bool,
-    pub character_expired: bool,
-    pub streak_milestone: bool,
-    pub difficulty_changed: bool,
-}
-
-impl AudioEvents {
-    pub fn new() -> Self {
-        Self {
-            match_correct: false,
-            match_perfect: false,
-            match_miss: false,
-            character_expired: false,
-            streak_milestone: false,
-            difficulty_changed: false,
-        }
-    }
-}
-
-/// Result of processing a key press
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KeyPressResult {
-    pub matched: bool,
-    pub is_partial_match: bool,
-    pub should_clear_buffer: bool,
-    pub hangul: String,
-    pub cell_id: String,
-    pub points: i32,
-    pub time_gap_ms: u32,
-    pub is_high_quality: bool,
-    pub current_buffer: String,
-    pub audio_events: AudioEvents,
-    pub counts_toward_completion: bool,
 }
 
 /// Progress information for completion mode
