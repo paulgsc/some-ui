@@ -26,7 +26,7 @@ impl GameEngine {
         let game_duration_ms = config.game_duration_ms;
 
         Self {
-            current_lifetime_ms: config.max_time_window_ms,
+            current_lifetime_ms: config.time_window_step_ms,
             config,
             active_reveals: Vec::new(),
             stats: GameStats::new(),

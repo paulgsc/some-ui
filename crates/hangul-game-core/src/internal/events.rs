@@ -79,32 +79,43 @@ pub enum DifficultyChangeReason {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum GameEvent {
     MatchFound {
+        #[serde(rename = "cellId")]
         cell_id: String,
         hangul: String,
         points: i32,
+        #[serde(rename = "isHighQuality")]
         is_high_quality: bool,
+        #[serde(rename = "timeGapMs")]
         time_gap_ms: u32,
+        #[serde(rename = "countsTowardCompletion")]
         counts_toward_completion: bool,
     },
     CharactersExpired {
+        #[serde(rename = "cellIds")]
         cell_ids: Vec<String>,
         hanguls: Vec<String>,
         count: usize,
     },
     InputMissed,
     BufferUpdated {
+        #[serde(rename = "currentBuffer")]
         current_buffer: String,
     },
     AmbiguousInput {
+        #[serde(rename = "currentBuffer")]
         current_buffer: String,
+        #[serde(rename = "potentialMatches")]
         potential_matches: Vec<String>,
     },
     CharacterSpawned {
+        #[serde(rename = "spawnResult")]
         spawn_result: SpawnResult,
     },
     BoardFull,
     DifficultyChanged {
+        #[serde(rename = "newLifetimeMs")]
         new_lifetime_ms: u32,
+        #[serde(rename = "newIntervalMs")]
         new_interval_ms: u32,
         reason: DifficultyChangeReason,
     },

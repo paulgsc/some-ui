@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
@@ -65,7 +65,21 @@ export const HangulHexGrid = ({
   const [keyBuffer, setKeyBuffer] = useState("")
 
   // Initialize audio
-  const { playSound } = useGameAudio({ enabled: true, volume: 0.5 })
+  const { unlockAudio, playSound } = useGameAudio({
+    enabled: true,
+    volume: 0.5,
+  })
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      console.log("[audio] global keydown → unlock")
+      unlockAudio()
+      window.removeEventListener("keydown", handler)
+    }
+
+    window.addEventListener("keydown", handler, { once: true })
+    return () => window.removeEventListener("keydown", handler)
+  }, [unlockAudio])
 
   // Game timer hook (for timed modes)
   const { gameStatus, isGameOver, timeRemainingMs, progress } = useGameTimer({

@@ -57,7 +57,6 @@ export const useKeyboardInput = ({
 
       // Send to WASM engine - returns array of events
       const events = gameBridge.processKeyPress(e.key)
-      console.log("events: ", events)
 
       // Process each event
       events.forEach((event) => {
@@ -116,8 +115,6 @@ type EventHandlers = {
 }
 
 function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
-  console.groupCollapsed(`[processGameEvent] ${event.type}`, event)
-
   const {
     setActiveCharacters,
     setStats,
@@ -134,43 +131,32 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
   try {
     switch (event.type) {
       case "matchFound": {
-        console.log("[matchFound] Removing character:", event.cellId)
-
         setActiveCharacters((prev) => {
           const next = new Map(prev)
           next.delete(event.cellId)
-          console.log("[matchFound] Active characters after delete:", next.size)
           return next
         })
 
-        console.log("[matchFound] Points awarded:", event.points)
         setLastPoints(event.points)
 
-        console.log("[matchFound] Showing success feedback")
         setShowSuccessFeedback(true)
         setTimeout(() => {
-          console.log("[matchFound] Hiding success feedback")
           setShowSuccessFeedback(false)
         }, 500)
 
-        console.log("[matchFound] Clearing keyboard buffer")
         keyboardManager.clearBuffer()
         setKeyBuffer("")
         setAmbiguousCharacters([])
 
         const sound = event.isHighQuality ? "match_perfect" : "match_correct"
 
-        console.log("[matchFound] Playing sound:", sound)
         playSound(sound)
 
         break
       }
 
       case "statsUpdated": {
-        console.log("[statsUpdated] New stats:", event.stats)
-
         const accuracy = calculateAccuracy(event.stats)
-        console.log("[statsUpdated] Calculated accuracy:", accuracy)
 
         setStats({
           ...event.stats,
@@ -181,8 +167,6 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       }
 
       case "bufferUpdated": {
-        console.log("[bufferUpdated] Current buffer:", event.currentBuffer)
-
         setKeyBuffer(event.currentBuffer)
         setAmbiguousCharacters([])
 
@@ -190,12 +174,6 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       }
 
       case "ambiguousInput": {
-        console.log("[ambiguousInput] Buffer:", event.currentBuffer)
-        console.log(
-          "[ambiguousInput] Potential matches:",
-          event.potentialMatches
-        )
-
         setKeyBuffer(event.currentBuffer)
         setAmbiguousCharacters(event.potentialMatches)
 
@@ -203,28 +181,21 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       }
 
       case "inputMissed": {
-        console.warn("[inputMissed] Input missed — clearing buffer")
-
         keyboardManager.clearBuffer()
         setKeyBuffer("")
         setAmbiguousCharacters([])
 
-        console.log("[inputMissed] Playing miss sound")
         playSound("match_miss")
 
         break
       }
 
       case "difficultyChanged": {
-        console.log("[difficultyChanged] Reason:", event.reason)
-
         const timing = gameBridge.getTimingParams()
-        console.log("[difficultyChanged] New timing params:", timing)
 
         setTimingParams(timing)
 
         if (event.reason === "PerfectMatch") {
-          console.log("[difficultyChanged] Playing difficulty increase sound")
           playSound("difficulty_increase")
         }
 
@@ -232,14 +203,11 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       }
 
       case "streakMilestone": {
-        console.log("[streakMilestone] Streak:", event.streak)
-
         playSound("streak_milestone")
         break
       }
 
       default: {
-        console.error("[processGameEvent] Unhandled event type!", event)
         event satisfies never
       }
     }
@@ -249,8 +217,6 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       event,
       err
     )
-  } finally {
-    console.groupEnd()
   }
 }
 

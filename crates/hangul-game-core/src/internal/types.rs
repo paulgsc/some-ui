@@ -35,16 +35,16 @@ pub struct GameConfig {
 impl Default for GameConfig {
     fn default() -> Self {
         Self {
-            min_time_window_ms: 1500,
-            max_time_window_ms: 4000,
-            correctness_threshold_ms: 500,
-            speed_increase_every_n_correct: 3,
-            time_window_step_ms: 200,
+            min_time_window_ms: 1000,
+            max_time_window_ms: 3000,
+            correctness_threshold_ms: 600,
+            speed_increase_every_n_correct: 2,
+            time_window_step_ms: 150,
             hide_romanization_streak: 5,
             points_per_correct: 10,
             points_per_miss: -5,
             streak_bonus_divisor: 5,
-            buffer_timeout_ms: 300,
+            buffer_timeout_ms: 400,
             game_duration_ms: 180_000,
         }
     }

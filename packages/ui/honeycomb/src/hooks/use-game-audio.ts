@@ -24,6 +24,27 @@ export const useGameAudio = ({
 }: UseGameAudioProps = {}) => {
   const audioContextRef = useRef<Map<AudioEvent, HTMLAudioElement>>(new Map())
   const isInitializedRef = useRef(false)
+  const unlockedRef = useRef(false)
+
+  const unlockAudio = useCallback(() => {
+    if (unlockedRef.current) return
+
+    console.log("[audio] unlocking")
+
+    audioContextRef.current.forEach((audio) => {
+      audio.muted = true
+      audio
+        .play()
+        .then(() => {
+          audio.pause()
+          audio.currentTime = 0
+          audio.muted = false
+        })
+        .catch(() => {})
+    })
+
+    unlockedRef.current = true
+  }, [])
 
   // Initialize audio files
   useEffect(() => {
@@ -76,6 +97,7 @@ export const useGameAudio = ({
       if (!enabled) return
 
       const audio = audioContextRef.current.get(event)
+      console.log("called play sound!")
       if (!audio) return
 
       // Clone and play to allow overlapping sounds
@@ -88,5 +110,5 @@ export const useGameAudio = ({
     [enabled, volume]
   )
 
-  return { playSound }
+  return { playSound, unlockAudio }
 }

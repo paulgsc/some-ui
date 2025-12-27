@@ -235,7 +235,6 @@ export class WasmGameBridge {
     const now = BigInt(Date.now())
     const result = this.wasmCore.processKeyPress(key, now)
 
-    console.log("is the the type error: ", result)
     // Parse as array of events
     const events = z.array(GameEventSchema).parse(result)
     return events
@@ -341,15 +340,15 @@ export class WasmGameBridge {
 // ============================================================================
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
-  minTimeWindowMs: 1500,
-  maxTimeWindowMs: 4000,
-  correctnessThresholdMs: 2000,
-  speedIncreaseEveryNCorrect: 1,
-  timeWindowStepMs: 200,
+  minTimeWindowMs: 1000,
+  maxTimeWindowMs: 3000,
+  correctnessThresholdMs: 1500,
+  speedIncreaseEveryNCorrect: 2,
+  timeWindowStepMs: 150,
   hideRomanizationStreak: 5,
   pointsPerCorrect: 10,
   pointsPerMiss: -5,
   streakBonusDivisor: 5,
   gameDurationMs: 180000,
-  bufferTimeoutMs: 300,
+  bufferTimeoutMs: 400,
 }
