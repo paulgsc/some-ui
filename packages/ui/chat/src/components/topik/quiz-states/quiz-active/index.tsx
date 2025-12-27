@@ -16,6 +16,7 @@ type QuizActiveProps = {
     explanation: string
     grammarNote?: string
   }
+  onSpeakMessage: (message: Message) => void
   onAnswerSubmit: (isCorrect: boolean, userAnswer: string) => void
 }
 
@@ -23,17 +24,12 @@ export const QuizActive = ({
   questionNumber,
   totalQuestions,
   question,
+  onSpeakMessage,
   onAnswerSubmit,
 }: QuizActiveProps) => {
   const [selected, setSelected] = useState<number | null>(null)
   const [textAnswer, setTextAnswer] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
-
-  const handlePlayAudio = () => {
-    setIsPlaying(true)
-    console.log("[v0] Playing TTS for:", question.korean)
-    setTimeout(() => setIsPlaying(false), 1500)
-  }
 
   const normalizeText = (text: string) => {
     return text
@@ -95,7 +91,9 @@ export const QuizActive = ({
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={handlePlayAudio}
+                    onClick={() => {
+                      onSpeakMessage(question)
+                    }}
                     disabled={isPlaying}
                     className="flex-shrink-0"
                   >

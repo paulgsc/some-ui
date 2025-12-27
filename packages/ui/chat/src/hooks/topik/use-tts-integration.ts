@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { Message } from "@chat/types/topik"
 import { useSpeechQueue } from "some-ui-utils"
 
@@ -12,6 +12,8 @@ type UseTTSIntegrationProps = {
 }
 
 type UseTTSSIntegrationReturn = {
+  isActive: boolean
+  isSpeaking: boolean
   speakMessage: (message: Message) => Promise<void>
   cancelSpeech: () => void
 }
@@ -23,60 +25,95 @@ export function useTTSIntegration({
   onSpeakComplete,
   onSpeakStart,
   onSpeakError,
-}: UseTTSIntegrationProps): UseTTSIntegrationReturn {
+}: UseTTSIntegrationProps): UseTTSSIntegrationReturn {
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
   const allocatedIdsRef = useRef<Set<string>>(new Set())
   const priorityCounter = useRef(0)
+  const currentSpeakingIdRef = useRef<string | null>(null)
+  const isCancelledRef = useRef(false)
+
+  // Store callbacks in ref to avoid stale closures
   const callbacksRef = useRef({
     onSpeakStart,
     onSpeakComplete,
     onSpeakError,
   })
 
+  // Update callbacks ref on every render
   useEffect(() => {
     callbacksRef.current = { onSpeakStart, onSpeakComplete, onSpeakError }
-
-    return (): void => {
-      allocatedIdsRef.current.clear()
-    }
   }, [onSpeakStart, onSpeakComplete, onSpeakError])
 
-  const { speak, cancel, isActive, currentItem } = useSpeechQueue(componentId)
+  const { isActive, speak, cancel } = useSpeechQueue(componentId)
 
   const requestSpeak = useCallback(
     async (message: Message, reason: "auto" | "manual") => {
       const allocated = allocatedIdsRef.current
 
+      console.log(`[useTTSIntegration] requestSpeak called:`, {
+        messageId: message.id,
+        reason,
+        alreadyAllocated: allocated.has(message.id),
+        currentSpeaking: currentSpeakingIdRef.current,
+      })
+
       // AUTO: fire once per message
       if (reason === "auto" && allocated.has(message.id)) {
+        console.log(`[useTTSIntegration] Skipping - already allocated`)
         return
       }
 
       // MANUAL: always allowed, but cancel current speech
       if (reason === "manual") {
+        isCancelledRef.current = true
         cancel()
-        // Clear allocation on manual restart
         allocated.clear()
+        currentSpeakingIdRef.current = null
+        // Reset cancelled flag after a brief delay
+        setTimeout(() => {
+          isCancelledRef.current = false
+        }, 100)
+      }
+
+      // If already speaking this message, don't start again
+      if (currentSpeakingIdRef.current === message.id) {
+        console.log(
+          `[useTTSIntegration] Skipping - already speaking this message`
+        )
+        return
       }
 
       try {
         const priority = ++priorityCounter.current
+        currentSpeakingIdRef.current = message.id
 
         await speak(
           message.korean,
           {
             volume: 1.0,
             onStart: (): void => {
+              setIsSpeaking(true)
+              console.log(`[useTTSIntegration] onStart:`, message.id)
+              setIsSpeaking(true)
               allocated.add(message.id)
               callbacksRef.current.onSpeakStart?.()
             },
-            onEnd: () => {
-              callbacksRef.current.onSpeakComplete()
+            onEnd: async () => {
+              console.log(`[useTTSIntegration] onEnd:`, message.id)
+              // Only fire completion if this is still the current message
+              if (currentSpeakingIdRef.current === message.id) {
+                currentSpeakingIdRef.current = null
+                await callbacksRef.current.onSpeakComplete()
+              }
+              setIsSpeaking(false)
             },
             onError: (error: Error) => {
+              setIsSpeaking(false)
               console.error("[useTTSIntegration] ❌ TTS onError fired", {
                 messageId: message.id,
                 error: error.message,
               })
+              currentSpeakingIdRef.current = null
               callbacksRef.current.onSpeakError?.(error)
               cancel()
             },
@@ -89,7 +126,9 @@ export function useTTSIntegration({
           error: (error as Error).message,
           stack: (error as Error).stack,
         })
+        currentSpeakingIdRef.current = null
         callbacksRef.current.onSpeakError?.(error as Error)
+        setIsSpeaking(false)
         cancel()
       }
     },
@@ -104,16 +143,32 @@ export function useTTSIntegration({
     [requestSpeak]
   )
 
-  // Auto-speak effect
   useEffect(() => {
     if (!isPlaying || !currentMessage) {
-      cancel()
       return
     }
+
+    console.log(`[useTTSIntegration] Auto-speak effect triggered:`, {
+      messageId: currentMessage.id,
+      isPlaying,
+    })
+
     requestSpeak(currentMessage, "auto")
   }, [currentMessage?.id, isPlaying, requestSpeak])
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log("[useTTSIntegration] Cleanup - cancelling and clearing")
+      cancel()
+      allocatedIdsRef.current.clear()
+      currentSpeakingIdRef.current = null
+    }
+  }, [cancel])
+
   return {
+    isActive,
+    isSpeaking,
     speakMessage,
     cancelSpeech: cancel,
   }

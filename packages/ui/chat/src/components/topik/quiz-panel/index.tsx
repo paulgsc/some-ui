@@ -23,6 +23,7 @@ type QuizPanelProps = {
   onAnswerSubmit: (isCorrect: boolean, userAnswer: string) => void
   onNextQuestion: () => void
   onAssessmentComplete: (passed: boolean) => void
+  onSpeakMessage: (message: Message) => void
   score: number
   feedbackData?: {
     isCorrect: boolean
@@ -44,6 +45,7 @@ export const QuizPanel = ({
   onAnswerSubmit,
   onNextQuestion,
   onAssessmentComplete,
+  onSpeakMessage,
   score,
   feedbackData,
   chatPlayState,
@@ -58,6 +60,7 @@ export const QuizPanel = ({
           totalQuestions={totalQuestions}
           question={questions[currentQuestion]}
           onAnswerSubmit={onAnswerSubmit}
+          onSpeakMessage={onSpeakMessage}
         />
       )}
       {state === "feedback" && feedbackData && (

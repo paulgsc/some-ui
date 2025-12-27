@@ -22,8 +22,6 @@ export function useSessionFSM({
   const startChat = useCallback(() => {
     setState(() => {
       return {
-        currentBatchIndex: 0,
-        currentMessageIndex: 0,
         timeRemaining: 180,
         chatPlayState: "playing",
         quizState: "standby",
@@ -62,11 +60,12 @@ export function useSessionFSM({
    */
   const nextMessage = useCallback(() => {
     setState((prev) => {
-      if (prev.chatPlayState !== "playing")
-        return { chatPlayState: "not started", quizState: "standby" }
-
       if (prev.currentMessageIndex == null || prev.currentBatchIndex == null) {
-        return prev
+        return {
+          ...prev,
+          currentMessageIndex: 0,
+          currentBatchIndex: 0,
+        }
       }
 
       const currentBatch = batches[prev.currentBatchIndex]

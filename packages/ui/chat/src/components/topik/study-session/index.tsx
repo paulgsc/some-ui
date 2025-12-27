@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { ChatPanel } from "@chat/components/topik/chat-panel"
 import { QuizPanel } from "@chat/components/topik/quiz-panel"
 import { SessionHeader } from "@chat/components/topik/session-header"
@@ -43,28 +43,28 @@ export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({
   const batchIndex = state.currentBatchIndex
   const messageIndex = state.currentMessageIndex
 
+  // Fixed: Check for null/undefined explicitly, not falsy (0 is valid)
   const currentBatch =
-    batchIndex != undefined &&
+    batchIndex != null &&
     batchIndex >= 0 &&
     batchIndex < conversationBatches.length
       ? conversationBatches[batchIndex]
       : undefined
 
+  // Fixed: Check for null/undefined explicitly, not falsy (0 is valid)
   const currentMessage =
     currentBatch &&
-    messageIndex != undefined &&
+    messageIndex != null &&
     messageIndex >= 0 &&
     messageIndex < currentBatch.messages.length
       ? currentBatch.messages[messageIndex]
       : undefined
 
-  const { speakMessage } = useTTSIntegration({
+  const { isActive, isSpeaking, speakMessage } = useTTSIntegration({
     componentId: COMPONENT_ID,
     currentMessage,
     isPlaying: state.chatPlayState === "playing",
-    onSpeakComplete: () => {
-      nextMessage()
-    },
+    onSpeakComplete: async () => {},
     onSpeakStart: () => {
       console.log(
         `[${COMPONENT_ID}] ▶️ Speak start (index=${state.currentMessageIndex})`
@@ -81,6 +81,12 @@ export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({
     if (!currentBatch || state.currentMessageIndex == null) return []
     return currentBatch.messages.slice(0, state.currentMessageIndex + 1)
   }, [currentBatch, state.chatPlayState, state.currentMessageIndex])
+
+  useEffect(() => {
+    if (!isSpeaking && !isActive && state.chatPlayState === "playing") {
+      nextMessage()
+    }
+  }, [isSpeaking, isActive, state.chatPlayState, nextMessage])
 
   return (
     <div className="absolute inset-0 topik flex flex-col bg-background">
@@ -117,6 +123,7 @@ export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({
             currentQuestion={state.currentQuestion ?? 0}
             totalQuestions={currentBatch?.questions.length ?? 0}
             questions={currentBatch?.questions ?? []}
+            onSpeakMessage={speakMessage}
             onStartQuiz={startQuiz}
             onAnswerSubmit={submitAnswer}
             onNextQuestion={nextQuestion}
