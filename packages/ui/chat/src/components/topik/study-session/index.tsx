@@ -27,7 +27,7 @@ const conversationBatches = [
         id: "3",
         role: "assistant" as const,
         content:
-          "네, ���겠습니다.\n\n도움이 필요하시면 언제든지 아래에 질문을 남겨주세요 👇",
+          "네, 알겠습니다.\n\n도움이 필요하시면 언제든지 아래에 질문을 남겨주세요 👇",
         timestamp: "18:15",
         korean:
           "네, 알겠습니다. 도움이 필요하시면 언제든지 아래에 질문을 남겨주세요",
@@ -308,7 +308,7 @@ export const KoreanStudyPage = () => {
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-background">
+    <div className="absolute inset-0 topik flex flex-col bg-background">
       <SessionHeader
         timeRemaining={timeRemaining}
         score={score}

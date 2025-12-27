@@ -1,7 +1,6 @@
-"use client"
 
 import { Clock, Trophy, Target, Layers } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "some-ui-shared"
 
 interface SessionHeaderProps {
   timeRemaining: number

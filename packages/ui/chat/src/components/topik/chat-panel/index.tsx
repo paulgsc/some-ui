@@ -1,13 +1,9 @@
-"use client"
-
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { MessageCircle, Play, Pause, RotateCcw, Volume2 } from "lucide-react"
 import { useState } from "react"
+import { MessageCircle, Pause, Play, RotateCcw, Volume2 } from "lucide-react"
+import { Button, Card, ScrollArea, WithAvatar } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
-interface Message {
+type Message = {
   id: string
   role: "assistant" | "user"
   content: string
@@ -16,8 +12,8 @@ interface Message {
   english: string
 }
 
-interface ChatPanelProps {
-  messages: Message[]
+type ChatPanelProps = {
+  messages: Array<Message>
   currentMessageIndex: number
   playState: "playing" | "paused" | "finished"
   onPlay: () => void
@@ -27,7 +23,13 @@ interface ChatPanelProps {
   isQuizActive: boolean
 }
 
-export function ChatPanel({
+const avatar = {
+  src: "https://github.com/shadcn.png",
+  alt: "@shadcn",
+  fallback: "CN",
+}
+
+export const ChatPanel = ({
   messages,
   currentMessageIndex,
   playState,
@@ -36,7 +38,7 @@ export function ChatPanel({
   onReset,
   onJumpToMessage,
   isQuizActive,
-}: ChatPanelProps) {
+}: ChatPanelProps) => {
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
 
   const handlePlayTTS = (messageId: string, text: string) => {
@@ -60,7 +62,9 @@ export function ChatPanel({
           <div className="flex-1">
             <h2 className="font-bold text-sm">Conversation Context</h2>
             <p className="text-xs text-muted-foreground">
-              {isQuizActive ? "Assessment in progress" : `${currentMessageIndex + 1} / ${messages.length} messages`}
+              {isQuizActive
+                ? "Assessment in progress"
+                : `${currentMessageIndex + 1} / ${messages.length} messages`}
             </p>
           </div>
           <div
@@ -86,21 +90,21 @@ export function ChatPanel({
                   : ""
               }`}
             >
-              <Avatar className="size-8 flex-shrink-0">
-                <AvatarFallback
-                  className={
-                    message.role === "assistant"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-accent text-accent-foreground"
-                  }
-                >
-                  {message.role === "assistant" ? "AI" : "You"}
-                </AvatarFallback>
-              </Avatar>
-              <div className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}>
+              <WithAvatar
+                className={cn(
+                  "pointer-events-none z-10 shrink-0 brightness-75"
+                )}
+                avatarSize={25}
+                avatar={avatar}
+              />
+              <div
+                className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}
+              >
                 <div
                   className={`inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
-                    message.role === "assistant" ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
+                    message.role === "assistant"
+                      ? "bg-muted text-foreground"
+                      : "bg-primary text-primary-foreground"
                   }`}
                   onClick={() => onJumpToMessage(index)}
                 >
@@ -113,10 +117,14 @@ export function ChatPanel({
                     className="ml-2 inline-flex items-center justify-center size-6 rounded-full hover:bg-background/20 transition-colors"
                     disabled={playingMessageId === message.id}
                   >
-                    <Volume2 className={`size-3 ${playingMessageId === message.id ? "animate-pulse" : ""}`} />
+                    <Volume2
+                      className={`size-3 ${playingMessageId === message.id ? "animate-pulse" : ""}`}
+                    />
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 px-1">{message.timestamp}</p>
+                <p className="text-xs text-muted-foreground mt-1 px-1">
+                  {message.timestamp}
+                </p>
               </div>
             </div>
           ))}
@@ -137,13 +145,20 @@ export function ChatPanel({
               Pause
             </Button>
           )}
-          <Button onClick={onReset} size="sm" variant="outline" disabled={playState === "playing"}>
+          <Button
+            onClick={onReset}
+            size="sm"
+            variant="outline"
+            disabled={playState === "playing"}
+          >
             <RotateCcw className="size-4 mr-1" />
             Reset
           </Button>
         </div>
         <div className="text-xs text-center text-muted-foreground">
-          {isQuizActive ? "Complete assessment to continue" : "Click messages to jump or listen"}
+          {isQuizActive
+            ? "Complete assessment to continue"
+            : "Click messages to jump or listen"}
         </div>
       </div>
     </Card>
