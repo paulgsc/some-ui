@@ -118,7 +118,7 @@ export function HexGrid<T = any>({
     <svg
       ref={svgRef}
       viewBox={viewBox.viewBox}
-      className={`absolute inset-0 size-full ${className}`}
+      className={`size-full ${className}`}
     >
       <defs>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">

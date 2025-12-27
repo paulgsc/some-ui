@@ -37,7 +37,6 @@ export const HangulHexGrid = ({
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
     autoStart: true,
     mode,
-    gameDurationSeconds,
   })
 
   const [keyboardManager] = useState(() => new KeyboardInputManager())
@@ -58,9 +57,15 @@ export const HangulHexGrid = ({
     showRomanization: true,
   })
   const [isPaused, setIsPaused] = useState(false)
+  const [ambiguousCharacters, setAmbiguousCharacters] = useState<Array<string>>(
+    []
+  )
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false)
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
+
+  // Initialize audio
+  const { playSound } = useGameAudio({ enabled: true, volume: 0.5 })
 
   // Game timer hook (for timed modes)
   const { gameStatus, isGameOver, timeRemainingMs, progress } = useGameTimer({
@@ -78,9 +83,6 @@ export const HangulHexGrid = ({
     },
   })
 
-  // Initialize audio
-  const { playSound } = useGameAudio({ enabled: true, volume: 0.5 })
-
   // Game loop hook
   useGameLoop({
     gameBridge,
@@ -90,13 +92,17 @@ export const HangulHexGrid = ({
     setStats,
     setTimingParams,
     playSound,
+    onBoardFull: () => {
+      console.warn("Board is full!")
+      playSound("board_full")
+    },
   })
 
   // Keyboard input hook
   useKeyboardInput({
     gameBridge,
     isInitialized,
-    isPaused,
+    isPaused: isPaused || isGameOver,
     keyboardManager,
     setActiveCharacters,
     setStats,
@@ -104,6 +110,7 @@ export const HangulHexGrid = ({
     setKeyBuffer,
     setShowSuccessFeedback,
     setLastPoints,
+    setAmbiguousCharacters,
     playSound,
   })
 
@@ -159,91 +166,100 @@ export const HangulHexGrid = ({
   }))
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div
-        className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 animate-pulse"
-        style={{ animationDuration: "8s" }}
-      />
+    <div className="absolute inset-0">
+      <div className="relative size-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div
+          className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 animate-pulse"
+          style={{ animationDuration: "8s" }}
+        />
 
-      <SuccessFeedback show={showSuccessFeedback} points={lastPoints} />
+        <SuccessFeedback show={showSuccessFeedback} points={lastPoints} />
 
-      <HexGrid
-        cellCount={67}
-        hexSize={70}
-        viewBoxFactor={1.2}
-        cellContent={cellContent}
-        backgroundOpacity={0.8}
-        className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
-        renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
-          const { id, content } = cell
-          if (!content) return null
-          const {
-            data: {
-              color,
-              hangul,
-              qwertyKey,
-              romanization,
-              spawnedAt,
-              timeRemaining,
-            },
-            theme: { opacity },
-          } = content
-          return (
-            <HangulHexCell
-              character={{
-                id,
-                hangul: hangul,
-                qwertyKey: qwertyKey,
-                romanization: romanization,
-                color: color,
-                spawnedAt: spawnedAt,
-                releaseYear: 0,
-                playedAt: spawnedAt,
+        <main className="size-full absolute">
+          <div className="size-full relative">
+            <HexGrid
+              cellCount={67}
+              hexSize={70}
+              viewBoxFactor={1.2}
+              cellContent={cellContent}
+              backgroundOpacity={0.8}
+              className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
+              renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
+                const { id, content } = cell
+                if (!content) return null
+                const {
+                  data: {
+                    color,
+                    hangul,
+                    qwertyKey,
+                    romanization,
+                    spawnedAt,
+                    timeRemaining,
+                  },
+                  theme: { opacity },
+                } = content
+                return (
+                  <HangulHexCell
+                    character={{
+                      id,
+                      hangul: hangul,
+                      qwertyKey: qwertyKey,
+                      romanization: romanization,
+                      color: color,
+                      spawnedAt: spawnedAt,
+                      releaseYear: 0,
+                      playedAt: spawnedAt,
+                    }}
+                    centerX={centerX}
+                    centerY={centerY}
+                    cellWidth={cellWidth}
+                    opacity={opacity}
+                    hexPath={hexPath}
+                    timeRemaining={timeRemaining}
+                    showRomanization={timingParams.showRomanization}
+                  />
+                )
               }}
-              centerX={centerX}
-              centerY={centerY}
-              cellWidth={cellWidth}
-              opacity={opacity}
-              hexPath={hexPath}
-              timeRemaining={timeRemaining}
-              showRomanization={timingParams.showRomanization}
             />
-          )
-        }}
-      />
+          </div>
+        </main>
 
-      <StatsPanel
-        stats={stats}
-        timingParams={timingParams}
-        currentTimeWindow={gameBridge.getCurrentTimeWindow()}
-        mode={mode}
-        timeRemaining={timeRemainingMs}
-        progress={progress}
-      />
+        <StatsPanel
+          stats={stats}
+          timingParams={timingParams}
+          currentTimeWindow={gameBridge.getCurrentTimeWindow()}
+          mode={mode}
+          timeRemaining={timeRemainingMs}
+          progress={progress}
+        />
 
-      <KeyBufferDisplay buffer={keyBuffer} />
+        <KeyBufferDisplay
+          buffer={keyBuffer}
+          ambiguousCharacters={ambiguousCharacters}
+        />
 
-      <ControlButtons
-        isPaused={isPaused}
-        onTogglePause={handleTogglePause}
-        onReset={handleReset}
-      />
+        <ControlButtons
+          isPaused={isPaused}
+          onTogglePause={handleTogglePause}
+          onReset={handleReset}
+        />
 
-      <InstructionsPanel mode={mode} />
+        <InstructionsPanel mode={mode} />
 
-      <PauseOverlay
-        isPaused={isPaused && !isGameOver}
-        onResume={handleTogglePause}
-      />
+        <PauseOverlay
+          isPaused={isPaused && !isGameOver}
+          onResume={handleTogglePause}
+        />
 
-      <GameOverModal
-        isOpen={isGameOver}
-        status={gameStatus}
-        stats={stats}
-        onContinue={handleContinue}
-      />
+        <GameOverModal
+          isOpen={isGameOver}
+          status={gameStatus}
+          stats={stats}
+          onContinue={handleContinue}
+        />
 
-      <DecorativeParticles />
+        <DecorativeParticles />
+      </div>
     </div>
   )
 }

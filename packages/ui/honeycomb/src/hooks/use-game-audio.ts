@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef } from "react"
-import type { AudioEvents } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 export type AudioEvent =
   | "match_correct"
-  | "match_perfect" // High quality match
-  | "match_miss" // Wrong key pressed
-  | "character_expire" // Character timed out
-  | "streak_milestone" // Every 5 or 10 streak
-  | "character_spawn" // New character appears
-  | "difficulty_increase" // Speed increased
-  | "game_complete" // Game completion
-  | "game_timeout" // Game over - timeout
+  | "match_perfect"
+  | "match_miss"
+  | "character_expire"
+  | "streak_milestone"
+  | "character_spawn"
+  | "difficulty_increase"
+  | "game_complete"
+  | "game_timeout"
+  | "buffer_stale"
+  | "board_full"
 
 type UseGameAudioProps = {
   enabled?: boolean
-  volume?: number // 0.0 to 1.0
+  volume?: number
 }
 
 export const useGameAudio = ({
@@ -38,11 +39,12 @@ export const useGameAudio = ({
       difficulty_increase: "/sfx/minimal-pop.mp3",
       game_complete: "/sfx/minimal-pop.mp3",
       game_timeout: "/sfx/minimal-pop.mp3",
+      buffer_stale: "/sfx/error.mp3",
+      board_full: "/sfx/error.mp3",
     }
 
     const audioMap = new Map<AudioEvent, HTMLAudioElement>()
 
-    // Preload all audio files
     Object.entries(audioFiles).forEach(([event, path]) => {
       const audio = new Audio(path)
       audio.volume = volume
@@ -54,7 +56,6 @@ export const useGameAudio = ({
     isInitializedRef.current = true
 
     return () => {
-      // Cleanup on unmount
       audioMap.forEach((audio) => {
         audio.pause()
         audio.src = ""
@@ -88,61 +89,4 @@ export const useGameAudio = ({
   )
 
   return { playSound }
-}
-
-// Helper to process audio events from Rust
-export const processAudioEvents = (
-  events: AudioEvents,
-  playSound: (event: AudioEvent) => void
-) => {
-  if (events.matchPerfect) {
-    playSound("match_perfect")
-  } else if (events.matchCorrect) {
-    playSound("match_correct")
-  }
-
-  if (events.matchMiss) {
-    playSound("match_miss")
-  }
-
-  if (events.characterExpired) {
-    playSound("character_expire")
-  }
-
-  if (events.streakMilestone) {
-    playSound("streak_milestone")
-  }
-
-  if (events.difficultyChanged && events.matchPerfect) {
-    // Only play difficulty sound on successful matches, not on misses
-    playSound("difficulty_increase")
-  }
-}
-
-// Hook to integrate with game events
-type UseGameAudioEventsProps = {
-  enabled?: boolean
-  volume?: number
-  onSpawn?: boolean
-}
-
-export const useGameAudioEvents = ({
-  enabled = true,
-  volume = 0.5,
-  onSpawn = false,
-}: UseGameAudioEventsProps) => {
-  const { playSound } = useGameAudio({ enabled, volume })
-
-  // Play spawn sound when requested
-  useEffect(() => {
-    if (onSpawn) {
-      playSound("character_spawn")
-    }
-  }, [onSpawn, playSound])
-
-  return {
-    playSound,
-    processAudioEvents: (events: AudioEvents) =>
-      processAudioEvents(events, playSound),
-  }
 }

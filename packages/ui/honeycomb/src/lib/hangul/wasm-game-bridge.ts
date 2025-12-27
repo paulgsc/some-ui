@@ -2,9 +2,14 @@ import {
   ALL_MAPPINGS,
   getHangulColor,
 } from "@honeycomb/utils/hangul-keyboard-mapping"
+import type { HangulGameCore } from "hangul-game-core"
 import { z } from "zod"
 
-const GameConfigSchema = z.object({
+// ============================================================================
+// SCHEMAS
+// ============================================================================
+
+export const GameConfigSchema = z.object({
   minTimeWindowMs: z.number().positive(),
   maxTimeWindowMs: z.number().positive(),
   correctnessThresholdMs: z.number().positive(),
@@ -14,6 +19,8 @@ const GameConfigSchema = z.object({
   pointsPerCorrect: z.number().int(),
   pointsPerMiss: z.number().int(),
   streakBonusDivisor: z.number().positive(),
+  gameDurationMs: z.number().positive(),
+  bufferTimeoutMs: z.number().positive(),
 })
 
 const GameProgressSchema = z.object({
@@ -31,10 +38,6 @@ const GameStatusSchema = z.object({
   progress: GameProgressSchema,
 })
 
-export type GameProgress = z.infer<typeof GameProgressSchema>
-export type GameStatus = z.infer<typeof GameStatusSchema>
-export type GameMode = "endless" | "completion"
-
 const GameStatsSchema = z.object({
   score: z.number().int(),
   currentStreak: z.number().int().nonnegative(),
@@ -43,14 +46,10 @@ const GameStatsSchema = z.object({
   totalMissed: z.number().int().nonnegative(),
 })
 
-// NEW: Audio events schema
-const AudioEventsSchema = z.object({
-  matchCorrect: z.boolean(),
-  matchPerfect: z.boolean(),
-  matchMiss: z.boolean(),
-  characterExpired: z.boolean(),
-  streakMilestone: z.boolean(),
-  difficultyChanged: z.boolean(),
+const TimingParamsSchema = z.object({
+  spawnIntervalMs: z.number().int().positive(),
+  characterLifetimeMs: z.number().int().positive(),
+  showRomanization: z.boolean(),
 })
 
 const SpawnResultSchema = z.object({
@@ -61,69 +60,76 @@ const SpawnResultSchema = z.object({
   playSpawnSound: z.boolean(),
 })
 
-// UPDATED: KeyPressResult with audio events
-const KeyPressResultSchema = z.object({
-  matched: z.boolean(),
-  isPartialMatch: z.boolean(),
-  shouldClearBuffer: z.boolean(),
-  hangul: z.string(),
-  cellId: z.string(),
-  points: z.number().int(),
-  timeGapMs: z.number().int().nonnegative(),
-  isHighQuality: z.boolean(),
-  currentBuffer: z.string(),
-  audioEvents: AudioEventsSchema,
-  countsTowardCompletion: z.boolean(),
-})
+// NEW: Simplified event schemas (flattened from EventBatch)
+const DifficultyChangeReasonSchema = z.enum([
+  "perfectMatch",
+  "inputMiss",
+  "characterExpired",
+])
 
-const ExpiredResultSchema = z.object({
-  cellIds: z.array(z.string()),
-  count: z.number().int().nonnegative(),
-  playExpireSound: z.boolean(),
-})
+const GameEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("matchFound"),
+    cellId: z.string(),
+    hangul: z.string(),
+    points: z.number().int(),
+    isHighQuality: z.boolean(),
+    timeGapMs: z.number().int().nonnegative(),
+    countsTowardCompletion: z.boolean(),
+  }),
+  z.object({
+    type: z.literal("charactersExpired"),
+    cellIds: z.array(z.string()),
+    hanguls: z.array(z.string()),
+    count: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("inputMissed"),
+  }),
+  z.object({
+    type: z.literal("bufferUpdated"),
+    currentBuffer: z.string(),
+  }),
+  z.object({
+    type: z.literal("ambiguousInput"),
+    currentBuffer: z.string(),
+    potentialMatches: z.array(z.string()),
+  }),
+  z.object({
+    type: z.literal("characterSpawned"),
+    spawnResult: SpawnResultSchema,
+  }),
+  z.object({
+    type: z.literal("boardFull"),
+  }),
+  z.object({
+    type: z.literal("difficultyChanged"),
+    newLifetimeMs: z.number().int().nonnegative(),
+    newIntervalMs: z.number().int().positive(),
+    reason: DifficultyChangeReasonSchema,
+  }),
+  z.object({
+    type: z.literal("streakMilestone"),
+    streak: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("statsUpdated"),
+    stats: GameStatsSchema,
+  }),
+])
 
-const TimingParamsSchema = z.object({
-  spawnIntervalMs: z.number().int().positive(),
-  characterLifetimeMs: z.number().int().positive(),
-  showRomanization: z.boolean(),
-})
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export type GameConfig = z.infer<typeof GameConfigSchema>
+export type GameProgress = z.infer<typeof GameProgressSchema>
+export type GameStatus = z.infer<typeof GameStatusSchema>
 export type GameStats = z.infer<typeof GameStatsSchema>
-export type AudioEvents = z.infer<typeof AudioEventsSchema>
-export type SpawnResult = z.infer<typeof SpawnResultSchema>
-export type KeyPressResult = z.infer<typeof KeyPressResultSchema>
-export type ExpiredResult = z.infer<typeof ExpiredResultSchema>
 export type TimingParams = z.infer<typeof TimingParamsSchema>
-
-export type WasmHangulGameCore = {
-  // Updated constructor signature
-  new (
-    config: GameConfig,
-    mode: string,
-    gameDurationSeconds?: number
-  ): WasmHangulGameCore
-
-  startTimer(currentTimeMs: bigint): void
-
-  getGameStatus(currentTimeMs: bigint): any // Returns GameStatus
-
-  spawnCharacter(revealedAtMs: bigint, availableCellIds: Array<string>): any
-
-  processKeyPress(key: string, pressedAtMs: bigint): any // Returns KeyPressResult
-
-  checkExpired(currentTimeMs: bigint): any // Returns ExpiredResult
-
-  getStats(): any // Returns GameStats
-
-  getTimingParams(): any // Returns TimingParams
-
-  getCurrentTimeWindow(): number
-
-  getActiveCount(): number
-
-  reset(): void
-}
+export type SpawnResult = z.infer<typeof SpawnResultSchema>
+export type GameEvent = z.infer<typeof GameEventSchema>
+export type GameMode = "endless" | "completion"
 
 export type DisplayCharacter = {
   cellId: string
@@ -136,23 +142,27 @@ export type DisplayCharacter = {
 
 type StatusListener = () => void
 
+// ============================================================================
+// WASM GAME BRIDGE
+// ============================================================================
+
 export class WasmGameBridge {
-  private wasmCore: WasmHangulGameCore
+  private wasmCore: HangulGameCore
   private availableCells: ReadonlyArray<string>
   private gameMode: GameMode
   private statusListeners = new Set<StatusListener>()
   private lastStatus: GameStatus | null = null
 
-  constructor(wasmCore: WasmHangulGameCore, mode: GameMode = "completion") {
+  constructor(wasmCore: HangulGameCore, mode: GameMode = "completion") {
     this.wasmCore = wasmCore
     this.availableCells = this.generateCellIds()
     this.gameMode = mode
   }
 
-  /**
-   * Subscribe to status changes
-   * Returns unsubscribe function
-   */
+  // ============================================================================
+  // STATUS SUBSCRIPTION (for useSyncExternalStore)
+  // ============================================================================
+
   subscribeToStatus(listener: StatusListener): () => void {
     this.statusListeners.add(listener)
     return () => {
@@ -160,47 +170,24 @@ export class WasmGameBridge {
     }
   }
 
-  /**
-   * Get current status snapshot for useSyncExternalStore
-   */
   getStatusSnapshot(): GameStatus | null {
     return this.lastStatus
   }
 
-  /**
-   * Internal: notify all subscribers that status changed
-   */
   private notifyStatusChange(): void {
     this.statusListeners.forEach((listener) => listener())
   }
 
-  /**
-   * Start the game timer (for timed modes)
-   */
-  startTimer(): void {
-    const now = BigInt(Date.now())
-    this.wasmCore.startTimer(now)
-    this.updateStatus()
-  }
-
-  /**
-   * Update status and notify if changed
-   * Call this from your game loop/tick
-   */
   updateStatus(): void {
     const now = BigInt(Date.now())
     const newStatus = GameStatusSchema.parse(this.wasmCore.getGameStatus(now))
 
-    // Only notify if status actually changed
     if (!this.statusEquals(this.lastStatus, newStatus)) {
       this.lastStatus = newStatus
       this.notifyStatusChange()
     }
   }
 
-  /**
-   * Compare two statuses for equality
-   */
   private statusEquals(a: GameStatus | null, b: GameStatus): boolean {
     if (!a) return false
     return (
@@ -211,32 +198,80 @@ export class WasmGameBridge {
     )
   }
 
-  /**
-   * Get current game status (completion, timeout, progress)
-   */
+  // ============================================================================
+  // GAME CONTROL
+  // ============================================================================
+
+  startTimer(): void {
+    const now = BigInt(Date.now())
+    this.wasmCore.startTimer(now)
+    this.updateStatus()
+  }
+
   getGameStatus(): GameStatus {
     const now = BigInt(Date.now())
     const result = this.wasmCore.getGameStatus(now)
     return GameStatusSchema.parse(result)
   }
 
-  /**
-   * Spawn a new character (game mode determines which character)
-   */
-  spawnCharacter(): (DisplayCharacter & { playSpawnSound: boolean }) | null {
-    const now = BigInt(Date.now())
+  getMode(): GameMode {
+    return this.gameMode
+  }
 
+  reset(): void {
+    this.wasmCore.reset()
+    this.lastStatus = null
+    this.notifyStatusChange()
+  }
+
+  // ============================================================================
+  // EVENT-DRIVEN API
+  // ============================================================================
+
+  /**
+   * Process a key press - returns array of events
+   */
+  processKeyPress(key: string): Array<GameEvent> {
+    const now = BigInt(Date.now())
+    const result = this.wasmCore.processKeyPress(key, now)
+
+    console.log("is the the type error: ", result)
+    // Parse as array of events
+    const events = z.array(GameEventSchema).parse(result)
+    return events
+  }
+
+  /**
+   * Check for expired characters - returns array of events
+   */
+  checkExpired(): Array<GameEvent> {
+    const now = BigInt(Date.now())
+    const result = this.wasmCore.checkExpired(now)
+
+    const events = z.array(GameEventSchema).parse(result)
+    return events
+  }
+
+  /**
+   * Spawn a new character - returns array of events
+   */
+  spawnCharacter(): Array<GameEvent> {
+    const now = BigInt(Date.now())
     const result = this.wasmCore.spawnCharacter(now, [...this.availableCells])
 
-    if (result === null || result === undefined) {
-      return null
-    }
+    const events = z.array(GameEventSchema).parse(result)
+    return events
+  }
 
-    const spawn = SpawnResultSchema.parse(result)
+  // ============================================================================
+  // HELPERS
+  // ============================================================================
 
-    // Get mapping info for display
+  /**
+   * Convert spawn event to display character
+   */
+  createDisplayCharacter(spawn: SpawnResult): DisplayCharacter {
     const mapping = this.getHangulMapping(spawn.hangul)
-
     return {
       cellId: spawn.cellId,
       hangul: spawn.hangul,
@@ -244,26 +279,14 @@ export class WasmGameBridge {
       romanization: mapping.romanization,
       color: getHangulColor(spawn.hangul),
       spawnedAt: spawn.revealedAtMs,
-      playSpawnSound: spawn.playSpawnSound,
     }
   }
 
-  /**
-   * Get the game mode
-   */
-  getMode(): GameMode {
-    return this.gameMode
-  }
-
   private getHangulMapping(hangul: string) {
-    // Get mapping from your utils
     const mapping = ALL_MAPPINGS.find((m) => m.hangul === hangul)
     return mapping || { qwerty: "", hangul, romanization: "" }
   }
 
-  /**
-   * Generate hex cell IDs: "hex_q_r_s"
-   */
   private generateCellIds(): ReadonlyArray<string> {
     const cells: Array<string> = ["hex_0_0_0"]
     const rings = 3
@@ -287,27 +310,10 @@ export class WasmGameBridge {
     return cells
   }
 
-  /**
-   * Process a key press (single character)
-   */
-  processKeyPress(key: string): KeyPressResult {
-    const now = BigInt(Date.now())
-    const result = this.wasmCore.processKeyPress(key, now)
-    return KeyPressResultSchema.parse(result)
-  }
+  // ============================================================================
+  // LEGACY API (for backward compatibility)
+  // ============================================================================
 
-  /**
-   * Check for expired characters
-   */
-  checkExpired(): ExpiredResult {
-    const now = BigInt(Date.now())
-    const result = this.wasmCore.checkExpired(now)
-    return ExpiredResultSchema.parse(result)
-  }
-
-  /**
-   * Get current game stats
-   */
   getStats(): GameStats & { accuracy: number } {
     const stats = GameStatsSchema.parse(this.wasmCore.getStats())
     const total = stats.totalCorrect + stats.totalMissed
@@ -316,35 +322,17 @@ export class WasmGameBridge {
     return { ...stats, accuracy }
   }
 
-  /**
-   * Get timing parameters
-   */
   getTimingParams(): TimingParams {
     const params = this.wasmCore.getTimingParams()
     return TimingParamsSchema.parse(params)
   }
 
-  /**
-   * Get current time window
-   */
   getCurrentTimeWindow(): number {
     return this.wasmCore.getCurrentTimeWindow()
   }
 
-  /**
-   * Get number of active characters
-   */
   getActiveCount(): number {
     return this.wasmCore.getActiveCount()
-  }
-
-  /**
-   * Reset game
-   */
-  reset(): void {
-    this.wasmCore.reset()
-    this.lastStatus = null
-    this.notifyStatusChange()
   }
 }
 
@@ -362,4 +350,6 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   pointsPerCorrect: 10,
   pointsPerMiss: -5,
   streakBonusDivisor: 5,
+  gameDurationMs: 180000,
+  bufferTimeoutMs: 300,
 }

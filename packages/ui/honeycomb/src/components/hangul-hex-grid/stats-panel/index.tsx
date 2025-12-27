@@ -42,7 +42,7 @@ export const StatsPanel = ({
   }
 
   return (
-    <div className="absolute top-6 left-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl min-w-[280px]">
+    <div className="absolute top-8 start-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl max-w-fit">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
           한글 타이핑
