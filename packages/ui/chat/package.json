@@ -23,6 +23,7 @@
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
+    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },

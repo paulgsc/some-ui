@@ -1,26 +1,20 @@
-import { useState } from "react"
+import type { ChatPlayState, Message } from "@chat/types/topik"
 import { MessageCircle, Pause, Play, RotateCcw, Volume2 } from "lucide-react"
 import { Button, Card, ScrollArea, WithAvatar } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-type Message = {
-  id: string
-  role: "assistant" | "user"
-  content: string
-  timestamp: string
-  korean: string
-  english: string
-}
-
 type ChatPanelProps = {
   messages: Array<Message>
+  visibleMessages: Array<Message>
   currentMessageIndex: number
-  playState: "playing" | "paused" | "finished"
+  playState: ChatPlayState
   onPlay: () => void
   onPause: () => void
   onReset: () => void
   onJumpToMessage: (index: number) => void
+  onSpeakMessage: (message: Message) => void
   isQuizActive: boolean
+  currentlySpeakingId: string | null
 }
 
 const avatar = {
@@ -31,27 +25,17 @@ const avatar = {
 
 export const ChatPanel = ({
   messages,
+  visibleMessages,
   currentMessageIndex,
   playState,
   onPlay,
   onPause,
   onReset,
   onJumpToMessage,
+  onSpeakMessage,
   isQuizActive,
+  currentlySpeakingId,
 }: ChatPanelProps) => {
-  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
-
-  const handlePlayTTS = (messageId: string, text: string) => {
-    setPlayingMessageId(messageId)
-    console.log("[v0] Playing TTS for:", text)
-    // Mock TTS duration
-    setTimeout(() => {
-      setPlayingMessageId(null)
-    }, 2000)
-  }
-
-  const visibleMessages = messages.slice(0, currentMessageIndex + 1)
-
   return (
     <Card className="h-full flex flex-col border-2">
       <div className="p-4 border-b bg-muted/30">
@@ -62,9 +46,10 @@ export const ChatPanel = ({
           <div className="flex-1">
             <h2 className="font-bold text-sm">Conversation Context</h2>
             <p className="text-xs text-muted-foreground">
-              {isQuizActive
-                ? "Assessment in progress"
-                : `${currentMessageIndex + 1} / ${messages.length} messages`}
+              {playState !== "not started" &&
+                (isQuizActive
+                  ? "Assessment in progress"
+                  : `${currentMessageIndex + 1} / ${messages.length} messages`)}
             </p>
           </div>
           <div
@@ -81,59 +66,60 @@ export const ChatPanel = ({
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {visibleMessages.map((message, index) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""} ${
-                index === currentMessageIndex && playState === "playing"
-                  ? "animate-in fade-in slide-in-from-bottom-2 duration-500"
-                  : ""
-              }`}
-            >
-              <WithAvatar
-                className={cn(
-                  "pointer-events-none z-10 shrink-0 brightness-75"
-                )}
-                avatarSize={25}
-                avatar={avatar}
-              />
+          {playState !== "not started" &&
+            visibleMessages.map((message, index) => (
               <div
-                className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}
+                key={message.id}
+                className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""} ${
+                  index === currentMessageIndex && playState === "playing"
+                    ? "animate-in fade-in slide-in-from-bottom-2 duration-500"
+                    : ""
+                }`}
               >
+                <WithAvatar
+                  className={cn(
+                    "pointer-events-none z-10 shrink-0 brightness-75"
+                  )}
+                  avatarSize={25}
+                  avatar={avatar}
+                />
                 <div
-                  className={`inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
-                    message.role === "assistant"
-                      ? "bg-muted text-foreground"
-                      : "bg-primary text-primary-foreground"
-                  }`}
-                  onClick={() => onJumpToMessage(index)}
+                  className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}
                 >
-                  {message.content}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handlePlayTTS(message.id, message.korean)
-                    }}
-                    className="ml-2 inline-flex items-center justify-center size-6 rounded-full hover:bg-background/20 transition-colors"
-                    disabled={playingMessageId === message.id}
+                  <div
+                    className={`inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
+                      message.role === "assistant"
+                        ? "bg-muted text-foreground"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                    onClick={() => onJumpToMessage(index)}
                   >
-                    <Volume2
-                      className={`size-3 ${playingMessageId === message.id ? "animate-pulse" : ""}`}
-                    />
-                  </button>
+                    {message.content}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSpeakMessage(message)
+                      }}
+                      className="ml-2 inline-flex items-center justify-center size-6 rounded-full hover:bg-background/20 transition-colors"
+                      disabled={currentlySpeakingId === message.id}
+                    >
+                      <Volume2
+                        className={`size-3 ${currentlySpeakingId === message.id ? "animate-pulse text-primary" : ""}`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 px-1">
+                    {message.timestamp}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 px-1">
-                  {message.timestamp}
-                </p>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </ScrollArea>
 
       <div className="p-4 border-t bg-muted/20 space-y-3">
         <div className="flex items-center justify-center gap-2">
-          {playState === "paused" && currentMessageIndex < messages.length && (
+          {playState !== "playing" && (
             <Button onClick={onPlay} size="sm" disabled={isQuizActive}>
               <Play className="size-4 mr-1" />
               Play

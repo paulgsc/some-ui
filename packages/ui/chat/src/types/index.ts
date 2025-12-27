@@ -1,1 +1,1 @@
-export * from "./chat"
+export type { ConversationBatch } from "./topik"

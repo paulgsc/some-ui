@@ -5,9 +5,11 @@
   },
   "include": ["src"],
   "exclude": [
-    "src/data",
-    "../../../assets/**/*",
     "**/*.stories.tsx",
-    "**/*.stories.ts"
+    "**/*.stories.ts",
+    "../../../assets/**/*",
+    "**/data/**",
+    "**/demo/**",
+    "../../some-content/src/**/*"
   ]
 }
