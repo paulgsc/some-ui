@@ -14,13 +14,21 @@
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/"],
       "@chat/*": ["./packages/ui/chat/src/"],
+      "@input/*": ["./packages/ui/input/src/"],
       "@utils/*": ["./packages/ui/utils/src/"],
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
       "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
+      "@honeycomb/*": ["./packages/ui/honeycomb/src/"],
       "@umag/*": ["./packages/ui/umag/src/"],
+      "@nfl/*": ["./packages/ui/nfl/src/"],
+      "@resume/*": ["./packages/ui/resume/src/"],
+      "@types-utils/*": ["./packages/types/src/"],
+      "@stepper/*": ["./packages/ui/stepper/src/"],
       "@wireframes/*": ["./packages/ui/wireframes/src/"],
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
+      "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/"],
+      "@attributions/*": ["./packages/ui/attributions/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"]
     }
   },

@@ -1,0 +1,481 @@
+/* ============================================
+   BOYO Content Masking - Refined Edition
+   Pure CSS Progressive Disclosure System
+   ============================================ */
+
+/* ============================================
+   CORE MASKING - Gentle initial state
+   ============================================ */
+
+ytd-video-renderer,
+ytd-rich-item-renderer,
+ytd-grid-video-renderer,
+ytd-compact-video-renderer {
+  position: relative !important;
+  /* Softer initial mask - not completely blank */
+  filter: blur(12px) brightness(0.4) grayscale(80%) !important;
+  transform: scale(0.98) !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden !important;
+}
+
+/* Subtle hover feedback even when masked */
+ytd-video-renderer:hover,
+ytd-rich-item-renderer:hover,
+ytd-grid-video-renderer:hover,
+ytd-compact-video-renderer:hover {
+  transform: scale(0.99) !important;
+  filter: blur(10px) brightness(0.45) grayscale(70%) !important;
+}
+
+/* Revealed state - full clarity */
+ytd-video-renderer.boyo-revealed,
+ytd-rich-item-renderer.boyo-revealed,
+ytd-grid-video-renderer.boyo-revealed,
+ytd-compact-video-renderer.boyo-revealed {
+  filter: none !important;
+  transform: scale(1) !important;
+  opacity: 1 !important;
+}
+
+/* Smooth fade-in when revealed */
+.boyo-revealed {
+  animation: revealContent 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+@keyframes revealContent {
+  0% {
+    filter: blur(12px) brightness(0.4) grayscale(80%);
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+  100% {
+    filter: none;
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   OVERLAY - Layered glass morphism design
+   ============================================ */
+
+.boyo-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+
+  /* Layered gradient background */
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(20, 20, 30, 0.85) 100%
+  ) !important;
+
+  backdrop-filter: blur(16px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  cursor: pointer !important;
+  border-radius: 12px !important;
+
+  /* Subtle border for depth */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 24px rgba(0, 0, 0, 0.3) !important;
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: auto !important;
+}
+
+/* Enhanced hover state */
+.boyo-overlay:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(30, 30, 45, 0.95) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Active state feedback */
+.boyo-overlay:active {
+  transform: translateY(0px) scale(0.98) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(40, 40, 60, 0.95) 100%
+  ) !important;
+}
+
+/* ============================================
+   INSTRUCTION TEXT - Progressive states
+   ============================================ */
+
+/* Level 0 (MASKED): Show initial instruction centered */
+.boyo-overlay[data-level="0"]::before {
+  content: "🔒 Hover to preview" !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px !important;
+  padding: 10px 20px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  backdrop-filter: blur(8px) !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  display: block !important;
+  transition: all 0.3s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10 !important;
+  white-space: nowrap !important;
+}
+
+.boyo-overlay[data-level="0"]:hover::before {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  transform: translate(-50%, -50%) scale(1.05) !important;
+}
+
+/* Level 1 (METADATA): Show "Click for title" at top */
+.boyo-overlay[data-level="1"]::before {
+  content: "👆 Click for title" !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  color: rgba(147, 197, 253, 1) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  display: block !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  backdrop-filter: blur(8px) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.boyo-overlay[data-level="1"]:hover::before {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  transform: translateX(-50%) scale(1.05) !important;
+}
+
+/* Level 2 (TITLE): Show "Double-click to reveal" at top */
+.boyo-overlay[data-level="2"]::before {
+  content: "👆 Double-click to reveal" !important;
+  background: rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  color: rgba(216, 180, 254, 1) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  display: block !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  backdrop-filter: blur(8px) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  animation: gentlePulse 2.5s ease-in-out infinite !important;
+}
+
+.boyo-overlay[data-level="2"]:hover::before {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
+@keyframes gentlePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateX(-50%) scale(1.03);
+  }
+}
+
+/* ============================================
+   METADATA DISPLAY - Level 1
+   ============================================ */
+
+.boyo-metadata {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 13px !important;
+  text-align: center !important;
+  padding: 16px 24px !important;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.12) 0%,
+    rgba(37, 99, 235, 0.08) 100%
+  ) !important;
+  border-radius: 12px !important;
+  margin: 12px !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 16px rgba(59, 130, 246, 0.15) !important;
+  pointer-events: none !important;
+  animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  min-width: 200px !important;
+
+  /* CRITICAL: Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+.boyo-metadata-item {
+  margin: 8px 0 !important;
+  line-height: 1.6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.boyo-metadata-item strong {
+  color: rgba(147, 197, 253, 1) !important;
+  font-weight: 600 !important;
+}
+
+/* ============================================
+   TITLE DISPLAY - Level 2
+   ============================================ */
+
+.boyo-title {
+  color: rgba(255, 255, 255, 0.98) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  max-width: 85% !important;
+  padding: 16px 24px !important;
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.15) 0%,
+    rgba(147, 51, 234, 0.1) 100%
+  ) !important;
+  border-radius: 12px !important;
+  margin: 12px !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 16px rgba(168, 85, 247, 0.2) !important;
+  line-height: 1.6 !important;
+  pointer-events: none !important;
+  animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+
+  /* CRITICAL: Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   ENHANCED HOVER STATES
+   ============================================ */
+
+.boyo-overlay:hover .boyo-metadata {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.18) 0%,
+    rgba(37, 99, 235, 0.12) 100%
+  ) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 6px 20px rgba(59, 130, 246, 0.25) !important;
+  transform: scale(1.02) !important;
+}
+
+.boyo-overlay:hover .boyo-title {
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.2) 0%,
+    rgba(147, 51, 234, 0.15) 100%
+  ) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 6px 20px rgba(168, 85, 247, 0.3) !important;
+  transform: scale(1.02) !important;
+}
+
+/* ============================================
+   PROGRESS INDICATOR
+   ============================================ */
+
+.boyo-overlay::after {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: transparent !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+}
+
+.boyo-overlay[data-level="1"]::after {
+  opacity: 1 !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.6) 33%,
+    rgba(59, 130, 246, 0.6) 66%,
+    transparent 100%
+  ) !important;
+}
+
+.boyo-overlay[data-level="2"]::after {
+  opacity: 1 !important;
+  background: linear-gradient(
+    90deg,
+    rgba(168, 85, 247, 0.6) 0%,
+    rgba(168, 85, 247, 0.8) 50%,
+    rgba(168, 85, 247, 0.6) 100%
+  ) !important;
+  animation: progressShimmer 2s ease-in-out infinite !important;
+}
+
+@keyframes progressShimmer {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  .boyo-overlay[data-level="0"]::before,
+  .boyo-overlay[data-level="1"]::before,
+  .boyo-overlay[data-level="2"]::before {
+    font-size: 12px !important;
+    padding: 6px 14px !important;
+  }
+
+  .boyo-metadata {
+    font-size: 12px !important;
+    padding: 12px 18px !important;
+    min-width: 160px !important;
+  }
+
+  .boyo-title {
+    font-size: 13px !important;
+    padding: 12px 18px !important;
+  }
+}
+
+/* ============================================
+   LAYOUT-SPECIFIC ADJUSTMENTS
+   ============================================ */
+
+/* Grid layout */
+ytd-rich-item-renderer .boyo-overlay {
+  border-radius: 10px !important;
+}
+
+/* Compact renderers */
+ytd-compact-video-renderer .boyo-overlay {
+  border-radius: 8px !important;
+}
+
+ytd-compact-video-renderer .boyo-overlay[data-level="0"]::before,
+ytd-compact-video-renderer .boyo-overlay[data-level="1"]::before,
+ytd-compact-video-renderer .boyo-overlay[data-level="2"]::before {
+  font-size: 11px !important;
+  padding: 6px 12px !important;
+}
+
+ytd-compact-video-renderer .boyo-metadata,
+ytd-compact-video-renderer .boyo-title {
+  font-size: 11px !important;
+  padding: 10px 16px !important;
+}
+
+/* ============================================
+   CONTENT PROTECTION
+   ============================================ */
+
+.boyo-masked img,
+.boyo-masked yt-image,
+.boyo-masked ytd-thumbnail {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+.boyo-masked #video-title,
+.boyo-masked #channel-name,
+.boyo-masked #metadata-line {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* ============================================
+   ACCESSIBILITY ENHANCEMENTS
+   ============================================ */
+
+.boyo-overlay:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.6) !important;
+  outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

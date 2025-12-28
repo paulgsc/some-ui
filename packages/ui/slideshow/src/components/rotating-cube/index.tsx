@@ -1,8 +1,13 @@
-import type { CSSProperties, FC, RefObject } from "react"
-import { useRef } from "react"
+import type { FC } from "react"
+import { useCallback } from "react"
+import { DiceCard } from "@slideshow/components/dice-card"
 import { filterCubeJson, result as validatedCubeJson } from "@slideshow/data"
-import { useRotatingCube } from "@slideshow/hooks"
+import type {
+  AllowedRotationAxis,
+  Mode,
+} from "@slideshow/hooks/use-rotating-cube"
 import type { CubeJson, Question } from "@slideshow/types"
+import { processArray } from "@slideshow/utils/rotating-cube"
 import { Bot, Code2, LineChart, Server } from "lucide-react"
 import {
   Accordion,
@@ -12,72 +17,41 @@ import {
   AnimatedBadge,
   Card,
 } from "some-ui-shared"
-import { cn, useMeasureRect } from "some-ui-utils"
-
-import styles from "./index.module.css"
 
 type RotatingCubeProps = {
   perspective?: number
+  dof?: AllowedRotationAxis
+  mode?: Mode
+  className?: string
+  content?: Array<React.JSX.Element>
+  duration?: number
+  hideBackface?: boolean
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
   perspective = 1200,
+  dof = "Y-axis",
+  mode = "autoplay",
+  content = [],
+  duration = 3000,
+  hideBackface = false,
+  className,
 }): React.JSX.Element => {
-  const { isRotating, currentFace, setIsRotating } = useRotatingCube()
-  const faces = cubeFaces()
-  const ref = useRef<HTMLDivElement>(null)
-
-  const { width } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
+  const getFaces = useCallback(() => {
+    const faces = [...cubeFaces(), ...content]
+    return processArray(faces, 4)
+  }, [content])
 
   return (
-    <div
-      style={{ "--perspective": perspective } as CSSProperties}
-      className={cn(
-        "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]"
-      )}
-    >
-      <div
-        ref={ref}
-        className={cn(
-          "transform-3d relative size-full max-w-sm transition-transform duration-500",
-          { [styles.rotating]: true }
-        )}
-        style={{
-          transform: `rotateY(-${currentFace * 90}deg)`,
-          transformStyle: "preserve-3d",
-        }}
-        onMouseEnter={() => setIsRotating(false)}
-        onMouseLeave={() => setIsRotating(true)}
-      >
-        {faces.map((face, index) => (
-          <div
-            key={index}
-            style={{ "--face-width": (width ?? 0) / 2 } as CSSProperties}
-            className={cn(
-              "absolute z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
-              {
-                "[transform:rotateY(0deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 0,
-                "[transform:rotateY(90deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 1,
-                "[transform:rotateY(180deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 2,
-                "[transform:rotateY(-90deg)_translateZ(calc(var(--face-width)*1px))]":
-                  index === 3,
-                "opacity-80": isRotating,
-              }
-            )}
-          >
-            {currentFace !== index && (
-              <div className="bg-muted pointer-events-none absolute inset-0 -z-10 size-full rounded-xl brightness-50" />
-            )}
-            {currentFace === index && face}
-          </div>
-        ))}
-      </div>
-    </div>
+    <DiceCard
+      className={className}
+      dof={dof}
+      mode={mode}
+      faces={getFaces()}
+      perspective={perspective}
+      duration={duration}
+      hideBackface={hideBackface}
+    />
   )
 }
 
@@ -117,7 +91,7 @@ const cubeFaces = (): Array<React.JSX.Element> =>
     ).pop()
 
     return (
-      <Card key={index} className="relative size-full overflow-hidden p-6">
+      <Card key={index} className="relative size-full overflow-hidden p-1.5">
         {/* Background pattern */}
         <div
           className="absolute inset-0 opacity-[0.03]"

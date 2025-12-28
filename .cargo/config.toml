@@ -17,3 +17,8 @@ rustflags = [
 "-D", "warnings"
 ]
 
+[alias]
+wasm = "run -- wasm-pack build --target web --out-dir dist"
+
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

@@ -3,51 +3,47 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "react-resizable-panels": "^2.1.0",
+    "@some-ui/styles": "workspace:*",
+    "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-slideshow": "workspace:*",
+    "some-ui-honeycomb": "workspace:*",
+    "some-ui-utils": "workspace:*",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/wireframes.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/wireframes.cjs.js"
-      }
-    }
+      "types": "./dist/wireframes.d.ts",
+      "import": "./dist/wireframes.es.js",
+      "require": "./dist/wireframes.cjs.js",
+      "default": "./dist/wireframes.es.js"
+    },
+    "./style.css": "./dist/wireframes.css"
   },
   "files": [
-    "wireframes*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/wireframes.umd.js",
-  "module": "./dist/esm/wireframes.esm.js",
+  "main": "./dist/wireframes.cjs.js",
+  "module": "./dist/wireframes.es.js",
   "name": "wireframes",
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-resizable-panels": "^2.1.0"
+    "react-dom": "^19.0.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -58,9 +54,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/wireframes.d.ts",
   "unpkg": "wireframes.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/wireframes.css"
 }

@@ -1,4 +1,4 @@
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { OfficeBuilding } from "."
 
@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof OfficeBuilding>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Makjang/OfficeBuilding",
+  title: "UI/Makjang/Shapes/Buildings/OfficeBuilding",
   component: OfficeBuilding,
 } as Meta

@@ -4,7 +4,7 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "build:docs": "contentlayer2 build",
     "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
@@ -20,24 +20,21 @@
     "@radix-ui/react-dropdown-menu": "2.1.1",
     "contentlayer2": "^0.4.6",
     "lucide-react": "0.436.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "2.1.1",
     "lucide-react": "0.436.0",
     "next-contentlayer2": "^0.4.6",
-    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "unist-builder": "3.0.0",
-    "zod": "3.23.8"
+    "unist-builder": "3.0.0"
   },
   "devDependencies": {
     "@shikijs/compat": "^1.1.7",
     "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
     "postcss": "^8.4.24",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "rehype": "^12.0.1",
     "rehype-autolink-headings": "^6.1.1",
     "rehype-pretty-code": "^0.6.0",
@@ -60,28 +57,23 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-mdx*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-mdx.umd.js",
-  "main": "./dist/some-ui-mdx.umd.js",
-  "module": "./dist/esm/some-ui-mdx.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-mdx.cjs.js",
+  "module": "./dist/some-ui-mdx.es.js",
+  "types": "./dist/some-ui-mdx.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-mdx.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-mdx.cjs.js"
-      }
-    }
-  }
+      "types": "./dist/some-ui-mdx.d.ts",
+      "import": "./dist/some-ui-mdx.es.js",
+      "require": "./dist/some-ui-mdx.cjs.js",
+      "default": "./dist/some-ui-mdx.es.js"
+    },
+    "./style.css": "./dist/some-ui-mdx.css"
+  },
+  "style": "./dist/some-ui-mdx.css"
 }

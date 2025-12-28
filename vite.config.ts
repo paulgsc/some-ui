@@ -1,9 +1,12 @@
-import path from "path"
+import path, { resolve } from "path"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
+import dts from "vite-plugin-dts"
+import topLevelAwait from "vite-plugin-top-level-await"
+import wasm from "vite-plugin-wasm"
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [wasm(), topLevelAwait(), react(), dts({ include: ["src"] })],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -14,16 +17,30 @@ export default defineConfig({
         "./packages/ui/attributions/src"
       ),
       "@chat": path.resolve(__dirname, "./packages/ui/chat/src"),
+      "@input": path.resolve(__dirname, "./packages/ui/input/src"),
       "@searchbar": path.resolve(__dirname, "./packages/ui/searchbar/src"),
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
+      "@portfolio-chart": path.resolve(
+        __dirname,
+        "./packages/ui/portfolio-chart/src"
+      ),
       "@makjang": path.resolve(__dirname, "./packages/ui/makjang/src"),
       "@umag": path.resolve(__dirname, "./packages/ui/umag/src"),
+      "@stepper": path.resolve(__dirname, "./packages/ui/stepper/src"),
       "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),
+      "@honeycomb": path.resolve(__dirname, "./packages/ui/honeycomb/src"),
+      "@calendar": path.resolve(__dirname, "./packages/ui/calendar/src"),
+      "@resume": path.resolve(__dirname, "./packages/ui/resume/src"),
       "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
+      "@content": path.resolve(__dirname, "./packages/some-content/src"),
+      "@some-ui/content": path.resolve(
+        __dirname,
+        "./packages/some-content/src"
+      ),
       // Add more aliases for other packages as needed
     },
   },

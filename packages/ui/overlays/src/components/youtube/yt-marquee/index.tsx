@@ -1,48 +1,44 @@
+import "./index.css"
+
 import { Marquee } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 const reviews = [
   {
-    name: "HR",
-    username: "@lol",
-    body: "Hi Paul, Unfortunately you were not selected for the position at Sc***er. They ended up moving forward with a different candidate.",
+    name: "Leetcode",
+    username: "@boring as ...",
+    body: "day n of planning to grind leetcode, but never doing it.",
     img: "https://avatar.vercel.sh/jack",
   },
   {
-    name: "Goo Ha Na",
-    username: "@cindarella",
-    body: "No rain, no flowers!",
+    name: "Liverpool won but...",
+    username: "@dead inside",
+    body: "Yay! Liverpool won the league again! So wai me no feel no nothing? sadness!😔",
     img: "https://avatar.vercel.sh/jill",
   },
   {
-    name: "Top Listener of Crush",
-    username: "@music",
-    body: "You were in the top 0.25% of listeners in December 2024",
+    name: "You've only got 7 days left",
+    username: "namecheap",
+    body: "One or more of your domains will expire in 7 days. Luckily, i'ts easy to renew just by clicking the button below.",
     img: "https://avatar.vercel.sh/john",
   },
   {
-    name: "Thought of the day",
+    name: "UsBank",
     username: "@neverbegan",
-    body: "Today is as good as it gets, but today was a bad day",
+    body: "Thank you for choosing U.S. Bank. We noticed you haven't used your account ending in 0915 for several months. ..., so we wanted to check in with you.",
     img: "https://avatar.vercel.sh/jane",
   },
   {
-    name: "Levy",
-    username: "@farmer",
-    body: "One day I will be grandmother! Interesting start the procedure!",
-    img: "https://avatar.vercel.sh/jenny",
-  },
-  {
-    name: "defensive defection",
-    username: "@goodfaith",
-    body: "Be skeptical not cynical",
+    name: "What is even the point?!",
+    username: "@emotion",
+    body: "Not joy, just pain, frustration and humiliation, is this real life!",
     img: "https://avatar.vercel.sh/james",
   },
   {
-    name: "because of course",
-    username: "@scam?",
-    body: "Sorry to bother! I'm Ailsa I have some information about a job that I'd like to mention. Can we have a conversation?",
-    img: "https://avatar.vercel.sh/tim",
+    name: "I come to you again",
+    username: "browser",
+    body: "I'm a browser refugee. Google chrome is no more for boyo, currently coping with mozilla, but feels like google throttles it on sites like youtebe. I'm I really destined to be sad boi?!",
+    img: "https://www.mozilla.org/favicon.ico",
   },
 ]
 

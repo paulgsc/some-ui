@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { YTGridThumbnail } from "@overlays/components/youtube/yt-grid-thumbnail"
 import { useRandomPanelExpansion } from "@overlays/hooks"
 import type { ImperativePanelHandle } from "some-ui-shared"
 import { ResizablePanel, ResizablePanelGroup } from "some-ui-shared"
+import { LensShutter, SugarCubesStack } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
 export const YtGrid = (): React.JSX.Element => {
   const rows = 3
   const cols = 4
+  const [showLens, setShowLens] = useState<boolean>(false)
+  const callback = useCallback(() => {
+    setShowLens(false)
+  }, [])
+  const onSuccess = useCallback(() => {
+    setShowLens(true)
+  }, [setShowLens])
   const { pauseAnimation, resumeAnimation, expandedPanel, updatePanelSize } =
-    useRandomPanelExpansion(rows, cols)
+    useRandomPanelExpansion({ rows, cols, replay: true, onSuccess, callback })
   const rowsRef = useRef<Array<ImperativePanelHandle>>(Array(rows).fill(null))
   const colsRef = useRef<Array<ImperativePanelHandle>>(Array(cols).fill(null))
 
@@ -22,7 +31,7 @@ export const YtGrid = (): React.JSX.Element => {
   }, [updateAllPanels])
 
   return (
-    <div className="h-[600px] w-full">
+    <div className="absolute inset-0">
       <ResizablePanelGroup
         direction="vertical"
         autoSaveId="conditional"
@@ -65,14 +74,25 @@ export const YtGrid = (): React.JSX.Element => {
                   >
                     <div
                       className={cn(
-                        "flex size-full items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground bg-muted",
-                        {
-                          "border-blue-500 bg-blue-100":
-                            expandedPanel?.row === i && expandedPanel.col === k,
-                        }
+                        "bg-muted flex size-full items-center justify-center rounded-xl"
                       )}
                     >
-                      Panel {i}-{k}
+                      <div
+                        className={cn(
+                          "relative flex  items-center justify-center rounded-full",
+                          "aspect-square h-[min(100%,100vw)] w-[min(100%,100vh)]"
+                        )}
+                      >
+                        {showLens &&
+                        expandedPanel?.row === i &&
+                        expandedPanel.col === k ? (
+                          <LensShutter>
+                            <SugarCubesStack />
+                          </LensShutter>
+                        ) : (
+                          <YTGridThumbnail />
+                        )}
+                      </div>
                     </div>
                   </ResizablePanel>
                 )

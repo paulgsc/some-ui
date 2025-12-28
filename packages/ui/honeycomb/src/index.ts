@@ -1,1 +1,2 @@
-export { default } from "@honeycomb/components"
+
+export { HangulHexGrid } from "./components"

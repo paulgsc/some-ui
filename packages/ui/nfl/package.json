@@ -3,6 +3,8 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
@@ -13,17 +15,21 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "embla-carousel-autoplay": "^8.6.0",
+    "lucide-react": "^0.536.0",
+    "maishatu-fetch-kit": "workspace:*",
+    "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "@some-ui/vite-config": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -36,28 +42,23 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-nfl*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-nfl.umd.js",
-  "main": "./dist/some-ui-nfl.umd.js",
-  "module": "./dist/esm/some-ui-nfl.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-nfl.cjs.js",
+  "module": "./dist/some-ui-nfl.es.js",
+  "types": "./dist/some-ui-nfl.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-nfl.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-nfl.cjs.js"
-      }
-    }
-  }
+      "types": "./dist/some-ui-nfl.d.ts",
+      "import": "./dist/some-ui-nfl.es.js",
+      "require": "./dist/some-ui-nfl.cjs.js",
+      "default": "./dist/some-ui-nfl.es.js"
+    },
+    "./style.css": "./dist/some-ui-nfl.css"
+  },
+  "style": "./dist/some-ui-nfl.css"
 }

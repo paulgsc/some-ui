@@ -1,82 +1,60 @@
-import { Badge, Card, WithAvatar } from "some-ui-shared"
-import type { AvatarOptions } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { useTypingEffect } from "@chat/hooks/use-typing-effect"
+import type { Message } from "@chat/types/chat"
+import { Badge, WithAvatar } from "some-ui-shared"
+import { cn, formatRelativeTime } from "some-ui-utils"
 
-type MessageType = "chat" | "thinking"
-type User = "ai" | "pgdev"
-
-export type Options = {
-  id: string
-  character: User
-  content: string
-  type: MessageType
-  timestamp: string
-  avatar?: AvatarOptions
-  avatarSize?: number
-}
-
-type ChatMessageProps = {
-  message: Options
-}
+type ChatMessageProps = Message
 
 export const ChatMessage = ({
-  message,
+  avatarSize = 25,
+  avatar,
+  content,
+  timestamp,
+  position,
 }: ChatMessageProps): React.JSX.Element => {
-  const { timestamp, content, character, avatarSize = 25, avatar } = message
+  const displayedContent = useTypingEffect({ content })
+
   return (
-    <Card
+    <section
       className={cn(
-        "relative grid min-w-[45%] max-w-[75%]  grid-flow-row rounded-lg pt-0.5 shadow-inner",
+        "relative flex size-full max-w-[75%] flex-col rounded-lg p-1.5 shadow-lg",
         {
-          "bg-accent text-gray-900": character === "ai",
-          "bg-blue-600 text-white": character === "pgdev",
+          "bg-indigo-500/20 shadow-indigo-500/50 items-end":
+            position === "right",
+          "bg-sky-200 shadow-sky-300": position === "left",
         }
       )}
     >
-      <p
+      <div
+        className={cn("flex items-end space-x-6", {
+          "flex-row-reverse": position === "right",
+        })}
+      >
+        <WithAvatar
+          className={cn("pointer-events-none z-10 shrink-0 brightness-75")}
+          avatarSize={avatarSize}
+          avatar={avatar}
+        />
+
+        <p
+          className={cn(
+            "inset-shadow-sm flex-1 break-words rounded-sm p-2.5 text-sm font-medium tracking-tight"
+          )}
+        >
+          {displayedContent}
+        </p>
+      </div>
+      <Badge
         className={cn(
-          "z-10 row-span-2 flex flex-1 break-all bg-inherit pe-1.5 ps-3 pt-0.5 text-sm font-medium tracking-tight",
+          "text-muted-foreground/60 size-fit max-w-xs shrink-0 overflow-clip border-none p-0.5 text-xs tracking-tight",
           {
-            "justify-end": character === "pgdev",
-            "justify-start": character === "ai",
+            "bg-inherit text-accent-foreground/40": position === "left",
           }
         )}
+        variant={position === "right" ? "outline" : "secondary"}
       >
-        {content}
-      </p>
-      <section className="h-10 shrink-0 p-0.5 text-start">
-        {avatar && (
-          <WithAvatar
-            className={cn(
-              "pointer-events-none absolute z-0 shrink-0 brightness-75",
-              {
-                "end-[98%] top-0": character === "ai",
-                "start-[98%] top-0": character === "pgdev",
-              }
-            )}
-            avatarSize={avatarSize}
-            avatar={avatar}
-          />
-        )}
-        <span
-          className={cn("flex h-full flex-1 shrink-0 items-end", {
-            "justify-start text-muted/50": character === "pgdev",
-            "justify-end text-muted-foreground/60": character === "ai",
-          })}
-        >
-          <Badge
-            className={cn(
-              "shrink-0 p-0.5 text-xs tracking-tight text-muted-foreground/60",
-              {
-                "bg-inherit text-accent-foreground/40": character === "pgdev",
-              }
-            )}
-            variant={character === "ai" ? "outline" : "secondary"}
-          >
-            {timestamp}
-          </Badge>
-        </span>
-      </section>
-    </Card>
+        {formatRelativeTime(timestamp)}
+      </Badge>
+    </section>
   )
 }

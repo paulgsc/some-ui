@@ -1,0 +1,52 @@
+import type { FC } from "react"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle, Button } from "some-ui-shared"
+
+type TypingErrorAlertProps = {
+  showErrorAlert: boolean
+  consecutiveErrors: number
+  onDismiss: () => void
+}
+
+export const TypingErrorAlert: FC<TypingErrorAlertProps> = ({
+  showErrorAlert,
+  consecutiveErrors,
+  onDismiss,
+}) => {
+  return (
+    <>
+      {showErrorAlert && (
+        <Alert
+          variant="destructive"
+          className="mb-4 flex items-start gap-3"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+
+          <div className="flex flex-1 flex-col gap-2">
+            <AlertTitle className="leading-tight">Too many errors</AlertTitle>
+
+            <div className="flex items-center justify-between gap-4">
+              <AlertDescription className="text-sm leading-relaxed">
+                You’ve made{" "}
+                <span className="font-medium">
+                  {consecutiveErrors} consecutive mistakes
+                </span>
+                . Please backspace and fix them before continuing.
+              </AlertDescription>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDismiss}
+                className="shrink-0"
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}{" "}
+    </>
+  )
+}

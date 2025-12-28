@@ -7,13 +7,17 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["clean:build", "^build"],
+      "dependsOn": ["^build"],
       "outputs": ["../../dist/**", "dist/**", "build/**", ".content/**"],
       "cache": true
     },
     "build:docs": {
       "cache": true,
       "outputs": [".content/**"]
+    },
+    "build:wasm": {
+      "outputs": ["packages/wasm/**/*"],
+      "cache": true
     },
     "watch:build": {
       "dependsOn": ["^build", "^build:docs"],

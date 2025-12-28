@@ -1,2 +1,2 @@
-export { default as NeonText } from "@neon-sign/components/neon-text"
-export * from "@neon-sign/components/styled-characters"
+export { Headline } from "./headline"
+export { NeonText } from "./neon-text"

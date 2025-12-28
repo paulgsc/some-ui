@@ -3,38 +3,32 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "lucide-react": "^0.522.0",
     "some-ui-shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/umag.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/umag.cjs.js"
-      }
-    }
+      "types": "./dist/umag.d.ts",
+      "import": "./dist/umag.es.js",
+      "require": "./dist/umag.cjs.js",
+      "default": "./dist/umag.es.js"
+    },
+    "./style.css": "./dist/umag.css"
   },
   "files": [
-    "umag*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/umag.umd.js",
-  "module": "./dist/esm/umag.esm.js",
+  "main": "./dist/umag.cjs.js",
+  "module": "./dist/umag.es.js",
   "name": "umag",
   "peerDependencies": {
     "react": "^19.0.0",
@@ -46,7 +40,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -57,9 +51,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/umag.d.ts",
+  "style": "./dist/umag.css",
   "unpkg": "umag.umd.js",
   "version": "0.0.5"
 }

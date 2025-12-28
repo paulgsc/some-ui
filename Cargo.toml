@@ -2,12 +2,9 @@
 [workspace]
 resolver = "2"
 
-members = []
+members = ["crates/ujinga", "crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation", "crates/some-hexagon", "crates/leaderboard", "crates/some-racer", "crates/leptos/some-fsm-input", "crates/some-sound", "crates/some-slint-ui", "crates/some-gui", "crates/hangul-game-core", "crates/leetype_wasm"]
 
 exclude = []
-
-# This prevents a Travis CI error when building for Windows.
-resolver = "2"
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = 2 }
@@ -15,8 +12,13 @@ pedantic = { level = "deny", priority = 2 }
 nursery = { level = "deny", priority = 2 }
 cargo = { level = "deny", priority = 2 }
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test_coverage)'] }
+
 [profile.release]
 lto = true
+opt-level = "s"
+codegen-units = 1
 
 [workspace.package]
 version = "0.0.0"

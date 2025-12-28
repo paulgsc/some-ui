@@ -1,0 +1,17 @@
+[package]
+name = "some-slint-ui"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+slint = "1.5"
+
+[build-dependencies]
+slint-build = "1.5"
+
+[lints]
+workspace = true

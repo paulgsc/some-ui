@@ -1,0 +1,67 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/d3-shape": "^3.1.7",
+    "d3": "^7.9.0",
+    "d3-shape": "^3.2.0",
+    "framer-motion": "12.4.7",
+    "lucide-react": "^0.477.0",
+    "some-charts": "link:../../../crates/some-charts/dist",
+    "some-ui-shared": "workspace:*",
+    "some-ui-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/some-ui-portfolio-chart.d.ts",
+      "import": "./dist/some-ui-portfolio-chart.es.js",
+      "require": "./dist/some-ui-portfolio-chart.cjs.js",
+      "default": "./dist/some-ui-portfolio-chart.es.js"
+    },
+    "./style.css": "./dist/some-ui-portfolio-chart.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/some-ui-portfolio-chart.cjs.js",
+  "module": "./dist/some-ui-portfolio-chart.es.js",
+  "name": "portfolio-chart",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "type": "module",
+  "types": "./dist/some-ui-portfolio-chart.d.ts",
+  "unpkg": "portfolio-chart.umd.js",
+  "version": "0.0.5",
+  "style": "./dist/some-ui-portfolio-chart.css"
+}

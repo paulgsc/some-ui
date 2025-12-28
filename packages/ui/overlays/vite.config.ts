@@ -1,0 +1,19 @@
+import { resolve } from "path"
+import { createViteConfig } from "@some-ui/vite-config"
+
+export default createViteConfig({
+  packageName: "overlays",
+  libraryName: "SomeUIOverlays",
+  alias: {
+    "@overlays": resolve(__dirname, "src"),
+  },
+  dtsOptions: {
+    exclude: [
+      "**/data/**",
+      "**/demo/**",
+      "../../../assets/**/*",
+      "../../some-content/src/**/*",
+    ],
+  },
+  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+})

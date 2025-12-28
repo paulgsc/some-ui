@@ -1,4 +1,4 @@
-import type { Meta as MetaObj, StoryObj } from "@storybook/react"
+import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { Skyline } from "."
 
@@ -8,6 +8,6 @@ type Meta = MetaObj<typeof Skyline>
 export const Default: Story = {}
 
 export default {
-  title: "UI/Makjang/Skyline",
+  title: "UI/Makjang/Shapes/Skyline",
   component: Skyline,
 } as Meta

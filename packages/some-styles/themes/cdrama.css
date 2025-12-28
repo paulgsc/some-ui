@@ -1,0 +1,170 @@
+/* ============================================
+   CDRAMA THEME — Peach Blossom Edition
+   Light, Romantic, Airy Spring Vibes
+   ============================================ */
+
+.cdrama {
+  /* Base layer – soft warm cream with hint of peach */
+  --background: oklch(0.97 0.015 40);
+  --foreground: oklch(0.25 0.03 30);
+
+  --card: oklch(0.99 0.01 40);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(0.99 0.01 40);
+  --popover-foreground: var(--foreground);
+
+  /* Primary = peach blossom pink */
+  --primary: oklch(0.75 0.15 20);
+  --primary-foreground: oklch(0.98 0.01 20);
+
+  /* Secondary = soft lavender-grey */
+  --secondary: oklch(0.88 0.03 280);
+  --secondary-foreground: oklch(0.35 0.03 280);
+
+  /* Muted = warm blush beige */
+  --muted: oklch(0.92 0.02 40);
+  --muted-foreground: oklch(0.5 0.02 30);
+
+  /* Accent = sunset coral-rose */
+  --accent: oklch(0.72 0.18 15);
+  --accent-foreground: oklch(0.98 0.01 15);
+
+  /* Destructive */
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: var(--card);
+
+  /* Structural */
+  --border: oklch(0.88 0.02 30);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  /* Chart tokens – soft pastel palette */
+  --chart-1: oklch(0.78 0.14 20);
+  --chart-2: oklch(0.75 0.12 340);
+  --chart-3: oklch(0.8 0.1 60);
+  --chart-4: oklch(0.76 0.11 280);
+  --chart-5: oklch(0.74 0.13 10);
+
+  /* Cdrama specific tokens */
+  --cdrama-blossom: oklch(0.75 0.15 20);
+  --cdrama-accent: oklch(0.72 0.18 15);
+  --cdrama-surface: oklch(0.95 0.02 40);
+
+  /* Extras — soft romantic glows */
+  --glow-primary: 0 0 20px oklch(0.75 0.15 20 / 0.35);
+  --glow-accent: 0 0 24px oklch(0.72 0.18 15 / 0.4);
+  --glow-card: 0 0 12px oklch(0.88 0.03 280 / 0.25);
+  --glow-destructive: 0 0 20px oklch(0.6 0.2 25 / 0.4);
+
+  --radius: 1.1rem;
+
+  /* Apply styles */
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* DARK VARIANT — warm evening twilight */
+.cdrama.dark,
+.dark .cdrama {
+  --background: oklch(0.18 0.03 30);
+  --foreground: oklch(0.96 0.02 40);
+
+  --card: oklch(0.22 0.03 30);
+  --popover: oklch(0.22 0.03 30);
+
+  --secondary: oklch(0.32 0.04 280);
+  --muted: oklch(0.28 0.02 30);
+  --border: oklch(0.32 0.03 30);
+
+  /* Warmer, richer tones for dark mode */
+  --primary: oklch(0.78 0.16 25);
+  --accent: oklch(0.75 0.19 18);
+
+  --glow-primary: 0 0 24px oklch(0.78 0.16 25 / 0.5);
+  --glow-accent: 0 0 28px oklch(0.75 0.19 18 / 0.55);
+  --glow-card: 0 0 16px oklch(0.88 0.03 280 / 0.3);
+
+  /* Adding dark mode variants of cdrama-specific tokens */
+  --cdrama-blossom: oklch(0.78 0.16 25);
+  --cdrama-accent: oklch(0.75 0.19 18);
+  --cdrama-surface: oklch(0.25 0.03 30);
+}
+
+.cdrama * {
+  border-color: var(--border);
+  outline-color: color-mix(in oklch, var(--ring) 40%, transparent);
+}
+
+/* Keyframe animations for cdrama components */
+@keyframes cdrama-float-in {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  60% {
+    transform: translateY(-5px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cdrama-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes cdrama-pulse-glow {
+  0%,
+  100% {
+    filter: drop-shadow(var(--glow-primary));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(var(--glow-accent));
+    transform: scale(1.05);
+  }
+}
+
+@keyframes cdrama-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ease-out-quart {
+  0% {
+    animation-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
+  }
+}

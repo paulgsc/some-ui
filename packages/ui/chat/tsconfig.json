@@ -7,14 +7,17 @@
     "declaration": true,
     "paths": {
       "@chat/*": ["./src/*"],
-      "@some-ui/*": ["../../../assets/*"]
+      "@some-ui/*": ["../../../assets/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../../some-content/src"]
     }
   },
   "include": [
     "tailwind.config.ts",
     "eslint.config.js",
     "../../../assets/**/*",
-    "src"
+    "src",
+    "../../some-content/src/**/*"
   ],
   "exclude": ["node_modules", "build", "dist"]
 }

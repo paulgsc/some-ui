@@ -1,0 +1,10 @@
+import { resolve } from "path"
+import { createViteConfig } from "@some-ui/vite-config"
+
+export default createViteConfig({
+  packageName: "some-ui-calendar",
+  libraryName: "SomeUICalender",
+  alias: {
+    "@calendar": resolve(__dirname, "src"),
+  },
+})

@@ -1,0 +1,62 @@
+/* ============================================
+   CODE THEME — Vim Night (Dark-first)
+   ============================================ */
+
+.code {
+  /* Editor background */
+  --background: oklch(0.12 0.01 240);
+  --foreground: oklch(0.92 0.01 260);
+
+  /* Panels / blocks */
+  --card: oklch(0.15 0.012 240);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(0.15 0.012 240);
+  --popover-foreground: var(--foreground);
+
+  /* Cursor / selection / active line */
+  --secondary: oklch(0.2 0.015 250);
+  --secondary-foreground: oklch(0.85 0.01 260);
+
+  /* Comments / gutters */
+  --muted: oklch(0.26 0.015 250);
+  --muted-foreground: oklch(0.6 0.02 260);
+
+  /* Keywords / functions (vim purple/blue) */
+  --primary: oklch(0.65 0.18 270);
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Types / numbers */
+  --accent: oklch(0.7 0.2 200);
+  --accent-foreground: oklch(0.98 0 0);
+
+  /* Errors */
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  /* Structure */
+  --border: oklch(0.22 0.01 240);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  /* Sidebar / line numbers */
+  --sidebar: oklch(0.14 0.01 240);
+  --sidebar-foreground: oklch(0.7 0.02 250);
+  --sidebar-accent: oklch(0.2 0.015 250);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+
+  --radius: 0.4rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Optional slightly deeper dark mode */
+.code.dark,
+.dark .code {
+  --background: oklch(0.1 0.01 240);
+  --card: oklch(0.13 0.01 240);
+  --secondary: oklch(0.18 0.015 250);
+  --muted: oklch(0.24 0.015 250);
+}

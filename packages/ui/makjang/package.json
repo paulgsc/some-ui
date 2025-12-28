@@ -8,33 +8,25 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/makjang.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/makjang.cjs.js"
-      }
-    }
+      "types": "./dist/some-ui-makjang.d.ts",
+      "import": "./dist/some-ui-makjang.es.js",
+      "require": "./dist/some-ui-makjang.cjs.js",
+      "default": "./dist/some-ui-makjang.es.js"
+    },
+    "./style.css": "./dist/some-ui-makjang.css"
   },
   "files": [
-    "makjang*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/makjang.umd.js",
-  "module": "./dist/esm/makjang.esm.js",
+  "main": "./dist/some-ui-makjang.cjs.js",
+  "module": "./dist/some-ui-makjang.es.js",
   "name": "makjang",
   "peerDependencies": {
     "react": "^19.0.0",
@@ -46,7 +38,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -57,9 +49,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/some-ui-makjang.d.ts",
   "unpkg": "makjang.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/some-ui-makjang.css"
 }

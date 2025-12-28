@@ -1,0 +1,115 @@
+// topic_breakdown_tab.slint - Topic Breakdown tab content
+import { Button, LineEdit, ScrollView } from "std-widgets.slint";
+
+struct TopicItem {
+    title: string,
+    duration: string,
+    description: string,
+}
+
+component TopicCard inherits Rectangle {
+    in-out property <TopicItem> topic-data;
+    
+    callback remove-clicked;
+    
+    background: #f9fafb;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: #e5e7eb;
+    height: 120px;
+    
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 16px;
+        
+        // Drag handle
+        Rectangle {
+            width: 20px;
+            background: #d1d5db;
+            border-radius: 2px;
+        }
+        
+        // Content
+        VerticalLayout {
+            spacing: 8px;
+            
+            HorizontalLayout {
+                spacing: 12px;
+                
+                LineEdit {
+                    text: root.topic-data.title;
+                    placeholder-text: "Topic title...";
+                }
+                
+                LineEdit {
+                    text: root.topic-data.duration;
+                    placeholder-text: "Duration...";
+                    preferred-width: 100px;
+                }
+            }
+            
+            LineEdit {
+                text: root.topic-data.description;
+                placeholder-text: "Topic description...";
+            }
+        }
+        
+        // Remove button
+        Button {
+            text: "✕";
+            width: 32px;
+            height: 32px;
+            clicked => { root.remove-clicked(); }
+        }
+    }
+}
+
+export component TopicBreakdownTab inherits Rectangle {
+    in-out property <[TopicItem]> topics: [
+        { title: "Introduction", duration: "5 min", description: "Opening remarks and agenda overview" },
+        { title: "Main Topic", duration: "20 min", description: "Core discussion points" },
+        { title: "Q&A", duration: "10 min", description: "Audience questions and answers" },
+    ];
+    
+    background: transparent;
+    
+    VerticalLayout {
+        spacing: 24px;
+        
+        // Header
+        HorizontalLayout {
+            alignment: space-between;
+            
+            Text {
+                text: "Topic Breakdown";
+                font-size: 24px;
+                font-weight: 600;
+                color: #1f2937;
+                horizontal-alignment: left;
+            }
+            
+            Button {
+                text: "+ Add Topic";
+                primary: true;
+                clicked => {
+                    // Add new topic logic would go here
+                }
+            }
+        }
+        
+        // Topics list
+        ScrollView {
+            VerticalLayout {
+                spacing: 12px;
+                
+                for topic[index] in root.topics: TopicCard {
+                    topic-data: topic;
+                    remove-clicked => {
+                        // Remove topic logic would go here
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -1,1 +1,1 @@
-export { Foo } from "@calendar/components"
+export * from "./components"

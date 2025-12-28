@@ -1,69 +1,216 @@
-import { forwardRef } from "react"
-import type { ComponentPropsWithoutRef, ElementRef, ReactNode } from "react"
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { useCallback, useMemo, useState } from "react"
+import type { ReactNode } from "react"
+import { withFocus } from "@wireframes/components/focus-enhancer"
+import { FocusControlPopup } from "@wireframes/components/focus-popup"
+import { RenderSolved } from "@wireframes/components/layout-renderer"
+import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
+import { useContainerRect } from "@wireframes/hooks/use-container-rect"
+import type {
+  Constraint,
+  ConstraintKey,
+  LayoutNode,
+  SolvedNode,
+} from "@wireframes/lib/resizable-layout"
+import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
+import type {
+  ActiveLifetime,
+  ComponentRegistry,
+  YouTubeRegion,
+} from "some-types-utils"
+import { renderRegistryComponent } from "some-ui-utils"
 
-type RootProps = {
-  children: ReactNode
-  direction?: "vertical" | "horizontal"
-} & ComponentPropsWithoutRef<typeof ResizablePanelGroup>
+// --- YouTube layout tree and default constraints ---
+const youtubeTree: LayoutNode<YouTubeRegion> = {
+  type: "split",
+  axis: "col",
+  splitId: "root",
+  children: [
+    { type: "leaf", id: "title" },
+    {
+      type: "split",
+      axis: "row",
+      splitId: "content",
+      children: [
+        {
+          type: "split",
+          axis: "col",
+          splitId: "leftCol",
+          children: [
+            {
+              type: "split",
+              axis: "row",
+              splitId: "left-content",
+              children: [
+                { type: "leaf", id: "video" },
+                { type: "leaf", id: "mainContent" },
+              ],
+            },
+            {
+              type: "split",
+              axis: "row",
+              splitId: "footer",
+              children: [
+                { type: "leaf", id: "footerLeft" },
+                { type: "leaf", id: "footerRight" },
+              ],
+            },
+          ],
+        },
+        {
+          type: "split",
+          axis: "col",
+          splitId: "rightCol",
+          children: [
+            { type: "leaf", id: "sidebarTop" },
+            { type: "leaf", id: "sidebarBottom" },
+          ],
+        },
+      ],
+    },
+  ],
+}
 
-type PanelProps = {
-  children: ReactNode
-} & ComponentPropsWithoutRef<typeof ResizablePanel>
+const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
+  ["title", { ideal: 8, min: 0, max: 100 }],
+  ["content", { ideal: 88, min: 0, max: 100 }],
+  ["left-content", { ideal: 85, min: 0, max: 100 }],
+  ["rightCol", { ideal: 20, min: 0, max: 100 }],
+  ["footer", { ideal: 15, min: 0, max: 100 }],
+  ["leftCol", { ideal: 80, min: 0, max: 100 }],
+  ["video", { ideal: 20, min: 0, max: 100 }],
+  ["footerLeft", { ideal: 5, min: 0, max: 100 }],
+  ["mainContent", { ideal: 80, min: 0, max: 100 }],
+  ["footerRight", { ideal: 95, min: 0, max: 100 }],
+  ["sidebarTop", { ideal: 30, min: 0, max: 100 }],
+  ["sidebarBottom", { ideal: 70, min: 0, max: 100 }],
+])
 
-const Root = forwardRef<ElementRef<typeof ResizablePanelGroup>, RootProps>(
-  ({ children, className, direction = "vertical", ...props }, ref) => (
-    <ResizablePanelGroup
-      className={cn("absolute inset-0", className)}
-      ref={ref}
-      direction={direction}
-      {...props}
-    >
-      {children}
-    </ResizablePanelGroup>
+type OrchestratedViewportProps<K extends string> = {
+  activeLifetimes: Array<ActiveLifetime>
+  sceneRegistry: SceneRegistry
+  componentRegistry: ComponentRegistry<K>
+  transitionMs?: number
+}
+
+/**
+ * OrchestratedYouTubeViewport
+ *
+ * Resolves panels for each region directly from active lifetimes.
+ * Panel components themselves handle rendering of children.
+ */
+export const OrchestratedYouTubeViewport = <K extends string>({
+  activeLifetimes,
+  componentRegistry,
+  transitionMs = 300,
+}: OrchestratedViewportProps<K>) => {
+  const { ref, rect } = useContainerRect()
+
+  const [focusState, setFocusState] = useState<{
+    regionId?: YouTubeRegion
+    intensity?: number
+  }>({})
+  const [popup, setPopup] = useState<{
+    regionId: YouTubeRegion
+    position: { x: number; y: number }
+  } | null>(null)
+
+  // Merge panels per region from all active lifetimes
+  const mergedPanels = useMemo(() => {
+    const panels: Partial<Record<YouTubeRegion, Array<() => ReactNode>>> = {}
+
+    for (const lifetime of activeLifetimes) {
+      const scene = lifetime.kind.Scene
+      if (!scene.ui) continue
+
+      for (const layout of scene.ui) {
+        for (const [region, panel] of Object.entries(
+          layout.panels ?? {}
+        ) as any) {
+          if (!panel) continue
+
+          const factory = () =>
+            renderRegistryComponent(
+              componentRegistry,
+              panel.registry_key,
+              panel.props ?? {},
+              { enhanceComponent: withFocus(region) }
+            )
+
+          panels[region] ??= []
+          panels[region]!.push(factory)
+        }
+      }
+    }
+
+    return Object.fromEntries(
+      Object.entries(panels).map(([k, factories]) => [
+        k,
+        () => factories.map((f) => f()),
+      ])
+    ) as Record<YouTubeRegion, () => ReactNode>
+  }, [activeLifetimes, componentRegistry])
+
+  const constraints = useMemo(
+    () =>
+      focusConstraints(
+        youtubeTree,
+        defaultConstraints,
+        focusState.regionId,
+        focusState.intensity ?? 0
+      ),
+    [focusState.regionId, focusState.intensity]
   )
-)
-Root.displayName = "ResizableLayout.Root"
 
-const PanelA = forwardRef<ElementRef<typeof ResizablePanel>, PanelProps>(
-  ({ children, className, defaultSize = 25, ...props }, ref) => (
-    <ResizablePanel
-      ref={ref}
-      defaultSize={defaultSize}
-      className={cn("size-full", className)}
-      {...props}
-    >
-      {children}
-    </ResizablePanel>
+  const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
+    if (!rect) return
+    return solveLayout(youtubeTree, constraints, rect)
+  }, [constraints, rect])
+
+  const renderLeaf = useMemo(() => {
+    const RenderLeaf = (id: YouTubeRegion): ReactNode => {
+      if (!mergedPanels[id]) return <div className="size-full" />
+      return mergedPanels[id]()
+    }
+    return RenderLeaf
+  }, [mergedPanels])
+
+  const handleLeafClick = useCallback(
+    (id: YouTubeRegion, position: { x: number; y: number }) => {
+      setPopup({ regionId: id, position })
+    },
+    []
   )
-)
-PanelA.displayName = "ResizableLayout.PanelA"
 
-const PanelB = forwardRef<ElementRef<typeof ResizablePanel>, PanelProps>(
-  ({ children, className, defaultSize = 75, minSize = 75, ...props }, ref) => (
-    <>
-      <ResizableHandle withHandle />
-      <ResizablePanel
-        ref={ref}
-        defaultSize={defaultSize}
-        minSize={minSize}
-        className={cn("size-full", className)}
-        {...props}
-      >
-        {children}
-      </ResizablePanel>
-    </>
+  const handleApplyFocus = useCallback(
+    (regionId: YouTubeRegion, intensity: number) => {
+      setFocusState({ regionId, intensity })
+      setPopup(null)
+    },
+    []
   )
-)
-PanelB.displayName = "ResizableLayout.PanelB"
 
-export const ResizableLayout = {
-  Root,
-  PanelA,
-  PanelB,
+  const handleClosePopup = useCallback(() => {
+    setPopup(null)
+  }, [])
+
+  return (
+    <div className="absolute inset-0 flex-1 size-full" ref={ref}>
+      {layout && (
+        <RenderSolved
+          node={layout}
+          renderLeaf={renderLeaf}
+          onLeafClick={handleLeafClick}
+          transitionMs={transitionMs}
+        />
+      )}
+      {popup && (
+        <FocusControlPopup
+          regionId={popup.regionId}
+          position={popup.position}
+          onApply={handleApplyFocus}
+          onClose={handleClosePopup}
+        />
+      )}
+    </div>
+  )
 }

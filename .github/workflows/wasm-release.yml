@@ -1,0 +1,152 @@
+name: WASM Release
+
+on:
+  push:
+    paths:
+      - 'wasm-sources/**'
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-and-release-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for detecting changes
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - uses: pnpm/action-setup@v4
+        name: Add pnpm
+        id: pnpm-install
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: |
+          echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          npx husky disable
+        env:
+          HUSKY_SKIP_INSTALL: 1
+          HUSKY_DISABLE: 1
+
+      - name: Detect changed crates
+        id: changed-crates
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For manual runs, build all crates
+            echo "Building all crates due to manual trigger"
+            echo "CRATES=$(ls -d wasm-sources/*/ | xargs -n1 basename)" >> $GITHUB_OUTPUT
+            echo "CHANGES_DETECTED=true" >> $GITHUB_OUTPUT
+          else
+            # Get changed files in this push
+            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep "^wasm-sources/" || true)
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "No changes in wasm-sources directory"
+              echo "CHANGES_DETECTED=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            # Extract unique crate names from changed files
+            CRATES=$(echo "$CHANGED_FILES" | awk -F/ '{print $2}' | sort -u | xargs)
+            echo "Changed crates: $CRATES"
+            echo "CRATES=$CRATES" >> $GITHUB_OUTPUT
+            echo "CHANGES_DETECTED=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build WASM packages
+        if: steps.changed-crates.outputs.CHANGES_DETECTED == 'true'
+        id: build-wasm
+        run: |
+          # Create a temporary directory for changeset files
+          mkdir -p .changeset
+          
+          # Track which crates were updated
+          UPDATED_CRATES=""
+          
+          # Build each changed crate
+          for CRATE in ${{ steps.changed-crates.outputs.CRATES }}; do
+            if [ -f "wasm-sources/$CRATE/Cargo.toml" ]; then
+              echo "===== Building $CRATE ====="
+              
+              # Extract version from Cargo.toml
+              VERSION=$(grep "^version" "wasm-sources/$CRATE/Cargo.toml" | head -1 | cut -d '"' -f2 || echo "0.1.0")
+              
+              # Package name for NPM
+              PACKAGE_NAME="@your-scope/wasm-$CRATE"
+              
+              # Build with wasm-pack to dist directory
+              cd "wasm-sources/$CRATE"
+              wasm-pack build --scope your-scope --target web --out-dir "../../dist/wasm/$CRATE"
+              
+              # Create changeset file for this package
+              CHANGESET_ID=$(date +%s)-$CRATE
+              cat << EOF > "../../.changeset/$CHANGESET_ID.md"
+---
+"$PACKAGE_NAME": patch
+---
+
+Update WASM package for $CRATE to version $VERSION
+EOF
+              
+              UPDATED_CRATES="$UPDATED_CRATES $CRATE"
+              
+              cd ../../
+              echo "===== Completed $CRATE ====="
+            else
+              echo "Warning: $CRATE does not seem to be a valid Rust crate"
+            fi
+          done
+          
+          if [ -n "$UPDATED_CRATES" ]; then
+            echo "UPDATED_CRATES=$UPDATED_CRATES" >> $GITHUB_OUTPUT
+            echo "true" > wasm-changes.txt
+          else
+            echo "No crates were successfully built"
+            echo "false" > wasm-changes.txt
+          fi
+
+      - name: Create Release Pull Request or Publish
+        if: steps.build-wasm.outputs.UPDATED_CRATES != ''
+        id: changesets
+        uses: changesets/action@v1.4.1
+        with:
+          commit: "chore(release): update WASM packages"
+          title: "chore(release): update WASM packages"
+          publish: npx changeset publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          NODE_ENV: "production"

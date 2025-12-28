@@ -1,0 +1,49 @@
+
+
+[package]
+name = "leetype_wasm"
+version = "0.1.0"
+description = "Crossword puzzle generator for React apps"
+repository = "https://github.com/yourusername/crossword-wasm"
+license = "MIT"
+authors = ["Your Name <youremail@example.com>"]
+homepage = "https://yourwebsite.com"
+keywords = ["wasm", "crossword", "react", "puzzle"]
+readme = "README.md"
+documentation = "https://docs.example.com/crossword-wasm"
+
+[dependencies]
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+wee_alloc = "0.4"  # To reduce the binary size for production
+
+[dependencies.web-sys]
+version = "0.3"
+features = ["Document", "Window", "console"]
+
+[dev-dependencies]
+wasm-pack = "0.10"
+
+[build]
+target = "web"
+release = true
+wasm-opt = "0.3.16"  # Optional, for optimizing WASM output
+opt-level = "z"      # Lower optimization level to reduce binary size
+out-dir = "dist"
+
+[features]
+default = ["wee_alloc"]
+wasm-debug = ["console_error_panic_hook"]
+wasm-release = ["wee_alloc", "js-sys"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = "uncompressed"
+
+[profile.release]
+opt-level = "z"  # Reduce binary size
+lto = true       # Enable Link Time Optimization for better performance
+debug = false
+split-debuginfo = "packed"

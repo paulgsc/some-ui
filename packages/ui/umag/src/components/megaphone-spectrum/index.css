@@ -1,0 +1,24 @@
+@layer utilities {
+  @keyframes heartbeat {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    14% {
+      transform: scale(var(--heartbeat-scale1, 1.08));
+    }
+    28% {
+      transform: scale(1);
+    }
+    42% {
+      transform: scale(var(--heartbeat-scale2, 1.12));
+    }
+    70% {
+      transform: scale(1);
+    }
+  }
+
+  .heartbeat {
+    animation: heartbeat var(--heartbeat-duration, 1s) ease-in-out infinite;
+  }
+}

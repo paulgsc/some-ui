@@ -36,7 +36,7 @@ type CarouselContextProps = {
 
 const CarouselContext = createContext<CarouselContextProps | null>(null)
 
-function useCarousel() {
+function useCarousel(): CarouselContextProps {
   const context = useContext(CarouselContext)
 
   if (!context) {
@@ -119,7 +119,7 @@ const Carousel = forwardRef<
       api.on("reInit", onSelect)
       api.on("select", onSelect)
 
-      return () => {
+      return (): void => {
         api.off("select", onSelect)
       }
     }, [api, onSelect])
@@ -130,8 +130,7 @@ const Carousel = forwardRef<
           carouselRef,
           api: api,
           opts,
-          orientation:
-            orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
+          orientation: opts?.axis === "y" ? "vertical" : "horizontal",
           scrollPrev,
           scrollNext,
           canScrollPrev,
@@ -161,12 +160,12 @@ const CarouselContent = forwardRef<
   const { carouselRef, orientation } = useCarousel()
 
   return (
-    <div ref={carouselRef} className="overflow-hidden">
+    <div ref={carouselRef} className="size-full overflow-hidden">
       <div
         ref={ref}
         className={cn(
-          "flex",
-          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+          "flex size-full",
+          orientation === "horizontal" ? "" : "flex-col",
           className
         )}
         {...props}
@@ -178,18 +177,12 @@ CarouselContent.displayName = "CarouselContent"
 
 const CarouselItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    const { orientation } = useCarousel()
-
     return (
       <div
         ref={ref}
         role="group"
         aria-roledescription="slide"
-        className={cn(
-          "min-w-0 shrink-0 grow-0 basis-full",
-          orientation === "horizontal" ? "pl-4" : "pt-4",
-          className
-        )}
+        className={cn("min-w-0 shrink-0 grow-0 basis-full", className)}
         {...props}
       />
     )

@@ -3,7 +3,7 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
@@ -21,16 +21,16 @@
   },
   "peerDependencies": {
     "nuqs": "1.18.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0",
+    "@some-ui/vite-config": "workspace:*",
     "next": "14.2.3",
     "nuqs": "1.18.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "repository": {
     "type": "git",
@@ -43,28 +43,23 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-searchbar*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-searchbar.umd.js",
-  "main": "./dist/some-ui-searchbar.umd.js",
-  "module": "./dist/esm/some-ui-searchbar.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-searchbar.cjs.js",
+  "module": "./dist/some-ui-searchbar.es.js",
+  "types": "./dist/some-ui-searchbar.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-searchbar.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-searchbar.cjs.js"
-      }
-    }
-  }
+      "types": "./dist/some-ui-searchbar.d.ts",
+      "import": "./dist/some-ui-searchbar.es.js",
+      "require": "./dist/some-ui-searchbar.cjs.js",
+      "default": "./dist/some-ui-searchbar.es.js"
+    },
+    "./style.css": "./dist/some-ui-searchbar.css"
+  },
+  "style": "./dist/some-ui-searchbar.css"
 }

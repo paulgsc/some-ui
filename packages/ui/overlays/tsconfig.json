@@ -1,15 +1,24 @@
 {
-  "extends": "../../tsconfig/rollupconfig.json",
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
     "composite": true,
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@overlays/*": ["./src/*"]
+      "@overlays/*": ["./src/*"],
+      "@some-ui/*": ["../../../assets/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../../some-content/src"]
     }
   },
-  "include": ["eslint.config.js", "tailwind.config.ts", "src"],
+  "include": [
+    "eslint.config.js",
+    "tailwind.config.ts",
+    "src",
+    "../../../assets/**/*",
+    "../../some-content/src/**/*"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

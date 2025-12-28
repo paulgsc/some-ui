@@ -11,10 +11,10 @@ import babel, { type RollupBabelInputPluginOptions } from "@rollup/plugin-babel"
 import json from "@rollup/plugin-json"
 import resolve from "@rollup/plugin-node-resolve"
 import terser from "@rollup/plugin-terser"
+import typescript from "@rollup/plugin-typescript"
+import tailwindcss from "@tailwindcss/postcss"
 import autoprefixer from "autoprefixer"
 import postcss from "rollup-plugin-postcss"
-import typescript from "rollup-plugin-typescript2"
-import tailwindcss from "tailwindcss"
 
 import fileUnKown from "../../../../package.json"
 import type { PackageJsonTypes } from "../types"
@@ -39,7 +39,7 @@ const CONFIG_EXTERNAL_MODULES = {
 
 const CONFIG_BABEL: RollupBabelInputPluginOptions = {
   extensions: [".js", ".jsx", ".ts", ".tsx"],
-  exclude: ["node_modules/**", "**/*.stories.tsx"],
+  exclude: ["node_modules/**", "**/*.stories.tsx", "**/src/data/**"],
   babelHelpers: "bundled",
 }
 

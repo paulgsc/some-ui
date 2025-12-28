@@ -1,6 +1,12 @@
-import { dirname, join } from "path"
-import { fileURLToPath } from "url"
+// This file has been automatically migrated to valid ESM format by Storybook.
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -8,8 +14,13 @@ import type { StorybookConfig } from "@storybook/react-vite"
  */
 
 const config: StorybookConfig = {
-  stories: ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+  ],
   logLevel: "error",
+
+  staticDirs: ["../packages/ui/honeycomb/public", "../packages/ui/input/public"],
 
   core: {
     disableTelemetry: true,
@@ -19,10 +30,9 @@ const config: StorybookConfig = {
   addons: [
     getAbsolutePath("@storybook/addon-onboarding"),
     getAbsolutePath("@storybook/addon-links"),
-    getAbsolutePath("@storybook/addon-essentials"),
     getAbsolutePath("@chromatic-com/storybook"),
-    getAbsolutePath("@storybook/addon-interactions"),
     getAbsolutePath("@chromatic-com/storybook"),
+    getAbsolutePath("@storybook/addon-docs"),
   ],
 
   framework: getAbsolutePath("@storybook/react-vite"),
@@ -34,6 +44,26 @@ const config: StorybookConfig = {
         STORYBOOK: JSON.stringify(process.env.STORYBOOK),
       },
     }
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...(config.resolve?.alias ?? {}),
+        "webextension-polyfill": resolve(
+          __dirname,
+          "../__mocks__/webextension-polyfill.ts"
+        ),
+        "preact/hooks": "react",
+        "preact/compat": "react",
+        preact: "react",
+      },
+    }
+
+    config.server = {
+      ...config.server,
+      host: "0.0.0.0", // bind all interfaces so both nixos.local + localhost resolve
+      allowedHosts: ["nixos.local", "localhost", "127.0.0.1"],
+    }
+
     return config
   },
 
@@ -46,8 +76,7 @@ const config: StorybookConfig = {
 export default config
 
 function getAbsolutePath(value: string): string {
-  // Resolve the URL to the package.json file.
-  const pkgUrl = import.meta.resolve(join(value, "package.json"))
-  // Convert the URL to a file path, then get its directory name.
-  return dirname(fileURLToPath(pkgUrl))
+  // Resolve the absolute path to package.json using CommonJS-compatible method
+  const pkgPath = require.resolve(join(value, "package.json"))
+  return dirname(pkgPath)
 }

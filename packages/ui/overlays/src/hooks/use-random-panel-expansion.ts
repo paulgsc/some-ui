@@ -11,6 +11,16 @@ type UpdatePanelSizeOptions = {
   dimension: "row" | "col"
 }
 
+type UseRandomExpansionOptions = {
+  rows: number
+  cols: number
+  interval?: number
+  animationDuration?: number
+  replay?: boolean | (() => boolean)
+  callback?: () => void
+  onSuccess?: () => void
+}
+
 type RandomExpansion = {
   updatePanelSize: (options: UpdatePanelSizeOptions) => void
   expandedPanel: ExpandedPanel | null
@@ -18,12 +28,15 @@ type RandomExpansion = {
   resumeAnimation: () => void
 }
 
-export const useRandomPanelExpansion = (
-  rows: number,
-  cols: number,
+export const useRandomPanelExpansion = ({
+  rows,
+  cols,
   interval = 15000,
-  animationDuration = 5000
-): RandomExpansion => {
+  animationDuration = 5000,
+  replay = false,
+  callback,
+  onSuccess,
+}: UseRandomExpansionOptions): RandomExpansion => {
   const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel | null>(null)
   const [animationProgress, setAnimationProgress] = useState(0)
   const [isPaused, setIsPaused] = useState<boolean>(false)
@@ -65,7 +78,19 @@ export const useRandomPanelExpansion = (
     setAnimationProgress(0)
   }, [rows, cols])
 
+  const shouldReplay = (): boolean => {
+    switch (typeof replay) {
+      case "boolean":
+        return replay
+      case "function":
+        return replay()
+      default:
+        throw new Error(`Unexpected typeof replay: ${typeof replay}`)
+    }
+  }
+
   const startAnimation = useCallback(() => {
+    if (callback) callback()
     const startTime = Date.now()
 
     const animate = (): void => {
@@ -81,10 +106,14 @@ export const useRandomPanelExpansion = (
       if (progress < 1) {
         animationFrameRef.current = requestAnimationFrame(animate)
       } else {
-        timeoutRef.current = setTimeout(() => {
-          selectRandomPanel()
-          startAnimation()
-        }, interval - animationDuration)
+        if (onSuccess) onSuccess()
+
+        if (shouldReplay()) {
+          timeoutRef.current = setTimeout(() => {
+            selectRandomPanel()
+            startAnimation()
+          }, interval - animationDuration)
+        }
       }
     }
 
@@ -93,7 +122,7 @@ export const useRandomPanelExpansion = (
     }
 
     animationFrameRef.current = requestAnimationFrame(animate)
-  }, [interval, animationDuration, selectRandomPanel])
+  }, [interval, replay, animationDuration, selectRandomPanel])
 
   const pauseAnimation = useCallback(() => {
     setIsPaused(true)

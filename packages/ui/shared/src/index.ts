@@ -1,2 +1,5 @@
-export * from "@shared/components"
+import "./index.css"
+
+export * from "./components"
+export * from "./hooks"
 //

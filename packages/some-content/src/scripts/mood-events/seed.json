@@ -1,0 +1,293 @@
+{
+  "events": [
+    {
+      "id": 1,
+      "week": 1,
+      "label": "Season Opener",
+      "description": "49ers vs Seahawks to kick off 2025. High hopes after disappointing 2024.",
+      "team": "SF",
+      "category": "anticipation",
+      "delta": 15,
+      "time": "Q1 15:00"
+    },
+    {
+      "id": 2,
+      "week": 1,
+      "label": "Brock's First TD",
+      "description": "Brock finds the endzone early. That's my quarterback!",
+      "team": "SF",
+      "category": "excitement",
+      "delta": 18,
+      "time": "Q1 08:45"
+    },
+    {
+      "id": 3,
+      "week": 1,
+      "label": "Defense Steps Up",
+      "description": "Robert Saleh's return paying dividends. Defense looks sharp.",
+      "team": "SF",
+      "category": "satisfaction",
+      "delta": 12,
+      "time": "Q2 11:22"
+    },
+    {
+      "id": 4,
+      "week": 1,
+      "label": "First Interception",
+      "description": "Brock throws his first pick of the season. Here we go again...",
+      "team": "SF",
+      "category": "concern",
+      "delta": -20,
+      "time": "Q2 06:15"
+    },
+    {
+      "id": 5,
+      "week": 1,
+      "label": "Injury Scare",
+      "description": "Brock gets hurt scrambling late in first half. Please be okay...",
+      "team": "SF",
+      "category": "panic",
+      "delta": -25,
+      "time": "Q2 02:00"
+    },
+    {
+      "id": 6,
+      "week": 1,
+      "label": "Gutsy Return",
+      "description": "Brock comes back in the second half. Tough as nails.",
+      "team": "SF",
+      "category": "pride",
+      "delta": 20,
+      "time": "Q3 12:30"
+    },
+    {
+      "id": 7,
+      "week": 1,
+      "label": "Second Pick",
+      "description": "Another Brock interception. The accuracy concerns are real.",
+      "team": "SF",
+      "category": "frustration",
+      "delta": -18,
+      "time": "Q3 04:22"
+    },
+    {
+      "id": 8,
+      "week": 1,
+      "label": "Team Rallies",
+      "description": "Defense and running game keep us in it despite QB struggles.",
+      "team": "SF",
+      "category": "hope",
+      "delta": 10,
+      "time": "Q4 09:45"
+    },
+    {
+      "id": 9,
+      "week": 1,
+      "label": "Clutch Fourth Quarter",
+      "description": "Brock delivers when it matters most. 2 TDs, 277 yards total.",
+      "team": "SF",
+      "category": "euphoria",
+      "delta": 28,
+      "time": "Q4 03:12"
+    },
+    {
+      "id": 10,
+      "week": 1,
+      "label": "Week 1 Victory",
+      "description": "49ers gut out win over Seahawks. Season starts 1-0!",
+      "team": "SF",
+      "category": "relief",
+      "delta": 15
+    },
+    {
+      "id": 11,
+      "week": 2,
+      "label": "Injury News",
+      "description": "Brock out 2-5 weeks with turf toe. Mac Jones time.",
+      "team": "SF",
+      "category": "devastation",
+      "delta": -35
+    },
+    {
+      "id": 12,
+      "week": 2,
+      "label": "Mac Steps Up",
+      "description": "Mac Jones gets the start vs Saints. Team rallies around backup.",
+      "team": "SF",
+      "category": "solidarity",
+      "delta": 12,
+      "time": "Q1 15:00"
+    },
+    {
+      "id": 13,
+      "week": 2,
+      "label": "Defense Dominates",
+      "description": "49ers defense steps up huge without their franchise QB.",
+      "team": "SF",
+      "category": "pride",
+      "delta": 20,
+      "time": "Q2 08:30"
+    },
+    {
+      "id": 14,
+      "week": 2,
+      "label": "Mac's Moment",
+      "description": "Mac Jones throws TD pass. Maybe we can survive without Brock.",
+      "team": "SF",
+      "category": "surprise",
+      "delta": 15,
+      "time": "Q3 05:45"
+    },
+    {
+      "id": 15,
+      "week": 2,
+      "label": "Close Game Nerves",
+      "description": "Saints making it close without our QB1. Anxiety rising.",
+      "team": "SF",
+      "category": "anxiety",
+      "delta": -12,
+      "time": "Q4 06:22"
+    },
+    {
+      "id": 16,
+      "week": 2,
+      "label": "Victory Without Brock",
+      "description": "26-21 win over Saints! Team proves it can win without Purdy.",
+      "team": "SF",
+      "category": "confidence",
+      "delta": 22
+    },
+    {
+      "id": 17,
+      "week": 3,
+      "label": "Cardinals at Home",
+      "description": "Division rival Cardinals come to Levi's. Must-win at home.",
+      "team": "SF",
+      "category": "determination",
+      "delta": 8
+    },
+    {
+      "id": 18,
+      "week": 3,
+      "label": "Brock's Return?",
+      "description": "Hope builds that Brock might return ahead of schedule.",
+      "team": "SF",
+      "category": "hope",
+      "delta": 20
+    },
+    {
+      "id": 19,
+      "week": 3,
+      "label": "Still Mac Time",
+      "description": "Brock still out, Mac gets another start. Prove it again.",
+      "team": "SF",
+      "category": "acceptance",
+      "delta": -5
+    },
+    {
+      "id": 20,
+      "week": 3,
+      "label": "Division Statement",
+      "description": "Dominant win vs Cardinals shows we're still NFC West kings.",
+      "team": "SF",
+      "category": "dominance",
+      "delta": 25
+    },
+    {
+      "id": 21,
+      "week": 4,
+      "label": "Jaguars Visit",
+      "description": "Jacksonville comes to town. Should be a get-right game.",
+      "team": "SF",
+      "category": "confidence",
+      "delta": 10
+    },
+    {
+      "id": 22,
+      "week": 4,
+      "label": "Brock Cleared!",
+      "description": "Brock Purdy cleared to return! My quarterback is back!",
+      "team": "SF",
+      "category": "euphoria",
+      "delta": 40
+    },
+    {
+      "id": 23,
+      "week": 4,
+      "label": "Rusty Return",
+      "description": "Brock looks rusty in first quarter back. Expected growing pains.",
+      "team": "SF",
+      "category": "concern",
+      "delta": -15,
+      "time": "Q1 10:30"
+    },
+    {
+      "id": 24,
+      "week": 4,
+      "label": "Chemistry Building",
+      "description": "Brock and receivers finding rhythm again. Looking smooth.",
+      "team": "SF",
+      "category": "optimism",
+      "delta": 18,
+      "time": "Q2 07:45"
+    },
+    {
+      "id": 25,
+      "week": 4,
+      "label": "Blowout Win",
+      "description": "49ers demolish Jaguars. Brock sharp, team clicking.",
+      "team": "SF",
+      "category": "satisfaction",
+      "delta": 20
+    },
+    {
+      "id": 26,
+      "week": 5,
+      "label": "Tough Opponent",
+      "description": "Facing a quality opponent in Week 5. Real test ahead.",
+      "team": "SF",
+      "category": "anticipation",
+      "delta": 5
+    },
+    {
+      "id": 27,
+      "week": 5,
+      "label": "Brock's Big Throw",
+      "description": "Brock uncorks 45-yard bomb. The arm talent is real.",
+      "team": "SF",
+      "category": "excitement",
+      "delta": 25,
+      "time": "Q1 05:15"
+    },
+    {
+      "id": 28,
+      "week": 5,
+      "label": "Defense Struggles",
+      "description": "49ers defense gets torched. Offense has to carry the load.",
+      "team": "SF",
+      "category": "worry",
+      "delta": -22,
+      "time": "Q2 12:00"
+    },
+    {
+      "id": 29,
+      "week": 5,
+      "label": "Shootout Mode",
+      "description": "High-scoring affair. Brock trading scores in must-win game.",
+      "team": "SF",
+      "category": "intensity",
+      "delta": 15,
+      "time": "Q3 08:22"
+    },
+    {
+      "id": 30,
+      "week": 5,
+      "label": "Game-Winner",
+      "description": "Brock leads game-winning drive with 90 seconds left. Clutch gene!",
+      "team": "SF",
+      "category": "euphoria",
+      "delta": 35,
+      "time": "Q4 01:30"
+    }
+  ]
+}

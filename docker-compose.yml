@@ -1,27 +1,31 @@
 services:
-  dev:
-    build: .
-    volumes:
-      # Mount your source code
-      - .:/app
-      # Mount pnpm store
-      - pnpm-store:/root/.local/share/pnpm/store
-      # Mount Turbo cache
-      - turbo-cache:/root/.turbo
-      # Mount node_modules
-      - node_modules:/app/node_modules
-      # Mount workspace package node_modules
-      - packages-node_modules:/app/packages
-    ports:
-      - "6006:6006" # Storybook
+  openai-edge-tts:
+    image: travisvn/openai-edge-tts:latest-ffmpeg
+    container_name: openai-edge-tts
+    # Remove external port mapping - only accessible through nginx
+    expose:
+      - "5050"
+    env_file:
+      - .env
     environment:
-      - HOST=0.0.0.0
-      - TURBO_TEAM=local
-      # Enable Turbo Remote Caching in container
-      - TURBO_REMOTE_ONLY=false
+      API_KEY: ${API_KEY}
+      PORT: 5050
+      REQUIRE_API_KEY: ${REQUIRE_API_KEY:-false}
+      EXPAND_API: ${EXPAND_API:-true}
+      REMOVE_FILTER: ${REMOVE_FILTER:-false}
+      DEFAULT_VOICE: ${DEFAULT_VOICE:-en-US-DavisNeural}
+      DEFAULT_RESPONSE_FORMAT: ${DEFAULT_RESPONSE_FORMAT:-wav}
+      DEFAULT_SPEED: ${DEFAULT_SPEED:-1.0}
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-en-US}
+    restart: unless-stopped
 
-volumes:
-  pnpm-store:
-  turbo-cache:
-  node_modules:
-  packages-node_modules:
+  nginx:
+    image: nginx:alpine
+    container_name: openai-edge-tts-proxy
+    ports:
+      - "${PORT:-5050}:80" # Expose nginx on your desired port
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - openai-edge-tts
+    restart: unless-stopped

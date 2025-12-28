@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "GitHub Comment Remover",
+  "version": "1.0",
+  "description": "Removes comments from TypeScript and Rust code on GitHub for cleaner reading",
+
+  "permissions": ["activeTab", "https://github.com/*"],
+
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "Toggle comment removal"
+  },
+
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  }
+}

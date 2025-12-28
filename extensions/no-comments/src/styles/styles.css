@@ -1,0 +1,57 @@
+/* GitHub Comment Remover Styles */
+
+.comments-removed {
+  line-height: 1.4 !important;
+  white-space: pre-wrap !important;
+}
+
+/* Clean up extra spacing after comment removal */
+.js-file-content .comments-removed {
+  white-space: pre-wrap;
+}
+
+/* Ensure code blocks maintain proper formatting */
+.blob-code-inner.comments-removed {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+/* Smooth transition for comment visibility changes */
+.js-file-content .highlight {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Maintain syntax highlighting colors */
+.comments-removed .pl-c,
+.comments-removed .pl-c1,
+.comments-removed .pl-k,
+.comments-removed .pl-s,
+.comments-removed .pl-smi {
+  color: inherit !important;
+}
+
+/* Visual indicator for processed code blocks */
+.comments-removed::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #28a745 0%, #34d058 100%);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Ensure proper spacing in code view */
+.blob-wrapper .comments-removed {
+  padding-right: 10px;
+}
+
+/* Handle dark mode */
+@media (prefers-color-scheme: dark) {
+  .comments-removed::before {
+    background: linear-gradient(180deg, #39d353 0%, #56d364 100%);
+  }
+}

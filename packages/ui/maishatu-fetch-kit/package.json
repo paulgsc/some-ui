@@ -1,0 +1,54 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.66.11"
+  },
+  "devDependencies": {
+    "@some-ui/vite-config": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/maishatu-fetch-kit.d.ts",
+      "import": "./dist/maishatu-fetch-kit.es.js",
+      "require": "./dist/maishatu-fetch-kit.cjs.js",
+      "default": "./dist/maishatu-fetch-kit.es.js"
+    },
+    "./style.css": "./dist/maishatu-fetch-kit.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/maishatu-fetch-kit.cjs.js",
+  "module": "./dist/maishatu-fetch-kit.es.js",
+  "name": "maishatu-fetch-kit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "type": "module",
+  "types": "./dist/maishatu-fetch-kit.d.ts",
+  "unpkg": "maishatu-fetch-kit.umd.js",
+  "version": "0.0.5",
+  "style": "./dist/maishatu-fetch-kit.css"
+}

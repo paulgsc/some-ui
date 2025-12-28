@@ -1,0 +1,22 @@
+[package]
+name = "hangul-game-core"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+serde = { workspace = true , features = ["derive"] }
+serde_json = { workspace = true }
+rand = { version = "0.8", features = ["small_rng"] }
+getrandom = { version = "0.2", features = ["js"] } 
+
+[lints]
+workspace = true

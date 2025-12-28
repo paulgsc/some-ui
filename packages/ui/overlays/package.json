@@ -3,52 +3,54 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
+    "attributions": "workspace:*",
+    "makjang": "workspace:*",
+    "portfolio-chart": "workspace:*",
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
+    "some-types-utils": "workspace:*",
+    "some-ui-calendar": "workspace:*",
+    "some-ui-chat": "workspace:*",
     "some-ui-emoji-animations": "workspace:*",
-    "some-ui-neon-sign": "workspace:*",
-    "some-ui-shared": "workspace:*",
+    "some-ui-input": "workspace:*",
+    "some-ui-nfl": "workspace:*",
     "some-ui-slideshow": "workspace:*",
+    "some-ui-stepper": "workspace:*",
+    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "umag": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "wireframes": "workspace:*"
   },
   "devDependencies": {
+    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0",
-    "tailwind-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/overlays.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/overlays.cjs.js"
-      }
-    }
+      "types": "./dist/overlays.d.ts",
+      "import": "./dist/overlays.es.js",
+      "require": "./dist/overlays.cjs.js",
+      "default": "./dist/overlays.es.js"
+    },
+    "./style.css": "./dist/overlays.css"
   },
   "files": [
-    "overlays*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/overlays.umd.js",
-  "module": "./dist/esm/overlays.esm.js",
+  "main": "./dist/overlays.cjs.js",
+  "module": "./dist/overlays.es.js",
   "name": "overlays",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -59,9 +61,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
-  "types": "index.d.ts",
+  "types": "./dist/overlays.d.ts",
   "unpkg": "overlays.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/overlays.css"
 }

@@ -20,7 +20,7 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
   avatarSpacing = 30,
   avatars,
   limit = 10,
-  isExpandable = true,
+  isExpandable = false,
 }) => {
   const [showMore, setShowMore] = useState(false)
 

@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+#git
+.git
+.gitmodules
+
 # dependencies
 node_modules
 .pnp
@@ -29,6 +33,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env
 
 # turbo
 .turbo
@@ -58,3 +63,6 @@ tsconfig.tsbuildinfo
 
 # bin - rust binaries
 bin
+
+# Static files
+packages/**/public

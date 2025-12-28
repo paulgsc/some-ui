@@ -3,12 +3,12 @@
   "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c --no-cache && pnpm build:tsc-alias",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo && rimraf .rollup.cache",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
@@ -16,23 +16,29 @@
     "test": "vitest"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.66.11",
     "clsx": "^2.1.1",
     "nuqs": "1.18.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tailwind-merge": "^2.4.0",
-    "usehooks-ts": "3.1.0"
+    "usehooks-ts": "3.1.0",
+    "zod": "^4.0.5"
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "maishatu-eslint-kit": "1.3.0",
+    "maishatu-fetch-kit": "workspace:*",
     "nuqs": "1.18.0",
+    "polyhedron": "link:../../crates/polyhedron/dist",
+    "some-types-utils": "workspace:*",
     "tailwind-merge": "^2.4.0",
-    "usehooks-ts": "3.1.0"
+    "usehooks-ts": "3.1.0",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "1.3.0"
+    "@some-ui/vite-config": "workspace:*",
+    "@tanstack/react-query": "^5.66.11"
   },
   "repository": {
     "type": "git",
@@ -45,28 +51,23 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "some-ui-utils*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
+    "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "unpkg": "some-ui-utils.umd.js",
-  "main": "./dist/some-ui-utils.umd.js",
-  "module": "./dist/esm/some-ui-utils.esm.js",
-  "types": "index.d.ts",
+  "main": "./dist/some-ui-utils.cjs.js",
+  "module": "./dist/some-ui-utils.es.js",
+  "types": "./dist/some-ui-utils.d.ts",
   "exports": {
-    "./package.json": "./package.json",
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/some-ui-utils.esm.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/some-ui-utils.cjs.js"
-      }
-    }
-  }
+      "types": "./dist/some-ui-utils.d.ts",
+      "import": "./dist/some-ui-utils.es.js",
+      "require": "./dist/some-ui-utils.cjs.js",
+      "default": "./dist/some-ui-utils.es.js"
+    },
+    "./style.css": "./dist/some-ui-utils.css"
+  },
+  "style": "./dist/some-ui-utils.css"
 }

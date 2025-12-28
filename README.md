@@ -52,5 +52,3 @@ pnpm test
 ### Accessing the App
 
 When you run your app or Storybook inside the container, you can access it via your browser at `localhost:5173` for Vite or `localhost:6006` for Storybook, thanks to port forwarding.
-
-

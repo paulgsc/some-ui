@@ -1,0 +1,6 @@
+/* content.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* your overrides */

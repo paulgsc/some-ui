@@ -1,23 +1,30 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { useFetch } from "some-ui-utils"
+import { useGetCredits } from "@attributions/data/fetched-attribution-data"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ScrollingCredits } from "."
 
 type Story = StoryObj<typeof ScrollingCredits>
 
-const FetchWrapper = () => {
-  const url = "http://nixos.local:3000/"
-  const { data, error } = useFetch(url)
-
-  if (error)
-    return <div>Foo Foo Foo! Error: {JSON.stringify(error.message)}</div>
-  if (!data) return <div>Loading...</div>
-
-  return <ScrollingCredits data={data} />
-}
-
 export const Default: Story = {
-  render: () => <FetchWrapper />,
+  render: () => {
+    const params = {
+      range: "attributions!A1:G6",
+    }
+    const { data, isLoading, error } = useGetCredits({ ...params })
+    if (isLoading) return <div>Loading...</div>
+    if (error) return <div>error...{`${error}`}</div>
+    const transform = data?.map(({ source_type, thanks, ...rest }) => ({
+      sourceType: source_type,
+      thankYouMessage: thanks,
+      ...rest,
+    }))
+    return (
+      <ScrollingCredits
+        className="absolute inset-0"
+        credits={transform ?? []}
+      />
+    )
+  },
 }
 
 export default {

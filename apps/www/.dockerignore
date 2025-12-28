@@ -1,0 +1,395 @@
+
+# ============================================================================
+# Version Control Systems
+# ============================================================================
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+.svn/
+.hg/
+.bzr/
+CVS/
+
+# ============================================================================
+# Node.js Dependencies and Build Artifacts
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+jspm_packages/
+bower_components/
+
+# Build outputs
+dist/
+build/
+out/
+*.tgz
+*.tar.gz
+
+# Package manager files (keep package.json and lock files)
+!package.json
+!pnpm-lock.yaml
+!package-lock.json
+!yarn.lock
+
+# ============================================================================
+# Development and Testing
+# ============================================================================
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+test-report/
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierignore
+
+# TypeScript
+*.tsbuildinfo
+
+# ============================================================================
+# Environment and Configuration
+# ============================================================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# Configuration files
+config/local.json
+config/development.json
+config/test.json
+*.config.local.*
+
+# ============================================================================
+# Logs and Runtime
+# ============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================================================
+# Documentation and README files
+# ============================================================================
+README.md
+README.rst
+README.txt
+CHANGELOG.md
+CHANGELOG.rst
+CHANGELOG.txt
+CONTRIBUTING.md
+LICENSE
+LICENSE.txt
+LICENSE.md
+*.md
+docs/
+doc/
+
+# ============================================================================
+# Docker and Containerization
+# ============================================================================
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+.dockerignore
+*.dockerfile
+
+# Kubernetes
+k8s/
+kubernetes/
+*.yaml
+*.yml
+helm/
+
+# ============================================================================
+# CI/CD and Deployment
+# ============================================================================
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.jenkins/
+Jenkinsfile
+azure-pipelines.yml
+buildspec.yml
+.buildkite/
+.drone.yml
+
+# Deployment scripts
+deploy/
+deployment/
+scripts/deploy*
+*.deploy.*
+
+# ============================================================================
+# Cloud and Infrastructure
+# ============================================================================
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+.terraformrc
+
+# AWS
+.aws/
+.elasticbeanstalk/
+
+# Google Cloud
+.gcloud/
+
+# Azure
+.azure/
+
+# ============================================================================
+# Package Managers and Tools
+# ============================================================================
+# npm
+.npm/
+.npmrc
+.npmignore
+
+# Yarn
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# pnpm
+.pnpm-store/
+.pnpm-debug.log
+
+# ============================================================================
+# IDEs and Editors
+# ============================================================================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA / WebStorm / PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Atom
+.atom/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+.#*
+*#
+
+# ============================================================================
+# Operating System Files
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ============================================================================
+# Temporary and Cache Files
+# ============================================================================
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+*.temp
+*.cache
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+
+# ============================================================================
+# Security and Sensitive Data
+# ============================================================================
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# SSH keys
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+known_hosts
+
+# API keys and secrets
+secrets/
+.secrets/
+*.secret
+.env.secret
+
+# ============================================================================
+# Media and Assets (optional - uncomment if not needed in container)
+# ============================================================================
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.ico
+# *.svg
+# *.webp
+# *.mp4
+# *.avi
+# *.mov
+# *.mp3
+# *.wav
+# *.pdf
+
+# ============================================================================
+# Database Files
+# ============================================================================
+*.sqlite
+*.sqlite3
+*.db
+*.mdb
+*.accdb
+
+# ============================================================================
+# Backup and Archive Files
+# ============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# ============================================================================
+# Language-specific
+# ============================================================================
+# Python (if mixed project)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# Ruby (if mixed project)
+*.gem
+.bundle/
+vendor/bundle/
+
+# Java (if mixed project)
+*.class
+*.jar
+*.war
+*.ear
+target/
+
+# ============================================================================
+# Miscellaneous
+# ============================================================================
+# Editor backup files
+*~
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store?
+Thumbs.db
+
+# Generated documentation
+jsdoc/
+
+# Storybook
+.storybook/
+storybook-static/
+
+# Jest
+jest.config.*
+
+# Makefile (exclude build automation)
+Makefile
+makefile
+
+# Shell scripts (deployment/utility scripts)
+*.sh
+
+# Text editors
+*.kate-swp
+.*.swp
+.*.swo
+
+# ============================================================================
+# Project-specific ignores
+# ============================================================================
+# Add your project-specific ignores below this line
+# Example:
+# my-custom-config/
+# project-specific-temp/
+

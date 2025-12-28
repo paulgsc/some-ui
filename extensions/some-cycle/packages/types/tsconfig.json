@@ -1,0 +1,21 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": false,
+    "module": "Node16",
+    "target": "ESNext",
+    "moduleResolution": "Node16",
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "build", "dist"]
+}
