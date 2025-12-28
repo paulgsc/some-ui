@@ -15,7 +15,8 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   ),
   hangul: lazyWithPreload(() => import("some-ui-honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("some-ui-input"), "Leetype"),
-  neon: lazyWithPreload(() => import("some-ui-neon-sign"), "NeonText"),
+  music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
+  neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
   scheduled: lazyWithPreload(
     () => import("some-ui-slideshow"),
     "ActiveLifetimesPanel"

@@ -1,2 +1,2 @@
-export * from "./neon-text"
-export * from "./styled-characters"
+export { Headline } from "./headline"
+export { NeonText } from "./neon-text"

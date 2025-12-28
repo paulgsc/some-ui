@@ -40,7 +40,6 @@ const CubeContent = ({
     <ViewportDiceCard
       viewportConfig={viewportConfig}
       registry={componentRegistry}
-      hideBackface={true}
     />
   )
 }
