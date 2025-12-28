@@ -66,3 +66,10 @@ bin
 
 # Static files
 packages/**/public
+
+# Generated UI build outputs
+packages/ui/**/public/
+
+# Test artifacts
+extensions/**/test-results/
+
