@@ -1,0 +1,250 @@
+@layer base {
+  /* Base structure - minimal, semantic */
+  .headline {
+    --radius: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Peach Blossom - warm evening light through petals */
+  .headline--peach-blossom {
+    --light-a: 0.82 0.1 30;
+    --light-b: 0.75 0.08 20;
+    --base-bg: 0.2 0.03 25;
+
+    --text-main: 0.92 0.03 35;
+    --text-glow: 0.78 0.1 25;
+  }
+
+  /* Strawberry Moon - night sky tint + lunar bloom */
+  .headline--strawberry-moon {
+    --light-a: 0.7 0.15 355;
+    --light-b: 0.65 0.1 15;
+    --base-bg: 0.18 0.04 0;
+
+    --text-main: 0.94 0.04 355;
+    --text-glow: 0.72 0.15 355;
+  }
+
+  /* Dark Gold - low-key studio light + metallic warmth with purple depth */
+  .headline--dark-gold {
+    --light-a: 0.75 0.12 85;
+    --light-b: 0.6 0.08 290;
+    --base-bg: 0.16 0.02 75;
+
+    --text-main: 0.9 0.05 85;
+    --text-glow: 0.72 0.11 75;
+  }
+
+  /* Dark mode adjustments - subtle */
+  .dark .headline--peach-blossom {
+    --base-bg: 0.14 0.03 25;
+  }
+
+  .dark .headline--strawberry-moon {
+    --base-bg: 0.12 0.04 0;
+  }
+
+  .dark .headline--dark-gold {
+    --base-bg: 0.12 0.02 75;
+  }
+}
+
+@layer components {
+  /* Base background */
+  .headline {
+    background: oklch(var(--base-bg));
+  }
+
+  /* Unified light field - atmosphere, not decoration */
+  .headline::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    z-index: 0;
+
+    background:
+      radial-gradient(
+        60% 40% at 20% 30%,
+        oklch(var(--light-a) / 0.45),
+        transparent 60%
+      ),
+      radial-gradient(
+        50% 35% at 80% 70%,
+        oklch(var(--light-b) / 0.35),
+        transparent 65%
+      );
+
+    filter: blur(50px);
+    background-size: 200% 200%;
+    animation: light-drift 90s ease-in-out infinite;
+  }
+
+  /* Text container - single mass */
+  .headline h1 {
+    position: relative;
+    z-index: 1;
+    color: oklch(var(--text-main));
+
+    /* Optical bloom, not neon */
+    text-shadow:
+      0 0 12px oklch(var(--text-glow) / 0.35),
+      0 0 32px oklch(var(--text-glow) / 0.15);
+
+    animation: text-breathe 30s ease-in-out infinite;
+  }
+
+  /* Ambient drift - barely perceptible */
+  .headline .ambient-drift {
+    animation: ambient-drift 40s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* CRT atmosphere - almost invisible texture */
+  .headline .scan-lines {
+    background: linear-gradient(
+      to bottom,
+      transparent 60%,
+      oklch(var(--text-glow) / 0.015) 60%
+    );
+    background-size: 100% 6px;
+    animation: scan 30s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Rare, ceremonial glitch */
+  .headline .glitch-top {
+    animation: glitch-top 12s steps(1, end) infinite;
+    clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
+    opacity: 0;
+  }
+
+  .headline .glitch-bottom {
+    animation: glitch-bottom 16s steps(1, end) infinite;
+    clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
+    opacity: 0;
+  }
+
+  /* Depth noise - static atmospheric specks */
+  .headline .particle {
+    animation: particle-drift 90s linear infinite;
+    opacity: 0.15;
+    background: oklch(var(--text-glow) / 0.3);
+  }
+
+  /* Mount animation - still image coming alive */
+  .headline .headline-mount {
+    animation: headline-mount 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* Keyframe Animations - all extremely slow, minimal motion */
+
+@keyframes text-breathe {
+  0%,
+  100% {
+    text-shadow:
+      0 0 12px oklch(var(--text-glow) / 0.3),
+      0 0 28px oklch(var(--text-glow) / 0.12);
+  }
+  50% {
+    text-shadow:
+      0 0 16px oklch(var(--text-glow) / 0.38),
+      0 0 40px oklch(var(--text-glow) / 0.18);
+  }
+}
+
+@keyframes light-drift {
+  0% {
+    background-position: 0% 50%;
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: translate3d(-2%, 1%, 0);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ambient-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(1px, -1px, 0);
+  }
+  50% {
+    transform: translate3d(-1px, 1px, 0);
+  }
+  75% {
+    transform: translate3d(0.5px, -0.5px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes headline-mount {
+  0% {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes glitch-top {
+  0%,
+  97%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  98% {
+    opacity: 0.25;
+    transform: translate(-2px, -1px);
+  }
+  99% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes glitch-bottom {
+  0%,
+  98%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  99% {
+    opacity: 0.25;
+    transform: translate(1px, 2px);
+  }
+}
+
+@keyframes scan {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+@keyframes particle-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(10px, -10px, 0);
+  }
+}

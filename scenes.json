@@ -1,0 +1,112 @@
+[
+  {
+    "panels": {
+      "title": {
+        "registry_key": "cube",
+        "props": {
+          "region": "title",
+          "faceCapacity": 1,
+          "rotationAxis": "cube:x"
+        },
+        "children": [
+          {
+            "registry_key": "neon",
+            "duration": 3000,
+            "props": {
+              "theme": "dark-gold",
+              "className": "rounded-xl size-full m-0.5"
+            }
+          },
+          {
+            "registry_key": "neon",
+            "duration": 3000,
+            "props": {
+              "theme": "peach-blossom",
+              "className": "rounded-xl size-full m-0.5"
+            }
+          },
+          {
+            "registry_key": "neon",
+            "duration": 3000,
+            "props": {
+              "theme": "dark-gold",
+              "className": "rounded-xl size-full m-0.5"
+            }
+          },
+          {
+            "registry_key": "neon",
+            "duration": 3000,
+            "props": {
+              "theme": "strawberry-moon",
+              "className": "rounded-xl size-full m-0.5"
+            }
+          }
+        ]
+      },
+      "video": {
+        "registry_key": "cube",
+        "props": { "region": "video", "faceCapacity": 1 },
+        "focus": { "region": "video", "intensity": 0.7 },
+        "children": [
+          {
+            "registry_key": "sanity",
+            "duration": 30000
+          },
+          {
+            "registry_key": "sanity",
+            "duration": 30000
+          }
+        ]
+      },
+      "mainContent": {
+        "registry_key": "cube",
+        "props": { "region": "mainContent", "faceCapacity": 1 },
+        "children": [
+          {
+            "registry_key": "hangul",
+            "duration": 30000,
+            "props": { "className": "absolute inset-0" }
+          },
+          {
+            "registry_key": "leetype",
+            "duration": 30000,
+            "props": {
+              "className": "absolute inset-0",
+              "codePaths": {
+                "typescript": "/code-samples/fibonacci.ts",
+                "rust": "/code-samples/factorial.rs",
+                "cpp": "/code-samples/quicksort.cpp",
+                "c": "/code-samples/binary-search.c"
+              }
+            }
+          }
+        ]
+      },
+      "footerLeft": {
+        "registry_key": "cube",
+        "props": { "region": "footerLeft", "faceCapacity": 1 },
+        "children": []
+      },
+      "footerRight": {
+        "registry_key": "cube",
+        "props": { "region": "footerRight", "faceCapacity": 1 },
+        "children": []
+      },
+      "sidebarTop": {
+        "registry_key": "cube",
+        "props": { "region": "sidebarTop", "faceCapacity": 1 },
+        "children": [
+          {
+            "registry_key": "music",
+            "duration": 30000
+          }
+        ]
+      },
+      "sidebarBottom": {
+        "registry_key": "cube",
+        "props": { "region": "sidebarBottom", "faceCapacity": 1 },
+        "children": []
+      }
+    }
+  }
+]
