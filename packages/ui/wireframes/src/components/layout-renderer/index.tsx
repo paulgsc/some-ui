@@ -7,13 +7,11 @@ export const RenderSolved = <T extends string>({
   renderLeaf,
   onLeafClick,
   transitionMs = 300,
-  debug = true,
 }: {
   node: SolvedNode<T>
   renderLeaf: (id: T) => ReactNode
-  onLeafClick?: (id: T) => void
+  onLeafClick?: (id: T, position: { x: number; y: number }) => void
   transitionMs?: number
-  debug?: boolean
 }) => {
   // Iterative render using useMemo for performance
   const elements = useMemo(() => {
@@ -25,23 +23,18 @@ export const RenderSolved = <T extends string>({
 
       if (current.type === "leaf") {
         const { x, y, width, height } = current.rect
-
-        // Debug logging
-        if (debug) {
-          console.log(`Rendering leaf ${current.id}:`, {
-            x,
-            y,
-            width,
-            height,
-            right: x + width,
-            bottom: y + height,
-          })
-        }
-
         out.push(
           <div
             key={current.id}
-            onClick={() => onLeafClick?.(current.id)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              if (onLeafClick) {
+                onLeafClick(current.id, {
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              }
+            }}
             style={{
               position: "absolute",
               left: x,
@@ -66,7 +59,7 @@ export const RenderSolved = <T extends string>({
     }
 
     return out
-  }, [node, renderLeaf, onLeafClick, transitionMs, debug])
+  }, [node, renderLeaf, onLeafClick, transitionMs])
 
   return <>{elements}</>
 }

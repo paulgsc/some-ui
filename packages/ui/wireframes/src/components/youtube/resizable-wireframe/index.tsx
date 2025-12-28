@@ -1,12 +1,9 @@
-import { useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
+import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { RenderSolved } from "@wireframes/components/layout-renderer"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
-import {
-  useCurrentResolvedFocus,
-  useFocusPruning,
-} from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import type {
   Constraint,
@@ -108,9 +105,14 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 }: OrchestratedViewportProps<K>) => {
   const { ref, rect } = useContainerRect()
 
-  // Prune expired focus proposals
-  useFocusPruning()
-  const resolvedFocus = useCurrentResolvedFocus()
+  const [focusState, setFocusState] = useState<{
+    regionId?: YouTubeRegion
+    intensity?: number
+  }>({})
+  const [popup, setPopup] = useState<{
+    regionId: YouTubeRegion
+    position: { x: number; y: number }
+  } | null>(null)
 
   // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
@@ -143,15 +145,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     return Object.fromEntries(
       Object.entries(panels).map(([k, factories]) => [
         k,
-        () => (
-          <div className="size-full">
-            {factories.map((f, i) => (
-              <div key={i} className="size-full">
-                {f()}
-              </div>
-            ))}
-          </div>
-        ),
+        () => factories.map((f) => f()),
       ])
     ) as Record<YouTubeRegion, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
@@ -161,12 +155,10 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       focusConstraints(
         youtubeTree,
         defaultConstraints,
-        // "mainContent",
-        // 1
-        resolvedFocus?.region ?? null,
-        resolvedFocus?.intensity ?? 0
+        focusState.regionId,
+        focusState.intensity ?? 0
       ),
-    [resolvedFocus]
+    [focusState.regionId, focusState.intensity]
   )
 
   const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
@@ -182,13 +174,41 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     return RenderLeaf
   }, [mergedPanels])
 
+  const handleLeafClick = useCallback(
+    (id: YouTubeRegion, position: { x: number; y: number }) => {
+      setPopup({ regionId: id, position })
+    },
+    []
+  )
+
+  const handleApplyFocus = useCallback(
+    (regionId: YouTubeRegion, intensity: number) => {
+      setFocusState({ regionId, intensity })
+      setPopup(null)
+    },
+    []
+  )
+
+  const handleClosePopup = useCallback(() => {
+    setPopup(null)
+  }, [])
+
   return (
     <div className="absolute inset-0 flex-1 size-full" ref={ref}>
       {layout && (
         <RenderSolved
           node={layout}
           renderLeaf={renderLeaf}
+          onLeafClick={handleLeafClick}
           transitionMs={transitionMs}
+        />
+      )}
+      {popup && (
+        <FocusControlPopup
+          regionId={popup.regionId}
+          position={popup.position}
+          onApply={handleApplyFocus}
+          onClose={handleClosePopup}
         />
       )}
     </div>

@@ -14,7 +14,7 @@
             "duration": 3000,
             "props": {
               "theme": "dark-gold",
-              "className": "rounded-xl size-full m-0.5"
+              "className": "rounded-xl size-full px-1.5 py-0.5"
             }
           },
           {
@@ -22,7 +22,7 @@
             "duration": 3000,
             "props": {
               "theme": "peach-blossom",
-              "className": "rounded-xl size-full m-0.5"
+              "className": "rounded-xl size-full px-1.5 py-0.5"
             }
           },
           {
@@ -30,7 +30,7 @@
             "duration": 3000,
             "props": {
               "theme": "dark-gold",
-              "className": "rounded-xl size-full m-0.5"
+              "className": "rounded-xl size-full px-1.5 py-0.5"
             }
           },
           {
@@ -38,7 +38,7 @@
             "duration": 3000,
             "props": {
               "theme": "strawberry-moon",
-              "className": "rounded-xl size-full m-0.5"
+              "className": "rounded-xl size-full px-1.5 py-0.5"
             }
           }
         ]
@@ -47,16 +47,7 @@
         "registry_key": "cube",
         "props": { "region": "video", "faceCapacity": 1 },
         "focus": { "region": "video", "intensity": 0.7 },
-        "children": [
-          {
-            "registry_key": "sanity",
-            "duration": 30000
-          },
-          {
-            "registry_key": "sanity",
-            "duration": 30000
-          }
-        ]
+        "children": []
       },
       "mainContent": {
         "registry_key": "cube",
