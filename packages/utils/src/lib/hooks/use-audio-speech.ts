@@ -40,6 +40,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   const pauseTimeRef = useRef<number>(0)
   const speechQueueRef = useRef<Promise<void>>(Promise.resolve())
   const currentOptionsRef = useRef(options)
+  const cancelledRef = useRef(false)
 
   useEffect(() => {
     currentOptionsRef.current = options
@@ -108,7 +109,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   const play = useCallback(
     async (audioBuffer: ArrayBuffer): Promise<void> => {
       // Queue the speech to prevent overlapping
-      const newSpeechPromise = new Promise<void>(async (resolve, reject) => {
+      const newSpeechPromise = new Promise<void>(async (resolve) => {
         try {
           // Wait for previous speech to complete
           await speechQueueRef.current
@@ -120,6 +121,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
 
           setLoading(true)
           cleanupNodes()
+          cancelledRef.current = false
 
           // Resume context if suspended
           if (audioContextRef.current.state === "suspended") {
@@ -165,7 +167,9 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
             setSpeaking(false)
             setPaused(false)
             setCurrentTime(0)
-            currentOptionsRef.current.onEnd?.()
+            if (!cancelledRef.current) {
+              currentOptionsRef.current.onEnd?.()
+            }
             resolve()
           }
 
@@ -177,10 +181,12 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
           console.error(error)
           setLoading(false)
           setSpeaking(false)
+          setPaused(false)
+          setCurrentTime(0)
           const errorObj =
             error instanceof Error ? error : new Error("Audio playback failed")
           currentOptionsRef.current.onError?.(errorObj)
-          reject(errorObj)
+          resolve()
         }
       })
 
@@ -200,12 +206,10 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
     setSpeaking(false)
     setPaused(false)
     setCurrentTime(0)
+    currentOptionsRef.current.onEnd?.()
 
     // Clear the queue by setting it to a rejected promise
-    speechQueueRef.current = Promise.reject(new Error("Stopped"))
-    speechQueueRef.current.catch(() => {}) // Prevent unhandled rejection
-
-    currentOptionsRef.current.onEnd?.()
+    speechQueueRef.current = Promise.resolve()
   }, [cleanupNodes])
 
   // Pause playback
