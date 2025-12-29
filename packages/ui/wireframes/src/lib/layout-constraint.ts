@@ -1,17 +1,13 @@
-export type ConstraintKey<T> = T | string
-
-export type Constraint = {
-  ideal: number
-  min: number
-  max: number
-}
-
-export type Rect = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import {
+  Constraint,
+  Rect,
+  SolvedNode,
+  clamp,
+  lerp,
+  solveWeights,
+  getFocusPath,
+  extractLeafSlots,
+} from "./layout-types"
 
 export type LayoutNode<T> =
   | { type: "leaf"; id: T }
@@ -22,77 +18,7 @@ export type LayoutNode<T> =
       children: Array<LayoutNode<T>>
     }
 
-export type SolvedNode<T> =
-  | { type: "leaf"; id: T; rect: Rect }
-  | {
-      type: "split"
-      axis: "row" | "col"
-      splitId: string
-      rect: Rect
-      children: Array<SolvedNode<T>>
-    }
-
-// --- Utilities ---
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, v))
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t
-}
-
-function normalize(values: Array<number>): Array<number> {
-  const sum = values.reduce((a, b) => a + b, 0)
-  if (sum === 0) return values.map(() => 0)
-  return values.map((v) => v / sum)
-}
-
-function solveWeights(constraints: Array<Constraint>): Array<number> {
-  const clamped = constraints.map((c) => clamp(c.ideal, c.min, c.max))
-  return normalize(clamped)
-}
-
-// --- Focus Logic (Iterative) ---
-
-/**
- * Calculates which nodes are on the path to the focusId.
- * Returns a Set of IDs (leaf IDs or splitIds).
- */
-function getFocusPath<T>(
-  tree: LayoutNode<T>,
-  focusId: T
-): Set<ConstraintKey<T>> {
-  const pathSet = new Set<ConstraintKey<T>>()
-  const parents = new Map<LayoutNode<T>, LayoutNode<T>>()
-  const stack: Array<LayoutNode<T>> = [tree]
-  let targetNode: LayoutNode<T> | null = null
-
-  // Search for the leaf
-  while (stack.length) {
-    const curr = stack.pop()!
-    if (curr.type === "leaf" && curr.id === focusId) {
-      targetNode = curr
-      break
-    }
-    if (curr.type === "split") {
-      for (const child of curr.children) {
-        parents.set(child, curr)
-        stack.push(child)
-      }
-    }
-  }
-
-  // Backtrack to root
-  let curr: LayoutNode<T> | null = targetNode
-  while (curr) {
-    const key = curr.type === "leaf" ? curr.id : curr.splitId
-    pathSet.add(key)
-    curr = parents.get(curr) ?? null
-  }
-
-  return pathSet
-}
+// --- Focus Logic ---
 
 export function focusConstraints<T>(
   tree: LayoutNode<T>,
@@ -104,14 +30,16 @@ export function focusConstraints<T>(
 
   const next = new Map(base)
   const clampedT = clamp(t, 0, 1)
-  const focusPath = getFocusPath(tree, focusId)
-
+  
+  const getChildren = (node: any): any[] => 
+    node.type === "split" ? node.children : []
+  
+  const focusPath = getFocusPath(tree, focusId, getChildren)
   const stack: Array<LayoutNode<T>> = [tree]
 
   while (stack.length) {
     const node = stack.pop()!
 
-    // Process Split children
     if (node.type === "split") {
       for (const child of node.children) {
         const key = child.type === "leaf" ? child.id : child.splitId
@@ -128,7 +56,6 @@ export function focusConstraints<T>(
         stack.push(child)
       }
     } else {
-      // Process individual leaf if it's the specific focus target
       const c = next.get(node.id)
       if (c && node.id === focusId) {
         next.set(node.id, {
@@ -142,7 +69,7 @@ export function focusConstraints<T>(
   return next
 }
 
-// --- Geometry Solver (Iterative Two-Pass) ---
+// --- Geometry Solver (Derives weights from constraints) ---
 
 export function solveLayout<T>(
   tree: LayoutNode<T>,
@@ -155,7 +82,7 @@ export function solveLayout<T>(
     { node: tree, rect: viewport },
   ]
 
-  // Pass 1: Top-down geometry calculation (BFS)
+  // Pass 1: Top-down geometry calculation
   while (queue.length > 0) {
     const current = queue.shift()!
     traversalOrder.push(current)
@@ -185,7 +112,7 @@ export function solveLayout<T>(
     }
   }
 
-  // Pass 2: Bottom-up assembly (Reverse Traversal)
+  // Pass 2: Bottom-up assembly
   for (let i = traversalOrder.length - 1; i >= 0; i--) {
     const { node, rect } = traversalOrder[i]
 
@@ -205,3 +132,4 @@ export function solveLayout<T>(
 
   return results.get(tree)!
 }
+
