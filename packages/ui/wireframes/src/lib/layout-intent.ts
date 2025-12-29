@@ -88,33 +88,31 @@ function placeRegion<R>(
     return { type: "leaf", id: region }
   }
 
-  // NEW: Handle root placement
   if (relativeTo === "root") {
     return placeRelativeToRoot(tree, region, edge)
   }
 
-  // Second panel on empty canvas
   if (tree.type === "leaf" && !relativeTo) {
     const newAxis = edge === "left" || edge === "right" ? "row" : "col"
     const before = edge === "left" || edge === "top"
 
+    // KEY: Use weight = 1 for equal proportional distribution
     return {
       type: "split",
       axis: newAxis,
       splitId: generateSplitId(),
       children: before
         ? [
-            { node: { type: "leaf", id: region }, weight: 200 },
-            { node: tree, weight: 200 },
+            { node: { type: "leaf", id: region }, weight: 1 },
+            { node: tree, weight: 1 },
           ]
         : [
-            { node: tree, weight: 200 },
-            { node: { type: "leaf", id: region }, weight: 200 },
+            { node: tree, weight: 1 },
+            { node: { type: "leaf", id: region }, weight: 1 },
           ],
     }
   }
 
-  // Relative to specific leaf
   if (relativeTo !== undefined) {
     const cloned = cloneTree(tree)
     const inserted = insertRelativeTo(cloned, region, relativeTo, edge)
@@ -132,20 +130,18 @@ function placeRelativeToRoot<R>(
   const newAxis = edge === "left" || edge === "right" ? "row" : "col"
   const before = edge === "left" || edge === "top"
 
-  const newLeaf: LayoutNode<R> = { type: "leaf", id: region }
-
   return {
     type: "split",
     axis: newAxis,
     splitId: generateSplitId(),
     children: before
       ? [
-          { node: newLeaf, weight: 200 },
-          { node: tree, weight: 200 },
+          { node: { type: "leaf", id: region }, weight: 1 },
+          { node: tree, weight: 1 },
         ]
       : [
-          { node: tree, weight: 200 },
-          { node: newLeaf, weight: 200 },
+          { node: tree, weight: 1 },
+          { node: { type: "leaf", id: region }, weight: 1 },
         ],
   }
 }
@@ -165,7 +161,6 @@ function insertRelativeTo<R>(
   const parentInfo = findParentSplitInternal(tree, relativeTo)
 
   if (!parentInfo) {
-    // Target is root - wrap it
     return {
       type: "split",
       axis: targetAxis,
@@ -184,7 +179,6 @@ function insertRelativeTo<R>(
 
   const { parent, childIndex } = parentInfo
 
-  // If parent axis matches, insert as sibling
   if (parent.axis === targetAxis) {
     const newLeaf: LayoutNode<R> = { type: "leaf", id: region }
     const insertIndex = insertBefore ? childIndex : childIndex + 1
@@ -192,7 +186,6 @@ function insertRelativeTo<R>(
     return tree
   }
 
-  // If axis doesn't match, wrap the target
   const targetChild = parent.children[childIndex]
   const newSplit: LayoutNode<R> = {
     type: "split",
@@ -285,7 +278,7 @@ function resizeRegion<R>(
   const ancestorInfo = findAncestorSplitByAxis(cloned, region, resizeAxis)
 
   if (!ancestorInfo) {
-    return tree // Can't resize without matching split
+    return tree
   }
 
   const { split, leafIndex } = ancestorInfo
@@ -293,58 +286,38 @@ function resizeRegion<R>(
   const isGrowingPositive = edge === "right" || edge === "bottom"
   const siblingIndex = isGrowingPositive ? leafIndex + 1 : leafIndex - 1
 
-  // Calculate total available space in this split
-  const totalWeight = split.children.reduce(
-    (sum, child) => sum + child.weight,
-    0
-  )
+  const minWeight = 100 // Minimum panel size
 
   if (siblingIndex < 0 || siblingIndex >= split.children.length) {
-    // At boundary - clamp growth to reasonable limits
-    const minWeight = 50
-    const maxWeight = 600 // Maximum panel size
+    // At boundary - allow growth but enforce minimum
     const currentWeight = split.children[leafIndex].weight
-    const newWeight = Math.max(
-      minWeight,
-      Math.min(maxWeight, currentWeight + deltaPx)
-    )
+    const newWeight = Math.max(minWeight, currentWeight + deltaPx)
 
     split.children[leafIndex].weight = newWeight
     return cloned
   }
 
-  // Normal case: redistribute between siblings
+  // Redistribute between siblings
   const currentChild = split.children[leafIndex]
   const siblingChild = split.children[siblingIndex]
 
-  const minWeight = 50
-  const maxWeight = 600
-
-  // Calculate new weights with bounds
   let newCurrentWeight = currentChild.weight + deltaPx
   let newSiblingWeight = siblingChild.weight - deltaPx
 
-  // Clamp both to valid ranges
-  newCurrentWeight = Math.max(minWeight, Math.min(maxWeight, newCurrentWeight))
-  newSiblingWeight = Math.max(minWeight, Math.min(maxWeight, newSiblingWeight))
-
-  // Ensure total is preserved
-  const total = currentChild.weight + siblingChild.weight
-  const newTotal = newCurrentWeight + newSiblingWeight
-
-  if (Math.abs(newTotal - total) > 1) {
-    // Adjust to maintain total
-    const ratio = total / newTotal
-    newCurrentWeight *= ratio
-    newSiblingWeight *= ratio
+  // Enforce minimums
+  if (newCurrentWeight < minWeight) {
+    newSiblingWeight += newCurrentWeight - minWeight
+    newCurrentWeight = minWeight
   }
 
-  // Final clamps
-  newCurrentWeight = Math.max(minWeight, newCurrentWeight)
-  newSiblingWeight = Math.max(minWeight, newSiblingWeight)
+  if (newSiblingWeight < minWeight) {
+    newCurrentWeight += newSiblingWeight - minWeight
+    newSiblingWeight = minWeight
+  }
 
-  split.children[leafIndex].weight = newCurrentWeight
-  split.children[siblingIndex].weight = newSiblingWeight
+  // Apply
+  split.children[leafIndex].weight = Math.max(minWeight, newCurrentWeight)
+  split.children[siblingIndex].weight = Math.max(minWeight, newSiblingWeight)
 
   return cloned
 }
@@ -391,7 +364,6 @@ function findAncestorSplitByAxis<R>(
     parentChildIndex: number
   }> = []
 
-  // Build path from root to target
   function buildPath(node: LayoutNode<R>, childIndexInParent: number): boolean {
     if (node.type === "leaf" && node.id === targetId) {
       return true
@@ -411,12 +383,10 @@ function findAncestorSplitByAxis<R>(
 
   buildPath(tree, -1)
 
-  // Walk up the path to find first split with matching axis
   for (let i = 0; i < pathToTarget.length; i++) {
-    const { node, parentChildIndex } = pathToTarget[i]
+    const { node } = pathToTarget[i]
 
     if (node.type === "split" && node.axis === axis) {
-      // Find which child index contains the target
       let targetChildIndex = -1
 
       for (let j = 0; j < node.children.length; j++) {

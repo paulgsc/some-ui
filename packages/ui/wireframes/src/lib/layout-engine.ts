@@ -1,9 +1,9 @@
-// Spatial layout solver - tree size is independent of viewport
+// Solver that fills viewport opportunistically but allows smaller layouts
 
 export type Constraint = {
-  ideal: number // In pixels, not ratios
-  min: number
-  max: number
+  ideal: number // Preferred size in pixels
+  min: number   // Minimum size
+  max: number   // Maximum size (can be Infinity for "fill available")
 }
 
 export type Rect = {
@@ -21,7 +21,7 @@ export type LayoutNode<T> =
       splitId: string
       children: Array<{
         node: LayoutNode<T>
-        weight: number // Now represents absolute size preference
+        weight: number // Flex weight (like CSS flex-grow)
       }>
     }
 
@@ -35,93 +35,56 @@ export type SolvedNode<T> =
       children: Array<SolvedNode<T>>
     }
 
-// --- Core difference: compute INTRINSIC size first, then place ---
-
-function computeIntrinsicSize<T>(
-  node: LayoutNode<T>,
-  constraints: Map<T | string, Constraint>
-): { width: number; height: number } {
-  if (node.type === "leaf") {
-    const c = constraints.get(node.id) ?? { ideal: 200, min: 100, max: 400 }
-    return { width: c.ideal, height: c.ideal }
-  }
-
-  const isRow = node.axis === "row"
-  let totalWidth = 0
-  let totalHeight = 0
-
-  for (const { node: child, weight } of node.children) {
-    const childSize = computeIntrinsicSize(child, constraints)
-
-    if (isRow) {
-      totalWidth += childSize.width * weight
-      totalHeight = Math.max(totalHeight, childSize.height)
-    } else {
-      totalWidth = Math.max(totalWidth, childSize.width)
-      totalHeight += childSize.height * weight
-    }
-  }
-
-  return { width: totalWidth, height: totalHeight }
-}
-
+// Key insight: compute MINIMUM required size, then GROW to fill viewport
 export function solveLayout<T>(
   tree: LayoutNode<T>,
   constraints: Map<T | string, Constraint>,
   viewport: Rect
 ): SolvedNode<T> {
-  // Compute intrinsic size with maximum bounds
-  const intrinsicSize = computeIntrinsicSizeBounded(tree, constraints, viewport)
-
+  // Step 1: Compute minimum required size
+  const minSize = computeMinimumSize(tree, constraints)
+  
+  // Step 2: Determine actual size (grow to fill viewport if possible)
+  const actualWidth = Math.max(minSize.width, viewport.width)
+  const actualHeight = Math.max(minSize.height, viewport.height)
+  
   const rootRect: Rect = {
     x: viewport.x,
     y: viewport.y,
-    width: Math.min(intrinsicSize.width, viewport.width),
-    height: Math.min(intrinsicSize.height, viewport.height),
+    width: actualWidth,
+    height: actualHeight
   }
 
+  // Step 3: Solve layout with flexible filling
   return solveNode(tree, rootRect, constraints)
 }
 
-function computeIntrinsicSizeBounded<T>(
+function computeMinimumSize<T>(
   node: LayoutNode<T>,
-  constraints: Map<T | string, Constraint>,
-  viewport: Rect
+  constraints: Map<T | string, Constraint>
 ): { width: number; height: number } {
   if (node.type === "leaf") {
-    const c = constraints.get(node.id) ?? { ideal: 200, min: 100, max: 400 }
-    return {
-      width: Math.min(c.ideal, viewport.width),
-      height: Math.min(c.ideal, viewport.height),
-    }
+    const c = constraints.get(node.id) ?? { ideal: 200, min: 100, max: Infinity }
+    return { width: c.min, height: c.min }
   }
 
   const isRow = node.axis === "row"
   let totalWidth = 0
   let totalHeight = 0
 
-  for (const { node: child, weight } of node.children) {
-    const childSize = computeIntrinsicSizeBounded(child, constraints, viewport)
-
-    // Weight represents target pixel size
-    const effectiveWeight = Math.min(
-      weight,
-      isRow ? viewport.width : viewport.height
-    )
-
+  for (const { node: child } of node.children) {
+    const childSize = computeMinimumSize(child, constraints)
+    
     if (isRow) {
-      totalWidth += effectiveWeight
+      totalWidth += childSize.width
       totalHeight = Math.max(totalHeight, childSize.height)
     } else {
       totalWidth = Math.max(totalWidth, childSize.width)
-      totalHeight += effectiveWeight
+      totalHeight += childSize.height
     }
   }
 
-  return {
-    width: Math.min(totalWidth, viewport.width),
-    height: Math.min(totalHeight, viewport.height),
-  }
+  return { width: totalWidth, height: totalHeight }
 }
 
 function solveNode<T>(
@@ -130,35 +93,38 @@ function solveNode<T>(
   constraints: Map<T | string, Constraint>
 ): SolvedNode<T> {
   if (node.type === "leaf") {
+    // Leaf fills its allocated rect
     return {
       type: "leaf",
       id: node.id,
-      rect,
+      rect
     }
   }
 
   const isRow = node.axis === "row"
-  const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
   const availableSize = isRow ? rect.width : rect.height
-
+  
+  // Distribute available space according to weights
+  const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
+  
   let offset = 0
-  const solvedChildren: Array<SolvedNode<T>> = []
+  const solvedChildren: SolvedNode<T>[] = []
 
   for (const { node: child, weight } of node.children) {
     const size = (weight / totalWeight) * availableSize
-
+    
     const childRect: Rect = isRow
-      ? {
-          x: rect.x + offset,
-          y: rect.y,
-          width: size,
-          height: rect.height,
+      ? { 
+          x: rect.x + offset, 
+          y: rect.y, 
+          width: size, 
+          height: rect.height 
         }
-      : {
-          x: rect.x,
-          y: rect.y + offset,
-          width: rect.width,
-          height: size,
+      : { 
+          x: rect.x, 
+          y: rect.y + offset, 
+          width: rect.width, 
+          height: size 
         }
 
     solvedChildren.push(solveNode(child, childRect, constraints))
@@ -170,11 +136,11 @@ function solveNode<T>(
     axis: node.axis,
     splitId: node.splitId,
     rect,
-    children: solvedChildren,
+    children: solvedChildren
   }
 }
 
-// Utility to get the total bounds of a solved tree
+// Helper to get actual bounds (for clipping if needed)
 export function getTreeBounds<T>(node: SolvedNode<T>): Rect {
   if (node.type === "leaf") {
     return node.rect
@@ -197,6 +163,7 @@ export function getTreeBounds<T>(node: SolvedNode<T>): Rect {
     x: minX,
     y: minY,
     width: maxX - minX,
-    height: maxY - minY,
+    height: maxY - minY
   }
 }
+

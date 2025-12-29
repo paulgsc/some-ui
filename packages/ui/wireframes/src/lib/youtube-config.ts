@@ -1,3 +1,4 @@
+// youtube-config.ts - Constraints that allow filling
 
 export type YouTubeRegion =
   | "video"
@@ -8,15 +9,21 @@ export type YouTubeRegion =
   | "sidebarBottom"
   | "footerRight"
 
-// NOW: Constraints are in PIXELS, not ratios
+export type Constraint = {
+  ideal: number // Preferred size
+  min: number // Minimum size
+  max: number // Maximum size (use Infinity to allow filling)
+}
+
+// Updated: min is minimum, max is Infinity to allow natural filling
 export const defaultConstraints = new Map<YouTubeRegion, Constraint>([
-  ["video", { ideal: 300, min: 200, max: 600 }],
-  ["title", { ideal: 200, min: 150, max: 400 }],
-  ["mainContent", { ideal: 250, min: 150, max: 500 }],
-  ["sidebarTop", { ideal: 200, min: 150, max: 400 }],
-  ["sidebarBottom", { ideal: 200, min: 150, max: 400 }],
-  ["footerLeft", { ideal: 150, min: 100, max: 300 }],
-  ["footerRight", { ideal: 150, min: 100, max: 300 }],
+  ["title", { ideal: 10, min: 5, max: Infinity }],
+  ["video", { ideal: 300, min: 150, max: Infinity }],
+  ["mainContent", { ideal: 400, min: 200, max: Infinity }],
+  ["footerLeft", { ideal: 200, min: 100, max: Infinity }],
+  ["footerRight", { ideal: 20, min: 10, max: Infinity }],
+  ["sidebarTop", { ideal: 25, min: 12, max: Infinity }],
+  ["sidebarBottom", { ideal: 25, min: 12, max: Infinity }],
 ])
 
 export const regionColors: Record<YouTubeRegion, string> = {
