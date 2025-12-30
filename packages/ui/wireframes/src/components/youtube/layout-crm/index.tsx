@@ -159,31 +159,11 @@ export const LayoutEditor = () => {
     deltaPx: number,
     containerSizePx: number
   ) => {
-    // Track cumulative delta and only apply incremental changes
-    if (
-      !lastResizeRef.current ||
-      lastResizeRef.current.region !== region ||
-      lastResizeRef.current.edge !== edge
-    ) {
-      // New resize session
-      lastResizeRef.current = {
-        region,
-        edge,
-        totalDelta: 0,
-      }
-    }
-
-    // Calculate incremental delta
-    const previousTotal = lastResizeRef.current.totalDelta
-    const incrementalDelta = deltaPx - previousTotal
-    lastResizeRef.current.totalDelta = deltaPx
-
-    // Apply only the incremental change
     handleIntent({
       kind: "resize",
       region,
       edge,
-      deltaPx: incrementalDelta,
+      deltaPx,
       containerSizePx,
     })
   }

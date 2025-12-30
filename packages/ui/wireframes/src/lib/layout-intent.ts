@@ -260,8 +260,6 @@ function cloneTree<R>(node: LayoutNode<R>): LayoutNode<R> {
   }
 }
 
-// Corrected resize logic that actually works
-
 function resizeRegion<R>(
   tree: LayoutNode<R> | null,
   region: R,
@@ -269,55 +267,53 @@ function resizeRegion<R>(
   deltaPx: number,
   containerSizePx: number
 ): LayoutNode<R> | null {
-  if (tree === null) return null
-  if (Math.abs(deltaPx) < 1) return tree
+  if (!tree || Math.abs(deltaPx) < 0.5) return tree
 
   const cloned = cloneTree(tree)
   const resizeAxis = edge === "left" || edge === "right" ? "row" : "col"
-
   const ancestorInfo = findAncestorSplitByAxis(cloned, region, resizeAxis)
 
-  if (!ancestorInfo) {
-    return tree
-  }
+  if (!ancestorInfo) return tree
 
   const { split, leafIndex } = ancestorInfo
+  const isTrailingEdge = edge === "right" || edge === "bottom"
+  const siblingIndex = isTrailingEdge ? leafIndex + 1 : leafIndex - 1
 
-  const isGrowingPositive = edge === "right" || edge === "bottom"
-  const siblingIndex = isGrowingPositive ? leafIndex + 1 : leafIndex - 1
+  if (siblingIndex < 0 || siblingIndex >= split.children.length) return tree
 
-  const minWeight = 100 // Minimum panel size
-
-  if (siblingIndex < 0 || siblingIndex >= split.children.length) {
-    // At boundary - allow growth but enforce minimum
-    const currentWeight = split.children[leafIndex].weight
-    const newWeight = Math.max(minWeight, currentWeight + deltaPx)
-
-    split.children[leafIndex].weight = newWeight
-    return cloned
-  }
-
-  // Redistribute between siblings
   const currentChild = split.children[leafIndex]
   const siblingChild = split.children[siblingIndex]
 
-  let newCurrentWeight = currentChild.weight + deltaPx
-  let newSiblingWeight = siblingChild.weight - deltaPx
+  // Calculate weight per pixel in THIS SPECIFIC SPLIT
+  const totalWeightInSplit = split.children.reduce((s, c) => s + c.weight, 0)
+  const weightPerPx = totalWeightInSplit / containerSizePx
 
-  // Enforce minimums
-  if (newCurrentWeight < minWeight) {
-    newSiblingWeight += newCurrentWeight - minWeight
-    newCurrentWeight = minWeight
+  // Convert pixel delta to weight delta
+  const weightDelta = deltaPx * weightPerPx
+
+  // Direction:
+  // - Trailing edge (right/bottom): positive delta = grow
+  // - Leading edge (left/top): positive delta = shrink (move edge right = smaller panel)
+  const growthDelta = isTrailingEdge ? weightDelta : -weightDelta
+
+  const MIN_WEIGHT = 0.05
+
+  let newCurrentWeight = Math.max(MIN_WEIGHT, currentChild.weight + growthDelta)
+  let newSiblingWeight = Math.max(MIN_WEIGHT, siblingChild.weight - growthDelta)
+
+  // Ensure we don't violate conservation of weight
+  const totalBefore = currentChild.weight + siblingChild.weight
+  const totalAfter = newCurrentWeight + newSiblingWeight
+
+  if (Math.abs(totalAfter - totalBefore) > 0.001) {
+    // Renormalize if needed
+    const scale = totalBefore / totalAfter
+    newCurrentWeight *= scale
+    newSiblingWeight *= scale
   }
 
-  if (newSiblingWeight < minWeight) {
-    newCurrentWeight += newSiblingWeight - minWeight
-    newSiblingWeight = minWeight
-  }
-
-  // Apply
-  split.children[leafIndex].weight = Math.max(minWeight, newCurrentWeight)
-  split.children[siblingIndex].weight = Math.max(minWeight, newSiblingWeight)
+  split.children[leafIndex].weight = newCurrentWeight
+  split.children[siblingIndex].weight = newSiblingWeight
 
   return cloned
 }

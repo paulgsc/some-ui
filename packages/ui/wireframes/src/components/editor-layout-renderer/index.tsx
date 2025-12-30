@@ -130,34 +130,29 @@ export const LayoutNodeRenderer = ({
       e.stopPropagation()
 
       setIsResizing(true)
-      resizeStartRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        edge: resizeEdge,
-      }
+
+      // CAPTURE STABLE VALUES AT START
+      const startX = e.clientX
+      const startY = e.clientY
+      const edge = resizeEdge
+      const isHorizontal = edge === "left" || edge === "right"
+
+      // Use the node's current solved rect as the stable reference
+      const stableContainerSize = isHorizontal
+        ? node.rect.width
+        : node.rect.height
 
       const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
-        if (!resizeStartRef.current) return
-
-        const { startX, startY, edge } = resizeStartRef.current
-        const isHorizontal = edge === "left" || edge === "right"
-
         const currentPos = isHorizontal ? moveEvent.clientX : moveEvent.clientY
         const startPos = isHorizontal ? startX : startY
         const delta = currentPos - startPos
 
-        // Get container size from the actual rect
-        const rect = (moveEvent.target as HTMLElement)?.getBoundingClientRect()
-        const containerSize = isHorizontal
-          ? rect?.width || node.rect.width
-          : rect?.height || node.rect.height
-
-        onResizeIntent(node.id, edge, delta, containerSize)
+        // Pass the stable size captured at the start of the drag
+        onResizeIntent(node.id, edge, delta, stableContainerSize)
       }
 
       const handleGlobalMouseUp = () => {
         setIsResizing(false)
-        resizeStartRef.current = null
         window.removeEventListener("mousemove", handleGlobalMouseMove)
         window.removeEventListener("mouseup", handleGlobalMouseUp)
       }

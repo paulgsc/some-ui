@@ -28,27 +28,27 @@ const layoutTree: LayoutNode<YouTubeRegion> = {
         type: "leaf",
         id: "title",
       },
-      weight: 1,
+      weight: 0.19000000000000006,
     },
     {
       node: {
         type: "split",
         axis: "row",
-        splitId: "split-2",
+        splitId: "split-1",
         children: [
           {
             node: {
               type: "leaf",
               id: "video",
             },
-            weight: 1,
+            weight: 0.49588138385502467,
           },
           {
             node: {
               type: "leaf",
               id: "mainContent",
             },
-            weight: 1,
+            weight: 2.021618616144975,
           },
           {
             node: {
@@ -72,35 +72,35 @@ const layoutTree: LayoutNode<YouTubeRegion> = {
                 },
               ],
             },
-            weight: 1,
+            weight: 0.48249999999999993,
           },
         ],
       },
-      weight: 1,
+      weight: 2.62,
     },
     {
       node: {
         type: "split",
         axis: "row",
-        splitId: "split-1",
+        splitId: "split-2",
         children: [
           {
             node: {
               type: "leaf",
               id: "footerLeft",
             },
-            weight: 1,
+            weight: 0.15500000000000003,
           },
           {
             node: {
               type: "leaf",
               id: "footerRight",
             },
-            weight: 1,
+            weight: 1.845,
           },
         ],
       },
-      weight: 1,
+      weight: 0.19000000000000006,
     },
   ],
 }
