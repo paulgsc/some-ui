@@ -69,7 +69,6 @@ export function focusConstraints<T>(
 
 export function solveLayout<T>(
   tree: LayoutNode<T>,
-  constraints: Map<T | string, Constraint>,
   viewport: Rect
 ): SolvedNode<T> {
   const results = new Map<LayoutNode<T>, SolvedNode<T>>()

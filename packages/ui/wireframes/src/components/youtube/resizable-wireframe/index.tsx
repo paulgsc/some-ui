@@ -5,33 +5,15 @@ import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { RenderSolved } from "@wireframes/components/render-solved"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
-import {
-  useConsumerConstraints,
-  useFocusControls,
-} from "@wireframes/lib/consumer-constraints"
-import type { Constraint } from "@wireframes/lib/layout-types"
+import type { SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
+import { solveLayout } from "@wireframes/lib/layout-weighted"
 import type {
   ActiveLifetime,
   ComponentRegistry,
   YouTubeRegion,
 } from "some-types-utils"
 import { renderRegistryComponent } from "some-ui-utils"
-
-// Default constraints (provided by editor as template, but consumer can override)
-const DEFAULT_CONSUMER_CONSTRAINTS = new Map<
-  YouTubeRegion | string,
-  Constraint
->([
-  // Pixel-based with flexible max (fills viewport by default)
-  ["title", { ideal: 10, min: 5, max: Infinity }],
-  ["video", { ideal: 300, min: 150, max: Infinity }],
-  ["mainContent", { ideal: 400, min: 200, max: Infinity }],
-  ["footerLeft", { ideal: 200, min: 100, max: Infinity }],
-  ["footerRight", { ideal: 20, min: 10, max: Infinity }],
-  ["sidebarTop", { ideal: 25, min: 12, max: Infinity }],
-  ["sidebarBottom", { ideal: 25, min: 12, max: Infinity }],
-])
 
 type OrchestratedViewportProps<K extends string> = {
   /**
@@ -47,13 +29,6 @@ type OrchestratedViewportProps<K extends string> = {
 
   sceneRegistry: SceneRegistry
   componentRegistry: ComponentRegistry<K>
-
-  /**
-   * Base constraints (optional)
-   * These are runtime defaults that consumer uses
-   * Can be different from editor's template weights
-   */
-  baseConstraints?: Map<YouTubeRegion | string, Constraint>
 
   /**
    * Enable focus feature
@@ -76,14 +51,13 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   layoutTree,
   activeLifetimes,
   componentRegistry,
-  baseConstraints = DEFAULT_CONSUMER_CONSTRAINTS,
   enableFocus = true,
   transitionMs = 300,
 }: OrchestratedViewportProps<K>) => {
   const { ref, rect } = useContainerRect()
 
   // Consumer manages its own focus state
-  const focusControls = useFocusControls<YouTubeRegion>()
+  //   const focusControls = useFocusControls<YouTubeRegion>()
 
   const [popup, setPopup] = useState<{
     regionId: YouTubeRegion
@@ -126,13 +100,10 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     ) as Record<YouTubeRegion, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
 
-  // Consumer's constraint system: applies focus to base constraints
-  const { layout } = useConsumerConstraints({
-    tree: layoutTree,
-    viewport: rect ?? { x: 0, y: 0, width: 800, height: 600 },
-    baseConstraints,
-    focusState: focusControls.focusState,
-  })
+  const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
+    if (!rect) return
+    return solveLayout(layoutTree, rect)
+  }, [layoutTree, rect])
 
   const handleLeafClick = useCallback(
     (id: YouTubeRegion, position: { x: number; y: number }) => {
@@ -144,10 +115,10 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const handleApplyFocus = useCallback(
     (regionId: YouTubeRegion, intensity: number) => {
-      focusControls.setFocus(regionId, intensity)
+      // focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
-    [focusControls]
+    []
   )
 
   const handleClosePopup = useCallback(() => {

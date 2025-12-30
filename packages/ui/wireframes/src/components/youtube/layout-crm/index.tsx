@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react"
 import { LayoutNodeRenderer } from "@wireframes/components/editor-layout-renderer"
 import { TreeVisualizer } from "@wireframes/components/tree-visualizer"
-import { solveLayout, type LayoutNode } from "@wireframes/lib/layout-engine"
 import {
   applyIntent,
   extractLeafIds,
   type LayoutIntent,
 } from "@wireframes/lib/layout-intent"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
+import { solveLayout } from "@wireframes/lib/layout-weighted"
 import { serializeLayout } from "@wireframes/lib/tree-serialization"
 import {
   ALL_YOUTUBE_REGIONS,
-  defaultConstraints,
   regionColors,
   type YouTubeRegion,
 } from "@wireframes/lib/youtube-config"
@@ -44,7 +44,7 @@ export const LayoutEditor = () => {
 
   const viewport = { x: 0, y: 0, width: 800, height: 600 }
 
-  const solved = tree ? solveLayout(tree, defaultConstraints, viewport) : null
+  const solved = tree ? solveLayout(tree, viewport) : null
 
   const usedRegions = extractLeafIds(tree)
   const availableRegions = ALL_YOUTUBE_REGIONS.filter(
