@@ -2,113 +2,65 @@ import { useCallback, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
-import { RenderSolved } from "@wireframes/components/layout-renderer"
+import { RenderSolved } from "@wireframes/components/render-solved"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
-import type {
-  Constraint,
-  ConstraintKey,
-  LayoutNode,
-  SolvedNode,
-} from "@wireframes/lib/resizable-layout"
-import { focusConstraints, solveLayout } from "@wireframes/lib/resizable-layout"
+import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
+import type { SolvedNode } from "@wireframes/lib/layout-types"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
+import { solveLayoutWithFocus } from "@wireframes/lib/layout-weighted"
+import { regionColors } from "@wireframes/lib/youtube-config"
 import type {
   ActiveLifetime,
   ComponentRegistry,
   YouTubeRegion,
 } from "some-types-utils"
-import { renderRegistryComponent } from "some-ui-utils"
-
-// --- YouTube layout tree and default constraints ---
-const youtubeTree: LayoutNode<YouTubeRegion> = {
-  type: "split",
-  axis: "col",
-  splitId: "root",
-  children: [
-    { type: "leaf", id: "title" },
-    {
-      type: "split",
-      axis: "row",
-      splitId: "content",
-      children: [
-        {
-          type: "split",
-          axis: "col",
-          splitId: "leftCol",
-          children: [
-            {
-              type: "split",
-              axis: "row",
-              splitId: "left-content",
-              children: [
-                { type: "leaf", id: "video" },
-                { type: "leaf", id: "mainContent" },
-              ],
-            },
-            {
-              type: "split",
-              axis: "row",
-              splitId: "footer",
-              children: [
-                { type: "leaf", id: "footerLeft" },
-                { type: "leaf", id: "footerRight" },
-              ],
-            },
-          ],
-        },
-        {
-          type: "split",
-          axis: "col",
-          splitId: "rightCol",
-          children: [
-            { type: "leaf", id: "sidebarTop" },
-            { type: "leaf", id: "sidebarBottom" },
-          ],
-        },
-      ],
-    },
-  ],
-}
-
-const defaultConstraints = new Map<ConstraintKey<YouTubeRegion>, Constraint>([
-  ["title", { ideal: 8, min: 0, max: 100 }],
-  ["content", { ideal: 88, min: 0, max: 100 }],
-  ["left-content", { ideal: 85, min: 0, max: 100 }],
-  ["rightCol", { ideal: 20, min: 0, max: 100 }],
-  ["footer", { ideal: 15, min: 0, max: 100 }],
-  ["leftCol", { ideal: 80, min: 0, max: 100 }],
-  ["video", { ideal: 20, min: 0, max: 100 }],
-  ["footerLeft", { ideal: 5, min: 0, max: 100 }],
-  ["mainContent", { ideal: 80, min: 0, max: 100 }],
-  ["footerRight", { ideal: 95, min: 0, max: 100 }],
-  ["sidebarTop", { ideal: 30, min: 0, max: 100 }],
-  ["sidebarBottom", { ideal: 70, min: 0, max: 100 }],
-])
+import { cn, renderRegistryComponent } from "some-ui-utils"
 
 type OrchestratedViewportProps<K extends string> = {
+  /**
+   * Layout tree from editor (defines topology)
+   * This is the OUTPUT from your CRM editor
+   */
+  layoutTree: LayoutNode<YouTubeRegion>
+
+  /**
+   * Active lifetimes to render content from
+   */
   activeLifetimes: Array<ActiveLifetime>
+
   sceneRegistry: SceneRegistry
   componentRegistry: ComponentRegistry<K>
+
+  /**
+   * Enable focus feature
+   */
+  enableFocus?: boolean
+
+  /**
+   * Transition duration for animations
+   */
   transitionMs?: number
 }
 
 /**
- * OrchestratedYouTubeViewport
- *
- * Resolves panels for each region directly from active lifetimes.
- * Panel components themselves handle rendering of children.
+ * Consumer viewport that:
+ * - Receives tree topology from editor
+ * - Manages runtime geometry (focus, constraints)
+ * - Renders content from active lifetimes
  */
 export const OrchestratedYouTubeViewport = <K extends string>({
+  layoutTree,
   activeLifetimes,
   componentRegistry,
+  enableFocus = true,
   transitionMs = 300,
 }: OrchestratedViewportProps<K>) => {
   const { ref, rect } = useContainerRect()
 
-  const [focusState, setFocusState] = useState<{
-    regionId?: YouTubeRegion
-    intensity?: number
-  }>({})
+  // Consumer manages its own focus state
+  const focusControls = useFocusControls<YouTubeRegion>()
+
   const [popup, setPopup] = useState<{
     regionId: YouTubeRegion
     position: { x: number; y: number }
@@ -150,40 +102,34 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     ) as Record<YouTubeRegion, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
 
-  const constraints = useMemo(
-    () =>
-      focusConstraints(
-        youtubeTree,
-        defaultConstraints,
-        focusState.regionId,
-        focusState.intensity ?? 0
-      ),
-    [focusState.regionId, focusState.intensity]
-  )
-
   const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
     if (!rect) return
-    return solveLayout(youtubeTree, constraints, rect)
-  }, [constraints, rect])
 
-  const renderLeaf = useMemo(() => {
-    const RenderLeaf = (id: YouTubeRegion): ReactNode => {
-      if (!mergedPanels[id]) return <div className="size-full" />
-      return mergedPanels[id]()
-    }
-    return RenderLeaf
-  }, [mergedPanels])
+    return solveLayoutWithFocus(
+      layoutTree,
+      rect,
+      enableFocus ? focusControls.focusedRegion : null,
+      enableFocus ? focusControls.focusIntensity : 0
+    )
+  }, [
+    layoutTree,
+    rect,
+    enableFocus,
+    focusControls.focusedRegion,
+    focusControls.focusIntensity,
+  ])
 
   const handleLeafClick = useCallback(
     (id: YouTubeRegion, position: { x: number; y: number }) => {
+      if (!enableFocus) return
       setPopup({ regionId: id, position })
     },
-    []
+    [enableFocus]
   )
 
   const handleApplyFocus = useCallback(
     (regionId: YouTubeRegion, intensity: number) => {
-      setFocusState({ regionId, intensity })
+      focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
     []
@@ -193,17 +139,36 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     setPopup(null)
   }, [])
 
+  const renderLeaf = useMemo(() => {
+    const RenderLeaf = (id: YouTubeRegion): ReactNode => {
+      if (typeof mergedPanels[id] !== "function")
+        return (
+          <div
+            className={cn(
+              "size-full inline-flex text-center items-center justify-center",
+              regionColors[id]
+            )}
+          >
+            <h3 className="text-lg font-bold uppercase">{id}</h3>
+          </div>
+        )
+      return mergedPanels[id]()
+    }
+    return RenderLeaf
+  }, [mergedPanels])
+
   return (
     <div className="absolute inset-0 flex-1 size-full" ref={ref}>
       {layout && (
         <RenderSolved
           node={layout}
           renderLeaf={renderLeaf}
-          onLeafClick={handleLeafClick}
+          onLeafClick={enableFocus ? handleLeafClick : undefined}
           transitionMs={transitionMs}
         />
       )}
-      {popup && (
+
+      {enableFocus && popup && (
         <FocusControlPopup
           regionId={popup.regionId}
           position={popup.position}

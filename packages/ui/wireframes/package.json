@@ -6,6 +6,7 @@
     "@some-ui/styles": "workspace:*",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
+    "some-ui-utils": "workspace:*",
     "some-ui-slideshow": "workspace:*",
     "some-ui-honeycomb": "workspace:*",
     "some-ui-utils": "workspace:*",
