@@ -1,9 +1,7 @@
 import { useRef, useState } from "react"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
-import {
-  regionColors,
-  type YouTubeRegion,
-} from "@wireframes/lib/youtube-config"
+import type { YouTubeRegion } from "@wireframes/lib/youtube-config"
+import { regionColors } from "@wireframes/lib/youtube-config"
 import { X } from "lucide-react"
 import { cn } from "some-ui-utils"
 

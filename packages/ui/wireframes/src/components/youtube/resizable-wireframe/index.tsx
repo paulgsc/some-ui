@@ -5,15 +5,17 @@ import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { RenderSolved } from "@wireframes/components/render-solved"
 import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
+import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
-import { solveLayout } from "@wireframes/lib/layout-weighted"
+import { solveLayoutWithFocus } from "@wireframes/lib/layout-weighted"
+import { regionColors } from "@wireframes/lib/youtube-config"
 import type {
   ActiveLifetime,
   ComponentRegistry,
   YouTubeRegion,
 } from "some-types-utils"
-import { renderRegistryComponent } from "some-ui-utils"
+import { cn, renderRegistryComponent } from "some-ui-utils"
 
 type OrchestratedViewportProps<K extends string> = {
   /**
@@ -57,7 +59,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const { ref, rect } = useContainerRect()
 
   // Consumer manages its own focus state
-  //   const focusControls = useFocusControls<YouTubeRegion>()
+  const focusControls = useFocusControls<YouTubeRegion>()
 
   const [popup, setPopup] = useState<{
     regionId: YouTubeRegion
@@ -102,8 +104,20 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
     if (!rect) return
-    return solveLayout(layoutTree, rect)
-  }, [layoutTree, rect])
+
+    return solveLayoutWithFocus(
+      layoutTree,
+      rect,
+      enableFocus ? focusControls.focusedRegion : null,
+      enableFocus ? focusControls.focusIntensity : 0
+    )
+  }, [
+    layoutTree,
+    rect,
+    enableFocus,
+    focusControls.focusedRegion,
+    focusControls.focusIntensity,
+  ])
 
   const handleLeafClick = useCallback(
     (id: YouTubeRegion, position: { x: number; y: number }) => {
@@ -115,7 +129,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const handleApplyFocus = useCallback(
     (regionId: YouTubeRegion, intensity: number) => {
-      // focusControls.setFocus(regionId, intensity)
+      focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
     []
@@ -127,7 +141,17 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const renderLeaf = useMemo(() => {
     const RenderLeaf = (id: YouTubeRegion): ReactNode => {
-      if (!mergedPanels[id]) return <div className="size-full" />
+      if (typeof mergedPanels[id] !== "function")
+        return (
+          <div
+            className={cn(
+              "size-full inline-flex text-center items-center justify-center",
+              regionColors[id]
+            )}
+          >
+            <h3 className="text-lg font-bold uppercase">{id}</h3>
+          </div>
+        )
       return mergedPanels[id]()
     }
     return RenderLeaf
