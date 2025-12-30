@@ -169,8 +169,8 @@ function weightsToConstraints<T>(
       // Leaf gets a default constraint (will be overridden by parent split logic)
       constraints.set(node.id, {
         ideal: 1,
-        min: 0.05,
-        max: 10,
+        min: 0,
+        max: 1,
       })
     } else {
       // Split's children inherit their weights as ideal values
@@ -182,8 +182,8 @@ function weightsToConstraints<T>(
 
         constraints.set(key, {
           ideal: normalizedWeight,
-          min: 0.05, // Can shrink to 5% of parent
-          max: 0.95, // Can grow to 95% of parent
+          min: 0, // Can shrink to 0% of parent
+          max: 1, // Can grow to 100% of parent
         })
 
         stack.push(child)
