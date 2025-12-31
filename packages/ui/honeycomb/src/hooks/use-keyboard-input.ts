@@ -195,7 +195,7 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
 
         setTimingParams(timing)
 
-        if (event.reason === "PerfectMatch") {
+        if (event.reason === "perfectMatch") {
           playSound("difficulty_increase")
         }
 
@@ -206,9 +206,21 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         playSound("streak_milestone")
         break
       }
+      case "characterSpawned":
+      case "charactersExpired":
+      case "boardFull": {
+        // These are handled by:
+        // - spawn loop
+        // - update loop
+        // - board lifecycle logic
+        break
+      }
 
       default: {
         event satisfies never
+        throw new Error(
+          `[processGameEvent] Unhandled GameEvent: ${JSON.stringify(event)}`
+        )
       }
     }
   } catch (err) {

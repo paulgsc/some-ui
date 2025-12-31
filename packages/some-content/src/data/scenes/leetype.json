@@ -1,0 +1,48 @@
+[
+  {
+    "panels": {
+      "title": {
+        "registry_key": "neon",
+        "props": {
+          "theme": "peach-blossom",
+          "initialText": "LeeTyping",
+          "className": "rounded-xl size-full px-1.5 py-0.5"
+        },
+        "children": []
+      },
+      "mainContent": {
+        "registry_key": "leetype",
+        "props": {
+          "className": "absolute inset-0",
+          "codePaths": {
+            "typescript": "/code-samples/fibonacci.ts",
+            "rust": "/code-samples/factorial.rs",
+            "cpp": "/code-samples/quicksort.cpp",
+            "c": "/code-samples/binary-search.c"
+          }
+        },
+        "children": []
+      },
+      "footerLeft": {
+        "registry_key": "cube",
+        "props": { "region": "footerLeft", "faceCapacity": 1 },
+        "children": []
+      },
+      "footerRight": {
+        "registry_key": "cube",
+        "props": { "region": "footerRight", "faceCapacity": 1 },
+        "children": []
+      },
+      "sidebarTop": {
+        "registry_key": "music",
+        "props": {},
+        "children": []
+      },
+      "sidebarBottom": {
+        "registry_key": "scheduled",
+        "props": {},
+        "children": []
+      }
+    }
+  }
+]

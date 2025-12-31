@@ -27,12 +27,10 @@ import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 type HangulHexGridProps = {
   mode?: GameMode
-  gameDurationSeconds?: number
 }
 
 export const HangulHexGrid = ({
   mode = "completion",
-  gameDurationSeconds = 3 * 60,
 }: HangulHexGridProps): React.JSX.Element => {
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
     autoStart: true,
@@ -71,7 +69,7 @@ export const HangulHexGrid = ({
   })
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const handler = (_e: KeyboardEvent): void => {
       console.log("[audio] global keydown → unlock")
       unlockAudio()
       window.removeEventListener("keydown", handler)

@@ -1,11 +1,7 @@
-import { useEffect, useState } from "react"
 import { componentRegistry } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import type {
-  OrchestratorState,
-  SceneConfig,
-  YouTubeRegion,
-} from "some-types-utils"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
+import type { YouTubeRegion } from "some-types-utils"
 import {
   selectCurrentTime,
   selectTotalDuration,
@@ -28,7 +24,7 @@ const layoutTree: LayoutNode<YouTubeRegion> = {
         type: "leaf",
         id: "title",
       },
-      weight: 0.19000000000000006,
+      weight: 0.17333333333333323,
     },
     {
       node: {
@@ -39,68 +35,37 @@ const layoutTree: LayoutNode<YouTubeRegion> = {
           {
             node: {
               type: "leaf",
-              id: "video",
-            },
-            weight: 0.49588138385502467,
-          },
-          {
-            node: {
-              type: "leaf",
               id: "mainContent",
             },
-            weight: 2.021618616144975,
+            weight: 1.6146625766871165,
           },
           {
             node: {
               type: "split",
               axis: "col",
-              splitId: "split-3",
+              splitId: "split-2",
               children: [
                 {
                   node: {
                     type: "leaf",
                     id: "sidebarTop",
                   },
-                  weight: 1,
+                  weight: 0.36496350364963503,
                 },
                 {
                   node: {
                     type: "leaf",
                     id: "sidebarBottom",
                   },
-                  weight: 1,
+                  weight: 1.635036496350365,
                 },
               ],
             },
-            weight: 0.48249999999999993,
+            weight: 0.38533742331288345,
           },
         ],
       },
-      weight: 2.62,
-    },
-    {
-      node: {
-        type: "split",
-        axis: "row",
-        splitId: "split-2",
-        children: [
-          {
-            node: {
-              type: "leaf",
-              id: "footerLeft",
-            },
-            weight: 0.15500000000000003,
-          },
-          {
-            node: {
-              type: "leaf",
-              id: "footerRight",
-            },
-            weight: 1.845,
-          },
-        ],
-      },
-      weight: 0.19000000000000006,
+      weight: 1.8266666666666667,
     },
   ],
 }
@@ -180,12 +145,6 @@ const AnimatedStory = ({
         transitionMs={transitionMs}
         layoutTree={layoutTree}
       />
-      <div className="fixed bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-xs font-mono">
-        <div>
-          {scene}: {Math.floor(currTime / 1000)}s /{" "}
-          {Math.floor(totalDuration / 1000)}s
-        </div>
-      </div>
     </div>
   )
 }

@@ -11,7 +11,7 @@
         "children": [
           {
             "registry_key": "neon",
-            "duration": 3000,
+            "duration": 300000,
             "props": {
               "theme": "dark-gold",
               "className": "rounded-xl size-full px-1.5 py-0.5"
@@ -19,7 +19,7 @@
           },
           {
             "registry_key": "neon",
-            "duration": 3000,
+            "duration": 300000,
             "props": {
               "theme": "peach-blossom",
               "className": "rounded-xl size-full px-1.5 py-0.5"
@@ -27,7 +27,7 @@
           },
           {
             "registry_key": "neon",
-            "duration": 3000,
+            "duration": 300000,
             "props": {
               "theme": "dark-gold",
               "className": "rounded-xl size-full px-1.5 py-0.5"
@@ -35,7 +35,7 @@
           },
           {
             "registry_key": "neon",
-            "duration": 3000,
+            "duration": 300000,
             "props": {
               "theme": "strawberry-moon",
               "className": "rounded-xl size-full px-1.5 py-0.5"
@@ -55,12 +55,12 @@
         "children": [
           {
             "registry_key": "hangul",
-            "duration": 30000,
+            "duration": 600000,
             "props": { "className": "absolute inset-0" }
           },
           {
             "registry_key": "leetype",
-            "duration": 30000,
+            "duration": 18000000,
             "props": {
               "className": "absolute inset-0",
               "codePaths": {
@@ -89,14 +89,23 @@
         "children": [
           {
             "registry_key": "music",
-            "duration": 30000
+            "duration": 36000000
           }
         ]
       },
       "sidebarBottom": {
         "registry_key": "cube",
         "props": { "region": "sidebarBottom", "faceCapacity": 1 },
-        "children": []
+        "children": [
+          {
+            "registry_key": "scheduled",
+            "duration": 36000000,
+            "props": {
+              "theme": "dark-gold",
+              "className": "rounded-xl size-full px-1.5 py-0.5"
+            }
+          }
+        ]
       }
     }
   }
