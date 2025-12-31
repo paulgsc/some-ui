@@ -17,6 +17,8 @@ export {
   useOrchestratorStore,
   useRegionRectStore,
   useRegionRect,
+  useLatestNowPlaying,
+  useNowPlayingStore,
 } from "./context"
 export type { SpeechQueueState } from "./context"
 export {

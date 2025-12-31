@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "some-ui-shared"
-import { cn, useNowPlayingWebSocket } from "some-ui-utils"
+import { cn, useLatestNowPlaying, useNowPlayingWebSocket } from "some-ui-utils"
 
 type NowPlayingProps = {
   className?: string
@@ -25,15 +25,11 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
   className,
   showError = true,
 }) => {
-  const {
-    status: { title, channel, thumbnail },
-    isConnected,
-    isInitializing,
-    error,
-  } = useNowPlayingWebSocket({
+  const { isConnected, isInitializing, error } = useNowPlayingWebSocket({
     url: `ws://${window.location.hostname}:3000/ws`,
   })
 
+  const { title, channel, thumbnail } = useLatestNowPlaying()
   // Refs for each component
   const containerRef = useRef<HTMLDivElement>(null)
   const backgroundRef = useRef<HTMLDivElement>(null)
