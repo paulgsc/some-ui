@@ -57,7 +57,7 @@ export const EditSceneDialog = ({
     setJsonError(null)
   }, [scene])
 
-  const validateAndSave = () => {
+  const validateAndSave = (): void => {
     try {
       const parsedUi = JSON.parse(uiJson)
       if (!Array.isArray(parsedUi))
@@ -67,7 +67,7 @@ export const EditSceneDialog = ({
         ...scene!,
         scene_name: sceneName,
         duration: durationSec * 1000,
-        start_time: startTimeSec ?? 0,
+        start_time: (startTimeSec ?? 0) * 1000,
         ui: parsedUi as Array<UILayoutIntent>,
       })
       onOpenChange(false)

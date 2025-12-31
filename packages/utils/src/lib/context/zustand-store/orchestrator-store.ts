@@ -19,14 +19,25 @@ type ClockState = {
   total_duration: number
 }
 
+// Normalized lifetime tracking (concurrent-aware)
+type LifetimeState = {
+  // All active lifetimes indexed by ID (structural truth)
+  lifetimes: Map<number, ActiveLifetime>
+
+  // Derived: set of currently active scene IDs
+  active_scene_ids: Set<string>
+
+  // Derived: ordered list of scene lifetimes (for UI iteration)
+  scene_lifetimes: Array<ActiveLifetime>
+}
+
 type OrchestratorStoreState = {
   // === TEMPORAL LAYERS ===
   // Tick-driven state (updates every tick)
   clock: ClockState
 
-  // Scene-driven state (updates only on scene boundary)
-  scene_lifetimes: Array<ActiveLifetime>
-  scene_id: string | null
+  // Lifetime-driven state (updates only on lifetime boundaries)
+  lifetimes: LifetimeState
 
   // === RAW STATE (escape hatch for debugging) ===
   rawState: OrchestratorState
@@ -58,6 +69,45 @@ type OrchestratorStoreState = {
   updateStreamStatus: (status: StreamStatus) => Promise<void>
 }
 
+// Helper: Extract scene IDs from active lifetimes
+function extractSceneIds(lifetimes: Array<ActiveLifetime>): Set<string> {
+  const ids = new Set<string>()
+  for (const lifetime of lifetimes) {
+    if ("Scene" in lifetime.kind) {
+      ids.add(lifetime.kind.Scene.scene_id)
+    }
+  }
+  return ids
+}
+
+// Helper: Check if two sets are equal
+function setEquals<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false
+  for (const item of a) {
+    if (!b.has(item)) return false
+  }
+  return true
+}
+
+// Helper: Normalize lifetimes into concurrent-aware structure
+function normalizeLifetimes(lifetimes: Array<ActiveLifetime>): LifetimeState {
+  const lifetimeMap = new Map<number, ActiveLifetime>()
+  const sceneLifetimes: Array<ActiveLifetime> = []
+
+  for (const lifetime of lifetimes) {
+    lifetimeMap.set(lifetime.id, lifetime)
+    if ("Scene" in lifetime.kind) {
+      sceneLifetimes.push(lifetime)
+    }
+  }
+
+  return {
+    lifetimes: lifetimeMap,
+    active_scene_ids: extractSceneIds(lifetimes),
+    scene_lifetimes: sceneLifetimes,
+  }
+}
+
 export const useOrchestratorStore = create<OrchestratorStoreState>(
   (set, get) => ({
     // --- Initial state ---
@@ -67,8 +117,11 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
       time_remaining: 0,
       total_duration: 0,
     },
-    scene_lifetimes: [],
-    scene_id: null,
+    lifetimes: {
+      lifetimes: new Map(),
+      active_scene_ids: new Set(),
+      scene_lifetimes: [],
+    },
     rawState: defaultOrchestratorState,
     isConnected: false,
     isInitializing: false,
@@ -77,14 +130,14 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
     _streamId: null,
 
     // --- Internal setters ---
-    // This is the KEY normalization point - splits temporal domains
+    // This is the KEY normalization point - handles concurrent lifetimes
     _setState: (next) =>
       set((prev) => {
-        const prevSceneId = prev.scene_id
-        const nextSceneId = next.current_active_scene
+        const prevSceneIds = prev.lifetimes.active_scene_ids
+        const nextSceneIds = extractSceneIds(next.active_lifetimes)
 
-        // Semantic boundary detection
-        const sceneChanged = prevSceneId !== nextSceneId
+        // Structural boundary detection (set-based, not scalar)
+        const lifetimesChanged = !setEquals(prevSceneIds, nextSceneIds)
 
         return {
           rawState: next,
@@ -97,11 +150,10 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
             total_duration: next.total_duration,
           },
 
-          // Scene data ONLY updates on boundary (event-driven)
-          scene_id: nextSceneId,
-          scene_lifetimes: sceneChanged
-            ? next.active_lifetimes
-            : prev.scene_lifetimes,
+          // Lifetimes ONLY update on boundary (event-driven)
+          lifetimes: lifetimesChanged
+            ? normalizeLifetimes(next.active_lifetimes)
+            : prev.lifetimes,
         }
       }),
 
@@ -206,30 +258,63 @@ export const selectTotalDuration = (s: OrchestratorStoreState) =>
   s.clock.total_duration
 
 // -----------------------------------------------------------------------------
-// 🟢 SCENE-STABLE SELECTORS (default for UI, NO tick rerenders)
+// 🟢 LIFETIME-STABLE SELECTORS (default for UI, NO tick rerenders)
 // Use these for: layouts, panels, registry resolution, component lifetimes
 // -----------------------------------------------------------------------------
 
 /**
- * Returns active lifetimes for the current scene.
- * STABLE: Does not change on tick updates, only on scene boundaries.
- * This is your primary UI data source.
+ * Returns all active scene lifetimes (concurrent-aware).
+ * STABLE: Does not change on tick updates, only on lifetime boundaries.
+ * May contain multiple concurrent scenes.
  */
 export const selectSceneLifetimes = (
   s: OrchestratorStoreState
-): Array<ActiveLifetime> => s.scene_lifetimes
+): Array<ActiveLifetime> => s.lifetimes.scene_lifetimes
 
 export const useSceneLifetimes = () =>
   useOrchestratorStore(useShallow(selectSceneLifetimes))
 
 /**
- * Returns current scene ID.
- * STABLE: Only changes when scene changes.
- * Use as dependency for remounting, layout resets, registry resolution.
+ * Returns set of active scene IDs (concurrent-aware).
+ * STABLE: Only changes when lifetime boundaries change.
+ */
+export const selectActiveSceneIds = (s: OrchestratorStoreState): Set<string> =>
+  s.lifetimes.active_scene_ids
+
+export const useActiveSceneIds = () =>
+  useOrchestratorStore(selectActiveSceneIds)
+
+/**
+ * Returns a specific lifetime by ID.
+ * STABLE: Only changes when that lifetime starts/ends.
+ */
+export const selectLifetimeById = (id: number) => (s: OrchestratorStoreState) =>
+  s.lifetimes.lifetimes.get(id) ?? null
+
+/**
+ * Returns all active lifetimes as a Map.
+ * STABLE: Only changes on lifetime boundaries.
+ */
+export const selectAllLifetimes = (
+  s: OrchestratorStoreState
+): Map<number, ActiveLifetime> => s.lifetimes.lifetimes
+
+// -----------------------------------------------------------------------------
+// LEGACY COMPATIBILITY (deprecated but kept for migration)
+// -----------------------------------------------------------------------------
+
+/**
+ * @deprecated Use selectActiveSceneIds or selectSceneLifetimes instead.
+ * Returns first active scene ID for legacy code that assumes single scene.
+ * Returns null if no scenes active, or if multiple scenes are concurrent.
  */
 export const selectCurrentSceneId = (
   s: OrchestratorStoreState
-): string | null => s.scene_id
+): string | null => {
+  const sceneIds = s.lifetimes.active_scene_ids
+  // Only return a value if exactly one scene is active
+  return sceneIds.size === 1 ? Array.from(sceneIds)[0] : null
+}
 
 export const useCurrentSceneId = () =>
   useOrchestratorStore(selectCurrentSceneId)
@@ -272,34 +357,64 @@ export const selectRawState = (s: OrchestratorStoreState): OrchestratorState =>
   s.rawState
 
 // ============================================================================
-// DERIVED HOOKS (Scene-scoped computations)
+// DERIVED HOOKS (Concurrent-aware computations)
 // ============================================================================
 
 /**
- * Returns time elapsed within the current scene.
+ * Returns time elapsed for a specific scene lifetime.
  * TICK-AWARE: Rerenders every tick (explicit leakage).
+ * @param sceneId - The scene ID to track
  */
-export function useSceneElapsedTime(): number | null {
+export function useSceneElapsedTime(sceneId: string): number | null {
   const { current_time } = useOrchestratorClock()
   const lifetimes = useSceneLifetimes()
 
-  const sceneLifetime = lifetimes.find((l) => "Scene" in l.kind)
+  const sceneLifetime = lifetimes.find(
+    (l) => "Scene" in l.kind && l.kind.Scene.scene_id === sceneId
+  )
   if (!sceneLifetime) return null
 
   return current_time - sceneLifetime.started_at
 }
 
 /**
- * Returns progress within the current scene (0-1).
+ * Returns progress for a specific scene lifetime (0-1).
  * TICK-AWARE: Rerenders every tick (explicit leakage).
+ * @param sceneId - The scene ID to track
  */
-export function useSceneProgress(): number | null {
-  const elapsed = useSceneElapsedTime()
+export function useSceneProgress(sceneId: string): number | null {
+  const elapsed = useSceneElapsedTime(sceneId)
   const lifetimes = useSceneLifetimes()
 
-  const sceneLifetime = lifetimes.find((l) => "Scene" in l.kind)
+  const sceneLifetime = lifetimes.find(
+    (l) => "Scene" in l.kind && l.kind.Scene.scene_id === sceneId
+  )
   if (!sceneLifetime || elapsed === null) return null
 
   const duration = sceneLifetime.kind.Scene.duration
   return duration > 0 ? Math.min(elapsed / duration, 1) : 0
+}
+
+/**
+ * Returns primary scene (useful for UI that needs a "main" scene).
+ * Heuristic: earliest started scene, or null if no scenes active.
+ * STABLE: Only changes on lifetime boundaries.
+ */
+export function usePrimaryScene(): ActiveLifetime | null {
+  const lifetimes = useSceneLifetimes()
+  if (lifetimes.length === 0) return null
+
+  // Return earliest started scene
+  return lifetimes.reduce((earliest, current) =>
+    current.started_at < earliest.started_at ? current : earliest
+  )
+}
+
+/**
+ * Check if a specific scene is currently active.
+ * STABLE: Only changes on lifetime boundaries.
+ */
+export function useIsSceneActive(sceneId: string): boolean {
+  const activeIds = useActiveSceneIds()
+  return activeIds.has(sceneId)
 }

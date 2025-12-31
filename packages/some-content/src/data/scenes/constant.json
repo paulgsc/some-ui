@@ -1,0 +1,16 @@
+[
+  {
+    "panels": {
+      "sidebarTop": {
+        "registry_key": "music",
+        "props": {},
+        "children": []
+      },
+      "sidebarBottom": {
+        "registry_key": "scheduled",
+        "props": {},
+        "children": []
+      }
+    }
+  }
+]
