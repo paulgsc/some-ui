@@ -24,16 +24,6 @@
         "registry_key": "cube",
         "props": { "region": "footerRight", "faceCapacity": 1 },
         "children": []
-      },
-      "sidebarTop": {
-        "registry_key": "music",
-        "props": {},
-        "children": []
-      },
-      "sidebarBottom": {
-        "registry_key": "scheduled",
-        "props": {},
-        "children": []
       }
     }
   }

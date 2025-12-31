@@ -66,7 +66,7 @@ export const OrchestratorDemo = ({
         const newIndex = items.findIndex((_, i) => `scene-${i}` === over.id)
 
         const movedArray = arrayMove(items, oldIndex, newIndex)
-        return recalculateTimeline(movedArray)
+        return movedArray
       })
     }
   }
@@ -80,18 +80,15 @@ export const OrchestratorDemo = ({
 
     const newScenes = [...scenes]
     newScenes[editingScene.index] = updatedScene
-    setScenes(recalculateTimeline(newScenes))
+    setScenes(newScenes)
     setEditingScene(null)
   }
 
   const handleAddScene = (): void => {
-    const lastScene = scenes[scenes.length - 1]
-    const startTime = lastScene ? lastScene.start_time + lastScene.duration : 0
-
     const newScene: SceneConfig = {
       scene_name: `New Scene ${scenes.length + 1}`,
       duration: 60_000, // 1 minute default
-      start_time: startTime,
+      start_time: 0,
       ui: [], // Initializing empty UI array as per UILayoutIntentSchema
     }
     setScenes([...scenes, newScene])
