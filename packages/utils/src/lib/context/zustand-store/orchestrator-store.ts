@@ -1,6 +1,7 @@
 import type {
   ActiveLifetime,
   OrchestratorCommand,
+  OrchestratorMode,
   OrchestratorState,
   SceneConfig,
   StreamStatus,
@@ -31,6 +32,14 @@ type LifetimeState = {
   scene_lifetimes: Array<ActiveLifetime>
 }
 
+// Orchestrator mode state (FSM tracking)
+type ModeState = {
+  mode: OrchestratorMode
+  is_running: boolean
+  is_paused: boolean
+  is_terminal: boolean
+}
+
 type OrchestratorStoreState = {
   // === TEMPORAL LAYERS ===
   // Tick-driven state (updates every tick)
@@ -38,6 +47,9 @@ type OrchestratorStoreState = {
 
   // Lifetime-driven state (updates only on lifetime boundaries)
   lifetimes: LifetimeState
+
+  // Mode-driven state (updates on command boundaries)
+  mode: ModeState
 
   // === RAW STATE (escape hatch for debugging) ===
   rawState: OrchestratorState
@@ -108,6 +120,21 @@ function normalizeLifetimes(lifetimes: Array<ActiveLifetime>): LifetimeState {
   }
 }
 
+// Helper: Derive mode state from mode enum
+function deriveModeState(mode: OrchestratorMode): ModeState {
+  const is_running = mode === "Running"
+  const is_paused = mode === "Paused"
+  const is_terminal =
+    mode === "Finished" || mode === "Stopped" || mode === "Error"
+
+  return {
+    mode,
+    is_running,
+    is_paused,
+    is_terminal,
+  }
+}
+
 export const useOrchestratorStore = create<OrchestratorStoreState>(
   (set, get) => ({
     // --- Initial state ---
@@ -122,6 +149,7 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
       active_scene_ids: new Set(),
       scene_lifetimes: [],
     },
+    mode: deriveModeState("Unconfigured"),
     rawState: defaultOrchestratorState,
     isConnected: false,
     isInitializing: false,
@@ -130,7 +158,7 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
     _streamId: null,
 
     // --- Internal setters ---
-    // This is the KEY normalization point - handles concurrent lifetimes
+    // This is the KEY normalization point - handles concurrent lifetimes and mode
     _setState: (next) =>
       set((prev) => {
         const prevSceneIds = prev.lifetimes.active_scene_ids
@@ -138,6 +166,9 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
 
         // Structural boundary detection (set-based, not scalar)
         const lifetimesChanged = !setEquals(prevSceneIds, nextSceneIds)
+
+        // Mode boundary detection
+        const modeChanged = prev.mode.mode !== next.mode
 
         return {
           rawState: next,
@@ -154,6 +185,9 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
           lifetimes: lifetimesChanged
             ? normalizeLifetimes(next.active_lifetimes)
             : prev.lifetimes,
+
+          // Mode ONLY updates on state change (command-driven)
+          mode: modeChanged ? deriveModeState(next.mode) : prev.mode,
         }
       }),
 
@@ -300,6 +334,58 @@ export const selectAllLifetimes = (
 ): Map<number, ActiveLifetime> => s.lifetimes.lifetimes
 
 // -----------------------------------------------------------------------------
+// 🟡 MODE SELECTORS (stable across ticks, changes on commands)
+// Use these for: control buttons, FSM-dependent UI, status indicators
+// -----------------------------------------------------------------------------
+
+/**
+ * Returns the current orchestrator mode.
+ * STABLE: Only changes on mode transitions (Start, Stop, Pause, etc.)
+ */
+export const selectMode = (s: OrchestratorStoreState): OrchestratorMode =>
+  s.mode.mode
+
+export const useMode = () => useOrchestratorStore(selectMode)
+
+/**
+ * Returns true if orchestrator is actively running.
+ * STABLE: Only changes on mode transitions.
+ */
+export const selectIsRunning = (s: OrchestratorStoreState): boolean =>
+  s.mode.is_running
+
+export const useIsRunning = () => useOrchestratorStore(selectIsRunning)
+
+/**
+ * Returns true if orchestrator is paused.
+ * STABLE: Only changes on mode transitions.
+ */
+export const selectIsPaused = (s: OrchestratorStoreState): boolean =>
+  s.mode.is_paused
+
+export const useIsPaused = () => useOrchestratorStore(selectIsPaused)
+
+/**
+ * Returns true if orchestrator is in a terminal state (Finished, Stopped, Error).
+ * STABLE: Only changes on mode transitions.
+ */
+export const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
+  s.mode.is_terminal
+
+export const useIsTerminal = () => useOrchestratorStore(selectIsTerminal)
+
+/**
+ * Returns true if orchestrator can accept playback commands (Idle, Running, Paused).
+ * STABLE: Only changes on mode transitions.
+ */
+export const selectIsActive = (s: OrchestratorStoreState): boolean =>
+  s.mode.mode === "Idle" ||
+  s.mode.mode === "Running" ||
+  s.mode.mode === "Paused"
+
+export const useIsActive = () => useOrchestratorStore(selectIsActive)
+
+// -----------------------------------------------------------------------------
 // LEGACY COMPATIBILITY (deprecated but kept for migration)
 // -----------------------------------------------------------------------------
 
@@ -320,14 +406,8 @@ export const useCurrentSceneId = () =>
   useOrchestratorStore(selectCurrentSceneId)
 
 // -----------------------------------------------------------------------------
-// ORCHESTRATOR STATE (non-temporal)
+// OTHER STATE SELECTORS
 // -----------------------------------------------------------------------------
-
-export const selectIsRunning = (s: OrchestratorStoreState) =>
-  s.rawState.is_running
-
-export const selectIsPaused = (s: OrchestratorStoreState) =>
-  s.rawState.is_paused
 
 export const selectStreamStatus = (s: OrchestratorStoreState) =>
   s.rawState.stream_status
