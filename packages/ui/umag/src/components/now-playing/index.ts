@@ -1,3 +1,3 @@
 import "./index.css"
 
-export * from "./now-playing-card"
+export { NowPlayingCard } from "./now-playing-card"

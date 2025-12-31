@@ -74,12 +74,11 @@ export const useGameLoop = ({
   // ====================================================================
   const spawnCharacter = useCallback(() => {
     const bridge = gameBridgeRef.current
-    if (!bridge) return 
-
+    if (!bridge) return
 
     const events = bridge.spawnCharacter()
 
-    events.forEach((event, index) => {
+    events.forEach((event) => {
       switch (event.type) {
         case "characterSpawned": {
           const char = bridge.createDisplayCharacter(event.spawnResult)
@@ -103,10 +102,30 @@ export const useGameLoop = ({
           onBoardFullRef.current?.()
           break
         }
+        case "difficultyChanged": {
+          playSoundRef.current("difficulty_increase")
+          setTimingParamsRef.current(bridge.getTimingParams())
+          break
+        }
+
+        case "matchFound":
+        case "inputMissed":
+        case "ambiguousInput":
+        case "bufferUpdated":
+        case "streakMilestone":
+        case "statsUpdated":
+        case "charactersExpired": {
+          // These events are intentionally handled in:
+          // - input handling
+          // - updateCharacters loop
+          // - scoring / stats effects
+          //
+          // Spawn loop must remain side-effect minimal.
+          break
+        }
 
         default: {
-          event.type satisfies never
-          // This stays reachable unless you enforce exhaustiveness
+          event satisfies never
         }
       }
     })
@@ -144,8 +163,21 @@ export const useGameLoop = ({
           setTimingParamsRef.current(bridge.getTimingParams())
           break
         }
+        case "characterSpawned":
+        case "boardFull":
+        case "matchFound":
+        case "inputMissed":
+        case "bufferUpdated":
+        case "ambiguousInput":
+        case "streakMilestone": {
+          // These are handled in:
+          // - spawn loop
+          // - input handler
+          // - scoring / UI layers
+          break
+        }
         default: {
-          event.type satisfies never
+          event satisfies never
         }
       }
     })

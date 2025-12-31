@@ -18,19 +18,19 @@ enum RuntimeState {
 
 let state: RuntimeState = RuntimeState.Idle
 let wasmModule: any = null
-let coreInstance: HangulGameCore
+let coreInstance: HangulGameCore | null
 let bridgeInstance: WasmGameBridge | null = null
 let loadPromise: Promise<WasmGameBridge | null> | null = null
 let lastError: Error | null = null
 
 // Runtime getters
-export function getRuntimeState() {
+export function getRuntimeState(): RuntimeState {
   return state
 }
-export function getLastError() {
+export function getLastError(): Error | null {
   return lastError
 }
-export function getCoreInstance() {
+export function getCoreInstance(): HangulGameCore | null {
   return coreInstance
 }
 export function getBridgeInstance() {
@@ -64,6 +64,7 @@ export async function loadHangulWasm(
       })
 
       coreInstance = new wasmModule.HangulGameCore(finalConfig, mode)
+      if (!coreInstance) throw new Error("coreInstance is undefined")
       bridgeInstance = new WasmGameBridge(coreInstance, mode)
 
       state = RuntimeState.Loaded
@@ -86,7 +87,7 @@ export async function loadHangulWasm(
 /**
  * Reset runtime (HMR, test cleanup)
  */
-export function resetHangulWasm() {
+export function resetHangulWasm(): void {
   state = RuntimeState.Idle
   wasmModule = null
   coreInstance = null

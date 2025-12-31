@@ -209,7 +209,31 @@ export const LayoutEditor = () => {
     })
   }
 
-  const handleCopyJSON = () => {
+  async function copyText(text: string): Promise<boolean> {
+    // Modern Clipboard API (secure + top-level only)
+
+    // Legacy fallback (works in iframes / Storybook)
+    try {
+      const textarea = document.createElement("textarea")
+      textarea.value = text
+      textarea.setAttribute("readonly", "")
+      textarea.style.position = "fixed"
+      textarea.style.top = "-9999px"
+      document.body.appendChild(textarea)
+
+      textarea.focus()
+      textarea.select()
+
+      const success = document.execCommand("copy")
+      document.body.removeChild(textarea)
+
+      return success
+    } catch {
+      return false
+    }
+  }
+
+  const handleCopyJSON = async () => {
     if (!tree) {
       toast({
         title: "Nothing to copy",
@@ -220,9 +244,20 @@ export const LayoutEditor = () => {
     }
 
     const json = serializeLayout(tree)
-    navigator.clipboard.writeText(json)
+    const ok = await copyText(json)
+
+    if (!ok) {
+      toast({
+        title: "Copy failed",
+        description: "Clipboard is not available in this environment",
+        variant: "destructive",
+      })
+      return
+    }
+
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+
     toast({
       title: "Copied to clipboard",
       description: "JSON has been copied to your clipboard",

@@ -1,0 +1,40 @@
+[
+  {
+    "panels": {
+      "title": {
+        "registry_key": "neon",
+        "props": {
+          "theme": "dark-gold",
+          "initialText": "Honeycomb Typing Game",
+          "className": "rounded-xl size-full px-1.5 py-0.5"
+        },
+        "children": []
+      },
+      "mainContent": {
+        "registry_key": "hangul",
+        "props": { "className": "absolute inset-0" },
+        "children": []
+      },
+      "footerLeft": {
+        "registry_key": "cube",
+        "props": { "region": "footerLeft", "faceCapacity": 1 },
+        "children": []
+      },
+      "footerRight": {
+        "registry_key": "cube",
+        "props": { "region": "footerRight", "faceCapacity": 1 },
+        "children": []
+      },
+      "sidebarTop": {
+        "registry_key": "music",
+        "props": {},
+        "children": []
+      },
+      "sidebarBottom": {
+        "registry_key": "scheduled",
+        "props": {},
+        "children": []
+      }
+    }
+  }
+]
