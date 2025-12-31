@@ -21,7 +21,7 @@ import {
   OrchestratorTimeline,
 } from "@slideshow/components/orchestrator"
 import { Plus } from "lucide-react"
-import type { SceneConfig, TimeMs } from "some-types-utils"
+import type { SceneConfig } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
 
 export const OrchestratorDemo = ({
@@ -41,21 +41,6 @@ export const OrchestratorDemo = ({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
-
-  /**
-   * Helper to recalculate start times based on durations
-   * Essential since your new type schema includes start_time
-   */
-  const recalculateTimeline = (
-    updatedScenes: Array<SceneConfig>
-  ): Array<SceneConfig> => {
-    let currentAccumulator: TimeMs = 0
-    return updatedScenes.map((scene) => {
-      const sceneWithStart = { ...scene, start_time: currentAccumulator }
-      currentAccumulator += scene.duration
-      return sceneWithStart
-    })
-  }
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event

@@ -92,10 +92,22 @@ export const ActiveLifetimeSchema = z.object({
 
 export type ActiveLifetime = z.infer<typeof ActiveLifetimeSchema>
 
+// --- OrchestratorMode (FSM states) ---
+export const OrchestratorModeSchema = z.enum([
+  "Unconfigured",
+  "Idle",
+  "Running",
+  "Paused",
+  "Finished",
+  "Stopped",
+  "Error",
+])
+
+export type OrchestratorMode = z.infer<typeof OrchestratorModeSchema>
+
 // --- OrchestratorState ---
 export const OrchestratorStateSchema = z.object({
-  is_running: z.boolean(),
-  is_paused: z.boolean(),
+  mode: OrchestratorModeSchema,
   current_time: TimeMsSchema,
   total_duration: TimeMsSchema,
   progress: z.number().min(0).max(1),
@@ -170,8 +182,7 @@ export const OutgoingMessageSchema = z.discriminatedUnion("type", [
 export type OutgoingMessage = z.infer<typeof OutgoingMessageSchema>
 
 export const defaultOrchestratorState: OrchestratorState = {
-  is_running: false,
-  is_paused: false,
+  mode: "Unconfigured",
   progress: 0.0,
   current_time: 0,
   time_remaining: 0,
