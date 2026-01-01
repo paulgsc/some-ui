@@ -87,7 +87,6 @@ export function useObsStatus(options: UseObsStatusOptions) {
       }
 
       if (event.type === "obsStatus") {
-        console.log("obsStatus event: ", event)
         setStatus((prev) => updateClientObsState(prev, event.status))
       }
     },
