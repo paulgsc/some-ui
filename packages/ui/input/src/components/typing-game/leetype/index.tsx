@@ -11,7 +11,7 @@ import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
 import { useFormattedCode } from "@input/hooks/leetype/use-formatted-code"
 import type { DisplayMode, GameState, Language } from "@input/types/leetype"
-import { Badge, Card } from "some-ui-shared"
+import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 
 type LeetypeProps = {
   codePaths: Record<Language, string>
@@ -82,7 +82,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   }
 
   return (
-    <div className="code absolute inset-0">
+    <div className="code absolute inset-0 flex flex-col overflow-hidden">
       {gameState === "idle" && (
         <SettingsCard
           language={language}
@@ -106,55 +106,97 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
         gameState={gameState}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-card-foreground">
-              Target Code
-            </h2>
-            <Badge variant="secondary" className="font-mono">
-              {language}
-            </Badge>
-          </div>
-          {codeState.status === "LOADING" ? (
-            <LoadingCodeState attempt={codeState.attempt} />
-          ) : codeState.status === "ERROR" ? (
-            <ErrorCodeState
-              error={codeState.error}
-              path={codePaths[language]}
-              onRetry={() => handleLanguageChange(language)}
-            />
-          ) : codeState.status === "SUCCESS" ? (
-            <CodeDisplay
-              displayCode={typingGame.displayCode}
-              language={language}
-              targetUnits={typingGame.targetUnits}
-              cursorUnitIndex={typingGame.cursorUnitIndex}
-              userUnits={typingGame.userUnits}
-            />
-          ) : (
-            <LoadingCodeState attempt={0} />
-          )}
-        </Card>
+      <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LEFT COLUMN */}
+        <div className="flex min-w-0 flex-col">
+          <Tabs defaultValue="code" className="flex flex-1 min-h-0 flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <TabsList>
+                <TabsTrigger value="code">Code</TabsTrigger>
+                <TabsTrigger value="prompt">Prompt</TabsTrigger>
+              </TabsList>
 
-        <TypingInputCard
-          gameState={gameState}
-          userInput={typingGame.userInput}
-          elapsedTime={typingGame.elapsedTime}
-          accuracy={typingGame.accuracy}
-          progress={typingGame.progress}
-          onStart={handleStart}
-          onReset={handleReset}
-          onInputChange={typingGame.handleInputChange}
-          inputRef={inputRef}
-          disabled={codeState.status !== "SUCCESS"}
-        />
+              <Badge variant="secondary" className="font-mono">
+                {language}
+              </Badge>
+            </div>
 
-        <TypingErrorAlert
-          consecutiveErrors={typingGame.consecutiveErrors}
-          onDismiss={typingGame.onDismiss}
-          showErrorAlert={typingGame.showErrorAlert}
-        />
+            {/* Content container */}
+            <div className="relative flex-1 min-h-0">
+              <TabsContent
+                value="code"
+                className="absolute inset-0 flex min-h-0 flex-col rounded-lg border bg-card p-6"
+              >
+                <h2 className="mb-4 text-lg font-semibold text-card-foreground">
+                  Target Code
+                </h2>
+
+                {/* Scroll containment */}
+                <div className="min-h-0 flex-1 overflow-auto">
+                  {codeState.status === "LOADING" ? (
+                    <LoadingCodeState attempt={codeState.attempt} />
+                  ) : codeState.status === "ERROR" ? (
+                    <ErrorCodeState
+                      error={codeState.error}
+                      path={codePaths[language]}
+                      onRetry={() => handleLanguageChange(language)}
+                    />
+                  ) : codeState.status === "SUCCESS" ? (
+                    <CodeDisplay
+                      displayCode={typingGame.displayCode}
+                      language={language}
+                      targetUnits={typingGame.targetUnits}
+                      cursorUnitIndex={typingGame.cursorUnitIndex}
+                      userUnits={typingGame.userUnits}
+                    />
+                  ) : (
+                    <LoadingCodeState attempt={0} />
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent
+                value="prompt"
+                className="absolute inset-0 overflow-auto rounded-lg border bg-card p-6"
+              >
+                <h2 className="mb-2 text-lg font-semibold text-card-foreground">
+                  Problem Description
+                </h2>
+
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Describe what the user is supposed to implement, constraints,
+                  edge cases, or reasoning hints here.
+                </p>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="min-w-0">
+          <TypingInputCard
+            gameState={gameState}
+            userInput={typingGame.userInput}
+            elapsedTime={typingGame.elapsedTime}
+            accuracy={typingGame.accuracy}
+            progress={typingGame.progress}
+            onStart={handleStart}
+            onReset={handleReset}
+            onInputChange={typingGame.handleInputChange}
+            inputRef={inputRef}
+            disabled={codeState.status !== "SUCCESS"}
+          />
+        </div>
+
+        {/* FULL-WIDTH ALERT */}
+        <div className="lg:col-span-2">
+          <TypingErrorAlert
+            consecutiveErrors={typingGame.consecutiveErrors}
+            onDismiss={typingGame.onDismiss}
+            showErrorAlert={typingGame.showErrorAlert}
+          />
+        </div>
       </div>
     </div>
   )

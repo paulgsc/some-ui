@@ -488,6 +488,18 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/tsconfig
 
+  extensions/some-drama:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../packages/rollup-config
+
   extensions/some-mujik:
     dependencies:
       clsx:

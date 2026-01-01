@@ -116,11 +116,6 @@ export function renderRegistryComponent<K extends string>(
 
   Component = getEnhanced(Component, policy.enhanceComponent)
 
-  // Apply enhancement if provided (dependency inversion point)
-  if (policy.enhanceComponent) {
-    Component = policy.enhanceComponent(Component)
-  }
-
   // Build component tree from inside out
   let node: ReactNode = <Component {...props} />
 

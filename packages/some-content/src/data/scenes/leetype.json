@@ -15,7 +15,7 @@
         "props": {
           "className": "absolute inset-0",
           "codePaths": {
-            "typescript": "/code-samples/fibonacci.ts",
+            "typescript": "/code-samples/two-sum.ts",
             "rust": "/code-samples/factorial.rs",
             "cpp": "/code-samples/quicksort.cpp",
             "c": "/code-samples/binary-search.c"

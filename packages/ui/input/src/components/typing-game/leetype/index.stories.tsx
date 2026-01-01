@@ -1,6 +1,7 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-import { Leetype } from "."
 import type { Language } from "@input/types/leetype"
+import type { Meta, StoryObj } from "@storybook/react-vite"
+
+import { Leetype } from "."
 
 const meta: Meta<typeof Leetype> = {
   title: "UI/Input/Components/Typing/Leetype",
@@ -20,7 +21,7 @@ type Story = StoryObj<typeof Leetype>
 
 /* ---------- Default Code Paths ---------- */
 const defaultCodePaths: Record<Language, string> = {
-  typescript: "/code-samples/fibonacci.ts",
+  typescript: "/code-samples/two-sum.ts",
   rust: "/code-samples/factorial.rs",
   cpp: "/code-samples/quicksort.cpp",
   c: "/code-samples/binary-search.c",

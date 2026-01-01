@@ -1,12 +1,12 @@
 // This file has been automatically migrated to valid ESM format by Storybook.
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
+import { createRequire } from "node:module"
+import { fileURLToPath } from "node:url"
 import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const require = createRequire(import.meta.url)
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -20,7 +20,9 @@ const config: StorybookConfig = {
   ],
   logLevel: "error",
 
-  staticDirs: ["../packages/ui/honeycomb/public", "../packages/ui/input/public"],
+  staticDirs: [
+    "../packages/some-content/public",
+  ],
 
   core: {
     disableTelemetry: true,
