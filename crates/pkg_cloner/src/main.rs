@@ -46,7 +46,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("📄 Copied {} configuration file(s)", copied_configs.len());
 
     for config in copied_configs {
-        println!("   - {}", config.filename());
+        println!("   - {}", config);
     }
 
     Ok(())
