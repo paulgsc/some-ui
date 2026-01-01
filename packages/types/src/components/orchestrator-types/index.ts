@@ -135,36 +135,6 @@ export const OrchestratorCommandSchema = z.union([
 export type OrchestratorCommand = z.infer<typeof OrchestratorCommandSchema>
 
 // --- Events (from server) ---
-export const IncomingOrchestratorEventSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("orchestratorState"),
-    stream_id: z.string(),
-    state: OrchestratorStateSchema,
-  }),
-
-  z.object({
-    type: z.literal("clientCount"),
-    count: z.number().int().nonnegative(),
-  }),
-
-  z.object({
-    type: z.literal("ping"),
-  }),
-
-  z.object({
-    type: z.literal("pong"),
-  }),
-
-  z.object({
-    type: z.literal("error"),
-    message: z.string(),
-  }),
-])
-
-export type IncomingOrchestratorEvent = z.infer<
-  typeof IncomingOrchestratorEventSchema
->
-
 export const OutgoingMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ping") }),
   z.object({ type: z.literal("pong") }),

@@ -8,7 +8,7 @@ export const NowPlayingEventTypeSchema = z.enum([
   "tabMetaData",
 ])
 
-const NowPlayingSchema = z.object({
+export const NowPlayingSchema = z.object({
   title: z.string().optional(),
   channel: z.string().optional(),
   video_id: z.string().optional(),
@@ -18,32 +18,6 @@ const NowPlayingSchema = z.object({
 })
 
 export type NowPlayingType = z.infer<typeof NowPlayingSchema>
-
-export const IncomingNowPlayingEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("ping") }),
-  z.object({ type: z.literal("pong") }),
-  z.object({ type: z.literal("error"), message: z.string() }),
-  z.object({
-    type: z.literal("subscribe"),
-    event_types: z.array(NowPlayingSchema),
-  }),
-  z.object({
-    type: z.literal("unsubscribe"),
-    event_types: z.array(NowPlayingSchema),
-  }),
-  z.object({
-    type: z.literal("clientCount"),
-    count: z.number().nonnegative(),
-  }),
-  z.object({
-    type: z.literal("tabMetaData"),
-    data: NowPlayingSchema,
-  }),
-])
-
-export type IncomingNowPlayingEvent = z.infer<
-  typeof IncomingNowPlayingEventSchema
->
 
 export const OutgoingNowPlayingEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ping") }),

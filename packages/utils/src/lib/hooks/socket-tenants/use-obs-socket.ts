@@ -5,42 +5,15 @@ import type {
   WebSocketManager,
 } from "@utils/lib/hooks/websocket"
 import { updateClientObsState } from "@utils/lib/obs"
-import type { ClientObsState } from "some-types-utils"
-import { IncomingObsEventSchema, ObsCommandSchema } from "some-types-utils"
-import { z } from "zod"
-
-type IncomingObsEvent = z.infer<typeof IncomingObsEventSchema>
-
-export const EventTypeSchema = z.enum([
-  "ping",
-  "pong",
-  "error",
-  "obsStatus",
-  "tabMetaData",
-])
-
-export const EventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("ping") }),
-  z.object({ type: z.literal("pong") }),
-  z.object({ type: z.literal("error"), message: z.string() }),
-  z.object({
-    type: z.literal("subscribe"),
-    event_types: z.array(EventTypeSchema),
-  }),
-  z.object({
-    type: z.literal("unsubscribe"),
-    event_types: z.array(EventTypeSchema),
-  }),
-  z.object({
-    type: z.literal("obsCmd"),
-    cmd: ObsCommandSchema,
-  }),
-])
-
-type WsEvents = z.infer<typeof EventSchema>
+import type {
+  ClientObsState,
+  IncomingEvent,
+  OutgoingObsEvent,
+} from "some-types-utils"
+import { IncomingEventSchema, OutgoingObsEventSchema } from "some-types-utils"
 
 type UseObsStatusOptions = Omit<
-  UseWebSocketOptions<IncomingObsEvent, WsEvents>,
+  UseWebSocketOptions<IncomingEvent, OutgoingObsEvent>,
   "incomingMessageSchema" | "outgoingMessageSchema" | "init"
 >
 
@@ -98,10 +71,10 @@ export function useObsStatus(options: UseObsStatusOptions) {
     })
   }, [])
 
-  const ws = useWebSocket<IncomingObsEvent, WsEvents>({
+  const ws = useWebSocket<IncomingEvent, OutgoingObsEvent>({
     url: options.url,
-    incomingMessageSchema: IncomingObsEventSchema,
-    outgoingMessageSchema: EventSchema,
+    incomingMessageSchema: IncomingEventSchema,
+    outgoingMessageSchema: OutgoingObsEventSchema,
     autoReconnect: options.autoReconnect ?? true,
     reconnectInterval: options.reconnectInterval ?? 5000,
     debugMode: options.debugMode ?? false,
@@ -114,6 +87,7 @@ export function useObsStatus(options: UseObsStatusOptions) {
       }
 
       if (event.type === "obsStatus") {
+        console.log("obsStatus event: ", event)
         setStatus((prev) => updateClientObsState(prev, event.status))
       }
     },

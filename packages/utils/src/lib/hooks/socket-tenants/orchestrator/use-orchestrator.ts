@@ -3,13 +3,13 @@ import { useOrchestratorStore } from "@utils/lib/context/zustand-store"
 import type { WebSocketManager } from "@utils/lib/hooks/websocket"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
-  IncomingOrchestratorEvent,
+  IncomingEvent,
   OrchestratorCommand,
   OutgoingMessage,
   SceneConfig,
 } from "some-types-utils"
 import {
-  IncomingOrchestratorEventSchema,
+  IncomingEventSchema,
   OutgoingMessageSchema,
 } from "some-types-utils"
 
@@ -64,7 +64,7 @@ export function useOrchestrator({
   )
 
   const onIncoming = useCallback(
-    (event: IncomingOrchestratorEvent) => {
+    (event: IncomingEvent) => {
       if (event.type === "ping") {
         sendRef.current?.({ type: "pong" })
         return
@@ -94,9 +94,9 @@ export function useOrchestrator({
     [_setState, _setError]
   )
 
-  const ws = useWebSocket<IncomingOrchestratorEvent, OutgoingMessage>({
+  const ws = useWebSocket<IncomingEvent, OutgoingMessage>({
     url: orchestratorUrl ?? `ws://${window.location.hostname}:3000/ws`,
-    incomingMessageSchema: IncomingOrchestratorEventSchema,
+    incomingMessageSchema: IncomingEventSchema,
     outgoingMessageSchema: OutgoingMessageSchema,
     autoReconnect: true,
     reconnectInterval: 3000,

@@ -5,17 +5,14 @@ import type {
   UseWebSocketOptions,
   WebSocketManager,
 } from "@utils/lib/hooks/websocket"
-import type {
-  IncomingNowPlayingEvent,
-  OutgoingNowPlayingEvent,
-} from "some-types-utils"
+import type { IncomingEvent, OutgoingNowPlayingEvent } from "some-types-utils"
 import {
-  IncomingNowPlayingEventSchema,
+  IncomingEventSchema,
   OutgoingNowPlayingEventSchema,
 } from "some-types-utils"
 
 type UseNowPlayingOptions = Omit<
-  UseWebSocketOptions<IncomingNowPlayingEvent, OutgoingNowPlayingEvent>,
+  UseWebSocketOptions<IncomingEvent, OutgoingNowPlayingEvent>,
   "incomingMessageSchema" | "outgoingMessageSchema" | "init"
 >
 
@@ -34,9 +31,9 @@ export function useNowPlaying(options: UseNowPlayingOptions) {
   }, [])
 
   // Set up WebSocket
-  const ws = useWebSocket<IncomingNowPlayingEvent, OutgoingNowPlayingEvent>({
+  const ws = useWebSocket<IncomingEvent, OutgoingNowPlayingEvent>({
     url: options.url,
-    incomingMessageSchema: IncomingNowPlayingEventSchema,
+    incomingMessageSchema: IncomingEventSchema,
     outgoingMessageSchema: OutgoingNowPlayingEventSchema,
     autoReconnect: options.autoReconnect ?? true,
     reconnectInterval: options.reconnectInterval ?? 3600000, // 1 hour
