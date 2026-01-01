@@ -3,6 +3,7 @@ import type { DisplayMode, Language } from "@input/types/leetype"
 import { ChevronDown, Settings2 } from "lucide-react"
 import {
   Card,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -90,21 +91,22 @@ export const SettingsCard: FC<SettingsCardProps> = ({
             <label className="text-sm font-medium text-card-foreground">
               Duration
             </label>
-            <Select
-              value={duration.toString()}
-              onValueChange={(v) => onDurationChange(Number.parseInt(v))}
-            >
-              <SelectTrigger className="bg-secondary border-border text-secondary-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="60">1 minute</SelectItem>
-                <SelectItem value="180">3 minutes</SelectItem>
-                <SelectItem value="300">5 minutes</SelectItem>
-                <SelectItem value="600">10 minutes</SelectItem>
-                <SelectItem value="900">15 minutes</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={duration}
+                onChange={(e) => {
+                  const value = Number.parseInt(e.target.value, 10)
+                  if (!Number.isNaN(value)) {
+                    onDurationChange(value)
+                  }
+                }}
+                className="bg-secondary border-border text-secondary-foreground w-24"
+              />
+              <span className="text-sm text-muted-foreground">seconds</span>
+            </div>
           </div>
         </div>
       )}

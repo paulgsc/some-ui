@@ -7,15 +7,8 @@ type ObsStatusPanelProps = {
 }
 
 export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
-  const {
-    status,
-    isConnected,
-    isConnecting,
-    error,
-    connect,
-    disconnect,
-    stopStreaming,
-  } = useObsStatusWebSocket()
+  const { status, isConnected, isInitializing, error, stopStreaming } =
+    useObsStatusWebSocket({ url: `ws://${window.location.hostname}:3000/ws` })
 
   return (
     <div className="obs-status-panel">
@@ -29,7 +22,7 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
           {isConnected ? "●" : "○"}
         </div>
         <span>
-          {isConnecting
+          {isInitializing
             ? "Connecting..."
             : isConnected
               ? "Connected"
@@ -38,14 +31,6 @@ export const ObsStatusPanel: FC<ObsStatusPanelProps> = () => {
 
         {error && <div className="error-message">Error: {error}</div>}
 
-        <div className="connection-actions">
-          <button
-            onClick={isConnected ? disconnect : connect}
-            disabled={isConnecting}
-          >
-            {isConnected ? "Disconnect" : "Connect"}
-          </button>
-        </div>
         <Button onClick={stopStreaming} disabled={!isConnected}>
           Stop Streaming
         </Button>
