@@ -7,6 +7,7 @@ type RegistryKey =
   | "leetype"
   | "scheduled"
   | "music"
+  | "voice"
   | "neon"
   | "cdrama-header"
   | "cdrama-metrics"
@@ -20,6 +21,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   hangul: lazyWithPreload(() => import("some-ui-honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("some-ui-input"), "Leetype"),
   music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
+  voice: lazyWithPreload(() => import("umag"), "VoiceAvatar"),
   neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
   "cdrama-header": lazyWithPreload(() => import("makjang"), "DramaHeader"),
   "cdrama-metrics": lazyWithPreload(() => import("makjang"), "MetricsPanel"),

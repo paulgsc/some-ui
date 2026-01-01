@@ -1,5 +1,9 @@
 import { componentRegistry } from "@some-ui/content"
-import { dramaTree, studyTree } from "@some-ui/content/data/layout-tree"
+import {
+  dramaTree,
+  studyTree,
+  voiceTree,
+} from "@some-ui/content/data/layout-tree"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useSceneLifetimes } from "some-ui-utils"
 
@@ -94,9 +98,9 @@ export const DramaLayout: Story = {
   },
 }
 
-export const MultiFocus: Story = {
-  render: (args) => <AnimatedStory transitionMs={args.transitionMs} />,
-  args: { transitionMs: 300 },
+export const VoiceLayout: Story = {
+  render: (args) => <AnimatedStory {...args} />,
+  args: { transitionMs: 300, layoutTree: voiceTree },
   parameters: {
     docs: {
       description: {
