@@ -11,10 +11,8 @@ import { useWaveform } from "@umag/hooks/voice-ui/use-waveform"
 export const VoiceAvatar = () => {
   const [isActive, setIsActive] = useState(false)
   const { theme, cycleTheme } = useTheme()
-  const { waveformData, targetWaveform, updateWaveform, getAverageAmplitude } =
-    useWaveform()
-  const { eyeOffset, targetEyeOffset, handleMouseMove, updateEyeOffset } =
-    useEyeTracking()
+  const { waveformData, updateWaveform, getAverageAmplitude } = useWaveform()
+  const { eyeOffset, handleMouseMove, updateEyeOffset } = useEyeTracking()
   const { blinkState, updateBlinking } = useBlinking()
   const { particles, initializeParticles, updateParticles } = useParticles()
 
@@ -57,9 +55,9 @@ export const VoiceAvatar = () => {
     waveformData,
     getAverageAmplitude,
     eyeOffset,
-    updateEyeOffset: (canvas, time) => {
-      updateEyeOffset(canvas, time)
-      updateWaveform(isActive, time)
+    updateEyeOffset: (time) => {
+      updateEyeOffset()
+      updateWaveform(isActive, time as any)
     },
     blinkState,
     updateBlinking,
