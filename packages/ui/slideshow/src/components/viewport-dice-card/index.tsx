@@ -50,7 +50,7 @@ export const ViewportDiceCard = <K extends string>({
   if (!activeFace) return null
 
   return (
-    <div className="relative size-full">
+    <div className="relative size-full flex items-center justify-center">
       {activeFace.contentIndices.map((itemIndex) => {
         const descriptor = viewportConfig.items[itemIndex]
         const { kind, props } = descriptor

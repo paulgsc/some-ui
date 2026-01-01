@@ -8,70 +8,61 @@
           "faceCapacity": 1,
           "rotationAxis": "cube:x"
         },
-        "children": []
-      },
-      "video": {
-        "registry_key": "cube",
-        "props": { "region": "video", "faceCapacity": 1 },
-        "focus": { "region": "video", "intensity": 0.7 },
         "children": [
           {
-            "registry_key": "sanity",
-            "duration": 30000
-          },
-          {
-            "registry_key": "sanity",
-            "duration": 30000
-          }
-        ]
-      },
-      "mainContent": {
-        "registry_key": "cube",
-        "props": { "region": "mainContent", "faceCapacity": 1 },
-        "children": [
-          {
-            "registry_key": "hangul",
-            "duration": 30000,
-            "props": { "className": "absolute inset-0" }
-          },
-          {
-            "registry_key": "leetype",
-            "duration": 30000,
+            "registry_key": "cdrama-header",
+            "duration": 300000,
             "props": {
-              "className": "absolute inset-0",
-              "codePaths": {
-                "typescript": "/code-samples/fibonacci.ts",
-                "rust": "/code-samples/factorial.rs",
-                "cpp": "/code-samples/quicksort.cpp",
-                "c": "/code-samples/binary-search.c"
-              }
+              "dramaId": "glory",
+              "episodeNumber": 8,
+              "thumbnailUrl": "placeholder",
+              "currentMinute": 45,
+              "className": "w-4/5"
             }
           }
         ]
       },
-      "footerLeft": {
-        "registry_key": "cube",
-        "props": { "region": "footerLeft", "faceCapacity": 1 },
-        "children": []
-      },
-      "footerRight": {
-        "registry_key": "cube",
-        "props": { "region": "footerRight", "faceCapacity": 1 },
-        "children": []
-      },
       "sidebarTop": {
-        "registry_key": "cube",
-        "props": { "region": "sidebarTop", "faceCapacity": 1 },
-        "children": [
-          {
-            "registry_key": "music",
-            "duration": 30000
-          }
-        ]
+        "registry_key": "cdrama-metrics",
+        "props": {
+          "overallRating": 9.6,
+          "likelihoodToFinish": 9.2,
+          "rewatchValue": 8.2
+        },
+        "children": []
       },
       "sidebarBottom": {
-        "registry_key": "cube",
-        "props": { "region": "sidebarBottom", "faceCapacity": 1 },
+        "registry_key": "cdrama-ost",
+        "props": {
+          "score": 8.5,
+          "ranking": 4
+        },
+        "children": []
+      },
+      "footerLeft": {
+        "registry_key": "cdrama-emoji",
+        "props": {
+          "currentMinute": 42,
+          "reactions": [
+            { "minute": 5, "emoji": "🤣", "context": "Silly intro hijinks" },
+            {
+              "minute": 12,
+              "emoji": "😳",
+              "context": "Unexpected flirt moment"
+            },
+            {
+              "minute": 21,
+              "emoji": "💗",
+              "context": "Confession tension rising"
+            },
+            { "minute": 37, "emoji": "😭", "context": "Flashback heartbreak" },
+            {
+              "minute": 41,
+              "emoji": "🔥",
+              "context": "Peak chemistry showdown"
+            }
+          ]
+        },
         "children": []
       }
     }

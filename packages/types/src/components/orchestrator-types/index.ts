@@ -202,4 +202,7 @@ export type RegistryEntry<P = any> = {
   preload: () => Promise<{ default: ComponentType<P> }>
 }
 
-export type ComponentRegistry<T extends string> = Record<T, RegistryEntry>
+// Use a mapped type so each key 'K' can have its own internal prop type
+export type ComponentRegistry<T extends string> = {
+  [K in T]: RegistryEntry
+}
