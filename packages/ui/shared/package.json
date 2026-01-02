@@ -63,6 +63,7 @@
     "cmdk": "^1.1.1",
     "framer-motion": "^12.23.0",
     "lucide-react": "^0.378.0",
+    "media-chrome": "^4.17.2",
     "some-ui-utils": "workspace:*",
     "tailwind-merge": "^2.6.0",
     "vaul": "^1.1.2"
