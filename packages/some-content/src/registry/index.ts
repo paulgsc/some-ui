@@ -9,6 +9,7 @@ type RegistryKey =
   | "music"
   | "voice"
   | "neon"
+  | "topik"
   | "cdrama-header"
   | "cdrama-metrics"
   | "cdrama-emoji"
@@ -23,6 +24,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
   voice: lazyWithPreload(() => import("umag"), "VoiceAvatar"),
   neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
+  topik: lazyWithPreload(() => import("some-ui-chat"), "KoreanStudyPage"),
   "cdrama-header": lazyWithPreload(() => import("makjang"), "DramaHeader"),
   "cdrama-metrics": lazyWithPreload(() => import("makjang"), "MetricsPanel"),
   "cdrama-emoji": lazyWithPreload(() => import("makjang"), "EmojiTimeline"),

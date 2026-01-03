@@ -1,4 +1,5 @@
 import { useState } from "react"
+import type { Message } from "@chat/types/topik"
 import { CheckCircle2, Volume2 } from "lucide-react"
 import { Button, Card, Textarea } from "some-ui-shared"
 
@@ -17,6 +18,7 @@ type QuizActiveProps = {
     grammarNote?: string
   }
   onSpeakMessage: (message: Message) => void
+  isSpeaking: boolean
   onAnswerSubmit: (isCorrect: boolean, userAnswer: string) => void
 }
 
@@ -24,21 +26,21 @@ export const QuizActive = ({
   questionNumber,
   totalQuestions,
   question,
+  isSpeaking,
   onSpeakMessage,
   onAnswerSubmit,
 }: QuizActiveProps) => {
   const [selected, setSelected] = useState<number | null>(null)
   const [textAnswer, setTextAnswer] = useState("")
-  const [isPlaying, setIsPlaying] = useState(false)
 
-  const normalizeText = (text: string) => {
+  const normalizeText = (text: string): string => {
     return text
       .toLowerCase()
       .trim()
       .replace(/[.,!?;:]/g, "")
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     if (question.type === "multiple-choice" && selected !== null) {
       const userAnswer = question.options?.[selected] || ""
       onAnswerSubmit(selected === question.correct, userAnswer)
@@ -92,13 +94,23 @@ export const QuizActive = ({
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      onSpeakMessage(question)
+                      let nextId = 1
+                      const msg_id = (nextId++).toString()
+                      const msg: Message = {
+                        id: msg_id,
+                        role: "assistant",
+                        content: "",
+                        timestamp: "",
+                        korean: question.korean,
+                        english: "",
+                      }
+                      onSpeakMessage(msg)
                     }}
-                    disabled={isPlaying}
+                    disabled={isSpeaking}
                     className="flex-shrink-0"
                   >
                     <Volume2
-                      className={`size-5 ${isPlaying ? "text-primary animate-pulse" : ""}`}
+                      className={`size-5 ${isSpeaking ? "text-primary animate-pulse" : ""}`}
                     />
                   </Button>
                 </div>

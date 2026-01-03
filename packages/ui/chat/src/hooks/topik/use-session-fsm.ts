@@ -59,6 +59,8 @@ export function useSessionFSM({
    * This must be edge-triggered.
    */
   const nextMessage = useCallback(() => {
+    if (batches.length <= 0) return
+
     setState((prev) => {
       if (prev.currentMessageIndex == null || prev.currentBatchIndex == null) {
         return {
@@ -117,6 +119,8 @@ export function useSessionFSM({
 
   const submitAnswer = useCallback(
     (isCorrect: boolean, userAnswer?: string) => {
+      if (batches.length <= 0) return
+
       setState((prev) => {
         // Fixed: Check for null/undefined explicitly
         if (prev.currentBatchIndex == null || prev.currentQuestion == null) {
@@ -148,6 +152,8 @@ export function useSessionFSM({
   )
 
   const nextQuestion = useCallback(() => {
+    if (batches.length <= 0) return
+
     setState((prev) => {
       // Fixed: Check for null/undefined explicitly
       if (prev.currentBatchIndex == null || prev.currentQuestion == null) {
@@ -174,8 +180,8 @@ export function useSessionFSM({
 
   const completeAssessment = useCallback(
     (passed: boolean) => {
+      if (batches.length <= 0) return
       setState((prev) => {
-        // Fixed: Check for null/undefined explicitly
         if (prev.currentBatchIndex == null) {
           return prev
         }

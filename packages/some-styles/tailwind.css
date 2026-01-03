@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./themes.css";
 @import "./themes/cdrama.css";
+@import "./themes/topik.css";
 
 @plugin "tailwindcss-animate";
 

@@ -2,6 +2,7 @@ import { componentRegistry } from "@some-ui/content"
 import {
   dramaTree,
   studyTree,
+  topikTree,
   voiceTree,
 } from "@some-ui/content/data/layout-tree"
 import type { Meta, StoryObj } from "@storybook/react-vite"
@@ -101,6 +102,19 @@ export const DramaLayout: Story = {
 export const VoiceLayout: Story = {
   render: (args) => <AnimatedStory {...args} />,
   args: { transitionMs: 300, layoutTree: voiceTree },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "**Multiple Focus Regions** - Complex hierarchy with competing focus",
+      },
+    },
+  },
+}
+
+export const TopikLayout: Story = {
+  render: (args) => <AnimatedStory {...args} />,
+  args: { transitionMs: 300, layoutTree: topikTree },
   parameters: {
     docs: {
       description: {
