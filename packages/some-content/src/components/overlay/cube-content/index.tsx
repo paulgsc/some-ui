@@ -7,18 +7,20 @@ import type {
   YouTubeRegion,
 } from "some-types-utils"
 import { ViewportDiceCard } from "some-ui-slideshow"
-import { useSceneLifetimes } from "some-ui-utils"
+import { cn, useSceneLifetimes } from "some-ui-utils"
 
 type CubeContentProps = {
   region: YouTubeRegion
   faceCapacity?: number
   rotationAxis?: WasmCycleName
+  className?: string
 }
 
 const CubeContent = ({
   region,
   faceCapacity = 1,
   rotationAxis = "cube:y",
+  className,
 }: CubeContentProps): React.JSX.Element => {
   // Use shallow comparison to prevent unnecessary re-renders
   const activeLifetimes = useSceneLifetimes()
@@ -34,13 +36,13 @@ const CubeContent = ({
 
   if (activeLifetimes.length <= 0) return <Fragment />
 
-  console.log("orchestate: ", activeLifetimes)
-
   return (
-    <ViewportDiceCard
-      viewportConfig={viewportConfig}
-      registry={componentRegistry}
-    />
+    <div className={cn(className, "relative")}>
+      <ViewportDiceCard
+        viewportConfig={viewportConfig}
+        registry={componentRegistry}
+      />
+    </div>
   )
 }
 

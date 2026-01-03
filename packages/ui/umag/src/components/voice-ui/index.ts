@@ -1,0 +1,1 @@
+export { VoiceAvatar } from "./avatar"

@@ -1,0 +1,21 @@
+{
+  "name": "some-drama",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Track your C-drama watching experience with emotional reactions and detailed metrics",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --cache",
+    "clean": "rimraf dist .turbo .eslintcache"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "some-ui-rollup-config": "workspace:*",
+    "vite": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -14,7 +14,6 @@ type UseChatOrchestratorProps = {
 type UseChatOrchestratorReturn = {
   speakMessage: (message: Message) => Promise<void>
   isSpeaking: boolean
-  currentlySpeakingId: string | null
   visibleMessages: Array<Message>
 }
 
@@ -40,16 +39,12 @@ export function useChatOrchestrator({
   const currentMessage = messages[currentMessageIndex] ?? null
   const isPlaying = playState === "playing"
 
-  const { speakMessage, isSpeaking, currentlySpeakingId } = useTTSIntegration({
+  const { speakMessage, isSpeaking } = useTTSIntegration({
     componentId,
     currentMessage,
     isPlaying,
     onSpeakComplete: onMessageComplete,
-    onSpeakStart: () => {
-      console.log(
-        `[${componentId}] ▶️ Speak start (index=${currentMessageIndex})`
-      )
-    },
+    onSpeakStart: () => {},
     onSpeakError: (error) => {
       console.error(`[${componentId}] ❌ TTS error`, error)
     },
@@ -62,17 +57,7 @@ export function useChatOrchestrator({
   )
 
   // Orchestrator-level diagnostics
-  useEffect(() => {
-    console.log(`[${componentId}] Orchestrator tick`, {
-      playState,
-      isPlaying,
-      isSpeaking,
-      currentMessageIndex,
-      totalMessages: messages.length,
-      currentMessageId: currentMessage.id ?? null,
-      currentlySpeakingId,
-    })
-  }, [
+  useEffect(() => {}, [
     componentId,
     playState,
     isPlaying,
@@ -80,13 +65,11 @@ export function useChatOrchestrator({
     currentMessageIndex,
     messages.length,
     currentMessage,
-    currentlySpeakingId,
   ])
 
   return {
     speakMessage,
     isSpeaking,
-    currentlySpeakingId,
     visibleMessages,
   }
 }

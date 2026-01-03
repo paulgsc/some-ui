@@ -11,8 +11,6 @@ export const useCanvasAnimation = ({
   blinkState,
   updateBlinking,
   particles,
-  initializeParticles,
-  updateParticles,
   drawIrisWaveform,
 }: {
   isActive: boolean
@@ -37,7 +35,7 @@ export const useCanvasAnimation = ({
   ) => void
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -134,7 +132,6 @@ export const useCanvasAnimation = ({
             const prevY =
               centerY + waveformData.current[i - 1] * waveHeight * amplitude
             const cpX = (prevX + x) / 2
-            const cpY = (prevY + y) / 2
             ctx.quadraticCurveTo(cpX, prevY, x, y)
           }
         }

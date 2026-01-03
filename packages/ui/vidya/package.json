@@ -1,0 +1,66 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {
+    "@some-ui/styles": "workspace:*",
+    "framer-motion": "^12.23.26",
+    "some-types-utils": "workspace:*",
+    "some-ui-honeycomb": "workspace:*",
+    "some-ui-shared": "workspace:*",
+    "some-ui-slideshow": "workspace:*",
+    "some-ui-utils": "workspace:*",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@some-ui/content": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "default": "./dist/wireframes.es.js",
+      "import": "./dist/wireframes.es.js",
+      "require": "./dist/wireframes.cjs.js",
+      "types": "./dist/wireframes.d.ts"
+    },
+    "./style.css": "./dist/wireframes.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/wireframes.cjs.js",
+  "module": "./dist/wireframes.es.js",
+  "name": "@some-ui/vidya",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "typecheck": "tsc --noEmit",
+    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "style": "./dist/wireframes.css",
+  "type": "module",
+  "types": "./dist/wireframes.d.ts",
+  "unpkg": "wireframes.umd.js",
+  "version": "0.0.5"
+}

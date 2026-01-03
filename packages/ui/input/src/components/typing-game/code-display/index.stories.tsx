@@ -30,63 +30,93 @@ const StoryFromFile = ({
   typedChars: number
 }) => {
   // Determine the Prettier parser
-    const prettierParser = 
-          language === "typescript" || language === "c" 
-          ? "typescript" 
-                : language === "rust" ? "rust" : "babel"
+  const prettierParser =
+    language === "typescript" || language === "c"
+      ? "typescript"
+      : language === "rust"
+        ? "rust"
+        : "babel"
 
-                  // Consume the full FSM state
-                    const state = useFormattedCode(path, { prettierParser: prettierParser as any })
+  // Consume the full FSM state
+  const state = useFormattedCode(path, {
+    prettierParser: prettierParser as any,
+  })
 
-                      // --- Handle FSM States ---
+  // --- Handle FSM States ---
 
-                        switch (state.status) {
-                              case "IDLE":
-                                      // Initial render, or when path is empty
-                                            return <div style={{ padding: '20px', color: '#888' }}>Initializing...</div>
+  switch (state.status) {
+    case "IDLE":
+      // Initial render, or when path is empty
+      return (
+        <div style={{ padding: "20px", color: "#888" }}>Initializing...</div>
+      )
 
-                                  case "LOADING":
-                                          // Show loading state, indicating the current attempt number for retries
-                                                return (
-                                                          <div style={{ padding: '20px', color: '#007aff', border: '1px solid #007aff', borderRadius: '4px' }}>
-                                                                    ⏳ **Loading Code...** (Attempt {state.attempt})
-                                                                            </div>
-                                                                                  )
+    case "LOADING":
+      // Show loading state, indicating the current attempt number for retries
+      return (
+        <div
+          style={{
+            padding: "20px",
+            color: "#007aff",
+            border: "1px solid #007aff",
+            borderRadius: "4px",
+          }}
+        >
+          ⏳ **Loading Code...** (Attempt {state.attempt})
+        </div>
+      )
 
-                                                                                      case "ERROR":
-                                                                                              // Show the final error state, leveraging the typestate's guaranteed error object
-                                                                                                    return (
-                                                                                                              <div style={{ padding: '20px', color: '#ff3b30', border: '1px solid #ff3b30', borderRadius: '4px' }}>
-                                                                                                                        ❌ **Failed to Load Code** ❌
-                                                                                                                                  <p style={{ margin: '5px 0 0' }}>**Path:** `{path}`</p>
-                                                                                                                                            <details>
-                                                                                                                                                        <summary>Error Details</summary>
-                                                                                                                                                                    <code style={{ display: 'block', whiteSpace: 'pre-wrap', marginTop: '5px' }}>{state.error.message}</code>
-                                                                                                                                                                              </details>
-                                                                                                                                                                                      </div>
-                                                                                                                                                                                            )
+    case "ERROR":
+      // Show the final error state, leveraging the typestate's guaranteed error object
+      return (
+        <div
+          style={{
+            padding: "20px",
+            color: "#ff3b30",
+            border: "1px solid #ff3b30",
+            borderRadius: "4px",
+          }}
+        >
+          ❌ **Failed to Load Code** ❌
+          <p style={{ margin: "5px 0 0" }}>**Path:** `{path}`</p>
+          <details>
+            <summary>Error Details</summary>
+            <code
+              style={{
+                display: "block",
+                whiteSpace: "pre-wrap",
+                marginTop: "5px",
+              }}
+            >
+              {state.error.message}
+            </code>
+          </details>
+        </div>
+      )
 
-                                                                                                                                                                                                case "SUCCESS": {
-                                                                                                                                                                                                        // Type-safe: TS guarantees state.code is a string
-                                                                                                                                                                                                              const targetUnits = codeToUnits(state.code)
-                                                                                                                                                                                                                    const userUnits = sliceUserUnits(targetUnits, typedChars)
+    case "SUCCESS": {
+      // Type-safe: TS guarantees state.code is a string
+      const targetUnits = codeToUnits(state.code)
+      const userUnits = sliceUserUnits(targetUnits, typedChars)
 
-                                                                                                                                                                                                                          return (
-                                                                                                                                                                                                                                    <CodeDisplay
-                                                                                                                                                                                                                                              className={"code"}
-                                                                                                                                                                                                                                                        displayCode={state.code}
-                                                                                                                                                                                                                                                                  language={language}
-                                                                                                                                                                                                                                                                            targetUnits={targetUnits}
-                                                                                                                                                                                                                                                                                      userUnits={userUnits}
-                                                                                                                                                                                                                                                                                                cursorUnitIndex={typedChars}
-                                                                                                                                                                                                                                                                                                        />
-                                                                                                                                                                                                                                                                                                              )
-                                                                                                                                                                                                                                                                                                                  }
+      return (
+        <CodeDisplay
+          className={"code"}
+          displayCode={state.code}
+          language={language}
+          targetUnits={targetUnits}
+          userUnits={userUnits}
+          cursorUnitIndex={typedChars}
+        />
+      )
+    }
 
-                                                                                                                                                                                                                                                                                                                      default:
-                                                                                                                                                                                                                                                                                                                              // Should be unreachable
-                                                                                                                                                                                                                                                                                                                                    return <div style={{ padding: '20px', color: 'gray' }}>Unknown State...</div>
-                                                                                                                                                                                                                                                                                                                        }
+    default:
+      // Should be unreachable
+      return (
+        <div style={{ padding: "20px", color: "gray" }}>Unknown State...</div>
+      )
+  }
 }
 
 /* ---------- Stories ---------- */
@@ -94,7 +124,7 @@ const StoryFromFile = ({
 export const TypescriptIdle: Story = {
   render: () => (
     <StoryFromFile
-      path="/code-samples/fibonacci.ts"
+      path="/code-samples/two-sum.ts"
       language="typescript"
       typedChars={0}
     />

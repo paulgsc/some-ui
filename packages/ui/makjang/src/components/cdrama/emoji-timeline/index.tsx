@@ -11,11 +11,13 @@ type EmojiReaction = {
 type EmojiTimelineProps = {
   reactions: Array<EmojiReaction>
   currentMinute: number
+  className?: string
 }
 
 export const EmojiTimeline = ({
   reactions,
   currentMinute,
+  className,
 }: EmojiTimelineProps) => {
   const [mounted, setMounted] = useState(false)
 
@@ -26,6 +28,7 @@ export const EmojiTimeline = ({
   return (
     <div
       className={cn(
+        className,
         "cdrama space-y-6 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",

@@ -1,9 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": [
-    "**/*.stories.tsx",
-    "**/*.stories.ts",
-    "**/voice-ui/**",
-    "**/demo/**"
-  ]
+  "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/demo/**"]
 }

@@ -3,6 +3,7 @@ import { QuizFeedback } from "@chat/components/topik/quiz-states/quiz-feedback"
 import { QuizIdle } from "@chat/components/topik/quiz-states/quiz-idle"
 import { QuizReady } from "@chat/components/topik/quiz-states/quiz-ready"
 import { QuizSummary } from "@chat/components/topik/quiz-states/quiz-summary"
+import type { ChatPlayState, Message } from "@chat/types/topik"
 
 type QuizPanelProps = {
   state: "standby" | "ready" | "active" | "feedback" | "summary"
@@ -24,6 +25,7 @@ type QuizPanelProps = {
   onNextQuestion: () => void
   onAssessmentComplete: (passed: boolean) => void
   onSpeakMessage: (message: Message) => void
+  isSpeaking: boolean
   score: number
   feedbackData?: {
     isCorrect: boolean
@@ -33,7 +35,7 @@ type QuizPanelProps = {
     explanation: string
     grammarNote?: string
   }
-  chatPlayState: "playing" | "paused" | "finished"
+  chatPlayState: ChatPlayState
 }
 
 export const QuizPanel = ({
@@ -46,6 +48,7 @@ export const QuizPanel = ({
   onNextQuestion,
   onAssessmentComplete,
   onSpeakMessage,
+  isSpeaking,
   score,
   feedbackData,
   chatPlayState,
@@ -61,6 +64,7 @@ export const QuizPanel = ({
           question={questions[currentQuestion]}
           onAnswerSubmit={onAnswerSubmit}
           onSpeakMessage={onSpeakMessage}
+          isSpeaking={isSpeaking}
         />
       )}
       {state === "feedback" && feedbackData && (

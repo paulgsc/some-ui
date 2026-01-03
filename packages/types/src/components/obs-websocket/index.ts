@@ -331,31 +331,6 @@ export const ObsEventSchema = z.discriminatedUnion("type", [
 
 export type ObsEvent = z.infer<typeof ObsEventSchema>
 
-export const IncomingObsEventSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("obsStatus"),
-    status: ObsEventSchema,
-  }),
-
-  z.object({
-    type: z.literal("clientCount"),
-    count: z.number().int().nonnegative(),
-  }),
-
-  z.object({
-    type: z.literal("ping"),
-  }),
-
-  z.object({
-    type: z.literal("pong"),
-  }),
-
-  z.object({
-    type: z.literal("error"),
-    message: z.string(),
-  }),
-])
-
 export type SceneInfo = {
   name: string
   index?: number
@@ -532,3 +507,33 @@ export const ObsCommandSchema = z.discriminatedUnion("type", [
   ToggleReplayBufferSchema,
   CustomSchema,
 ])
+
+export type ObsCommand = z.infer<typeof ObsCommandSchema>
+
+export const EventTypeSchema = z.enum([
+  "ping",
+  "pong",
+  "error",
+  "obsStatus",
+  "tabMetaData",
+])
+
+export const OutgoingObsEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ping") }),
+  z.object({ type: z.literal("pong") }),
+  z.object({ type: z.literal("error"), message: z.string() }),
+  z.object({
+    type: z.literal("subscribe"),
+    event_types: z.array(EventTypeSchema),
+  }),
+  z.object({
+    type: z.literal("unsubscribe"),
+    event_types: z.array(EventTypeSchema),
+  }),
+  z.object({
+    type: z.literal("obsCmd"),
+    cmd: ObsCommandSchema,
+  }),
+])
+
+export type OutgoingObsEvent = z.infer<typeof OutgoingObsEventSchema>

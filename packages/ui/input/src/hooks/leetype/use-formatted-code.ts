@@ -48,6 +48,38 @@ function getPrettier(parser: "typescript" | "babel") {
   return prettierCache
 }
 
+/**
+ * Format code according to language capabilities.
+ * Uses exhaustive case matching - all parsers are valid inputs,
+ * but only some support formatting.
+ */
+async function formatCode(
+  raw: string,
+  parser: Options["prettierParser"]
+): Promise<string> {
+  switch (parser) {
+    case "typescript":
+    case "babel": {
+      const { format, plugins } = await getPrettier(parser)
+      return format(raw, {
+        parser,
+        plugins,
+      })
+    }
+
+    case "rust":
+    case "cpp":
+      // Explicitly unsupported by Prettier — return as-is
+      return raw
+
+    default: {
+      // Exhaustiveness check — should be unreachable
+      parser satisfies never
+      return raw
+    }
+  }
+}
+
 const initialState: FormattedCodeState = {
   status: "IDLE",
   code: undefined,
@@ -78,11 +110,6 @@ export function useFormattedCode(
       })
 
       try {
-        // Validate parser early
-        if (prettierParser !== "typescript" && prettierParser !== "babel") {
-          throw new Error(`Unsupported Prettier parser: ${prettierParser}`)
-        }
-
         // Set up timeout promise
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(
@@ -95,17 +122,8 @@ export function useFormattedCode(
         // NOTE: Timeout only applies to formatting, NOT to Prettier imports
         const formatted = await Promise.race([
           (async () => {
-            // 1. Load file
             const raw = await loadCodeFile(path)
-
-            // 2. Get Prettier (cached after first call)
-            const { format, plugins } = await getPrettier(prettierParser)
-
-            // 3. Format code
-            return format(raw, {
-              parser: prettierParser,
-              plugins,
-            })
+            return formatCode(raw, prettierParser)
           })(),
           timeoutPromise,
         ])
@@ -113,7 +131,7 @@ export function useFormattedCode(
         if (!cancelled) {
           setState({
             status: "SUCCESS",
-            code: formatted as string,
+            code: formatted,
             error: undefined,
           })
         }

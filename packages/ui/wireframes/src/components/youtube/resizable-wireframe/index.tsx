@@ -29,7 +29,6 @@ type OrchestratedViewportProps<K extends string> = {
    */
   activeLifetimes: Array<ActiveLifetime>
 
-  sceneRegistry: SceneRegistry
   componentRegistry: ComponentRegistry<K>
 
   /**

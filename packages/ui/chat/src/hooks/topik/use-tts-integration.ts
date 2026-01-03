@@ -50,16 +50,8 @@ export function useTTSIntegration({
     async (message: Message, reason: "auto" | "manual") => {
       const allocated = allocatedIdsRef.current
 
-      console.log(`[useTTSIntegration] requestSpeak called:`, {
-        messageId: message.id,
-        reason,
-        alreadyAllocated: allocated.has(message.id),
-        currentSpeaking: currentSpeakingIdRef.current,
-      })
-
       // AUTO: fire once per message
       if (reason === "auto" && allocated.has(message.id)) {
-        console.log(`[useTTSIntegration] Skipping - already allocated`)
         return
       }
 
@@ -77,9 +69,6 @@ export function useTTSIntegration({
 
       // If already speaking this message, don't start again
       if (currentSpeakingIdRef.current === message.id) {
-        console.log(
-          `[useTTSIntegration] Skipping - already speaking this message`
-        )
         return
       }
 

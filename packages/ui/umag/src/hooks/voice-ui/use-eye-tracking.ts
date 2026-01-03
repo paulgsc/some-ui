@@ -1,15 +1,10 @@
 import { useRef } from "react"
 
 export const useEyeTracking = () => {
-  const mousePos = useRef({ x: 0, y: 0 })
   const eyeOffset = useRef({ x: 0, y: 0 })
   const targetEyeOffset = useRef({ x: 0, y: 0 })
 
-  const updateEyeOffset = (canvas: HTMLCanvasElement, time: number) => {
-    const centerX = canvas.width / 2
-    const centerY = canvas.height / 2
-    const maxOffset = 12
-
+  const updateEyeOffset = () => {
     eyeOffset.current.x +=
       (targetEyeOffset.current.x - eyeOffset.current.x) * 0.08
     eyeOffset.current.y +=

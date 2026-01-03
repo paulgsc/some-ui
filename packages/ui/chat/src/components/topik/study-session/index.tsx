@@ -3,26 +3,21 @@ import { useEffect, useMemo } from "react"
 import { ChatPanel } from "@chat/components/topik/chat-panel"
 import { QuizPanel } from "@chat/components/topik/quiz-panel"
 import { SessionHeader } from "@chat/components/topik/session-header"
-import { useChatOrchestrator } from "@chat/hooks/topik/use-chat-orchestrator"
+import { useConversationBatches } from "@chat/hooks/topik/use-conversation-batches"
 import { useSessionFSM } from "@chat/hooks/topik/use-session-fsm"
 import { useTTSIntegration } from "@chat/hooks/topik/use-tts-integration"
-import type { ConversationBatch } from "@chat/types/topik"
 
 const COMPONENT_ID = "topik-study-session"
 
-type KoreanStudyPageProps = {
-  conversationBatches: Array<ConversationBatch>
-}
+type KoreanStudyPageProps = { path: string }
 
-export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({
-  conversationBatches,
-}) => {
+export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({ path }) => {
+  const conversationBatches = useConversationBatches({ path }) ?? []
   const {
     state,
     totalBatches,
     startChat,
     pauseChat,
-    resumeChat,
     resetChat,
     nextMessage,
     jumpToMessage,
@@ -124,6 +119,7 @@ export const KoreanStudyPage: FC<KoreanStudyPageProps> = ({
             totalQuestions={currentBatch?.questions.length ?? 0}
             questions={currentBatch?.questions ?? []}
             onSpeakMessage={speakMessage}
+            isSpeaking={isSpeaking}
             onStartQuiz={startQuiz}
             onAnswerSubmit={submitAnswer}
             onNextQuestion={nextQuestion}

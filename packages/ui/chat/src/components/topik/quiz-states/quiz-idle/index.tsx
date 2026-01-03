@@ -1,8 +1,9 @@
+import type { ChatPlayState } from "@chat/types/topik"
 import { GraduationCap, Play } from "lucide-react"
 import { Card } from "some-ui-shared"
 
 type QuizIdleProps = {
-  chatPlayState: "playing" | "paused" | "finished"
+  chatPlayState: ChatPlayState
 }
 
 export const QuizIdle = ({ chatPlayState }: QuizIdleProps) => {
