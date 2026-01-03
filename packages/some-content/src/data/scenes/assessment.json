@@ -1,0 +1,30 @@
+[
+  {
+    "panels": {
+      "title": {
+        "registry_key": "neon",
+        "props": {
+          "theme": "dark-gold",
+          "initialText": "Assessment - Small Vec Crate",
+          "className": "rounded-xl size-full px-1.5 py-0.5"
+        },
+        "children": []
+      },
+      "mainContent": {
+        "registry_key": "assessment",
+        "props": { "className": "absolute inset-0" },
+        "children": []
+      },
+      "footerLeft": {
+        "registry_key": "cube",
+        "props": { "region": "footerLeft", "faceCapacity": 1 },
+        "children": []
+      },
+      "footerRight": {
+        "registry_key": "cube",
+        "props": { "region": "footerRight", "faceCapacity": 1 },
+        "children": []
+      }
+    }
+  }
+]

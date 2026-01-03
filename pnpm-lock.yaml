@@ -787,6 +787,9 @@ importers:
 
   packages/some-content:
     dependencies:
+      '@some-ui/resume':
+        specifier: workspace:*
+        version: link:../ui/resume
       attributions:
         specifier: workspace:*
         version: link:../ui/attributions

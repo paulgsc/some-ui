@@ -1,1116 +1,1043 @@
-import { useEffect, useState } from "react"
-import {
-  AlertCircle,
-  CheckCircle,
-  Circle,
-  Clock,
-  Code,
-  FileText,
-  Target,
-  Zap,
-} from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { CheckCircle, Code, FileText, Zap } from "lucide-react"
 
-const CATEGORIES = {
+export type CategoryKey = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H"
+
+type Answer = {
+  text?: string
+  showedCode?: boolean
+  didResearch?: boolean
+}
+
+export type Category = {
+  id: CategoryKey
+  name: string
+  color: string
+  minRequired: number // Used for selection logic
+}
+
+export type Question = {
+  id: string
+  text: string
+  category: CategoryKey
+  criteria: Array<string>
+}
+
+// --- Data ---
+
+export const CATEGORIES: Record<CategoryKey, Category> = {
   A: {
-    name: "Problem Decomposition",
+    id: "A",
+    name: "Memory Layout & Representation",
     color: "from-purple-500 to-pink-500",
-    minRequired: 0,
+    minRequired: 1,
   },
   B: {
-    name: "System Boundaries",
+    id: "B",
+    name: "Type System & Safety Invariants",
     color: "from-blue-500 to-cyan-500",
-    minRequired: 0,
+    minRequired: 1,
   },
   C: {
-    name: "Data Flow & State",
+    id: "C",
+    name: "Performance & Optimization",
     color: "from-green-500 to-emerald-500",
-    minRequired: 0,
+    minRequired: 1,
   },
   D: {
-    name: "Concurrency & Lifecycle",
+    id: "D",
+    name: "Ownership, Lifetimes & Drop",
     color: "from-yellow-500 to-orange-500",
-    minRequired: 0,
+    minRequired: 1,
   },
   E: {
-    name: "Error Handling",
+    id: "E",
+    name: "API Design & Ergonomics",
     color: "from-red-500 to-rose-500",
     minRequired: 0,
   },
   F: {
-    name: "Performance",
+    id: "F",
+    name: "Unsafe & Correctness",
     color: "from-indigo-500 to-purple-500",
+    minRequired: 1,
+  },
+  G: {
+    id: "G",
+    name: "Trait Implementations",
+    color: "from-teal-500 to-green-500",
     minRequired: 0,
   },
-  G: { name: "Testing", color: "from-teal-500 to-green-500", minRequired: 0 },
   H: {
-    name: "Alternatives & Tradeoffs",
+    id: "H",
+    name: "Tradeoffs & Design Decisions",
     color: "from-orange-500 to-red-500",
     minRequired: 1,
   },
 }
 
-const ALL_QUESTIONS = {
+export const ALL_QUESTIONS: Record<string, Question> = {
+  // A: Memory Layout
   A1: {
-    text: "What is the single decision I need to make?",
+    id: "A1",
     category: "A",
+    text: "How does SmallVec achieve inline storage without dynamic dispatch?",
     criteria: [
-      "State decision as binary choice or enumerated options",
-      "NOT be compound (How do I X AND Y)",
-      "Be specific enough to be implemented",
+      "Explain the union-like enum representation",
+      "Describe how size is encoded alongside the discriminant",
+      "Explain why this is zero-cost compared to a hand-written enum",
     ],
   },
   A2: {
-    text: "What are the inputs to this decision?",
+    id: "A2",
     category: "A",
+    text: "What is the memory layout difference between inline and heap storage states?",
     criteria: [
-      "Enumerate 3+ concrete constraints or requirements",
-      "Specify whether each input is hard requirement vs. optimization goal",
-      "Distinguish technical from business/project inputs",
+      "Diagram or describe the bit-level layout",
+      "Explain alignment requirements",
+      "Quantify memory overhead",
     ],
   },
   A3: {
-    text: "What are the outputs of this decision?",
+    id: "A3",
     category: "A",
+    text: "Why is the inline array size a const generic parameter N?",
     criteria: [
-      "Describe what changes in the codebase",
-      "Identify what new interfaces/contracts emerge",
-      "Specify what downstream decisions unlock or constrain",
+      "Compile-time vs runtime sizing",
+      "Effect on monomorphization",
+      "Vec compatibility",
     ],
   },
   A4: {
-    text: "What simpler problem is this an instance of?",
+    id: "A4",
     category: "A",
+    text: "How does SmallVec determine when to spill to heap?",
     criteria: [
-      "Identify general pattern (e.g., service composition, ownership transfer)",
-      "Reference known solutions to that pattern",
-      "Explain why standard solution doesn't directly apply",
+      "Identify threshold logic",
+      "Inline data handling during spill",
+      "Shrink-back logic",
     ],
   },
   A5: {
-    text: "What are the sub-problems that must be solved first?",
+    id: "A5",
     category: "A",
+    text: "What representation enables SmallVec to be the same size as Vec for N=0?",
     criteria: [
-      "List 2+ blocking sub-problems",
-      "Explain dependency ordering between sub-problems",
-      "Identify which sub-problems you understand vs. don't",
+      "Niche optimization",
+      "Compare footprint to Vec<T>",
+      "Identify unavoidable overhead",
     ],
   },
   A6: {
-    text: "Which parts of this problem are well-understood vs. novel?",
+    id: "A6",
     category: "A",
+    text: "How does capacity tracking differ between inline and heap modes?",
     criteria: [
-      "Separate known patterns from unknown territory",
-      "Identify what you can lean on (libraries, patterns, prior art)",
-      "Pinpoint where you're in unexplored design space",
+      "Storage location per variant",
+      "Effect on reserve()",
+      "Edge cases",
     ],
   },
-  A7: {
-    text: "What would a minimal working solution look like?",
-    category: "A",
-    criteria: [
-      "Describe simplest possible implementation",
-      "Explain what features/properties it sacrifices",
-      "State why you can't just ship the minimal version",
-    ],
-  },
-  A8: {
-    text: "What aspect of this problem am I most uncertain about?",
-    category: "A",
-    criteria: [
-      "Identify single biggest unknown",
-      "Distinguish between known-unknowns and unknown-unknowns",
-      "Explain what information would resolve uncertainty",
-    ],
-  },
+
+  // B: Type System
   B1: {
-    text: "What are the architectural layers in play?",
+    id: "B1",
     category: "B",
+    text: "What invariants must hold for SmallVec to be memory-safe?",
     criteria: [
-      "Name 2+ layers involved (e.g., domain, transport, infrastructure)",
-      "Explain dependency direction between layers",
-      "Identify which layer the decision primarily affects",
+      "Length/Capacity/Discriminant consistency",
+      "Violation consequences",
+      "Types vs Unsafe enforcement",
     ],
   },
   B2: {
-    text: "What invariants must this subsystem maintain?",
+    id: "B2",
     category: "B",
+    text: "Why can't SmallVec<T, N> be Copy even when T is Copy?",
     criteria: [
-      "List 2+ properties that must always be true",
-      "Explain consequences if invariant violated",
-      "Specify how invariants are currently enforced (types, runtime checks, etc.)",
+      "Heap allocation ownership",
+      "Double-free risk",
+      "Alternatives like ArrayVec",
     ],
   },
   B3: {
-    text: "What are the trust boundaries in this system?",
+    id: "B3",
     category: "B",
+    text: "How does SmallVec handle uninitialized memory?",
     criteria: [
-      "Identify what components trust each other vs. validate",
-      "Explain where data is sanitized/validated",
-      "Note where assumptions are made about caller behavior",
+      "MaybeUninit usage",
+      "Initialization order",
+      "Partial initialization safety",
     ],
   },
   B4: {
-    text: "What does each component own vs. borrow?",
+    id: "B4",
     category: "B",
+    text: "What Rust language features enable SmallVec's zero-cost abstraction?",
     criteria: [
-      "Map out ownership relationships for key data structures",
-      "Explain lifetime constraints",
-      "Identify where ownership transfer happens",
+      "Const generics/Enums",
+      "LLVM match optimization",
+      "Non-zero-cost areas",
     ],
   },
   B5: {
-    text: "What is the single responsibility of each component?",
+    id: "B5",
     category: "B",
+    text: "How does SmallVec maintain Send/Sync bounds?",
     criteria: [
-      "State primary purpose in one sentence per component",
-      "Identify responsibilities that feel ambiguous or overlapping",
-      "Explain where current design violates SRP",
+      "Send/Sync conditions",
+      "Interaction with T",
+      "Raw pointer/Union handling",
     ],
   },
   B6: {
-    text: "Where should cross-cutting concerns live?",
+    id: "B6",
     category: "B",
+    text: "What prevents aliasing violations in SmallVec's implementation?",
     criteria: [
-      "List cross-cutting concerns (logging, metrics, auth, etc.)",
-      "Explain current strategy (middleware, wrapper, injection)",
-      "Identify tensions with primary architectural patterns",
+      "Reference rules per variant",
+      "Mutable access control",
+      "Raw pointer safety justification",
     ],
   },
   B7: {
-    text: "What are the seams for testing/mocking?",
+    id: "B7",
     category: "B",
+    text: "How does SmallVec handle ZSTs (zero-sized types)?",
     criteria: [
-      "Identify where test doubles can be injected",
-      "Explain what makes current design testable or not",
-      "Note where dependencies are concrete vs. abstracted",
+      "Inline storage utility for ZST",
+      "Special-case logic",
+      "Allocation interaction",
     ],
   },
+
+  // C: Performance
   C1: {
-    text: "What state needs to be shared?",
+    id: "C1",
     category: "C",
+    text: "What are the cache locality benefits of inline storage?",
     criteria: [
-      "Enumerate specific data structures that multiple components access",
-      "Explain why each piece of state must be shared",
-      "Identify state that's currently shared but shouldn't be",
+      "Cache line usage for N",
+      "Access pattern impact",
+      "Scenarios where advantage is lost",
     ],
   },
   C2: {
-    text: "Who mutates this state?",
+    id: "C2",
     category: "C",
+    text: "What is the allocation profile of SmallVec vs Vec for different workloads?",
     criteria: [
-      "List all writers for shared state",
-      "Explain synchronization/coordination mechanism",
-      "Identify race conditions or ambiguous ownership",
+      "Allocation frequency",
+      "Heap fragmentation",
+      "Worse-performing workloads",
     ],
   },
   C3: {
-    text: "What is the lifetime of this state?",
+    id: "C3",
     category: "C",
+    text: "How does SmallVec's growth strategy differ from Vec's?",
     criteria: [
-      "Specify when state is created and destroyed",
-      "Explain what controls lifetime (scoped, reference-counted, manual)",
-      "Identify potential leaks or premature drops",
+      "Reallocation policy",
+      "Exponential growth matching",
+      "Transition handling",
     ],
   },
   C4: {
-    text: "How does data flow between components?",
+    id: "C4",
     category: "C",
+    text: "What are the branching costs of inline vs heap dispatch?",
     criteria: [
-      "Diagram or describe primary data paths",
-      "Specify mechanism (function args, channels, shared memory, events)",
-      "Identify where flow is synchronous vs. asynchronous",
+      "Discriminant check locations",
+      "Branch predictability",
+      "LLVM branch elimination",
     ],
   },
   C5: {
-    text: "What are the data dependencies?",
+    id: "C5",
     category: "C",
+    text: "When does SmallVec's overhead exceed its benefits?",
     criteria: [
-      "List what data component X needs from component Y",
-      "Explain whether dependencies are compile-time or runtime",
-      "Identify circular dependencies or tight coupling",
+      "Break-even points for N",
+      "Spill waste",
+      "Monomorphization code bloat",
     ],
   },
   C6: {
-    text: "What transformations happen to data in flight?",
+    id: "C6",
     category: "C",
+    text: "How do copies and moves differ between inline and heap states?",
     criteria: [
-      "Describe how data shape changes across boundaries",
-      "Explain validation, serialization, or enrichment steps",
-      "Identify where data is duplicated or cached",
+      "Clone data handling",
+      "Move semantics",
+      "Performance characteristics",
     ],
   },
   C7: {
-    text: "Where is the source of truth?",
+    id: "C7",
     category: "C",
+    text: "What compiler optimizations are critical for SmallVec performance?",
     criteria: [
-      "Identify authoritative storage for each logical entity",
-      "Explain what derived/cached state exists",
-      "Note inconsistency risks and resolution strategies",
+      "Inlining/DCE importance",
+      "Optimization-less degradation",
+      "Debug vs Release differences",
     ],
   },
-  C8: {
-    text: "What events or messages does this generate?",
-    category: "C",
-    criteria: [
-      "List outbound notifications or events",
-      "Explain whether events are ordered, reliable, or best-effort",
-      "Identify event consumers and their guarantees",
-    ],
-  },
+
+  // D: Ownership
   D1: {
-    text: "What tasks/threads/actors are involved?",
+    id: "D1",
     category: "D",
+    text: "What happens during SmallVec's Drop implementation?",
     criteria: [
-      "Enumerate concurrent execution contexts",
-      "Explain what each task is responsible for",
-      "Identify task spawning and termination points",
+      "Drop order per variant",
+      "Iteration direction",
+      "Panic handling during drop",
     ],
   },
   D2: {
-    text: "How do these concurrent units communicate?",
+    id: "D2",
     category: "D",
+    text: "How does SmallVec handle partial drops after panic?",
     criteria: [
-      "Specify mechanisms (channels, shared state, message passing)",
-      "Explain synchronization points",
-      "Identify potential deadlocks or livelocks",
+      "Manual tracking mechanisms",
+      "State after panic",
+      "Vec comparison",
     ],
   },
   D3: {
-    text: "What is the initialization order?",
+    id: "D3",
     category: "D",
+    text: "Why can't SmallVec implement DerefMove (if it existed)?",
     criteria: [
-      "Describe startup sequence for subsystems",
-      "Explain dependencies that constrain ordering",
-      "Identify initialization failure scenarios",
+      "Ownership transfer issues",
+      "Inner data movement breakage",
+      "Pin relationship",
     ],
   },
   D4: {
-    text: "What is the shutdown sequence?",
+    id: "D4",
     category: "D",
+    text: "How do lifetimes constrain SmallVec's borrowing API?",
     criteria: [
-      "Describe graceful shutdown steps",
-      "Explain how in-flight work is drained or canceled",
-      "Identify resources that must be cleaned up",
+      "Iterator lifetime relationships",
+      "Split_at borrowing rules",
+      "Elision impact",
     ],
   },
   D5: {
-    text: "What happens under cancellation?",
+    id: "D5",
     category: "D",
+    text: "What prevents use-after-free when transitioning inline->heap?",
     criteria: [
-      "Explain cancellation propagation mechanism",
-      "Identify what state is left behind after cancel",
-      "Note whether cancellation is graceful or abort",
+      "Old data invalidation",
+      "Existing reference compile errors",
+      "Unsafe violation potential",
     ],
   },
   D6: {
-    text: "What ordering guarantees exist?",
+    id: "D6",
     category: "D",
+    text: "How does SmallVec handle ownership in drain and splice operations?",
     criteria: [
-      "Specify what events/operations are ordered relative to what",
-      "Explain whether ordering is guaranteed by types or convention",
-      "Identify where ordering violations could occur",
+      "Drained element ownership",
+      "Gap-filling strategy",
+      "Panic safety",
     ],
   },
-  D7: {
-    text: "What are the concurrency hazards?",
-    category: "D",
-    criteria: [
-      "List specific race conditions or data races",
-      "Explain potential for deadlock or starvation",
-      "Note what safety mechanisms prevent these (types, locks, atomics)",
-    ],
-  },
+
+  // E: API Design
   E1: {
-    text: "What can go wrong?",
+    id: "E1",
     category: "E",
+    text: "Why does SmallVec not implement Deref<Target=[T]>?",
     criteria: [
-      "Enumerate 3+ failure modes",
-      "Distinguish between expected errors and unexpected panics",
-      "Explain likelihood and impact of each",
+      "Crate philosophy differences",
+      "API misuse implications",
+      "as_slice vs Coercion",
     ],
   },
   E2: {
-    text: "How are errors propagated?",
+    id: "E2",
     category: "E",
+    text: "How does SmallVec's API balance Vec compatibility with specialized needs?",
     criteria: [
-      "Specify error types and Result/Option usage",
-      "Explain whether errors cross boundaries (and how)",
-      "Identify where errors are handled vs. logged vs. ignored",
+      "Missing Vec methods",
+      "SmallVec extensions",
+      "Signature differences",
     ],
   },
   E3: {
-    text: "What observability exists?",
+    id: "E3",
     category: "E",
+    text: "What are the footguns in SmallVec's API?",
     criteria: [
-      "List current logging, metrics, or tracing",
-      "Explain what information is captured at decision points",
-      "Identify observability gaps for debugging this block",
+      "Non-obvious behaviors",
+      "Common mistakes",
+      "Missing guardrails",
     ],
   },
   E4: {
-    text: "How would I debug this in production?",
+    id: "E4",
     category: "E",
+    text: "How does SmallVec support generic code that works with any collection?",
     criteria: [
-      "Describe what information would be available",
-      "Explain how you'd correlate events across components",
-      "Identify what logs/metrics would reveal root cause",
+      "Abstraction traits",
+      "Comparison to Vec/Slice",
+      "Const generic friction",
     ],
   },
   E5: {
-    text: "What are the recovery mechanisms?",
+    id: "E5",
     category: "E",
+    text: "Why might SmallVec's insert and remove be slower than expected?",
     criteria: [
-      "Explain how system recovers from errors",
-      "Specify whether recovery is automatic, manual, or requires restart",
-      "Identify unrecoverable failure modes",
+      "Shifting overhead",
+      "Heap variant issues",
+      "Alternative high-perf APIs",
     ],
   },
-  E6: {
-    text: "What are the monitoring/alerting requirements?",
-    category: "E",
-    criteria: [
-      "Specify what metrics indicate health",
-      "Explain what thresholds warrant alerts",
-      "Identify SLIs/SLOs if applicable",
-    ],
-  },
+
+  // F: Unsafe
   F1: {
-    text: "What are the resource costs?",
+    id: "F1",
     category: "F",
+    text: "Where does SmallVec use unsafe code and why is each instance necessary?",
     criteria: [
-      "Quantify memory, CPU, network, or I/O costs",
-      "Explain whether costs are per-request, per-connection, or fixed",
-      "Identify dominant resource consumption",
+      "Unsafe block enumeration",
+      "Safe abstraction enabled",
+      "Safe code limitations",
     ],
   },
   F2: {
-    text: "What are the scalability bottlenecks?",
+    id: "F2",
     category: "F",
+    text: "How does SmallVec's unsafe code maintain union safety?",
     criteria: [
-      "Identify what limits throughput or capacity",
-      "Explain whether bottleneck is CPU, memory, I/O, or coordination",
-      "Note what changes under increased load",
+      "Discriminant consistency",
+      "Inactive variant protection",
+      "Manual Drop requirements",
     ],
   },
   F3: {
-    text: "What are the latency requirements?",
+    id: "F3",
     category: "F",
+    text: "What aliasing rules must unsafe code in SmallVec respect?",
     criteria: [
-      "Specify latency budgets for critical paths",
-      "Explain whether latency is p50, p99, or worst-case concern",
-      "Identify operations that dominate latency",
+      "Raw pointer provenance",
+      "Reference transmutation",
+      "Stacked Borrows compliance",
     ],
   },
   F4: {
-    text: "What gets allocated and when?",
+    id: "F4",
     category: "F",
+    text: "How does SmallVec ensure uninitialized memory is never read?",
     criteria: [
-      "List heap allocations in hot paths",
-      "Explain whether allocations can be amortized or pooled",
-      "Identify allocation patterns that could fragment or leak",
+      "Length tracking/Init order",
+      "ptr::write vs assignment",
+      "assume_init unsoundness",
     ],
   },
   F5: {
-    text: "What are the caching strategies?",
+    id: "F5",
     category: "F",
+    text: "What Miri or sanitizer violations might naive implementations trigger?",
     criteria: [
-      "Explain what is cached and for how long",
-      "Specify cache invalidation or TTL policies",
-      "Identify cache coherency concerns",
+      "UB patterns to avoid",
+      "SmallVec avoidance strategy",
+      "Unsafe testing strategy",
     ],
   },
   F6: {
-    text: "What are the batching opportunities?",
+    id: "F6",
     category: "F",
+    text: "How does SmallVec handle alignment requirements in unsafe code?",
     criteria: [
-      "Identify operations that could be batched",
-      "Explain tradeoffs between latency and throughput",
-      "Note whether batching complicates other concerns (error handling, ordering)",
+      "Inline vs Heap alignment",
+      "repr attributes/padding",
+      "Platform concerns",
     ],
   },
   F7: {
-    text: "Where are the performance cliffs?",
+    id: "F7",
     category: "F",
-    criteria: [
-      "Identify conditions where performance degrades non-linearly",
-      "Explain pathological cases (e.g., n² behavior, lock contention)",
-      "Note whether cliffs are avoidable or inherent",
-    ],
+    text: "What are the soundness holes or historical bugs in SmallVec?",
+    criteria: ["Known CVEs/Issues", "Invariant violations", "Fix descriptions"],
   },
+
+  // G: Traits
   G1: {
-    text: "How would I unit test this?",
+    id: "G1",
     category: "G",
-    criteria: [
-      "Describe what can be tested in isolation",
-      "Explain test doubles needed (mocks, fakes, stubs)",
-      "Identify parts that resist unit testing",
-    ],
+    text: "How does SmallVec implement Iterator via IntoIter?",
+    criteria: ["IntoIter internal state", "Variant handling", "Drop timing"],
   },
   G2: {
-    text: "What integration tests are needed?",
+    id: "G2",
     category: "G",
+    text: "Why does SmallVec implement FromIterator differently than Vec?",
     criteria: [
-      "Specify what component interactions to test",
-      "Explain test environment setup requirements",
-      "Identify non-determinism or flakiness risks",
+      "Allocation strategy",
+      "TrustedLen specialization",
+      "Divergence from Vec",
     ],
   },
   G3: {
-    text: "What properties should hold?",
+    id: "G3",
     category: "G",
-    criteria: [
-      "List invariants that should be tested",
-      "Explain whether properties can be property-tested or need examples",
-      "Identify properties that are hard to verify",
-    ],
+    text: "How does SmallVec's Index and IndexMut work across variants?",
+    criteria: ["Bounds checking", "Panic behavior", "Zero-cost verification"],
   },
   G4: {
-    text: "What are the test fixtures/scaffolding?",
+    id: "G4",
     category: "G",
+    text: "What makes SmallVec's Clone implementation non-trivial?",
     criteria: [
-      "Describe test data or mock services needed",
-      "Explain whether fixtures are simple or complex",
-      "Identify fixture maintenance burden",
+      "Variant cloning logic",
+      "Heap allocation during clone",
+      "Deep vs Shallow",
     ],
   },
   G5: {
-    text: "How do I reproduce failure scenarios?",
+    id: "G5",
     category: "G",
+    text: "How does SmallVec implement PartialEq and what are the gotchas?",
     criteria: [
-      "Explain how to inject errors or edge cases",
-      "Specify whether failure modes are reliably reproducible",
-      "Identify chaos/fuzz testing opportunities",
+      "Cross-boundary logic",
+      "Capacity interaction",
+      "T: PartialEq bounds",
     ],
   },
   G6: {
-    text: "What can't be tested?",
+    id: "G6",
     category: "G",
+    text: "Why might SmallVec not implement certain standard traits?",
     criteria: [
-      "Identify untestable aspects (timing, external dependencies)",
-      "Explain mitigation strategies (manual testing, monitoring)",
-      "Note technical debt from poor testability",
+      "Missing traits (BorrowMut, etc)",
+      "Design reasons",
+      "Intentional gaps",
     ],
   },
+
+  // H: Tradeoffs
   H1: {
-    text: "What are the alternative designs?",
+    id: "H1",
     category: "H",
+    text: "What are the alternative small-vector designs and how do they differ?",
     criteria: [
-      "Enumerate 2+ substantially different approaches",
-      "Explain how each alternative differs structurally",
-      "Note which alternatives you've already ruled out",
+      "SmallVec vs ArrayVec/TinyVec",
+      "Representation tradeoffs",
+      "Design goals",
     ],
   },
   H2: {
-    text: "What does each alternative optimize for?",
+    id: "H2",
     category: "H",
+    text: "Why use an enum representation instead of pointer tagging?",
     criteria: [
-      "Specify what each design prioritizes (simplicity, performance, flexibility)",
-      "Explain what each sacrifices",
-      "Identify which goals are most important",
+      "Pointer tagging benefits",
+      "Portability concerns",
+      "Space/Time tradeoffs",
     ],
   },
   H3: {
-    text: "What are the concrete tradeoffs?",
+    id: "H3",
     category: "H",
+    text: "What does SmallVec sacrifice compared to Vec?",
     criteria: [
-      "List 3+ specific tensions (e.g., coupling vs. overhead)",
-      "Explain why you can't have both",
-      "Quantify tradeoffs where possible",
+      "Missing optimizations",
+      "Sacrifice necessity",
+      "Recovery paths",
     ],
   },
   H4: {
-    text: "What prior art exists?",
+    id: "H4",
     category: "H",
+    text: "When should you choose SmallVec over Vec or array?",
     criteria: [
-      "Reference 1+ similar systems or patterns",
-      "Explain how their context differs from yours",
-      "Note what you can borrow vs. must adapt",
+      "Access patterns/Allocation needs",
+      "Profiling strategy",
+      "Incorrect use-cases",
     ],
   },
   H5: {
-    text: "What would I do with unlimited resources/time?",
+    id: "H5",
     category: "H",
+    text: "How does const generic N constrain API evolution?",
     criteria: [
-      "Describe idealized solution",
-      "Explain constraints preventing that approach",
-      "Identify what you're settling for and why",
+      "Breaking vs Non-breaking N",
+      "Generic compatibility",
+      "Future feature limitations",
     ],
   },
   H6: {
-    text: "What future requirements might invalidate this?",
+    id: "H6",
     category: "H",
+    text: "What would a SmallVec with runtime-configurable inline size look like?",
     criteria: [
-      "List 2+ scenarios where design wouldn't scale or adapt",
-      "Explain how likely these scenarios are",
-      "Note what refactoring would be needed",
+      "Representation changes",
+      "Performance implications",
+      "Design rejection reasons",
     ],
   },
   H7: {
-    text: "What would you tell yourself 6 months from now?",
+    id: "H7",
     category: "H",
+    text: "How do panic safety guarantees differ between SmallVec and Vec?",
     criteria: [
-      "Document key design rationale",
-      "Explain non-obvious decisions",
-      "Warn about potential pitfalls or misunderstandings",
+      "Weak guarantee locations",
+      "Implementation complexity",
+      "Real-world impact",
+    ],
+  },
+  H8: {
+    id: "H8",
+    category: "H",
+    text: "What compile-time vs runtime tradeoffs exist in SmallVec?",
+    criteria: [
+      "Monomorphization decisions",
+      "Code bloat",
+      "Runtime cost acceptance",
+    ],
+  },
+  H9: {
+    id: "H9",
+    category: "H",
+    text: "How would you extend SmallVec for your specific use case?",
+    criteria: [
+      "Specific optimizations",
+      "Implementation challenges",
+      "Upstream justification",
+    ],
+  },
+  H10: {
+    id: "H10",
+    category: "H",
+    text: "What future Rust language features would simplify SmallVec?",
+    criteria: [
+      "Language proposals",
+      "API/Impl improvements",
+      "Breaking potential",
     ],
   },
 }
 
-const shuffleArray = (array) => {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const shuffle = <T,>(arr: Array<T>): Array<T> =>
+  [...arr].sort(() => Math.random() - 0.5)
+
+const formatTime = (s: number): string => {
+  const mins = Math.floor(s / 60)
+  const secs = s % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}
+
+// ============================================================================
+// ASSESSMENT LOGIC HOOK
+// ============================================================================
+
+type UseAssessmentLogicProps = {
+  totalMins: number
+  perQuestionMins: number
+  qPerCategory: number
+  isConcentrated: boolean
+}
+
+const useAssessmentLogic = ({
+  totalMins,
+  perQuestionMins,
+  qPerCategory,
+  isConcentrated,
+}: UseAssessmentLogicProps) => {
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [stage, setStage] = useState<"setup" | "assessment" | "complete">(
+    "setup"
+  )
+  const [questions, setQuestions] = useState<Array<Question>>([])
+  const [currentIdx, setCurrentIdx] = useState(0)
+  const [answers, setAnswers] = useState<Record<string, Answer>>({})
+  const [totalSecsLeft, setTotalSecsLeft] = useState(0)
+  const [stepSecsLeft, setStepSecsLeft] = useState(0)
+
+  const generateAssessmentPool = () => {
+    const pool: Array<Question> = []
+    const groupedQuestions: Record<string, Array<Question>> = {}
+
+    Object.values(ALL_QUESTIONS).forEach((q) => {
+      if (!groupedQuestions[q.category]) groupedQuestions[q.category] = []
+      groupedQuestions[q.category].push(q)
+    })
+
+    const requiredCats = Object.values(CATEGORIES).filter(
+      (c) => c.minRequired > 0
+    )
+    requiredCats.forEach((cat) => {
+      const available = shuffle([...(groupedQuestions[cat.id] || [])])
+      pool.push(...available.slice(0, qPerCategory))
+    })
+
+    if (isConcentrated) {
+      setQuestions(pool.sort((a, b) => a.category.localeCompare(b.category)))
+    } else {
+      setQuestions(shuffle(pool))
+    }
   }
-  return shuffled
-}
-
-const selectRandomQuestions = () => {
-  // Always include category H and select 2 more random categories (total 3)
-  const allCategories = ["A", "B", "C", "D", "E", "F", "G"]
-  const shuffledCategories = shuffleArray(allCategories)
-  const selectedCategories = ["H", ...shuffledCategories.slice(0, 2)]
-
-  // Get questions by category
-  const questionsByCategory = {}
-  Object.entries(ALL_QUESTIONS).forEach(([id, question]) => {
-    if (!questionsByCategory[question.category]) {
-      questionsByCategory[question.category] = []
-    }
-    questionsByCategory[question.category].push({ id, ...question })
-  })
-
-  // Select random questions from each selected category
-  // Need 8 total questions, with at least 1 from H
-  const selectedQuestions = []
-
-  // First, guarantee 1 from H
-  const hQuestions = shuffleArray(questionsByCategory["H"])
-  selectedQuestions.push(hQuestions[0])
-
-  // Then distribute remaining 7 questions across the 3 categories
-  const questionsPerCategory = Math.floor(7 / 3) // 2 questions per category
-  const remainder = 7 % 3 // 1 extra question
-
-  selectedCategories.forEach((cat, idx) => {
-    const categoryQuestions = shuffleArray(questionsByCategory[cat])
-    const count = questionsPerCategory + (idx < remainder ? 1 : 0)
-    const startIdx = cat === "H" ? 1 : 0 // Skip first H question since we already added it
-
-    for (
-      let i = startIdx;
-      i < startIdx + count && i < categoryQuestions.length;
-      i++
-    ) {
-      if (selectedQuestions.length < 8) {
-        selectedQuestions.push(categoryQuestions[i])
-      }
-    }
-  })
-
-  // Shuffle the final order
-  return shuffleArray(selectedQuestions)
-}
-
-export const TechnicalBlockAssessment = () => {
-  const [stage, setStage] = useState("setup")
-  const [totalTime, setTotalTime] = useState(60)
-  const [stepTime, setStepTime] = useState(5)
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [questions, setQuestions] = useState([])
-  const [answers, setAnswers] = useState({})
-  const [timeRemaining, setTimeRemaining] = useState(0)
-  const [stepTimeRemaining, setStepTimeRemaining] = useState(0)
-  const [score, setScore] = useState(0)
-
-  // Generate questions on mount
-  useEffect(() => {
-    setQuestions(selectRandomQuestions())
-  }, [])
 
   useEffect(() => {
-    if (stage === "assessment" && timeRemaining > 0) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
+    if (stage === "assessment") {
+      timerRef.current = setInterval(() => {
+        setTotalSecsLeft((prev) => {
           if (prev <= 1) {
             setStage("complete")
             return 0
           }
           return prev - 1
         })
+        setStepSecsLeft((prev) => (prev > 0 ? prev - 1 : 0))
       }, 1000)
-      return () => clearInterval(timer)
     }
-  }, [stage, timeRemaining])
-
-  useEffect(() => {
-    if (stage === "assessment" && stepTimeRemaining > 0) {
-      const timer = setInterval(() => {
-        setStepTimeRemaining((prev) => {
-          if (prev <= 1) return 0
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearInterval(timer)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [stage, stepTimeRemaining])
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+  }, [stage])
 
   const startAssessment = () => {
-    setTimeRemaining(totalTime * 60)
-    setStepTimeRemaining(stepTime * 60)
+    generateAssessmentPool()
+    setTotalSecsLeft(totalMins * 60)
+    setStepSecsLeft(perQuestionMins * 60)
+    setAnswers({})
+    setCurrentIdx(0)
     setStage("assessment")
   }
 
-  const handleAnswer = (data) => {
+  const handleUpdateAnswer = (data: Partial<Answer>) => {
+    const qId = questions[currentIdx]?.id
+    if (!qId) return
     setAnswers((prev) => ({
       ...prev,
-      [questions[currentQuestion].id]: data,
+      [qId]: { ...prev[qId], ...data },
     }))
   }
 
   const nextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion((prev) => prev + 1)
-      setStepTimeRemaining(stepTime * 60)
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx((prev) => prev + 1)
+      setStepSecsLeft(perQuestionMins * 60)
     } else {
       setStage("complete")
-      calculateScore()
     }
   }
 
-  const calculateScore = () => {
-    let totalScore = 0
-    let count = 0
-    Object.values(answers).forEach((answer) => {
-      if (answer.score !== undefined) {
-        totalScore += answer.score
-        count++
-      }
-    })
-    setScore(count > 0 ? totalScore / count : 0)
+  return {
+    stage,
+    setStage,
+    questions,
+    currentIdx,
+    answers,
+    totalSecsLeft,
+    stepSecsLeft,
+    startAssessment,
+    handleUpdateAnswer,
+    nextQuestion,
   }
+}
 
-  if (stage === "setup") {
-    const categoryCounts = {}
-    questions.forEach((q) => {
-      categoryCounts[q.category] = (categoryCounts[q.category] || 0) + 1
-    })
+// ============================================================================
+// SETUP STAGE COMPONENT
+// ============================================================================
 
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <Target className="w-12 h-12 text-cyan-400" />
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                Technical Block Assessment
-              </h1>
-            </div>
-            <p className="text-gray-300 text-lg">
-              Configure your livestream assessment
-            </p>
+type SetupStageProps = {
+  qPerCategory: number
+  setQPerCategory: (n: number) => void
+  perQuestionMins: number
+  setPerQuestionMins: (n: number) => void
+  isConcentrated: boolean
+  setIsConcentrated: (b: boolean) => void
+  onStart: () => void
+}
+
+const SetupStage: React.FC<SetupStageProps> = ({
+  qPerCategory,
+  setQPerCategory,
+  perQuestionMins,
+  setPerQuestionMins,
+  isConcentrated,
+  setIsConcentrated,
+  onStart,
+}) => (
+  <div className="absolute inset-0 bg-slate-900 text-white flex items-center justify-center overflow-hidden">
+    <div className="w-full max-w-2xl bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl mx-4">
+      <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+        Assessment Configuration
+      </h1>
+
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-slate-400">
+              Questions per Category
+            </label>
+            <input
+              type="number"
+              value={qPerCategory}
+              onChange={(e) => setQPerCategory(Number(e.target.value))}
+              className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
+            />
           </div>
+          <div className="space-y-2">
+            <label className="text-sm text-slate-400">
+              Minutes per Question
+            </label>
+            <input
+              type="number"
+              value={perQuestionMins}
+              onChange={(e) => setPerQuestionMins(Number(e.target.value))}
+              className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
+            />
+          </div>
+        </div>
 
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-purple-500/30 shadow-2xl">
-            <div className="space-y-8">
-              <div className="bg-slate-900/50 rounded-xl p-6 border border-cyan-500/30">
-                <h3 className="text-cyan-400 font-semibold mb-4 text-lg flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  Randomly Selected Questions ({questions.length} total)
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(categoryCounts).map(([cat, count]) => (
-                    <div
-                      key={cat}
-                      className={`bg-gradient-to-r ${CATEGORIES[cat].color} p-3 rounded-lg`}
-                    >
-                      <div className="text-white font-bold">Category {cat}</div>
-                      <div className="text-white/90 text-sm">
-                        {count} questions
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    setQuestions(selectRandomQuestions())
-                    setAnswers({})
-                    setCurrentQuestion(0)
-                  }}
-                  className="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg transition-colors"
+        <button
+          onClick={() => setIsConcentrated(!isConcentrated)}
+          className={`w-full p-4 rounded-xl border-2 transition-all ${
+            isConcentrated
+              ? "border-purple-500 bg-purple-500/10"
+              : "border-slate-600 bg-slate-700"
+          }`}
+        >
+          Mode: {isConcentrated ? "🎯 Topic Concentration" : "🎲 Full Shuffle"}
+        </button>
+
+        <button
+          onClick={onStart}
+          className="w-full py-6 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl font-black text-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+        >
+          START ASSESSMENT
+        </button>
+      </div>
+    </div>
+  </div>
+)
+
+// ============================================================================
+// ASSESSMENT STAGE COMPONENT
+// ============================================================================
+
+type AssessmentStageProps = {
+  questions: Array<Question>
+  currentIdx: number
+  answers: Record<string, Answer>
+  totalSecsLeft: number
+  stepSecsLeft: number
+  onUpdateAnswer: (data: Partial<Answer>) => void
+  onNext: () => void
+}
+
+const AssessmentStage: React.FC<AssessmentStageProps> = ({
+  questions,
+  currentIdx,
+  answers,
+  totalSecsLeft,
+  stepSecsLeft,
+  onUpdateAnswer,
+  onNext,
+}) => {
+  const currentQ = questions[currentIdx]
+  const currentAnswer = answers[currentQ.id] || {}
+
+  if (!currentQ) return null
+
+  return (
+    <div className="size-full bg-slate-950 text-white flex flex-col overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 max-w-5xl mx-auto w-full px-6 py-4 gap-4">
+        {/* Timer Header */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-900 p-4 rounded-2xl border border-red-500/30">
+            <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">
+              Global Time Remaining
+            </span>
+            <div className="text-3xl font-mono text-red-400">
+              {formatTime(totalSecsLeft)}
+            </div>
+          </div>
+          <div className="bg-slate-900 p-4 rounded-2xl border border-cyan-500/30">
+            <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">
+              Question Time Remaining
+            </span>
+            <div className="text-3xl font-mono text-cyan-400">
+              {formatTime(stepSecsLeft)}
+            </div>
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div
+          className={`min-h-0 overflow-hidden p-1 rounded-3xl flex-grow bg-gradient-to-br ${
+            CATEGORIES[currentQ.category].color
+          }`}
+        >
+          <div className="bg-slate-900 rounded-[22px] p-6 flex flex-col size-full min-h-0 overflow-hidden">
+            <div className="flex justify-between items-start mb-4">
+              <span className="px-4 py-1 bg-slate-800 rounded-full text-sm font-bold border border-slate-700">
+                {currentQ.id} | {CATEGORIES[currentQ.category].name}
+              </span>
+              <span className="text-slate-500 font-mono text-sm">
+                Question {currentIdx + 1} of {questions.length}
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold mb-4 leading-tight shrink-0">
+              {currentQ.text}
+            </h2>
+
+            {/* Criteria */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 flex-none max-h-40 overflow-auto">
+              {currentQ.criteria.map((c, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50"
                 >
-                  🎲 Reshuffle Questions
-                </button>
-              </div>
+                  <CheckCircle
+                    className="text-emerald-500 shrink-0"
+                    size={18}
+                  />
+                  <span className="text-sm">{c}</span>
+                </div>
+              ))}
+            </div>
 
-              <div>
-                <label className="block text-cyan-400 font-semibold mb-3 text-lg">
-                  Total Assessment Time (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={totalTime}
-                  onChange={(e) => setTotalTime(parseInt(e.target.value))}
-                  className="w-full bg-slate-700 text-white px-6 py-4 rounded-xl border-2 border-purple-500/50 focus:border-cyan-400 focus:outline-none text-2xl font-bold"
-                  min="1"
-                  max="180"
-                />
-              </div>
+            {/* Input Area */}
+            <textarea
+              className="w-full flex-1 min-h-0 bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-lg resize-none focus:border-purple-500 outline-none transition-all"
+              placeholder="Structure your technical response..."
+              value={currentAnswer.text ?? ""}
+              onChange={(e) => onUpdateAnswer({ text: e.target.value })}
+            />
 
-              <div>
-                <label className="block text-pink-400 font-semibold mb-3 text-lg">
-                  Time Per Question (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={stepTime}
-                  onChange={(e) => setStepTime(parseInt(e.target.value))}
-                  className="w-full bg-slate-700 text-white px-6 py-4 rounded-xl border-2 border-purple-500/50 focus:border-pink-400 focus:outline-none text-2xl font-bold"
-                  min="1"
-                  max="30"
-                />
-              </div>
-
+            {/* Evidence Bar */}
+            <div className="flex gap-4 mt-4 shrink-0">
               <button
-                onClick={startAssessment}
-                className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white py-6 rounded-xl font-bold text-2xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-3"
+                onClick={() =>
+                  onUpdateAnswer({ showedCode: !currentAnswer.showedCode })
+                }
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                  currentAnswer.showedCode
+                    ? "bg-cyan-500/20 border-cyan-500"
+                    : "bg-slate-800 border-slate-700 text-slate-500"
+                }`}
               >
-                <Zap className="w-8 h-8" />
-                Start Assessment
+                <Code size={20} /> Live Code
+              </button>
+              <button
+                onClick={() =>
+                  onUpdateAnswer({ didResearch: !currentAnswer.didResearch })
+                }
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                  currentAnswer.didResearch
+                    ? "bg-pink-500/20 border-pink-500"
+                    : "bg-slate-800 border-slate-700 text-slate-500"
+                }`}
+              >
+                <FileText size={20} /> Research
               </button>
             </div>
           </div>
         </div>
+
+        {/* Next Button */}
+        <button
+          onClick={onNext}
+          className="shrink-0 w-full py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-xl shadow-xl transition-all flex items-center justify-center gap-3"
+        >
+          {currentIdx === questions.length - 1
+            ? "FINISH ASSESSMENT"
+            : "NEXT QUESTION"}
+          <Zap size={24} />
+        </button>
       </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// COMPLETE STAGE COMPONENT
+// ============================================================================
+
+type CompleteStageProps = {
+  onRestart: () => void
+}
+
+const CompleteStage: React.FC<CompleteStageProps> = ({ onRestart }) => (
+  <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-white overflow-hidden">
+    <div className="text-center">
+      <h1 className="text-4xl font-bold mb-4">Assessment Complete</h1>
+      <button onClick={onRestart} className="text-cyan-400 hover:underline">
+        Start New Session
+      </button>
+    </div>
+  </div>
+)
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export const TechnicalBlockAssessment: React.FC = () => {
+  const [totalMins] = useState(60)
+  const [perQuestionMins, setPerQuestionMins] = useState(5)
+  const [qPerCategory, setQPerCategory] = useState(2)
+  const [isConcentrated, setIsConcentrated] = useState(true)
+
+  const {
+    stage,
+    setStage,
+    questions,
+    currentIdx,
+    answers,
+    totalSecsLeft,
+    stepSecsLeft,
+    startAssessment,
+    handleUpdateAnswer,
+    nextQuestion,
+  } = useAssessmentLogic({
+    totalMins,
+    perQuestionMins,
+    qPerCategory,
+    isConcentrated,
+  })
+
+  if (stage === "setup") {
+    return (
+      <SetupStage
+        qPerCategory={qPerCategory}
+        setQPerCategory={setQPerCategory}
+        perQuestionMins={perQuestionMins}
+        setPerQuestionMins={setPerQuestionMins}
+        isConcentrated={isConcentrated}
+        setIsConcentrated={setIsConcentrated}
+        onStart={startAssessment}
+      />
     )
   }
 
   if (stage === "assessment") {
-    const currentQ = questions[currentQuestion]
-    const progress = ((currentQuestion + 1) / questions.length) * 100
-
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
-        <div className="max-w-5xl mx-auto">
-          {/* Header with timers */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl p-6 shadow-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className="w-8 h-8 text-white" />
-                <span className="text-white font-semibold text-lg">
-                  Total Time
-                </span>
-              </div>
-              <div className="text-5xl font-bold text-white">
-                {formatTime(timeRemaining)}
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 shadow-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <AlertCircle className="w-8 h-8 text-white" />
-                <span className="text-white font-semibold text-lg">
-                  Question Time
-                </span>
-              </div>
-              <div className="text-5xl font-bold text-white">
-                {formatTime(stepTimeRemaining)}
-              </div>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="mb-8">
-            <div className="flex justify-between text-gray-300 mb-2">
-              <span className="font-semibold">
-                Question {currentQuestion + 1} of {questions.length}
-              </span>
-              <span className="font-semibold">
-                {Math.round(progress)}% Complete
-              </span>
-            </div>
-            <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-400 to-purple-400 transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Question card */}
-          <div
-            className={`bg-gradient-to-r ${CATEGORIES[currentQ.category].color} p-1 rounded-2xl shadow-2xl mb-8`}
-          >
-            <div className="bg-slate-900 rounded-xl p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg font-bold text-white">
-                  {currentQ.id}
-                </span>
-                <span className="text-gray-400">
-                  Category {currentQ.category}:{" "}
-                  {CATEGORIES[currentQ.category].name}
-                </span>
-              </div>
-
-              <h2 className="text-3xl font-bold text-white mb-6">
-                {currentQ.text}
-              </h2>
-
-              <div className="bg-slate-800/50 rounded-xl p-6 mb-6">
-                <h3 className="text-cyan-400 font-semibold mb-3 flex items-center gap-2">
-                  <Target className="w-5 h-5" />
-                  Satisfactory Answer Must Include:
-                </h3>
-                <ul className="space-y-2">
-                  {currentQ.criteria.map((criterion, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2 text-gray-300"
-                    >
-                      <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>{criterion}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Answer input */}
-              <div>
-                <label className="block text-white font-semibold mb-3">
-                  Your Answer:
-                </label>
-                <textarea
-                  value={answers[currentQ.id]?.text || ""}
-                  onChange={(e) =>
-                    handleAnswer({
-                      ...answers[currentQ.id],
-                      text: e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-800 text-white px-6 py-4 rounded-xl border-2 border-purple-500/50 focus:border-cyan-400 focus:outline-none min-h-[200px] text-lg"
-                  placeholder="Type your answer here..."
-                />
-              </div>
-
-              {/* Evidence checkboxes */}
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <label className="flex items-center gap-3 bg-slate-800 p-4 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={answers[currentQ.id]?.showedCode || false}
-                    onChange={(e) =>
-                      handleAnswer({
-                        ...answers[currentQ.id],
-                        showedCode: e.target.checked,
-                      })
-                    }
-                    className="w-6 h-6"
-                  />
-                  <Code className="w-6 h-6 text-cyan-400" />
-                  <span className="text-white font-semibold">
-                    Showed Live Code
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 bg-slate-800 p-4 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={answers[currentQ.id]?.didResearch || false}
-                    onChange={(e) =>
-                      handleAnswer({
-                        ...answers[currentQ.id],
-                        didResearch: e.target.checked,
-                      })
-                    }
-                    className="w-6 h-6"
-                  />
-                  <FileText className="w-6 h-6 text-pink-400" />
-                  <span className="text-white font-semibold">Did Research</span>
-                </label>
-              </div>
-
-              {/* Score selection */}
-              <div className="mt-6">
-                <label className="block text-white font-semibold mb-3">
-                  Self-Assessment Score:
-                </label>
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    {
-                      score: 0,
-                      label: "Unsatisfactory",
-                      desc: "Question skipped or not addressed",
-                    },
-                    { score: 1, label: "Weak", desc: "Vague or generic" },
-                    {
-                      score: 2,
-                      label: "Satisfactory",
-                      desc: "Reasonably specific",
-                    },
-                    {
-                      score: 3,
-                      label: "Excellent",
-                      desc: "Concrete and backed by evidence",
-                    },
-                  ].map(({ score, label, desc }) => (
-                    <button
-                      key={score}
-                      onClick={() =>
-                        handleAnswer({ ...answers[currentQ.id], score })
-                      }
-                      className={`p-4 rounded-xl font-bold transition-all ${
-                        answers[currentQ.id]?.score === score
-                          ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white scale-105 shadow-xl"
-                          : "bg-slate-800 text-gray-400 hover:bg-slate-700"
-                      }`}
-                      title={desc}
-                    >
-                      <div className="text-2xl mb-1">{score}</div>
-                      <div className="text-sm">{label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={nextQuestion}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-6 rounded-xl font-bold text-2xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-3"
-          >
-            {currentQuestion < questions.length - 1
-              ? "Next Question"
-              : "Complete Assessment"}
-            <Zap className="w-8 h-8" />
-          </button>
-        </div>
+      <div className="absolute inset-0">
+        <AssessmentStage
+          questions={questions}
+          currentIdx={currentIdx}
+          answers={answers}
+          totalSecsLeft={totalSecsLeft}
+          stepSecsLeft={stepSecsLeft}
+          onUpdateAnswer={handleUpdateAnswer}
+          onNext={nextQuestion}
+        />
       </div>
     )
   }
 
-  const categoriesAnswered = new Set(
-    Object.keys(answers)
-      .map((qId) => ALL_QUESTIONS[qId]?.category)
-      .filter(Boolean)
-  )
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8 flex items-center justify-center">
-      <div className="max-w-3xl mx-auto text-center">
-        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-12 border border-purple-500/30 shadow-2xl">
-          <CheckCircle className="w-24 h-24 text-green-400 mx-auto mb-6" />
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-4">
-            Assessment Complete!
-          </h1>
-          <div className="text-6xl font-bold text-white mb-4">
-            Score: {score.toFixed(1)}/3.0
-          </div>
-          <div
-            className={`text-lg mb-8 ${score >= 2.0 ? "text-green-400" : "text-yellow-400"}`}
-          >
-            {score >= 2.0
-              ? "✅ Passes minimum requirements"
-              : "⚠️ Below minimum threshold (2.0)"}
-          </div>
-          <div className="grid grid-cols-3 gap-6 mb-8">
-            <div className="bg-slate-900 rounded-xl p-6">
-              <div className="text-cyan-400 text-lg mb-2">
-                Questions Answered
-              </div>
-              <div className="text-4xl font-bold text-white">
-                {Object.keys(answers).length}
-              </div>
-              <div
-                className={`text-sm mt-2 ${Object.keys(answers).length >= 8 ? "text-green-400" : "text-yellow-400"}`}
-              >
-                {Object.keys(answers).length >= 8 ? "✅ Min: 8" : `⚠️ Min: 8`}
-              </div>
-            </div>
-            <div className="bg-slate-900 rounded-xl p-6">
-              <div className="text-pink-400 text-lg mb-2">
-                Categories Covered
-              </div>
-              <div className="text-4xl font-bold text-white">
-                {categoriesAnswered.size}
-              </div>
-              <div
-                className={`text-sm mt-2 ${categoriesAnswered.size >= 3 ? "text-green-400" : "text-yellow-400"}`}
-              >
-                {categoriesAnswered.size >= 3 ? "✅ Min: 3" : `⚠️ Min: 3`}
-              </div>
-            </div>
-            <div className="bg-slate-900 rounded-xl p-6">
-              <div className="text-orange-400 text-lg mb-2">Category H</div>
-              <div className="text-4xl font-bold text-white">
-                {categoriesAnswered.has("H") ? "✓" : "✗"}
-              </div>
-              <div
-                className={`text-sm mt-2 ${categoriesAnswered.has("H") ? "text-green-400" : "text-red-400"}`}
-              >
-                {categoriesAnswered.has("H") ? "✅ Required" : "❌ Required"}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 rounded-xl p-6 mb-8">
-            <h3 className="text-white font-semibold mb-4">
-              Question Breakdown
-            </h3>
-            <div className="space-y-2">
-              {questions.map((q) => {
-                const answer = answers[q.id]
-                const hasAnswer = answer?.score !== undefined
-                return (
-                  <div
-                    key={q.id}
-                    className="flex items-center justify-between bg-slate-800 p-3 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`px-3 py-1 bg-gradient-to-r ${CATEGORIES[q.category].color} rounded font-bold text-white text-sm`}
-                      >
-                        {q.id}
-                      </span>
-                      <span className="text-gray-300 text-sm">
-                        {q.text.substring(0, 50)}...
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {answer?.showedCode && (
-                        <Code className="w-4 h-4 text-cyan-400" />
-                      )}
-                      {answer?.didResearch && (
-                        <FileText className="w-4 h-4 text-pink-400" />
-                      )}
-                      <span
-                        className={`font-bold ${hasAnswer ? "text-white" : "text-gray-500"}`}
-                      >
-                        {hasAnswer ? `${answer.score}/3` : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              setStage("setup")
-              setCurrentQuestion(0)
-              setAnswers({})
-              setQuestions(selectRandomQuestions())
-            }}
-            className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all"
-          >
-            Start New Assessment
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  return <CompleteStage onRestart={() => setStage("setup")} />
 }

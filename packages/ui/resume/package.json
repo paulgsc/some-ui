@@ -1,5 +1,5 @@
 {
-  "name": "some-ui-resume",
+  "name": "@some-ui/resume",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -40,17 +40,17 @@
     "*.css"
   ],
   "unpkg": "some-ui-resume.umd.js",
-  "main": "./dist/some-ui-resume.cjs.js",
-  "module": "./dist/some-ui-resume.es.js",
-  "types": "./dist/some-ui-resume.d.ts",
+  "main": "./dist/@some-ui/resume.cjs.js",
+  "module": "./dist/@some-ui/resume.es.js",
+  "types": "./dist/@some-ui/resume.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/some-ui-resume.d.ts",
-      "import": "./dist/some-ui-resume.es.js",
-      "require": "./dist/some-ui-resume.cjs.js",
-      "default": "./dist/some-ui-resume.es.js"
+      "types": "./dist/@some-ui/resume.d.ts",
+      "import": "./dist/@some-ui/resume.es.js",
+      "require": "./dist/@some-ui/resume.cjs.js",
+      "default": "./dist/@some-ui/resume.es.js"
     },
-    "./style.css": "./dist/some-ui-resume.css"
+    "./style.css": "./dist/@some-ui/resume.css"
   },
   "dependencies": {
     "lucide-react": "^0.511.0",
@@ -58,5 +58,5 @@
     "some-ui-nfl": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
-  "style": "./dist/some-ui-resume.css"
+  "style": "./dist/@some-ui/resume.css"
 }

@@ -13,6 +13,7 @@
     "some-ui-slideshow": "workspace:*",
     "some-ui-stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "@some-ui/resume": "workspace:*",
     "umag": "workspace:*"
   },
   "description": "Shared Vite configuration for monorepo packages",
