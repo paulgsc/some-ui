@@ -508,6 +508,8 @@ export const ObsCommandSchema = z.discriminatedUnion("type", [
   CustomSchema,
 ])
 
+export type ObsCommand = z.infer<typeof ObsCommandSchema>
+
 export const EventTypeSchema = z.enum([
   "ping",
   "pong",

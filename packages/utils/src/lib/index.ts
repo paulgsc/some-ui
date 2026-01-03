@@ -19,6 +19,22 @@ export {
   useRegionRect,
   useLatestNowPlaying,
   useNowPlayingStore,
+  useActiveFps,
+  useConnectionInfo,
+  useCpuUsage,
+  useCurrentCollection,
+  useCurrentProfile,
+  useCurrentTransition,
+  useIsConnected,
+  useIsRecording,
+  useIsStreaming,
+  useObsCommands,
+  useRecordTimecode,
+  useReplayBufferActive,
+  useSceneInfo,
+  useStreamTimecode,
+  useStudioModeEnabled,
+  useVirtualCamActive,
 } from "./context"
 export type { SpeechQueueState } from "./context"
 export {

@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
+import { useObsStore } from "@utils/lib/context/zustand-store/obs-store"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
   UseWebSocketOptions,
   WebSocketManager,
 } from "@utils/lib/hooks/websocket"
-import { updateClientObsState } from "@utils/lib/obs"
 import type {
-  ClientObsState,
   IncomingEvent,
+  ObsCommand,
   OutgoingObsEvent,
 } from "some-types-utils"
 import { IncomingEventSchema, OutgoingObsEventSchema } from "some-types-utils"
@@ -17,54 +17,55 @@ type UseObsStatusOptions = Omit<
   "incomingMessageSchema" | "outgoingMessageSchema" | "init"
 >
 
-export const defaultClientObsState: ClientObsState = {
-  obsVersion: "Unknown",
-  websocketVersion: "Unknown",
-  identified: false,
-  streaming: false,
-  streamTimecode: "00:00:00.000",
-  recording: false,
-  recordTimecode: "00:00:00.000",
-  scenes: [],
-  currentScene: "Unknown",
-  sources: [],
-  inputs: [],
-  audioMutes: {},
-  audioVolumes: {},
-  profiles: [],
-  currentProfile: "Unknown",
-  collections: [],
-  currentCollection: "Unknown",
-  virtualCamActive: false,
-  replayBufferActive: false,
-  studioModeEnabled: false,
-  stats: {
-    cpuUsage: 0,
-    memoryUsage: 0,
-    availableDiskSpace: 0,
-    activeFps: 0,
-    averageFrameTime: 0,
-    renderTotalFrames: 0,
-    renderMissedFrames: 0,
-    outputTotalFrames: 0,
-    outputSkippedFrames: 0,
-    webSocketSessionIncomingMessages: 0,
-    webSocketSessionOutgoingMessages: 0,
-  },
-  currentTransitionName: "Cut",
-  currentTransitionDuration: 300,
-  transitions: [],
-  sourceFilters: {},
-  hotkeys: [],
-  sceneItemEnableStates: {},
-}
-
+/**
+ * Hook to connect to OBS WebSocket and sync state to Zustand store.
+ *
+ * The store separates state into temporal layers:
+ * - High-frequency state (stats, timecodes) - updates frequently
+ * - Low-frequency state (scenes, inputs, settings) - updates rarely
+ *
+ * Components can subscribe to specific selectors to avoid unnecessary rerenders.
+ *
+ * @example
+ * ```tsx
+ * // In your root component or connection manager
+ * useObsStatusWebSocket({ url: "ws://localhost:4455" })
+ *
+ * // In child components, use selectors
+ * import { useScenes, useIsStreaming, useObsCommands } from './obs-store'
+ *
+ * function SceneList() {
+ *   const scenes = useScenes() // Only rerenders when scenes change
+ *   const { switchScene } = useObsCommands()
+ *   // ...
+ * }
+ *
+ * function StreamingButton() {
+ *   const isStreaming = useIsStreaming() // Only rerenders when streaming status changes
+ *   const { startStreaming, stopStreaming } = useObsCommands()
+ *   // ...
+ * }
+ *
+ * function StatsDisplay() {
+ *   const stats = useObsStats() // Rerenders frequently - opt-in only!
+ *   // ...
+ * }
+ * ```
+ */
 export function useObsStatus(options: UseObsStatusOptions) {
-  const [status, setStatus] = useState<ClientObsState>(defaultClientObsState)
+  const handleEvent = useObsStore((s) => s._handleEvent)
+  const setConnectionStatus = useObsStore((s) => s._setConnectionStatus)
+  const setCommandSender = useObsStore((s) => s._setCommandSender)
+  const reset = useObsStore((s) => s._reset)
+
+  const sendRef = useRef<((msg: OutgoingObsEvent) => Promise<void>) | null>(
+    null
+  )
 
   const init = useCallback(async (manager: WebSocketManager) => {
     console.log("🎥 OBS init (atomic, singleton)")
 
+    // Subscribe to OBS status updates
     await manager.sendSerialized({
       type: "subscribe",
       event_types: ["obsStatus"],
@@ -78,78 +79,76 @@ export function useObsStatus(options: UseObsStatusOptions) {
     autoReconnect: options.autoReconnect ?? true,
     reconnectInterval: options.reconnectInterval ?? 5000,
     debugMode: options.debugMode ?? false,
-
     init,
-
     onIncomingMessage: (event) => {
+      // Forward to user's handler first
       if (options.onIncomingMessage) {
         options.onIncomingMessage(event)
       }
 
+      // Update store - now uses internal event handler
       if (event.type === "obsStatus") {
-        setStatus((prev) => updateClientObsState(prev, event.status))
+        handleEvent(event.status)
       }
     },
-
-    onConnect: options.onConnect,
-    onDisconnect: options.onDisconnect,
-    onError: options.onError,
+    onConnect: (...args) => {
+      setConnectionStatus(true)
+      if (options.onConnect) {
+        options.onConnect(...args)
+      }
+    },
+    onDisconnect: (...args) => {
+      setConnectionStatus(false, "Disconnected")
+      if (options.onDisconnect) {
+        options.onDisconnect(...args)
+      }
+    },
+    onError: (error, ...args) => {
+      setConnectionStatus(false, "foo")
+      if (options.onError) {
+        options.onError(error, ...args)
+      }
+    },
   })
 
-  // Serialized command helpers
-  const startStreaming = useCallback(() => {
-    ws.sendSerialized({
-      type: "obsCmd",
-      cmd: { type: "startStream" },
-    })
+  // Keep sendSerialized ref up to date
+  useEffect(() => {
+    sendRef.current = ws.sendSerialized
   }, [ws.sendSerialized])
 
-  const stopStreaming = useCallback(() => {
-    ws.sendSerialized({
-      type: "obsCmd",
-      cmd: { type: "stopStream" },
-    })
-  }, [ws.sendSerialized])
+  // Set up command sender that wraps commands in the proper envelope
+  // CRITICAL: Must depend on sendRef.current to ensure sender is rebound when WebSocket updates
+  useEffect(() => {
+    if (!ws.isConnected || !sendRef.current) {
+      // Set to null, not a throwing function - the store's warn() will handle it
+      setCommandSender(null)
+      return
+    }
 
-  const startRecording = useCallback(() => {
-    ws.sendSerialized({
-      type: "obsCmd",
-      cmd: { type: "startRecording" },
-    })
-  }, [ws.sendSerialized])
+    // Command sender wraps the ObsCommand in the OutgoingObsEvent envelope
+    const sendCommand = async (cmd: ObsCommand): Promise<void> => {
+      console.log("🎥 Sending OBS command:", cmd)
+      await sendRef.current!({
+        type: "obsCmd",
+        cmd,
+      })
+    }
 
-  const stopRecording = useCallback(() => {
-    ws.sendSerialized({
-      type: "obsCmd",
-      cmd: { type: "stopRecording" },
-    })
-  }, [ws.sendSerialized])
+    setCommandSender(sendCommand)
+  }, [ws.isConnected, sendRef.current, setCommandSender])
 
-  const toggleStudioMode = useCallback(() => {
-    ws.sendSerialized({
-      type: "obsCmd",
-      cmd: { type: "toggleStudioMode" },
-    })
-  }, [ws.sendSerialized])
+  // Clean up: reset state on unmount
+  useEffect(() => {
+    return () => {
+      reset()
+      setCommandSender(null)
+    }
+  }, [reset, setCommandSender])
 
-  return useMemo(
-    () => ({
-      ...ws,
-      status,
-      startStreaming,
-      stopStreaming,
-      startRecording,
-      stopRecording,
-      toggleStudioMode,
-    }),
-    [
-      ws,
-      status,
-      startStreaming,
-      stopStreaming,
-      startRecording,
-      stopRecording,
-      toggleStudioMode,
-    ]
-  )
+  // Return minimal interface - commands are in the store
+  return {
+    isConnected: ws.isConnected,
+    isConnecting: ws.isInitializing,
+    error: ws.error,
+  }
 }

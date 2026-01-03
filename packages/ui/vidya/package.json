@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "@some-ui/styles": "workspace:*",
+    "framer-motion": "^12.23.26",
     "some-types-utils": "workspace:*",
     "some-ui-honeycomb": "workspace:*",
     "some-ui-shared": "workspace:*",
