@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createTypingGameStore } from "@input/lib/leetype/game-store"
 import {
@@ -8,7 +9,6 @@ import {
 } from "@input/lib/leetype/leetype-wasm-loader"
 import type { GameState, CanonicalUnit, InputResult } from "@input/types/leetype"
 import { deriveCursorIndex, deriveDisplayMap } from "@input/utils/leetype"
-
 
 type UseTypingGameProps = {
   targetCode: string
@@ -48,6 +48,7 @@ export function useTypingGame({
 }: UseTypingGameProps): UseTypingGameReturn {
   const gameRef = useRef<TypedTypingGame | null>(null)
   const completedRef = useRef(false)
+  const lastTargetRef = useRef<string>("")
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -71,9 +72,11 @@ export function useTypingGame({
         await loadWasm()
         if (!alive) return
 
+        // Initialize game with initial target
         const game = new TypedTypingGame(targetCode, maxConsecutiveErrors)
         gameRef.current = game
         completedRef.current = false
+        lastTargetRef.current = targetCode
 
         setTargetUnits(canonicalizeText(targetCode))
         setIsLoading(false)
@@ -89,7 +92,28 @@ export function useTypingGame({
       gameRef.current?.free()
       gameRef.current = null
     }
-  }, [targetCode, maxConsecutiveErrors])
+  }, [maxConsecutiveErrors]) // Only reinit when max errors changes
+
+  /* ---------- DYNAMIC TARGET UPDATE ---------- */
+
+  useEffect(() => {
+    const game = gameRef.current
+    if (!game || !targetCode || lastTargetRef.current === targetCode) {
+      return
+    }
+
+    try {
+      // Update the WASM target dynamically (preserves game state)
+      game.updateTarget(targetCode)
+      lastTargetRef.current = targetCode
+
+      // Update React state
+      setTargetUnits(canonicalizeText(targetCode))
+    } catch (e) {
+      console.error("Failed to update target:", e)
+      setError(e instanceof Error ? e : new Error("Target update failed"))
+    }
+  }, [targetCode])
 
   /* ---------- STATS SUBSCRIPTION ---------- */
 

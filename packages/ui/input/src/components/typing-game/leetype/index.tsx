@@ -9,9 +9,16 @@ import { TypingErrorAlert } from "@input/components/typing-game/typing-error-ale
 import { TypingInputCard } from "@input/components/typing-game/typing-input-card"
 import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
-import { useFormattedCode } from "@input/hooks/leetype/use-formatted-code"
+import { useChunkedCode } from "@input/hooks/leetype/use-chunked-code"
 import type { DisplayMode, GameState, Language } from "@input/types/leetype"
-import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
+import {
+  Badge,
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "some-ui-shared"
 
 type LeetypeProps = {
   codePaths: Record<Language, string>
@@ -32,11 +39,19 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   const [settingsExpanded, setSettingsExpanded] = useState(true)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const codeDisplayRef = useRef<HTMLDivElement>(null)
 
-  // Load code from file
-  const codeState = useFormattedCode(codePaths[language], {
+  // Load code with automatic chunking for large files
+  const codeState = useChunkedCode(codePaths[language], {
     prettierParser: PRETTIER_PARSER_MAP[language] as any,
+    linesPerChunk: 100,
+    initialChunkCount: 3,
   })
+
+  // Get the content to use for the typing game
+  const targetCode = codeState.useChunking
+    ? codeState.chunks.map((c) => c.content).join("\n")
+    : (codeState.fullContent ?? "")
 
   const {
     onDismiss,
@@ -56,7 +71,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     reset,
     handleInputChange,
   } = useTypingGame({
-    targetCode: codeState.status === "SUCCESS" ? codeState.code : "",
+    targetCode,
     gameState,
     onComplete: () => setGameState("finished"),
   })
@@ -66,6 +81,27 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     duration,
     onTimeout: () => setGameState("timeout"),
   })
+
+  // Handle infinite scroll for chunked code
+  useEffect(() => {
+    if (!codeState.useChunking || !codeState.hasMore) return
+
+    const element = codeDisplayRef.current
+    if (!element) return
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = element
+      const scrollPercentage = (scrollTop + clientHeight) / scrollHeight
+
+      // Load more when scrolled 80% down
+      if (scrollPercentage > 0.8) {
+        codeState.loadMore()
+      }
+    }
+
+    element.addEventListener("scroll", handleScroll)
+    return () => element.removeEventListener("scroll", handleScroll)
+  }, [codeState])
 
   // Reset game when language changes or code loads
   useEffect(() => {
@@ -132,9 +168,16 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 <TabsTrigger value="prompt">Prompt</TabsTrigger>
               </TabsList>
 
-              <Badge variant="secondary" className="font-mono">
-                {language}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {codeState.useChunking && (
+                  <Badge variant="outline" className="font-mono text-xs">
+                    Chunked
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="font-mono">
+                  {language}
+                </Badge>
+              </div>
             </div>
 
             {/* Content container */}
@@ -148,9 +191,12 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 </h2>
 
                 {/* Scroll containment */}
-                <div className="min-h-0 flex-1 overflow-auto">
+                <div
+                  ref={codeDisplayRef}
+                  className="min-h-0 flex-1 overflow-auto"
+                >
                   {codeState.status === "LOADING" ? (
-                    <LoadingCodeState attempt={codeState.attempt} />
+                    <LoadingCodeState attempt={1} />
                   ) : codeState.status === "ERROR" ? (
                     <ErrorCodeState
                       error={codeState.error}
@@ -158,13 +204,26 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                       onRetry={() => handleLanguageChange(language)}
                     />
                   ) : codeState.status === "SUCCESS" ? (
-                    <CodeDisplay
-                      displayCode={displayCode}
-                      language={language}
-                      targetUnits={targetUnits}
-                      cursorUnitIndex={cursorUnitIndex}
-                      userUnits={userUnits}
-                    />
+                    <>
+                      <CodeDisplay
+                        displayCode={displayCode}
+                        language={language}
+                        targetUnits={targetUnits}
+                        cursorUnitIndex={cursorUnitIndex}
+                        userUnits={userUnits}
+                      />
+                      {codeState.hasMore && (
+                        <div className="mt-4 flex justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={codeState.loadMore}
+                          >
+                            Load More
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <LoadingCodeState attempt={0} />
                   )}

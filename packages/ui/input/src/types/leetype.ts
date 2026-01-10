@@ -85,8 +85,8 @@ export type TypedTypingGame = {
   getCursor(): Array<CanonicalUnit>
   dismissError(): void
   free(): void
-
-  // New subscription API for React external store
+  updateTarget(newTargetCode: string): void
+  getTargetLength(): number
   subscribeStats(callback: () => void): () => void
 }
 

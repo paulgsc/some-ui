@@ -29,6 +29,19 @@ impl TypingGame {
         self.core.reset();
     }
 
+    /// Update the target code with new content (e.g., when more chunks load).
+    /// Game state is preserved - only the target extends.
+    #[wasm_bindgen]
+    pub fn update_target(&mut self, new_target_code: &str) {
+        self.core.update_target(new_target_code);
+    }
+
+    /// Get the current target length (useful for tracking chunk loading)
+    #[wasm_bindgen]
+    pub fn target_length(&self) -> usize {
+        self.core.target_length()
+    }
+
     pub fn handle_input(&mut self, input: &str) -> JsValue {
         let result = self.core.handle_input(input);
         serde_wasm_bindgen::to_value(&result).unwrap()

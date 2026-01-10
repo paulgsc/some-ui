@@ -43,6 +43,42 @@ impl TypingGameCore {
         }
     }
 
+    /// Update the target code with new content (e.g., when loading more chunks).
+    /// Preserves game state and validates cursor position.
+    pub fn update_target(&mut self, new_target_code: &str) {
+        let new_units = canonicalize(new_target_code);
+
+        // Validate that new target extends (not replaces) the old one
+        // This ensures chunked loading doesn't break existing progress
+        let old_len = self.target_units.len();
+        if new_units.len() >= old_len {
+            // Verify existing units match (paranoid check)
+            let prefix_matches = self.target_units.iter().zip(new_units.iter()).all(|(old, new)| old == new);
+
+            if prefix_matches {
+                self.target_units = new_units;
+                // Recalculate consecutive errors with new target
+                self.state.consecutive_errors = validation::calculate_consecutive_errors(&self.state.user_units, &self.target_units);
+            } else {
+                // This shouldn't happen with proper chunked loading
+                // But if it does, reset to be safe
+                eprintln!("Warning: Target update has mismatched prefix, resetting state");
+                self.target_units = new_units;
+                self.state.reset();
+            }
+        } else {
+            // Shrinking target is unusual - reset to be safe
+            eprintln!("Warning: Target shrunk, resetting state");
+            self.target_units = new_units;
+            self.state.reset();
+        }
+    }
+
+    /// Get the current target length (useful for chunked loading UI)
+    pub fn target_length(&self) -> usize {
+        self.target_units.len()
+    }
+
     pub fn start(&mut self, timestamp: f64) {
         self.state.start(timestamp);
     }

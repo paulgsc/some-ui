@@ -58,6 +58,25 @@ export class TypedTypingGame {
   }
 
   /**
+   * Update the target code with new content (e.g., when loading more chunks).
+   * Game state is preserved - only the target extends.
+   *
+   * @param newTargetCode The new complete target code (including previously loaded chunks)
+   */
+  updateTarget(newTargetCode: string): void {
+    this.instance.update_target(newTargetCode)
+    this.notifyListeners()
+  }
+
+  /**
+   * Get the current target length in canonical units.
+   * Useful for UI to track progress with chunked loading.
+   */
+  getTargetLength(): number {
+    return this.instance.target_length()
+  }
+
+  /**
    * Subscribe to stats changes (for React external store)
    * Returns an unsubscribe function
    */
