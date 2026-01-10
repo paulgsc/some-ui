@@ -1,4 +1,4 @@
-import type { MoodEvent } from "@nfl/types/hopium-tracker"
+import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 
 export function moodEmoji(points: number): string {
   if (points >= 120) return "🤩"

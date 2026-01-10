@@ -1,3 +1,9 @@
+import type {
+  FilterType,
+  SatelliteDataItem,
+  SortType,
+} from "@nfl/types/hopium/hopium-tracker"
+
 export const applyFilter = <T>(
   items: Array<SatelliteDataItem<T>>,
   filter: FilterType

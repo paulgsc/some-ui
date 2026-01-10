@@ -3,13 +3,15 @@
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "esModuleInterop": true,
     "paths": {
-      "@nfl/*": ["./src/*"]
+      "@nfl/*": ["./src/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../../some-content/src"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../../some-content/src/**/*"],
   "exclude": ["node_modules", "build", "dist"]
 }

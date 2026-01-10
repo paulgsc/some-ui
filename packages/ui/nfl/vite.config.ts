@@ -8,7 +8,12 @@ export default createViteConfig({
     "@nfl": resolve(__dirname, "src"),
   },
   dtsOptions: {
-    exclude: ["**/hopium/**", "**/data/**"],
+    exclude: [
+      "**/data/**",
+      "**/demo/**",
+      "../../../assets/**/*",
+      "../../some-content/src/**/*",
+    ],
   },
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

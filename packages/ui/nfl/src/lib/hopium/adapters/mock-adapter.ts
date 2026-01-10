@@ -1,8 +1,7 @@
 import type {
   ApiAdapter,
-  RefreshCallbacks,
   SatelliteDataItem,
-} from "@nfl/types/hopium-tracker"
+} from "@nfl/types/hopium/hopium-tracker"
 
 type MockSatelliteData = {
   dataType: string
@@ -50,10 +49,7 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
     }
   }
 
-  async refreshItem(
-    id: string,
-    callbacks?: RefreshCallbacks
-  ): Promise<SatelliteDataItem<MockSatelliteData>> {
+  async refreshItem(id: string): Promise<SatelliteDataItem<MockSatelliteData>> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 500))
 
@@ -67,9 +63,7 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
     return item
   }
 
-  async refreshAll(
-    callbacks?: RefreshCallbacks
-  ): Promise<Array<SatelliteDataItem<MockSatelliteData>>> {
+  async refreshAll(): Promise<Array<SatelliteDataItem<MockSatelliteData>>> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 

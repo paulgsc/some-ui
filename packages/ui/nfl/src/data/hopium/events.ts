@@ -1,4 +1,4 @@
-import type { MoodEvent } from "@nfl/types/hopium-tracker"
+import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 
 // Baseline 100, discrete snapshots across 3 weeks (sample data).
 // You can extend/replace with real season events.
