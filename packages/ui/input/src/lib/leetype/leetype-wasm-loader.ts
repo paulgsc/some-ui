@@ -1,5 +1,6 @@
 import type {
   CanonicalUnit,
+  ChunkCompletionStats,
   GameStats,
   InputResult,
   TypingGameWasm,
@@ -7,6 +8,7 @@ import type {
 } from "@input/types/leetype"
 import {
   CanonicalUnitSchema,
+  ChunkCompletionStatsSchema,
   GameStatsSchema,
   InputResultSchema,
 } from "@input/types/leetype"
@@ -58,14 +60,39 @@ export class TypedTypingGame {
   }
 
   /**
-   * Update the target code with new content (e.g., when loading more chunks).
-   * Game state is preserved - only the target extends.
-   *
-   * @param newTargetCode The new complete target code (including previously loaded chunks)
+   * Complete current chunk and extract stats.
+   * Returns stats for the completed chunk.
    */
-  updateTarget(newTargetCode: string): void {
-    this.instance.update_target(newTargetCode)
+  completeChunk(currentTimestamp: number): ChunkCompletionStats {
+    const result = this.instance.complete_chunk(currentTimestamp)
     this.notifyListeners()
+    return ChunkCompletionStatsSchema.parse(result)
+  }
+
+  /**
+   * Start next chunk with new target code.
+   * Previous chunk data is discarded (bounded memory).
+   */
+  startNextChunk(newTargetCode: string): void {
+    this.instance.start_next_chunk(newTargetCode)
+    this.notifyListeners()
+  }
+
+  /**
+   * Reset entire game (all chunks, all cumulative stats).
+   */
+  resetGame(): void {
+    this.instance.reset_game()
+    this.notifyListeners()
+  }
+
+  /**
+   * Get cumulative stats across alal completed chunks.
+   * Returns [totalCharsTyped, totalErrors]
+   */
+  getCumulativeStats(): [number, number] {
+    const result = this.instance.get_cumulative_stats()
+    return z.tuple([z.number(), z.number()]).parse(result)
   }
 
   /**

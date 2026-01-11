@@ -46,10 +46,17 @@ export const GameStatsSchema = z.object({
   is_complete: z.boolean(),
 })
 
+export const ChunkCompletionStatsSchema = z.object({
+  chars_typed: z.number(),
+  errors: z.number(),
+  elapsed_time: z.number(),
+})
+
 // TypeScript types derived from schemas
 export type CanonicalUnit = z.infer<typeof CanonicalUnitSchema>
 export type InputResult = z.infer<typeof InputResultSchema>
 export type GameStats = z.infer<typeof GameStatsSchema>
+export type ChunkCompletionStats = z.infer<typeof ChunkCompletionStatsSchema>
 
 // WASM module interface
 export type TypingGameWasm = {
@@ -63,6 +70,11 @@ export type TypingGameWasm = {
   get_user_units(): unknown
   get_cursor(): number
   free(): void
+  complete_chunk(current_timestamp: number): unknown
+  start_next_chunk(new_target_code: string): void
+  reset_game(): void
+  get_cumulative_stats(): unknown
+  target_length(): number
 }
 
 export type WasmModule = {
@@ -85,9 +97,12 @@ export type TypedTypingGame = {
   getCursor(): Array<CanonicalUnit>
   dismissError(): void
   free(): void
-  updateTarget(newTargetCode: string): void
   getTargetLength(): number
   subscribeStats(callback: () => void): () => void
+  completeChunk(currentTimestamp: number): ChunkCompletionStats
+  startNextChunk(newTargetCode: string): void
+  resetGame(): void
+  getCumlativeStats(): [number, number]
 }
 
 // If you need to update the ref type used in createTypingGameStore:

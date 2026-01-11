@@ -11,14 +11,7 @@ import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
 import { useChunkedCode } from "@input/hooks/leetype/use-chunked-code"
 import type { DisplayMode, GameState, Language } from "@input/types/leetype"
-import {
-  Badge,
-  Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "some-ui-shared"
+import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 
 type LeetypeProps = {
   codePaths: Record<Language, string>
@@ -31,12 +24,23 @@ const PRETTIER_PARSER_MAP: Record<Language, string> = {
   c: "typescript",
 }
 
+type CumulativeStats = {
+  totalChunks: number
+  totalCharsTyped: number
+  totalErrors: number
+}
+
 export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [language, setLanguage] = useState<Language>("typescript")
   const [duration, setDuration] = useState(300)
   const [settingsExpanded, setSettingsExpanded] = useState(true)
+  const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats>({
+    totalChunks: 0,
+    totalCharsTyped: 0,
+    totalErrors: 0,
+  })
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const codeDisplayRef = useRef<HTMLDivElement>(null)
@@ -44,14 +48,37 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   // Load code with automatic chunking for large files
   const codeState = useChunkedCode(codePaths[language], {
     prettierParser: PRETTIER_PARSER_MAP[language] as any,
-    linesPerChunk: 100,
-    initialChunkCount: 3,
+    linesPerChunk: 150,
   })
 
-  // Get the content to use for the typing game
-  const targetCode = codeState.useChunking
-    ? codeState.chunks.map((c) => c.content).join("\n")
-    : (codeState.fullContent ?? "")
+  // Get current active chunk (bouonded memory - only one chunk at a time)
+  const targetCode = codeState.currentChunk?.content ?? ""
+
+  // Calculate which chunk number we're on
+  const currentChunkNumber =
+    codeState.totalLines > 0 ? Math.floor(codeState.currentLine / 100) + 1 : 1
+  const totalChunksEstimate =
+    codeState.totalLines > 0 ? Math.ceil(codeState.totalLines / 100) : 1
+
+  // Handle chunk completion
+  const handleChunkComplete = (chunkStats: ChunkCompletionStats) => {
+    // Update cumulative stats
+    setCumulativeStats((prev) => ({
+      totalChunks: prev.totalChunks + 1,
+      totalCharsTyped: prev.totalCharsTyped + chunkStats.chars_typed,
+      totalErrors: prev.totalErrors + chunkStats.errors,
+    }))
+
+    // Check if there are more chunks
+    if (codeState.hasMore) {
+      // Load Next chunk (old chunk is GC'd - bounded memory)
+      console.log("has more: ", codeState.hasMore)
+      codeState.loadNextChunk()
+    } else {
+      // All chunks complete - game finished
+      setGameState("finished")
+    }
+  }
 
   const {
     onDismiss,
@@ -73,7 +100,8 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   } = useTypingGame({
     targetCode,
     gameState,
-    onComplete: () => setGameState("finished"),
+    onComplete: () => {},
+    onChunkComplete: handleChunkComplete,
   })
 
   const timer = useGameTimer({
@@ -82,33 +110,13 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     onTimeout: () => setGameState("timeout"),
   })
 
-  // Handle infinite scroll for chunked code
-  useEffect(() => {
-    if (!codeState.useChunking || !codeState.hasMore) return
-
-    const element = codeDisplayRef.current
-    if (!element) return
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = element
-      const scrollPercentage = (scrollTop + clientHeight) / scrollHeight
-
-      // Load more when scrolled 80% down
-      if (scrollPercentage > 0.8) {
-        codeState.loadMore()
-      }
-    }
-
-    element.addEventListener("scroll", handleScroll)
-    return () => element.removeEventListener("scroll", handleScroll)
-  }, [codeState])
-
   // Reset game when language changes or code loads
   useEffect(() => {
     if (codeState.status === "SUCCESS") {
       reset()
       setGameState("idle")
       setSettingsExpanded(true)
+      setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
     }
   }, [reset, language, codeState.status])
 
@@ -124,13 +132,22 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     setGameState("idle")
     reset()
     setSettingsExpanded(true)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
   }
 
   const handleLanguageChange = (lang: Language): void => {
     setLanguage(lang)
     setGameState("idle")
     setSettingsExpanded(true)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
   }
+
+  // Calculate overall progress across all chunks
+  const overallProgress =
+    totalChunksEstimate > 0
+      ? ((cumulativeStats.totalChunks + progress / 100) / totalChunksEstimate) *
+        100
+      : progress
 
   return (
     <div className="code absolute inset-0 flex flex-col overflow-hidden">
@@ -152,8 +169,8 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
         duration={duration}
         wpm={wpm}
         accuracy={accuracy}
-        progress={progress}
-        errors={errors}
+        progress={overallProgress}
+        errors={cumulativeStats.totalErrors + errors}
         gameState={gameState}
       />
 
@@ -169,11 +186,10 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
               </TabsList>
 
               <div className="flex items-center gap-2">
-                {codeState.useChunking && (
-                  <Badge variant="outline" className="font-mono text-xs">
-                    Chunked
-                  </Badge>
-                )}
+                <Badge variant="outline" className="font-mono text-xs">
+                  Chunk {currentChunkNumber}/{totalChunksEstimate}
+                  {codeState.hasMore && "+"}
+                </Badge>
                 <Badge variant="secondary" className="font-mono">
                   {language}
                 </Badge>
@@ -187,7 +203,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 className="absolute inset-0 flex min-h-0 flex-col rounded-lg border bg-card p-6"
               >
                 <h2 className="mb-4 text-lg font-semibold text-card-foreground">
-                  Target Code
+                  Target Code (Current Chunk)
                 </h2>
 
                 {/* Scroll containment */}
@@ -204,26 +220,13 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                       onRetry={() => handleLanguageChange(language)}
                     />
                   ) : codeState.status === "SUCCESS" ? (
-                    <>
-                      <CodeDisplay
-                        displayCode={displayCode}
-                        language={language}
-                        targetUnits={targetUnits}
-                        cursorUnitIndex={cursorUnitIndex}
-                        userUnits={userUnits}
-                      />
-                      {codeState.hasMore && (
-                        <div className="mt-4 flex justify-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={codeState.loadMore}
-                          >
-                            Load More
-                          </Button>
-                        </div>
-                      )}
-                    </>
+                    <CodeDisplay
+                      displayCode={displayCode}
+                      language={language}
+                      targetUnits={targetUnits}
+                      cursorUnitIndex={cursorUnitIndex}
+                      userUnits={userUnits}
+                    />
                   ) : (
                     <LoadingCodeState attempt={0} />
                   )}

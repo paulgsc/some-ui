@@ -29,11 +29,30 @@ impl TypingGame {
         self.core.reset();
     }
 
-    /// Update the target code with new content (e.g., when more chunks load).
-    /// Game state is preserved - only the target extends.
+    /// Complete current chunk and get stats before transitioning
     #[wasm_bindgen]
-    pub fn update_target(&mut self, new_target_code: &str) {
-        self.core.update_target(new_target_code);
+    pub fn complete_chunk(&mut self, current_timestamp: f64) -> JsValue {
+        let stats = self.core.complete_chunk(current_timestamp);
+        serde_wasm_bindgen::to_value(&stats).unwrap()
+    }
+
+    /// Start next chunk with new target (bounded memory - discards old chunk)
+    #[wasm_bindgen]
+    pub fn start_next_chunk(&mut self, new_target_code: &str) {
+        self.core.start_next_chunk(new_target_code);
+    }
+
+    /// Reset entire game (all chunks, all cumulative stats)
+    #[wasm_bindgen]
+    pub fn reset_game(&mut self) {
+        self.core.reset_game();
+    }
+
+    /// Get cumulative stats (chars_typed, errors) across all completed chunks
+    #[wasm_bindgen]
+    pub fn get_cumulative_stats(&self) -> JsValue {
+        let (chars, errors) = self.core.get_cumulative_stats();
+        serde_wasm_bindgen::to_value(&(chars, errors)).unwrap()
     }
 
     /// Get the current target length (useful for tracking chunk loading)
