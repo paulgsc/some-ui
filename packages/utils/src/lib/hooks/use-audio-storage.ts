@@ -100,7 +100,7 @@ export function useAudioFromStorage({
   // Voice selection state
   const [selectedVoice, setSelectedVoice] = useState<VoiceConfig | null>(() => {
     if (voices.length === 0) return null
-    return voices.find((v) => v.provider === "openai") ?? voices[0]
+    return voices.find((v) => v.provider === "openai") ?? voices.at(0) ?? null
   })
 
   const audioSpeech = useAudioSpeech(options.ttsOptions)

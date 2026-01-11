@@ -6,7 +6,7 @@ import { Button, Card, Textarea } from "some-ui-shared"
 type QuizActiveProps = {
   questionNumber: number
   totalQuestions: number
-  question: {
+  question?: {
     type: "multiple-choice" | "text-input"
     korean: string
     question: string
@@ -41,6 +41,8 @@ export const QuizActive = ({
   }
 
   const handleSubmit = (): void => {
+    if (!question) return
+
     if (question.type === "multiple-choice" && selected !== null) {
       const userAnswer = question.options?.[selected] || ""
       onAnswerSubmit(selected === question.correct, userAnswer)
@@ -55,8 +57,9 @@ export const QuizActive = ({
   }
 
   const canSubmit =
-    (question.type === "multiple-choice" && selected !== null) ||
-    (question.type === "text-input" && textAnswer.trim().length > 0)
+    question &&
+    ((question.type === "multiple-choice" && selected !== null) ||
+      (question.type === "text-input" && textAnswer.trim().length > 0))
 
   return (
     <Card className="h-full border-2 flex flex-col">
@@ -76,14 +79,14 @@ export const QuizActive = ({
               Question {questionNumber} of {totalQuestions}
             </span>
             <span className="text-xs text-muted-foreground">
-              {question.type === "multiple-choice"
+              {question?.type === "multiple-choice"
                 ? "Multiple Choice"
                 : "Translation"}
             </span>
           </div>
 
           {/* Korean Context */}
-          {question.korean && (
+          {question?.korean && (
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-6 rounded-2xl border-l-4 border-primary">
                 <div className="flex items-start justify-between gap-4">
@@ -101,7 +104,7 @@ export const QuizActive = ({
                         role: "assistant",
                         content: "",
                         timestamp: "",
-                        korean: question.korean,
+                        korean: question.korean ?? "",
                         english: "",
                       }
                       onSpeakMessage(msg)
@@ -121,10 +124,10 @@ export const QuizActive = ({
           {/* Question */}
           <div>
             <h2 className="text-2xl font-bold leading-tight mb-6">
-              {question.question}
+              {question?.question}
             </h2>
 
-            {question.type === "multiple-choice" ? (
+            {question?.type === "multiple-choice" ? (
               /* Answer Options */
               <div className="grid gap-3">
                 {question.options?.map((option, index) => (
