@@ -32,7 +32,7 @@
   "license": "MIT",
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "some-censor",
+  "name": "@some-ui/censor",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

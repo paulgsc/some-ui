@@ -1,5 +1,4 @@
-import type { VideoElement } from "@censor/types"
-import { DisclosureLevel } from "@censor/types"
+// video-manager.ts
 import {
   createMetadataDisplay,
   createOverlay,
@@ -11,253 +10,269 @@ import {
 } from "@censor/utils/dom"
 import { storageAPI } from "@censor/utils/storage-api"
 
+import { SyncClickGate } from "./click-gating"
+import {
+  createInitialState,
+  deriveDisplayLevel,
+  transition,
+  type DisclosureLevel,
+  type FSMState,
+} from "./fsm-core"
+import { initManager } from "./initialization-manager"
+
+type VideoState = {
+  element: Element
+  videoId: string
+  channelId: string
+  fsm: FSMState
+  hovered: boolean
+  clickGate: SyncClickGate
+}
+
 export class VideoManager {
-  private videos = new Map<string, VideoElement>()
+  private videos = new Map<string, VideoState>()
+  private pendingRetries = new Set<string>() // Store element identifier, not reference
 
   /**
-   * Idempotent video processing - safe to call multiple times
-   * Handles element reuse in SPA by tracking both videoId AND element
+   * CRITICAL FIX: Retry logic for YouTube's lazy DOM rendering
    */
-  async upsert(element: Element): Promise<void> {
+  async upsert(element: Element, retryCount = 0): Promise<void> {
     if (!(element instanceof HTMLElement)) return
+
+    // Create stable identifier for retry tracking
+    const elementId = this.getElementIdentifier(element)
 
     const videoId = extractVideoId(element)
     const channelId = extractChannelId(element)
 
+    // CRITICAL: YouTube renders DOM progressively - retry if missing data
     if (!videoId || !channelId) {
+      if (retryCount < 3 && !this.pendingRetries.has(elementId)) {
+        console.log(
+          `[BOYO] Retry ${retryCount + 1} for element (missing ${!videoId ? "videoId" : "channelId"})`
+        )
+        this.pendingRetries.add(elementId)
+        setTimeout(() => {
+          this.pendingRetries.delete(elementId)
+          this.upsert(element, retryCount + 1)
+        }, 200)
+      } else if (retryCount >= 3) {
+        console.warn(`[BOYO] Failed to extract data after 3 retries`, {
+          hasVideoId: !!videoId,
+          hasChannelId: !!channelId,
+          elementId,
+        })
+      }
       return
     }
 
-    // Check if this exact element was already processed for this videoId
     const existing = this.videos.get(videoId)
+
+    // Check if this is the exact same element we already processed
     if (existing && existing.element === element) {
-      return
+      // Verify overlay still exists
+      const overlay = element.querySelector(".boyo-overlay")
+      if (overlay) {
+        return // Already processed correctly
+      }
     }
 
-    // Element reuse detected - clean up old tracking
+    // Element changed for this videoId
     if (existing && existing.element !== element) {
-      console.log(`[BOYO] Element reuse detected for ${videoId}`)
+      console.log(`[BOYO] Element changed for ${videoId}`)
       this.cleanup(videoId)
     }
 
-    console.log(`[BOYO] Upserting video ${videoId} from channel ${channelId}`)
+    console.log(`[BOYO] Processing video ${videoId} from channel ${channelId}`)
 
     const isWhitelisted = await storageAPI.isWhitelisted(channelId)
-    const initialLevel = isWhitelisted
-      ? DisclosureLevel.REVEALED
-      : DisclosureLevel.MASKED
 
     this.videos.set(videoId, {
       element,
       videoId,
       channelId,
-      level: initialLevel,
+      fsm: createInitialState(isWhitelisted),
+      hovered: false,
+      clickGate: new SyncClickGate(),
     })
 
-    // Ensure overlay exists
     this.ensureOverlay(element, videoId)
-
-    // Apply initial state
-    this.applyLevel(videoId)
+    this.render(videoId)
   }
 
-  /**
-   * FSM transition - single source of truth
-   */
-  transition(videoId: string, event: "HOVER" | "CLICK" | "DBLCLICK"): void {
+  // Event handlers - pure delegations to FSM
+  handleHoverStart(videoId: string): void {
     const video = this.videos.get(videoId)
     if (!video) {
+      console.warn(`[BOYO] handleHoverStart: video ${videoId} not in map`)
       return
     }
 
-    const currentLevel = video.level
-    const nextLevel = this.nextLevel(currentLevel, event)
-
-    if (nextLevel === currentLevel) {
-      return
-    }
-
-    console.log(
-      `[BOYO] ${videoId}: ${DisclosureLevel[currentLevel]} --${event}--> ${DisclosureLevel[nextLevel]}`
-    )
-
-    video.level = nextLevel
-    this.applyLevel(videoId)
+    video.hovered = true
+    this.render(videoId)
   }
 
-  /**
-   * FSM transition table - authoritative
-   */
-  private nextLevel(
-    current: DisclosureLevel,
-    event: "HOVER" | "CLICK" | "DBLCLICK"
-  ): DisclosureLevel {
-    switch (event) {
-      case "DBLCLICK":
-        // Always reveal from any state
-        return DisclosureLevel.REVEALED
-
-      case "HOVER":
-        // ✅ INVARIANT: hover only works from MASKED
-        if (current === DisclosureLevel.MASKED) {
-          return DisclosureLevel.METADATA
-        }
-        return current
-
-      case "CLICK":
-        // ✅ INVARIANT: click only advances from METADATA
-        if (current === DisclosureLevel.METADATA) {
-          return DisclosureLevel.TITLE
-        }
-        return current
-
-      default: {
-        // Exhaustiveness check (will error if a new event is added)
-        event satisfies never
-        return current
-      }
-    }
-  }
-
-  /**
-   * Apply level to DOM - idempotent
-   */
-  private applyLevel(videoId: string): void {
+  handleHoverEnd(videoId: string): void {
     const video = this.videos.get(videoId)
     if (!video) return
 
-    const overlay = video.element.querySelector(".boyo-overlay") as HTMLElement
-    if (!overlay) {
-      console.warn(`[BOYO] No overlay found for ${videoId}`)
+    video.hovered = false
+    this.render(videoId)
+  }
+
+  handleClick(videoId: string): void {
+    const video = this.videos.get(videoId)
+    if (!video) {
+      console.error(
+        `[BOYO] handleClick: video ${videoId} not in map - this should never happen`
+      )
       return
     }
 
-    // Update data attribute for CSS styling
-    overlay.dataset.level = String(video.level)
+    console.log(`[BOYO] Click on ${videoId}, current level: ${video.fsm.level}`)
+    const ts = Date.now()
+    video.fsm = video.clickGate.handleRawClick(video.fsm, ts)
+    console.log(`[BOYO] After click, new level: ${video.fsm.level}`)
+    this.render(videoId)
+  }
 
-    // 2. FORCE RENDER - Critical for CSS transitions
-    this.forceRender(video.element)
+  handleDblClick(videoId: string): void {
+    const video = this.videos.get(videoId)
+    if (!video) {
+      console.error(`[BOYO] handleDblClick: video ${videoId} not in map`)
+      return
+    }
 
-    // Clear existing content
+    console.log(`[BOYO] Double-click on ${videoId}`)
+    const ts = Date.now()
+    video.fsm = video.clickGate.handleRawDblclick(video.fsm, ts)
+    this.render(videoId)
+  }
+
+  // Render - derives display state, applies to DOM
+  private render(videoId: string): void {
+    const video = this.videos.get(videoId)
+    if (!video) return
+
+    const displayLevel = deriveDisplayLevel(video.fsm.level, video.hovered)
+    this.applyLevel(video, displayLevel)
+  }
+
+  private applyLevel(video: VideoState, displayLevel: DisclosureLevel): void {
+    const overlay = video.element.querySelector(".boyo-overlay") as HTMLElement
+    if (!overlay) {
+      console.error(`[BOYO] CRITICAL: No overlay for ${video.videoId}`)
+      // Recreate it
+      this.ensureOverlay(video.element as HTMLElement, video.videoId)
+      // Try again
+      const newOverlay = video.element.querySelector(
+        ".boyo-overlay"
+      ) as HTMLElement
+      if (!newOverlay) {
+        console.error(
+          `[BOYO] CRITICAL: Failed to recreate overlay for ${video.videoId}`
+        )
+        return
+      }
+      return this.applyLevel(video, displayLevel)
+    }
+
+    // Update level attribute for CSS
+    overlay.dataset.level = String(displayLevel)
     overlay.innerHTML = ""
 
-    // Build up overlay content based on level
-    if (video.level >= DisclosureLevel.METADATA) {
+    // Level 1+: Show metadata
+    if (displayLevel >= 1) {
       const metadata = extractMetadata(video.element)
       if (metadata) {
         const metadataEl = createMetadataDisplay(metadata)
-        console.log(`[BOYO] Adding metadata element:`, metadataEl.className)
         overlay.appendChild(metadataEl)
-        this.forceRender(video.element)
       }
     }
 
-    if (video.level >= DisclosureLevel.TITLE) {
+    // Level 2+: Show title
+    if (displayLevel >= 2) {
       const title = extractTitle(video.element)
-      console.log(
-        `[BOYO] extractTitle returned:`,
-        title,
-        `for element:`,
-        video.element
-      )
       if (title) {
-        const titleEl = createTitleDisplay(title, false) // FIXED: Don't obfuscate at TITLE level
-        console.log(
-          `[BOYO] Adding title element:`,
-          titleEl.className,
-          titleEl.textContent
-        )
+        const titleEl = createTitleDisplay(title, false)
         overlay.appendChild(titleEl)
-        this.forceRender(video.element)
-      } else {
-        console.warn(
-          `[BOYO] No title found for ${videoId}, element:`,
-          video.element
-        )
-        console.warn(
-          `[BOYO] Tried selector: #video-title, found:`,
-          video.element.querySelector("#video-title")
-        )
       }
     }
 
-    if (video.level === DisclosureLevel.REVEALED) {
-      console.log(`[BOYO] Revealing ${videoId}`)
+    // Level 3: Revealed
+    if (displayLevel === 3) {
+      console.log(`[BOYO] Revealing ${video.videoId}`)
       video.element.classList.remove("boyo-masked")
       video.element.classList.add("boyo-revealed")
-      this.forceRender(video.element)
       overlay.remove()
     }
-
-    console.log(
-      `[BOYO] Overlay content after update:`,
-      overlay.innerHTML.substring(0, 100)
-    )
   }
 
-  /**
-   * Ensure overlay exists - idempotent
-   */
   private ensureOverlay(element: HTMLElement, videoId: string): void {
-    // Remove any stale overlays first
-    const existingOverlay = element.querySelector(".boyo-overlay")
-    if (existingOverlay) {
-      existingOverlay.remove()
+    // Remove any existing overlay first
+    const existing = element.querySelector(".boyo-overlay")
+    if (existing) {
+      existing.remove()
     }
 
+    // Add mask class
+    element.classList.remove("boyo-revealed")
     element.classList.add("boyo-masked")
+
+    // Create and tag new overlay
     const overlay = createOverlay(videoId)
+    overlay.dataset.boyoSession = initManager.getSessionMarker()
+
     element.appendChild(overlay)
   }
 
-  /**
-   * Clean up tracking for a video
-   */
   private cleanup(videoId: string): void {
     const video = this.videos.get(videoId)
     if (video) {
+      video.clickGate.cleanup()
       const overlay = video.element.querySelector(".boyo-overlay")
-      if (overlay) {
-        overlay.remove()
-      }
+      if (overlay) overlay.remove()
       video.element.classList.remove("boyo-masked", "boyo-revealed")
     }
     this.videos.delete(videoId)
   }
 
-  /**
-   * Force browser to apply styles synchronously
-   * Triggers reflow/repaint before returning
-   */
-  private forceRender(element: Element): void {
-    if (!(element instanceof HTMLElement)) return
-    // Reading offsetHeight forces a synchronous reflow
-    void element.offsetHeight
-
-    // Force the overlay specifically
-    const overlay = element.querySelector(".boyo-overlay") as HTMLElement
-    if (overlay) {
-      void overlay.offsetHeight
-    }
-  }
-
-  /**
-   * Reset all tracked videos - for navigation events
-   */
   reset(): void {
     console.log(`[BOYO] Resetting ${this.videos.size} tracked videos`)
-
-    // Clean up all overlays
     for (const [videoId] of this.videos) {
       this.cleanup(videoId)
     }
-
     this.videos.clear()
+    this.pendingRetries.clear()
   }
 
   /**
-   * Add channel to whitelist and reveal all its videos
+   * Create stable identifier for element (for retry tracking)
+   * Uses data attributes or position in DOM as fallback
    */
+  private getElementIdentifier(element: Element): string {
+    // Try data-video-id first
+    const dataId = element.getAttribute("data-video-id")
+    if (dataId) return `video-${dataId}`
+
+    // Try href from first anchor
+    const anchor = element.querySelector(
+      'a[href*="/watch"], a[href*="/shorts/"]'
+    )
+    if (anchor instanceof HTMLAnchorElement && anchor.href) {
+      return `href-${anchor.href}`
+    }
+
+    // Fallback: position in parent (fragile but better than nothing)
+    const parent = element.parentElement
+    if (parent) {
+      const index = Array.from(parent.children).indexOf(element)
+      return `pos-${parent.tagName}-${index}`
+    }
+
+    return `element-${Math.random()}`
+  }
+
   async addChannelToWhitelist(videoId: string): Promise<void> {
     const video = this.videos.get(videoId)
     if (!video) return
@@ -276,17 +291,13 @@ export class VideoManager {
     // Reveal all videos from this channel
     for (const [vid, v] of this.videos.entries()) {
       if (v.channelId === video.channelId) {
-        v.level = DisclosureLevel.REVEALED
-        this.applyLevel(vid)
+        v.fsm = transition(v.fsm, { type: "DBLCLICK", ts: Date.now() })
+        this.render(vid)
       }
     }
   }
 
-  getVideo(videoId: string): VideoElement | undefined {
+  getVideo(videoId: string): VideoState | undefined {
     return this.videos.get(videoId)
-  }
-
-  getVideoCount(): number {
-    return this.videos.size
   }
 }
