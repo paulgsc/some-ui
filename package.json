@@ -31,6 +31,7 @@
     "lint:md": "scripts/with-limits.sh turbo run lint:md --cache",
     "typecheck": "scripts/with-limits.sh turbo run typecheck",
     "prettier": "turbo prettier",
+    "check-file": "turbo run check-file",
     "prepare": "husky",
     "test": "turbo test",
     "storybook": "storybook dev -p 6006 --host nixos.local --no-open"
