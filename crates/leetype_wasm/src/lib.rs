@@ -29,6 +29,38 @@ impl TypingGame {
         self.core.reset();
     }
 
+    /// Complete current chunk and get stats before transitioning
+    #[wasm_bindgen]
+    pub fn complete_chunk(&mut self, current_timestamp: f64) -> JsValue {
+        let stats = self.core.complete_chunk(current_timestamp);
+        serde_wasm_bindgen::to_value(&stats).unwrap()
+    }
+
+    /// Start next chunk with new target (bounded memory - discards old chunk)
+    #[wasm_bindgen]
+    pub fn start_next_chunk(&mut self, new_target_code: &str) {
+        self.core.start_next_chunk(new_target_code);
+    }
+
+    /// Reset entire game (all chunks, all cumulative stats)
+    #[wasm_bindgen]
+    pub fn reset_game(&mut self) {
+        self.core.reset_game();
+    }
+
+    /// Get cumulative stats (chars_typed, errors) across all completed chunks
+    #[wasm_bindgen]
+    pub fn get_cumulative_stats(&self) -> JsValue {
+        let (chars, errors) = self.core.get_cumulative_stats();
+        serde_wasm_bindgen::to_value(&(chars, errors)).unwrap()
+    }
+
+    /// Get the current target length (useful for tracking chunk loading)
+    #[wasm_bindgen]
+    pub fn target_length(&self) -> usize {
+        self.core.target_length()
+    }
+
     pub fn handle_input(&mut self, input: &str) -> JsValue {
         let result = self.core.handle_input(input);
         serde_wasm_bindgen::to_value(&result).unwrap()

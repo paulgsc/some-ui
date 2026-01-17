@@ -1,5 +1,6 @@
 import type {
   CanonicalUnit,
+  ChunkCompletionStats,
   GameStats,
   InputResult,
   TypingGameWasm,
@@ -7,6 +8,7 @@ import type {
 } from "@input/types/leetype"
 import {
   CanonicalUnitSchema,
+  ChunkCompletionStatsSchema,
   GameStatsSchema,
   InputResultSchema,
 } from "@input/types/leetype"
@@ -55,6 +57,50 @@ export class TypedTypingGame {
       throw new Error("WASM module not loaded. Call loadWasm() first.")
     }
     this.instance = new wasmModule.TypingGame(targetCode, maxConsecutiveErrors)
+  }
+
+  /**
+   * Complete current chunk and extract stats.
+   * Returns stats for the completed chunk.
+   */
+  completeChunk(currentTimestamp: number): ChunkCompletionStats {
+    const result = this.instance.complete_chunk(currentTimestamp)
+    this.notifyListeners()
+    return ChunkCompletionStatsSchema.parse(result)
+  }
+
+  /**
+   * Start next chunk with new target code.
+   * Previous chunk data is discarded (bounded memory).
+   */
+  startNextChunk(newTargetCode: string): void {
+    this.instance.start_next_chunk(newTargetCode)
+    this.notifyListeners()
+  }
+
+  /**
+   * Reset entire game (all chunks, all cumulative stats).
+   */
+  resetGame(): void {
+    this.instance.reset_game()
+    this.notifyListeners()
+  }
+
+  /**
+   * Get cumulative stats across alal completed chunks.
+   * Returns [totalCharsTyped, totalErrors]
+   */
+  getCumulativeStats(): [number, number] {
+    const result = this.instance.get_cumulative_stats()
+    return z.tuple([z.number(), z.number()]).parse(result)
+  }
+
+  /**
+   * Get the current target length in canonical units.
+   * Useful for UI to track progress with chunked loading.
+   */
+  getTargetLength(): number {
+    return this.instance.target_length()
   }
 
   /**

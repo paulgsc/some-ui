@@ -1631,9 +1631,12 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.1.0)
       react:
         specifier: ^19.0.0
-        version: 19.0.0
+        version: 19.1.0
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
@@ -1654,7 +1657,7 @@ importers:
         version: link:../../utils
       zustand:
         specifier: ^5.0.9
-        version: 5.0.9(@types/react@19.0.4)(react@19.0.0)(use-sync-external-store@1.5.0(react@19.0.0))
+        version: 5.0.9(@types/react@19.0.4)(react@19.1.0)(use-sync-external-store@1.5.0(react@19.1.0))
     devDependencies:
       '@some-ui/content':
         specifier: workspace:*

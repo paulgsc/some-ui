@@ -14,7 +14,7 @@ type Props = {
 }
 
 // Simple formatter for x axis labels
-function labelForIndex(events: Array<MoodEvent>, i: number) {
+function labelForIndex(events: Array<MoodEvent>, i: number): string {
   const e = events[i]
   return e ? e.label : String(i)
 }
@@ -24,9 +24,9 @@ export const RollercoasterChart = ({
   currentIndex,
   animationDuration = 600,
   className,
-}: Props) => {
+}: Props): React.JSX.Element => {
   const { ref, size } = useElementSize<HTMLDivElement>()
-  const [dashLen, setDashLen] = useState(0)
+  const [_dashLen, setDashLen] = useState(0)
   const pathRef = useRef<SVGPathElement | null>(null)
 
   const { min, max } = useMemo(() => minMaxMood(events), [events])
@@ -38,16 +38,18 @@ export const RollercoasterChart = ({
   const baseline = 100
   const progressed = events.slice(0, Math.min(currentIndex + 1, events.length))
   const last = progressed[progressed.length - 1]
-  const above = (last.mood ?? baseline) >= baseline
-  const lastUp = (last.delta ?? 0) >= 0
+
+  // Logic Fixes: removed unnecessary nullish checks where types are guaranteed
+  const above = last.mood >= baseline
+  const lastUp = last.delta >= 0
 
   // Scales
-  const xFor = (i: number) => {
+  const xFor = (i: number): number => {
     if (events.length <= 1) return padding.left
     const step = innerW / (events.length - 1)
     return padding.left + i * step
   }
-  const yFor = (v: number) => {
+  const yFor = (v: number): number => {
     if (max === min) return padding.top + innerH / 2
     const t = (v - min) / (max - min)
     // Flip for SVG y
@@ -57,7 +59,7 @@ export const RollercoasterChart = ({
   const pointsAll = useMemo(
     () => events.map((e) => ({ x: xFor(e.index), y: yFor(e.mood) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, innerW, innerH, min, max] // xFor/yFor change when sizes or domain change
+    [events, innerW, innerH, min, max]
   )
 
   const pointsProg = useMemo(
@@ -75,27 +77,25 @@ export const RollercoasterChart = ({
     if (!path) return
     const len = path.getTotalLength()
     setDashLen(len)
-    // Set initial dash offset then animate to 0
+
     path.style.transition = "none"
     path.style.strokeDasharray = `${len} ${len}`
     path.style.strokeDashoffset = `${len}`
-    // Allow style to apply
+
     const t = requestAnimationFrame(() => {
       path.style.transition = `stroke-dashoffset ${animationDuration}ms ease`
       path.style.strokeDashoffset = "0"
     })
-    return () => cancelAnimationFrame(t)
+    return (): void => cancelAnimationFrame(t)
   }, [currentIndex, dProg, animationDuration])
 
-  // Last segment overlay (direction color)
-  const lastSeg = useMemo(() => {
+  const lastSeg = useMemo((): string | null => {
     if (pointsProg.length < 2) return null
     const a = pointsProg[pointsProg.length - 2]
     const b = pointsProg[pointsProg.length - 1]
     return `M ${a.x} ${a.y} L ${b.x} ${b.y}`
   }, [pointsProg])
 
-  // Axis ticks (x uses event labels, y uses simple numeric)
   const xTicks = useMemo(
     () =>
       events.map((e) => ({
@@ -105,6 +105,7 @@ export const RollercoasterChart = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [events, innerW]
   )
+
   const yTicks = useMemo(() => {
     const ticks = 5
     const arr: Array<number> = []
@@ -122,7 +123,6 @@ export const RollercoasterChart = ({
         className
       )}
     >
-      {/* Dynamic background */}
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-0 transition-colors duration-500"
@@ -140,9 +140,7 @@ export const RollercoasterChart = ({
             role="img"
             aria-label="Mood rollercoaster chart"
           >
-            {/* Grid */}
             <g>
-              {/* Horizontal grid lines */}
               {yTicks.map((t, i) => (
                 <line
                   key={`h-${i}`}
@@ -154,7 +152,6 @@ export const RollercoasterChart = ({
                   strokeDasharray="3 3"
                 />
               ))}
-              {/* Vertical grid lines */}
               {xTicks.map((t, i) => (
                 <line
                   key={`v-${i}`}
@@ -168,7 +165,6 @@ export const RollercoasterChart = ({
               ))}
             </g>
 
-            {/* Baseline */}
             <line
               x1={padding.left}
               y1={yFor(baseline)}
@@ -178,7 +174,6 @@ export const RollercoasterChart = ({
               strokeDasharray="4 4"
             />
 
-            {/* Full path (faint) */}
             {dAll && (
               <path
                 d={dAll}
@@ -189,32 +184,27 @@ export const RollercoasterChart = ({
               />
             )}
 
-            {/* Progressed path (animated) */}
             {dProg && (
               <path
                 ref={pathRef}
                 d={dProg}
                 fill="none"
-                stroke="#38bdf8" /* sky-400 default */
+                stroke="#38bdf8"
                 strokeWidth={3}
                 strokeLinecap="round"
               />
             )}
 
-            {/* Last segment overlay colored by direction */}
             {lastSeg && (
               <path
                 d={lastSeg}
                 fill="none"
-                stroke={
-                  lastUp ? "#22c55e" : "#fb7185"
-                } /* emerald-500 or rose-400 */
+                stroke={lastUp ? "#22c55e" : "#fb7185"}
                 strokeWidth={4}
                 strokeLinecap="round"
               />
             )}
 
-            {/* Dots for progressed points */}
             {pointsProg.map((p, i) => (
               <circle
                 key={`dot-${i}`}
@@ -233,8 +223,6 @@ export const RollercoasterChart = ({
               />
             ))}
 
-            {/* Axes */}
-            {/* Y Axis */}
             <line
               x1={padding.left}
               y1={padding.top - 4}
@@ -256,7 +244,6 @@ export const RollercoasterChart = ({
               </text>
             ))}
 
-            {/* X Axis */}
             <line
               x1={padding.left - 4}
               y1={size.height - padding.bottom}

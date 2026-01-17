@@ -181,7 +181,7 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
       resize()
       const ro = new ResizeObserver(() => resize())
       if (containerRef.current) ro.observe(containerRef.current)
-      return () => {
+      return (): void => {
         ro.disconnect()
       }
     }, [resize])
@@ -204,7 +204,9 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
         for (let i = 0; i < confettiNum; i++) {
           const angle = toRad(baseAngle + rand(-half, half))
           const speed = startVelocity * rand(0.7, 1.2)
-          const color = colorRGB[Math.floor(Math.random() * colorRGB.length)]
+          const color = colorRGB.at(
+            Math.floor(Math.random() * colorRGB.length)
+          ) ?? { r: 0, g: 0, b: 0 }
           const w = rand(6, 12)
           const h = rand(3, 7)
 
@@ -233,7 +235,9 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
         for (let i = 0; i < sparkNum; i++) {
           const angle = toRad(baseAngle + rand(-half, half))
           const speed = startVelocity * rand(0.9, 1.6)
-          const color = colorRGB[Math.floor(Math.random() * colorRGB.length)]
+          const color = colorRGB.at(
+            Math.floor(Math.random() * colorRGB.length)
+          ) ?? { r: 0, g: 0, b: 0 }
           const size = rand(1.2, 2.6)
           const p: Spark = {
             type: "spark",
@@ -256,7 +260,9 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
         for (let i = 0; i < starNum; i++) {
           const angle = toRad(baseAngle + rand(-half - 20, half + 20))
           const speed = startVelocity * rand(0.8, 1.4)
-          const color = colorRGB[Math.floor(Math.random() * colorRGB.length)]
+          const color = colorRGB.at(
+            Math.floor(Math.random() * colorRGB.length)
+          ) ?? { r: 0, g: 0, b: 0 }
           const size = rand(4, 7)
           const p: Star = {
             type: "star",

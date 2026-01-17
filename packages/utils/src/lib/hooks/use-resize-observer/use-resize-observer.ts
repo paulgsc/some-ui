@@ -128,10 +128,12 @@ type BoxSizesKey = keyof Pick<
 >
 
 function extractSize(
-  entry: ResizeObserverEntry,
+  entry: ResizeObserverEntry | undefined,
   box: BoxSizesKey,
   sizeType: keyof ResizeObserverSize
 ): number | undefined {
+  if (!entry) return undefined
+
   if (!entry[box].length) {
     if (box === "contentBoxSize") {
       return entry.contentRect[sizeType === "inlineSize" ? "width" : "height"]

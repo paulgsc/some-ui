@@ -1,256 +1,160 @@
-import { useCallback, useState } from "react"
-import type { ConversationBatch, SessionState } from "@chat/types/topik"
+import { useCallback, useEffect, useReducer } from "react"
+import type {
+  SessionEvent,
+  SessionState,
+} from "@chat/lib/topik/session-reducer"
+import {
+  createInitialState,
+  sessionReducer,
+} from "@chat/lib/topik/session-reducer"
+import type { ConversationBatch } from "@chat/types/topik"
 
-type UseSessionFSMProps = {
-  batches: Array<ConversationBatch>
+type UseSessionProps = {
+  batches: Array<ConversationBatch> | undefined
   onBatchComplete?: (batchIndex: number) => void
   onAllBatchesComplete?: () => void
 }
 
-export function useSessionFSM({
+type UseSessionReturn = {
+  state: SessionState
+  dispatch: (event: SessionEvent) => void
+
+  // Convenience methods (just dispatch wrappers)
+  startChat: () => void
+  pauseChat: () => void
+  resumeChat: () => void
+  resetChat: () => void
+  messageSpoken: () => void
+  jumpToMessage: (index: number) => void
+
+  startQuiz: () => void
+  submitAnswer: (correct: boolean, userAnswer?: string) => void
+  nextQuestion: () => void
+  passAssessment: () => void
+  failAssessment: () => void
+
+  // Derived helpers
+  totalBatches: number
+  currentBatch: ConversationBatch | undefined
+  currentMessage: ConversationBatch["messages"][number] | undefined
+}
+
+export function useSession({
   batches,
   onBatchComplete,
   onAllBatchesComplete,
-}: UseSessionFSMProps) {
-  const [state, setState] = useState<SessionState>({
-    chatPlayState: "not started",
-    quizState: "standby",
-  })
+}: UseSessionProps): UseSessionReturn {
+  const [state, baseDispatch] = useReducer(
+    (s: SessionState, e: SessionEvent) => sessionReducer(s, e, batches ?? []),
+    createInitialState()
+  )
 
-  /* ───────────────── Chat controls ───────────────── */
+  // Wrap dispatch to handle side effects
+  const dispatch = useCallback(
+    (event: SessionEvent) => {
+      if (!batches) return
+      const prevState = state
+      baseDispatch(event)
 
-  const startChat = useCallback(() => {
-    setState(() => {
-      return {
-        timeRemaining: 180,
-        chatPlayState: "playing",
-        quizState: "standby",
-        score: 0,
+      // Side effects based on state transitions
+      if (
+        event.type === "ASSESSMENT_PASSED" &&
+        prevState.phase === "quizSummary"
+      ) {
+        const nextBatchIndex = prevState.batchIndex + 1
+
+        if (nextBatchIndex >= batches.length) {
+          if (onAllBatchesComplete) onAllBatchesComplete()
+        } else if (onBatchComplete) onBatchComplete(prevState.batchIndex)
       }
-    })
-  }, [])
+    },
+    [state, batches, onBatchComplete, onAllBatchesComplete]
+  )
 
-  const pauseChat = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      chatPlayState: "paused",
-    }))
-  }, [])
+  // Timer effect
+  useEffect(() => {
+    if (state.phase !== "chatPlaying") return
 
-  const resumeChat = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      currentBatchIndex: prev.currentBatchIndex ?? 0,
-      currentMessageIndex: prev.currentMessageIndex ?? 0,
-      timeRemaining: prev.timeRemaining ?? 180,
-      chatPlayState: "playing",
-    }))
-  }, [])
+    const interval = setInterval(() => {
+      dispatch({ type: "TICK" })
+    }, 1000)
 
-  const resetChat = useCallback(() => {
-    setState(() => ({
-      chatPlayState: "not started",
-      quizState: "standby",
-    }))
-  }, [])
+    return () => clearInterval(interval)
+  }, [state.phase, dispatch])
 
-  /**
-   * Called ONLY after TTS completes a message.
-   * This must be edge-triggered.
-   */
-  const nextMessage = useCallback(() => {
-    if (batches.length <= 0) return
+  // Convenience methods
+  const startChat = useCallback(
+    () => dispatch({ type: "START_CHAT" }),
+    [dispatch]
+  )
+  const pauseChat = useCallback(
+    () => dispatch({ type: "PAUSE_CHAT" }),
+    [dispatch]
+  )
+  const resumeChat = useCallback(
+    () => dispatch({ type: "RESUME_CHAT" }),
+    [dispatch]
+  )
+  const resetChat = useCallback(
+    () => dispatch({ type: "RESET_CHAT" }),
+    [dispatch]
+  )
+  const messageSpoken = useCallback(
+    () => dispatch({ type: "MESSAGE_SPOKEN" }),
+    [dispatch]
+  )
+  const jumpToMessage = useCallback(
+    (index: number) => dispatch({ type: "JUMP_TO_MESSAGE", index }),
+    [dispatch]
+  )
 
-    setState((prev) => {
-      if (prev.currentMessageIndex == null || prev.currentBatchIndex == null) {
-        return {
-          ...prev,
-          currentMessageIndex: 0,
-          currentBatchIndex: 0,
-        }
-      }
-
-      const currentBatch = batches[prev.currentBatchIndex]
-
-      const nextIndex = prev.currentMessageIndex + 1
-
-      // Batch complete → transition to quiz
-      if (nextIndex >= currentBatch.messages.length) {
-        return {
-          ...prev,
-          chatPlayState: "finished",
-          quizState: "ready",
-        }
-      }
-
-      return {
-        ...prev,
-        currentMessageIndex: nextIndex,
-      }
-    })
-  }, [batches])
-
-  const jumpToMessage = useCallback((index: number) => {
-    setState((prev) => ({
-      ...prev,
-      currentMessageIndex: index,
-    }))
-  }, [])
-
-  /* ───────────────── Quiz controls ───────────────── */
-
-  const startQuiz = useCallback(() => {
-    console.log("[useSessionFSM] 📝 startQuiz called")
-    setState((prev) => {
-      // Only allow quiz start if chat is finished
-      if (prev.chatPlayState !== "finished") {
-        console.warn("[useSessionFSM] Cannot start quiz - chat not finished")
-        return prev
-      }
-
-      return {
-        ...prev,
-        quizState: "active",
-        currentQuestion: 0,
-        score: prev.score ?? 0, // Initialize score if needed
-      }
-    })
-  }, [])
-
+  const startQuiz = useCallback(
+    () => dispatch({ type: "START_QUIZ" }),
+    [dispatch]
+  )
   const submitAnswer = useCallback(
-    (isCorrect: boolean, userAnswer?: string) => {
-      if (batches.length <= 0) return
-
-      setState((prev) => {
-        // Fixed: Check for null/undefined explicitly
-        if (prev.currentBatchIndex == null || prev.currentQuestion == null) {
-          return prev
-        }
-
-        const currentBatch = batches[prev.currentBatchIndex]
-        if (!currentBatch) return prev
-
-        const q = currentBatch.questions[prev.currentQuestion]
-        if (!q) return prev
-
-        return {
-          ...prev,
-          score: isCorrect ? (prev.score ?? 0) + 1 : (prev.score ?? 0),
-          quizState: "feedback",
-          feedbackData: {
-            isCorrect,
-            questionType: q.type,
-            userAnswer,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
-            grammarNote: q.grammarNote,
-          },
-        }
-      })
-    },
-    [batches]
+    (correct: boolean, userAnswer?: string) =>
+      dispatch({ type: "ANSWER_SUBMITTED", correct, userAnswer }),
+    [dispatch]
+  )
+  const nextQuestion = useCallback(
+    () => dispatch({ type: "NEXT_QUESTION" }),
+    [dispatch]
+  )
+  const passAssessment = useCallback(
+    () => dispatch({ type: "ASSESSMENT_PASSED" }),
+    [dispatch]
+  )
+  const failAssessment = useCallback(
+    () => dispatch({ type: "ASSESSMENT_FAILED" }),
+    [dispatch]
   )
 
-  const nextQuestion = useCallback(() => {
-    if (batches.length <= 0) return
-
-    setState((prev) => {
-      // Fixed: Check for null/undefined explicitly
-      if (prev.currentBatchIndex == null || prev.currentQuestion == null) {
-        return prev
-      }
-
-      const currentBatch = batches[prev.currentBatchIndex]
-      if (!currentBatch) return prev
-
-      const nextQ = prev.currentQuestion + 1
-
-      if (nextQ >= currentBatch.questions.length) {
-        return { ...prev, quizState: "summary" }
-      }
-
-      return {
-        ...prev,
-        currentQuestion: nextQ,
-        quizState: "active",
-        feedbackData: undefined,
-      }
-    })
-  }, [batches])
-
-  const completeAssessment = useCallback(
-    (passed: boolean) => {
-      if (batches.length <= 0) return
-      setState((prev) => {
-        if (prev.currentBatchIndex == null) {
-          return prev
-        }
-
-        if (!passed) {
-          // Retry batch - reset to beginning
-          return {
-            ...prev,
-            chatPlayState: "not started",
-            currentMessageIndex: undefined,
-            quizState: "standby",
-            currentQuestion: undefined,
-            score: 0,
-            feedbackData: undefined,
-          }
-        }
-
-        // Advance to next batch
-        if (prev.currentBatchIndex < batches.length - 1) {
-          const nextBatchIndex = prev.currentBatchIndex + 1
-
-          // Call batch complete callback
-          if (onBatchComplete) {
-            onBatchComplete(prev.currentBatchIndex)
-          }
-
-          return {
-            currentBatchIndex: nextBatchIndex,
-            chatPlayState: "not started",
-            currentMessageIndex: undefined,
-            quizState: "standby",
-            currentQuestion: undefined,
-            score: 0,
-            timeRemaining: 180,
-            feedbackData: undefined,
-          }
-        }
-        // All batches complete
-        console.log("[useSessionFSM] 🎊 All batches complete!")
-        if (onAllBatchesComplete) {
-          onAllBatchesComplete()
-        }
-
-        return {
-          ...prev,
-          quizState: "standby",
-          chatPlayState: "finished",
-        }
-      })
-    },
-    [batches, onBatchComplete, onAllBatchesComplete]
-  )
+  // Derived state
+  const currentBatch = batches ? batches[state.batchIndex] : undefined
+  const currentMessage = currentBatch
+    ? currentBatch.messages[state.messageIndex]
+    : undefined
 
   return {
     state,
-    totalBatches: batches.length,
+    dispatch,
 
     startChat,
     pauseChat,
     resumeChat,
     resetChat,
-    nextMessage,
+    messageSpoken,
     jumpToMessage,
 
     startQuiz,
     submitAnswer,
     nextQuestion,
-    completeAssessment,
+    passAssessment,
+    failAssessment,
 
-    isWaitingForTTS: false,
+    totalBatches: batches?.length ?? 0,
+    currentBatch,
+    currentMessage,
   }
 }

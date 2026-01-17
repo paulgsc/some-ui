@@ -3,7 +3,7 @@
     "panels": {
       "mainContent": {
         "registry_key": "topik",
-        "props": { "path": "topiks/unit-three.json" },
+        "props": { "path": "topiks/mujik.json" },
         "children": []
       }
     }

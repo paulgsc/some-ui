@@ -26,11 +26,22 @@ pub struct GameStats {
     pub is_complete: bool,
 }
 
-// Pure Rust implementation
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ChunkCompletionStats {
+    pub chars_typed: usize,
+    pub errors: usize,
+    pub elapsed_time: f64,
+}
+
+// Pure Rust implementation with bounded memory via chunk management
 pub struct TypingGameCore {
     state: TypingState,
     target_units: Vec<CanonicalUnit>,
     max_consecutive_errors: usize,
+    // Cumulative stats preserved across chunks
+    cumulative_chars: usize,
+    cumulative_errors: usize,
+    game_start_time: Option<f64>,
 }
 
 impl TypingGameCore {
@@ -40,11 +51,66 @@ impl TypingGameCore {
             state: TypingState::new(),
             target_units,
             max_consecutive_errors: max_consecutive_errors.unwrap_or(3),
+            cumulative_chars: 0,
+            cumulative_errors: 0,
+            game_start_time: None,
         }
+    }
+
+    /// Complete current chunk and extract stats before moving to next
+    pub fn complete_chunk(&mut self, current_timestamp: f64) -> ChunkCompletionStats {
+        let chars_typed = stats::count_chars(&self.state.user_units);
+        let chunk_errors = self.state.total_errors;
+        let elapsed = self.game_start_time.map(|start| (current_timestamp - start) / 1000.0).unwrap_or(0.0);
+
+        // Accumulate into cumulative totals
+        self.cumulative_chars += chars_typed;
+        self.cumulative_errors += chunk_errors;
+
+        ChunkCompletionStats {
+            chars_typed,
+            errors: chunk_errors,
+            elapsed_time: elapsed,
+        }
+    }
+
+    /// Start next chunk with new target, preserving game-level state
+    pub fn start_next_chunk(&mut self, new_target_code: &str) {
+        // Parse new target
+        self.target_units = canonicalize(new_target_code);
+
+        // Reset chunk-level state (input, cursor, chunk errors)
+        self.state.raw_input.clear();
+        self.state.user_units.clear();
+        self.state.cursor = 0;
+        self.state.total_errors = 0;
+        self.state.consecutive_errors = 0;
+    }
+
+    /// Reset entire game (all chunks, all stats)
+    pub fn reset_game(&mut self) {
+        self.state.reset();
+        self.cumulative_chars = 0;
+        self.cumulative_errors = 0;
+        self.game_start_time = None;
+    }
+
+    /// Get cumulative stats across all chunks
+    pub fn get_cumulative_stats(&self) -> (usize, usize) {
+        (self.cumulative_chars, self.cumulative_errors)
+    }
+
+    /// Get the current target length (useful for chunked loading UI)
+    pub fn target_length(&self) -> usize {
+        self.target_units.len()
     }
 
     pub fn start(&mut self, timestamp: f64) {
         self.state.start(timestamp);
+        // Set game start time on first start
+        if self.game_start_time.is_none() {
+            self.game_start_time = Some(timestamp);
+        }
     }
 
     pub fn reset(&mut self) {

@@ -87,6 +87,14 @@ export default <Array<ConfigWithExtends>>[
           ignorePrimitives: true,
         },
       ],
+      "@typescript-eslint/no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[computed=true]",
+          message:
+            "Unsafe indexed access. Prefer iteration, .at(), or a safe helper.",
+        },
+      ],
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

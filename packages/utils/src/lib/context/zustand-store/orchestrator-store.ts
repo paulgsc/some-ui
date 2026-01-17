@@ -399,7 +399,7 @@ export const selectCurrentSceneId = (
 ): string | null => {
   const sceneIds = s.lifetimes.active_scene_ids
   // Only return a value if exactly one scene is active
-  return sceneIds.size === 1 ? Array.from(sceneIds)[0] : null
+  return sceneIds.size === 1 ? (Array.from(sceneIds).at(0) ?? null) : null
 }
 
 export const useCurrentSceneId = () =>

@@ -1,49 +1,97 @@
+// load-code-file.ts
 
-const cache = new Map<string, Promise<string>>()
+const modelCache = new Map<string, Promise<TextModel>>()
+
+export type CodeChunk = {
+  content: string
+  startLine: number
+  endLine: number
+  hasMore: boolean
+}
 
 /**
- * Loads a code file from a given path, caching the promise to avoid
- * re-fetching.
- * @param path The URL path to the code file.
- * @returns A promise that resolves to the code file content (string).
+ * Editor-style resident text model.
+ * - Full document is held once
+ * - Lines are indexed by offsets
+ * - No per-line string allocation
  */
-export function loadCodeFile(path: string): Promise<string> {
-  if (cache.has(path)) {
-    // If the check for 'has' passed, 'get' is guaranteed to return a value.
-    // We can safely cast here to 'Promise<string>' to satisfy strict TS
-    // without the non-null assertion operator (!).
-    return cache.get(path) as Promise<string>
-  }
+export class TextModel {
+  private readonly text: string
+  private readonly lineStarts: Array<number>
+  private readonly linesPerChunk: number
 
-  const promise = fetch(path).then(async (res) => {
-    if (!res.ok) {
-      // Explicitly throw an Error object
-      throw new Error(`Failed to load code file: ${path}, Status: ${res.status}`)
-    }
+  constructor(text: string, linesPerChunk = 100) {
+    this.text = text
+    this.linesPerChunk = linesPerChunk
+    this.lineStarts = computeLineStarts(text)
+  }
 
-    // Improved handling for missing body reader, returning text or throwing explicitly
-    if (!res.body) {
-      // If res.body is null, we can fallback to res.text() or assume an issue
-      return res.text()
-    }
+  getTotalLines(): number {
+    return this.lineStarts.length
+  }
 
-    // Stream + accumulate chunks (lower peak memory than res.text())
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let result = ""
+  getChunk(startLine: number): CodeChunk {
+    const totalLines = this.getTotalLines()
 
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      // The decode call will only accept Uint8Array if 'value' is not null
-      result += decoder.decode(value, { stream: true })
-    }
+    if (startLine < 0 || startLine >= totalLines) {
+      throw new RangeError(`Invalid startLine ${startLine}`)
+    }
 
-    // Final decode to get any buffered characters
-    result += decoder.decode()
-    return result
-  })
+    const endLine = Math.min(startLine + this.linesPerChunk, totalLines)
 
-  cache.set(path, promise)
-  return promise
+    const startOffset = this.lineStarts[startLine]
+    const endOffset =
+      endLine < totalLines ? this.lineStarts[endLine] : this.text.length
+
+    const content = this.text.slice(startOffset, endOffset)
+
+    return {
+      content,
+      startLine,
+      endLine,
+      hasMore: endLine < totalLines,
+    }
+  }
+}
+
+/**
+ * Loads a text model and caches it by path.
+ * Editor semantics: one resident model per open file.
+ */
+export async function loadTextModel(
+  path: string,
+  linesPerChunk = 100
+): Promise<TextModel> {
+  if (modelCache.has(path)) {
+    return modelCache.get(path)!
+  }
+
+  const promise = (async () => {
+    const res = await fetch(path)
+    if (!res.ok) {
+      throw new Error(`Failed to load code file: ${path}, status ${res.status}`)
+    }
+
+    const text = await res.text()
+    return new TextModel(text, linesPerChunk)
+  })()
+
+  modelCache.set(path, promise)
+  return promise
+}
+
+/**
+ * Computes the starting character offset of each line.
+ * Similar to how Monaco builds its line index.
+ */
+function computeLineStarts(text: string): Array<number> {
+  const lineStarts = [0]
+
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) === 10 /* \n */) {
+      lineStarts.push(i + 1)
+    }
+  }
+
+  return lineStarts
 }

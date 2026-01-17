@@ -23,14 +23,34 @@ export const useGameAudio = ({
   volume = 0.5,
 }: UseGameAudioProps = {}) => {
   const audioContextRef = useRef<Map<AudioEvent, HTMLAudioElement>>(new Map())
-  const isInitializedRef = useRef(false)
   const unlockedRef = useRef(false)
+
+  // Initialize audio files IMMEDIATELY, not in useEffect
+  if (audioContextRef.current.size === 0) {
+    const audioFiles: Record<AudioEvent, string> = {
+      match_correct: "/sfx/correct.mp3",
+      match_perfect: "/sfx/correct.mp3",
+      match_miss: "/sfx/miss.mp3",
+      character_expire: "/sfx/expire.mp3",
+      streak_milestone: "/sfx/correct.mp3",
+      character_spawn: "/sfx/spawn.mp3",
+      difficulty_increase: "/sfx/correct.mp3",
+      game_complete: "/sfx/correct.mp3",
+      game_timeout: "/sfx/timeout.mp3",
+      buffer_stale: "/sfx/correct.mp3",
+      board_full: "/sfx/correct.mp3",
+    }
+
+    Object.entries(audioFiles).forEach(([event, path]) => {
+      const audio = new Audio(path)
+      audio.preload = "auto"
+      audio.volume = volume
+      audioContextRef.current.set(event as AudioEvent, audio)
+    })
+  }
 
   const unlockAudio = useCallback(() => {
     if (unlockedRef.current) return
-
-    console.log("[audio] unlocking")
-
     audioContextRef.current.forEach((audio) => {
       audio.muted = true
       audio
@@ -42,48 +62,19 @@ export const useGameAudio = ({
         })
         .catch(() => {})
     })
-
     unlockedRef.current = true
   }, [])
 
-  // Initialize audio files
+  // Cleanup on unmount
   useEffect(() => {
-    if (isInitializedRef.current) return
-
-    const audioFiles: Record<AudioEvent, string> = {
-      match_correct: "/sfx/minimal-pop.mp3",
-      match_perfect: "/sfx/subtle-spark.mp3",
-      match_miss: "/sfx/error.mp3",
-      character_expire: "/sfx/minimal-pop.mp3",
-      streak_milestone: "/sfx/level-up.mp3",
-      character_spawn: "/sfx/minimal-pop.mp3",
-      difficulty_increase: "/sfx/minimal-pop.mp3",
-      game_complete: "/sfx/minimal-pop.mp3",
-      game_timeout: "/sfx/minimal-pop.mp3",
-      buffer_stale: "/sfx/error.mp3",
-      board_full: "/sfx/error.mp3",
-    }
-
-    const audioMap = new Map<AudioEvent, HTMLAudioElement>()
-
-    Object.entries(audioFiles).forEach(([event, path]) => {
-      const audio = new Audio(path)
-      audio.volume = volume
-      audio.preload = "auto"
-      audioMap.set(event as AudioEvent, audio)
-    })
-
-    audioContextRef.current = audioMap
-    isInitializedRef.current = true
-
     return () => {
-      audioMap.forEach((audio) => {
+      audioContextRef.current.forEach((audio) => {
         audio.pause()
         audio.src = ""
       })
-      audioMap.clear()
+      audioContextRef.current.clear()
     }
-  }, [volume])
+  }, [])
 
   // Update volume when prop changes
   useEffect(() => {
@@ -95,17 +86,19 @@ export const useGameAudio = ({
   const playSound = useCallback(
     (event: AudioEvent) => {
       if (!enabled) return
-
       const audio = audioContextRef.current.get(event)
-      console.log("called play sound!")
-      if (!audio) return
-
-      // Clone and play to allow overlapping sounds
-      const clone = audio.cloneNode() as HTMLAudioElement
-      clone.volume = volume
-      clone.play().catch((err) => {
-        console.warn(`Failed to play audio: ${event}`, err)
-      })
+      if (!audio) {
+        console.log("no audio found for event: ", event)
+        return
+      }
+      audio.currentTime = 0
+      audio.volume = volume
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn(`Playback blocked for ${event}:`, err)
+        })
+      }
     },
     [enabled, volume]
   )

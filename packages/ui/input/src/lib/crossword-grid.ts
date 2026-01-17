@@ -121,7 +121,7 @@ function generateCrosswordLayout(
 
   // Place the first word in the center
   const firstWord =
-    validWordList[Math.floor(Math.random() * validWordList.length)]
+    validWordList[Math.floor(Math.random() * validWordList.length)] ?? ""
   const firstDir: Direction = Math.random() > 0.5 ? "across" : "down"
 
   // Center the first word
@@ -173,7 +173,7 @@ function generateCrosswordLayout(
     for (let i = 0; i < wordText.length; i++) {
       const cx = dir === "across" ? x + i : x
       const cy = dir === "down" ? y + i : y
-      occupiedCells.set(`${cx}-${cy}`, wordText[i])
+      occupiedCells.set(`${cx}-${cy}`, wordText[i] ?? "")
     }
 
     placedWords.push({
@@ -345,7 +345,7 @@ function generateCrosswordLayout(
 
     // Pick a random word to place
     const randomIndex = Math.floor(Math.random() * availableWords.length)
-    const wordToPlace = availableWords[randomIndex]
+    const wordToPlace = availableWords[randomIndex] ?? ""
 
     // Try multiple random positions
     for (let attempt = 0; attempt < 50; attempt++) {
@@ -431,8 +431,8 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
         const cell = grid.get(key)!
 
         // Combine directions
-        cell.across = cell.across || direction === "across"
-        cell.down = cell.down || direction === "down"
+        cell.across ||= direction === "across"
+        cell.down ||= direction === "down"
 
         // Letter should match at intersections
         if (cell.letter && cell.letter !== letter) {

@@ -9,7 +9,7 @@ import { TypingErrorAlert } from "@input/components/typing-game/typing-error-ale
 import { TypingInputCard } from "@input/components/typing-game/typing-input-card"
 import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
-import { useFormattedCode } from "@input/hooks/leetype/use-formatted-code"
+import { useChunkedCode } from "@input/hooks/leetype/use-chunked-code"
 import type { DisplayMode, GameState, Language } from "@input/types/leetype"
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 
@@ -24,19 +24,61 @@ const PRETTIER_PARSER_MAP: Record<Language, string> = {
   c: "typescript",
 }
 
+type CumulativeStats = {
+  totalChunks: number
+  totalCharsTyped: number
+  totalErrors: number
+}
+
 export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [language, setLanguage] = useState<Language>("typescript")
   const [duration, setDuration] = useState(300)
   const [settingsExpanded, setSettingsExpanded] = useState(true)
+  const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats>({
+    totalChunks: 0,
+    totalCharsTyped: 0,
+    totalErrors: 0,
+  })
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const codeDisplayRef = useRef<HTMLDivElement>(null)
 
-  // Load code from file
-  const codeState = useFormattedCode(codePaths[language], {
+  // Load code with automatic chunking for large files
+  const codeState = useChunkedCode(codePaths[language], {
     prettierParser: PRETTIER_PARSER_MAP[language] as any,
+    linesPerChunk: 150,
   })
+
+  // Get current active chunk (bouonded memory - only one chunk at a time)
+  const targetCode = codeState.currentChunk?.content ?? ""
+
+  // Calculate which chunk number we're on
+  const currentChunkNumber =
+    codeState.totalLines > 0 ? Math.floor(codeState.currentLine / 100) + 1 : 1
+  const totalChunksEstimate =
+    codeState.totalLines > 0 ? Math.ceil(codeState.totalLines / 100) : 1
+
+  // Handle chunk completion
+  const handleChunkComplete = (chunkStats: ChunkCompletionStats) => {
+    // Update cumulative stats
+    setCumulativeStats((prev) => ({
+      totalChunks: prev.totalChunks + 1,
+      totalCharsTyped: prev.totalCharsTyped + chunkStats.chars_typed,
+      totalErrors: prev.totalErrors + chunkStats.errors,
+    }))
+
+    // Check if there are more chunks
+    if (codeState.hasMore) {
+      // Load Next chunk (old chunk is GC'd - bounded memory)
+      console.log("has more: ", codeState.hasMore)
+      codeState.loadNextChunk()
+    } else {
+      // All chunks complete - game finished
+      setGameState("finished")
+    }
+  }
 
   const {
     onDismiss,
@@ -56,9 +98,10 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     reset,
     handleInputChange,
   } = useTypingGame({
-    targetCode: codeState.status === "SUCCESS" ? codeState.code : "",
+    targetCode,
     gameState,
-    onComplete: () => setGameState("finished"),
+    onComplete: () => {},
+    onChunkComplete: handleChunkComplete,
   })
 
   const timer = useGameTimer({
@@ -73,6 +116,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
       reset()
       setGameState("idle")
       setSettingsExpanded(true)
+      setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
     }
   }, [reset, language, codeState.status])
 
@@ -88,13 +132,22 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     setGameState("idle")
     reset()
     setSettingsExpanded(true)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
   }
 
   const handleLanguageChange = (lang: Language): void => {
     setLanguage(lang)
     setGameState("idle")
     setSettingsExpanded(true)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
   }
+
+  // Calculate overall progress across all chunks
+  const overallProgress =
+    totalChunksEstimate > 0
+      ? ((cumulativeStats.totalChunks + progress / 100) / totalChunksEstimate) *
+        100
+      : progress
 
   return (
     <div className="code absolute inset-0 flex flex-col overflow-hidden">
@@ -116,8 +169,8 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
         duration={duration}
         wpm={wpm}
         accuracy={accuracy}
-        progress={progress}
-        errors={errors}
+        progress={overallProgress}
+        errors={cumulativeStats.totalErrors + errors}
         gameState={gameState}
       />
 
@@ -132,9 +185,15 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 <TabsTrigger value="prompt">Prompt</TabsTrigger>
               </TabsList>
 
-              <Badge variant="secondary" className="font-mono">
-                {language}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs">
+                  Chunk {currentChunkNumber}/{totalChunksEstimate}
+                  {codeState.hasMore && "+"}
+                </Badge>
+                <Badge variant="secondary" className="font-mono">
+                  {language}
+                </Badge>
+              </div>
             </div>
 
             {/* Content container */}
@@ -144,13 +203,16 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 className="absolute inset-0 flex min-h-0 flex-col rounded-lg border bg-card p-6"
               >
                 <h2 className="mb-4 text-lg font-semibold text-card-foreground">
-                  Target Code
+                  Target Code (Current Chunk)
                 </h2>
 
                 {/* Scroll containment */}
-                <div className="min-h-0 flex-1 overflow-auto">
+                <div
+                  ref={codeDisplayRef}
+                  className="min-h-0 flex-1 overflow-auto"
+                >
                   {codeState.status === "LOADING" ? (
-                    <LoadingCodeState attempt={codeState.attempt} />
+                    <LoadingCodeState attempt={1} />
                   ) : codeState.status === "ERROR" ? (
                     <ErrorCodeState
                       error={codeState.error}

@@ -24,7 +24,7 @@ const defaultCodePaths: Record<Language, string> = {
   typescript: "/code-samples/two-sum.ts",
   rust: "/code-samples/small-vec.rs",
   cpp: "/code-samples/quicksort.cpp",
-  c: "/code-samples/binary-search.c",
+  c: "/code-samples/reverse.c",
 }
 
 /* ---------- Basic Stories ---------- */

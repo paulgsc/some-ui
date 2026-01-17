@@ -14,13 +14,13 @@ export function buildDisplayBuffer(code: string): Array<DisplayChar> {
   // defensive: ensure map length == chars.length
   if (map.length !== chars.length) {
     // fallback: if wasm returned shorter map, expand with last index
-    const last = map.length ? map[map.length - 1] : 0
+    const last = map.at(-1) ?? 0
     while (map.length < chars.length) map.push(last)
   }
 
   return chars.map((char, i) => ({
     char,
-    unitIndex: map[i],
+    unitIndex: map[i] ?? -1,
     displayIndex: i,
   }))
 }

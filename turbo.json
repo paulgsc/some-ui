@@ -55,6 +55,9 @@
     "check": {
       "cache": false
     },
+    "check-file": {
+      "cache": false
+    },
     "test": {
       "cache": false
     },

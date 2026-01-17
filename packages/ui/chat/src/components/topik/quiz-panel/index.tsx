@@ -61,7 +61,7 @@ export const QuizPanel = ({
         <QuizActive
           questionNumber={currentQuestion + 1}
           totalQuestions={totalQuestions}
-          question={questions[currentQuestion]}
+          question={questions.at(currentQuestion)}
           onAnswerSubmit={onAnswerSubmit}
           onSpeakMessage={onSpeakMessage}
           isSpeaking={isSpeaking}

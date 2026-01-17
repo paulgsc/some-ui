@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-
 import type {
   ApiAdapter,
   RefreshCallbacks,
   SatelliteDataItem,
-} from "@/lib/types"
+} from "@nfl/types/hopium/hopium-tracker"
 
 export function useSatelliteData<T>(
   adapter: ApiAdapter<T>,

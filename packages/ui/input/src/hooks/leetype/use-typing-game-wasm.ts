@@ -6,14 +6,19 @@ import {
   loadWasm,
   TypedTypingGame,
 } from "@input/lib/leetype/leetype-wasm-loader"
-import type { GameState, CanonicalUnit, InputResult } from "@input/types/leetype"
+import type {
+  CanonicalUnit,
+  ChunkCompletionStats,
+  GameState,
+  InputResult,
+} from "@input/types/leetype"
 import { deriveCursorIndex, deriveDisplayMap } from "@input/utils/leetype"
-
 
 type UseTypingGameProps = {
   targetCode: string
   gameState: GameState
   onComplete: () => void
+  onChunkComplete?: (stats: ChunkCompletionStats) => void
   maxConsecutiveErrors?: number
 }
 
@@ -44,6 +49,7 @@ export function useTypingGame({
   targetCode,
   gameState,
   onComplete,
+  onChunkComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
   const gameRef = useRef<TypedTypingGame | null>(null)
@@ -71,9 +77,11 @@ export function useTypingGame({
         await loadWasm()
         if (!alive) return
 
+        // Initialize game with initial target
         const game = new TypedTypingGame(targetCode, maxConsecutiveErrors)
         gameRef.current = game
         completedRef.current = false
+        lastTargetRef.current = targetCode
 
         setTargetUnits(canonicalizeText(targetCode))
         setIsLoading(false)
@@ -84,12 +92,34 @@ export function useTypingGame({
       }
     })()
 
-    return () => {
+    return (): void => {
       alive = false
       gameRef.current?.free()
       gameRef.current = null
     }
-  }, [targetCode, maxConsecutiveErrors])
+  }, [maxConsecutiveErrors]) // Only reinit when max errors changes
+
+  /* ----------- CHUNK TRANSITIONS ----------- */
+
+  // When targetCode changes, it means a new chunk was loaded
+  useEffect(() => {
+    const game = gameRef.current
+    if (!game || !targetCode || isLoading) return
+
+    try {
+      // Transition to new chunk
+      game.startNextChunk(targetCode)
+      setTargetUnits(canonicalizeText(targetCode))
+
+      // Reset UI state for new chunk
+      setRawUserInput("")
+      setUserUnits([])
+      completedRef.current = false
+    } catch (e) {
+      console.error("Failed to start next chunk:", e)
+      setError(e instanceof Error ? e : new Error("Chunk transition failed"))
+    }
+  }, [targetCode, isLoading])
 
   /* ---------- STATS SUBSCRIPTION ---------- */
 
@@ -126,7 +156,7 @@ export function useTypingGame({
 
   /* ---------- CONTROL ---------- */
 
-  const resetInternal = () => {
+  const resetInternal = (): void => {
     completedRef.current = false
     setRawUserInput("")
     setUserUnits([])
@@ -146,7 +176,7 @@ export function useTypingGame({
     gameRef.current?.dismissError()
   }, [])
 
-  /* ---------- COMPLETION ---------- */
+  /* ---------- CHUNK COMPLETION ---------- */
 
   useEffect(() => {
     if (
@@ -158,6 +188,7 @@ export function useTypingGame({
       return
     }
 
+    // Check if chunk is complete
     for (let i = 0; i < targetUnits.length; i++) {
       const u = userUnits[i]
       const t = targetUnits[i]
@@ -167,8 +198,16 @@ export function useTypingGame({
     }
 
     completedRef.current = true
+
+    // Extract chunk stats before completing
+    const game = gameRef.current
+    if (game && onChunkComplete) {
+      const chunkStats = game.completeChunk(Date.now())
+      onChunkComplete(chunkStats)
+    }
+
     onComplete()
-  }, [userUnits, targetUnits, stats, gameState, onComplete])
+  }, [userUnits, targetUnits, stats, gameState, onComplete, onChunkComplete])
 
   /* ---------- FALLBACK FOR LOADING STATE ---------- */
 
