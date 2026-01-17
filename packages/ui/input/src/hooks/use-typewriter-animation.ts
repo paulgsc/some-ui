@@ -77,7 +77,7 @@ export function useTypewriterAnimation({
     }, currentTime)
 
     // Function to animate a single invalid attempt
-    function animateInvalidAttempt() {
+    function animateInvalidAttempt(): void {
       if (currentAttempt >= invalidAttempts) {
         // We've completed all invalid attempts, show the valid letter
         animateValidLetter()
@@ -86,7 +86,7 @@ export function useTypewriterAnimation({
 
       // Choose a random invalid letter
       const randomInvalidLetter =
-        invalidLetters[Math.floor(Math.random() * invalidLetters.length)]
+        invalidLetters[Math.floor(Math.random() * invalidLetters.length)] ?? ""
       setCurrentLetter(randomInvalidLetter)
 
       // Start vibration animation

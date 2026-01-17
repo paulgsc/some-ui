@@ -70,18 +70,13 @@ export const InterviewApp = () => {
       setNotes("")
     }
   }
-  const handleSkip = () => {
-    if (!isLastQuestion) {
-      setCurrentQuestionIndex((prev) => prev + 1)
-      setPhase("question")
-      setTranscript("")
-      setNotes("")
-    }
-  }
   const handleRetry = () => {
     setPhase("preparation")
     setTranscript("")
   }
+
+  if (!currentQuestion) return null
+
   return (
     <main className="min-h-screen bg-background">
       {phase === "welcome" && <WelcomeScreen onStart={handleStartInterview} />}
