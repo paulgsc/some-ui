@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useReducer, useState } from "react"
 import {
   closestCenter,
   DndContext,
@@ -20,7 +20,9 @@ import {
   OrchestratorControls,
   OrchestratorTimeline,
 } from "@slideshow/components/orchestrator"
-import { Plus } from "lucide-react"
+import type { EditorState } from "@slideshow/utils/scene-editor"
+import { editorReducer } from "@slideshow/utils/scene-editor"
+import { Library, Plus } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import { Button, Card } from "some-ui-shared"
 
@@ -30,10 +32,11 @@ export const OrchestratorDemo = ({
   initialScenes?: Array<SceneConfig>
 }) => {
   const [scenes, setScenes] = useState<Array<SceneConfig>>(initialScenes)
-  const [editingScene, setEditingScene] = useState<{
-    scene: SceneConfig
-    index: number
-  } | null>(null)
+
+  // FSM for dialog state - single source of truth
+  const [editorState, dispatchEditor] = useReducer<
+    (state: EditorState, action: any) => EditorState
+  >(editorReducer, { type: "Closed" })
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -44,37 +47,53 @@ export const OrchestratorDemo = ({
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event
-
     if (over && active.id !== over.id) {
       setScenes((items) => {
         const oldIndex = items.findIndex((_, i) => `scene-${i}` === active.id)
         const newIndex = items.findIndex((_, i) => `scene-${i}` === over.id)
-
-        const movedArray = arrayMove(items, oldIndex, newIndex)
-        return movedArray
+        return arrayMove(items, oldIndex, newIndex)
       })
     }
   }
 
+  // FSM Transition: Open for editing existing scene
   const handleEditScene = (index: number): void => {
-    setEditingScene({ scene: scenes[index], index })
+    dispatchEditor({
+      type: "OPEN_FOR_EDIT",
+      sceneIndex: index,
+      scene: scenes[index],
+    })
   }
 
-  const handleSaveScene = (updatedScene: SceneConfig): void => {
-    if (editingScene === null) return
-
-    const newScenes = [...scenes]
-    newScenes[editingScene.index] = updatedScene
-    setScenes(newScenes)
-    setEditingScene(null)
+  // FSM Transition: Save edited scene
+  const handleSaveEdit = (
+    sceneIndex: number,
+    updatedScene: SceneConfig
+  ): void => {
+    setScenes((current) => {
+      const updated = [...current]
+      updated[sceneIndex] = updatedScene
+      return updated
+    })
   }
 
-  const handleAddScene = (): void => {
+  // FSM Transition: Open library dialog
+  const handleOpenLibrary = (): void => {
+    dispatchEditor({ type: "OPEN_FOR_LIBRARY_ADD" })
+  }
+
+  // FSM Transition: Bulk add from library
+  const handleBulkAdd = (newScenes: Array<SceneConfig>): void => {
+    setScenes((current) => [...current, ...newScenes])
+  }
+
+  // Manual scene creation
+  const handleCreateNew = (): void => {
     const newScene: SceneConfig = {
       scene_name: `New Scene ${scenes.length + 1}`,
-      duration: 60_000, // 1 minute default
+      duration: 60_000,
       start_time: 0,
-      ui: [], // Initializing empty UI array as per UILayoutIntentSchema
+      ui: [],
     }
     setScenes([...scenes, newScene])
   }
@@ -89,20 +108,29 @@ export const OrchestratorDemo = ({
               Orchestrator Control
             </h1>
             <p className="text-muted-foreground">
-              Manage {scenes.length} scenes and live streaming workflow
+              Manage {scenes.length} scenes • FSM-based state management
             </p>
           </div>
-          <Button onClick={handleAddScene} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Scene
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleOpenLibrary}
+              variant="outline"
+              className="gap-2"
+            >
+              <Library className="h-4 w-4" />
+              Add from Library
+            </Button>
+            <Button onClick={handleCreateNew} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Scene
+            </Button>
+          </div>
         </div>
 
         {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <OrchestratorControls scenes={scenes} />
-
             <Card className="p-6">
               <h2 className="mb-4 text-lg font-semibold">Scene Timeline</h2>
               <DndContext
@@ -111,7 +139,6 @@ export const OrchestratorDemo = ({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  // Using index-based IDs for stability during renames
                   items={scenes.map((_, i) => `scene-${i}`)}
                   strategy={verticalListSortingStrategy}
                 >
@@ -123,18 +150,18 @@ export const OrchestratorDemo = ({
               </DndContext>
             </Card>
           </div>
-
           <div className="lg:col-span-1">
             <ActiveLifetimesPanel />
           </div>
         </div>
       </div>
 
+      {/* Single Dialog - FSM controls all modes */}
       <EditSceneDialog
-        open={editingScene !== null}
-        onOpenChange={(open) => !open && setEditingScene(null)}
-        scene={editingScene?.scene ?? null}
-        onSave={handleSaveScene}
+        state={editorState}
+        dispatch={dispatchEditor}
+        onSaveEdit={handleSaveEdit}
+        onBulkAdd={handleBulkAdd}
       />
     </div>
   )

@@ -1,6 +1,19 @@
-import { useEffect, useState } from "react"
-import { AlertCircle, Clock, Code, Layers, Save } from "lucide-react"
-import type { SceneConfig, UILayoutIntent } from "some-types-utils"
+import { SceneSelectorTab } from "@slideshow/components/orchestrator/scene-selector"
+import type { EditorAction, EditorState } from "@slideshow/utils/scene-editor"
+import {
+  buildSceneFromDraft,
+  getEditorView,
+} from "@slideshow/utils/scene-editor"
+import { createSceneInstance } from "@slideshow/utils/scene-selector"
+import {
+  AlertCircle,
+  Clock,
+  Code,
+  Layers,
+  Library as LibraryIcon,
+  Save,
+} from "lucide-react"
+import type { SceneConfig } from "some-types-utils"
 import {
   Badge,
   Button,
@@ -18,186 +31,293 @@ import {
   Textarea,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
+import { LibraryTemplatePicker } from "@slideshow/components/orchestrator/library-picker"
 
 type EditSceneDialogProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  scene: SceneConfig | null
-  onSave: (scene: SceneConfig) => void
+  state: EditorState
+  dispatch: (action: EditorAction) => void
+  onSaveEdit?: (sceneIndex: number, scene: SceneConfig) => void
+  onBulkAdd?: (scenes: Array<SceneConfig>) => void
 }
 
 export const EditSceneDialog = ({
-  open,
-  onOpenChange,
-  scene,
-  onSave,
+  state,
+  dispatch,
+  onSaveEdit,
+  onBulkAdd,
 }: EditSceneDialogProps) => {
-  const [sceneName, setSceneName] = useState("")
-  const [durationSec, setDurationSec] = useState(0)
-  const [startTimeSec, setStartTimeSec] = useState<number | undefined>(
-    undefined
-  )
+  const view = getEditorView(state)
 
-  // JSON Editor State
-  const [uiJson, setUiJson] = useState("")
-  const [jsonError, setJsonError] = useState<string | null>(null)
+  const handleSaveEdit = (): void => {
+    if (state.type !== "EditingExisting") return
 
-  useEffect(() => {
-    if (!scene) return
-    setSceneName(scene.scene_name)
-    setDurationSec(Math.floor(scene.duration / 1000))
-    setStartTimeSec(
-      scene.start_time !== undefined
-        ? Math.floor(scene.start_time / 1000)
-        : undefined
+    const result = buildSceneFromDraft(state)
+    if ("error" in result) {
+      dispatch({ type: "SET_JSON_ERROR", error: result.error })
+      return
+    }
+
+    onSaveEdit(state.sceneIndex, result)
+    dispatch({ type: "CLOSE" })
+  }
+
+  const handleApplyLibrary = (): void => {
+    if (state.type !== "SelectingFromLibrary") return
+
+    const scenesToAdd: Array<SceneConfig> = state.selections
+      .map((selection) => {
+        // sourceConfig is already normalized by useSceneLibrary:
+        // - Contains UI intent array from disk file
+        // - Has proper display name
+        // - Has 60s duration policy
+        if (!selection.sourceConfig) {
+          console.error(`[FSM] Missing sourceConfig for ${selection.fileName}`)
+          return null
+        }
+
+        // Create instance (adds duplicate suffix if needed)
+        return createSceneInstance(selection.sourceConfig, selection)
+      })
+      .filter((s): s is SceneConfig => s !== null)
+
+    console.log(
+      `[FSM] Adding ${scenesToAdd.length} scenes from library:`,
+      scenesToAdd.map((s) => ({
+        name: s.scene_name,
+        duration: s.duration,
+        uiIntents: s.ui.length || 0,
+      }))
     )
 
-    // Format existing UI intents for the JSON editor
-    setUiJson(JSON.stringify(scene.ui || [], null, 2))
-    setJsonError(null)
-  }, [scene])
+    onBulkAdd(scenesToAdd)
+    dispatch({ type: "CLOSE" })
+  }
 
-  const validateAndSave = (): void => {
-    try {
-      const parsedUi = JSON.parse(uiJson)
-      if (!Array.isArray(parsedUi))
-        throw new Error("UI Intents must be an array")
-
-      onSave({
-        ...scene!,
-        scene_name: sceneName,
-        duration: durationSec * 1000,
-        start_time: (startTimeSec ?? 0) * 1000,
-        ui: parsedUi as Array<UILayoutIntent>,
-      })
-      onOpenChange(false)
-    } catch (e: any) {
-      setJsonError(e.message || "Invalid JSON format")
-    }
+  const handleClose = (): void => {
+    dispatch({ type: "CLOSE" })
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] h-[85vh] flex flex-col p-0 overflow-hidden bg-card">
+    <Dialog open={view.isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col p-0 overflow-hidden bg-card">
         <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-primary" />
-              Scene Orchestrator
+              {view.mode === "edit"
+                ? "Scene Orchestrator"
+                : "Add from Scene Library"}
             </DialogTitle>
-            {scene && (
+            {view.mode === "edit" && (
               <Badge variant="outline" className="font-mono text-[10px]">
-                REV_{scene.duration}
+                REV_{view.draft.durationSec}s
               </Badge>
             )}
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="layout" className="flex-1 flex flex-col min-h-0">
-          <div className="px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="layout" className="gap-2">
-                <Code className="w-4 h-4" /> Rich Intent Editor
-              </TabsTrigger>
-              <TabsTrigger value="config" className="gap-2">
-                <Clock className="w-4 h-4" /> Timeline Config
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Layout Tab: The JSON Workspace */}
-          <TabsContent
-            value="layout"
-            className="flex-1 flex flex-col min-h-0 p-6 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h4 className="text-sm font-semibold">Intent Stack</h4>
-                <p className="text-xs text-muted-foreground">
-                  Paste your `UILayoutIntent` array here to define regions,
-                  content, and focus.
-                </p>
-              </div>
-              {jsonError && (
-                <Badge variant="destructive" className="animate-pulse gap-1">
-                  <AlertCircle className="w-3 h-3" /> Syntax Error
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex-1 relative font-mono text-sm">
-              <Textarea
-                value={uiJson}
-                onChange={(e) => {
-                  setUiJson(e.target.value)
-                  if (jsonError) setJsonError(null)
-                }}
-                className={cn(
-                  "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors focus-visible:ring-0",
-                  jsonError ? "border-destructive/50" : "border-border"
-                )}
-                placeholder="[ { 'intent': { ... } } ]"
-                spellCheck={false}
-              />
-              {jsonError && (
-                <div className="absolute bottom-4 left-4 right-4 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive-foreground">
-                  {jsonError}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Config Tab: Standard Properties */}
-          <TabsContent value="config" className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Scene Display Name</Label>
-                <Input
-                  value={sceneName}
-                  onChange={(e) => setSceneName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Layer Persistence</Label>
-                <div className="h-10 flex items-center px-3 rounded-md bg-muted/50 text-xs text-muted-foreground">
-                  Standard Transition (Ease-In-Out)
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Start Time (Seconds)</Label>
-                <Input
-                  type="number"
-                  placeholder="0 (Sequential)"
-                  value={startTimeSec ?? ""}
-                  onChange={(e) =>
-                    setStartTimeSec(
-                      e.target.value ? Number(e.target.value) : undefined
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Total Duration (Seconds)</Label>
-                <Input
-                  type="number"
-                  value={durationSec}
-                  onChange={(e) => setDurationSec(Number(e.target.value))}
-                />
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+        {/* Mode-specific content */}
+        {view.mode === "edit" && (
+          <EditModeContent state={state} dispatch={dispatch} />
+        )}
+        {view.mode === "library" && (
+          <LibraryModeContent state={state} dispatch={dispatch} />
+        )}
 
         <DialogFooter className="p-6 bg-muted/10 border-t gap-3">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Discard
+          <Button variant="ghost" onClick={handleClose}>
+            {view.mode === "library" ? "Cancel" : "Discard"}
           </Button>
-          <Button onClick={validateAndSave} className="gap-2">
-            <Save className="w-4 h-4" />
-            Sync to Timeline
-          </Button>
+
+          {view.mode === "edit" && (
+            <Button
+              onClick={handleSaveEdit}
+              disabled={!view.canSave}
+              className="gap-2"
+            >
+              <Save className="w-4 h-4" />
+              Sync to Timeline
+            </Button>
+          )}
+
+          {view.mode === "library" && (
+            <Button
+              onClick={handleApplyLibrary}
+              disabled={!view.canSave}
+              className="gap-2"
+            >
+              <Save className="w-4 h-4" />
+              Add {view.selections.length} Scene
+              {view.selections.length !== 1 && "s"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Edit Mode: 3 tabs for editing existing scene
+ */
+const EditModeContent = ({
+  state,
+  dispatch,
+}: {
+  state: EditorState
+  dispatch: (action: EditorAction) => void
+}) => {
+  if (state.type !== "EditingExisting") return null
+
+  const { draft } = state
+
+  return (
+    <Tabs defaultValue="layout" className="flex-1 flex flex-col min-h-0">
+      <div className="px-6 pt-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="layout" className="gap-2">
+            <Code className="w-4 h-4" /> Rich Intent Editor
+          </TabsTrigger>
+          <TabsTrigger value="config" className="gap-2">
+            <Clock className="w-4 h-4" /> Timeline Config
+          </TabsTrigger>
+          <TabsTrigger value="library" className="gap-2">
+            <LibraryIcon className="w-4 h-4" /> Import Template
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      {/* Layout Tab */}
+      <TabsContent
+        value="layout"
+        className="flex-1 flex flex-col min-h-0 p-6 space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h4 className="text-sm font-semibold">Intent Stack</h4>
+            <p className="text-xs text-muted-foreground">
+              Define UI regions, content, and focus for this scene.
+            </p>
+          </div>
+          {draft.jsonError && (
+            <Badge variant="destructive" className="animate-pulse gap-1">
+              <AlertCircle className="w-3 h-3" /> Syntax Error
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex-1 relative font-mono text-sm">
+          <Textarea
+            value={draft.uiJson}
+            onChange={(e) =>
+              dispatch({ type: "UPDATE_DRAFT_JSON", value: e.target.value })
+            }
+            className={cn(
+              "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors focus-visible:ring-0",
+              draft.jsonError ? "border-destructive/50" : "border-border"
+            )}
+            placeholder="[ { 'intent': { ... } } ]"
+            spellCheck={false}
+          />
+          {draft.jsonError && (
+            <div className="absolute bottom-4 left-4 right-4 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive-foreground">
+              {draft.jsonError}
+            </div>
+          )}
+        </div>
+      </TabsContent>
+
+      {/* Config Tab */}
+      <TabsContent value="config" className="p-6 space-y-6">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>Scene Display Name</Label>
+            <Input
+              value={draft.sceneName}
+              onChange={(e) =>
+                dispatch({ type: "UPDATE_DRAFT_NAME", value: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Layer Persistence</Label>
+            <div className="h-10 flex items-center px-3 rounded-md bg-muted/50 text-xs text-muted-foreground">
+              Standard Transition (Ease-In-Out)
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Start Time (Seconds)</Label>
+            <Input
+              type="number"
+              placeholder="0 (Sequential)"
+              value={draft.startTimeSec ?? ""}
+              onChange={(e) =>
+                dispatch({
+                  type: "UPDATE_DRAFT_START_TIME",
+                  value: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Total Duration (Seconds)</Label>
+            <Input
+              type="number"
+              value={draft.durationSec}
+              onChange={(e) =>
+                dispatch({
+                  type: "UPDATE_DRAFT_DURATION",
+                  value: Number(e.target.value),
+                })
+              }
+            />
+          </div>
+        </div>
+      </TabsContent>
+
+      {/* Library Import Tab */}
+      <TabsContent value="library" className="p-6">
+        <LibraryTemplatePicker
+          onSelectTemplate={(ui, templateName) => {
+            console.log(
+              `[EditMode] Replacing UI with template: ${templateName}`,
+              {
+                intentCount: ui.length,
+              }
+            )
+            dispatch({
+              type: "REPLACE_DRAFT_UI_FROM_LIBRARY",
+              ui,
+              templateName,
+            })
+          }}
+        />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+/**
+ * Library Mode: Single tab for bulk selection
+ */
+const LibraryModeContent = ({
+  state,
+  dispatch,
+}: {
+  state: EditorState
+  dispatch: (action: EditorAction) => void
+}) => {
+  if (state.type !== "SelectingFromLibrary") return null
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 p-6">
+      <SceneSelectorTab
+        selections={state.selections}
+        onSelectionsChange={(selections) =>
+          dispatch({ type: "SET_LIBRARY_SELECTIONS", selections })
+        }
+        maxPerScene={10}
+      />
+    </div>
   )
 }

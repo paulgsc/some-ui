@@ -2,7 +2,7 @@ import type { FC } from "react"
 import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { AlertCircle, Edit2, Layers, Layout } from "lucide-react"
+import { AlertCircle, Edit2, Layers, Layout, Trash2 } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import {
   Badge,
@@ -15,19 +15,21 @@ import {
 import {
   cn,
   selectCurrentTime,
-  useSceneLifetimes,
   selectTotalDuration,
   useOrchestratorStore,
+  useSceneLifetimes,
 } from "some-ui-utils"
 
 type OrchestratorTimelineProps = {
   scenes: Array<SceneConfig>
   onEditScene: (index: number) => void
+  onDeleteScene?: (index: number) => void
 }
 
 export const OrchestratorTimeline = ({
   scenes,
   onEditScene,
+  onDeleteScene,
 }: OrchestratorTimelineProps) => {
   const currentTime = useOrchestratorStore(selectCurrentTime)
   const totalDuration = useOrchestratorStore(selectTotalDuration)
@@ -53,18 +55,21 @@ export const OrchestratorTimeline = ({
           endTime > other.start_time
       )
 
+      // Safely get UI components
+      const uiArray = Array.isArray(scene.ui) ? scene.ui : []
+      const uiComponents = Array.from(
+        new Set(
+          uiArray.flatMap((u) =>
+            Object.values(u.panels ?? {}).map((c) => c.registry_key)
+          )
+        )
+      )
+
       return {
         scene,
         endTime,
         isConcurrent,
-        // UI Summary: Get unique registry keys across all UI intents
-        uiComponents: Array.from(
-          new Set(
-            scene.ui.flatMap((u) =>
-              Object.values(u.panels ?? {}).map((c) => c.registry_key)
-            )
-          )
-        ),
+        uiComponents,
       }
     })
   }, [scenes])
@@ -80,7 +85,7 @@ export const OrchestratorTimeline = ({
 
   return (
     <div className="flex flex-col gap-6 p-1">
-      {/* 1. Global Track Minimap (The "Ergonomic" part) */}
+      {/* 1. Global Track Minimap */}
       <div className="bg-muted/30 p-3 rounded-xl border border-dashed border-border">
         <div className="flex justify-between items-center mb-2">
           <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
@@ -120,7 +125,7 @@ export const OrchestratorTimeline = ({
           const isActive = activeSceneIds.has(layout.scene.scene_name)
           return (
             <GanttTimelineScene
-              key={`${layout.scene.scene_name}-${index}`}
+              key={`scene-${index}`}
               scene={layout.scene}
               index={index}
               isActive={isActive}
@@ -130,6 +135,7 @@ export const OrchestratorTimeline = ({
               uiComponents={layout.uiComponents}
               onSceneClick={forceScene}
               onEditScene={onEditScene}
+              onDeleteScene={onDeleteScene}
             />
           )
         })}
@@ -148,6 +154,7 @@ type GanttTimelineSceneProps = {
   uiComponents: Array<string>
   onSceneClick: (sceneId: string) => void
   onEditScene: (index: number) => void
+  onDeleteScene?: (index: number) => void
 }
 
 const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
@@ -160,6 +167,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
   uiComponents,
   onSceneClick,
   onEditScene,
+  onDeleteScene,
 }) => {
   const {
     attributes,
@@ -169,11 +177,12 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
     transition,
     isDragging,
   } = useSortable({
-    id: `${scene.scene_name}-${index}`,
+    id: `scene-${index}`,
   })
 
   const startPercent = (scene.start_time / maxTimelineEnd) * 100
   const widthPercent = (scene.duration / maxTimelineEnd) * 100
+  const uiIntentCount = Array.isArray(scene.ui) ? scene.ui.length : 0
 
   return (
     <div
@@ -233,7 +242,7 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
 
             <div className="flex items-center gap-3">
               <div className="flex -space-x-1">
-                {uiComponents.map((comp: string) => (
+                {uiComponents.slice(0, 5).map((comp: string) => (
                   <div
                     key={comp}
                     className="h-5 w-5 rounded-full border border-background bg-secondary flex items-center justify-center"
@@ -242,22 +251,45 @@ const GanttTimelineScene: FC<GanttTimelineSceneProps> = ({
                     <Layout size={10} className="text-secondary-foreground" />
                   </div>
                 ))}
+                {uiComponents.length > 5 && (
+                  <div className="h-5 w-5 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">
+                    +{uiComponents.length - 5}
+                  </div>
+                )}
               </div>
               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                {scene.duration}ms • {scene.ui.length} UI LAYERS
+                {scene.duration}ms • {uiIntentCount} UI LAYER
+                {uiIntentCount !== 1 ? "S" : ""}
               </span>
             </div>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onEditScene(index)
-            }}
-            className="opacity-0 group-hover:opacity-100 p-2 hover:bg-accent rounded-md transition-opacity"
-          >
-            <Edit2 size={14} />
-          </button>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditScene(index)
+              }}
+              className="p-2 hover:bg-accent rounded-md"
+              title="Edit scene"
+            >
+              <Edit2 size={14} />
+            </button>
+            {onDeleteScene && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (confirm(`Delete scene "${scene.scene_name}"?`)) {
+                    onDeleteScene(index)
+                  }
+                }}
+                className="p-2 hover:bg-destructive/10 text-destructive rounded-md"
+                title="Delete scene"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </Card>
     </div>
