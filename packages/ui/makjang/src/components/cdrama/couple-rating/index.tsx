@@ -154,7 +154,7 @@ export const CoupleRating: FC<CoupleRatingProps> = ({
       : ""
 
   return (
-    <div className="cdrama min-h-screen w-full p-6 flex items-center justify-center">
+    <div className="cdrama size-full px-6 py-2.5 flex items-center justify-center">
       <section className={cardClasses} style={{ animationDelay: "100ms" }}>
         {/* Decorative background sparkles */}
         {showSparkles && (

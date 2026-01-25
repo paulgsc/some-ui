@@ -1,6 +1,3 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import { Film, Play } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -19,21 +16,16 @@ export const DramaHeader = ({
   currentMinute,
   className,
 }: DramaHeaderProps) => {
-  const [mounted, setMounted] = useState(false)
   const progress = (currentMinute / 45) * 100
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   return (
     <div
       className={cn(
         className,
-        "cdrama group relative overflow-hidden rounded-3xl border-2 p-8 shadow-2xl transition-all duration-700",
+        "cdrama group relative overflow-hidden rounded-sm border-t-2 p-2.5 ps-4.5 shadow-2xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] via-[color:var(--cdrama-surface)] to-[color:var(--card)]",
-        mounted ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
+        "size-full box-border"
       )}
     >
       {/* Animated background pattern */}
@@ -46,8 +38,8 @@ export const DramaHeader = ({
 
       <div className="relative flex items-center gap-8">
         {/* Thumbnail with play overlay */}
-        <div className="relative shrink-0 overflow-hidden rounded-2xl border-2 border-[color:var(--cdrama-blossom)] shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(255,182,193,0.4)]">
-          <div className="relative h-32 w-48">
+        <div className="relative shrink-0 overflow-hidden rounded-2xl border-2 border-[color:var(--cdrama-blossom)] shadow-lg transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,182,193,0.4)]">
+          <div className="relative h-32 w-48 md:h32 md:w-48">
             <img
               src={
                 thumbnailUrl ||
@@ -76,12 +68,12 @@ export const DramaHeader = ({
         </div>
 
         {/* Drama info */}
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[color:var(--cdrama-blossom)] to-[color:var(--cdrama-accent)] shadow-lg">
               <Film className="h-5 w-5 text-white" />
             </div>
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-[color:var(--foreground)] transition-all duration-300 group-hover:text-[color:var(--cdrama-blossom)]">
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-[color:var(--foreground)] truncate transition-all duration-300 group-hover:text-[color:var(--cdrama-blossom)]">
               {dramaId
                 .replace(/-/g, " ")
                 .split(" ")
