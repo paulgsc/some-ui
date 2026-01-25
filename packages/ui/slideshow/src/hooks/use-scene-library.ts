@@ -39,11 +39,13 @@ const createFallbackScene = (fileName: SceneFileName): SceneConfig => ({
 // -----------------------------
 // Display name normalization
 // -----------------------------
-const toDisplayName = (fileName: SceneFileName): string => {
+const toCamelCase = (fileName: SceneFileName): string => {
   return fileName
     .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+    .map((word, index) =>
+      index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+    )
+    .join("")
 }
 
 export const useSceneLibrary = () => {
@@ -78,7 +80,7 @@ export const useSceneLibrary = () => {
             const ui: Array<UILayoutIntent> = SceneUIFileSchema.parse(rawJson)
 
             const scene: SceneConfig = SceneConfigSchema.parse({
-              scene_name: toDisplayName(fileName),
+              scene_name: toCamelCase(fileName),
               duration: 60_000, // Policy: all library scenes default to 60s
               start_time: 0,
               ui,
