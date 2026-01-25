@@ -1,10 +1,6 @@
+import { dramaTree } from "@content/data/layout-tree"
 import { componentRegistry } from "@some-ui/content"
-import {
-  dramaTree,
-  studyTree,
-  topikTree,
-  voiceTree,
-} from "@some-ui/content/data/layout-tree"
+import { useSceneDrivenLayout } from "@some-ui/content/hooks/use-scene-driven-layout"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useSceneLifetimes } from "some-ui-utils"
 
@@ -46,22 +42,23 @@ type Story = StoryObj<typeof meta>
 // ============================================================================
 
 type AnimatedStoryProps = {
-  layoutTree?: typeof studyTree
   transitionMs?: number
   enableFocus?: boolean
+  layoutTree?: typeof dramaTree
 }
 
 const AnimatedStory = ({
-  layoutTree = studyTree,
+  layoutTree,
   transitionMs = 300,
   enableFocus = true,
 }: AnimatedStoryProps) => {
   const activeLifetimes = useSceneLifetimes()
+  const { currentLayout } = useSceneDrivenLayout()
 
   return (
     <div className="absolute inset-0">
       <OrchestratedYouTubeViewport
-        layoutTree={layoutTree}
+        layoutTree={layoutTree ?? currentLayout}
         activeLifetimes={activeLifetimes}
         componentRegistry={componentRegistry}
         transitionMs={transitionMs}
@@ -77,7 +74,7 @@ const AnimatedStory = ({
 
 export const StudyLayout: Story = {
   render: (args) => <AnimatedStory transitionMs={args.transitionMs} />,
-  args: { layoutTree: studyTree, transitionMs: 300 },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
@@ -101,7 +98,7 @@ export const DramaLayout: Story = {
 
 export const VoiceLayout: Story = {
   render: (args) => <AnimatedStory {...args} />,
-  args: { transitionMs: 300, layoutTree: voiceTree },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
@@ -114,7 +111,7 @@ export const VoiceLayout: Story = {
 
 export const TopikLayout: Story = {
   render: (args) => <AnimatedStory {...args} />,
-  args: { transitionMs: 300, layoutTree: topikTree },
+  args: { transitionMs: 300 },
   parameters: {
     docs: {
       description: {
