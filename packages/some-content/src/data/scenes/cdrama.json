@@ -22,6 +22,17 @@
           }
         ]
       },
+      "video": {
+        "registry_key": "cdrama-couple",
+        "props": {
+          "coupleName": "Min Jae & Hae Won",
+          "rating": 7.5,
+          "hypeVsActual": 0.2,
+          "mlRank": 12,
+          "flRank": 9
+        },
+        "children": []
+      },
       "sidebarTop": {
         "registry_key": "cdrama-metrics",
         "props": {
