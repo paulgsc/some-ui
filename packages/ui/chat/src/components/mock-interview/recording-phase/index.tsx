@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import { Mic, RotateCcw, Square } from "lucide-react"
 import { Button, Card } from "some-ui-shared"
 
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}
+
 type RecordingPhaseProps = {
   question: string
   onComplete: (transcript: string) => void
@@ -11,165 +17,243 @@ export const RecordingPhase = ({
   question,
   onComplete,
 }: RecordingPhaseProps) => {
-  const [isRecording, setIsRecording] = useState(false)
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-
-  useEffect(() => {
-    if (isRecording && !isPaused) {
-      intervalRef.current = setInterval(() => {
-        setElapsedTime((prev) => prev + 1)
-      }, 1000)
-    }
-    return (): void => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [isRecording, isPaused])
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const handleStart = (): void => {
-    setIsRecording(true)
-    setIsPaused(false)
-  }
-
-  const handlePause = (): void => {
-    setIsPaused(true)
-  }
-
-  const handleResume = (): void => {
-    setIsPaused(false)
-  }
-
-  const handleStop = (): void => {
-    setIsRecording(false)
-    // Simulate transcription with mock text
-    setTimeout(() => {
-      const mockTranscript = `I would design a URL shortening service with the following approach: First, I'd use a hash function to generate short codes from long URLs. The system would need a database to store mappings between short codes and original URLs. For scalability, I would implement caching using Redis and use a load balancer to distribute traffic. The API would have two main endpoints: one for creating short URLs and another for redirecting. I'd also consider adding analytics to track usage.`
-      onComplete(mockTranscript)
-    }, 2000)
-  }
-
-  const handleRestart = (): void => {
-    setIsRecording(false)
-    setElapsedTime(0)
-    setIsPaused(false)
-  }
+  const {
+    state,
+    elapsedTime,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording,
+    reset,
+    retry,
+  } = useAudioRecorder(onComplete)
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-screen items-center justify-center p-6 bg-background">
       <div className="max-w-3xl w-full space-y-6">
-        <Card className="p-8 md:p-12 space-y-8">
+        <div className="p-8 md:p-12 space-y-8 bg-card border border-border rounded-lg shadow-sm">
           <div className="space-y-6">
             <div className="space-y-4">
-              <h2 className="text-xl font-medium text-muted-foreground">
+              <h2 className="text-xl font-medium text-foreground">
                 The question
               </h2>
-              <p className="text-base leading-relaxed text-muted-foreground/80">
+              <p className="text-base leading-relaxed text-muted-foreground">
                 {question}
               </p>
             </div>
 
-            {/* Recording visualization */}
+            {/* State-based rendering */}
             <div className="flex flex-col items-center justify-center space-y-8 py-8">
-              {!isRecording ? (
+              {/* Idle State */}
+              {state.type === "idle" && (
                 <>
                   <div className="relative">
                     <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
                       <Mic className="w-10 h-10 text-primary" />
                     </div>
                   </div>
-                  <Button
-                    size="lg"
-                    onClick={handleStart}
-                    className="gap-2 px-12 rounded-full"
+                  <button
+                    onClick={startRecording}
+                    className="gap-2 px-12 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-medium"
                   >
-                    <Mic className="w-4 h-4" />
+                    <Mic className="w-4 h-4 inline mr-2" />
                     Start speaking
-                  </Button>
+                  </button>
+                  <p className="text-center text-sm text-muted-foreground">
+                    Click to begin recording your answer
+                  </p>
                 </>
-              ) : (
+              )}
+
+              {/* Requesting Permission */}
+              {state.type === "requesting_permission" && (
                 <>
-                  {/* Pulsing mic indicator */}
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Requesting microphone access...
+                  </p>
+                </>
+              )}
+
+              {/* Permission Denied */}
+              {state.type === "permission_denied" && (
+                <>
+                  <div className="w-24 h-24 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertCircle className="w-10 h-10 text-destructive" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm font-medium text-destructive">
+                      Microphone Access Denied
+                    </p>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      {state.error}
+                    </p>
+                  </div>
+                  <button
+                    onClick={retry}
+                    className="gap-2 px-8 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4 inline mr-2" />
+                    Try again
+                  </button>
+                </>
+              )}
+
+              {/* Recording */}
+              {state.type === "recording" && (
+                <>
                   <div className="relative">
-                    <div
-                      className={`w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center ${
-                        !isPaused ? "animate-pulse" : ""
-                      }`}
-                    >
+                    <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
                       <div className="w-20 h-20 rounded-full bg-primary/30 flex items-center justify-center">
                         <Mic className="w-10 h-10 text-primary" />
                       </div>
                     </div>
-                    {!isPaused && (
-                      <>
-                        <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" />
-                        <div
-                          className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping"
-                          style={{ animationDelay: "0.5s" }}
-                        />
-                      </>
-                    )}
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" />
+                    <div
+                      className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping"
+                      style={{ animationDelay: "0.5s" }}
+                    />
                   </div>
 
-                  {/* Optional elapsed time - minimized */}
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-2xl font-mono text-foreground">
                     {formatTime(elapsedTime)}
                   </p>
 
-                  {/* Controls */}
                   <div className="flex items-center gap-4">
-                    {!isPaused ? (
-                      <Button
-                        size="lg"
-                        variant="secondary"
-                        onClick={handlePause}
-                        className="rounded-full px-8"
-                      >
-                        Pause
-                      </Button>
-                    ) : (
-                      <Button
-                        size="lg"
-                        onClick={handleResume}
-                        className="rounded-full px-8"
-                      >
-                        Resume
-                      </Button>
-                    )}
-
-                    <Button
-                      size="lg"
-                      onClick={handleStop}
-                      className="gap-2 rounded-full px-8"
+                    <button
+                      onClick={pauseRecording}
+                      className="px-8 py-2 bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80 transition-colors"
                     >
-                      <Square className="w-4 h-4" />
+                      Pause
+                    </button>
+                    <button
+                      onClick={stopRecording}
+                      className="gap-2 px-8 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                    >
+                      <Square className="w-4 h-4 inline mr-2" />
                       Finish
-                    </Button>
-
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      onClick={handleRestart}
-                      className="gap-2 rounded-full bg-transparent"
+                    </button>
+                    <button
+                      onClick={reset}
+                      className="gap-2 px-6 py-2 border border-border rounded-full hover:bg-accent transition-colors"
                     >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
+                      <RotateCcw className="w-4 h-4 inline" />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Paused */}
+              {state.type === "paused" && (
+                <>
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-full bg-primary/30 flex items-center justify-center">
+                        <Mic className="w-10 h-10 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-2xl font-mono text-muted-foreground">
+                    {formatTime(elapsedTime)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Recording paused
+                  </p>
+
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={resumeRecording}
+                      className="px-8 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                    >
+                      Resume
+                    </button>
+                    <button
+                      onClick={stopRecording}
+                      className="gap-2 px-8 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                    >
+                      <Square className="w-4 h-4 inline mr-2" />
+                      Finish
+                    </button>
+                    <button
+                      onClick={reset}
+                      className="gap-2 px-6 py-2 border border-border rounded-full hover:bg-accent transition-colors"
+                    >
+                      <RotateCcw className="w-4 h-4 inline" />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Processing */}
+              {state.type === "processing" && (
+                <>
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Processing recording...
+                  </p>
+                </>
+              )}
+
+              {/* Success */}
+              {state.type === "success" && (
+                <>
+                  <div className="w-full space-y-4">
+                    <AudioPlayer url={state.audioUrl} />
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Uploading and transcribing...</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Error */}
+              {state.type === "error" && (
+                <>
+                  <div className="w-24 h-24 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertCircle className="w-10 h-10 text-destructive" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm font-medium text-destructive">
+                      Recording Error
+                    </p>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      {state.error}
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    {state.canRetry && (
+                      <button
+                        onClick={retry}
+                        className="gap-2 px-8 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+                      >
+                        <RotateCcw className="w-4 h-4 inline mr-2" />
+                        Try again
+                      </button>
+                    )}
+                    <button
+                      onClick={reset}
+                      className="px-8 py-2 border border-border rounded-full hover:bg-accent transition-colors"
+                    >
+                      Start over
+                    </button>
                   </div>
                 </>
               )}
             </div>
 
-            <p className="text-center text-sm text-muted-foreground">
-              You can stop anytime
-            </p>
+            {(state.type === "recording" || state.type === "paused") && (
+              <p className="text-center text-sm text-muted-foreground">
+                You can stop anytime
+              </p>
+            )}
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   )

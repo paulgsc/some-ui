@@ -1,0 +1,136 @@
+import { useEffect, useReducer, useRef, useState } from "react"
+
+export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
+  const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
+  const serviceRef = useRef<AudioRecordingService | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Initialize service
+  useEffect(() => {
+    serviceRef.current = new AudioRecordingService()
+    return () => {
+      serviceRef.current?.cleanup()
+    }
+  }, [])
+
+  // Timer effect
+  useEffect(() => {
+    if (state.type === "recording") {
+      timerRef.current = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - state.startTime) / 1000))
+      }, 100)
+    } else if (state.type === "paused") {
+      setElapsedTime(state.elapsedBeforePause)
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      if (state.type === "idle" || state.type === "requesting_permission") {
+        setElapsedTime(0)
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [state])
+
+  // Handle success state - upload and complete
+  useEffect(() => {
+    if (state.type === "success") {
+      const uploadAndComplete = async () => {
+        try {
+          await mockUploadAudio(state.audioBlob)
+
+          // Mock transcription
+          setTimeout(() => {
+            const mockTranscript = `I would design a URL shortening service with the following approach: First, I'd use a hash function to generate short codes from long URLs. The system would need a database to store mappings between short codes and original URLs. For scalability, I would implement caching using Redis and use a load balancer to distribute traffic.`
+            onComplete(mockTranscript)
+          }, 1000)
+        } catch (error) {
+          dispatch({
+            type: "ERROR",
+            error: error instanceof Error ? error.message : "Upload failed",
+            canRetry: true,
+          })
+        }
+      }
+
+      uploadAndComplete()
+    }
+  }, [state, onComplete])
+
+  const startRecording = async () => {
+    dispatch({ type: "START_RECORDING" })
+
+    try {
+      const stream = await serviceRef.current!.requestPermission()
+      dispatch({ type: "PERMISSION_GRANTED", stream })
+      serviceRef.current!.startRecording(stream)
+    } catch (error) {
+      dispatch({
+        type: "PERMISSION_DENIED",
+        error: error instanceof Error ? error.message : "Permission denied",
+      })
+    }
+  }
+
+  const pauseRecording = () => {
+    serviceRef.current?.pause()
+    dispatch({ type: "PAUSE" })
+  }
+
+  const resumeRecording = () => {
+    serviceRef.current?.resume()
+    dispatch({ type: "RESUME" })
+  }
+
+  const stopRecording = async () => {
+    dispatch({ type: "STOP" })
+
+    try {
+      const { blob, url } = await serviceRef.current!.stop()
+      dispatch({
+        type: "RECORDING_COMPLETE",
+        audioBlob: blob,
+        audioUrl: url,
+        duration: elapsedTime,
+      })
+    } catch (error) {
+      dispatch({
+        type: "ERROR",
+        error:
+          error instanceof Error ? error.message : "Failed to stop recording",
+        canRetry: false,
+      })
+    }
+  }
+
+  const reset = () => {
+    serviceRef.current?.cleanup()
+    dispatch({ type: "RESET" })
+  }
+
+  const retry = () => {
+    dispatch({ type: "RETRY" })
+  }
+
+  return {
+    state,
+    elapsedTime,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording,
+    reset,
+    retry,
+  }
+}
