@@ -3,13 +3,7 @@
   "name": "C-Drama Watch Tracker",
   "version": "1.0.0",
   "description": "Track your C-drama watching experience with emotional reactions and detailed metrics",
-  "permissions": [
-    "storage",
-    "tabs",
-    "activeTab",
-    "https://api.example.com/*",
-    "https://www.youtube.com/*"
-  ],
+  "permissions": ["storage", "tabs", "activeTab", "https://www.youtube.com/*"],
   "background": {
     "scripts": ["background.js"],
     "persistent": false
