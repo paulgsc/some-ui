@@ -18,7 +18,7 @@ function storyGlobs(): Array<string> {
   if (workspace) {
     // Target a single workspace
     base = [
-      `../packages/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
+      `../packages/ui/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
       `../extensions/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
     ]
   } else if (scope === "packages") {

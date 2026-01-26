@@ -1,96 +1,68 @@
-// Drama Sentiment CRM - Data Schema
-// Pure TypeScript types and utilities - duplicated in content.ts and background.ts to avoid shared chunks
 
-export type CapturedMoment = {
-  id: string
-  timestamp: number // seconds into episode
-  emotion: EmotionType
-  intensity: number // 0-1
-  emoji: string
-  note?: string
-  episodeId: string
-  dramaTitle: string // Runtime collected
-  capturedAt: number // unix timestamp
+// Shared Types - Can be imported by both content.ts and background.ts
+// No executable code, only type definitions
+
+export type EmotionType = 'joy' | 'sadness' | 'love' | 'fear' | 'anger' | 'neutral';
+
+export interface EmotionConfig {
+  type: EmotionType;
+  emoji: string;
+  label: string;
+  className: string;
 }
 
-export type EmotionType =
-  | "joy"
-  | "sadness"
-  | "love"
-  | "fear"
-  | "anger"
-  | "neutral"
-
-export type EmotionConfig = {
-  type: EmotionType
-  emoji: string
-  label: string
-  gradient: string
-  glowColor: string
+export interface CapturedMoment {
+  id: string;
+  timestamp: number; // seconds into episode
+  emotion: EmotionType;
+  intensity: number; // 0-1
+  emoji: string;
+  note?: string;
+  episodeId: string;
+  dramaTitle: string;
+  capturedAt: number; // unix timestamp
 }
 
-export const EMOTIONS: Array<EmotionConfig> = [
-  {
-    type: "joy",
-    emoji: "😊",
-    label: "Joy",
-    gradient: "from-pink-400 to-orange-300",
-    glowColor: "shadow-pink-400/50",
-  },
-  {
-    type: "sadness",
-    emoji: "😭",
-    label: "Sad",
-    gradient: "from-blue-400 to-slate-400",
-    glowColor: "shadow-blue-400/50",
-  },
-  {
-    type: "love",
-    emoji: "😍",
-    label: "Love",
-    gradient: "from-rose-400 to-pink-500",
-    glowColor: "shadow-rose-400/50",
-  },
-  {
-    type: "fear",
-    emoji: "😱",
-    label: "Fear",
-    gradient: "from-purple-500 to-violet-600",
-    glowColor: "shadow-purple-500/50",
-  },
-  {
-    type: "anger",
-    emoji: "😠",
-    label: "Anger",
-    gradient: "from-red-500 to-orange-600",
-    glowColor: "shadow-red-500/50",
-  },
-  {
-    type: "neutral",
-    emoji: "😐",
-    label: "Meh",
-    gradient: "from-gray-300 to-gray-400",
-    glowColor: "shadow-gray-400/50",
-  },
-]
-
-export function getEmotionConfig(type: EmotionType): EmotionConfig {
-  return EMOTIONS.find((e) => e.type === type) || EMOTIONS[5]
+export interface DramaContext {
+  dramaTitle: string;
+  episode: number;
+  timestamp: number;
 }
 
-export function formatTimestamp(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, "0")}`
+export interface UIState {
+  dramaTitle: string;
+  episode: number;
+  currentTimestamp: number;
+  
+  isExpanded: boolean;
+  showPolling: boolean;
+  
+  selectedEmotion: EmotionType | null;
+  intensity: number;
+  note: string;
+  showNote: boolean;
+  justCaptured: boolean;
+  
+  currentEmotion: EmotionType;
+  currentRating: number;
+  
+  capturedMoments: CapturedMoment[];
 }
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+// Message types for background communication
+export interface SaveMomentMessage {
+  type: 'SAVE_MOMENT';
+  moment: CapturedMoment;
 }
 
-// Runtime context - collected from page
-export type DramaContext = {
-  dramaTitle: string
-  episode: number
-  timestamp: number
+export interface GetMomentsMessage {
+  type: 'GET_MOMENTS';
+  dramaTitle?: string;
+  episodeId?: string;
 }
+
+export interface GetMomentsResponse {
+  moments: CapturedMoment[];
+}
+
+export type ExtensionMessage = SaveMomentMessage | GetMomentsMessage;

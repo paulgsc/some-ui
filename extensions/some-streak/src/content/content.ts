@@ -1,4 +1,3 @@
-// content.ts
 /**
  * Content Script Entry Point
  *
