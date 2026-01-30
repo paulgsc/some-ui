@@ -1,4 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react"
+import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
+import { recordingReducer } from "@chat/lib/interview/recording-reducer"
 
 export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
   const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
@@ -9,9 +11,6 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
   // Initialize service
   useEffect(() => {
     serviceRef.current = new AudioRecordingService()
-    return () => {
-      serviceRef.current?.cleanup()
-    }
   }, [])
 
   // Timer effect
@@ -36,7 +35,7 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
       }
     }
 
-    return () => {
+    return (): void => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
       }
@@ -68,14 +67,14 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
     }
   }, [state, onComplete])
 
-  const startRecording = async () => {
+  const startRecording = async (): Promise<void> => {
     dispatch({ type: "START_RECORDING" })
-
     try {
       const stream = await serviceRef.current!.requestPermission()
       dispatch({ type: "PERMISSION_GRANTED", stream })
       serviceRef.current!.startRecording(stream)
     } catch (error) {
+      console.error(error)
       dispatch({
         type: "PERMISSION_DENIED",
         error: error instanceof Error ? error.message : "Permission denied",

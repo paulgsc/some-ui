@@ -17,16 +17,22 @@ export class AudioRecordingService {
       if (error instanceof DOMException) {
         if (error.name === "NotAllowedError") {
           throw new Error(
-            "Microphone permission denied. Please enable microphone access in your browser settings."
+            "Microphone permission denied. Please enable microphone access in your browser settings.",
+            { cause: error }
           )
-        } else if (error.name === "NotFoundError") {
+        }
+
+        if (error.name === "NotFoundError") {
           throw new Error(
-            "No microphone found. Please connect a microphone and try again."
+            "No microphone found. Please connect a microphone and try again.",
+            { cause: error }
           )
         }
       }
+
       throw new Error(
-        "Failed to access microphone. Please check your browser permissions."
+        "Failed to access microphone. Please check your browser permissions.",
+        { cause: error }
       )
     }
   }

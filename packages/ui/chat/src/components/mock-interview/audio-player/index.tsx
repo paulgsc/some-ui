@@ -1,3 +1,6 @@
+import { useRef, useState } from "react"
+import { Pause, Play } from "lucide-react"
+
 export const AudioPlayer = ({ url }: { url: string }) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)

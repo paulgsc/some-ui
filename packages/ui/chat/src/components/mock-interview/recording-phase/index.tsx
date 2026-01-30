@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
-import { Mic, RotateCcw, Square } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
+import { AudioPlayer } from "@chat/components/mock-interview/audio-player"
+import { useAudioRecorder } from "@chat/hooks/use-audio-recorder"
+import { AlertCircle, Loader2, Mic, RotateCcw, Square } from "lucide-react"
 
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
