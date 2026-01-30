@@ -3,7 +3,6 @@ import type { ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { RenderSolved } from "@wireframes/components/render-solved"
-import type { SceneRegistry } from "@wireframes/hooks/orchestrator-integration"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
@@ -22,7 +21,7 @@ type OrchestratedViewportProps<K extends string> = {
    * Layout tree from editor (defines topology)
    * This is the OUTPUT from your CRM editor
    */
-  layoutTree: LayoutNode<YouTubeRegion>
+  layoutTree: LayoutNode<YouTubeRegion> | null
 
   /**
    * Active lifetimes to render content from
@@ -103,6 +102,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
     if (!rect) return
+    if (!layoutTree) return
 
     return solveLayoutWithFocus(
       layoutTree,

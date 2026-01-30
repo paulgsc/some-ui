@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@streak/*": ["src/*"]
+      "@/*": ["src/*"]
     },
     "types": ["firefox-webext-browser"]
   },

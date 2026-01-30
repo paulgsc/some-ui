@@ -1,0 +1,854 @@
+/* Drama Sentiment CRM - Pure CSS Implementation */
+/* Cinematic Dark Theme - Derived from Tailwind config */
+
+:root {
+  /* Color tokens */
+  --background: oklch(0.14 0.01 260);
+  --foreground: oklch(0.95 0.01 80);
+  --card: oklch(0.18 0.01 260);
+  --card-foreground: oklch(0.95 0.01 80);
+  --popover: oklch(0.16 0.015 260);
+  --popover-foreground: oklch(0.95 0.01 80);
+  --primary: oklch(0.75 0.15 55);
+  --primary-foreground: oklch(0.15 0.01 260);
+  --secondary: oklch(0.25 0.02 260);
+  --secondary-foreground: oklch(0.9 0.01 80);
+  --muted: oklch(0.22 0.015 260);
+  --muted-foreground: oklch(0.65 0.02 80);
+  --accent: oklch(0.65 0.18 30);
+  --accent-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.28 0.02 260);
+  --input: oklch(0.22 0.015 260);
+  --ring: oklch(0.75 0.15 55);
+  --radius: 0.75rem;
+
+  /* Emotion colors */
+  --emotion-joy-from: #f472b6;
+  --emotion-joy-to: #fdba74;
+  --emotion-sadness-from: #60a5fa;
+  --emotion-sadness-to: #94a3b8;
+  --emotion-love-from: #fb7185;
+  --emotion-love-to: #ec4899;
+  --emotion-fear-from: #a855f7;
+  --emotion-fear-to: #7c3aed;
+  --emotion-anger-from: #ef4444;
+  --emotion-anger-to: #ea580c;
+  --emotion-neutral-from: #d1d5db;
+  --emotion-neutral-to: #9ca3af;
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+}
+
+/* Reset for extension elements */
+#drama-sentiment-floating-bar,
+#drama-sentiment-floating-bar *,
+#drama-sentiment-quick-capture,
+#drama-sentiment-quick-capture *,
+#drama-sentiment-polling-prompt,
+#drama-sentiment-polling-prompt *,
+#drama-sentiment-moments-list,
+#drama-sentiment-moments-list * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}
+
+/* Floating Bar - Collapsed State */
+#drama-sentiment-floating-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  user-select: none;
+
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#drama-sentiment-floating-bar:hover {
+  transform: translateY(-2px);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+#drama-sentiment-floating-bar:active {
+  transform: scale(0.95);
+}
+
+#drama-sentiment-floating-bar.hidden {
+  display: none;
+}
+
+#drama-sentiment-floating-bar .emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+#drama-sentiment-floating-bar .rating {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+#drama-sentiment-floating-bar .separator {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#drama-sentiment-floating-bar .episode {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+}
+
+#drama-sentiment-floating-bar .timestamp {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quick Capture Panel - Expanded State */
+#drama-sentiment-quick-capture {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+
+  width: 20rem;
+  overflow: hidden;
+
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(1rem) scale(0.95);
+  pointer-events: none;
+}
+
+#drama-sentiment-quick-capture.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Panel Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 0.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-right: -0.25rem;
+  transition: color 150ms;
+  display: flex;
+  align-items: center;
+}
+
+.close-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.close-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Timestamp Display */
+.timestamp-display {
+  padding: 1rem 0;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.timestamp-large {
+  font-size: 2.25rem;
+  font-family: ui-monospace, monospace;
+  color: rgba(255, 255, 255, 0.95);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* Emoji Buttons Section */
+.emoji-section {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.section-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+
+.emoji-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 0.75rem;
+
+  font-size: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.emoji-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.emoji-btn:active {
+  transform: scale(0.95);
+}
+
+.emoji-btn.selected {
+  transform: scale(1.1);
+}
+
+/* Emotion-specific gradients */
+.emoji-btn.selected.emotion-joy {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-joy-from),
+    var(--emotion-joy-to)
+  );
+}
+
+.emoji-btn.selected.emotion-sadness {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-sadness-from),
+    var(--emotion-sadness-to)
+  );
+}
+
+.emoji-btn.selected.emotion-love {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-love-from),
+    var(--emotion-love-to)
+  );
+}
+
+.emoji-btn.selected.emotion-fear {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-fear-from),
+    var(--emotion-fear-to)
+  );
+}
+
+.emoji-btn.selected.emotion-anger {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-anger-from),
+    var(--emotion-anger-to)
+  );
+}
+
+.emoji-btn.selected.emotion-neutral {
+  background: linear-gradient(
+    to bottom right,
+    var(--emotion-neutral-from),
+    var(--emotion-neutral-to)
+  );
+}
+
+.emoji-btn .emoji-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.emoji-btn .emoji-icon.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.emoji-btn .checkmark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.emoji-btn .checkmark svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #4ade80;
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Intensity Slider Section */
+.intensity-section {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.intensity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.intensity-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.intensity-value {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.intensity-slider {
+  width: 100%;
+  height: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.intensity-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  background: white;
+  border-radius: 9999px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 150ms;
+}
+
+.intensity-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.intensity-slider::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  background: white;
+  border-radius: 9999px;
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 150ms;
+}
+
+.intensity-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+.intensity-slider::-moz-range-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  height: 0.5rem;
+}
+
+/* Note Section */
+.note-section {
+  padding: 1rem;
+}
+
+.note-toggle-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  transition: color 150ms;
+}
+
+.note-toggle-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  resize: none;
+  outline: none;
+  transition: all 150ms;
+}
+
+.note-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.note-textarea:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.hide-note-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: color 150ms;
+}
+
+.hide-note-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Polling Prompt */
+#drama-sentiment-polling-prompt {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  z-index: 999998;
+
+  width: 20rem;
+  padding: 1rem;
+
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem;
+
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(2rem);
+  pointer-events: none;
+}
+
+#drama-sentiment-polling-prompt.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.polling-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.polling-time {
+  font-family: ui-monospace, monospace;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+.feelings-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.feelings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.feeling-btn {
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.feeling-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.feeling-btn:active {
+  transform: scale(0.95);
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.75rem;
+}
+
+.rating-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+.rating-current {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.rating-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rating-btn {
+  padding: 0.375rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.rating-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.rating-btn.update {
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.3),
+    rgba(236, 72, 153, 0.3)
+  );
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rating-btn.update:hover {
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.5),
+    rgba(236, 72, 153, 0.5)
+  );
+}
+
+.dismiss-btn {
+  width: 100%;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.dismiss-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Captured Moments List */
+#drama-sentiment-moments-list {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 999997;
+
+  width: 20rem;
+  max-height: 24rem;
+  padding: 1rem;
+
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+
+  overflow-y: auto;
+}
+
+.moments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.moments-title {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.moments-count {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
+.moments-empty {
+  text-align: center;
+  padding: 3rem 0;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.moments-empty-icon {
+  font-size: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.moments-empty-text {
+  font-size: 0.875rem;
+}
+
+.moments-empty-hint {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.moments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.moment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  animation: slideInFromBottom 300ms ease-out;
+}
+
+.moment-item.emotion-joy {
+  background: linear-gradient(
+    to right,
+    rgba(244, 114, 182, 0.1),
+    rgba(253, 186, 116, 0.1)
+  );
+}
+
+.moment-item.emotion-sadness {
+  background: linear-gradient(
+    to right,
+    rgba(96, 165, 250, 0.1),
+    rgba(148, 163, 184, 0.1)
+  );
+}
+
+.moment-item.emotion-love {
+  background: linear-gradient(
+    to right,
+    rgba(251, 113, 133, 0.1),
+    rgba(236, 72, 153, 0.1)
+  );
+}
+
+.moment-item.emotion-fear {
+  background: linear-gradient(
+    to right,
+    rgba(168, 85, 247, 0.1),
+    rgba(124, 58, 237, 0.1)
+  );
+}
+
+.moment-item.emotion-anger {
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.1),
+    rgba(234, 88, 12, 0.1)
+  );
+}
+
+.moment-item.emotion-neutral {
+  background: linear-gradient(
+    to right,
+    rgba(209, 213, 219, 0.1),
+    rgba(156, 163, 175, 0.1)
+  );
+}
+
+.moment-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.moment-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.moment-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.moment-timestamp {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.moment-separator {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
+.moment-emotion {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.moment-intensity {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+}
+
+.moment-note {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Scrollbar for moments list */
+#drama-sentiment-moments-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#drama-sentiment-moments-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+#drama-sentiment-moments-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+#drama-sentiment-moments-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

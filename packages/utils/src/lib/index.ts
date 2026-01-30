@@ -30,6 +30,7 @@ export {
   useIsStreaming,
   useObsCommands,
   useRecordTimecode,
+  usePrimaryScene,
   useReplayBufferActive,
   useSceneInfo,
   useStreamTimecode,

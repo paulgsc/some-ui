@@ -14,8 +14,17 @@ type EmotionalGraphProps = {
   currentMinute: number
 }
 
+type Emotions =
+  | "joy"
+  | "sadness"
+  | "fear"
+  | "anger"
+  | "surprise"
+  | "disgust"
+  | "neutral"
+
 const emotionConfig: Record<
-  string,
+  Emotions,
   { color: string; emoji: string; label: string }
 > = {
   joy: { color: "#fbbf24", emoji: "😊", label: "Joy" },
@@ -49,18 +58,25 @@ export const EmotionalGraph = ({
   }, [data])
 
   const pathD = useMemo(() => {
-    if (points.length === 0) return ""
+    // 1. Guard against empty arrays explicitly
+    const firstPoint = points[0]
+    if (!firstPoint) return ""
 
-    let path = `M ${points[0].x} ${points[0].y}`
+    let path = `M ${firstPoint.x} ${firstPoint.y}`
+
     for (let i = 1; i < points.length; i++) {
+      // 2. Use explicit variable assignment to prove existence to the linter
       const prev = points[i - 1]
       const curr = points[i]
-      const cpX = (prev.x + curr.x) / 2
-      path += ` Q ${cpX} ${prev.y}, ${curr.x} ${curr.y}`
+
+      // 3. Add a secondary check if your lint is extremely strict
+      if (prev && curr) {
+        const cpX = (prev.x + curr.x) / 2
+        path += ` Q ${cpX} ${prev.y}, ${curr.x} ${curr.y}`
+      }
     }
     return path
   }, [points])
-
   const currentX = (currentMinute / 45) * graphWidth
 
   return (
@@ -69,7 +85,7 @@ export const EmotionalGraph = ({
         "cdrama relative overflow-hidden rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-accent)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
-        mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        "max-w-full max-h-full box-border"
       )}
     >
       {/* Header */}
@@ -172,8 +188,9 @@ export const EmotionalGraph = ({
           {/* Data points */}
           {mounted &&
             points.map((point, index) => {
-              const config =
-                emotionConfig[point.emotion] || emotionConfig.neutral
+              const fallback = emotionConfig.neutral
+              const emotionKey = point.emotion as Emotions
+              const config = emotionConfig[emotionKey] ?? fallback
               return (
                 <g
                   key={index}

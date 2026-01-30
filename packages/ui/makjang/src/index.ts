@@ -1,4 +1,5 @@
 export {
+  CoupleRating,
   DramaHeader,
   EmojiTimeline,
   MetricsPanel,

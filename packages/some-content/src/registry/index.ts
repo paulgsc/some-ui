@@ -12,6 +12,7 @@ type RegistryKey =
   | "topik"
   | "assessment"
   | "cdrama-header"
+  | "cdrama-couple"
   | "cdrama-metrics"
   | "cdrama-emoji"
   | "cdrama-ost"
@@ -28,6 +29,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   topik: lazyWithPreload(() => import("some-ui-chat"), "KoreanStudyPage"),
   assessment: lazyWithPreload(() => import("@some-ui/resume"), "TechnicalBlockAssessment"),
   "cdrama-header": lazyWithPreload(() => import("makjang"), "DramaHeader"),
+  "cdrama-couple": lazyWithPreload(() => import("makjang"), "CoupleRating"),
   "cdrama-metrics": lazyWithPreload(() => import("makjang"), "MetricsPanel"),
   "cdrama-emoji": lazyWithPreload(() => import("makjang"), "EmojiTimeline"),
   "cdrama-ost": lazyWithPreload(() => import("makjang"), "OSTPanel"),

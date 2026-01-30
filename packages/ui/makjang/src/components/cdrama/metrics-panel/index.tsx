@@ -56,9 +56,10 @@ export const MetricsPanel = ({
   return (
     <div
       className={cn(
-        "cdrama space-y-5 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        "cdrama space-y-5 rounded-sm border-2 px-6 py-2.5 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
+        "size-full",
         mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
       )}
     >

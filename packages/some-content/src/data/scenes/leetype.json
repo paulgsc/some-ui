@@ -16,7 +16,7 @@
           "className": "absolute inset-0",
           "codePaths": {
             "typescript": "/code-samples/two-sum.ts",
-            "rust": "/code-samples/small-vec.rs",
+            "rust": "/code-samples/bitwise.rs",
             "cpp": "/code-samples/quicksort.cpp",
             "c": "/code-samples/reverse.c"
           }

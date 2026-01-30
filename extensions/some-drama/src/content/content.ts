@@ -1,223 +1,283 @@
-let isTracking = false
-let videoElement: HTMLVideoElement | null = null
-let lastTime = 0
-let progressInterval: number | null = null
+// Main Content Script - Orchestrates all UI components
+import "@/styles/content.css"
 
-// Listen for tracking commands from background
-browser.runtime.onMessage.addListener((message) => {
-  if (message.type === "START_TRACKING") {
-    startTracking()
-  }
-})
+import { generateId, getEmotionConfig } from "@/utils"
 
-function startTracking() {
-  if (isTracking) return
+import type { CapturedMoment, EmotionType, UIState } from "@/types/schema"
+import { CapturedMomentsList } from "@/components/captured-moments"
+import { FloatingBar } from "@/components/floating-bar"
+import { PollingPrompt } from "@/components/polling-prompt"
+import { QuickCapturePanel } from "@/components/quick-capture-panel"
 
-  isTracking = true
-  console.log("C-Drama tracking started")
+import { ContextDetector } from "./context-detector"
 
-  // Find YouTube video element
-  findAndTrackVideo()
+class DramaSentimentApp {
+  private state: UIState
+  private contextDetector: ContextDetector
 
-  // Watch for video element changes (YouTube is SPA)
-  const observer = new MutationObserver(() => {
-    if (!videoElement || !document.contains(videoElement)) {
-      findAndTrackVideo()
+  // UI Components
+  private floatingBar: FloatingBar
+  private quickCapturePanel: QuickCapturePanel
+  private capturedMomentsList: CapturedMomentsList
+  private pollingPrompt: PollingPrompt
+
+  // Timers
+  private timestampUpdateInterval: number | null = null
+
+  constructor() {
+    this.contextDetector = new ContextDetector()
+
+    // Initialize state
+    const initialContext = this.contextDetector.detectContext()
+    this.state = {
+      dramaTitle: initialContext.dramaTitle,
+      episode: initialContext.episode,
+      currentTimestamp: initialContext.timestamp,
+
+      isExpanded: false,
+      showPolling: false,
+
+      selectedEmotion: null,
+      intensity: 0.5,
+      note: "",
+      showNote: false,
+      justCaptured: false,
+
+      currentEmotion: "joy",
+      currentRating: 8.0,
+
+      capturedMoments: [],
     }
-  })
 
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  })
-}
+    // Initialize UI components
+    this.floatingBar = new FloatingBar(() => this.handleFloatingBarClick())
 
-function findAndTrackVideo() {
-  videoElement = document.querySelector("video.html5-main-video")
-
-  if (!videoElement) {
-    // Retry after a short delay
-    setTimeout(findAndTrackVideo, 1000)
-    return
-  }
-
-  console.log("Video element found")
-
-  // Send initial metadata
-  sendVideoMetadata()
-
-  // Set up event listeners
-  setupVideoListeners()
-
-  // Start progress tracking
-  startProgressTracking()
-}
-
-function sendVideoMetadata() {
-  if (!videoElement) return
-
-  const title =
-    document.querySelector("h1.ytd-watch-metadata yt-formatted-string")
-      ?.textContent || "Unknown Title"
-  const channelName =
-    document.querySelector("ytd-channel-name a")?.textContent ||
-    "Unknown Channel"
-  const thumbnailUrl =
-    document.querySelector('link[rel="image_src"]')?.getAttribute("href") || ""
-
-  browser.runtime.sendMessage({
-    type: "VIDEO_METADATA",
-    data: {
-      url: window.location.href,
-      title,
-      channelName,
-      thumbnailUrl,
-      currentTime: videoElement.currentTime,
-      duration: videoElement.duration,
-    },
-  })
-}
-
-function setupVideoListeners() {
-  if (!videoElement) return
-
-  videoElement.addEventListener("pause", () => {
-    browser.runtime.sendMessage({
-      type: "VIDEO_INTERACTION",
-      data: {
-        action: "pause",
-        timestamp: videoElement?.currentTime || 0,
-      },
-    })
-  })
-
-  videoElement.addEventListener("play", () => {
-    browser.runtime.sendMessage({
-      type: "VIDEO_INTERACTION",
-      data: {
-        action: "play",
-        timestamp: videoElement?.currentTime || 0,
-      },
-    })
-  })
-
-  videoElement.addEventListener("seeked", () => {
-    browser.runtime.sendMessage({
-      type: "VIDEO_INTERACTION",
-      data: {
-        action: "seek",
-        timestamp: videoElement?.currentTime || 0,
-      },
-    })
-  })
-}
-
-function startProgressTracking() {
-  if (progressInterval) {
-    clearInterval(progressInterval)
-  }
-
-  progressInterval = window.setInterval(() => {
-    if (!videoElement || !isTracking) return
-
-    browser.runtime.sendMessage({
-      type: "VIDEO_PROGRESS",
-      data: {
-        currentTime: videoElement.currentTime,
-        duration: videoElement.duration,
-        paused: videoElement.paused,
-      },
-    })
-  }, 2000) // Send update every 2 seconds
-}
-
-// Keyboard shortcuts for emotional reactions
-document.addEventListener("keydown", (e) => {
-  if (!isTracking) return
-
-  // Only trigger if not typing in an input
-  if (
-    e.target instanceof HTMLInputElement ||
-    e.target instanceof HTMLTextAreaElement
-  ) {
-    return
-  }
-
-  let emotion: string | null = null
-  let emoji: string | null = null
-
-  // Use number keys for quick reactions
-  switch (e.key) {
-    case "1":
-      emotion = "joy"
-      emoji = "😊"
-      break
-    case "2":
-      emotion = "sadness"
-      emoji = "😢"
-      break
-    case "3":
-      emotion = "surprise"
-      emoji = "😲"
-      break
-    case "4":
-      emotion = "fear"
-      emoji = "😱"
-      break
-    case "5":
-      emotion = "anger"
-      emoji = "😠"
-      break
-  }
-
-  if (emotion && videoElement) {
-    e.preventDefault()
-
-    browser.runtime.sendMessage({
-      type: "EMOTIONAL_REACTION",
-      data: {
-        emotion,
-        emoji,
-        intensity: 0.7,
-        notes: "",
-      },
+    this.quickCapturePanel = new QuickCapturePanel({
+      onClose: () => this.handlePanelClose(),
+      onEmojiClick: (emotion) => this.handleEmojiClick(emotion),
+      onIntensityChange: (intensity) => this.handleIntensityChange(intensity),
+      onNoteChange: (note) => this.handleNoteChange(note),
+      onToggleNote: () => this.handleToggleNote(),
     })
 
-    // Show brief feedback
-    showReactionFeedback(emoji!)
+    this.capturedMomentsList = new CapturedMomentsList()
+
+    this.pollingPrompt = new PollingPrompt({
+      onRespond: (feeling, newRating) =>
+        this.handlePollingRespond(feeling, newRating),
+      onDismiss: () => this.handlePollingDismiss(),
+    })
   }
-})
 
-function showReactionFeedback(emoji: string) {
-  const feedback = document.createElement("div")
-  feedback.textContent = emoji
-  feedback.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 72px;
-    z-index: 99999;
-    pointer-events: none;
-    animation: fadeOut 1s ease-out forwards;
-  `
+  // Event Handlers
+  private handleFloatingBarClick(): void {
+    // Refresh context from page
+    const context = this.contextDetector.detectContext()
+    this.state.dramaTitle = context.dramaTitle
+    this.state.episode = context.episode
+    this.state.currentTimestamp = context.timestamp
 
-  const style = document.createElement("style")
-  style.textContent = `
-    @keyframes fadeOut {
-      0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    this.state.isExpanded = true
+    this.render()
+  }
+
+  private handlePanelClose(): void {
+    this.state.isExpanded = false
+    this.render()
+  }
+
+  private handleEmojiClick(emotion: EmotionType): void {
+    this.state.selectedEmotion = emotion
+    this.state.justCaptured = true
+
+    // Create captured moment
+    const config = getEmotionConfig(emotion)
+    const moment: CapturedMoment = {
+      id: generateId(),
+      timestamp: this.state.currentTimestamp,
+      emotion: emotion,
+      intensity: this.state.intensity,
+      emoji: config.emoji,
+      note: this.state.note || undefined,
+      episodeId: `ep-${this.state.episode}`,
+      dramaTitle: this.state.dramaTitle,
+      capturedAt: Date.now(),
     }
-  `
 
-  document.head.appendChild(style)
-  document.body.appendChild(feedback)
+    // Add to state
+    this.state.capturedMoments = [moment, ...this.state.capturedMoments]
+    this.state.currentEmotion = emotion
 
-  setTimeout(() => {
-    feedback.remove()
-    style.remove()
-  }, 1000)
+    // Save to storage
+    this.saveMoment(moment)
+
+    // Update UI
+    this.render()
+
+    // Auto-close after animation
+    setTimeout(() => {
+      this.state.justCaptured = false
+      this.state.selectedEmotion = null
+      this.state.note = ""
+      this.state.showNote = false
+      this.render()
+    }, 1500)
+
+    setTimeout(() => {
+      this.state.isExpanded = false
+      this.render()
+    }, 1500)
+  }
+
+  private handleIntensityChange(intensity: number): void {
+    this.state.intensity = intensity
+    this.render()
+  }
+
+  private handleNoteChange(note: string): void {
+    this.state.note = note
+  }
+
+  private handleToggleNote(): void {
+    this.state.showNote = !this.state.showNote
+    this.render()
+  }
+
+  private handlePollingRespond(feeling: string, newRating?: number): void {
+    if (newRating !== undefined) {
+      this.state.currentRating = Math.min(10, newRating)
+    }
+    this.state.showPolling = false
+    this.render()
+
+    console.log("[Drama Sentiment] Polling response:", feeling, newRating)
+  }
+
+  private handlePollingDismiss(): void {
+    this.state.showPolling = false
+    this.render()
+  }
+
+  // Storage
+  private saveMoment(moment: CapturedMoment): void {
+    browser.runtime
+      .sendMessage({
+        type: "SAVE_MOMENT",
+        moment,
+      })
+      .then(() => {
+        console.log("[Drama Sentiment] Moment saved:", moment.id)
+      })
+      .catch((err) => {
+        console.error("[Drama Sentiment] Failed to save moment:", err)
+      })
+  }
+
+  // Rendering
+  private render(): void {
+    // Update floating bar
+    this.floatingBar.update(
+      this.state.currentEmotion,
+      this.state.currentRating,
+      this.state.episode,
+      this.state.currentTimestamp,
+      this.state.isExpanded
+    )
+
+    // Update quick capture panel
+    this.quickCapturePanel.update(
+      {
+        dramaTitle: this.state.dramaTitle,
+        episode: this.state.episode,
+        timestamp: this.state.currentTimestamp,
+        selectedEmotion: this.state.selectedEmotion,
+        intensity: this.state.intensity,
+        note: this.state.note,
+        showNote: this.state.showNote,
+        justCaptured: this.state.justCaptured,
+      },
+      this.state.isExpanded
+    )
+
+    // Update captured moments list
+    this.capturedMomentsList.update(this.state.capturedMoments)
+
+    // Update polling prompt
+    this.pollingPrompt.update(
+      {
+        episode: this.state.episode,
+        timestamp: this.state.currentTimestamp,
+        currentRating: this.state.currentRating,
+      },
+      this.state.showPolling
+    )
+  }
+
+  // Lifecycle
+  init(): void {
+    console.log("[Drama Sentiment] Initializing...", this.state)
+
+    // Mount UI components
+    this.floatingBar.mount()
+    this.quickCapturePanel.mount()
+    this.capturedMomentsList.mount()
+    this.pollingPrompt.mount()
+
+    // Initial render
+    this.render()
+
+    // Start timestamp tracking
+    this.startTimestampTracking()
+
+    console.log("[Drama Sentiment] Initialized")
+  }
+
+  private startTimestampTracking(): void {
+    this.timestampUpdateInterval = window.setInterval(() => {
+      const videoEl = this.contextDetector.getVideoElement()
+      if (videoEl && !isNaN(videoEl.currentTime)) {
+        this.state.currentTimestamp = Math.floor(videoEl.currentTime)
+
+        // Only update floating bar if not expanded (to avoid re-renders)
+        if (!this.state.isExpanded) {
+          this.floatingBar.update(
+            this.state.currentEmotion,
+            this.state.currentRating,
+            this.state.episode,
+            this.state.currentTimestamp,
+            this.state.isExpanded
+          )
+        }
+      }
+    }, 1000)
+  }
+
+  destroy(): void {
+    if (this.timestampUpdateInterval) {
+      clearInterval(this.timestampUpdateInterval)
+    }
+
+    this.floatingBar.unmount()
+    this.quickCapturePanel.unmount()
+    this.capturedMomentsList.unmount()
+    this.pollingPrompt.unmount()
+  }
 }
 
-console.log("C-Drama content script loaded")
+// Initialize app when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    const app = new DramaSentimentApp()
+    app.init()
+  })
+} else {
+  const app = new DramaSentimentApp()
+  app.init()
+}
+
+// Make app available globally for debugging
+declare global {
+  interface Window {
+    dramaSentimentApp?: DramaSentimentApp
+  }
+}

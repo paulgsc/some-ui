@@ -8,21 +8,49 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const require = createRequire(import.meta.url)
 
+const workspace = process.env.STORYBOOK_WORKSPACE
+const scope = process.env.STORYBOOK_SCOPE // e.g. "packages" | "extensions"
+const exclude = (process.env.STORYBOOK_EXCLUDE ?? "").split(",").filter(Boolean)
+
+function storyGlobs(): Array<string> {
+  let base: Array<string>
+
+  if (workspace) {
+    // Target a single workspace
+    base = [
+      `../packages/ui/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
+      `../extensions/${workspace}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
+    ]
+  } else if (scope === "packages") {
+    base = ["../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)"]
+  } else if (scope === "extensions") {
+    base = ["../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)"]
+  } else {
+    // Default: everything (current behavior)
+    base = [
+      "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+      "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    ]
+  }
+
+  // Exclusion safety valve
+  const excluded = exclude.map(
+    (name) => `!../**/${name}.stories.@(js|jsx|mjs|ts|tsx)`
+  )
+
+  return [...base, ...excluded]
+}
+
 /**
  * This function is used to resolve the absolute path of a package.
  * It is needed in projects that use Yarn PnP or are set up within a monorepo.
  */
 
 const config: StorybookConfig = {
-  stories: [
-    "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-    "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-  ],
+  stories: storyGlobs(),
   logLevel: "error",
 
-  staticDirs: [
-    "../packages/some-content/public",
-  ],
+  staticDirs: ["../packages/some-content/public"],
 
   core: {
     disableTelemetry: true,
