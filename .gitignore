@@ -74,3 +74,6 @@ packages/ui/**/public/
 # Test artifacts
 extensions/**/test-results/
 
+
+# Misc
+.fix
