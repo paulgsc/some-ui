@@ -38,7 +38,7 @@ export const LayoutNodeRenderer = ({
   onMoveIntent,
   onResizeIntent,
   existingRegions = new Set(),
-}: LayoutNodeRendererProps) => {
+}: LayoutNodeRendererProps): JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
   const [draggedOver, setDraggedOver] = useState<
     "left" | "right" | "top" | "bottom" | null
@@ -89,24 +89,26 @@ export const LayoutNodeRenderer = ({
         "text/plain"
       ) as YouTubeRegion
 
-      if (draggedRegion && draggedRegion !== node.id && draggedOver) {
-        if (existingRegions.has(draggedRegion)) {
-          onMoveIntent(draggedRegion, node.id, draggedOver)
-        } else {
-          onPlaceIntent(draggedRegion, node.id, draggedOver)
+      if (draggedRegion && draggedRegion !== node.id) {
+        if (draggedOver) {
+          if (existingRegions.has(draggedRegion)) {
+            onMoveIntent?.(draggedRegion, node.id, draggedOver)
+          } else {
+            onPlaceIntent?.(draggedRegion, node.id, draggedOver)
+          }
         }
       }
 
       setDraggedOver(null)
     }
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-      if (isResizing) return // Don't update hover during resize
+    const handleMouseMove = (e: React.MouseEvent): void => {
+      if (isResizing) return
 
       const rect = e.currentTarget.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
-      const edgeThreshold = 10 // Increased from 8 for easier grabbing
+      const edgeThreshold = 10
 
       if (x < edgeThreshold) {
         setResizeEdge("left")
@@ -121,7 +123,7 @@ export const LayoutNodeRenderer = ({
       }
     }
 
-    const handleMouseDown = (e: React.MouseEvent) => {
+    const handleMouseDown = (e: React.MouseEvent): void => {
       if (!resizeEdge || !onResizeIntent) return
 
       e.preventDefault()
@@ -129,13 +131,11 @@ export const LayoutNodeRenderer = ({
 
       setIsResizing(true)
 
-      // CAPTURE STABLE VALUES AT START
       const startX = e.clientX
       const startY = e.clientY
       const edge = resizeEdge
       const isHorizontal = edge === "left" || edge === "right"
 
-      // Use the node's current solved rect as the stable reference
       const stableContainerSize = isHorizontal
         ? node.rect.width
         : node.rect.height
@@ -145,11 +145,10 @@ export const LayoutNodeRenderer = ({
         const startPos = isHorizontal ? startX : startY
         const delta = currentPos - startPos
 
-        // Pass the stable size captured at the start of the drag
         onResizeIntent(node.id, edge, delta, stableContainerSize)
       }
 
-      const handleGlobalMouseUp = () => {
+      const handleGlobalMouseUp = (): void => {
         setIsResizing(false)
         window.removeEventListener("mousemove", handleGlobalMouseMove)
         window.removeEventListener("mouseup", handleGlobalMouseUp)
@@ -159,7 +158,7 @@ export const LayoutNodeRenderer = ({
       window.addEventListener("mouseup", handleGlobalMouseUp)
     }
 
-    const getCursorStyle = () => {
+    const getCursorStyle = (): string => {
       if (isResizing) {
         const edge = resizeStartRef.current?.edge
         if (edge === "left" || edge === "right") return "ew-resize"
@@ -171,9 +170,10 @@ export const LayoutNodeRenderer = ({
     }
 
     return (
-      <div
+      <button
+        type="button"
         className={cn(
-          "absolute border-2 transition-all group",
+          "absolute border-2 transition-all group p-0 m-0 box-border block",
           regionColors[node.id],
           "flex items-center justify-center",
           "text-foreground font-mono text-xs font-medium",
@@ -188,7 +188,7 @@ export const LayoutNodeRenderer = ({
           height: node.rect.height,
           cursor: getCursorStyle(),
         }}
-        onClick={() => onLeafClick(node.id)}
+        onClick={() => onLeafClick?.(node.id)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           if (!isResizing) {
@@ -228,19 +228,26 @@ export const LayoutNodeRenderer = ({
         </span>
 
         {isHovered && onRemove && !isResizing && (
-          <button
+          <div
             className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform shadow-md z-20"
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation()
               onRemove(node.id)
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.stopPropagation()
+                onRemove(node.id)
+              }
+            }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <X className="h-3 w-3" />
-          </button>
+          </div>
         )}
 
-        {/* Visual resize handles (optional, for clarity) */}
         {resizeEdge && !isResizing && (
           <div
             className={cn(
@@ -252,7 +259,7 @@ export const LayoutNodeRenderer = ({
             )}
           />
         )}
-      </div>
+      </button>
     )
   }
 
