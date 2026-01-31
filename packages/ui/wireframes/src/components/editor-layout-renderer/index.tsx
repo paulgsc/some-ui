@@ -38,7 +38,7 @@ export const LayoutNodeRenderer = ({
   onMoveIntent,
   onResizeIntent,
   existingRegions = new Set(),
-}: LayoutNodeRendererProps): JSX.Element => {
+}: LayoutNodeRendererProps): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
   const [draggedOver, setDraggedOver] = useState<
     "left" | "right" | "top" | "bottom" | null
@@ -85,9 +85,9 @@ export const LayoutNodeRenderer = ({
       e.preventDefault()
       e.stopPropagation()
 
-      const draggedRegion = e.dataTransfer.getData(
-        "text/plain"
-      ) as YouTubeRegion
+      const draggedRegion = e.dataTransfer.getData("text/plain") as
+        | YouTubeRegion
+        | undefined
 
       if (draggedRegion && draggedRegion !== node.id) {
         if (draggedOver) {
