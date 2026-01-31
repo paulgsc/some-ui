@@ -150,6 +150,12 @@ ${errorContexts
 ## Instructions
 1. Review the attached \`${fileName}.snapshot.ts\`.
 2. Provide a **Unified Diff** only.
+
+## Constraints
+- Do NOT change runtime behavior
+- Do NOT refactor unrelated code
+- Do NOT modify recent business logic
+- Fix lint issues only
       `.trim()
 
       try {
