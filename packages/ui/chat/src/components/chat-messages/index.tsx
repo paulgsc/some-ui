@@ -60,7 +60,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
             setIsSpeaking(false)
             onResume()
           },
-          onError: (error: Error) => {
+          onError: (error: Error): void => {
             setIsSpeaking(false)
             console.error("TTS Error:", error)
           },
