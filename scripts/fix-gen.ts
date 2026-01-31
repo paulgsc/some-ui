@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs"
 import { basename, dirname, join } from "node:path"
@@ -24,6 +25,16 @@ export interface GenerateFixContextResult {
 export function generateFixContext(): GenerateFixContextResult {
   const summary: FixResult[] = []
   let hasErrors = false
+
+  if (existsSync(FIX_DIR)) {
+    try {
+      rmSync(FIX_DIR, { recursive: true, force: true })
+      console.log(`Cleared existing ${FIX_DIR} directory.`)
+    } catch (err) {
+      console.error(`Failed to clear ${FIX_DIR} directory:`, err)
+      hasErrors = true
+    }
+  }
 
   try {
     // 1. Get changed files
