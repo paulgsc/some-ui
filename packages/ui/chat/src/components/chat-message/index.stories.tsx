@@ -1,4 +1,4 @@
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { ChatMessage } from "."
@@ -12,7 +12,7 @@ const avatar = {
   fallback: "CN",
 }
 
-const message: ChatMessageProps = {
+const message: Message = {
   id: "1",
   character: "ai",
   position: "right",
