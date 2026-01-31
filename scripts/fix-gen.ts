@@ -1,35 +1,46 @@
-import { execSync } from "child_process"
-import path from "path"
-import fs from "fs-extra"
+import { execSync } from "node:child_process"
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs"
+import { basename, dirname, join } from "node:path"
 
 const FIX_DIR = ".fix"
 
-async function generateFixContext() {
+function generateFixContext() {
   try {
+    // 1. Get changed files
     const changedFiles = execSync(
-      "git diff-tree --no-commit-id --name-only -r HEAD"
+      "git diff-tree --no-commit-id --name-only -r HEAD",
+      { encoding: "utf8" }
     )
-      .toString()
       .trim()
       .split("\n")
       .filter((f) => /\.(ts|tsx|js|jsx)$/.test(f))
 
     if (changedFiles.length === 0) return
 
-    const sha = execSync("git rev-parse --short HEAD").toString().trim()
-    const msg = execSync("git log -1 --pretty=%B").toString().trim()
+    const sha = execSync("git rev-parse --short HEAD", {
+      encoding: "utf8",
+    }).trim()
+    const msg = execSync("git log -1 --pretty=%B", { encoding: "utf8" }).trim()
 
     for (const file of changedFiles) {
-      if (!fs.existsSync(file)) continue
+      if (!existsSync(file)) continue
 
-      const fileContent = fs.readFileSync(file, "utf8").split("\n")
+      const fileContent = readFileSync(file, "utf8").split("\n")
 
+      // 2. Run ESLint (Native call)
       let lintResults
       try {
         const output = execSync(`npx eslint ${file} --format json`, {
           stdio: "pipe",
+          encoding: "utf8",
         })
-        lintResults = JSON.parse(output.toString())
+        lintResults = JSON.parse(output)
       } catch (e: any) {
         try {
           lintResults = JSON.parse(e.stdout.toString())
@@ -41,37 +52,29 @@ async function generateFixContext() {
       const fileResults = lintResults[0]
       if (!fileResults || fileResults.errorCount === 0) continue
 
-      const fileTargetDir = path.join(FIX_DIR, path.dirname(file))
-      const fileName = path.basename(file)
-      await fs.ensureDir(fileTargetDir)
+      // 3. Setup Dir Structure (Native recursive mkdir)
+      const fileTargetDir = join(FIX_DIR, dirname(file))
+      mkdirSync(fileTargetDir, { recursive: true })
 
-      // Extract specific snippets for the JSON and MD
-      const errorContexts = fileResults.messages.map((m: any) => {
-        const lineIdx = m.line - 1
-        return {
-          line: m.line,
-          column: m.column,
-          ruleId: m.ruleId,
-          message: m.message,
-          snippet: fileContent[lineIdx]?.trim() || "",
-        }
-      })
+      const fileName = basename(file)
+      const errorContexts = fileResults.messages.map((m: any) => ({
+        line: m.line,
+        column: m.column,
+        ruleId: m.ruleId,
+        message: m.message,
+        snippet: fileContent[m.line - 1]?.trim() || "",
+      }))
 
-      // 1. Ground Truth Snapshot
-      await fs.copy(file, path.join(fileTargetDir, `${fileName}.snapshot.ts`))
+      // A. Snapshot
+      copyFileSync(file, join(fileTargetDir, `${fileName}.snapshot.ts`))
 
-      // 2. Machine Data (Now with Snippets)
-      await fs.writeJson(
-        path.join(fileTargetDir, `${fileName}.lint.json`),
-        {
-          sha,
-          file,
-          errors: errorContexts,
-        },
-        { spaces: 2 }
+      // B. Data
+      writeFileSync(
+        join(fileTargetDir, `${fileName}.lint.json`),
+        JSON.stringify({ sha, file, errors: errorContexts }, null, 2)
       )
 
-      // 3. The Prompt (Hyper-targeted)
+      // C. Prompt
       const promptContent = `
 # Lint Fix Request: ${file}
 **Commit:** \`${sha}\` — "${msg}"
@@ -87,21 +90,15 @@ ${errorContexts
   .join("\n")}
 
 ---
-
 ## Instructions
-1. Review the attached \`${fileName}.snapshot.ts\` for full context.
-2. Resolve the issues listed above.
-3. Provide a **Unified Diff** only. 
-4. Do not alter business logic or refactor unrelated code.
+1. Review the attached \`${fileName}.snapshot.ts\`.
+2. Provide a **Unified Diff** only.
       `.trim()
 
-      await fs.writeFile(
-        path.join(fileTargetDir, `${fileName}.fix.md`),
-        promptContent
-      )
+      writeFileSync(join(fileTargetDir, `${fileName}.fix.md`), promptContent)
     }
   } catch (err) {
-    // Fail silently - the invariant remains.
+    // Invariant: Never block the dev.
   }
 }
 

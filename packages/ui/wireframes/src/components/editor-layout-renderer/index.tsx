@@ -56,7 +56,7 @@ export const LayoutNodeRenderer = ({
   if (node.type === "leaf") {
     const isSelected = selectedLeaf === node.id
 
-    const handleDragOver = (e: React.DragEvent) => {
+    const handleDragOver = (e: React.DragEvent): void => {
       e.preventDefault()
       e.stopPropagation()
 
