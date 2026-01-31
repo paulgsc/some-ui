@@ -50,7 +50,7 @@ export const MetricsPanel = ({
       }
     }, duration / steps)
 
-    return () => clearInterval(timer)
+    return (): void => clearInterval(timer)
   }, [overallRating])
 
   return (

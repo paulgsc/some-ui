@@ -160,7 +160,7 @@ ${errorContexts
 ---
 ## Instructions
 1. Review the attached \`${fileName}.snapshot.ts\`.
-2. Provide a **Unified Diff** only.
+2. Provide a **fully rewritten file** that fixes the issues.
 
 ## Constraints
 - Do NOT change runtime behavior
