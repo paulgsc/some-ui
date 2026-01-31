@@ -1,5 +1,2 @@
 
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 npx ts-node scripts/fix-gen.ts --commit HEAD > .fix/generator.log 2>&1 &
