@@ -81,7 +81,7 @@ export const LayoutNodeRenderer = ({
       }
     }
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent): void => {
       e.preventDefault()
       e.stopPropagation()
 
