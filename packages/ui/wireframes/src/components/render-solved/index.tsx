@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { useMemo } from "react"
-import type { SolvedNode } from "@wireframes/lib/resizable-layout"
+import type { SolvedNode } from "@wireframes/lib/layout-types"
 
 export const RenderSolved = <T extends string>({
   node,

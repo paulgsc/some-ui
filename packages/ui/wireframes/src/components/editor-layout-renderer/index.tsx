@@ -140,7 +140,7 @@ export const LayoutNodeRenderer = ({
         ? node.rect.width
         : node.rect.height
 
-      const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
+      const handleGlobalMouseMove = (moveEvent: MouseEvent): void => {
         const currentPos = isHorizontal ? moveEvent.clientX : moveEvent.clientY
         const startPos = isHorizontal ? startX : startY
         const delta = currentPos - startPos

@@ -10,18 +10,39 @@ import { basename, dirname, join } from "node:path"
 
 const FIX_DIR = ".fix"
 
-function generateFixContext() {
+export interface FixResult {
+  file: string
+  status: "success" | "skipped" | "failed"
+  errors?: string[]
+}
+
+export interface GenerateFixContextResult {
+  summary: FixResult[]
+  hasErrors: boolean
+}
+
+export function generateFixContext(): GenerateFixContextResult {
+  const summary: FixResult[] = []
+  let hasErrors = false
+
   try {
     // 1. Get changed files
-    const changedFiles = execSync(
+    const rawChangedFiles = execSync(
       "git diff-tree --no-commit-id --name-only -r HEAD",
       { encoding: "utf8" }
     )
       .trim()
       .split("\n")
-      .filter((f) => /\.(ts|tsx|js|jsx)$/.test(f))
+      .filter(Boolean)
 
-    if (changedFiles.length === 0) return
+    const changedFiles = rawChangedFiles.filter((f) =>
+      /\.(ts|tsx|js|jsx)$/.test(f)
+    )
+
+    if (changedFiles.length === 0) {
+      console.warn("No changed JS/TS files found in HEAD.")
+      return { summary, hasErrors }
+    }
 
     const sha = execSync("git rev-parse --short HEAD", {
       encoding: "utf8",
@@ -29,12 +50,19 @@ function generateFixContext() {
     const msg = execSync("git log -1 --pretty=%B", { encoding: "utf8" }).trim()
 
     for (const file of changedFiles) {
-      if (!existsSync(file)) continue
+      const fileErrors: string[] = []
+
+      if (!existsSync(file)) {
+        const msg = `File missing, skipping: ${file}`
+        console.warn(msg)
+        summary.push({ file, status: "skipped", errors: [msg] })
+        continue
+      }
 
       const fileContent = readFileSync(file, "utf8").split("\n")
 
-      // 2. Run ESLint (Native call)
-      let lintResults
+      // 2. Run ESLint
+      let lintResults: any
       try {
         const output = execSync(`npx eslint ${file} --format json`, {
           stdio: "pipe",
@@ -43,18 +71,35 @@ function generateFixContext() {
         lintResults = JSON.parse(output)
       } catch (e: any) {
         try {
-          lintResults = JSON.parse(e.stdout.toString())
+          lintResults = JSON.parse(e.stdout?.toString() || "[]")
         } catch {
+          const msg = `Failed to parse ESLint output for file: ${file}`
+          console.error(msg)
+          fileErrors.push(msg)
+          summary.push({ file, status: "failed", errors: fileErrors })
+          hasErrors = true
           continue
         }
       }
 
       const fileResults = lintResults[0]
-      if (!fileResults || fileResults.errorCount === 0) continue
+      if (!fileResults || fileResults.errorCount === 0) {
+        summary.push({ file, status: "skipped" })
+        continue
+      }
 
-      // 3. Setup Dir Structure (Native recursive mkdir)
+      // 3. Setup Dir Structure
       const fileTargetDir = join(FIX_DIR, dirname(file))
-      mkdirSync(fileTargetDir, { recursive: true })
+      try {
+        mkdirSync(fileTargetDir, { recursive: true })
+      } catch (err) {
+        const msg = `Failed to create directory: ${fileTargetDir}`
+        console.error(msg, err)
+        fileErrors.push(msg)
+        summary.push({ file, status: "failed", errors: fileErrors })
+        hasErrors = true
+        continue
+      }
 
       const fileName = basename(file)
       const errorContexts = fileResults.messages.map((m: any) => ({
@@ -65,16 +110,28 @@ function generateFixContext() {
         snippet: fileContent[m.line - 1]?.trim() || "",
       }))
 
-      // A. Snapshot
-      copyFileSync(file, join(fileTargetDir, `${fileName}.snapshot.ts`))
+      // Snapshot
+      try {
+        copyFileSync(file, join(fileTargetDir, `${fileName}.snapshot.ts`))
+      } catch (err) {
+        const msg = `Failed to copy snapshot for: ${file}`
+        console.error(msg, err)
+        fileErrors.push(msg)
+      }
 
-      // B. Data
-      writeFileSync(
-        join(fileTargetDir, `${fileName}.lint.json`),
-        JSON.stringify({ sha, file, errors: errorContexts }, null, 2)
-      )
+      // Lint JSON
+      try {
+        writeFileSync(
+          join(fileTargetDir, `${fileName}.lint.json`),
+          JSON.stringify({ sha, file, errors: errorContexts }, null, 2)
+        )
+      } catch (err) {
+        const msg = `Failed to write lint JSON for: ${file}`
+        console.error(msg, err)
+        fileErrors.push(msg)
+      }
 
-      // C. Prompt
+      // Prompt MD
       const promptContent = `
 # Lint Fix Request: ${file}
 **Commit:** \`${sha}\` — "${msg}"
@@ -95,11 +152,29 @@ ${errorContexts
 2. Provide a **Unified Diff** only.
       `.trim()
 
-      writeFileSync(join(fileTargetDir, `${fileName}.fix.md`), promptContent)
+      try {
+        writeFileSync(join(fileTargetDir, `${fileName}.fix.md`), promptContent)
+      } catch (err) {
+        const msg = `Failed to write fix markdown for: ${file}`
+        console.error(msg, err)
+        fileErrors.push(msg)
+      }
+
+      if (fileErrors.length > 0) {
+        summary.push({ file, status: "failed", errors: fileErrors })
+        hasErrors = true
+      } else {
+        summary.push({ file, status: "success" })
+      }
     }
   } catch (err) {
-    // Invariant: Never block the dev.
+    console.error("Unexpected failure in generateFixContext:", err)
+    hasErrors = true
   }
+
+  return { summary, hasErrors }
 }
 
-generateFixContext()
+// Usage example
+const result = generateFixContext()
+console.log(JSON.stringify(result, null, 2))
