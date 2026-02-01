@@ -26,7 +26,7 @@ import {
 import { Button, Card, useToast } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-export const LayoutEditor = () => {
+export const LayoutEditor = (): JSX.Element => {
   const [tree, setTree] = useState<LayoutNode<YouTubeRegion> | null>(null)
   const [selectedLeaf, setSelectedLeaf] = useState<YouTubeRegion | null>(null)
   const [showCode, setShowCode] = useState(false)
@@ -56,7 +56,7 @@ export const LayoutEditor = () => {
     setTree(newTree)
   }
 
-  const handleRemove = (id: YouTubeRegion) => {
+  const handleRemove = (id: YouTubeRegion): void => {
     handleIntent({ kind: "remove", region: id })
     toast({
       title: "Region removed",
@@ -81,7 +81,7 @@ export const LayoutEditor = () => {
     })
   }
 
-  const handleCanvasDragOver = (e: React.DragEvent) => {
+  const handleCanvasDragOver = (e: React.DragEvent): void => {
     e.preventDefault()
 
     const rect = e.currentTarget.getBoundingClientRect()
@@ -104,25 +104,25 @@ export const LayoutEditor = () => {
     }
   }
 
-  const handleCanvasDrop = (e: React.DragEvent) => {
+  const handleCanvasDrop = (e: React.DragEvent): void => {
     e.preventDefault()
 
     const draggedRegion = e.dataTransfer.getData("text/plain") as YouTubeRegion
 
     if (draggedRegion && canvasDropEdge) {
       // Place relative to root (entire tree)
-      if (existingRegions.has(draggedRegion)) {
+      if (usedRegions.has(draggedRegion)) {
         handleIntent({
           kind: "move",
           region: draggedRegion,
-          relativeTo: "root",
+          relativeTo: "root" as YouTubeRegion,
           edge: canvasDropEdge,
         })
       } else {
         handleIntent({
           kind: "place",
           region: draggedRegion,
-          relativeTo: "root",
+          relativeTo: "root" as YouTubeRegion,
           edge: canvasDropEdge,
         })
       }
@@ -140,7 +140,7 @@ export const LayoutEditor = () => {
     region: YouTubeRegion,
     relativeTo: YouTubeRegion,
     edge: "left" | "right" | "top" | "bottom"
-  ) => {
+  ): void => {
     handleIntent({
       kind: "move",
       region,
@@ -158,7 +158,7 @@ export const LayoutEditor = () => {
     edge: "left" | "right" | "top" | "bottom",
     deltaPx: number,
     containerSizePx: number
-  ) => {
+  ): void => {
     handleIntent({
       kind: "resize",
       region,
@@ -168,7 +168,7 @@ export const LayoutEditor = () => {
     })
   }
 
-  const handleAddToEmptyCanvas = (region: YouTubeRegion) => {
+  const handleAddToEmptyCanvas = (region: YouTubeRegion): void => {
     handleIntent({
       kind: "place",
       region,
@@ -180,12 +180,12 @@ export const LayoutEditor = () => {
     })
   }
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     setTree(null)
     setSelectedLeaf(null)
   }
 
-  const handleExportJSON = () => {
+  const handleExportJSON = (): void => {
     if (!tree) {
       toast({
         title: "Nothing to export",
@@ -210,9 +210,6 @@ export const LayoutEditor = () => {
   }
 
   async function copyText(text: string): Promise<boolean> {
-    // Modern Clipboard API (secure + top-level only)
-
-    // Legacy fallback (works in iframes / Storybook)
     try {
       const textarea = document.createElement("textarea")
       textarea.value = text
@@ -233,7 +230,7 @@ export const LayoutEditor = () => {
     }
   }
 
-  const handleCopyJSON = async () => {
+  const handleCopyJSON = async (): Promise<void> => {
     if (!tree) {
       toast({
         title: "Nothing to copy",
@@ -264,20 +261,18 @@ export const LayoutEditor = () => {
     })
   }
 
-  // Reset on mouse up (add this as a window listener)
   useEffect(() => {
-    const handleMouseUp = () => {
+    const handleMouseUp = (): void => {
       lastResizeRef.current = null
     }
 
     window.addEventListener("mouseup", handleMouseUp)
-    return () => window.removeEventListener("mouseup", handleMouseUp)
+    return (): void => window.removeEventListener("mouseup", handleMouseUp)
   }, [])
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-balance">
@@ -301,7 +296,6 @@ export const LayoutEditor = () => {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-          {/* Main Canvas */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canvas Preview</h2>
@@ -363,7 +357,6 @@ export const LayoutEditor = () => {
             </div>
           </Card>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             {availableRegions.length > 0 && tree && (
               <Card className="p-6 bg-accent/50">
@@ -394,7 +387,6 @@ export const LayoutEditor = () => {
               </Card>
             )}
 
-            {/* Tree Structure */}
             {tree && (
               <Card className="p-6">
                 <h2 className="text-lg font-semibold mb-4">Tree Structure</h2>
@@ -404,7 +396,7 @@ export const LayoutEditor = () => {
                 <div className="max-h-[400px] overflow-auto">
                   <TreeVisualizer
                     tree={tree}
-                    onToggleAxis={() => {}} // No manual axis toggling
+                    onToggleAxis={() => {}}
                     selectedLeaf={selectedLeaf}
                   />
                 </div>
@@ -439,7 +431,6 @@ export const LayoutEditor = () => {
               </Card>
             )}
 
-            {/* Instructions */}
             <Card className="p-6 bg-primary/5 border-primary/20">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -479,7 +470,6 @@ export const LayoutEditor = () => {
           </div>
         </div>
 
-        {/* Code Output */}
         {showCode && tree && (
           <Card className="p-6 bg-muted/50">
             <div className="flex items-center justify-between mb-4">
