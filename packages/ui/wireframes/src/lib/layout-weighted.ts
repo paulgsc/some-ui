@@ -1,5 +1,4 @@
 // layout-weighted.ts - Layout with explicit weights in tree structure
-//
 import type { Constraint, Rect, SolvedNode } from "./layout-types"
 import { clamp, getFocusPath, lerp } from "./layout-types"
 
@@ -28,10 +27,18 @@ export function focusConstraints<T>(
   const next = new Map(base)
   const clampedT = clamp(t, 0, 1)
 
-  const getChildren = (node: any): Array<any> =>
-    node.type === "split" ? node.children.map((c: any) => c.node) : []
+  /**
+   * Adapter for getFocusPath:
+   * strips weights and exposes a pure tree shape
+   */
+  const focusPath = getFocusPath(
+    tree,
+    focusId,
+    (node: LayoutNode<T>) =>
+      node.type === "split" ? node.children.map((c) => c.node) : [],
+    (node: LayoutNode<T>) => (node.type === "leaf" ? node.id : node.splitId)
+  )
 
-  const focusPath = getFocusPath(tree, focusId, getChildren)
   const stack: Array<LayoutNode<T>> = [tree]
 
   while (stack.length) {
@@ -41,6 +48,7 @@ export function focusConstraints<T>(
       for (const { node: child } of node.children) {
         const key = child.type === "leaf" ? child.id : child.splitId
         const c = next.get(key)
+
         if (c) {
           const onPath = focusPath.has(key)
           next.set(key, {
@@ -50,6 +58,7 @@ export function focusConstraints<T>(
               : lerp(c.ideal, c.min, clampedT),
           })
         }
+
         stack.push(child)
       }
     } else {
@@ -74,6 +83,7 @@ export function solveLayout<T>(
 ): SolvedNode<T> {
   const results = new Map<LayoutNode<T>, SolvedNode<T>>()
   const traversalOrder: Array<{ node: LayoutNode<T>; rect: Rect }> = []
+
   const queue: Array<{ node: LayoutNode<T>; rect: Rect }> = [
     { node: tree, rect: viewport },
   ]
@@ -88,14 +98,11 @@ export function solveLayout<T>(
       const isRow = node.axis === "row"
       const totalAvailable = isRow ? rect.width : rect.height
 
-      const totalWeight = node.children.reduce(
-        (sum, { weight }) => sum + weight,
-        0
-      )
+      const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
 
       let offset = 0
 
-      node.children.forEach(({ node: child, weight }) => {
+      for (const { node: child, weight } of node.children) {
         const size = (weight / totalWeight) * totalAvailable
         const childRect: Rect = isRow
           ? { x: rect.x + offset, y: rect.y, width: size, height: rect.height }
@@ -103,18 +110,28 @@ export function solveLayout<T>(
 
         queue.push({ node: child, rect: childRect })
         offset += size
-      })
+      }
     }
   }
 
   // Pass 2: Bottom-up assembly
   for (let i = traversalOrder.length - 1; i >= 0; i--) {
-    const { node, rect } = traversalOrder[i]
+    const entry = traversalOrder[i]
+    if (!entry) continue
+
+    const { node, rect } = entry
 
     if (node.type === "leaf") {
       results.set(node, { type: "leaf", id: node.id, rect })
     } else {
-      const children = node.children.map(({ node: c }) => results.get(c)!)
+      const children = node.children.map(({ node: c }) => {
+        const solved = results.get(c)
+        if (!solved) {
+          throw new Error("Invariant violation: missing solved child")
+        }
+        return solved
+      })
+
       results.set(node, {
         type: "split",
         axis: node.axis,
@@ -128,22 +145,18 @@ export function solveLayout<T>(
   return results.get(tree)!
 }
 
-/**
- * Solve layout WITH focus support.
- * Converts weights → constraints, applies focus, then solves.
- */
+// --- Focus-aware solver ---
+
 export function solveLayoutWithFocus<T>(
   tree: LayoutNode<T>,
   viewport: Rect,
   focusId: T | null = null,
-  focusIntensity: number = 0
+  focusIntensity = 0
 ): SolvedNode<T> {
-  // If no focus, use the fast weight-based solver
   if (!focusId || focusIntensity <= 0) {
     return solveLayout(tree, viewport)
   }
 
-  // Otherwise, use constraint-based solving
   const baseConstraints = weightsToConstraints(tree)
   const focusedConstraints = focusConstraints(
     tree,
@@ -151,12 +164,12 @@ export function solveLayoutWithFocus<T>(
     focusId,
     focusIntensity
   )
+
   return solveLayoutWithConstraints(tree, focusedConstraints, viewport)
 }
 
-/**
- * Extract base constraints from a weight-based tree.
- */
+// --- Constraints extraction ---
+
 function weightsToConstraints<T>(
   tree: LayoutNode<T>
 ): Map<T | string, Constraint> {
@@ -167,24 +180,17 @@ function weightsToConstraints<T>(
     const node = stack.pop()!
 
     if (node.type === "leaf") {
-      // Leaf gets a default constraint (will be overridden by parent split logic)
-      constraints.set(node.id, {
-        ideal: 1,
-        min: 0,
-        max: 1,
-      })
+      constraints.set(node.id, { ideal: 1, min: 0, max: 1 })
     } else {
-      // Split's children inherit their weights as ideal values
       const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
 
       for (const { node: child, weight } of node.children) {
         const key = child.type === "leaf" ? child.id : child.splitId
-        const normalizedWeight = weight / totalWeight
 
         constraints.set(key, {
-          ideal: normalizedWeight,
-          min: 0, // Can shrink to 0% of parent
-          max: 1, // Can grow to 100% of parent
+          ideal: weight / totalWeight,
+          min: 0,
+          max: 1,
         })
 
         stack.push(child)
@@ -195,10 +201,8 @@ function weightsToConstraints<T>(
   return constraints
 }
 
-/**
- * Solve layout using constraints (for focus mode).
- * Similar to old constraint-based solver but works with weighted tree.
- */
+// --- Constraint-based solver ---
+
 function solveLayoutWithConstraints<T>(
   tree: LayoutNode<T>,
   constraints: Map<T | string, Constraint>,
@@ -206,11 +210,12 @@ function solveLayoutWithConstraints<T>(
 ): SolvedNode<T> {
   const results = new Map<LayoutNode<T>, SolvedNode<T>>()
   const traversalOrder: Array<{ node: LayoutNode<T>; rect: Rect }> = []
+
   const queue: Array<{ node: LayoutNode<T>; rect: Rect }> = [
     { node: tree, rect: viewport },
   ]
 
-  // Pass 1: Top-down geometry calculation using constraints
+  // Pass 1
   while (queue.length > 0) {
     const current = queue.shift()!
     traversalOrder.push(current)
@@ -220,18 +225,17 @@ function solveLayoutWithConstraints<T>(
       const isRow = node.axis === "row"
       const totalAvailable = isRow ? rect.width : rect.height
 
-      // Get constraints for each child
       const childConstraints = node.children.map(({ node: child }) => {
         const key = child.type === "leaf" ? child.id : child.splitId
         return constraints.get(key) ?? { ideal: 1, min: 0, max: Infinity }
       })
 
-      // Solve weights from constraints (using old algorithm)
       const weights = solveWeightsFromConstraints(childConstraints)
       let offset = 0
 
       node.children.forEach(({ node: child }, i) => {
-        const size = weights[i] * totalAvailable
+        const size = weights[i]! * totalAvailable
+
         const childRect: Rect = isRow
           ? { x: rect.x + offset, y: rect.y, width: size, height: rect.height }
           : { x: rect.x, y: rect.y + offset, width: rect.width, height: size }
@@ -242,14 +246,24 @@ function solveLayoutWithConstraints<T>(
     }
   }
 
-  // Pass 2: Bottom-up assembly (same as before)
+  // Pass 2
   for (let i = traversalOrder.length - 1; i >= 0; i--) {
-    const { node, rect } = traversalOrder[i]
+    const entry = traversalOrder[i]
+    if (!entry) continue
+
+    const { node, rect } = entry
 
     if (node.type === "leaf") {
       results.set(node, { type: "leaf", id: node.id, rect })
     } else {
-      const children = node.children.map(({ node: c }) => results.get(c)!)
+      const children = node.children.map(({ node: c }) => {
+        const solved = results.get(c)
+        if (!solved) {
+          throw new Error("Invariant violation: missing solved child")
+        }
+        return solved
+      })
+
       results.set(node, {
         type: "split",
         axis: node.axis,
@@ -263,17 +277,14 @@ function solveLayoutWithConstraints<T>(
   return results.get(tree)!
 }
 
-/**
- * Solve weights from constraints (from old layout-types.ts).
- */
+// --- Weight solver ---
+
 function solveWeightsFromConstraints(
   constraints: Array<Constraint>
 ): Array<number> {
-  // Clamp each ideal to its min/max
   const clamped = constraints.map((c) => clamp(c.ideal, c.min, c.max))
-
-  // Normalize to sum to 1
   const sum = clamped.reduce((a, b) => a + b, 0)
+
   if (sum === 0) return clamped.map(() => 0)
   return clamped.map((v) => v / sum)
 }
