@@ -1,4 +1,5 @@
 // layout-weighted.ts - Layout with explicit weights in tree structure
+//
 import type { Constraint, Rect, SolvedNode } from "./layout-types"
 import { clamp, getFocusPath, lerp } from "./layout-types"
 
