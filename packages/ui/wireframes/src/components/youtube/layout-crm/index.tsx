@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 import { LayoutNodeRenderer } from "@wireframes/components/editor-layout-renderer"
 import { TreeVisualizer } from "@wireframes/components/tree-visualizer"
@@ -107,7 +108,9 @@ export const LayoutEditor = (): JSX.Element => {
   const handleCanvasDrop = (e: React.DragEvent): void => {
     e.preventDefault()
 
-    const draggedRegion = e.dataTransfer.getData("text/plain") as YouTubeRegion
+    const draggedRegion = e.dataTransfer.getData("text/plain") as
+      | YouTubeRegion
+      | undefined
 
     if (draggedRegion && canvasDropEdge) {
       // Place relative to root (entire tree)
