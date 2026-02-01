@@ -1,97 +1,56 @@
-import {
-  getbotLeftContent,
-  getMainContent,
-  gettopLeftContent,
-} from "@some-ui/content/components/overlay"
-import { beachedWhale } from "@some-ui/content/data/chatbot-messages/beached-whale"
-import { characters } from "@some-ui/content/data/chatbot-messages/characters"
-import { farmers } from "@some-ui/content/data/chatbot-messages/farmers"
-import { nflTennis } from "@some-ui/content/data/chatbot-messages/nfl-tennis"
-import { sameWinners } from "@some-ui/content/data/chatbot-messages/the-same-winners"
-import { waiNoTockTock } from "@some-ui/content/data/chatbot-messages/wai-no-tock-tock"
-import { soManyCrates } from "@some-ui/content/data/chatbot-messages/yet-another-python"
-import { digitalHellscape } from "@some-ui/content/data/chatbot-messages/youtube"
+import { dramaTree } from "@content/data/layout-tree"
+import { componentRegistry } from "@some-ui/content"
+import { useSceneDrivenLayout } from "@some-ui/content/hooks/use-scene-driven-layout"
 import { createFileRoute } from "@tanstack/react-router"
-import { YoutubeOverlay } from "overlays"
+import { useSceneLifetimes } from "some-ui-utils"
+import { OrchestratedYouTubeViewport } from "wireframes"
 
-// Demo chat data
-const demoChats = [
-  {
-    key: "farmers",
-    messagesTitle: "Don't farm me bro!",
-    messages: farmers,
-  },
-  {
-    key: "youtube",
-    messagesTitle: "I call it Youtube",
-    messages: digitalHellscape,
-  },
-  {
-    key: "wai-no-tock",
-    messagesTitle: "Wai no tock tock",
-    messages: waiNoTockTock,
-  },
-  {
-    key: "nfl-tennis",
-    messagesTitle: "NFL Tennis",
-    messages: nflTennis,
-  },
-  {
-    key: "soManyCrates",
-    messagesTitle: "Going Grocery Shopping",
-    messages: soManyCrates,
-  },
-  {
-    key: "beachedWhale",
-    messagesTitle: "Writting on the wall",
-    messages: beachedWhale,
-  },
-  {
-    key: "sameWinners",
-    messagesTitle: "It's all a lie",
-    messages: sameWinners,
-  },
-]
-
-// Search params validation (optional)
-type YouTubeOverlaySearch = {
-  cubeDuration?: number
-  neonSignDuration?: number
-  showLivestreamNotification?: boolean
+// Search params validation
+type YouTubeWireframeSearch = {
+  transitionMs?: number
+  enableFocus?: boolean
+  layoutMode?: "study" | "drama" | "voice" | "topik" | "children-only"
 }
 
-const YouTubeOverlayRoute = () => {
-  const { cubeDuration, neonSignDuration, showLivestreamNotification } =
-    Route.useSearch()
+const YouTubeWireframeRoute = (): React.JSX.Element => {
+  const { transitionMs, enableFocus, layoutMode } = Route.useSearch()
+
+  const activeLifetimes = useSceneLifetimes()
+  const { currentLayout } = useSceneDrivenLayout()
+
+  // Select layout tree based on mode
+  const layoutTree = layoutMode === "drama" ? dramaTree : currentLayout
 
   return (
-    <div className="h-screen w-screen">
-      <YoutubeOverlay
-        chatData={demoChats}
-        characters={characters}
-        getMainContent={getMainContent}
-        getTopLeftContent={gettopLeftContent}
-        getBottomLeftContent={getbotLeftContent}
-        cubeDuration={cubeDuration}
-        neonSignDuration={neonSignDuration}
-        showLivestreamNotification={showLivestreamNotification}
-        onUnmount={() => {}}
+    <div className="absolute inset-0">
+      <OrchestratedYouTubeViewport
+        layoutTree={layoutTree}
+        activeLifetimes={activeLifetimes}
+        componentRegistry={componentRegistry}
+        transitionMs={transitionMs ?? 300}
+        enableFocus={enableFocus ?? true}
       />
     </div>
   )
 }
 
-export const Route = createFileRoute("/overlays/youtube")({
-  validateSearch: (search: Record<string, unknown>): YouTubeOverlaySearch => {
+export const Route = createFileRoute("/wireframes/youtube")({
+  validateSearch: (search: Record<string, unknown>): YouTubeWireframeSearch => {
     return {
-      cubeDuration: search.cubeDuration
-        ? Number(search.cubeDuration)
+      transitionMs: search.transitionMs
+        ? Number(search.transitionMs)
         : undefined,
-      neonSignDuration: search.neonSignDuration
-        ? Number(search.neonSignDuration)
+      enableFocus: search.enableFocus !== "false",
+      layoutMode: [
+        "study",
+        "drama",
+        "voice",
+        "topik",
+        "children-only",
+      ].includes(search.layoutMode as string)
+        ? (search.layoutMode as YouTubeWireframeSearch["layoutMode"])
         : undefined,
-      showLivestreamNotification: search.showLivestreamNotification !== "false",
     }
   },
-  component: YouTubeOverlayRoute,
+  component: YouTubeWireframeRoute,
 })
