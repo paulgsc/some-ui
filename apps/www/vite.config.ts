@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     allowedHosts: ["nixos.local"],
-    port: 5000,
+    port: 5173,
     strictPort: true,
   },
   plugins: [
