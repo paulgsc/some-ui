@@ -13,7 +13,6 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },
