@@ -51,7 +51,7 @@ export const LayoutEditor = () => {
     (region) => !usedRegions.has(region)
   )
 
-  const handleIntent = (intent: LayoutIntent<YouTubeRegion>) => {
+  const handleIntent = (intent: LayoutIntent<YouTubeRegion>): void => {
     const newTree = applyIntent(tree, intent)
     setTree(newTree)
   }
