@@ -41,7 +41,7 @@ export function applyIntent<R>(
     case "place":
       return placeRegion(tree, intent.region, intent.relativeTo, intent.edge)
 
-    case "move":
+    case "move": {
       // Remove first, then place
       const withoutRegion = removeRegion(tree, intent.region)
       return placeRegion(
@@ -50,6 +50,7 @@ export function applyIntent<R>(
         intent.relativeTo,
         intent.edge
       )
+    }
 
     case "remove":
       return removeRegion(tree, intent.region)
@@ -181,16 +182,18 @@ function insertRelativeTo<R>(
     }
 
     // split node
-    let didRewrite = false
-
     const newChildren = node.children.map((child) => {
       const rewritten = walk(child.node)
       if (rewritten !== child.node) {
-        didRewrite = true
         return { ...child, node: rewritten }
       }
       return child
     })
+
+    // Check if any child was rewritten
+    const didRewrite = newChildren.some(
+      (child, idx) => child.node !== node.children[idx]?.node
+    )
 
     if (!didRewrite) {
       return node
