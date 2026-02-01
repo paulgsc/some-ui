@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react"
 import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
 import { recordingReducer } from "@chat/lib/interview/recording-reducer"
+import { mockUploadAudio } from "@chat/lib/interview/upload-service"
 
 export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
   const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
