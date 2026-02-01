@@ -51,9 +51,9 @@ export const RenderSolved = <T extends string>({
           </div>
         )
       } else {
-        // push children in reverse order to maintain original order
-        for (let i = current.children.length - 1; i >= 0; i--) {
-          stack.push(current.children[i])
+        for (let i = current.children.length; i-- > 0; ) {
+          const child = current.children[i]!
+          stack.push(child)
         }
       }
     }

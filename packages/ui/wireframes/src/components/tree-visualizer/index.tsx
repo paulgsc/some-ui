@@ -29,7 +29,7 @@ const TreeNode = ({
   node: LayoutNode<YouTubeRegion>
   depth: number
   selectedLeaf?: YouTubeRegion | null
-}) => {
+}): JSX.Element => {
   if (node.type === "leaf") {
     const isSelected = selectedLeaf === node.id
     return (
