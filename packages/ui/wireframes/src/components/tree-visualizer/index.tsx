@@ -1,4 +1,5 @@
-import type { LayoutNode } from "@wireframes/lib/layout-engine"
+import type { JSX } from "react"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import type { YouTubeRegion } from "@wireframes/lib/youtube-config"
 import { ChevronRight, Columns2, Rows2 } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -9,7 +10,10 @@ type TreeVisualizerProps = {
   selectedLeaf?: YouTubeRegion | null
 }
 
-export const TreeVisualizer = ({ tree, selectedLeaf }: TreeVisualizerProps) => {
+export const TreeVisualizer = ({
+  tree,
+  selectedLeaf,
+}: TreeVisualizerProps): JSX.Element => {
   return (
     <div className="space-y-1">
       <TreeNode node={tree} depth={0} selectedLeaf={selectedLeaf} />
@@ -25,7 +29,7 @@ const TreeNode = ({
   node: LayoutNode<YouTubeRegion>
   depth: number
   selectedLeaf?: YouTubeRegion | null
-}) => {
+}): JSX.Element => {
   if (node.type === "leaf") {
     const isSelected = selectedLeaf === node.id
     return (

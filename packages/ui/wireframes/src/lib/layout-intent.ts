@@ -41,7 +41,7 @@ export function applyIntent<R>(
     case "place":
       return placeRegion(tree, intent.region, intent.relativeTo, intent.edge)
 
-    case "move":
+    case "move": {
       // Remove first, then place
       const withoutRegion = removeRegion(tree, intent.region)
       return placeRegion(
@@ -50,6 +50,7 @@ export function applyIntent<R>(
         intent.relativeTo,
         intent.edge
       )
+    }
 
     case "remove":
       return removeRegion(tree, intent.region)
@@ -146,6 +147,10 @@ function placeRelativeToRoot<R>(
   }
 }
 
+function insertAt<T>(arr: ReadonlyArray<T>, index: number, value: T): Array<T> {
+  return [...arr.slice(0, index), value, ...arr.slice(index)]
+}
+
 function insertRelativeTo<R>(
   tree: LayoutNode<R>,
   region: R,
@@ -155,55 +160,81 @@ function insertRelativeTo<R>(
   const targetAxis = edge === "left" || edge === "right" ? "row" : "col"
   const insertBefore = edge === "left" || edge === "top"
 
-  const targetLeaf = findLeaf(tree, relativeTo)
-  if (!targetLeaf) return tree
+  function walk(node: LayoutNode<R>): LayoutNode<R> {
+    if (node.type === "leaf") {
+      if (node.id !== relativeTo) return node
 
-  const parentInfo = findParentSplitInternal(tree, relativeTo)
-
-  if (!parentInfo) {
-    return {
-      type: "split",
-      axis: targetAxis,
-      splitId: generateSplitId(),
-      children: insertBefore
-        ? [
-            { node: { type: "leaf", id: region }, weight: 1 },
-            { node: tree, weight: 1 },
-          ]
-        : [
-            { node: tree, weight: 1 },
-            { node: { type: "leaf", id: region }, weight: 1 },
-          ],
+      // Base case: target leaf found, wrap it
+      return {
+        type: "split",
+        axis: targetAxis,
+        splitId: generateSplitId(),
+        children: insertBefore
+          ? [
+              { node: { type: "leaf", id: region }, weight: 1 },
+              { node, weight: 1 },
+            ]
+          : [
+              { node, weight: 1 },
+              { node: { type: "leaf", id: region }, weight: 1 },
+            ],
+      }
     }
+
+    // split node
+    const newChildren = node.children.map((child) => {
+      const rewritten = walk(child.node)
+      if (rewritten !== child.node) {
+        return { ...child, node: rewritten }
+      }
+      return child
+    })
+
+    // Check if any child was rewritten
+    const didRewrite = newChildren.some(
+      (child, idx) => child.node !== node.children[idx]?.node
+    )
+
+    if (!didRewrite) {
+      return node
+    }
+
+    // If the rewritten child is now a split we may need to merge axes
+    const childIndex = newChildren.findIndex(
+      (c) => c.node.type === "split" && c.node.axis === targetAxis
+    )
+
+    if (childIndex === -1) {
+      return { ...node, children: newChildren }
+    }
+
+    const targetChild = newChildren[childIndex]
+    if (!targetChild || targetChild.node.type !== "split") {
+      return { ...node, children: newChildren }
+    }
+
+    // Axis matches → flatten
+    if (node.axis === targetAxis) {
+      return {
+        ...node,
+        children: insertAt(
+          [
+            ...newChildren.slice(0, childIndex),
+            ...targetChild.node.children,
+            ...newChildren.slice(childIndex + 1),
+          ],
+          insertBefore
+            ? childIndex
+            : childIndex + targetChild.node.children.length,
+          { node: { type: "leaf", id: region }, weight: 1 }
+        ),
+      }
+    }
+
+    return { ...node, children: newChildren }
   }
 
-  const { parent, childIndex } = parentInfo
-
-  if (parent.axis === targetAxis) {
-    const newLeaf: LayoutNode<R> = { type: "leaf", id: region }
-    const insertIndex = insertBefore ? childIndex : childIndex + 1
-    parent.children.splice(insertIndex, 0, { node: newLeaf, weight: 1 })
-    return tree
-  }
-
-  const targetChild = parent.children[childIndex]
-  const newSplit: LayoutNode<R> = {
-    type: "split",
-    axis: targetAxis,
-    splitId: generateSplitId(),
-    children: insertBefore
-      ? [
-          { node: { type: "leaf", id: region }, weight: 1 },
-          { node: cloneTree(targetChild.node), weight: 1 },
-        ]
-      : [
-          { node: cloneTree(targetChild.node), weight: 1 },
-          { node: { type: "leaf", id: region }, weight: 1 },
-        ],
-  }
-  parent.children[childIndex] = { node: newSplit, weight: targetChild.weight }
-
-  return tree
+  return walk(tree)
 }
 
 // Remove a region from the tree
@@ -279,10 +310,10 @@ function resizeRegion<R>(
   const isTrailingEdge = edge === "right" || edge === "bottom"
   const siblingIndex = isTrailingEdge ? leafIndex + 1 : leafIndex - 1
 
-  if (siblingIndex < 0 || siblingIndex >= split.children.length) return tree
-
   const currentChild = split.children[leafIndex]
   const siblingChild = split.children[siblingIndex]
+
+  if (!currentChild || !siblingChild) return tree
 
   // Calculate weight per pixel in THIS SPECIFIC SPLIT
   const totalWeightInSplit = split.children.reduce((s, c) => s + c.weight, 0)
@@ -312,42 +343,10 @@ function resizeRegion<R>(
     newSiblingWeight *= scale
   }
 
-  split.children[leafIndex].weight = newCurrentWeight
-  split.children[siblingIndex].weight = newSiblingWeight
+  currentChild.weight = newCurrentWeight
+  siblingChild.weight = newSiblingWeight
 
   return cloned
-}
-
-function resizeLeafAtBoundary<R>(
-  tree: LayoutNode<R>,
-  region: R,
-  edge: string,
-  deltaPx: number
-): LayoutNode<R> {
-  // Find the leaf and adjust its weight
-  function adjustWeight(node: LayoutNode<R>): LayoutNode<R> {
-    if (node.type === "leaf" && node.id === region) {
-      return node // Leaves don't have weight
-    }
-
-    if (node.type === "split") {
-      const children = node.children.map((child) => {
-        if (containsRegion(child.node, region)) {
-          return {
-            ...child,
-            weight: Math.max(50, child.weight + deltaPx),
-          }
-        }
-        return child
-      })
-
-      return { ...node, children }
-    }
-
-    return node
-  }
-
-  return adjustWeight(tree)
 }
 
 function findAncestorSplitByAxis<R>(
@@ -366,8 +365,8 @@ function findAncestorSplitByAxis<R>(
     }
 
     if (node.type === "split") {
-      for (let i = 0; i < node.children.length; i++) {
-        if (buildPath(node.children[i].node, i)) {
+      for (const [i, child] of node.children.entries()) {
+        if (buildPath(child.node, i)) {
           pathToTarget.push({ node, parentChildIndex: childIndexInParent })
           return true
         }
@@ -379,22 +378,15 @@ function findAncestorSplitByAxis<R>(
 
   buildPath(tree, -1)
 
-  for (let i = 0; i < pathToTarget.length; i++) {
-    const { node } = pathToTarget[i]
-
+  for (const { node } of pathToTarget) {
     if (node.type === "split" && node.axis === axis) {
-      let targetChildIndex = -1
-
-      for (let j = 0; j < node.children.length; j++) {
-        if (containsRegion(node.children[j].node, targetId)) {
-          targetChildIndex = j
-          break
-        }
-      }
+      const targetChildIndex = node.children.findIndex((child) =>
+        containsRegion(child.node, targetId)
+      )
 
       if (targetChildIndex !== -1) {
         return {
-          split: node as LayoutNode<R> & { type: "split" },
+          split: node,
           leafIndex: targetChildIndex,
         }
       }
@@ -409,45 +401,6 @@ function containsRegion<R>(node: LayoutNode<R>, region: R): boolean {
     return node.id === region
   }
   return node.children.some((child) => containsRegion(child.node, region))
-}
-
-// Find a leaf by ID
-function findLeaf<R>(tree: LayoutNode<R>, leafId: R): LayoutNode<R> | null {
-  if (tree.type === "leaf") {
-    return tree.id === leafId ? tree : null
-  }
-
-  for (const child of tree.children) {
-    const found = findLeaf(child.node, leafId)
-    if (found) return found
-  }
-
-  return null
-}
-
-// Find parent split of a leaf
-function findParentSplitInternal<R>(
-  tree: LayoutNode<R>,
-  targetId: R
-): { parent: LayoutNode<R> & { type: "split" }; childIndex: number } | null {
-  if (tree.type === "leaf") return null
-
-  for (let i = 0; i < tree.children.length; i++) {
-    const { node: child } = tree.children[i]
-    if (child.type === "leaf" && child.id === targetId) {
-      return {
-        parent: tree as LayoutNode<R> & { type: "split" },
-        childIndex: i,
-      }
-    }
-
-    if (child.type === "split") {
-      const found = findParentSplitInternal(child, targetId)
-      if (found) return found
-    }
-  }
-
-  return null
 }
 
 // Remove a leaf from the tree
@@ -502,7 +455,7 @@ function normalizeTree<R>(tree: LayoutNode<R>): LayoutNode<R> {
 
   // Collapse single-child splits
   if (normalizedChildren.length === 1) {
-    return normalizedChildren[0].node
+    return normalizedChildren[0]!.node
   }
 
   return {
@@ -548,62 +501,4 @@ export function getAllSplitIds<R>(tree: LayoutNode<R> | null): Array<string> {
   }
 
   return splitIds
-}
-
-function resizeAgainstRoot<R>(
-  tree: LayoutNode<R>,
-  region: R,
-  edge: "left" | "right" | "top" | "bottom",
-  deltaPx: number,
-  containerSizePx: number,
-  resizeAxis: "row" | "col"
-): LayoutNode<R> | null {
-  // When resizing at container edge, we can only expand in one direction
-  // This treats the container as a virtual sibling with infinite capacity
-
-  // For now, we wrap the tree in a new split if needed
-  // This models the container as a participant
-
-  const isGrowingOut = edge === "left" || edge === "top"
-
-  if (!isGrowingOut) {
-    // Growing right/bottom - already at max, no-op
-    return tree
-  }
-
-  // Growing left/top means we want to push the entire layout
-  // This is a special case that could insert a spacer
-  // For simplicity, we'll just allow the weight adjustment on the root
-
-  if (tree.type === "split" && tree.axis === resizeAxis) {
-    // Find the child containing the region and adjust its weight
-    const childIndex = findChildContainingRegion(tree, region)
-    if (childIndex !== -1 && childIndex === 0) {
-      // Leftmost/topmost child - can expand into container
-      const totalWeight = tree.children.reduce(
-        (sum, child) => sum + child.weight,
-        0
-      )
-      const deltaWeight = (deltaPx / containerSizePx) * totalWeight
-
-      tree.children[0].weight = Math.max(
-        0.1,
-        tree.children[0].weight + deltaWeight
-      )
-    }
-  }
-
-  return tree
-}
-
-function findChildContainingRegion<R>(
-  split: LayoutNode<R> & { type: "split" },
-  region: R
-): number {
-  for (let i = 0; i < split.children.length; i++) {
-    if (containsRegion(split.children[i].node, region)) {
-      return i
-    }
-  }
-  return -1
 }

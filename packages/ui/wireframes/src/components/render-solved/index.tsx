@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
 
@@ -12,7 +12,7 @@ export const RenderSolved = <T extends string>({
   renderLeaf: (id: T) => ReactNode
   onLeafClick?: (id: T, position: { x: number; y: number }) => void
   transitionMs?: number
-}) => {
+}): JSX.Element => {
   // Iterative render using useMemo for performance
   const elements = useMemo(() => {
     const stack: Array<SolvedNode<T>> = [node]
@@ -51,9 +51,9 @@ export const RenderSolved = <T extends string>({
           </div>
         )
       } else {
-        // push children in reverse order to maintain original order
-        for (let i = current.children.length - 1; i >= 0; i--) {
-          stack.push(current.children[i])
+        for (let i = current.children.length; i-- > 0; ) {
+          const child = current.children[i]!
+          stack.push(child)
         }
       }
     }

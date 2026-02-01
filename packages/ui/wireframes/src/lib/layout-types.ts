@@ -57,37 +57,36 @@ export type TreeNode<T> =
       children: Array<TreeNode<T>>
     }
 
-export function getFocusPath<T>(
-  tree: TreeNode<T>,
+export function getFocusPath<N, T>(
+  tree: N,
   focusId: T,
-  getChildren: (node: TreeNode<T>) => Array<TreeNode<T>>
+  getChildren: (node: N) => Array<N>,
+  getKey: (node: N) => ConstraintKey<T> | null
 ): Set<ConstraintKey<T>> {
   const pathSet = new Set<ConstraintKey<T>>()
-  const parents = new Map<TreeNode<T>, TreeNode<T>>()
-  const stack: Array<TreeNode<T>> = [tree]
-  let targetNode: TreeNode<T> | null = null
+  const parents = new Map<N, N>()
+  const stack: Array<N> = [tree]
+  let target: N | null = null
 
-  // Search for the leaf
   while (stack.length) {
     const curr = stack.pop()!
-    if (curr.type === "leaf" && curr.id === focusId) {
-      targetNode = curr
+    const key = getKey(curr)
+
+    if (key === focusId) {
+      target = curr
       break
     }
-    if (curr.type === "split") {
-      const children = getChildren(curr)
-      for (const child of children) {
-        parents.set(child, curr)
-        stack.push(child)
-      }
+
+    for (const child of getChildren(curr)) {
+      parents.set(child, curr)
+      stack.push(child)
     }
   }
 
-  // Backtrack to root
-  let curr: TreeNode<T> | null = targetNode
+  let curr = target
   while (curr) {
-    const key = curr.type === "leaf" ? curr.id : curr.splitId
-    pathSet.add(key)
+    const key = getKey(curr)
+    if (key != null) pathSet.add(key)
     curr = parents.get(curr) ?? null
   }
 

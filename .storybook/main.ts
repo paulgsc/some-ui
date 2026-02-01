@@ -1,4 +1,5 @@
 // This file has been automatically migrated to valid ESM format by Storybook.
+import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { dirname, join, resolve } from "path"
@@ -49,11 +50,13 @@ function storyGlobs(): Array<string> {
  * It is needed in projects that use Yarn PnP or are set up within a monorepo.
  */
 
+const someContentPublic = resolve(__dirname, "../packages/some-content/public")
+
 const config: StorybookConfig = {
   stories: storyGlobs(),
   logLevel: "error",
 
-  staticDirs: ["../packages/some-content/public"],
+  staticDirs: existsSync(someContentPublic) ? [someContentPublic] : [],
 
   core: {
     disableTelemetry: true,
@@ -63,7 +66,6 @@ const config: StorybookConfig = {
   addons: [
     getAbsolutePath("@storybook/addon-onboarding"),
     getAbsolutePath("@storybook/addon-links"),
-    getAbsolutePath("@chromatic-com/storybook"),
     getAbsolutePath("@chromatic-com/storybook"),
     getAbsolutePath("@storybook/addon-docs"),
   ],

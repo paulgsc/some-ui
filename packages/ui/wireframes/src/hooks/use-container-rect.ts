@@ -1,14 +1,20 @@
+import type { RefObject } from "react"
 import { useLayoutEffect, useRef, useState } from "react"
-import type { Rect } from "@wireframes/lib/resizable-layout"
+import type { Rect } from "@wireframes/lib/layout-types"
 
-export function useContainerRect() {
+type ReturnType = {
+  ref: RefObject<HTMLDivElement | null>
+  rect: Rect | null
+}
+
+export function useContainerRect(): ReturnType {
   const ref = useRef<HTMLDivElement | null>(null)
   const [rect, setRect] = useState<Rect | null>(null)
 
   useLayoutEffect(() => {
     if (!ref.current) return
 
-    const measure = () => {
+    const measure = (): void => {
       const r = ref.current!.getBoundingClientRect()
       setRect({
         x: 0,
