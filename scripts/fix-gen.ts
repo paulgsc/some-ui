@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process"
 import {
+  readdirSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -28,8 +29,10 @@ export function generateFixContext(): GenerateFixContextResult {
 
   if (existsSync(FIX_DIR)) {
     try {
-      rmSync(FIX_DIR, { recursive: true, force: true })
-      console.log(`Cleared existing ${FIX_DIR} directory.`)
+      for (const entry of readdirSync(FIX_DIR)) {
+        rmSync(join(FIX_DIR, entry), { recursive: true, force: true })
+      }
+      console.log(`Cleared contents of ${FIX_DIR}.`)
     } catch (err) {
       console.error(`Failed to clear ${FIX_DIR} directory:`, err)
       hasErrors = true

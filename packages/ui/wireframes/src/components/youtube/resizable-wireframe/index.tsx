@@ -78,7 +78,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
         ) as any) {
           if (!panel) continue
 
-          const factory = (): void =>
+          const factory = () =>
             renderRegistryComponent(
               componentRegistry,
               panel.registry_key,
