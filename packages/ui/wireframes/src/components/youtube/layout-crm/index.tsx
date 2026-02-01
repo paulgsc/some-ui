@@ -68,7 +68,7 @@ export const LayoutEditor = () => {
     region: YouTubeRegion,
     relativeTo: YouTubeRegion,
     edge: "left" | "right" | "top" | "bottom"
-  ) => {
+  ): void => {
     handleIntent({
       kind: "place",
       region,

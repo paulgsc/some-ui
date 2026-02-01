@@ -1,4 +1,4 @@
-import type { Rect, SolvedNode } from "@wireframes/lib/resizable-layout"
+import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 
 /**
  * Recursively extract all rects from a solved layout tree

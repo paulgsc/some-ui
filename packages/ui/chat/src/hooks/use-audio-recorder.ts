@@ -45,7 +45,7 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
   // Handle success state - upload and complete
   useEffect(() => {
     if (state.type === "success") {
-      const uploadAndComplete = async () => {
+      const uploadAndComplete = async (): Promise<void> => {
         try {
           await mockUploadAudio(state.audioBlob)
 

@@ -94,7 +94,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
   )
 }
 
-export const LoadingCard = () => {
+export const LoadingCard = (): React.JSX.Element => {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardContent className="flex items-center justify-center p-8">
@@ -103,7 +103,7 @@ export const LoadingCard = () => {
           <div className="text-center">
             <h3 className="font-medium">Please wait</h3>
             <p className="text-muted-foreground mt-1 text-sm">
-              We're getting things ready for you
+              Were getting things ready for you
             </p>
           </div>
         </div>

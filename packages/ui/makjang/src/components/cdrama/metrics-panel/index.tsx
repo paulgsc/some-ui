@@ -8,7 +8,7 @@ type MetricsPanelProps = {
   rewatchValue: number
 }
 
-const getRatingEmoji = (rating: number) => {
+const getRatingEmoji = (rating: number): string => {
   if (rating >= 9) return "🌸"
   if (rating >= 7.5) return "💖"
   if (rating >= 6) return "💕"
@@ -16,7 +16,7 @@ const getRatingEmoji = (rating: number) => {
   return "😢"
 }
 
-const getRatingLabel = (rating: number) => {
+const getRatingLabel = (rating: number): string => {
   if (rating >= 9) return "Masterpiece"
   if (rating >= 7.5) return "Excellent"
   if (rating >= 6) return "Good"
@@ -28,7 +28,7 @@ export const MetricsPanel = ({
   overallRating,
   likelihoodToFinish,
   rewatchValue,
-}: MetricsPanelProps) => {
+}: MetricsPanelProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
   const [animatedRating, setAnimatedRating] = useState(0)
 
@@ -50,7 +50,7 @@ export const MetricsPanel = ({
       }
     }, duration / steps)
 
-    return () => clearInterval(timer)
+    return (): void => clearInterval(timer)
   }, [overallRating])
 
   return (
