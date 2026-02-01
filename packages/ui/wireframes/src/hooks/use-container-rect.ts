@@ -1,8 +1,9 @@
+import type { RefObject } from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import type { Rect } from "@wireframes/lib/layout-types"
 
 type ReturnType = {
-  ref: HTMLDivElement | null
+  ref: RefObject<HTMLDivElement | null>
   rect: Rect | null
 }
 
