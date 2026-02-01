@@ -78,7 +78,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
         ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
           if (!panel) continue
 
-          const factory = (): void =>
+          const factory = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,
               panel.registry_key,
