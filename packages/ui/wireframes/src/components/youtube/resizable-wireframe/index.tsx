@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { RenderSolved } from "@wireframes/components/render-solved"
@@ -53,7 +53,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   componentRegistry,
   enableFocus = true,
   transitionMs = 300,
-}: OrchestratedViewportProps<K>) => {
+}: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
   // Consumer manages its own focus state
@@ -75,7 +75,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       for (const layout of scene.ui) {
         for (const [region, panel] of Object.entries(
           layout.panels ?? {}
-        ) as any) {
+        ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
           if (!panel) continue
 
           const factory = (): void =>
@@ -87,7 +87,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
             )
 
           panels[region] ??= []
-          panels[region]!.push(factory)
+          panels[region].push(factory)
         }
       }
     }
@@ -95,7 +95,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     return Object.fromEntries(
       Object.entries(panels).map(([k, factories]) => [
         k,
-        () => factories.map((f) => f()),
+        (): ReactNode => factories.map((f) => f()),
       ])
     ) as Record<YouTubeRegion, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
@@ -131,7 +131,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
-    []
+    [focusControls]
   )
 
   const handleClosePopup = useCallback(() => {
