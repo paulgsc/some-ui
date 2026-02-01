@@ -12,6 +12,9 @@ const workspace = process.env.STORYBOOK_WORKSPACE
 const scope = process.env.STORYBOOK_SCOPE // e.g. "packages" | "extensions"
 const exclude = (process.env.STORYBOOK_EXCLUDE ?? "").split(",").filter(Boolean)
 
+// GitHub Pages base path (set your repo name here)
+const GITHUB_PAGES_BASE = process.env.STORYBOOK_BASE_PATH || ""
+
 function storyGlobs(): Array<string> {
   let base: Array<string>
 
@@ -74,6 +77,12 @@ const config: StorybookConfig = {
         STORYBOOK: JSON.stringify(process.env.STORYBOOK),
       },
     }
+
+    // Set base path for GitHub Pages
+    if (GITHUB_PAGES_BASE) {
+      config.base = GITHUB_PAGES_BASE
+    }
+
     config.resolve = {
       ...config.resolve,
       alias: {
