@@ -64,8 +64,11 @@ export const WaveBarChart: FC<WaveBarChartProps> = ({
           )}
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Volume</label>
+          <label htmlFor="amplitude-slider" className="text-sm font-medium">
+            Volume
+          </label>
           <Slider
+            id="amplitude-slider"
             min={0}
             max={1}
             step={0.01}
