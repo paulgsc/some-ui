@@ -14,6 +14,7 @@ export const SCENE_FILES = [
   "leetype",
   "topik",
   "voice",
+  "interview",
 ] as const
 
 export type SceneFileName = (typeof SCENE_FILES)[number]
