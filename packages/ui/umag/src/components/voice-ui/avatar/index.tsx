@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { VoiceAvatarControls } from "@umag/components/voice-ui/controls"
 import { VoiceAvatarCanvas } from "@umag/components/voice-ui/voice-card"
@@ -8,7 +9,7 @@ import { useParticles } from "@umag/hooks/voice-ui/use-particles"
 import { useTheme } from "@umag/hooks/voice-ui/use-theme"
 import { useWaveform } from "@umag/hooks/voice-ui/use-waveform"
 
-export const VoiceAvatar = () => {
+export const VoiceAvatar = (): JSX.Element => {
   const [isActive, setIsActive] = useState(false)
   const { theme, cycleTheme } = useTheme()
   const { waveformData, updateWaveform, getAverageAmplitude } = useWaveform()
@@ -21,8 +22,10 @@ export const VoiceAvatar = () => {
     centerX: number,
     centerY: number,
     intensity: number
-  ) => {
+  ): void => {
+    if (!theme) return
     const [r, g, b] = hexToRgb(theme.color)
+
     ctx.beginPath()
     ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 + intensity * 0.1})`
     ctx.lineWidth = 3
@@ -32,17 +35,24 @@ export const VoiceAvatar = () => {
     const irisWaveWidth = 100
     const irisWaveHeight = 25
     const startX = centerX - irisWaveWidth / 2
+    const data = waveformData.current
 
-    for (let i = 0; i < waveformData.current.length; i++) {
-      const x = startX + (i / (waveformData.current.length - 1)) * irisWaveWidth
-      const y = centerY + waveformData.current[i] * irisWaveHeight
-      if (i === 0) ctx.moveTo(x, y)
-      else {
-        const prevX =
-          startX + ((i - 1) / (waveformData.current.length - 1)) * irisWaveWidth
-        const prevY = centerY + waveformData.current[i - 1] * irisWaveHeight
-        const cpX = (prevX + x) / 2
-        ctx.quadraticCurveTo(cpX, prevY, x, y)
+    // Using entries() and local bindings to satisfy noUncheckedIndexedAccess
+    for (const [i, value] of data.entries()) {
+      const x = startX + (i / (data.length - 1)) * irisWaveWidth
+      const y = centerY + value * irisWaveHeight
+
+      if (i === 0) {
+        ctx.moveTo(x, y)
+      } else {
+        const prevValue = data[i - 1]
+        // Explicitly handle possible undefined for the previous index
+        if (prevValue !== undefined) {
+          const prevX = startX + ((i - 1) / (data.length - 1)) * irisWaveWidth
+          const prevY = centerY + prevValue * irisWaveHeight
+          const cpX = (prevX + x) / 2
+          ctx.quadraticCurveTo(cpX, prevY, x, y)
+        }
       }
     }
     ctx.stroke()
@@ -55,9 +65,9 @@ export const VoiceAvatar = () => {
     waveformData,
     getAverageAmplitude,
     eyeOffset,
-    updateEyeOffset: (time) => {
+    updateEyeOffset: (_: HTMLCanvasElement, time: number): void => {
       updateEyeOffset()
-      updateWaveform(isActive, time as any)
+      updateWaveform(isActive, time)
     },
     blinkState,
     updateBlinking,
@@ -66,14 +76,15 @@ export const VoiceAvatar = () => {
   })
 
   useEffect(() => {
-    const handleMouseMoveWrapper = (e: MouseEvent) => {
+    const handleMouseMoveWrapper = (e: MouseEvent): void => {
       const canvas = canvasRef.current
       if (!canvas) return
       handleMouseMove(e, canvas)
     }
 
     window.addEventListener("mousemove", handleMouseMoveWrapper)
-    return () => window.removeEventListener("mousemove", handleMouseMoveWrapper)
+    return (): void =>
+      window.removeEventListener("mousemove", handleMouseMoveWrapper)
   }, [handleMouseMove, canvasRef])
 
   return (
@@ -82,7 +93,7 @@ export const VoiceAvatar = () => {
 
       <VoiceAvatarControls
         isActive={isActive}
-        themeName={theme.name}
+        themeName={theme?.name ?? ""}
         onToggle={() => setIsActive(!isActive)}
         onTest={() => {
           if (!isActive) {
@@ -95,20 +106,21 @@ export const VoiceAvatar = () => {
 
       <p className="mt-6 text-sm tracking-wide text-white transition-colors duration-500">
         Move your cursor to interact • Themes change during blinks •{" "}
-        {theme.temp === "hot" ? "Hot energy" : "Cool vibes"}
+        {theme?.temp === "hot" ? "Hot energy" : "Cool vibes"}
       </p>
     </div>
   )
 }
 
-// utils in same file for now
 const hexToRgb = (hex: string): [number, number, number] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  return result
-    ? [
-        parseInt(result[1], 16),
-        parseInt(result[2], 16),
-        parseInt(result[3], 16),
-      ]
-    : [234, 179, 8]
+  if (!result) return [234, 179, 8]
+
+  // result[1..3] can be undefined in theory according to TS regex types,
+  // though regex guarantees matches here. Fallback to 0.
+  return [
+    parseInt(result[1] ?? "0", 16),
+    parseInt(result[2] ?? "0", 16),
+    parseInt(result[3] ?? "0", 16),
+  ]
 }
