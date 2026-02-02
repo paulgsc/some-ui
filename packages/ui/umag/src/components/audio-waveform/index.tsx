@@ -1,3 +1,4 @@
+import type { FC } from "react"
 import {
   useAudioContext,
   useAudioElement,
@@ -13,7 +14,7 @@ type WaveBarChartProps = {
   bars: number
 }
 
-export const WaveBarChart: React.FC<WaveBarChartProps> = ({
+export const WaveBarChart: FC<WaveBarChartProps> = ({
   width,
   height,
   bars,
@@ -69,7 +70,7 @@ export const WaveBarChart: React.FC<WaveBarChartProps> = ({
             max={1}
             step={0.01}
             value={[volume]}
-            onValueChange={(value) => setVolume(value[0])}
+            onValueChange={(value) => setVolume(value[0] ?? 0)}
           />
         </div>
         <Button onClick={togglePlay} disabled={!fileName}>
