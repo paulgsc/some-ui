@@ -49,7 +49,14 @@ const toCamelCase = (fileName: SceneFileName): string => {
     .join("")
 }
 
-export const useSceneLibrary = () => {
+export const useSceneLibrary = (): {
+  library: Map<SceneFileName, SceneConfig>
+  loading: boolean
+  error: string | null
+  getScene: (fileName: SceneFileName) => SceneConfig | undefined
+  getLibraryItems: () => Array<SceneLibraryItem>
+  reload: () => Promise<void>
+} => {
   const [library, setLibrary] = useState<Map<SceneFileName, SceneConfig>>(
     new Map()
   )
@@ -75,9 +82,7 @@ export const useSceneLibrary = () => {
             if (!res.ok) {
               throw new Error(`HTTP ${res.status}`)
             }
-
             const rawJson = await res.json()
-
             const ui: Array<UILayoutIntent> = SceneUIFileSchema.parse(rawJson)
 
             const scene: SceneConfig = SceneConfigSchema.parse({
@@ -88,12 +93,13 @@ export const useSceneLibrary = () => {
             })
 
             loadedScenes.set(fileName, scene)
-
+            // eslint-disable-next-line no-console
             console.log(`[SceneLibrary] Loaded ${fileName}:`, {
               uiIntents: ui.length,
               displayName: scene.scene_name,
             })
           } catch (err) {
+            // eslint-disable-next-line no-console
             console.warn(
               `[SceneLibrary] Failed to load ${fileName}, using fallback`,
               err
