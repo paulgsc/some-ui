@@ -77,3 +77,4 @@ extensions/**/test-results/
 
 # Misc
 .fix
+certs/*

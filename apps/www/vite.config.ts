@@ -1,3 +1,4 @@
+import fs from "node:fs"
 import { resolve } from "node:path"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
@@ -11,6 +12,10 @@ export default defineConfig({
     allowedHosts: ["nixos.local"],
     port: 5173,
     strictPort: true,
+    https: {
+      cert: fs.readFileSync("../../certs/nixos.local+3.pem"),
+      key: fs.readFileSync("../../certs/nixos.local+3-key.pem"),
+    },
   },
   plugins: [
     TanStackRouterVite({ autoCodeSplitting: true }),
