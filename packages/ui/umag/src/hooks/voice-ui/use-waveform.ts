@@ -4,7 +4,7 @@ export const useWaveform = () => {
   const waveformData = useRef<Array<number>>(new Array(48).fill(0))
   const targetWaveform = useRef<Array<number>>(new Array(48).fill(0))
 
-  const updateWaveform = (isActive: boolean, time: number) => {
+  const updateWaveform = (isActive, time: number) => {
     if (isActive) {
       for (let i = 0; i < targetWaveform.current.length; i++) {
         const freq1 = Math.sin(time * 3 + i * 0.4) * 0.4

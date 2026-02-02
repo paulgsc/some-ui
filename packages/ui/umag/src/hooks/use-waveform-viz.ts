@@ -28,7 +28,7 @@ export function useWaveformVisualization(
 
       const sampledData = Array.from({ length: bars }, (_, i) => {
         const index = Math.floor((i / bars) * bufferLength)
-        const value = dataArray[index]
+        const value = dataArray[index] ?? 0
         return {
           x: i * barWidth,
           y: ((value - 128) / 128) * height * 0.4 + midHeight,
