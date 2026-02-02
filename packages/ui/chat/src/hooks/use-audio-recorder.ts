@@ -89,6 +89,7 @@ export const useAudioRecorder = (
       dispatch({ type: "PERMISSION_GRANTED", stream })
       serviceRef.current!.startRecording(stream)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(error)
       dispatch({
         type: "PERMISSION_DENIED",

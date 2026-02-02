@@ -6,7 +6,7 @@ export class AudioRecordingService {
   async requestPermission(): Promise<MediaStream> {
     try {
       // Check if browser supports mediaDevices API
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (!navigator.mediaDevices?.getUserMedia) {
         // Check if we're in an insecure context
         const isLocalhost =
           window.location.hostname === "localhost" ||
@@ -99,7 +99,7 @@ export class AudioRecordingService {
 
       this.mediaRecorder = new MediaRecorder(stream, { mimeType })
 
-      this.mediaRecorder.ondataavailable = (event) => {
+      this.mediaRecorder.ondataavailable = (event: BlobEvent): void => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data)
         }
@@ -138,7 +138,7 @@ export class AudioRecordingService {
         return
       }
 
-      this.mediaRecorder.onstop = () => {
+      this.mediaRecorder.onstop = (): void => {
         try {
           const blob = new Blob(this.audioChunks, {
             type: this.mediaRecorder!.mimeType,
@@ -147,7 +147,7 @@ export class AudioRecordingService {
           this.cleanup()
           resolve({ blob, url })
         } catch (error) {
-          reject(new Error("Failed to process recording"))
+          reject(new Error("Failed to process recording", { cause: error }))
         }
       }
 
