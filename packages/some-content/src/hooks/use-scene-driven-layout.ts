@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { SCENE_LAYOUT_MAP } from "@content/types/layout-trees-map"
+import type { YouTubeRegion } from "some-types-utils"
 import { usePrimaryScene } from "some-ui-utils"
 import type { LayoutNode } from "wireframes"
 

@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react"
 import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
-import type { RecordingState } from "@chat/lib/interview/recording-reducer"
+import type { RecordingState } from "@chat/types/interview"
 import { recordingReducer } from "@chat/lib/interview/recording-reducer"
 import { mockUploadAudio } from "@chat/lib/interview/upload-service"
 

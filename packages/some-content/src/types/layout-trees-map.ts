@@ -10,6 +10,7 @@ import type { LayoutNode } from "wireframes"
 export type SceneName =
   | "cdrama"
   | "assessment"
+  | "interview"
   | "topik"
   | "voice"
   | "constant"
@@ -20,6 +21,7 @@ export type SceneName =
 export const SCENE_LAYOUT_MAP: Record<SceneName, LayoutNode<YouTubeRegion>> = {
   cdrama: dramaTree,
   assessment: studyTree,
+  interview: topikTree,
   topik: topikTree,
   voice: voiceTree,
   constant: studyTree,
