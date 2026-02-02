@@ -9,7 +9,7 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 jobs:
   build:
@@ -17,54 +17,74 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # -----------------
+      # Nix + flakes
+      # -----------------
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Cache Nix store
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      # -----------------
+      # Node + pnpm
+      # -----------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc" # Consistent with your Release workflow
+          node-version-file: .nvmrc
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.11.1
       - name: Get pnpm store directory
         id: pnpm-cache
-        shell: bash
-        run: |
-          echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-      - name: Setup pnpm cache
+        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Cache pnpm store
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-pnpm-
+      # -----------------
+      # Build (CI shell)
+      # -----------------
       - name: Install dependencies
         run: |
-          pnpm install --frozen-lockfile --prefer-offline
-          npx husky disable
+          nix develop .#ci --command bash -c "
+            pnpm install --frozen-lockfile --prefer-offline &&
+            npx husky disable
+          "
         env:
           HUSKY_SKIP_INSTALL: 1
-      - name: Build Workspace Packages
-        run: pnpm build
+      - name: Build workspace packages
+        run: nix develop .#ci --command pnpm build
         env:
           NODE_ENV: production
       - name: Build Storybook
-        run: pnpm run build-storybook
+        run: nix develop .#ci --command pnpm run build-storybook
         env:
+          NODE_ENV: production
           NODE_OPTIONS: "--max-old-space-size=4096"
           STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/
-          NODE_ENV: production
+      # -----------------
+      # Pages
+      # -----------------
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './storybook-static'
+          path: ./storybook-static
   deploy:
+    runs-on: ubuntu-latest
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
