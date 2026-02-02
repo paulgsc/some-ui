@@ -5,6 +5,33 @@ export class AudioRecordingService {
 
   async requestPermission(): Promise<MediaStream> {
     try {
+      // Check if browser supports mediaDevices API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Check if we're in an insecure context
+        const isLocalhost =
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname === "[::1]"
+        const isSecure = window.location.protocol === "https:" || isLocalhost
+
+        let errorMessage = "Your browser doesn't support audio recording. "
+
+        if (!isSecure) {
+          errorMessage += "Audio recording requires HTTPS (or localhost). "
+        }
+
+        // Check if we're in an iframe (common in Storybook)
+        if (window !== window.top) {
+          errorMessage +=
+            "This feature may not work in an iframe/Storybook. Try opening in a new window or running your app directly. "
+        }
+
+        errorMessage +=
+          "Please use a modern browser like Chrome, Firefox, or Safari."
+
+        throw new Error(errorMessage)
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -21,17 +48,30 @@ export class AudioRecordingService {
             { cause: error }
           )
         }
-
         if (error.name === "NotFoundError") {
           throw new Error(
             "No microphone found. Please connect a microphone and try again.",
             { cause: error }
           )
         }
+        if (error.name === "NotSupportedError" || error.name === "TypeError") {
+          throw new Error(
+            "Audio recording is not supported. Please ensure you're using HTTPS (or localhost) and a modern browser.",
+            { cause: error }
+          )
+        }
+      }
+
+      // Handle the case where error is already our custom error
+      if (
+        error instanceof Error &&
+        error.message.includes("doesn't support audio recording")
+      ) {
+        throw error
       }
 
       throw new Error(
-        "Failed to access microphone. Please check your browser permissions.",
+        "Failed to access microphone. Please check your browser permissions and ensure you're on HTTPS or localhost.",
         { cause: error }
       )
     }
@@ -42,7 +82,21 @@ export class AudioRecordingService {
     this.audioChunks = []
 
     try {
+      // Check if MediaRecorder is supported
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error(
+          "MediaRecorder is not supported in your browser. Please use a modern browser."
+        )
+      }
+
       const mimeType = this.getSupportedMimeType()
+
+      if (!mimeType) {
+        throw new Error(
+          "No supported audio format found. Please use a modern browser like Chrome, Firefox, or Safari."
+        )
+      }
+
       this.mediaRecorder = new MediaRecorder(stream, { mimeType })
 
       this.mediaRecorder.ondataavailable = (event) => {
@@ -53,8 +107,14 @@ export class AudioRecordingService {
 
       this.mediaRecorder.start(100) // Collect data every 100ms
     } catch (error) {
+      // Re-throw our custom errors
+      if (error instanceof Error && error.message.includes("not supported")) {
+        throw error
+      }
+
       throw new Error(
-        "Failed to start recording. Your browser may not support audio recording."
+        "Failed to start recording. Your browser may not support audio recording.",
+        { cause: error }
       )
     }
   }

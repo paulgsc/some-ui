@@ -1,8 +1,8 @@
 import { useEffect, useReducer, useRef, useState } from "react"
 import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
-import type { RecordingState } from "@chat/types/interview"
 import { recordingReducer } from "@chat/lib/interview/recording-reducer"
 import { mockUploadAudio } from "@chat/lib/interview/upload-service"
+import type { RecordingState } from "@chat/types/interview"
 
 type UseAudioRecorderReturn = {
   state: RecordingState
@@ -89,6 +89,7 @@ export const useAudioRecorder = (
       dispatch({ type: "PERMISSION_GRANTED", stream })
       serviceRef.current!.startRecording(stream)
     } catch (error) {
+      console.error(error)
       dispatch({
         type: "PERMISSION_DENIED",
         error: error instanceof Error ? error.message : "Permission denied",
