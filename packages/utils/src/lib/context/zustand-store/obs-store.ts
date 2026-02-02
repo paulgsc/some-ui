@@ -1,18 +1,17 @@
-
-import { create } from "zustand"
-import { useShallow } from "zustand/shallow"
 import type {
   ClientObsState,
-  ObsEvent,
-  ObsCommand,
-  SceneInfo,
-  InputInfo,
-  SourceInfo,
-  TransitionInfo,
   FilterInfo,
   HotkeyInfo,
+  InputInfo,
+  ObsCommand,
+  ObsEvent,
   ObsStats,
+  SceneInfo,
+  SourceInfo,
+  TransitionInfo,
 } from "some-types-utils"
+import { create } from "zustand"
+import { useShallow } from "zustand/shallow"
 
 type CommandSender = (cmd: ObsCommand) => Promise<void>
 
@@ -489,77 +488,119 @@ export const useObsStore = create<ObsStoreState>((set, get) => ({
   // --- Commands ---
   startStreaming: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 startStreaming called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 startStreaming called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("startStreaming")
     await _commandSender({ type: "startStream" })
   },
 
   stopStreaming: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 stopStreaming called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 stopStreaming called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("stopStreaming")
     await _commandSender({ type: "stopStream" })
   },
 
   startRecording: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 startRecording called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 startRecording called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("startRecording")
     await _commandSender({ type: "startRecording" })
   },
 
   stopRecording: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 stopRecording called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 stopRecording called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("stopRecording")
     await _commandSender({ type: "stopRecording" })
   },
 
   switchScene: async (scene: string) => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 switchScene called", { scene, hasSender: !!_commandSender, isConnected })
+    console.log("🎥 switchScene called", {
+      scene,
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("switchScene")
     await _commandSender({ type: "switchScene", data: scene })
   },
 
   setInputMute: async (inputName: string, muted: boolean) => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 setInputMute called", { inputName, muted, hasSender: !!_commandSender, isConnected })
+    console.log("🎥 setInputMute called", {
+      inputName,
+      muted,
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("setInputMute")
     await _commandSender({ type: "setInputMute", data: [inputName, muted] })
   },
 
   setInputVolume: async (inputName: string, volumeDb: number) => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 setInputVolume called", { inputName, volumeDb, hasSender: !!_commandSender, isConnected })
+    console.log("🎥 setInputVolume called", {
+      inputName,
+      volumeDb,
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("setInputVolume")
-    await _commandSender({ type: "setInputVolume", data: [inputName, volumeDb] })
+    await _commandSender({
+      type: "setInputVolume",
+      data: [inputName, volumeDb],
+    })
   },
 
   toggleStudioMode: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleStudioMode called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 toggleStudioMode called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("toggleStudioMode")
     await _commandSender({ type: "toggleStudioMode" })
   },
 
   toggleVirtualCamera: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleVirtualCamera called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 toggleVirtualCamera called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("toggleVirtualCamera")
     await _commandSender({ type: "toggleVirtualCamera" })
   },
 
   toggleReplayBuffer: async () => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleReplayBuffer called", { hasSender: !!_commandSender, isConnected })
+    console.log("🎥 toggleReplayBuffer called", {
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("toggleReplayBuffer")
     await _commandSender({ type: "toggleReplayBuffer" })
   },
 
   sendCustomCommand: async (data: unknown) => {
     const { _commandSender, isConnected } = get()
-    console.log("🎥 sendCustomCommand called", { data, hasSender: !!_commandSender, isConnected })
+    console.log("🎥 sendCustomCommand called", {
+      data,
+      hasSender: !!_commandSender,
+      isConnected,
+    })
     if (!_commandSender) return warn("sendCustomCommand")
     await _commandSender({ type: "custom", data })
   },
@@ -630,13 +671,11 @@ export const useConnectionInfo = () =>
   useObsStore(useShallow(selectConnectionInfo))
 
 // Stream/Record status (boolean only)
-export const selectIsStreaming = (s: ObsStoreState): boolean =>
-  s.core.streaming
+export const selectIsStreaming = (s: ObsStoreState): boolean => s.core.streaming
 
 export const useIsStreaming = () => useObsStore(selectIsStreaming)
 
-export const selectIsRecording = (s: ObsStoreState): boolean =>
-  s.core.recording
+export const selectIsRecording = (s: ObsStoreState): boolean => s.core.recording
 
 export const useIsRecording = () => useObsStore(selectIsRecording)
 
@@ -678,9 +717,8 @@ export const selectInputs = (s: ObsStoreState): Array<InputInfo> =>
 export const useInputs = () => useObsStore(useShallow(selectInputs))
 
 // Audio
-export const selectAudioMutes = (
-  s: ObsStoreState
-): Record<string, boolean> => s.core.audioMutes
+export const selectAudioMutes = (s: ObsStoreState): Record<string, boolean> =>
+  s.core.audioMutes
 
 export const useAudioMutes = () => useObsStore(useShallow(selectAudioMutes))
 
@@ -689,8 +727,7 @@ export const selectAudioVolumes = (
 ): Record<string, { volumeDb: number; volumeMul: number }> =>
   s.core.audioVolumes
 
-export const useAudioVolumes = () =>
-  useObsStore(useShallow(selectAudioVolumes))
+export const useAudioVolumes = () => useObsStore(useShallow(selectAudioVolumes))
 
 export const selectInputAudio = (inputName: string) => (s: ObsStoreState) => ({
   muted: s.core.audioMutes[inputName] ?? false,

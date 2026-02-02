@@ -1,3 +1,4 @@
+import { LibraryTemplatePicker } from "@slideshow/components/orchestrator/library-picker"
 import { SceneSelectorTab } from "@slideshow/components/orchestrator/scene-selector"
 import type { EditorAction, EditorState } from "@slideshow/utils/scene-editor"
 import {
@@ -31,7 +32,6 @@ import {
   Textarea,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
-import { LibraryTemplatePicker } from "@slideshow/components/orchestrator/library-picker"
 
 type EditSceneDialogProps = {
   state: EditorState

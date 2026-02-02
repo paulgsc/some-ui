@@ -43,6 +43,7 @@
 
             # Build essentials
             pkg-config
+            mkcert
             openssl
             openssl.dev
             # cmake

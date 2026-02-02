@@ -5,9 +5,9 @@ import type { TypedTypingGame } from "@input/types/leetype"
  * Creates an external store that subscribes to WASM game stats
  * The gameRef allows the store to access the current game instance dynamically
  */
-export function createTypingGameStore(
-  gameRef: { current: TypedTypingGame | null }
-) {
+export function createTypingGameStore(gameRef: {
+  current: TypedTypingGame | null
+}) {
   return {
     useStats() {
       return useSyncExternalStore(

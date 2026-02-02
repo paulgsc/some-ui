@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { AlertCircle, RefreshCw, FileQuestion } from "lucide-react"
+import { AlertCircle, FileQuestion, RefreshCw } from "lucide-react"
 import { Button } from "some-ui-shared"
 
 type ErrorCodeStateProps = {
@@ -8,10 +8,10 @@ type ErrorCodeStateProps = {
   onRetry?: () => void
 }
 
-export const ErrorCodeState: FC<ErrorCodeStateProps> = ({ 
-  error, 
-  path, 
-  onRetry 
+export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
+  error,
+  path,
+  onRetry,
 }) => {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 bg-destructive/5 rounded-lg border-2 border-destructive/20">
@@ -19,12 +19,12 @@ export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
         <AlertCircle className="h-12 w-12 text-destructive" />
         <FileQuestion className="h-5 w-5 text-destructive/60 absolute -bottom-1 -right-1" />
       </div>
-      
+
       <div className="mt-6 text-center space-y-3 max-w-md">
         <h3 className="text-lg font-semibold text-foreground">
           Failed to Load Code Sample
         </h3>
-        
+
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             Unable to load the code file from:

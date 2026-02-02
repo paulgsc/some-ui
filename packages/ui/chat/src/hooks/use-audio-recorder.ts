@@ -1,8 +1,23 @@
 import { useEffect, useReducer, useRef, useState } from "react"
 import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
 import { recordingReducer } from "@chat/lib/interview/recording-reducer"
+import { mockUploadAudio } from "@chat/lib/interview/upload-service"
+import type { RecordingState } from "@chat/types/interview"
 
-export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
+type UseAudioRecorderReturn = {
+  state: RecordingState
+  elapsedTime: number
+  startRecording: () => Promise<void>
+  pauseRecording: () => void
+  resumeRecording: () => void
+  stopRecording: () => Promise<void>
+  reset: () => void
+  retry: () => void
+}
+
+export const useAudioRecorder = (
+  onComplete: (transcript: string) => void
+): UseAudioRecorderReturn => {
   const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
   const serviceRef = useRef<AudioRecordingService | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -74,6 +89,7 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
       dispatch({ type: "PERMISSION_GRANTED", stream })
       serviceRef.current!.startRecording(stream)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(error)
       dispatch({
         type: "PERMISSION_DENIED",
@@ -82,17 +98,17 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
     }
   }
 
-  const pauseRecording = () => {
+  const pauseRecording = (): void => {
     serviceRef.current?.pause()
     dispatch({ type: "PAUSE" })
   }
 
-  const resumeRecording = () => {
+  const resumeRecording = (): void => {
     serviceRef.current?.resume()
     dispatch({ type: "RESUME" })
   }
 
-  const stopRecording = async () => {
+  const stopRecording = async (): Promise<void> => {
     dispatch({ type: "STOP" })
 
     try {
@@ -113,12 +129,12 @@ export const useAudioRecorder = (onComplete: (transcript: string) => void) => {
     }
   }
 
-  const reset = () => {
+  const reset = (): void => {
     serviceRef.current?.cleanup()
     dispatch({ type: "RESET" })
   }
 
-  const retry = () => {
+  const retry = (): void => {
     dispatch({ type: "RETRY" })
   }
 

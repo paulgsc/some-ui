@@ -29,7 +29,6 @@
 - [#153](https://github.com/paulgsc/some-ui/pull/153) [`d79b146`](https://github.com/paulgsc/some-ui/commit/d79b146524a14d0977567b116e0ea716b17b6545) Thanks [@paulgsc](https://github.com/paulgsc)! - This is the initial release of all `some-ui` packages. However, **all packages are currently a work-in-progress (WIP), mostly broken, and subject to major changes**.
 
   This is an early-stage release for **personal use and experimentation**. The goal is to establish a baseline for further development, iteration, and improvements over time.
-
   - **⚠️ Use with extreme caution.** These packages are not stable, and breaking changes will happen frequently.
   - **Do not use in production.** Expect API changes, missing features, and possible refactors.
   - **Stay updated** by checking future changesets and releases before upgrading.

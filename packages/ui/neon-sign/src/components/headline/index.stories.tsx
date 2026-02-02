@@ -1,4 +1,5 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
+
 import { Headline } from "."
 
 type Story = StoryObj<typeof Headline>
@@ -26,7 +27,8 @@ export const PeachBlossom: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Warm evening light through petals - soft coral and cherry blossom atmosphere",
+        story:
+          "Warm evening light through petals - soft coral and cherry blossom atmosphere",
       },
     },
   },
@@ -83,7 +85,8 @@ export const LightingComparison: Story = {
   parameters: {
     docs: {
       description: {
-        story: "All three light environments side by side - demonstrating atmospheric differences",
+        story:
+          "All three light environments side by side - demonstrating atmospheric differences",
       },
     },
   },
@@ -123,7 +126,8 @@ export const LivestreamReady: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Optimized for OBS/livestream - minimal motion, maximum presence",
+        story:
+          "Optimized for OBS/livestream - minimal motion, maximum presence",
       },
     },
   },
@@ -144,7 +148,8 @@ export const ShortForm: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Compact format for shorter text - still maintains atmospheric presence",
+        story:
+          "Compact format for shorter text - still maintains atmospheric presence",
       },
     },
   },
@@ -165,7 +170,8 @@ export const LongForm: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Extended text - ambient drift keeps it feeling alive without distraction",
+        story:
+          "Extended text - ambient drift keeps it feeling alive without distraction",
       },
     },
   },
@@ -215,7 +221,8 @@ export const CinematicPresence: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Demonstrates 'still image that happens to be alive' - watch for 30+ seconds to feel the breath",
+        story:
+          "Demonstrates 'still image that happens to be alive' - watch for 30+ seconds to feel the breath",
       },
     },
   },

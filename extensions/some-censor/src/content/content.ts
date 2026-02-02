@@ -1,8 +1,9 @@
-
 import { getAllVideoElements, VIDEO_SELECTOR_STRING } from "@censor/utils/dom"
 import { storageAPI } from "@censor/utils/storage-api"
-import { VideoManager } from "./video-manager"
+
 import { initManager } from "./initialization-manager"
+import { VideoManager } from "./video-manager"
+
 import "@censor/styles/content.css"
 
 class ContentController {
@@ -16,10 +17,10 @@ class ContentController {
 
   async initialize(): Promise<void> {
     console.log("[BOYO] Initializing content script")
-    
+
     await initManager.initializeClean()
     await storageAPI.initialize()
-    
+
     this.waitForYouTube()
   }
 
@@ -53,7 +54,7 @@ class ContentController {
     this.listen()
     this.observe()
     this.handleSPANavigation()
-    
+
     // Initial scan after DOM is ready
     requestAnimationFrame(() => {
       this.scan()
@@ -64,10 +65,10 @@ class ContentController {
   private scan(): void {
     const videos = getAllVideoElements()
     console.log(`[BOYO] Scanning ${videos.length} videos`)
-    
+
     let processed = 0
     let skipped = 0
-    
+
     videos.forEach((video) => {
       const videoId = video.getAttribute("data-video-id")
       if (videoId) {
@@ -77,8 +78,10 @@ class ContentController {
         skipped++
       }
     })
-    
-    console.log(`[BOYO] Scan complete: ${processed} processed, ${skipped} skipped`)
+
+    console.log(
+      `[BOYO] Scan complete: ${processed} processed, ${skipped} skipped`
+    )
   }
 
   /**
@@ -124,7 +127,10 @@ class ContentController {
         ) as HTMLElement
         if (!overlay?.dataset.videoId) return
 
-        console.log("[BOYO] Click event captured on overlay", overlay.dataset.videoId)
+        console.log(
+          "[BOYO] Click event captured on overlay",
+          overlay.dataset.videoId
+        )
 
         e.preventDefault()
         e.stopPropagation()
@@ -144,7 +150,10 @@ class ContentController {
         ) as HTMLElement
         if (!overlay?.dataset.videoId) return
 
-        console.log("[BOYO] Double-click event captured on overlay", overlay.dataset.videoId)
+        console.log(
+          "[BOYO] Double-click event captured on overlay",
+          overlay.dataset.videoId
+        )
 
         e.preventDefault()
         e.stopPropagation()

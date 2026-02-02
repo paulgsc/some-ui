@@ -12,7 +12,8 @@
 
 /* Ensure code blocks maintain proper formatting */
 .blob-code-inner.comments-removed {
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
   font-size: 12px !important;
   line-height: 1.45 !important;
 }

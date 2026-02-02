@@ -34,7 +34,7 @@ const YouTubeWireframeRoute = (): React.JSX.Element => {
   )
 }
 
-export const Route = createFileRoute("/wireframes/youtube")({
+export const Route = createFileRoute("/overlays/youtube")({
   validateSearch: (search: Record<string, unknown>): YouTubeWireframeSearch => {
     return {
       transitionMs: search.transitionMs

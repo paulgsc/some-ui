@@ -1,15 +1,15 @@
-
 import type { SceneConfig } from "some-types-utils"
+
 import type { SceneSelection } from "./scene-selector"
 
 /**
  * Finite State Machine for Scene Editor Dialog
- * 
+ *
  * STATES:
  * 1. Closed - Dialog not visible
  * 2. EditingExisting - Modifying an existing scene's properties/UI
  * 3. SelectingFromLibrary - Choosing scenes from library to add in bulk
- * 
+ *
  * INVARIANTS:
  * - Only ONE state active at a time
  * - State transitions are explicit and validated

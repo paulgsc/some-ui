@@ -7,6 +7,4 @@ export * from "./lens-shutter"
 export * from "./video-gantt-chart"
 export * from "./sugar-cubes-stack"
 export { ViewportDiceCard } from "./viewport-dice-card"
-export {
-  ActiveLifetimesPanel,
-} from "./orchestrator"
+export { ActiveLifetimesPanel } from "./orchestrator"

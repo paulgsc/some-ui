@@ -1,4 +1,3 @@
-
 export type SpectrumBarConfig = {
   id: number
   x: number

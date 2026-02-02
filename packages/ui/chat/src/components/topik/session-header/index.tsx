@@ -1,5 +1,4 @@
-
-import { Clock, Trophy, Target, Layers } from "lucide-react"
+import { Clock, Layers, Target, Trophy } from "lucide-react"
 import { Button } from "some-ui-shared"
 
 interface SessionHeaderProps {
@@ -27,8 +26,12 @@ export function SessionHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Korean Study Session</h1>
-            <p className="text-sm text-muted-foreground">TOPIK 3-4 Comprehension Practice</p>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Korean Study Session
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              TOPIK 3-4 Comprehension Practice
+            </p>
           </div>
         </div>
 
@@ -43,7 +46,8 @@ export function SessionHeader({
           <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg">
             <Clock className="size-4 text-primary" />
             <span className="font-mono font-semibold text-lg">
-              {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+              {String(minutes).padStart(2, "0")}:
+              {String(seconds).padStart(2, "0")}
             </span>
           </div>
 

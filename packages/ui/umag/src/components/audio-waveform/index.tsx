@@ -1,3 +1,4 @@
+import type { FC } from "react"
 import {
   useAudioContext,
   useAudioElement,
@@ -13,7 +14,7 @@ type WaveBarChartProps = {
   bars: number
 }
 
-export const WaveBarChart: React.FC<WaveBarChartProps> = ({
+export const WaveBarChart: FC<WaveBarChartProps> = ({
   width,
   height,
   bars,
@@ -63,13 +64,16 @@ export const WaveBarChart: React.FC<WaveBarChartProps> = ({
           )}
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Volume</label>
+          <label htmlFor="amplitude-slider" className="text-sm font-medium">
+            Volume
+          </label>
           <Slider
+            id="amplitude-slider"
             min={0}
             max={1}
             step={0.01}
             value={[volume]}
-            onValueChange={(value) => setVolume(value[0])}
+            onValueChange={(value) => setVolume(value[0] ?? 0)}
           />
         </div>
         <Button onClick={togglePlay} disabled={!fileName}>
