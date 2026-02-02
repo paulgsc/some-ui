@@ -8,7 +8,6 @@ export const AnimatedWaveBarChart = (): JSX.Element => {
   const [frequency, setFrequency] = useState(1)
   const [speed, setSpeed] = useState(5)
   const [isPlaying, setIsPlaying] = useState(true)
-
   return (
     <div className="flex flex-col items-center space-y-4 p-4">
       <h1 className="text-2xl font-bold">Animated Wave Function Bar Chart</h1>
@@ -22,8 +21,11 @@ export const AnimatedWaveBarChart = (): JSX.Element => {
       />
       <div className="w-full max-w-md space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Amplitude</label>
+          <label htmlFor="amplitude-slider" className="text-sm font-medium">
+            Amplitude
+          </label>
           <Slider
+            id="amplitude-slider"
             min={0}
             max={150}
             step={1}
@@ -32,8 +34,11 @@ export const AnimatedWaveBarChart = (): JSX.Element => {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Frequency</label>
+          <label htmlFor="frequency-slider" className="text-sm font-medium">
+            Frequency
+          </label>
           <Slider
+            id="frequency-slider"
             min={0.1}
             max={5}
             step={0.1}
@@ -42,8 +47,11 @@ export const AnimatedWaveBarChart = (): JSX.Element => {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Speed</label>
+          <label htmlFor="speed-slider" className="text-sm font-medium">
+            Speed
+          </label>
           <Slider
+            id="speed-slider"
             min={0}
             max={20}
             step={0.1}
