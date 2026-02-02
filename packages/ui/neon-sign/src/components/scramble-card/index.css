@@ -9,7 +9,8 @@
 
 @theme inline {
   --color-neon: var(--glow-color);
-  --shadow-inset-neon: inset 0px 0px 0.5em 0px var(--glow-color),
+  --shadow-inset-neon:
+    inset 0px 0px 0.5em 0px var(--glow-color),
     0px 0px 0.5em 0px var(--glow-color);
   --animate-wiggle: wiggle 1s ease-in-out infinite;
   @keyframes wiggle {

@@ -8,10 +8,7 @@ import type {
   OutgoingMessage,
   SceneConfig,
 } from "some-types-utils"
-import {
-  IncomingEventSchema,
-  OutgoingMessageSchema,
-} from "some-types-utils"
+import { IncomingEventSchema, OutgoingMessageSchema } from "some-types-utils"
 
 export type UseOrchestratorConfig = {
   stream_id: string

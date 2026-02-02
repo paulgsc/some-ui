@@ -144,7 +144,7 @@ export const LivestreamTopicNotification: FC<
             setActiveToast(null)
           },
         }
-        await speak(topic.description,  options, Infinity)
+        await speak(topic.description, options, Infinity)
       } catch (error) {
         console.error("Failed to announce topic:", error)
         // Fallback to showing toast without speech

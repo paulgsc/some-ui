@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Message } from "@chat/types/topik"
 import { useSpeechQueue } from "some-ui-utils"
@@ -64,10 +63,10 @@ export function useTTS({
             onEnd: () => {
               setIsSpeaking(false)
               console.log(`[useTTS] ✅ Complete: ${message.id}`)
-              
+
               // Mark as spoken (for auto-play deduplication)
               lastSpokenIdRef.current = message.id
-              
+
               // Only fire completion callback for auto-play
               if (isAuto) {
                 onMessageCompleteRef.current()

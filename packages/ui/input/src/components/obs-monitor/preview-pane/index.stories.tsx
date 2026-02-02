@@ -7,7 +7,7 @@ type Meta = MetaObj<typeof PreviewPane>
 
 export const Default: Story = {
   args: {
-    currentTime: 100
+    currentTime: 100,
   },
 }
 

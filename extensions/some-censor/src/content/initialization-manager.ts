@@ -1,4 +1,3 @@
-
 // initialization-manager.ts
 // Handles extension lifecycle WITHOUT aggressive cleanup
 

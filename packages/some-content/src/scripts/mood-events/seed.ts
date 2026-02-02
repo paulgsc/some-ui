@@ -62,7 +62,7 @@ async function seedMoodEvents() {
     const result: unknown = await response.json()
 
     if (!Array.isArray(result)) {
-        throw new Error("Unexpected response format")
+      throw new Error("Unexpected response format")
     }
 
     console.log("✅ Successfully created mood events!")

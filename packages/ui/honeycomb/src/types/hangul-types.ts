@@ -1,7 +1,7 @@
 import type { DisplayCharacter } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
-export type CharacterWithLifetime = DisplayCharacter & { 
-    timeRemaining: number 
+export type CharacterWithLifetime = DisplayCharacter & {
+  timeRemaining: number
 }
 
 export type HangulCharacter = {
