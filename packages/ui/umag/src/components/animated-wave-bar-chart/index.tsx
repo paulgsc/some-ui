@@ -1,8 +1,9 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { WaveBarChart } from "@umag/components/wave-bar-chart"
 import { Button, Slider } from "some-ui-shared"
 
-export const AnimatedWaveBarChart = (): React.JSX.Element => {
+export const AnimatedWaveBarChart = (): JSX.Element => {
   const [amplitude, setAmplitude] = useState(100)
   const [frequency, setFrequency] = useState(1)
   const [speed, setSpeed] = useState(5)
@@ -27,7 +28,7 @@ export const AnimatedWaveBarChart = (): React.JSX.Element => {
             max={150}
             step={1}
             value={[amplitude]}
-            onValueChange={(value) => setAmplitude(value[0])}
+            onValueChange={(value) => setAmplitude(value[0] ?? 0)}
           />
         </div>
         <div className="space-y-2">
@@ -37,7 +38,7 @@ export const AnimatedWaveBarChart = (): React.JSX.Element => {
             max={5}
             step={0.1}
             value={[frequency]}
-            onValueChange={(value) => setFrequency(value[0])}
+            onValueChange={(value) => setFrequency(value[0] ?? 0)}
           />
         </div>
         <div className="space-y-2">
@@ -47,7 +48,7 @@ export const AnimatedWaveBarChart = (): React.JSX.Element => {
             max={20}
             step={0.1}
             value={[speed]}
-            onValueChange={(value) => setSpeed(value[0])}
+            onValueChange={(value) => setSpeed(value[0] ?? 0)}
           />
         </div>
         <Button onClick={() => setIsPlaying(!isPlaying)}>
