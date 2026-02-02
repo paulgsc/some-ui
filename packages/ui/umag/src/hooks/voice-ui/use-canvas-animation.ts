@@ -1,4 +1,4 @@
-import type { MutableRefObject } from "react"
+import type { MutableRefObject, RefObject } from "react"
 import { useEffect, useRef } from "react"
 import { hexToRgb } from "@umag/utils/color-utils"
 
@@ -13,8 +13,19 @@ type BlinkState = {
   blinkDuration: number
 }
 
+type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+  pulse: number
+}
+
 type ParticleSystem = {
-  particles: Array<unknown>
+  particles: RefObject<Array<Particle>>
   initializeParticles: (x: number, y: number) => void
   updateParticles: (
     ctx: CanvasRenderingContext2D,

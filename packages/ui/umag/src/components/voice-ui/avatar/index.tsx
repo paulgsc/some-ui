@@ -15,7 +15,7 @@ export const VoiceAvatar = (): JSX.Element => {
   const { waveformData, updateWaveform, getAverageAmplitude } = useWaveform()
   const { eyeOffset, handleMouseMove, updateEyeOffset } = useEyeTracking()
   const { blinkState, updateBlinking } = useBlinking()
-  const { particles, initializeParticles, updateParticles } = useParticles()
+  const particleSystem = useParticles()
 
   const drawIrisWaveform = (
     ctx: CanvasRenderingContext2D,
@@ -71,7 +71,7 @@ export const VoiceAvatar = (): JSX.Element => {
     },
     blinkState,
     updateBlinking,
-    particles: { particles, initializeParticles, updateParticles },
+    particles: particleSystem,
     drawIrisWaveform,
   })
 
