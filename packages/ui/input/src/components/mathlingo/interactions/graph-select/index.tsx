@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { Button } from "some-ui-shared"
 
@@ -26,10 +27,10 @@ export const GraphSelect = ({
   correctRegions = [],
   showResult = false,
   multiSelect = false,
-}: GraphSelectProps) => {
+}: GraphSelectProps): JSX.Element => {
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const toggleRegion = (id: string) => {
+  const toggleRegion = (id: string): void => {
     if (disabled) return
 
     if (multiSelect) {
@@ -48,7 +49,7 @@ export const GraphSelect = ({
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     if (disabled) return
     onSubmit(Array.from(selected))
   }

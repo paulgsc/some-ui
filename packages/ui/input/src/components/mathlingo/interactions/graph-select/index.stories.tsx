@@ -1,6 +1,6 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
-import { GraphSelect } from "." // Adjust path as needed
+import { GraphSelect } from "."
 
 const meta: MetaObj<typeof GraphSelect> = {
   title: "UI/Input/Components/Mathlingo/GraphSelect",
