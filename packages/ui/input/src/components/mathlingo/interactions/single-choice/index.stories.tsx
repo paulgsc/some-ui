@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { SingleChoice } from "."
 
 const meta: Meta<typeof SingleChoice> = {
-  title: "Input/Components/Mathlingo/Interactions/SingleChoice",
+  title: "UI/Input/Components/Mathlingo/Interactions/SingleChoice",
   component: SingleChoice,
   tags: ["autodocs"],
   argTypes: {
