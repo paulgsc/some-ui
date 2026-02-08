@@ -1,14 +1,15 @@
+import type { JSX } from "react"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
 import { Check, Library } from "lucide-react"
 import { Badge, Button, Card, ScrollArea } from "some-ui-shared"
 
 type LibraryTemplatePickerProps = {
-  onSelectTemplate: (ui: Array<any>, templateName: string) => void
+  onSelectTemplate: (ui: Array<unknown>, templateName: string) => void
 }
 
 export const LibraryTemplatePicker = ({
   onSelectTemplate,
-}: LibraryTemplatePickerProps) => {
+}: LibraryTemplatePickerProps): JSX.Element => {
   const { getLibraryItems, loading } = useSceneLibrary()
   const libraryItems = getLibraryItems()
 
@@ -41,7 +42,7 @@ export const LibraryTemplatePicker = ({
                 key={item.fileName}
                 className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group"
                 onClick={() => {
-                  onSelectTemplate(item.config.ui || [], item.displayName)
+                  onSelectTemplate(item.config.ui, item.displayName)
                 }}
               >
                 <div className="flex flex-col gap-2">
@@ -68,7 +69,7 @@ export const LibraryTemplatePicker = ({
                     className="w-full gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation()
-                      onSelectTemplate(item.config.ui || [], item.displayName)
+                      onSelectTemplate(item.config.ui, item.displayName)
                     }}
                   >
                     <Check className="w-3 h-3" />

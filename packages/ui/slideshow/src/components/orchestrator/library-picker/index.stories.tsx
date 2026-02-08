@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "@storybook/test"
 
@@ -22,31 +23,32 @@ const meta: Meta<typeof LibraryTemplatePicker> = {
 export default meta
 type Story = StoryObj<typeof LibraryPickerWrapper>
 
+type LibraryPickerWrapperProps = {
+  _items: Array<unknown>
+  _loading: boolean
+  onSelectTemplate: (ui: Array<unknown>, templateName: string) => void
+}
+
 // Wrapper that controls state
 const LibraryPickerWrapper = ({
-  items,
-  loading,
   onSelectTemplate,
-}: {
-  items: Array<any>
-  loading: boolean
-  onSelectTemplate: any
-}) => {
+}: LibraryPickerWrapperProps): JSX.Element => {
   // Override the hook's context/provider if needed, or
   // use a mock provider in preview.ts
   return <LibraryTemplatePicker onSelectTemplate={onSelectTemplate} />
 }
 
 export const Default: Story = {
+  render: (args) => <LibraryPickerWrapper {...args} />,
   args: {
-    items: [
+    _items: [
       {
         fileName: "marketing-hero",
         displayName: "Marketing Hero",
         config: { ui: [{}, {}, {}] },
       },
     ],
-    loading: false,
+    _loading: false,
     onSelectTemplate: fn(),
   },
 }
