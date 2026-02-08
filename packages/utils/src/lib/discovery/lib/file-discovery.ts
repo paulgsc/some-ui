@@ -33,7 +33,7 @@ export class HttpFileDiscovery implements FileDiscovery {
  */
 export class ViteGlobDiscovery implements FileDiscovery {
   constructor(
-    private globPattern: string,
+    // private _globPattern: string, // This is never read for some reason!
     private modules: Record<string, () => Promise<unknown>>
   ) {}
 
