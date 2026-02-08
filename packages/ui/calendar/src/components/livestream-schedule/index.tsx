@@ -56,7 +56,7 @@ const formatDate = (dateString: string): string => {
 
 // Format time to display in 12-hour format
 const formatTime = (timeString: string): string => {
-  const [hours, minutes] = timeString.split(":")
+  const [hours = "", minutes = ""] = timeString.split(":")
   const hour = Number.parseInt(hours, 10)
   const ampm = hour >= 12 ? "PM" : "AM"
   const hour12 = hour % 12 || 12
