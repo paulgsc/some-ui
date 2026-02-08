@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import type { SceneFileName } from "@slideshow/hooks/use-scene-library"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
@@ -31,7 +32,7 @@ export const SceneSelectorTab = ({
   onSelectionsChange,
   maxTotal,
   maxPerScene,
-}: SceneSelectorTabProps) => {
+}: SceneSelectorTabProps): JSX.Element => {
   const { getLibraryItems, loading, error } = useSceneLibrary()
   const [expandedFile, setExpandedFile] = useState<SceneFileName | null>(null)
 
@@ -39,7 +40,7 @@ export const SceneSelectorTab = ({
   const occurrences = countSceneOccurrences(selections)
   const validation = validateSelections(selections, { maxTotal, maxPerScene })
 
-  const handleAddScene = (fileName: SceneFileName) => {
+  const handleAddScene = (fileName: SceneFileName): void => {
     const instanceIndex = getNextInstanceIndex(selections, fileName)
     const sourceConfig = libraryItems.find(
       (item) => item.fileName === fileName
@@ -54,7 +55,7 @@ export const SceneSelectorTab = ({
     onSelectionsChange([...selections, newSelection])
   }
 
-  const handleRemoveSelection = (id: string) => {
+  const handleRemoveSelection = (id: string): void => {
     const filtered = selections.filter((s) => s.id !== id)
     const removed = selections.find((s) => s.id === id)
     if (removed) {
@@ -70,7 +71,7 @@ export const SceneSelectorTab = ({
     }
   }
 
-  const handleClearAll = () => onSelectionsChange([])
+  const handleClearAll = (): void => onSelectionsChange([])
 
   if (loading)
     return (
@@ -125,20 +126,30 @@ export const SceneSelectorTab = ({
                 const count = occurrences.get(item.fileName) || 0
                 const canAdd = !maxPerScene || count < maxPerScene
 
+                const toggleExpand = (): void => {
+                  setExpandedFile(
+                    expandedFile === item.fileName ? null : item.fileName
+                  )
+                }
+
                 return (
                   <div
                     key={item.fileName}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
-                      "p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50",
+                      "p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 text-left w-full",
                       expandedFile === item.fileName
                         ? "border-primary bg-primary/5"
                         : "border-border"
                     )}
-                    onClick={() =>
-                      setExpandedFile(
-                        expandedFile === item.fileName ? null : item.fileName
-                      )
-                    }
+                    onClick={toggleExpand}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        toggleExpand()
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
