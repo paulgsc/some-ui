@@ -34,6 +34,18 @@ export type SceneLibraryItem = {
   config: SceneConfig
 }
 
+/** Return type for the scene library hook */
+export type UseSceneLibraryReturn = {
+  getScene: (key: string) => SceneConfig | undefined
+  getLibraryItems: () => Array<SceneLibraryItem>
+  library: Map<string, SceneConfig>
+  loading: boolean
+  error: string | null
+  reload: () => Promise<void>
+  entries: () => Array<[string, SceneConfig]>
+  get: (key: string) => SceneConfig | undefined
+}
+
 // -----------------------------
 // Scene Normalization Policy
 // -----------------------------
@@ -91,7 +103,7 @@ const deriveSceneKey = (filePath: string): string => {
  * This is now a thin wrapper that only provides scene-specific configuration
  * to the generic recursive library engine.
  */
-export const useSceneLibrary = () => {
+export const useSceneLibrary = (): UseSceneLibraryReturn => {
   const result = useRecursiveLibrary<SceneUIFile, SceneConfig>({
     rootPath: "/scenes",
     extension: ".json",
@@ -143,7 +155,7 @@ export const useSceneLibrary = () => {
  */
 export const useSceneLibraryVite = (
   modules: Record<string, () => Promise<unknown>>
-) => {
+): ReturnType<typeof useRecursiveLibrary<SceneUIFile, SceneConfig>> => {
   const { ViteGlobDiscovery } = require("./file-discovery")
   const { ViteModuleLoader } = require("./resource-loader")
 
