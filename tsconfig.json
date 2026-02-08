@@ -37,6 +37,7 @@
     "eslint/",
     "eslint.config.js",
     "eslint.config-deprecated.mjs",
+    "scripts",
     "next.config.mjs",
     "prettier.config.cjs",
     "tailwind.config.ts",
