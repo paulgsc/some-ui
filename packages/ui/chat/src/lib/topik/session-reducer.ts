@@ -337,7 +337,7 @@ export function sessionReducer(
         const nextBatchIndex = state.batchIndex + 1
 
         // All batches complete
-        if (nextBatchIndex >= batches.length) {
+        if (nextBatchIndex >= state.batches.length) {
           return { ...state, phase: "sessionComplete" }
         }
 

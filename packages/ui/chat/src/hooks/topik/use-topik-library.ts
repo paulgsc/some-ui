@@ -55,6 +55,15 @@ export type TopikLibraryItem = {
   totalQuestions: number
 }
 
+/** Return type for the useTopikLibrary hook */
+export type UseTopikLibraryReturn = ReturnType<
+  typeof useRecursiveLibrary<TopikFile, TopikLibraryItem>
+> & {
+  getTopikItems: () => Array<TopikLibraryItem>
+  getTopik: (key: string) => TopikLibraryItem | undefined
+  getTopikBatches: (key: string) => Array<ConversationBatch> | undefined
+}
+
 // -----------------------------
 // Topik Normalization Policy
 // -----------------------------
@@ -139,7 +148,7 @@ const deriveTopikKey = (filePath: string): string => {
  * - Batches for a specific topik
  * - Loading states
  */
-export const useTopikLibrary = () => {
+export const useTopikLibrary = (): UseTopikLibraryReturn => {
   const result = useRecursiveLibrary<TopikFile, TopikLibraryItem>({
     rootPath: "/topiks",
     extension: ".json",
@@ -197,7 +206,7 @@ export const useTopikLibrary = () => {
  */
 export const useTopikLibraryVite = (
   modules: Record<string, () => Promise<unknown>>
-) => {
+): ReturnType<typeof useRecursiveLibrary<TopikFile, TopikLibraryItem>> => {
   const { ViteGlobDiscovery } = require("./file-discovery")
   const { ViteModuleLoader } = require("./resource-loader")
 

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer } from "react"
 import type {
   SessionEvent,
+  SessionState,
 } from "@chat/lib/topik/session-reducer"
 import {
   createInitialState,
   sessionReducer,
 } from "@chat/lib/topik/session-reducer"
-import type { ConversationBatch } from "@chat/types/topik"
+import type { ConversationBatch, Message } from "@chat/types/topik"
 
 type UseSessionConfig = {
   getBatches?: (
@@ -19,12 +20,33 @@ type UseSessionConfig = {
   onAllBatchesComplete?: () => void
 }
 
+type UseSessionReturn = {
+  state: SessionState
+  dispatch: (event: SessionEvent) => void
+  totalBatches: number
+  currentBatch: ConversationBatch | undefined
+  currentMessage: Message | undefined
+  selectTopik: (topikKey: string) => void
+  changeTopik: () => void
+  startChat: () => void
+  pauseChat: () => void
+  resumeChat: () => void
+  resetChat: () => void
+  messageSpoken: () => void
+  jumpToMessage: (index: number) => void
+  startQuiz: () => void
+  submitAnswer: (correct: boolean, userAnswer?: string) => void
+  nextQuestion: () => void
+  passAssessment: () => void
+  failAssessment: () => void
+}
+
 export function useSession({
   getBatches,
   initialBatches,
   onBatchComplete,
   onAllBatchesComplete,
-}: UseSessionConfig) {
+}: UseSessionConfig): UseSessionReturn {
   const [state, dispatch] = useReducer(
     sessionReducer,
     undefined,
@@ -49,8 +71,9 @@ export function useSession({
 
     let cancelled = false
 
-    const load = async () => {
+    const load = async (): Promise<void> => {
       try {
+        if (!state.topikKey) return
         const batches = await getBatches(state.topikKey)
         if (cancelled) return
 
@@ -72,7 +95,7 @@ export function useSession({
     }
 
     load()
-    return () => {
+    return (): void => {
       cancelled = true
     }
   }, [state.phase, state.topikKey, getBatches])
@@ -89,7 +112,7 @@ export function useSession({
       dispatch({ type: "TICK" })
     }, 1000)
 
-    return () => clearInterval(id)
+    return (): void => clearInterval(id)
   }, [state.phase, state.timeRemaining])
 
   /* ---------------------------------- */
@@ -98,13 +121,13 @@ export function useSession({
 
   useEffect(() => {
     if (state.phase === "batchComplete") {
-      onBatchComplete(state.batchIndex)
+      onBatchComplete?.(state.batchIndex)
     }
   }, [state.phase, state.batchIndex, onBatchComplete])
 
   useEffect(() => {
     if (state.phase === "sessionComplete") {
-      onAllBatchesComplete()
+      onAllBatchesComplete?.()
     }
   }, [state.phase, onAllBatchesComplete])
 
@@ -128,53 +151,71 @@ export function useSession({
   /* Stable event dispatchers */
   /* ---------------------------------- */
 
-  const send = useCallback((event: SessionEvent) => dispatch(event), [])
+  const send = useCallback((event: SessionEvent): void => dispatch(event), [])
 
   const selectTopik = useCallback(
-    (topikKey: string) => send({ type: "SELECT_TOPIK", topikKey }),
+    (topikKey: string): void => send({ type: "SELECT_TOPIK", topikKey }),
     [send]
   )
 
-  const changeTopik = useCallback(() => send({ type: "CHANGE_TOPIK" }), [send])
+  const changeTopik = useCallback(
+    (): void => send({ type: "CHANGE_TOPIK" }),
+    [send]
+  )
 
-  const startChat = useCallback(() => send({ type: "START_CHAT" }), [send])
+  const startChat = useCallback(
+    (): void => send({ type: "START_CHAT" }),
+    [send]
+  )
 
-  const pauseChat = useCallback(() => send({ type: "PAUSE_CHAT" }), [send])
+  const pauseChat = useCallback(
+    (): void => send({ type: "PAUSE_CHAT" }),
+    [send]
+  )
 
-  const resumeChat = useCallback(() => send({ type: "RESUME_CHAT" }), [send])
+  const resumeChat = useCallback(
+    (): void => send({ type: "RESUME_CHAT" }),
+    [send]
+  )
 
-  const resetChat = useCallback(() => send({ type: "RESET_CHAT" }), [send])
+  const resetChat = useCallback(
+    (): void => send({ type: "RESET_CHAT" }),
+    [send]
+  )
 
   const messageSpoken = useCallback(
-    () => send({ type: "MESSAGE_SPOKEN" }),
+    (): void => send({ type: "MESSAGE_SPOKEN" }),
     [send]
   )
 
   const jumpToMessage = useCallback(
-    (index: number) => send({ type: "JUMP_TO_MESSAGE", index }),
+    (index: number): void => send({ type: "JUMP_TO_MESSAGE", index }),
     [send]
   )
 
-  const startQuiz = useCallback(() => send({ type: "START_QUIZ" }), [send])
+  const startQuiz = useCallback(
+    (): void => send({ type: "START_QUIZ" }),
+    [send]
+  )
 
   const submitAnswer = useCallback(
-    (correct: boolean, userAnswer?: string) =>
+    (correct: boolean, userAnswer?: string): void =>
       send({ type: "ANSWER_SUBMITTED", correct, userAnswer }),
     [send]
   )
 
   const nextQuestion = useCallback(
-    () => send({ type: "NEXT_QUESTION" }),
+    (): void => send({ type: "NEXT_QUESTION" }),
     [send]
   )
 
   const passAssessment = useCallback(
-    () => send({ type: "ASSESSMENT_PASSED" }),
+    (): void => send({ type: "ASSESSMENT_PASSED" }),
     [send]
   )
 
   const failAssessment = useCallback(
-    () => send({ type: "ASSESSMENT_FAILED" }),
+    (): void => send({ type: "ASSESSMENT_FAILED" }),
     [send]
   )
 
