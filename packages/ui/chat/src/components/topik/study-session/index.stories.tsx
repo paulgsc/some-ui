@@ -5,11 +5,7 @@ import { KoreanStudyPage } from "."
 type Story = StoryObj<typeof KoreanStudyPage>
 type Meta = MetaObj<typeof KoreanStudyPage>
 
-export const Default: Story = {
-  args: {
-    path: "topiks/unit-three.json",
-  },
-}
+export const Default: Story = {}
 
 export default {
   title: "UI/Chat/Components/Topik/KoreanStudyPage",
