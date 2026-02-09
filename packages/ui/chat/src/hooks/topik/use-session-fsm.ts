@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useReducer } from "react"
+import { useCallback, useEffect, useMemo, useReducer } from "react"
 import type {
   SessionEvent,
-  SessionState,
 } from "@chat/lib/topik/session-reducer"
 import {
   createInitialState,
@@ -9,136 +8,186 @@ import {
 } from "@chat/lib/topik/session-reducer"
 import type { ConversationBatch } from "@chat/types/topik"
 
-type UseSessionProps = {
-  batches: Array<ConversationBatch> | undefined
+type UseSessionConfig = {
+  getBatches?: (
+    topikKey: string
+  ) => Promise<Array<ConversationBatch> | undefined>
+
+  initialBatches?: Array<ConversationBatch>
+
   onBatchComplete?: (batchIndex: number) => void
   onAllBatchesComplete?: () => void
 }
 
-type UseSessionReturn = {
-  state: SessionState
-  dispatch: (event: SessionEvent) => void
-
-  // Convenience methods (just dispatch wrappers)
-  startChat: () => void
-  pauseChat: () => void
-  resumeChat: () => void
-  resetChat: () => void
-  messageSpoken: () => void
-  jumpToMessage: (index: number) => void
-
-  startQuiz: () => void
-  submitAnswer: (correct: boolean, userAnswer?: string) => void
-  nextQuestion: () => void
-  passAssessment: () => void
-  failAssessment: () => void
-
-  // Derived helpers
-  totalBatches: number
-  currentBatch: ConversationBatch | undefined
-  currentMessage: ConversationBatch["messages"][number] | undefined
-}
-
 export function useSession({
-  batches,
+  getBatches,
+  initialBatches,
   onBatchComplete,
   onAllBatchesComplete,
-}: UseSessionProps): UseSessionReturn {
-  const [state, baseDispatch] = useReducer(
-    (s: SessionState, e: SessionEvent) => sessionReducer(s, e, batches ?? []),
-    createInitialState()
+}: UseSessionConfig) {
+  const [state, dispatch] = useReducer(
+    sessionReducer,
+    undefined,
+    createInitialState
   )
 
-  // Wrap dispatch to handle side effects
-  const dispatch = useCallback(
-    (event: SessionEvent) => {
-      if (!batches) return
-      const prevState = state
-      baseDispatch(event)
+  /* ---------------------------------- */
+  /* Batch hydration (controlled or async) */
+  /* ---------------------------------- */
 
-      // Side effects based on state transitions
-      if (
-        event.type === "ASSESSMENT_PASSED" &&
-        prevState.phase === "quizSummary"
-      ) {
-        const nextBatchIndex = prevState.batchIndex + 1
+  // Controlled mode
+  useEffect(() => {
+    if (initialBatches) {
+      dispatch({ type: "BATCHES_LOADED", batches: initialBatches })
+    }
+  }, [initialBatches])
 
-        if (nextBatchIndex >= batches.length) {
-          if (onAllBatchesComplete) onAllBatchesComplete()
-        } else if (onBatchComplete) onBatchComplete(prevState.batchIndex)
+  // Async mode
+  useEffect(() => {
+    if (!getBatches) return
+    if (state.phase !== "loadingBatches" || !state.topikKey) return
+
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const batches = await getBatches(state.topikKey)
+        if (cancelled) return
+
+        if (batches) {
+          dispatch({ type: "BATCHES_LOADED", batches })
+        } else {
+          dispatch({
+            type: "BATCHES_FAILED",
+            error: "Topik not found",
+          })
+        }
+      } catch (error) {
+        if (cancelled) return
+        dispatch({
+          type: "BATCHES_FAILED",
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
       }
-    },
-    [state, batches, onBatchComplete, onAllBatchesComplete]
-  )
+    }
 
-  // Timer effect
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [state.phase, state.topikKey, getBatches])
+
+  /* ---------------------------------- */
+  /* Timer */
+  /* ---------------------------------- */
+
   useEffect(() => {
     if (state.phase !== "chatPlaying") return
+    if (state.timeRemaining <= 0) return
 
-    const interval = setInterval(() => {
+    const id = setInterval(() => {
       dispatch({ type: "TICK" })
     }, 1000)
 
-    return () => clearInterval(interval)
-  }, [state.phase, dispatch])
+    return () => clearInterval(id)
+  }, [state.phase, state.timeRemaining])
 
-  // Convenience methods
-  const startChat = useCallback(
-    () => dispatch({ type: "START_CHAT" }),
-    [dispatch]
+  /* ---------------------------------- */
+  /* Completion side-effects */
+  /* ---------------------------------- */
+
+  useEffect(() => {
+    if (state.phase === "batchComplete") {
+      onBatchComplete(state.batchIndex)
+    }
+  }, [state.phase, state.batchIndex, onBatchComplete])
+
+  useEffect(() => {
+    if (state.phase === "sessionComplete") {
+      onAllBatchesComplete()
+    }
+  }, [state.phase, onAllBatchesComplete])
+
+  /* ---------------------------------- */
+  /* Derived state */
+  /* ---------------------------------- */
+
+  const totalBatches = state.batches.length
+
+  const currentBatch = useMemo(
+    () => state.batches[state.batchIndex],
+    [state.batches, state.batchIndex]
   )
-  const pauseChat = useCallback(
-    () => dispatch({ type: "PAUSE_CHAT" }),
-    [dispatch]
+
+  const currentMessage = useMemo(
+    () => currentBatch?.messages[state.messageIndex],
+    [currentBatch, state.messageIndex]
   )
-  const resumeChat = useCallback(
-    () => dispatch({ type: "RESUME_CHAT" }),
-    [dispatch]
+
+  /* ---------------------------------- */
+  /* Stable event dispatchers */
+  /* ---------------------------------- */
+
+  const send = useCallback((event: SessionEvent) => dispatch(event), [])
+
+  const selectTopik = useCallback(
+    (topikKey: string) => send({ type: "SELECT_TOPIK", topikKey }),
+    [send]
   )
-  const resetChat = useCallback(
-    () => dispatch({ type: "RESET_CHAT" }),
-    [dispatch]
-  )
+
+  const changeTopik = useCallback(() => send({ type: "CHANGE_TOPIK" }), [send])
+
+  const startChat = useCallback(() => send({ type: "START_CHAT" }), [send])
+
+  const pauseChat = useCallback(() => send({ type: "PAUSE_CHAT" }), [send])
+
+  const resumeChat = useCallback(() => send({ type: "RESUME_CHAT" }), [send])
+
+  const resetChat = useCallback(() => send({ type: "RESET_CHAT" }), [send])
+
   const messageSpoken = useCallback(
-    () => dispatch({ type: "MESSAGE_SPOKEN" }),
-    [dispatch]
-  )
-  const jumpToMessage = useCallback(
-    (index: number) => dispatch({ type: "JUMP_TO_MESSAGE", index }),
-    [dispatch]
+    () => send({ type: "MESSAGE_SPOKEN" }),
+    [send]
   )
 
-  const startQuiz = useCallback(
-    () => dispatch({ type: "START_QUIZ" }),
-    [dispatch]
+  const jumpToMessage = useCallback(
+    (index: number) => send({ type: "JUMP_TO_MESSAGE", index }),
+    [send]
   )
+
+  const startQuiz = useCallback(() => send({ type: "START_QUIZ" }), [send])
+
   const submitAnswer = useCallback(
     (correct: boolean, userAnswer?: string) =>
-      dispatch({ type: "ANSWER_SUBMITTED", correct, userAnswer }),
-    [dispatch]
-  )
-  const nextQuestion = useCallback(
-    () => dispatch({ type: "NEXT_QUESTION" }),
-    [dispatch]
-  )
-  const passAssessment = useCallback(
-    () => dispatch({ type: "ASSESSMENT_PASSED" }),
-    [dispatch]
-  )
-  const failAssessment = useCallback(
-    () => dispatch({ type: "ASSESSMENT_FAILED" }),
-    [dispatch]
+      send({ type: "ANSWER_SUBMITTED", correct, userAnswer }),
+    [send]
   )
 
-  // Derived state
-  const currentBatch = batches ? batches[state.batchIndex] : undefined
-  const currentMessage = currentBatch
-    ? currentBatch.messages[state.messageIndex]
-    : undefined
+  const nextQuestion = useCallback(
+    () => send({ type: "NEXT_QUESTION" }),
+    [send]
+  )
+
+  const passAssessment = useCallback(
+    () => send({ type: "ASSESSMENT_PASSED" }),
+    [send]
+  )
+
+  const failAssessment = useCallback(
+    () => send({ type: "ASSESSMENT_FAILED" }),
+    [send]
+  )
 
   return {
     state,
-    dispatch,
+    dispatch: send,
+
+    totalBatches,
+    currentBatch,
+    currentMessage,
+
+    selectTopik,
+    changeTopik,
 
     startChat,
     pauseChat,
@@ -152,9 +201,5 @@ export function useSession({
     nextQuestion,
     passAssessment,
     failAssessment,
-
-    totalBatches: batches?.length ?? 0,
-    currentBatch,
-    currentMessage,
   }
 }

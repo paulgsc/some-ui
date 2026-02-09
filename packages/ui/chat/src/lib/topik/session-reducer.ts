@@ -1,6 +1,8 @@
 import type { ConversationBatch } from "@chat/types/topik"
 
 export type SessionPhase =
+  | "selecting"
+  | "loadingBatches"
   | "idle"
   | "chatPlaying"
   | "chatPaused"
@@ -12,6 +14,8 @@ export type SessionPhase =
 
 export type SessionState = {
   phase: SessionPhase
+  topikKey: string | null
+  batches: Array<ConversationBatch> // TODO: This file can be very large!!!
   batchIndex: number
   messageIndex: number
   questionIndex: number
@@ -28,6 +32,10 @@ export type SessionState = {
 }
 
 export type SessionEvent =
+  | { type: "SELECT_TOPIK"; topikKey: string }
+  | { type: "BATCHES_LOADED"; batches: Array<ConversationBatch> } // async result
+  | { type: "BATCHES_FAILED"; error: string } // async error
+  | { type: "CHANGE_TOPIK" }
   | { type: "START_CHAT" }
   | { type: "PAUSE_CHAT" }
   | { type: "RESUME_CHAT" }
@@ -43,13 +51,70 @@ export type SessionEvent =
 
 export function sessionReducer(
   state: SessionState,
-  event: SessionEvent,
-  batches: Array<ConversationBatch>
+  event: SessionEvent
 ): SessionState {
-  const batch = batches.at(state.batchIndex)
+  const batch = state.batches.at(state.batchIndex)
 
   switch (state.phase) {
+    case "selecting": {
+      if (event.type === "SELECT_TOPIK") {
+        return {
+          ...state,
+          phase: "loadingBatches",
+          topikKey: event.topikKey,
+        }
+      }
+      return state
+    }
+    case "loadingBatches": {
+      if (event.type === "BATCHES_LOADED") {
+        return {
+          ...state,
+          phase: "idle",
+          batches: event.batches,
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          timeRemaining: 180,
+          feedbackData: undefined,
+        }
+      }
+
+      if (event.type === "BATCHES_FAILED") {
+        // Return to selection on error
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+        }
+      }
+
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+        }
+      }
+
+      return state
+    }
     case "idle": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (event.type === "START_CHAT") {
         return {
           ...state,
@@ -64,6 +129,19 @@ export function sessionReducer(
     }
 
     case "chatPlaying": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (event.type === "PAUSE_CHAT") {
         return { ...state, phase: "chatPaused" }
       }
@@ -102,6 +180,19 @@ export function sessionReducer(
     }
 
     case "chatPaused": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          batches: [],
+          topikKey: null,
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (event.type === "RESUME_CHAT") {
         return { ...state, phase: "chatPlaying" }
       }
@@ -125,6 +216,19 @@ export function sessionReducer(
     }
 
     case "quizReady": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (event.type === "START_QUIZ") {
         return {
           ...state,
@@ -136,6 +240,19 @@ export function sessionReducer(
     }
 
     case "quizActive": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (batch && event.type === "ANSWER_SUBMITTED") {
         const question = batch.questions.at(state.questionIndex)
         if (!question) return state
@@ -158,6 +275,19 @@ export function sessionReducer(
     }
 
     case "quizFeedback": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (batch && event.type === "NEXT_QUESTION") {
         const nextQuestionIndex = state.questionIndex + 1
 
@@ -177,12 +307,25 @@ export function sessionReducer(
     }
 
     case "quizSummary": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       if (event.type === "ASSESSMENT_FAILED") {
         // Retry current batch
         return {
           ...state,
           phase: "idle",
           messageIndex: 0,
+          batches: [],
           questionIndex: 0,
           score: 0,
           timeRemaining: 180,
@@ -200,6 +343,7 @@ export function sessionReducer(
 
         // Advance to next batch - auto-start it
         return {
+          ...state,
           phase: "chatPlaying",
           batchIndex: nextBatchIndex,
           messageIndex: 0,
@@ -213,6 +357,19 @@ export function sessionReducer(
     }
 
     case "sessionComplete": {
+      if (event.type === "CHANGE_TOPIK") {
+        return {
+          ...state,
+          phase: "selecting",
+          topikKey: null,
+          batches: [],
+          batchIndex: 0,
+          messageIndex: 0,
+          questionIndex: 0,
+          score: 0,
+          feedbackData: undefined,
+        }
+      }
       // Terminal state
       return state
     }
@@ -228,7 +385,9 @@ export function sessionReducer(
 
 export function createInitialState(): SessionState {
   return {
-    phase: "idle",
+    phase: "selecting",
+    topikKey: null,
+    batches: [],
     batchIndex: 0,
     messageIndex: 0,
     questionIndex: 0,
