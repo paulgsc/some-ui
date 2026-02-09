@@ -90,10 +90,10 @@ function generateManifest(config: ManifestConfig): void {
 // -----------------------------
 
 const config: ManifestConfig = {
-  scanDir: "public/scenes",
-  outputPath: "public/scenes/manifest.json",
+  scanDir: "public/topiks",
+  outputPath: "public/topiks/manifest.json",
   extensions: [".json"],
-  urlPrefix: "/scenes",
+  urlPrefix: "/topiks",
 }
 
 // -----------------------------
