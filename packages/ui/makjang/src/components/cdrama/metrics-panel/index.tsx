@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { Eye, Gauge, RotateCcw, TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
