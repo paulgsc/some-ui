@@ -63,7 +63,7 @@ export const KoreanStudyPage: FC = (): JSX.Element => {
   const { isSpeaking, speakMessage } = useTTS({
     componentId: COMPONENT_ID,
     currentMessage,
-    isPlaying: state.phase === "chatPlaying",
+    phase: state.phase,
     onMessageComplete: messageSpoken,
   })
 

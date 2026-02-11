@@ -5,45 +5,17 @@
  * Uses the recursive library architecture for runtime discovery.
  */
 
-import type { ConversationBatch } from "@chat/types/topik"
+import type { ConversationBatch, TopikFile } from "@chat/types/topik"
+import { TopikFileSchema } from "@chat/types/topik"
 import {
   HttpFileDiscovery,
   HttpJsonLoader,
   useRecursiveLibrary,
 } from "some-ui-utils"
-import { z } from "zod"
 
 // -----------------------------
 // Topik-Specific Types
 // -----------------------------
-
-/** Raw file format: array of conversation batches */
-const TopikFileSchema = z.array(
-  z.object({
-    id: z.string(),
-    messages: z.array(
-      z.object({
-        id: z.string(),
-        speaker: z.string(),
-        text: z.string(),
-        translation: z.string(),
-      })
-    ),
-    questions: z.array(
-      z.object({
-        id: z.string(),
-        type: z.enum(["multiple-choice", "text-input"]),
-        text: z.string(),
-        options: z.array(z.string()).optional(),
-        correctAnswer: z.string(),
-        explanation: z.string(),
-        grammarNote: z.string().optional(),
-      })
-    ),
-  })
-)
-
-type TopikFile = z.infer<typeof TopikFileSchema>
 
 /** Topik library item for display and selection */
 export type TopikLibraryItem = {

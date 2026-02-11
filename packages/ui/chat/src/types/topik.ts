@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 export type Message = {
   id: string
   role: "assistant" | "user"
@@ -24,6 +26,36 @@ export type ConversationBatch = {
   messages: Array<Message>
   questions: Array<Question>
 }
+
+const MessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["assistant", "user"]),
+  content: z.string(),
+  timestamp: z.string(),
+  korean: z.string(),
+  english: z.string(),
+})
+
+const QuestionSchema = z.object({
+  type: z.enum(["multiple-choice", "text-input"]),
+  korean: z.string(),
+  question: z.string(),
+  options: z.array(z.string()).optional(),
+  correct: z.number().optional(),
+  acceptedAnswers: z.array(z.string()).optional(),
+  correctAnswer: z.string(),
+  explanation: z.string(),
+  grammarNote: z.string().optional(),
+})
+
+const ConversationBatchSchema = z.object({
+  id: z.number(),
+  messages: z.array(MessageSchema),
+  questions: z.array(QuestionSchema),
+})
+
+export const TopikFileSchema = z.array(ConversationBatchSchema)
+export type TopikFile = z.infer<typeof TopikFileSchema>
 
 export type ChatPlayState = "not started" | "playing" | "paused" | "finished"
 export type QuizState = "standby" | "ready" | "active" | "feedback" | "summary"

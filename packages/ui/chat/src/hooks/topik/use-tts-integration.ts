@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { SessionPhase } from "@chat/lib/topik/session-reducer"
 import type { Message } from "@chat/types/topik"
 import { useSpeechQueue } from "some-ui-utils"
 
 type UseTTSProps = {
   componentId: string
   currentMessage: Message | undefined
-  isPlaying: boolean
+  phase: SessionPhase
   onMessageComplete: () => void
 }
 
@@ -24,7 +25,7 @@ type UseTTSReturn = {
 export function useTTS({
   componentId,
   currentMessage,
-  isPlaying,
+  phase,
   onMessageComplete,
 }: UseTTSProps): UseTTSReturn {
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -104,19 +105,21 @@ export function useTTS({
    * Auto-speak effect - fires when message changes while playing
    */
   useEffect(() => {
-    if (!isPlaying || !currentMessage) {
+    if (!currentMessage) return
+    if (phase !== "chatPlaying") {
+      console.log(`[useTTS] we return early due to phase: ${phase}`)
       return
     }
 
     console.log(`[useTTS] 🎯 Auto-speak triggered: ${currentMessage.id}`)
     doSpeak(currentMessage, true)
-  }, [currentMessage?.id, isPlaying, doSpeak])
+  }, [currentMessage?.id, phase, doSpeak])
 
   /**
    * Cleanup on unmount
    */
   useEffect(() => {
-    return () => {
+    return (): void => {
       console.log("[useTTS] 🧹 Cleanup")
       cancel()
       lastSpokenIdRef.current = null

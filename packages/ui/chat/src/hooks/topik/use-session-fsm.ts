@@ -14,8 +14,6 @@ type UseSessionConfig = {
     topikKey: string
   ) => Promise<Array<ConversationBatch> | undefined>
 
-  initialBatches?: Array<ConversationBatch>
-
   onBatchComplete?: (batchIndex: number) => void
   onAllBatchesComplete?: () => void
 }
@@ -43,7 +41,6 @@ type UseSessionReturn = {
 
 export function useSession({
   getBatches,
-  initialBatches,
   onBatchComplete,
   onAllBatchesComplete,
 }: UseSessionConfig): UseSessionReturn {
@@ -56,13 +53,6 @@ export function useSession({
   /* ---------------------------------- */
   /* Batch hydration (controlled or async) */
   /* ---------------------------------- */
-
-  // Controlled mode
-  useEffect(() => {
-    if (initialBatches) {
-      dispatch({ type: "BATCHES_LOADED", batches: initialBatches })
-    }
-  }, [initialBatches])
 
   // Async mode
   useEffect(() => {
