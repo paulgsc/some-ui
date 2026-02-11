@@ -59,10 +59,12 @@ export function useTTS({
             volume: 1.0,
             onStart: () => {
               setIsSpeaking(true)
+              // eslint-disable-next-line no-console
               console.log(`[useTTS] 🔊 Speaking: ${message.id}`)
             },
             onEnd: () => {
               setIsSpeaking(false)
+              // eslint-disable-next-line no-console
               console.log(`[useTTS] ✅ Complete: ${message.id}`)
 
               // Mark as spoken (for auto-play deduplication)
@@ -75,6 +77,7 @@ export function useTTS({
             },
             onError: (error: Error) => {
               setIsSpeaking(false)
+              // eslint-disable-next-line no-console
               console.error(`[useTTS] ❌ Error: ${message.id}`, error)
             },
           },
@@ -82,6 +85,7 @@ export function useTTS({
         )
       } catch (error) {
         setIsSpeaking(false)
+        // eslint-disable-next-line no-console
         console.error(`[useTTS] ❌ speak() threw:`, error)
       }
     },
@@ -107,10 +111,10 @@ export function useTTS({
   useEffect(() => {
     if (!currentMessage) return
     if (phase !== "chatPlaying") {
-      console.log(`[useTTS] we return early due to phase: ${phase}`)
       return
     }
 
+    // eslint-disable-next-line no-console
     console.log(`[useTTS] 🎯 Auto-speak triggered: ${currentMessage.id}`)
     doSpeak(currentMessage, true)
   }, [currentMessage?.id, phase, doSpeak])
@@ -120,6 +124,7 @@ export function useTTS({
    */
   useEffect(() => {
     return (): void => {
+      // eslint-disable-next-line no-console
       console.log("[useTTS] 🧹 Cleanup")
       cancel()
       lastSpokenIdRef.current = null

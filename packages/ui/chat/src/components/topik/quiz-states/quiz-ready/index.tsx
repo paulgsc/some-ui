@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { BookOpen, PlayCircle } from "lucide-react"
 import { Button, Card } from "some-ui-shared"
 
@@ -5,7 +6,7 @@ type QuizReadyProps = {
   onStartQuiz: () => void
 }
 
-export const QuizReady = ({ onStartQuiz }: QuizReadyProps) => {
+export const QuizReady = ({ onStartQuiz }: QuizReadyProps): JSX.Element => {
   return (
     <Card className="h-full border-2 flex flex-col">
       <div className="flex-1 flex items-center justify-center p-12">
@@ -19,8 +20,8 @@ export const QuizReady = ({ onStartQuiz }: QuizReadyProps) => {
               Comprehension Checkpoint
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              You'll be tested on vocabulary, grammar patterns, and contextual
-              understanding from the conversation you just reviewed.
+              You&apos;ll be tested on vocabulary, grammar patterns, and
+              contextual understanding from the conversation you just reviewed.
             </p>
           </div>
 
