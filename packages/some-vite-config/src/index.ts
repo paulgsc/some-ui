@@ -50,7 +50,12 @@ export function createViteConfig(
   const config: UserConfig = {
     plugins: createPlugins(options),
     resolve: createResolveConfig(options, packageRoot),
+    esbuild: {
+      // This removes console.log and debugger statements
+      drop: ["console", "debugger"],
+    },
     build: {
+      minify: true, // Ensure minification is on so esbuild drops the logs
       ...createBuildConfig(options, packageRoot),
       rollupOptions: createRollupOptions(options, externalDeps),
     },
