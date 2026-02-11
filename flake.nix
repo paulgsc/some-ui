@@ -124,7 +124,7 @@
           # CI shell (lean + fast)
           # -------------------------
           ci = pkgs.mkShell {
-            buildInputs = commonRustDeps;
+            buildInputs = commonRustDeps ++ [pkgs.nodejs_latest pkgs.nodePackages.pnpm];
 
             shellHook = ''
               export RUST_BACKTRACE=1
