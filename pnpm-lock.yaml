@@ -1696,8 +1696,8 @@ importers:
         specifier: 1.18.0
         version: 1.18.0(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       polyhedron:
-        specifier: link:../../crates/polyhedron/dist
-        version: link:../../crates/polyhedron/dist
+        specifier: workspace:*
+        version: link:../../crates/polyhedron
       react:
         specifier: ^19.0.0
         version: 19.0.0
