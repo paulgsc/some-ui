@@ -2,6 +2,9 @@
   "name": "polyhedron",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/polyhedron.js",
+  "module": "dist/polyhedron.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
     "build": "pnpm wasm:dev",
@@ -10,6 +13,9 @@
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},
