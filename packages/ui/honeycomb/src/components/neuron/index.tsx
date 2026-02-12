@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import {
   forwardRef,
   useCallback,
@@ -106,14 +107,13 @@ const getFlowSpeed = (state: ProjectState): number => {
 }
 
 type NeuralNetworkSVGProps = {
-  projects: Array<Project>
+  projects?: Array<Project>
 }
 
 export type NeuralNetworkSVGRef = {
   getSVG: () => SVGSVGElement | null
 }
 
-// Sample data for demo
 const sampleProjects: Array<Project> = [
   {
     id: "1",
@@ -168,7 +168,7 @@ const sampleProjects: Array<Project> = [
 export const NeuralNetworkSVG = forwardRef<
   NeuralNetworkSVGRef,
   NeuralNetworkSVGProps
->(({ projects = sampleProjects }, ref) => {
+>(({ projects = sampleProjects }, ref): JSX.Element => {
   const svgRef = useRef<SVGSVGElement>(null)
   const animationFrameId = useRef<number | null>(null)
   const [neurons, setNeurons] = useState<Array<Neuron>>([])
@@ -180,7 +180,7 @@ export const NeuralNetworkSVG = forwardRef<
   const animationSpeed = 1
 
   useImperativeHandle(ref, () => ({
-    getSVG: () => svgRef.current,
+    getSVG: (): SVGSVGElement | null => svgRef.current,
   }))
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export const NeuralNetworkSVG = forwardRef<
   }, [connections])
 
   const initializeNetwork = useCallback(
-    (width: number, height: number, currentProjects: Array<Project>) => {
+    (width: number, height: number, currentProjects: Array<Project>): void => {
       const newNeurons: Array<Neuron> = currentProjects.map((project, i) => {
         const angle = (i / currentProjects.length) * Math.PI * 2
         const radius = Math.min(width, height) * 0.35
@@ -216,18 +216,23 @@ export const NeuralNetworkSVG = forwardRef<
 
       for (let i = 0; i < newNeurons.length; i++) {
         for (let j = i + 1; j < newNeurons.length; j++) {
+          const from = newNeurons[i]
+          const to = newNeurons[j]
+
+          // Fix: Ensure neurons exist to satisfy TS strict null checks
+          if (!from || !to) continue
+
           const dist = Math.sqrt(
-            Math.pow(newNeurons[i].x - newNeurons[j].x, 2) +
-              Math.pow(newNeurons[i].y - newNeurons[j].y, 2)
+            Math.pow(from.x - to.x, 2) + Math.pow(from.y - to.y, 2)
           )
 
           if (dist < Math.min(width, height) * 0.4 || Math.random() < 0.3) {
             newConnections.push({
-              from: newNeurons[i],
-              to: newNeurons[j],
+              from,
+              to,
               flowPhase: Math.random() * Math.PI * 2,
-              flowSpeed: getFlowSpeed(newNeurons[i].project.state),
-              color: CONNECTION_COLORS[newNeurons[i].project.state],
+              flowSpeed: getFlowSpeed(from.project.state),
+              color: CONNECTION_COLORS[from.project.state],
               particles: Array.from({ length: 3 }, (_, k) => ({
                 progress: k / 3,
                 opacity: 0.8,
@@ -243,11 +248,10 @@ export const NeuralNetworkSVG = forwardRef<
     []
   )
 
-  const animate = useCallback(() => {
+  const animate = useCallback((): void => {
     const currentNeurons = neuronsRef.current
     const currentConnections = connectionsRef.current
 
-    // Update neurons
     currentNeurons.forEach((neuron) => {
       neuron.activity +=
         (neuron.targetActivity - neuron.activity) * 0.05 * animationSpeed
@@ -255,19 +259,16 @@ export const NeuralNetworkSVG = forwardRef<
       if (neuron.pulsePhase > Math.PI * 2) neuron.pulsePhase -= Math.PI * 2
     })
 
-    // Update connections
     currentConnections.forEach((conn) => {
       conn.flowPhase += conn.flowSpeed * animationSpeed
       if (conn.flowPhase > Math.PI * 2) conn.flowPhase -= Math.PI * 2
 
-      // Update particles
       conn.particles.forEach((particle, i) => {
         particle.progress = (conn.flowPhase / (Math.PI * 2) + i / 3) % 1
         particle.opacity = 0.2 + conn.from.activity * 0.6
       })
     })
 
-    // Force re-render by updating state
     setNeurons([...currentNeurons])
     setConnections([...currentConnections])
 
@@ -275,7 +276,7 @@ export const NeuralNetworkSVG = forwardRef<
   }, [animationSpeed])
 
   useEffect(() => {
-    const updateDimensions = () => {
+    const updateDimensions = (): void => {
       const container = svgRef.current?.parentElement
       if (container) {
         const { clientWidth, clientHeight } = container
@@ -286,10 +287,9 @@ export const NeuralNetworkSVG = forwardRef<
 
     updateDimensions()
     window.addEventListener("resize", updateDimensions)
-
     animationFrameId.current = requestAnimationFrame(animate)
 
-    return () => {
+    return (): void => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current)
       }
@@ -306,7 +306,7 @@ export const NeuralNetworkSVG = forwardRef<
         <CardDescription>
           A live snapshot of your projects, visualized as a dynamic neural
           network. Regions of heavy activity represent active and growing
-          projects, while quieter areas indicate dying or dead projects.
+          projects.
         </CardDescription>
       </CardHeader>
       <CardContent className="relative flex-1 p-0">
@@ -318,10 +318,8 @@ export const NeuralNetworkSVG = forwardRef<
           className="size-full rounded-b-lg border-t border-gray-200"
           style={{ background: "#fdfbf6" }}
         >
-          {/* Connections */}
           {connections.map((conn, i) => (
             <g key={`connection-${i}`}>
-              {/* Connection line */}
               <line
                 x1={conn.from.x}
                 y1={conn.from.y}
@@ -331,8 +329,6 @@ export const NeuralNetworkSVG = forwardRef<
                 strokeWidth={1 + conn.from.activity * 2}
                 opacity={0.6}
               />
-
-              {/* Flowing particles */}
               {conn.particles.map((particle, j) => {
                 const x =
                   conn.from.x + (conn.to.x - conn.from.x) * particle.progress
@@ -352,7 +348,6 @@ export const NeuralNetworkSVG = forwardRef<
             </g>
           ))}
 
-          {/* Neurons */}
           {neurons.map((neuron, i) => {
             const pulseEffect = Math.sin(neuron.pulsePhase) * 0.5 + 0.5
             const currentRadius =
@@ -361,7 +356,6 @@ export const NeuralNetworkSVG = forwardRef<
 
             return (
               <g key={`neuron-${i}`}>
-                {/* Neuron glow effect */}
                 <circle
                   cx={neuron.x}
                   cy={neuron.y}
@@ -370,8 +364,6 @@ export const NeuralNetworkSVG = forwardRef<
                   opacity={opacity * 0.3}
                   filter="blur(4px)"
                 />
-
-                {/* Main neuron circle */}
                 <circle
                   cx={neuron.x}
                   cy={neuron.y}
@@ -381,8 +373,6 @@ export const NeuralNetworkSVG = forwardRef<
                   stroke={neuron.color}
                   strokeWidth="2"
                 />
-
-                {/* Project name */}
                 <text
                   x={neuron.x}
                   y={neuron.y + currentRadius + 15}
@@ -403,5 +393,3 @@ export const NeuralNetworkSVG = forwardRef<
 })
 
 NeuralNetworkSVG.displayName = "NeuralNetworkSVG"
-
-NeuralNetworkSVG
