@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "pnpm wasm:dev",
+    "build": "pnpm wasm:prod",
     "wasm:dev": "wasm-pack build --target web --dev --out-dir dist",
     "wasm:prod": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

@@ -2,14 +2,20 @@
   "name": "hangul-game-core",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/hangul-game-core.js",
+  "module": "dist/hangul-game-core.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "pnpm wasm:dev",
+    "build": "pnpm wasm:prod",
     "wasm:dev": "wasm-pack build --target web --dev --out-dir dist",
     "wasm:prod": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},
