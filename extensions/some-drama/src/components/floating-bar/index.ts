@@ -1,6 +1,6 @@
-import { formatTimestamp, getEmotionConfig } from "@/utils"
+import { formatTimestamp, getEmotionConfig } from "@drama/utils"
 
-import type { EmotionType } from "@/types/schema"
+import type { EmotionType } from "@drama/types/schema"
 
 export class FloatingBar {
   private element: HTMLElement
