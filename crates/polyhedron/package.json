@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "main": "dist/polyhedron.js",
   "module": "dist/polyhedron.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/polyhedron.d.ts",
   "type": "module",
   "scripts": {
     "build": "pnpm wasm:prod",

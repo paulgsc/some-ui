@@ -2,9 +2,9 @@
   "name": "hangul-game-core",
   "private": true,
   "version": "0.0.0",
-  "main": "dist/hangul-game-core.js",
-  "module": "dist/hangul-game-core.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/hangul_game_core.js",
+  "module": "dist/hangul_game_core.js",
+  "types": "dist/hangul_game_core.d.ts",
   "type": "module",
   "scripts": {
     "build": "pnpm wasm:prod",

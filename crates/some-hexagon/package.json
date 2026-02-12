@@ -2,9 +2,9 @@
   "name": "some-hexagon",
   "private": true,
   "version": "0.0.0",
-  "main": "dist/some-hexagon.js",
-  "module": "dist/some-hexagon.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/some_hexagon.js",
+  "module": "dist/some_hexagon.js",
+  "types": "dist/some_hexagon.d.ts",
   "type": "module",
   "scripts": {
     "build": "wasm-pack build --target web --release --out-dir dist",
