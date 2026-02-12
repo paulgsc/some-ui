@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type {
   HexCellData,
@@ -26,7 +26,9 @@ type HexGridProps<T = unknown> = {
   backgroundOpacity?: number
 }
 
-export function HexGrid<T = any>({
+const HEX_ID_REGEX = /(-?\d+)[_-](-?\d+)[_-](-?\d+)/
+
+export const HexGrid = <T = unknown,>({
   className = "",
   cellCount,
   hexSize,
@@ -34,58 +36,64 @@ export function HexGrid<T = any>({
   cellContent = [],
   renderCell,
   backgroundOpacity = 0.15,
-}: HexGridProps<T>) {
-  const [viewBox, setViewBox] = useState<
-    Record<"viewBox" | "transform", string>
-  >({
+}: HexGridProps<T>): JSX.Element => {
+  const [viewBox, setViewBox] = useState({
     viewBox: "0 0 0 0",
     transform: "",
   })
-  const svgRef = useRef<SVGSVGElement>(null)
-  const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Use the WASM hook internally - this is what defines the hexagon structure
+  // We use a ref to store the observer so it persists across renders
+  const observerRef = useRef<ResizeObserver | null>(null)
+
   const { hexCells, isLoading, error } = useHexgridWasm({
     cellCount,
     hexSize,
   })
 
   const pointsToPath = useCallback((points: Array<HexPoint>): string => {
-    return `M${points[0].x},${points[0].y} ${points
-      .slice(1)
-      .map((p) => `L${p.x},${p.y}`)
-      .join(" ")} Z`
+    const first = points[0]
+    if (!first) return ""
+    const rest = points.slice(1)
+    return `M${first.x},${first.y} ${rest.map((p) => `L${p.x},${p.y}`).join(" ")} Z`
   }, [])
 
-  const getViewBox = useCallback(
-    (width: number, height: number) => {
-      const viewBox = `0 0 ${width * viewBoxFactor} ${height * viewBoxFactor}`
-      const transform = `translate(${(width * viewBoxFactor) / 2}, ${(height * viewBoxFactor) / 2})`
-      setViewBox((prev) => ({ ...prev, transform, viewBox }))
+  // 2. Remount-safe Resize Observer using a Callback Ref
+  const svgRef = useCallback(
+    (node: SVGSVGElement | null): void => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+
+      if (node) {
+        observerRef.current = new ResizeObserver((entries) => {
+          const entry = entries[0]
+          if (entry) {
+            const { width, height } = entry.contentRect
+            const vb = `0 0 ${width * viewBoxFactor} ${height * viewBoxFactor}`
+            const tr = `translate(${(width * viewBoxFactor) / 2}, ${(height * viewBoxFactor) / 2})`
+            setViewBox({ viewBox: vb, transform: tr })
+          }
+        })
+        observerRef.current.observe(node)
+      }
     },
     [viewBoxFactor]
   )
 
+  // Cleanup observer on component unmount
   useEffect(() => {
-    contentTimerRef.current = setTimeout(() => {
-      const domRect = svgRef.current?.getBoundingClientRect()
-      if (domRect) {
-        getViewBox(domRect.width, domRect.height)
-      }
-    }, 50)
+    return (): void => observerRef.current?.disconnect()
+  }, [])
 
-    return (): void => {
-      if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
-    }
-  }, [getViewBox])
-
-  const contentMap = useMemo(() => {
+  const contentMap = useMemo((): Map<string, HexCellData<T>> => {
     const map = new Map<string, HexCellData<T>>()
     cellContent.forEach(({ id, content }) => {
       map.set(id, content)
-      const m = id.match(/(-?\d+)[_-](-?\d+)[_-](-?\d+)/)
-      if (m) {
-        const [, q, r, s] = m
+      const m = id.match(HEX_ID_REGEX)
+      if (m?.[1] && m[2] && m[3]) {
+        const q = m[1]
+        const r = m[2]
+        const s = m[3]
         map.set(`hex_${q}_${r}_${s}`, content)
         map.set(`${q}-${r}-${s}`, content)
       }
@@ -93,10 +101,14 @@ export function HexGrid<T = any>({
     return map
   }, [cellContent])
 
-  const mergedCells: Array<HexRenderData<T>> = hexCells.map((wasmCell) => ({
-    ...wasmCell,
-    content: contentMap.get(wasmCell.id),
-  }))
+  const mergedCells: Array<HexRenderData<T>> = useMemo(
+    (): Array<HexRenderData<T>> =>
+      hexCells.map((wasmCell) => ({
+        ...wasmCell,
+        content: contentMap.get(wasmCell.id),
+      })),
+    [hexCells, contentMap]
+  )
 
   if (isLoading) {
     return (
@@ -128,19 +140,10 @@ export function HexGrid<T = any>({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-
-        <filter id="strong-glow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="8" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
       <g transform={viewBox.transform}>
-        {/* Background grid - show all WASM cells */}
+        {/* Background grid */}
         <g opacity={backgroundOpacity}>
           {hexCells.map((cell) => (
             <path
@@ -156,45 +159,36 @@ export function HexGrid<T = any>({
 
         {/* Active/themed cells */}
         {mergedCells.map((cell) => {
-          const centerX =
-            cell.points.reduce((sum, point) => sum + point.x, 0) /
-            cell.points.length
-          const centerY =
-            cell.points.reduce((sum, point) => sum + point.y, 0) /
-            cell.points.length
+          const { content } = cell
+          if (!content?.theme && !content?.data) return null
 
-          const cellWidth =
-            Math.max(...cell.points.map((p) => p.x)) -
-            Math.min(...cell.points.map((p) => p.x))
+          const { theme } = content
+          const numPoints = cell.points.length
+          if (numPoints === 0) return null
 
-          const { content: { theme, data } = {} } = cell
-
-          // Only render themed cells (cells with theme or data)
-          if (!theme && !data) return null
+          const centerX = cell.points.reduce((s, p) => s + p.x, 0) / numPoints
+          const centerY = cell.points.reduce((s, p) => s + p.y, 0) / numPoints
+          const xValues = cell.points.map((p) => p.x)
+          const cellWidth = Math.max(...xValues) - Math.min(...xValues)
+          const pathData = pointsToPath(cell.points)
 
           return (
             <g key={cell.id}>
               <path
-                d={pointsToPath(cell.points)}
+                d={pathData}
                 fill={
-                  theme?.fill ||
+                  theme.fill ||
                   (cell.color
                     ? `#${cell.color.toString(16).padStart(6, "0")}`
                     : "none")
                 }
-                stroke={theme?.stroke || "#999"}
-                strokeWidth={theme?.strokeWidth || 1}
-                opacity={theme?.opacity ?? 1}
-                filter={theme?.filter}
+                stroke={theme.stroke || "#999"}
+                strokeWidth={theme.strokeWidth || 1}
+                opacity={theme.opacity ?? 1}
+                filter={theme.filter}
               />
               {renderCell &&
-                renderCell(
-                  cell,
-                  centerX,
-                  centerY,
-                  cellWidth,
-                  pointsToPath(cell.points)
-                )}
+                renderCell(cell, centerX, centerY, cellWidth, pathData)}
             </g>
           )
         })}
