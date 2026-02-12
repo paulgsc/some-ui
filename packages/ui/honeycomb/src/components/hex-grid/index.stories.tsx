@@ -1,8 +1,8 @@
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import type { HexCellData } from "@honeycomb/types/hex-grid"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { HexGrid } from "."
-import type { HexCellData } from "."
 
 type Story = StoryObj<typeof HexGrid>
 type Meta = MetaObj<typeof HexGrid>
@@ -29,10 +29,11 @@ export const ThemedCells: Story = {
       "#8338EC",
     ]
 
-    const themedCells: HexCellData[] = hexCells
-      .slice(0, colors.length)
-      .map((cell, i) => ({
-        id: cell.id,
+    // Fixed: map to the correct structure { id, content: { data, theme } }
+    const cellContent = hexCells.slice(0, colors.length).map((cell, i) => ({
+      id: cell.id,
+      content: {
+        data: {}, // Fixed: Property 'data' is required in HexCellData
         theme: {
           fill: colors[i],
           stroke: "#111",
@@ -40,55 +41,66 @@ export const ThemedCells: Story = {
           opacity: 0.9,
           filter: "url(#glow)",
         },
-      }))
+      } as HexCellData<Record<string, never>>,
+    }))
 
     return (
-      <HexGrid
-        cellCount={37}
-        hexSize={25}
-        viewBoxFactor={0.5}
-        cells={themedCells}
-      />
+      <div className="h-[500px] w-[500px]">
+        <HexGrid
+          cellCount={37}
+          hexSize={25}
+          viewBoxFactor={0.5}
+          cellContent={cellContent} // Fixed: Property 'cells' does not exist
+        />
+      </div>
     )
   },
 }
 
 export const WithCustomRender: Story = {
   render: () => {
+    // Defining a local type for the custom data
+    type CustomData = { label: string }
+
     const { hexCells } = useHexgridWasm({ cellCount: 19, hexSize: 30 })
 
     const labels = ["A", "B", "C"]
     const colors = ["#06D6A0", "#FFD166", "#EF476F"]
 
-    const cells = hexCells.slice(0, labels.length).map((cell, i) => ({
+    const cellContent = hexCells.slice(0, labels.length).map((cell, i) => ({
       id: cell.id,
-      data: { label: labels[i] },
-      theme: { fill: colors[i], stroke: "#222", strokeWidth: 1 },
+      content: {
+        data: { label: labels[i] ?? "" },
+        theme: { fill: colors[i], stroke: "#222", strokeWidth: 1 },
+      } as HexCellData<CustomData>,
     }))
 
     return (
-      <HexGrid
-        cellCount={19}
-        hexSize={30}
-        cells={cells}
-        renderCell={(cell, cx, cy) => (
-          <text
-            x={cx}
-            y={cy + 4}
-            fontSize="12"
-            textAnchor="middle"
-            fill="white"
-            style={{ pointerEvents: "none", fontFamily: "monospace" }}
-          >
-            {cell.data?.label}
-          </text>
-        )}
-      />
+      <div className="h-[500px] w-[500px]">
+        <HexGrid<CustomData>
+          cellCount={19}
+          hexSize={30}
+          cellContent={cellContent} // Fixed: Property 'cells' does not exist
+          renderCell={(cell, cx, cy) => (
+            <text
+              key={`label-${cell.id}`}
+              x={cx}
+              y={cy + 4}
+              fontSize="12"
+              textAnchor="middle"
+              fill="white"
+              style={{ pointerEvents: "none", fontFamily: "monospace" }}
+            >
+              {/* Fixed: Data exists on cell.content.data */}
+              {cell.content?.data.label}
+            </text>
+          )}
+        />
+      </div>
     )
   },
 }
 
-// 4️⃣ LoadingState – simulate when WASM is still initializing
 export const LoadingState: Story = {
   render: () => (
     <div className="flex h-48 w-48 items-center justify-center bg-neutral-900 text-gray-300">
@@ -97,7 +109,6 @@ export const LoadingState: Story = {
   ),
 }
 
-// 5️⃣ ErrorState – mock error visualization
 export const ErrorState: Story = {
   render: () => (
     <div className="flex h-48 w-48 items-center justify-center bg-neutral-900 text-red-400">
