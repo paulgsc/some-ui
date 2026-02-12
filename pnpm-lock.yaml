@@ -1109,6 +1109,9 @@ importers:
 
   packages/ui/makjang:
     dependencies:
+      lucide-react:
+        specifier: ^0.474.0
+        version: 0.474.0(react@19.0.0)
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -16948,7 +16951,7 @@ snapshots:
       '@typescript-eslint/parser': 8.19.1(eslint@9.18.0(jiti@2.5.1))(typescript@5.8.2)
       eslint: 9.18.0(jiti@2.5.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.7.0(eslint-plugin-import@2.31.0)(eslint@9.18.0(jiti@2.5.1))
+      eslint-import-resolver-typescript: 3.7.0(eslint-plugin-import@2.29.1)(eslint@9.18.0(jiti@2.5.1))
     transitivePeerDependencies:
       - supports-color
 
