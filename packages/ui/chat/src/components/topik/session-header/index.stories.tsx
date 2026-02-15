@@ -1,22 +1,26 @@
+import type { TopikMetadata } from "@chat/lib/topik"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { fn } from "@storybook/test"
 
 import { SessionHeader } from "."
 
-const mockTopikItems = [
+const mockTopikItems: Array<TopikMetadata> = [
   {
-    key: "daily-life",
-    displayName: "Daily Life Conversations",
-    description: "Basic interactions involving shopping and hobbies.",
+    key: "topik-3-basic",
+    displayName: "Standard TOPIK 3",
+    description: "Introductory intermediate level comprehension.",
     batchCount: 5,
-    totalQuestions: 25,
+    totalQuestions: 15,
+    totalMessages: 30,
+    difficulty: "intermediate",
   },
   {
-    key: "workplace",
-    displayName: "Workplace Etiquette",
-    description: "Formal Korean used in office settings.",
-    batchCount: 3,
-    totalQuestions: 15,
+    key: "topik-4-advanced",
+    displayName: "Standard TOPIK 4",
+    description: "Professional workplace scenarios.",
+    batchCount: 8,
+    totalQuestions: 24,
+    totalMessages: 48,
+    difficulty: "advanced",
   },
 ]
 
@@ -26,18 +30,10 @@ const meta: Meta<typeof SessionHeader> = {
   parameters: {
     layout: "fullscreen",
   },
-  // Default args to satisfy the new interface
-  args: {
-    timeRemaining: 600,
-    score: 10,
-    totalQuestions: 20,
-    currentBatch: 2,
-    totalBatches: 5,
-    topikItems: mockTopikItems,
-    topikLoading: false,
-    topikError: null,
-    onEndSession: fn(),
-    onTopikSelect: fn(),
+  argTypes: {
+    onEndSession: { action: "onEndSession" },
+    onTopikSelect: { action: "onTopikSelect" },
+    onTopikReload: { action: "onTopikReload" },
   },
 }
 
@@ -45,47 +41,74 @@ export default meta
 type Story = StoryObj<typeof SessionHeader>
 
 /**
- * Standard session state with a topic currently active.
+ * The standard view when a session has just begun.
  */
 export const Default: Story = {
   args: {
-    topikDisplayName: "Intermediate Business Korean",
-    currentTopikKey: "workplace",
+    timeRemaining: 1800, // 30:00
+    score: 0,
+    totalQuestions: 20,
+    currentBatch: 1,
+    totalBatches: 5,
+    topikDisplayName: "TOPIK 3 - Workplace Ethics",
+    topikItems: mockTopikItems,
+    topikLoading: false,
+    topikError: null,
+    currentTopikKey: "topik-3-basic",
   },
 }
 
 /**
- * Tests the dialog's loading state.
- * To view this, click 'Change Material' in the Storybook preview.
+ * Mid-session state showing progress and a ticking clock.
  */
-export const LibraryLoading: Story = {
+export const InProgress: Story = {
   args: {
+    ...Default.args,
+    timeRemaining: 645, // 10:45
+    score: 12,
+    currentBatch: 3,
+  },
+}
+
+/**
+ * Urgent state when time is running low.
+ */
+export const LowTime: Story = {
+  args: {
+    ...Default.args,
+    timeRemaining: 45, // 00:45
+    score: 18,
+    currentBatch: 5,
+  },
+}
+
+/**
+ * Header view when the material selection data is still fetching.
+ */
+export const LoadingMaterial: Story = {
+  args: {
+    ...Default.args,
+    topikItems: [],
     topikLoading: true,
-    topikItems: [],
   },
 }
 
 /**
- * Tests the dialog's error state.
+ * Handling error states for the "Change Material" functionality.
  */
-export const LibraryError: Story = {
+export const MaterialError: Story = {
   args: {
-    topikError: "Could not connect to the topic server.",
-    topikItems: [],
+    ...Default.args,
+    topikError: "Failed to fetch TOPIK manifest. Please try again.",
   },
 }
 
 /**
- * Scenario with a very long title and high progress.
+ * View when no specific TOPIK display name is provided.
  */
-export const LongTitleProgress: Story = {
+export const GenericSession: Story = {
   args: {
-    topikDisplayName:
-      "Advanced Academic Research & Discussion Vocabulary (Level 6)",
-    timeRemaining: 45,
-    score: 48,
-    totalQuestions: 50,
-    currentBatch: 10,
-    totalBatches: 10,
+    ...Default.args,
+    topikDisplayName: undefined,
   },
 }

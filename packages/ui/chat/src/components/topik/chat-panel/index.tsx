@@ -1,5 +1,13 @@
+import type { JSX } from "react"
 import type { ChatPlayState, Message } from "@chat/types/topik"
-import { MessageCircle, Pause, Play, RotateCcw, Volume2 } from "lucide-react"
+import {
+  Loader2,
+  MessageCircle,
+  Pause,
+  Play,
+  RotateCcw,
+  Volume2,
+} from "lucide-react"
 import { Button, Card, ScrollArea, WithAvatar } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -15,6 +23,7 @@ type ChatPanelProps = {
   onSpeakMessage: (message: Message) => void
   isQuizActive: boolean
   currentlySpeakingId: string | null
+  isLoading?: boolean // Added for better UX during hydration
 }
 
 const avatar = {
@@ -35,63 +44,95 @@ export const ChatPanel = ({
   onSpeakMessage,
   isQuizActive,
   currentlySpeakingId,
-}: ChatPanelProps) => {
+  isLoading = false,
+}: ChatPanelProps): JSX.Element => {
   return (
-    <Card className="h-full flex flex-col border-2">
+    <Card className="h-full flex flex-col border-2 overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary rounded-lg">
             <MessageCircle className="size-5 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h2 className="font-bold text-sm">Conversation Context</h2>
+            <h2 className="font-bold text-sm">Conversation</h2>
             <p className="text-xs text-muted-foreground">
-              {playState !== "not started" &&
-                (isQuizActive
-                  ? "Assessment in progress"
-                  : `${currentMessageIndex + 1} / ${messages.length} messages`)}
+              {isLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="size-3 animate-spin" /> Fetching
+                  content...
+                </span>
+              ) : playState !== "not started" ? (
+                isQuizActive ? (
+                  "Assessment in progress"
+                ) : (
+                  `Message ${currentMessageIndex + 1} of ${messages.length}`
+                )
+              ) : (
+                "Select a topic to begin"
+              )}
             </p>
           </div>
           <div
-            className={`size-2 rounded-full ${
+            className={cn(
+              "size-2 rounded-full",
               playState === "playing"
                 ? "bg-green-500 animate-pulse"
                 : playState === "finished"
                   ? "bg-blue-500"
                   : "bg-gray-400"
-            }`}
+            )}
           />
         </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
+        {/* Placeholder for when no topic is selected */}
+        {playState === "not started" && !isLoading && (
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-50">
+            <MessageCircle className="size-8 mb-2" />
+            <p className="text-sm font-medium">No Active Session</p>
+            <p className="text-xs">
+              Select a study material from the header to load the conversation.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-4">
-          {playState !== "not started" &&
-            visibleMessages.map((message, index) => (
+          {visibleMessages.map((message, index) => {
+            const isActive =
+              index === currentMessageIndex && playState === "playing"
+            const isSpeaking = currentlySpeakingId === message.id
+
+            return (
               <div
                 key={message.id}
-                className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""} ${
-                  index === currentMessageIndex && playState === "playing"
-                    ? "animate-in fade-in slide-in-from-bottom-2 duration-500"
-                    : ""
-                }`}
+                className={cn(
+                  "flex gap-3",
+                  message.role === "user" ? "flex-row-reverse" : "",
+                  isActive &&
+                    "animate-in fade-in slide-in-from-bottom-2 duration-500"
+                )}
               >
                 <WithAvatar
-                  className={cn(
-                    "pointer-events-none z-10 shrink-0 brightness-75"
-                  )}
+                  className="pointer-events-none z-10 shrink-0 brightness-75"
                   avatarSize={25}
                   avatar={avatar}
                 />
                 <div
-                  className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}
+                  className={cn(
+                    "flex-1",
+                    message.role === "user" ? "text-right" : ""
+                  )}
                 >
                   <div
-                    className={`inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${
+                    className={cn(
+                      "inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer transition-all border-2",
                       message.role === "assistant"
-                        ? "bg-muted text-foreground"
-                        : "bg-primary text-primary-foreground"
-                    }`}
+                        ? "bg-muted text-foreground border-transparent"
+                        : "bg-primary text-primary-foreground border-transparent",
+                      isActive && "border-primary/40 ring-4 ring-primary/10",
+                      "hover:border-primary/50"
+                    )}
                     onClick={() => onJumpToMessage(index)}
                   >
                     {message.content}
@@ -100,32 +141,41 @@ export const ChatPanel = ({
                         e.stopPropagation()
                         onSpeakMessage(message)
                       }}
-                      className="ml-2 inline-flex items-center justify-center size-6 rounded-full hover:bg-background/20 transition-colors"
-                      disabled={currentlySpeakingId === message.id}
+                      className="ml-2 inline-flex items-center justify-center size-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      disabled={isSpeaking}
                     >
                       <Volume2
-                        className={`size-3 ${currentlySpeakingId === message.id ? "animate-pulse text-primary" : ""}`}
+                        className={cn(
+                          "size-3",
+                          isSpeaking && "animate-pulse text-accent"
+                        )}
                       />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 px-1">
-                    {message.timestamp}
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 px-1">
+                    {message.role} • {message.timestamp}
                   </p>
                 </div>
               </div>
-            ))}
+            )
+          })}
         </div>
       </ScrollArea>
 
       <div className="p-4 border-t bg-muted/20 space-y-3">
         <div className="flex items-center justify-center gap-2">
-          {playState !== "playing" && (
-            <Button onClick={onPlay} size="sm" disabled={isQuizActive}>
+          {playState !== "playing" ? (
+            <Button
+              onClick={onPlay}
+              size="sm"
+              disabled={
+                isQuizActive || playState === "not started" || isLoading
+              }
+            >
               <Play className="size-4 mr-1" />
-              Play
+              {playState === "finished" ? "Replay" : "Play"}
             </Button>
-          )}
-          {playState === "playing" && (
+          ) : (
             <Button onClick={onPause} size="sm" variant="secondary">
               <Pause className="size-4 mr-1" />
               Pause
@@ -135,16 +185,18 @@ export const ChatPanel = ({
             onClick={onReset}
             size="sm"
             variant="outline"
-            disabled={playState === "playing"}
+            disabled={playState === "playing" || playState === "not started"}
           >
             <RotateCcw className="size-4 mr-1" />
             Reset
           </Button>
         </div>
-        <div className="text-xs text-center text-muted-foreground">
+        <div className="text-[10px] text-center text-muted-foreground uppercase tracking-tight">
           {isQuizActive
-            ? "Complete assessment to continue"
-            : "Click messages to jump or listen"}
+            ? "Complete assessment to unlock chat"
+            : playState === "not started"
+              ? "Waiting for selection..."
+              : "Interactive Mode: Click to Seek"}
         </div>
       </div>
     </Card>

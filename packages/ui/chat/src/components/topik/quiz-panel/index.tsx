@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { QuizActive } from "@chat/components/topik/quiz-states/quiz-active"
 import { QuizFeedback } from "@chat/components/topik/quiz-states/quiz-feedback"
 import { QuizIdle } from "@chat/components/topik/quiz-states/quiz-idle"
@@ -52,21 +53,31 @@ export const QuizPanel = ({
   score,
   feedbackData,
   chatPlayState,
-}: QuizPanelProps) => {
+}: QuizPanelProps): JSX.Element => {
+  // Safety check for the current question data
+  const activeQuestion = questions[currentQuestion]
+
   return (
     <div className="h-full w-full">
+      {/* 1. STANDBY: Waiting for chat to finish */}
       {state === "standby" && <QuizIdle chatPlayState={chatPlayState} />}
+
+      {/* 2. READY: Chat finished, user prompted to start quiz */}
       {state === "ready" && <QuizReady onStartQuiz={onStartQuiz} />}
-      {state === "active" && (
+
+      {/* 3. ACTIVE: Question is being displayed */}
+      {state === "active" && activeQuestion && (
         <QuizActive
           questionNumber={currentQuestion + 1}
           totalQuestions={totalQuestions}
-          question={questions.at(currentQuestion)}
+          question={activeQuestion}
           onAnswerSubmit={onAnswerSubmit}
           onSpeakMessage={onSpeakMessage}
           isSpeaking={isSpeaking}
         />
       )}
+
+      {/* 4. FEEDBACK: Result of the current question */}
       {state === "feedback" && feedbackData && (
         <QuizFeedback
           isCorrect={feedbackData.isCorrect}
@@ -80,6 +91,8 @@ export const QuizPanel = ({
           grammarNote={feedbackData.grammarNote}
         />
       )}
+
+      {/* 5. SUMMARY: Final score and pass/fail decision */}
       {state === "summary" && (
         <QuizSummary
           score={score}
