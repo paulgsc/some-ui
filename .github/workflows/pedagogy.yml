@@ -1,0 +1,155 @@
+name: Pedagogy
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  test:
+    name: Test Level ${{ matrix.level }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        level: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Check if level exists
+        id: check_level
+        run: |
+          if [ -f "level${{ matrix.level }}/Cargo.toml" ] || [ -f "level${{ matrix.level }}/Makefile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build Level ${{ matrix.level }}
+        if: steps.check_level.outputs.exists == 'true'
+        working-directory: level${{ matrix.level }}
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            cargo build --release
+          elif [ -f "Makefile" ]; then
+            make
+          fi
+      - name: Run Tests
+        if: steps.check_level.outputs.exists == 'true'
+        working-directory: level${{ matrix.level }}
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            cargo test --release
+          elif [ -f "run_tests.sh" ]; then
+            ./run_tests.sh
+          fi
+      - name: Run Integration Tests
+        if: steps.check_level.outputs.exists == 'true' && matrix.level == 4
+        run: |
+          if [ -f "tests/integration_tests.sh" ]; then
+            ./tests/integration_tests.sh
+          fi
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: |
+          for level in level*/; do
+            if [ -f "$level/Cargo.toml" ]; then
+              cd "$level"
+              cargo fmt -- --check
+              cd ..
+            fi
+          done
+      - name: Run clippy
+        run: |
+          for level in level*/; do
+            if [ -f "$level/Cargo.toml" ]; then
+              cd "$level"
+              cargo clippy -- -D warnings
+              cd ..
+            fi
+          done
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Run Benchmarks
+        run: |
+          if [ -f "scripts/run_benchmarks.sh" ]; then
+            ./scripts/run_benchmarks.sh
+          fi
+      - name: Comment PR with results
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('benchmark_results.txt')) {
+              const results = fs.readFileSync('benchmark_results.txt', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Benchmark Results\n\n\`\`\`\n${results}\n\`\`\``
+              });
+            }
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: Generate coverage
+        run: |
+          for level in level*/; do
+            if [ -f "$level/Cargo.toml" ]; then
+              cd "$level"
+              cargo tarpaulin --out Xml
+              cd ..
+            fi
+          done
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./level*/cobertura.xml
+          flags: unittests
+          name: codecov-umbrella
+  documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check for broken links in docs
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check-config.json'
+      - name: Verify all levels have documentation
+        run: |
+          for i in 1 2 3 4; do
+            if [ ! -f "challenges/LEVEL_0${i}_*.md" ]; then
+              echo "Missing documentation for Level $i"
+              exit 1
+            fi
+          done
