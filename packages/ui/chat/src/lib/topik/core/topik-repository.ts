@@ -54,9 +54,9 @@ export class TopikRepository implements ITopikRepository {
  * @param baseUrl - Base URL for topik files (e.g., "/data/topiks")
  * @param validator - Zod schema for validation
  */
-export function createTopikRepository(baseUrl: string): TopikRepository {
+export function createTopikRepository(): TopikRepository {
   const loader = async (key: string): Promise<TopikFile> => {
-    const response = await fetch(`${baseUrl}/${key}.json`)
+    const response = await fetch(`${key}`)
 
     if (!response.ok) {
       throw new Error(

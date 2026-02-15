@@ -8,7 +8,7 @@ export const KoreanStudyPage: FC = (): JSX.Element => {
   const vm = useKoreanStudyPageVM()
 
   return (
-    <div className="absolute inset-0 topik flex flex-col bg-background">
+    <div className="dark topik absolute inset-0 topik flex flex-col dark:bg-background">
       <SessionHeader {...vm.header} />
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         <div className="w-80 xl:w-96 flex-shrink-0">
@@ -20,7 +20,7 @@ export const KoreanStudyPage: FC = (): JSX.Element => {
             onJumpToMessage={vm.actions.jumpToMessage}
           />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 topik-card">
           <QuizPanel
             {...vm.quiz}
             onAnswerSubmit={vm.actions.submitAnswer}

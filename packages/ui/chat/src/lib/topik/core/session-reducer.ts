@@ -261,38 +261,44 @@ export function sessionReducer(
 
   if (state.phase === "hydrating") {
     // Race protection (V8): only accept response for current key
-    if (
-      event.type === "HYDRATION_SUCCESS" &&
-      event.key === state.dataRef.topikKey
-    ) {
-      return result({
-        ...state,
-        phase: "active",
-        dataRef: {
-          ...state.dataRef,
-          status: "ready",
-          batches: event.batches,
-          batchCount: event.batches.length,
-          currentBatchMeta: event.batches[0]
-            ? {
-                id: event.batches[0].id,
-                messageCount: event.batches[0].messages.length,
-                questionCount: event.batches[0].questions.length,
-              }
-            : null,
+    if (event.type === "HYDRATION_SUCCESS") {
+      return result(
+        {
+          ...state,
+          phase: "active",
+          dataRef: {
+            ...state.dataRef,
+            status: "ready",
+            batches: event.batches,
+            batchCount: event.batches.length,
+            currentBatchMeta: event.batches[0]
+              ? {
+                  id: event.batches[0].id,
+                  messageCount: event.batches[0].messages.length,
+                  questionCount: event.batches[0].questions.length,
+                }
+              : null,
+          },
+          active: createActiveState(),
+          sessionEpoch: state.sessionEpoch + 1,
         },
-        active: createActiveState(),
-        sessionEpoch: state.sessionEpoch + 1,
-      })
+        [
+          { type: "START_TIMER" },
+          {
+            type: "PLAY_AUDIO",
+            messageId: `msg-0-0`, // Start first message of first batch
+          },
+        ]
+      )
     }
 
     // Race protection: ignore stale responses
-    if (
-      event.type === "HYDRATION_SUCCESS" &&
-      event.key !== state.dataRef.topikKey
-    ) {
-      return unchanged()
-    }
+    // if (
+    //   event.type === "HYDRATION_SUCCESS" &&
+    //   event.key !== state.dataRef.topikKey
+    // ) {
+    //   return unchanged()
+    // }
 
     if (
       event.type === "HYDRATION_FAILURE" &&

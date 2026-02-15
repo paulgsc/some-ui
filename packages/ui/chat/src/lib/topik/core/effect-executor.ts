@@ -191,6 +191,7 @@ export class EffectExecutor {
           console.warn("[Executor] Unknown effect type:", _exhaustive)
       }
     } catch (error) {
+      console.error("[Executor] error executing effects", error, effect)
       if (this.config.onError)
         this.config.onError(
           error instanceof Error ? error : new Error(String(error)),
@@ -203,49 +204,59 @@ export class EffectExecutor {
   // QUERY EFFECTS - Model 1: Await fetch, dispatch result
   // ═════════════════════════════════════════════════════════════════════════
   private async _triggerCatalogQuery(): Promise<void> {
+    let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
     console.log("[Executor] Triggering catalog query")
 
     // Dispatch loading immediately
-    machine.dispatch({ type: "CATALOG_LOADING" })
+    effects = machine.dispatch({ type: "CATALOG_LOADING" })
+    this.execute(effects)
 
     try {
       const data = await queryBridge.fetchCatalog()
       console.log("[Executor] Catalog query succeeded")
-      machine.dispatch({ type: "CATALOG_SUCCESS", data: data.topiks })
+      effects = machine.dispatch({ type: "CATALOG_SUCCESS", data: data.topiks })
+      this.execute(effects)
     } catch (error) {
       console.error("[Executor] Catalog query failed:", error)
-      machine.dispatch({
+      effects = machine.dispatch({
         type: "CATALOG_FAILURE",
         error: error instanceof Error ? error.message : String(error),
       })
+      this.execute(effects)
     }
   }
 
   private async _triggerTopikQuery(key: string): Promise<void> {
+    let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
     console.log(`[Executor] Triggering topik query for key: ${key}`)
 
     // Dispatch loading immediately
-    machine.dispatch({ type: "HYDRATION_STARTED", key })
+    effects = machine.dispatch({ type: "HYDRATION_STARTED", key })
+    this.execute(effects)
 
     try {
       const batches = await queryBridge.fetchTopik(key)
       console.log(`[Executor] Topik query succeeded: ${key}`)
-      machine.dispatch({
+      effects = machine.dispatch({
         type: "HYDRATION_SUCCESS",
         key,
         batches,
       })
+
+      console.info("[executor] effects", effects)
+      this.execute(effects) // This triggers the PLAY_AUDIO and START_TIMER
     } catch (error) {
       console.error(`[Executor] Topik query failed: ${key}`, error)
-      machine.dispatch({
+      effects = machine.dispatch({
         type: "HYDRATION_FAILURE",
         key,
         error: error instanceof Error ? error.message : String(error),
       })
+      this.execute(effects)
     }
   }
 

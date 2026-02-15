@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import {
   actions,
   getCurrentBatch,
@@ -45,6 +45,9 @@ export function useKoreanStudyPageVM() {
   })
 
   const { state, dispatch } = session
+  useEffect(() => {
+    console.log("[vm: state: ", state)
+  }, [state])
 
   const topikItems = useMemo(
     () => getAvailableTopiks(state),

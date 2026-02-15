@@ -8,7 +8,7 @@ import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { KoreanStudyPage } from "."
 
 // 1. Initialize mock repositories for the story environment
-const storyTopikRepository = createTopikRepository("/topiks")
+const storyTopikRepository = createTopikRepository()
 const storyMetadataRepository = createTopikMetadataRepository(
   "/topiks/manifest.json"
 )
