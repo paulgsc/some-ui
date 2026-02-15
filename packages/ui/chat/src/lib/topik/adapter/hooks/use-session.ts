@@ -1,9 +1,4 @@
-/**
- * Enhanced React Adapter with TTS Support
- *
- */
-
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type {
   EffectExecutor,
   ISessionMachine,
@@ -22,59 +17,29 @@ import {
 import { createQueryBridge } from "@chat/lib/topik/adapter/server"
 import { useQueryClient } from "@tanstack/react-query"
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HOOK CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
-
 export type UseEnhancedSessionConfig = {
   repository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
-
-  // TTS configuration
   speechQueue: SpeechQueueService
   componentId: string
   enableTTS: boolean
-
-  // Callbacks
   onBatchComplete?: (batchIndex: number) => void
   onSessionComplete?: () => void
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
-
-  // Timer configuration
   timerInterval?: number
 }
 
 export type UseEnhancedSessionReturn = {
-  // Core state
   state: SessionState
-
-  // Dispatch function
   dispatch: (event: SessionEvent) => void
-
-  // TTS controls
   speakMessage: (message: Message) => Promise<void>
   isSpeaking: boolean
   currentSpeakingId: string | null
-
-  // Machine reference (for advanced usage)
   machine: ISessionMachine
   repository: ITopikRepository
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HOOK
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Enhanced React hook with integrated TTS
- *
- * Automatically handles:
- * - Auto-play TTS when messages advance
- * - Race condition safety
- * - Cancellation on pause/stop
- * - Manual speak controls for UI
- */
 export function useSession(
   config: UseEnhancedSessionConfig
 ): UseEnhancedSessionReturn {
@@ -93,69 +58,90 @@ export function useSession(
 
   const queryClient = useQueryClient()
 
-  // Create query bridge
-  const queryBridge = useMemo(
-    () =>
-      createQueryBridge(
-        queryClient,
-        () => metadataRepository.loadCatalog(),
-        (key) => repository.load(key)
-      ),
-    [queryClient, metadataRepository, repository]
+  // ══════════════════════════════════════════════════════
+  // MEMOIZED REPOSITORY LOADERS
+  // ══════════════════════════════════════════════════════
+
+  const loadCatalog = useCallback(
+    () => metadataRepository.loadCatalog(),
+    [metadataRepository]
+  )
+  const loadKey = useCallback(
+    (key: string) => repository.load(key),
+    [repository]
   )
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // MACHINE INSTANCE - Survives remounts
-  // ═════════════════════════════════════════════════════════════════════════
+  const queryBridge = useMemo(
+    () => createQueryBridge(queryClient, loadCatalog, loadKey),
+    [queryClient, loadCatalog, loadKey]
+  )
+
+  // ══════════════════════════════════════════════════════
+  // MACHINE INSTANCE (stable across remounts)
+  // ══════════════════════════════════════════════════════
 
   const machineRef = useRef<ISessionMachine | null>(null)
   const executorRef = useRef<EffectExecutor | null>(null)
 
-  // Create machine only once
   if (!machineRef.current) {
     machineRef.current = createSessionMachine()
   }
 
   const machine = machineRef.current
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // STATE SYNC
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
+  // REACT STATE SYNC
+  // ══════════════════════════════════════════════════════
+
+  // TODO (future optimization):
+  // Consider switching to `useSyncExternalStore` (React 18+) for machine state
+  // to eliminate the extra render caused by the initial `setState` in useEffect.
+  // This will provide fully synchronous state with minimal re-renders.
 
   const [state, setState] = useState<SessionState>(() => machine.getState())
 
   useEffect(() => {
-    // Sync React state with machine state
-    setState(machine.getState())
-
-    // Subscribe to changes
-    const unsubscribe = machine.subscribe((newState) => {
-      setState(newState)
-    })
-
+    // Subscribe to machine changes.
+    // We do NOT setState here initially, because useState already initializes
+    // with the machine's current state. This avoids double render on mount.
+    const unsubscribe = machine.subscribe((newState) => setState(newState))
     return unsubscribe
   }, [machine])
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // TTS STATE (from executor)
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
+  // TTS STATE
+  // ══════════════════════════════════════════════════════
 
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(
     null
   )
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // EXECUTOR - Create/recreate when callbacks change
-  // ═════════════════════════════════════════════════════════════════════════
+  const handleSpeechStart = useCallback(
+    (messageId: string) => {
+      setIsSpeaking(true)
+      setCurrentSpeakingId(messageId)
+      onSpeechStart?.(messageId)
+    },
+    [onSpeechStart]
+  )
+
+  const handleSpeechEnd = useCallback(
+    (messageId: string) => {
+      setIsSpeaking(false)
+      setCurrentSpeakingId(null)
+      onSpeechEnd?.(messageId)
+    },
+    [onSpeechEnd]
+  )
+
+  // ══════════════════════════════════════════════════════
+  // EXECUTOR EFFECT
+  // ══════════════════════════════════════════════════════
 
   useEffect(() => {
-    // Cleanup previous executor
-    if (executorRef.current) {
-      executorRef.current.destroy()
-    }
+    executorRef.current?.destroy()
 
-    // Create new executor with TTS
     executorRef.current = createEffectExecutor({
       machine,
       repository,
@@ -165,25 +151,12 @@ export function useSession(
       componentId,
       enableTTS,
       timerInterval,
-
       onBatchComplete,
       onSessionComplete,
-
-      onSpeechStart: (messageId) => {
-        setIsSpeaking(true)
-        setCurrentSpeakingId(messageId)
-        onSpeechStart?.(messageId)
-      },
-
-      onSpeechEnd: (messageId) => {
-        setIsSpeaking(false)
-        setCurrentSpeakingId(null)
-        onSpeechEnd?.(messageId)
-      },
-
-      onError: (error, effect) => {
-        console.error("[Executor] Error:", effect, error)
-      },
+      onSpeechStart: handleSpeechStart,
+      onSpeechEnd: handleSpeechEnd,
+      onError: (error, effect) =>
+        console.error("[Executor] Error:", effect, error),
     })
 
     return () => {
@@ -201,56 +174,45 @@ export function useSession(
     timerInterval,
     onBatchComplete,
     onSessionComplete,
-    onSpeechStart,
-    onSpeechEnd,
+    handleSpeechStart,
+    handleSpeechEnd,
   ])
 
-  // Trigger initial catalog load on mount
+  // ══════════════════════════════════════════════════════
+  // INITIAL CATALOG LOAD
+  // ══════════════════════════════════════════════════════
+
   useEffect(() => {
     const effects = machine.dispatch(actions.requestCatalog())
     executorRef.current?.execute(effects)
   }, [machine])
 
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // DISPATCH FUNCTION
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
 
-  const dispatch = useMemo(
-    () => (event: SessionEvent) => {
+  const dispatch = useCallback(
+    (event: SessionEvent) => {
       const effects = machine.dispatch(event)
       executorRef.current?.execute(effects)
     },
     [machine]
   )
 
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // TTS CONTROLS
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
 
-  const speakMessage = useMemo(
-    () => async (message: Message) => {
-      if (!executorRef.current) return
-      await executorRef.current.speakMessage(message)
-    },
-    []
-  )
+  const speakMessage = useCallback(async (message: Message) => {
+    await executorRef.current?.speakMessage(message)
+  }, [])
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // AUTO-PLAY TTS EFFECT
-  // ═════════════════════════════════════════════════════════════════════════
-
-  // Auto-play is now handled by the executor via PLAY_AUDIO effects
-  // The reducer emits PLAY_AUDIO effects when appropriate
-  // This keeps the logic in the core, not in React
-
-  // ═════════════════════════════════════════════════════════════════════════
-  // CLEANUP
-  // ═════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
+  // CLEANUP ON UNMOUNT
+  // ══════════════════════════════════════════════════════
 
   useEffect(() => {
-    return (): void => {
-      executorRef.current?.destroy()
-    }
+    return () => executorRef.current?.destroy()
   }, [])
 
   return {
