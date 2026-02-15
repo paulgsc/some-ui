@@ -7,7 +7,6 @@
 
 import type { Message } from "@chat/lib/topik"
 import { actions, getCurrentMessage } from "@chat/lib/topik"
-import type { QueryClient } from "@tanstack/react-query"
 
 import type {
   IQueryBridge,
@@ -26,7 +25,6 @@ export type EffectExecutorConfig = {
   machine: ISessionMachine
   repository: ITopikRepository
   queryBridge: IQueryBridge
-  queryClient: QueryClient
 
   // TTS configuration
   speechQueue?: SpeechQueueService
@@ -54,11 +52,6 @@ export class EffectExecutor {
 
   // TTS state
   private ttsHandler: TTSEffectHandler | null = null
-
-  // Query observation state
-  private catalogObserver: ReturnType<typeof setInterval> | null = null
-  private topikObserver: ReturnType<typeof setInterval> | null = null
-  private observedTopikKey: string | null = null
 
   // Lifecycle state
   private destroyed = false
@@ -147,9 +140,7 @@ export class EffectExecutor {
   destroy(): void {
     this.destroyed = true
     this._stopTimer()
-    this._stopCatalogObserver()
-    this._stopTopikObserver()
-    this.ttsHandler?.destroy()
+    if (this.ttsHandler) this.ttsHandler.destroy()
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -200,7 +191,7 @@ export class EffectExecutor {
           console.warn("[Executor] Unknown effect type:", _exhaustive)
       }
     } catch (error) {
-      this.config.onError &&
+      if (this.config.onError)
         this.config.onError(
           error instanceof Error ? error : new Error(String(error)),
           effect
@@ -209,134 +200,52 @@ export class EffectExecutor {
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // QUERY EFFECTS
+  // QUERY EFFECTS - Model 1: Await fetch, dispatch result
   // ═════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Trigger catalog query and observe state changes
-   */
-  private _triggerCatalogQuery(): void {
+  private async _triggerCatalogQuery(): Promise<void> {
     const { queryBridge, machine } = this.config
 
     console.log("[Executor] Triggering catalog query")
 
-    const state = queryBridge.triggerCatalogQuery()
+    // Dispatch loading immediately
+    machine.dispatch({ type: "CATALOG_LOADING" })
 
-    if (state.isLoading) {
-      machine.dispatch({ type: "CATALOG_LOADING" })
-    }
-
-    if (!state.isLoading && !state.isError) {
-      machine.dispatch({ type: "CATALOG_SUCCESS" })
-      return
-    }
-
-    if (state.isError) {
+    try {
+      const data = await queryBridge.fetchCatalog()
+      console.log("[Executor] Catalog query succeeded")
+      machine.dispatch({ type: "CATALOG_SUCCESS", data: data.topiks })
+    } catch (error) {
+      console.error("[Executor] Catalog query failed:", error)
       machine.dispatch({
         type: "CATALOG_FAILURE",
-        error: state.error?.message ?? "Unknown error",
+        error: error instanceof Error ? error.message : String(error),
       })
-      return
-    }
-
-    if (!this.catalogObserver) {
-      this.catalogObserver = setInterval(() => {
-        const currentState = queryBridge.triggerCatalogQuery()
-
-        if (currentState.isError) {
-          console.log("[Executor] Catalog query failed")
-          machine.dispatch({
-            type: "CATALOG_FAILURE",
-            error: currentState.error?.message ?? "Unknown error",
-          })
-          this._stopCatalogObserver()
-        } else if (!currentState.isLoading) {
-          console.log("[Executor] Catalog query succeeded")
-          machine.dispatch({ type: "CATALOG_SUCCESS" })
-          this._stopCatalogObserver()
-        }
-      }, 100)
     }
   }
 
-  /**
-   * Trigger topik query and observe state changes
-   */
-  private _triggerTopikQuery(key: string): void {
+  private async _triggerTopikQuery(key: string): Promise<void> {
     const { queryBridge, machine } = this.config
 
     console.log(`[Executor] Triggering topik query for key: ${key}`)
 
-    if (this.observedTopikKey !== key) {
-      this._stopTopikObserver()
-      this.observedTopikKey = key
-    }
+    // Dispatch loading immediately
+    machine.dispatch({ type: "HYDRATION_STARTED", key })
 
-    const state = queryBridge.triggerTopikQuery(key)
-
-    if (state.isLoading) {
-      machine.dispatch({ type: "HYDRATION_STARTED", key })
-    }
-
-    if (!state.isLoading && !state.isError && state.data) {
-      console.log(`[Executor] Topik query succeeded (cached): ${key}`)
+    try {
+      const batches = await queryBridge.fetchTopik(key)
+      console.log(`[Executor] Topik query succeeded: ${key}`)
       machine.dispatch({
         type: "HYDRATION_SUCCESS",
         key,
-        batchCount: state.data.length,
+        batches,
       })
-      return
-    }
-
-    if (state.isError) {
-      console.log(`[Executor] Topik query failed: ${key}`)
+    } catch (error) {
+      console.error(`[Executor] Topik query failed: ${key}`, error)
       machine.dispatch({
         type: "HYDRATION_FAILURE",
         key,
-        error: state.error?.message ?? "Unknown error",
+        error: error instanceof Error ? error.message : String(error),
       })
-      return
-    }
-
-    if (!this.topikObserver) {
-      this.topikObserver = setInterval(() => {
-        const currentState = queryBridge.triggerTopikQuery(key)
-
-        if (currentState.isError) {
-          console.log(`[Executor] Topik query failed: ${key}`)
-          machine.dispatch({
-            type: "HYDRATION_FAILURE",
-            key,
-            error: currentState.error?.message ?? "Unknown error",
-          })
-          this._stopTopikObserver()
-        } else if (!currentState.isLoading && currentState.data) {
-          console.log(`[Executor] Topik query succeeded: ${key}`)
-          machine.dispatch({
-            type: "HYDRATION_SUCCESS",
-            key,
-            batchCount: currentState.data.length,
-          })
-          this._stopTopikObserver()
-        }
-      }, 100)
-    }
-  }
-
-  private _stopCatalogObserver(): void {
-    if (this.catalogObserver) {
-      clearInterval(this.catalogObserver)
-      this.catalogObserver = null
-      console.log("[Executor] Stopped catalog observer")
-    }
-  }
-
-  private _stopTopikObserver(): void {
-    if (this.topikObserver) {
-      clearInterval(this.topikObserver)
-      this.topikObserver = null
-      this.observedTopikKey = null
-      console.log("[Executor] Stopped topik observer")
     }
   }
 
@@ -378,10 +287,7 @@ export class EffectExecutor {
       return
     }
 
-    const message = getCurrentMessage(
-      this.config.machine,
-      this.config.queryClient
-    )
+    const message = getCurrentMessage(this.config.machine.getState())
 
     if (!message) {
       console.warn(`[Executor] Message not found: ${messageId}`)
@@ -402,7 +308,6 @@ export class EffectExecutor {
 
   private _stopAudio(): void {
     if (!this.ttsHandler) return
-
     console.log("[Executor] Stopping audio")
     this.ttsHandler.handleStopAudio()
   }
@@ -413,12 +318,12 @@ export class EffectExecutor {
 
   private _notifyBatchComplete(batchIndex: number): void {
     console.log(`[Executor] Batch complete: ${batchIndex}`)
-    this.config.onBatchComplete && this.config.onBatchComplete(batchIndex)
+    if (this.config.onBatchComplete) this.config.onBatchComplete(batchIndex)
   }
 
   private _notifySessionComplete(): void {
     console.log("[Executor] Session complete")
-    this.config.onSessionComplete && this.config.onSessionComplete()
+    if (this.config.onSessionComplete) this.config.onSessionComplete()
   }
 }
 

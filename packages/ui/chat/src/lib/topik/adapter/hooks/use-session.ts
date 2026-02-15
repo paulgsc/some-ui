@@ -146,7 +146,6 @@ export function useSession(
       machine,
       repository,
       queryBridge,
-      queryClient,
       speechQueue,
       componentId,
       enableTTS,
@@ -159,7 +158,7 @@ export function useSession(
         console.error("[Executor] Error:", effect, error),
     })
 
-    return () => {
+    return (): void => {
       executorRef.current?.destroy()
       executorRef.current = null
     }
@@ -167,7 +166,6 @@ export function useSession(
     machine,
     repository,
     queryBridge,
-    queryClient,
     speechQueue,
     componentId,
     enableTTS,
@@ -212,7 +210,7 @@ export function useSession(
   // ══════════════════════════════════════════════════════
 
   useEffect(() => {
-    return () => executorRef.current?.destroy()
+    return (): void => executorRef.current?.destroy()
   }, [])
 
   return {

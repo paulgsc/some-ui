@@ -1,27 +1,25 @@
 /**
- * Session Selectors & Action Creators
+ * Session Selectors - Read from FSM State Only
  *
- * Pure functions for working with session state and TanStack Query data
+ * Model 1: All data flows through FSM, not query cache
+ * These selectors operate on SessionState, not QueryClient
+ * Session Selectors - Pure functions over SessionState
+ *
+ * Invariant: No IO, no cache reads, no side effects
  */
-
 import type {
   BatchMetadata,
   CatalogStatus,
   ConversationBatch,
   FeedbackData,
-  ISessionMachine,
   Message,
   Question,
   QuizStage,
   SessionCursor,
   SessionEvent,
   SessionState,
-  TopikManifest,
   TopikMetadata,
 } from "@chat/lib/topik"
-import { metadataKeys } from "@chat/lib/topik/adapter/server/topik-metadata-queries"
-import { topikKeys } from "@chat/lib/topik/adapter/server/topik-queries"
-import type { QueryClient } from "@tanstack/react-query"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS - FSM STATE
@@ -309,146 +307,64 @@ export const actions = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// QUERY DATA ACCESSORS
+// BATCH ACCESSORS - Read from repository via cursor
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Get available topiks from TanStack Query cache
+ * Get current batch from repository
+ * Precondition: state.phase === "active" and dataRef.status === "ready"
  */
-export function getAvailableTopiks(
-  queryClient: QueryClient
-): Array<TopikMetadata> {
-  const manifest = queryClient.getQueryData<TopikManifest>(
-    metadataKeys.manifest()
-  )
-  return manifest?.topiks ?? []
-}
-
-/**
- * Get specific topik metadata from cache
- */
-export function getTopikMetadata(
-  queryClient: QueryClient,
-  key: string
-): TopikMetadata | undefined {
-  const manifest = queryClient.getQueryData<TopikManifest>(
-    metadataKeys.manifest()
-  )
-  return manifest?.topiks.find((t) => t.key === key)
-}
-
-/**
- * Get all batches for a topik from cache
- */
-export function getTopikBatches(
-  queryClient: QueryClient,
-  key: string
-): Array<ConversationBatch> | undefined {
-  return queryClient.getQueryData<Array<ConversationBatch>>(
-    topikKeys.detail(key)
-  )
-}
-
-/**
- * Get current batch from cache
- */
-export function getCurrentBatch(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): ConversationBatch | null {
-  const state = machine.getState()
+export function getCurrentBatch(state: SessionState): ConversationBatch | null {
   const { dataRef, active } = state
 
-  if (!dataRef.topikKey || !active) return null
+  if (!dataRef.batches || !active) return null
 
-  const batches = queryClient.getQueryData<Array<ConversationBatch>>(
-    topikKeys.detail(dataRef.topikKey)
-  )
-
-  return batches?.[active.cursor.batch] ?? null
+  return dataRef.batches[active.cursor.batch] ?? null
 }
 
-/**
- * Get current message from batch
- */
-export function getCurrentMessage(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): Message | null {
-  const state = machine.getState()
-  const batch = getCurrentBatch(machine, queryClient)
-
+export function getCurrentMessage(state: SessionState): Message | null {
+  const batch = getCurrentBatch(state)
   if (!batch || !state.active) return null
 
   return batch.messages[state.active.cursor.message] ?? null
 }
 
-/**
- * Get current question from batch
- */
-export function getCurrentQuestion(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): Question | null {
-  const state = machine.getState()
-  const batch = getCurrentBatch(machine, queryClient)
-
+export function getCurrentQuestion(state: SessionState): Question | null {
+  const batch = getCurrentBatch(state)
   if (!batch || !state.active) return null
 
   return batch.questions[state.active.cursor.question] ?? null
 }
 
-/**
- * Get visible messages (up to current index)
- */
-export function getVisibleMessages(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): Array<Message> {
-  const state = machine.getState()
-  const batch = getCurrentBatch(machine, queryClient)
-
+export function getVisibleMessages(state: SessionState): Array<Message> {
+  const batch = getCurrentBatch(state)
   if (!batch || !state.active) return []
 
   return batch.messages.slice(0, state.active.cursor.message + 1)
 }
 
-/**
- * Get all messages in current batch
- */
-export function getAllMessages(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): Array<Message> {
-  const batch = getCurrentBatch(machine, queryClient)
+export function getAllMessages(state: SessionState): Array<Message> {
+  const batch = getCurrentBatch(state)
   return batch?.messages ?? []
 }
 
-/**
- * Get all questions in current batch
- */
-export function getAllQuestions(
-  machine: ISessionMachine,
-  queryClient: QueryClient
-): Array<Question> {
-  const batch = getCurrentBatch(machine, queryClient)
+export function getAllQuestions(state: SessionState): Array<Question> {
+  const batch = getCurrentBatch(state)
   return batch?.questions ?? []
 }
 
-/**
- * Check if topik data is cached
- */
-export function isTopikCached(queryClient: QueryClient, key: string): boolean {
-  const data = queryClient.getQueryData<Array<ConversationBatch>>(
-    topikKeys.detail(key)
-  )
-  return data !== undefined
+// ═══════════════════════════════════════════════════════════════════════════
+// CATALOG ACCESSORS - Read from state.dataRef.catalog.data 
+// ═══════════════════════════════════════════════════════════════════════════
+export function getAvailableTopiks(
+  state: SessionState
+): Array<TopikMetadata> {
+  return state.dataRef.catalog.data ?? []
 }
 
-/**
- * Check if catalog is cached
- */
-export function isCatalogCached(queryClient: QueryClient): boolean {
-  const data = queryClient.getQueryData<TopikManifest>(metadataKeys.manifest())
-  return data !== undefined
+export function getTopikMetadata(
+  state: SessionState,
+  key: string
+): TopikMetadata | undefined {
+  return state.dataRef.catalog.data?.find((t) => t.key === key)
 }

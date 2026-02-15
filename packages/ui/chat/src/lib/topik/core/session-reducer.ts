@@ -31,9 +31,11 @@ export function createInitialState(): SessionState {
     dataRef: {
       catalog: {
         status: "idle",
+        data: null,
         error: null,
       },
       topikKey: null,
+      batches: null,
       status: "empty",
       error: null,
       batchCount: 0,
@@ -163,6 +165,7 @@ export function sessionReducer(
           ...state.dataRef,
           catalog: {
             status: "loading",
+            data: null,
             error: null,
           },
         },
@@ -185,6 +188,7 @@ export function sessionReducer(
         ...state.dataRef,
         catalog: {
           status: "loading",
+          data: null,
           error: null,
         },
       },
@@ -201,6 +205,7 @@ export function sessionReducer(
         ...state.dataRef,
         catalog: {
           status: "ready",
+          data: event.data,
           error: null,
         },
       },
@@ -215,6 +220,7 @@ export function sessionReducer(
         ...state.dataRef,
         catalog: {
           status: "failed",
+          data: null,
           error: event.error,
         },
       },
@@ -234,6 +240,7 @@ export function sessionReducer(
           dataRef: {
             ...state.dataRef,
             topikKey: event.key,
+            batches: null,
             status: "loading",
             error: null,
             batchCount: 0,
@@ -264,8 +271,15 @@ export function sessionReducer(
         dataRef: {
           ...state.dataRef,
           status: "ready",
-          batchCount: event.batchCount,
-          currentBatchMeta: null, // Will be set by repository accessor
+          batches: event.batches,
+          batchCount: event.batches.length,
+          currentBatchMeta: event.batches[0]
+            ? {
+                id: event.batches[0].id,
+                messageCount: event.batches[0].messages.length,
+                questionCount: event.batches[0].questions.length,
+              }
+            : null,
         },
         active: createActiveState(),
         sessionEpoch: state.sessionEpoch + 1,
@@ -290,6 +304,7 @@ export function sessionReducer(
         dataRef: {
           ...state.dataRef,
           topikKey: null,
+          batches: null,
           status: "failed",
           error: event.error,
           batchCount: 0,

@@ -1,8 +1,8 @@
 /**
  * Query Bridge - Connects FSM to TanStack Query
  *
- * This adapter allows the FSM to trigger queries and observe their state
- * without owning the fetch lifecycle
+ * Model 1: FSM owns lifecycle, TanStack provides cache + dedupe
+ * Bridge executes fetches and returns promises - no state inspection
  */
 
 import type {
@@ -24,44 +24,32 @@ export class QueryBridge implements IQueryBridge {
     ) => Promise<Array<ConversationBatch>>
   ) {}
 
-  triggerCatalogQuery() {
-    const state = this.queryClient.getQueryState(metadataKeys.manifest())
-
-    // If not fetching, trigger fetch
-    if (!state?.fetchStatus || state.fetchStatus === "idle") {
-      this.queryClient.prefetchQuery({
-        queryKey: metadataKeys.manifest(),
-        queryFn: this.catalogQueryFn,
-      })
-    }
-
-    return {
-      isLoading: state?.fetchStatus === "fetching",
-      isError: state?.status === "error",
-      error: state?.error as Error | null,
-    }
+  /**
+   * Execute catalog fetch
+   * Returns promise that resolves with data or rejects with error
+   */
+  async fetchCatalog(): Promise<TopikManifestFile> {
+    return this.queryClient.fetchQuery({
+      queryKey: metadataKeys.manifest(),
+      queryFn: this.catalogQueryFn,
+    })
   }
 
-  triggerTopikQuery(key: string) {
-    const queryKey = topikKeys.detail(key)
-    const state = this.queryClient.getQueryState(queryKey)
-
-    // If not fetching, trigger fetch
-    if (!state?.fetchStatus || state.fetchStatus === "idle") {
-      this.queryClient.prefetchQuery({
-        queryKey,
-        queryFn: () => this.topikQueryFn(key),
-      })
-    }
-
-    return {
-      isLoading: state?.fetchStatus === "fetching",
-      isError: state?.status === "error",
-      error: state?.error as Error | null,
-      data: state?.data as Array<ConversationBatch> | undefined,
-    }
+  /**
+   * Execute topik fetch
+   * Returns promise that resolves with data or rejects with error
+   */
+  async fetchTopik(key: string): Promise<Array<ConversationBatch>> {
+    return this.queryClient.fetchQuery({
+      queryKey: topikKeys.detail(key),
+      queryFn: () => this.topikQueryFn(key),
+    })
   }
 
+  /**
+   * Get cached topik data (read-only accessor)
+   * Used by selectors, not for flow control
+   */
   getCachedTopik(key: string): Array<ConversationBatch> | undefined {
     return this.queryClient.getQueryData<Array<ConversationBatch>>(
       topikKeys.detail(key)

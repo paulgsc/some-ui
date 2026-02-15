@@ -3,7 +3,11 @@
  * Framework-agnostic session state machine types
  */
 
-import type { ConversationBatch, TopikManifestFile } from "@chat/lib/topik"
+import type {
+  ConversationBatch,
+  TopikManifestFile,
+  TopikMetadata,
+} from "@chat/lib/topik"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PHASE HIERARCHY
@@ -30,6 +34,7 @@ export type CatalogStatus = "idle" | "loading" | "ready" | "failed"
  */
 export type CatalogState = {
   status: CatalogStatus
+  data: Array<TopikMetadata> | null
   error: string | null
 }
 
@@ -87,8 +92,7 @@ export type ActiveSessionState = {
 export type HydrationStatus = "empty" | "loading" | "ready" | "failed"
 
 /**
- * Data reference - FSM does not own the batches
- * Except the metadata
+ * Data reference - FSM does own the batches
  */
 export type DataReference = {
   // Catalog state (orthogonal to phase)
@@ -96,6 +100,7 @@ export type DataReference = {
 
   // Selected topik
   topikKey: string | null
+  batches: Array<ConversationBatch> | null
   status: HydrationStatus
   error: string | null
 
@@ -163,7 +168,7 @@ export type SessionState = {
  */
 export type CatalogEvent =
   | { type: "CATALOG_LOADING" }
-  | { type: "CATALOG_SUCCESS" }
+  | { type: "CATALOG_SUCCESS"; data: Array<TopikMetadata> }
   | { type: "CATALOG_FAILURE"; error: string }
 
 /**
@@ -183,7 +188,11 @@ export type SelectionEvent =
  */
 export type HydrationEvent =
   | { type: "HYDRATION_STARTED"; key: string }
-  | { type: "HYDRATION_SUCCESS"; key: string; batchCount: number }
+  | {
+      type: "HYDRATION_SUCCESS"
+      key: string
+      batches: Array<ConversationBatch>
+    }
   | { type: "HYDRATION_FAILURE"; key: string; error: string }
 
 /**
@@ -270,27 +279,8 @@ export type ReducerResult = {
  * Executor uses this to trigger queries and observe their state
  */
 export type IQueryBridge = {
-  /**
-   * Trigger catalog query (idempotent)
-   * Returns current query state
-   */
-  triggerCatalogQuery(): {
-    isLoading: boolean
-    isError: boolean
-    error: Error | null
-  }
-
-  /**
-   * Trigger topik query for key
-   * Returns current query state
-   */
-  triggerTopikQuery(key: string): {
-    isLoading: boolean
-    isError: boolean
-    error: Error | null
-    data: Array<ConversationBatch> | undefined
-  }
-
+  fetchCatalog(): Promise<TopikManifestFile>
+  fetchTopik(key: string): Promise<Array<ConversationBatch>>
   /**
    * Get cached topik data (synchronous)
    */
