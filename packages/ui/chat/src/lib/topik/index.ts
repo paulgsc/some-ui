@@ -70,6 +70,10 @@ export {
 export { sessionReducer, createInitialState } from "./core/session-reducer"
 
 export { TopikRepository, createTopikRepository } from "./core/topik-repository"
+export {
+  TopikMetadataRepository,
+  createTopikMetadataRepository,
+} from "./core/topik-metadata-repository"
 
 export { SessionMachine, createSessionMachine } from "./core/session-machine"
 
@@ -105,6 +109,7 @@ export { TopikFileSchema } from "./entity/topik-types"
 // REACT ADAPTER (optional)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { useKoreanStudyPageVM } from "./adapter/use-korean-study-page-vm"
-export { useSession } from "./adapter/use-session"
-export { useTopikCurrentBatch } from "./adapter/topik-queries"
+export { useKoreanStudyPageVM } from "./adapter/hooks"
+export { useSession } from "./adapter/hooks"
+export { useTopikCurrentBatch } from "./adapter/server"
+export { SessionConfigProvider, useSessionConfig } from "./adapter"

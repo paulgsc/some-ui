@@ -7,7 +7,7 @@ import { Button } from "some-ui-shared"
 const ITEMS_PER_PAGE = 8
 type BookshelfGridProps = {
   items: Array<TopikMetadata>
-  selectedKey?: string
+  selectedKey?: string | null
   onSelect: (key: string) => void
   page: number
   onPageChange: (page: number) => void

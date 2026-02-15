@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useCallback, useEffect, useRef } from "react"
 import type { TopikMetadata } from "@chat/lib/topik"
 import { Search } from "lucide-react"
@@ -22,13 +23,15 @@ export const OmniSearchInput = ({
   onSelect,
   highlightedKey,
   disabled = false,
-}: OmniSearchInputProps) => {
+}: OmniSearchInputProps): JSX.Element => {
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-highlight first item when list changes
   useEffect(() => {
-    if (items.length > 0 && !highlightedKey) {
-      onHighlight(items[0].key)
+    const [firstItem] = items
+
+    if (firstItem && !highlightedKey) {
+      onHighlight(firstItem.key)
     }
   }, [items, highlightedKey, onHighlight])
 
@@ -37,20 +40,19 @@ export const OmniSearchInput = ({
       if (items.length === 0) return
 
       const currentIndex = items.findIndex((i) => i.key === highlightedKey)
+      const len = items.length
 
       if (e.key === "ArrowDown") {
         e.preventDefault()
-        const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0
-        onHighlight(items[next].key)
+        const nextItem = items[(currentIndex + 1) % len]
+        if (nextItem) onHighlight(nextItem.key)
       } else if (e.key === "ArrowUp") {
         e.preventDefault()
-        const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1
-        onHighlight(items[prev].key)
-      } else if (e.key === "Enter") {
+        const prevItem = items[(currentIndex - 1 + len) % len]
+        if (prevItem) onHighlight(prevItem.key)
+      } else if (e.key === "Enter" && highlightedKey) {
         e.preventDefault()
-        if (highlightedKey) {
-          onSelect(highlightedKey)
-        }
+        onSelect(highlightedKey)
       }
     },
     [items, highlightedKey, onHighlight, onSelect]

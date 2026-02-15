@@ -1,72 +1,52 @@
+
 import type { JSX } from "react"
 import { QuizActive } from "@chat/components/topik/quiz-states/quiz-active"
 import { QuizFeedback } from "@chat/components/topik/quiz-states/quiz-feedback"
 import { QuizIdle } from "@chat/components/topik/quiz-states/quiz-idle"
-import { QuizReady } from "@chat/components/topik/quiz-states/quiz-ready"
 import { QuizSummary } from "@chat/components/topik/quiz-states/quiz-summary"
-import type { ChatPlayState, Message } from "@chat/types/topik"
+import type { Message, Question } from "@chat/lib/topik"
+import type { FeedbackData, PlayState, QuizStage } from "@chat/lib/topik"
 
 type QuizPanelProps = {
-  state: "standby" | "ready" | "active" | "feedback" | "summary"
+  quizStage: QuizStage
   currentQuestion: number
   totalQuestions: number
-  questions: Array<{
-    type: "multiple-choice" | "text-input"
-    korean: string
-    question: string
-    options?: Array<string>
-    correct?: number
-    acceptedAnswers?: Array<string>
-    correctAnswer: string
-    explanation: string
-    grammarNote?: string
-  }>
-  onStartQuiz: () => void
+  questions: Array<Question>
   onAnswerSubmit: (isCorrect: boolean, userAnswer: string) => void
   onNextQuestion: () => void
   onAssessmentComplete: (passed: boolean) => void
-  onSpeakMessage: (message: Message) => void
-  isSpeaking: boolean
   score: number
-  feedbackData?: {
-    isCorrect: boolean
-    questionType: "multiple-choice" | "text-input"
-    userAnswer?: string
-    correctAnswer?: string
-    explanation: string
-    grammarNote?: string
-  }
-  chatPlayState: ChatPlayState
+  feedbackData: FeedbackData | null
+  chatPlayState: PlayState
+  isInQuiz: boolean
+  isSpeaking: boolean
+  onSpeakMessage: (message: Message) => void
 }
 
 export const QuizPanel = ({
-  state,
+  quizStage,
   currentQuestion,
   totalQuestions,
   questions,
-  onStartQuiz,
   onAnswerSubmit,
   onNextQuestion,
   onAssessmentComplete,
-  onSpeakMessage,
-  isSpeaking,
   score,
   feedbackData,
   chatPlayState,
+  isInQuiz,
+  isSpeaking,
+  onSpeakMessage,
 }: QuizPanelProps): JSX.Element => {
-  // Safety check for the current question data
   const activeQuestion = questions[currentQuestion]
 
   return (
     <div className="h-full w-full">
-      {/* 1. STANDBY: Waiting for chat to finish */}
-      {state === "standby" && <QuizIdle chatPlayState={chatPlayState} />}
+      {/* STANDBY: Not in quiz mode */}
+      {!isInQuiz && <QuizIdle chatPlayState={chatPlayState} />}
 
-      {/* 2. READY: Chat finished, user prompted to start quiz */}
-      {state === "ready" && <QuizReady onStartQuiz={onStartQuiz} />}
-
-      {/* 3. ACTIVE: Question is being displayed */}
-      {state === "active" && activeQuestion && (
+      {/* QUESTION: Active question display */}
+      {isInQuiz && quizStage === "question" && activeQuestion && (
         <QuizActive
           questionNumber={currentQuestion + 1}
           totalQuestions={totalQuestions}
@@ -77,8 +57,8 @@ export const QuizPanel = ({
         />
       )}
 
-      {/* 4. FEEDBACK: Result of the current question */}
-      {state === "feedback" && feedbackData && (
+      {/* FEEDBACK: Answer result */}
+      {isInQuiz && quizStage === "feedback" && feedbackData && (
         <QuizFeedback
           isCorrect={feedbackData.isCorrect}
           onNextQuestion={onNextQuestion}
@@ -92,8 +72,8 @@ export const QuizPanel = ({
         />
       )}
 
-      {/* 5. SUMMARY: Final score and pass/fail decision */}
-      {state === "summary" && (
+      {/* SUMMARY: Final results */}
+      {isInQuiz && quizStage === "summary" && (
         <QuizSummary
           score={score}
           totalQuestions={totalQuestions}

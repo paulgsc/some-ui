@@ -9,6 +9,7 @@ import type {
   ISessionMachine,
   ITopikMetadataRepository,
   ITopikRepository,
+  Message,
   SessionEvent,
   SessionState,
   SpeechQueueService,
@@ -18,9 +19,8 @@ import {
   createEffectExecutor,
   createSessionMachine,
 } from "@chat/lib/topik"
+import { createQueryBridge } from "@chat/lib/topik/adapter/server"
 import { useQueryClient } from "@tanstack/react-query"
-
-import { createQueryBridge } from "./query-bridge"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HOOK CONFIGURATION
@@ -53,7 +53,7 @@ export type UseEnhancedSessionReturn = {
   dispatch: (event: SessionEvent) => void
 
   // TTS controls
-  speakMessage: (messageId: string) => Promise<void>
+  speakMessage: (message: Message) => Promise<void>
   isSpeaking: boolean
   currentSpeakingId: string | null
 
@@ -228,9 +228,9 @@ export function useSession(
   // ═════════════════════════════════════════════════════════════════════════
 
   const speakMessage = useMemo(
-    () => async (messageId: string) => {
+    () => async (message: Message) => {
       if (!executorRef.current) return
-      await executorRef.current.speakMessage(messageId)
+      await executorRef.current.speakMessage(message)
     },
     []
   )

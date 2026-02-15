@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import type { ChatPlayState, Message } from "@chat/types/topik"
+import type { Message, PlayState } from "@chat/lib/topik"
 import {
   Loader2,
   MessageCircle,
@@ -15,15 +15,15 @@ type ChatPanelProps = {
   messages: Array<Message>
   visibleMessages: Array<Message>
   currentMessageIndex: number
-  playState: ChatPlayState
+  playState: PlayState
   onPlay: () => void
   onPause: () => void
   onReset: () => void
   onJumpToMessage: (index: number) => void
-  onSpeakMessage: (message: Message) => void
+  onSpeakMessage: (message: Message) => Promise<void>
   isQuizActive: boolean
   currentlySpeakingId: string | null
-  isLoading?: boolean // Added for better UX during hydration
+  isLoading?: boolean
 }
 
 const avatar = {
@@ -46,6 +46,10 @@ export const ChatPanel = ({
   currentlySpeakingId,
   isLoading = false,
 }: ChatPanelProps): JSX.Element => {
+  const isRunning = playState === "running"
+  const isPaused = playState === "paused"
+  const hasContent = messages.length > 0
+
   return (
     <Card className="h-full flex flex-col border-2 overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
@@ -61,7 +65,7 @@ export const ChatPanel = ({
                   <Loader2 className="size-3 animate-spin" /> Fetching
                   content...
                 </span>
-              ) : playState !== "not started" ? (
+              ) : hasContent ? (
                 isQuizActive ? (
                   "Assessment in progress"
                 ) : (
@@ -75,9 +79,9 @@ export const ChatPanel = ({
           <div
             className={cn(
               "size-2 rounded-full",
-              playState === "playing"
+              isRunning
                 ? "bg-green-500 animate-pulse"
-                : playState === "finished"
+                : hasContent
                   ? "bg-blue-500"
                   : "bg-gray-400"
             )}
@@ -86,8 +90,7 @@ export const ChatPanel = ({
       </div>
 
       <ScrollArea className="flex-1 p-4">
-        {/* Placeholder for when no topic is selected */}
-        {playState === "not started" && !isLoading && (
+        {!hasContent && !isLoading && (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-50">
             <MessageCircle className="size-8 mb-2" />
             <p className="text-sm font-medium">No Active Session</p>
@@ -99,8 +102,7 @@ export const ChatPanel = ({
 
         <div className="space-y-4">
           {visibleMessages.map((message, index) => {
-            const isActive =
-              index === currentMessageIndex && playState === "playing"
+            const isActive = index === currentMessageIndex && isRunning
             const isSpeaking = currentlySpeakingId === message.id
 
             return (
@@ -164,16 +166,14 @@ export const ChatPanel = ({
 
       <div className="p-4 border-t bg-muted/20 space-y-3">
         <div className="flex items-center justify-center gap-2">
-          {playState !== "playing" ? (
+          {!isRunning ? (
             <Button
               onClick={onPlay}
               size="sm"
-              disabled={
-                isQuizActive || playState === "not started" || isLoading
-              }
+              disabled={isQuizActive || !hasContent || isLoading}
             >
               <Play className="size-4 mr-1" />
-              {playState === "finished" ? "Replay" : "Play"}
+              {isPaused ? "Resume" : "Play"}
             </Button>
           ) : (
             <Button onClick={onPause} size="sm" variant="secondary">
@@ -185,7 +185,7 @@ export const ChatPanel = ({
             onClick={onReset}
             size="sm"
             variant="outline"
-            disabled={playState === "playing" || playState === "not started"}
+            disabled={isRunning || !hasContent}
           >
             <RotateCcw className="size-4 mr-1" />
             Reset
@@ -194,7 +194,7 @@ export const ChatPanel = ({
         <div className="text-[10px] text-center text-muted-foreground uppercase tracking-tight">
           {isQuizActive
             ? "Complete assessment to unlock chat"
-            : playState === "not started"
+            : !hasContent
               ? "Waiting for selection..."
               : "Interactive Mode: Click to Seek"}
         </div>

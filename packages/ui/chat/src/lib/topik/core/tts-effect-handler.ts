@@ -17,6 +17,8 @@
  * - Audio playback (owned by browser/service)
  */
 
+import type { Message } from "@chat/lib/topik"
+
 import type { ISessionMachine } from "./session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,13 +111,12 @@ export class TTSEffectHandler {
    * @param isAuto - Whether this is auto-play (affects deduplication)
    */
   async handlePlayAudio(
-    messageId: string,
-    text: string,
+    message: Message,
     isAuto: boolean = true
   ): Promise<void> {
     // Deduplicate: Skip if auto-play and already spoken
-    if (isAuto && this.lastAutoSpokenId === messageId) {
-      console.log(`[TTS] Skipping already-spoken message: ${messageId}`)
+    if (isAuto && this.lastAutoSpokenId === message.id) {
+      console.log(`[TTS] Skipping already-spoken message: ${message.id}`)
       return
     }
 
@@ -126,41 +127,41 @@ export class TTSEffectHandler {
     const priority = ++this.priorityCounter
 
     // Track current message
-    this.currentMessageId = messageId
+    this.currentMessageId = message.id
 
     console.log(
-      `[TTS] Speaking message: ${messageId} (priority: ${priority}, auto: ${isAuto})`
+      `[TTS] Speaking message: ${message.id} (priority: ${priority}, auto: ${isAuto})`
     )
 
     try {
       await this.config.speechQueue.speak(
-        text,
+        message.content,
         {
           volume: 1.0,
           rate: 1.0,
           lang: "ko-KR",
 
           onStart: () => {
-            console.log(`[TTS] 🔊 Speaking: ${messageId}`)
+            console.log(`[TTS] 🔊 Speaking: ${message.id}`)
             this.speaking = true
-            this.config.onSpeechStart?.(messageId)
+            this.config.onSpeechStart?.(message.id)
           },
 
           onEnd: () => {
-            console.log(`[TTS] ✅ Complete: ${messageId}`)
+            console.log(`[TTS] ✅ Complete: ${message.id}`)
             this.speaking = false
 
             // Mark as spoken for auto-play deduplication
             if (isAuto) {
-              this.lastAutoSpokenId = messageId
+              this.lastAutoSpokenId = message.id
             }
 
-            this.config.onSpeechEnd?.(messageId)
+            this.config.onSpeechEnd?.(message.id)
 
             // Fire completion callback (advances to next message)
             // Only for auto-play, not manual UI-triggered speech
             if (isAuto) {
-              this.config.onMessageComplete?.(messageId)
+              this.config.onMessageComplete?.(message.id)
             }
 
             // Clear tracking
@@ -168,11 +169,11 @@ export class TTSEffectHandler {
           },
 
           onError: (error) => {
-            console.error(`[TTS] ❌ Error: ${messageId}`, error)
+            console.error(`[TTS] ❌ Error: ${message.id}`, error)
             this.speaking = false
 
-            this.config.onError?.(error, messageId)
-            this.config.onSpeechEnd?.(messageId)
+            this.config.onError?.(error, message.id)
+            this.config.onSpeechEnd?.(message.id)
 
             // Clear tracking
             this.currentMessageId = null
@@ -181,12 +182,12 @@ export class TTSEffectHandler {
         priority
       )
     } catch (error) {
-      console.error(`[TTS] speak() threw for ${messageId}:`, error)
+      console.error(`[TTS] speak() threw for ${message.id}:`, error)
       this.speaking = false
 
       this.config.onError?.(
         error instanceof Error ? error : new Error(String(error)),
-        messageId
+        message.id
       )
 
       this.currentMessageId = null
@@ -234,7 +235,7 @@ export class TTSEffectHandler {
    * @param messageId - Message identifier
    * @param text - Korean text to speak
    */
-  async speakManually(messageId: string, text: string): Promise<void> {
+  async speakManually(message: Message): Promise<void> {
     // Cancel current speech
     this.config.speechQueue.cancel()
 
@@ -242,7 +243,7 @@ export class TTSEffectHandler {
     this.lastAutoSpokenId = null
 
     // Speak without auto-complete (isAuto = false)
-    await this.handlePlayAudio(messageId, text, false)
+    await this.handlePlayAudio(message, false)
   }
 
   /**

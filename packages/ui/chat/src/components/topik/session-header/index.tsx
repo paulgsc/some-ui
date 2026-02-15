@@ -22,15 +22,15 @@ type SessionHeaderProps = {
   totalQuestions: number
   currentBatch: number
   totalBatches: number
-  topikDisplayName?: string
+  topikDisplayName?: string | null
   onEndSession: () => void
   // Dialog & Data Props
   topikItems: Array<TopikMetadata>
   topikLoading: boolean
   topikError: string | null
-  currentTopikKey?: string
+  currentTopikKey?: string | null
   onTopikSelect: (key: string) => void
-  onTopikReload?: () => Promise<void>
+  onTopikReload?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════

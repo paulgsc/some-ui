@@ -5,6 +5,7 @@
  * Bridges FSM (pure state transitions) with impure runtime (I/O, timers, queries).
  */
 
+import type { Message } from "@chat/lib/topik"
 import { actions, getCurrentMessage } from "@chat/lib/topik"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -83,11 +84,11 @@ export class EffectExecutor {
         },
 
         onSpeechStart: (messageId) => {
-          this.config.onSpeechStart?.(messageId)
+          this.config.onSpeechStart && this.config.onSpeechStart(messageId)
         },
 
         onSpeechEnd: (messageId) => {
-          this.config.onSpeechEnd?.(messageId)
+          this.config.onSpeechEnd && this.config.onSpeechEnd(messageId)
         },
 
         onError: (error, messageId) => {
@@ -118,24 +119,12 @@ export class EffectExecutor {
   /**
    * Manual speak (for UI controls)
    */
-  async speakMessage(messageId: string): Promise<void> {
+  async speakMessage(message: Message): Promise<void> {
     if (!this.ttsHandler) {
       console.warn("[Executor] TTS not enabled")
       return
     }
-
-    // Get message from query cache
-    const message = getCurrentMessage(
-      this.config.machine,
-      this.config.queryClient
-    )
-
-    if (!message || message.id !== messageId) {
-      console.warn(`[Executor] Cannot speak message: ${messageId}`)
-      return
-    }
-
-    await this.ttsHandler.speakManually(messageId, message.korean)
+    await this.ttsHandler.speakManually(message)
   }
 
   /**
@@ -211,10 +200,11 @@ export class EffectExecutor {
           console.warn("[Executor] Unknown effect type:", _exhaustive)
       }
     } catch (error) {
-      this.config.onError?.(
-        error instanceof Error ? error : new Error(String(error)),
-        effect
-      )
+      this.config.onError &&
+        this.config.onError(
+          error instanceof Error ? error : new Error(String(error)),
+          effect
+        )
     }
   }
 
@@ -407,7 +397,7 @@ export class EffectExecutor {
 
     console.log(`[Executor] Playing audio for message: ${messageId}`)
 
-    this.ttsHandler.handlePlayAudio(messageId, message.korean, true)
+    this.ttsHandler.handlePlayAudio(message, true)
   }
 
   private _stopAudio(): void {
@@ -423,12 +413,12 @@ export class EffectExecutor {
 
   private _notifyBatchComplete(batchIndex: number): void {
     console.log(`[Executor] Batch complete: ${batchIndex}`)
-    this.config.onBatchComplete?.(batchIndex)
+    this.config.onBatchComplete && this.config.onBatchComplete(batchIndex)
   }
 
   private _notifySessionComplete(): void {
     console.log("[Executor] Session complete")
-    this.config.onSessionComplete?.()
+    this.config.onSessionComplete && this.config.onSessionComplete()
   }
 }
 

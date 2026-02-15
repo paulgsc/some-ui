@@ -126,9 +126,7 @@ export const TopikBookCard = ({
               <Target className="size-3" />
               {item.totalQuestions}
             </span>
-            {item.estimatedTime && !isRecommended && (
-              <span className="ml-auto">{item.estimatedTime}</span>
-            )}
+            <span className="ml-auto">{"est_time"}</span>
           </div>
         </div>
       </div>

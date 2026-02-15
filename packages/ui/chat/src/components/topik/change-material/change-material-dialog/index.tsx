@@ -1,8 +1,10 @@
+import type { JSX } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { BookshelfGrid } from "@chat/components/topik/change-material/bookshelf-grid"
 import { OmniSearchInput } from "@chat/components/topik/change-material/omni-search-input"
 import { TopikBookCard } from "@chat/components/topik/change-material/topik-book-card"
-import type { TopikLibraryError, TopikMetadata } from "@chat/lib/topik"
+import type { TopikMetadata } from "@chat/lib/topik"
+import { getRecommendedItems } from "@chat/lib/topik/utils"
 import {
   AlertCircle,
   BookOpen,
@@ -26,8 +28,6 @@ import {
   DialogTitle,
 } from "some-ui-shared"
 
-import { getRecommendedItems } from "@/lib/topik-types"
-
 // ═══════════════════════════════════════════════════════════════
 // Props
 // ═══════════════════════════════════════════════════════════════
@@ -37,10 +37,10 @@ type ChangeMaterialDialogProps = {
   onOpenChange: (open: boolean) => void
   topikItems: Array<TopikMetadata>
   loading: boolean
-  error: TopikLibraryError | string | null
-  currentTopikKey?: string
+  error?: string | null
+  currentTopikKey?: string | null
   onConfirm: (key: string) => void
-  onReload?: () => Promise<void>
+  onReload?: () => void
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -56,10 +56,10 @@ export const ChangeMaterialDialog = ({
   currentTopikKey,
   onConfirm,
   onReload,
-}: ChangeMaterialDialogProps) => {
+}: ChangeMaterialDialogProps): JSX.Element => {
   // ─── Internal state ─────────────────────────────────────────
   const [search, setSearch] = useState("")
-  const [selectedKey, setSelectedKey] = useState<string | undefined>(
+  const [selectedKey, setSelectedKey] = useState<string | undefined | null>(
     currentTopikKey
   )
   const [highlightedKey, setHighlightedKey] = useState<string | undefined>()
@@ -86,6 +86,8 @@ export const ChangeMaterialDialog = ({
     [items, selectedKey]
   )
 
+  const hasFatalError = error && items.length === 0
+
   // ─── Reset page when filter changes ─────────────────────────
   useEffect(() => {
     setPage(1)
@@ -100,28 +102,6 @@ export const ChangeMaterialDialog = ({
       setPage(1)
     }
   }, [open, currentTopikKey])
-
-  // ─── Error normalization ────────────────────────────────────
-  const errorDisplay = useMemo(() => {
-    if (!error) return null
-    if (typeof error === "string") {
-      return {
-        title: "Loading Error",
-        message: error,
-        type: "fatal" as const,
-        details: [],
-        affectedKeys: [],
-      }
-    }
-    return {
-      title:
-        error.type === "fatal" ? "Failed to Load Materials" : "Partial Load",
-      message: error.message,
-      type: error.type,
-      details: error.details || [],
-      affectedKeys: error.affectedKeys || [],
-    }
-  }, [error])
 
   // ─── Handlers ───────────────────────────────────────────────
   const handleSelect = useCallback((key: string) => {
@@ -157,8 +137,6 @@ export const ChangeMaterialDialog = ({
     setHighlightedKey(key)
   }, [])
 
-  const isFatalError = errorDisplay?.type === "fatal" && items.length === 0
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -185,13 +163,13 @@ export const ChangeMaterialDialog = ({
         )}
 
         {/* ─── Fatal error (no items available) ────────────── */}
-        {!loading && isFatalError && (
+        {!loading && hasFatalError && (
           <div className="py-8">
             <Alert variant="destructive">
               <XCircle className="size-4" />
-              <AlertTitle>{errorDisplay.title}</AlertTitle>
+              <AlertTitle>Failed to Load Materials</AlertTitle>
               <AlertDescription className="mt-2 space-y-3">
-                <p>{errorDisplay.message}</p>
+                <p>{error}</p>
                 {onReload && (
                   <Button
                     variant="outline"
@@ -211,29 +189,17 @@ export const ChangeMaterialDialog = ({
         )}
 
         {/* ─── Main content ────────────────────────────────── */}
-        {!loading && !isFatalError && (
+        {!loading && !hasFatalError && (
           <div className="flex flex-col gap-5 mt-2">
-            {/* Partial error banner */}
-            {errorDisplay && errorDisplay.type === "partial" && (
+            {/* Non-fatal error banner */}
+            {error && items.length > 0 && (
               <Alert className="border-[hsl(40,50%,65%)] bg-[hsl(40,30%,93%)] dark:bg-[hsl(40,12%,14%)]">
                 <AlertCircle className="size-4 text-[hsl(40,60%,40%)]" />
                 <AlertTitle className="text-[hsl(40,35%,25%)] dark:text-[hsl(40,30%,75%)]">
-                  {errorDisplay.title}
+                  Partial Load
                 </AlertTitle>
                 <AlertDescription className="mt-2 space-y-3 text-[hsl(40,25%,35%)] dark:text-[hsl(40,20%,65%)]">
-                  <p>{errorDisplay.message}</p>
-                  {errorDisplay.affectedKeys.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {errorDisplay.affectedKeys.map((key) => (
-                        <span
-                          key={key}
-                          className="inline-flex items-center gap-1 rounded-md bg-[hsl(40,25%,85%)] dark:bg-[hsl(40,12%,20%)] px-2 py-1 text-xs font-medium"
-                        >
-                          <XCircle className="size-3" /> {key}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <p>{error}</p>
                   {onReload && (
                     <Button
                       variant="outline"
@@ -290,12 +256,10 @@ export const ChangeMaterialDialog = ({
                       <Target className="size-3.5" />
                       {selectedItem.totalQuestions} questions
                     </span>
-                    {selectedItem.estimatedTime && (
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="size-3.5" />
-                        {selectedItem.estimatedTime}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="size-3.5" />
+                      {"est_time"}
+                    </span>
                   </div>
                 </div>
               </div>

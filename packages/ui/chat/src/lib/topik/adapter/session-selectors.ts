@@ -6,6 +6,7 @@
 
 import type {
   BatchMetadata,
+  CatalogStatus,
   ConversationBatch,
   FeedbackData,
   ISessionMachine,
@@ -17,12 +18,10 @@ import type {
   SessionState,
   TopikManifest,
   TopikMetadata,
-CatalogStatus
 } from "@chat/lib/topik"
+import { metadataKeys } from "@chat/lib/topik/adapter/server/topik-metadata-queries"
+import { topikKeys } from "@chat/lib/topik/adapter/server/topik-queries"
 import type { QueryClient } from "@tanstack/react-query"
-
-import { metadataKeys } from "./topik-metadata-queries"
-import { topikKeys } from "./topik-queries"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS - FSM STATE

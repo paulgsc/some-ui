@@ -1,30 +1,35 @@
 import { useMemo, useRef } from "react"
 import {
-  metadataRepository,
-  topikRepository,
-} from "@chat/lib/session/app-config"
-import {
   actions,
   getCurrentBatch,
   getCurrentMessage,
   getVisibleMessages,
   selectors,
   useSession,
+  useSessionConfig,
 } from "@chat/lib/topik"
+import { getAvailableTopiks } from "@chat/lib/topik/adapter/session-selectors"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSpeechQueue } from "some-ui-utils"
 
-import { deriveChatPlayState, deriveQuizState } from "./korean-study.vm"
-import { getAvailableTopiks } from "./session-selectors"
-
 export function createId(): string {
-  return crypto.randomUUID()
+  // Check if the modern API exists and is in a secure context
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // Fallback: A simple manual UUID generator (or use a library like 'nanoid')
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 export function useKoreanStudyPageVM() {
+  const { topikRepository, metadataRepository } = useSessionConfig()
   const queryClient = useQueryClient()
 
-  // Generate once per hook instance
   const componentIdRef = useRef<string>(null)
   if (!componentIdRef.current) {
     componentIdRef.current = createId()
@@ -42,6 +47,7 @@ export function useKoreanStudyPageVM() {
   })
 
   const { state, dispatch, machine } = session
+  console.log("what state are we in", state)
 
   const topikItems = useMemo(
     () => getAvailableTopiks(queryClient),
@@ -63,9 +69,6 @@ export function useKoreanStudyPageVM() {
     [machine, queryClient, state.active?.cursor.message]
   )
 
-  const chatPlayState = useMemo(() => deriveChatPlayState(state), [state])
-  const quizState = useMemo(() => deriveQuizState(state), [state])
-
   return {
     header: {
       timeRemaining: selectors.getTimeRemaining(state),
@@ -86,23 +89,24 @@ export function useKoreanStudyPageVM() {
       messages: currentBatch?.messages ?? [],
       visibleMessages,
       currentMessageIndex: selectors.getMessageIndex(state),
-      playState: chatPlayState,
+      playState: state.active?.playState ?? "paused",
       isQuizActive: selectors.isInQuiz(state),
       currentlySpeakingId:
         session.isSpeaking && currentMessage ? currentMessage.id : "",
+      isSpeaking: session.isSpeaking,
+      onSpeakMessage: session.speakMessage,
     },
     quiz: {
-      state: quizState,
+      quizStage: state.active?.quizStage ?? "question",
+      isInQuiz: selectors.isInQuiz(state),
       currentQuestion: selectors.getQuestionIndex(state),
       totalQuestions: currentBatch?.questions.length ?? 0,
       questions: currentBatch?.questions ?? [],
       score: selectors.getScore(state),
-      feedbackData: selectors.getFeedback(state),
-      chatPlayState,
-    },
-    tts: {
+      feedbackData: state.feedback,
+      chatPlayState: state.active?.playState ?? "paused",
       isSpeaking: session.isSpeaking,
-      speakMessage: session.speakMessage,
+      onSpeakMessage: session.speakMessage,
     },
     actions: {
       startChat: (): void => dispatch(actions.startChat()),
