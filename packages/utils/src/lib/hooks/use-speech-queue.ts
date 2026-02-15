@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId } from "react"
+import { useMemo, useCallback, useEffect, useId } from "react"
 import { useStore } from "@utils/lib/context"
 import type { Store } from "@utils/lib/context/ochestra/ochestrated-store"
 import { getSpeechQueue } from "@utils/lib/context/speech-queue"
@@ -120,4 +120,56 @@ export function useSpeechQueueMetrics(): UseSpeechQueueMetricsReturn {
     hasError: !!state.error,
     error: state.error,
   }))
+}
+
+export function useSpeechQueueActions(componentId?: string) {
+  const manager = getSpeechQueue()
+  const autoComponentId = useId()
+  const actualComponentId = componentId ?? autoComponentId
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      manager.cancel(actualComponentId)
+    }
+  }, [manager, actualComponentId])
+
+  // Stable callbacks
+  const speak = useCallback(
+    (text: string, options?: TTSOptions, priority = 0, maxRetries = 2) => {
+      manager.speak(actualComponentId, text, options, priority, maxRetries)
+    },
+    [manager, actualComponentId]
+  )
+
+  const cancel = useCallback(
+    (itemId?: string) => {
+      manager.cancel(actualComponentId, itemId)
+    },
+    [manager, actualComponentId]
+  )
+
+  const pause = useCallback(() => {
+    manager.pause()
+  }, [manager])
+
+  const resume = useCallback(() => {
+    manager.resume()
+  }, [manager])
+
+  const clear = useCallback(() => {
+    manager.clear()
+  }, [manager])
+
+  // Return a MEMOIZED object so reference is stable
+  return useMemo(
+    () => ({
+      speak,
+      cancel,
+      pause,
+      resume,
+      clear,
+    }),
+    [speak, cancel, pause, resume, clear]
+  )
 }

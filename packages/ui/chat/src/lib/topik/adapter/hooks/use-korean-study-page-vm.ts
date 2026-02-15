@@ -10,7 +10,7 @@ import {
 } from "@chat/lib/topik"
 import { getAvailableTopiks } from "@chat/lib/topik/adapter/session-selectors"
 import { useQueryClient } from "@tanstack/react-query"
-import { useSpeechQueue } from "some-ui-utils"
+import { useSpeechQueueActions } from "some-ui-utils"
 
 export function createId(): string {
   // Check if the modern API exists and is in a secure context
@@ -36,7 +36,7 @@ export function useKoreanStudyPageVM() {
   }
   const componentId = componentIdRef.current
 
-  const speechQueue = useSpeechQueue(componentId)
+  const speechQueue = useSpeechQueueActions(componentId)
 
   const session = useSession({
     repository: topikRepository,
