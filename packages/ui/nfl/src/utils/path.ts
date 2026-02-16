@@ -2,7 +2,6 @@ type Point = { x: number; y: number }
 
 /**
  * Catmull-Rom to cubic Bezier smoothing
- * Fixes: Explicit return type, nullish coalescing, and undefined checks.
  */
 export function smoothPath(
   points: Array<Point>,
