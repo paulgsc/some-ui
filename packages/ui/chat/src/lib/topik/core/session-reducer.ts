@@ -286,19 +286,10 @@ export function sessionReducer(
           { type: "START_TIMER" },
           {
             type: "PLAY_AUDIO",
-            messageId: `msg-0-0`, // Start first message of first batch
           },
         ]
       )
     }
-
-    // Race protection: ignore stale responses
-    // if (
-    //   event.type === "HYDRATION_SUCCESS" &&
-    //   event.key !== state.dataRef.topikKey
-    // ) {
-    //   return unchanged()
-    // }
 
     if (
       event.type === "HYDRATION_FAILURE" &&
@@ -391,7 +382,6 @@ export function sessionReducer(
             { type: "START_TIMER" },
             {
               type: "PLAY_AUDIO",
-              messageId: `msg-${active.cursor.batch}-${active.cursor.message}`,
             },
           ]
         )
@@ -424,7 +414,6 @@ export function sessionReducer(
             { type: "START_TIMER" },
             {
               type: "PLAY_AUDIO",
-              messageId: `msg-${active.cursor.batch}-${active.cursor.message}`,
             },
           ]
         )
@@ -464,7 +453,6 @@ export function sessionReducer(
           // messageId will be retrieved by executor from repository
           effects.push({
             type: "PLAY_AUDIO",
-            messageId: `msg-${validated.batch}-${validated.message}`,
           })
         }
 

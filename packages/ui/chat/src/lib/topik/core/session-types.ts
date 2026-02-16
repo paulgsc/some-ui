@@ -256,7 +256,7 @@ export type SessionEffect =
   | { type: "TRIGGER_TOPIK_QUERY"; key: string } // Tell executor to trigger topik query
   | { type: "START_TIMER" }
   | { type: "STOP_TIMER" }
-  | { type: "PLAY_AUDIO"; messageId: string }
+  | { type: "PLAY_AUDIO" }
   | { type: "STOP_AUDIO" }
   | { type: "NOTIFY_BATCH_COMPLETE"; batchIndex: number }
   | { type: "NOTIFY_SESSION_COMPLETE" }

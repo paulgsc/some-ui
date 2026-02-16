@@ -170,7 +170,7 @@ export class EffectExecutor {
           break
 
         case "PLAY_AUDIO":
-          this._playAudio(effect.messageId)
+          this._playAudio()
           break
 
         case "STOP_AUDIO":
@@ -292,7 +292,7 @@ export class EffectExecutor {
   // TTS EFFECTS
   // ═════════════════════════════════════════════════════════════════════════
 
-  private _playAudio(messageId: string): void {
+  private _playAudio(): void {
     if (!this.ttsHandler) {
       console.warn("[Executor] TTS not enabled, skipping audio")
       return
@@ -301,20 +301,14 @@ export class EffectExecutor {
     const message = getCurrentMessage(this.config.machine.getState())
 
     if (!message) {
-      console.warn(`[Executor] Message not found: ${messageId}`)
+      console.warn(`[Executor] Message not found`)
       return
     }
 
-    if (message.id !== messageId) {
-      console.warn(
-        `[Executor] Message ID mismatch: expected ${messageId}, got ${message.id}`
-      )
-      return
-    }
+    console.log(`[Executor] Enqueuing audio for message: ${message.id}`)
 
-    console.log(`[Executor] Playing audio for message: ${messageId}`)
-
-    this.ttsHandler.handlePlayAudio(message, true)
+    // ENQUEUE instead of direct speak
+    this.ttsHandler.enqueue(message, true)
   }
 
   private _stopAudio(): void {

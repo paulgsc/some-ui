@@ -1,20 +1,12 @@
 /**
- * TTS Effect Handler - Bridges FSM to Speech Queue Service
+ * TTS Effect Handler - Serial Queue with Deduplication
  *
- * Handles text-to-speech effects by delegating to the speech queue service.
- * Does NOT implement TTS - only coordinates between FSM and the service.
- *
- * RESPONSIBILITIES:
- * - Handle PLAY_AUDIO effects from FSM
- * - Handle STOP_AUDIO effects from FSM
- * - Track speaking state
- * - Fire callbacks to FSM on completion
- * - Deduplicate auto-play requests
- *
- * NON-RESPONSIBILITIES:
- * - TTS implementation (owned by speech queue service)
- * - Queue management (owned by speech queue service)
- * - Audio playback (owned by browser/service)
+ * Ensures:
+ * - Messages speak one at a time (serial queue)
+ * - No duplicate auto-play (Set-based deduplication)
+ * - onEnd resolves before advancing
+ * - Manual override clears deduplication
+ * - Survives React Strict Mode (double effect calls)
  */
 
 import type { Message } from "@chat/lib/topik"
@@ -25,10 +17,6 @@ import type { ISessionMachine } from "./session-types"
 // SPEECH QUEUE SERVICE TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Speech queue service interface (from some-ui-utils)
- * This is what useSpeechQueue returns
- */
 export type SpeechQueueService = {
   speak: (
     text: string,
@@ -54,40 +42,12 @@ export type SpeechQueueService = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type TTSEffectHandlerConfig = {
-  /**
-   * Speech queue service instance
-   */
   speechQueue: SpeechQueueService
-
-  /**
-   * Component ID for queue isolation
-   */
   componentId: string
-
-  /**
-   * FSM machine reference (for advanced usage)
-   */
   machine: ISessionMachine
-
-  /**
-   * Called when message speech completes successfully
-   * Typically dispatches ADVANCE_MESSAGE to FSM
-   */
   onMessageComplete?: (messageId: string) => void
-
-  /**
-   * Called when speech starts
-   */
   onSpeechStart?: (messageId: string) => void
-
-  /**
-   * Called when speech ends (success or error)
-   */
   onSpeechEnd?: (messageId: string) => void
-
-  /**
-   * Called on TTS errors
-   */
   onError?: (error: Error, messageId: string) => void
 }
 
@@ -97,44 +57,144 @@ export type TTSEffectHandlerConfig = {
 
 export class TTSEffectHandler {
   private currentMessageId: string | null = null
-  private lastAutoSpokenId: string | null = null
-  private priorityCounter: number = 0
   private speaking: boolean = false
+  private priorityCounter: number = 0
+
+  // Deduplication tracking
+  private spokenAutoIds: Set<string> = new Set()
+  private completedIds: Set<string> = new Set() // Track completed messages
+
+  // Serial queue
+  private queue: Array<{ message: Message; isAuto: boolean }> = []
+  private processing: boolean = false
 
   constructor(private readonly config: TTSEffectHandlerConfig) {}
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═════════════════════════════════════════════════════════════════════════
+
   /**
-   * Handle PLAY_AUDIO effect from FSM
-   *
-   * @param messageId - Message identifier
-   * @param text - Korean text to speak
-   * @param isAuto - Whether this is auto-play (affects deduplication)
+   * Enqueue a message for speaking
+   * Auto-play messages are deduplicated
    */
-  async handlePlayAudio(
-    message: Message,
-    isAuto: boolean = true
-  ): Promise<void> {
-    // Deduplicate: Skip if auto-play and already spoken
-    if (isAuto && this.lastAutoSpokenId === message.id) {
+  enqueue(message: Message, isAuto: boolean = true): void {
+    // Deduplicate auto-play
+    if (isAuto && this.spokenAutoIds.has(message.id)) {
       console.log(`[TTS] Skipping already-spoken message: ${message.id}`)
       return
     }
 
-    // Cancel any in-flight speech
+    console.log(`[TTS] Enqueuing message: ${message.id} (auto: ${isAuto})`)
+    this.queue.push({ message, isAuto })
+
+    // Start processing if not already running
+    if (!this.processing) {
+      this.processQueue()
+    }
+  }
+
+  /**
+   * Manual speak (UI-triggered)
+   * Clears deduplication for this message
+   */
+  async speakManually(message: Message): Promise<void> {
+    console.log(`[TTS] Manual speak requested: ${message.id}`)
+
+    // Clear deduplication for this message
+    this.spokenAutoIds.delete(message.id)
+    this.completedIds.delete(message.id)
+
+    // Clear queue and cancel current speech
+    this.queue = []
+    this.config.speechQueue.cancel()
+
+    // Speak immediately (not auto-play)
+    await this._speak(message, false)
+  }
+
+  /**
+   * Stop current speech and clear queue
+   */
+  handleStopAudio(): void {
+    if (this.currentMessageId) {
+      console.log(`[TTS] 🔇 Stopping speech for ${this.currentMessageId}`)
+      this.config.speechQueue.cancel()
+      this.speaking = false
+
+      const stoppedId = this.currentMessageId
+      this.currentMessageId = null
+
+      this.config.onSpeechEnd?.(stoppedId)
+    }
+
+    // Clear queue
+    this.queue = []
+  }
+
+  isSpeaking(): boolean {
+    return this.speaking
+  }
+
+  getCurrentMessageId(): string | null {
+    return this.currentMessageId
+  }
+
+  reset(): void {
     this.handleStopAudio()
+    this.spokenAutoIds.clear()
+    this.completedIds.clear()
+    this.priorityCounter = 0
+    this.processing = false
+  }
 
-    // Increment priority for queue ordering
+  destroy(): void {
+    this.handleStopAudio()
+    this.config.speechQueue.clear()
+    this.spokenAutoIds.clear()
+    this.completedIds.clear()
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // PRIVATE QUEUE PROCESSOR
+  // ═════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Process queue serially - one message at a time
+   */
+  private async processQueue(): Promise<void> {
+    this.processing = true
+
+    while (this.queue.length > 0) {
+      const { message, isAuto } = this.queue.shift()!
+
+      // Double-check deduplication (in case queue was filled before processing)
+      if (isAuto && this.spokenAutoIds.has(message.id)) {
+        console.log(`[TTS] Skipping (already spoken): ${message.id}`)
+        continue
+      }
+
+      await this._speak(message, isAuto)
+    }
+
+    this.processing = false
+  }
+
+  /**
+   * Speak a single message and wait for completion
+   */
+  private async _speak(message: Message, isAuto: boolean): Promise<void> {
     const priority = ++this.priorityCounter
-
-    // Track current message
     this.currentMessageId = message.id
 
     console.log(
       `[TTS] Speaking message: ${message.id} (priority: ${priority}, auto: ${isAuto})`
     )
 
-    try {
-      await this.config.speechQueue.speak(
+    return new Promise<void>((resolve) => {
+      let completionFired = false // Guard against double-firing
+
+      this.config.speechQueue.speak(
         message.content,
         {
           volume: 1.0,
@@ -142,125 +202,60 @@ export class TTSEffectHandler {
           lang: "ko-KR",
 
           onStart: () => {
-            console.log(`[TTS] 🔊 Speaking: ${message.id}`)
             this.speaking = true
+            console.log(`[TTS] 🔊 Speaking: ${message.id}`)
             this.config.onSpeechStart?.(message.id)
           },
 
           onEnd: () => {
-            console.log(`[TTS] ✅ Complete: ${message.id}`)
-            this.speaking = false
+            // Guard against duplicate onEnd calls (Strict Mode)
+            if (completionFired) {
+              console.log(`[TTS] ⚠️ Duplicate onEnd ignored: ${message.id}`)
+              return
+            }
+            completionFired = true
 
-            // Mark as spoken for auto-play deduplication
+            this.speaking = false
+            console.log(`[TTS] ✅ Complete: ${message.id}`)
+
+            // Mark as spoken for deduplication
             if (isAuto) {
-              this.lastAutoSpokenId = message.id
+              this.spokenAutoIds.add(message.id)
             }
 
             this.config.onSpeechEnd?.(message.id)
 
-            // Fire completion callback (advances to next message)
-            // Only for auto-play, not manual UI-triggered speech
-            if (isAuto) {
+            // Fire completion callback ONLY ONCE per message
+            if (isAuto && !this.completedIds.has(message.id)) {
+              this.completedIds.add(message.id)
               this.config.onMessageComplete?.(message.id)
             }
 
-            // Clear tracking
             this.currentMessageId = null
+            resolve()
           },
 
           onError: (error) => {
-            console.error(`[TTS] ❌ Error: ${message.id}`, error)
+            // Guard against duplicate onError calls
+            if (completionFired) {
+              console.log(`[TTS] ⚠️ Duplicate onError ignored: ${message.id}`)
+              return
+            }
+            completionFired = true
+
             this.speaking = false
+            console.error(`[TTS] ❌ Error: ${message.id}`, error)
 
             this.config.onError?.(error, message.id)
             this.config.onSpeechEnd?.(message.id)
 
-            // Clear tracking
             this.currentMessageId = null
+            resolve() // Still resolve to continue queue
           },
         },
         priority
       )
-    } catch (error) {
-      console.error(`[TTS] speak() threw for ${message.id}:`, error)
-      this.speaking = false
-
-      this.config.onError?.(
-        error instanceof Error ? error : new Error(String(error)),
-        message.id
-      )
-
-      this.currentMessageId = null
-    }
-  }
-
-  /**
-   * Handle STOP_AUDIO effect from FSM
-   *
-   * Immediately cancels current speech
-   */
-  handleStopAudio(): void {
-    if (this.currentMessageId) {
-      console.log(`[TTS] 🔇 Stopping speech for ${this.currentMessageId}`)
-
-      this.config.speechQueue.cancel()
-
-      if (this.currentMessageId) {
-        this.config.onSpeechEnd?.(this.currentMessageId)
-      }
-
-      this.speaking = false
-      this.currentMessageId = null
-    }
-  }
-
-  /**
-   * Get current speaking message ID
-   */
-  getCurrentMessageId(): string | null {
-    return this.currentMessageId
-  }
-
-  /**
-   * Check if currently speaking
-   */
-  isSpeaking(): boolean {
-    return this.speaking
-  }
-
-  /**
-   * Manual speak (for UI controls)
-   * Resets auto-play tracking to allow re-speaking
-   *
-   * @param messageId - Message identifier
-   * @param text - Korean text to speak
-   */
-  async speakManually(message: Message): Promise<void> {
-    // Cancel current speech
-    this.config.speechQueue.cancel()
-
-    // Allow re-speaking by clearing deduplication
-    this.lastAutoSpokenId = null
-
-    // Speak without auto-complete (isAuto = false)
-    await this.handlePlayAudio(message, false)
-  }
-
-  /**
-   * Reset handler state
-   */
-  reset(): void {
-    this.handleStopAudio()
-    this.lastAutoSpokenId = null
-    this.priorityCounter = 0
-  }
-
-  /**
-   * Destroy handler and cleanup
-   */
-  destroy(): void {
-    this.handleStopAudio()
-    this.config.speechQueue.clear()
+    })
   }
 }
 
@@ -268,11 +263,6 @@ export class TTSEffectHandler {
 // FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Create TTS effect handler
- *
- * @param config - Handler configuration with speech queue service
- */
 export function createTTSEffectHandler(
   config: TTSEffectHandlerConfig
 ): TTSEffectHandler {
