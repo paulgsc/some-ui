@@ -7,7 +7,6 @@ import type {
   Message,
   SessionEvent,
   SessionState,
-  SpeechQueueService,
 } from "@chat/lib/topik"
 import {
   actions,
@@ -16,11 +15,12 @@ import {
 } from "@chat/lib/topik"
 import { createQueryBridge } from "@chat/lib/topik/adapter/server"
 import { useQueryClient } from "@tanstack/react-query"
+import type { UseAudioTTSReturn } from "some-ui-utils"
 
 export type UseEnhancedSessionConfig = {
   repository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
-  speechQueue: SpeechQueueService
+  audioTTS: UseAudioTTSReturn
   componentId: string
   enableTTS: boolean
   onBatchComplete?: (batchIndex: number) => void
@@ -38,6 +38,7 @@ export type UseEnhancedSessionReturn = {
   currentSpeakingId: string | null
   machine: ISessionMachine
   repository: ITopikRepository
+  audioTTS: UseAudioTTSReturn
 }
 
 export function useSession(
@@ -46,7 +47,7 @@ export function useSession(
   const {
     repository,
     metadataRepository,
-    speechQueue,
+    audioTTS,
     componentId,
     enableTTS = true,
     onBatchComplete,
@@ -57,6 +58,10 @@ export function useSession(
   } = config
 
   const queryClient = useQueryClient()
+
+  // ══════════════════════════════════════════════════════
+  // AUDIO TTS HOOK
+  // ══════════════════════════════════════════════════════
 
   // ══════════════════════════════════════════════════════
   // MEMOIZED REPOSITORY LOADERS
@@ -117,41 +122,67 @@ export function useSession(
     null
   )
 
-  const handleSpeechStart = useCallback(
-    (messageId: string) => {
-      setIsSpeaking(true)
-      setCurrentSpeakingId(messageId)
-      onSpeechStart?.(messageId)
-    },
-    [onSpeechStart]
-  )
+  // ══════════════════════════════════════════════════════
+  // STABLE CALLBACK REFS (prevent executor recreation)
+  // ══════════════════════════════════════════════════════
 
-  const handleSpeechEnd = useCallback(
-    (messageId: string) => {
-      setIsSpeaking(false)
-      setCurrentSpeakingId(null)
-      onSpeechEnd?.(messageId)
-    },
-    [onSpeechEnd]
-  )
+  const callbacksRef = useRef({
+    onBatchComplete,
+    onSessionComplete,
+    onSpeechStart,
+    onSpeechEnd,
+  })
+
+  // Update refs when callbacks change (without triggering executor recreation)
+  useEffect(() => {
+    callbacksRef.current = {
+      onBatchComplete,
+      onSessionComplete,
+      onSpeechStart,
+      onSpeechEnd,
+    }
+  }, [onBatchComplete, onSessionComplete, onSpeechStart, onSpeechEnd])
+
+  // Stable wrapper functions that use the refs
+  const handleSpeechStart = useCallback((messageId: string) => {
+    setIsSpeaking(true)
+    setCurrentSpeakingId(messageId)
+    callbacksRef.current.onSpeechStart?.(messageId)
+  }, [])
+
+  const handleSpeechEnd = useCallback((messageId: string) => {
+    setIsSpeaking(false)
+    setCurrentSpeakingId(null)
+    callbacksRef.current.onSpeechEnd?.(messageId)
+  }, [])
+
+  const handleBatchComplete = useCallback((batchIndex: number) => {
+    callbacksRef.current.onBatchComplete?.(batchIndex)
+  }, [])
+
+  const handleSessionComplete = useCallback(() => {
+    callbacksRef.current.onSessionComplete?.()
+  }, [])
 
   // ══════════════════════════════════════════════════════
-  // EXECUTOR EFFECT
+  // EXECUTOR EFFECT (only recreate when truly necessary)
   // ══════════════════════════════════════════════════════
 
   useEffect(() => {
+    // Clean up previous executor
     executorRef.current?.destroy()
 
+    // Create new executor with stable callbacks and audio TTS
     executorRef.current = createEffectExecutor({
       machine,
       repository,
       queryBridge,
-      speechQueue,
+      audioTTS, // Pass the audio TTS instance instead of speech queue
       componentId,
       enableTTS,
       timerInterval,
-      onBatchComplete,
-      onSessionComplete,
+      onBatchComplete: handleBatchComplete,
+      onSessionComplete: handleSessionComplete,
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
       onError: (error, effect) =>
@@ -166,12 +197,11 @@ export function useSession(
     machine,
     repository,
     queryBridge,
-    speechQueue,
     componentId,
     enableTTS,
     timerInterval,
-    onBatchComplete,
-    onSessionComplete,
+    handleBatchComplete,
+    handleSessionComplete,
     handleSpeechStart,
     handleSpeechEnd,
   ])
@@ -221,5 +251,6 @@ export function useSession(
     currentSpeakingId,
     machine,
     repository,
+    audioTTS,
   }
 }

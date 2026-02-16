@@ -79,10 +79,7 @@ export { SessionMachine, createSessionMachine } from "./core/session-machine"
 
 export { EffectExecutor, createEffectExecutor } from "./core/effect-executor"
 export type { EffectExecutorConfig } from "./core/effect-executor"
-export type {
-  SpeechQueueService,
-  TTSEffectHandler,
-} from "./core/tts-effect-handler"
+export type { TTSEffectHandler } from "./core/tts-effect-handler"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS & ACTIONS

@@ -77,15 +77,6 @@ function validateCursor(
 }
 
 /**
- * Check if cursor is at end of messages
- */
-function isMessagesComplete(
-  cursor: SessionCursor,
-  meta: BatchMetadata | null
-): boolean {
-  if (!meta) return false
-  return cursor.message >= meta.messageCount - 1
-}
 
 /**
  * Check if cursor is at end of questions
@@ -95,7 +86,7 @@ function isQuestionsComplete(
   meta: BatchMetadata | null
 ): boolean {
   if (!meta) return false
-  return cursor.question >= meta.questionCount - 1
+  return cursor.question >= meta.questionCount
 }
 
 /**
@@ -429,7 +420,7 @@ export function sessionReducer(
         )
 
         // Check if messages complete -> transition to quiz
-        if (isMessagesComplete(validated, dataRef.currentBatchMeta)) {
+        if (nextMessage >= dataRef.currentBatchMeta!.messageCount) {
           return result(
             {
               ...state,

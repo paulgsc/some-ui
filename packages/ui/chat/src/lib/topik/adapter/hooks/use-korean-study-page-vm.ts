@@ -9,7 +9,6 @@ import {
   useSessionConfig,
 } from "@chat/lib/topik"
 import { getAvailableTopiks } from "@chat/lib/topik/adapter/session-selectors"
-import { useSpeechQueueActions } from "some-ui-utils"
 
 export function createId(): string {
   // Check if the modern API exists and is in a secure context
@@ -26,28 +25,25 @@ export function createId(): string {
 }
 
 export function useKoreanStudyPageVM() {
-  const { topikRepository, metadataRepository } = useSessionConfig()
+  const { topikRepository, metadataRepository, audioTTS } = useSessionConfig()
 
-  const componentIdRef = useRef<string>(null)
+  const componentIdRef = useRef<string | null>(null)
   if (!componentIdRef.current) {
     componentIdRef.current = createId()
   }
   const componentId = componentIdRef.current
 
-  const speechQueue = useSpeechQueueActions(componentId)
-
   const session = useSession({
     repository: topikRepository,
     metadataRepository,
-    speechQueue,
+    audioTTS,
     componentId,
     enableTTS: true,
   })
 
   const { state, dispatch } = session
-  useEffect(() => {
-    console.log("[vm: state: ", state)
-  }, [state])
+
+  // Cleanup audio on unmount
 
   const topikItems = useMemo(
     () => getAvailableTopiks(state),

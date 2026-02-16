@@ -3,10 +3,12 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@chat/lib/topik"
+import type { UseAudioTTSReturn } from "some-ui-utils"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
+  audioTTS: UseAudioTTSReturn
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

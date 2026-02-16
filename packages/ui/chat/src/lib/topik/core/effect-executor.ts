@@ -7,6 +7,7 @@
 
 import type { Message } from "@chat/lib/topik"
 import { actions, getCurrentMessage } from "@chat/lib/topik"
+import type { UseAudioTTSReturn } from "some-ui-utils"
 
 import type {
   IQueryBridge,
@@ -14,7 +15,7 @@ import type {
   ITopikRepository,
   SessionEffect,
 } from "./session-types"
-import type { SpeechQueueService, TTSEffectHandler } from "./tts-effect-handler"
+import type { TTSEffectHandler } from "./tts-effect-handler"
 import { createTTSEffectHandler } from "./tts-effect-handler"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -27,7 +28,7 @@ export type EffectExecutorConfig = {
   queryBridge: IQueryBridge
 
   // TTS configuration
-  speechQueue?: SpeechQueueService
+  audioTTS?: UseAudioTTSReturn
   componentId?: string
   enableTTS?: boolean
 
@@ -57,23 +58,15 @@ export class EffectExecutor {
   private destroyed = false
 
   constructor(private readonly config: EffectExecutorConfig) {
-    // Initialize TTS handler if enabled and speech queue provided
-    if (
-      config.enableTTS !== false &&
-      config.speechQueue &&
-      config.componentId
-    ) {
+    // Initialize TTS handler if enabled and audioTTS provided
+    if (config.enableTTS !== false && config.audioTTS && config.componentId) {
       this.ttsHandler = createTTSEffectHandler({
-        speechQueue: config.speechQueue,
+        audioTTS: config.audioTTS,
         componentId: config.componentId,
         machine: config.machine,
 
         onMessageComplete: (messageId) => {
           console.log(`[Executor] TTS complete for message: ${messageId}`)
-
-          // Dispatch ADVANCE_MESSAGE event to FSM
-          const effects = this.config.machine.dispatch(actions.advanceMessage())
-          this.execute(effects)
         },
 
         onSpeechStart: (messageId) => {
@@ -81,7 +74,10 @@ export class EffectExecutor {
         },
 
         onSpeechEnd: (messageId) => {
-          this.config.onSpeechEnd && this.config.onSpeechEnd(messageId)
+          // Dispatch ADVANCE_MESSAGE event to FSM
+          const effects = this.config.machine.dispatch(actions.advanceMessage())
+          this.execute(effects)
+          if (this.config.onSpeechEnd) this.config.onSpeechEnd(messageId)
         },
 
         onError: (error, messageId) => {
