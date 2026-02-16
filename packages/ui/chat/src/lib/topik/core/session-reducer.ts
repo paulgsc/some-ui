@@ -321,11 +321,18 @@ export function sessionReducer(
       return result(
         {
           ...createInitialState(),
+          dataRef: {
+            ...state.dataRef,
+            topikKey: null,
+            status: "empty",
+            error: null,
+            batchCount: 0,
+            currentBatchMeta: null,
+          },
           hydrationEpoch: state.hydrationEpoch,
           sessionEpoch: state.sessionEpoch + 1,
         },
-        [{ type: "STOP_TIMER" }, { type: "STOP_AUDIO" }]
-      )
+        [{ type: "STOP_TIMER" }, { type: "NOTIFY_SESSION_RESET" }])
     }
 
     // RESET_SESSION: Back to selection with same topik
@@ -494,6 +501,9 @@ export function sessionReducer(
         event.type === "ANSWER_SUBMITTED" &&
         active.quizStage === "question"
       ) {
+        const currBatch = dataRef.batches?.[active.cursor.batch] ?? null
+        const currQuestion =
+          currBatch?.questions[state.active.cursor.question] ?? null
         return result({
           ...state,
           active: {
@@ -503,10 +513,10 @@ export function sessionReducer(
           },
           feedback: {
             isCorrect: event.correct,
-            questionType: "multiple-choice", // Retrieved from repository
+            questionType: currQuestion?.type ?? "multiple-choice",
             userAnswer: event.userAnswer,
-            correctAnswer: "", // Retrieved from repository
-            explanation: "", // Retrieved from repository
+            correctAnswer: currQuestion?.correctAnswer ?? "",
+            explanation: currQuestion?.explanation ?? "",
             grammarNote: undefined,
           },
         })

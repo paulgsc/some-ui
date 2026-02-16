@@ -181,6 +181,10 @@ export class EffectExecutor {
           this._notifySessionComplete()
           break
 
+        case "NOTIFY_SESSION_RESET":
+          this._notifySessionReset()
+          break
+
         default:
           // Exhaustiveness check
           const _exhaustive: never = effect
@@ -325,6 +329,11 @@ export class EffectExecutor {
   private _notifySessionComplete(): void {
     console.log("[Executor] Session complete")
     if (this.config.onSessionComplete) this.config.onSessionComplete()
+  }
+
+  private _notifySessionReset(): void {
+    console.log("[Executor] Session reset")
+    this.destroy()
   }
 }
 

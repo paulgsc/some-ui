@@ -259,6 +259,7 @@ export type SessionEffect =
   | { type: "PLAY_AUDIO" }
   | { type: "STOP_AUDIO" }
   | { type: "NOTIFY_BATCH_COMPLETE"; batchIndex: number }
+  | { type: "NOTIFY_SESSION_RESET" }
   | { type: "NOTIFY_SESSION_COMPLETE" }
 
 /**

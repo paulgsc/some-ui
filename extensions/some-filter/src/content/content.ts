@@ -1,4 +1,4 @@
-const FILTER = "invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.9)"
+const FILTER = "invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5) contrast(0.92)"
 
 function applyFilter(enabled: boolean): void {
   const value = enabled ? FILTER : ""

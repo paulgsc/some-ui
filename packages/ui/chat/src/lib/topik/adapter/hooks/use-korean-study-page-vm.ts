@@ -42,6 +42,9 @@ export function useKoreanStudyPageVM() {
   })
 
   const { state, dispatch } = session
+  useEffect(() => {
+    console.info("state: ", state)
+  }, [state])
 
   // Cleanup audio on unmount
 
@@ -80,7 +83,9 @@ export function useKoreanStudyPageVM() {
         topikError: selectors.getCatalogError(state),
         currentTopikKey: selectors.getTopikKey(state),
         onTopikSelect: (key: string): void =>
-          dispatch(actions.selectTopik(key)),
+          state.phase === "active"
+            ? dispatch(actions.changeTopik())
+            : dispatch(actions.selectTopik(key)),
         onTopikReload: (): void => dispatch(actions.requestCatalog()),
       },
       chat: {
