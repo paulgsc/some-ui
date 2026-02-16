@@ -77,19 +77,6 @@ function validateCursor(
 }
 
 /**
-
-/**
- * Check if cursor is at end of questions
- */
-function isQuestionsComplete(
-  cursor: SessionCursor,
-  meta: BatchMetadata | null
-): boolean {
-  if (!meta) return false
-  return cursor.question >= meta.questionCount
-}
-
-/**
  * Check if all batches complete
  */
 function isBatchesComplete(cursor: SessionCursor, batchCount: number): boolean {
@@ -539,7 +526,7 @@ export function sessionReducer(
         )
 
         // All questions complete -> show summary
-        if (isQuestionsComplete(validated, dataRef.currentBatchMeta)) {
+        if (nextQuestion >= dataRef.currentBatchMeta!.questionCount) {
           return result({
             ...state,
             active: { ...active, quizStage: "summary", cursor: validated },
@@ -588,7 +575,11 @@ export function sessionReducer(
             }),
             feedback: null,
           },
-          [{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: active.cursor.batch }]
+          [
+            { type: "NOTIFY_BATCH_COMPLETE", batchIndex: active.cursor.batch },
+            { type: "PLAY_AUDIO" },
+            { type: "START_TIMER" },
+          ]
         )
       }
 
