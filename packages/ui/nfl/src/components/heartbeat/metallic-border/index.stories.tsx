@@ -6,8 +6,7 @@ type Story = StoryObj<typeof MetallicBorder>
 type Meta = MetaObj<typeof MetallicBorder>
 
 export const Default: Story = {
-  args: {},
-  render: (args) => (
+  render: () => (
     <svg viewBox="0 0 220 220" className="absolute inset-0 size-full">
       <MetallicBorder />
     </svg>

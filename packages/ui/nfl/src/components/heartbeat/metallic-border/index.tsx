@@ -1,6 +1,7 @@
+import type { JSX } from "react"
 import { Screw } from "@nfl/components/heartbeat/screw"
 
-export const MetallicBorder = () => {
+export const MetallicBorder = (): JSX.Element => {
   return (
     <g>
       {/* Metallic ring */}
