@@ -680,7 +680,7 @@ const useAssessmentLogic = ({
 
     Object.values(ALL_QUESTIONS).forEach((q) => {
       if (!groupedQuestions[q.category]) groupedQuestions[q.category] = []
-      groupedQuestions[q.category].push(q)
+      groupedQuestions[q.category]!.push(q)
     })
 
     const requiredCats = Object.values(CATEGORIES).filter(
