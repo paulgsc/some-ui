@@ -5,7 +5,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        content: resolve(__dirname, "src/content/content.ts"),
+        // content: resolve(__dirna:e, "src/content/content.ts"),
+        filter: resolve(__dirname, "src/content/filter.css"),
         background: resolve(__dirname, "src/background/background.ts"),
       },
       output: {
@@ -18,6 +19,7 @@ export default defineConfig({
         chunkFileNames: "[name].js",
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === "popup.html") return "popup.html"
+          if (assetInfo.name === "filter.css") return "filter.css"
           if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
           return "assets/[name][extname]"
         },
