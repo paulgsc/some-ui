@@ -10,7 +10,7 @@ export const Default: Story = {
     cx: 110,
     cy: 15,
   },
-  render: (args) => (
+  render: () => (
     <svg
       id="screwHead"
       width="200"
