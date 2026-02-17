@@ -1,4 +1,5 @@
-import type { FilterType } from "@nfl/types/hopium-tracker"
+import type { JSX } from "react"
+import type { FilterType } from "@nfl/types/hopium/hopium-tracker"
 import type { LucideIcon } from "lucide-react"
 import { Card } from "some-ui-shared"
 
@@ -20,7 +21,7 @@ export const StatsCard = ({
   activeFilter,
   onClick,
   variant = "default",
-}: StatsCardProps) => {
+}: StatsCardProps): JSX.Element => {
   const isActive = activeFilter === filter
   const ringColor =
     variant === "destructive"
@@ -28,9 +29,6 @@ export const StatsCard = ({
       : variant === "secondary"
         ? "ring-secondary"
         : "ring-primary"
-  const textColor =
-    variant === "destructive" ? "text-destructive" : "text-foreground"
-
   return (
     <Card
       className={`cursor-pointer bg-[oklch(0.984_0.024_83.915)] p-3 transition-all hover:shadow-md ${isActive ? `ring-2 ${ringColor}` : ""}`}
