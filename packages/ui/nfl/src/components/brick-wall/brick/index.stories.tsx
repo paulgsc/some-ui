@@ -9,8 +9,8 @@ export const Default: Story = {
   args: {
     brick: {
       position: {
-        x: 0,
-        y: 0,
+        x: 10,
+        y: 10,
         width: 80,
         height: 80,
       },
@@ -20,7 +20,8 @@ export const Default: Story = {
         imageUrl:
           "https://t3.gstatic.com/faviconV2?url=https://www.49ers.com/&client=BARD&type=FAVICON&size=256&fallback_opts=TYPE,SIZE,URL",
       },
-      color_intensity: 5,
+      minValue: 0,
+      maxValue: 20,
     },
   },
   render: (args) => (
@@ -32,7 +33,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta: Meta = {
   title: "UI/NFL/Components/Brick",
   component: Brick,
-} as Meta
+}
+
+export default meta
