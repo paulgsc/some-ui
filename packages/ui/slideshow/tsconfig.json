@@ -3,12 +3,22 @@
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@slideshow/*": ["./src/*"]
+      "@slideshow/*": ["./src/*"],
+      "@some-ui/*": ["../../../assets/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../some-content/src"]
     }
   },
-  "include": ["**/data/*.json", "src"],
+  "include": [
+    "tailwind.config.ts",
+    "eslint.config.js",
+    "vite.config.ts",
+    "../../../assets/**/*",
+    "src",
+    "../../some-content/src/**/*"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

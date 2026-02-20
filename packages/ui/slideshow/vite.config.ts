@@ -8,7 +8,14 @@ export default createViteConfig({
     "@slideshow": resolve(__dirname, "src"),
   },
   dtsOptions: {
-    exclude: ["**/data/**", "**/recap/**"],
+    exclude: [
+      "**/data/**",
+      "**/recap/**",
+      "**/demo/**",
+      "../../../assets/**/*",
+      "../../some-content/src/**/*",
+      "../../../assets/**/*",
+    ],
   },
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })
