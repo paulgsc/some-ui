@@ -34,6 +34,7 @@ function storyGlobs(): Array<string> {
     base = [
       "../packages/**/*.stories.@(js|jsx|mjs|ts|tsx)",
       "../extensions/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+      "../content/**/*.mdx",
     ]
   }
 
