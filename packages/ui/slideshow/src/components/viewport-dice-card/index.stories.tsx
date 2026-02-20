@@ -13,18 +13,6 @@ const meta: Meta<typeof ViewportDiceCard> = {
   },
   tags: ["autodocs"],
   argTypes: {
-    perspective: {
-      control: { type: "range", min: 400, max: 2000, step: 50 },
-      description: "CSS perspective value in pixels",
-    },
-    showBeam: {
-      control: "boolean",
-      description: "Show border beam animation on active face",
-    },
-    hideBackface: {
-      control: "boolean",
-      description: "Hide backfaces of cube faces",
-    },
     facesAhead: {
       control: { type: "number", min: 1, max: 5 },
       description: "Number of faces ahead to preload",
@@ -139,11 +127,6 @@ export const SimpleCube: Story = {
   args: {
     viewportConfig: simpleCubeConfig,
     registry: componentRegistry,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 1,
   },
 }
@@ -166,11 +149,6 @@ export const WithoutBeam: Story = {
         },
       })),
     },
-    perspective: 1200,
-    showBeam: false,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 1,
   },
 }
@@ -178,11 +156,6 @@ export const WithoutBeam: Story = {
 export const MultiItemPerFace: Story = {
   args: {
     viewportConfig: multiItemCubeConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-96 h-96",
-    faceClassName: "border-2 border-white/20 p-4 flex flex-col gap-4",
     facesAhead: 1,
   },
 }
@@ -190,11 +163,6 @@ export const MultiItemPerFace: Story = {
 export const CarouselMode: Story = {
   args: {
     viewportConfig: carouselConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 2,
   },
 }
@@ -202,11 +170,6 @@ export const CarouselMode: Story = {
 export const WithRichContent: Story = {
   args: {
     viewportConfig: richContentConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-96 h-96",
-    faceClassName: "border-2 border-white/30 p-2",
     facesAhead: 1,
   },
 }
@@ -214,11 +177,6 @@ export const WithRichContent: Story = {
 export const DashboardCards: Story = {
   args: {
     viewportConfig: dashboardConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-96 h-96",
-    faceClassName: "border-2 border-white/30",
     facesAhead: 1,
   },
 }
@@ -226,11 +184,6 @@ export const DashboardCards: Story = {
 export const ImageGallery: Story = {
   args: {
     viewportConfig: galleryConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-[28rem] h-[28rem]",
-    faceClassName: "border-2 border-white/30",
     facesAhead: 2,
   },
 }
@@ -253,11 +206,6 @@ export const LowPerspective: Story = {
         },
       })),
     },
-    perspective: 500,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 1,
   },
 }
@@ -266,7 +214,6 @@ export const HighPerspective: Story = {
   args: {
     viewportConfig: {
       ...simpleCubeConfig,
-      id: "high-perspective",
       items: simpleCubeConfig.items.map((item) => ({
         ...item,
         props: {
@@ -280,11 +227,6 @@ export const HighPerspective: Story = {
         },
       })),
     },
-    perspective: 2000,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 1,
   },
 }
@@ -307,11 +249,6 @@ export const WithBackfaceHidden: Story = {
         },
       })),
     },
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: true,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 1,
   },
 }
@@ -319,11 +256,6 @@ export const WithBackfaceHidden: Story = {
 export const AggressivePreloading: Story = {
   args: {
     viewportConfig: carouselConfig,
-    perspective: 1200,
-    showBeam: true,
-    hideBackface: false,
-    className: "w-80 h-80",
-    faceClassName: "border-2 border-white/20",
     facesAhead: 3, // Preload 3 faces ahead
   },
   parameters: {
