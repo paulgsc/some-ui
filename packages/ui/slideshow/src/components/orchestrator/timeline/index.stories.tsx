@@ -9,49 +9,26 @@ const mockScenes: Array<SceneConfig> = [
     scene_name: "Intro Sequence",
     duration: 5000,
     start_time: 0,
-    ui: [
-      {
-        content: {
-          main: { registryKey: "VideoPlayer", props: { src: "intro.mp4" } },
-        },
-        focus: { region: "center", intensity: 1 },
-      },
-    ],
+    ui: [],
   },
   {
     scene_name: "Guest Interview",
     duration: 15000,
     start_time: 5000,
-    ui: [
-      {
-        content: {
-          host: { registryKey: "Camera", props: { id: "cam-1" } },
-          guest: { registryKey: "Camera", props: { id: "cam-2" } },
-        },
-      },
-    ],
+    ui: [],
   },
   {
     // This scene overlaps with the "Guest Interview" to test the concurrency UI
     scene_name: "Lower Third Overlay",
     duration: 4000,
     start_time: 7000,
-    ui: [
-      {
-        content: {
-          overlay: {
-            registryKey: "TitleCard",
-            props: { text: "John Doe - Expert" },
-          },
-        },
-      },
-    ],
+    ui: [],
   },
   {
     scene_name: "Outro",
     duration: 5000,
     start_time: 20000,
-    ui: [{ content: { main: { registryKey: "Credits" } } }],
+    ui: [],
   },
 ]
 
@@ -134,13 +111,13 @@ export const ComplexConcurrency: Story = {
         scene_name: "Background Loop",
         duration: 30000,
         start_time: 0,
-        ui: [{ content: { bg: { registryKey: "Shader" } } }],
+        ui: [],
       },
       ...Array.from({ length: 5 }).map((_, i) => ({
         scene_name: `Popup Event ${i + 1}`,
         duration: 2000,
         start_time: i * 3000,
-        ui: [{ content: { widget: { registryKey: "Alert" } } }],
+        ui: [],
       })),
     ],
   },
