@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import type { SceneFileName } from "@slideshow/hooks/use-scene-library"
+import type { SceneUIFile } from "@slideshow/hooks/use-scene-library"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
 import type { SceneSelection } from "@slideshow/utils/scene-selector"
 import {
@@ -34,13 +34,13 @@ export const SceneSelectorTab = ({
   maxPerScene,
 }: SceneSelectorTabProps): JSX.Element => {
   const { getLibraryItems, loading, error } = useSceneLibrary()
-  const [expandedFile, setExpandedFile] = useState<SceneFileName | null>(null)
+  const [expandedFile, setExpandedFile] = useState<SceneUIFile | null>(null)
 
   const libraryItems = getLibraryItems()
   const occurrences = countSceneOccurrences(selections)
   const validation = validateSelections(selections, { maxTotal, maxPerScene })
 
-  const handleAddScene = (fileName: SceneFileName): void => {
+  const handleAddScene = (fileName: SceneUIFile): void => {
     const instanceIndex = getNextInstanceIndex(selections, fileName)
     const sourceConfig = libraryItems.find(
       (item) => item.fileName === fileName
