@@ -131,8 +131,7 @@ export const editorReducer = (
           )
           if (!removed) return { ...state, selections: filtered }
           const renumbered = filtered.map((sel) =>
-            sel.fileName === removed.fileName &&
-            sel.instanceIndex > removed.instanceIndex
+            sel.id === removed.id && sel.instanceIndex > removed.instanceIndex
               ? { ...sel, instanceIndex: sel.instanceIndex - 1 }
               : sel
           )
