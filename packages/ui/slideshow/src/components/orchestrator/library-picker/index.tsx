@@ -39,7 +39,7 @@ export const LibraryTemplatePicker = ({
 
             return (
               <Card
-                key={item.fileName}
+                key={item.key}
                 className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group"
                 onClick={() => {
                   onSelectTemplate(item.config.ui, item.displayName)
@@ -52,7 +52,7 @@ export const LibraryTemplatePicker = ({
                         {item.displayName}
                       </div>
                       <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                        {item.fileName}.json
+                        {item.key}.json
                       </div>
                     </div>
                     <Badge
