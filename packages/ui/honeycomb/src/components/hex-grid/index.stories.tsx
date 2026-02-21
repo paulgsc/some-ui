@@ -29,11 +29,10 @@ export const ThemedCells: Story = {
       "#8338EC",
     ]
 
-    // Fixed: map to the correct structure { id, content: { data, theme } }
     const cellContent = hexCells.slice(0, colors.length).map((cell, i) => ({
       id: cell.id,
       content: {
-        data: {}, // Fixed: Property 'data' is required in HexCellData
+        data: {},
         theme: {
           fill: colors[i],
           stroke: "#111",
@@ -50,7 +49,7 @@ export const ThemedCells: Story = {
           cellCount={37}
           hexSize={25}
           viewBoxFactor={0.5}
-          cellContent={cellContent} // Fixed: Property 'cells' does not exist
+          cellContent={cellContent}
         />
       </div>
     )
@@ -80,7 +79,7 @@ export const WithCustomRender: Story = {
         <HexGrid<CustomData>
           cellCount={19}
           hexSize={30}
-          cellContent={cellContent} // Fixed: Property 'cells' does not exist
+          cellContent={cellContent}
           renderCell={(cell, cx, cy) => (
             <text
               key={`label-${cell.id}`}
@@ -91,7 +90,6 @@ export const WithCustomRender: Story = {
               fill="white"
               style={{ pointerEvents: "none", fontFamily: "monospace" }}
             >
-              {/* Fixed: Data exists on cell.content.data */}
               {cell.content?.data.label}
             </text>
           )}

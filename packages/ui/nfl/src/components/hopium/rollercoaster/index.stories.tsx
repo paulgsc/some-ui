@@ -57,7 +57,6 @@ export const Default: Story = {
   args: { currentIndex: 8 },
 }
 
-// Peak highs and lows — Fixed with helper
 export const HighDrama: Story = {
   render: (args) => {
     const dramaticEvents: Array<MoodEvent> = [
@@ -92,7 +91,6 @@ export const HighDrama: Story = {
   },
 }
 
-// Smooth season — Fixed with helper
 export const LowVariance: Story = {
   render: (args) => {
     const calmEvents: Array<MoodEvent> = Array.from({ length: 17 }, (_, i) =>
