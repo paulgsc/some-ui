@@ -1,6 +1,5 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import type { SceneUIFile } from "@slideshow/hooks/use-scene-library"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
 import type { SceneSelection } from "@slideshow/utils/scene-selector"
 import {
@@ -34,21 +33,24 @@ export const SceneSelectorTab = ({
   maxPerScene,
 }: SceneSelectorTabProps): JSX.Element => {
   const { getLibraryItems, loading, error } = useSceneLibrary()
-  const [expandedFile, setExpandedFile] = useState<SceneUIFile | null>(null)
+  // Fixed: Track expansion by string key, not the UI intent array
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   const libraryItems = getLibraryItems()
   const occurrences = countSceneOccurrences(selections)
   const validation = validateSelections(selections, { maxTotal, maxPerScene })
 
-  const handleAddScene = (fileName: SceneUIFile): void => {
-    const instanceIndex = getNextInstanceIndex(selections, fileName)
+  const handleAddScene = (sceneKey: string): void => {
+    const instanceIndex = getNextInstanceIndex(selections, sceneKey)
     const sourceConfig = libraryItems.find(
-      (item) => item.fileName === fileName
+      (item) => item.key === sceneKey
     )?.config
+
     if (!sourceConfig) return
+
     const newSelection: SceneSelection = {
-      id: generateSelectionId(fileName, instanceIndex),
-      fileName,
+      id: generateSelectionId(sceneKey, instanceIndex),
+      sceneKey, // Fixed: Property name alignment
       instanceIndex,
       sourceConfig,
     }
@@ -58,9 +60,11 @@ export const SceneSelectorTab = ({
   const handleRemoveSelection = (id: string): void => {
     const filtered = selections.filter((s) => s.id !== id)
     const removed = selections.find((s) => s.id === id)
+
     if (removed) {
+      // Renumber subsequent instances of the same scene key
       const renumbered = filtered.map((sel) =>
-        sel.fileName === removed.fileName &&
+        sel.sceneKey === removed.sceneKey &&
         sel.instanceIndex > removed.instanceIndex
           ? { ...sel, instanceIndex: sel.instanceIndex - 1 }
           : sel
@@ -107,7 +111,6 @@ export const SceneSelectorTab = ({
         </Alert>
       )}
 
-      {/* Panels */}
       <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
         {/* Library Panel */}
         <Card className="flex flex-col h-full min-h-0 p-4">
@@ -123,23 +126,21 @@ export const SceneSelectorTab = ({
           <ScrollArea className="flex-1 min-h-0 -mx-4 px-4">
             <div className="space-y-2">
               {libraryItems.map((item) => {
-                const count = occurrences.get(item.fileName) || 0
+                const count = occurrences.get(item.key) || 0
                 const canAdd = !maxPerScene || count < maxPerScene
 
                 const toggleExpand = (): void => {
-                  setExpandedFile(
-                    expandedFile === item.fileName ? null : item.fileName
-                  )
+                  setExpandedKey(expandedKey === item.key ? null : item.key)
                 }
 
                 return (
                   <div
-                    key={item.fileName}
+                    key={item.key} // Fixed: Use key from item
                     role="button"
                     tabIndex={0}
                     className={cn(
                       "p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 text-left w-full",
-                      expandedFile === item.fileName
+                      expandedKey === item.key
                         ? "border-primary bg-primary/5"
                         : "border-border"
                     )}
@@ -157,7 +158,7 @@ export const SceneSelectorTab = ({
                           {item.displayName}
                         </div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                          {item.fileName}.json
+                          {item.key}.json
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -176,7 +177,7 @@ export const SceneSelectorTab = ({
                           className="h-7 px-2 text-xs"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleAddScene(item.fileName)
+                            handleAddScene(item.key)
                           }}
                           disabled={!canAdd}
                         >
@@ -185,7 +186,7 @@ export const SceneSelectorTab = ({
                       </div>
                     </div>
 
-                    {expandedFile === item.fileName && (
+                    {expandedKey === item.key && (
                       <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
                         <div>Duration: {item.config.duration / 1000}s</div>
                         <div>UI Intents: {item.config.ui.length || 0}</div>
@@ -234,7 +235,7 @@ export const SceneSelectorTab = ({
               <div className="space-y-2">
                 {selections.map((selection, index) => {
                   const item = libraryItems.find(
-                    (li) => li.fileName === selection.fileName
+                    (li) => li.key === selection.sceneKey
                   )
                   if (!item) return null
 
@@ -262,7 +263,7 @@ export const SceneSelectorTab = ({
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground font-mono">
-                              {selection.fileName}
+                              {selection.sceneKey}
                             </div>
                           </div>
                         </div>
