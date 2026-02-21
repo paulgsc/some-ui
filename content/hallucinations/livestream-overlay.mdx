@@ -1,0 +1,576 @@
+import { Meta } from "@storybook/addon-docs/blocks"
+
+<Meta title="Content/Hallucinations/LivestreamOverlay" />
+
+# Epistemic Overlay for Long-Form Livestreams
+## A Design Specification for Scene-Isomorphic, Machine-Legible Stream Annotation
+
+**Version:** 0.1.0  
+**Status:** Design Proposal  
+**Stack Target:** TypeScript / React / OBS Browser Source  
+
+---
+
+## 1. Problem Statement
+
+### 1.1 The Livestream Paradox
+
+We are in an era of ambient, long-form livestreaming. Individuals broadcast multi-hour sessions performing technical, creative, or investigative work — coding, research, design, writing, debugging. The footage is voluminous. The attention span of any given observer is not.
+
+Contemporary streamers resolve this paradox through **parasocial mechanics**: an engaging title, a consistent persona, tribal in-group signaling, and emotional continuity. These mechanics are effective for audience retention but structurally empty. They do not transmit the *content* of the work. They transmit the *performer of the work*.
+
+This means that at any timestamp `t` in a 3-hour stream, a cold observer — one who arrives without prior exposure — cannot answer the following:
+
+- What problem is being worked on, formally?
+- Why does it matter?
+- What has been attempted so far?
+- What is the current hypothesis?
+- Where in the overall process are we?
+- What would constitute success?
+
+The observer is strictly worse off than someone who was present from minute zero. This is a **structural accessibility failure**, analogous to a web page that requires sequential reading from the top to understand any individual paragraph.
+
+### 1.2 The Time-Preference Asymmetry
+
+For an individual with high time preference — a practitioner, a researcher, someone encountering a similar problem — the relevant content of a 3-hour stream may be extractable in minutes, *if the stream is properly annotated*. The footage itself is not the artifact. The problem definition, the attempt log, the hypothesis evolution, and the resolution path are the artifacts.
+
+Currently, none of this is encoded in the stream. It exists only in the streamer's head, expressed as narration, which is buried in unstructured video.
+
+### 1.3 The Forward-Looking Mandate
+
+This design must be **forward-looking** in two senses:
+
+1. **Viewer-forward:** At any `t`, the overlay must make the *remaining expected trajectory* legible, not just the past. A viewer should be able to project what will happen next, and on what conditions.
+
+2. **Engine-forward:** The overlay must be structured such that automated systems — video indexing engines, LLM-based transcript summarizers, chapter generators — can parse it without natural language understanding. The schema, not the prose, carries the meaning.
+
+### 1.4 The Markov Structure of Work
+
+Work is not linear. A debugging session is a Markov chain over states: `Formalize → Implement → Debug → Implement → Debug → Debug → Test → Debug → Refactor`. The probability of the next state depends only on the current state and observable variables — not on the full history.
+
+The overlay must encode this explicitly. A snapshot at `t` must reveal not just the current state but the *transition history* and the *expected transition distribution*. This is not merely useful for human observers. It is the minimum sufficient information to reconstruct the epistemic arc of the session without watching it.
+
+---
+
+## 2. Design Mandates
+
+The following are non-negotiable constraints that govern all design decisions.
+
+| ID | Mandate | Rationale |
+|----|---------|-----------|
+| M1 | **Scene meta is a first-class citizen** | The overlay is not decoration. It is the canonical artifact. The video is evidentiary. |
+| M2 | **Snapshot completeness** | Any single frame of the overlay, extracted as a static image, must be self-sufficient. No "as discussed earlier." |
+| M3 | **Primary source referencing** | All problem definitions must cite canonical references (RFCs, specs, papers, crate docs). No orphaned claims. |
+| M4 | **Machine parseability** | The rendered state must map 1:1 to a typed data structure. No ambiguous prose in structured fields. |
+| M5 | **Forward-looking encoding** | At `t`, the expected next transition must be stated explicitly, with conditioning logic. |
+| M6 | **Markov trace visibility** | The recent transition history must be visible. Interleaving and recursion must be perceptible at a glance. |
+| M7 | **Zero parasocial affordance** | No follower counts, no chat prominence, no emotional alerts, no reactive animations. |
+| M8 | **Accessibility over performance** | The overlay serves the time-poor, the indifferent, and the automated system equally. |
+
+---
+
+## 3. Invariants
+
+These properties must hold at all times during a stream, regardless of content or segment:
+
+### 3.1 Structural Invariants
+
+- **I1 — Field atomicity:** Every labeled field in the overlay contains exactly one atomic value. No compound sentences. No conjunctions linking two distinct claims.
+- **I2 — Schema stability:** The overlay schema does not change mid-stream. Fields may be empty; they are never removed or renamed.
+- **I3 — Temporal anchoring:** Every state vector is stamped with `T+HH:MM:SS` relative to stream start. Absolute wallclock time is secondary.
+- **I4 — Segment identity persistence:** Once a segment is assigned an ID (`S1`, `S2`, ...), that ID is immutable. Revisiting a segment increments its visit counter; it does not create a new segment.
+
+### 3.2 Epistemic Invariants
+
+- **I5 — Hypothesis explicitness:** The current hypothesis field must always be populated when the active segment is `Debug` or `Analysis`. It may not read "unknown" — if genuinely unknown, it reads "None formed yet."
+- **I6 — Success criteria declaration:** The success criterion for the active problem must be declared at session start and updated only when the problem itself changes. Not when the approach changes.
+- **I7 — Reference grounding:** Any problem whose domain has an established specification (networking protocol, language spec, library API, algorithm) must cite that specification in the header. Uncited domains must be marked `[No canonical reference]`.
+
+### 3.3 Transition Invariants
+
+- **I8 — Transition logging:** Every segment transition is logged with timestamp and direction. Transitions are never implicit.
+- **I9 — Expected transition declaration:** The `NEXT EXPECTED TRANSITION` field must state the conditioning clause. Format: `Sn → Sm (if <condition>)`. It must be updated before or at the moment of transition.
+- **I10 — Non-teleological arc:** The overlay must not claim progress toward success. It may only claim state. "Hypothesis confirmed" is a state. "Almost done" is not.
+
+---
+
+## 4. Data Model
+
+The overlay is a pure renderer. All state lives in a single typed object. No component holds local state. The UI is a deterministic function of `StreamState`.
+
+```typescript
+// ── Segment Identity ──────────────────────────────────────────────
+
+type SegmentID = string; // e.g. "S1", "S2" — immutable once assigned
+
+type SegmentStatus = "pending" | "active" | "complete" | "recurring";
+
+type SegmentMeta = {
+  id: SegmentID;
+  label: string;            // e.g. "Header Decode Analysis"
+  category: SegmentCategory;
+  status: SegmentStatus;
+  visitCount: number;
+  cumulativeMs: number;     // total time spent across all visits
+  lastExitTimestamp?: number; // ms from stream start
+};
+
+type SegmentCategory =
+  | "Formalization"
+  | "Implementation"
+  | "Debug"
+  | "Analysis"
+  | "Test"
+  | "Refactor"
+  | "Research"
+  | "Review";
+
+// ── Transition Record ─────────────────────────────────────────────
+
+type Transition = {
+  from: SegmentID;
+  to: SegmentID;
+  atMs: number;             // ms from stream start
+  trigger?: string;         // optional human note on why transition occurred
+};
+
+// ── Epistemic State ───────────────────────────────────────────────
+
+type EpistemicStatus = {
+  hypothesis: string;       // current working hypothesis, or "None formed yet"
+  confidence: number;       // 0.0 – 1.0, operator-supplied estimate
+  blockingCondition?: string;
+  successCriteria: string;  // immutable per problem; only changes with problem
+};
+
+// ── Live State Vector ─────────────────────────────────────────────
+
+type StateVector = {
+  operation: string;        // e.g. "Inspect base64 decode path"
+  artifact?: string;        // e.g. "middleware/auth.rs"
+  testCase?: string;        // e.g. "invalid_header_case_3"
+  constraint?: string;      // e.g. "Must reject pre-DB access"
+  runtimeContext?: string;  // e.g. "tokio / axum / jsonwebtoken 9.x"
+};
+
+// ── Expected Transition ───────────────────────────────────────────
+
+type ExpectedTransition = {
+  from: SegmentID;
+  to: SegmentID;
+  condition: string;        // e.g. "if base64 decode hypothesis confirmed"
+};
+
+// ── Problem Header ────────────────────────────────────────────────
+
+type ProblemHeader = {
+  id: string;               // e.g. "P-2026-02-20-A"
+  canonicalName: string;    // e.g. "JWT Validation Semantics"
+  formalQuestion: string;   // single sentence, interrogative
+  references: {
+    label: string;          // e.g. "RFC 7519"
+    url?: string;
+  }[];
+  noCanonicalReference: boolean; // true if domain has no spec to cite
+};
+
+// ── Root State ────────────────────────────────────────────────────
+
+type StreamState = {
+  streamStartMs: number;        // epoch ms
+  problem: ProblemHeader;
+  epistemicStatus: EpistemicStatus;
+  segments: SegmentMeta[];      // ordered by first appearance
+  activeSegmentId: SegmentID;
+  stateVector: StateVector;
+  transitions: Transition[];    // full log, append-only
+  expectedTransition: ExpectedTransition;
+  temporalArc: TemporalArcZone[]; // macro-level phases for bottom strip
+};
+
+type TemporalArcZone = {
+  label: string;            // e.g. "Planning", "Implementation", "Debug"
+  startMs: number;
+  endMs?: number;           // undefined if current or future
+  isCurrent: boolean;
+};
+```
+
+---
+
+## 5. UI Design Proposal
+
+### 5.1 Philosophy
+
+The visual language is **minimal academic** — the aesthetic register of a research terminal or lab instrument. Not a gaming overlay. Not a broadcast decoration. Think: monospaced type, 8px grid, 1px rule lines, muted neutral palette, zero animation.
+
+Every pixel either carries semantic content or contributes to the legibility of semantic content. If it does neither, it is removed.
+
+### 5.2 Layout Architecture
+
+The overlay occupies a defined region of the OBS canvas. It must not occlude the primary workspace, but it must be consistently visible and spatially stable.
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│                        A. PROBLEM HEADER                          │
+│                        (height: 10%)                              │
+├───────────────┬───────────────────────────────────────────────────┤
+│               │                                                   │
+│  B. SEGMENT   │              C. WORKSPACE                         │
+│  REGISTER     │         (unobstructed: 78%)                       │
+│  (width: 18%) │                                                   │
+│               │                                                   │
+├───────────────┴───────────────────────────────────────────────────┤
+│  D. STATE VECTOR + TRANSITION TRACE          E. EPISTEMIC STATUS  │
+│  (height: 14%, left 65%)                     (height: 14%, right) │
+├───────────────────────────────────────────────────────────────────┤
+│                        F. TEMPORAL ARC                            │
+│                        (height: 5%)                               │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+**Zones A, B, D, E, F** are the overlay. **Zone C** is the untouched workspace feed.
+
+---
+
+### 5.3 Zone A — Problem Header
+
+**Purpose:** Abstract-level anchoring. Cold-entry comprehension in under 3 seconds.
+
+**Dimensions:** Full width, 10% height. Dark background `#0C0D0F`. 1px bottom rule `#2A2C30`.
+
+**Layout (two columns):**
+
+Left column (60%):
+```
+PROBLEM  P-2026-02-20-A
+─────────────────────────────────────────────────────
+JWT Validation Semantics
+Can malformed JWTs be rejected at middleware boundary
+without invoking downstream stateful components?
+```
+
+Right column (40%):
+```
+REFERENCES
+RFC 7519 · jsonwebtoken 9.x docs · axum middleware guide
+```
+
+**Typography:**
+- `PROBLEM` label: 10px, `#5A5C62`, letter-spacing +0.12em, uppercase
+- Problem ID: 11px monospace, `#7A8A9A`  
+- Canonical name: 18px, `#E8E8E8`, weight 500
+- Formal question: 13px, `#B0B0B0`, italic, max 2 lines
+- References: 11px monospace, `#5A8A7A`, comma-separated inline
+
+**Improvement over prior art:** The original proposals treated the header as a "task label." This redesign treats it as a *citable problem declaration*. The formal question is interrogative — it defines success by negation. The references are rendered as inline hyperlink-style tokens, not a sub-list, preserving visual density. The Problem ID is machine-indexable.
+
+---
+
+### 5.4 Zone B — Segment Register
+
+**Purpose:** Process graph. Communicates position in arc, recurrence, and dominant state.
+
+**Dimensions:** 18% width, spans between header and state vector strips. Background `#0E0F12`. 1px right rule `#2A2C30`.
+
+**Rendering model:**
+
+Each segment is a node. Nodes are connected by a vertical line. The active node is visually distinct. Visited nodes with `visitCount > 1` display a recurrence badge.
+
+```
+  ○  S1  Formalization
+  │
+  ●  S2  Implementation
+  │
+  ◉  S3  Header Decode       ← active
+     ↺ ×5  01:03:42 total
+  │
+  ○  S4  Test Construction
+  │
+  ○  S5  Integration
+```
+
+**Legend:**
+- `○` — pending (future or not yet entered)
+- `●` — complete (visited, not currently active)
+- `◉` — active (currently executing)
+- `↺ ×N` — visited N times; recurrence indicator
+- Time below recurrence indicator: cumulative time in segment
+
+**Typography:**
+- Segment IDs: 10px monospace `#5A6A7A`
+- Segment labels: 12px `#C0C0C0`
+- Active label: 13px `#E8E8E8`, weight 600
+- Recurrence badge: 10px `#7A6A4A`, background `#2A2418`
+- Cumulative time: 10px monospace `#6A6A6A`
+
+**Improvement over prior art:** The prior proposals used flat checklists or dot graphs without visit metadata. This design adds *cumulative time per segment* and a *recurrence badge* that visually communicates when a segment has been revisited — the single most important signal of Markov instability. A viewer arriving at hour 2 can immediately see that `S3` has been entered 5 times and consumed 63 minutes. This tells them: *the problem is resistant; the hypothesis has been repeatedly falsified; the stream is deep in a debug loop.* No narration required.
+
+---
+
+### 5.5 Zone D — State Vector & Transition Trace
+
+**Purpose:** Snapshot-complete encoding of the current scene. The machine-legible substrate.
+
+**Dimensions:** Bottom strip, left 65%, 14% height. Background `#0C0D0F`. 1px top and right rules `#2A2C30`.
+
+**Layout:**
+
+Left block — State Vector:
+```
+STATE VECTOR  T+01:43:02
+────────────────────────────────────────────────
+SEGMENT     S3 · Header Decode Analysis
+OPERATION   Inspect base64 decode path in header parser
+ARTIFACT    middleware/auth.rs : validate_header()
+TEST        invalid_header_case_3
+CONSTRAINT  Must reject pre-DB access
+RUNTIME     tokio 1.x · axum 0.7 · jsonwebtoken 9.3
+```
+
+Right block — Transition Trace (Markov Window):
+```
+TRANSITION TRACE  (last 8)
+────────────────────────────
+S2 → S3 → S2 → S3 → S3 → S2 → S3 → S3
+         ↑ current
+```
+
+**Typography:**
+- `STATE VECTOR` label: 9px `#5A5C62`, uppercase
+- Timestamp: 10px monospace `#7A8A5A`
+- Field labels: 9px `#5A5C62`, uppercase, fixed 12-character column
+- Field values: 12px monospace `#C8C8C8`
+- `TRANSITION TRACE` label: 9px `#5A5C62`
+- Trace sequence: 12px monospace `#A8A870`
+- `↑ current` indicator: 9px `#5A7A5A`
+
+**Improvement over prior art:** Prior proposals listed state vector fields without *visual hierarchy between label and value*. This design uses a fixed-width label column, ensuring the values form a scannable vertical column. The transition trace introduces a `↑ current` marker that positions the viewer in the sequence — critical for cold entry. The segment ID in the state vector is repeated from the register to allow the state vector alone, as a screenshot, to be self-sufficient without requiring the register to be visible.
+
+---
+
+### 5.6 Zone E — Epistemic Status
+
+**Purpose:** Structured uncertainty encoding. The probability-not-progress model.
+
+**Dimensions:** Bottom strip, right 35%, 14% height. Background `#0E0C0A`. 1px top rule `#2A2C30`.
+
+**Layout:**
+```
+EPISTEMIC STATUS
+────────────────────────────────
+HYPOTHESIS    Base64 padding inconsistency
+              in malformed header input
+CONFIDENCE    ████████░░  0.42
+BLOCKING      Decode output mismatch
+              on 4-byte boundary
+NEXT          S3 → S4  if hypothesis confirmed
+SUCCESS       Middleware rejects token before
+              any DB call is issued
+```
+
+**Confidence bar:** 10px height, 120px wide. Filled portion in `#4A7A6A`, unfilled in `#2A2A2A`. Numeric label beside bar.
+
+**Typography:**
+- `EPISTEMIC STATUS` label: 9px `#5A5C62`, uppercase
+- Field labels: 9px `#5A5C62`, uppercase
+- Field values: 11px monospace `#C0C0C0`
+- `NEXT` transition value: 11px monospace `#8A8A5A`
+- `SUCCESS` value: 11px `#8A9A8A`, slightly distinct hue to encode finality
+
+**Improvement over prior art:** The original proposals mentioned confidence as a numeric value but did not specify how the operator sets it, or how it interacts with the hypothesis field. This design treats `CONFIDENCE` as an *operator-supplied epistemic estimate* — explicitly not a progress percentage. 0.42 means "I assign 42% probability to this hypothesis being the root cause," not "I am 42% done." The distinction is epistemically meaningful and prevents the display from drifting into progress theater. The `NEXT` field (expected transition with condition) appears here, not in a separate panel, because it is derived from the epistemic state — it is the *operative prediction*, conditioned on the hypothesis.
+
+---
+
+### 5.7 Zone F — Temporal Arc
+
+**Purpose:** Macro-level positioning. Enables automated chapter segmentation.
+
+**Dimensions:** Full width, 5% height. Background `#0A0A0C`. 1px top rule `#2A2C30`.
+
+**Layout:**
+
+A horizontal ribbon. Each zone occupies proportional width based on actual time spent. Current zone is brighter. Future zones are dim.
+
+```
+│▓▓▓ Formalization ▓▓▓│▓▓▓▓▓▓▓▓ Implementation ▓▓▓▓▓▓▓▓│░░░░░░░░░░ Debug ░░░░░░░░░░│ · · Test · · │ · Refactor · │
+                                                          ↑ T+01:43:02
+```
+
+**Rendering:**
+- Completed zones: background `#1A2A24`, label `#6A9A7A`, 11px
+- Active zone: background `#243028`, label `#A8C8B0`, 12px, slightly brighter
+- Future zones: background `#141414`, label `#3A3A3A`, 11px
+- Zone boundaries: 1px `#3A3A3A`
+- Current time indicator: 1px vertical rule `#8A8A5A`, with `T+HH:MM:SS` label above
+
+**Improvement over prior art:** Prior proposals described a static linear band with predefined phases. This design renders zones *proportionally to actual elapsed time*, not to assumed equal duration. This means the strip is an honest temporal representation — a long Debug zone physically dominates the strip, communicating the weight of that phase. Future zones are rendered as visually faint *stubs* based on the declared roadmap, not as full-weight items, because they are probabilistic, not certain. The strip becomes a *live Gantt chart* with honest uncertainty encoding.
+
+---
+
+### 5.8 Color Token System
+
+```
+Background base:     #0C0D0F   (primary panel backgrounds)
+Background elevated: #0E0F12   (slightly lighter panels)
+Background warm:     #0E0C0A   (epistemic zone — warm tint signals uncertainty)
+Background accent:   #141A18   (hover states, if interactive)
+
+Rule lines:          #2A2C30
+Divider lines:       #1E2020
+
+Text primary:        #E8E8E8   (canonical names, active values)
+Text secondary:      #C0C0C0   (field values, body)
+Text muted:          #7A7A7A   (secondary labels, timestamps)
+Text dim:            #5A5C62   (field name labels)
+Text inactive:       #3A3A3A   (future segments, dim zones)
+
+Accent green:        #4A7A6A   (confidence bar fill, success criteria)
+Accent amber:        #8A8A5A   (transition trace, expected next)
+Accent blue-grey:    #5A7A9A   (references, segment IDs)
+Accent recurrence:   #7A6A4A   (recurrence badge text)
+
+Font:                JetBrains Mono, fallback: IBM Plex Mono, Courier New
+Grid unit:           8px
+Border radius:       0px (no rounding — instrument aesthetic)
+```
+
+---
+
+## 6. Interaction Model
+
+Because the overlay is a localhost React app controlled by the streamer, state updates are driven by a **hotkey command interface** — no mouse interaction during stream.
+
+### 6.1 Command Bindings (Recommended)
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl+1` | Advance to next segment (auto-log transition) |
+| `Ctrl+2` | Return to previous segment (auto-log back-transition) |
+| `Ctrl+3` | Open quick-edit panel: update `operation` field |
+| `Ctrl+4` | Open quick-edit panel: update `hypothesis` field |
+| `Ctrl+5` | Update `confidence` (increment by 0.1) |
+| `Ctrl+6` | Open quick-edit panel: update `expectedTransition.condition` |
+| `Ctrl+7` | Mark active segment complete; advance to next pending |
+| `Ctrl+8` | Log `artifact` and `testCase` from clipboard content |
+| `Ctrl+9` | Add new segment to register (prompt for label + category) |
+| `Ctrl+0` | Toggle overlay visibility (hide/show for full-screen moments) |
+
+### 6.2 Quick-Edit Panel
+
+When a quick-edit hotkey is pressed, a minimal text input appears over the state vector zone — dark background, monospace input, single field. On `Enter`, the field updates and the panel dismisses. On `Escape`, no change occurs. No mouse required.
+
+---
+
+## 7. Machine Legibility and Forward Compatibility
+
+### 7.1 JSON Export Schema
+
+Every `StreamState` snapshot is serializable as structured JSON. The overlay should emit a snapshot to `stdout` (or a local socket) on every state change, formatted as:
+
+```json
+{
+  "t": 6182000,
+  "problem": {
+    "id": "P-2026-02-20-A",
+    "canonicalName": "JWT Validation Semantics",
+    "formalQuestion": "Can malformed JWTs be rejected at middleware boundary without invoking downstream stateful components?",
+    "references": [
+      { "label": "RFC 7519", "url": "https://datatracker.ietf.org/doc/html/rfc7519" },
+      { "label": "jsonwebtoken 9.x", "url": "https://docs.rs/jsonwebtoken" }
+    ]
+  },
+  "activeSegment": "S3",
+  "segmentMeta": {
+    "S3": { "label": "Header Decode Analysis", "visitCount": 5, "cumulativeMs": 3822000 }
+  },
+  "stateVector": {
+    "operation": "Inspect base64 decode path",
+    "artifact": "middleware/auth.rs",
+    "testCase": "invalid_header_case_3",
+    "constraint": "Must reject pre-DB access"
+  },
+  "epistemicStatus": {
+    "hypothesis": "Base64 padding inconsistency",
+    "confidence": 0.42,
+    "blockingCondition": "Decode output mismatch on 4-byte boundary",
+    "successCriteria": "Middleware rejects token before any DB call is issued"
+  },
+  "transitions": [
+    { "from": "S2", "to": "S3", "atMs": 4100000 },
+    { "from": "S3", "to": "S2", "atMs": 4450000 },
+    { "from": "S2", "to": "S3", "atMs": 4820000 }
+  ],
+  "expectedTransition": {
+    "from": "S3",
+    "to": "S4",
+    "condition": "if hypothesis confirmed"
+  }
+}
+```
+
+This schema is directly consumable by:
+
+- **LLM summarizers** — the formal question and transition log provide sufficient context to generate a chapter summary without transcript access
+- **Video chapter generators** — the `TemporalArcZone` log provides boundary timestamps for automated chapter markers
+- **Search indexers** — the `canonicalName`, `references`, and `formalQuestion` provide structured metadata for problem-level indexing
+- **Replay analysis tools** — the `transitions` array encodes the full Markov trajectory for visualization or matrix estimation
+
+### 7.2 Automated Chapter Extraction
+
+From `temporalArc`, chapters are derived by zone boundaries with the following heuristic:
+
+- A new chapter begins when `isCurrent` transitions to a new zone
+- Chapters shorter than 3 minutes are merged with the preceding zone
+- Chapter title = `[SegmentCategory]: [CanonicalProblemName]`
+- Chapter description = `stateVector.operation` at zone entry timestamp
+
+This yields human-readable chapters without transcript processing.
+
+---
+
+## 8. What This Design Rejects
+
+To be explicit about the negative space:
+
+| Rejected Element | Reason |
+|------------------|--------|
+| Facecam prominence | Signals parasocial dynamics; adds no epistemic content |
+| Chat overlay | Introduces noise; chat is reactive, not structural |
+| Follower / viewer count | Metric of audience, not of problem state |
+| Animated transitions | Convey nothing; consume attention |
+| Emotional language in any field | Destroys machine parseability; no "We're so close!" |
+| Progress percentage | Implies teleology; problem-solving is not linear |
+| "Current mood" or status emoji | Category error — this is an instrument, not a diary |
+| Drop shadows, gradients, glow effects | Aesthetic register of entertainment, not inquiry |
+| Rounded corners > 2px | Same as above |
+
+---
+
+## 9. Relationship to Prior Art
+
+This design builds on the conceptual vocabulary developed in the design dialogue (see attached transcript) while extending it in the following ways:
+
+**Extension 1 — Interrogative problem declaration.** Prior art framed the header as a "task name" or "canonical name." This spec mandates a *formal interrogative question* as the primary problem declaration. This is borrowed from the hypothesis-first tradition in scientific writing. It forces the operator to define success before beginning, and it gives automated systems a question structure to evaluate against resolution.
+
+**Extension 2 — Proportional temporal arc.** Prior art proposed a static, equal-width arc band. This spec renders arc zones proportionally to actual elapsed time. This encodes the *weight* of each phase honestly.
+
+**Extension 3 — Epistemic confidence as probability, not progress.** The confidence field is explicitly framed as a credence in the current hypothesis, not a measure of completion. This prevents the display from becoming a progress bar in disguise.
+
+**Extension 4 — Warm background tint for epistemic zone.** The epistemic status zone uses a subtly warm background (`#0E0C0A`) vs. the cool-neutral everywhere else. This is not decorative — it is a *semantic signal* that this zone encodes subjective probability rather than observed fact. The distinction between observed state (state vector, cool) and estimated probability (epistemic status, warm) is encoded in color temperature.
+
+**Extension 5 — JSON emission as first-class output.** Prior proposals treated the data model as internal to the React component tree. This spec treats the JSON snapshot stream as a co-equal output — the structured artifact the overlay produces, alongside the visual rendering.
+
+---
+
+## 10. Open Questions (for Implementation Phase)
+
+- **Q1:** Should the `confidence` value be constrained to a probability (0–1) or a qualitative label (`low / medium / high`) for operator ergonomics? The latter is faster to set under stream conditions; the former is more precise for analysis.
+- **Q2:** Should segment categories be a fixed enum or operator-defined? A fixed enum enables transition matrix analysis across sessions. Operator-defined strings are more expressive.
+- **Q3:** Should the overlay emit JSON snapshots on a fixed interval (e.g., every 30s) in addition to on-change? Interval emission ensures chapter boundaries are recoverable even if a transition was not logged.
+- **Q4:** Should the transition trace display raw segment IDs or abbreviated labels? IDs are machine-legible; labels are human-legible. A hybrid `S3·Decode` format may satisfy both.
+- **Q5:** Is the warm tint for the epistemic zone sufficiently subtle, or does it risk appearing as a rendering artifact in OBS encoding? Should be validated against OBS chroma compression settings.
+
+---
+
+*End of specification. Next recommended artifact: React component tree skeleton with prop interfaces derived from the data model above, suitable for v0 or similar generative UI tooling.*
