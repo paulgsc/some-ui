@@ -25,7 +25,7 @@ import { z } from "zod"
 
 /** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)
-type SceneUIFile = z.infer<typeof SceneUIFileSchema>
+export type SceneUIFile = z.infer<typeof SceneUIFileSchema>
 
 /** Library item for consumer convenience */
 export type SceneLibraryItem = {
@@ -40,7 +40,6 @@ export type UseSceneLibraryReturn = {
   getLibraryItems: () => Array<SceneLibraryItem>
   library: Map<string, SceneConfig>
   loading: boolean
-  error: string | null
   reload: () => Promise<void>
   entries: () => Array<[string, SceneConfig]>
   get: (key: string) => SceneConfig | undefined
@@ -135,7 +134,6 @@ export const useSceneLibrary = (): UseSceneLibraryReturn => {
     // Maintain backward compatibility
     library: result.library,
     loading: result.loading,
-    error: result.error,
     reload: result.reload,
   }
 }
