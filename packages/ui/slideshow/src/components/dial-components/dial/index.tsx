@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { DialPieSection } from "@slideshow/components/dial-components/dial-section"
 import { useSectionCalculations } from "@slideshow/hooks/use-dial-sections"
@@ -25,7 +26,7 @@ export const Dial = ({
   uniformSections,
   sections,
   className,
-}: DialProps): React.JSX.Element => {
+}: DialProps): JSX.Element => {
   const innerRadius = 0.7 * center
   const outerRadius = 0.95 * center
   const tHW = (outerRadius - innerRadius) * 0.6
@@ -68,7 +69,8 @@ export const Dial = ({
       <g>
         {/* Dial sections */}
         {sections.map((section, index) => {
-          const { startAngle, endAngle } = sectionBoundaries[index]
+          const { startAngle = 0, endAngle = 0 } =
+            sectionBoundaries[index] ?? {}
           const path = generateSectionPath({
             startAngle,
             endAngle,
