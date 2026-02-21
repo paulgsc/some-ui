@@ -40,6 +40,14 @@ export type EditorAction =
   | { type: "SET_LIBRARY_SELECTIONS"; selections: Array<SceneSelection> }
   | { type: "CLEAR_LIBRARY_SELECTIONS" }
 
+export type EditorView = {
+  isOpen: boolean
+  mode: "edit" | "library" | "none"
+  canSave: boolean
+  selections: Array<SceneSelection>
+  draft: Extract<EditorState, { type: "EditingExisting" }>["draft"] | null
+}
+
 export const editorReducer = (
   state: EditorState,
   action: EditorAction
@@ -164,5 +172,22 @@ export function buildSceneFromDraft(
     }
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : "Invalid JSON format" }
+  }
+}
+
+export const getEditorView = (state: EditorState): EditorView => {
+  return {
+    isOpen: state.type !== "Closed",
+    mode:
+      state.type === "EditingExisting"
+        ? "edit"
+        : state.type === "SelectingFromLibrary"
+          ? "library"
+          : "none",
+    canSave:
+      (state.type === "EditingExisting" && !state.draft.jsonError) ||
+      (state.type === "SelectingFromLibrary" && state.selections.length > 0),
+    selections: state.type === "SelectingFromLibrary" ? state.selections : [],
+    draft: state.type === "EditingExisting" ? state.draft : null,
   }
 }
