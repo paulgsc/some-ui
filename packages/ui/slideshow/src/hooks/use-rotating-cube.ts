@@ -52,6 +52,8 @@ type ReturnOptions = {
   onTogglePause: () => void
 }
 
+type NonEmptyArray<T> = [T, ...Array<T>]
+
 // Define adjacency map for each face with valid rotations
 const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
   0: { "X-axis": 4, "Y-axis": 1 }, // Front -> Top/Right
@@ -63,7 +65,7 @@ const FACE_GRAPH: Record<Face, Record<RotationAxis, Face>> = {
 }
 
 // Define cycle sequences for single-axis rotations
-const ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
+const ROTATION_CYCLES: Record<RotationAxis, NonEmptyArray<Face>> = {
   "X-axis": [0, 5, 2, 4], // Front -> Top -> Back -> Bottom
   "Y-axis": [0, 3, 2, 1], // Front -> Right -> Back -> Left
 }
@@ -77,13 +79,35 @@ const REVERSE_ROTATION_CYCLES: Record<RotationAxis, Array<Face>> = {
 const getNextFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
   const cycle = ROTATION_CYCLES[axis]
   const currentIndex = cycle.indexOf(currentFace)
-  return cycle[(currentIndex + 1) % cycle.length]
+  if (currentIndex === -1) {
+    throw new Error(`Face ${currentFace} not in cycle`)
+  }
+  const nextIndex = (currentIndex + 1) % cycle.length
+  const nextFace = cycle[nextIndex]
+
+  // Explicit check to satisfy the compiler
+  if (nextFace === undefined) {
+    throw new Error(`Unexpected index error for face ${currentFace}`)
+  }
+
+  return nextFace
 }
 
 const getPrevFaceInCycle = (currentFace: Face, axis: RotationAxis): Face => {
   const cycle = REVERSE_ROTATION_CYCLES[axis]
   const currentIndex = cycle.indexOf(currentFace)
-  return cycle[(currentIndex + 1) % cycle.length]
+  if (currentIndex === -1) {
+    throw new Error(`Face ${currentFace} not in cycle`)
+  }
+  const nextIndex = (currentIndex + 1) % cycle.length
+  const nextFace = cycle[nextIndex]
+
+  // Explicit check to satisfy the compiler
+  if (nextFace === undefined) {
+    throw new Error(`Unexpected index error for face ${currentFace}`)
+  }
+
+  return nextFace
 }
 
 export const useRotatingCube = ({
@@ -186,11 +210,11 @@ export const useRotatingCube = ({
         let targetFace: Face
 
         if (dof === "All") {
-          // Choose random target face for dual-axis rotation
-          const possibleFaces: Array<Face> = [0, 1, 2, 3, 4, 5]
-          targetFace = possibleFaces[Math.floor(Math.random() * 6)]
+          const possibleFaces: NonEmptyArray<Face> = [0, 1, 2, 3, 4, 5]
+          const randomIndex = Math.floor(Math.random() * possibleFaces.length)
+          // Fallback to current face if index math fails (impossible, but satisfies TS)
+          targetFace = possibleFaces[randomIndex] ?? prev.face
         } else {
-          // Get next face in cycle for single-axis rotation
           const getFace = (): Face =>
             reverse
               ? getPrevFaceInCycle(prev.face, rotationAxis)
@@ -200,50 +224,47 @@ export const useRotatingCube = ({
         }
 
         const rotations = getRotationPath(prev.face, targetFace, reverse)
-        if (rotations.length === 0) return prev
 
-        // Apply first rotation
-        const firstRotation = rotations[0]
+        // Use destructuring to check for the first element
+        const [firstRotation, ...remainingRotations] = rotations
+        if (!firstRotation) return prev
+
         const sign = reverse ? -1 : 1
+
         const newState = {
           face: firstRotation.face,
           xRotation:
-            prev.xRotation + (firstRotation.axis === "X-axis" ? 90 : 0) * sign,
+            (prev.xRotation +
+              (firstRotation.axis === "X-axis" ? 90 : 0) * sign) %
+            360,
           yRotation:
-            prev.yRotation + (firstRotation.axis === "Y-axis" ? 90 : 0) * sign,
+            (prev.yRotation +
+              (firstRotation.axis === "Y-axis" ? 90 : 0) * sign) %
+            360,
         }
 
-        // Queue subsequent rotations
-        if (rotations.length > 1) {
-          let delay = 500 // Match your transition time
-          rotations.slice(1).forEach((rotation) => {
+        // Handle subsequent rotations
+        if (remainingRotations.length > 0) {
+          let delay = 500
+          remainingRotations.forEach((rotation) => {
             setTimeout(() => {
-              setRotationState((current) => {
-                const delayedState = {
-                  face: rotation.face,
-                  xRotation:
-                    current.xRotation +
-                    (rotation.axis === "X-axis" ? 90 : 0) * sign,
-                  yRotation:
-                    current.yRotation +
-                    (rotation.axis === "Y-axis" ? 90 : 0) * sign,
-                }
-                return {
-                  ...delayedState,
-                  xRotation: delayedState.xRotation % 360,
-                  yRotation: delayedState.yRotation % 360,
-                }
-              })
+              setRotationState((current) => ({
+                face: rotation.face,
+                xRotation:
+                  (current.xRotation +
+                    (rotation.axis === "X-axis" ? 90 : 0) * sign) %
+                  360,
+                yRotation:
+                  (current.yRotation +
+                    (rotation.axis === "Y-axis" ? 90 : 0) * sign) %
+                  360,
+              }))
             }, delay)
             delay += 500
           })
         }
 
-        return {
-          ...newState,
-          xRotation: newState.xRotation % 360,
-          yRotation: newState.yRotation % 360,
-        }
+        return newState
       })
     },
     [dof, rotationAxis]
