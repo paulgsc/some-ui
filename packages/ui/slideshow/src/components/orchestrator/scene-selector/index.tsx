@@ -32,8 +32,7 @@ export const SceneSelectorTab = ({
   maxTotal,
   maxPerScene,
 }: SceneSelectorTabProps): JSX.Element => {
-  const { getLibraryItems, loading, error } = useSceneLibrary()
-  // Fixed: Track expansion by string key, not the UI intent array
+  const { getLibraryItems, loading } = useSceneLibrary()
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   const libraryItems = getLibraryItems()
@@ -50,7 +49,7 @@ export const SceneSelectorTab = ({
 
     const newSelection: SceneSelection = {
       id: generateSelectionId(sceneKey, instanceIndex),
-      sceneKey, // Fixed: Property name alignment
+      sceneKey,
       instanceIndex,
       sourceConfig,
     }
@@ -83,14 +82,6 @@ export const SceneSelectorTab = ({
         <Library className="w-5 h-5 mr-2 animate-pulse" />
         Loading scene library...
       </div>
-    )
-
-  if (error)
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
     )
 
   return (
@@ -135,7 +126,7 @@ export const SceneSelectorTab = ({
 
                 return (
                   <div
-                    key={item.key} // Fixed: Use key from item
+                    key={item.key}
                     role="button"
                     tabIndex={0}
                     className={cn(
