@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { LibraryTemplatePicker } from "@slideshow/components/orchestrator/library-picker"
 import { SceneSelectorTab } from "@slideshow/components/orchestrator/scene-selector"
 import type { EditorAction, EditorState } from "@slideshow/utils/scene-editor"
@@ -45,7 +46,7 @@ export const EditSceneDialog = ({
   dispatch,
   onSaveEdit,
   onBulkAdd,
-}: EditSceneDialogProps) => {
+}: EditSceneDialogProps): JSX.Element => {
   const view = getEditorView(state)
 
   const handleSaveEdit = (): void => {
@@ -57,7 +58,7 @@ export const EditSceneDialog = ({
       return
     }
 
-    onSaveEdit(state.sceneIndex, result)
+    onSaveEdit?.(state.sceneIndex, result)
     dispatch({ type: "CLOSE" })
   }
 
@@ -66,30 +67,12 @@ export const EditSceneDialog = ({
 
     const scenesToAdd: Array<SceneConfig> = state.selections
       .map((selection) => {
-        // sourceConfig is already normalized by useSceneLibrary:
-        // - Contains UI intent array from disk file
-        // - Has proper display name
-        // - Has 60s duration policy
-        if (!selection.sourceConfig) {
-          console.error(`[FSM] Missing sourceConfig for ${selection.fileName}`)
-          return null
-        }
-
-        // Create instance (adds duplicate suffix if needed)
+        if (!selection.sourceConfig) return null
         return createSceneInstance(selection.sourceConfig, selection)
       })
       .filter((s): s is SceneConfig => s !== null)
 
-    console.log(
-      `[FSM] Adding ${scenesToAdd.length} scenes from library:`,
-      scenesToAdd.map((s) => ({
-        name: s.scene_name,
-        duration: s.duration,
-        uiIntents: s.ui.length || 0,
-      }))
-    )
-
-    onBulkAdd(scenesToAdd)
+    onBulkAdd?.(scenesToAdd)
     dispatch({ type: "CLOSE" })
   }
 
@@ -108,7 +91,7 @@ export const EditSceneDialog = ({
                 ? "Scene Orchestrator"
                 : "Add from Scene Library"}
             </DialogTitle>
-            {view.mode === "edit" && (
+            {view.mode === "edit" && view.draft && (
               <Badge variant="outline" className="font-mono text-[10px]">
                 REV_{view.draft.durationSec}s
               </Badge>
@@ -116,7 +99,6 @@ export const EditSceneDialog = ({
           </div>
         </DialogHeader>
 
-        {/* Mode-specific content */}
         {view.mode === "edit" && (
           <EditModeContent state={state} dispatch={dispatch} />
         )}
@@ -157,18 +139,14 @@ export const EditSceneDialog = ({
   )
 }
 
-/**
- * Edit Mode: 3 tabs for editing existing scene
- */
 const EditModeContent = ({
   state,
   dispatch,
 }: {
   state: EditorState
   dispatch: (action: EditorAction) => void
-}) => {
+}): JSX.Element | null => {
   if (state.type !== "EditingExisting") return null
-
   const { draft } = state
 
   return (
@@ -187,7 +165,6 @@ const EditModeContent = ({
         </TabsList>
       </div>
 
-      {/* Layout Tab */}
       <TabsContent
         value="layout"
         className="flex-1 flex flex-col min-h-0 p-6 space-y-4"
@@ -195,9 +172,6 @@ const EditModeContent = ({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <h4 className="text-sm font-semibold">Intent Stack</h4>
-            <p className="text-xs text-muted-foreground">
-              Define UI regions, content, and focus for this scene.
-            </p>
           </div>
           {draft.jsonError && (
             <Badge variant="destructive" className="animate-pulse gap-1">
@@ -205,7 +179,6 @@ const EditModeContent = ({
             </Badge>
           )}
         </div>
-
         <div className="flex-1 relative font-mono text-sm">
           <Textarea
             value={draft.uiJson}
@@ -213,21 +186,14 @@ const EditModeContent = ({
               dispatch({ type: "UPDATE_DRAFT_JSON", value: e.target.value })
             }
             className={cn(
-              "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors focus-visible:ring-0",
+              "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors",
               draft.jsonError ? "border-destructive/50" : "border-border"
             )}
-            placeholder="[ { 'intent': { ... } } ]"
             spellCheck={false}
           />
-          {draft.jsonError && (
-            <div className="absolute bottom-4 left-4 right-4 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive-foreground">
-              {draft.jsonError}
-            </div>
-          )}
         </div>
       </TabsContent>
 
-      {/* Config Tab */}
       <TabsContent value="config" className="p-6 space-y-6">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -236,26 +202,6 @@ const EditModeContent = ({
               value={draft.sceneName}
               onChange={(e) =>
                 dispatch({ type: "UPDATE_DRAFT_NAME", value: e.target.value })
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Layer Persistence</Label>
-            <div className="h-10 flex items-center px-3 rounded-md bg-muted/50 text-xs text-muted-foreground">
-              Standard Transition (Ease-In-Out)
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Start Time (Seconds)</Label>
-            <Input
-              type="number"
-              placeholder="0 (Sequential)"
-              value={draft.startTimeSec ?? ""}
-              onChange={(e) =>
-                dispatch({
-                  type: "UPDATE_DRAFT_START_TIME",
-                  value: e.target.value ? Number(e.target.value) : undefined,
-                })
               }
             />
           </div>
@@ -275,16 +221,9 @@ const EditModeContent = ({
         </div>
       </TabsContent>
 
-      {/* Library Import Tab */}
       <TabsContent value="library" className="p-6">
         <LibraryTemplatePicker
           onSelectTemplate={(ui, templateName) => {
-            console.log(
-              `[EditMode] Replacing UI with template: ${templateName}`,
-              {
-                intentCount: ui.length,
-              }
-            )
             dispatch({
               type: "REPLACE_DRAFT_UI_FROM_LIBRARY",
               ui,
@@ -297,16 +236,13 @@ const EditModeContent = ({
   )
 }
 
-/**
- * Library Mode: Single tab for bulk selection
- */
 const LibraryModeContent = ({
   state,
   dispatch,
 }: {
   state: EditorState
   dispatch: (action: EditorAction) => void
-}) => {
+}): JSX.Element | null => {
   if (state.type !== "SelectingFromLibrary") return null
 
   return (
