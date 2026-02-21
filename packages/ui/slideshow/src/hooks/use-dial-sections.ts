@@ -1,53 +1,83 @@
 import { useMemo } from "react"
 import type { DialSection } from "@slideshow/types/dial"
 
+type SectionBoundary = {
+  startAngle: number
+  endAngle: number
+}
+
 type UseSectionCalculationsProps = {
   sections: Array<DialSection>
   uniformSections: boolean
 }
 
-export function useSectionCalculations({
-  sections,
-  uniformSections,
-}: UseSectionCalculationsProps) {
-  // Calculate total angle for each section
-  const { sectionAngles, sectionBoundaries } = useMemo(() => {
-    const totalAngle = 360
-    const sectionAngles = uniformSections
-      ? sections.map(() => totalAngle / sections.length)
-      : sections.map((_, i) => 30 + ((i * 10) % 50)) // Example of variable sizes
+type UseSectionCalculationsReturn = {
+  sectionAngles: Array<number>
+  sectionBoundaries: Array<SectionBoundary>
+  getCurrentSection: (angle: number) => DialSection | undefined
+}
 
-    // Normalize variable section angles to total 360 degrees
-    if (!uniformSections) {
-      const sum = sectionAngles.reduce((a, b) => a + b, 0)
-      const factor = totalAngle / sum
-      for (let i = 0; i < sectionAngles.length; i++) {
-        sectionAngles[i] = sectionAngles[i] * factor
+export function useSectionCalculations(
+  props: UseSectionCalculationsProps
+): UseSectionCalculationsReturn {
+  const { sections, uniformSections } = props
+
+  const { sectionAngles, sectionBoundaries } = useMemo<{
+    sectionAngles: Array<number>
+    sectionBoundaries: Array<SectionBoundary>
+  }>(() => {
+    if (sections.length === 0) {
+      return {
+        sectionAngles: [],
+        sectionBoundaries: [],
       }
     }
 
-    // Calculate start and end angles for each section
-    const sectionBoundaries = sections.map((_, index) => {
-      const startAngle = sectionAngles
-        .slice(0, index)
-        .reduce((a, b) => a + b, 0)
-      const endAngle = startAngle + sectionAngles[index]
+    const TOTAL_ANGLE = 360
+
+    const rawAngles = uniformSections
+      ? sections.map(() => TOTAL_ANGLE / sections.length)
+      : sections.map((_, i) => 30 + ((i * 10) % 50))
+
+    const sectionAngles = uniformSections
+      ? rawAngles
+      : (() => {
+          const sum = rawAngles.reduce((acc, value) => acc + value, 0)
+          const factor = TOTAL_ANGLE / sum
+          return rawAngles.map((angle) => angle * factor)
+        })()
+
+    let cumulative = 0
+
+    const sectionBoundaries = sectionAngles.map((angle) => {
+      const startAngle = cumulative
+      const endAngle = cumulative + angle
+      cumulative = endAngle
+
       return { startAngle, endAngle }
     })
 
     return { sectionAngles, sectionBoundaries }
   }, [sections, uniformSections])
 
-  // Function to determine which section the pointer is currently in
-  const getCurrentSection = (angle: number) => {
-    const normalizedAngle = angle % 360
+  const getCurrentSection = (angle: number): DialSection | undefined => {
+    if (sections.length === 0) return undefined
+
+    const normalizedAngle = ((angle % 360) + 360) % 360
+
     for (let i = 0; i < sectionBoundaries.length; i++) {
-      const { startAngle, endAngle } = sectionBoundaries[i]
-      if (normalizedAngle >= startAngle && normalizedAngle < endAngle) {
+      const boundary = sectionBoundaries[i]
+      if (!boundary) continue
+
+      if (
+        normalizedAngle >= boundary.startAngle &&
+        normalizedAngle < boundary.endAngle
+      ) {
         return sections[i]
       }
     }
-    return sections[0] // Fallback
+
+    return sections[0]
   }
 
   return {
