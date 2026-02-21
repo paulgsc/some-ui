@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: Required<Omit<FloatingElementsConfig, "content">> = {
 /**
  * Hook for creating floating animated elements with customizable content and behavior
  */
-export function useFloatingElements(config: FloatingElementsConfig) {
+export function useFloatingElements(config: FloatingElementsConfig): void {
   const {
     content,
     maxElements = DEFAULT_CONFIG.maxElements,
@@ -61,7 +61,8 @@ export function useFloatingElements(config: FloatingElementsConfig) {
 
     const element = document.createElement("div")
     element.className = className
-    element.textContent = content[Math.floor(Math.random() * content.length)]
+    element.textContent =
+      content[Math.floor(Math.random() * content.length)] ?? ""
     element.style.left = Math.random() * 100 + "vw"
     element.style.animationDuration =
       baseDuration + Math.random() * durationRange + "s"
@@ -92,7 +93,7 @@ export function useFloatingElements(config: FloatingElementsConfig) {
     }
 
     const interval = setInterval(createFloatingElement, spawnInterval)
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [createFloatingElement, spawnInterval])
 }
 
