@@ -1,3 +1,4 @@
+import type { FC, JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle, Code, FileText, Zap } from "lucide-react"
 
@@ -651,7 +652,18 @@ const useAssessmentLogic = ({
   perQuestionMins,
   qPerCategory,
   isConcentrated,
-}: UseAssessmentLogicProps) => {
+}: UseAssessmentLogicProps): {
+  stage: "setup" | "assessment" | "complete"
+  setStage: (stage: "setup" | "assessment" | "complete") => void
+  questions: Array<Question>
+  currentIdx: number
+  answers: Record<string, Answer>
+  totalSecsLeft: number
+  stepSecsLeft: number
+  startAssessment: () => void
+  handleUpdateAnswer: (data: Partial<Answer>) => void
+  nextQuestion: () => void
+} => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [stage, setStage] = useState<"setup" | "assessment" | "complete">(
     "setup"
@@ -662,20 +674,20 @@ const useAssessmentLogic = ({
   const [totalSecsLeft, setTotalSecsLeft] = useState(0)
   const [stepSecsLeft, setStepSecsLeft] = useState(0)
 
-  const generateAssessmentPool = () => {
+  const generateAssessmentPool = (): void => {
     const pool: Array<Question> = []
     const groupedQuestions: Record<string, Array<Question>> = {}
 
     Object.values(ALL_QUESTIONS).forEach((q) => {
       if (!groupedQuestions[q.category]) groupedQuestions[q.category] = []
-      groupedQuestions[q.category].push(q)
+      groupedQuestions[q.category]!.push(q)
     })
 
     const requiredCats = Object.values(CATEGORIES).filter(
       (c) => c.minRequired > 0
     )
     requiredCats.forEach((cat) => {
-      const available = shuffle([...(groupedQuestions[cat.id] || [])])
+      const available = shuffle([...(groupedQuestions[cat.id] ?? [])])
       pool.push(...available.slice(0, qPerCategory))
     })
 
@@ -699,12 +711,12 @@ const useAssessmentLogic = ({
         setStepSecsLeft((prev) => (prev > 0 ? prev - 1 : 0))
       }, 1000)
     }
-    return () => {
+    return (): void => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [stage])
 
-  const startAssessment = () => {
+  const startAssessment = (): void => {
     generateAssessmentPool()
     setTotalSecsLeft(totalMins * 60)
     setStepSecsLeft(perQuestionMins * 60)
@@ -713,7 +725,7 @@ const useAssessmentLogic = ({
     setStage("assessment")
   }
 
-  const handleUpdateAnswer = (data: Partial<Answer>) => {
+  const handleUpdateAnswer = (data: Partial<Answer>): void => {
     const qId = questions[currentIdx]?.id
     if (!qId) return
     setAnswers((prev) => ({
@@ -722,7 +734,7 @@ const useAssessmentLogic = ({
     }))
   }
 
-  const nextQuestion = () => {
+  const nextQuestion = (): void => {
     if (currentIdx < questions.length - 1) {
       setCurrentIdx((prev) => prev + 1)
       setStepSecsLeft(perQuestionMins * 60)
@@ -759,7 +771,7 @@ type SetupStageProps = {
   onStart: () => void
 }
 
-const SetupStage: React.FC<SetupStageProps> = ({
+const SetupStage: FC<SetupStageProps> = ({
   qPerCategory,
   setQPerCategory,
   perQuestionMins,
@@ -777,31 +789,39 @@ const SetupStage: React.FC<SetupStageProps> = ({
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm text-slate-400">
+            <label
+              htmlFor="questions-per-category"
+              className="text-sm text-slate-400"
+            >
               Questions per Category
             </label>
             <input
+              id="questions-per-category"
               type="number"
               value={qPerCategory}
-              onChange={(e) => setQPerCategory(Number(e.target.value))}
+              onChange={(e): void => setQPerCategory(Number(e.target.value))}
               className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm text-slate-400">
+            <label
+              htmlFor="minutes-per-question"
+              className="text-sm text-slate-400"
+            >
               Minutes per Question
             </label>
             <input
+              id="minutes-per-question"
               type="number"
               value={perQuestionMins}
-              onChange={(e) => setPerQuestionMins(Number(e.target.value))}
+              onChange={(e): void => setPerQuestionMins(Number(e.target.value))}
               className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
             />
           </div>
         </div>
 
         <button
-          onClick={() => setIsConcentrated(!isConcentrated)}
+          onClick={(): void => setIsConcentrated(!isConcentrated)}
           className={`w-full p-4 rounded-xl border-2 transition-all ${
             isConcentrated
               ? "border-purple-500 bg-purple-500/10"
@@ -836,7 +856,7 @@ type AssessmentStageProps = {
   onNext: () => void
 }
 
-const AssessmentStage: React.FC<AssessmentStageProps> = ({
+const AssessmentStage: FC<AssessmentStageProps> = ({
   questions,
   currentIdx,
   answers,
@@ -846,7 +866,7 @@ const AssessmentStage: React.FC<AssessmentStageProps> = ({
   onNext,
 }) => {
   const currentQ = questions[currentIdx]
-  const currentAnswer = answers[currentQ.id] || {}
+  const currentAnswer = currentQ ? (answers[currentQ.id] ?? {}) : {}
 
   if (!currentQ) return null
 
@@ -914,13 +934,13 @@ const AssessmentStage: React.FC<AssessmentStageProps> = ({
               className="w-full flex-1 min-h-0 bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-lg resize-none focus:border-purple-500 outline-none transition-all"
               placeholder="Structure your technical response..."
               value={currentAnswer.text ?? ""}
-              onChange={(e) => onUpdateAnswer({ text: e.target.value })}
+              onChange={(e): void => onUpdateAnswer({ text: e.target.value })}
             />
 
             {/* Evidence Bar */}
             <div className="flex gap-4 mt-4 shrink-0">
               <button
-                onClick={() =>
+                onClick={(): void =>
                   onUpdateAnswer({ showedCode: !currentAnswer.showedCode })
                 }
                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
@@ -932,7 +952,7 @@ const AssessmentStage: React.FC<AssessmentStageProps> = ({
                 <Code size={20} /> Live Code
               </button>
               <button
-                onClick={() =>
+                onClick={(): void =>
                   onUpdateAnswer({ didResearch: !currentAnswer.didResearch })
                 }
                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
@@ -970,7 +990,7 @@ type CompleteStageProps = {
   onRestart: () => void
 }
 
-const CompleteStage: React.FC<CompleteStageProps> = ({ onRestart }) => (
+const CompleteStage: FC<CompleteStageProps> = ({ onRestart }) => (
   <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-white overflow-hidden">
     <div className="text-center">
       <h1 className="text-4xl font-bold mb-4">Assessment Complete</h1>
@@ -985,7 +1005,7 @@ const CompleteStage: React.FC<CompleteStageProps> = ({ onRestart }) => (
 // MAIN COMPONENT
 // ============================================================================
 
-export const TechnicalBlockAssessment: React.FC = () => {
+export const TechnicalBlockAssessment: FC = (): JSX.Element => {
   const [totalMins] = useState(60)
   const [perQuestionMins, setPerQuestionMins] = useState(5)
   const [qPerCategory, setQPerCategory] = useState(2)
@@ -1039,5 +1059,5 @@ export const TechnicalBlockAssessment: React.FC = () => {
     )
   }
 
-  return <CompleteStage onRestart={() => setStage("setup")} />
+  return <CompleteStage onRestart={(): void => setStage("setup")} />
 }

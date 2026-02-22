@@ -1,9 +1,8 @@
-import type { SceneFileName } from "@slideshow/hooks/use-scene-library"
 import type { SceneConfig } from "some-types-utils"
 
 export type SceneSelection = {
   id: string // Unique ID for this selection instance
-  fileName: SceneFileName
+  sceneKey: string // The unique slug/key for the library item (e.g., "hangul-typing")
   instanceIndex: number // For tracking duplicates (0-based)
   sourceConfig?: SceneConfig // Cache the source config to prevent lookup issues
 }
@@ -12,24 +11,14 @@ export type SceneSelection = {
  * Generate unique ID for a scene selection
  */
 export const generateSelectionId = (
-  fileName: SceneFileName,
+  sceneKey: string,
   instanceIndex: number
 ): string => {
-  return `${fileName}-${instanceIndex}-${Date.now()}`
+  return `${sceneKey}-${instanceIndex}-${Date.now()}`
 }
 
 /**
  * Create a scene config instance from a selection
- *
- * INVARIANTS:
- * 1. Scene name = display name from baseConfig + instance suffix
- * 2. Duration = always 60s (baseConfig already normalized to this)
- * 3. UI content = preserved from baseConfig (the actual payload from disk)
- *
- * Note: baseConfig comes from useSceneLibrary which already:
- * - Parsed the UILayoutIntent[] from disk
- * - Normalized it into SceneConfig with proper display name
- * - Set duration to 60s policy default
  */
 export const createSceneInstance = (
   baseConfig: SceneConfig,
@@ -39,74 +28,72 @@ export const createSceneInstance = (
   const instanceSuffix =
     selection.instanceIndex > 0 ? ` (${selection.instanceIndex + 1})` : ""
 
-  // baseConfig.scene_name already contains the proper display name
-  // (e.g., "Hangul Typing" from useSceneLibrary normalization)
   return {
-    ...baseConfig, // Preserves UI content (the actual file payload)
+    ...baseConfig,
     scene_name: `${baseConfig.scene_name}${instanceSuffix}`,
-    // duration and start_time already correct from normalization
     ...overrides,
   }
 }
 
 /**
- * Count occurrences of each scene file in selections
+ * Count occurrences of each scene key in selections
  */
 export const countSceneOccurrences = (
   selections: Array<SceneSelection>
-): Map<SceneFileName, number> => {
-  const counts = new Map<SceneFileName, number>()
+): Map<string, number> => {
+  const counts = new Map<string, number>()
 
   selections.forEach((sel) => {
-    counts.set(sel.fileName, (counts.get(sel.fileName) || 0) + 1)
+    counts.set(sel.sceneKey, (counts.get(sel.sceneKey) || 0) + 1)
   })
 
   return counts
 }
 
 /**
- * Get next instance index for a scene file
+ * Get next instance index for a scene key
  */
 export const getNextInstanceIndex = (
   selections: Array<SceneSelection>,
-  fileName: SceneFileName
+  sceneKey: string
 ): number => {
-  const existing = selections.filter((s) => s.fileName === fileName)
+  const existing = selections.filter((s) => s.sceneKey === sceneKey)
   return existing.length
 }
 
 /**
- * Validate scene selections (optional constraints)
+ * Validate scene selections
  */
 export const validateSelections = (
   selections: Array<SceneSelection>,
-  options?: {
+  options: {
     maxTotal?: number
     maxPerScene?: number
-    requiredScenes?: Array<SceneFileName>
+    requiredScenes?: Array<string>
   }
 ): { valid: boolean; errors: Array<string> } => {
   const errors: Array<string> = []
 
-  if (options.maxTotal && selections.length > options.maxTotal) {
+  // if options.maxTotal is always passed as a number, TypeScript will flag the check
+  if (options.maxTotal !== undefined && selections.length > options.maxTotal) {
     errors.push(`Cannot exceed ${options.maxTotal} total scenes`)
   }
 
-  if (options.maxPerScene) {
+  if (options.maxPerScene !== undefined) {
     const counts = countSceneOccurrences(selections)
-    counts.forEach((count, fileName) => {
-      if (count > options.maxPerScene) {
+    counts.forEach((count, sceneKey) => {
+      if (count > (options.maxPerScene ?? 0)) {
         errors.push(
-          `Scene "${fileName}" appears ${count} times (max: ${options.maxPerScene})`
+          `Scene "${sceneKey}" appears ${count} times (max: ${options.maxPerScene ?? 0})`
         )
       }
     })
   }
 
-  if (options.requiredScenes) {
-    const selectedFiles = new Set(selections.map((s) => s.fileName))
+  if (options.requiredScenes && options.requiredScenes.length > 0) {
+    const selectedKeys = new Set(selections.map((s) => s.sceneKey))
     const missing = options.requiredScenes.filter(
-      (req) => !selectedFiles.has(req)
+      (req) => !selectedKeys.has(req)
     )
     if (missing.length > 0) {
       errors.push(`Missing required scenes: ${missing.join(", ")}`)

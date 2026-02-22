@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { Message } from "@chat/types/topik"
+import type { Message } from "@chat/lib/topik"
 import { CheckCircle2, Volume2 } from "lucide-react"
 import { Button, Card, Textarea } from "some-ui-shared"
 

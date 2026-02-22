@@ -1,9 +1,9 @@
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { AlertCircle, FileQuestion, RefreshCw } from "lucide-react"
 import { Button } from "some-ui-shared"
 
 type ErrorCodeStateProps = {
-  error: Error
+  error: Error | null
   path: string
   onRetry?: () => void
 }
@@ -12,7 +12,7 @@ export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
   error,
   path,
   onRetry,
-}) => {
+}): JSX.Element => {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 bg-destructive/5 rounded-lg border-2 border-destructive/20">
       <div className="relative">
@@ -39,7 +39,7 @@ export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
             View Error Details
           </summary>
           <pre className="mt-2 text-xs bg-muted/50 p-3 rounded overflow-auto max-h-32 text-destructive border border-destructive/20">
-            {error.message}
+            {error && error.message}
           </pre>
         </details>
       </div>

@@ -244,14 +244,15 @@ export function useCrosswordWithAnimation(
   const setUnsolved = useCallback(() => {
     lastRevealedIndexRef.current = 0
     unsolvedCellsRef.current = state.grid.filter((cell) => !cell.solved)
-
     for (let i = unsolvedCellsRef.current.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      const temp = unsolvedCellsRef.current[i]
-      unsolvedCellsRef.current[i] = unsolvedCellsRef.current[j]
-      unsolvedCellsRef.current[j] = temp
+      const a = unsolvedCellsRef.current[i]
+      const b = unsolvedCellsRef.current[j]
+      if (a !== undefined && b !== undefined) {
+        unsolvedCellsRef.current[i] = b
+        unsolvedCellsRef.current[j] = a
+      }
     }
-
     clueEvents.setState((prev: CrosswordClueState) => {
       const cluesAcross: Array<CrosswordClueWithNum> = []
       const cluesDown: Array<CrosswordClueWithNum> = []
@@ -280,7 +281,6 @@ export function useCrosswordWithAnimation(
           })
         }
       }
-
       return {
         ...prev,
         cluesAcross,
@@ -288,7 +288,6 @@ export function useCrosswordWithAnimation(
         direction: unsolvedCellsRef.current.at(0)?.direction,
       }
     })
-
     cubeEvents.setState(() => ({
       id: unsolvedCellsRef.current.at(0)?.direction,
     }))

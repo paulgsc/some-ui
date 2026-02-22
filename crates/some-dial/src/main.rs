@@ -136,7 +136,6 @@ pub enum PointState {
 pub struct CircleEnvironment {
     /// The radius of the circle.
     radius: f64,
-    /// Fixed points dividing the circle into segments.
     #[allow(dead_code)]
     fixed_points: Vec<CirclePoint>,
     /// Segments of the circle.

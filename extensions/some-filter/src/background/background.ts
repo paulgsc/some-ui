@@ -1,18 +1,42 @@
-browser.runtime.onInstalled.addListener(() => {
-  browser.storage.local.set({ filterEnabled: true })
+const api = typeof browser !== "undefined" ? browser : chrome
+
+// Initialize default state on install
+api.runtime.onInstalled.addListener(() => {
+  api.storage.local.set({
+    filterEnabled: false,
+    filterConfig: {
+      invert: 1,
+      hueRotate: 180,
+      sepia: 0.12,
+      brightness: 0.5,
+      contrast: 0.92,
+    },
+  })
 })
 
-browser.browserAction.onClicked.addListener(async (tab) => {
-  const { filterEnabled } = await browser.storage.local.get("filterEnabled")
-  const next = !filterEnabled
+// Optional: Add keyboard shortcut handler
+api.commands.onCommand.addListener((command) => {
+  if (command === "toggle-filter") {
+    api.storage.local.get("filterEnabled").then(({ filterEnabled }) => {
+      const newState = !filterEnabled
 
-  await browser.storage.local.set({ filterEnabled: next })
+      api.storage.local.set({ filterEnabled: newState })
 
-  // Tell the content script to update live
-  if (tab.id) {
-    browser.tabs.sendMessage(tab.id, {
-      type: "SET_FILTER",
-      enabled: next,
+      // Notify all tabs
+      api.tabs.query({}).then((tabs) => {
+        tabs.forEach((tab) => {
+          if (tab.id) {
+            api.tabs
+              .sendMessage(tab.id, {
+                type: "TOGGLE_FILTER",
+                enabled: newState,
+              })
+              .catch(() => {})
+          }
+        })
+      })
     })
   }
 })
+
+export {}

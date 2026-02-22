@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { Header } from "@input/components/obs-monitor/header"
 import { PreviewPane } from "@input/components/obs-monitor/preview-pane"
@@ -7,21 +8,21 @@ import { Timeline } from "@input/components/obs-monitor/timeline"
 import { Pause, Play, RotateCcw, Square } from "lucide-react"
 import { Button } from "some-ui-shared"
 
-export const OBSScriptManager = () => {
+export const OBSScriptManager = (): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [selectedScript, setSelectedScript] = useState<string | null>(null)
 
-  const handlePlayPause = () => {
+  const handlePlayPause = (): void => {
     setIsPlaying(!isPlaying)
   }
 
-  const handleStop = () => {
+  const handleStop = (): void => {
     setIsPlaying(false)
     setCurrentTime(0)
   }
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     setCurrentTime(0)
   }
 
@@ -101,11 +102,7 @@ export const OBSScriptManager = () => {
 
           {/* Timeline */}
           <div className="border-border h-48 border-t">
-            <Timeline
-              currentTime={currentTime}
-              onTimeChange={setCurrentTime}
-              isPlaying={isPlaying}
-            />
+            <Timeline currentTime={currentTime} onTimeChange={setCurrentTime} />
           </div>
         </div>
       </div>

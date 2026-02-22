@@ -1,5 +1,5 @@
+import type { JSX } from "react"
 import { useState } from "react"
-import type { SceneFileName } from "@slideshow/hooks/use-scene-library"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
 import type { SceneSelection } from "@slideshow/utils/scene-selector"
 import {
@@ -31,87 +31,61 @@ export const SceneSelectorTab = ({
   onSelectionsChange,
   maxTotal,
   maxPerScene,
-}: SceneSelectorTabProps) => {
-  const { getLibraryItems, loading, error } = useSceneLibrary()
-  const [expandedFile, setExpandedFile] = useState<SceneFileName | null>(null)
+}: SceneSelectorTabProps): JSX.Element => {
+  const { getLibraryItems, loading } = useSceneLibrary()
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   const libraryItems = getLibraryItems()
   const occurrences = countSceneOccurrences(selections)
   const validation = validateSelections(selections, { maxTotal, maxPerScene })
 
-  const handleAddScene = (fileName: SceneFileName) => {
-    const instanceIndex = getNextInstanceIndex(selections, fileName)
+  const handleAddScene = (sceneKey: string): void => {
+    const instanceIndex = getNextInstanceIndex(selections, sceneKey)
     const sourceConfig = libraryItems.find(
-      (item) => item.fileName === fileName
+      (item) => item.key === sceneKey
     )?.config
 
-    if (!sourceConfig) {
-      console.error(`Cannot find normalized config for: ${fileName}`)
-      return
-    }
+    if (!sourceConfig) return
 
     const newSelection: SceneSelection = {
-      id: generateSelectionId(fileName, instanceIndex),
-      fileName,
+      id: generateSelectionId(sceneKey, instanceIndex),
+      sceneKey,
       instanceIndex,
-      sourceConfig, // Cache normalized SceneConfig (includes UI from disk)
+      sourceConfig,
     }
-
-    console.log("[SceneSelectorTab] Adding selection:", {
-      fileName,
-      displayName: sourceConfig.scene_name,
-      uiIntents: sourceConfig.ui.length || 0,
-      duration: sourceConfig.duration,
-    })
-
     onSelectionsChange([...selections, newSelection])
   }
 
-  const handleRemoveSelection = (id: string) => {
+  const handleRemoveSelection = (id: string): void => {
     const filtered = selections.filter((s) => s.id !== id)
+    const removed = selections.find((s) => s.id === id)
 
-    // Renumber instances for affected fileName
-    const removedSelection = selections.find((s) => s.id === id)
-    if (removedSelection) {
-      const renumbered = filtered.map((sel) => {
-        if (
-          sel.fileName === removedSelection.fileName &&
-          sel.instanceIndex > removedSelection.instanceIndex
-        ) {
-          return { ...sel, instanceIndex: sel.instanceIndex - 1 }
-        }
-        return sel
-      })
+    if (removed) {
+      // Renumber subsequent instances of the same scene key
+      const renumbered = filtered.map((sel) =>
+        sel.sceneKey === removed.sceneKey &&
+        sel.instanceIndex > removed.instanceIndex
+          ? { ...sel, instanceIndex: sel.instanceIndex - 1 }
+          : sel
+      )
       onSelectionsChange(renumbered)
     } else {
       onSelectionsChange(filtered)
     }
   }
 
-  const handleClearAll = () => {
-    onSelectionsChange([])
-  }
+  const handleClearAll = (): void => onSelectionsChange([])
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         <Library className="w-5 h-5 mr-2 animate-pulse" />
         Loading scene library...
       </div>
     )
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    )
-  }
 
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 h-full min-h-0">
       {/* Validation Errors */}
       {!validation.valid && (
         <Alert variant="destructive">
@@ -130,37 +104,44 @@ export const SceneSelectorTab = ({
 
       <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
         {/* Library Panel */}
-        <Card className="p-4 flex flex-col">
+        <Card className="flex flex-col h-full min-h-0 p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Library className="w-4 h-4" />
-              Scene Library
+              <Library className="w-4 h-4" /> Scene Library
             </h4>
             <Badge variant="outline" className="text-xs">
               {libraryItems.length} available
             </Badge>
           </div>
 
-          <ScrollArea className="flex-1 -mx-4 px-4">
+          <ScrollArea className="flex-1 min-h-0 -mx-4 px-4">
             <div className="space-y-2">
               {libraryItems.map((item) => {
-                const count = occurrences.get(item.fileName) || 0
+                const count = occurrences.get(item.key) || 0
                 const canAdd = !maxPerScene || count < maxPerScene
+
+                const toggleExpand = (): void => {
+                  setExpandedKey(expandedKey === item.key ? null : item.key)
+                }
 
                 return (
                   <div
-                    key={item.fileName}
+                    key={item.key}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
-                      "p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50",
-                      expandedFile === item.fileName
+                      "p-3 rounded-lg border-2 transition-all cursor-pointer hover:border-primary/50 text-left w-full",
+                      expandedKey === item.key
                         ? "border-primary bg-primary/5"
                         : "border-border"
                     )}
-                    onClick={() =>
-                      setExpandedFile(
-                        expandedFile === item.fileName ? null : item.fileName
-                      )
-                    }
+                    onClick={toggleExpand}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        toggleExpand()
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -168,7 +149,7 @@ export const SceneSelectorTab = ({
                           {item.displayName}
                         </div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                          {item.fileName}.json
+                          {item.key}.json
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -187,7 +168,7 @@ export const SceneSelectorTab = ({
                           className="h-7 px-2 text-xs"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleAddScene(item.fileName)
+                            handleAddScene(item.key)
                           }}
                           disabled={!canAdd}
                         >
@@ -196,7 +177,7 @@ export const SceneSelectorTab = ({
                       </div>
                     </div>
 
-                    {expandedFile === item.fileName && (
+                    {expandedKey === item.key && (
                       <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
                         <div>Duration: {item.config.duration / 1000}s</div>
                         <div>UI Intents: {item.config.ui.length || 0}</div>
@@ -210,11 +191,10 @@ export const SceneSelectorTab = ({
         </Card>
 
         {/* Selection Panel */}
-        <Card className="p-4 flex flex-col">
+        <Card className="flex flex-col h-full min-h-0 p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              Selected Scenes
+              <Check className="w-4 h-4" /> Selected Scenes
             </h4>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
@@ -233,7 +213,7 @@ export const SceneSelectorTab = ({
             </div>
           </div>
 
-          <ScrollArea className="flex-1 -mx-4 px-4">
+          <ScrollArea className="flex-1 min-h-0 -mx-4 px-4">
             {selections.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-8">
                 <Library className="w-8 h-8 mb-2 opacity-50" />
@@ -246,7 +226,7 @@ export const SceneSelectorTab = ({
               <div className="space-y-2">
                 {selections.map((selection, index) => {
                   const item = libraryItems.find(
-                    (li) => li.fileName === selection.fileName
+                    (li) => li.key === selection.sceneKey
                   )
                   if (!item) return null
 
@@ -274,7 +254,7 @@ export const SceneSelectorTab = ({
                               )}
                             </div>
                             <div className="text-xs text-muted-foreground font-mono">
-                              {selection.fileName}
+                              {selection.sceneKey}
                             </div>
                           </div>
                         </div>

@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 
 // Sample event data - replace with your actual events
@@ -56,7 +57,7 @@ const formatDate = (dateString: string): string => {
 
 // Format time to display in 12-hour format
 const formatTime = (timeString: string): string => {
-  const [hours, minutes] = timeString.split(":")
+  const [hours = "", minutes = ""] = timeString.split(":")
   const hour = Number.parseInt(hours, 10)
   const ampm = hour >= 12 ? "PM" : "AM"
   const hour12 = hour % 12 || 12
@@ -71,18 +72,21 @@ const formatDuration = (minutes: number): string => {
   return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`
 }
 
-export const LivestreamSchedule = (): React.JSX.Element => {
+export const LivestreamSchedule = (): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [shimmerOffset, setShimmerOffset] = useState(0)
   const [flickerState, setFlickerState] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
 
   // Update current time every minute
   useEffect(() => {
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setCurrentTime(new Date())
     }, 60000)
-    return () => clearInterval(interval)
+    return (): void => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
   }, [])
 
   // Create shimmer animation effect
@@ -90,7 +94,7 @@ export const LivestreamSchedule = (): React.JSX.Element => {
     let animationFrame: number
     let startTime: number
 
-    const animate = (timestamp: number) => {
+    const animate = (timestamp: number): void => {
       if (!startTime) startTime = timestamp
       const elapsed = timestamp - startTime
 
@@ -102,7 +106,7 @@ export const LivestreamSchedule = (): React.JSX.Element => {
     }
 
     animationFrame = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(animationFrame)
+    return (): void => cancelAnimationFrame(animationFrame)
   }, [])
 
   // Create flickering effect for future events
@@ -110,7 +114,7 @@ export const LivestreamSchedule = (): React.JSX.Element => {
     const flickerInterval = setInterval(() => {
       setFlickerState((prev) => !prev)
     }, 3000)
-    return () => clearInterval(flickerInterval)
+    return (): void => clearInterval(flickerInterval)
   }, [])
 
   // Group events by status

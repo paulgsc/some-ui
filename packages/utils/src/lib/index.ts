@@ -44,3 +44,4 @@ export {
   renderRegistryComponent,
 } from "./registry"
 export type { ComponentEnhancer } from "./registry"
+export * from "./discovery"

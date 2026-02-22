@@ -1,0 +1,770 @@
+import { Meta } from "@storybook/addon-docs/blocks"
+
+<Meta title="Content/Introduction" />
+
+# Portfolio Cognition Engine — Product Specification
+
+**Document Version:** 0.1.0  
+**Status:** Draft  
+**Audience:** Author / Solo Engineer  
+**Purpose:** Convert emergent trading intuition into binding, testable, Agile-executable requirements.
+
+---
+
+## Table of Contents
+
+1. [Motivation & Problem Statement](#1-motivation--problem-statement)
+2. [What This System Is (and Is Not)](#2-what-this-system-is-and-is-not)
+3. [Invariant Tuple — The Core Data Model](#3-invariant-tuple--the-core-data-model)
+4. [Functional Requirements](#4-functional-requirements)
+   - 4.1 Pivot Engine
+   - 4.2 Spread Detection Engine
+   - 4.3 Simulation Engine
+   - 4.4 Tax State Engine
+   - 4.5 Thesis Engine
+5. [Non-Functional Requirements](#5-non-functional-requirements)
+6. [UI/UX Design Principles & Implementation Proposal](#6-uiux-design-principles--implementation-proposal)
+7. [Thesis Framework — The Scoring Model](#7-thesis-framework--the-scoring-model)
+8. [Edge Cases & Known Unknowns](#8-edge-cases--known-unknowns)
+9. [Validation Scenarios](#9-validation-scenarios)
+10. [Milestone Roadmap (Agile-Ready)](#10-milestone-roadmap-agile-ready)
+11. [Appendix — Spread Library](#11-appendix--spread-library)
+12. [Appendix — Tax Rule Ordering](#12-appendix--tax-rule-ordering)
+
+---
+
+## 1. Motivation & Problem Statement
+
+### 1.1 The Epistemic Failure of Brokerage UIs
+
+Modern brokerage interfaces were designed around a single primary actor: the equity day trader. Their information needs are well-served by a price chart, a watchlist, and a trade ticket. The interface is optimized for **order routing throughput**, not **portfolio cognition**.
+
+For an options trader, this creates a structural mismatch:
+
+- Options are multi-dimensional instruments. Their value is a function of *price*, *time*, *volatility*, and *interest rates* simultaneously. A single price chart tells you almost nothing about your true exposure.
+- Positions rendered as rows in a table require the trader to perform mental aggregation across Greeks, expiry buckets, and strategies — a task for which the human working memory is poorly equipped.
+- The most financially consequential dimension — **tax state** — is entirely absent from the decision interface. Traders close positions and discover tax consequences at year-end, after all corrective action is impossible.
+- **After-tax P/L is the only P/L that matters.** Pre-tax figures are accounting artifacts.
+
+The result: a trader with a sophisticated strategic thesis is navigating a labyrinth using only a flashlight pointed at one wall.
+
+### 1.2 The Opportunity
+
+What a options trader actually needs is not a better chart. They need a **state explorer** — a system that models their portfolio as a set of interacting stochastic variables and surfaces the decision-relevant projections from that state at any moment `t`.
+
+Three primary axes of cognition are missing from current tools:
+
+**Structural cognition** — "What am I actually holding, aggregated by strategy, by Greek, by risk concentration?"
+
+**Temporal cognition** — "How does my P/L surface evolve with time and volatility? What does the distribution of outcomes look like?"
+
+**Tax cognition** — "What is my real, after-tax edge on this position? Is closing now versus in 32 days worth $X in saved taxes?"
+
+### 1.3 The Thesis Problem
+
+Beyond structural modeling, there is a deeper epistemic problem: **traders operate on theses they cannot formally evaluate.**
+
+A thesis like *"I can consistently capture |ATR| + theta decay on short premium positions"* is a falsifiable claim. It asserts that a strategy's realized P/L will exceed a counterfactual (e.g., buy-and-hold) by a margin attributable to the strategy's design. Yet no brokerage provides the tooling to:
+
+- Track a named thesis against a live tuple of positions.
+- Compute the counterfactual return.
+- Score whether the thesis is being proven or disproven at any time `t`.
+- Surface the *premium* — the excess return over the counterfactual — as a first-class metric.
+
+Without this, a trader cannot distinguish *luck* from *edge*.
+
+### 1.4 Decision to Include the Thesis Engine
+
+**Assessment: Include in spec, defer implementation to Milestone 4.**
+
+The thesis engine is directionally essential. It is the mechanism by which this tool becomes an instrument of epistemic rigor, not just visual improvement. However, it depends on a sound data model, a working simulation engine, and clean P/L tracking — all of which come first. Including it in the spec now ensures architectural decisions in earlier milestones don't foreclose it. Building it first would be premature.
+
+---
+
+## 2. What This System Is (and Is Not)
+
+| IS | IS NOT |
+|----|--------|
+| A portfolio cognition and decision-support tool | A brokerage or order routing system |
+| A tax state estimator for options traders | A tax filing or compliance tool |
+| A spread archetype detector and P/L simulator | A real-time market data feed |
+| A thesis tracking and scoring framework | Investment advice |
+| A personal tool for a sophisticated retail trader | A product for general retail audiences |
+
+**Mandatory disclaimer surface:** All tax outputs are estimates. All P/L simulations are models. This tool does not constitute tax or financial advice.
+
+---
+
+## 3. Invariant Tuple — The Core Data Model
+
+The invariant tuple is the foundational unit of truth. Everything the system computes is a projection of this structure. It must be append-only and replayable from event log.
+
+### 3.1 `Leg` — The Atomic Unit
+
+```typescript
+type InstrumentType = "stock" | "option";
+type OptionType = "call" | "put";
+type Side = "long" | "short";
+
+interface Leg {
+  // Identity
+  id: string;                    // UUID
+  underlying: string;            // e.g., "NVDA"
+  instrumentType: InstrumentType;
+
+  // Option-specific (undefined for stock)
+  optionType?: OptionType;
+  strike?: number;
+  expiry?: Date;
+
+  // Position
+  side: Side;
+  quantity: number;              // Always positive; side carries direction
+  openDate: Date;
+
+  // Pricing at open
+  premiumAtOpen: number;         // Per-share (options: per-contract / 100)
+  ivAtOpen?: number;             // Implied volatility at entry
+
+  // Live state (updated on market tick or manual refresh)
+  currentMark?: number;
+  currentIV?: number;
+  greeks?: Greeks;
+
+  // Tax linkage
+  taxLotIds: string[];           // Points to TaxLot records
+}
+
+interface Greeks {
+  delta: number;
+  gamma: number;
+  theta: number;                 // Per day
+  vega: number;
+  rho?: number;
+}
+```
+
+### 3.2 `TaxLot` — Tax State Unit
+
+```typescript
+type HoldingPeriodStatus = "short" | "long";   // < 1yr vs >= 1yr
+type LotStatus = "open" | "closed" | "adjusted";
+type Section1256Eligible = boolean;
+
+interface TaxLot {
+  id: string;
+  underlyingId: string;          // Links to Leg
+  acquisitionDate: Date;
+  quantity: number;
+  costBasis: number;             // Adjusted for any wash sale carry
+  holdingPeriodStatus: HoldingPeriodStatus;
+  section1256Eligible: Section1256Eligible;
+  status: LotStatus;
+
+  // Wash sale state
+  washAdjustment?: number;       // Disallowed loss added to basis
+  linkedDisallowedLotIds?: string[];
+
+  // Closed lot fields
+  closeDate?: Date;
+  closingProceeds?: number;
+  realizedGainLoss?: number;
+}
+```
+
+### 3.3 `TradeEvent` — State Transition Primitive
+
+Every mutation to the portfolio is a `TradeEvent`. The portfolio state at any time `t` is fully reconstructible by replaying the event log.
+
+```typescript
+type TradeEventType =
+  | "open"
+  | "close"
+  | "assignment"      // Short option assigned
+  | "exercise"        // Long option exercised
+  | "expire"          // Option expires worthless
+  | "roll"            // Synthetic: close + open (two events)
+  | "adjustment";     // Corporate action (split, etc.)
+
+interface TradeEvent {
+  id: string;
+  timestamp: Date;
+  type: TradeEventType;
+  legId: string;
+  quantity: number;
+  price: number;                 // Execution price
+  notes?: string;
+}
+```
+
+### 3.4 `PortfolioState` — Aggregate Snapshot
+
+```typescript
+interface PortfolioState {
+  legs: Leg[];
+  taxLots: TaxLot[];
+  taxState: TaxState;
+  riskState: RiskState;
+  theses: Thesis[];
+  eventLog: TradeEvent[];
+  metadata: {
+    userId: string;
+    marginalTaxRateShort: number;    // User-configured
+    marginalTaxRateLong: number;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
+interface TaxState {
+  ytdRealizedShortTermGL: number;
+  ytdRealizedLongTermGL: number;
+  ytdRealizedSection1256GL: number;
+  estimatedTaxLiability: number;    // Computed from above + rates
+  disallowedLossCarryforward: number;
+}
+
+interface RiskState {
+  netDelta: number;
+  netGamma: number;
+  netTheta: number;
+  netVega: number;
+  totalMarginUsed: number;
+  concentrationByUnderlying: Record<string, number>;  // % of total risk
+}
+```
+
+### 3.5 Invariant Constraints
+
+The following invariants MUST hold at all times. Violations are system errors.
+
+1. **Event log is append-only.** No event is ever modified or deleted.
+2. **Portfolio state is a pure function of the event log.** `portfolioState = reduce(eventLog, initialState)`.
+3. **Tax lot cost basis is always adjusted at open**, not retroactively at close.
+4. **Quantity conservation:** The sum of open quantities across all lots for a given `Leg` equals the `Leg.quantity`.
+5. **Holding period clock starts at `acquisitionDate`**, which for assigned stock is the *assignment date*, not the option open date.
+6. **Section 1256 eligibility is set at open** and never changes for a given lot.
+
+---
+
+## 4. Functional Requirements
+
+### 4.1 Pivot Engine
+
+**Purpose:** Allow the trader to project the position tuple along any structural dimension without manual filtering.
+
+**REQ-P-01:** The system MUST allow filtering legs by: `side`, `optionType`, `instrumentType`, `expiry bucket`, `delta bucket`, `moneyness`, `holdingPeriodStatus`, `section1256Eligible`, `underlying`.
+
+**REQ-P-02:** Expiry buckets are predefined: `0-3d`, `4-7d`, `8-14d`, `15-30d`, `31-60d`, `61+d`. User MUST be able to reconfigure bucket boundaries.
+
+**REQ-P-03:** Any active pivot MUST recompute and display aggregate `RiskState` for the filtered subset in real time.
+
+**REQ-P-04:** Any active pivot MUST recompute and display estimated tax impact for the filtered subset.
+
+**REQ-P-05:** Pivots are composable. Multiple filter dimensions can be active simultaneously (logical AND).
+
+**REQ-P-06:** The default view (no pivots) shows the full portfolio aggregated by `underlying`, with expandable rows per underlying.
+
+---
+
+### 4.2 Spread Detection Engine
+
+**Purpose:** Given an arbitrary subset of legs, automatically identify if the subset structurally matches a known spread archetype.
+
+**REQ-S-01:** The spread library (see Appendix A) contains all supported archetypes as constraint-defined templates. Adding a new archetype requires only adding a new template; no other code changes.
+
+**REQ-S-02:** The engine evaluates all n-choose-k subsets of open legs (up to k=4) against all templates on every state change.
+
+**REQ-S-03:** A match is displayed as a tag on the relevant legs. Ambiguous matches (one subset satisfies multiple templates) are displayed with the highest-specificity match first.
+
+**REQ-S-04:** For any detected spread, the system MUST display the canonical payoff diagram (P/L vs. underlying price at expiry).
+
+**REQ-S-05:** Partially detected structures (e.g., one leg of a would-be iron condor exists) SHOULD be surfaced as "incomplete spread opportunities" with a prompt showing what additional leg(s) would complete the structure.
+
+**REQ-S-06:** The engine performance requirement: full re-evaluation for a portfolio of ≤ 50 legs must complete in < 200ms.
+
+---
+
+### 4.3 Simulation Engine
+
+**Purpose:** For any leg subset, compute the P/L surface as a function of `(underlying price, time to expiry, IV shift)` and derive scoring metrics.
+
+**REQ-SIM-01:** The engine MUST implement Black-Scholes pricing for European options. American option pricing (for early exercise scenarios) MUST use a binomial tree approximation with configurable steps (default: 100).
+
+**REQ-SIM-02:** The P/L surface MUST be computable across a grid of:
+- Underlying price: ±3 standard deviations from current price (configurable)
+- Time: from now to max expiry in the subset, at 1-day steps
+- IV shift: -50% to +100% of current IV (configurable)
+
+**REQ-SIM-03:** The following metrics MUST be derivable from any simulation run:
+
+| Metric | Definition |
+|--------|-----------|
+| `expectedValue` | E[P/L] under lognormal price distribution using current IV |
+| `probabilityOfProfit` | P(P/L > 0) under same distribution |
+| `maxProfit` | Maximum P/L across the price grid |
+| `maxLoss` | Minimum P/L across the price grid (negative) |
+| `breakevens` | Price(s) where P/L = 0 at expiry |
+| `thetaEfficiency` | `expectedValue / dailyTheta` — how much EV per dollar of daily decay |
+| `marginEfficiency` | `expectedValue / marginRequired` |
+
+**REQ-SIM-04:** All simulation runs are non-blocking. Heavy computation MUST run in a Web Worker.
+
+**REQ-SIM-05:** The UI MUST expose interactive sliders for time and IV shift, updating the P/L curve in real time (target: < 50ms redraw on slider change via precomputed grid interpolation).
+
+---
+
+### 4.4 Tax State Engine
+
+**Purpose:** Model tax as a first-class state variable that evolves with every trade, and surface tax consequences at the moment of decision.
+
+#### State Transition Rules (ordered, deterministic)
+
+**Rule T-01 — Open Position:**
+1. Create one `TaxLot` per leg opened.
+2. Set `acquisitionDate = TradeEvent.timestamp`.
+3. Set `costBasis = execution price` (for long options) or `0 - premium received` (for short options, premium reduces future basis).
+4. Set `holdingPeriodStatus = "short"` (clock begins at open; transitions to "long" after 365 days).
+5. Set `section1256Eligible` based on `underlying` classification (index options = true, equity options = false). This is determined at open and is immutable.
+
+**Rule T-02 — Close Position:**
+1. Match lots using FIFO by default. User MUST be able to specify specific lot selection.
+2. Compute `realizedGainLoss = closingProceeds - costBasis` (adjusted for wash carry).
+3. Classify as short-term or long-term based on `holdingPeriodStatus` at close date.
+4. Section 1256 lots use 60/40 rule regardless of actual holding period.
+5. Update `TaxState.ytdRealized*` fields accordingly.
+6. Mark lot `status = "closed"`.
+
+**Rule T-03 — Wash Sale Check (applied after every close at a loss):**
+1. If `realizedGainLoss < 0`:
+2. Scan all open positions and all positions opened in the 30 days prior for "substantially identical" instruments (same underlying, same option type, strike within X%, expiry within Y days — thresholds configurable).
+3. If a match is found: mark the loss as `disallowed`. Add the disallowed amount to the `costBasis` of the surviving lot. Record the linkage.
+4. If no open lot to carry to: record in `TaxState.disallowedLossCarryforward`.
+5. **Flag uncertainty** if cross-account positions cannot be verified (always, since the system cannot see other accounts). Surface a warning.
+
+**Rule T-04 — Assignment (Short Put):**
+1. Close the short put lot (realize the premium as gain; the put has zero value at assignment).
+2. Create a new stock `TaxLot`.
+3. Set `costBasis = strike price - premium received`. (The premium received adjusts the stock's cost basis downward.)
+4. Set `acquisitionDate = assignment date`. (Holding period for the stock begins NOW, not at option open.)
+5. Apply wash sale check against the closed put lot if applicable.
+
+**Rule T-05 — Assignment (Short Call / Covered Call):**
+1. Close the short call lot.
+2. Close the linked stock lot (identified by user or FIFO).
+3. Compute `realizedGainLoss` on the stock as: `(strike + premium received) - stockCostBasis`.
+4. **Flag holding period risk:** If stock holding period was 11 months 29 days, this closes the lot and forfeits long-term treatment. Surface this prominently before confirmation.
+
+**Rule T-06 — Expiration Worthless:**
+1. Long option: realize loss equal to `costBasis`. Close lot.
+2. Short option: realize gain equal to `premium received` (full premium, as the option expires at zero). Close lot.
+3. Section 1256: mark-to-market on December 31 even if not expired. Apply 60/40.
+
+**Rule T-07 — Roll (Synthetic):**
+A roll is treated as two independent events: a `close` followed by an `open`. The wash sale engine is triggered by the close. The 30-day window applies. Surface a wash sale warning if the new leg is substantially identical to the closed leg within the window.
+
+#### Tax UI Requirements
+
+**REQ-T-01:** Every trade action modal MUST show, before confirmation:
+- Estimated realized gain/loss
+- Tax classification (short-term / long-term / 1256)
+- Estimated tax liability for this trade
+- After-tax net retained value
+- Wash sale risk flag (with explanation) if triggered
+- Holding period warning if assignment or covered call close risks forfeiture of long-term status
+
+**REQ-T-02:** The main portfolio view MUST display:
+- YTD realized short-term gain/loss
+- YTD realized long-term gain/loss
+- Estimated current tax liability (at user-configured marginal rates)
+- After-tax portfolio P/L (YTD)
+
+**REQ-T-03:** The system MUST allow the user to configure their marginal tax rates (short-term and long-term). Defaults: 37% short, 20% long.
+
+**REQ-T-04:** Tax outputs MUST carry visible disclaimers: "Estimated — not tax advice. Verify with a CPA."
+
+**REQ-T-05:** The system MUST allow "what-if" tax simulation: given a proposed close action, show the tax outcome without committing the trade to the event log.
+
+---
+
+### 4.5 Thesis Engine
+
+**Purpose:** Allow the trader to define a named trading thesis, associate a tuple of legs with it, and continuously evaluate whether actual performance is proving or disproving the thesis — relative to a configurable counterfactual.
+
+#### 4.5.1 Thesis Definition
+
+```typescript
+type CounterfactualStrategy = "buy_and_hold" | "spy_benchmark" | "custom";
+
+interface Thesis {
+  id: string;
+  name: string;                         // e.g., "Short premium: ATR + theta capture"
+  description: string;                  // Human-readable hypothesis
+  createdAt: Date;
+
+  // The claim: what this strategy should deliver
+  claimedEdge: ThesisClaim;
+
+  // Which legs are enrolled in this thesis
+  enrolledLegIds: string[];
+
+  // Counterfactual
+  counterfactual: CounterfactualStrategy;
+  counterfactualParams?: {
+    customTicker?: string;              // For custom benchmark
+    entryDate: Date;
+    entryPrice: number;
+  };
+
+  // Evaluation state (computed, not stored)
+  status?: ThesisStatus;
+}
+
+interface ThesisClaim {
+  type: "premium_capture" | "volatility_arbitrage" | "directional" | "custom";
+  targetMetric: "return_over_counterfactual" | "absolute_return" | "sharpe" | "custom";
+  targetValue: number;                  // e.g., 0.05 = 5% premium over counterfactual
+  evaluationWindow: "per_trade" | "rolling_30d" | "ytd";
+}
+
+interface ThesisStatus {
+  currentPremium: number;               // Actual performance - counterfactual performance
+  isProving: boolean;                   // premium >= claimedEdge.targetValue
+  confidence: number;                   // 0-1, based on sample size and variance
+  tradeCount: number;
+  winRate: number;
+  avgPremiumPerTrade: number;
+  counterfactualReturn: number;
+  actualReturn: number;
+}
+```
+
+#### 4.5.2 The ATR + Theta Thesis (Canonical Example)
+
+This thesis, as described, claims that short premium positions on a given underlying will capture at least `|ATR|` (the magnitude of the underlying's average true range over a lookback window) plus `theta decay` as net P/L, in excess of a buy-and-hold position in the same underlying.
+
+Formally:
+
+```
+ThesisPremium(t) = RealizedPL(enrolled_legs, t) - CounterfactualReturn(t)
+ThesisIsProving(t) = ThesisPremium(t) >= TargetPremium
+TargetPremium = f(|ATR|, theta_collected)
+```
+
+Where `|ATR|` is computed over a configurable lookback (default: 14 days) and `theta_collected` is the sum of daily theta across enrolled legs.
+
+**REQ-TH-01:** The user MUST be able to create a named thesis and enroll any subset of open or historical legs.
+
+**REQ-TH-02:** For each thesis, the system MUST continuously compute `ThesisPremium(t)` and display it as a time series.
+
+**REQ-TH-03:** The system MUST display a clear verdict: **PROVING** (green), **NEUTRAL** (yellow), or **DISPROVING** (red), based on whether `ThesisPremium` is consistently above, near, or below target.
+
+**REQ-TH-04:** The counterfactual MUST be computed as: the return that would have been achieved by allocating the same capital (margin used by enrolled legs) to the counterfactual strategy on the same dates.
+
+**REQ-TH-05:** The thesis score card MUST display:
+- Actual P/L (enrolled legs, realized + unrealized)
+- Counterfactual P/L (same capital, same period)
+- Premium = Actual - Counterfactual
+- Whether the premium is attributable to the thesis mechanism (explainability signal)
+- Win rate (% of individual thesis trades that outperformed counterfactual)
+- Tax-adjusted premium (after-tax actual vs after-tax counterfactual)
+
+**REQ-TH-06:** Historical thesis performance MUST be viewable at any past time `t` by replaying the event log to that point.
+
+---
+
+## 5. Non-Functional Requirements
+
+**REQ-NF-01:** The system is a local-first single-user application. No server is required for core functionality. The event log MUST be exportable as a JSON file for portability and backup.
+
+**REQ-NF-02:** The event log is the source of truth. The UI state is always derived. No state lives only in the UI.
+
+**REQ-NF-03:** All state transitions are deterministic and idempotent. Replaying the same event twice must be a no-op.
+
+**REQ-NF-04:** The simulation engine's heavy computation paths run in Web Workers to keep the UI thread unblocked.
+
+**REQ-NF-05:** The pivot engine must handle portfolios of up to 200 legs without UI degradation.
+
+**REQ-NF-06:** All monetary values are stored and computed in cents (integer) to avoid floating-point rounding errors.
+
+**REQ-NF-07:** The application MUST function offline. Market data (current marks, IV) is the only feature requiring connectivity.
+
+---
+
+## 6. UI/UX Design Principles & Implementation Proposal
+
+### 6.1 Guiding Principles
+
+**Principle 1 — The Primary Object is the Risk Surface, Not the Price Chart.**  
+The ticker chart is demoted to a secondary, on-demand view. The primary real estate is occupied by exposure state: aggregate Greeks, margin utilization, and tax position.
+
+**Principle 2 — Decision State, Not Accounting State.**  
+Every number the user sees should answer the question: "What should I do?" not "What happened?" Pre-tax P/L is an accounting artifact. The system surfaces after-tax, after-friction decision values.
+
+**Principle 3 — Consequences at the Moment of Action.**  
+Tax impact, wash sale risk, and holding period forfeiture are surfaced in the trade confirmation modal — before the trade, not after. This is the highest-value intervention point.
+
+**Principle 4 — Progressive Disclosure.**  
+The default view is high-level and gestalt. Complexity is revealed through interaction, not displayed upfront.
+
+### 6.2 View Hierarchy
+
+```
+App
+├── Dashboard (primary view)
+│   ├── Risk Summary Bar (net delta, gamma, theta, vega, margin %)
+│   ├── Tax Summary Bar (YTD realized, estimated liability, after-tax P/L)
+│   ├── Thesis Status Bar (active theses, proving/neutral/disproving badges)
+│   └── Position Grid (pivotable, spreadable)
+│       ├── Pivot Control Panel
+│       ├── Leg Rows (with spread tags)
+│       └── Aggregate Footers (per-pivot dimension)
+│
+├── Simulator (secondary view)
+│   ├── Leg Selector (multi-select from portfolio)
+│   ├── P/L Surface (interactive: price × time, IV slider)
+│   ├── Metrics Panel (EV, PoP, max loss, breakevens)
+│   └── Spread Archetype Badge (auto-detected)
+│
+├── Tax Detail (tertiary view)
+│   ├── Lot Browser (all open/closed lots)
+│   ├── Wash Sale Map (visual DAG of linked lots)
+│   ├── Year-to-Date Timeline
+│   └── What-If Simulator
+│
+└── Thesis Manager (tertiary view)
+    ├── Thesis List
+    ├── Thesis Detail (premium chart, scorecard)
+    └── New Thesis Wizard
+```
+
+### 6.3 Implementation Stack Proposal
+
+| Layer | Technology | Rationale |
+|-------|-----------|-----------|
+| Framework | React + TypeScript | Composable, typed, ecosystem |
+| State | Zustand | Lightweight, non-magic, good for event-sourced patterns |
+| Charts | D3 + Plotly | D3 for custom surfaces; Plotly for interactive 3D |
+| Workers | Web Workers API (native) | No library overhead; simulation isolation |
+| Pricing | Custom TS Black-Scholes | No dependency; auditable; fast |
+| Persistence | IndexedDB (via idb) | Local-first, large capacity, async |
+| Build | Vite | Fast HMR, clean ESM output |
+| Testing | Vitest + Testing Library | Co-located with Vite; fast |
+
+### 6.4 Trade Action Modal — Required Fields
+
+```
+┌────────────────────────────────────────────┐
+│  Close: NVDA Put $600 Jan-17               │
+├────────────────────────────────────────────┤
+│  Closing proceeds:           $1,240.00     │
+│  Cost basis:                 $1,800.00     │
+│  Realized gain/loss:          -$560.00     │
+│                                            │
+│  Classification:         SHORT-TERM        │
+│  Estimated tax (37%):         $207.20      │
+│  After-tax net:               -$767.20     │
+│                                            │
+│  ⚠ WASH SALE RISK                         │
+│  Similar position opened 18 days ago.      │
+│  Loss may be disallowed. Verify before     │
+│  closing.                                  │
+│                                            │
+│  [Cancel]                [Confirm Close]   │
+└────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Thesis Framework — The Scoring Model
+
+### 7.1 Scoring Equation
+
+```
+Score(thesis, t) = w1 * (AfterTaxPremium / MarginUsed)
+                 + w2 * (ThetaEfficiency)
+                 - w3 * (TailRiskPenalty)
+                 + w4 * (ConsistencyBonus)
+```
+
+Where:
+- `AfterTaxPremium` = after-tax actual P/L minus after-tax counterfactual P/L
+- `ThetaEfficiency` = realized P/L / total theta collected (1.0 = captured all theta; >1.0 = outperformed theta)
+- `TailRiskPenalty` = max drawdown of enrolled positions / margin used
+- `ConsistencyBonus` = fraction of individual trades that beat the counterfactual
+
+**Default weights:** `w1=0.4, w2=0.3, w3=0.2, w4=0.1` — configurable by user.
+
+### 7.2 Proving vs. Disproving
+
+| Status | Condition |
+|--------|-----------|
+| PROVING | `AfterTaxPremium > 0` AND `Score > threshold` for ≥ 60% of trades in window |
+| NEUTRAL | `AfterTaxPremium` near zero OR high variance |
+| DISPROVING | `AfterTaxPremium < 0` consistently OR `Score < threshold` for ≥ 60% of trades |
+
+Thresholds and windows are configurable per thesis.
+
+### 7.3 Minimum Sample Size Warning
+
+A thesis with fewer than 10 completed trades MUST display a warning: "Insufficient sample size for statistical confidence. Score is directionally indicative only."
+
+### 7.4 ATR Integration
+
+For theses claiming ATR-based edge:
+- ATR is computed from OHLC data (user-provided or fetched from market data source) over a configurable lookback.
+- The "claimed edge" is expressed as: `target_premium_per_trade >= k * ATR`, where `k` is user-defined.
+- Each completed trade's `ThesisPremium` is compared against `k * ATR` at trade close date.
+
+---
+
+## 8. Edge Cases & Known Unknowns
+
+| Case | System Behavior |
+|------|----------------|
+| Cross-account wash sales | Cannot detect. Surface permanent warning: "Cross-account wash sale detection is impossible. Verify manually." |
+| Qualified covered calls (QCC) | Flag for manual review. Display IRS holding period rule. Do not attempt to adjudicate. |
+| Corporate actions (splits, mergers) | Create an `adjustment` event. Require manual entry of adjustment factor. |
+| Short-term lot transitions to long-term | The system checks `holdingPeriodStatus` on every day tick. Notify user when a lot crosses the 365-day threshold. |
+| Rolling into a wash sale window | Trigger wash sale warning in roll confirmation modal. |
+| Section 1256 year-end mark-to-market | Run automatically on December 31 as a synthetic `close` + `open` event pair, at market close price. |
+| Partial lot closure | Supported via configurable lot selection (FIFO default, specific lot override). |
+| Unknown marginal tax rate | Default to 37% short / 20% long. Display prompt to configure on first use. |
+| Options with non-standard multipliers | Support configurable multiplier per leg (default: 100). |
+
+---
+
+## 9. Validation Scenarios
+
+These test cases MUST pass before any milestone is considered complete. They are the acceptance criteria for the tax and simulation engines.
+
+| ID | Scenario | Expected Outcome |
+|----|----------|-----------------|
+| VAL-01 | Short put assigned; stock sold same day | Cost basis = strike - premium. Gain/loss = sale price - (strike - premium). Holding period = 0 days (short-term). |
+| VAL-02 | Long put expires worthless | Realize full cost basis as short-term loss. |
+| VAL-03 | Short call expires worthless | Realize full premium received as short-term gain. |
+| VAL-04 | Covered call assigned; stock was held 364 days | Close stock lot. Gain = (strike + premium) - stockCostBasis. Classification: SHORT-TERM. Surface holding period warning. |
+| VAL-05 | Close losing position; re-open substantially identical 15 days later | Wash sale triggered. Loss disallowed. Disallowed amount added to new lot basis. |
+| VAL-06 | Close losing position; re-open 31 days later | No wash sale. Loss realized normally. |
+| VAL-07 | SPX put (Section 1256) held 6 months, closed at gain | Apply 60/40 rule regardless of holding period. Do not use actual holding period for classification. |
+| VAL-08 | SPX mark-to-market on Dec 31 | Synthetic close/open event created. Unrealized gain/loss realized at 60/40. |
+| VAL-09 | Partial lot closure (3 of 5 contracts) | FIFO: close 3 oldest lots. 2 remain open. Basis and holding period preserved for remaining lots. |
+| VAL-10 | Iron condor: 4 legs detected as spread | All 4 legs tagged as "Iron Condor". Payoff diagram displayed. P/L surface computable. |
+| VAL-11 | Thesis with 5 trades: 3 beat counterfactual | Status: NEUTRAL. Warning: insufficient sample size. |
+| VAL-12 | Roll short put: close at loss, open new put same strike + 30 days | Wash sale check triggered. New put is substantially identical. Loss potentially disallowed. Warning surfaced. |
+
+---
+
+## 10. Milestone Roadmap (Agile-Ready)
+
+Each milestone is independently shippable and testable. Work items within a milestone are ordered by dependency.
+
+### Milestone 1 — Core Data Model & Event Engine
+*Acceptance: All VAL-01 through VAL-09 pass.*
+
+- [ ] Define and implement all TypeScript interfaces from Section 3
+- [ ] Implement event log with append-only constraint
+- [ ] Implement portfolio state reducer (pure function: `eventLog → PortfolioState`)
+- [ ] Implement TaxLot state machine (Rules T-01 through T-07)
+- [ ] Implement wash sale detection engine
+- [ ] Write validation scenario test suite
+- [ ] Implement IndexedDB persistence layer
+- [ ] Implement JSON export/import for event log
+
+### Milestone 2 — Pivot Engine & Base UI
+*Acceptance: All pivots filter and recompute correctly on a portfolio of 50 synthetic legs.*
+
+- [ ] Implement pivot filter engine (all dimensions per REQ-P-01)
+- [ ] Implement RiskState aggregator (net Greeks per pivot)
+- [ ] Build Dashboard layout (Risk Summary Bar, Tax Summary Bar, Position Grid)
+- [ ] Build Pivot Control Panel UI
+- [ ] Build Trade Action Modal (with tax consequence display per Section 6.4)
+- [ ] Manual position entry flow
+
+### Milestone 3 — Spread Detection & Simulation Engine
+*Acceptance: VAL-10 passes. All simulation metrics computable. P/L surface interactive.*
+
+- [ ] Implement spread template library (Appendix A)
+- [ ] Implement graph-based spread detection
+- [ ] Implement Black-Scholes engine (TypeScript, pure function)
+- [ ] Implement binomial tree for American option approximation
+- [ ] Implement P/L surface grid computation in Web Worker
+- [ ] Build Simulator view (surface chart, metrics panel, sliders)
+- [ ] Integrate spread tags into position grid
+
+### Milestone 4 — Thesis Engine
+*Acceptance: VAL-11 passes. ATR + theta thesis trackable end-to-end.*
+
+- [ ] Define and implement Thesis data model
+- [ ] Implement counterfactual P/L calculator (buy-and-hold, SPY benchmark)
+- [ ] Implement ThesisPremium time series computation
+- [ ] Implement thesis scoring formula (Section 7.1)
+- [ ] Implement PROVING / NEUTRAL / DISPROVING verdict logic
+- [ ] Integrate ATR computation (from user-provided OHLC data)
+- [ ] Build Thesis Manager view and detail scorecard
+- [ ] Build thesis enrollment flow in Trade Action Modal
+
+### Milestone 5 — Polish & Edge Cases
+- [ ] Section 1256 year-end mark-to-market automation
+- [ ] Holding period transition notifications
+- [ ] Incomplete spread suggestion engine (REQ-S-05)
+- [ ] What-if tax simulator (REQ-T-05)
+- [ ] Wash sale DAG visualization
+- [ ] Tax detail view build-out
+- [ ] Performance audit (200-leg portfolio target)
+
+---
+
+## 11. Appendix — Spread Library
+
+Each spread is defined as a constraint set over a tuple of legs. Detection is constraint satisfaction.
+
+| Spread | Legs | Constraints |
+|--------|------|------------|
+| **Covered Call** | 2 | Long stock + Short call; same underlying |
+| **Cash-Secured Put** | 1 | Short put (flagged when cash ≥ strike * 100) |
+| **Bull Call Vertical** | 2 | Long call (lower K) + Short call (higher K); same expiry |
+| **Bear Put Vertical** | 2 | Long put (higher K) + Short put (lower K); same expiry |
+| **Bull Put Vertical** | 2 | Short put (higher K) + Long put (lower K); same expiry |
+| **Bear Call Vertical** | 2 | Short call (lower K) + Long call (higher K); same expiry |
+| **Long Straddle** | 2 | Long call + Long put; same K, same expiry |
+| **Short Straddle** | 2 | Short call + Short put; same K, same expiry |
+| **Long Strangle** | 2 | Long call (higher K) + Long put (lower K); same expiry |
+| **Short Strangle** | 2 | Short call (higher K) + Short put (lower K); same expiry |
+| **Iron Condor** | 4 | Short strangle + long strangle (wider strikes); same expiry |
+| **Iron Butterfly** | 4 | Short straddle + long strangle (same ATM); same expiry |
+| **Long Calendar** | 2 | Same type, same K, same side (long); different expiries |
+| **Short Calendar** | 2 | Same type, same K, short near / long far |
+| **Diagonal** | 2 | Same type, different K, different expiry |
+| **Long Butterfly** | 3 | Long 1 lower K + Short 2 middle K + Long 1 higher K; same expiry, equidistant |
+| **Ratio Spread** | 3+ | Long N legs + Short M legs (N ≠ M); same type, same expiry |
+| **Synthetic Long** | 2 | Long call + Short put; same K, same expiry |
+| **Synthetic Short** | 2 | Short call + Long put; same K, same expiry |
+
+---
+
+## 12. Appendix — Tax Rule Ordering
+
+Rules are applied in strict order for every `TradeEvent`. No rule is skipped. Rules are idempotent.
+
+```
+FOR EACH TradeEvent e:
+  1. Validate event (instrument exists, quantity valid, timestamp monotonic)
+  2. Apply primary state transition (T-01 through T-07 based on e.type)
+  3. IF e.type IN [close, expire, assignment]:
+     a. Compute realized gain/loss
+     b. Classify (short/long/1256)
+     c. Apply 60/40 IF section1256Eligible
+     d. Run wash sale check (Rule T-03)
+     e. Update TaxState
+  4. Update holdingPeriodStatus for all open lots (date comparison)
+  5. Recompute TaxState.estimatedTaxLiability
+  6. Recompute RiskState
+  7. Emit state change event to UI
+```
+
+---
+
+*This document is the authoritative specification. All implementation decisions must trace back to a requirement defined here. New requirements are added via pull request with changelog entry in the version header.*
+
+*Last updated: 2026-02-19 | Version: 0.1.0*

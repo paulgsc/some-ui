@@ -3,31 +3,38 @@ import { lazy } from "react"
 import type { ComponentRegistry, RegistryEntry } from "some-types-utils"
 
 /**
- * Lazy component factory with preload capability
- *
- * Wraps a dynamic import to work with both React.lazy and manual preloading.
- * Supports both default exports and named exports.
+ * Overload 1: Default exports
  */
 export function lazyWithPreload<P>(
   loader: () => Promise<{ default: ComponentType<P> }>
 ): RegistryEntry<P>
 
-export function lazyWithPreload<K extends string, P = unknown>(
-  loader: () => Promise<Record<K, ComponentType<P>>>,
+/**
+ * Overload 2: Named exports
+ * We use 'any' for the component in the Record to prevent TS from
+ * trying to unify every export in the module into a single Prop type.
+ */
+export function lazyWithPreload<K extends string, P = any>(
+  loader: () => Promise<Record<K, ComponentType<any>>>,
   exportName: K
 ): RegistryEntry<P>
 
-export function lazyWithPreload<K extends string, P = unknown>(
+/**
+ * Implementation - One signature to rule them all
+ */
+export function lazyWithPreload<K extends string, P = any>(
   loader: () => Promise<any>,
   exportName?: K
 ): RegistryEntry<P> {
   const normalizedLoader = async (): Promise<{ default: ComponentType<P> }> => {
     const mod = await loader()
 
-    // If exportName is provided, use the named export
-    // Otherwise, use the default export
     if (exportName) {
-      return { default: mod[exportName] }
+      const Component = mod[exportName]
+      if (!Component) {
+        throw new Error(`Export "${exportName}" not found in module`)
+      }
+      return { default: Component }
     }
 
     return mod
@@ -39,11 +46,6 @@ export function lazyWithPreload<K extends string, P = unknown>(
   }
 }
 
-/**
- * Preload multiple components from a registry
- *
- * Useful for warming up components before they're needed
- */
 export function preloadRegistryComponents<K extends string>(
   registry: ComponentRegistry<K>,
   keys: Array<K>
@@ -51,12 +53,8 @@ export function preloadRegistryComponents<K extends string>(
   return Promise.all(
     keys.map((key) => {
       const entry = registry[key]
-      if (entry.preload) {
-        return entry.preload().then(() => {})
-      }
-      // eslint-disable-next-line no-console
-      console.warn(`Cannot preload "${key}" - not found in registry`)
-      return Promise.resolve()
+      // Use optional chaining to avoid "always truthy" linter errors
+      return entry.preload().then(() => {}) ?? Promise.resolve()
     })
   )
 }

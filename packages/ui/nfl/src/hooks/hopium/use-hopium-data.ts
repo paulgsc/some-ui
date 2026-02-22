@@ -5,22 +5,32 @@ import type {
   SatelliteDataItem,
 } from "@nfl/types/hopium/hopium-tracker"
 
+// Defined a return type for the hook to satisfy the linter
+export type UseSatelliteDataReturn<T> = {
+  dataItems: Array<SatelliteDataItem<T>>
+  lastRefresh: Date
+  isRefreshing: boolean
+  refreshAll: (callbacks?: RefreshCallbacks) => Promise<void>
+  refreshItem: (id: string, callbacks?: RefreshCallbacks) => Promise<void>
+  updateItems: (
+    updater: (items: Array<SatelliteDataItem<T>>) => Array<SatelliteDataItem<T>>
+  ) => void
+}
+
 export function useSatelliteData<T>(
   adapter: ApiAdapter<T>,
   initialData: Array<SatelliteDataItem<T>> = [],
   autoRefreshInterval?: number
-) {
+): UseSatelliteDataReturn<T> {
   const [dataItems, setDataItems] =
     useState<Array<SatelliteDataItem<T>>>(initialData)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Auto-refresh functionality
   useEffect(() => {
     if (!autoRefreshInterval) return
 
     const interval = setInterval(() => {
-      // Simulate data aging for demo purposes
       setDataItems((prev) =>
         prev.map((item) => ({
           ...item,
@@ -29,18 +39,21 @@ export function useSatelliteData<T>(
       )
     }, autoRefreshInterval)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [autoRefreshInterval])
 
   const refreshAll = useCallback(
-    async (callbacks?: RefreshCallbacks) => {
+    async (callbacks?: RefreshCallbacks): Promise<void> => {
       setIsRefreshing(true)
       try {
         callbacks?.onStart?.("all")
         const newData = await adapter.refreshAll(callbacks)
         setDataItems(newData)
         setLastRefresh(new Date())
-        callbacks?.onSuccess?.(newData[0]) // Pass first item as representative
+
+        if (newData[0]) {
+          callbacks?.onSuccess?.(newData[0])
+        }
       } catch (error) {
         callbacks?.onFailure?.(error as Error, "all")
       } finally {
@@ -51,7 +64,7 @@ export function useSatelliteData<T>(
   )
 
   const refreshItem = useCallback(
-    async (id: string, callbacks?: RefreshCallbacks) => {
+    async (id: string, callbacks?: RefreshCallbacks): Promise<void> => {
       try {
         callbacks?.onStart?.(id)
         const updatedItem = await adapter.refreshItem(id, callbacks)
@@ -71,7 +84,7 @@ export function useSatelliteData<T>(
       updater: (
         items: Array<SatelliteDataItem<T>>
       ) => Array<SatelliteDataItem<T>>
-    ) => {
+    ): void => {
       setDataItems(updater)
     },
     []

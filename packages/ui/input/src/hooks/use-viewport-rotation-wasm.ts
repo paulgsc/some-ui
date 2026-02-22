@@ -47,9 +47,30 @@ type Options = {
   onError?: (error: Error) => void
 }
 
+type UseViewportManagerReturn = {
+  isLoading: boolean
+  error: string | null
+  viewportIds: Array<string>
+  activeViewportId: string | null
+  viewportStates: Record<string, ViewportResponse["state"]>
+  cluesQueue: CrosswordClueState
+  setActiveViewport: (direction: Direction) => void
+  setRotationAxis: (direction: Direction, axis: RotatationAxis) => void
+  rotateViewport: (direction: Direction) => void
+  getNextViewportItem: (direction: Direction) => void
+  getCurrentViewportItem: (direction: Direction) => number | null
+  getViewportFaceIndices: (
+    direction: Direction,
+    faceIndex: number
+  ) => Array<number> | null
+}
+
 // Cache WASM initialization to prevent multiple initializations
 
-export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
+export const useViewportManager = ({
+  maxPerFace = 2,
+  onError,
+}: Options): UseViewportManagerReturn => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewportIds, setViewportIds] = useState<Array<string>>([])
@@ -126,6 +147,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
 
       hasInitialized.current = true
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error initializing viewport manager:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
       managerRef.current = null
@@ -158,6 +180,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
           [direction]: parsedResponse.state,
         }))
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error setting active viewport to ${direction}:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
@@ -190,6 +213,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
           [direction]: parsedResponse.state,
         }))
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error setting ${direction} rotation axis:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
@@ -218,6 +242,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
           [direction]: parsedResponse.state,
         }))
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error rotating ${direction} to next:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
@@ -234,7 +259,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
         if (!manager) return
 
         const currentState = viewportStates[direction]
-        if (Object.entries(currentState).length === 0) return
+        if (!currentState || Object.entries(currentState).length === 0) return
 
         const { currFace, currIdx, faceIndices, queueIdx } = currentState
         const { lastRevealedAcrossIndex, lastRevealedDownIndex } = cluesQueue
@@ -243,16 +268,11 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
           direction === "across"
             ? lastRevealedAcrossIndex
             : lastRevealedDownIndex
-        if (lastRevealedIndex === undefined) {
-          console.error(
-            "lastIndex update has not propogated to viewport",
-            lastRevealedIndex
-          )
-          return
-        }
         if (lastRevealedIndex === queueIdx) return
 
-        if (faceIndices[currFace].length <= currIdx + 1) {
+        const l = faceIndices[currFace]
+        if (!l) return
+        if (l.length <= currIdx + 1) {
           cubeEvents.emit("rotate:next", { id: 1 })
           rotateViewport(direction)
           return
@@ -271,6 +291,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
           [direction]: parsedResponse.state,
         }))
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error getting ${direction} next item:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
@@ -294,6 +315,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
 
         return manager.get_viewport_current_item_index(direction)
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error getting ${direction} current item:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)
@@ -316,6 +338,7 @@ export const useViewportManager = ({ maxPerFace = 2, onError }: Options) => {
         )
         return FaceSchema.parse(indicesJson)
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`Error getting ${direction} face item IDs:`, err)
         setError(err instanceof Error ? err.message : "Unknown error")
         if (onError && err instanceof Error) onError(err)

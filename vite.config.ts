@@ -41,6 +41,10 @@ export default defineConfig({
         __dirname,
         "./packages/some-content/src"
       ),
+
+      // --------------- Extensions ---------------
+      "@drama": path.resolve(__dirname, "./extensions/some-drama/src"),
+
       // Add more aliases for other packages as needed
     },
   },

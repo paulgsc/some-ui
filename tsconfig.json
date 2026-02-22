@@ -29,7 +29,8 @@
       "@neon-sign/*": ["./packages/ui/neon-sign/src/"],
       "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/"],
       "@attributions/*": ["./packages/ui/attributions/src/"],
-      "@overlays/*": ["./packages/ui/overlays/src/"]
+      "@overlays/*": ["./packages/ui/overlays/src/"],
+      "@some-ui/content/*": ["./packages/some-content/src/"]
     }
   },
   "include": [
@@ -37,6 +38,7 @@
     "eslint/",
     "eslint.config.js",
     "eslint.config-deprecated.mjs",
+    "scripts",
     "next.config.mjs",
     "prettier.config.cjs",
     "tailwind.config.ts",

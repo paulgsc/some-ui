@@ -43,21 +43,50 @@ export const useAccordionStepper = ({
   const elapsedTimeRef = useRef<number>(0)
   const cyclerRef = useRef<() => AccordionSteps["data"] | null>(null)
 
-  const onNext = useCallback(() => {
+  const onNext = useCallback((): void => {
+    if (stepsToShow <= 0) return
+
     setCurrStepId((prev) => {
-      const prevIndex = parseInt(prev.split("_")[1], 0)
-      const i = (prevIndex + 1) % stepsToShow
-      if (prevIndex + 1 >= stepsToShow) getNextBatchOfSteps()
-      return `step_${i}`
+      const parts = prev.split("_")
+      const rawIndex = parts[1]
+
+      if (!rawIndex) return prev
+
+      const prevIndex = Number(rawIndex)
+      if (!Number.isInteger(prevIndex)) return prev
+
+      const nextIndex = prevIndex + 1
+      const wrapped = nextIndex % stepsToShow
+
+      if (nextIndex >= stepsToShow) {
+        getNextBatchOfSteps()
+      }
+
+      return `step_${wrapped}`
     })
   }, [stepsToShow])
 
-  const onPrev = useCallback(() => {
+  const onPrev = useCallback((): void => {
+    if (stepsToShow <= 0) return
+
     setCurrStepId((prev) => {
-      const prevIndex = parseInt(prev.split("_")[1], 0)
-      const i = Math.abs(prevIndex - 1) % stepsToShow
-      if (Math.abs(prevIndex - 1) >= stepsToShow) getNextBatchOfSteps()
-      return `step_${i}`
+      const parts = prev.split("_")
+      const rawIndex = parts[1]
+
+      if (!rawIndex) return prev
+
+      const prevIndex = Number(rawIndex)
+      if (!Number.isInteger(prevIndex)) return prev
+
+      const nextIndex = prevIndex - 1
+
+      const wrapped = ((nextIndex % stepsToShow) + stepsToShow) % stepsToShow
+
+      if (nextIndex < 0) {
+        getNextBatchOfSteps()
+      }
+
+      return `step_${wrapped}`
     })
   }, [stepsToShow])
 
@@ -102,7 +131,9 @@ export const useAccordionStepper = ({
 
   const getStepIcon = useCallback(
     (index: number) => {
-      return visibleSteps[index].progress
+      const step = visibleSteps[index]
+      if (!step) return "pending"
+      return step.progress
     },
     [visibleSteps]
   )

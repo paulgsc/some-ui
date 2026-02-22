@@ -35,13 +35,14 @@ export type FreshnessMetrics = {
   priority: "low" | "medium" | "high" | "critical"
 }
 
-export type SatelliteDataItem<T = any> = {
+export type SatelliteDataItem<T = unknown> = {
   id: string
   name: string
-  data: T // Generic satellite data payload
+  data: T
 } & FreshnessMetrics
 
 export type RefreshCallbacks = {
+  // Use unknown here instead of the default 'any'
   onSuccess?: (item: SatelliteDataItem) => void
   onFailure?: (error: Error, itemId: string) => void
   onStart?: (itemId: string) => void

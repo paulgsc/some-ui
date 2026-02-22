@@ -1,6 +1,6 @@
 import "./index.css"
 
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import {
   Accordion,
   AccordionContent,
@@ -23,7 +23,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
   steps,
   autoplay = false,
   duration = 60 * 1000,
-}) => {
+}): JSX.Element => {
   const k = 3
   const { visibleSteps, setCurrStepId, currStepId } = useAccordionStepper({
     stepsToShow: k,
@@ -53,7 +53,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
         }}
       >
         {visibleSteps.map((step, i) => {
-          const curr = parseInt(currStepId.split("_")[1], 0)
+          const curr = parseInt(currStepId.split("_")[1] ?? "", 0)
           const icon = curr === i ? "progress" : step.progress
           return (
             <AccordionItem

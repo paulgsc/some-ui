@@ -1,13 +1,13 @@
 // Main Content Script - Orchestrates all UI components
-import "@/styles/content.css"
+import "@drama/styles/content.css"
 
-import { generateId, getEmotionConfig } from "@/utils"
+import { generateId, getEmotionConfig } from "@drama/utils"
 
-import type { CapturedMoment, EmotionType, UIState } from "@/types/schema"
-import { CapturedMomentsList } from "@/components/captured-moments"
-import { FloatingBar } from "@/components/floating-bar"
-import { PollingPrompt } from "@/components/polling-prompt"
-import { QuickCapturePanel } from "@/components/quick-capture-panel"
+import type { CapturedMoment, EmotionType, UIState } from "@drama/types/schema"
+import { CapturedMomentsList } from "@drama/components/captured-moments"
+import { FloatingBar } from "@drama/components/floating-bar"
+import { PollingPrompt } from "@drama/components/polling-prompt"
+import { QuickCapturePanel } from "@drama/components/quick-capture-panel"
 
 import { ContextDetector } from "./context-detector"
 

@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, ReactNode } from "react"
+import type { CSSProperties, FC, JSX, ReactNode } from "react"
 import { cn, useContainerRect } from "some-ui-utils"
 
 export type CubeGeometryProps = {
@@ -22,7 +22,7 @@ export const CubeGeometry: FC<CubeGeometryProps> = ({
   className,
   faceClassName,
   hideBackface = false,
-}) => {
+}): JSX.Element => {
   const { rect, ref } = useContainerRect()
   if (!rect) return <div ref={ref} className="size-full" />
 

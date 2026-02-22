@@ -23,12 +23,14 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
   const getClues = useCallback(() => {
     const rotationState = direction === "across" ? across : down
     const directionalClues = direction === "across" ? cluesAcross : cluesDown
+
     if (
       !rotationState ||
       Object.entries(rotationState).length === 0 ||
       directionalClues.length === 0
-    )
+    ) {
       return []
+    }
 
     const { faceIndices, currIdx } = rotationState
     if (faceIndices.length === 0) return []
@@ -36,17 +38,22 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
     const result: Array<React.JSX.Element> = []
 
     for (let i = 0; i < faceIndices.length; i++) {
-      const indices = faceIndices[i]
+      const indices = faceIndices[i] ?? []
       const clues: Array<CrosswordClueWithNum> = []
 
       for (let j = 0; j < indices.length; j++) {
         const indice = indices[j]
+
+        if (indice === undefined) continue
+
         const clue = directionalClues[indice]
 
         if (!clue) {
+          // eslint-disable-next-line no-console
           console.error(
             `Invalid clue index: directionalClues[${indice}] is undefined at faceIndices[${i}][${j}].`
           )
+          // eslint-disable-next-line no-console
           console.info(
             "faceIndices, directionalClues",
             faceIndices,
@@ -70,7 +77,7 @@ export const CluesCarousel: FC<ClueCarouselProps> = ({
     }
 
     return result
-  }, [across, down, cluesAcross, cluesDown])
+  }, [across, down, cluesAcross, cluesDown, direction])
 
   return (
     <DiceCard

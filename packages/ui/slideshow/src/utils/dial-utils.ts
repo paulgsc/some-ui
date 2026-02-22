@@ -48,7 +48,7 @@ export const getSectionTextPosition = ({
   center,
   radius,
 }: TextPosition): Record<"x" | "y" | "rotation", number> => {
-  const { startAngle, endAngle } = sectionBoundaries[sectionIndex]
+  const { startAngle = 0, endAngle = 0 } = sectionBoundaries[sectionIndex] ?? {}
   const midAngle = (startAngle + endAngle) / 2
   const midRadians = (midAngle - 90) * (Math.PI / 180)
 

@@ -19,5 +19,5 @@ export {
   useNowPlayingWebSocket,
   useOrchestrator,
 } from "./socket-tenants"
-export { useSpeechQueue, useSpeechQueueMetrics } from "./use-speech-queue"
+export { useSpeechQueueActions, useSpeechQueue, useSpeechQueueMetrics } from "./use-speech-queue"
 export { useContainerRect } from "./use-container-rect"

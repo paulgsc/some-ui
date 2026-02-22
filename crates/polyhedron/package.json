@@ -2,14 +2,20 @@
   "name": "polyhedron",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/polyhedron.js",
+  "module": "dist/polyhedron.js",
+  "types": "dist/polyhedron.d.ts",
   "type": "module",
   "scripts": {
-    "build": "pnpm wasm:dev",
+    "build": "pnpm wasm:prod",
     "wasm:dev": "wasm-pack build --target web --dev --out-dir dist",
     "wasm:prod": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},
@@ -23,6 +29,5 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "license": "MIT",
   "keywords": [],
-  "sideEffects": false,
-  "types": "index.d.ts"
+  "sideEffects": false
 }

@@ -1,24 +1,17 @@
 name: CI Workflow
-
 on:
   pull_request:
     types: [opened, synchronize]
-    branches:
-      - main
+    branches: [main]
   release:
     types: [published]
-
 defaults:
   run:
     working-directory: ./
-
 permissions:
-  actions: write
   contents: read
   pull-requests: write
-
 concurrency: ${{ github.workflow }}-${{ github.ref }}
-
 jobs:
   determine_jobs:
     name: Determine jobs to run
@@ -29,7 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Detect Rust-related changes
         id: rust
         uses: technote-space/get-diff-action@v6
@@ -39,60 +31,111 @@ jobs:
             Cargo.lock
             crates/**
             .cargo/**
-            rust-toolchain
-            !**.md
-            !**.mdx
-
-      - name: Detect Formatting-related changes
+            flake.nix
+            flake.lock
+            !**/*.md
+            !**/*.mdx
+      - name: Detect JS / formatting changes
         id: format
         uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
             **/*.{yml,yaml,md,mdx,js,jsx,ts,tsx,json,toml,css}
+            pnpm-lock.yaml
+            package.json
             !Cargo.toml
-
     outputs:
       rust: ${{ steps.rust.outputs.diff != '' }}
       format: ${{ steps.format.outputs.diff != '' }}
-
   rust_ci:
+    name: Rust CI
     runs-on: ubuntu-latest
     needs: determine_jobs
     if: needs.determine_jobs.outputs.rust == 'true'
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+      # -----------------
+      # Nix + flakes
+      # -----------------
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
         with:
-          toolchain: stable
-          components: clippy, rustfmt
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Cache Nix store
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      # -----------------
+      # Build + lint (CI shell)
+      # -----------------
+      - name: Build workspace packages
+        run: nix develop .#ci --command cargo build --workspace --locked
       - name: Run cargo clippy
-        run: just clippy -D warnings -A unknown-lints --no-deps
+        run: |
+          nix develop .#ci --command cargo clippy \
+            --workspace \
+            --all-targets \
+            -- -D warnings -A unknown-lints
       - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-      - name: Run tests
-        run: cargo test --verbose
-
+        run: nix develop .#ci --command cargo fmt --all -- --check
+      - name: Run cargo tests
+        run: nix develop .#ci --command cargo test --workspace --verbose
   node_lint:
+    name: Node / TS Lint
     runs-on: ubuntu-latest
     needs: determine_jobs
     if: needs.determine_jobs.outputs.format == 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      # -----------------
+      # Nix + flakes
+      # -----------------
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
         with:
-          node-version-file: ".nvmrc"
-          cache: pnpm
-
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Cache Nix store
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      # -----------------
+      # Node + pnpm
+      # -----------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.1
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      # -----------------
+      # Build + lint (CI shell)
+      # -----------------
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY_SKIP_INSTALL: 1
+      - name: Build workspace packages
+        run: nix develop .#ci --command pnpm build
       - name: Check prettier
-        run: pnpm prettier
-
+        run: nix develop .#ci --command pnpm prettier
       - name: Check eslint
-        run: pnpm lint:js
-
+        run: nix develop .#ci --command pnpm lint:js
       - name: Run typecheck
-        run: pnpm typecheck
+        run: nix develop .#ci --command pnpm typecheck

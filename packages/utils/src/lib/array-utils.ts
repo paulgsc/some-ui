@@ -30,3 +30,37 @@ function atOrThrow<T>(arr: ReadonlyArray<T>, i: number): T {
   }
   return v
 }
+
+export function createSequentialCycler<T>(
+  input: ReadonlyArray<T>,
+  step: number = 1
+): () => Array<T> {
+  if (input.length === 0 || step <= 0) {
+    return (): Array<T> => []
+  }
+
+  const array = input
+  const k = Math.max(0, step)
+
+  let currentIndex = 0
+
+  return function getNextElements(): Array<T> {
+    if (k === 0) return []
+
+    const result: Array<T> = []
+    const length = array.length
+
+    for (let i = 0; i < k; i++) {
+      const index = (currentIndex + i) % length
+      const value = array[index]
+
+      if (value !== undefined) {
+        result.push(value)
+      }
+    }
+
+    currentIndex = (currentIndex + k) % length
+
+    return result
+  }
+}

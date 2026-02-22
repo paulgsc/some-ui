@@ -10,6 +10,6 @@
       "@fkit/*": ["./src/*"]
     }
   },
-  "include": ["eslint.config.js", "tailwind.config.ts", "src"],
+  "include": ["src"],
   "exclude": ["node_modules", "build", "dist"]
 }

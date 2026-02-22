@@ -28,7 +28,6 @@ export const generateDummyData = (
   }))
 
 type SideBarCarouselProps = {
-  className?: string
   start?: number
   end?: number
 } & ComponentProps<typeof Sidebar>
@@ -36,7 +35,6 @@ type SideBarCarouselProps = {
 export const SidebarCarousel: FC<SideBarCarouselProps> = ({
   start = 0,
   end = 3,
-  className,
   ...props
 }): React.JSX.Element => {
   const [items, setItems] = useState<Array<DummyData>>(
@@ -49,14 +47,17 @@ export const SidebarCarousel: FC<SideBarCarouselProps> = ({
 
     const fetchMoreItems = (): void => {
       if (items.length > 20) return
-      const lastId = items[items.length - 1].id
+      const lastItem = items[items.length - 1]
+      if (!lastItem) return
+      const lastId = lastItem.id
       const pgCnt = 3
       const newItems = generateDummyData(lastId + 1, lastId + pgCnt)
       setItems((prevItems) => [...prevItems, ...newItems])
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        const [firstEntry, _] = entries
+        if (firstEntry && firstEntry.isIntersecting) {
           fetchMoreItems()
         }
       },

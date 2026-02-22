@@ -49,6 +49,7 @@ export class KeyboardInputManager {
     if (this.keyBuffer.length === 0) return false
 
     const oldestKey = this.keyBuffer[0]
+    if (!oldestKey) return false
     return currentTime - oldestKey.timestamp > this.bufferTimeoutMs
   }
 

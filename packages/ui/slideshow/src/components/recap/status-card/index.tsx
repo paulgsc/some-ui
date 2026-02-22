@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { cn } from "some-ui-utils"
 
 import type { StatusCard as StatusCardType } from "@/lib/slideshow-data"
@@ -7,7 +7,7 @@ type StatusCardProps = {
   card: StatusCardType
 }
 
-export const StatusCard: FC<StatusCardProps> = ({ card }) => {
+export const StatusCard: FC<StatusCardProps> = ({ card }): JSX.Elmeent => {
   const statusColors = {
     completed: "border-l-green-600",
     current: "border-l-yellow-600",

@@ -1,7 +1,7 @@
 import type { PackageStatus, Repository } from "@resume/types/graveyard"
 import { AlertTriangle, Clock, Flower, Leaf, Skull } from "lucide-react"
 
-// Status definitions
+// Status definitions - Using 'as const' or specific keys ensures TS knows these exist
 export const packageStatuses: Record<string, PackageStatus> = {
   flourishing: {
     name: "flourishing",
@@ -40,29 +40,26 @@ export const packageStatuses: Record<string, PackageStatus> = {
   },
 }
 
-// Generate random date within the last 60 days
-const randomDate = () => {
+const randomDate = (): Date => {
   const now = new Date()
   const daysAgo = Math.floor(Math.random() * 60)
   const date = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
   return date
 }
 
-// Determine status based on last activity date
 const getStatus = (lastActivity: Date): PackageStatus => {
   const now = new Date()
   const diffDays = Math.floor(
     (now.getTime() - lastActivity.getTime()) / (24 * 60 * 60 * 1000)
   )
 
-  if (diffDays < 3) return packageStatuses.flourishing
-  if (diffDays < 7) return packageStatuses.growing
-  if (diffDays < 14) return packageStatuses.stale
-  if (diffDays < 30) return packageStatuses.neglected
-  return packageStatuses.abandoned
+  if (diffDays < 3) return packageStatuses.flourishing!
+  if (diffDays < 7) return packageStatuses.growing!
+  if (diffDays < 14) return packageStatuses.stale!
+  if (diffDays < 30) return packageStatuses.neglected!
+  return packageStatuses.abandoned!
 }
 
-// Generate dummy data for demonstration
 export const generateDummyData = (): Array<Repository> => {
   const repos = [
     { name: "main-monorepo", description: "Primary development workspace" },
@@ -71,7 +68,6 @@ export const generateDummyData = (): Array<Repository> => {
     { name: "experimental", description: "Experimental features and concepts" },
   ]
 
-  // Generate packages for each repo
   return repos.map((repo) => {
     const packageCount = 5 + Math.floor(Math.random() * 10)
     const packages = Array.from({ length: packageCount }, (_, i) => {
@@ -79,10 +75,14 @@ export const generateDummyData = (): Array<Repository> => {
       const status = getStatus(lastActivity)
       const commitCount = Math.floor(Math.random() * 100) + 1
 
+      const repoName = repo.name
+      const prefix = repoName.split("-")[0] ?? "pkg"
+      const category = ["UI", "Core", "Utils", "API", "Data"][i % 5] ?? "Other"
+
       return {
-        id: `${repo.name}-pkg-${i}`,
-        name: `${repo.name.split("-")[0]}-package-${i + 1}`,
-        description: `${["UI", "Core", "Utils", "API", "Data"][i % 5]} package for ${repo.name}`,
+        id: `${repoName}-pkg-${i}`,
+        name: `${prefix}-package-${i + 1}`,
+        description: `${category} package for ${repoName}`,
         lastActivity,
         status,
         commitCount,

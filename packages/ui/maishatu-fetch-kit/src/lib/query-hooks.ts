@@ -1,3 +1,26 @@
+/**
+ * ARCHITECTURAL NOTE:
+ * This factory is designed for standard REST/CRUD patterns (1 Endpoint : 1 Hook).
+ * * ⚠️ LIMITATIONS & REFACTOR CUES:
+ * 1. CACHE POISONING: queryKey is derived from ALL params. If a param is used for
+ * client-side projection (e.g., array index) rather than URL construction,
+ * it will create redundant cache entries.
+ * 2. PROJECTION: Does not natively support TanStack's `select` for derived views.
+ * * TODO (@refactor):
+ * If a domain requires multiple views of the same fetch (e.g., Topik batches),
+ * DO NOT use this factory. Write a custom hook using `useQuery` directly to
+ * ensure shared cache keys and proper use of the `select` transformation.
+ * @module api-hooks
+ * ⚠️ ARCHITECTURAL STEWARDSHIP NOTE:
+ * This factory is optimized for 1:1 REST patterns (Endpoint -> Hook).
+ * Avoid using this factory for domains with:
+ * 1. High-frequency projection (e.g., using 'params' for client-side array indexing).
+ * 2. Shared Cache Requirements (e.g., multiple hooks needing the same underlying data).
+ * * For complex data orchestration (like the 'topik' domain), prefer direct 'useQuery'
+ * implementation to utilize the 'select' pattern and stable 'queryKey' structures.
+ * See ADR: "TanStack Query Integration Strategy" (2026-02-13).
+ */
+
 import type {
   DefaultOptions,
   UseMutationOptions,
@@ -82,6 +105,12 @@ export const createApiHooks = (
           }
         })
 
+        /**
+         * ⚠️ REFACTOR NOTE:
+         * The queryKey below couples the cache to EVERY parameter.
+         * If 'params' contains values not used in the URL, this hook
+         * will trigger unnecessary network requests.
+         */
         // Create query key based on endpoint and params
         const queryKey = [endpoint.toString(), params]
 

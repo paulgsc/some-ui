@@ -1,1 +1,1 @@
-export type { ConversationBatch } from "./topik"
+export type { Message } from "./chat"

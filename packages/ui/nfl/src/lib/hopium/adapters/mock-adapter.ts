@@ -25,22 +25,32 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
       "GPS",
       "Thermal",
     ]
+
     const priorities: Array<"low" | "medium" | "high" | "critical"> = [
       "low",
       "medium",
       "high",
       "critical",
     ]
-    const itemId = id || `sat-${Math.floor(Math.random() * 1000)}`
+
+    const itemId = id ?? `sat-${Math.floor(Math.random() * 1000)}`
+
+    const idSuffix = itemId.split("-")[1] ?? "0"
+    const nameChar = String.fromCharCode(65 + (Number.parseInt(idSuffix) % 26))
+
+    const priority =
+      priorities[Math.floor(Math.random() * priorities.length)] ?? "medium"
+    const dataType =
+      dataTypes[Math.floor(Math.random() * dataTypes.length)] ?? "Telemetry"
 
     return {
       id: itemId,
-      name: `Satellite ${String.fromCharCode(65 + (Number.parseInt(itemId.split("-")[1]) % 26))}`,
+      name: `Satellite ${nameChar}`,
       freshness: Math.floor(Math.random() * 100),
       lastUpdated: new Date(),
-      priority: priorities[Math.floor(Math.random() * priorities.length)],
+      priority: priority, // Now guaranteed to be a valid Priority
       data: {
-        dataType: dataTypes[Math.floor(Math.random() * dataTypes.length)],
+        dataType: dataType, // Now guaranteed to be a string
         orbitAltitude: Math.floor(Math.random() * 500 + 400),
         signalStrength: Math.floor(Math.random() * 40 + 60),
         batteryLevel: Math.floor(Math.random() * 30 + 70),
@@ -50,21 +60,18 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
   }
 
   async refreshItem(id: string): Promise<SatelliteDataItem<MockSatelliteData>> {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    // Simulate occasional failures
     if (Math.random() < 0.1) {
       throw new Error(`Failed to refresh satellite ${id}`)
     }
 
     const item = this.generateMockItem(id)
-    item.freshness = 100 // Refreshed items are fully fresh
+    item.freshness = 100
     return item
   }
 
   async refreshAll(): Promise<Array<SatelliteDataItem<MockSatelliteData>>> {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     return Array.from({ length: 50 }, (_, i) =>

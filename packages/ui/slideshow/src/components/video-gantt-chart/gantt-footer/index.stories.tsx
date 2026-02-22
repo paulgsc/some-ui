@@ -10,7 +10,6 @@ export const Default: Story = {
   args: {
     currentChapter: videoChapters[2],
     onJumpToTimestamp: () => {},
-    className: "relative w-full h-150",
   },
 }
 

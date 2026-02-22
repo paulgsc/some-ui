@@ -1,11 +1,15 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 
-interface GlassyHeartProps {
+type GlassyHeartProps = {
   health: number
   color: "rust" | "typescript"
 }
 
-export function GlassyHeart({ health, color }: GlassyHeartProps) {
+export const GlassyHeart = ({
+  health,
+  color,
+}: GlassyHeartProps): JSX.Element => {
   const [scale, setScale] = useState(1)
 
   // Subtle breathing animation
@@ -14,22 +18,21 @@ export function GlassyHeart({ health, color }: GlassyHeartProps) {
       setScale(1 + Math.sin(Date.now() / 1000) * 0.015)
     }, 50)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [])
 
   // Color gradients based on health
-  const getGradient = () => {
-    if (color === "rust") {
-      if (health > 70) return "from-[rgb(220,85,60)] to-[rgb(255,133,90)]"
-      if (health > 40) return "from-[rgb(255,133,90)] to-[rgb(255,100,70)]"
-      return "from-[rgb(255,100,70)] to-[rgb(255,77,79)]"
-    } else {
-      if (health > 70) return "from-[rgb(45,118,215)] to-[rgb(90,174,255)]"
-      if (health > 40) return "from-[rgb(90,174,255)] to-[rgb(60,140,230)]"
-      return "from-[rgb(60,140,230)] to-[rgb(45,106,240)]"
-    }
-  }
-
+  //   const getGradient = () => {
+  //     if (color === "rust") {
+  //       if (health > 70) return "from-[rgb(220,85,60)] to-[rgb(255,133,90)]"
+  //       if (health > 40) return "from-[rgb(255,133,90)] to-[rgb(255,100,70)]"
+  //       return "from-[rgb(255,100,70)] to-[rgb(255,77,79)]"
+  //     } else {
+  //       if (health > 70) return "from-[rgb(45,118,215)] to-[rgb(90,174,255)]"
+  //       if (health > 40) return "from-[rgb(90,174,255)] to-[rgb(60,140,230)]"
+  //       return "from-[rgb(60,140,230)] to-[rgb(45,106,240)]"
+  //     }
+  //   }
   const percentage = Math.round(health)
 
   return (

@@ -7,7 +7,6 @@ type Meta = MetaObj<typeof FramerToast>
 
 export const Default: Story = {
   args: {
-    id: 1,
     title: "New message",
     description: "You have received a new message from Sarah",
   },

@@ -1,4 +1,5 @@
-import { useReducer, useState } from "react"
+import { useReducer, useState, type JSX } from "react"
+import type { DragEndEvent } from "@dnd-kit/core"
 import {
   closestCenter,
   DndContext,
@@ -6,7 +7,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -30,13 +30,12 @@ export const OrchestratorDemo = ({
   initialScenes = [],
 }: {
   initialScenes?: Array<SceneConfig>
-}) => {
+}): JSX.Element => {
   const [scenes, setScenes] = useState<Array<SceneConfig>>(initialScenes)
 
-  // FSM for dialog state - single source of truth
-  const [editorState, dispatchEditor] = useReducer<
-    (state: EditorState, action: any) => EditorState
-  >(editorReducer, { type: "Closed" })
+  const [editorState, dispatchEditor] = useReducer(editorReducer, {
+    type: "Closed",
+  } satisfies EditorState)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -56,16 +55,17 @@ export const OrchestratorDemo = ({
     }
   }
 
-  // FSM Transition: Open for editing existing scene
   const handleEditScene = (index: number): void => {
+    const scene = scenes[index]
+    if (!scene) return
+
     dispatchEditor({
       type: "OPEN_FOR_EDIT",
       sceneIndex: index,
-      scene: scenes[index],
+      scene,
     })
   }
 
-  // FSM Transition: Save edited scene
   const handleSaveEdit = (
     sceneIndex: number,
     updatedScene: SceneConfig
@@ -77,17 +77,14 @@ export const OrchestratorDemo = ({
     })
   }
 
-  // FSM Transition: Open library dialog
   const handleOpenLibrary = (): void => {
     dispatchEditor({ type: "OPEN_FOR_LIBRARY_ADD" })
   }
 
-  // FSM Transition: Bulk add from library
   const handleBulkAdd = (newScenes: Array<SceneConfig>): void => {
     setScenes((current) => [...current, ...newScenes])
   }
 
-  // Manual scene creation
   const handleCreateNew = (): void => {
     const newScene: SceneConfig = {
       scene_name: `New Scene ${scenes.length + 1}`,
@@ -101,7 +98,6 @@ export const OrchestratorDemo = ({
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
@@ -127,7 +123,6 @@ export const OrchestratorDemo = ({
           </div>
         </div>
 
-        {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <OrchestratorControls scenes={scenes} />
@@ -156,7 +151,6 @@ export const OrchestratorDemo = ({
         </div>
       </div>
 
-      {/* Single Dialog - FSM controls all modes */}
       <EditSceneDialog
         state={editorState}
         dispatch={dispatchEditor}

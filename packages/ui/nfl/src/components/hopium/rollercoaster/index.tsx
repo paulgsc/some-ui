@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import type { JSX } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useElementSize } from "@nfl/hooks/hopium/use-element-size"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { minMaxMood } from "@nfl/utils/hopium/mood"
@@ -9,127 +10,112 @@ import { cn } from "some-ui-utils"
 type Props = {
   events: Array<MoodEvent>
   currentIndex: number
-  animationDuration?: number // ms
+  animationDuration?: number
   className?: string
 }
 
-// Simple formatter for x axis labels
-function labelForIndex(events: Array<MoodEvent>, i: number): string {
-  const e = events[i]
-  return e ? e.label : String(i)
-}
+const PADDING = { top: 16, right: 16, bottom: 44, left: 42 }
+const BASELINE = 100
 
 export const RollercoasterChart = ({
   events,
   currentIndex,
   animationDuration = 600,
   className,
-}: Props): React.JSX.Element => {
+}: Props): JSX.Element => {
   const { ref, size } = useElementSize<HTMLDivElement>()
-  const [_dashLen, setDashLen] = useState(0)
   const pathRef = useRef<SVGPathElement | null>(null)
+  const [dashOffset, setDashOffset] = useState(0)
+  const [totalLength, setTotalLength] = useState(0)
 
   const { min, max } = useMemo(() => minMaxMood(events), [events])
 
-  const padding = { top: 16, right: 16, bottom: 44, left: 42 }
-  const innerW = Math.max(0, size.width - padding.left - padding.right)
-  const innerH = Math.max(0, size.height - padding.top - padding.bottom)
+  const innerW = Math.max(0, size.width - PADDING.left - PADDING.right)
+  const innerH = Math.max(0, size.height - PADDING.top - PADDING.bottom)
 
-  const baseline = 100
-  const progressed = events.slice(0, Math.min(currentIndex + 1, events.length))
-  const last = progressed[progressed.length - 1]
+  // Memoize scale functions to be used inside other useMemos without lint warnings
+  const scales = useMemo(() => {
+    const xFor = (i: number): number => {
+      if (events.length <= 1) return PADDING.left
+      return PADDING.left + i * (innerW / (events.length - 1))
+    }
+    const yFor = (v: number): number => {
+      if (max === min) return PADDING.top + innerH / 2
+      const t = (v - min) / (max - min)
+      return PADDING.top + (1 - t) * innerH
+    }
+    return { xFor, yFor }
+  }, [events.length, innerW, innerH, min, max])
 
-  // Logic Fixes: removed unnecessary nullish checks where types are guaranteed
-  const above = last.mood >= baseline
-  const lastUp = last.delta >= 0
+  const progressed = useMemo(
+    () => events.slice(0, Math.min(currentIndex + 1, events.length)),
+    [events, currentIndex]
+  )
 
-  // Scales
-  const xFor = (i: number): number => {
-    if (events.length <= 1) return padding.left
-    const step = innerW / (events.length - 1)
-    return padding.left + i * step
-  }
-  const yFor = (v: number): number => {
-    if (max === min) return padding.top + innerH / 2
-    const t = (v - min) / (max - min)
-    // Flip for SVG y
-    return padding.top + (1 - t) * innerH
-  }
+  // Safety check for empty events
+  const lastEvent = progressed[progressed.length - 1]
+  const aboveBaseline = (lastEvent?.mood ?? 0) >= BASELINE
+  const isLastUp = (lastEvent?.delta ?? 0) >= 0
 
   const pointsAll = useMemo(
-    () => events.map((e) => ({ x: xFor(e.index), y: yFor(e.mood) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, innerW, innerH, min, max]
+    () =>
+      events.map((e) => ({ x: scales.xFor(e.index), y: scales.yFor(e.mood) })),
+    [events, scales]
   )
 
   const pointsProg = useMemo(
-    () => progressed.map((e) => ({ x: xFor(e.index), y: yFor(e.mood) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [progressed, innerW, innerH, min, max]
+    () =>
+      progressed.map((e) => ({
+        x: scales.xFor(e.index),
+        y: scales.yFor(e.mood),
+      })),
+    [progressed, scales]
   )
 
   const dAll = useMemo(() => smoothPath(pointsAll, 0.6), [pointsAll])
   const dProg = useMemo(() => smoothPath(pointsProg, 0.6), [pointsProg])
 
-  // Re-trigger dash animation on index change
-  useEffect(() => {
-    const path = pathRef.current
-    if (!path) return
-    const len = path.getTotalLength()
-    setDashLen(len)
+  // Precise Path Animation Logic
+  useLayoutEffect(() => {
+    if (!pathRef.current) return
+    const length = pathRef.current.getTotalLength()
+    setTotalLength(length)
+    setDashOffset(length)
 
-    path.style.transition = "none"
-    path.style.strokeDasharray = `${len} ${len}`
-    path.style.strokeDashoffset = `${len}`
-
-    const t = requestAnimationFrame(() => {
-      path.style.transition = `stroke-dashoffset ${animationDuration}ms ease`
-      path.style.strokeDashoffset = "0"
+    const raf = requestAnimationFrame(() => {
+      setDashOffset(0)
     })
-    return (): void => cancelAnimationFrame(t)
-  }, [currentIndex, dProg, animationDuration])
+    return (): void => cancelAnimationFrame(raf)
+  }, [dProg])
 
-  const lastSeg = useMemo((): string | null => {
-    if (pointsProg.length < 2) return null
-    const a = pointsProg[pointsProg.length - 2]
+  const lastSegmentPath = useMemo(() => {
     const b = pointsProg[pointsProg.length - 1]
+    const a = pointsProg[pointsProg.length - 2]
+    if (!a || !b) return null // Fixes 18048
     return `M ${a.x} ${a.y} L ${b.x} ${b.y}`
   }, [pointsProg])
 
-  const xTicks = useMemo(
-    () =>
-      events.map((e) => ({
-        x: xFor(e.index),
-        label: labelForIndex(events, e.index),
-      })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, innerW]
-  )
-
   const yTicks = useMemo(() => {
-    const ticks = 5
-    const arr: Array<number> = []
-    for (let i = 0; i <= ticks; i++) {
-      arr.push(Math.round(min + ((max - min) * i) / ticks))
-    }
-    return arr.map((v) => ({ y: yFor(v), label: v }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [min, max, innerH])
+    const count = 5
+    return Array.from({ length: count + 1 }, (_, i) => {
+      const val = Math.round(min + ((max - min) * i) / count)
+      return { y: scales.yFor(val), label: val }
+    })
+  }, [min, max, scales])
 
   return (
     <Card
       className={cn(
-        "relative size-full border-white/10 bg-slate-900/60",
+        "relative size-full overflow-hidden border-white/10 bg-slate-900/60",
         className
       )}
     >
       <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-0 transition-colors duration-500"
+        className="absolute inset-0 -z-0 transition-colors duration-1000"
         style={{
-          background: above
-            ? "linear-gradient(180deg, rgba(16,185,129,0.15) 0%, rgba(59,130,246,0.08) 100%)"
-            : "linear-gradient(180deg, rgba(244,63,94,0.15) 0%, rgba(234,179,8,0.08) 100%)",
+          background: aboveBaseline
+            ? "linear-gradient(180deg, rgba(16,185,129,0.12) 0%, rgba(59,130,246,0.05) 100%)"
+            : "linear-gradient(180deg, rgba(244,63,94,0.12) 0%, rgba(234,179,8,0.05) 100%)",
         }}
       />
       <CardContent className="relative z-10 p-3 md:p-4">
@@ -140,130 +126,105 @@ export const RollercoasterChart = ({
             role="img"
             aria-label="Mood rollercoaster chart"
           >
-            <g>
+            {/* Grid Lines */}
+            <g stroke="currentColor" strokeDasharray="3 3">
               {yTicks.map((t, i) => (
                 <line
-                  key={`h-${i}`}
-                  x1={padding.left}
+                  key={i}
+                  x1={PADDING.left}
                   y1={t.y}
-                  x2={size.width - padding.right}
+                  x2={size.width - PADDING.right}
                   y2={t.y}
-                  stroke="rgba(148,163,184,0.2)"
-                  strokeDasharray="3 3"
-                />
-              ))}
-              {xTicks.map((t, i) => (
-                <line
-                  key={`v-${i}`}
-                  x1={t.x}
-                  y1={padding.top}
-                  x2={t.x}
-                  y2={size.height - padding.bottom}
-                  stroke="rgba(148,163,184,0.08)"
-                  strokeDasharray="3 3"
+                  className="text-slate-400/20"
                 />
               ))}
             </g>
 
+            {/* Baseline */}
             <line
-              x1={padding.left}
-              y1={yFor(baseline)}
-              x2={size.width - padding.right}
-              y2={yFor(baseline)}
-              stroke="rgba(148,163,184,0.45)"
+              x1={PADDING.left}
+              y1={scales.yFor(BASELINE)}
+              x2={size.width - PADDING.right}
+              y2={scales.yFor(BASELINE)}
+              stroke="rgba(148,163,184,0.4)"
               strokeDasharray="4 4"
             />
 
-            {dAll && (
-              <path
-                d={dAll}
-                fill="none"
-                stroke="#a78bfa"
-                strokeOpacity={0.25}
-                strokeWidth={2}
-              />
-            )}
+            {/* Background Path (Shadow) */}
+            <path
+              d={dAll}
+              fill="none"
+              stroke="#a78bfa"
+              strokeOpacity={0.15}
+              strokeWidth={2}
+            />
 
-            {dProg && (
-              <path
-                ref={pathRef}
-                d={dProg}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth={3}
-                strokeLinecap="round"
-              />
-            )}
+            {/* Progress Path (Animated) */}
+            <path
+              ref={pathRef}
+              d={dProg}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth={3}
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: totalLength,
+                strokeDashoffset: dashOffset,
+                transition: `stroke-dashoffset ${animationDuration}ms ease-out`,
+              }}
+            />
 
-            {lastSeg && (
+            {/* Current Delta Segment */}
+            {lastSegmentPath && (
               <path
-                d={lastSeg}
+                d={lastSegmentPath}
                 fill="none"
-                stroke={lastUp ? "#22c55e" : "#fb7185"}
+                stroke={isLastUp ? "#22c55e" : "#fb7185"}
                 strokeWidth={4}
                 strokeLinecap="round"
               />
             )}
 
-            {pointsProg.map((p, i) => (
-              <circle
-                key={`dot-${i}`}
-                cx={p.x}
-                cy={p.y}
-                r={i === pointsProg.length - 1 ? 5 : 3.5}
-                fill={i === pointsProg.length - 1 ? "#ffffff" : "#94a3b8"}
-                stroke={
-                  i === pointsProg.length - 1
-                    ? lastUp
-                      ? "#22c55e"
-                      : "#fb7185"
-                    : "transparent"
-                }
-                strokeWidth={i === pointsProg.length - 1 ? 2 : 0}
-              />
-            ))}
+            {/* Dots */}
+            {pointsProg.map((p, i) => {
+              const isLast = i === pointsProg.length - 1
+              return (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={isLast ? 5 : 3}
+                  fill={isLast ? "#fff" : "#64748b"}
+                  stroke={isLast ? (isLastUp ? "#22c55e" : "#fb7185") : "none"}
+                  strokeWidth={isLast ? 3 : 0}
+                />
+              )
+            })}
 
-            <line
-              x1={padding.left}
-              y1={padding.top - 4}
-              x2={padding.left}
-              y2={size.height - padding.bottom}
-              stroke="rgba(148,163,184,0.5)"
-            />
-            {yTicks.map((t, i) => (
-              <text
-                key={`ylabel-${i}`}
-                x={padding.left - 8}
-                y={t.y}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={11}
-                fill="rgb(244 244 245)"
-              >
-                {t.label}
-              </text>
-            ))}
-
-            <line
-              x1={padding.left - 4}
-              y1={size.height - padding.bottom}
-              x2={size.width - padding.right}
-              y2={size.height - padding.bottom}
-              stroke="rgba(148,163,184,0.5)"
-            />
-            {xTicks.map((t, i) => (
-              <text
-                key={`xlabel-${i}`}
-                x={t.x}
-                y={size.height - padding.bottom + 16}
-                textAnchor="middle"
-                dominantBaseline="hanging"
-                fontSize={11}
-                fill="rgb(244 244 245)"
-              >
-                {events[i]?.label ?? t.label}
-              </text>
-            ))}
+            {/* Axes Labels */}
+            <g fontSize={11} fill="currentColor" className="text-zinc-100">
+              {yTicks.map((t, i) => (
+                <text
+                  key={i}
+                  x={PADDING.left - 8}
+                  y={t.y}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                >
+                  {t.label}
+                </text>
+              ))}
+              {events.map((e, i) => (
+                <text
+                  key={i}
+                  x={scales.xFor(e.index)}
+                  y={size.height - PADDING.bottom + 16}
+                  textAnchor="middle"
+                >
+                  {e.label}
+                </text>
+              ))}
+            </g>
           </svg>
         </div>
       </CardContent>

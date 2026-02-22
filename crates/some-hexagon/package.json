@@ -2,12 +2,18 @@
   "name": "some-hexagon",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/some_hexagon.js",
+  "module": "dist/some_hexagon.js",
+  "types": "dist/some_hexagon.d.ts",
   "type": "module",
   "scripts": {
-    "build": "wasm-pack build --target web --out-dir dist",
+    "build": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},
@@ -21,6 +27,5 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "license": "MIT",
   "keywords": [],
-  "sideEffects": false,
-  "types": "index.d.ts"
+  "sideEffects": false
 }

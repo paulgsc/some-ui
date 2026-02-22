@@ -22,15 +22,19 @@ export function moodLabel(points: number): string {
   return "Devastated"
 }
 
+export type WeeklyTally = {
+  week: number
+  change: number
+  lastMood: number
+}
+
 export function aggregateWeekTallies(
   events: Array<MoodEvent>,
   uptoIndex: number
-) {
+): Array<WeeklyTally> {
   const slice = events.filter((e) => e.index <= uptoIndex)
-  const byWeek = new Map<
-    number,
-    { week: number; change: number; lastMood: number }
-  >()
+  const byWeek = new Map<number, WeeklyTally>()
+
   for (const e of slice) {
     const curr = byWeek.get(e.week) ?? {
       week: e.week,
@@ -44,7 +48,10 @@ export function aggregateWeekTallies(
   return Array.from(byWeek.values()).sort((a, b) => a.week - b.week)
 }
 
-export function minMaxMood(events: Array<MoodEvent>) {
+export function minMaxMood(events: Array<MoodEvent>): {
+  min: number
+  max: number
+} {
   let min = Infinity
   let max = -Infinity
   for (const e of events) {
@@ -56,30 +63,59 @@ export function minMaxMood(events: Array<MoodEvent>) {
   return { min: min - pad, max: max + pad }
 }
 
-export function computeStreak(events: Array<MoodEvent>, uptoIndex: number) {
-  if (events.length === 0 || uptoIndex < 0)
-    return { direction: "neutral" as const, count: 0, bestUp: 0, bestDown: 0 }
-  const last = events[Math.min(uptoIndex, events.length - 1)]
-  const dir =
-    last.delta > 0 ? "up" : last.delta < 0 ? "down" : ("neutral" as const)
+export type StreakDirection = "up" | "down" | "neutral"
+
+export type StreakStats = {
+  direction: StreakDirection
+  count: number
+  bestUp: number
+  bestDown: number
+}
+
+export function computeStreak(
+  events: Array<MoodEvent>,
+  uptoIndex: number
+): StreakStats {
+  if (events.length === 0 || uptoIndex < 0) {
+    return { direction: "neutral", count: 0, bestUp: 0, bestDown: 0 }
+  }
+
+  // Safely get the target event
+  const safeIndex = Math.min(uptoIndex, events.length - 1)
+  const last = events[safeIndex]
+
+  // Fix 18048: Check if last is defined (even though index math says it should be)
+  const lastDelta = last?.delta ?? 0
+  const dir: StreakDirection =
+    lastDelta > 0 ? "up" : lastDelta < 0 ? "down" : "neutral"
 
   let count = 0
   if (dir !== "neutral") {
-    for (let i = Math.min(uptoIndex, events.length - 1); i >= 0; i--) {
-      const d = events[i].delta
-      if ((dir === "up" && d > 0) || (dir === "down" && d < 0)) count++
-      else if (d === 0) break
-      else break
+    for (let i = safeIndex; i >= 0; i--) {
+      // Fix 2532: Ensure events[i] exists
+      const currentEvent = events[i]
+      if (!currentEvent) break
+
+      const d = currentEvent.delta
+      if ((dir === "up" && d > 0) || (dir === "down" && d < 0)) {
+        count++
+      } else {
+        break
+      }
     }
   }
 
-  // best streaks so far
+  // Best streaks so far
   let bestUp = 0
   let bestDown = 0
   let runUp = 0
   let runDown = 0
-  for (let i = 0; i <= Math.min(uptoIndex, events.length - 1); i++) {
-    const d = events[i].delta
+
+  for (let i = 0; i <= safeIndex; i++) {
+    const currentEvent = events[i]
+    if (!currentEvent) continue // Fix 2532
+
+    const d = currentEvent.delta
     if (d > 0) {
       runUp++
       runDown = 0

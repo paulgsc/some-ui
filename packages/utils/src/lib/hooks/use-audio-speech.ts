@@ -108,6 +108,16 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
   // Play audio buffer
   const play = useCallback(
     async (audioBuffer: ArrayBuffer): Promise<void> => {
+      // Capture callbacks at the time of play call
+      const capturedCallbacks = {
+        onStart: currentOptionsRef.current.onStart,
+        onEnd: currentOptionsRef.current.onEnd,
+        onError: currentOptionsRef.current.onError,
+        onProgress: currentOptionsRef.current.onProgress,
+        volume: currentOptionsRef.current.volume ?? 1,
+        playbackRate: currentOptionsRef.current.playbackRate ?? 1,
+      }
+
       // Queue the speech to prevent overlapping
       const newSpeechPromise = new Promise<void>(async (resolve) => {
         try {
@@ -143,9 +153,8 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
           const gainNode = audioContextRef.current.createGain()
 
           sourceNode.buffer = decodedBuffer
-          gainNode.gain.value = currentOptionsRef.current.volume ?? 1
-          sourceNode.playbackRate.value =
-            currentOptionsRef.current.playbackRate ?? 1
+          gainNode.gain.value = capturedCallbacks.volume
+          sourceNode.playbackRate.value = capturedCallbacks.playbackRate
 
           sourceNode.connect(gainNode)
           gainNode.connect(audioContextRef.current.destination)
@@ -168,14 +177,14 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
             setPaused(false)
             setCurrentTime(0)
             if (!cancelledRef.current) {
-              currentOptionsRef.current.onEnd?.()
+              capturedCallbacks.onEnd?.()
             }
             resolve()
           }
 
           // Start playback
           sourceNode.start(0)
-          currentOptionsRef.current.onStart?.()
+          capturedCallbacks.onStart?.()
           updateTime()
         } catch (error) {
           console.error(error)
@@ -185,7 +194,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
           setCurrentTime(0)
           const errorObj =
             error instanceof Error ? error : new Error("Audio playback failed")
-          currentOptionsRef.current.onError?.(errorObj)
+          capturedCallbacks.onError?.(errorObj)
           resolve()
         }
       })
@@ -202,13 +211,16 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
 
   // Stop playback
   const stop = useCallback(() => {
+    cancelledRef.current = true
     cleanupNodes()
     setSpeaking(false)
     setPaused(false)
     setCurrentTime(0)
-    currentOptionsRef.current.onEnd?.()
 
-    // Clear the queue by setting it to a rejected promise
+    // Don't call onEnd when stopped manually - let the caller handle it
+    // currentOptionsRef.current.onEnd?.()
+
+    // Clear the queue by setting it to a resolved promise
     speechQueueRef.current = Promise.resolve()
   }, [cleanupNodes])
 

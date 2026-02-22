@@ -72,7 +72,8 @@ export const QWERTY_TO_HANGUL: Map<string, string> = new Map(
 // Helper functions
 export function getRandomHangul(): HangulMapping {
   const index = Math.floor(Math.random() * ALL_MAPPINGS.length)
-  return ALL_MAPPINGS[index]
+  // Using the non-null assertion (!) because we know at compile time the array is not empty
+  return ALL_MAPPINGS[index]!
 }
 
 export function isCorrectKey(hangul: string, pressedKey: string): boolean {
@@ -84,8 +85,8 @@ export function getHangulColor(hangul: string): string {
   // Consonants get cool colors, vowels get warm colors
   if (CONSONANTS.some((c) => c.hangul === hangul)) {
     const colors = ["#3b82f6", "#8b5cf6", "#06b6d4", "#14b8a6", "#6366f1"]
-    return colors[Math.floor(Math.random() * colors.length)]
+    return colors[Math.floor(Math.random() * colors.length)] ?? "#3b82f6"
   }
   const colors = ["#f59e0b", "#ef4444", "#ec4899", "#f97316", "#eab308"]
-  return colors[Math.floor(Math.random() * colors.length)]
+  return colors[Math.floor(Math.random() * colors.length)] ?? "#ef4444"
 }

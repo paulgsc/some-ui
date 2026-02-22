@@ -1,16 +1,18 @@
-import { useMemo } from "react"
+import type { FC, JSX } from "react"
 import { BentoWireframe } from "@nfl/components/hopium/bento-grid"
 import { EventCard } from "@nfl/components/hopium/event-card"
 import { Header } from "@nfl/components/hopium/header"
 import { RollercoasterChart } from "@nfl/components/hopium/rollercoaster"
 import { StreakCard } from "@nfl/components/hopium/streak-card"
 import { SummarySidebar } from "@nfl/components/hopium/summary-sidebar"
-import { buildMoodEvents } from "@nfl/data/hopium/events"
 import { useReplayTimeline } from "@nfl/hooks/hopium/use-replay-timeline"
+import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 
-export const Hopium = () => {
-  const seasonEvents = useMemo(() => buildMoodEvents(), [])
+type HopiumProps = {
+  seasonEvents: Array<MoodEvent>
+}
 
+export const Hopium: FC<HopiumProps> = ({ seasonEvents }): JSX.Element => {
   const { index, current, currentWeek, animationDuration, summaries } =
     useReplayTimeline(seasonEvents, {
       animateMs: 600,
@@ -44,7 +46,7 @@ export const Hopium = () => {
           <SummarySidebar
             summaries={summaries}
             currentWeek={currentWeek}
-            currentMood={current.mood ?? 100}
+            currentMood={current?.mood ?? 100}
           />
         </div>
       }

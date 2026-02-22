@@ -1,38 +1,107 @@
-const FILTER = "invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.9)"
+// Default filter configuration
+const DEFAULT_FILTERS = {
+  invert: 1,
+  hueRotate: 180,
+  sepia: 0.12,
+  brightness: 0.5,
+  contrast: 0.92,
+}
 
-function applyFilter(enabled: boolean): void {
-  const value = enabled ? FILTER : ""
+type FilterConfig = {
+  invert?: number
+  hueRotate?: number
+  sepia?: number
+  brightness?: number
+  contrast?: number
+}
 
-  document.documentElement.style.filter = value
-  document.body.style.filter = value
+type StorageData = {
+  filterEnabled: boolean
+  filterConfig: FilterConfig
+}
 
+// Build filter string from config
+function buildFilterString(config: FilterConfig): string {
+  const parts: Array<string> = []
+
+  if (config.invert !== undefined) parts.push(`invert(${config.invert})`)
+  if (config.hueRotate !== undefined)
+    parts.push(`hue-rotate(${config.hueRotate}deg)`)
+  if (config.sepia !== undefined) parts.push(`sepia(${config.sepia})`)
+  if (config.brightness !== undefined)
+    parts.push(`brightness(${config.brightness})`)
+  if (config.contrast !== undefined) parts.push(`contrast(${config.contrast})`)
+
+  return parts.join(" ")
+}
+
+// Apply filter to the page
+function applyFilter(enabled: boolean, config: FilterConfig): void {
+  const value = enabled ? buildFilterString(config) : ""
+
+  document.documentElement.style.setProperty("filter", value, "important")
+
+  if (document.body) {
+    document.body.style.setProperty("filter", value, "important")
+  }
+
+  // Handle embedded content
   document.querySelectorAll<HTMLElement>("embed, object").forEach((el) => {
-    el.style.filter = value
+    el.style.setProperty("filter", value, "important")
   })
 }
 
-// Initial state on page load
-browser.storage.local.get("filterEnabled").then(({ filterEnabled }) => {
-  applyFilter(Boolean(filterEnabled))
-})
+// Get current state from storage
+async function getCurrentState(): Promise<StorageData> {
+  const api = typeof browser !== "undefined" ? browser : chrome
+  const data = await api.storage.local.get(["filterEnabled", "filterConfig"])
 
-// Listen for live toggle
-browser.runtime.onMessage.addListener(
-  (msg: { type: string; enabled: boolean }) => {
-    if (msg.type === "SET_FILTER") {
-      applyFilter(msg.enabled)
+  return {
+    filterEnabled: Boolean(data.filterEnabled),
+    filterConfig: data.filterConfig || DEFAULT_FILTERS,
+  }
+}
+
+// Initialize on page load
+;(async () => {
+  const state = await getCurrentState()
+  applyFilter(state.filterEnabled, state.filterConfig)
+})()
+
+// Listen for messages from popup
+const api = typeof browser !== "undefined" ? browser : chrome
+
+api.runtime.onMessage.addListener(
+  (msg: { type: string; enabled?: boolean; config?: FilterConfig }) => {
+    if (msg.type === "TOGGLE_FILTER") {
+      getCurrentState().then((state) => {
+        applyFilter(msg.enabled ?? state.filterEnabled, state.filterConfig)
+      })
+    } else if (msg.type === "UPDATE_FILTER") {
+      getCurrentState().then((state) => {
+        applyFilter(state.filterEnabled, msg.config || state.filterConfig)
+      })
+    } else if (msg.type === "GET_STATE") {
+      // Respond with current state for popup
+      return getCurrentState()
     }
   }
 )
 
-// Optional: Handle dynamic PDF re-renders (zoom, rotate, etc.)
+// Handle dynamic content changes (optional, for SPAs)
 const observer = new MutationObserver(() => {
-  browser.storage.local.get("filterEnabled").then(({ filterEnabled }) => {
-    applyFilter(Boolean(filterEnabled))
+  getCurrentState().then((state) => {
+    if (state.filterEnabled) {
+      applyFilter(true, state.filterConfig)
+    }
   })
 })
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-})
+if (document.body) {
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  })
+}
+
+export {} 

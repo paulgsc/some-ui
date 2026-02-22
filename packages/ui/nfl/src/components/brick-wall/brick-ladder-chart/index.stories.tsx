@@ -11,25 +11,40 @@ export const Default: Story = {
   render: (args) => {
     const params = {
       range: "testing!A1:J33",
-      layoutMode: "wall",
+      layoutMode: "wall" as const,
       horizontalSpacingRatio: 0.15,
       verticalSpacingRatio: 0.5,
     }
     const { data: response, isLoading, error } = useNflTennis({ ...params })
-    const { data: points, metadata } = response ?? {}
+    const { data: rawData, metadata } = response ?? {}
+
     if (isLoading) return <div>Loading...</div>
-    if (error) return <div>error...{`${error}`}</div>
+
+    if (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+      return <div>error... {errorMessage}</div>
+    }
+
+    // Assuming DataItem needs: { name: string, value: number, imageUrl: string }
+    const points = (rawData ?? []).flatMap((group) =>
+      group.standings.map((standing) => ({
+        ...standing,
+        // Ensure any other required DataItem fields are present here
+      }))
+    )
+
     return (
       <main className="h-screen w-full border border-red-600">
-        <BrickWallChart
-          {...{ ...args, data: points ?? [], title: metadata?.title }}
-        />
+        <BrickWallChart {...args} data={points} title={metadata?.title} />
       </main>
     )
   },
 }
 
-export default {
+const meta: Meta = {
   title: "UI/NFL/Components/BrickChart",
   component: BrickWallChart,
-} as Meta
+}
+
+export default meta

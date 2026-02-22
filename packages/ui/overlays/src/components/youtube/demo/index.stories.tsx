@@ -72,16 +72,19 @@ export const WithCallbacks: Story = {
     reconnectInterval: 5000,
     debugMode: true,
     onConnect: () => {
+      // eslint-disable-next-line no-console
       console.log("✅ Connected to OBS WebSocket")
       alert("Connected to OBS!")
     },
     onDisconnect: () => {
+      // eslint-disable-next-line no-console
       console.log("❌ Disconnected from OBS WebSocket")
       alert("Disconnected from OBS!")
     },
-    onError: (error: Error) => {
+    onError: (error: Event | Error) => {
+      // eslint-disable-next-line no-console
       console.error("🚨 OBS WebSocket Error:", error)
-      alert(`Error: ${error.message}`)
+      alert(`Error:`)
     },
   },
 }
@@ -113,8 +116,11 @@ export const DevelopmentConfig: Story = {
     autoReconnect: true,
     reconnectInterval: 2000,
     debugMode: true,
+    // eslint-disable-next-line no-console
     onConnect: () => console.log("Dev: Connected"),
+    // eslint-disable-next-line no-console
     onDisconnect: () => console.log("Dev: Disconnected"),
-    onError: (error: Error) => console.error("Dev Error:", error),
+    // eslint-disable-next-line no-console
+    onError: (error: Event | Error) => console.error("Dev Error:", error),
   },
 }

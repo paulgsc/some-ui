@@ -1,140 +1,170 @@
-import { useEffect, useState } from "react"
-import type { SceneConfig, UILayoutIntent } from "some-types-utils"
+/**
+ * Scene Library - Domain-Specific Adapter
+ *
+ * This is the thin specialization layer that defines:
+ * - Scene-specific types
+ * - Scene normalization policy
+ * - Scene fallback policy
+ * - Scene key derivation
+ *
+ * No discovery logic, no loading logic, purely policy.
+ */
+
+import type { SceneConfig } from "some-types-utils"
 import { SceneConfigSchema, UILayoutIntentSchema } from "some-types-utils"
+import {
+  HttpFileDiscovery,
+  HttpJsonLoader,
+  useRecursiveLibrary,
+} from "some-ui-utils"
 import { z } from "zod"
 
 // -----------------------------
-// Compile-time known files
+// Scene-Specific Types
 // -----------------------------
-export const SCENE_FILES = [
-  "assessment",
-  "cdrama",
-  "constant",
-  "hangul-typing",
-  "leetype",
-  "topik",
-  "voice",
-  "interview",
-] as const
 
-export type SceneFileName = (typeof SCENE_FILES)[number]
-
+/** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)
+export type SceneUIFile = z.infer<typeof SceneUIFileSchema>
 
+/** Library item for consumer convenience */
 export type SceneLibraryItem = {
-  fileName: SceneFileName
+  key: string
   displayName: string
-  config: SceneConfig // Normalized view for consumers
+  config: SceneConfig
+}
+
+/** Return type for the scene library hook */
+export type UseSceneLibraryReturn = {
+  getScene: (key: string) => SceneConfig | undefined
+  getLibraryItems: () => Array<SceneLibraryItem>
+  library: Map<string, SceneConfig>
+  loading: boolean
+  reload: () => Promise<void>
+  entries: () => Array<[string, SceneConfig]>
+  get: (key: string) => SceneConfig | undefined
 }
 
 // -----------------------------
-// Fallback
+// Scene Normalization Policy
 // -----------------------------
-const createFallbackScene = (fileName: SceneFileName): SceneConfig => ({
-  scene_name: fileName,
+
+/**
+ * Transform raw UI array into full SceneConfig
+ * This encodes domain policy:
+ * - All library scenes default to 60s duration
+ * - All library scenes start at 0
+ * - scene_name is derived from key
+ */
+const normalizeScene = (key: string, ui: SceneUIFile): SceneConfig => {
+  return SceneConfigSchema.parse({
+    scene_name: key,
+    duration: 60_000, // Policy: 60 second default
+    start_time: 0, // Policy: always start at 0
+    ui,
+  })
+}
+
+// -----------------------------
+// Scene Fallback Policy
+// -----------------------------
+
+/**
+ * Create a minimal valid scene when file load fails
+ */
+const createFallbackScene = (key: string): SceneConfig => ({
+  scene_name: key,
   duration: 60_000,
   start_time: 0,
   ui: [],
 })
 
 // -----------------------------
-// Display name normalization
+// Scene Key Derivation
 // -----------------------------
-const toCamelCase = (fileName: SceneFileName): string => {
-  return fileName
-    .split("-")
-    .map((word, index) =>
-      index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
-    )
-    .join("")
+
+/**
+ * Extract scene key from file path
+ * Example: "/scenes/hangul-typing.json" → "hangul-typing"
+ */
+const deriveSceneKey = (filePath: string): string => {
+  const fileName = filePath.split("/").pop() ?? ""
+  return fileName.replace(".json", "")
 }
 
-export const useSceneLibrary = (): {
-  library: Map<SceneFileName, SceneConfig>
-  loading: boolean
-  error: string | null
-  getScene: (fileName: SceneFileName) => SceneConfig | undefined
-  getLibraryItems: () => Array<SceneLibraryItem>
-  reload: () => Promise<void>
-} => {
-  const [library, setLibrary] = useState<Map<SceneFileName, SceneConfig>>(
-    new Map()
-  )
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+// -----------------------------
+// Scene Library Hook
+// -----------------------------
 
-  useEffect(() => {
-    loadSceneLibrary()
-  }, [])
+/**
+ * Scene-specific library hook
+ *
+ * This is now a thin wrapper that only provides scene-specific configuration
+ * to the generic recursive library engine.
+ */
+export const useSceneLibrary = (): UseSceneLibraryReturn => {
+  const result = useRecursiveLibrary<SceneUIFile, SceneConfig>({
+    rootPath: "/scenes",
+    extension: ".json",
+    discovery: new HttpFileDiscovery("/scenes/manifest.json"),
+    loader: new HttpJsonLoader(),
+    rawSchema: SceneUIFileSchema,
+    normalize: normalizeScene,
+    fallback: createFallbackScene,
+    deriveKey: deriveSceneKey,
+  })
 
-  const loadSceneLibrary = async (): Promise<void> => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const loadedScenes = new Map<SceneFileName, SceneConfig>()
-
-      await Promise.all(
-        SCENE_FILES.map(async (fileName) => {
-          try {
-            // Fetch the UI intent array from disk
-            const res = await fetch(`/scenes/${fileName}.json`)
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}`)
-            }
-            const rawJson = await res.json()
-            const ui: Array<UILayoutIntent> = SceneUIFileSchema.parse(rawJson)
-
-            const scene: SceneConfig = SceneConfigSchema.parse({
-              scene_name: toCamelCase(fileName),
-              duration: 60_000, // Policy: all library scenes default to 60s
-              start_time: 0,
-              ui,
-            })
-
-            loadedScenes.set(fileName, scene)
-            // eslint-disable-next-line no-console
-            console.log(`[SceneLibrary] Loaded ${fileName}:`, {
-              uiIntents: ui.length,
-              displayName: scene.scene_name,
-            })
-          } catch (err) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              `[SceneLibrary] Failed to load ${fileName}, using fallback`,
-              err
-            )
-            loadedScenes.set(fileName, createFallbackScene(fileName))
-          }
-        })
-      )
-
-      setLibrary(loadedScenes)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load scene library"
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getScene = (fileName: SceneFileName): SceneConfig | undefined =>
-    library.get(fileName)
-
-  const getLibraryItems = (): Array<SceneLibraryItem> =>
-    Array.from(library.entries()).map(([fileName, config]) => ({
-      fileName,
+  // Add scene-specific convenience methods
+  const getLibraryItems = (): Array<SceneLibraryItem> => {
+    return result.entries().map(([key, config]) => ({
+      key,
       displayName: config.scene_name,
       config,
     }))
+  }
+
+  const getScene = (key: string): SceneConfig | undefined => {
+    return result.get(key)
+  }
 
   return {
-    library,
-    loading,
-    error,
+    ...result,
     getScene,
     getLibraryItems,
-    reload: loadSceneLibrary,
+    // Maintain backward compatibility
+    library: result.library,
+    loading: result.loading,
+    reload: result.reload,
   }
+}
+
+// -----------------------------
+// Alternative: Vite-based Scene Library
+// -----------------------------
+
+/**
+ * If you prefer compile-time discovery with Vite import.meta.glob
+ *
+ * Usage in your app:
+ * ```ts
+ * const sceneModules = import.meta.glob("/scenes/*.json")
+ * const library = useSceneLibraryVite(sceneModules)
+ * ```
+ */
+export const useSceneLibraryVite = (
+  modules: Record<string, () => Promise<unknown>>
+): ReturnType<typeof useRecursiveLibrary<SceneUIFile, SceneConfig>> => {
+  const { ViteGlobDiscovery } = require("./file-discovery")
+  const { ViteModuleLoader } = require("./resource-loader")
+
+  return useRecursiveLibrary<SceneUIFile, SceneConfig>({
+    rootPath: "/scenes",
+    extension: ".json",
+    discovery: new ViteGlobDiscovery("/scenes/*.json", modules),
+    loader: new ViteModuleLoader(modules),
+    rawSchema: SceneUIFileSchema,
+    normalize: normalizeScene,
+    fallback: createFallbackScene,
+    deriveKey: deriveSceneKey,
+  })
 }

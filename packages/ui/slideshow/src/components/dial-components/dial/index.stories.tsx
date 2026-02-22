@@ -7,6 +7,7 @@ type Story = StoryObj<typeof Dial>
 type Meta = MetaObj<typeof Dial>
 
 const animationDuration = 30000
+
 export const Default: Story = {
   args: {
     center: 40,
@@ -21,11 +22,16 @@ export const Default: Story = {
       range: "dial!A1:D7",
     }
     const { data: sections, isLoading, error } = useVideoChapters({ ...params })
-    console.info("section:", sections)
-    if (isLoading) return <div>Loading...</div>
-    if (error) return <div>error...{`${error}`}</div>
 
-    return <Dial {...{ ...args, sections }} />
+    if (isLoading) return <div>Loading...</div>
+
+    if (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+      return <div>error...{errorMessage}</div>
+    }
+
+    return <Dial {...args} sections={sections ?? []} />
   },
 }
 

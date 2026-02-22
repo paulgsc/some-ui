@@ -1,5 +1,3 @@
-// load-code-file.ts
-
 const modelCache = new Map<string, Promise<TextModel>>()
 
 export type CodeChunk = {

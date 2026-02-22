@@ -19,7 +19,7 @@
     "paths": {
       "@censor/*": ["src/*"]
     },
-    "types": ["firefox-webext-browser"]
+    "types": ["firefox-webext-browser", "chrome"]
   },
   "include": ["src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
