@@ -8,7 +8,6 @@ type Meta = MetaObj<typeof Timeline>
 export const Default: Story = {
   args: {
     currentTime: 100,
-    isPlaying: true,
   },
 }
 

@@ -6,9 +6,7 @@ type Story = StoryObj<typeof PayloadEditorCard>
 type Meta = MetaObj<typeof PayloadEditorCard>
 
 export const Default: Story = {
-  args: {
-    className: "size-full",
-  },
+  args: {},
 }
 
 export default {
