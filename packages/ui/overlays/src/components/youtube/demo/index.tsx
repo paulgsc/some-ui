@@ -27,7 +27,7 @@ type ObsStatusPanelProps = {
   debugMode?: boolean
   onConnect?: () => void
   onDisconnect?: () => void
-  onError?: (error: Error) => void
+  onError?: (error: Event | Error) => void
 }
 
 /**
@@ -250,6 +250,7 @@ const SceneManagement: FC = () => {
             <button
               key={scene.name}
               onClick={() => {
+                // eslint-disable-next-line no-console
                 console.log("mock switch scene: ", scene.name)
                 switchScene(scene.name)
               }}
