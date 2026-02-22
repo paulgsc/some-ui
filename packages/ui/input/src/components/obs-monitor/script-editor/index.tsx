@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import {
   Clock,
@@ -37,7 +38,7 @@ type ScriptEvent = {
   manual: boolean
 }
 
-export const ScriptEditor = () => {
+export const ScriptEditor = (): JSX.Element => {
   const [events, setEvents] = useState<Array<ScriptEvent>>([
     {
       id: "1",
@@ -72,7 +73,7 @@ export const ScriptEditor = () => {
     },
   ])
 
-  const addEvent = () => {
+  const addEvent = (): void => {
     const newEvent: ScriptEvent = {
       id: Date.now().toString(),
       time: "+0s",
@@ -83,11 +84,15 @@ export const ScriptEditor = () => {
     setEvents([...events, newEvent])
   }
 
-  const removeEvent = (id: string) => {
+  const removeEvent = (id: string): void => {
     setEvents(events.filter((event) => event.id !== id))
   }
 
-  const updateEvent = (id: string, field: keyof ScriptEvent, value: any) => {
+  const updateEvent = <K extends keyof ScriptEvent>(
+    id: string,
+    field: K,
+    value: ScriptEvent[K]
+  ): void => {
     setEvents(
       events.map((event) =>
         event.id === id ? { ...event, [field]: value } : event
@@ -95,7 +100,7 @@ export const ScriptEditor = () => {
     )
   }
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = (action: string): JSX.Element => {
     switch (action) {
       case "scene":
         return <Monitor className="size-4" />
@@ -136,17 +141,17 @@ export const ScriptEditor = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-8"></TableHead>
+              <TableHead className="w-8" />
               <TableHead className="w-20">Time</TableHead>
               <TableHead className="w-32">Action</TableHead>
               <TableHead>Target</TableHead>
               <TableHead className="w-32">Label</TableHead>
               <TableHead className="w-16">Manual</TableHead>
-              <TableHead className="w-8"></TableHead>
+              <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {events.map((event, index) => (
+            {events.map((event) => (
               <TableRow key={event.id} className="group">
                 <TableCell>
                   <GripVertical className="text-muted-foreground size-4 cursor-grab" />
