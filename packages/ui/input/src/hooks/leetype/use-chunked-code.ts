@@ -13,7 +13,7 @@ export type ChunkedCodeState = {
   totalLines: number
   currentLine: number
   hasMore: boolean
-  error: Error | undefined
+  error: Error
   loadNextChunk: () => void
 }
 
@@ -49,6 +49,7 @@ export function useChunkedCode(
       setCurrentLine(chunk.endLine)
       setHasMore(chunk.hasMore)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load next chunk:", err)
       setError(
         err instanceof Error ? err : new Error(`Unknown error: ${String(err)}`)
@@ -119,6 +120,7 @@ export function useChunkedCode(
             ? err
             : new Error(`Unknown error: ${String(err)}`)
 
+        // eslint-disable-next-line no-console
         console.error(`Failed to load code:`, errorObj.message)
 
         setStatus("ERROR")

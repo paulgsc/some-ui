@@ -10,7 +10,12 @@ import { TypingInputCard } from "@input/components/typing-game/typing-input-card
 import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
 import { useChunkedCode } from "@input/hooks/leetype/use-chunked-code"
-import type { DisplayMode, GameState, Language } from "@input/types/leetype"
+import type {
+  ChunkCompletionStats,
+  DisplayMode,
+  GameState,
+  Language,
+} from "@input/types/leetype"
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 
 type LeetypeProps = {
@@ -47,7 +52,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
 
   // Load code with automatic chunking for large files
   const codeState = useChunkedCode(codePaths[language], {
-    prettierParser: PRETTIER_PARSER_MAP[language] as any,
+    prettierParser: PRETTIER_PARSER_MAP[language] as unknown,
     linesPerChunk: 150,
   })
 
@@ -61,7 +66,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     codeState.totalLines > 0 ? Math.ceil(codeState.totalLines / 100) : 1
 
   // Handle chunk completion
-  const handleChunkComplete = (chunkStats: ChunkCompletionStats) => {
+  const handleChunkComplete = (chunkStats: ChunkCompletionStats): void => {
     // Update cumulative stats
     setCumulativeStats((prev) => ({
       totalChunks: prev.totalChunks + 1,
@@ -72,7 +77,6 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     // Check if there are more chunks
     if (codeState.hasMore) {
       // Load Next chunk (old chunk is GC'd - bounded memory)
-      console.log("has more: ", codeState.hasMore)
       codeState.loadNextChunk()
     } else {
       // All chunks complete - game finished
