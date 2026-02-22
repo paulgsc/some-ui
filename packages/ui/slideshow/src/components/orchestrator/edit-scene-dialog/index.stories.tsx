@@ -8,15 +8,30 @@ import { EditSceneDialog } from "."
 // ---------------------------------------------
 // Mocks for state and dispatch
 // ---------------------------------------------
+
+/**
+ * Based on your Zod definition, it is an array of objects containing a 'panels' record.
+ */
 const mockScene: SceneConfig = {
   scene_name: "Demo Scene",
-  duration: 60,
-  ui: [{ intent: "showText", content: "Hello World" }],
+  duration: 60000,
+  start_time: 0,
+  ui: [
+    {
+      panels: {
+        mainContent: {
+          registry_key: "TextOverlay",
+          props: { content: "Hello World" },
+        },
+      },
+    },
+  ],
 }
 
 const mockEditingState: EditorState = {
   type: "EditingExisting",
   sceneIndex: 0,
+  snapshot: mockScene,
   draft: {
     sceneName: "Demo Scene",
     startTimeSec: 0,
@@ -30,21 +45,17 @@ const mockLibraryState: EditorState = {
   type: "SelectingFromLibrary",
   selections: [
     {
+      id: "template-1",
       fileName: "TemplateA.json",
-      sourceConfig: mockScene,
-    },
-    {
-      fileName: "TemplateB.json",
+      instanceIndex: 0,
       sourceConfig: mockScene,
     },
   ],
 }
 
-// Simple reducer to log actions
-const reducer = (state: EditorState, action: EditorAction): EditorState => {
-  console.log("Dispatched action:", action)
-  return state
-}
+// Minimal reducer that does nothing but satisfies the type
+const reducer = (state: EditorState, _action: EditorAction): EditorState =>
+  state
 
 // ---------------------------------------------
 // Storybook Meta
@@ -71,9 +82,7 @@ export const EditMode: Story = {
       <EditSceneDialog
         state={state}
         dispatch={dispatch}
-        onSaveEdit={(index, scene) =>
-          console.log(`[Story] Saved scene #${index}:`, scene)
-        }
+        onSaveEdit={() => {}}
       />
     )
   },
@@ -84,16 +93,7 @@ export const LibraryMode: Story = {
     const [state, dispatch] = useReducer(reducer, mockLibraryState)
 
     return (
-      <EditSceneDialog
-        state={state}
-        dispatch={dispatch}
-        onBulkAdd={(scenes) =>
-          console.log(
-            `[Story] Added ${scenes.length} scenes from library`,
-            scenes
-          )
-        }
-      />
+      <EditSceneDialog state={state} dispatch={dispatch} onBulkAdd={() => {}} />
     )
   },
 }

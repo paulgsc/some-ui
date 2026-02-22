@@ -8,40 +8,40 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root"
-import { Route as IndexRouteImport } from "./routes/index"
-import { Route as OverlaysYoutubeRouteImport } from "./routes/overlays/youtube"
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as OverlaysYoutubeRouteImport } from './routes/overlays/youtube'
 
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverlaysYoutubeRoute = OverlaysYoutubeRouteImport.update({
-  id: "/overlays/youtube",
-  path: "/overlays/youtube",
+  id: '/overlays/youtube',
+  path: '/overlays/youtube',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute
-  "/overlays/youtube": typeof OverlaysYoutubeRoute
+  '/': typeof IndexRoute
+  '/overlays/youtube': typeof OverlaysYoutubeRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute
-  "/overlays/youtube": typeof OverlaysYoutubeRoute
+  '/': typeof IndexRoute
+  '/overlays/youtube': typeof OverlaysYoutubeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  "/": typeof IndexRoute
-  "/overlays/youtube": typeof OverlaysYoutubeRoute
+  '/': typeof IndexRoute
+  '/overlays/youtube': typeof OverlaysYoutubeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: "/" | "/overlays/youtube"
+  fullPaths: '/' | '/overlays/youtube'
   fileRoutesByTo: FileRoutesByTo
-  to: "/" | "/overlays/youtube"
-  id: "__root__" | "/" | "/overlays/youtube"
+  to: '/' | '/overlays/youtube'
+  id: '__root__' | '/' | '/overlays/youtube'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -49,19 +49,19 @@ export interface RootRouteChildren {
   OverlaysYoutubeRoute: typeof OverlaysYoutubeRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
-      id: "/"
-      path: "/"
-      fullPath: "/"
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/overlays/youtube": {
-      id: "/overlays/youtube"
-      path: "/overlays/youtube"
-      fullPath: "/overlays/youtube"
+    '/overlays/youtube': {
+      id: '/overlays/youtube'
+      path: '/overlays/youtube'
+      fullPath: '/overlays/youtube'
       preLoaderRoute: typeof OverlaysYoutubeRouteImport
       parentRoute: typeof rootRouteImport
     }
