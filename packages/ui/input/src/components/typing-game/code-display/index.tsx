@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from "react"
+import type { FC, JSX, ReactNode } from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   buildDisplayMap,
@@ -21,7 +21,7 @@ type DisplayChar = {
 }
 
 type CodeDisplayProps = {
-  displayCode: string // The formatted code to display
+  displayCode: string
   language: string
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
@@ -36,13 +36,12 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   userUnits,
   cursorUnitIndex,
   className,
-}) => {
+}): JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const caretRef = useRef<HTMLSpanElement>(null)
-  const checkIntervalRef = useRef<ReturnType<typeof setInterval>>(null)
+  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [wasmReady, setWasmReady] = useState(isWasmLoaded())
 
-  // Wait for WASM to be ready
   useEffect(() => {
     if (!wasmReady) {
       checkIntervalRef.current = setInterval(() => {
@@ -57,7 +56,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     }
   }, [wasmReady])
 
-  // Build display buffer from WASM
   const displayBuffer = useMemo((): Array<DisplayChar> | null => {
     if (!wasmReady) return null
 
@@ -65,24 +63,23 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       const map: Array<number> = Array.from(buildDisplayMap(displayCode))
       const chars = Array.from(displayCode)
 
-      // Defensive: ensure map length matches chars length
-      if (map.length !== chars.length) {
-        const last = map.length ? map[map.length - 1] : 0
-        while (map.length < chars.length) map.push(last)
-      }
+      // Ensure map length matches chars length to avoid undefined access
+      const lastUnitIndex = map.length > 0 ? (map[map.length - 1] ?? 0) : 0
 
-      return chars.map((char, i) => ({
-        char,
-        unitIndex: map[i],
-        displayIndex: i,
-      }))
+      return chars.map(
+        (char, i): DisplayChar => ({
+          char,
+          unitIndex: map[i] ?? lastUnitIndex,
+          displayIndex: i,
+        })
+      )
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error building display map:", error)
       return null
     }
   }, [displayCode, wasmReady])
 
-  // Auto-scroll to keep cursor in view
   useLayoutEffect(() => {
     if (caretRef.current && containerRef.current) {
       const container = containerRef.current
@@ -90,7 +87,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       const containerRect = container.getBoundingClientRect()
       const caretRect = caret.getBoundingClientRect()
 
-      // Check if caret is out of view
       if (
         caretRect.bottom > containerRect.bottom - 100 ||
         caretRect.top < containerRect.top + 100
@@ -101,12 +97,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   }, [cursorUnitIndex])
 
   const renderHighlightedCode = (): ReactNode => {
-    if (!displayBuffer) {
-      // Fallback: render plain code while waiting for WASM
-      return displayCode
-    }
+    if (!displayBuffer) return displayCode
 
-    // Map for Prism syntax highlighting
     const languageMap: Record<string, string> = {
       typescript: "typescript",
       rust: "rust",
@@ -114,48 +106,16 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       c: "c",
     }
 
-    const grammar =
-      Prism.languages[languageMap[language]] || Prism.languages.javascript
+    const selectedLang = languageMap[language] ?? "javascript"
+    const grammar = Prism.languages[selectedLang]
+    if (!grammar) return displayCode
     const tokens = Prism.tokenize(displayCode, grammar)
 
     let charIndex = 0
 
-    const renderToken = (
-      token: string | Prism.Token,
-      key: number
-    ): ReactNode => {
-      if (typeof token === "string") {
-        return token.split("").map(() => {
-          const displayChar = displayBuffer[charIndex++]
-          if (!displayChar) return null
-          return renderChar(displayChar)
-        })
-      }
-
-      if (Array.isArray(token.content)) {
-        return (
-          <span key={key} className={`token ${token.type}`}>
-            {token.content.map((t, i) => renderToken(t, i))}
-          </span>
-        )
-      }
-
-      const content = String(token.content)
-      return (
-        <span key={key} className={`token ${token.type}`}>
-          {content.split("").map(() => {
-            const displayChar = displayBuffer[charIndex++]
-            if (!displayChar) return null
-            return renderChar(displayChar)
-          })}
-        </span>
-      )
-    }
-
-    const renderChar = (displayChar: DisplayChar) => {
+    const renderChar = (displayChar: DisplayChar): JSX.Element => {
       const { char, unitIndex, displayIndex } = displayChar
 
-      // Check if this is the cursor position
       if (unitIndex === cursorUnitIndex) {
         return (
           <span
@@ -168,7 +128,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         )
       }
 
-      // Check if this unit has been typed
       if (unitIndex < userUnits.length) {
         const targetUnit = targetUnits[unitIndex]
         const userUnit = userUnits[unitIndex]
@@ -190,7 +149,9 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           <span
             key={displayIndex}
             className={
-              isCorrect ? "bg-green-500/10" : "bg-red-500/30 text-red-400"
+              isCorrect
+                ? "bg-green-500/10 text-green-400"
+                : "bg-red-500/30 text-red-400"
             }
           >
             {char}
@@ -198,8 +159,34 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         )
       }
 
-      // Not yet typed - render normally
       return <span key={displayIndex}>{char}</span>
+    }
+
+    const renderToken = (
+      token: string | Prism.Token,
+      key: string | number
+    ): ReactNode => {
+      if (typeof token === "string") {
+        return token.split("").map((_) => {
+          const displayChar = displayBuffer[charIndex++]
+          return displayChar ? renderChar(displayChar) : null
+        })
+      }
+
+      const content = Array.isArray(token.content)
+        ? token.content.map((t, i) => renderToken(t, `${key}-${i}`))
+        : typeof token.content === "string"
+          ? token.content.split("").map((_) => {
+              const displayChar = displayBuffer[charIndex++]
+              return displayChar ? renderChar(displayChar) : null
+            })
+          : renderToken(token.content, `${key}-sub`)
+
+      return (
+        <span key={key} className={`token ${token.type}`}>
+          {content}
+        </span>
+      )
     }
 
     return tokens.map((token, i) => renderToken(token, i))
@@ -209,7 +196,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     <div
       ref={containerRef}
       className={`font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
-        className || ""
+        className ?? ""
       }`}
     >
       <pre className="m-0">
