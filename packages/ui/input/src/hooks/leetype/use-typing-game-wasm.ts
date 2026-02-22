@@ -11,6 +11,7 @@ import type {
   ChunkCompletionStats,
   GameState,
   InputResult,
+  TypedTypingGame as TypedTypingGameType,
 } from "@input/types/leetype"
 import { deriveCursorIndex, deriveDisplayMap } from "@input/utils/leetype"
 
@@ -52,7 +53,7 @@ export function useTypingGame({
   onChunkComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
-  const gameRef = useRef<TypedTypingGame | null>(null)
+  const gameRef = useRef<TypedTypingGameType | null>(null)
   const completedRef = useRef(false)
 
   const [isLoading, setIsLoading] = useState(true)
@@ -61,75 +62,59 @@ export function useTypingGame({
   const [userUnits, setUserUnits] = useState<Array<CanonicalUnit>>([])
   const [targetUnits, setTargetUnits] = useState<Array<CanonicalUnit>>([])
 
-  // Create store once - it will access gameRef.current dynamically
   const store = useMemo(() => createTypingGameStore(gameRef), [])
 
-  /* ---------- INIT ---------- */
-
   useEffect(() => {
-    let alive = true
+    const aliveRef = { current: true }
 
-    ;(async () => {
+    ;(async (): Promise<void> => {
       try {
         setIsLoading(true)
         setError(null)
 
         await loadWasm()
-        if (!alive) return
+        if (!aliveRef.current) return
 
-        // Initialize game with initial target
-        const game = new TypedTypingGame(targetCode, maxConsecutiveErrors)
+        const game = new TypedTypingGame(
+          targetCode,
+          maxConsecutiveErrors
+        ) as unknown as TypedTypingGameType
         gameRef.current = game
         completedRef.current = false
-        lastTargetRef.current = targetCode
 
         setTargetUnits(canonicalizeText(targetCode))
         setIsLoading(false)
       } catch (e) {
-        if (!alive) return
+        if (!aliveRef.current) return
         setError(e instanceof Error ? e : new Error("WASM init failed"))
         setIsLoading(false)
       }
     })()
 
     return (): void => {
-      alive = false
+      aliveRef.current = false
       gameRef.current?.free()
       gameRef.current = null
     }
-  }, [maxConsecutiveErrors]) // Only reinit when max errors changes
+  }, [maxConsecutiveErrors])
 
-  /* ----------- CHUNK TRANSITIONS ----------- */
-
-  // When targetCode changes, it means a new chunk was loaded
   useEffect(() => {
     const game = gameRef.current
     if (!game || !targetCode || isLoading) return
 
     try {
-      // Transition to new chunk
       game.startNextChunk(targetCode)
       setTargetUnits(canonicalizeText(targetCode))
-
-      // Reset UI state for new chunk
       setRawUserInput("")
       setUserUnits([])
       completedRef.current = false
     } catch (e) {
-      console.error("Failed to start next chunk:", e)
       setError(e instanceof Error ? e : new Error("Chunk transition failed"))
     }
   }, [targetCode, isLoading])
 
-  /* ---------- STATS SUBSCRIPTION ---------- */
-
-  // Always call the hook unconditionally
-  // Store dynamically accesses gameRef.current
   const stats = store.useStats()
 
-  /* ---------- DERIVED ---------- */
-
-  // Guard displayMap derivation until WASM is loaded
   const displayMap = useMemo(() => {
     if (!isWasmLoaded()) return []
     return deriveDisplayMap(rawUserInput)
@@ -137,10 +122,8 @@ export function useTypingGame({
 
   const cursorUnitIndex = stats ? deriveCursorIndex(stats) : 0
 
-  /* ---------- INPUT ---------- */
-
   const handleInputChange = useCallback(
-    (input: string) => {
+    (input: string): void => {
       const game = gameRef.current
       if (!game || gameState !== "playing") return
 
@@ -149,12 +132,9 @@ export function useTypingGame({
 
       setRawUserInput(input)
       setUserUnits(game.getUserUnits())
-      // stats update automatically via external store
     },
     [gameState]
   )
-
-  /* ---------- CONTROL ---------- */
 
   const resetInternal = (): void => {
     completedRef.current = false
@@ -162,21 +142,19 @@ export function useTypingGame({
     setUserUnits([])
   }
 
-  const reset = useCallback(() => {
+  const reset = useCallback((): void => {
     gameRef.current?.reset()
     resetInternal()
   }, [])
 
-  const start = useCallback(() => {
+  const start = useCallback((): void => {
     gameRef.current?.start(Date.now())
     resetInternal()
   }, [])
 
-  const onDismiss = useCallback(() => {
+  const onDismiss = useCallback((): void => {
     gameRef.current?.dismissError()
   }, [])
-
-  /* ---------- CHUNK COMPLETION ---------- */
 
   useEffect(() => {
     if (
@@ -188,18 +166,19 @@ export function useTypingGame({
       return
     }
 
-    // Check if chunk is complete
     for (let i = 0; i < targetUnits.length; i++) {
-      const u = userUnits[i]
-      const t = targetUnits[i]
-      if (u.kind !== t.kind || (u.kind === "char" && u.value !== t.value)) {
+      const u = userUnits[i] as CanonicalUnit
+      const t = targetUnits[i] as CanonicalUnit
+      if (
+        u.kind !== t.kind ||
+        (u.kind === "char" && t.kind === "char" && u.value !== t.value)
+      ) {
         return
       }
     }
 
     completedRef.current = true
 
-    // Extract chunk stats before completing
     const game = gameRef.current
     if (game && onChunkComplete) {
       const chunkStats = game.completeChunk(Date.now())
@@ -208,8 +187,6 @@ export function useTypingGame({
 
     onComplete()
   }, [userUnits, targetUnits, stats, gameState, onComplete, onChunkComplete])
-
-  /* ---------- FALLBACK FOR LOADING STATE ---------- */
 
   if (!stats) {
     return {
@@ -235,8 +212,6 @@ export function useTypingGame({
       error,
     }
   }
-
-  /* ---------- PUBLIC API ---------- */
 
   return {
     userInput: rawUserInput,

@@ -1,31 +1,25 @@
 import { useSyncExternalStore } from "react"
 import type { TypedTypingGame } from "@input/types/leetype"
 
-/**
- * Creates an external store that subscribes to WASM game stats
- * The gameRef allows the store to access the current game instance dynamically
- */
 export function createTypingGameStore(gameRef: {
   current: TypedTypingGame | null
-}) {
+}): { useStats: () => ReturnType<TypedTypingGame["getStats"]> | null } {
   return {
-    useStats() {
+    useStats(): ReturnType<TypedTypingGame["getStats"]> | null {
       return useSyncExternalStore(
-        (callback) => {
+        (callback: () => void): (() => void) => {
           const game = gameRef.current
-          if (!game || !game.subscribeStats) {
-            return () => {}
+          if (!game?.subscribeStats) {
+            return (): void => {}
           }
           return game.subscribeStats(callback)
         },
-        () => {
+        (): ReturnType<TypedTypingGame["getStats"]> | null => {
           const game = gameRef.current
           if (!game) return null
-          // TypedTypingGame.getStats now returns cached reference
           return game.getStats(Date.now())
         },
-        () => {
-          // SSR fallback
+        (): ReturnType<TypedTypingGame["getStats"]> | null => {
           const game = gameRef.current
           if (!game) return null
           return game.getStats(Date.now())
