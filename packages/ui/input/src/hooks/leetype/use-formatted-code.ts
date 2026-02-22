@@ -9,39 +9,48 @@ type Options = {
 const TIMEOUT_MS = 5000
 
 // ============================================================================
-// GLOBAL PRETTIER CACHE
+// PRETTIER CACHE
 // ============================================================================
 
 type PrettierModule = {
-  format: (content: string, options: Record<string, unknown>) => string
+  format: (
+    content: string,
+    options?: Record<string, unknown>
+  ) => Promise<string>
   plugins: Array<unknown>
 }
 
-let prettierCache: Promise<PrettierModule> | null = null
+let prettierCache: Promise<PrettierModule> | undefined
 
 function getPrettier(parser: "typescript" | "babel"): Promise<PrettierModule> {
-  if (!prettierCache) {
-    prettierCache = (async () => {
-      const [{ format }, estreeMod, parserMod] = await Promise.all([
-        import("prettier/standalone"),
-        import("prettier/plugins/estree"),
-        parser === "typescript"
-          ? import("prettier/parser-typescript")
-          : import("prettier/parser-babel"),
-      ])
-
-      const estree = "default" in estreeMod ? estreeMod.default : estreeMod
-      const parserPlugin =
-        "default" in parserMod ? parserMod.default : parserMod
-
-      return {
-        format,
-        plugins: [parserPlugin, estree],
-      }
-    })()
+  if (prettierCache) {
+    return prettierCache
   }
 
-  return prettierCache
+  const promise: Promise<PrettierModule> = (async () => {
+    const [standaloneMod, estreeMod, parserMod] = await Promise.all([
+      import("prettier/standalone"),
+      import("prettier/plugins/estree"),
+      parser === "typescript"
+        ? import("prettier/plugins/typescript")
+        : import("prettier/plugins/babel"),
+    ])
+
+    const standalone =
+      "default" in standaloneMod ? standaloneMod.default : standaloneMod
+
+    const estree = "default" in estreeMod ? estreeMod.default : estreeMod
+
+    const parserPlugin = "default" in parserMod ? parserMod.default : parserMod
+
+    return {
+      format: standalone.format,
+      plugins: [parserPlugin, estree],
+    }
+  })()
+
+  prettierCache = promise
+  return promise
 }
 
 async function formatCode(
@@ -52,14 +61,13 @@ async function formatCode(
     case "typescript":
     case "babel": {
       const { format, plugins } = await getPrettier(parser)
-      return format(raw, {
-        parser,
-        plugins,
-      })
+      return format(raw, { parser, plugins })
     }
+
     case "rust":
     case "cpp":
       return raw
+
     default: {
       parser satisfies never
       return raw
@@ -97,22 +105,21 @@ export function useFormattedCode(
       })
 
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`Timeout after ${TIMEOUT_MS}ms`)),
-            TIMEOUT_MS
-          )
-        )
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          const id = setTimeout(() => {
+            reject(new Error(`Timeout after ${TIMEOUT_MS}ms`))
+          }, TIMEOUT_MS)
+
+          return (): void => clearTimeout(id)
+        })
 
         const formatted = await Promise.race([
           (async () => {
-            // We get the model and extract the full text for formatting
             const model = await loadTextModel(path)
-            // Accessing private 'text' isn't possible, so ensure TextModel
-            // has a way to get full text, or use slice of the whole range.
             const fullChunk = model.getChunk(0)
+
             const raw = fullChunk.hasMore
-              ? await fetch(path).then((r) => r.text()) // Fallback if chunking hides text
+              ? await fetch(path).then((r) => r.text())
               : fullChunk.content
 
             return formatCode(raw, prettierParser)
@@ -136,7 +143,7 @@ export function useFormattedCode(
             : new Error(`Unknown error: ${String(err)}`)
 
         // eslint-disable-next-line no-console
-        console.error(`Failed to format code:`, error.message)
+        console.error("Failed to format code:", error.message)
 
         setState({
           status: "ERROR",
@@ -159,13 +166,5 @@ export function useFormattedCode(
 export async function preloadPrettier(
   parser: "typescript" | "babel" = "typescript"
 ): Promise<void> {
-  try {
-    await getPrettier(parser)
-    // eslint-disable-next-line no-console
-    console.log(`✅ Prettier preloaded with ${parser} parser`)
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(`❌ Failed to preload Prettier:`, err)
-    throw err
-  }
+  await getPrettier(parser)
 }
