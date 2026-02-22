@@ -460,9 +460,16 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
 /**
  * Shuffles array elements in place
  */
-function shuffleArray<T>(array: Array<T>): void {
+export function shuffleArray<T>(input: ReadonlyArray<T>): Array<T> {
+  const array = [...input]
+
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[array[i], array[j]] = [array[j], array[i]]
+
+    const temp = array[i]
+    array[i] = array[j] as T
+    array[j] = temp as T
   }
+
+  return array
 }
