@@ -48,7 +48,7 @@
   },
   "scripts": {
     "seed": "tsx src/scripts/mood-events/seed.ts",
-    "build": "tsx scripts/generate-manifest.ts",
+    "build:manifest": "tsx scripts/generate-manifest.ts",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
