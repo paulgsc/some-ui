@@ -52,7 +52,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
 
   // Load code with automatic chunking for large files
   const codeState = useChunkedCode(codePaths[language], {
-    prettierParser: PRETTIER_PARSER_MAP[language] as unknown,
+    prettierParser: PRETTIER_PARSER_MAP[language] as "rust" | "cpp" | "babel",
     linesPerChunk: 150,
   })
 
