@@ -6,9 +6,7 @@ type Story = StoryObj<typeof ScriptSidebar>
 type Meta = MetaObj<typeof ScriptSidebar>
 
 export const Default: Story = {
-  args: {
-    currentTime: 100,
-  },
+  args: {},
 }
 
 export default {
