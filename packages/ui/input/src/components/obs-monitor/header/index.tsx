@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import {
   Download,
   FileText,
@@ -6,7 +7,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react"
-import { Badge, Button } from "some-ui-shared" // assuming cn is re-exported here
+import { Badge, Button } from "some-ui-shared"
 import { cn, useObsStatusWebSocket } from "some-ui-utils"
 
 const buttonStyles = {
@@ -19,8 +20,10 @@ const buttonStyles = {
   },
 }
 
-export const Header = () => {
-  const { isConnected } = useObsStatusWebSocket()
+export const Header = (): JSX.Element => {
+  const { isConnected } = useObsStatusWebSocket({
+    url: `ws://${window.location.hostname}:3000/ws`,
+  })
 
   return (
     <header className="border-border flex h-14 items-center justify-between border-b bg-gradient-to-r from-slate-50 via-fuchsia-50 to-slate-100 px-4 shadow-md">
