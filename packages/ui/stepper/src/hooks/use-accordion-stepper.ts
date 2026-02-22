@@ -132,7 +132,7 @@ export const useAccordionStepper = ({
   const getStepIcon = useCallback(
     (index: number) => {
       const step = visibleSteps[index]
-      if (!step) return
+      if (!step) return "pending"
       return step.progress
     },
     [visibleSteps]
