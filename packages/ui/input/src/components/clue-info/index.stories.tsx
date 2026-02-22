@@ -8,7 +8,6 @@ type Meta = MetaObj<typeof ClueInfo>
 export const Default: Story = {
   args: {
     clue: "some clue foo foo foo",
-    clueNum: 17,
   },
 }
 
