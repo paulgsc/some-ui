@@ -13,7 +13,7 @@ export type ChunkedCodeState = {
   totalLines: number
   currentLine: number
   hasMore: boolean
-  error: Error
+  error: Error | null
   loadNextChunk: () => void
 }
 
@@ -33,7 +33,7 @@ export function useChunkedCode(
   const [totalLines, setTotatLines] = useState(0)
   const [currentLine, setCurrentLine] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [error, setError] = useState<Error>()
+  const [error, setError] = useState<Error | null>(null)
 
   const loaderRef = useRef<TextModel | null>(null)
 
@@ -64,7 +64,7 @@ export function useChunkedCode(
       setTotatLines(0)
       setCurrentLine(0)
       setHasMore(false)
-      setError(undefined)
+      setError(null)
       loaderRef.current = null
       return
     }
@@ -74,7 +74,7 @@ export function useChunkedCode(
     async function run(): Promise<void> {
       setStatus("LOADING")
       setCurrentChunk(undefined)
-      setError(undefined)
+      setError(null)
       setCurrentLine(0)
 
       try {
