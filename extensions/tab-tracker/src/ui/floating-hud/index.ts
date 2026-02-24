@@ -1,5 +1,5 @@
 import type { BadgeTier, TabRecord } from "@tab/types"
-import { BADGE_COLORS, formatMs, formatMsShort, getBadgeTier } from "@tab/types"
+import { formatMs, formatMsShort, getBadgeTier } from "@tab/types"
 import { ContextPanel } from "@tab/ui/context-panel"
 import { Dot } from "@tab/ui/dot"
 import { NeglectLabel } from "@tab/ui/neglect-label"
@@ -34,8 +34,7 @@ export class FloatingHUD {
   private posY = 0
   private wasDragged = false
 
-  // idle/active state
-  private isUserActive = false
+  // idle state
   private idleTimeout: ReturnType<typeof setTimeout> | null = null
 
   // fullscreen
@@ -104,17 +103,16 @@ export class FloatingHUD {
     }
 
     // Fullscreen detection
-    document.addEventListener("fullscreenchange", () => {
-      this.isFullscreen = !!document.fullscreenElement
-      this.hudEl.style.opacity = this.isFullscreen ? "0" : ""
-      this.hudEl.style.pointerEvents = this.isFullscreen ? "none" : ""
-    })
-    document.addEventListener("webkitfullscreenchange", () => {
-      const fsEl = document.webkitFullscreenElement
+    const handleFullscreen = (): void => {
+      const fsEl =
+        document.fullscreenElement ?? document.webkitFullscreenElement
       this.isFullscreen = !!fsEl
       this.hudEl.style.opacity = this.isFullscreen ? "0" : ""
       this.hudEl.style.pointerEvents = this.isFullscreen ? "none" : ""
-    })
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreen)
+    document.addEventListener("webkitfullscreenchange", handleFullscreen)
   }
 
   private onMouseDown(e: MouseEvent): void {
@@ -123,10 +121,10 @@ export class FloatingHUD {
     this.dragStartX = e.clientX - this.posX
     this.dragStartY = e.clientY - this.posY
 
-    const onMove = (e: MouseEvent) => {
+    const onMove = (moveEvent: MouseEvent): void => {
       if (!this.isDragging) return
-      const dx = e.clientX - this.dragStartX
-      const dy = e.clientY - this.dragStartY
+      const dx = moveEvent.clientX - this.dragStartX
+      const dy = moveEvent.clientY - this.dragStartY
 
       if (Math.abs(dx - this.posX) > 3 || Math.abs(dy - this.posY) > 3) {
         this.wasDragged = true
@@ -137,7 +135,7 @@ export class FloatingHUD {
       this.applyPosition()
     }
 
-    const onUp = () => {
+    const onUp = (): void => {
       this.isDragging = false
       this.saveDragPosition()
       document.removeEventListener("mousemove", onMove)
@@ -158,7 +156,9 @@ export class FloatingHUD {
         DRAG_STORAGE_KEY,
         JSON.stringify({ x: this.posX, y: this.posY })
       )
-    } catch {}
+    } catch {
+      /* ignore storage errors */
+    }
   }
 
   private restoreDragPosition(): void {
@@ -170,17 +170,17 @@ export class FloatingHUD {
         this.posY = y
         this.applyPosition()
       }
-    } catch {}
+    } catch {
+      /* ignore storage errors */
+    }
   }
 
   private onUserActivity(): void {
-    this.isUserActive = true
     this.hudEl.classList.remove("active")
     this.hudEl.classList.add("idle")
 
     if (this.idleTimeout) clearTimeout(this.idleTimeout)
     this.idleTimeout = setTimeout(() => {
-      this.isUserActive = false
       this.hudEl.classList.remove("idle")
       this.hudEl.classList.add("active")
     }, 3000)
@@ -191,7 +191,6 @@ export class FloatingHUD {
     const { record, elapsed, sessionElapsed, neglect, tags } = payload
     const tier = getBadgeTier(elapsed)
     this.lastTier = tier
-    const color = BADGE_COLORS[tier]
 
     this.dot.update(tier, record.isActive)
     this.timer.update(formatMs(elapsed), tier)
