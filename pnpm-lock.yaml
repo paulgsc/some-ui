@@ -595,6 +595,24 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rollup-config
 
+  extensions/tab-tracker:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
+      '@types/webextension-polyfill':
+        specifier: ^0.10.7
+        version: 0.10.7
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../packages/rollup-config
+      webextension-polyfill:
+        specifier: ^0.10.0
+        version: 0.10.0
+
   packages/eslint:
     devDependencies:
       '@eslint/compat':
@@ -1070,7 +1088,7 @@ importers:
         version: 19.1.0
       react-dom:
         specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
+        version: 19.0.0(react@19.1.0)
       some-crossword:
         specifier: link:../../../crates/some-crossword/dist
         version: link:../../../crates/some-crossword/dist
