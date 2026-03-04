@@ -21,6 +21,6 @@
     },
     "types": ["webextension-polyfill"]
   },
-  "include": ["src/**/*"],
+  "include": ["src", "env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

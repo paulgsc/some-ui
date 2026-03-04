@@ -1,4 +1,3 @@
-
 export {}
 
 declare global {
@@ -6,3 +5,5 @@ declare global {
     webkitFullscreenElement?: Element | null
   }
 }
+
+
