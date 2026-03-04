@@ -45,7 +45,7 @@ export const useKeyboardInput = ({
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       // Ignore special keys
       if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return
       if (e.key === " ") return
@@ -76,7 +76,7 @@ export const useKeyboardInput = ({
     }
 
     window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+    return (): void => window.removeEventListener("keydown", handleKeyDown)
   }, [
     gameBridge,
     keyboardManager,
@@ -224,6 +224,7 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       }
     }
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error(
       "[processGameEvent] Exception while processing event:",
       event,
