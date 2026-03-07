@@ -1,5 +1,6 @@
 import type { BadgeTier, TabRecord } from "@tab/types"
 import { formatMs, formatMsShort, getBadgeTier } from "@tab/types"
+import type { ContextPanelData } from "@tab/ui/context-panel"
 import { ContextPanel } from "@tab/ui/context-panel"
 import { Dot } from "@tab/ui/dot"
 import { NeglectLabel } from "@tab/ui/neglect-label"
@@ -80,18 +81,45 @@ export class FloatingHUD {
 
   private setupInteractions(): void {
     // Click to toggle context panel (only if not dragged)
-    this.chip.addEventListener("mousedown", (e) => this.onMouseDown(e))
-    this.chip.addEventListener("click", () => {
-      if (!this.wasDragged && this.lastPayload) {
-        this.chip.classList.toggle("expanded")
-        this.contextPanel.toggle({
-          record: this.lastPayload.record,
-          tier: this.lastTier,
-          elapsed: this.lastPayload.elapsed,
-          sessionElapsed: this.lastPayload.sessionElapsed,
-          tags: this.lastPayload.tags,
-        })
-      }
+    this.chip.addEventListener("mousedown", (e) => {
+      e.stopPropagation()
+      this.onMouseDown(e)
+    })
+
+    this.chip.addEventListener("click", (e) => {
+      e.stopPropagation()
+      if (this.wasDragged) return
+
+      const displayData: ContextPanelData = this.lastPayload
+        ? {
+            record: this.lastPayload.record,
+            elapsed: this.lastPayload.elapsed,
+            sessionElapsed: this.lastPayload.sessionElapsed,
+            tags: this.lastPayload.tags,
+            tier: this.lastTier,
+          }
+        : {
+            record: {
+              tabId: -1,
+              title: document.title,
+              url: location.href,
+              favicon: "",
+              isActive: true,
+              buckets: [],
+              totalMs: 0,
+              sessionMs: 0,
+              lastActivated: Date.now(),
+              intentional: false,
+              bucketStart: Date.now(),
+            },
+            tier: "green",
+            elapsed: 0,
+            sessionElapsed: 0,
+            tags: ["connecting..."],
+          }
+
+      this.chip.classList.toggle("expanded")
+      this.contextPanel.toggle(displayData)
     })
 
     // Idle detection — fade when user is active

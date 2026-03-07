@@ -23,7 +23,6 @@ const POLL_INTERVAL = 1000
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let currentTabId: number | null = null
-let isFirstPoll = true
 const firedThresholds = new Set<number>()
 
 // ─── Compute elapsed values ───────────────────────────────────────────────────
@@ -130,36 +129,72 @@ export function startPolling(
   onPoll: PollCallback,
   onThreshold: (text: string, color: string) => void
 ): void {
-  async function poll(): Promise<void> {
-    const tabId = await getTabId()
-    if (!tabId) return
-
-    const state = await fetchTabState(tabId)
-    if (!state) return
-
-    const { record, now, neglect } = state
-    const { elapsed, sessionElapsed } = computeElapsed(record, now)
-
-    const wasFirst = isFirstPoll
-    isFirstPoll = false
-
-    // Threshold toasts
-    const fired = checkThresholds(elapsed)
-    if (fired) {
-      const { formatMsShort } = await import("@tab/types")
-      onThreshold(`${formatMsShort(fired.threshold)} on this tab`, fired.color)
-    }
-
-    onPoll({
-      record,
-      now,
-      elapsed,
-      sessionElapsed,
-      neglect: neglect ?? null,
-      isFirstPoll: wasFirst,
-    })
+  // ── 1. Immediate local bootstrap so HUD renders instantly ──
+  const bootstrapRecord: TabRecord = {
+    tabId: -1,
+    url: location.href,
+    title: document.title,
+    favicon: "",
+    totalMs: 0,
+    sessionMs: 0,
+    lastActivated: Date.now(),
+    isActive: true,
+    intentional: false,
+    buckets: [],
+    bucketStart: Date.now(),
   }
 
+  onPoll({
+    record: bootstrapRecord,
+    now: Date.now(),
+    elapsed: 0,
+    sessionElapsed: 0,
+    neglect: null,
+    isFirstPoll: true,
+  })
+
+  // ── 2. Real polling loop ──
+  async function poll(): Promise<void> {
+    try {
+      const tabId = await getTabId()
+      if (!tabId) throw new Error("No tab id")
+
+      const state = await fetchTabState(tabId)
+      if (!state) throw new Error("No tab state")
+
+      const { record, now, neglect } = state
+      const { elapsed, sessionElapsed } = computeElapsed(record, now)
+
+      // Threshold notifications
+      const fired = checkThresholds(elapsed)
+      if (fired) {
+        const { formatMsShort } = await import("@tab/types")
+        onThreshold(
+          `${formatMsShort(fired.threshold)} on this tab`,
+          fired.color
+        )
+      }
+
+      onPoll({
+        record,
+        now,
+        elapsed,
+        sessionElapsed,
+        neglect: neglect ?? null,
+        isFirstPoll: false,
+      })
+    } catch (err) {
+      // Polling failure should not break HUD
+      console.debug(
+        "TabLedger: background polling deferred",
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
+
+  // ── 3. Start interval ──
   setInterval(poll, POLL_INTERVAL)
+
+  // Run first real poll immediately
   poll()
 }

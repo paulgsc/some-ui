@@ -1,4 +1,3 @@
-
 import type { BadgeTier, TabRecord } from "@tab/types"
 import { BADGE_COLORS, formatMs, formatMsShort, getDomain } from "@tab/types"
 
@@ -27,12 +26,12 @@ const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> =
     },
   }
 
-export interface ContextPanelData {
+export type ContextPanelData = {
   record: TabRecord
   tier: BadgeTier
   elapsed: number
   sessionElapsed: number
-  tags: string[]
+  tags: Array<string>
 }
 
 export class ContextPanel {
@@ -49,6 +48,7 @@ export class ContextPanel {
 
     // click-outside to close
     document.addEventListener("mousedown", (e) => {
+      e.stopPropagation()
       if (this.isOpen && !this.el.contains(e.target as Node)) {
         this.close()
       }
@@ -145,7 +145,11 @@ export class ContextPanel {
 
     const statItems = [
       { label: "Total Time", value: formatMs(elapsed), accent: color },
-      { label: "This Session", value: formatMsShort(sessionElapsed), accent: "rgba(255,255,255,0.6)" },
+      {
+        label: "This Session",
+        value: formatMsShort(sessionElapsed),
+        accent: "rgba(255,255,255,0.6)",
+      },
       {
         label: "Status",
         value: record.isActive ? "Active" : "Inactive",
@@ -219,12 +223,12 @@ export class ContextPanel {
     }
   }
 
-  private buildSparkline(buckets: number[], color: string): SVGElement {
+  private buildSparkline(buckets: Array<number>, color: string): SVGElement {
     const width = 200
     const height = 32
     const max = Math.max(...buckets, 1)
     const count = buckets.length
-    const barW = Math.max(2, (width / count) - 1)
+    const barW = Math.max(2, width / count - 1)
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
     svg.setAttribute("width", String(width))
@@ -233,7 +237,7 @@ export class ContextPanel {
     svg.style.overflow = "visible"
 
     // Build a smooth area path
-    const points: [number, number][] = buckets.map((v, i) => [
+    const points: Array<[number, number]> = buckets.map((v, i) => [
       (i / (count - 1)) * width,
       height - (v / max) * (height - 4),
     ])
@@ -246,15 +250,18 @@ export class ContextPanel {
         return `${acc} C ${cpx},${py} ${cpx},${y} ${x},${y}`
       }, "")
 
-      const area = document.createElementNS("http://www.w3.org/2000/svg", "path")
-      area.setAttribute(
-        "d",
-        `${pathD} L ${width},${height} L 0,${height} Z`
+      const area = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
       )
+      area.setAttribute("d", `${pathD} L ${width},${height} L 0,${height} Z`)
       area.setAttribute("fill", `${color}22`)
       svg.appendChild(area)
 
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "path")
+      const line = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      )
       line.setAttribute("d", pathD)
       line.setAttribute("fill", "none")
       line.setAttribute("stroke", color)

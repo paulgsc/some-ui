@@ -179,6 +179,7 @@
 
 .__tl_context_panel {
   position: absolute;
+  z-index: 2147483647 !important;
   top: calc(100% + 4px);
   right: 0;
   width: 248px;

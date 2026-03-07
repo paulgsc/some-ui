@@ -41,11 +41,11 @@ function init(): void {
 
   // 2. HUD
   const hud = new FloatingHUD()
-  hud.mount(document.documentElement)
+  hud.mount(document.body)
 
   // 3. Toast
   const toast = new Toast()
-  toast.mount(document.documentElement)
+  toast.mount(document.body)
 
   // 4. Polling — wire logic → UI
   startPolling(
