@@ -3,101 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Filter Control</title>
+    <title>Tab Filter</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>Page Filter</h1>
-        <label class="toggle">
-          <input type="checkbox" id="enableToggle" />
-          <span class="slider"></span>
-        </label>
-      </header>
-
-      <div class="controls" id="controls">
-        <div class="control-group">
-          <label>
-            <span class="label-text">Invert</span>
-            <span class="value" id="invertValue">1</span>
-          </label>
-          <input
-            type="range"
-            id="invert"
-            min="0"
-            max="1"
-            step="0.1"
-            value="1"
-          />
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span class="label-text">Hue Rotate</span>
-            <span class="value" id="hueRotateValue">180°</span>
-          </label>
-          <input
-            type="range"
-            id="hueRotate"
-            min="0"
-            max="360"
-            step="10"
-            value="180"
-          />
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span class="label-text">Sepia</span>
-            <span class="value" id="sepiaValue">0.12</span>
-          </label>
-          <input
-            type="range"
-            id="sepia"
-            min="0"
-            max="1"
-            step="0.01"
-            value="0.12"
-          />
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span class="label-text">Brightness</span>
-            <span class="value" id="brightnessValue">0.5</span>
-          </label>
-          <input
-            type="range"
-            id="brightness"
-            min="0.1"
-            max="2"
-            step="0.1"
-            value="0.5"
-          />
-        </div>
-
-        <div class="control-group">
-          <label>
-            <span class="label-text">Contrast</span>
-            <span class="value" id="contrastValue">0.92</span>
-          </label>
-          <input
-            type="range"
-            id="contrast"
-            min="0.5"
-            max="1.5"
-            step="0.01"
-            value="0.92"
-          />
-        </div>
-      </div>
-
-      <footer>
-        <button id="reset" class="btn-reset">Reset to Default</button>
-      </footer>
-    </div>
-
+    <div id="app"></div>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -59,7 +59,7 @@
     "@tailwindcss/postcss": "4.1.12",
     "@tanstack/react-query": "^5.66.11",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
+    "@testing-library/react": "^16.3.0",
     "@testing-library/react-hooks": "^8.0.1",
     "@types/chrome": "^0.0.293",
     "@types/node": "^22.10.5",
@@ -123,7 +123,7 @@
     "vite-plugin-top-level-await": "^1.5.0",
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.8",
+    "vitest": "^2.1.9",
     "zod": "^4.0.5"
   },
   "pnpm": {
