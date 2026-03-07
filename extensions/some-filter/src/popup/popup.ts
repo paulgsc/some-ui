@@ -8,15 +8,11 @@ import type {
   TabEntry,
   WindowGroup,
 } from "@censor/types/popup"
-import browser from "webextension-polyfill"
 
 import "./popup.css"
 
 // ── API logic ───────────────────────────────────────────────────────────────
 
-/**
- * Fetches all tabs using the polyfilled browser API.
- */
 async function fetchTabs(): Promise<Array<TabEntry>> {
   const tabs = await browser.tabs.query({})
   return tabs
@@ -54,56 +50,32 @@ function groupByWindow(entries: Array<TabEntry>): Array<WindowGroup> {
     group.push(entry)
     map.set(entry.windowId, group)
   }
-  const groups: Array<WindowGroup> = []
   let windowIndex = 1
-  for (const [windowId, tabs] of map) {
-    groups.push({ windowId, windowIndex: windowIndex++, tabs })
-  }
-  return groups
+  return Array.from(map.entries()).map(([windowId, tabs]) => ({
+    windowId,
+    windowIndex: windowIndex++,
+    tabs,
+  }))
 }
 
 async function getStorageState(): Promise<{
-  filterEnabled: boolean
-  filterConfig: FilterConfig
   filteredTabIds: Array<number>
+  filterConfig: FilterConfig
 }> {
   const data = await browser.storage.local.get([
-    "filterEnabled",
-    "filterConfig",
     "filteredTabIds",
+    "filterConfig",
   ])
-
-  // Using type casting and logical OR for simple defaults
   return {
-    filterEnabled: Boolean(data.filterEnabled),
-    filterConfig: (data.filterConfig as FilterConfig) || {
+    filteredTabIds: (data.filteredTabIds as Array<number>) ?? [],
+    filterConfig: (data.filterConfig as FilterConfig) ?? {
       invert: 1,
       hueRotate: 180,
       sepia: 0.12,
       brightness: 0.5,
       contrast: 0.92,
     },
-    filteredTabIds: (data.filteredTabIds as Array<number>) || [],
   }
-}
-
-async function applyFilterToTabs(tabIds: Array<number>): Promise<void> {
-  const { filterConfig } = await getStorageState()
-  await browser.storage.local.set({ filteredTabIds: tabIds })
-
-  const allTabs = await browser.tabs.query({})
-
-  await Promise.allSettled(
-    allTabs.map((tab) => {
-      if (!tab.id) return Promise.resolve()
-      const enabled = tabIds.includes(tab.id)
-      return browser.tabs.sendMessage(tab.id, {
-        type: "TOGGLE_FILTER",
-        enabled,
-        config: filterConfig,
-      })
-    })
-  )
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -132,11 +104,7 @@ function setState(patch: Partial<PopupState>): void {
 
 function onTabToggle(tabId: number): void {
   const next = new Set(state.selectedTabIds)
-  if (next.has(tabId)) {
-    next.delete(tabId)
-  } else {
-    next.add(tabId)
-  }
+  next.has(tabId) ? next.delete(tabId) : next.add(tabId)
   setState({ selectedTabIds: next })
 }
 
@@ -144,8 +112,7 @@ function onSelectAll(): void {
   const allIds = state.groups.flatMap((g) =>
     g.tabs
       .filter(
-        (t) =>
-          state.statusFilter === null || matchesFilter(t, state.statusFilter)
+        (t) => !state.statusFilter || matchesFilter(t, state.statusFilter)
       )
       .map((t) => t.id)
   )
@@ -156,10 +123,14 @@ function onDeselect(): void {
   setState({ selectedTabIds: new Set() })
 }
 
-function onApply(): void {
+async function onApply(): Promise<void> {
   const ids = Array.from(state.selectedTabIds)
-  applyFilterToTabs(ids)
-  setState({ filteredTabIds: new Set(ids) })
+  // Persist to background
+  await browser.runtime.sendMessage({ type: "SET_FILTERED_TABS", ids })
+  setState({
+    filteredTabIds: new Set(ids),
+    filterActive: ids.length > 0,
+  })
 }
 
 function onStatusFilterChange(filter: string | null): void {
@@ -171,10 +142,10 @@ function onWindowSelectAll(windowId: number): void {
     state.groups
       .find((g) => g.windowId === windowId)
       ?.tabs.filter(
-        (t) =>
-          state.statusFilter === null || matchesFilter(t, state.statusFilter)
+        (t) => !state.statusFilter || matchesFilter(t, state.statusFilter)
       )
       .map((t) => t.id) ?? []
+
   const next = new Set(state.selectedTabIds)
   windowTabs.forEach((id) => next.add(id))
   setState({ selectedTabIds: next })
@@ -205,41 +176,43 @@ function render(): void {
   if (!root) return
   root.innerHTML = ""
 
-  const visibleGroups = state.groups.map((group) => ({
-    ...group,
+  const visibleGroups = state.groups.map((g) => ({
+    ...g,
     tabs: state.statusFilter
-      ? group.tabs.filter((t) => matchesFilter(t, state.statusFilter ?? ""))
-      : group.tabs,
+      ? g.tabs.filter((t) => matchesFilter(t, state.statusFilter ?? ""))
+      : g.tabs,
   }))
 
-  const badge = FilterBadge({
-    filteredCount: state.filteredTabIds.size,
-    selectedCount: state.selectedTabIds.size,
-    filterActive: state.filterActive,
-  })
+  root.appendChild(
+    FilterBadge({
+      filteredCount: state.filteredTabIds.size,
+      selectedCount: state.selectedTabIds.size,
+      filterActive: state.filterActive,
+    })
+  )
 
-  const actionBar = ActionBar({
-    selectedCount: state.selectedTabIds.size,
-    statusFilter: state.statusFilter,
-    onSelectAll,
-    onDeselect,
-    onApply,
-    onStatusFilterChange,
-  })
+  root.appendChild(
+    ActionBar({
+      selectedCount: state.selectedTabIds.size,
+      statusFilter: state.statusFilter,
+      onSelectAll,
+      onDeselect,
+      onApply,
+      onStatusFilterChange,
+    })
+  )
 
-  const tabList = TabList({
-    groups: visibleGroups,
-    selectedTabIds: state.selectedTabIds,
-    filteredTabIds: state.filteredTabIds,
-    onTabToggle,
-    onWindowSelectAll,
-    onWindowDeselect,
-    WindowGroupHeader,
-  })
-
-  root.appendChild(badge)
-  root.appendChild(actionBar)
-  root.appendChild(tabList)
+  root.appendChild(
+    TabList({
+      groups: visibleGroups,
+      selectedTabIds: state.selectedTabIds,
+      filteredTabIds: state.filteredTabIds,
+      onTabToggle,
+      onWindowSelectAll,
+      onWindowDeselect,
+      WindowGroupHeader,
+    })
+  )
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -251,13 +224,12 @@ function render(): void {
 
     setState({
       groups,
-      filterActive: storage.filterEnabled,
       filteredTabIds: new Set(storage.filteredTabIds),
       filterConfig: storage.filterConfig,
+      filterActive: storage.filteredTabIds.length > 0,
       selectedTabIds: new Set(storage.filteredTabIds),
     })
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error("Failed to initialize popup:", err)
   }
 })()
