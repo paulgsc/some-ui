@@ -517,9 +517,15 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.4
+      '@types/webextension-polyfill':
+        specifier: ^0.10.7
+        version: 0.10.7
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
+      webextension-polyfill:
+        specifier: ^0.10.0
+        version: 0.10.0
 
   extensions/some-mujik:
     dependencies:
@@ -817,6 +823,9 @@ importers:
 
   packages/some-content:
     dependencies:
+      '@some-ui/honeycomb':
+        specifier: workspace:*
+        version: link:../ui/honeycomb
       '@some-ui/resume':
         specifier: workspace:*
         version: link:../ui/resume
@@ -838,9 +847,6 @@ importers:
       some-ui-chat:
         specifier: workspace:*
         version: link:../ui/chat
-      some-ui-honeycomb:
-        specifier: workspace:*
-        version: link:../ui/honeycomb
       some-ui-input:
         specifier: workspace:*
         version: link:../ui/input
@@ -1624,6 +1630,9 @@ importers:
 
   packages/ui/vidya:
     dependencies:
+      '@some-ui/honeycomb':
+        specifier: workspace:*
+        version: link:../honeycomb
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1639,9 +1648,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../types
-      some-ui-honeycomb:
-        specifier: workspace:*
-        version: link:../honeycomb
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1667,6 +1673,9 @@ importers:
 
   packages/ui/wireframes:
     dependencies:
+      '@some-ui/honeycomb':
+        specifier: workspace:*
+        version: link:../honeycomb
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1682,9 +1691,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../types
-      some-ui-honeycomb:
-        specifier: workspace:*
-        version: link:../honeycomb
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
