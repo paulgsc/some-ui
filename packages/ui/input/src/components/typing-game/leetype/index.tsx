@@ -154,7 +154,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
       : progress
 
   return (
-    <div className="code absolute inset-0 flex flex-col overflow-hidden">
+    <div className="dark code absolute inset-0 flex flex-col overflow-hidden">
       {gameState === "idle" && (
         <SettingsCard
           language={language}
