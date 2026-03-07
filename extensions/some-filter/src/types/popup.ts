@@ -1,5 +1,3 @@
-
-
 export type FilterConfig = {
   invert: number
   hueRotate: number
@@ -23,14 +21,14 @@ export type TabEntry = {
 export type WindowGroup = {
   windowId: number
   windowIndex: number
-  tabs: TabEntry[]
+  tabs: Array<TabEntry>
 }
 
 export type PopupState = {
   selectedTabIds: Set<number>
   filteredTabIds: Set<number>
   filterActive: boolean
-  groups: WindowGroup[]
+  groups: Array<WindowGroup>
   statusFilter: string | null
   filterConfig: FilterConfig
 }

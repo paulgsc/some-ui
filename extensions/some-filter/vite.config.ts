@@ -7,8 +7,7 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
-        popup: resolve(__dirname, "src/popup/popup.ts"),
-        popupHtml: resolve(__dirname, "src/popup/popup.html"),
+        popup: resolve(__dirname, "popup.html"),
       },
       output: {
         manualChunks: undefined,
@@ -35,7 +34,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      "@censor": resolve(__dirname, "src"),
     },
   },
 })

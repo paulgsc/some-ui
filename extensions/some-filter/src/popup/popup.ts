@@ -10,18 +10,29 @@ import type {
 } from "@censor/types/popup"
 import browser from "webextension-polyfill"
 
+import "./popup.css"
+
 // ── API logic ───────────────────────────────────────────────────────────────
 
 /**
  * Fetches all tabs using the polyfilled browser API.
- * The polyfill ensures browser.tabs.query returns a Promise.
  */
 async function fetchTabs(): Promise<Array<TabEntry>> {
   const tabs = await browser.tabs.query({})
   return tabs
     .filter(
-      (t): t is typeof t & { id: number; url: string; title: string } =>
-        t.id !== undefined && t.url !== undefined && t.title !== undefined
+      (
+        t
+      ): t is typeof t & {
+        id: number
+        windowId: number
+        url: string
+        title: string
+      } =>
+        t.id !== undefined &&
+        t.windowId !== undefined &&
+        t.url !== undefined &&
+        t.title !== undefined
     )
     .map((t) => ({
       id: t.id,
@@ -56,23 +67,23 @@ async function getStorageState(): Promise<{
   filterConfig: FilterConfig
   filteredTabIds: Array<number>
 }> {
-  // browser.storage.local.get also returns a Promise via the polyfill
   const data = await browser.storage.local.get([
     "filterEnabled",
     "filterConfig",
     "filteredTabIds",
   ])
 
+  // Using type casting and logical OR for simple defaults
   return {
     filterEnabled: Boolean(data.filterEnabled),
-    filterConfig: (data.filterConfig as FilterConfig) ?? {
+    filterConfig: (data.filterConfig as FilterConfig) || {
       invert: 1,
       hueRotate: 180,
       sepia: 0.12,
       brightness: 0.5,
       contrast: 0.92,
     },
-    filteredTabIds: (data.filteredTabIds as Array<number>) ?? [],
+    filteredTabIds: (data.filteredTabIds as Array<number>) || [],
   }
 }
 
@@ -82,8 +93,6 @@ async function applyFilterToTabs(tabIds: Array<number>): Promise<void> {
 
   const allTabs = await browser.tabs.query({})
 
-  // We use Promise.allSettled to send messages concurrently without
-  // blocking if one tab (like a restricted system page) fails.
   await Promise.allSettled(
     allTabs.map((tab) => {
       if (!tab.id) return Promise.resolve()
@@ -135,7 +144,8 @@ function onSelectAll(): void {
   const allIds = state.groups.flatMap((g) =>
     g.tabs
       .filter(
-        (t) => !state.statusFilter || matchesFilter(t, state.statusFilter)
+        (t) =>
+          state.statusFilter === null || matchesFilter(t, state.statusFilter)
       )
       .map((t) => t.id)
   )
@@ -161,7 +171,8 @@ function onWindowSelectAll(windowId: number): void {
     state.groups
       .find((g) => g.windowId === windowId)
       ?.tabs.filter(
-        (t) => !state.statusFilter || matchesFilter(t, state.statusFilter)
+        (t) =>
+          state.statusFilter === null || matchesFilter(t, state.statusFilter)
       )
       .map((t) => t.id) ?? []
   const next = new Set(state.selectedTabIds)
@@ -197,7 +208,7 @@ function render(): void {
   const visibleGroups = state.groups.map((group) => ({
     ...group,
     tabs: state.statusFilter
-      ? group.tabs.filter((t) => matchesFilter(t, state.statusFilter))
+      ? group.tabs.filter((t) => matchesFilter(t, state.statusFilter ?? ""))
       : group.tabs,
   }))
 
@@ -246,6 +257,7 @@ function render(): void {
       selectedTabIds: new Set(storage.filteredTabIds),
     })
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error("Failed to initialize popup:", err)
   }
 })()
