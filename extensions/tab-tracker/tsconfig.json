@@ -19,7 +19,7 @@
     "paths": {
       "@tab/*": ["src/*"]
     },
-    "types": ["webextension-polyfill"]
+    "types": ["firefox-webext-browser"]
   },
   "include": ["src", "env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]

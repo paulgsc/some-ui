@@ -1,6 +1,5 @@
 import type { TabRecord } from "@tab/types"
 import { BADGE_COLORS, getBadgeTier } from "@tab/types"
-import browser from "webextension-polyfill"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

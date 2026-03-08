@@ -7,10 +7,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "src/popup/popup.html"),
-        popupHtml: resolve(__dirname, "src/popup/popup.html"),
+        // popup: resolve(__dirname, "src/popup/popup.html"),
         content: resolve(__dirname, "src/content/content.ts"),
-        // background: resolve(__dirname, "src/background/background.ts"),
+        background: resolve(__dirname, "src/background/background.ts"),
       },
       output: {
         manualChunks: () => {}, // prevents shared chunks
@@ -31,7 +30,13 @@ export default defineConfig({
           return "assets/[name][extname]"
         },
       },
+      // Aggressive tree shaking
+      treeshake: {
+        preset: "smallest",
+        moduleSideEffects: false,
+      },
     },
+    cssCodeSplit: false,
     outDir: "dist",
     emptyOutDir: true,
   },

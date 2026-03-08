@@ -4,8 +4,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@types/webextension-polyfill": "^0.10.7",
-    "webextension-polyfill": "^0.10.0",
+    "@types/firefox-webext-browser": "^120.0.4",
     "some-ui-rollup-config": "workspace:*"
   },
   "exports": {

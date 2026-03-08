@@ -517,15 +517,9 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.4
-      '@types/webextension-polyfill':
-        specifier: ^0.10.7
-        version: 0.10.7
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
-      webextension-polyfill:
-        specifier: ^0.10.0
-        version: 0.10.0
 
   extensions/some-mujik:
     dependencies:
@@ -606,15 +600,12 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
-      '@types/webextension-polyfill':
-        specifier: ^0.10.7
-        version: 0.10.7
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
-      webextension-polyfill:
-        specifier: ^0.10.0
-        version: 0.10.0
 
   packages/eslint:
     devDependencies:

@@ -5,7 +5,6 @@ import {
   getBadgeTier,
   getDomain,
 } from "@tab/types"
-import browser from "webextension-polyfill"
 
 // ─── State ────────────────────────────────────────────────────────────────────
 

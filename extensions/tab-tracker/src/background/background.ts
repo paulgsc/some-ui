@@ -1,4 +1,3 @@
-
 /**
  * background.ts — TabLedger service worker
  *
@@ -13,22 +12,33 @@
  *     that can be reconstructed from storage on worker revival
  */
 
-import browser from "webextension-polyfill"
-import type { Tabs } from "webextension-polyfill"
-import {
-  BADGE_COLORS,
-  BUCKET_SIZE_MS,
-  NEGLECT_ACTIVE_THRESHOLD_MS,
-  NEGLECT_IDLE_THRESHOLD_MS,
-  STORAGE_KEY,
-  getBadgeTier,
-} from "@tab/types"
 import type {
+  BadgeTier,
   InboundMessage,
   LedgerState,
   OutboundMessage,
   TabRecord,
 } from "@tab/types"
+
+const STORAGE_KEY = "tabledger_state"
+const BUCKET_SIZE_MS = 15 * 60 * 1000 // 15 minutes
+const NEGLECT_ACTIVE_THRESHOLD_MS = 45 * 60 * 1000
+const NEGLECT_IDLE_THRESHOLD_MS = 5 * 60 * 1000
+
+function getBadgeTier(ms: number): BadgeTier {
+  const m = ms / 60_000
+  if (m < 15) return "green"
+  if (m < 45) return "amber"
+  if (m < 90) return "red"
+  return "violet"
+}
+
+const BADGE_COLORS: Record<BadgeTier, string> = {
+  green: "#22c55e",
+  amber: "#f59e0b",
+  red: "#ef4444",
+  violet: "#7c3aed",
+}
 
 // ─── In-memory state (warm cache) ─────────────────────────────────────────────
 
@@ -43,7 +53,7 @@ let state: LedgerState = {
 
 async function loadState(): Promise<void> {
   const stored = await browser.storage.local.get(STORAGE_KEY)
-  const saved = stored[STORAGE_KEY] as LedgerState | undefined
+  const saved = stored[STORAGE_KEY]
   if (!saved) return
 
   state = {
@@ -69,27 +79,27 @@ async function persistState(): Promise<void> {
 
 // ─── Record helpers ───────────────────────────────────────────────────────────
 
-function ensureRecord(tabId: number, tab?: Tabs.Tab): TabRecord {
+function ensureRecord(tabId: number, tab?: browser.tabs.Tab): TabRecord {
   if (state.records[tabId] === undefined) {
     state.records[tabId] = {
       tabId,
-      url:          tab?.url        ?? "",
-      title:        tab?.title      ?? "",
-      favicon:      tab?.favIconUrl ?? "",
-      totalMs:      0,
-      sessionMs:    0,
+      url: tab?.url ?? "",
+      title: tab?.title ?? "",
+      favicon: tab?.favIconUrl ?? "",
+      totalMs: 0,
+      sessionMs: 0,
       lastActivated: 0,
-      isActive:     false,
-      intentional:  false,
-      buckets:      [],
-      bucketStart:  Date.now(),
+      isActive: false,
+      intentional: false,
+      buckets: [],
+      bucketStart: Date.now(),
     }
   }
 
   // Refresh mutable metadata from live tab
   const record = state.records[tabId]
-  if (typeof tab?.url        === "string") record.url     = tab.url
-  if (typeof tab?.title      === "string") record.title   = tab.title
+  if (typeof tab?.url === "string") record.url = tab.url
+  if (typeof tab?.title === "string") record.title = tab.title
   if (typeof tab?.favIconUrl === "string") record.favicon = tab.favIconUrl
 
   return record
@@ -138,12 +148,12 @@ async function updateBadge(tabId: number): Promise<void> {
   const record = state.records[tabId]
   if (record === undefined) return
 
-  const ms    = liveMs(record)
-  const tier  = getBadgeTier(ms)
+  const ms = liveMs(record)
+  const tier = getBadgeTier(ms)
   const color = BADGE_COLORS[tier]
-  const mins  = Math.floor(ms / 60_000)
+  const mins = Math.floor(ms / 60_000)
   const hours = Math.floor(mins / 60)
-  const text  = hours > 0 ? `${hours}h` : `${mins}m`
+  const text = hours > 0 ? `${hours}h` : `${mins}m`
 
   await Promise.all([
     browser.action.setBadgeText({ text }),
@@ -167,22 +177,23 @@ async function activateTab(tabId: number): Promise<void> {
   if (tab === null) return
 
   const record = ensureRecord(tabId, tab)
-  record.isActive      = true
+  record.isActive = true
   record.lastActivated = Date.now()
-  state.activeTabId    = tabId
+  state.activeTabId = tabId
 
   await updateBadge(tabId)
 }
 
 async function deactivateTab(tabId: number): Promise<void> {
   const record = state.records[tabId]
-  if (record === undefined || !record.isActive || record.lastActivated === 0) return
+  if (record === undefined || !record.isActive || record.lastActivated === 0)
+    return
 
-  const elapsed     = Date.now() - record.lastActivated
-  record.totalMs   += elapsed
+  const elapsed = Date.now() - record.lastActivated
+  record.totalMs += elapsed
   record.sessionMs += elapsed
   addToBucket(record, elapsed)
-  record.isActive      = false
+  record.isActive = false
   record.lastActivated = 0
 
   if (state.activeTabId === tabId) state.activeTabId = null
@@ -205,7 +216,11 @@ function checkNeglect(activeTabId: number): string | null {
     if (tab.sessionMs < NEGLECT_IDLE_THRESHOLD_MS) {
       state.seenNeglectPairs.push(key)
       const domain = getDomainShort(tab.url)
-      return domain.length > 0 ? domain : tab.title.length > 0 ? tab.title : "another tab"
+      return domain.length > 0
+        ? domain
+        : tab.title.length > 0
+          ? tab.title
+          : "another tab"
     }
   }
   return null
@@ -234,13 +249,13 @@ browser.runtime.onMessage.addListener(
     switch (message.type) {
       case "GET_OWN_TAB_ID": {
         return Promise.resolve({
-          type:  "OWN_TAB_ID",
+          type: "OWN_TAB_ID",
           tabId: sender.tab?.id ?? null,
         })
       }
 
       case "GET_TAB_STATE": {
-        const record  = state.records[message.tabId] ?? null
+        const record = state.records[message.tabId] ?? null
         const neglect = record !== null ? checkNeglect(message.tabId) : null
         return Promise.resolve({
           type: "TAB_STATE",
@@ -252,9 +267,9 @@ browser.runtime.onMessage.addListener(
 
       case "GET_FULL_STATE": {
         return Promise.resolve({
-          type:  "FULL_STATE",
+          type: "FULL_STATE",
           state: snapshotState(),
-          now:   Date.now(),
+          now: Date.now(),
         })
       }
 
@@ -274,7 +289,7 @@ browser.runtime.onMessage.addListener(
           record.sessionMs = 0
           if (record.isActive) record.lastActivated = Date.now()
         }
-        state.sessionStart    = Date.now()
+        state.sessionStart = Date.now()
         state.seenNeglectPairs = []
         void persistState()
         return Promise.resolve({ type: "OK" })
@@ -296,8 +311,8 @@ browser.tabs.onUpdated.addListener((_tabId, _changeInfo, tab) => {
   if (id === undefined) return
   const record = state.records[id]
   if (record === undefined) return
-  if (typeof tab.url        === "string") record.url     = tab.url
-  if (typeof tab.title      === "string") record.title   = tab.title
+  if (typeof tab.url === "string") record.url = tab.url
+  if (typeof tab.title === "string") record.title = tab.title
   if (typeof tab.favIconUrl === "string") record.favicon = tab.favIconUrl
 })
 
@@ -321,8 +336,8 @@ browser.windows.onFocusChanged.addListener(async (windowId) => {
   // Browser regained focus — re-activate the focused window's active tab
   try {
     const tabs = await browser.tabs.query({ active: true, windowId })
-    const tab  = tabs[0]
-    if (tab?.id !== undefined) {
+    const tab = tabs[0]
+    if (tab.id !== undefined) {
       await activateTab(tab.id)
       await persistState()
     }
@@ -344,8 +359,8 @@ async function bootstrap(): Promise<void> {
 
   try {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true })
-    const tab  = tabs[0]
-    if (tab?.id !== undefined) {
+    const tab = tabs[0]
+    if (tab.id !== undefined) {
       await activateTab(tab.id)
       await persistState()
     }
