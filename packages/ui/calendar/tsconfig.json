@@ -3,12 +3,14 @@
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
-    "rootDir": "./src",
+    "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@calendar/*": ["./src/*"]
+      "@calendar/*": ["./src/*"],
+      "@some-ui/content/*": ["../../some-content/src/*"],
+      "@some-ui/content": ["../../some-content/src"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../../some-content/src/**/*"],
   "exclude": ["node_modules", "build", "dist"]
 }
