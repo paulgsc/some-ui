@@ -1,3 +1,4 @@
+
 import type { FC, JSX } from "react"
 import { NodePopup } from "@calendar/components/life-scheduler/node-popup"
 import { Rings, type RingHit } from "@calendar/components/life-scheduler/ring"
@@ -52,13 +53,9 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
         </div>
 
         <div className="flex items-center gap-2 font-mono text-[12px] text-ink-600">
-          <span className="text-violet-400">
-            {String(outer).padStart(2, "0")}
-          </span>
+          <span className="text-violet-400">{String(outer).padStart(2, "0")}</span>
           <span className="text-ink-700">·</span>
-          <span className="text-emerald-400">
-            {String(inner).padStart(2, "0")}
-          </span>
+          <span className="text-emerald-400">{String(inner).padStart(2, "0")}</span>
           <span className="text-ink-700 ml-2">cycle {cycle}</span>
         </div>
       </header>
@@ -98,7 +95,6 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
           </span>
         </div>
 
-        {/* progress bar */}
         <div className="w-full flex items-center gap-3 mt-2">
           <div className="flex-1 h-1 bg-ink-800 rounded-full overflow-hidden">
             <div
@@ -112,17 +108,9 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
         </div>
       </section>
 
-      {/* ── Footer / Popup ─────────────────────────────── */}
-      <footer className="w-full max-w-xl">
-        {popup ? (
-          <NodePopup
-            key={`${popup.type}-${popup.index}`}
-            data={popup.data}
-            type={popup.type}
-            nodeIndex={popup.index}
-            onClose={onClosePopup}
-          />
-        ) : (
+      {/* ── Footer legend (shown when no popup) ────────── */}
+      {!popup && (
+        <footer className="w-full max-w-xl">
           <div className="flex justify-between items-center text-[10px] font-mono text-ink-700 uppercase tracking-widest px-2">
             <div className="flex gap-4">
               <span className="flex items-center gap-1.5">
@@ -136,8 +124,19 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
             </div>
             <span>System Ready</span>
           </div>
-        )}
-      </footer>
+        </footer>
+      )}
+
+      {/* ── Popup (draggable, portal-rendered) ─────────── */}
+      {popup && (
+        <NodePopup
+          key={`${popup.type}-${popup.index}`}
+          data={popup.data}
+          type={popup.type}
+          nodeIndex={popup.index}
+          onClose={onClosePopup}
+        />
+      )}
     </div>
   )
 }
