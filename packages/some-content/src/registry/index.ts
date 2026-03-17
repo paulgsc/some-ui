@@ -22,7 +22,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   cube: lazyWithPreload(
     () => import("@content/components/overlay/cube-content")
   ),
-  hangul: lazyWithPreload(() => import("some-ui-honeycomb"), "HangulHexGrid"),
+  hangul: lazyWithPreload(() => import("@some-ui/honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("some-ui-input"), "Leetype"),
   music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
   voice: lazyWithPreload(() => import("umag"), "VoiceAvatar"),
