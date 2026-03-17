@@ -31,6 +31,7 @@
       "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/"],
       "@attributions/*": ["./packages/ui/attributions/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"],
+      "@mujik/*": ["./extensions/some-mujik/src/"],
       "@some-ui/content/*": ["./packages/some-content/src/"]
     }
   },

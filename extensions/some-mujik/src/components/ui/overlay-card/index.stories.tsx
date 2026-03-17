@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 // Assuming your vanilla file is named overlay-card.ts in the same directory
@@ -17,25 +17,22 @@ const OverlayCardBridge = (props: OverlaySong) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const cardInstanceRef = useRef<OverlayCard | null>(null)
 
-  // Initialization: Create the instance once
   useEffect(() => {
     if (containerRef.current && !cardInstanceRef.current) {
       const card = createOverlayCard()
       cardInstanceRef.current = card
       containerRef.current.appendChild(card.root)
-
-      // Optional: If your canvas needs a specific size for waveform drawing
-      card.canvas.width = 400
-      card.canvas.height = 150
+      // Remove absolute positioning so it centers in the bridge
+      card.root.style.position = "relative"
+      card.root.style.top = "auto"
+      card.root.style.left = "auto"
     }
-
     return () => {
       cardInstanceRef.current?.destroy()
       cardInstanceRef.current = null
     }
   }, [])
 
-  // Update: Call the vanilla update method when props change
   useEffect(() => {
     if (cardInstanceRef.current) {
       cardInstanceRef.current.update(props)
@@ -49,8 +46,11 @@ const OverlayCardBridge = (props: OverlaySong) => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        minHeight: "400px",
-        background: "#0a0a0a",
+        minHeight: "300px",
+        padding: "40px",
+        background:
+          "radial-gradient(circle at center, #1a1a2e 0%, #050505 100%)", // Themed background
+        borderRadius: "20px",
       }}
     />
   )
@@ -129,4 +129,44 @@ export const ComparisonView: Story = {
       </div>
     </div>
   ),
+}
+
+/* --- Add this to your Stories section --- */
+
+export const LongTitleMarquee: Story = {
+  args: {
+    ...Default.args,
+    title:
+      "A Very Long Song Title That Definitely Overflows the Card Width to Test the Marquee",
+    artist: "The Smooth Animators",
+    valence: 0.5,
+    arousal: 0.5,
+  },
+}
+
+export const RapidSwitch: Story = {
+  render: (args) => {
+    const [song, setSong] = useState(args)
+
+    return (
+      <div style={{ textAlign: "center" }}>
+        <OverlayCardBridge {...song} />
+        <button
+          onClick={() =>
+            setSong({
+              ...song,
+              title:
+                song.title === "After Dark"
+                  ? "Super Long Title for Testing Smooth Transitions"
+                  : "After Dark",
+              valence: Math.random(),
+            })
+          }
+          style={{ marginTop: "20px", padding: "8px 16px", cursor: "pointer" }}
+        >
+          Toggle Song (Flash & Marquee)
+        </button>
+      </div>
+    )
+  },
 }

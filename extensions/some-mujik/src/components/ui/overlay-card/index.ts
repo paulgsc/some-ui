@@ -133,6 +133,10 @@ export function createOverlayCard(): OverlayCard {
   const titleEl: HTMLHeadingElement = document.createElement("h3")
   titleEl.className = "ytmo-title"
 
+  const titleTrack: HTMLSpanElement = document.createElement("span")
+  titleTrack.className = "ytmo-title-track"
+  titleEl.appendChild(titleTrack)
+
   const artistEl: HTMLParagraphElement = document.createElement("p")
   artistEl.className = "ytmo-artist"
 
@@ -239,7 +243,26 @@ export function createOverlayCard(): OverlayCard {
   // ── Public update ──────────────────────────────────────────────────────────
 
   function update(song: OverlaySong): void {
-    titleEl.textContent = song.title
+    // 1. Reset Track
+    titleTrack.textContent = song.title
+    titleTrack.classList.remove("ytmo-marquee")
+
+    // 2. Check for overflow after DOM update
+    // We use a microtask to ensure the text is rendered before measuring
+    queueMicrotask(() => {
+      const isOverflowing = titleEl.offsetWidth < titleEl.scrollWidth
+
+      if (isOverflowing) {
+        // Clone text for seamless loop and start animation
+        titleTrack.textContent = `${song.title} \u00A0\u00A0\u00A0\u00A0 ${song.title} \u00A0\u00A0\u00A0\u00A0 `
+        titleTrack.classList.add("ytmo-marquee")
+
+        // Dynamic duration based on length (optional but nicer)
+        const duration = Math.max(5, song.title.length * 0.2)
+        titleTrack.style.animationDuration = `${duration}s`
+      }
+    })
+
     artistEl.textContent = song.artist
     emotionTag.textContent = emotionLabel(song.valence, song.arousal)
 
