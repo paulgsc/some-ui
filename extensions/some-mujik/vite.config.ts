@@ -7,7 +7,7 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
-        popup: resolve(__dirname, "src/popup/popup.ts"),
+        popup: resolve(__dirname, "popup.html"),
       },
       output: {
         // Each entry is its own self-contained bundle — no dynamic linking.

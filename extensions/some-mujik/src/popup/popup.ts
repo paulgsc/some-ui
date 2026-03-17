@@ -1,4 +1,3 @@
-// ─── popup.ts ─────────────────────────────────────────────────────────────────
 // Standalone popup script. No shared imports with content.ts / background.ts.
 
 import "./popup.css"
@@ -12,7 +11,8 @@ const statusText = document.getElementById("status-text") as HTMLSpanElement
 
 function setStatus(active: boolean, label?: string) {
   statusDot.classList.toggle("status-dot--active", active)
-  statusText.textContent = label ?? (active ? "Overlay active" : "Overlay hidden")
+  statusText.textContent =
+    label ?? (active ? "Overlay active" : "Overlay hidden")
 }
 
 function sendToContentScript(msg: object): Promise<unknown> {
@@ -68,4 +68,3 @@ toggleEl.addEventListener("change", async () => {
 
 // ── Run ───────────────────────────────────────────────────────────────────────
 init()
-
