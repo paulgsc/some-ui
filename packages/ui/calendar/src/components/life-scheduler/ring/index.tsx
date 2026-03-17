@@ -1,10 +1,9 @@
+import type { JSX } from "react"
 import { useCallback, useEffect, useRef } from "react"
 
 export type RingHit = {
   type: "outer" | "inner"
   index: number
-  x: number
-  y: number
 }
 
 type Props = {
@@ -39,7 +38,7 @@ const THEME = {
   emeraldPast: "#065f46",
 }
 
-export const Rings = ({ outerPos, innerPos, onHit }: Props) => {
+export const Rings = ({ outerPos, innerPos, onHit }: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const ang24 = (i: number): number => -Math.PI / 2 + (i / N24) * 2 * Math.PI
@@ -208,8 +207,6 @@ export const Rings = ({ outerPos, innerPos, onHit }: Props) => {
             onHit({
               type: "outer",
               index: i,
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
             })
             return
           }
