@@ -1,61 +1,122 @@
-// Root content script. Composes all modules.
-// NOTE: All helper code is inlined or imported from within src/content/ only.
-//       No shared modules with popup.ts or background.ts (build constraint).
+// Injected into every tab. Determines its own role at runtime:
+//
+//   SOURCE  — this tab is a YouTube / YouTube Music URL.
+//             Responds to ytmo:extract-meta requests from background with
+//             scraped DOM metadata. Never mounts any UI.
+//
+//   DISPLAY — every other tab (the tab the user is actually looking at).
+//             Receives ytmo:song-data pushes from background, mounts/updates
+//             the overlay card. Never touches YT DOM.
+//
+// Role is resolved once at init via window.location.
+// Concern separation is enforced at the call-site level inside each init fn:
+// initSourceRole() never references any UI symbol;
+// initDisplayRole() never references any extraction symbol.
+//
+// Static imports are used (not dynamic) to keep the build a single self-
+// contained chunk — required by the extension no-shared-chunk constraint.
+// No shared imports with popup.ts or background.ts.
 
+import { createOverlayCard } from "@mujik/components/ui/overlay-card"
+import { createWaveformRenderer } from "@mujik/components/ui/waveform"
 import { makeDraggable } from "@mujik/content/lib/draggable"
 import { watchFullscreen } from "@mujik/content/lib/fullscreen"
 import { extractMetadata } from "@mujik/content/lib/yt-meta"
-import { createOverlayCard } from "@mujik/components/ui/overlay-card"
-import { createWaveformRenderer } from "@mujik/components/ui/waveform"
-// ── CSS injection (Vite will bundle this) ─────────────────────────────────────
+
 import "@mujik/styles/content.css"
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const STORAGE_KEY_ENABLED = "ytmo_enabled"
-const STORAGE_KEY_POS = "ytmo_card_pos"
-const POLL_INTERVAL_MS = 4000
+// ── Role determination ────────────────────────────────────────────────────────
 
-// ── Inlined emotion defaults (no shared import) ───────────────────────────────
-// Until we wire WebAudio analysis, we use mid-range plausible values.
-const DEFAULT_DIMS = { arousal: 0.5, valence: 0.55, tempo: 0.5, intensity: 0.6 }
+const YT_ORIGINS: Array<string> = ["youtube.com", "music.youtube.com"]
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let enabled = true
-let overlayCard: ReturnType<typeof createOverlayCard> | null = null
-let waveformRenderer: ReturnType<typeof createWaveformRenderer> | null = null
-let draggableHandle: ReturnType<typeof makeDraggable> | null = null
-let fullscreenWatcher: ReturnType<typeof watchFullscreen> | null = null
-let pollTimer: number | null = null
-let lastVideoId: string | null = null
-
-// ── Read persisted enabled state ──────────────────────────────────────────────
-try {
-  const stored = localStorage.getItem(STORAGE_KEY_ENABLED)
-  if (stored !== null) enabled = stored === "true"
-} catch {
-  /* ignore */
+function isYTTab(): boolean {
+  try {
+    const host = new URL(location.href).hostname
+    return YT_ORIGINS.some((o) => host.endsWith(o))
+  } catch {
+    return false
+  }
 }
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// SOURCE ROLE
+// ═════════════════════════════════════════════════════════════════════════════
 
-function mountOverlay() {
-  if (overlayCard) return
+function initSourceRole(): void {
+  browser.runtime.sendMessage({ type: "ytmo:register-source" })
 
-  const card = createOverlayCard()
+  let currentHref: string = location.href
+
+  const navObserver: MutationObserver = new MutationObserver((): void => {
+    if (location.href !== currentHref) {
+      currentHref = location.href
+      browser.runtime.sendMessage({ type: "ytmo:register-source" })
+    }
+  })
+
+  navObserver.observe(document, { subtree: true, childList: true })
+
+  browser.runtime.onMessage.addListener(
+    (msg: unknown, _sender, sendResponse): boolean | void => {
+      if (
+        typeof msg === "object" &&
+        msg !== null &&
+        "type" in msg &&
+        (msg as { type: string }).type === "ytmo:extract-meta"
+      ) {
+        const data = extractMetadata()
+        sendResponse(data ?? null)
+        return true // keep channel open (explicit)
+      }
+    }
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DISPLAY ROLE
+// ═════════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY_POS = "ytmo_card_pos"
+
+const DEFAULT_DIMS = {
+  arousal: 0.5,
+  valence: 0.55,
+  tempo: 0.5,
+  intensity: 0.6,
+}
+
+type OverlayCard = ReturnType<typeof createOverlayCard>
+type WaveformRenderer = ReturnType<typeof createWaveformRenderer>
+type DraggableHandle = ReturnType<typeof makeDraggable>
+type FullscreenWatcher = ReturnType<typeof watchFullscreen>
+
+type SongPayload = {
+  isNewTrack: boolean
+} & Record<string, unknown>
+
+let overlayCard: OverlayCard | null = null
+let waveformRenderer: WaveformRenderer | null = null
+let draggableHandle: DraggableHandle | null = null
+let fullscreenWatcher: FullscreenWatcher | null = null
+
+function mountOverlay(): void {
+  if (overlayCard !== null) return
+
+  const card: OverlayCard = createOverlayCard()
   document.body.appendChild(card.root)
 
-  // Waveform renderer — attach to the canvas the card owns
-  const renderer = createWaveformRenderer(card.canvas, DEFAULT_DIMS)
+  const renderer: WaveformRenderer = createWaveformRenderer(
+    card.canvas,
+    DEFAULT_DIMS
+  )
 
-  // Draggable
-  const drag = makeDraggable(card.root, {
+  const drag: DraggableHandle = makeDraggable(card.root, {
     storageKey: STORAGE_KEY_POS,
     defaultX: window.innerWidth - 264,
     defaultY: 16,
   })
 
-  // Fullscreen watcher
-  const fs = watchFullscreen(
+  const fs: FullscreenWatcher = watchFullscreen(
     () => card.root.classList.add("ytmo-card--hidden"),
     () => card.root.classList.remove("ytmo-card--hidden")
   )
@@ -66,7 +127,7 @@ function mountOverlay() {
   fullscreenWatcher = fs
 }
 
-function destroyOverlay() {
+function destroyOverlay(): void {
   waveformRenderer?.destroy()
   draggableHandle?.destroy()
   fullscreenWatcher?.destroy()
@@ -76,83 +137,55 @@ function destroyOverlay() {
   waveformRenderer = null
   draggableHandle = null
   fullscreenWatcher = null
-  lastVideoId = null
 }
 
-function poll() {
-  if (!enabled) return
+function handleSongData(payload: SongPayload): void {
+  const { isNewTrack, ...songData } = payload
 
-  const meta = extractMetadata()
-  if (!meta) return
-
-  if (!overlayCard) mountOverlay()
-
-  const isNewTrack = meta.videoId !== lastVideoId
-  lastVideoId = meta.videoId
-
-  const songData = {
-    ...meta,
-    ...DEFAULT_DIMS, // Replace with WebAudio analysis when available
+  if (overlayCard === null) {
+    mountOverlay()
   }
 
-  overlayCard!.update(songData)
+  if (overlayCard === null) return
 
-  if (isNewTrack) {
-    waveformRenderer?.updateParams(DEFAULT_DIMS)
+  overlayCard.update({
+    ...(songData as Parameters<OverlayCard["update"]>[0]),
+    ...DEFAULT_DIMS,
+  })
+
+  if (isNewTrack && waveformRenderer !== null) {
+    waveformRenderer.updateParams(DEFAULT_DIMS)
   }
 }
 
-function startPolling() {
-  if (pollTimer !== null) return
-  // Initial check after slight delay (DOM settle)
-  window.setTimeout(poll, 1500)
-  pollTimer = window.setInterval(poll, POLL_INTERVAL_MS)
-}
+function initDisplayRole(): void {
+  browser.runtime.onMessage.addListener((msg: unknown): void => {
+    if (typeof msg !== "object" || msg === null) return
+    if (!("type" in msg)) return
 
-function stopPolling() {
-  if (pollTimer !== null) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
-}
+    const m = msg as { type: string; payload?: unknown }
 
-// ── Message listener (from popup toggle) ──────────────────────────────────────
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === "ytmo:set-enabled") {
-    enabled = msg.payload as boolean
-    try {
-      localStorage.setItem(STORAGE_KEY_ENABLED, String(enabled))
-    } catch {
-      /* ignore */
+    if (m.type === "ytmo:song-data") {
+      if (m.payload && typeof m.payload === "object") {
+        handleSongData(m.payload as SongPayload)
+      }
+      return
     }
 
-    if (enabled) {
-      startPolling()
-      poll()
-    } else {
-      stopPolling()
+    if (m.type === "ytmo:clear") {
       destroyOverlay()
     }
-    sendResponse({ ok: true })
-  }
+  })
+}
 
-  if (msg.type === "ytmo:get-state") {
-    sendResponse({ enabled })
-  }
-})
+// ── Dispatch ──────────────────────────────────────────────────────────────────
 
-// ── SPA navigation observer ───────────────────────────────────────────────────
-// YouTube is a SPA; re-poll on URL changes
-let currentHref = location.href
-const navObserver = new MutationObserver(() => {
-  if (location.href !== currentHref) {
-    currentHref = location.href
-    lastVideoId = null
-    // Brief delay for YT to populate DOM
-    window.setTimeout(poll, 1200)
+function main(): void {
+  if (isYTTab()) {
+    initSourceRole()
+  } else {
+    initDisplayRole()
   }
-})
-navObserver.observe(document, { subtree: true, childList: true })
+}
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-if (enabled) startPolling()
+main()

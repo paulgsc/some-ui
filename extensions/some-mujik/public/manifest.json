@@ -23,7 +23,7 @@
 
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/*", "*://music.youtube.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
