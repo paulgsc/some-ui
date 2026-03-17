@@ -1,5 +1,5 @@
 html {
-  filter: invert(0.06) hue-rotate(15deg) sepia(0.12) brightness(0.5)
+  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
     contrast(0.92) !important;
 
   background: #000 !important;

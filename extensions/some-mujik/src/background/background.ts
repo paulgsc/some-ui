@@ -1,130 +1,195 @@
-type SessionMetadata = {
-  videoId: string
+// Central hub. Owns all cross-tab routing logic.
+//
+// Roles:
+//   SOURCE tab  — any youtube.com/music.youtube.com tab playing audio.
+//                 background polls it via ytmo:extract-meta, receives YTMetadata.
+//   DISPLAY tab — whichever tab is currently active that is NOT the source tab.
+//                 background pushes ytmo:song-data to it so the overlay renders.
+//
+// The content script is injected into every tab (all_urls) but behaves
+// differently depending on which message type it receives:
+//   ytmo:extract-meta  → source role: scrape DOM, reply with metadata
+//   ytmo:song-data     → display role: mount/update overlay card
+//
+// No shared imports with content.ts or popup.ts.
+
+// ── Types (inlined — no shared import across roots) ───────────────────────────
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type YTMetadata = {
   title: string
-  channel: string
-  duration: string
-  timestamp: number
-  url: string
-  action: string
+  artist: string
+  videoId: string
+  thumbnailUrl: string
+  currentTime: number
+  duration: number
 }
 
-class BackgroundService {
-  private readonly BACKEND_ENDPOINT =
-    "https://your-api-endpoint.com/api/session-metadata"
+// ── State ─────────────────────────────────────────────────────────────────────
 
-  constructor() {
-    this.setupMessageListener()
-    this.initializeExtension()
+let enabled = true
+let sourceTabId: number | null = null
+let lastVideoId: string | null = null
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+const POLL_INTERVAL_MS = 4000
+const YT_ORIGINS = ["youtube.com", "music.youtube.com"]
+
+function isYTUrl(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    return YT_ORIGINS.some((o) => new URL(url).hostname.endsWith(o))
+  } catch {
+    return false
   }
+}
 
-  private async initializeExtension(): Promise<void> {
-    // Set default enabled state if not set
-    const result = await chrome.storage.local.get(["extensionEnabled"])
-    if (result.extensionEnabled === undefined) {
-      await chrome.storage.local.set({ extensionEnabled: true })
-    }
-  }
+// ── Source tab resolution ─────────────────────────────────────────────────────
 
-  private setupMessageListener(): void {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      this.handleMessage(message, sender)
-        .then(sendResponse)
-        .catch((error) => {
-          console.error("Background script error:", error)
-          sendResponse({ error: error.message })
-        })
-      return true // Keep message channel open for async response
-    })
-  }
-
-  private async handleMessage(
-    message: any,
-    _sender: chrome.runtime.MessageSender
-  ): Promise<any> {
-    switch (message.type) {
-      case "SEND_SESSION_METADATA":
-        return this.sendSessionMetadata(message.data)
-
-      case "GET_EXTENSION_STATE":
-        return this.getExtensionState()
-
-      case "TOGGLE_EXTENSION":
-        return this.toggleExtension(message.enabled)
-
-      default:
-        throw new Error(`Unknown message type: ${message.type}`)
-    }
-  }
-
-  private async sendSessionMetadata(
-    metadata: SessionMetadata
-  ): Promise<{ success: boolean }> {
+async function resolveSourceTab(): Promise<number | null> {
+  if (sourceTabId !== null) {
     try {
-      // Check if extension is enabled
-      const { extensionEnabled } = await chrome.storage.local.get([
-        "extensionEnabled",
-      ])
-      if (!extensionEnabled) {
-        console.log("Extension disabled, skipping metadata send")
-        return { success: false }
-      }
-
-      console.log("Sending session metadata:", metadata)
-
-      const response = await fetch(this.BACKEND_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer YOUR_API_KEY", // Replace with actual auth
-        },
-        body: JSON.stringify(metadata),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      console.log("Session metadata sent successfully:", result)
-
-      return { success: true }
-    } catch (error) {
-      console.error("Failed to send session metadata:", error)
-      return { success: false }
+      const tab = await browser.tabs.get(sourceTabId)
+      if (tab && isYTUrl(tab.url)) return sourceTabId
+    } catch {
+      sourceTabId = null
     }
   }
 
-  private async getExtensionState(): Promise<{ enabled: boolean }> {
-    const { extensionEnabled } = await chrome.storage.local.get([
-      "extensionEnabled",
-    ])
-    return { enabled: extensionEnabled ?? true }
+  const tabs = await browser.tabs.query({})
+  const yt = tabs.find((t) => isYTUrl(t.url) && t.id !== undefined)
+  if (yt?.id) {
+    sourceTabId = yt.id
+    return sourceTabId
   }
+  return null
+}
 
-  private async toggleExtension(
-    enabled: boolean
-  ): Promise<{ enabled: boolean }> {
-    await chrome.storage.local.set({ extensionEnabled: enabled })
+// ── Display tab resolution ────────────────────────────────────────────────────
 
-    // Notify all YouTube tabs about the state change
-    const tabs = await chrome.tabs.query({ url: "https://www.youtube.com/*" })
+async function resolveDisplayTab(): Promise<number | null> {
+  const tabs = await browser.tabs.query({
+    active: true,
+    lastFocusedWindow: true,
+  })
+  const tab = tabs[0]
+  if (!tab?.id) return null
 
-    for (const tab of tabs) {
-      if (tab.id) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            type: "EXTENSION_STATE_CHANGED",
-            enabled,
-          })
-        } catch (error) {
-          // Tab might not have content script loaded, ignore
-        }
-      }
-    }
+  if (tab.id === sourceTabId) {
+    const others = await browser.tabs.query({ active: true })
+    const other = others.find((t) => t.id !== sourceTabId && t.id !== undefined)
+    return other?.id ?? null
+  }
+  return tab.id
+}
 
-    return { enabled }
+// ── Send helpers ──────────────────────────────────────────────────────────────
+
+async function sendToTab<T>(tabId: number, msg: object): Promise<T | null> {
+  try {
+    // browser.tabs.sendMessage returns a Promise natively.
+    return (await browser.tabs.sendMessage(tabId, msg)) as T
+  } catch (err) {
+    // Handles 'Could not establish connection' (tab closed or no listener)
+    console.error(err)
+    return null
   }
 }
 
-// Initialize the background service
-new BackgroundService()
+// ── Poll cycle ────────────────────────────────────────────────────────────────
+
+async function poll(): Promise<void> {
+  if (!enabled) return
+
+  const srcId = await resolveSourceTab()
+  if (!srcId) return
+
+  const meta = await sendToTab<YTMetadata>(srcId, {
+    type: "ytmo:extract-meta",
+  })
+  if (!meta) return
+
+  const displayId = await resolveDisplayTab()
+  if (!displayId) return
+
+  const isNewTrack = meta.videoId !== lastVideoId
+  lastVideoId = meta.videoId
+
+  sendToTab(displayId, {
+    type: "ytmo:song-data",
+    payload: { ...meta, isNewTrack },
+  })
+}
+
+function startPolling(): void {
+  if (pollTimer !== null) return
+  setTimeout(poll, 1000)
+  pollTimer = setInterval(poll, POLL_INTERVAL_MS)
+}
+
+function stopPolling(): void {
+  if (pollTimer !== null) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+// ── Tab lifecycle ─────────────────────────────────────────────────────────────
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  if (tabId === sourceTabId) {
+    sourceTabId = null
+    lastVideoId = null
+  }
+})
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (tabId === sourceTabId && changeInfo.url && !isYTUrl(changeInfo.url)) {
+    sourceTabId = null
+    lastVideoId = null
+  }
+})
+
+// ── Message listener ──────────────────────────────────────────────────────────
+
+browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "ytmo:get-state") {
+    sendResponse({ enabled })
+    return
+  }
+
+  if (msg.type === "ytmo:set-enabled") {
+    enabled = msg.payload as boolean
+    if (enabled) startPolling()
+    else {
+      stopPolling()
+      broadcastClear()
+    }
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (msg.type === "ytmo:register-source" && sender.tab?.id) {
+    sourceTabId = sender.tab.id
+    sendResponse({ ok: true })
+    return
+  }
+})
+
+// ── Broadcast clear ───────────────────────────────────────────────────────────
+
+async function broadcastClear(): Promise<void> {
+  const tabs = await browser.tabs.query({})
+  for (const tab of tabs) {
+    if (tab.id && tab.id !== sourceTabId) {
+      // Use catch to ignore errors when sending to tabs without our content script
+      browser.tabs.sendMessage(tab.id, { type: "ytmo:clear" }).catch(() => {})
+    }
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+startPolling()
+
+export {}

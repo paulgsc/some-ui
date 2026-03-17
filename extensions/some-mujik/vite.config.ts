@@ -1,46 +1,44 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
+import { resolve } from "path"
 import { defineConfig } from "vite"
 
 export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@mujik": path.resolve(__dirname, "./src"),
-    },
-  },
   build: {
-    outDir: "dist",
-    emptyOutDir: true,
     rollupOptions: {
       input: {
-        popup: path.resolve(__dirname, "src/popup/popup.html"),
-        content: path.resolve(__dirname, "src/content/content.ts"),
-        background: path.resolve(__dirname, "src/background/background.ts"),
+        content: resolve(__dirname, "src/content/content.ts"),
+        background: resolve(__dirname, "src/background/background.ts"),
+        popup: resolve(__dirname, "popup.html"),
       },
       output: {
-        manualChunks: () => {}, // prevents shared chunks
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === "content") return "content.js"
-          if (chunkInfo.name === "background") return "background.js"
+        // Each entry is its own self-contained bundle — no dynamic linking.
+        // This satisfies the extension constraint: no shared runtime chunks.
+        manualChunks: undefined,
+        entryFileNames: (chunk) => {
+          if (chunk.name === "content") return "content.js"
+          if (chunk.name === "background") return "background.js"
+          if (chunk.name === "popup") return "popup.js"
           return "[name].js"
         },
         chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
-          return "assets/[name][extname]"
+        assetFileNames: (asset) => {
+          if (asset.name?.endsWith(".css")) return "[name][extname]"
+          if (asset.name?.match(/\.(png|jpg|jpeg|svg|gif|ico)$/)) {
+            return "assets/[name][extname]"
+          }
+          return "[name][extname]"
         },
       },
-      // Aggressive tree shaking
-      treeshake: {
-        preset: "smallest",
-        moduleSideEffects: false,
-      },
     },
-    cssCodeSplit: false,
+    // Enable CSS code splitting so each entry gets its own .css file:
+    // content.css (injected via manifest content_scripts.css[])
+    // popup.css   (loaded by popup.html)
+    cssCodeSplit: true,
+    outDir: "dist",
+    emptyOutDir: true,
   },
-  define: {
-    global: "globalThis",
+  resolve: {
+    alias: {
+      "@mujik": resolve(__dirname, "src"),
+    },
   },
 })

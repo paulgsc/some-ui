@@ -22,7 +22,7 @@ type Story = StoryObj<typeof Leetype>
 /* ---------- Default Code Paths ---------- */
 const defaultCodePaths: Record<Language, string> = {
   typescript: "/code-samples/two-sum.ts",
-  rust: "/code-samples/small-vec.rs",
+  rust: "/code-samples/binary-code.rs",
   cpp: "/code-samples/quicksort.cpp",
   c: "/code-samples/reverse.c",
 }

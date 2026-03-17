@@ -44,6 +44,9 @@ export default defineConfig({
 
       // --------------- Extensions ---------------
       "@drama": path.resolve(__dirname, "./extensions/some-drama/src"),
+      "@tab": path.resolve(__dirname, "./extensions/tab-tracker/src"),
+      "@censor": path.resolve(__dirname, "./extensions/some-filter/src"),
+      "@mujik": path.resolve(__dirname, "./extensions/some-mujik/src"),
 
       // Add more aliases for other packages as needed
     },

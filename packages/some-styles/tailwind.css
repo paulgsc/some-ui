@@ -3,6 +3,7 @@
 @import "./themes/cdrama.css";
 @import "./themes/topik.css";
 @import "./themes/headline.css";
+@import "./themes/scheduler.css";
 
 @plugin "tailwindcss-animate";
 

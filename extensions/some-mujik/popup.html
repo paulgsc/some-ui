@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YT Music Overlay</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="popup">
+      <!-- Header -->
+      <header class="popup-header">
+        <div class="popup-brand">
+          <div class="popup-logo">♪</div>
+          <span class="popup-title">YT Overlay</span>
+        </div>
+        <span class="popup-version">v1.0.0</span>
+      </header>
+
+      <!-- Toggle -->
+      <div class="toggle-row">
+        <div class="toggle-label-group">
+          <span class="toggle-label">Show Overlay</span>
+          <span class="toggle-sublabel">Music card on YouTube tabs</span>
+        </div>
+        <label class="toggle-switch" aria-label="Toggle overlay">
+          <input type="checkbox" id="toggle-enabled" checked />
+          <div class="toggle-track">
+            <div class="toggle-thumb"></div>
+          </div>
+        </label>
+      </div>
+
+      <div class="popup-divider"></div>
+
+      <!-- Status -->
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span class="status-text" id="status-text">Checking…</span>
+      </div>
+
+      <!-- Footer -->
+      <footer class="popup-footer">Hides automatically in fullscreen</footer>
+    </div>
+
+    <script type="module" src="./src/popup/popup.ts"></script>
+  </body>
+</html>

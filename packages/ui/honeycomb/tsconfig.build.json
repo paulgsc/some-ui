@@ -1,4 +1,10 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/hexagon-grid-demo/**"]
+  "exclude": [
+    "**/*.stories.tsx",
+    "**/*.stories.ts",
+    "**/hexagon-grid-demo/**",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ]
 }
