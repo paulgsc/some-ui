@@ -18,19 +18,14 @@ const meta: Meta<typeof CyclicScheduler> = {
 export default meta
 
 const InteractiveScheduler = () => {
-  const [{ outer, inner, running, speed }, { toggleRunning, setSpeed }] =
-    useCyclicClock()
+  const [{ outer, inner }] = useCyclicClock()
   const [popup, setPopup] = useState<PopupState | null>(null)
 
   return (
     <CyclicScheduler
       outer={outer}
       inner={inner}
-      running={running}
-      speed={speed}
       popup={popup}
-      onToggleRunning={toggleRunning}
-      onSpeedChange={setSpeed}
       onClosePopup={() => setPopup(null)}
       onHitNode={(hit: RingHit) => {
         const data = getNodeData(hit.type, outer, hit.index)
@@ -48,11 +43,7 @@ export const StaticPaused: StoryObj<typeof CyclicScheduler> = {
   args: {
     outer: 12,
     inner: 45,
-    running: false,
-    speed: 5,
     popup: null,
-    onToggleRunning: () => {},
-    onSpeedChange: () => {},
     onHitNode: () => {},
     onClosePopup: () => {},
   },
