@@ -1,7 +1,8 @@
 {
-  "name": "some-ui-calendar",
+  "name": "@some-ui/calendar",
   "version": "0.1.0",
   "type": "module",
+  "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",

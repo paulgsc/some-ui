@@ -220,8 +220,6 @@ export const Rings = ({ outerPos, innerPos, onHit }: Props): JSX.Element => {
             onHit({
               type: "inner",
               index: i,
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
             })
             return
           }
