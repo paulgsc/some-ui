@@ -4,8 +4,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4",
-    "some-ui-rollup-config": "workspace:*"
+    "@types/firefox-webext-browser": "^120.0.4"
   },
   "exports": {
     ".": {

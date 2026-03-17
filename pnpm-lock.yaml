@@ -522,20 +522,13 @@ importers:
         version: link:../../packages/rollup-config
 
   extensions/some-mujik:
-    dependencies:
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      lucide-react:
-        specifier: ^0.522.0
-        version: 0.522.0(react@19.1.0)
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
 
   extensions/some-prompt:
     devDependencies:
@@ -603,9 +596,6 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.4
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
 
   packages/eslint:
     devDependencies:
