@@ -1,0 +1,259 @@
+/* ─── YT Music Overlay ─────────────────────────────────────────────────────── */
+/* Scoped under .ytmo-* to avoid collisions with YT's own styles              */
+
+/* ── Reset / base ── */
+.ytmo-card,
+.ytmo-card * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Card shell ── */
+.ytmo-card {
+  position: fixed;
+  z-index: 2147483647; /* max z-index */
+  width: 240px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 6, 18, 0.72);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  padding: 12px;
+  /* Shadow set dynamically via JS based on emotion color */
+  box-shadow:
+    0 0 40px rgba(139, 92, 246, 0.12),
+    0 0 80px rgba(139, 92, 246, 0.06);
+
+  /* Entry animation */
+  animation: ytmo-fade-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  /* Transitions */
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease,
+    box-shadow 0.6s ease;
+}
+
+@keyframes ytmo-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Fullscreen hidden state */
+.ytmo-card--hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-8px) scale(0.96) !important;
+}
+
+/* Song-change flash */
+.ytmo-card--transitioning::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  animation: ytmo-flash 0.6s ease forwards;
+}
+
+@keyframes ytmo-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Glow border overlay ── */
+.ytmo-glow-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  opacity: 0.5;
+  /* background set dynamically via JS */
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.3) 0%,
+    transparent 50%,
+    rgba(139, 92, 246, 0.2) 100%
+  );
+  transition: background 0.6s ease;
+}
+
+/* ── Canvas ── */
+.ytmo-canvas {
+  display: block;
+  width: 216px;
+  height: 72px;
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  margin-bottom: 8px;
+}
+
+/* ── Emotion tag (abs positioned over canvas) ── */
+.ytmo-emotion-tag {
+  position: absolute;
+  bottom: calc(100% - 72px - 12px + 6px); /* over canvas, bottom-right */
+  right: 16px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #fff;
+  /* background set dynamically */
+  background: rgba(139, 92, 246, 0.4);
+  backdrop-filter: blur(4px);
+  transition:
+    opacity 0.4s ease,
+    background 0.6s ease;
+}
+
+.ytmo-emotion-tag--hidden {
+  opacity: 0;
+}
+
+/* ── Metadata block ── */
+.ytmo-meta {
+  position: relative;
+  transition: opacity 0.5s ease;
+}
+
+.ytmo-meta--hidden {
+  opacity: 0.35;
+}
+
+/* Now playing row */
+.ytmo-now-playing-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.ytmo-music-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(139, 92, 246);
+  flex-shrink: 0;
+  /* pulse */
+  animation: ytmo-pulse 2s ease-in-out infinite;
+  transition: background 0.6s ease;
+}
+
+@keyframes ytmo-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+.ytmo-now-playing-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgb(139, 92, 246);
+  transition: color 0.6s ease;
+}
+
+/* Title */
+.ytmo-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 1px;
+  animation: ytmo-slide-in 0.4s ease both;
+}
+
+/* Artist */
+.ytmo-artist {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: ytmo-slide-in 0.4s 0.06s ease both;
+}
+
+@keyframes ytmo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Progress ── */
+.ytmo-progress-wrap {
+  margin-top: 8px;
+}
+
+.ytmo-progress-bar {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.ytmo-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    rgb(139, 92, 246),
+    rgba(139, 92, 246, 0.7)
+  );
+  transition:
+    width 1s linear,
+    background 0.6s ease;
+}
+
+.ytmo-progress-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Drag cursor (applied via JS) ── */
+.ytmo-card[data-dragging="true"] {
+  cursor: grabbing !important;
+  user-select: none;
+}

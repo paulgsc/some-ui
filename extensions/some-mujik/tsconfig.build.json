@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "types": ["chrome"]
+    "jsx": "react-jsx"
   },
   "extends": "./tsconfig.json",
   "exclude": ["**/*.test.ts", "**/*.stories.tsx", "**/*.stories.ts"]
