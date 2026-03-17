@@ -184,13 +184,33 @@
 .ytmo-title {
   font-size: 13.5px;
   font-weight: 600;
-  line-height: 1.3;
   color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
   margin-bottom: 1px;
-  animation: ytmo-slide-in 0.4s ease both;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* The sliding track */
+.ytmo-title-track {
+  display: inline-block;
+  padding-right: 30px; /* Gap before the repeat */
+  transition: transform 0.2s ease-out;
+}
+
+/* Only applied via JS when overflowing */
+.ytmo-marquee {
+  animation: ytmo-marquee 8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes ytmo-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  } /* Works with the cloned text approach */
 }
 
 /* Artist */
@@ -256,4 +276,6 @@
 .ytmo-card[data-dragging="true"] {
   cursor: grabbing !important;
   user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); /* Deeper base shadow */
 }
