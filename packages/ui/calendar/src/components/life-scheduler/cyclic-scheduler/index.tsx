@@ -1,4 +1,3 @@
-
 import type { FC, JSX } from "react"
 import { NodePopup } from "@calendar/components/life-scheduler/node-popup"
 import { Rings, type RingHit } from "@calendar/components/life-scheduler/ring"
@@ -53,9 +52,13 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
         </div>
 
         <div className="flex items-center gap-2 font-mono text-[12px] text-ink-600">
-          <span className="text-violet-400">{String(outer).padStart(2, "0")}</span>
+          <span className="text-violet-400">
+            {String(outer).padStart(2, "0")}
+          </span>
           <span className="text-ink-700">·</span>
-          <span className="text-emerald-400">{String(inner).padStart(2, "0")}</span>
+          <span className="text-emerald-400">
+            {String(inner).padStart(2, "0")}
+          </span>
           <span className="text-ink-700 ml-2">cycle {cycle}</span>
         </div>
       </header>
@@ -79,10 +82,14 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
         </button>
 
         <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-          <label className="font-mono text-[10px] text-ink-500 uppercase tracking-tighter">
+          <label
+            htmlFor="speed-range"
+            className="font-mono text-[10px] text-ink-500 uppercase tracking-tighter"
+          >
             speed
           </label>
           <input
+            id="speed-range"
             type="range"
             min={1}
             max={40}

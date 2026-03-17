@@ -42,7 +42,12 @@ const LoadBar = ({ value }: { value: number }): JSX.Element => {
 }
 
 // Invariant: position is always within viewport bounds after any drag
-function clampToViewport(x: number, y: number, w: number, h: number) {
+function clampToViewport(
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): Record<"x" | "y", number> {
   return {
     x: Math.max(0, Math.min(x, window.innerWidth - w)),
     y: Math.max(0, Math.min(y, window.innerHeight - h)),
@@ -130,13 +135,11 @@ export const NodePopup = ({
     >
       {/* ── Header ─────────────────────────────────────── */}
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
         className={`flex items-center gap-3 px-4 py-3 border-b border-ink-800 ${
-          expanded ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-        } ${isOuter ? "bg-violet-500/10" : "bg-emerald-500/10"}`}
+          isOuter ? "bg-violet-500/10" : "bg-emerald-500/10"
+        }`}
       >
+        {/* Status badge */}
         <span
           className={`font-mono text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
             isOuter
@@ -147,12 +150,21 @@ export const NodePopup = ({
           {isOuter ? "outer · 24" : "inner · 60"}
         </span>
 
-        <span className="font-mono text-[13px] font-medium text-ink-100 flex-1 truncate">
+        {/* Draggable area */}
+        <span
+          className={`font-mono text-[13px] font-medium text-ink-100 flex-1 truncate ${
+            expanded ? "" : "cursor-grab active:cursor-grabbing"
+          }`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        >
           {isOuter
             ? `node ${String(nodeIndex).padStart(2, "0")} · ${data.label}`
             : data.label}
         </span>
 
+        {/* Buttons */}
         <button
           onClick={() => setExpanded((v) => !v)}
           className="text-ink-500 hover:text-ink-200 transition-colors text-sm leading-none px-1 font-mono"
@@ -169,7 +181,6 @@ export const NodePopup = ({
           ×
         </button>
       </div>
-
       {/* ── Body ───────────────────────────────────────── */}
       <div
         className={`px-4 py-3 space-y-3 overflow-y-auto ${expanded ? "h-[calc(100vh-52px)]" : ""}`}
