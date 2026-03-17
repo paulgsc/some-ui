@@ -43,23 +43,27 @@ export type RGB = {
 }
 
 export function getEmotionColor(valence: number): RGB {
-  const idx = valence * (EMOTION_PALETTE.length - 1)
+  const max = EMOTION_PALETTE.length - 1
+
+  // clamp valence → [0, 1]
+  const v = Math.min(1, Math.max(0, valence))
+
+  const idx = v * max
   const lo = Math.floor(idx)
-  const hi = Math.min(lo + 1, EMOTION_PALETTE.length - 1)
+  const hi = Math.min(lo + 1, max)
   const t = idx - lo
+
+  const c0 = EMOTION_PALETTE[lo]
+  const c1 = EMOTION_PALETTE[hi]
+
+  if (!c0 || !c1) {
+    throw new Error("EMOTION_PALETTE index out of bounds")
+  }
+
   return {
-    r: Math.round(
-      EMOTION_PALETTE[lo].r +
-        (EMOTION_PALETTE[hi].r - EMOTION_PALETTE[lo].r) * t
-    ),
-    g: Math.round(
-      EMOTION_PALETTE[lo].g +
-        (EMOTION_PALETTE[hi].g - EMOTION_PALETTE[lo].g) * t
-    ),
-    b: Math.round(
-      EMOTION_PALETTE[lo].b +
-        (EMOTION_PALETTE[hi].b - EMOTION_PALETTE[lo].b) * t
-    ),
+    r: Math.round(c0.r + (c1.r - c0.r) * t),
+    g: Math.round(c0.g + (c1.g - c0.g) * t),
+    b: Math.round(c0.b + (c1.b - c0.b) * t),
   }
 }
 

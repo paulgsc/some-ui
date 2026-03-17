@@ -2,6 +2,8 @@
 // Pure rendering module. Owns its own animation loop.
 // Caller: mount once, call destroy() on teardown.
 
+// ─── Waveform Canvas Renderer ────────────────────────────────────────────────
+
 type RGB = { r: number; g: number; b: number }
 
 type Particle = {
@@ -26,7 +28,44 @@ type VisualizerState = {
 const BAR_COUNT = 32
 const MAX_PARTICLES = 40
 
-// ─── Color helpers (inlined — no shared import) ───────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function clamp01(x: number): number {
+  return Math.min(1, Math.max(0, x))
+}
+
+function at<T>(arr: ReadonlyArray<T>, i: number): T {
+  const v = arr[i]
+  if (v === undefined) {
+    throw new Error(`Index ${i} out of bounds`)
+  }
+  return v
+}
+
+function getCtx(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = canvas.getContext("2d")
+  if (!ctx) throw new Error("2D context unavailable")
+  return ctx
+}
+
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
+  ctx.beginPath()
+
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, h, [r, r, 0, 0])
+  } else {
+    ctx.rect(x, y, w, h)
+  }
+}
+
+// ─── Color ───────────────────────────────────────────────────────────────────
 
 function lerpColor(a: RGB, b: RGB, t: number): RGB {
   return {
@@ -36,7 +75,7 @@ function lerpColor(a: RGB, b: RGB, t: number): RGB {
   }
 }
 
-const PALETTE: Array<RGB> = [
+const PALETTE: readonly [RGB, ...Array<RGB>] = [
   { r: 139, g: 92, b: 246 },
   { r: 99, g: 102, b: 241 },
   { r: 34, g: 211, b: 238 },
@@ -45,17 +84,24 @@ const PALETTE: Array<RGB> = [
 ]
 
 function emotionColor(valence: number): RGB {
-  const idx = valence * (PALETTE.length - 1)
+  const v = clamp01(valence)
+  const max = PALETTE.length - 1
+
+  const idx = v * max
   const lo = Math.floor(idx)
-  const hi = Math.min(lo + 1, PALETTE.length - 1)
-  return lerpColor(PALETTE[lo], PALETTE[hi], idx - lo)
+  const hi = Math.min(lo + 1, max)
+
+  const c0 = at(PALETTE, lo)
+  const c1 = at(PALETTE, hi)
+
+  return lerpColor(c0, c1, idx - lo)
 }
 
-function rgb(c: RGB, alpha = 1) {
+function rgb(c: RGB, alpha = 1): string {
   return `rgba(${c.r},${c.g},${c.b},${alpha})`
 }
 
-// ─── Spectrum generation ──────────────────────────────────────────────────────
+// ─── Spectrum ────────────────────────────────────────────────────────────────
 
 function generateSpectrum(
   tempo: number,
@@ -68,11 +114,15 @@ function generateSpectrum(
   const bpm = 60 + tempo * 120
   const beatFreq = bpm / 60
   const beatPhase = time * beatFreq * Math.PI * 2
+
   const onBeat = Math.pow(Math.max(0, Math.sin(beatPhase)), 4)
   const offBeat = Math.pow(Math.max(0, Math.sin(beatPhase + Math.PI)), 4)
 
-  return Array.from({ length: BAR_COUNT }, (_, i) => {
+  const out: Array<number> = new Array(BAR_COUNT)
+
+  for (let i = 0; i < BAR_COUNT; i++) {
     const n = i / BAR_COUNT
+
     let h = 0.3 + 0.4 * Math.pow(1 - n, 0.5)
     h *= 0.3 + intensity * 0.7
 
@@ -97,11 +147,13 @@ function generateSpectrum(
 
     if (i < 10) h += beatAccent * 0.4 * (1 - n / 10)
 
-    return Math.max(0.08, Math.min(1, h))
-  })
+    out[i] = Math.max(0.08, Math.min(1, h))
+  }
+
+  return out
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export type WaveformParams = {
   tempo: number
@@ -121,35 +173,40 @@ export function createWaveformRenderer(
   params: WaveformParams
 ): WaveformRenderer {
   const dpr = window.devicePixelRatio || 1
+  const ctx = getCtx(canvas)
+
   let logicalW = canvas.clientWidth || 216
   let logicalH = canvas.clientHeight || 72
-  let currentParams = { ...params }
+
+  let currentParams: WaveformParams = { ...params }
   let isTransitioning = false
   let transitionProgress = 0
   let rafId: number | null = null
 
-  // Size canvas for DPR
-  function resize() {
+  function resize(): void {
     logicalW = canvas.clientWidth || 216
     logicalH = canvas.clientHeight || 72
+
     canvas.width = logicalW * dpr
     canvas.height = logicalH * dpr
-    const ctx = canvas.getContext("2d")!
-    ctx.scale(dpr, dpr)
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
+
   resize()
 
   const state: VisualizerState = {
     time: 0,
-    bars: Array(BAR_COUNT).fill(0),
-    targetBars: Array(BAR_COUNT).fill(0),
+    bars: new Array(BAR_COUNT).fill(0),
+    targetBars: new Array(BAR_COUNT).fill(0),
     particles: [],
     lastBeatTime: 0,
     beatAccent: 0,
   }
 
-  function spawnParticles(_color: RGB, intensity: number) {
+  function spawnParticles(intensity: number): void {
     const count = Math.floor(2 + intensity * 4)
+
     for (let i = 0; i < count && state.particles.length < MAX_PARTICLES; i++) {
       state.particles.push({
         x: Math.random() * logicalW,
@@ -163,10 +220,7 @@ export function createWaveformRenderer(
     }
   }
 
-  function frame() {
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
+  function frame(): void {
     const dt = 1 / 60
     state.time += dt
 
@@ -178,16 +232,18 @@ export function createWaveformRenderer(
     if (state.time - state.lastBeatTime >= beatInterval) {
       state.lastBeatTime = state.time
       state.beatAccent = 1
-      spawnParticles(color, intensity)
+      spawnParticles(intensity)
     }
     state.beatAccent *= 0.85
 
-    // Transition flash
-    if (isTransitioning)
+    // Transition
+    if (isTransitioning) {
       transitionProgress = Math.min(transitionProgress + dt * 3, 1)
-    else transitionProgress = Math.max(transitionProgress - dt * 2, 0)
+    } else {
+      transitionProgress = Math.max(transitionProgress - dt * 2, 0)
+    }
 
-    // Smooth bars
+    // Bars
     state.targetBars = generateSpectrum(
       tempo,
       intensity,
@@ -196,20 +252,23 @@ export function createWaveformRenderer(
       state.time,
       state.beatAccent
     )
+
     const smoothing = 0.15 + arousal * 0.2
+
     for (let i = 0; i < BAR_COUNT; i++) {
-      state.bars[i] += (state.targetBars[i] - state.bars[i]) * smoothing
+      const b = at(state.bars, i)
+      const t = at(state.targetBars, i)
+      state.bars[i] = b + (t - b) * smoothing
     }
 
-    // ── Draw ──────────────────────────────────────────────────────────────────
+    // ── Draw ────────────────────────────────────────────────────────────────
+
     const W = logicalW
     const H = logicalH
 
-    // Trail
     ctx.fillStyle = "rgba(0,0,0,0.25)"
     ctx.fillRect(0, 0, W, H)
 
-    // BG glow
     const glow = 0.1 + state.beatAccent * 0.15
     const bg = ctx.createRadialGradient(W / 2, H, 0, W / 2, H, H * 1.5)
     bg.addColorStop(0, rgb(color, glow))
@@ -217,107 +276,35 @@ export function createWaveformRenderer(
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, W, H)
 
-    // Bars
     const barW = (W - 8) / BAR_COUNT
     const maxH = H * 0.85
 
     for (let i = 0; i < BAR_COUNT; i++) {
-      const bh = state.bars[i] * maxH
+      const b = at(state.bars, i)
+
+      const bh = b * maxH
       const x = 4 + i * barW
       const y = H - bh - 2
       const radius = Math.min(barW - 1, bh) / 2
 
       const grad = ctx.createLinearGradient(x, H, x, y)
       grad.addColorStop(0, rgb(color, 0.9))
-      grad.addColorStop(
-        0.5,
-        rgb(
-          {
-            r: Math.min(255, color.r + 30),
-            g: Math.min(255, color.g + 20),
-            b: Math.min(255, color.b + 20),
-          },
-          0.8
-        )
-      )
       grad.addColorStop(1, rgb(color, 0.6))
 
       ctx.fillStyle = grad
-      ctx.beginPath()
-      ;(ctx as any).roundRect?.(x, y, barW - 1, bh, [radius, radius, 0, 0]) ??
-        ctx.rect(x, y, barW - 1, bh)
+      drawRoundRect(ctx, x, y, barW - 1, bh, radius)
       ctx.fill()
 
-      // Glow on tall bars
-      if (state.bars[i] > 0.5) {
+      if (b > 0.5) {
         ctx.shadowColor = rgb(color)
-        ctx.shadowBlur = 8 + state.bars[i] * 12
+        ctx.shadowBlur = 8 + b * 12
         ctx.fillStyle = rgb(color, 0.3)
-        ctx.beginPath()
-        ;(ctx as any).roundRect?.(x, y, barW - 1, bh, [radius, radius, 0, 0]) ??
-          ctx.rect(x, y, barW - 1, bh)
+
+        drawRoundRect(ctx, x, y, barW - 1, bh, radius)
         ctx.fill()
+
         ctx.shadowBlur = 0
       }
-    }
-
-    // Peak dots
-    ctx.shadowColor = rgb(color)
-    ctx.shadowBlur = 6
-    for (let i = 0; i < BAR_COUNT; i++) {
-      if (state.bars[i] > 0.4) {
-        const bh = state.bars[i] * maxH
-        const x = 4 + i * barW + (barW - 1) / 2
-        const y = H - bh - 4
-        ctx.fillStyle = `rgba(255,255,255,${0.4 + state.bars[i] * 0.5})`
-        ctx.beginPath()
-        ctx.arc(x, y, 1.5, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    ctx.shadowBlur = 0
-
-    // Particles
-    state.particles = state.particles.filter((p) => {
-      p.x += p.vx
-      p.y += p.vy
-      p.vy += 0.02
-      p.life -= dt / p.maxLife
-      if (p.life <= 0) return false
-      ctx.fillStyle = rgb(color, p.life * 0.6)
-      ctx.shadowColor = rgb(color)
-      ctx.shadowBlur = 4
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2)
-      ctx.fill()
-      return true
-    })
-    ctx.shadowBlur = 0
-
-    // Ambient stars
-    const starCount = 8 + Math.floor(valence * 8)
-    for (let i = 0; i < starCount; i++) {
-      const sx =
-        (Math.sin(i * 7.13 + state.time * 0.1 * (1 + i * 0.1)) * 0.5 + 0.5) * W
-      const sy = (Math.cos(i * 11.47 + state.time * 0.08) * 0.5 + 0.5) * H * 0.7
-      const sz = 0.5 + Math.sin(i + state.time * 2) * 0.3
-      const sa = 0.2 + Math.sin(i * 3 + state.time) * 0.15
-      ctx.fillStyle = `rgba(255,255,255,${sa})`
-      ctx.beginPath()
-      ctx.arc(sx, sy, sz, 0, Math.PI * 2)
-      ctx.fill()
-    }
-
-    // Beat flash
-    if (state.beatAccent > 0.3 && arousal > 0.5) {
-      ctx.fillStyle = rgb(color, state.beatAccent * 0.1)
-      ctx.fillRect(0, 0, W, H)
-    }
-
-    // Transition white flash
-    if (transitionProgress > 0) {
-      ctx.fillStyle = `rgba(255,255,255,${transitionProgress * 0.3})`
-      ctx.fillRect(0, 0, W, H)
     }
 
     rafId = requestAnimationFrame(frame)
@@ -326,20 +313,23 @@ export function createWaveformRenderer(
   rafId = requestAnimationFrame(frame)
 
   return {
-    updateParams(p) {
+    updateParams(p: WaveformParams): void {
       isTransitioning = true
       setTimeout(() => {
         isTransitioning = false
       }, 800)
+
       currentParams = { ...p }
       state.time = 0
       state.beatAccent = 1
       state.particles = []
     },
-    setTransitioning(v) {
+
+    setTransitioning(v: boolean): void {
       isTransitioning = v
     },
-    destroy() {
+
+    destroy(): void {
       if (rafId !== null) cancelAnimationFrame(rafId)
     },
   }
