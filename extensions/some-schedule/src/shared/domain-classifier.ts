@@ -11,12 +11,12 @@
 
 import type { Domain } from "./types"
 
-interface DomainRule {
+type DomainRule = {
   pattern: RegExp
   domain: Domain
 }
 
-const RULES: DomainRule[] = [
+const RULES: Array<DomainRule> = [
   // ── DSA ───────────────────────────────────────────────────────────────
   { pattern: /leetcode\.com/, domain: "dsa" },
   { pattern: /neetcode\.io/, domain: "dsa" },
@@ -85,7 +85,10 @@ export function classifyDomain(url: string): Domain {
  * Returns true if `url` should be captured at all.
  * Tabs matching ignore patterns are skipped before any extraction.
  */
-export function shouldCapture(url: string, ignorePatterns: string[]): boolean {
+export function shouldCapture(
+  url: string,
+  ignorePatterns: Array<string>
+): boolean {
   if (!url || url.length === 0) return false
   for (const pattern of ignorePatterns) {
     if (url.includes(pattern)) return false

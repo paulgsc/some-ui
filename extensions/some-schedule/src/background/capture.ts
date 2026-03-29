@@ -14,8 +14,11 @@
  * it; the popup triggers it via the background.
  */
 
-import { classifyDomain, shouldCapture } from "../shared/domain-classifier"
-import { isoNow, uuid } from "../shared/id"
+import {
+  classifyDomain,
+  shouldCapture,
+} from "@schedule/shared/domain-classifier"
+import { isoNow, uuid } from "@schedule/shared/id"
 import type {
   CaptureSession,
   CaptureSettings,
@@ -23,30 +26,30 @@ import type {
   MessageToContent,
   SkippedTab,
   TabCapture,
-} from "../shared/types"
+} from "@schedule/shared/types"
 
 export type ProgressCallback = (completed: number, total: number) => void
 
 /**
  * Capture all open tabs.
  *
- * @param settings  User-configured capture settings
+ * @param settings    User-configured capture settings
  * @param onProgress  Called after each tab completes (for popup progress bar)
  */
 export async function captureAllTabs(
   settings: CaptureSettings,
   onProgress?: ProgressCallback
 ): Promise<CaptureSession> {
-  const allTabs = await chrome.tabs.query({})
+  const allTabs = await browser.tabs.query({})
   const capturedAt = isoNow()
 
-  const captures: TabCapture[] = []
-  const skipped: SkippedTab[] = []
+  const captures: Array<TabCapture> = []
+  const skipped: Array<SkippedTab> = []
 
-  // Partition tabs into capturable and skipped before starting
+  // Partition tabs into capturable and skipped before starting.
   const capturable = allTabs.filter((tab) => {
-    if (!tab.url || !tab.id) {
-      if (tab.id) {
+    if (!tab.url || tab.id == null) {
+      if (tab.id != null) {
         skipped.push({ tab_id: tab.id, url: tab.url ?? "", reason: "no_url" })
       }
       return false
@@ -61,24 +64,22 @@ export async function captureAllTabs(
   const total = capturable.length
   let completed = 0
 
-  // Process tabs sequentially to avoid flooding the content script
-  // message bus. A tab that is slow to respond would block the queue,
-  // but the timeout prevents indefinite blocking.
+  // Process tabs sequentially — avoids flooding the content script message bus.
+  // The per-tab timeout prevents a slow tab from blocking the queue indefinitely.
   for (const tab of capturable) {
-    const tabId = tab.id!
-    const url = tab.url!
-
     const capture = await captureTab(tab, settings)
     captures.push(capture)
 
-    completed++
-    onProgress?.(completed, total)
+    completed += 1
+    if (onProgress !== undefined) {
+      onProgress(completed, total)
+    }
   }
 
   return {
     session_id: uuid(),
     captured_at: capturedAt,
-    extension_version: chrome.runtime.getManifest().version,
+    extension_version: browser.runtime.getManifest().version,
     total_open_tabs: allTabs.length,
     captures,
     skipped,
@@ -87,14 +88,16 @@ export async function captureAllTabs(
 
 /**
  * Capture a single tab.
- * Always resolves — failure is encoded in the TabCapture result.
+ * Always resolves — failure is encoded in the returned TabCapture.
  */
 async function captureTab(
-  tab: chrome.tabs.Tab,
+  tab: browser.tabs.Tab,
   settings: CaptureSettings
 ): Promise<TabCapture> {
-  const tabId = tab.id!
-  const url = tab.url!
+  // Both id and url are guaranteed non-null here — captureAllTabs filters
+  // before calling this function.
+  const tabId = tab.id as number
+  const url = tab.url as string
   const domain = classifyDomain(url)
 
   const base = {
@@ -106,16 +109,16 @@ async function captureTab(
   }
 
   try {
-    const content = await extractWithTimeout(
+    const result = await extractWithTimeout(
       tabId,
       settings.extraction_timeout_ms
     )
     return {
       ...base,
-      extractor: content.extractorName ?? "unknown",
-      content: content.content,
-      extraction_ok: content.ok,
-      extraction_error: content.ok ? undefined : content.error,
+      extractor: result.extractorName ?? "unknown",
+      content: result.content,
+      extraction_ok: result.ok,
+      extraction_error: result.ok ? undefined : result.error,
     }
   } catch (e) {
     const error = String(e)
@@ -123,8 +126,6 @@ async function captureTab(
       ? "extraction_timeout"
       : "scripting_error"
 
-    // Add to a local skipped list — we don't have access to the outer
-    // skipped array here, so we encode failure in the capture itself.
     return {
       ...base,
       extractor: "none",
@@ -143,48 +144,46 @@ async function captureTab(
   }
 }
 
+// ── Type for extractWithTimeout result ─────────────────────────────────────
+
+type ExtractResult = {
+  ok: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content: any
+  extractorName?: string
+  error?: string
+}
+
 /**
- * Send EXTRACT_CONTENT to tab `tabId` and wait for response,
- * with a hard timeout.
+ * Send EXTRACT_CONTENT to `tabId` and resolve with the content script's
+ * response, or reject after `timeoutMs`.
+ *
+ * Firefox MV2: browser.tabs.sendMessage returns a Promise<any>.
+ * We wrap it in our own timeout race rather than using a callback,
+ * which avoids the MV2 callback-signature type incompatibility.
  */
 async function extractWithTimeout(
   tabId: number,
   timeoutMs: number
-): Promise<{
-  ok: boolean
-  content: any
-  extractorName?: string
-  error?: string
-}> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`timeout after ${timeoutMs}ms`))
-    }, timeoutMs)
+): Promise<ExtractResult> {
+  const message: MessageToContent = { kind: "EXTRACT_CONTENT" }
 
-    const message: MessageToContent = { kind: "EXTRACT_CONTENT" }
+  const sendPromise = browser.tabs.sendMessage(
+    tabId,
+    message
+  ) as Promise<MessageFromContent>
 
-    chrome.tabs.sendMessage(
-      tabId,
-      message,
-      (response: MessageFromContent | undefined) => {
-        clearTimeout(timer)
-
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message))
-          return
-        }
-
-        if (!response) {
-          reject(new Error("no response from content script"))
-          return
-        }
-
-        if (response.kind === "EXTRACTED") {
-          resolve({ ok: true, content: response.content })
-        } else {
-          resolve({ ok: false, content: null, error: response.error })
-        }
-      }
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(
+      () => reject(new Error(`timeout after ${timeoutMs}ms`)),
+      timeoutMs
     )
   })
+
+  const response = await Promise.race([sendPromise, timeoutPromise])
+
+  if (response.kind === "EXTRACTED") {
+    return { ok: true, content: response.content }
+  }
+  return { ok: false, content: null, error: response.error }
 }

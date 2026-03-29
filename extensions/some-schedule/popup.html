@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tabsched capture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        width: 320px;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 13px;
+        color: #22d3ee;
+        letter-spacing: 0.05em;
+        margin-bottom: 14px;
+      }
+
+      #status-text {
+        color: #6b7280;
+        margin-bottom: 12px;
+        min-height: 18px;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      button {
+        flex: 1;
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 7px 10px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: #22d3ee;
+        color: #22d3ee;
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      button.primary {
+        border-color: #22d3ee;
+        color: #22d3ee;
+      }
+
+      #progress-bar {
+        height: 2px;
+        background: #1a1a1a;
+        border-radius: 1px;
+        margin-bottom: 12px;
+        display: none;
+      }
+
+      #progress-fill {
+        height: 100%;
+        background: #22d3ee;
+        border-radius: 1px;
+        transition: width 0.2s;
+        width: 0%;
+      }
+
+      #result-section {
+        display: none;
+        border-top: 1px solid #1a1a1a;
+        padding-top: 12px;
+      }
+
+      #summary-text {
+        color: #6b7280;
+        margin-bottom: 10px;
+        line-height: 1.5;
+      }
+
+      .btn-row.result-row button {
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>tabsched capture</h1>
+
+    <p id="status-text">Ready</p>
+
+    <div id="progress-bar">
+      <div id="progress-fill"></div>
+    </div>
+
+    <div class="btn-row">
+      <button id="btn-capture-all" class="primary">Capture all tabs</button>
+      <button id="btn-capture-active">Active tab</button>
+    </div>
+
+    <div id="result-section">
+      <p id="summary-text"></p>
+      <div class="btn-row result-row">
+        <button id="btn-copy">Copy JSON</button>
+        <button id="btn-download">Download</button>
+      </div>
+    </div>
+
+    <script type="module" src="./src/popup/popup.ts"></script>
+  </body>
+</html>

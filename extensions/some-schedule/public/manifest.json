@@ -1,16 +1,14 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "tabsched capture",
   "version": "0.1.0",
   "description": "Capture open tabs as structured learning resources for the tabsched pipeline",
 
-  "permissions": ["tabs", "scripting", "storage", "activeTab"],
-
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["tabs", "storage", "activeTab", "<all_urls>"],
 
   "background": {
-    "service_worker": "dist/background.js",
-    "type": "module"
+    "scripts": ["dist/background.js"],
+    "persistent": false
   },
 
   "content_scripts": [
@@ -22,7 +20,7 @@
     }
   ],
 
-  "action": {
+  "browser_action": {
     "default_popup": "popup.html",
     "default_title": "tabsched capture"
   },
