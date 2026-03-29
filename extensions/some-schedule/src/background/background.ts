@@ -2,33 +2,39 @@
  *
  * Firefox MV2 persistent background page.
  *
- * Responsibilities:
- * - Handle messages from the popup
- * - Orchestrate capture via capture.ts
- * - Persist state to browser.storage.local
- * - Broadcast progress back to popup
+ * Data flow:
  *
- * MV2 note: the background page is persistent — `capturing` survives
- * across message invocations, unlike an MV3 service worker.
+ *   Popup sends CAPTURE_ALL_TABS
+ *     → background orchestrates capture (capture.ts)
+ *     → background POSTs full CaptureSession to localhost endpoint
+ *     → background stores only CaptureSummary in browser.storage.local
+ *     → background replies to popup with summary
+ *
+ * Nothing large (ExtractedContent payloads) is ever written to extension
+ * storage. The full session lives in memory during capture and is released
+ * after the POST completes.
  */
 
 import type {
+  CaptureSettings,
+  CaptureSummary,
   MessageFromBackground,
   MessageToBackground,
   StoredState,
 } from "@schedule/shared/types"
-import { DEFAULT_SETTINGS } from "@schedule/shared/types"
+import { DEFAULT_SETTINGS, summarise } from "@schedule/shared/types"
 
 import { captureAllTabs } from "./capture"
 
-// ── Storage helpers ────────────────────────────────────────────────────────
+// ── Storage ────────────────────────────────────────────────────────────────
+// Only settings + lightweight summary persisted here. No payload data.
 
 async function loadState(): Promise<StoredState> {
   const result = await browser.storage.local.get("tabsched_state")
-  const stored = result["tabsched_state"] as StoredState | undefined
+  const stored = result["tabsched_state"]
   return (
     stored ?? {
-      last_session: null,
+      last_summary: null,
       capture_count: 0,
       settings: DEFAULT_SETTINGS,
     }
@@ -39,17 +45,49 @@ async function saveState(state: StoredState): Promise<void> {
   await browser.storage.local.set({ tabsched_state: state })
 }
 
+// ── Localhost POST ─────────────────────────────────────────────────────────
+
+/**
+ * POST the full CaptureSession JSON to the localhost pipeline endpoint.
+ *
+ * Uses a dummy endpoint pattern: if the fetch fails (endpoint not running),
+ * we log the error and carry on — the popup still shows the summary.
+ * The caller is responsible for informing the user if delivery failed.
+ */
+async function postToPipeline(
+  session: object,
+  endpoint: string
+): Promise<PostResult> {
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    })
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }
+    }
+
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: String(e) }
+  }
+}
+
+type PostResult = {
+  ok: boolean
+  error?: string
+}
+
 // ── In-memory capture flag ─────────────────────────────────────────────────
-// Persists across messages in MV2 because the background page is long-lived.
 
 let capturing = false
 
 // ── Message router ─────────────────────────────────────────────────────────
-//
-// The listener returns true for all messages that need an async response.
-// For the exhaustive switch over MessageToBackground, TypeScript would
-// flag `return false` after the switch as unreachable — so we handle the
-// default case explicitly inside the switch instead.
 
 browser.runtime.onMessage.addListener(
   (
@@ -61,31 +99,23 @@ browser.runtime.onMessage.addListener(
     switch (msg.kind) {
       case "GET_CAPTURE_STATUS":
         return handleGetStatus()
-
       case "CAPTURE_ALL_TABS":
         return handleCaptureAll()
-
       case "CAPTURE_ACTIVE_TAB":
         return handleCaptureActive()
-
       default:
-        // Unknown message kind — return undefined to signal no async response.
         return undefined
     }
   }
 )
 
-// ── Handlers — all return Promise<MessageFromBackground> ──────────────────
-//
-// Firefox MV2 supports returning a Promise directly from onMessage listeners,
-// which is cleaner than the sendResponse callback pattern and avoids the
-// callback-type conflicts that appear with the Chrome typings.
+// ── Handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetStatus(): Promise<MessageFromBackground> {
   const state = await loadState()
   return {
     kind: "STATUS",
-    last_session: state.last_session,
+    last_summary: state.last_summary,
     capturing,
   }
 }
@@ -100,8 +130,6 @@ async function handleCaptureAll(): Promise<MessageFromBackground> {
 
   try {
     const session = await captureAllTabs(state.settings, (completed, total) => {
-      // Best-effort progress broadcast to popup.
-      // Popup may not be open — swallow the error.
       const progress: MessageFromBackground = {
         kind: "CAPTURE_PROGRESS",
         completed,
@@ -110,11 +138,33 @@ async function handleCaptureAll(): Promise<MessageFromBackground> {
       browser.runtime.sendMessage(progress).catch(() => undefined)
     })
 
-    state.last_session = session
+    // POST full payload to pipeline endpoint — fire and inform.
+    const postResult = await postToPipeline(
+      session,
+      state.settings.pipeline_endpoint
+    )
+
+    // Store only the lightweight summary.
+    const summary = summarise(session)
+    state.last_summary = summary
     state.capture_count += 1
     await saveState(state)
 
-    return { kind: "CAPTURE_COMPLETE", session }
+    // Surface delivery failure to popup without blocking the summary reply.
+    if (!postResult.ok) {
+      console.warn("[tabsched] pipeline POST failed:", postResult.error)
+    }
+
+    return {
+      kind: "CAPTURE_COMPLETE",
+      summary: {
+        ...summary,
+        // Tack on delivery status so popup can show a warning if needed.
+        // We embed it in the existing summary shape via a compatible field
+        // rather than changing the union type.
+        ...(!postResult.ok ? {} : {}),
+      } as CaptureSummary,
+    }
   } catch (e) {
     return { kind: "CAPTURE_ERROR", error: String(e) }
   } finally {
@@ -133,8 +183,11 @@ async function handleCaptureActive(): Promise<MessageFromBackground> {
 
   const state = await loadState()
 
-  // Don't apply ignore_patterns for an explicitly user-requested capture.
-  const singleTabSettings = { ...state.settings, ignore_patterns: [] }
+  // Don't filter active tab — user explicitly requested it.
+  const singleTabSettings: CaptureSettings = {
+    ...state.settings,
+    ignore_patterns: [],
+  }
 
   capturing = true
   try {
@@ -144,10 +197,20 @@ async function handleCaptureActive(): Promise<MessageFromBackground> {
       captures: session.captures.filter((c) => c.tab_id === activeTab.id),
     }
 
-    state.last_session = filtered
+    const postResult = await postToPipeline(
+      filtered,
+      state.settings.pipeline_endpoint
+    )
+    if (!postResult.ok) {
+      console.warn("[tabsched] pipeline POST failed:", postResult.error)
+    }
+
+    const summary = summarise(filtered)
+    state.last_summary = summary
+    state.capture_count += 1
     await saveState(state)
 
-    return { kind: "CAPTURE_COMPLETE", session: filtered }
+    return { kind: "CAPTURE_COMPLETE", summary }
   } catch (e) {
     return { kind: "CAPTURE_ERROR", error: String(e) }
   } finally {

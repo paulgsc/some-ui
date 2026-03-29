@@ -48,7 +48,7 @@ export type ContentKind =
 // never raw HTML. Fields are chosen to be cheap to embed and semantically
 // informative.
 
-export interface ExtractedContent {
+export type ExtractedContent = {
   kind: ContentKind
 
   /** Primary title of the resource. */
@@ -68,7 +68,7 @@ export interface ExtractedContent {
    * Ordered h1–h3 headings. Provide strong signal for embedding
    * without sending full body text.
    */
-  headings: string[]
+  headings: Array<string>
 
   /**
    * Keywords extracted from content (not meta keywords tag, which is
@@ -78,7 +78,7 @@ export interface ExtractedContent {
    * - docs: section titles slugified
    * - article: noun phrases from first 3 paragraphs
    */
-  keywords: string[]
+  keywords: Array<string>
 
   /** Byte length of the raw content before extraction, for diagnostics. */
   raw_length: number
@@ -92,7 +92,7 @@ export interface ExtractedContent {
 // One entry per captured tab. This is the unit that flows from the
 // extension into the pipeline.
 
-export interface TabCapture {
+export type TabCapture = {
   /** Chrome/Firefox tab ID at time of capture. Not stable across sessions. */
   tab_id: number
 
@@ -129,7 +129,7 @@ export interface TabCapture {
 // The full output of one capture run — what gets written to disk or
 // clipboard for the pipeline to consume.
 
-export interface CaptureSession {
+export type CaptureSession = {
   /** UUID v4, generated at capture time. */
   session_id: string
 
@@ -142,13 +142,13 @@ export interface CaptureSession {
   total_open_tabs: number
 
   /** Tabs that were captured (passed domain filter). */
-  captures: TabCapture[]
+  captures: Array<TabCapture>
 
   /** Tabs that were skipped and why. */
-  skipped: SkippedTab[]
+  skipped: Array<SkippedTab>
 }
 
-export interface SkippedTab {
+export type SkippedTab = {
   tab_id: number
   url: string
   reason: SkipReason
@@ -159,6 +159,32 @@ export type SkipReason =
   | "no_url" // tab has no URL (new tab, about:blank, etc.)
   | "extraction_timeout"
   | "scripting_error" // content script could not be injected
+
+// ── Lightweight run summary (what goes into storage) ──────────────────────
+//
+// CaptureSession payloads can be large. Storage only keeps this summary.
+// The full session is POSTed to the localhost pipeline endpoint and kept
+// in memory until the popup is closed.
+
+export type CaptureSummary = {
+  session_id: string
+  captured_at: string
+  total_tabs: number
+  captured_ok: number
+  captured_fail: number
+  skipped: number
+}
+
+export function summarise(session: CaptureSession): CaptureSummary {
+  return {
+    session_id: session.session_id,
+    captured_at: session.captured_at,
+    total_tabs: session.total_open_tabs,
+    captured_ok: session.captures.filter((c) => c.extraction_ok).length,
+    captured_fail: session.captures.filter((c) => !c.extraction_ok).length,
+    skipped: session.skipped.length,
+  }
+}
 
 // ── Messages ───────────────────────────────────────────────────────────────
 //
@@ -174,36 +200,43 @@ export type MessageToBackground =
 export type MessageToContent = { kind: "EXTRACT_CONTENT" }
 
 export type MessageFromContent =
-  | { kind: "EXTRACTED"; content: ExtractedContent }
+  | { kind: "EXTRACTED"; content: ExtractedContent; extractorName: string }
   | { kind: "EXTRACT_FAILED"; error: string }
 
 export type MessageFromBackground =
-  | { kind: "CAPTURE_COMPLETE"; session: CaptureSession }
+  | { kind: "CAPTURE_COMPLETE"; summary: CaptureSummary }
   | { kind: "CAPTURE_PROGRESS"; completed: number; total: number }
   | { kind: "CAPTURE_ERROR"; error: string }
-  | { kind: "STATUS"; last_session: CaptureSession | null; capturing: boolean }
+  | { kind: "STATUS"; last_summary: CaptureSummary | null; capturing: boolean }
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-export interface StoredState {
-  last_session: CaptureSession | null
+//
+// Only lightweight data lives in browser.storage.local.
+// Full CaptureSession payloads are POSTed to the localhost endpoint.
+
+export type StoredState = {
+  last_summary: CaptureSummary | null
   capture_count: number
   settings: CaptureSettings
 }
 
-export interface CaptureSettings {
+export type CaptureSettings = {
   /**
    * URL substrings that cause a tab to be skipped entirely.
    * Default list covers chrome:// URLs, extension pages, and common
    * noise like Google Docs, Notion, etc. that aren't learning resources.
    */
-  ignore_patterns: string[]
+  ignore_patterns: Array<string>
 
   /**
    * How long to wait for a content script to respond before timing out.
    * Default: 5000ms.
    */
   extraction_timeout_ms: number
+
+  /** Localhost pipeline endpoint. Default: http://localhost:7373/capture */
+  pipeline_endpoint: string
 
   /**
    * If true, emit extraction_error details in the JSON output.
@@ -229,5 +262,6 @@ export const DEFAULT_SETTINGS: CaptureSettings = {
     "reddit.com",
   ],
   extraction_timeout_ms: 5000,
+  pipeline_endpoint: "http://localhost:7373/capture",
   verbose_errors: false,
 }

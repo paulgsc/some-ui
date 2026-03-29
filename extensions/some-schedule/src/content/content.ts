@@ -2,12 +2,11 @@
  *
  * Content script — injected into every page by the manifest.
  *
- * Listens for EXTRACT_CONTENT from the background page, runs the
- * extractor registry, and replies via the message channel.
+ * Listens for EXTRACT_CONTENT, runs the extractor registry, replies
+ * with EXTRACTED (including extractorName) or EXTRACT_FAILED.
  *
- * Firefox MV2: browser.runtime.onMessage listeners may return a Promise
- * directly. This is cleaner than the sendResponse callback and avoids
- * keeping the channel open with `return true`.
+ * Firefox MV2: returning a Promise from onMessage registers an async
+ * response without needing `return true` or a sendResponse callback.
  */
 
 import { extractForUrl } from "@schedule/extractors/registry"
@@ -16,21 +15,73 @@ import type {
   MessageToContent,
 } from "@schedule/shared/types"
 
+const DEBUG = true
+
+function log(...args: Array<unknown>): void {
+  if (DEBUG) console.log("[content-script]", ...args)
+}
+
+function logError(...args: Array<unknown>): void {
+  console.error("[content-script]", ...args)
+}
+
 browser.runtime.onMessage.addListener(
   (message: unknown): Promise<MessageFromContent> | undefined => {
-    const msg = message as MessageToContent
-    if (msg.kind !== "EXTRACT_CONTENT") return undefined
+    log("received message:", message)
 
-    return extractForUrl(window.location.href).then(
-      (result): MessageFromContent => {
+    const msg = message as MessageToContent
+
+    if (msg.kind !== "EXTRACT_CONTENT") {
+      log("ignored message (wrong kind):", msg.kind)
+      return undefined
+    }
+
+    const url = window.location.href
+    const start = performance.now()
+
+    log("EXTRACT_CONTENT start", { url })
+
+    return extractForUrl(url)
+      .then((result): MessageFromContent => {
+        const duration = performance.now() - start
+
+        log("extractForUrl result:", result)
+
         if (result.ok) {
-          return { kind: "EXTRACTED", content: result.content }
+          log("EXTRACTION SUCCESS", {
+            extractorName: result.extractorName,
+            durationMs: duration.toFixed(2),
+          })
+
+          return {
+            kind: "EXTRACTED",
+            content: result.content,
+            extractorName: result.extractorName,
+          }
         }
+
+        logError("EXTRACTION FAILED (logical failure)", {
+          error: result.error,
+          durationMs: duration.toFixed(2),
+        })
+
         return {
           kind: "EXTRACT_FAILED",
           error: result.error ?? "extraction failed",
         }
-      }
-    )
+      })
+      .catch((err): MessageFromContent => {
+        const duration = performance.now() - start
+
+        logError("EXTRACTION THREW (exception)", {
+          error: err,
+          durationMs: duration.toFixed(2),
+        })
+
+        return {
+          kind: "EXTRACT_FAILED",
+          error: err instanceof Error ? err.message : String(err),
+        }
+      })
   }
 )
