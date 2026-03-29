@@ -26,6 +26,8 @@
  *   then attempt injection. For (c) we use tabs.executeScript to inject
  *   the content script programmatically before re-sending, once. If that
  *   also fails the tab is recorded as scripting_error and skipped.
+ *
+ * Optimized for: Parallel execution, Tab Suspension, and Timeout Resilience.
  */
 
 import {
@@ -38,43 +40,56 @@ import type {
   CaptureSettings,
   ExtractedContent,
   MessageFromContent,
-  MessageToContent,
   SkippedTab,
   TabCapture,
 } from "@schedule/shared/types"
 
 export type ProgressCallback = (completed: number, total: number) => void
 
-/** How long to wait for a loading tab before giving up. */
 const LOAD_WAIT_MS = 3_000
-/** How long to poll when waiting for tab.status === 'complete'. */
 const LOAD_POLL_MS = 200
+const DEFAULT_EXTRACTION_TIMEOUT = 8_000
+const CONCURRENCY_LIMIT = 7 // Process 7 tabs at a time
 
-// ── Public entry point ─────────────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────────────────────
 
 /**
- * Capture all open tabs and POST the result to the pipeline endpoint.
- *
- * Returns a lightweight summary (no content payloads) for the popup to
- * display. The full CaptureSession is only ever held in memory and sent
- * to the endpoint — it is never written to browser.storage.
+ * Ensures a promise settles within a timeframe.
+ * Clears timeout immediately on resolution to prevent memory leaks.
  */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  errorMessage: string
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(errorMessage)), ms)
+  })
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    // @ts-ignore
+    clearTimeout(timeoutId)
+  })
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// ── Public Entry Point ─────────────────────────────────────────────────────
+
 export async function captureAllTabs(
   settings: CaptureSettings,
   onProgress?: ProgressCallback
 ): Promise<CaptureSession> {
   const allTabs = await browser.tabs.query({})
   const capturedAt = isoNow()
-
-  const captures: Array<TabCapture> = []
   const skipped: Array<SkippedTab> = []
 
-  // Partition: skip tabs we cannot or should not capture.
-  const capturable = allTabs.filter((tab) => {
+  // 1. Filter tabs early
+  const capturableTabs = allTabs.filter((tab) => {
     if (!tab.url || tab.id == null) {
-      if (tab.id != null) {
+      if (tab.id != null)
         skipped.push({ tab_id: tab.id, url: tab.url ?? "", reason: "no_url" })
-      }
       return false
     }
     if (!shouldCapture(tab.url, settings.ignore_patterns)) {
@@ -84,18 +99,34 @@ export async function captureAllTabs(
     return true
   })
 
-  const total = capturable.length
-  let completed = 0
+  const total = capturableTabs.length
+  let completedCount = 0
 
-  for (const tab of capturable) {
-    const capture = await captureTab(tab, settings)
-    captures.push(capture)
+  // 2. Parallel Execution with Concurrency Limit
+  // This prevents the extension from choking on 100+ concurrent messages
+  const captures: Array<TabCapture> = []
+  const queue = [...capturableTabs]
 
-    completed += 1
-    if (onProgress !== undefined) {
-      onProgress(completed, total)
-    }
-  }
+  const workers = Array(Math.min(CONCURRENCY_LIMIT, total))
+    .fill(null)
+    .map(async () => {
+      while (queue.length > 0) {
+        const tab = queue.shift()
+        if (!tab) break
+
+        try {
+          const result = await captureTab(tab, settings)
+          captures.push(result)
+        } catch (e) {
+          captures.push(createErrorCapture(tab, String(e)))
+        } finally {
+          completedCount++
+          onProgress?.(completedCount, total)
+        }
+      }
+    })
+
+  await Promise.all(workers)
 
   return {
     session_id: uuid(),
@@ -107,7 +138,7 @@ export async function captureAllTabs(
   }
 }
 
-// ── Per-tab capture ────────────────────────────────────────────────────────
+// ── Per-Tab Logic ──────────────────────────────────────────────────────────
 
 async function captureTab(
   tab: browser.tabs.Tab,
@@ -115,28 +146,26 @@ async function captureTab(
 ): Promise<TabCapture> {
   const tabId = tab.id as number
   const url = tab.url as string
-  const domain = classifyDomain(url)
+  const timeoutMs = settings.extraction_timeout_ms ?? DEFAULT_EXTRACTION_TIMEOUT
 
-  const base: Omit<
-    TabCapture,
-    "extractor" | "content" | "extraction_ok" | "extraction_error"
-  > = {
+  const base = {
     tab_id: tabId,
     url,
     tab_title: tab.title ?? "",
     captured_at: isoNow(),
-    domain,
+    domain: classifyDomain(url),
   }
 
-  // Wait for tab to finish loading before attempting message send.
-  // Avoids "Receiving end does not exist" for tabs that are mid-load.
-  await waitForTabComplete(tabId, LOAD_WAIT_MS)
-
   try {
-    const result = await extractWithFallbackInject(
-      tabId,
-      settings.extraction_timeout_ms
-    )
+    // Check if tab is discarded (suspended)
+    // In MV2, discarded tabs won't run content scripts until reloaded
+    if ((tab as any).discarded) {
+      throw new Error("tab_suspended")
+    }
+
+    await waitForTabComplete(tabId, LOAD_WAIT_MS)
+    const result = await extractWithFallbackInject(tabId, timeoutMs)
+
     return {
       ...base,
       extractor: result.extractorName,
@@ -159,117 +188,42 @@ async function captureTab(
   }
 }
 
-// ── Tab load waiting ───────────────────────────────────────────────────────
+// ── Extraction Logic ───────────────────────────────────────────────────────
 
-/**
- * Poll tab.status until 'complete' or until `maxWaitMs` elapses.
- * Resolves either way — a tab that never finishes loading will still
- * attempt extraction; it will fail gracefully via the timeout.
- */
-async function waitForTabComplete(
+async function extractWithFallbackInject(
   tabId: number,
-  maxWaitMs: number
-): Promise<void> {
-  const deadline = Date.now() + maxWaitMs
-  while (Date.now() < deadline) {
-    try {
-      const tab = await browser.tabs.get(tabId)
-      if (tab.status === "complete") return
-    } catch {
-      // Tab may have been closed — stop waiting.
-      return
-    }
-    await sleep(LOAD_POLL_MS)
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-// ── Extraction with fallback injection ────────────────────────────────────
-
-type ExtractAttemptResult = {
+  timeoutMs: number
+): Promise<{
   ok: boolean
   content: ExtractedContent
   extractorName: string
   error?: string
-}
-
-/**
- * Try to extract content from `tabId`.
- *
- * Strategy:
- * 1. Send EXTRACT_CONTENT message — succeeds if content script is
- *    already registered.
- * 2. If that throws "Receiving end does not exist", use
- *    tabs.executeScript to inject the content script, then retry once.
- * 3. If still failing, throw — caller records as scripting_error.
- */
-async function extractWithFallbackInject(
-  tabId: number,
-  timeoutMs: number
-): Promise<ExtractAttemptResult> {
+}> {
   try {
     return await sendExtractMessage(tabId, timeoutMs)
-  } catch (firstError) {
-    const msg = String(firstError)
+  } catch (err) {
+    const msg = String(err)
+    if (!isNoReceiverError(msg)) throw err
 
-    // Only attempt injection recovery for the "no receiver" error.
-    // Other errors (timeouts, etc.) are re-thrown immediately.
-    if (!isNoReceiverError(msg)) throw firstError
-
-    // Inject the content script programmatically (MV2: tabs.executeScript).
+    // Fallback: Manually inject if script is missing
     try {
       await browser.tabs.executeScript(tabId, { file: "/dist/content.js" })
-    } catch (injectError) {
-      // Injection failed (e.g. privileged page) — rethrow original error.
-      throw new Error(
-        `injection failed: ${String(injectError)}; original: ${msg}`
-      )
+      await sleep(150) // Wait for listener to mount
+      return await sendExtractMessage(tabId, timeoutMs)
+    } catch (injectErr) {
+      throw new Error(`Injection failed: ${String(injectErr)}`)
     }
-
-    // Brief pause for the content script's onMessage listener to register.
-    await sleep(100)
-
-    // One retry — if this also throws, propagate to caller.
-    return await sendExtractMessage(tabId, timeoutMs)
   }
 }
 
-/**
- * Returns true if the error message matches the Firefox "no receiver" pattern.
- */
-function isNoReceiverError(msg: string): boolean {
-  return (
-    msg.includes("Could not establish connection") ||
-    msg.includes("Receiving end does not exist") ||
-    msg.includes("no response from")
+async function sendExtractMessage(tabId: number, timeoutMs: number) {
+  const response = await withTimeout(
+    browser.tabs.sendMessage(tabId, {
+      kind: "EXTRACT_CONTENT",
+    }) as Promise<MessageFromContent>,
+    timeoutMs,
+    "timeout"
   )
-}
-
-/**
- * Send EXTRACT_CONTENT to the content script and race against a timeout.
- */
-async function sendExtractMessage(
-  tabId: number,
-  timeoutMs: number
-): Promise<ExtractAttemptResult> {
-  const message: MessageToContent = { kind: "EXTRACT_CONTENT" }
-
-  const sendPromise = browser.tabs.sendMessage(
-    tabId,
-    message
-  ) as Promise<MessageFromContent>
-
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(
-      () => reject(new Error(`timeout after ${timeoutMs}ms`)),
-      timeoutMs
-    )
-  )
-
-  const response = await Promise.race([sendPromise, timeoutPromise])
 
   if (response.kind === "EXTRACTED") {
     return {
@@ -278,20 +232,43 @@ async function sendExtractMessage(
       extractorName: response.extractorName ?? "unknown",
     }
   }
-
-  return {
-    ok: false,
-    content: emptyContent(
-      "",
-      response.error ?? "extract failed",
-      "scripting_error"
-    ),
-    extractorName: "none",
-    error: response.error,
-  }
+  throw new Error(response.error ?? "extraction_failed")
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+async function waitForTabComplete(tabId: number, maxWaitMs: number) {
+  const start = Date.now()
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const tab = await browser.tabs.get(tabId)
+      if (tab.status === "complete") return
+    } catch {
+      return
+    }
+    await sleep(LOAD_POLL_MS)
+  }
+}
+
+function isNoReceiverError(msg: string): boolean {
+  return /Receiving end does not exist|Could not establish connection|no response/.test(
+    msg
+  )
+}
+
+function createErrorCapture(tab: browser.tabs.Tab, error: string): TabCapture {
+  return {
+    tab_id: tab.id as number,
+    url: tab.url as string,
+    tab_title: tab.title ?? "",
+    captured_at: isoNow(),
+    domain: classifyDomain(tab.url ?? ""),
+    extractor: "none",
+    content: emptyContent(tab.title ?? "", error, "scripting_error"),
+    extraction_ok: false,
+    extraction_error: error,
+  }
+}
 
 function emptyContent(
   title: string,
