@@ -204,7 +204,12 @@ export type MessageFromContent =
   | { kind: "EXTRACT_FAILED"; error: string }
 
 export type MessageFromBackground =
-  | { kind: "CAPTURE_COMPLETE"; summary: CaptureSummary }
+  | {
+      kind: "CAPTURE_COMPLETE"
+      summary: CaptureSummary
+      post_ok: boolean
+      post_error?: string
+    }
   | { kind: "CAPTURE_PROGRESS"; completed: number; total: number }
   | { kind: "CAPTURE_ERROR"; error: string }
   | { kind: "STATUS"; last_summary: CaptureSummary | null; capturing: boolean }

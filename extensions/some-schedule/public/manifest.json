@@ -8,8 +8,9 @@
 
   "background": {
     "scripts": ["background.js"],
-    "persistent": false
+    "persistent": true
   },
+  "web_accessible_resources": ["content.js"],
 
   "content_scripts": [
     {

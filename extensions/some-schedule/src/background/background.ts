@@ -17,7 +17,6 @@
 
 import type {
   CaptureSettings,
-  CaptureSummary,
   MessageFromBackground,
   MessageToBackground,
   StoredState,
@@ -93,7 +92,7 @@ browser.runtime.onMessage.addListener(
   (
     message: unknown,
     _sender: browser.runtime.MessageSender
-  ): Promise<MessageFromBackground> | undefined => {
+  ): Promise<MessageFromBackground> | boolean => {
     const msg = message as MessageToBackground
 
     switch (msg.kind) {
@@ -104,7 +103,7 @@ browser.runtime.onMessage.addListener(
       case "CAPTURE_ACTIVE_TAB":
         return handleCaptureActive()
       default:
-        return undefined
+        return true
     }
   }
 )
@@ -157,13 +156,9 @@ async function handleCaptureAll(): Promise<MessageFromBackground> {
 
     return {
       kind: "CAPTURE_COMPLETE",
-      summary: {
-        ...summary,
-        // Tack on delivery status so popup can show a warning if needed.
-        // We embed it in the existing summary shape via a compatible field
-        // rather than changing the union type.
-        ...(!postResult.ok ? {} : {}),
-      } as CaptureSummary,
+      summary,
+      post_ok: postResult.ok,
+      post_error: postResult.ok ? undefined : postResult.error,
     }
   } catch (e) {
     return { kind: "CAPTURE_ERROR", error: String(e) }
@@ -210,10 +205,17 @@ async function handleCaptureActive(): Promise<MessageFromBackground> {
     state.capture_count += 1
     await saveState(state)
 
-    return { kind: "CAPTURE_COMPLETE", summary }
+    return {
+      kind: "CAPTURE_COMPLETE",
+      summary,
+      post_ok: postResult.ok,
+      post_error: postResult.ok ? undefined : postResult.error,
+    }
   } catch (e) {
     return { kind: "CAPTURE_ERROR", error: String(e) }
   } finally {
     capturing = false
   }
 }
+
+console.log("[tabsched bg] loaded")

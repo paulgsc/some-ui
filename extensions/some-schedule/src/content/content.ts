@@ -26,14 +26,14 @@ function logError(...args: Array<unknown>): void {
 }
 
 browser.runtime.onMessage.addListener(
-  (message: unknown): Promise<MessageFromContent> | undefined => {
+  (message: unknown): Promise<MessageFromContent> | boolean => {
     log("received message:", message)
 
     const msg = message as MessageToContent
 
     if (msg.kind !== "EXTRACT_CONTENT") {
       log("ignored message (wrong kind):", msg.kind)
-      return undefined
+      return true
     }
 
     const url = window.location.href
@@ -85,3 +85,5 @@ browser.runtime.onMessage.addListener(
       })
   }
 )
+
+console.log("[tabsched content] loaded")

@@ -2,113 +2,294 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>tabsched capture</title>
     <style>
-      * {
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
 
+      :root {
+        --bg: #0a0a0a;
+        --bg-raised: #141414;
+        --bg-inset: #1a1a1a;
+        --border: #222;
+        --text: #e0e0e0;
+        --dim: #555;
+        --accent: #22d3ee;
+        --warn: #f59e0b;
+        --ok: #34d399;
+        --err: #f87171;
+        --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+      }
+
       body {
         width: 300px;
-        background: #0a0a0a;
-        color: #e0e0e0;
-        font-family: monospace;
-        font-size: 13px;
-        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1.5;
       }
 
-      h1 {
-        font-size: 13px;
-        color: #22d3ee;
-        letter-spacing: 0.05em;
-        margin-bottom: 14px;
+      /* ── Header ─────────────────────────────────────────────────────── */
+
+      header {
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
       }
 
-      #status-text {
-        color: #6b7280;
-        margin-bottom: 12px;
-        min-height: 18px;
+      header .wordmark {
+        font-size: 12px;
+        color: var(--accent);
+        letter-spacing: 0.08em;
+        font-weight: 600;
+      }
+
+      header .badge {
+        font-size: 10px;
+        color: var(--dim);
+        letter-spacing: 0.04em;
+      }
+
+      /* ── Status ─────────────────────────────────────────────────────── */
+
+      #status-section {
+        padding: 12px 14px 0;
+      }
+
+      #status-label {
+        font-size: 11px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 2px;
+      }
+
+      #status-sub {
+        font-size: 11px;
+        color: var(--dim);
+        min-height: 16px;
+      }
+
+      /* ── Progress ───────────────────────────────────────────────────── */
+
+      #progress-section {
+        padding: 10px 14px 0;
+        display: none;
+      }
+
+      .progress-track {
+        height: 2px;
+        background: var(--bg-inset);
+        position: relative;
+        overflow: hidden;
+      }
+
+      #progress-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.25s ease-out;
+      }
+
+      /* Indeterminate shimmer when total = 0 */
+      #progress-fill.indeterminate {
+        width: 40% !important;
+        animation: shimmer 1.4s ease-in-out infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          left: -40%;
+        }
+        100% {
+          left: 100%;
+        }
+      }
+
+      #progress-label {
+        display: block;
+        font-size: 10px;
+        color: var(--dim);
+        margin-top: 5px;
+        text-align: right;
+        letter-spacing: 0.04em;
+      }
+
+      /* ── Actions ────────────────────────────────────────────────────── */
+
+      #actions-section {
+        padding: 12px 14px;
+        display: block;
       }
 
       .btn-row {
         display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 6px;
       }
 
       button {
         flex: 1;
-        background: #1a1a1a;
-        border: 1px solid #2a2a2a;
-        color: #e0e0e0;
-        font-family: monospace;
-        font-size: 12px;
+        background: var(--bg-inset);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 11px;
         padding: 7px 10px;
         cursor: pointer;
-        transition: border-color 0.15s;
+        transition:
+          border-color 0.12s,
+          color 0.12s;
+        text-align: center;
       }
 
       button:hover:not(:disabled) {
-        border-color: #22d3ee;
-        color: #22d3ee;
+        border-color: var(--accent);
+        color: var(--accent);
       }
 
       button:disabled {
-        opacity: 0.4;
+        opacity: 0.35;
         cursor: default;
       }
 
       button.primary {
-        border-color: #22d3ee;
-        color: #22d3ee;
+        border-color: var(--accent);
+        color: var(--accent);
       }
 
-      #progress-bar {
-        height: 2px;
-        background: #1a1a1a;
-        margin-bottom: 12px;
-        display: none;
+      button.secondary {
+        border-color: var(--border);
+        color: var(--dim);
       }
 
-      #progress-fill {
-        height: 100%;
-        background: #22d3ee;
-        transition: width 0.2s;
-        width: 0%;
-      }
+      /* ── Result ─────────────────────────────────────────────────────── */
 
       #result-section {
+        border-top: 1px solid var(--border);
+        padding: 10px 14px 12px;
         display: none;
-        border-top: 1px solid #1a1a1a;
-        padding-top: 12px;
       }
 
-      #summary-text {
-        color: #6b7280;
-        line-height: 1.6;
+      table.result-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+      }
+
+      table.result-table td {
+        padding: 2px 0;
+      }
+
+      .row-label {
+        color: var(--dim);
+        width: 70px;
+      }
+
+      .row-value {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .result-status {
+        font-size: 10px;
+        margin-bottom: 10px;
+        letter-spacing: 0.03em;
+      }
+
+      .result-status.ok {
+        color: var(--ok);
+      }
+      .result-status.warn {
+        color: var(--warn);
+      }
+
+      /* ── Error ──────────────────────────────────────────────────────── */
+
+      #error-section {
+        border-top: 1px solid var(--border);
+        padding: 10px 14px 12px;
+        display: none;
+      }
+
+      #error-header {
+        font-size: 10px;
+        color: var(--err);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 6px;
+      }
+
+      #error-message {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin-bottom: 10px;
+        max-height: 80px;
+        overflow-y: auto;
       }
     </style>
   </head>
   <body>
-    <h1>tabsched capture</h1>
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <header>
+      <span class="wordmark">tabsched</span>
+      <span class="badge">capture</span>
+    </header>
 
-    <p id="status-text">Ready</p>
+    <!-- ── Status ─────────────────────────────────────────────────── -->
+    <section id="status-section">
+      <p id="status-label">—</p>
+      <p id="status-sub"></p>
+    </section>
 
-    <div id="progress-bar">
-      <div id="progress-fill"></div>
-    </div>
+    <!-- ── Progress ───────────────────────────────────────────────── -->
+    <section id="progress-section">
+      <div class="progress-track">
+        <div id="progress-fill"></div>
+      </div>
+      <span id="progress-label"></span>
+    </section>
 
-    <div class="btn-row">
-      <button id="btn-capture-all" class="primary">Capture all tabs</button>
-      <button id="btn-capture-active">Active tab</button>
-    </div>
+    <!-- ── Actions ────────────────────────────────────────────────── -->
+    <section id="actions-section">
+      <div class="btn-row">
+        <button id="btn-capture-all" class="primary">capture all tabs</button>
+        <button id="btn-capture-active" class="secondary">active tab</button>
+      </div>
+    </section>
 
-    <div id="result-section">
-      <p id="summary-text"></p>
-    </div>
+    <!-- ── Result ─────────────────────────────────────────────────── -->
+    <section id="result-section">
+      <p id="result-status" class="result-status"></p>
+      <table class="result-table">
+        <tbody id="result-rows"></tbody>
+      </table>
+      <div class="btn-row">
+        <button id="btn-again" class="primary">capture again</button>
+      </div>
+    </section>
+
+    <!-- ── Error ──────────────────────────────────────────────────── -->
+    <section id="error-section">
+      <p id="error-header">error</p>
+      <pre id="error-message"></pre>
+      <div class="btn-row">
+        <button id="btn-dismiss" class="secondary">dismiss</button>
+      </div>
+    </section>
     <script type="module" src="./src/popup/popup.ts"></script>
   </body>
 </html>
