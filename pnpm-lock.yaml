@@ -539,6 +539,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rollup-config
 
+  extensions/some-schedule:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
+
   extensions/some-scrobbler:
     dependencies:
       '@some-ui/styles':
@@ -1204,6 +1213,9 @@ importers:
 
   packages/ui/overlays:
     dependencies:
+      '@some-ui/calendar':
+        specifier: workspace:*
+        version: link:../calendar
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1225,9 +1237,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../types
-      some-ui-calendar:
-        specifier: workspace:*
-        version: link:../calendar
       some-ui-chat:
         specifier: workspace:*
         version: link:../chat

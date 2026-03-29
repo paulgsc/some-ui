@@ -9,7 +9,7 @@
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
     "some-types-utils": "workspace:*",
-    "some-ui-calendar": "workspace:*",
+    "@some-ui/calendar": "workspace:*",
     "some-ui-chat": "workspace:*",
     "some-ui-emoji-animations": "workspace:*",
     "some-ui-input": "workspace:*",
