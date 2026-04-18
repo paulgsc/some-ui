@@ -5,7 +5,9 @@ import "./index.css"
 import { withProviders } from "./storybook-decorator"
 
 // Import all CSS files from packages
-import.meta.glob(["../packages/ui/**/*.css"], { eager: true })
+import.meta.glob(["../packages/ui/**/*.css"], {
+  eager: true,
+})
 
 export const decorators = [withProviders]
 
