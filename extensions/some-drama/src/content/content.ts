@@ -1,283 +1,355 @@
-// Main Content Script - Orchestrates all UI components
-import "@drama/styles/content.css"
+// content.ts — logic layer for Drama Sentiment Tracker
+// Drives SentimentWidget (pure UI) with all runtime detection + storage bridging.
+// Zero shared chunks: all types inlined.
 
-import { generateId, getEmotionConfig } from "@drama/utils"
+import "../components/drama-tracker/index.css"
 
-import type { CapturedMoment, EmotionType, UIState } from "@drama/types/schema"
-import { CapturedMomentsList } from "@drama/components/captured-moments"
-import { FloatingBar } from "@drama/components/floating-bar"
-import { PollingPrompt } from "@drama/components/polling-prompt"
-import { QuickCapturePanel } from "@drama/components/quick-capture-panel"
+import {
+  SentimentWidget,
+  type EmotionType,
+  type WidgetEvents,
+  type WidgetState,
+} from "../components/drama-tracker/sentiment-widget"
 
-import { ContextDetector } from "./context-detector"
+// ─── Types (inlined) ─────────────────────────────────────────────────────────
 
-class DramaSentimentApp {
-  private state: UIState
-  private contextDetector: ContextDetector
+type CapturedMoment = {
+  id: string
+  timestamp: number
+  emotion: EmotionType
+  intensity: number
+  emoji: string
+  note?: string
+  episodeId: string
+  dramaTitle: string
+  capturedAt: number
+}
 
-  // UI Components
-  private floatingBar: FloatingBar
-  private quickCapturePanel: QuickCapturePanel
-  private capturedMomentsList: CapturedMomentsList
-  private pollingPrompt: PollingPrompt
+type DramaContext = {
+  dramaTitle: string
+  episodeId: string // "Ep 8"
+  episodeRaw: string // "ep-8" — used as storage key segment
+}
 
-  // Timers
-  private timestampUpdateInterval: number | null = null
+type PersistedWidgetMeta = {
+  x: number
+  y: number
+  size: "min" | "compact" | "full"
+}
 
-  constructor() {
-    this.contextDetector = new ContextDetector()
+// ─── Emoji map (parallel to widget's EMOTIONS) ────────────────────────────────
 
-    // Initialize state
-    const initialContext = this.contextDetector.detectContext()
-    this.state = {
-      dramaTitle: initialContext.dramaTitle,
-      episode: initialContext.episode,
-      currentTimestamp: initialContext.timestamp,
+const EMOTION_EMOJI: Record<EmotionType, string> = {
+  joy: "😊",
+  love: "😍",
+  sadness: "😭",
+  rage: "😡",
+  fear: "😱",
+  neutral: "😐",
+}
 
-      isExpanded: false,
-      showPolling: false,
+// ─── Drama context detection ─────────────────────────────────────────────────
 
-      selectedEmotion: null,
-      intensity: 0.5,
-      note: "",
-      showNote: false,
-      justCaptured: false,
+/**
+ * Platform-aware title + episode extraction.
+ * Falls back to document.title parsing for unknown hosts.
+ */
+function detectDramaContext(): DramaContext {
+  const host = window.location.hostname
 
-      currentEmotion: "joy",
-      currentRating: 8.0,
-
-      capturedMoments: [],
-    }
-
-    // Initialize UI components
-    this.floatingBar = new FloatingBar(() => this.handleFloatingBarClick())
-
-    this.quickCapturePanel = new QuickCapturePanel({
-      onClose: () => this.handlePanelClose(),
-      onEmojiClick: (emotion) => this.handleEmojiClick(emotion),
-      onIntensityChange: (intensity) => this.handleIntensityChange(intensity),
-      onNoteChange: (note) => this.handleNoteChange(note),
-      onToggleNote: () => this.handleToggleNote(),
-    })
-
-    this.capturedMomentsList = new CapturedMomentsList()
-
-    this.pollingPrompt = new PollingPrompt({
-      onRespond: (feeling, newRating) =>
-        this.handlePollingRespond(feeling, newRating),
-      onDismiss: () => this.handlePollingDismiss(),
-    })
+  // Netflix
+  if (host.includes("netflix.com")) {
+    const titleEl =
+      document.querySelector<HTMLElement>(".video-title h4") ??
+      document.querySelector<HTMLElement>("[data-uia='video-title']")
+    const episodeEl =
+      document.querySelector<HTMLElement>("[data-uia='current-episode']") ??
+      document.querySelector<HTMLElement>(".ellipsize-text span")
+    const raw = titleEl?.textContent?.trim() ?? document.title
+    const epRaw = episodeEl?.textContent?.trim() ?? ""
+    return makeContext(raw, epRaw)
   }
 
-  // Event Handlers
-  private handleFloatingBarClick(): void {
-    // Refresh context from page
-    const context = this.contextDetector.detectContext()
-    this.state.dramaTitle = context.dramaTitle
-    this.state.episode = context.episode
-    this.state.currentTimestamp = context.timestamp
-
-    this.state.isExpanded = true
-    this.render()
-  }
-
-  private handlePanelClose(): void {
-    this.state.isExpanded = false
-    this.render()
-  }
-
-  private handleEmojiClick(emotion: EmotionType): void {
-    this.state.selectedEmotion = emotion
-    this.state.justCaptured = true
-
-    // Create captured moment
-    const config = getEmotionConfig(emotion)
-    const moment: CapturedMoment = {
-      id: generateId(),
-      timestamp: this.state.currentTimestamp,
-      emotion: emotion,
-      intensity: this.state.intensity,
-      emoji: config.emoji,
-      note: this.state.note || undefined,
-      episodeId: `ep-${this.state.episode}`,
-      dramaTitle: this.state.dramaTitle,
-      capturedAt: Date.now(),
-    }
-
-    // Add to state
-    this.state.capturedMoments = [moment, ...this.state.capturedMoments]
-    this.state.currentEmotion = emotion
-
-    // Save to storage
-    this.saveMoment(moment)
-
-    // Update UI
-    this.render()
-
-    // Auto-close after animation
-    setTimeout(() => {
-      this.state.justCaptured = false
-      this.state.selectedEmotion = null
-      this.state.note = ""
-      this.state.showNote = false
-      this.render()
-    }, 1500)
-
-    setTimeout(() => {
-      this.state.isExpanded = false
-      this.render()
-    }, 1500)
-  }
-
-  private handleIntensityChange(intensity: number): void {
-    this.state.intensity = intensity
-    this.render()
-  }
-
-  private handleNoteChange(note: string): void {
-    this.state.note = note
-  }
-
-  private handleToggleNote(): void {
-    this.state.showNote = !this.state.showNote
-    this.render()
-  }
-
-  private handlePollingRespond(feeling: string, newRating?: number): void {
-    if (newRating !== undefined) {
-      this.state.currentRating = Math.min(10, newRating)
-    }
-    this.state.showPolling = false
-    this.render()
-
-    console.log("[Drama Sentiment] Polling response:", feeling, newRating)
-  }
-
-  private handlePollingDismiss(): void {
-    this.state.showPolling = false
-    this.render()
-  }
-
-  // Storage
-  private saveMoment(moment: CapturedMoment): void {
-    browser.runtime
-      .sendMessage({
-        type: "SAVE_MOMENT",
-        moment,
-      })
-      .then(() => {
-        console.log("[Drama Sentiment] Moment saved:", moment.id)
-      })
-      .catch((err) => {
-        console.error("[Drama Sentiment] Failed to save moment:", err)
-      })
-  }
-
-  // Rendering
-  private render(): void {
-    // Update floating bar
-    this.floatingBar.update(
-      this.state.currentEmotion,
-      this.state.currentRating,
-      this.state.episode,
-      this.state.currentTimestamp,
-      this.state.isExpanded
+  // Viki
+  if (host.includes("viki.com")) {
+    const titleEl = document.querySelector<HTMLElement>(
+      ".episode-title, .show-title"
     )
-
-    // Update quick capture panel
-    this.quickCapturePanel.update(
-      {
-        dramaTitle: this.state.dramaTitle,
-        episode: this.state.episode,
-        timestamp: this.state.currentTimestamp,
-        selectedEmotion: this.state.selectedEmotion,
-        intensity: this.state.intensity,
-        note: this.state.note,
-        showNote: this.state.showNote,
-        justCaptured: this.state.justCaptured,
-      },
-      this.state.isExpanded
-    )
-
-    // Update captured moments list
-    this.capturedMomentsList.update(this.state.capturedMoments)
-
-    // Update polling prompt
-    this.pollingPrompt.update(
-      {
-        episode: this.state.episode,
-        timestamp: this.state.currentTimestamp,
-        currentRating: this.state.currentRating,
-      },
-      this.state.showPolling
-    )
+    const epEl = document.querySelector<HTMLElement>(".episode-number")
+    const raw = titleEl?.textContent?.trim() ?? document.title
+    const epRaw = epEl?.textContent?.trim() ?? ""
+    return makeContext(raw, epRaw)
   }
 
-  // Lifecycle
-  init(): void {
-    console.log("[Drama Sentiment] Initializing...", this.state)
+  // Kocowa / Viu / WeTV — add more here
+  // if (host.includes("viu.com")) { … }
 
-    // Mount UI components
-    this.floatingBar.mount()
-    this.quickCapturePanel.mount()
-    this.capturedMomentsList.mount()
-    this.pollingPrompt.mount()
+  // Generic fallback — parse document.title
+  return makeContext(document.title, "")
+}
 
-    // Initial render
-    this.render()
+/**
+ * Regex-based episode extraction from combined title strings.
+ * Handles: "Show Name - Episode 8", "Show Name EP.8", "Show Name Ep 08", etc.
+ */
+function makeContext(rawTitle: string, rawEpisode: string): DramaContext {
+  // Try explicit episode string first
+  let epMatch = rawEpisode.match(/\d+/)
 
-    // Start timestamp tracking
-    this.startTimestampTracking()
-
-    console.log("[Drama Sentiment] Initialized")
+  // Fall back to parsing the title itself
+  if (!epMatch) {
+    epMatch = rawTitle.match(/(?:ep(?:isode)?\.?\s*)(\d+)/i)
   }
 
-  private startTimestampTracking(): void {
-    this.timestampUpdateInterval = window.setInterval(() => {
-      const videoEl = this.contextDetector.getVideoElement()
-      if (videoEl && !isNaN(videoEl.currentTime)) {
-        this.state.currentTimestamp = Math.floor(videoEl.currentTime)
+  const epNum = epMatch ? epMatch[1] : null
 
-        // Only update floating bar if not expanded (to avoid re-renders)
-        if (!this.state.isExpanded) {
-          this.floatingBar.update(
-            this.state.currentEmotion,
-            this.state.currentRating,
-            this.state.episode,
-            this.state.currentTimestamp,
-            this.state.isExpanded
-          )
-        }
-      }
-    }, 1000)
-  }
+  // Strip episode segment from title for cleaner display
+  const dramaTitle =
+    rawTitle
+      .replace(/[-–|]\s*ep(isode)?\.?\s*\d+.*/i, "")
+      .replace(/\s*ep(isode)?\.?\s*\d+\s*/i, "")
+      .replace(/\s*\(\d{4}\)\s*/, "") // strip year
+      .trim() || "Unknown Drama"
 
-  destroy(): void {
-    if (this.timestampUpdateInterval) {
-      clearInterval(this.timestampUpdateInterval)
-    }
+  const episodeId = epNum ? `Ep ${epNum}` : "—"
+  const episodeRaw = epNum ? `ep-${epNum}` : "ep-unknown"
 
-    this.floatingBar.unmount()
-    this.quickCapturePanel.unmount()
-    this.capturedMomentsList.unmount()
-    this.pollingPrompt.unmount()
+  return { dramaTitle, episodeId, episodeRaw }
+}
+
+// ─── Video detection ──────────────────────────────────────────────────────────
+
+function findVideo(): HTMLVideoElement | null {
+  const videos = Array.from(
+    document.querySelectorAll<HTMLVideoElement>("video")
+  )
+  // Prefer the longest-duration video (most likely the main episode)
+  return videos.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0] ?? null
+}
+
+function formatTimestamp(secs: number): string {
+  if (!isFinite(secs) || secs < 0) return "0:00"
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${s.toString().padStart(2, "0")}`
+}
+
+// ─── Storage bridge ───────────────────────────────────────────────────────────
+
+async function persistMoment(moment: CapturedMoment): Promise<void> {
+  try {
+    await browser.runtime.sendMessage({ type: "SAVE_MOMENT", payload: moment })
+  } catch (err) {
+    console.error("[Drama Sentiment] Failed to save moment:", err)
   }
 }
 
-// Initialize app when DOM is ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    const app = new DramaSentimentApp()
-    app.init()
+const META_KEY = "drama_widget_meta"
+
+async function loadWidgetMeta(): Promise<PersistedWidgetMeta | null> {
+  try {
+    const result = await browser.storage.local.get(META_KEY)
+    return (result[META_KEY] as PersistedWidgetMeta | undefined) ?? null
+  } catch {
+    return null
+  }
+}
+
+async function saveWidgetMeta(meta: PersistedWidgetMeta): Promise<void> {
+  try {
+    await browser.storage.local.set({ [META_KEY]: meta })
+  } catch {
+    // non-critical
+  }
+}
+
+// ─── Main entry ───────────────────────────────────────────────────────────────
+
+async function init(): Promise<void> {
+  console.log("[Drama Sentiment] Initializing…")
+
+  // Wait for a video element — retry up to 10s
+  let video = findVideo()
+  let attempts = 0
+  while (!video && attempts < 20) {
+    await new Promise((r) => setTimeout(r, 500))
+    video = findVideo()
+    attempts++
+  }
+
+  if (!video) {
+    console.log("[Drama Sentiment] No <video> found — aborting.")
+    return
+  }
+
+  const ctx = detectDramaContext()
+  console.log("[Drama Sentiment] Initialized", ctx)
+
+  // ─── Widget container ──────────────────────────────────────────────────────
+  const container = document.createElement("div")
+  container.id = "drama-sentiment-root"
+  // Base positioning — will be overridden by persisted drag position
+  Object.assign(container.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "80px",
+    zIndex: "2147483646",
+    fontFamily: "system-ui, sans-serif",
   })
-} else {
-  const app = new DramaSentimentApp()
-  app.init()
+  document.body.appendChild(container)
+
+  // ─── Initial widget state ──────────────────────────────────────────────────
+  const initialState: WidgetState = {
+    dramaTitle: ctx.dramaTitle,
+    episode: ctx.episodeId,
+    timestamp: formatTimestamp(video.currentTime),
+    progress: video.duration > 0 ? video.currentTime / video.duration : 0,
+    activeEmotion: null,
+    intensity: 0.7,
+    isPlaying: !video.paused,
+  }
+
+  // ─── Events wired to logic layer ──────────────────────────────────────────
+  const events: WidgetEvents = {
+    onEmotionSelect(emotion, intensity, note) {
+      const v = findVideo()
+      const ts = v?.currentTime ?? 0
+      const moment: CapturedMoment = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: ts,
+        emotion,
+        intensity,
+        emoji: EMOTION_EMOJI[emotion],
+        note: note || undefined,
+        episodeId: ctx.episodeRaw,
+        dramaTitle: ctx.dramaTitle,
+        capturedAt: Date.now(),
+      }
+      void persistMoment(moment)
+      console.log(
+        "[Drama Sentiment] Captured:",
+        emotion,
+        "@",
+        formatTimestamp(ts),
+        note || ""
+      )
+    },
+
+    onSizeChange(size) {
+      void saveWidgetMeta({
+        x: parseFloat(widget.root?.style.left ?? "-1"),
+        y: parseFloat(widget.root?.style.top ?? "-1"),
+        size,
+      })
+    },
+
+    onDragEnd(x, y) {
+      void saveWidgetMeta({ x, y, size: "compact" })
+    },
+  }
+
+  const widget = new SentimentWidget(container, initialState, events)
+
+  // ─── Restore persisted position / size ────────────────────────────────────
+  const meta = await loadWidgetMeta()
+  if (meta) {
+    if (meta.x >= 0 && meta.y >= 0) {
+      widget.setPosition(meta.x, meta.y)
+    }
+    if (meta.size) {
+      widget.setSize(meta.size, false)
+    }
+  }
+
+  // ─── State sync loop ───────────────────────────────────────────────────────
+  // Runs on rAF while tab is active; falls back to 1s interval when hidden.
+  let rafId: number | null = null
+  let intervalId: ReturnType<typeof setInterval> | null = null
+
+  function tick(): void {
+    const v = findVideo()
+    if (!v) return
+
+    const freshCtx = detectDramaContext()
+
+    widget.update({
+      dramaTitle: freshCtx.dramaTitle,
+      episode: freshCtx.episodeId,
+      timestamp: formatTimestamp(v.currentTime),
+      progress: v.duration > 0 ? v.currentTime / v.duration : 0,
+      isPlaying: !v.paused,
+    })
+  }
+
+  function startRaf(): void {
+    if (rafId !== null) return
+    const loop = (): void => {
+      tick()
+      rafId = requestAnimationFrame(loop)
+    }
+    rafId = requestAnimationFrame(loop)
+  }
+
+  function stopRaf(): void {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopRaf()
+      intervalId = setInterval(tick, 1000)
+    } else {
+      if (intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+      startRaf()
+    }
+  })
+
+  startRaf()
+
+  // ─── Fullscreen sync ───────────────────────────────────────────────────────
+  document.addEventListener("fullscreenchange", () => {
+    // Keep widget visible in fullscreen by re-parenting to fullscreen element
+    const fs = document.fullscreenElement
+    if (fs && fs !== document.body) {
+      fs.appendChild(container)
+    } else {
+      document.body.appendChild(container)
+    }
+    widget.setVisible(true)
+  })
+
+  // ─── Video events → widget ────────────────────────────────────────────────
+  video.addEventListener("play", () => widget.update({ isPlaying: true }))
+  video.addEventListener("pause", () => widget.update({ isPlaying: false }))
+
+  // Re-detect context on URL change (SPA navigation)
+  let lastHref = location.href
+  const navObserver = new MutationObserver(() => {
+    if (location.href !== lastHref) {
+      lastHref = location.href
+      const newCtx = detectDramaContext()
+      widget.update({
+        dramaTitle: newCtx.dramaTitle,
+        episode: newCtx.episodeId,
+      })
+    }
+  })
+  navObserver.observe(document.body, { childList: true, subtree: true })
+
+  console.log("[Drama Sentiment] Running.")
 }
 
-// Make app available globally for debugging
-declare global {
-  interface Window {
-    dramaSentimentApp?: DramaSentimentApp
-  }
+// Kick off after DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => void init())
+} else {
+  void init()
 }
+
+export {}
