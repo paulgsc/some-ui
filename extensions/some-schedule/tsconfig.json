@@ -8,6 +8,6 @@
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
-  "include": ["src"],
+  "include": ["src", "prompts", "pipeline", "scripts"],
   "exclude": ["node_modules", "dist"]
 }

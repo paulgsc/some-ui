@@ -1,0 +1,456 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0a0a;
+  --bg-raised: #141414;
+  --bg-inset: #1a1a1a;
+  --bg-card: #111;
+  --border: #222;
+  --border-dim: #1c1c1c;
+  --text: #e0e0e0;
+  --dim: #555;
+  --dim-hi: #777;
+  --accent: #22d3ee;
+  --accent-dim: rgba(34, 211, 238, 0.12);
+  --warn: #f59e0b;
+  --ok: #34d399;
+  --err: #f87171;
+  --purple: #a78bfa;
+  --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+}
+
+body {
+  width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+header .wordmark {
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+header .badge {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ── Nav tabs ────────────────────────────────────────────────────────────── */
+
+#nav-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 8px 0 6px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.tab-btn:hover {
+  color: var(--dim-hi);
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Tab panels ──────────────────────────────────────────────────────────── */
+
+.tab-panel {
+  /* shown/hidden by JS */
+}
+
+/* ── Status ──────────────────────────────────────────────────────────────── */
+
+#status-section {
+  padding: 12px 14px 0;
+}
+
+#status-label {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+#status-sub {
+  font-size: 11px;
+  color: var(--dim);
+  min-height: 16px;
+}
+
+/* ── Progress ────────────────────────────────────────────────────────────── */
+
+#progress-section {
+  padding: 10px 14px 0;
+}
+
+.progress-track {
+  height: 2px;
+  background: var(--bg-inset);
+  position: relative;
+  overflow: hidden;
+}
+
+#progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.25s ease-out;
+}
+
+#progress-fill.indeterminate {
+  width: 40% !important;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+#progress-label {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 5px;
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+
+/* ── Actions / shared button rows ────────────────────────────────────────── */
+
+#actions-section {
+  padding: 12px 14px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 6px;
+}
+
+button {
+  flex: 1;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background 0.12s;
+  text-align: center;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button.secondary {
+  border-color: var(--border);
+  color: var(--dim);
+}
+
+button.accent {
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+button.accent:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+button.danger {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+button.btn-sm {
+  flex: none;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+/* ── Result ──────────────────────────────────────────────────────────────── */
+
+#result-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+}
+
+table.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+table.result-table td {
+  padding: 2px 0;
+}
+
+.row-label {
+  color: var(--dim);
+  width: 70px;
+}
+
+.row-value {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.result-status {
+  font-size: 10px;
+  margin-bottom: 10px;
+  letter-spacing: 0.03em;
+}
+
+.result-status.ok {
+  color: var(--ok);
+}
+.result-status.warn {
+  color: var(--warn);
+}
+
+/* ── Error ───────────────────────────────────────────────────────────────── */
+
+#error-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+}
+
+#error-header {
+  font-size: 10px;
+  color: var(--err);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+#error-message {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-bottom: 10px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+/* ── Sessions tab ────────────────────────────────────────────────────────── */
+
+#sessions-toolbar {
+  padding: 10px 14px 0;
+}
+
+#sessions-toolbar .btn-row {
+  margin-bottom: 0;
+}
+
+.dim-text {
+  color: var(--dim);
+  font-size: 11px;
+  padding: 14px;
+  text-align: center;
+}
+
+.err-text {
+  color: var(--err);
+  font-size: 11px;
+  padding: 10px 14px;
+}
+
+#sessions-loading,
+#sessions-empty,
+#sessions-error {
+  /* toggled by JS */
+}
+
+/* ── Session list ────────────────────────────────────────────────────────── */
+
+#sessions-list {
+  padding: 8px 0 4px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+/* Thin scrollbar */
+#sessions-list::-webkit-scrollbar {
+  width: 3px;
+}
+#sessions-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+/* ── Session card ────────────────────────────────────────────────────────── */
+
+.session-card {
+  margin: 0 10px 6px;
+  padding: 9px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  transition: border-color 0.12s;
+}
+
+.session-card:hover {
+  border-color: var(--border);
+}
+
+.session-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.session-id {
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+  /* Show last 8 chars — enough to be unique */
+  direction: rtl;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
+
+.session-date {
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.session-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text);
+}
+
+.stat-value.ok {
+  color: var(--ok);
+}
+.stat-value.warn {
+  color: var(--warn);
+}
+.stat-value.muted {
+  color: var(--dim-hi);
+}
+
+.stat-label {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.session-card-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+/* Pipeline status badge on card */
+.pipeline-badge {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid;
+  display: inline-block;
+  align-self: center;
+}
+
+.pipeline-badge.pending {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.pipeline-badge.running {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pipeline-badge.done {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.pipeline-badge.failed {
+  border-color: var(--err);
+  color: var(--err);
+}

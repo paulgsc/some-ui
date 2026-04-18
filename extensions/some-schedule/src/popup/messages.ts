@@ -1,13 +1,7 @@
+
 /**
- * popup/messages.ts
- *
  * Typed bridge to the background page message bus.
- *
- * All browser.runtime.sendMessage calls go through here.
- * index.ts never calls the browser API directly.
- *
- * Also exports a listener registration helper for inbound
- * CAPTURE_PROGRESS broadcasts.
+ * index.ts / popup.ts never calls browser.runtime directly.
  */
 
 import type {
@@ -21,10 +15,28 @@ export async function sendToBackground(
   return browser.runtime.sendMessage(msg) as Promise<MessageFromBackground>
 }
 
-/**
- * Register a callback for inbound CAPTURE_PROGRESS messages.
- * Returns an unsubscribe function.
- */
+// ── Convenience wrappers ───────────────────────────────────────────────────
+// Each returns the typed discriminant directly so callers don't need to
+// cast the generic MessageFromBackground.
+
+export async function getSessions(): Promise<MessageFromBackground> {
+  return sendToBackground({ kind: "GET_SESSIONS" })
+}
+
+export async function deleteSession(session_id: string): Promise<MessageFromBackground> {
+  return sendToBackground({ kind: "DELETE_SESSION", session_id })
+}
+
+export async function triggerPipeline(session_id: string): Promise<MessageFromBackground> {
+  return sendToBackground({ kind: "TRIGGER_PIPELINE", session_id })
+}
+
+export async function triggerAllPipeline(): Promise<MessageFromBackground> {
+  return sendToBackground({ kind: "TRIGGER_ALL_PIPELINE" })
+}
+
+// ── Progress broadcast listener ────────────────────────────────────────────
+
 export function onProgressMessage(
   callback: (completed: number, total: number) => void
 ): () => void {
@@ -35,10 +47,6 @@ export function onProgressMessage(
     }
     return undefined
   }
-
   browser.runtime.onMessage.addListener(listener)
-
-  return () => {
-    browser.runtime.onMessage.removeListener(listener)
-  }
+  return () => browser.runtime.onMessage.removeListener(listener)
 }

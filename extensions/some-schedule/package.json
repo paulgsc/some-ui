@@ -15,7 +15,9 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
+    "pipeline:embed": "ts-node pipeline/embed.ts",
+    "pipeline:derive": "ts-node pipeline/derive.ts",
+    "pipeline:run": "node scripts/pipeline-run.mjs",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "type": "module",

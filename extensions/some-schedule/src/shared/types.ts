@@ -1,10 +1,5 @@
 /**
- *
  * The canonical type contract for the tabsched capture pipeline.
- *
- * Everything — extension, content scripts, extractors, and the
- * downstream LLM pipeline — speaks this shape. Changing a type here
- * is the only place a breaking change should ever occur.
  *
  * Dependency direction:
  *   extractors → types
@@ -27,124 +22,52 @@ export type Domain =
   | "unknown"
 
 // ── Content kinds ──────────────────────────────────────────────────────────
-//
-// Each kind corresponds to a distinct extraction strategy. The extractor
-// that runs determines the kind tag in the output.
 
 export type ContentKind =
-  | "article" // generic readable web page (Readability fallback)
-  | "problem" // LeetCode / competitive programming problem
-  | "repo" // GitHub repository
-  | "pdf" // PDF viewer tab
-  | "docs" // Documentation site (MDN, typst.app, doc.rust-lang.org, etc.)
-  | "chat" // Claude / ChatGPT session tab
-  | "video" // YouTube
-  | "job-board" // LinkedIn, Greenhouse, Lever, etc.
-  | "unknown" // extractor could not determine kind
+  | "article"
+  | "problem"
+  | "repo"
+  | "pdf"
+  | "docs"
+  | "chat"
+  | "video"
+  | "job-board"
+  | "unknown"
 
 // ── Extracted content ──────────────────────────────────────────────────────
-//
-// The normalised output of any extractor. This is what the LLM sees —
-// never raw HTML. Fields are chosen to be cheap to embed and semantically
-// informative.
 
 export type ExtractedContent = {
   kind: ContentKind
-
-  /** Primary title of the resource. */
   title: string
-
-  /**
-   * The most semantically dense short text we can extract.
-   * For a problem: the problem statement.
-   * For a repo: the first paragraph of the README.
-   * For docs: the page introduction.
-   * For a chat: the skill name or session topic.
-   * Max 500 chars — enforced by extractors, not here.
-   */
   summary: string
-
-  /**
-   * Ordered h1–h3 headings. Provide strong signal for embedding
-   * without sending full body text.
-   */
   headings: Array<string>
-
-  /**
-   * Keywords extracted from content (not meta keywords tag, which is
-   * unreliable). Each extractor derives these differently:
-   * - problem: constraint labels (e.g. "array", "sliding window")
-   * - repo: topic tags from GitHub API response
-   * - docs: section titles slugified
-   * - article: noun phrases from first 3 paragraphs
-   */
   keywords: Array<string>
-
-  /** Byte length of the raw content before extraction, for diagnostics. */
   raw_length: number
-
-  /** Extractor-specific metadata. Opaque to the pipeline; useful for debugging. */
   meta: Record<string, string | number | boolean>
 }
 
 // ── Tab capture ────────────────────────────────────────────────────────────
-//
-// One entry per captured tab. This is the unit that flows from the
-// extension into the pipeline.
 
 export type TabCapture = {
-  /** Chrome/Firefox tab ID at time of capture. Not stable across sessions. */
   tab_id: number
-
   url: string
-
-  /** Raw browser tab title. */
   tab_title: string
-
-  /** ISO 8601 timestamp. */
   captured_at: string
-
-  /** Which extractor strategy was selected. */
   extractor: string
-
-  /** Classification — may be overridden by user in CRM. */
   domain: Domain
-
-  /** Structured content extracted from the page. */
   content: ExtractedContent
-
-  /**
-   * Whether extraction completed successfully. If false, content will
-   * be partially filled and the pipeline should treat this tab as
-   * lower-confidence input.
-   */
   extraction_ok: boolean
-
-  /** Human-readable extraction error if extraction_ok = false. */
   extraction_error?: string
 }
 
 // ── Capture session ────────────────────────────────────────────────────────
-//
-// The full output of one capture run — what gets written to disk or
-// clipboard for the pipeline to consume.
 
 export type CaptureSession = {
-  /** UUID v4, generated at capture time. */
   session_id: string
-
   captured_at: string
-
-  /** tabsched-capture extension version. */
   extension_version: string
-
-  /** Total open tabs at time of capture (including non-captured). */
   total_open_tabs: number
-
-  /** Tabs that were captured (passed domain filter). */
   captures: Array<TabCapture>
-
-  /** Tabs that were skipped and why. */
   skipped: Array<SkippedTab>
 }
 
@@ -155,16 +78,12 @@ export type SkippedTab = {
 }
 
 export type SkipReason =
-  | "filtered_domain" // URL matched the ignore list
-  | "no_url" // tab has no URL (new tab, about:blank, etc.)
+  | "filtered_domain"
+  | "no_url"
   | "extraction_timeout"
-  | "scripting_error" // content script could not be injected
+  | "scripting_error"
 
-// ── Lightweight run summary (what goes into storage) ──────────────────────
-//
-// CaptureSession payloads can be large. Storage only keeps this summary.
-// The full session is POSTed to the localhost pipeline endpoint and kept
-// in memory until the popup is closed.
+// ── Summary ────────────────────────────────────────────────────────────────
 
 export type CaptureSummary = {
   session_id: string
@@ -173,7 +92,11 @@ export type CaptureSummary = {
   captured_ok: number
   captured_fail: number
   skipped: number
+  // Pipeline state tracked client-side in StoredState, not sent by the server.
+  pipeline_status?: PipelineStatus
 }
+
+export type PipelineStatus = "pending" | "running" | "done" | "failed"
 
 export function summarise(session: CaptureSession): CaptureSummary {
   return {
@@ -187,15 +110,15 @@ export function summarise(session: CaptureSession): CaptureSummary {
 }
 
 // ── Messages ───────────────────────────────────────────────────────────────
-//
-// Typed message passing between background, content, and popup.
-// All messages follow a discriminated union pattern. No untyped
-// chrome.runtime.sendMessage calls anywhere.
 
 export type MessageToBackground =
   | { kind: "CAPTURE_ALL_TABS" }
   | { kind: "CAPTURE_ACTIVE_TAB" }
   | { kind: "GET_CAPTURE_STATUS" }
+  | { kind: "GET_SESSIONS" }
+  | { kind: "DELETE_SESSION"; session_id: string }
+  | { kind: "TRIGGER_PIPELINE"; session_id: string }
+  | { kind: "TRIGGER_ALL_PIPELINE" }
 
 export type MessageToContent = { kind: "EXTRACT_CONTENT" }
 
@@ -213,40 +136,30 @@ export type MessageFromBackground =
   | { kind: "CAPTURE_PROGRESS"; completed: number; total: number }
   | { kind: "CAPTURE_ERROR"; error: string }
   | { kind: "STATUS"; last_summary: CaptureSummary | null; capturing: boolean }
+  | { kind: "SESSIONS_LIST"; summaries: Array<CaptureSummary> }
+  | { kind: "SESSIONS_ERROR"; error: string }
+  | { kind: "SESSION_DELETED"; session_id: string }
+  | { kind: "DELETE_ERROR"; session_id: string; error: string }
+  | { kind: "PIPELINE_TRIGGERED"; session_id: string }
+  | { kind: "PIPELINE_TRIGGER_ERROR"; session_id: string; error: string }
+  | { kind: "PIPELINE_ALL_TRIGGERED"; count: number }
+  | { kind: "PIPELINE_ALL_ERROR"; error: string }
 
 // ── Storage ────────────────────────────────────────────────────────────────
-
-//
-// Only lightweight data lives in browser.storage.local.
-// Full CaptureSession payloads are POSTed to the localhost endpoint.
 
 export type StoredState = {
   last_summary: CaptureSummary | null
   capture_count: number
   settings: CaptureSettings
+  // Lightweight map of session_id → pipeline status, persisted across popups.
+  pipeline_statuses: Record<string, PipelineStatus>
 }
 
 export type CaptureSettings = {
-  /**
-   * URL substrings that cause a tab to be skipped entirely.
-   * Default list covers chrome:// URLs, extension pages, and common
-   * noise like Google Docs, Notion, etc. that aren't learning resources.
-   */
   ignore_patterns: Array<string>
-
-  /**
-   * How long to wait for a content script to respond before timing out.
-   * Default: 5000ms.
-   */
   extraction_timeout_ms: number
-
-  /** Localhost pipeline endpoint. Default: http://localhost:7373/capture */
+  /** SQLite write endpoint. */
   pipeline_endpoint: string
-
-  /**
-   * If true, emit extraction_error details in the JSON output.
-   * Useful for debugging new extractors. Default: false.
-   */
   verbose_errors: boolean
 }
 
@@ -267,6 +180,12 @@ export const DEFAULT_SETTINGS: CaptureSettings = {
     "reddit.com",
   ],
   extraction_timeout_ms: 5000,
-  pipeline_endpoint: "http://localhost:7373/capture",
+  // POST /captures — SQLite write path
+  pipeline_endpoint: "http://nixos.local:3000/captures",
   verbose_errors: false,
 }
+
+// ── Pipeline API helpers ───────────────────────────────────────────────────
+// Base URL for the Ferrum server. Used by background.ts for pipeline triggers.
+
+export const FERRUM_BASE = "http://nixos.local:3000"

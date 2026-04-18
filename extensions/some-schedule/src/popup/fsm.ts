@@ -1,51 +1,24 @@
 /**
- *
  * Pure finite state machine for the popup.
- *
- * No DOM. No side effects. All state is expressed as a discriminated
- * union; all transitions are explicit functions that return a new state.
- * The render layer (view.ts) reads this and updates the DOM.
+ * No DOM. No side effects.
  *
  * States
  * ──────
+ *  INIT                  Awaiting GET_CAPTURE_STATUS reply.
+ *  IDLE                  Ready. User can capture or browse sessions.
+ *  ALREADY_CAPTURING     Another window started a capture mid-flight.
+ *  QUERYING_TABS         Capture in progress; tab extraction running.
+ *  POSTING               Tabs extracted; POSTing to /captures (SQLite).
+ *  DONE_SUCCESS          Capture + SQLite write OK. Pipeline NOT yet triggered.
+ *  DONE_POST_FAILED      Capture done but SQLite write failed.
+ *  TRIGGERING_PIPELINE   Waiting for pipeline trigger response.
+ *  PIPELINE_QUEUED       Pipeline trigger acknowledged.
+ *  ERROR                 Terminal error; user must dismiss.
  *
- *  INIT              Popup just opened; awaiting GET_CAPTURE_STATUS reply.
- *
- *  IDLE              Background confirmed: not capturing, no prior run.
- *                    User can trigger a capture.
- *
- *  ALREADY_CAPTURING Background confirmed: a capture is already in flight
- *                    (popup was opened mid-run). Show live progress if
- *                    CAPTURE_PROGRESS messages arrive.
- *
- *  QUERYING_TABS     Background received the capture request and is
- *                    iterating open tabs. Progress: n / total.
- *
- *  POSTING           All tabs extracted; POSTing the session to the
- *                    localhost pipeline endpoint.
- *
- *  DONE_SUCCESS      Capture and POST both completed. Shows summary.
- *
- *  DONE_POST_FAILED  Capture completed but POST to localhost failed.
- *                    Shows summary + delivery warning.
- *
- *  ERROR             Background returned CAPTURE_ERROR or the message
- *                    channel itself threw.
- *
- * Transitions (all valid edges)
- * ──────────────────────────────
- *
- *  INIT            → IDLE | ALREADY_CAPTURING | ERROR
- *  IDLE            → QUERYING_TABS
- *  ALREADY_CAPTURING → QUERYING_TABS (progress update)
- *                    → DONE_SUCCESS | DONE_POST_FAILED | ERROR (run finishes)
- *  QUERYING_TABS   → QUERYING_TABS (progress tick)
- *                  → POSTING
- *                  → ERROR
- *  POSTING         → DONE_SUCCESS | DONE_POST_FAILED | ERROR
- *  DONE_SUCCESS    → IDLE (user clicks "capture again")
- *  DONE_POST_FAILED → IDLE
- *  ERROR           → IDLE (user dismisses)
+ *  (Sessions tab states are handled inline in the controller by reading
+ *   a separate `sessionsState` slice — not encoded here to avoid an
+ *   explosion of top-level union variants for what is essentially a
+ *   sub-panel.)
  */
 
 import type { CaptureSummary } from "@schedule/shared/types"
@@ -60,17 +33,26 @@ export type PopupState =
   | { kind: "POSTING" }
   | { kind: "DONE_SUCCESS"; summary: CaptureSummary }
   | { kind: "DONE_POST_FAILED"; summary: CaptureSummary; post_error: string }
+  | { kind: "TRIGGERING_PIPELINE"; session_id: string; summary: CaptureSummary }
+  | { kind: "PIPELINE_QUEUED"; session_id: string; summary: CaptureSummary }
   | { kind: "ERROR"; message: string }
 
-// ── Initial state ──────────────────────────────────────────────────────────
+// Sessions panel is a separate async slice — not part of the capture FSM.
+export type SessionsState =
+  | { kind: "IDLE" }
+  | { kind: "LOADING" }
+  | { kind: "LOADED"; summaries: Array<CaptureSummary> }
+  | { kind: "ERROR"; error: string }
+  // Per-session in-flight action — optimistic update pattern.
+  | { kind: "DELETING"; session_id: string; prev: Array<CaptureSummary> }
+  | { kind: "TRIGGERING"; session_id: string; prev: Array<CaptureSummary> }
+
+// ── Initial states ─────────────────────────────────────────────────────────
 
 export const INIT_STATE: PopupState = { kind: "INIT" }
+export const SESSIONS_INIT: SessionsState = { kind: "IDLE" }
 
-// ── Transitions ────────────────────────────────────────────────────────────
-//
-// Each function takes the current state and relevant event data,
-// validates the transition is legal, and returns the next state.
-// Illegal transitions return the current state unchanged and log a warning.
+// ── Capture FSM transitions ────────────────────────────────────────────────
 
 export function onStatusReceived(
   _prev: PopupState,
@@ -82,7 +64,6 @@ export function onStatusReceived(
 }
 
 export function onStatusError(_prev: PopupState, error: string): PopupState {
-  // Background unreachable at init — treat as idle, show error briefly
   return { kind: "ERROR", message: `Background unreachable: ${error}` }
 }
 
@@ -105,7 +86,6 @@ export function onProgressUpdate(
   if (prev.kind === "QUERYING_TABS" || prev.kind === "ALREADY_CAPTURING") {
     return { kind: "QUERYING_TABS", completed, total }
   }
-  // Progress arriving after we transitioned away — ignore
   return prev
 }
 
@@ -127,9 +107,7 @@ export function onCaptureComplete(
   ) {
     return prev
   }
-  if (post_ok) {
-    return { kind: "DONE_SUCCESS", summary }
-  }
+  if (post_ok) return { kind: "DONE_SUCCESS", summary }
   return {
     kind: "DONE_POST_FAILED",
     summary,
@@ -141,16 +119,137 @@ export function onCaptureError(_prev: PopupState, message: string): PopupState {
   return { kind: "ERROR", message }
 }
 
+export function onTriggerPipeline(prev: PopupState): PopupState {
+  if (prev.kind !== "DONE_SUCCESS" && prev.kind !== "DONE_POST_FAILED")
+    return prev
+  return {
+    kind: "TRIGGERING_PIPELINE",
+    session_id: prev.summary.session_id,
+    summary: prev.summary,
+  }
+}
+
+export function onPipelineTriggered(prev: PopupState): PopupState {
+  if (prev.kind !== "TRIGGERING_PIPELINE") return prev
+  return {
+    kind: "PIPELINE_QUEUED",
+    session_id: prev.session_id,
+    summary: prev.summary,
+  }
+}
+
+export function onPipelineTriggerError(
+  prev: PopupState,
+  error: string
+): PopupState {
+  console.error("pipeline trigger error: ", error)
+  if (prev.kind !== "TRIGGERING_PIPELINE") return prev
+  // Roll back to DONE_SUCCESS so the user can retry.
+  return { kind: "DONE_SUCCESS", summary: prev.summary }
+}
+
 export function onDismiss(prev: PopupState): PopupState {
   switch (prev.kind) {
     case "DONE_SUCCESS":
     case "DONE_POST_FAILED":
+    case "PIPELINE_QUEUED":
+      return { kind: "IDLE", last_summary: prev.summary }
     case "ERROR":
-      return {
-        kind: "IDLE",
-        last_summary: prev.kind !== "ERROR" ? prev.summary : null,
-      }
+      return { kind: "IDLE", last_summary: null }
     default:
       return prev
   }
+}
+
+// ── Sessions FSM transitions ───────────────────────────────────────────────
+
+export function sessionsOnLoad(_prev: SessionsState): SessionsState {
+  return { kind: "LOADING" }
+}
+
+export function sessionsOnLoaded(
+  _prev: SessionsState,
+  summaries: Array<CaptureSummary>
+): SessionsState {
+  return { kind: "LOADED", summaries }
+}
+
+export function sessionsOnError(
+  _prev: SessionsState,
+  error: string
+): SessionsState {
+  return { kind: "ERROR", error }
+}
+
+export function sessionsOnDelete(
+  prev: SessionsState,
+  session_id: string
+): SessionsState {
+  if (prev.kind !== "LOADED") return prev
+  return { kind: "DELETING", session_id, prev: prev.summaries }
+}
+
+export function sessionsOnDeleted(
+  prev: SessionsState,
+  session_id: string
+): SessionsState {
+  const list =
+    prev.kind === "DELETING" || prev.kind === "LOADED"
+      ? prev.kind === "DELETING"
+        ? prev.prev
+        : prev.summaries
+      : []
+  return {
+    kind: "LOADED",
+    summaries: list.filter((s) => s.session_id !== session_id),
+  }
+}
+
+export function sessionsOnDeleteError(
+  prev: SessionsState,
+  _session_id: string,
+  error: string
+): SessionsState {
+  // Roll back to previous list.
+  if (prev.kind === "DELETING") {
+    return { kind: "LOADED", summaries: prev.prev }
+  }
+  return { kind: "ERROR", error }
+}
+
+export function sessionsOnTrigger(
+  prev: SessionsState,
+  session_id: string
+): SessionsState {
+  if (prev.kind !== "LOADED") return prev
+  return { kind: "TRIGGERING", session_id, prev: prev.summaries }
+}
+
+export function sessionsOnTriggered(
+  prev: SessionsState,
+  session_id: string
+): SessionsState {
+  // Update the pipeline_status badge optimistically.
+  const list =
+    prev.kind === "TRIGGERING"
+      ? prev.prev
+      : prev.kind === "LOADED"
+        ? prev.summaries
+        : []
+  const updated = list.map((s) =>
+    s.session_id === session_id
+      ? { ...s, pipeline_status: "running" as const }
+      : s
+  )
+  return { kind: "LOADED", summaries: updated }
+}
+
+export function sessionsOnTriggerError(
+  prev: SessionsState,
+  _session_id: string
+): SessionsState {
+  if (prev.kind === "TRIGGERING") {
+    return { kind: "LOADED", summaries: prev.prev }
+  }
+  return prev
 }
