@@ -1,255 +1,239 @@
+
 /**
- * Pure finite state machine for the popup.
- * No DOM. No side effects.
  *
- * States
- * ──────
- *  INIT                  Awaiting GET_CAPTURE_STATUS reply.
- *  IDLE                  Ready. User can capture or browse sessions.
- *  ALREADY_CAPTURING     Another window started a capture mid-flight.
- *  QUERYING_TABS         Capture in progress; tab extraction running.
- *  POSTING               Tabs extracted; POSTing to /captures (SQLite).
- *  DONE_SUCCESS          Capture + SQLite write OK. Pipeline NOT yet triggered.
- *  DONE_POST_FAILED      Capture done but SQLite write failed.
- *  TRIGGERING_PIPELINE   Waiting for pipeline trigger response.
- *  PIPELINE_QUEUED       Pipeline trigger acknowledged.
- *  ERROR                 Terminal error; user must dismiss.
+ * Tab-centric FSM. Each state is the complete render specification —
+ * the view is a pure function of PopupState with zero implicit state.
  *
- *  (Sessions tab states are handled inline in the controller by reading
- *   a separate `sessionsState` slice — not encoded here to avoid an
- *   explosion of top-level union variants for what is essentially a
- *   sub-panel.)
+ * Invariants:
+ *   - No state holds data that isn't needed to render it.
+ *   - Transitions never mutate; they return new state.
+ *   - Error states always carry a message. Partial errors carry both
+ *     the partial result and the error so the view can show both.
  */
 
-import type { CaptureSummary } from "@schedule/shared/types"
+import type { TabSummary } from "@schedule/shared/types"
 
-// ── State shapes ───────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────
+
+export type SyncResult = {
+  upserted: number
+  failed: number
+  // tab_ids that errored during extraction (not network failures)
+  error_tab_ids: Array<number>
+}
+
+export type ReconcileResult = {
+  absent_tab_ids: Array<number>
+  absent_summaries: Array<TabSummary> // resolved from absent ids
+}
 
 export type PopupState =
+  // Startup: waiting for background status reply.
   | { kind: "INIT" }
-  | { kind: "IDLE"; last_summary: CaptureSummary | null }
-  | { kind: "ALREADY_CAPTURING" }
-  | { kind: "QUERYING_TABS"; completed: number; total: number }
-  | { kind: "POSTING" }
-  | { kind: "DONE_SUCCESS"; summary: CaptureSummary }
-  | { kind: "DONE_POST_FAILED"; summary: CaptureSummary; post_error: string }
-  | { kind: "TRIGGERING_PIPELINE"; session_id: string; summary: CaptureSummary }
-  | { kind: "PIPELINE_QUEUED"; session_id: string; summary: CaptureSummary }
+
+  // Nominal idle. Exposes lightweight DB state for ambient awareness.
+  | {
+      kind: "IDLE"
+      tab_count: number // total tabs currently open in browser
+      db_count: number  // rows currently in tabs table
+      last_synced_at: string | null
+    }
+
+  // Batch upsert in flight. Progress is per-tab, not per-request.
+  | {
+      kind: "SYNCING"
+      completed: number
+      total: number
+    }
+
+  // Upsert settled. May have partial failures (extraction errors on
+  // individual tabs are not fatal — they are recorded, not thrown).
+  | {
+      kind: "SYNC_DONE"
+      result: SyncResult
+      db_count: number
+    }
+
+  // Network / server error during the POST /tabs/batch call itself.
+  | {
+      kind: "SYNC_FAILED"
+      error: string
+      // Preserve what we know so the user isn't flying blind.
+      completed_before_failure: number
+    }
+
+  // Reconcile: asking server for tab_ids in DB not seen in current session.
+  | { kind: "RECONCILING" }
+
+  // Server returned absent ids. User reviews before confirming delete.
+  | {
+      kind: "RECONCILE_REVIEW"
+      result: ReconcileResult
+    }
+
+  // Batch delete of absent tabs in flight.
+  | {
+      kind: "RECONCILE_DELETING"
+      tab_ids: Array<number>
+    }
+
+  // Pipeline trigger in flight.
+  | { kind: "TRIGGERING_PIPELINE" }
+
+  // Pipeline trigger acknowledged by server.
+  | {
+      kind: "PIPELINE_QUEUED"
+      // How many tabs were in the DB when we triggered.
+      db_count: number
+    }
+
+  // Pipeline trigger failed.
+  | {
+      kind: "PIPELINE_TRIGGER_FAILED"
+      error: string
+    }
+
+  // Pruning stale tabs (maintenance).
+  | { kind: "PRUNING" }
+
+  | {
+      kind: "PRUNE_DONE"
+      pruned_count: number
+      db_count: number
+    }
+
+  // Terminal error requiring dismiss.
   | { kind: "ERROR"; message: string }
 
-// Sessions panel is a separate async slice — not part of the capture FSM.
-export type SessionsState =
-  | { kind: "IDLE" }
-  | { kind: "LOADING" }
-  | { kind: "LOADED"; summaries: Array<CaptureSummary> }
-  | { kind: "ERROR"; error: string }
-  // Per-session in-flight action — optimistic update pattern.
-  | { kind: "DELETING"; session_id: string; prev: Array<CaptureSummary> }
-  | { kind: "TRIGGERING"; session_id: string; prev: Array<CaptureSummary> }
-
-// ── Initial states ─────────────────────────────────────────────────────────
+// ── Initial ───────────────────────────────────────────────────────────────
 
 export const INIT_STATE: PopupState = { kind: "INIT" }
-export const SESSIONS_INIT: SessionsState = { kind: "IDLE" }
 
-// ── Capture FSM transitions ────────────────────────────────────────────────
+// ── Transitions ───────────────────────────────────────────────────────────
 
 export function onStatusReceived(
   _prev: PopupState,
-  capturing: boolean,
-  last_summary: CaptureSummary | null
+  tab_count: number,
+  db_count: number,
+  last_synced_at: string | null
 ): PopupState {
-  if (capturing) return { kind: "ALREADY_CAPTURING" }
-  return { kind: "IDLE", last_summary }
+  return { kind: "IDLE", tab_count, db_count, last_synced_at }
 }
 
 export function onStatusError(_prev: PopupState, error: string): PopupState {
-  return { kind: "ERROR", message: `Background unreachable: ${error}` }
+  return { kind: "ERROR", message: `background unreachable: ${error}` }
 }
 
-export function onCaptureTriggered(prev: PopupState): PopupState {
-  if (prev.kind !== "IDLE" && prev.kind !== "ALREADY_CAPTURING") {
-    console.warn(
-      "[tabsched fsm] onCaptureTriggered in unexpected state",
-      prev.kind
-    )
-    return prev
-  }
-  return { kind: "QUERYING_TABS", completed: 0, total: 0 }
+// Sync flow
+export function onSyncTriggered(_prev: PopupState): PopupState {
+  return { kind: "SYNCING", completed: 0, total: 0 }
 }
 
-export function onProgressUpdate(
-  prev: PopupState,
-  completed: number,
-  total: number
+export function onSyncProgress(prev: PopupState, completed: number, total: number): PopupState {
+  if (prev.kind !== "SYNCING") return prev
+  return { kind: "SYNCING", completed, total }
+}
+
+export function onSyncDone(
+  _prev: PopupState,
+  result: SyncResult,
+  db_count: number
 ): PopupState {
-  if (prev.kind === "QUERYING_TABS" || prev.kind === "ALREADY_CAPTURING") {
-    return { kind: "QUERYING_TABS", completed, total }
-  }
-  return prev
+  return { kind: "SYNC_DONE", result, db_count }
 }
 
-export function onAllTabsExtracted(prev: PopupState): PopupState {
-  if (prev.kind !== "QUERYING_TABS") return prev
-  return { kind: "POSTING" }
-}
-
-export function onCaptureComplete(
-  prev: PopupState,
-  summary: CaptureSummary,
-  post_ok: boolean,
-  post_error?: string
-): PopupState {
-  if (
-    prev.kind !== "QUERYING_TABS" &&
-    prev.kind !== "POSTING" &&
-    prev.kind !== "ALREADY_CAPTURING"
-  ) {
-    return prev
-  }
-  if (post_ok) return { kind: "DONE_SUCCESS", summary }
-  return {
-    kind: "DONE_POST_FAILED",
-    summary,
-    post_error: post_error ?? "endpoint unreachable",
-  }
-}
-
-export function onCaptureError(_prev: PopupState, message: string): PopupState {
-  return { kind: "ERROR", message }
-}
-
-export function onTriggerPipeline(prev: PopupState): PopupState {
-  if (prev.kind !== "DONE_SUCCESS" && prev.kind !== "DONE_POST_FAILED")
-    return prev
-  return {
-    kind: "TRIGGERING_PIPELINE",
-    session_id: prev.summary.session_id,
-    summary: prev.summary,
-  }
-}
-
-export function onPipelineTriggered(prev: PopupState): PopupState {
-  if (prev.kind !== "TRIGGERING_PIPELINE") return prev
-  return {
-    kind: "PIPELINE_QUEUED",
-    session_id: prev.session_id,
-    summary: prev.summary,
-  }
-}
-
-export function onPipelineTriggerError(
+export function onSyncFailed(
   prev: PopupState,
   error: string
 ): PopupState {
-  console.error("pipeline trigger error: ", error)
-  if (prev.kind !== "TRIGGERING_PIPELINE") return prev
-  // Roll back to DONE_SUCCESS so the user can retry.
-  return { kind: "DONE_SUCCESS", summary: prev.summary }
+  const completed_before_failure =
+    prev.kind === "SYNCING" ? prev.completed : 0
+  return { kind: "SYNC_FAILED", error, completed_before_failure }
 }
 
-export function onDismiss(prev: PopupState): PopupState {
+// Reconcile flow
+export function onReconcileTriggered(_prev: PopupState): PopupState {
+  return { kind: "RECONCILING" }
+}
+
+export function onReconcileResult(
+  _prev: PopupState,
+  result: ReconcileResult
+): PopupState {
+  // If nothing is absent, skip review and go back to IDLE.
+  if (result.absent_tab_ids.length === 0) {
+    return { kind: "RECONCILE_REVIEW", result }
+  }
+  return { kind: "RECONCILE_REVIEW", result }
+}
+
+export function onReconcileDeleteConfirmed(
+  prev: PopupState,
+  tab_ids: Array<number>
+): PopupState {
+  if (prev.kind !== "RECONCILE_REVIEW") return prev
+  return { kind: "RECONCILE_DELETING", tab_ids }
+}
+
+export function onReconcileDeleteDone(
+  _prev: PopupState,
+  tab_count: number,
+  db_count: number,
+  last_synced_at: string | null
+): PopupState {
+  return { kind: "IDLE", tab_count, db_count, last_synced_at }
+}
+
+export function onReconcileError(_prev: PopupState, error: string): PopupState {
+  return { kind: "ERROR", message: `reconcile failed: ${error}` }
+}
+
+// Pipeline flow
+export function onPipelineTriggered(_prev: PopupState): PopupState {
+  return { kind: "TRIGGERING_PIPELINE" }
+}
+
+export function onPipelineQueued(
+  _prev: PopupState,
+  db_count: number
+): PopupState {
+  return { kind: "PIPELINE_QUEUED", db_count }
+}
+
+export function onPipelineFailed(_prev: PopupState, error: string): PopupState {
+  return { kind: "PIPELINE_TRIGGER_FAILED", error }
+}
+
+// Prune flow
+export function onPruneTriggered(_prev: PopupState): PopupState {
+  return { kind: "PRUNING" }
+}
+
+export function onPruneDone(
+  _prev: PopupState,
+  pruned_count: number,
+  db_count: number
+): PopupState {
+  return { kind: "PRUNE_DONE", pruned_count, db_count }
+}
+
+// Dismiss / reset back to IDLE from terminal/done states
+export function onDismiss(
+  prev: PopupState,
+  tab_count: number,
+  db_count: number,
+  last_synced_at: string | null
+): PopupState {
   switch (prev.kind) {
-    case "DONE_SUCCESS":
-    case "DONE_POST_FAILED":
+    case "SYNC_DONE":
+    case "SYNC_FAILED":
     case "PIPELINE_QUEUED":
-      return { kind: "IDLE", last_summary: prev.summary }
+    case "PIPELINE_TRIGGER_FAILED":
+    case "PRUNE_DONE":
+    case "RECONCILE_REVIEW":
     case "ERROR":
-      return { kind: "IDLE", last_summary: null }
+      return { kind: "IDLE", tab_count, db_count, last_synced_at }
     default:
       return prev
   }
-}
-
-// ── Sessions FSM transitions ───────────────────────────────────────────────
-
-export function sessionsOnLoad(_prev: SessionsState): SessionsState {
-  return { kind: "LOADING" }
-}
-
-export function sessionsOnLoaded(
-  _prev: SessionsState,
-  summaries: Array<CaptureSummary>
-): SessionsState {
-  return { kind: "LOADED", summaries }
-}
-
-export function sessionsOnError(
-  _prev: SessionsState,
-  error: string
-): SessionsState {
-  return { kind: "ERROR", error }
-}
-
-export function sessionsOnDelete(
-  prev: SessionsState,
-  session_id: string
-): SessionsState {
-  if (prev.kind !== "LOADED") return prev
-  return { kind: "DELETING", session_id, prev: prev.summaries }
-}
-
-export function sessionsOnDeleted(
-  prev: SessionsState,
-  session_id: string
-): SessionsState {
-  const list =
-    prev.kind === "DELETING" || prev.kind === "LOADED"
-      ? prev.kind === "DELETING"
-        ? prev.prev
-        : prev.summaries
-      : []
-  return {
-    kind: "LOADED",
-    summaries: list.filter((s) => s.session_id !== session_id),
-  }
-}
-
-export function sessionsOnDeleteError(
-  prev: SessionsState,
-  _session_id: string,
-  error: string
-): SessionsState {
-  // Roll back to previous list.
-  if (prev.kind === "DELETING") {
-    return { kind: "LOADED", summaries: prev.prev }
-  }
-  return { kind: "ERROR", error }
-}
-
-export function sessionsOnTrigger(
-  prev: SessionsState,
-  session_id: string
-): SessionsState {
-  if (prev.kind !== "LOADED") return prev
-  return { kind: "TRIGGERING", session_id, prev: prev.summaries }
-}
-
-export function sessionsOnTriggered(
-  prev: SessionsState,
-  session_id: string
-): SessionsState {
-  // Update the pipeline_status badge optimistically.
-  const list =
-    prev.kind === "TRIGGERING"
-      ? prev.prev
-      : prev.kind === "LOADED"
-        ? prev.summaries
-        : []
-  const updated = list.map((s) =>
-    s.session_id === session_id
-      ? { ...s, pipeline_status: "running" as const }
-      : s
-  )
-  return { kind: "LOADED", summaries: updated }
-}
-
-export function sessionsOnTriggerError(
-  prev: SessionsState,
-  _session_id: string
-): SessionsState {
-  if (prev.kind === "TRIGGERING") {
-    return { kind: "LOADED", summaries: prev.prev }
-  }
-  return prev
 }

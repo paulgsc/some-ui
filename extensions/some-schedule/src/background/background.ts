@@ -1,39 +1,46 @@
 /**
- * Firefox MV2 persistent background page.
  *
- * Data flow (revised):
+ * Tab-centric background. No session concept.
  *
- *   Popup sends CAPTURE_ALL_TABS
- *     → background orchestrates capture (capture.ts)
- *     → background POSTs full CaptureSession to /captures (SQLite write)
- *     → background stores CaptureSummary in browser.storage.local
- *     → background replies with summary — pipeline NOT auto-triggered
+ * Data flow:
  *
- *   Popup sends TRIGGER_PIPELINE { session_id }
- *     → background POSTs to /captures/:session_id/pipeline (JetStream signal)
- *     → background updates pipeline_status in storage
+ *   SYNC_TABS
+ *     → capture non-suspended tabs (capture.ts)
+ *     → POST /tabs/batch (upsert)
+ *     → reply SYNC_COMPLETE | SYNC_FAILED
+ *     → broadcasts SYNC_PROGRESS during extraction
  *
- *   Popup sends GET_SESSIONS
- *     → background GETs /captures/summaries
- *     → replies with SESSIONS_LIST
+ *   RECONCILE
+ *     → GET active tab_ids from browser
+ *     → POST /tabs/reconcile
+ *     → reply RECONCILE_RESULT
  *
- *   Popup sends DELETE_SESSION { session_id }
- *     → background DELETEs /captures/:session_id
- *     → replies with SESSION_DELETED
+ *   DELETE_TABS { tab_ids }
+ *     → DELETE /tabs/batch
+ *     → reply DELETE_COMPLETE | DELETE_ERROR
+ *
+ *   TRIGGER_PIPELINE
+ *     → POST /tabs/pipeline  (Ferrum publishes NATS msg)
+ *     → reply PIPELINE_QUEUED | PIPELINE_ERROR
+ *
+ *   PRUNE_TABS { older_than_days? }
+ *     → POST /tabs/prune
+ *     → reply PRUNE_COMPLETE | PRUNE_ERROR
+ *
+ *   GET_STATUS
+ *     → browser.tabs.query + GET /tabs/summaries count
+ *     → reply STATUS
  */
 
+import { isoNow } from "@schedule/shared/id"
 import type {
-  CaptureSettings,
-  CaptureSummary,
   MessageFromBackground,
   MessageToBackground,
   StoredState,
+  SyncStats,
+  TabSummary,
 } from "@schedule/shared/types"
-import {
-  DEFAULT_SETTINGS,
-  FERRUM_BASE,
-  summarise,
-} from "@schedule/shared/types"
+import { DEFAULT_SETTINGS } from "@schedule/shared/types"
 
 import { captureAllTabs } from "./capture"
 
@@ -44,10 +51,9 @@ async function loadState(): Promise<StoredState> {
   const stored = result["tabsched_state"]
   return (
     stored ?? {
-      last_summary: null,
-      capture_count: 0,
+      last_synced_at: null,
+      sync_count: 0,
       settings: DEFAULT_SETTINGS,
-      pipeline_statuses: {},
     }
   )
 }
@@ -56,25 +62,22 @@ async function saveState(state: StoredState): Promise<void> {
   await browser.storage.local.set({ tabsched_state: state })
 }
 
-// ── HTTP helpers ───────────────────────────────────────────────────────────
+// ── HTTP ───────────────────────────────────────────────────────────────────
 
-async function httpPost(
+async function httpPost<T = unknown>(
   url: string,
   body: unknown
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-    return { ok: true }
+    if (!res.ok)
+      return { ok: false, error: `HTTP ${res.status}: ${res.statusText}` }
+    const data = (await res.json()) as T
+    return { ok: true, data }
   } catch (e) {
     return { ok: false, error: String(e) }
   }
@@ -84,43 +87,39 @@ async function httpGet<T>(
   url: string
 ): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-    const data = (await response.json()) as T
+    const res = await fetch(url)
+    if (!res.ok)
+      return { ok: false, error: `HTTP ${res.status}: ${res.statusText}` }
+    return { ok: true, data: (await res.json()) as T }
+  } catch (e) {
+    return { ok: false, error: String(e) }
+  }
+}
+
+async function httpDelete<T = unknown>(
+  url: string,
+  body?: unknown
+): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    if (!res.ok && res.status !== 204)
+      return { ok: false, error: `HTTP ${res.status}: ${res.statusText}` }
+    const data = res.status === 204 ? ({} as T) : ((await res.json()) as T)
     return { ok: true, data }
   } catch (e) {
     return { ok: false, error: String(e) }
   }
 }
 
-async function httpDelete(
-  url: string
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const response = await fetch(url, { method: "DELETE" })
-    // 204 No Content is success
-    if (!response.ok && response.status !== 204) {
-      return {
-        ok: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: String(e) }
-  }
-}
+// ── Capture flag ───────────────────────────────────────────────────────────
 
-// ── In-memory capture flag ─────────────────────────────────────────────────
+let syncing = false
 
-let capturing = false
-
-// ── Message router ─────────────────────────────────────────────────────────
+// ── Router ─────────────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener(
   (
@@ -130,20 +129,18 @@ browser.runtime.onMessage.addListener(
     const msg = message as MessageToBackground
 
     switch (msg.kind) {
-      case "GET_CAPTURE_STATUS":
+      case "GET_STATUS":
         return handleGetStatus()
-      case "CAPTURE_ALL_TABS":
-        return handleCaptureAll()
-      case "CAPTURE_ACTIVE_TAB":
-        return handleCaptureActive()
-      case "GET_SESSIONS":
-        return handleGetSessions()
-      case "DELETE_SESSION":
-        return handleDeleteSession(msg.session_id)
+      case "SYNC_TABS":
+        return handleSyncTabs()
+      case "RECONCILE":
+        return handleReconcile()
+      case "DELETE_TABS":
+        return handleDeleteTabs(msg.tab_ids)
       case "TRIGGER_PIPELINE":
-        return handleTriggerPipeline(msg.session_id)
-      case "TRIGGER_ALL_PIPELINE":
-        return handleTriggerAllPipeline()
+        return handleTriggerPipeline()
+      case "PRUNE_TABS":
+        return handlePruneTabs(msg.older_than_days)
       default:
         return true
     }
@@ -153,196 +150,202 @@ browser.runtime.onMessage.addListener(
 // ── Handlers ──────────────────────────────────────────────────────────────
 
 async function handleGetStatus(): Promise<MessageFromBackground> {
-  const state = await loadState()
-  return { kind: "STATUS", last_summary: state.last_summary, capturing }
-}
+  const [state, allTabs] = await Promise.all([
+    loadState(),
+    browser.tabs.query({}),
+  ])
 
-async function handleCaptureAll(): Promise<MessageFromBackground> {
-  if (capturing) {
-    return { kind: "CAPTURE_ERROR", error: "capture already in progress" }
-  }
-  capturing = true
-  const state = await loadState()
-
-  try {
-    const session = await captureAllTabs(state.settings, (completed, total) => {
-      const progress: MessageFromBackground = {
-        kind: "CAPTURE_PROGRESS",
-        completed,
-        total,
-      }
-      browser.runtime.sendMessage(progress).catch(() => undefined)
-    })
-
-    // ① Write to SQLite via POST /captures
-    const postResult = await httpPost(state.settings.pipeline_endpoint, session)
-    if (!postResult.ok) {
-      console.warn("[tabsched bg] SQLite write failed:", postResult.error)
-    }
-
-    const summary = summarise(session)
-
-    // ② Store summary + mark pipeline status as pending
-    state.last_summary = summary
-    state.capture_count += 1
-    state.pipeline_statuses[session.session_id] = "pending"
-    await saveState(state)
-
-    return {
-      kind: "CAPTURE_COMPLETE",
-      summary,
-      post_ok: postResult.ok,
-      post_error: postResult.ok ? undefined : postResult.error,
-    }
-  } catch (e) {
-    return { kind: "CAPTURE_ERROR", error: String(e) }
-  } finally {
-    capturing = false
-  }
-}
-
-async function handleCaptureActive(): Promise<MessageFromBackground> {
-  const [activeTab] = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  })
-  if (activeTab == null) {
-    return { kind: "CAPTURE_ERROR", error: "no active tab" }
-  }
-
-  const state = await loadState()
-  const singleTabSettings: CaptureSettings = {
-    ...state.settings,
-    ignore_patterns: [],
-  }
-
-  capturing = true
-  try {
-    const session = await captureAllTabs(singleTabSettings)
-    const filtered = {
-      ...session,
-      captures: session.captures.filter((c) => c.tab_id === activeTab.id),
-    }
-
-    const postResult = await httpPost(
-      state.settings.pipeline_endpoint,
-      filtered
-    )
-    if (!postResult.ok) {
-      console.warn("[tabsched bg] SQLite write failed:", postResult.error)
-    }
-
-    const summary = summarise(filtered)
-    state.last_summary = summary
-    state.capture_count += 1
-    state.pipeline_statuses[filtered.session_id] = "pending"
-    await saveState(state)
-
-    return {
-      kind: "CAPTURE_COMPLETE",
-      summary,
-      post_ok: postResult.ok,
-      post_error: postResult.ok ? undefined : postResult.error,
-    }
-  } catch (e) {
-    return { kind: "CAPTURE_ERROR", error: String(e) }
-  } finally {
-    capturing = false
-  }
-}
-
-async function handleGetSessions(): Promise<MessageFromBackground> {
-  const state = await loadState()
-  const result = await httpGet<Array<CaptureSummary>>(
-    `${FERRUM_BASE}/captures/summaries`
+  // Get db_count from summaries endpoint (lightweight).
+  const summaryResult = await httpGet<Array<TabSummary>>(
+    `${state.settings.ferrum_base}/tabs/summaries`
   )
-  if (!result.ok) {
-    return { kind: "SESSIONS_ERROR", error: result.error }
+  const db_count = summaryResult.ok ? summaryResult.data.length : 0
+
+  return {
+    kind: "STATUS",
+    tab_count: allTabs.length,
+    db_count,
+    last_synced_at: state.last_synced_at,
   }
-
-  // Annotate summaries with locally-tracked pipeline statuses.
-  const summaries = result.data.map((s) => ({
-    ...s,
-    pipeline_status: state.pipeline_statuses[s.session_id] ?? "pending",
-  }))
-
-  return { kind: "SESSIONS_LIST", summaries }
 }
 
-async function handleDeleteSession(
-  session_id: string
-): Promise<MessageFromBackground> {
-  const result = await httpDelete(`${FERRUM_BASE}/captures/${session_id}`)
+async function handleSyncTabs(): Promise<MessageFromBackground> {
+  if (syncing) {
+    return { kind: "ERROR", message: "sync already in progress" }
+  }
+
+  syncing = true
+  const state = await loadState()
+
+  try {
+    // Capture only — suspended tabs self-exclude via captureTab's discard check.
+    const { captures, skipped } = await captureAllTabs(
+      state.settings,
+      (completed, total) => {
+        const progress: MessageFromBackground = {
+          kind: "SYNC_PROGRESS",
+          completed,
+          total,
+        }
+        browser.runtime.sendMessage(progress).catch(() => undefined)
+      }
+    )
+
+    if (captures.length === 0) {
+      // All tabs suspended or filtered. Not a network error.
+      const stats: SyncStats = {
+        upserted: 0,
+        failed: 0,
+        error_tab_ids: skipped.map((s) => s.tab_id),
+        db_count: 0,
+      }
+      return { kind: "SYNC_COMPLETE", stats }
+    }
+
+    // POST batch upsert.
+    const result = await httpPost<{ upserted_count: number }>(
+      `${state.settings.ferrum_base}/tabs/batch`,
+      { tabs: captures }
+    )
+
+    if (!result.ok) {
+      return { kind: "SYNC_FAILED", error: result.error }
+    }
+
+    // Fetch updated db_count.
+    const summaryResult = await httpGet<Array<TabSummary>>(
+      `${state.settings.ferrum_base}/tabs/summaries`
+    )
+    const db_count = summaryResult.ok ? summaryResult.data.length : 0
+
+    const failedCaptures = captures.filter((c) => !c.extraction_ok)
+    const stats: SyncStats = {
+      upserted: result.data.upserted_count,
+      failed: failedCaptures.length,
+      error_tab_ids: failedCaptures.map((c) => c.tab_id),
+      db_count,
+    }
+
+    state.last_synced_at = isoNow()
+    state.sync_count += 1
+    await saveState(state)
+
+    return { kind: "SYNC_COMPLETE", stats }
+  } catch (e) {
+    return { kind: "SYNC_FAILED", error: String(e) }
+  } finally {
+    syncing = false
+  }
+}
+
+async function handleReconcile(): Promise<MessageFromBackground> {
+  const state = await loadState()
+
+  // Collect all non-filtered browser tab_ids.
+  const allTabs = await browser.tabs.query({})
+  const active_tab_ids = allTabs
+    .filter((t) => t.id != null && t.url != null)
+    .map((t) => t.id as number)
+
+  const result = await httpPost<{ absent_tab_ids: Array<number> }>(
+    `${state.settings.ferrum_base}/tabs/reconcile`,
+    { active_tab_ids }
+  )
+
   if (!result.ok) {
+    return { kind: "RECONCILE_ERROR", error: result.error }
+  }
+
+  const absent_tab_ids = result.data.absent_tab_ids
+
+  if (absent_tab_ids.length === 0) {
     return {
-      kind: "DELETE_ERROR",
-      session_id,
-      error: result.error ?? "unknown",
+      kind: "RECONCILE_RESULT",
+      absent_tab_ids: [],
+      absent_summaries: [],
     }
   }
 
-  // Clean up local pipeline status entry.
-  const state = await loadState()
-  delete state.pipeline_statuses[session_id]
-  if (state.last_summary?.session_id === session_id) {
-    state.last_summary = null
-  }
-  await saveState(state)
+  // Fetch summaries to give user context on what will be deleted.
+  const summaryResult = await httpGet<Array<TabSummary>>(
+    `${state.settings.ferrum_base}/tabs/summaries`
+  )
 
-  return { kind: "SESSION_DELETED", session_id }
+  const absent_summaries = summaryResult.ok
+    ? summaryResult.data.filter((s) => absent_tab_ids.includes(s.tab_id))
+    : []
+
+  return {
+    kind: "RECONCILE_RESULT",
+    absent_tab_ids,
+    absent_summaries,
+  }
 }
 
-async function handleTriggerPipeline(
-  session_id: string
+async function handleDeleteTabs(
+  tab_ids: Array<number>
 ): Promise<MessageFromBackground> {
-  // POST to the pipeline trigger endpoint — Ferrum publishes to JetStream.
+  const state = await loadState()
+
+  const result = await httpDelete<{ deleted_count: number }>(
+    `${state.settings.ferrum_base}/tabs/batch`,
+    { tab_ids }
+  )
+
+  if (!result.ok) {
+    return { kind: "DELETE_ERROR", error: result.error }
+  }
+
+  return { kind: "DELETE_COMPLETE", deleted_count: result.data.deleted_count }
+}
+
+async function handleTriggerPipeline(): Promise<MessageFromBackground> {
+  const state = await loadState()
+
+  // GET /tabs/pipeline — Ferrum will add NATS publish logic here.
+  // Background does a POST; the route handler publishes to JetStream.
   const result = await httpPost(
-    `${FERRUM_BASE}/captures/${session_id}/pipeline`,
+    `${state.settings.ferrum_base}/tabs/pipeline`,
     {}
   )
+
   if (!result.ok) {
-    return {
-      kind: "PIPELINE_TRIGGER_ERROR",
-      session_id,
-      error: result.error ?? "unknown",
-    }
+    return { kind: "PIPELINE_ERROR", error: result.error }
   }
 
-  const state = await loadState()
-  state.pipeline_statuses[session_id] = "running"
-  await saveState(state)
+  // Return current db_count so the UI can confirm payload size.
+  const summaryResult = await httpGet<Array<TabSummary>>(
+    `${state.settings.ferrum_base}/tabs/summaries`
+  )
+  const db_count = summaryResult.ok ? summaryResult.data.length : 0
 
-  return { kind: "PIPELINE_TRIGGERED", session_id }
+  return { kind: "PIPELINE_QUEUED", db_count }
 }
 
-async function handleTriggerAllPipeline(): Promise<MessageFromBackground> {
+async function handlePruneTabs(
+  older_than_days?: number
+): Promise<MessageFromBackground> {
   const state = await loadState()
 
-  // Fetch all summaries, fire pipeline for any that are pending.
-  const listResult = await httpGet<Array<CaptureSummary>>(
-    `${FERRUM_BASE}/captures/summaries`
+  const result = await httpPost<{ pruned_count: number }>(
+    `${state.settings.ferrum_base}/tabs/prune`,
+    { older_than_days: older_than_days ?? state.settings.prune_days }
   )
-  if (!listResult.ok) {
-    return { kind: "PIPELINE_ALL_ERROR", error: listResult.error }
+
+  if (!result.ok) {
+    return { kind: "PRUNE_ERROR", error: result.error }
   }
 
-  const pending = listResult.data.filter(
-    (s) => (state.pipeline_statuses[s.session_id] ?? "pending") === "pending"
+  const summaryResult = await httpGet<Array<TabSummary>>(
+    `${state.settings.ferrum_base}/tabs/summaries`
   )
+  const db_count = summaryResult.ok ? summaryResult.data.length : 0
 
-  await Promise.all(
-    pending.map(async (s) => {
-      const r = await httpPost(
-        `${FERRUM_BASE}/captures/${s.session_id}/pipeline`,
-        {}
-      )
-      state.pipeline_statuses[s.session_id] = r.ok ? "running" : "failed"
-    })
-  )
-
-  await saveState(state)
-
-  return { kind: "PIPELINE_ALL_TRIGGERED", count: pending.length }
+  return {
+    kind: "PRUNE_COMPLETE",
+    pruned_count: result.data.pruned_count,
+    db_count,
+  }
 }
 
 console.log("[tabsched bg] loaded")

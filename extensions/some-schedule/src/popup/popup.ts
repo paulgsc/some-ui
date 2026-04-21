@@ -1,262 +1,228 @@
 /**
- * Controller — the only file that imports both fsm.ts and view.ts.
  *
- * Responsibilities:
- *   1. Maintain PopupState (capture tab) and SessionsState (sessions tab)
- *   2. On any state change: call render / renderSessions
- *   3. Translate background messages → FSM transitions
- *   4. Translate button clicks → FSM transitions
- *
- * Rules:
- *   - Never touches the DOM directly (view.ts owns that)
- *   - Never contains state logic (fsm.ts owns that)
- *   - Never calls browser API directly (messages.ts owns that)
+ * Controller. Owns the FSM state. Delegates rendering to view.ts.
+ * No DOM manipulation here — only transitions and message dispatch.
  */
 
-/**
- * Controller — the only file that imports both fsm.ts and view.ts.
- */
+import type { MessageFromBackground } from "@schedule/shared/types"
 
 import {
   INIT_STATE,
-  onCaptureComplete,
-  onCaptureError,
-  onCaptureTriggered,
   onDismiss,
+  onPipelineFailed,
+  onPipelineQueued,
   onPipelineTriggered,
-  onPipelineTriggerError,
-  onProgressUpdate,
+  onPruneDone,
+  onPruneTriggered,
+  onReconcileDeleteConfirmed,
+  onReconcileDeleteDone,
+  onReconcileError,
+  onReconcileResult,
+  onReconcileTriggered,
   onStatusError,
   onStatusReceived,
-  onTriggerPipeline,
-  SESSIONS_INIT,
-  sessionsOnDelete,
-  sessionsOnDeleted,
-  sessionsOnDeleteError,
-  sessionsOnError,
-  sessionsOnLoad,
-  sessionsOnLoaded,
-  sessionsOnTrigger,
-  sessionsOnTriggered,
-  sessionsOnTriggerError,
+  onSyncDone,
+  onSyncFailed,
+  onSyncProgress,
+  onSyncTriggered,
+  type PopupState,
+  type SyncResult,
 } from "./fsm"
-import type { PopupState, SessionsState } from "./fsm"
-import {
-  deleteSession,
-  getSessions,
-  onProgressMessage,
-  sendToBackground,
-  triggerAllPipeline,
-  triggerPipeline,
-} from "./messages"
-import {
-  getButtons,
-  init as initView,
-  render,
-  renderSessions,
-  switchTab,
-} from "./view"
+import { render } from "./view"
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────
 
 let state: PopupState = INIT_STATE
-let sessionsState: SessionsState = SESSIONS_INIT
 
-function transition(next: PopupState): void {
+// Cached ambient values so dismissals can restore IDLE correctly.
+let _tab_count = 0
+let _db_count = 0
+let _last_synced_at: string | null = null
+
+function setState(next: PopupState): void {
   state = next
-  render(state)
+  render(state, dispatch)
 }
 
-function transitionSessions(next: SessionsState): void {
-  sessionsState = next
-  renderSessions(sessionsState)
+// ── Dispatch ──────────────────────────────────────────────────────────────
+
+export type Action =
+  | { type: "SYNC" }
+  | { type: "RECONCILE" }
+  | { type: "RECONCILE_CONFIRM_DELETE"; tab_ids: Array<number> }
+  | { type: "TRIGGER_PIPELINE" }
+  | { type: "PRUNE" }
+  | { type: "DISMISS" }
+
+async function dispatch(action: Action): Promise<void> {
+  switch (action.type) {
+    case "SYNC":
+      return doSync()
+    case "RECONCILE":
+      return doReconcile()
+    case "RECONCILE_CONFIRM_DELETE":
+      return doReconcileDelete(action.tab_ids)
+    case "TRIGGER_PIPELINE":
+      return doPipelineTrigger()
+    case "PRUNE":
+      return doPrune()
+    case "DISMISS":
+      setState(onDismiss(state, _tab_count, _db_count, _last_synced_at))
+      return
+  }
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ── Message helpers ────────────────────────────────────────────────────────
+
+function send(msg: object): Promise<MessageFromBackground> {
+  return browser.runtime.sendMessage(msg) as Promise<MessageFromBackground>
+}
+
+// ── Actions ────────────────────────────────────────────────────────────────
+
+async function doSync(): Promise<void> {
+  setState(onSyncTriggered(state))
+
+  // Subscribe to progress broadcasts.
+  function progressListener(message: unknown): undefined {
+    const msg = message as MessageFromBackground
+    if (msg.kind === "SYNC_PROGRESS") {
+      setState(onSyncProgress(state, msg.completed, msg.total))
+    }
+    return undefined
+  }
+  browser.runtime.onMessage.addListener(progressListener)
+
+  try {
+    const reply = await send({ kind: "SYNC_TABS" })
+
+    if (reply.kind === "SYNC_COMPLETE") {
+      const result: SyncResult = {
+        upserted: reply.stats.upserted,
+        failed: reply.stats.failed,
+        error_tab_ids: reply.stats.error_tab_ids,
+      }
+      _db_count = reply.stats.db_count
+      setState(onSyncDone(state, result, reply.stats.db_count))
+    } else if (reply.kind === "SYNC_FAILED") {
+      setState(onSyncFailed(state, reply.error))
+    } else {
+      setState(onSyncFailed(state, `unexpected reply: ${reply.kind}`))
+    }
+  } catch (e) {
+    setState(onSyncFailed(state, String(e)))
+  } finally {
+    browser.runtime.onMessage.removeListener(progressListener)
+  }
+}
+
+async function doReconcile(): Promise<void> {
+  setState(onReconcileTriggered(state))
+
+  try {
+    const reply = await send({ kind: "RECONCILE" })
+
+    if (reply.kind === "RECONCILE_RESULT") {
+      setState(
+        onReconcileResult(state, {
+          absent_tab_ids: reply.absent_tab_ids,
+          absent_summaries: reply.absent_summaries,
+        })
+      )
+    } else if (reply.kind === "RECONCILE_ERROR") {
+      setState(onReconcileError(state, reply.error))
+    } else {
+      setState(onReconcileError(state, `unexpected: ${reply.kind}`))
+    }
+  } catch (e) {
+    setState(onReconcileError(state, String(e)))
+  }
+}
+
+async function doReconcileDelete(tab_ids: Array<number>): Promise<void> {
+  setState(onReconcileDeleteConfirmed(state, tab_ids))
+
+  try {
+    await send({ kind: "DELETE_TABS", tab_ids })
+    // Refresh db_count after deletion.
+    const statusReply = await send({ kind: "GET_STATUS" })
+    if (statusReply.kind === "STATUS") {
+      _tab_count = statusReply.tab_count
+      _db_count = statusReply.db_count
+      _last_synced_at = statusReply.last_synced_at
+    }
+
+    setState(
+      onReconcileDeleteDone(state, _tab_count, _db_count, _last_synced_at)
+    )
+  } catch (e) {
+    setState(onReconcileError(state, String(e)))
+  }
+}
+
+async function doPipelineTrigger(): Promise<void> {
+  setState(onPipelineTriggered(state))
+
+  try {
+    const reply = await send({ kind: "TRIGGER_PIPELINE" })
+
+    if (reply.kind === "PIPELINE_QUEUED") {
+      setState(onPipelineQueued(state, reply.db_count))
+    } else if (reply.kind === "PIPELINE_ERROR") {
+      setState(onPipelineFailed(state, reply.error))
+    } else {
+      setState(onPipelineFailed(state, `unexpected: ${reply.kind}`))
+    }
+  } catch (e) {
+    setState(onPipelineFailed(state, String(e)))
+  }
+}
+
+async function doPrune(): Promise<void> {
+  setState(onPruneTriggered(state))
+
+  try {
+    const reply = await send({ kind: "PRUNE_TABS" })
+
+    if (reply.kind === "PRUNE_COMPLETE") {
+      _db_count = reply.db_count
+      setState(onPruneDone(state, reply.pruned_count, reply.db_count))
+    } else if (reply.kind === "PRUNE_ERROR") {
+      setState({ kind: "ERROR", message: reply.error })
+    } else {
+      setState({ kind: "ERROR", message: `unexpected: ${reply.kind}` })
+    }
+  } catch (e) {
+    setState({ kind: "ERROR", message: String(e) })
+  }
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
-  // 1. Initialize View (Bind DOM elements to local references)
-  const root = document.body
-  initView(root)
+  render(state, dispatch)
 
-  // 2. Resolve buttons from the newly initialized view
-  const buttons = getButtons()
-
-  // 3. Initial Render
-  render(state)
-  renderSessions(sessionsState)
-
-  // 4. Button Wiring (Must happen inside init after initView)
-
-  // Tab Switching
-  buttons.tabBtns.forEach((btn: HTMLButtonElement) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab as "capture" | "sessions"
-      switchTab(tab)
-      if (tab === "sessions" && sessionsState.kind === "IDLE") {
-        loadSessions()
-      }
-    })
-  })
-
-  // Capture Tab Actions
-  buttons.captureAll.addEventListener("click", () => {
-    transition(onCaptureTriggered(state))
-    triggerCapture("CAPTURE_ALL_TABS")
-  })
-
-  buttons.captureActive.addEventListener("click", () => {
-    transition(onCaptureTriggered(state))
-    triggerCapture("CAPTURE_ACTIVE_TAB")
-  })
-
-  buttons.again.addEventListener("click", () => {
-    transition(onDismiss(state))
-  })
-
-  buttons.dismiss.addEventListener("click", () => {
-    transition(onDismiss(state))
-  })
-
-  buttons.triggerPipeline.addEventListener("click", async () => {
-    if (state.kind !== "DONE_SUCCESS" && state.kind !== "DONE_POST_FAILED")
-      return
-    const session_id = state.summary.session_id
-
-    transition(onTriggerPipeline(state))
-
-    try {
-      const response = await triggerPipeline(session_id)
-      if (response.kind === "PIPELINE_TRIGGERED") {
-        transition(onPipelineTriggered(state))
-      } else if (response.kind === "PIPELINE_TRIGGER_ERROR") {
-        transition(onPipelineTriggerError(state, response.error))
-      }
-    } catch (e) {
-      transition(onPipelineTriggerError(state, String(e)))
-    }
-  })
-
-  // Sessions Tab Actions
-  buttons.refreshSessions.addEventListener("click", loadSessions)
-  buttons.sessionsRetry.addEventListener("click", loadSessions)
-
-  buttons.triggerAllPipeline.addEventListener("click", async () => {
-    try {
-      const response = await triggerAllPipeline()
-      if (response.kind === "PIPELINE_ALL_TRIGGERED") {
-        loadSessions()
-      } else if (response.kind === "PIPELINE_ALL_ERROR") {
-        transitionSessions(sessionsOnError(sessionsState, response.error))
-      }
-    } catch (e) {
-      transitionSessions(sessionsOnError(sessionsState, String(e)))
-    }
-  })
-
-  // Event delegation for session list (Delete/Trigger)
-  buttons.sessionsList.addEventListener("click", async (e: Event) => {
-    const target = e.target as HTMLElement
-
-    const triggerBtn = target.closest<HTMLButtonElement>(".btn-trigger-session")
-    if (triggerBtn) {
-      const session_id = triggerBtn.dataset.sessionId!
-      transitionSessions(sessionsOnTrigger(sessionsState, session_id))
-      try {
-        const response = await triggerPipeline(session_id)
-        if (response.kind === "PIPELINE_TRIGGERED") {
-          transitionSessions(sessionsOnTriggered(sessionsState, session_id))
-        } else if (response.kind === "PIPELINE_TRIGGER_ERROR") {
-          transitionSessions(sessionsOnTriggerError(sessionsState, session_id))
-        }
-      } catch {
-        transitionSessions(sessionsOnTriggerError(sessionsState, session_id))
-      }
-      return
-    }
-
-    const deleteBtn = target.closest<HTMLButtonElement>(".btn-delete-session")
-    if (deleteBtn) {
-      const session_id = deleteBtn.dataset.sessionId!
-      transitionSessions(sessionsOnDelete(sessionsState, session_id))
-      try {
-        const response = await deleteSession(session_id)
-        if (response.kind === "SESSION_DELETED") {
-          transitionSessions(sessionsOnDeleted(sessionsState, session_id))
-        } else if (response.kind === "DELETE_ERROR") {
-          transitionSessions(
-            sessionsOnDeleteError(sessionsState, session_id, response.error)
-          )
-        }
-      } catch (e) {
-        transitionSessions(
-          sessionsOnDeleteError(sessionsState, session_id, String(e))
-        )
-      }
-    }
-  })
-
-  // 5. Setup Background Message Listeners
-  const unsubscribeProgress = onProgressMessage((completed, total) => {
-    transition(onProgressUpdate(state, completed, total))
-  })
-
-  // 6. Fetch Initial Status
   try {
-    const response = await sendToBackground({ kind: "GET_CAPTURE_STATUS" })
-    if (response.kind === "STATUS") {
-      transition(
-        onStatusReceived(state, response.capturing, response.last_summary)
-      )
-    }
-  } catch (e) {
-    unsubscribeProgress()
-    transition(onStatusError(state, String(e)))
-  }
-}
+    const reply = await send({ kind: "GET_STATUS" })
 
-// ── Shared Logic ───────────────────────────────────────────────────────────
-
-async function triggerCapture(
-  kind: "CAPTURE_ALL_TABS" | "CAPTURE_ACTIVE_TAB"
-): Promise<void> {
-  try {
-    const response = await sendToBackground({ kind })
-    if (response.kind === "CAPTURE_COMPLETE") {
-      transition(
-        onCaptureComplete(
+    if (reply.kind === "STATUS") {
+      _tab_count = reply.tab_count
+      _db_count = reply.db_count
+      _last_synced_at = reply.last_synced_at
+      setState(
+        onStatusReceived(
           state,
-          response.summary,
-          response.post_ok,
-          response.post_error
+          reply.tab_count,
+          reply.db_count,
+          reply.last_synced_at
         )
       )
-    } else if (response.kind === "CAPTURE_ERROR") {
-      transition(onCaptureError(state, response.error))
+    } else {
+      setState(onStatusError(state, `unexpected reply: ${reply.kind}`))
     }
   } catch (e) {
-    transition(onCaptureError(state, String(e)))
+    setState(onStatusError(state, String(e)))
   }
 }
 
-async function loadSessions(): Promise<void> {
-  transitionSessions(sessionsOnLoad(sessionsState))
-  try {
-    const response = await getSessions()
-    if (response.kind === "SESSIONS_LIST") {
-      transitionSessions(sessionsOnLoaded(sessionsState, response.summaries))
-    } else if (response.kind === "SESSIONS_ERROR") {
-      transitionSessions(sessionsOnError(sessionsState, response.error))
-    }
-  } catch (e) {
-    transitionSessions(sessionsOnError(sessionsState, String(e)))
-  }
-}
-
-// ── Boot ───────────────────────────────────────────────────────────────────
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init)
-} else {
-  init()
-}
+document.addEventListener("DOMContentLoaded", init)

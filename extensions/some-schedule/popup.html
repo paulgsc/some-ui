@@ -2,112 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>tabsched capture</title>
+    <title>tabsched</title>
     <link rel="stylesheet" href="./src/popup/popup.css" />
   </head>
   <body>
-    <!-- ── Header ─────────────────────────────────────────────────── -->
-    <header>
-      <span class="wordmark">tabsched</span>
-      <span class="badge" id="header-badge">capture</span>
-    </header>
-
-    <!-- ── Nav tabs ───────────────────────────────────────────────── -->
-    <nav id="nav-tabs">
-      <button class="tab-btn active" data-tab="capture">capture</button>
-      <button class="tab-btn" data-tab="sessions">sessions</button>
-    </nav>
-
-    <!-- ══════════════════════════════════════════════════════════════
-         TAB: capture
-    ══════════════════════════════════════════════════════════════════ -->
-    <div id="tab-capture" class="tab-panel active">
-      <!-- ── Status ─────────────────────────────────────────────── -->
-      <section id="status-section">
-        <p id="status-label">—</p>
-        <p id="status-sub"></p>
-      </section>
-
-      <!-- ── Progress ───────────────────────────────────────────── -->
-      <section id="progress-section" style="display: none">
-        <div class="progress-track">
-          <div id="progress-fill"></div>
-        </div>
-        <span id="progress-label"></span>
-      </section>
-
-      <!-- ── Actions ────────────────────────────────────────────── -->
-      <section id="actions-section">
-        <div class="btn-row">
-          <button id="btn-capture-all" class="primary">capture all tabs</button>
-          <button id="btn-capture-active" class="secondary">active tab</button>
-        </div>
-      </section>
-
-      <!-- ── Result ─────────────────────────────────────────────── -->
-      <section id="result-section" style="display: none">
-        <p id="result-status" class="result-status"></p>
-        <table class="result-table">
-          <tbody id="result-rows"></tbody>
-        </table>
-        <div class="btn-row">
-          <button id="btn-trigger-pipeline" class="accent">
-            trigger pipeline
-          </button>
-          <button id="btn-again" class="secondary">capture again</button>
-        </div>
-      </section>
-
-      <!-- ── Error ──────────────────────────────────────────────── -->
-      <section id="error-section" style="display: none">
-        <p id="error-header">error</p>
-        <pre id="error-message"></pre>
-        <div class="btn-row">
-          <button id="btn-dismiss" class="secondary">dismiss</button>
-        </div>
-      </section>
-    </div>
-    <!-- /tab-capture -->
-
-    <!-- ══════════════════════════════════════════════════════════════
-         TAB: sessions
-    ══════════════════════════════════════════════════════════════════ -->
-    <div id="tab-sessions" class="tab-panel" style="display: none">
-      <!-- ── Toolbar ────────────────────────────────────────────── -->
-      <section id="sessions-toolbar">
-        <div class="btn-row">
-          <button id="btn-refresh-sessions" class="secondary">refresh</button>
-          <button id="btn-trigger-all-pipeline" class="accent">
-            run all pending
-          </button>
-        </div>
-      </section>
-
-      <!-- ── Loading ────────────────────────────────────────────── -->
-      <section id="sessions-loading" style="display: none">
-        <p class="dim-text">loading sessions…</p>
-      </section>
-
-      <!-- ── Empty ──────────────────────────────────────────────── -->
-      <section id="sessions-empty" style="display: none">
-        <p class="dim-text">no sessions captured yet</p>
-      </section>
-
-      <!-- ── List ───────────────────────────────────────────────── -->
-      <section id="sessions-list">
-        <!-- Populated by view.ts -->
-      </section>
-
-      <!-- ── Sessions error ─────────────────────────────────────── -->
-      <section id="sessions-error" style="display: none">
-        <p class="err-text" id="sessions-error-msg"></p>
-        <div class="btn-row">
-          <button id="btn-sessions-retry" class="secondary">retry</button>
-        </div>
-      </section>
-    </div>
-    <!-- /tab-sessions -->
-
+    <div id="root"></div>
     <script type="module" src="./src/popup/popup.ts"></script>
   </body>
 </html>

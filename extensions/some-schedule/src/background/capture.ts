@@ -7,7 +7,7 @@
  *   background
  *     ├─ sends EXTRACT_CONTENT  →  content script
  *     ├─ receives ExtractedContent  ←  content script
- *     └─ POSTs CaptureSession  →  localhost pipeline endpoint
+ *     └─ POSTs CaptureReturn  →  localhost pipeline endpoint
  *
  * Nothing large is written to browser.storage.local. The pipeline
  * endpoint receives the full payload; extension storage holds only
@@ -34,9 +34,8 @@ import {
   classifyDomain,
   shouldCapture,
 } from "@schedule/shared/domain-classifier"
-import { isoNow, uuid } from "@schedule/shared/id"
+import { isoNow } from "@schedule/shared/id"
 import type {
-  CaptureSession,
   CaptureSettings,
   ExtractedContent,
   MessageFromContent,
@@ -77,12 +76,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // ── Public Entry Point ─────────────────────────────────────────────────────
 
+type CaptureReturn = {
+  captures: Array<TabCapture>
+  skipped: Array<SkippedTab>
+}
+
 export async function captureAllTabs(
   settings: CaptureSettings,
   onProgress?: ProgressCallback
-): Promise<CaptureSession> {
+): Promise<CaptureReturn> {
   const allTabs = await browser.tabs.query({})
-  const capturedAt = isoNow()
   const skipped: Array<SkippedTab> = []
 
   // 1. Filter tabs early
@@ -129,10 +132,6 @@ export async function captureAllTabs(
   await Promise.all(workers)
 
   return {
-    session_id: uuid(),
-    captured_at: capturedAt,
-    extension_version: browser.runtime.getManifest().version,
-    total_open_tabs: allTabs.length,
     captures,
     skipped,
   }

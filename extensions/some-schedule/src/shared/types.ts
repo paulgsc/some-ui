@@ -1,13 +1,7 @@
 /**
- * The canonical type contract for the tabsched capture pipeline.
  *
- * Dependency direction:
- *   extractors → types
- *   content    → types
- *   background → types
- *   pipeline   → types
- *   popup      → types
- *   (types depends on nothing)
+ * Tab-centric contract. CaptureSession is gone.
+ * The atomic unit is TabCapture; the DB key is tab_id.
  */
 
 // ── Domain classification ──────────────────────────────────────────────────
@@ -20,8 +14,6 @@ export type Domain =
   | "job-search"
   | "oss"
   | "unknown"
-
-// ── Content kinds ──────────────────────────────────────────────────────────
 
 export type ContentKind =
   | "article"
@@ -46,7 +38,7 @@ export type ExtractedContent = {
   meta: Record<string, string | number | boolean>
 }
 
-// ── Tab capture ────────────────────────────────────────────────────────────
+// ── Tab (primary entity) ───────────────────────────────────────────────────
 
 export type TabCapture = {
   tab_id: number
@@ -60,15 +52,13 @@ export type TabCapture = {
   extraction_error?: string
 }
 
-// ── Capture session ────────────────────────────────────────────────────────
-
-export type CaptureSession = {
-  session_id: string
-  captured_at: string
-  extension_version: string
-  total_open_tabs: number
-  captures: Array<TabCapture>
-  skipped: Array<SkippedTab>
+export type TabSummary = {
+  tab_id: number
+  url: string
+  tab_title: string
+  domain: string
+  last_seen_at: string
+  extraction_ok: boolean
 }
 
 export type SkippedTab = {
@@ -80,45 +70,27 @@ export type SkippedTab = {
 export type SkipReason =
   | "filtered_domain"
   | "no_url"
+  | "tab_suspended"
   | "extraction_timeout"
   | "scripting_error"
 
-// ── Summary ────────────────────────────────────────────────────────────────
+// ── DB state summary (returned by background on status) ────────────────────
 
-export type CaptureSummary = {
-  session_id: string
-  captured_at: string
-  total_tabs: number
-  captured_ok: number
-  captured_fail: number
-  skipped: number
-  // Pipeline state tracked client-side in StoredState, not sent by the server.
-  pipeline_status?: PipelineStatus
-}
-
-export type PipelineStatus = "pending" | "running" | "done" | "failed"
-
-export function summarise(session: CaptureSession): CaptureSummary {
-  return {
-    session_id: session.session_id,
-    captured_at: session.captured_at,
-    total_tabs: session.total_open_tabs,
-    captured_ok: session.captures.filter((c) => c.extraction_ok).length,
-    captured_fail: session.captures.filter((c) => !c.extraction_ok).length,
-    skipped: session.skipped.length,
-  }
+export type DbStatus = {
+  db_count: number
+  last_synced_at: string | null
 }
 
 // ── Messages ───────────────────────────────────────────────────────────────
 
 export type MessageToBackground =
-  | { kind: "CAPTURE_ALL_TABS" }
-  | { kind: "CAPTURE_ACTIVE_TAB" }
-  | { kind: "GET_CAPTURE_STATUS" }
-  | { kind: "GET_SESSIONS" }
-  | { kind: "DELETE_SESSION"; session_id: string }
-  | { kind: "TRIGGER_PIPELINE"; session_id: string }
-  | { kind: "TRIGGER_ALL_PIPELINE" }
+  | { kind: "GET_STATUS" }
+  | { kind: "SYNC_TABS" } // capture active (non-suspended) tabs → batch upsert
+  | { kind: "GET_DB_STATUS" } // db_count + last_synced_at
+  | { kind: "RECONCILE" } // send active tab_ids → get absent back
+  | { kind: "DELETE_TABS"; tab_ids: Array<number> }
+  | { kind: "TRIGGER_PIPELINE" } // POST to pipeline endpoint (no session_id needed)
+  | { kind: "PRUNE_TABS"; older_than_days?: number }
 
 export type MessageToContent = { kind: "EXTRACT_CONTENT" }
 
@@ -126,41 +98,51 @@ export type MessageFromContent =
   | { kind: "EXTRACTED"; content: ExtractedContent; extractorName: string }
   | { kind: "EXTRACT_FAILED"; error: string }
 
+export type SyncStats = {
+  upserted: number
+  failed: number
+  error_tab_ids: Array<number>
+  db_count: number
+}
+
 export type MessageFromBackground =
   | {
-      kind: "CAPTURE_COMPLETE"
-      summary: CaptureSummary
-      post_ok: boolean
-      post_error?: string
+      kind: "STATUS"
+      tab_count: number
+      db_count: number
+      last_synced_at: string | null
     }
-  | { kind: "CAPTURE_PROGRESS"; completed: number; total: number }
-  | { kind: "CAPTURE_ERROR"; error: string }
-  | { kind: "STATUS"; last_summary: CaptureSummary | null; capturing: boolean }
-  | { kind: "SESSIONS_LIST"; summaries: Array<CaptureSummary> }
-  | { kind: "SESSIONS_ERROR"; error: string }
-  | { kind: "SESSION_DELETED"; session_id: string }
-  | { kind: "DELETE_ERROR"; session_id: string; error: string }
-  | { kind: "PIPELINE_TRIGGERED"; session_id: string }
-  | { kind: "PIPELINE_TRIGGER_ERROR"; session_id: string; error: string }
-  | { kind: "PIPELINE_ALL_TRIGGERED"; count: number }
-  | { kind: "PIPELINE_ALL_ERROR"; error: string }
+  | { kind: "SYNC_PROGRESS"; completed: number; total: number }
+  | { kind: "SYNC_COMPLETE"; stats: SyncStats }
+  | { kind: "SYNC_FAILED"; error: string }
+  | {
+      kind: "RECONCILE_RESULT"
+      absent_tab_ids: Array<number>
+      absent_summaries: Array<TabSummary>
+    }
+  | { kind: "RECONCILE_ERROR"; error: string }
+  | { kind: "DELETE_COMPLETE"; deleted_count: number }
+  | { kind: "DELETE_ERROR"; error: string }
+  | { kind: "PIPELINE_QUEUED"; db_count: number }
+  | { kind: "PIPELINE_ERROR"; error: string }
+  | { kind: "PRUNE_COMPLETE"; pruned_count: number; db_count: number }
+  | { kind: "PRUNE_ERROR"; error: string }
+  | { kind: "ERROR"; message: string }
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
 export type StoredState = {
-  last_summary: CaptureSummary | null
-  capture_count: number
+  last_synced_at: string | null
+  sync_count: number
   settings: CaptureSettings
-  // Lightweight map of session_id → pipeline status, persisted across popups.
-  pipeline_statuses: Record<string, PipelineStatus>
 }
 
 export type CaptureSettings = {
   ignore_patterns: Array<string>
   extraction_timeout_ms: number
-  /** SQLite write endpoint. */
-  pipeline_endpoint: string
+  ferrum_base: string
   verbose_errors: boolean
+  prune_days: number
 }
 
 export const DEFAULT_SETTINGS: CaptureSettings = {
@@ -180,12 +162,9 @@ export const DEFAULT_SETTINGS: CaptureSettings = {
     "reddit.com",
   ],
   extraction_timeout_ms: 5000,
-  // POST /captures — SQLite write path
-  pipeline_endpoint: "http://nixos.local:3000/captures",
+  ferrum_base: "http://nixos.local:3000",
   verbose_errors: false,
+  prune_days: 30,
 }
-
-// ── Pipeline API helpers ───────────────────────────────────────────────────
-// Base URL for the Ferrum server. Used by background.ts for pipeline triggers.
 
 export const FERRUM_BASE = "http://nixos.local:3000"
