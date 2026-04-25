@@ -105,11 +105,27 @@ export class VideoManager {
 
     if (extracted.kind === "full") {
       this._unresolved.delete(elementKey(el))
-      void this._promote(
-        el,
-        extracted.videoId as VideoId,
-        extracted.channelId as ChannelId
-      )
+
+      // 1. Check for Recycling: Is this element already managed by an Entry?
+      // In VideoEntry constructor, we set el.dataset["boyoVid"] = record.videoId
+      const rawPreviousId = el.dataset["boyoVid"]
+      const currentId = extracted.videoId as VideoId // Already "blessed" by tryExtract
+
+      if (rawPreviousId && rawPreviousId !== currentId) {
+        this.softReset()
+        // Note: We cast rawPreviousId to VideoId here just to look it up in our map
+        // The element is being reused for a different video.
+        // We MUST kill the old entry to satisfy Invariant Entry-1 & D3.
+        const oldEntry = this._byVideo.get(rawPreviousId as VideoId)
+        if (oldEntry) {
+          oldEntry.destroy()
+          this._byVideo.delete(rawPreviousId as VideoId)
+        }
+      }
+
+      // 2. Promote the new identity
+      void this._promote(el, currentId, extracted.channelId as ChannelId)
+
       this._maybeStopRetryLoop()
     } else {
       const key = elementKey(el)
@@ -136,6 +152,32 @@ export class VideoManager {
       }
     }
     this._maybeStopRetryLoop()
+  }
+
+  softReset(): void {
+    // DO NOT teardown everything
+    this._session = mkSession()
+  }
+
+  reconcileSession(): void {
+    for (const entry of this._byVideo.values()) {
+      if (!entry.isConnected) {
+        this._session = mkSession()
+        return
+      }
+    }
+  }
+
+  prune(): void {
+    for (const [videoId, entry] of this._byVideo) {
+      const isDisconnected = !entry.isConnected
+      const isStale = entry.record.session !== this._session
+
+      if (isDisconnected || isStale) {
+        entry.destroy()
+        this._byVideo.delete(videoId)
+      }
+    }
   }
 
   handleClick(videoId: VideoId): void {
@@ -182,6 +224,7 @@ export class VideoManager {
     try {
       // Scroll-virtualizer reuse: same el, different videoId → destroy old entry
       const prevVid = this._elToVid.get(el)
+      const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
         this._byVideo.get(prevVid)?.destroy()
         this._byVideo.delete(prevVid)
@@ -204,6 +247,7 @@ export class VideoManager {
 
       // Guard: session may have changed while awaiting
       if (this._phase !== "running") return
+      if (this._session !== session) return
 
       const record = makeRecord(
         { kind: "full", videoId, channelId },

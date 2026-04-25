@@ -26,7 +26,6 @@ export class Controller {
 
   private _observer: MutationObserver | null = null
   private _appWaiter: MutationObserver | null = null
-  private _lastUrl = location.href
 
   init(): void {
     this._listenBroadcasts()
@@ -61,7 +60,6 @@ export class Controller {
 
     attachEvents(this._mgr)
     this._observer = startObserver(this._mgr)
-    this._listenNavigation()
     requestAnimationFrame(() => this._scan())
   }
 
@@ -98,23 +96,6 @@ export class Controller {
     document
       .querySelectorAll<HTMLElement>(SEL)
       .forEach((el) => this._mgr.upsert(el))
-  }
-
-  // ── Navigation ────────────────────────────────────────────────────────────
-
-  private _listenNavigation(): void {
-    window.addEventListener("yt-navigate-finish", () => {
-      this._teardownRuntime()
-      setTimeout(() => this._setupRuntime(), 200)
-    })
-
-    setInterval(() => {
-      if (location.href !== this._lastUrl) {
-        this._lastUrl = location.href
-        this._teardownRuntime()
-        setTimeout(() => this._setupRuntime(), 200)
-      }
-    }, 1000)
   }
 
   // ── Background messages ───────────────────────────────────────────────────

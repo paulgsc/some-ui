@@ -32,9 +32,10 @@ export const SEL = VIDEO_SELECTORS.join(",")
 export function startObserver(mgr: VideoManager): MutationObserver {
   const obs = new MutationObserver((mutations) => {
     const candidates = new Set<HTMLElement>()
+    let needsPrune = false
 
     for (const m of mutations) {
-      // Signal 1: data-video-id attribute set → element is hydrated
+      // 1. Hydration Signal
       if (
         m.type === "attributes" &&
         m.attributeName === "data-video-id" &&
@@ -45,7 +46,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
         continue
       }
 
-      // Signal 2: new nodes added to DOM
+      // 2. DOM Addition/Removal Signal
       if (m.type === "childList") {
         for (const node of m.addedNodes) {
           if (!(node instanceof HTMLElement)) continue
@@ -57,13 +58,24 @@ export function startObserver(mgr: VideoManager): MutationObserver {
               .forEach((el) => candidates.add(el))
           }
         }
+
+        // Just flag that a removal happened; don't prune in the loop!
+        if (m.removedNodes.length > 0) {
+          needsPrune = true
+        }
       }
     }
 
+    // Process new elements
     candidates.forEach((el) => mgr.upsert(el))
 
-    // Every mutation is an opportunity to retry previously unresolved elements
+    // Final cleanup and retry logic (Once per batch)
     mgr.retryUnresolved()
+    mgr.reconcileSession()
+
+    if (needsPrune) {
+      mgr.prune()
+    }
   })
 
   obs.observe(document.body, {

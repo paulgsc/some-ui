@@ -67,6 +67,13 @@ export class VideoEntry {
     this._onCommit("WHITELIST")
   }
 
+  /** * Bridge to DomHandle connection status.
+   * This is the signal for the Manager to prune.
+   */
+  get isConnected(): boolean {
+    return this._handle.element.isConnected
+  }
+
   // ── FSM dispatch ──────────────────────────────────────────────────────────
 
   private _onCommit(event: "CLICK" | "DBLCLICK" | "WHITELIST"): void {
