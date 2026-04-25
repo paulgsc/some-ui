@@ -1,4 +1,21 @@
-import type { ControllerState } from "@censor/types/states"
+/**
+ * Controller — lifecycle shell.
+ *
+ * Invariants:
+ *
+ *   C1 — Runtime is idempotent.  _setupRuntime() is a no-op if already running.
+ *        Guarded by _mgr's phase, not by a boolean flag, so the source of truth
+ *        is the manager itself.
+ *
+ *   C2 — Navigation causes full teardown + restart.  _teardownRuntime() +
+ *        _setupRuntime() rather than reset-inside-running-system.
+ *        The observer is disconnected before reset() — no mutations can trigger
+ *        upsert() during teardown.
+ *
+ *   C3 — _setupRuntime() calls startSession() which throws if already running.
+ *        This makes double-setup a deterministic, observable error rather than
+ *        silent duplicate state.
+ */
 
 import { attachEvents } from "./events"
 import { SEL, startObserver } from "./observer"
@@ -7,112 +24,55 @@ import { VideoManager } from "./video-manager"
 export class Controller {
   private readonly _mgr = new VideoManager()
 
-  private _state: ControllerState = { kind: "booting" }
-
-  private _lastUrl = location.href
   private _observer: MutationObserver | null = null
   private _appWaiter: MutationObserver | null = null
+  private _lastUrl = location.href
 
   init(): void {
     this._listenBroadcasts()
     this._bootstrap()
   }
 
-  // ─────────────────────────────────────────────
-  // Bootstrap
-  // ─────────────────────────────────────────────
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
 
   private _bootstrap(): void {
     browser.runtime
       .sendMessage({ type: "GET_ENABLED" })
       .then((r: any) => {
-        if (!r?.ok || typeof r.enabled !== "boolean") {
-          this._enterDegraded("invalid GET_ENABLED response")
-          return
-        }
-
-        this._enterActive(r.enabled)
+        const enabled =
+          r?.ok && typeof r.enabled === "boolean" ? r.enabled : true
+        if (enabled) this._waitForApp()
+        // If disabled, do nothing — _waitForApp never called, runtime never starts
       })
-      .catch((err) => {
-        this._enterDegraded(`GET_ENABLED failed: ${String(err)}`)
+      .catch(() => {
+        // Degraded: proceed as enabled (safe default)
+        this._waitForApp()
       })
-
-    this._waitForApp()
   }
 
-  // ─────────────────────────────────────────────
-  // State transitions
-  // ─────────────────────────────────────────────
-
-  private _enterActive(enabled: boolean): void {
-    this._state = { kind: "active", enabled }
-
-    if (!enabled) {
-      this._disableRuntime()
-      return
-    }
-
-    this._setupRuntime()
-  }
-
-  private _enterDegraded(reason: string): void {
-    console.warn("[BOYO][Controller] → DEGRADED", reason)
-
-    this._state = {
-      kind: "degraded",
-      reason,
-      enabled: true, // safe default: keep UX alive
-    }
-
-    this._setupRuntime()
-  }
-
-  // ─────────────────────────────────────────────
-  // Runtime setup
-  // ─────────────────────────────────────────────
-
-  private _isEnabled(): boolean {
-    switch (this._state.kind) {
-      case "active":
-        return this._state.enabled
-
-      case "degraded":
-        return this._state.enabled
-
-      case "booting":
-        return true
-    }
-  }
+  // ── Runtime setup/teardown ────────────────────────────────────────────────
 
   private _setupRuntime(): void {
-    const enabled = this._isEnabled()
-
-    if (!enabled) {
-      this._disableRuntime()
-      return
+    try {
+      this._mgr.startSession() // throws if already running — C3
+    } catch {
+      return // already running, no-op — C1
     }
 
     attachEvents(this._mgr)
-
     this._observer = startObserver(this._mgr)
-
     this._listenNavigation()
-
     requestAnimationFrame(() => this._scan())
   }
 
-  private _disableRuntime(): void {
-    console.warn("[BOYO][Controller] runtime disabled")
-
+  private _teardownRuntime(): void {
+    // Disconnect observer FIRST — no mutations during teardown
     this._observer?.disconnect()
     this._observer = null
-
     this._mgr.reset()
   }
 
-  // ─────────────────────────────────────────────
-  // DOM bootstrap
-  // ─────────────────────────────────────────────
+  // ── DOM bootstrap ─────────────────────────────────────────────────────────
 
   private _waitForApp(): void {
     if (document.querySelector("ytd-app")) {
@@ -124,7 +84,6 @@ export class Controller {
       if (document.querySelector("ytd-app")) {
         this._appWaiter?.disconnect()
         this._appWaiter = null
-
         this._setupRuntime()
       }
     })
@@ -136,42 +95,39 @@ export class Controller {
   }
 
   private _scan(): void {
-    const nodes = document.querySelectorAll<HTMLElement>(SEL)
-
-    nodes.forEach((el) => this._mgr.upsert(el))
+    document
+      .querySelectorAll<HTMLElement>(SEL)
+      .forEach((el) => this._mgr.upsert(el))
   }
 
-  // ─────────────────────────────────────────────
-  // Navigation
-  // ─────────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────────────
 
   private _listenNavigation(): void {
     window.addEventListener("yt-navigate-finish", () => {
-      this._mgr.reset()
-
-      setTimeout(() => this._scan(), 600)
+      this._teardownRuntime()
+      setTimeout(() => this._setupRuntime(), 200)
     })
 
     setInterval(() => {
       if (location.href !== this._lastUrl) {
         this._lastUrl = location.href
-
-        this._mgr.reset()
-
-        setTimeout(() => this._scan(), 600)
+        this._teardownRuntime()
+        setTimeout(() => this._setupRuntime(), 200)
       }
     }, 1000)
   }
 
-  // ─────────────────────────────────────────────
-  // Background messages
-  // ─────────────────────────────────────────────
+  // ── Background messages ───────────────────────────────────────────────────
 
   private _listenBroadcasts(): void {
     browser.runtime.onMessage.addListener((msg: any) => {
       switch (msg.type) {
         case "ENABLED_CHANGED":
-          this._enterActive(msg.enabled)
+          if (msg.enabled) {
+            this._setupRuntime()
+          } else {
+            this._teardownRuntime()
+          }
           break
 
         case "CHANNEL_WHITELISTED":
