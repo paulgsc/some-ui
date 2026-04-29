@@ -1,3 +1,4 @@
+
 // Injected into every tab. Determines its own role at runtime:
 //
 //   SOURCE  — this tab is a YouTube / YouTube Music URL.
@@ -16,12 +17,14 @@
 // Static imports are used (not dynamic) to keep the build a single self-
 // contained chunk — required by the extension no-shared-chunk constraint.
 // No shared imports with popup.ts or background.ts.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { createOverlayCard } from "@mujik/components/ui/overlay-card"
 import { createWaveformRenderer } from "@mujik/components/ui/waveform"
 import { makeDraggable } from "@mujik/content/lib/draggable"
 import { watchFullscreen } from "@mujik/content/lib/fullscreen"
 import { extractMetadata } from "@mujik/content/lib/yt-meta"
+import { paramsFromSongMeta, FALLBACK_PARAMS } from "@mujik/content/lib/song-params"
 
 import "@mujik/styles/content.css"
 
@@ -78,13 +81,6 @@ function initSourceRole(): void {
 
 const STORAGE_KEY_POS = "ytmo_card_pos"
 
-const DEFAULT_DIMS = {
-  arousal: 0.5,
-  valence: 0.55,
-  tempo: 0.5,
-  intensity: 0.6,
-}
-
 type OverlayCard = ReturnType<typeof createOverlayCard>
 type WaveformRenderer = ReturnType<typeof createWaveformRenderer>
 type DraggableHandle = ReturnType<typeof makeDraggable>
@@ -105,9 +101,10 @@ function mountOverlay(): void {
   const card: OverlayCard = createOverlayCard()
   document.body.appendChild(card.root)
 
+  // Mount with fallback params; first ytmo:song-data will immediately replace.
   const renderer: WaveformRenderer = createWaveformRenderer(
     card.canvas,
-    DEFAULT_DIMS
+    FALLBACK_PARAMS
   )
 
   const drag: DraggableHandle = makeDraggable(card.root, {
@@ -145,16 +142,20 @@ function handleSongData(payload: SongPayload): void {
   if (overlayCard === null) {
     mountOverlay()
   }
-
   if (overlayCard === null) return
+
+  // Derive stable visual params from song identity fields.
+  // Same song always produces the same params; different songs produce
+  // decorrelated, well-distributed params across [0, 1].
+  const params = paramsFromSongMeta(songData)
 
   overlayCard.update({
     ...(songData as Parameters<OverlayCard["update"]>[0]),
-    ...DEFAULT_DIMS,
+    ...params,
   })
 
   if (isNewTrack && waveformRenderer !== null) {
-    waveformRenderer.updateParams(DEFAULT_DIMS)
+    waveformRenderer.updateParams(params)
   }
 }
 
@@ -189,3 +190,5 @@ function main(): void {
 }
 
 main()
+
+export {}
