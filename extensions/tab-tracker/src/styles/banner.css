@@ -1,0 +1,272 @@
+/* ─── TabLedger v2 — Banner Marquee Styles ────────────────────────────────── */
+/* Dark-mode-first. Sticky bottom, full width, 28px height.                    */
+/* z-index: 9000 — above page content, below dialogs/dropdowns/navbars.        */
+
+#__tl2_banner__ {
+  /* Layout */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 9000;
+
+  /* Appearance */
+  background: rgba(4, 4, 7, 0.88);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+  /* Layout internals */
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+
+  /* No pointer events on the bar itself except where set explicitly */
+  pointer-events: auto;
+  user-select: none;
+
+  font-family:
+    "TX-02", "Iosevka", "Fira Code", "Cascadia Code", "SF Mono", monospace;
+
+  /* Transitions */
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Hidden state ────────────────────────────────────────────────────────── */
+
+#__tl2_banner__.__tl2_banner_hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Segment accent binding ──────────────────────────────────────────────── */
+
+#__tl2_banner__[data-segment="math"] {
+  --tl-banner-accent: #60a5fa;
+}
+#__tl2_banner__[data-segment="dsa"] {
+  --tl-banner-accent: #34d399;
+}
+#__tl2_banner__[data-segment="systems"] {
+  --tl-banner-accent: #f97316;
+}
+#__tl2_banner__[data-segment="infra"] {
+  --tl-banner-accent: #a78bfa;
+}
+#__tl2_banner__[data-segment="language"] {
+  --tl-banner-accent: #f43f5e;
+}
+#__tl2_banner__[data-segment="career"] {
+  --tl-banner-accent: #facc15;
+}
+#__tl2_banner__[data-segment="leisure"] {
+  --tl-banner-accent: #94a3b8;
+}
+
+/* ─── Glow shim ───────────────────────────────────────────────────────────── */
+/* Overlays the banner with a gradient when __tl2_banner_glow is active.       */
+/* Sits behind the text via pointer-events: none.                              */
+
+.__tl2_banner_shim {
+  --tl-banner-accent: rgba(255, 255, 255, 0.4); /* fallback, overridden by JS */
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--tl-banner-accent) 18%, transparent) 30%,
+    color-mix(in srgb, var(--tl-banner-accent) 28%, transparent) 50%,
+    color-mix(in srgb, var(--tl-banner-accent) 18%, transparent) 70%,
+    transparent 100%
+  );
+  transition: opacity 0.15s ease;
+}
+
+#__tl2_banner__.__tl2_banner_glow .__tl2_banner_shim {
+  opacity: 1;
+  animation: __tl2_flicker 0.65s ease forwards;
+}
+
+@keyframes __tl2_flicker {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  35% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ─── Text track ──────────────────────────────────────────────────────────── */
+
+.__tl2_banner_track {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  position: relative;
+  /* Left gutter */
+  padding-left: 14px;
+  min-width: 0;
+}
+
+/* Fade mask on left and right edges */
+.__tl2_banner_track::before,
+.__tl2_banner_track::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.__tl2_banner_track::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(4, 4, 7, 0.88), transparent);
+}
+
+.__tl2_banner_track::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(4, 4, 7, 0.88), transparent);
+}
+
+.__tl2_banner_text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  transition: color 0.5s ease;
+  will-change: transform;
+  position: relative;
+  z-index: 2;
+}
+
+/* When illuminated, text brightens and picks up accent tint */
+#__tl2_banner__.__tl2_banner_glow .__tl2_banner_text {
+  color: color-mix(
+    in srgb,
+    var(--tl-banner-accent, rgba(255, 255, 255, 0.9)) 60%,
+    rgba(255, 255, 255, 0.9)
+  );
+  text-shadow:
+    0 0 12px color-mix(in srgb, var(--tl-banner-accent, white) 40%, transparent),
+    0 0 28px color-mix(in srgb, var(--tl-banner-accent, white) 20%, transparent);
+  transition:
+    color 0.08s ease,
+    text-shadow 0.08s ease;
+}
+
+/* ─── Marquee animation ───────────────────────────────────────────────────── */
+/* Applied only when text is long (> ~60 chars) via JS class toggle.           */
+
+.__tl2_banner_text.__tl2_marquee {
+  animation: __tl2_scroll 22s linear infinite;
+  /* Pause on hover so user can read */
+}
+
+#__tl2_banner__:hover .__tl2_banner_text.__tl2_marquee {
+  animation-play-state: paused;
+}
+
+@keyframes __tl2_scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* For proper marquee looping, the text element gets its content doubled by JS.
+   This keyframe moves it exactly halfway = one full copy. */
+
+/* ─── Edit input ──────────────────────────────────────────────────────────── */
+
+.__tl2_banner_edit {
+  flex-shrink: 0;
+  padding: 0 10px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+#__tl2_banner__:hover .__tl2_banner_edit,
+#__tl2_banner__:focus-within .__tl2_banner_edit {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.__tl2_banner_input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: "TX-02", "Iosevka", "Fira Code", monospace;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  width: 180px;
+  height: 18px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.__tl2_banner_input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.__tl2_banner_input:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Error label ─────────────────────────────────────────────────────────── */
+
+.__tl2_banner_error {
+  flex-shrink: 0;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: #fca5a5;
+  padding: 0 10px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  opacity: 0.8;
+}
+
+/* ─── Marquee double-content setup ───────────────────────────────────────────
+   The JS doubles the textContent to create a seamless loop.
+   The animation moves -50% (one copy) so it wraps cleanly.
+   ─────────────────────────────────────────────────────────────────────────── */

@@ -31,7 +31,7 @@
   "license": "MIT",
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "@some-ui/tab-tracker",
+  "name": "@some-extension/tab-tracker",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

@@ -1,165 +1,173 @@
-import type { BadgeTier, TabRecord } from "@tab/types"
-import { formatMs, formatMsShort, getBadgeTier } from "@tab/types"
-import type { ContextPanelData } from "@tab/ui/context-panel"
-import { ContextPanel } from "@tab/ui/context-panel"
-import { Dot } from "@tab/ui/dot"
-import { NeglectLabel } from "@tab/ui/neglect-label"
-import { SessionLabel } from "@tab/ui/session-label"
-import { Timer } from "@tab/ui/timer"
+import type { NodeState, Outcome, Segment } from "@tab/types"
+import { SEGMENT_DISPLAY } from "@tab/types"
+import { NodePanel } from "@tab/ui/node-panel"
+import { SegmentPicker } from "@tab/ui/segment-picker"
 
-export type HUDUpdatePayload = {
-  record: TabRecord
-  elapsed: number
-  sessionElapsed: number
-  neglect: string | null
-  tags: Array<string>
+export type HUDCallbacks = {
+  onSegmentSelect: (segment: Segment) => void
+  onOutcomeRegister: (outcome: Outcome) => void
 }
 
-const HUD_ID = "__tabledger_hud__"
-const DRAG_STORAGE_KEY = "__tl_hud_pos__"
+type Freshness = "fresh" | "recent" | "stale" | "unknown"
+
+const DRAG_KEY = "__tl2_hud_pos__"
+const HUD_ID = "__tl2_hud__"
+
+function computeFreshness(visits: NodeState["visits"]): Freshness {
+  if (visits.length === 0) return "unknown"
+  const last = Math.max(...visits.map((v) => v.timestamp))
+  const diffHr = (Date.now() - last) / 3_600_000
+  if (diffHr < 2) return "fresh"
+  if (diffHr < 24) return "recent"
+  return "stale"
+}
 
 export class FloatingHUD {
   private hudEl: HTMLElement
   private chip: HTMLElement
-  private dot: Dot
-  private timer: Timer
-  private session: SessionLabel
-  private neglect: NeglectLabel
-  private contextPanel: ContextPanel
+  private pulseDot: HTMLElement
+  private chipLabel: HTMLElement
+  private chipCount: HTMLElement
+  private panel: HTMLElement
+  private picker: SegmentPicker
+  private nodePanel: NodePanel
 
-  // drag state
+  private isOpen = false
+  private showingPicker = false
+
+  // drag
   private isDragging = false
+  private wasDragged = false
   private dragStartX = 0
   private dragStartY = 0
   private posX = 0
   private posY = 0
-  private wasDragged = false
 
-  // idle state
+  // idle
   private idleTimeout: ReturnType<typeof setTimeout> | null = null
 
-  // fullscreen
-  private isFullscreen = false
+  // current node state cache
+  private nodeState: NodeState | null = null
+  private activeMs = 0
 
-  // last known data for context panel refresh
-  private lastPayload: HUDUpdatePayload | null = null
-  private lastTier: BadgeTier = "green"
+  private callbacks: HUDCallbacks
 
-  constructor() {
+  constructor(callbacks: HUDCallbacks) {
+    this.callbacks = callbacks
+
+    // ── Root ──────────────────────────────────────────────────────────────────
     this.hudEl = document.createElement("div")
     this.hudEl.id = HUD_ID
-    this.hudEl.className = "__tl_hud active"
+    this.hudEl.className = "tl-active"
 
+    // ── Chip ──────────────────────────────────────────────────────────────────
     this.chip = document.createElement("div")
-    this.chip.className = "__tl_chip"
+    this.chip.className = "__tl2_chip"
+    this.chip.dataset.freshness = "unknown"
 
-    const mainRow = document.createElement("div")
-    mainRow.className = "__tl_row"
+    this.pulseDot = document.createElement("div")
+    this.pulseDot.className = "__tl2_pulse"
 
-    this.dot = new Dot({ tier: "green", pulsing: true })
-    this.timer = new Timer()
+    this.chipLabel = document.createElement("div")
+    this.chipLabel.className = "__tl2_chip_label tl-unassigned"
+    this.chipLabel.textContent = "—"
 
-    mainRow.appendChild(this.dot.getElement())
-    mainRow.appendChild(this.timer.getElement())
+    this.chipCount = document.createElement("div")
+    this.chipCount.className = "__tl2_chip_count"
+    this.chipCount.textContent = "0"
 
-    this.session = new SessionLabel()
-    this.neglect = new NeglectLabel()
+    this.chip.appendChild(this.pulseDot)
+    this.chip.appendChild(this.chipLabel)
+    this.chip.appendChild(this.chipCount)
 
-    this.contextPanel = new ContextPanel(() => {
-      this.chip.classList.remove("expanded")
+    // ── Panel ─────────────────────────────────────────────────────────────────
+    this.panel = document.createElement("div")
+    this.panel.className = "__tl2_panel"
+
+    this.picker = new SegmentPicker((seg) => {
+      this.callbacks.onSegmentSelect(seg)
     })
 
-    this.chip.appendChild(mainRow)
-    this.chip.appendChild(this.session.getElement())
-    this.chip.appendChild(this.neglect.getElement())
+    this.nodePanel = new NodePanel(
+      (outcome) => {
+        this.callbacks.onOutcomeRegister(outcome)
+      },
+      () => {
+        // reassign — show picker
+        this.showPicker()
+      }
+    )
 
+    // Start with picker
+    this.panel.appendChild(this.picker.getElement())
+
+    // ── Compose ───────────────────────────────────────────────────────────────
     this.hudEl.appendChild(this.chip)
-    this.hudEl.appendChild(this.contextPanel.getElement())
+    this.hudEl.appendChild(this.panel)
 
     this.setupInteractions()
   }
 
+  // ── Interactions ─────────────────────────────────────────────────────────────
+
   private setupInteractions(): void {
-    // Click to toggle context panel (only if not dragged)
+    // Drag
     this.chip.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return
       e.stopPropagation()
-      this.onMouseDown(e)
+      this.startDrag(e)
     })
 
+    // Click to toggle panel
     this.chip.addEventListener("click", (e) => {
       e.stopPropagation()
       if (this.wasDragged) return
-
-      const displayData: ContextPanelData = this.lastPayload
-        ? {
-            record: this.lastPayload.record,
-            elapsed: this.lastPayload.elapsed,
-            sessionElapsed: this.lastPayload.sessionElapsed,
-            tags: this.lastPayload.tags,
-            tier: this.lastTier,
-          }
-        : {
-            record: {
-              tabId: -1,
-              title: document.title,
-              url: location.href,
-              favicon: "",
-              isActive: true,
-              buckets: [],
-              totalMs: 0,
-              sessionMs: 0,
-              lastActivated: Date.now(),
-              intentional: false,
-              bucketStart: Date.now(),
-            },
-            tier: "green",
-            elapsed: 0,
-            sessionElapsed: 0,
-            tags: ["connecting..."],
-          }
-
-      this.chip.classList.toggle("expanded")
-      this.contextPanel.toggle(displayData)
+      this.togglePanel()
     })
 
-    // Idle detection — fade when user is active
-    const events = ["mousedown", "scroll", "keydown"] as const
-    for (const evt of events) {
-      document.addEventListener(evt, () => this.onUserActivity(), {
+    // Close panel on outside click
+    document.addEventListener("mousedown", (e) => {
+      if (this.isOpen && !this.hudEl.contains(e.target as Node)) {
+        this.closePanel()
+      }
+    })
+
+    // Idle fade
+    const idleEvents = ["mousedown", "scroll", "keydown"] as const
+    for (const ev of idleEvents) {
+      document.addEventListener(ev, () => this.onUserActivity(), {
         passive: true,
       })
     }
-
-    // Fullscreen detection
-    const handleFullscreen = (): void => {
-      const fsEl =
-        document.fullscreenElement ?? document.webkitFullscreenElement
-      this.isFullscreen = !!fsEl
-      this.hudEl.style.opacity = this.isFullscreen ? "0" : ""
-      this.hudEl.style.pointerEvents = this.isFullscreen ? "none" : ""
-    }
-
-    document.addEventListener("fullscreenchange", handleFullscreen)
-    document.addEventListener("webkitfullscreenchange", handleFullscreen)
   }
 
-  private onMouseDown(e: MouseEvent): void {
+  private onUserActivity(): void {
+    this.hudEl.classList.remove("tl-active")
+    this.hudEl.classList.add("tl-idle")
+    if (this.idleTimeout) clearTimeout(this.idleTimeout)
+    this.idleTimeout = setTimeout(() => {
+      this.hudEl.classList.remove("tl-idle")
+      this.hudEl.classList.add("tl-active")
+    }, 4000)
+  }
+
+  // ── Drag ─────────────────────────────────────────────────────────────────────
+
+  private startDrag(e: MouseEvent): void {
     this.isDragging = true
     this.wasDragged = false
     this.dragStartX = e.clientX - this.posX
     this.dragStartY = e.clientY - this.posY
 
-    const onMove = (moveEvent: MouseEvent): void => {
+    const onMove = (me: MouseEvent): void => {
       if (!this.isDragging) return
-      const dx = moveEvent.clientX - this.dragStartX
-      const dy = moveEvent.clientY - this.dragStartY
-
-      if (Math.abs(dx - this.posX) > 3 || Math.abs(dy - this.posY) > 3) {
+      const nx = me.clientX - this.dragStartX
+      const ny = me.clientY - this.dragStartY
+      if (Math.abs(nx - this.posX) > 3 || Math.abs(ny - this.posY) > 3) {
         this.wasDragged = true
       }
-
-      this.posX = dx
-      this.posY = dy
+      this.posX = nx
+      this.posY = ny
       this.applyPosition()
     }
 
@@ -181,65 +189,119 @@ export class FloatingHUD {
   private saveDragPosition(): void {
     try {
       sessionStorage.setItem(
-        DRAG_STORAGE_KEY,
+        DRAG_KEY,
         JSON.stringify({ x: this.posX, y: this.posY })
       )
-    } catch {
-      /* ignore storage errors */
-    }
+    } catch {}
   }
 
   private restoreDragPosition(): void {
     try {
-      const raw = sessionStorage.getItem(DRAG_STORAGE_KEY)
+      const raw = sessionStorage.getItem(DRAG_KEY)
       if (raw) {
-        const { x, y } = JSON.parse(raw)
+        const { x, y } = JSON.parse(raw) as { x: number; y: number }
         this.posX = x
         this.posY = y
         this.applyPosition()
       }
-    } catch {
-      /* ignore storage errors */
+    } catch {}
+  }
+
+  // ── Panel ─────────────────────────────────────────────────────────────────────
+
+  private togglePanel(): void {
+    if (this.isOpen) {
+      this.closePanel()
+    } else {
+      this.openPanel()
     }
   }
 
-  private onUserActivity(): void {
-    this.hudEl.classList.remove("active")
-    this.hudEl.classList.add("idle")
+  private openPanel(): void {
+    this.isOpen = true
 
-    if (this.idleTimeout) clearTimeout(this.idleTimeout)
-    this.idleTimeout = setTimeout(() => {
-      this.hudEl.classList.remove("idle")
-      this.hudEl.classList.add("active")
-    }, 3000)
-  }
-
-  update(payload: HUDUpdatePayload): void {
-    this.lastPayload = payload
-    const { record, elapsed, sessionElapsed, neglect, tags } = payload
-    const tier = getBadgeTier(elapsed)
-    this.lastTier = tier
-
-    this.dot.update(tier, record.isActive)
-    this.timer.update(formatMs(elapsed), tier)
-    this.neglect.update(neglect)
-
-    if (!this.session.getIsFlashing()) {
-      this.session.update(
-        sessionElapsed > 60_000
-          ? `session ${formatMsShort(sessionElapsed)}`
-          : ""
-      )
+    // Decide which view to show
+    if (!this.nodeState || this.nodeState.segment === null) {
+      this.showPicker()
+    } else {
+      this.showNodePanel()
     }
 
-    // refresh open panel
-    if (this.contextPanel.getIsOpen()) {
-      this.contextPanel.update({ record, tier, elapsed, sessionElapsed, tags })
+    this.panel.classList.add("tl-open")
+  }
+
+  private closePanel(): void {
+    this.isOpen = false
+    this.panel.classList.remove("tl-open")
+  }
+
+  private showPicker(): void {
+    this.showingPicker = true
+    this.panel.innerHTML = ""
+    this.panel.appendChild(this.picker.getElement())
+  }
+
+  private showNodePanel(): void {
+    this.showingPicker = false
+    if (!this.nodeState) return
+    this.panel.innerHTML = ""
+    this.nodePanel.render({
+      nodeState: this.nodeState,
+      activeMs: this.activeMs,
+    })
+    this.panel.appendChild(this.nodePanel.getElement())
+  }
+
+  // ── Public update API ─────────────────────────────────────────────────────────
+
+  updateNode(nodeState: NodeState, activeMs: number): void {
+    this.nodeState = nodeState
+    this.activeMs = activeMs
+
+    const seg = nodeState.segment
+    const visits = nodeState.visits
+
+    // Update segment accent on root
+    if (seg) {
+      this.hudEl.dataset.segment = seg
+      const cfg = SEGMENT_DISPLAY[seg]
+      this.chipLabel.textContent = cfg.abbr
+      this.chipLabel.classList.remove("tl-unassigned")
+    } else {
+      delete this.hudEl.dataset.segment
+      this.chipLabel.textContent = "—"
+      this.chipLabel.classList.add("tl-unassigned")
+    }
+
+    // Visit count
+    this.chipCount.textContent = String(visits.length)
+    if (visits.length > 0) {
+      this.chipCount.classList.add("tl-has-visits")
+    }
+
+    // Freshness
+    this.chip.dataset.freshness = computeFreshness(visits)
+
+    // If panel is open and showing node panel, update in place
+    if (this.isOpen && !this.showingPicker && seg) {
+      this.nodePanel.updateGate(activeMs)
+      this.nodePanel.updateVisits(visits)
+    }
+
+    // If panel is open and we just got a segment assigned, switch to node panel
+    if (this.isOpen && this.showingPicker && seg) {
+      this.showNodePanel()
     }
   }
 
-  flashSession(sessionElapsed: number): void {
-    this.session.flash(`today  ${formatMsShort(sessionElapsed)}`)
+  // Called by content.ts after a successful register
+  onRegisterSuccess(outcome: Outcome): void {
+    this.nodePanel.showSuccess(outcome)
+  }
+
+  // Called by content.ts after a failed register
+  onRegisterError(msg: string): void {
+    this.nodePanel.showError(msg)
   }
 
   mount(container: HTMLElement): void {
