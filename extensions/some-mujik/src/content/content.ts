@@ -1,4 +1,3 @@
-
 // Injected into every tab. Determines its own role at runtime:
 //
 //   SOURCE  — this tab is a YouTube / YouTube Music URL.
@@ -23,8 +22,12 @@ import { createOverlayCard } from "@mujik/components/ui/overlay-card"
 import { createWaveformRenderer } from "@mujik/components/ui/waveform"
 import { makeDraggable } from "@mujik/content/lib/draggable"
 import { watchFullscreen } from "@mujik/content/lib/fullscreen"
+import { getOverlayRoot } from "@mujik/content/lib/overlay-root"
+import {
+  FALLBACK_PARAMS,
+  paramsFromSongMeta,
+} from "@mujik/content/lib/song-params"
 import { extractMetadata } from "@mujik/content/lib/yt-meta"
-import { paramsFromSongMeta, FALLBACK_PARAMS } from "@mujik/content/lib/song-params"
 
 import "@mujik/styles/content.css"
 
@@ -99,7 +102,7 @@ function mountOverlay(): void {
   if (overlayCard !== null) return
 
   const card: OverlayCard = createOverlayCard()
-  document.body.appendChild(card.root)
+  getOverlayRoot().appendChild(card.root)
 
   // Mount with fallback params; first ytmo:song-data will immediately replace.
   const renderer: WaveformRenderer = createWaveformRenderer(
