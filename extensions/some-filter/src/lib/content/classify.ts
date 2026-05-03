@@ -2,25 +2,39 @@
 /**
  * Luminance classification utilities.
  *
- * Used to decide whether to apply the dark theme to a given page.
- * We only intervene on light pages — already-dark pages are left alone.
+ * Goal: decide whether a page is "light" (needs our dark theme) or already dark.
+ *
+ * Key design decisions:
+ *   - When body.backgroundColor is transparent, we don't skip — we bias toward
+ *     applying the theme, because a transparent body typically means the page
+ *     relies on the browser default (white). Unknown == probably light.
+ *   - We sample widely (body, html, large containers by viewport area) rather
+ *     than just named semantic elements, because real-world pages are soup.
+ *   - Conservative only against false-darkening: dark pages almost always set
+ *     an explicit bg, so they'll be caught. Light pages with no bg → assume light.
  */
+
+export type RGBA = [number, number, number, number]
 
 /**
  * Parse any CSS color string to [r, g, b, a] in 0–1 range.
- * Returns null if unparseable (e.g. "transparent", gradients, "none").
+ * Returns null for unparseable values (gradients, "none", transparent).
  */
-function parseColor(css: string): [number, number, number, number] | null {
-  if (!css || css === "transparent" || css === "rgba(0, 0, 0, 0)") return null
+export function parseColor(css: string): RGBA | null {
+  if (!css || css === "none") return null
+  if (css === "transparent" || css === "rgba(0, 0, 0, 0)") return null
 
-  // rgba(r, g, b, a) or rgb(r, g, b)
-  const rgba = css.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/)
+  const rgba = css.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
+  )
   if (rgba) {
+    const a = rgba[4] !== undefined ? parseFloat(rgba[4]!) : 1
+    if (a < 0.05) return null // effectively transparent
     return [
       parseInt(rgba[1]!) / 255,
       parseInt(rgba[2]!) / 255,
       parseInt(rgba[3]!) / 255,
-      rgba[4] !== undefined ? parseFloat(rgba[4]!) : 1,
+      a,
     ]
   }
 
@@ -28,83 +42,110 @@ function parseColor(css: string): [number, number, number, number] | null {
 }
 
 /**
- * Relative luminance per WCAG 2.1 spec.
+ * Relative luminance per WCAG 2.1.
  * Input: r, g, b in 0–1 range.
  */
-function relativeLuminance(r: number, g: number, b: number): number {
-  const linearize = (c: number) =>
+export function relativeLuminance(r: number, g: number, b: number): number {
+  const lin = (c: number) =>
     c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b)
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 }
 
 /**
- * Walk up the DOM to find the effective background color of an element,
- * compositing transparent layers onto parents.
- *
- * Returns luminance in 0–1 or null if no opaque background found.
+ * Walk up the DOM from el to find the first ancestor with a non-transparent
+ * background-color. Returns luminance 0-1, or null if none found.
  */
-function effectiveBackgroundLuminance(el: Element): number | null {
-  let current: Element | null = el
-
-  while (current && current !== document.documentElement) {
-    const bg = getComputedStyle(current).backgroundColor
-    const parsed = parseColor(bg)
-
-    if (parsed) {
-      const [r, g, b, a] = parsed
-      if (a > 0.05) {
-        // Treat any non-trivially-transparent background as the effective one
-        return relativeLuminance(r, g, b)
-      }
-    }
-
-    current = current.parentElement
+export function effectiveBgLuminance(el: Element): number | null {
+  let cur: Element | null = el
+  while (cur) {
+    const bg = getComputedStyle(cur).backgroundColor
+    const c = parseColor(bg)
+    if (c) return relativeLuminance(c[0], c[1], c[2])
+    cur = cur.parentElement
   }
-
   return null
 }
 
-type ClassificationResult = {
-  /** 0–1, average luminance across sampled elements. null if insufficient data. */
+function viewportCoverage(el: Element): number {
+  const rect = el.getBoundingClientRect()
+  const vw = window.innerWidth || 1
+  const vh = window.innerHeight || 1
+  return (rect.width / vw) * (rect.height / vh)
+}
+
+export type ClassificationResult = {
   avgLuminance: number | null
-  /** Whether the page is classified as "light" (needs dark theme). */
   isLight: boolean
-  /** Whether to skip the page (already dark or indeterminate). */
   skip: boolean
 }
 
 /**
- * Sample a small set of large/prominent elements and classify
- * the page as light or dark.
+ * Classify the page as light or dark.
  *
- * Conservative: defaults to "skip" (don't apply theme) when uncertain.
- * We'd rather leave a dark-ish page alone than fight it.
+ * Strategy:
+ *   1. Check html and body for explicit backgrounds (weight=2).
+ *   2. Sample named semantic containers (weight=1.5).
+ *   3. Sample large containers by viewport coverage (top 8 by area).
+ *   4. If zero opaque samples found → assume light (browser default = white).
+ *   5. Weighted average. threshold=0.4 is generous — prefer applying dark theme.
  */
-export function classifyPage(threshold = 0.55): ClassificationResult {
-  // Sample candidates: body plus first few large semantic containers
-  const candidates: Element[] = [document.body]
+export function classifyPage(threshold = 0.4): ClassificationResult {
+  const samples: Array<{ lum: number; weight: number }> = []
 
-  const selectors = ["main", "article", "#app", "#root", "#content", "[role='main']"]
-  for (const sel of selectors) {
+  // Tier 1: html and body
+  for (const el of [document.documentElement, document.body]) {
+    if (!el) continue
+    const bg = getComputedStyle(el).backgroundColor
+    const c = parseColor(bg)
+    if (c) samples.push({ lum: relativeLuminance(c[0], c[1], c[2]), weight: 2 })
+  }
+
+  // Tier 2: semantic containers
+  const semanticSelectors = [
+    "main", "article", "#app", "#root", "#content",
+    "#wrapper", "#container", "#main", "#page",
+    "[role='main']", "[role='document']",
+  ]
+  for (const sel of semanticSelectors) {
     const el = document.querySelector(sel)
-    if (el) candidates.push(el)
-    if (candidates.length >= 5) break
+    if (!el) continue
+    const lum = effectiveBgLuminance(el)
+    if (lum !== null) samples.push({ lum, weight: 1.5 })
   }
 
-  const luminances: number[] = []
+  // Tier 3: largest visible containers by viewport coverage
+  const containerCandidates = Array.from(
+    document.querySelectorAll(
+      "#__sw_page_layer > *, body > div, body > section, body > main, body > header"
+    )
+  )
+    .filter((el) => {
+      if (el.id === "__sw_page_layer" || el.id === "__sw_overlay_root") return false
+      if (el.hasAttribute("data-my-ext")) return false
+      return true
+    })
+    .map((el) => ({ el, coverage: viewportCoverage(el) }))
+    .filter(({ coverage }) => coverage > 0.05)
+    .sort((a, b) => b.coverage - a.coverage)
+    .slice(0, 8)
 
-  for (const el of candidates) {
-    const lum = effectiveBackgroundLuminance(el)
-    if (lum !== null) luminances.push(lum)
+  for (const { el, coverage } of containerCandidates) {
+    const bg = getComputedStyle(el).backgroundColor
+    const c = parseColor(bg)
+    if (c) samples.push({ lum: relativeLuminance(c[0], c[1], c[2]), weight: coverage })
   }
 
-  if (luminances.length === 0) {
-    // No usable samples — conservative skip
-    return { avgLuminance: null, isLight: false, skip: true }
+  if (samples.length === 0) {
+    // No opaque bg anywhere = browser default white. Treat as light.
+    return { avgLuminance: null, isLight: true, skip: false }
   }
 
-  const avg = luminances.reduce((a, b) => a + b, 0) / luminances.length
+  const totalWeight = samples.reduce((a, s) => a + s.weight, 0)
+  const avg = samples.reduce((a, s) => a + s.lum * s.weight, 0) / totalWeight
+
   const isLight = avg > threshold
+  // Only skip (leave alone) when clearly already dark
+  const skip = avg < threshold * 0.5
 
-  return { avgLuminance: avg, isLight, skip: false }
+  return { avgLuminance: avg, isLight, skip }
 }

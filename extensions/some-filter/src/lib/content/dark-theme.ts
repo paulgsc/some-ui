@@ -1,25 +1,33 @@
-
 /**
- * Dark theme stylesheet.
+ * dark-theme.ts
  *
- * Architecture:
- *   - Applied ONLY to #__sw_page_layer (vendor DOM wrapper)
- *   - Never touches #__sw_overlay_root or [data-my-ext] subtrees
- *   - Primary mechanism: color/bg token overrides (NOT filter)
- *   - Optional subtle brightness pass as final layer (configurable)
- *   - Uses :where() for low-specificity overrides that vendor !important can still win
+ * Two-part dark theme application:
  *
- * Selector pattern:
- *   #__sw_page_layer:not([data-my-ext]) :where(...)
+ * Part A — CSS layer (static rules):
+ *   - Sets __sw_page_layer background to our dark base
+ *   - Resets html/body inside the layer
+ *   - Sets text/link/border tokens
+ *   - Does NOT blanket-transparent all divs (that was the bug)
+ *   - Does NOT use class name substring matching for cards (too fragile)
  *
- * This means:
- *   - Only vendor DOM inside the page layer is affected
- *   - Extension-owned subtrees with [data-my-ext] are unconditionally excluded
+ * Part B — JS luminance patcher (dynamic):
+ *   - Walks the DOM inside __sw_page_layer
+ *   - Finds elements whose computed background-color is high luminance
+ *   - Stamps data-sw-patched="<token>" and lets CSS do the actual painting
+ *   - Preserves already-dark elements (does not touch them)
+ *   - Runs once on load, then incrementally via MutationObserver
+ *
+ * Why this split:
+ *   CSS alone cannot read computed luminance — it can't know if a div is
+ *   actually white vs transparent. JS can. CSS is fast for the structural
+ *   pieces (root bg, text colors). JS patches the per-element exceptions.
  */
+
+import { parseColor, relativeLuminance } from "./classify"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 
-// ── Token definitions ────────────────────────────────────────────────────────
+// ── Tokens ────────────────────────────────────────────────────────────────────
 
 const TOKENS = `
   --sw-bg-0: #0d1117;
@@ -42,222 +50,321 @@ const TOKENS = `
   --sw-selection-bg: rgba(122, 162, 247, 0.25);
 `
 
-// ── Stylesheet template ──────────────────────────────────────────────────────
+// ── CSS layer ─────────────────────────────────────────────────────────────────
 
-/**
- * Generates the full dark theme CSS string.
- * brightness: optional final global brightness reduction (0–1). Set to 1.0 to disable.
- */
-export function buildDarkThemeCSS(brightness = 0.92): string {
-  const LAYER = `#__sw_page_layer`
-  // Exclusion: never style extension-owned subtrees
-  const SCOPE = `${LAYER}:not([data-my-ext] *)`
+export function buildDarkThemeCSS(): string {
+  const L = `#__sw_page_layer`
 
   return `
-/* ── SW Dark Theme ── injected by some-filter ────────────────────────────── */
+/* ── SW Dark Theme ──────────────────────────────────────────────────────── */
 
-/* Token injection on page layer root */
-${LAYER} {
+/* Tokens on layer root */
+${L} {
   ${TOKENS}
 }
 
-/* Optional subtle brightness reduction on entire page layer.
-   This is the ONLY filter — narrow, intentional, on the layer boundary.
-   Not on html/body. Not per-element. */
-${LAYER} {
-  filter: brightness(${brightness});
-}
-
-/* ── Root & body reset ──────────────────────────────────────────────────── */
-
-${SCOPE} :where(html, body) {
+/* Layer itself is the dark canvas.
+   Everything transparent falls through to this — no need to set
+   body bg separately in most cases, but we belt-and-suspenders it. */
+${L} {
   background-color: var(--sw-bg-0) !important;
   color: var(--sw-text-0) !important;
   color-scheme: dark !important;
 }
 
-/* ── Transparent containers → inherit dark bg ───────────────────────────── */
-/* We set transparent so they inherit --sw-bg-0 from the root,
-   instead of painting over it with a white or near-white bg. */
-
-${SCOPE} :where(
-  div, section, article, main, header, footer, aside, nav,
-  form, fieldset, figure, details, summary,
-  ul, ol, li, dl, dt, dd
-) {
-  background-color: transparent !important;
+/* html and body inside layer — belt-and-suspenders for the root bg.
+   Some pages set bg on <body> explicitly; this overrides that. */
+${L} :where(html, body) {
+  background-color: var(--sw-bg-0) !important;
+  color: var(--sw-text-0) !important;
+  color-scheme: dark !important;
 }
 
-/* Headings and labels pick up their natural inherit color */
-${SCOPE} :where(h1, h2, h3, h4, h5, h6) {
+/* ── Text ───────────────────────────────────────────────────────────────── */
+
+${L} :where(h1, h2, h3, h4, h5, h6) {
   color: var(--sw-text-0) !important;
 }
 
-/* ── Text nodes ─────────────────────────────────────────────────────────── */
-
-${SCOPE} :where(p, span, label, caption, figcaption, blockquote, cite) {
+${L} :where(p, span, label, caption, figcaption, blockquote, cite, li, dt, dd) {
   color: var(--sw-text-1) !important;
 }
 
-${SCOPE} :where(small, sub, sup, abbr, time) {
+${L} :where(small, sub, sup, abbr, time) {
   color: var(--sw-text-2) !important;
 }
 
 /* ── Links ──────────────────────────────────────────────────────────────── */
 
-${SCOPE} :where(a:link) {
+${L} :where(a) {
   color: var(--sw-link) !important;
 }
 
-${SCOPE} :where(a:visited) {
+${L} :where(a:visited) {
   color: var(--sw-link-visited) !important;
-}
-
-/* ── Table ──────────────────────────────────────────────────────────────── */
-
-${SCOPE} :where(table, thead, tbody, tfoot, tr) {
-  background-color: transparent !important;
-  border-color: var(--sw-border) !important;
-}
-
-${SCOPE} :where(th) {
-  background-color: var(--sw-bg-2) !important;
-  color: var(--sw-text-0) !important;
-  border-color: var(--sw-border) !important;
-}
-
-${SCOPE} :where(td) {
-  color: var(--sw-text-1) !important;
-  border-color: var(--sw-border) !important;
 }
 
 /* ── Borders ────────────────────────────────────────────────────────────── */
 
-${SCOPE} :where(*) {
+${L} :where(*) {
   border-color: var(--sw-border) !important;
   outline-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-/* ── Horizontal rules ───────────────────────────────────────────────────── */
-
-${SCOPE} :where(hr) {
+${L} :where(hr) {
   border-color: var(--sw-border) !important;
   background-color: var(--sw-border) !important;
 }
 
-/* ── Code and pre ───────────────────────────────────────────────────────── */
+/* ── Code ───────────────────────────────────────────────────────────────── */
 
-${SCOPE} :where(code, kbd, samp) {
+${L} :where(code, kbd, samp) {
   background-color: var(--sw-bg-3) !important;
   color: #e879f9 !important;
-  border-color: var(--sw-border) !important;
 }
 
-${SCOPE} :where(pre) {
+${L} :where(pre) {
   background-color: var(--sw-bg-2) !important;
   color: var(--sw-text-0) !important;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+${L} :where(table, thead, tbody, tfoot, tr) {
   border-color: var(--sw-border) !important;
 }
 
-/* ── Form elements ──────────────────────────────────────────────────────── */
+${L} :where(th) {
+  background-color: var(--sw-bg-2) !important;
+  color: var(--sw-text-0) !important;
+}
 
-${SCOPE} :where(input, textarea, select) {
+${L} :where(td) {
+  color: var(--sw-text-1) !important;
+}
+
+/* ── Forms ──────────────────────────────────────────────────────────────── */
+
+${L} :where(input, textarea, select) {
   background-color: var(--sw-input-bg) !important;
   color: var(--sw-text-0) !important;
   border-color: var(--sw-input-border) !important;
 }
 
-${SCOPE} :where(input::placeholder, textarea::placeholder) {
+${L} :where(input::placeholder, textarea::placeholder) {
   color: var(--sw-text-2) !important;
-}
-
-${SCOPE} :where(button) {
-  background-color: var(--sw-bg-3) !important;
-  color: var(--sw-text-0) !important;
-  border-color: var(--sw-border) !important;
-}
-
-${SCOPE} :where(button:hover) {
-  background-color: var(--sw-bg-2) !important;
 }
 
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
 
-${SCOPE} :where(*) {
+${L} :where(*) {
   scrollbar-color: var(--sw-bg-3) var(--sw-bg-0);
 }
 
 /* ── Selection ──────────────────────────────────────────────────────────── */
 
-${SCOPE} ::selection {
+${L} ::selection {
   background-color: var(--sw-selection-bg) !important;
 }
 
-/* ── Dialogs & popovers ─────────────────────────────────────────────────── */
+/* ── Dialogs ────────────────────────────────────────────────────────────── */
 
-${SCOPE} :where(dialog, [popover]) {
-  background-color: var(--sw-surface) !important;
-  color: var(--sw-text-0) !important;
-  border-color: var(--sw-border) !important;
-}
-
-/* ── Surfaces with explicit light backgrounds ───────────────────────────── */
-/* Cards, panels, sidebars that paint white/near-white explicitly */
-
-${SCOPE} :where(
-  [class*="card"], [class*="panel"], [class*="sidebar"],
-  [class*="modal"], [class*="drawer"], [class*="sheet"],
-  [class*="tooltip"], [class*="popover"], [class*="dropdown"]
-) {
+${L} :where(dialog, [popover]) {
   background-color: var(--sw-surface) !important;
   color: var(--sw-text-0) !important;
 }
 
 /* ── Media: never touch ─────────────────────────────────────────────────── */
-/* Images, video, canvas are opaque content — do not invert or recolor */
 
-${SCOPE} :where(img, video, canvas, svg, picture, embed, object) {
+${L} :where(img, video, canvas, picture, embed, object) {
   filter: none !important;
   opacity: 1 !important;
 }
 
-/* SVG text and shapes can be colored but not filtered */
-${SCOPE} :where(svg text, svg tspan) {
+${L} :where(svg text, svg tspan) {
   fill: var(--sw-text-1) !important;
 }
 
-/* ── Inline style override for common white backgrounds ─────────────────── */
-/* Catches cases where vendor JS sets element.style.backgroundColor = "white" */
-/* We can't override inline !important, but we can win without it in most cases */
+/* ── JS luminance patcher targets ───────────────────────────────────────── */
+/* Elements the patcher identifies as high-luminance get stamped with
+   data-sw-patched. CSS maps the token to the right surface color. */
 
-/* ── Extension exclusion (belt and suspenders) ──────────────────────────── */
-/* These selectors should never fire because ext UI is in __sw_overlay_root
-   which is a sibling of __sw_page_layer, not inside it.
-   These are defensive redundancy only. */
+${L} [data-sw-patched="surface"] {
+  background-color: var(--sw-surface) !important;
+  color: var(--sw-text-0) !important;
+}
 
-[data-my-ext],
-[data-my-ext] * {
-  /* Intentionally empty — these are never inside __sw_page_layer */
-  /* Presence of this block signals intent to future readers */
+${L} [data-sw-patched="bg-1"] {
+  background-color: var(--sw-bg-1) !important;
+}
+
+${L} [data-sw-patched="bg-2"] {
+  background-color: var(--sw-bg-2) !important;
+}
+
+/* Already-dark elements: patcher stamps these to prevent CSS text rules
+   from making dark-on-dark text. */
+${L} [data-sw-patched="preserve"] {
+  background-color: revert !important;
+  color: revert !important;
 }
 `
 }
 
-// ── Injection ────────────────────────────────────────────────────────────────
+// ── JS luminance patcher ──────────────────────────────────────────────────────
+
+/**
+ * Luminance threshold above which we consider a bg "light" and patch it.
+ * 0.3 catches whites, light greys, and light-colored surfaces.
+ * Below 0.3 = already reasonably dark — leave it alone.
+ */
+const LIGHT_THRESHOLD = 0.3
+
+/**
+ * Classify an element's own background-color (not inherited) and return
+ * which patch token to apply, or null if it should be left alone.
+ */
+function classifyElement(
+  el: Element
+): "surface" | "bg-1" | "bg-2" | "preserve" | null {
+  const bg = getComputedStyle(el).backgroundColor
+  const c = parseColor(bg)
+
+  if (!c) {
+    // Transparent — don't patch. It will inherit from __sw_page_layer (dark).
+    return null
+  }
+
+  const lum = relativeLuminance(c[0], c[1], c[2])
+
+  if (lum > LIGHT_THRESHOLD) {
+    // Light background — patch it dark.
+    // Distinguish cards/surfaces (mid-lum) from near-white (high-lum).
+    if (lum > 0.7) return "surface"
+    if (lum > 0.5) return "bg-1"
+    return "bg-2"
+  }
+
+  if (lum < 0.06) {
+    // Very dark bg (near-black) — the element is already dark.
+    // Stamp "preserve" so our text color rules don't make dark-on-dark.
+    return "preserve"
+  }
+
+  // Mid-range dark — leave alone.
+  return null
+}
+
+// Tags we never patch (media, scripts, extension internals)
+const SKIP_TAGS = new Set([
+  "SCRIPT",
+  "STYLE",
+  "LINK",
+  "META",
+  "NOSCRIPT",
+  "IMG",
+  "VIDEO",
+  "CANVAS",
+  "AUDIO",
+  "PICTURE",
+  "EMBED",
+  "OBJECT",
+  "SVG",
+  "IFRAME",
+])
+
+function shouldSkip(el: Element): boolean {
+  if (SKIP_TAGS.has(el.tagName)) return true
+  if (el.id === "__sw_page_layer" || el.id === "__sw_overlay_root") return true
+  if (el.hasAttribute("data-my-ext")) return true
+  return false
+}
+
+/**
+ * Patch a single element if needed.
+ */
+function patchElement(el: Element): void {
+  if (!(el instanceof HTMLElement)) return
+  if (shouldSkip(el)) return
+
+  const token = classifyElement(el)
+  if (token !== null) {
+    el.dataset.swPatched = token
+  }
+  // If token is null (transparent or mid-dark), leave data-sw-patched alone.
+  // This means we never un-patch an element once patched; that's intentional
+  // for the initial pass. MutationObserver handles new nodes.
+}
+
+/**
+ * Walk the entire page layer and patch all visible elements.
+ * Uses TreeWalker for efficiency — avoids boxing every element into an array.
+ */
+function patchAll(root: Element): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+  let node: Node | null = walker.nextNode()
+  while (node) {
+    patchElement(node as Element)
+    node = walker.nextNode()
+  }
+}
+
+let patchObserver: MutationObserver | null = null
+
+/**
+ * Start the incremental patcher.
+ * Watches for new nodes added to the page layer and patches them.
+ */
+function startPatchObserver(pageLayer: Element): void {
+  if (patchObserver) return
+
+  patchObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element) {
+          patchElement(node)
+          // Also patch children of newly added subtrees
+          patchAll(node)
+        }
+      }
+    }
+  })
+
+  patchObserver.observe(pageLayer, { childList: true, subtree: true })
+}
+
+function stopPatchObserver(): void {
+  patchObserver?.disconnect()
+  patchObserver = null
+}
+
+// ── Injection ─────────────────────────────────────────────────────────────────
 
 const STYLE_ID = "__sw_dark_theme"
 
-export function injectDarkTheme(brightness?: number): void {
+export function injectDarkTheme(): void {
   let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
   if (!style) {
     style = document.createElement("style")
     style.id = STYLE_ID
-    const root = document.head ?? document.documentElement
-    root.appendChild(style)
+    ;(document.head ?? document.documentElement).appendChild(style)
   }
-  style.textContent = buildDarkThemeCSS(brightness)
+  style.textContent = buildDarkThemeCSS()
+
+  // Run the JS patcher after CSS is in place
+  const pageLayer = document.getElementById("__sw_page_layer")
+  if (pageLayer) {
+    patchAll(pageLayer)
+    startPatchObserver(pageLayer)
+  }
 }
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
+  stopPatchObserver()
+
+  // Remove all patcher stamps
+  document.querySelectorAll("[data-sw-patched]").forEach((el) => {
+    ;(el as HTMLElement).removeAttribute("data-sw-patched")
+  })
 }
