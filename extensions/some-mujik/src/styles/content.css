@@ -5,6 +5,7 @@
 .ytmo-card,
 .ytmo-card * {
   box-sizing: border-box;
+  pointer-events: auto;
   margin: 0;
   padding: 0;
   font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;

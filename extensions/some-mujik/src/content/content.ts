@@ -22,12 +22,12 @@ import { createOverlayCard } from "@mujik/components/ui/overlay-card"
 import { createWaveformRenderer } from "@mujik/components/ui/waveform"
 import { makeDraggable } from "@mujik/content/lib/draggable"
 import { watchFullscreen } from "@mujik/content/lib/fullscreen"
-import { getOverlayRoot } from "@mujik/content/lib/overlay-root"
 import {
   FALLBACK_PARAMS,
   paramsFromSongMeta,
 } from "@mujik/content/lib/song-params"
 import { extractMetadata } from "@mujik/content/lib/yt-meta"
+import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
 import "@mujik/styles/content.css"
 
@@ -101,8 +101,9 @@ let fullscreenWatcher: FullscreenWatcher | null = null
 function mountOverlay(): void {
   if (overlayCard !== null) return
 
+  const root = getOverlayRoot()
   const card: OverlayCard = createOverlayCard()
-  getOverlayRoot().appendChild(card.root)
+  root.appendChild(card.root)
 
   // Mount with fallback params; first ytmo:song-data will immediately replace.
   const renderer: WaveformRenderer = createWaveformRenderer(
