@@ -1,4 +1,3 @@
-
 /**
  * Luminance classification utilities.
  *
@@ -12,6 +11,12 @@
  *     than just named semantic elements, because real-world pages are soup.
  *   - Conservative only against false-darkening: dark pages almost always set
  *     an explicit bg, so they'll be caught. Light pages with no bg → assume light.
+ *
+ * Change from previous version:
+ *   Tier 3 previously sampled `#__sw_page_layer > *` — that wrapper div no
+ *   longer exists. Tier 3 now samples `body > *` directly, which is equivalent
+ *   since vendor DOM is no longer moved. Extension-owned nodes are still excluded
+ *   via the [data-my-ext] attribute filter.
  */
 
 export type RGBA = [number, number, number, number]
@@ -28,12 +33,12 @@ export function parseColor(css: string): RGBA | null {
     /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
   )
   if (rgba) {
-    const a = rgba[4] !== undefined ? parseFloat(rgba[4]!) : 1
+    const a = rgba[4] !== undefined ? parseFloat(rgba[4]) : 1
     if (a < 0.05) return null // effectively transparent
     return [
-      parseInt(rgba[1]!) / 255,
-      parseInt(rgba[2]!) / 255,
-      parseInt(rgba[3]!) / 255,
+      parseInt(rgba[1]) / 255,
+      parseInt(rgba[2]) / 255,
+      parseInt(rgba[3]) / 255,
       a,
     ]
   }
@@ -86,6 +91,8 @@ export type ClassificationResult = {
  *   1. Check html and body for explicit backgrounds (weight=2).
  *   2. Sample named semantic containers (weight=1.5).
  *   3. Sample large containers by viewport coverage (top 8 by area).
+ *      — Samples body > * directly (no __sw_page_layer wrapper).
+ *      — Excludes extension-owned nodes via [data-my-ext].
  *   4. If zero opaque samples found → assume light (browser default = white).
  *   5. Weighted average. threshold=0.4 is generous — prefer applying dark theme.
  */
@@ -102,26 +109,38 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
 
   // Tier 2: semantic containers
   const semanticSelectors = [
-    "main", "article", "#app", "#root", "#content",
-    "#wrapper", "#container", "#main", "#page",
-    "[role='main']", "[role='document']",
+    "main",
+    "article",
+    "#app",
+    "#root",
+    "#content",
+    "#wrapper",
+    "#container",
+    "#main",
+    "#page",
+    "[role='main']",
+    "[role='document']",
   ]
   for (const sel of semanticSelectors) {
     const el = document.querySelector(sel)
     if (!el) continue
+    if (el.hasAttribute("data-my-ext") || el.closest("[data-my-ext]")) continue
     const lum = effectiveBgLuminance(el)
     if (lum !== null) samples.push({ lum, weight: 1.5 })
   }
 
-  // Tier 3: largest visible containers by viewport coverage
+  // Tier 3: largest visible containers by viewport coverage.
+  // Samples body > * directly — vendor DOM is no longer wrapped.
+  // Extension-owned nodes excluded via [data-my-ext] attribute check.
   const containerCandidates = Array.from(
     document.querySelectorAll(
-      "#__sw_page_layer > *, body > div, body > section, body > main, body > header"
+      "body > *, body > div, body > section, body > main, body > header"
     )
   )
     .filter((el) => {
-      if (el.id === "__sw_page_layer" || el.id === "__sw_overlay_root") return false
+      if (el.id === "__sw_overlay_root") return false
       if (el.hasAttribute("data-my-ext")) return false
+      if (el.closest("[data-my-ext]")) return false
       return true
     })
     .map((el) => ({ el, coverage: viewportCoverage(el) }))
@@ -132,11 +151,14 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
   for (const { el, coverage } of containerCandidates) {
     const bg = getComputedStyle(el).backgroundColor
     const c = parseColor(bg)
-    if (c) samples.push({ lum: relativeLuminance(c[0], c[1], c[2]), weight: coverage })
+    if (c)
+      samples.push({
+        lum: relativeLuminance(c[0], c[1], c[2]),
+        weight: coverage,
+      })
   }
 
   if (samples.length === 0) {
-    // No opaque bg anywhere = browser default white. Treat as light.
     return { avgLuminance: null, isLight: true, skip: false }
   }
 
@@ -144,7 +166,6 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
   const avg = samples.reduce((a, s) => a + s.lum * s.weight, 0) / totalWeight
 
   const isLight = avg > threshold
-  // Only skip (leave alone) when clearly already dark
   const skip = avg < threshold * 0.5
 
   return { avgLuminance: avg, isLight, skip }

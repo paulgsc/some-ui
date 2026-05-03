@@ -1,0 +1,19 @@
+/* Apply ONLY while postpaint is NOT present */
+html:not([data-sw-postpaint]),
+html:not([data-sw-postpaint]) body {
+  background: #0d1117 !important;
+  color-scheme: dark !important;
+}
+
+/* aggressive wipe */
+html:not([data-sw-postpaint]) body * {
+  background-color: transparent !important;
+}
+
+/* preserve media */
+html:not([data-sw-postpaint]) img,
+html:not([data-sw-postpaint]) video,
+html:not([data-sw-postpaint]) canvas,
+html:not([data-sw-postpaint]) picture {
+  background-color: transparent !important;
+}

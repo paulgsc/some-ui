@@ -1,5 +1,4 @@
-
-import "@tab/styles/content.css"
+import "@tab/styles/hud.css"
 
 import { useEffect, useRef } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
@@ -23,7 +22,7 @@ function makeNode(overrides: Partial<NodeState> = {}): NodeState {
 }
 
 function makeVisits(
-  outcomes: Outcome[],
+  outcomes: Array<Outcome>,
   baseMs = Date.now()
 ): NodeState["visits"] {
   return outcomes.map((outcome, i) => ({
@@ -70,7 +69,9 @@ const HUDBridge = ({
           }
           hud.updateNode(updated, activeMs)
         } else {
-          hud.onRegisterError("Axum server unreachable (is it running on :3737?)")
+          hud.onRegisterError(
+            "Axum server unreachable (is it running on :3737?)"
+          )
         }
       },
     })
@@ -124,30 +125,25 @@ type Story = StoryObj
 
 /** Chip at rest — tab has never been assigned or visited */
 export const Unassigned: Story = {
-  render: () => (
-    <HUDBridge
-      nodeState={makeNode()}
-      activeMs={0}
-    />
-  ),
+  render: () => <HUDBridge nodeState={makeNode()} activeMs={0} />,
 }
 
 /** Click chip → segment picker opens */
 export const PickerOpen: Story = {
-  render: () => (
-    <HUDBridge
-      nodeState={makeNode()}
-      activeMs={0}
-    />
-  ),
+  render: () => <HUDBridge nodeState={makeNode()} activeMs={0} />,
   play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelector(".__tl2_chip")).toBeInTheDocument()
-    }, { timeout: 2000 })
+    await waitFor(
+      () => {
+        expect(canvasElement.querySelector(".__tl2_chip")).toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
     const chip = canvasElement.querySelector<HTMLElement>(".__tl2_chip")!
     await userEvent.click(chip)
     await waitFor(() => {
-      expect(canvasElement.querySelector(".__tl2_panel.tl-open")).toBeInTheDocument()
+      expect(
+        canvasElement.querySelector(".__tl2_panel.tl-open")
+      ).toBeInTheDocument()
       expect(canvasElement.querySelector(".__tl2_picker")).toBeInTheDocument()
     })
   },
@@ -156,10 +152,7 @@ export const PickerOpen: Story = {
 /** DSA segment assigned, no visits yet, gate locked */
 export const AssignedNoVisits: Story = {
   render: () => (
-    <HUDBridge
-      nodeState={makeNode({ segment: "dsa" })}
-      activeMs={0}
-    />
+    <HUDBridge nodeState={makeNode({ segment: "dsa" })} activeMs={0} />
   ),
 }
 
@@ -189,7 +182,13 @@ export const FrequentlyVisited: Story = {
     <HUDBridge
       nodeState={makeNode({
         segment: "dsa",
-        visits: makeVisits(["Progress", "Progress", "Stuck", "Progress", "Review"]),
+        visits: makeVisits([
+          "Progress",
+          "Progress",
+          "Stuck",
+          "Progress",
+          "Review",
+        ]),
       })}
       activeMs={6 * 60 * 1000}
     />
@@ -234,9 +233,16 @@ export const OutcomeDistribution: Story = {
       nodeState={makeNode({
         segment: "language",
         visits: makeVisits([
-          "Progress", "Progress", "Review", "Stuck",
-          "Progress", "Review", "Progress", "Progress",
-          "Stuck", "Review",
+          "Progress",
+          "Progress",
+          "Review",
+          "Stuck",
+          "Progress",
+          "Review",
+          "Progress",
+          "Progress",
+          "Stuck",
+          "Review",
         ]),
       })}
       activeMs={6 * 60 * 1000}
@@ -246,16 +252,14 @@ export const OutcomeDistribution: Story = {
 
 /** Full interactive flow: click chip → pick segment → panel shows → register outcome */
 export const FullFlow: Story = {
-  render: () => (
-    <HUDBridge
-      nodeState={makeNode()}
-      activeMs={6 * 60 * 1000}
-    />
-  ),
+  render: () => <HUDBridge nodeState={makeNode()} activeMs={6 * 60 * 1000} />,
   play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(canvasElement.querySelector(".__tl2_chip")).toBeInTheDocument()
-    }, { timeout: 2000 })
+    await waitFor(
+      () => {
+        expect(canvasElement.querySelector(".__tl2_chip")).toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
 
     // Open panel
     const chip = canvasElement.querySelector<HTMLElement>(".__tl2_chip")!
@@ -275,14 +279,17 @@ export const FullFlow: Story = {
     await waitFor(() => {
       expect(canvasElement.querySelector(".__tl2_node")).toBeInTheDocument()
       // All outcome buttons should be enabled
-      const btns = canvasElement.querySelectorAll<HTMLButtonElement>(".__tl2_outcome_btn")
+      const btns =
+        canvasElement.querySelectorAll<HTMLButtonElement>(".__tl2_outcome_btn")
       for (const btn of btns) {
         expect(btn.disabled).toBe(false)
       }
     })
 
     // Register Progress
-    const progressBtn = canvasElement.querySelector<HTMLElement>(".__tl2_btn_progress")!
+    const progressBtn = canvasElement.querySelector<HTMLElement>(
+      ".__tl2_btn_progress"
+    )!
     await userEvent.click(progressBtn)
 
     await waitFor(() => {

@@ -1,41 +1,131 @@
-/* ─── TabLedger v2 — Banner Marquee Styles ────────────────────────────────── */
-/* Dark-mode-first. Sticky bottom, full width, 28px height.                    */
-/* z-index: 9000 — above page content, below dialogs/dropdowns/navbars.        */
+/**
+ * BannerMarquee — IDE Syntax Theme Edition
+ *
+ * Visual approach:
+ *   - IDE/syntax highlighting aesthetic: each semantic token gets a distinct color
+ *   - Segment anchor = "keyword" (pink/magenta)
+ *   - Action = "function" (blue/cyan)
+ *   - Detail = "string" (green/yellow)
+ *   - Clock = "number" (orange)
+ *   - Separator = "punctuation" (muted)
+ *   - Pops against dark backgrounds like code in an editor
+ */
+
+/* ─── CSS Variables: IDE Color Palette ────────────────────────────────────── */
+
+:root {
+  /* Banner backdrop - subtle dark like an editor */
+  --banner-bg: rgba(30, 30, 36, 0.96);
+  --banner-bg-subtle: rgba(40, 40, 48, 0.5);
+  --banner-border: rgba(80, 80, 100, 0.3);
+  --banner-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+
+  /* Syntax colors - inspired by popular IDE themes */
+  --syntax-keyword: #ff79c6; /* Pink - segment anchor */
+  --syntax-function: #8be9fd; /* Cyan - action verb */
+  --syntax-string: #50fa7b; /* Green - detail/description */
+  --syntax-number: #ffb86c; /* Orange - clock/time */
+  --syntax-type: #bd93f9; /* Purple - secondary emphasis */
+  --syntax-comment: #6272a4; /* Muted blue - separators, hints */
+  --syntax-variable: #f8f8f2; /* Off-white - default text */
+  --syntax-constant: #f1fa8c; /* Yellow - highlights */
+
+  /* Segment accent colors - vivid category badges */
+  --segment-math: #8be9fd; /* Cyan */
+  --segment-dsa: #bd93f9; /* Purple */
+  --segment-systems: #ff79c6; /* Pink */
+  --segment-infra: #ffb86c; /* Orange */
+  --segment-language: #50fa7b; /* Green */
+  --segment-career: #f1fa8c; /* Yellow */
+  --segment-leisure: #6272a4; /* Muted */
+  --segment-unset: #44475a; /* Dark gray */
+
+  /* Input */
+  --banner-input-bg: rgba(68, 71, 90, 0.5);
+  --banner-input-border: rgba(98, 114, 164, 0.4);
+  --banner-input-focus: #bd93f9;
+
+  /* Error */
+  --banner-error-bg: rgba(255, 85, 85, 0.15);
+  --banner-error-text: #ff5555;
+  --banner-error-border: rgba(255, 85, 85, 0.4);
+
+  /* Clock active dot */
+  --clock-active: #50fa7b;
+}
+
+/* ─── Light Mode (still IDE-ish but inverted) ─────────────────────────────── */
+
+:root:not(.dark):not([data-theme="dark"]) {
+  --banner-bg: rgba(250, 250, 252, 0.96);
+  --banner-bg-subtle: rgba(235, 235, 245, 0.6);
+  --banner-border: rgba(100, 100, 140, 0.15);
+  --banner-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+
+  /* Syntax colors - darker for light bg */
+  --syntax-keyword: #d63384;
+  --syntax-function: #0d9488;
+  --syntax-string: #16a34a;
+  --syntax-number: #ea580c;
+  --syntax-type: #7c3aed;
+  --syntax-comment: #64748b;
+  --syntax-variable: #1e293b;
+  --syntax-constant: #ca8a04;
+
+  /* Segment colors - richer for light mode */
+  --segment-math: #0891b2;
+  --segment-dsa: #7c3aed;
+  --segment-systems: #db2777;
+  --segment-infra: #ea580c;
+  --segment-language: #16a34a;
+  --segment-career: #ca8a04;
+  --segment-leisure: #64748b;
+  --segment-unset: #94a3b8;
+
+  --banner-input-bg: rgba(100, 116, 139, 0.1);
+  --banner-input-border: rgba(100, 116, 139, 0.2);
+  --banner-input-focus: #7c3aed;
+
+  --banner-error-bg: rgba(220, 38, 38, 0.1);
+  --banner-error-text: #dc2626;
+  --banner-error-border: rgba(220, 38, 38, 0.3);
+
+  --clock-active: #16a34a;
+}
+
+/* ─── Root Banner ─────────────────────────────────────────────────────────── */
 
 #__tl2_banner__ {
-  /* Layout */
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 28px;
-  z-index: 9000;
+  z-index: 2147483646;
 
-  /* Appearance */
-  background: rgba(4, 4, 7, 0.88);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-
-  /* Layout internals */
   display: flex;
   align-items: center;
-  overflow: hidden;
+  gap: 12px;
+  height: 44px;
+  padding: 0 16px;
 
-  /* No pointer events on the bar itself except where set explicitly */
+  background: var(--banner-bg);
+  border-top: 1px solid var(--banner-border);
+  box-shadow: var(--banner-shadow);
+
   pointer-events: auto;
-  user-select: none;
 
+  /* Monospace vibe for that code feel */
   font-family:
-    "TX-02", "Iosevka", "Fira Code", "Cascadia Code", "SF Mono", monospace;
+    ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, Monaco,
+    Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
 
-  /* Transitions */
   transition:
-    opacity 0.3s ease,
-    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
-
-/* ─── Hidden state ────────────────────────────────────────────────────────── */
 
 #__tl2_banner__.__tl2_banner_hidden {
   transform: translateY(100%);
@@ -43,36 +133,9 @@
   pointer-events: none;
 }
 
-/* ─── Segment accent binding ──────────────────────────────────────────────── */
-
-#__tl2_banner__[data-segment="math"] {
-  --tl-banner-accent: #60a5fa;
-}
-#__tl2_banner__[data-segment="dsa"] {
-  --tl-banner-accent: #34d399;
-}
-#__tl2_banner__[data-segment="systems"] {
-  --tl-banner-accent: #f97316;
-}
-#__tl2_banner__[data-segment="infra"] {
-  --tl-banner-accent: #a78bfa;
-}
-#__tl2_banner__[data-segment="language"] {
-  --tl-banner-accent: #f43f5e;
-}
-#__tl2_banner__[data-segment="career"] {
-  --tl-banner-accent: #facc15;
-}
-#__tl2_banner__[data-segment="leisure"] {
-  --tl-banner-accent: #94a3b8;
-}
-
-/* ─── Glow shim ───────────────────────────────────────────────────────────── */
-/* Overlays the banner with a gradient when __tl2_banner_glow is active.       */
-/* Sits behind the text via pointer-events: none.                              */
+/* ─── Glow Shim (event pulse) ─────────────────────────────────────────────── */
 
 .__tl2_banner_shim {
-  --tl-banner-accent: rgba(255, 255, 255, 0.4); /* fallback, overridden by JS */
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -80,123 +143,169 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--tl-banner-accent) 18%, transparent) 30%,
-    color-mix(in srgb, var(--tl-banner-accent) 28%, transparent) 50%,
-    color-mix(in srgb, var(--tl-banner-accent) 18%, transparent) 70%,
+    var(--syntax-keyword) 25%,
+    var(--syntax-function) 50%,
+    var(--syntax-string) 75%,
     transparent 100%
   );
-  transition: opacity 0.15s ease;
+  mix-blend-mode: overlay;
+  transition: opacity 0.15s ease-out;
 }
 
 #__tl2_banner__.__tl2_banner_glow .__tl2_banner_shim {
-  opacity: 1;
-  animation: __tl2_flicker 0.65s ease forwards;
+  animation: banner-glow-pulse 0.7s ease-out;
 }
 
-@keyframes __tl2_flicker {
+@keyframes banner-glow-pulse {
   0% {
     opacity: 0;
-  }
-  15% {
-    opacity: 0.9;
+    transform: scaleX(0.3);
   }
   25% {
-    opacity: 0.4;
-  }
-  35% {
-    opacity: 1;
-  }
-  55% {
-    opacity: 0.7;
-  }
-  70% {
-    opacity: 1;
-  }
-  85% {
-    opacity: 0.5;
+    opacity: 0.6;
+    transform: scaleX(1);
   }
   100% {
     opacity: 0;
+    transform: scaleX(1.2);
   }
 }
 
-/* ─── Text track ──────────────────────────────────────────────────────────── */
+/* ─── Segment Anchor (Keyword Badge) ──────────────────────────────────────── */
+
+.__tl2_ribbon_anchor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  background: var(--segment-unset);
+  color: var(--banner-bg);
+
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Segment-specific colors */
+#__tl2_banner__[data-segment="math"] .__tl2_ribbon_anchor {
+  background: var(--segment-math);
+  box-shadow: 0 0 12px -2px var(--segment-math);
+}
+
+#__tl2_banner__[data-segment="dsa"] .__tl2_ribbon_anchor {
+  background: var(--segment-dsa);
+  box-shadow: 0 0 12px -2px var(--segment-dsa);
+}
+
+#__tl2_banner__[data-segment="systems"] .__tl2_ribbon_anchor {
+  background: var(--segment-systems);
+  box-shadow: 0 0 12px -2px var(--segment-systems);
+}
+
+#__tl2_banner__[data-segment="infra"] .__tl2_ribbon_anchor {
+  background: var(--segment-infra);
+  box-shadow: 0 0 12px -2px var(--segment-infra);
+}
+
+#__tl2_banner__[data-segment="language"] .__tl2_ribbon_anchor {
+  background: var(--segment-language);
+  box-shadow: 0 0 12px -2px var(--segment-language);
+}
+
+#__tl2_banner__[data-segment="career"] .__tl2_ribbon_anchor {
+  background: var(--segment-career);
+  box-shadow: 0 0 12px -2px var(--segment-career);
+}
+
+#__tl2_banner__[data-segment="leisure"] .__tl2_ribbon_anchor {
+  background: var(--segment-leisure);
+  box-shadow: none;
+}
+
+.__tl2_ribbon_anchor.__tl2_anchor_unset {
+  background: var(--segment-unset);
+  color: var(--syntax-comment);
+  box-shadow: none;
+}
+
+.__tl2_ribbon_anchor_glyph {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.__tl2_ribbon_anchor_label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Content Track ───────────────────────────────────────────────────────── */
 
 .__tl2_banner_track {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
+  position: relative;
+
+  mask-image: linear-gradient(
+    90deg,
+    black 0%,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    black 0%,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.__tl2_ribbon_content {
   display: flex;
   align-items: center;
-  position: relative;
-  /* Left gutter */
-  padding-left: 14px;
-  min-width: 0;
-}
-
-/* Fade mask on left and right edges */
-.__tl2_banner_track::before,
-.__tl2_banner_track::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 20px;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.__tl2_banner_track::before {
-  left: 0;
-  background: linear-gradient(to right, rgba(4, 4, 7, 0.88), transparent);
-}
-
-.__tl2_banner_track::after {
-  right: 0;
-  background: linear-gradient(to left, rgba(4, 4, 7, 0.88), transparent);
-}
-
-.__tl2_banner_text {
-  display: inline-block;
+  gap: 8px;
   white-space: nowrap;
-  font-size: 10.5px;
+}
+
+/* Action = "function" color (cyan) */
+.__tl2_ribbon_action {
+  font-weight: 600;
+  color: var(--syntax-function);
+}
+
+/* Separator = "punctuation" (muted) */
+.__tl2_ribbon_sep {
+  color: var(--syntax-comment);
+  font-weight: 400;
+  margin: 0 4px;
+  opacity: 0.8;
+}
+
+/* Detail = "string" color (green) */
+.__tl2_ribbon_detail {
+  color: var(--syntax-string);
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.38);
-  transition: color 0.5s ease;
-  will-change: transform;
-  position: relative;
-  z-index: 2;
 }
 
-/* When illuminated, text brightens and picks up accent tint */
-#__tl2_banner__.__tl2_banner_glow .__tl2_banner_text {
-  color: color-mix(
-    in srgb,
-    var(--tl-banner-accent, rgba(255, 255, 255, 0.9)) 60%,
-    rgba(255, 255, 255, 0.9)
-  );
-  text-shadow:
-    0 0 12px color-mix(in srgb, var(--tl-banner-accent, white) 40%, transparent),
-    0 0 28px color-mix(in srgb, var(--tl-banner-accent, white) 20%, transparent);
-  transition:
-    color 0.08s ease,
-    text-shadow 0.08s ease;
+/* Flat mode (no action parsed) */
+.__tl2_ribbon_content.__tl2_flat .__tl2_ribbon_detail {
+  color: var(--syntax-variable);
+  font-weight: 500;
 }
 
-/* ─── Marquee animation ───────────────────────────────────────────────────── */
-/* Applied only when text is long (> ~60 chars) via JS class toggle.           */
+/* ─── Marquee Animation ───────────────────────────────────────────────────── */
 
-.__tl2_banner_text.__tl2_marquee {
-  animation: __tl2_scroll 22s linear infinite;
-  /* Pause on hover so user can read */
+.__tl2_ribbon_content.__tl2_marquee {
+  animation: banner-marquee 40s linear infinite;
 }
 
-#__tl2_banner__:hover .__tl2_banner_text.__tl2_marquee {
-  animation-play-state: paused;
-}
-
-@keyframes __tl2_scroll {
+@keyframes banner-marquee {
   0% {
     transform: translateX(0);
   }
@@ -205,68 +314,175 @@
   }
 }
 
-/* For proper marquee looping, the text element gets its content doubled by JS.
-   This keyframe moves it exactly halfway = one full copy. */
-
-/* ─── Edit input ──────────────────────────────────────────────────────────── */
-
-.__tl2_banner_edit {
-  flex-shrink: 0;
-  padding: 0 10px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
+.__tl2_banner_track:hover .__tl2_ribbon_content.__tl2_marquee {
+  animation-play-state: paused;
 }
 
-#__tl2_banner__:hover .__tl2_banner_edit,
-#__tl2_banner__:focus-within .__tl2_banner_edit {
+/* ─── Clock (Number styling) ──────────────────────────────────────────────── */
+
+.__tl2_ribbon_clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: var(--banner-bg-subtle);
+  border: 1px solid var(--banner-border);
+  flex-shrink: 0;
+}
+
+.__tl2_ribbon_clock_dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--syntax-comment);
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Active state */
+#__tl2_banner__[data-segment]:not([data-segment=""]) .__tl2_ribbon_clock_dot {
+  background: var(--clock-active);
+  box-shadow: 0 0 8px 2px var(--clock-active);
+  animation: clock-dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes clock-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px var(--clock-active);
+  }
+  50% {
+    box-shadow: 0 0 4px 1px var(--clock-active);
+  }
+}
+
+/* Time = "number" color (orange) */
+.__tl2_ribbon_clock_time {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--syntax-number);
+  min-width: 42px;
+  text-align: right;
+}
+
+/* ─── Edit Zone ───────────────────────────────────────────────────────────── */
+
+.__tl2_banner_edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 120px;
+  overflow: hidden;
+  transition: max-width 0.25s ease;
+}
+
+.__tl2_banner_edit:hover,
+.__tl2_banner_edit:focus-within {
+  max-width: 260px;
+}
+
+/* Hint = "comment" styling */
+.__tl2_banner_edit_hint {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--syntax-comment);
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.__tl2_banner_edit:hover .__tl2_banner_edit_hint,
+.__tl2_banner_edit:focus-within .__tl2_banner_edit_hint {
   opacity: 1;
-  pointer-events: auto;
+  color: var(--syntax-type);
 }
 
 .__tl2_banner_input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: "TX-02", "Iosevka", "Fira Code", monospace;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  padding: 2px 8px;
-  width: 180px;
-  height: 18px;
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--syntax-variable);
+  background: var(--banner-input-bg);
+  border: 1px solid var(--banner-input-border);
   outline: none;
   transition:
     border-color 0.15s ease,
-    background 0.15s ease;
+    box-shadow 0.15s ease;
 }
 
 .__tl2_banner_input::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--syntax-comment);
 }
 
 .__tl2_banner_input:focus {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--banner-input-focus);
+  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.3);
 }
 
-/* ─── Error label ─────────────────────────────────────────────────────────── */
+/* ─── Error Tooltip ───────────────────────────────────────────────────────── */
 
 .__tl2_banner_error {
-  flex-shrink: 0;
-  font-size: 8.5px;
-  letter-spacing: 0.06em;
-  color: #fca5a5;
-  padding: 0 10px 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-  opacity: 0.8;
+  position: absolute;
+  bottom: 100%;
+  right: 16px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+
+  background: var(--banner-error-bg);
+  color: var(--banner-error-text);
+  border: 1px solid var(--banner-error-border);
+
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
-/* ─── Marquee double-content setup ───────────────────────────────────────────
-   The JS doubles the textContent to create a seamless loop.
-   The animation moves -50% (one copy) so it wraps cleanly.
-   ─────────────────────────────────────────────────────────────────────────── */
+.__tl2_banner_error.__tl2_error_visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ─── High Contrast Support ───────────────────────────────────────────────── */
+
+@media (prefers-contrast: high) {
+  #__tl2_banner__ {
+    --banner-bg: #000;
+    --banner-border: #fff;
+    --syntax-function: #00ffff;
+    --syntax-string: #00ff00;
+    --syntax-number: #ffaa00;
+    --syntax-keyword: #ff00ff;
+  }
+}
+
+/* ─── Reduced Motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .__tl2_ribbon_content.__tl2_marquee {
+    animation: none;
+  }
+
+  #__tl2_banner__.__tl2_banner_glow .__tl2_banner_shim {
+    animation: none;
+  }
+
+  .__tl2_ribbon_clock_dot {
+    animation: none;
+  }
+}

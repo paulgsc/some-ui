@@ -1,6 +1,5 @@
-
 /**
- * content.ts — TabLedger v2 entry point
+ * — TabLedger v2 entry point
  *
  * Mounts:
  *   1. FloatingHUD (chip, segment picker, node panel) — z-index: 9999
@@ -9,14 +8,13 @@
  * CSS is split: hud.css and banner.css injected separately.
  */
 
-import rawHudCSS    from "@tab/styles/hud.css?inline"
+import { getOverlayRoot } from "@some-extension/common/lib/layers"
 import rawBannerCSS from "@tab/styles/banner.css?inline"
-
-import type { NodeState, Outcome, OutboundMessage, Segment } from "@tab/types"
+import rawHudCSS from "@tab/styles/hud.css?inline"
+import type { NodeState, OutboundMessage, Outcome, Segment } from "@tab/types"
 import { MIN_ACTIVE_MS_TO_REGISTER } from "@tab/types"
-
-import { FloatingHUD }    from "@tab/ui/floating-hud"
-import { BannerMarquee }  from "@tab/ui/banner-marquee"
+import { BannerMarquee } from "@tab/ui/banner-marquee"
+import { FloatingHUD } from "@tab/ui/floating-hud"
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
 
@@ -71,17 +69,6 @@ function getLocalActiveMs(): number {
   return localActiveMs + (Date.now() - activeStartMs)
 }
 
-// ─── Marquee double-content helper ────────────────────────────────────────────
-// CSS @keyframes moves the element -50%, so we double the text to loop cleanly.
-
-function prepareMarqueeText(el: HTMLElement, text: string): void {
-  if (text.length > 60) {
-    el.textContent = `${text}     ${text}`
-  } else {
-    el.textContent = text
-  }
-}
-
 // ─── Tab ID ───────────────────────────────────────────────────────────────────
 
 let ownTabId: number | null = null
@@ -97,7 +84,11 @@ async function resolveTabId(): Promise<number | null> {
 
 // ─── Poll ─────────────────────────────────────────────────────────────────────
 
-async function poll(tabId: number, hud: FloatingHUD): Promise<void> {
+async function poll(
+  tabId: number,
+  hud: FloatingHUD,
+  banner: BannerMarquee
+): Promise<void> {
   try {
     const resp = await sendMessage({ type: "GET_NODE_STATE", tabId })
     if (resp.type !== "NODE_STATE") return
@@ -114,6 +105,7 @@ async function poll(tabId: number, hud: FloatingHUD): Promise<void> {
     }
 
     hud.updateNode(nodeState, activeMs)
+    banner.setNode(nodeState) // ← drives ribbon clock + segment sync
   } catch {}
 }
 
@@ -122,7 +114,7 @@ async function poll(tabId: number, hud: FloatingHUD): Promise<void> {
 async function init(): Promise<void> {
   if (!shouldInject()) return
 
-  injectStyles("__tl2_hud_styles__",    rawHudCSS)
+  injectStyles("__tl2_hud_styles__", rawHudCSS)
   injectStyles("__tl2_banner_styles__", rawBannerCSS)
 
   startLocalActiveClock()
@@ -133,8 +125,7 @@ async function init(): Promise<void> {
       const tabId = await resolveTabId()
       if (!tabId) return
       await sendMessage({ type: "SET_SEGMENT", tabId, segment })
-      banner.setSegment(segment)
-      await poll(tabId, hud)
+      await poll(tabId, hud, banner)
     },
 
     onOutcomeRegister: async (outcome: Outcome) => {
@@ -150,48 +141,43 @@ async function init(): Promise<void> {
       }
 
       try {
-        const resp = await sendMessage({ type: "REGISTER_SESSION", tabId, outcome })
+        const resp = await sendMessage({
+          type: "REGISTER_SESSION",
+          tabId,
+          outcome,
+        })
         if (resp.type === "OK") {
           hud.onRegisterSuccess(outcome)
         } else if (resp.type === "ERR") {
           hud.onRegisterError(resp.message)
         }
       } catch (err) {
-        hud.onRegisterError(err instanceof Error ? err.message : "Unknown error")
+        hud.onRegisterError(
+          err instanceof Error ? err.message : "Unknown error"
+        )
       }
 
       const tabId2 = await resolveTabId()
-      if (tabId2) await poll(tabId2, hud)
+      if (tabId2) await poll(tabId2, hud, banner)
     },
   })
 
-  hud.mount(document.body)
+  const root = getOverlayRoot()
+
+  hud.mount(root)
 
   // ── Banner ─────────────────────────────────────────────────────────────────
   const banner = new BannerMarquee({
     toggleCombo: { key: "b", alt: true },
   })
-  banner.mount(document.body)
-
-  // Patch BannerMarquee to use the double-content helper on its textEl.
-  // We do this externally so BannerMarquee stays unaware of the CSS trick.
-  const origFetch = banner.fetchAndUpdate.bind(banner)
-  banner.fetchAndUpdate = async () => {
-    await origFetch()
-    // After fetch, double the text content if long
-    const textEl = document.querySelector<HTMLElement>(".__tl2_banner_text")
-    if (textEl && textEl.textContent) {
-      const raw = textEl.textContent.split("     ")[0] ?? textEl.textContent
-      prepareMarqueeText(textEl, raw)
-    }
-  }
+  banner.mount(root)
 
   // ── Bootstrap ──────────────────────────────────────────────────────────────
   const tabId = await resolveTabId()
   if (!tabId) return
 
   // Initial state
-  await poll(tabId, hud)
+  await poll(tabId, hud, banner)
 
   // Fetch banner text from server
   await banner.fetchAndUpdate()
@@ -203,7 +189,7 @@ async function init(): Promise<void> {
   }
 
   // Poll every second
-  setInterval(() => void poll(tabId, hud), 1000)
+  setInterval(() => void poll(tabId, hud, banner), 1000)
 
   // Refresh banner every 60s
   setInterval(() => void banner.fetchAndUpdate(), 60_000)

@@ -5,6 +5,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        "pre-filter": resolve(__dirname, "src/content/pre-filter.ts"),
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
         popup: resolve(__dirname, "popup.html"),
@@ -12,6 +13,7 @@ export default defineConfig({
       output: {
         manualChunks: undefined,
         entryFileNames: (chunkInfo) => {
+          if (chunkInfo.name === "pre-filter") return "pre-filter.js"
           if (chunkInfo.name === "content") return "content.js"
           if (chunkInfo.name === "background") return "background.js"
           if (chunkInfo.name === "popup") return "popup.js"
