@@ -1,5 +1,5 @@
-import type { WindowGroupHeaderProps } from "@censor/popup/components/window-group-header"
-import type { TabEntry, WindowGroup } from "@censor/types/popup"
+import type { WindowGroupHeaderProps } from "@filter/popup/components/window-group-header"
+import type { TabEntry, WindowGroup } from "@filter/types/popup"
 
 export type TabListProps = {
   groups: Array<WindowGroup>

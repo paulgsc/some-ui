@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@censor/*": ["src/*"]
+      "@filter/*": ["src/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },

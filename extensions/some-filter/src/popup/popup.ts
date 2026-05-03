@@ -1,13 +1,13 @@
-import { ActionBar } from "@censor/popup/components/action-bar"
-import { FilterBadge } from "@censor/popup/components/filter-badge"
-import { TabList } from "@censor/popup/components/tablist"
-import { WindowGroupHeader } from "@censor/popup/components/window-group-header"
+import { ActionBar } from "@filter/popup/components/action-bar"
+import { FilterBadge } from "@filter/popup/components/filter-badge"
+import { TabList } from "@filter/popup/components/tablist"
+import { WindowGroupHeader } from "@filter/popup/components/window-group-header"
 import type {
   FilterConfig,
   PopupState,
   TabEntry,
   WindowGroup,
-} from "@censor/types/popup"
+} from "@filter/types/popup"
 
 import "./popup.css"
 

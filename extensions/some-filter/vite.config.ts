@@ -34,7 +34,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@censor": resolve(__dirname, "src"),
+      "@filter": resolve(__dirname, "src"),
     },
   },
 })

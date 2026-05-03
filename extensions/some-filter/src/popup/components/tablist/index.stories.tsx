@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react"
-import { WindowGroupHeader } from "@censor/popup/components/window-group-header"
-import type { TabEntry, WindowGroup } from "@censor/types/popup"
+import { WindowGroupHeader } from "@filter/popup/components/window-group-header"
+import type { TabEntry, WindowGroup } from "@filter/types/popup"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import "@censor/popup/popup.css"
+import "@filter/popup/popup.css"
 
 import { TabList, type TabListProps } from "."
 
