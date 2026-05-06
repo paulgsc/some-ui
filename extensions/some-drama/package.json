@@ -1,5 +1,5 @@
 {
-  "name": "some-drama",
+  "name": "@some-extension/drama",
   "private": true,
   "version": "1.0.0",
   "description": "Track your C-drama watching experience with emotional reactions and detailed metrics",

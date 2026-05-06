@@ -1,0 +1,84 @@
+/* ── Card Shell ──────────────────────────────────────────────────────────────
+   The outer card container: glassmorphic surface, shadow, drag handle chrome.
+   Does NOT include children layout (see slideshow.css, right-panel.css).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-card {
+  background: linear-gradient(
+    135deg,
+    hsl(30 60% 97% / 0.94) 0%,
+    hsl(350 55% 96% / 0.9) 50%,
+    hsl(20 70% 95% / 0.92) 100%
+  );
+  backdrop-filter: var(--dc-blur);
+  -webkit-backdrop-filter: var(--dc-blur);
+  border: 1px solid var(--dc-border);
+  border-radius: var(--dc-r-card);
+  box-shadow:
+    0 8px 40px var(--dc-shadow),
+    0 2px 0 hsl(0 0% 100% / 0.75) inset,
+    0 -1px 0 hsl(340 50% 70% / 0.18) inset;
+
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  overflow: visible;
+  position: relative;
+  cursor: grab;
+
+  transition:
+    box-shadow 300ms var(--dc-ease),
+    border-color 300ms var(--dc-ease);
+}
+
+.dc-card:hover {
+  box-shadow:
+    0 14px 54px var(--dc-shadow),
+    0 2px 0 hsl(0 0% 100% / 0.85) inset;
+}
+
+/* Drag handle affordance — subtle pill that appears on hover */
+.dc-card::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--dc-border);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+.dc-card:hover::before {
+  opacity: 1;
+}
+
+/* Size toggle button — top-right corner */
+.dc-size-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: hsl(0 0% 100% / 0.65);
+  border: 1px solid var(--dc-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--dc-text-mid);
+  font-size: 9px;
+  z-index: 20;
+  transition:
+    background 200ms,
+    color 200ms;
+}
+
+.dc-size-btn:hover {
+  background: hsl(0 0% 100% / 0.95);
+  color: var(--dc-text-dark);
+}

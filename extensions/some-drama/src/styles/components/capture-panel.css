@@ -1,0 +1,93 @@
+/* ── Capture Panel ───────────────────────────────────────────────────────────
+   Expandable emotion-picker panel that slides below the card.
+   Independent of card shell so it can be toggled without touching card CSS.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-capture-panel {
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition:
+    max-height 350ms var(--dc-ease),
+    opacity 250ms var(--dc-ease),
+    transform 250ms var(--dc-ease);
+  transform-origin: top right;
+  pointer-events: none;
+}
+
+.dc-capture-panel.dc-panel-open {
+  max-height: 200px;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.dc-capture-inner {
+  background: linear-gradient(
+    135deg,
+    hsl(30 60% 97% / 0.96),
+    hsl(350 55% 95% / 0.93)
+  );
+  backdrop-filter: var(--dc-blur);
+  -webkit-backdrop-filter: var(--dc-blur);
+  border: 1px solid var(--dc-border);
+  border-radius: var(--dc-r-card);
+  padding: 12px 14px;
+  box-shadow:
+    0 4px 24px var(--dc-shadow),
+    0 1px 0 hsl(0 0% 100% / 0.7) inset;
+}
+
+/* Panel heading */
+.dc-panel-title {
+  font-size: 9.5px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: bold;
+  color: hsl(25 40% 28%);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.85);
+}
+
+/* Emotion button grid */
+.dc-emotion-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dc-emo-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: hsl(0 0% 100% / 0.65);
+  border: 1px solid var(--dc-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    transform 200ms var(--dc-ease),
+    background 200ms,
+    border-color 200ms,
+    box-shadow 200ms;
+  filter: drop-shadow(0 1px 2px hsl(0 0% 0% / 0.1));
+}
+
+.dc-emo-btn:hover {
+  transform: scale(1.18) translateY(-2px);
+  background: hsl(0 0% 100% / 0.92);
+  box-shadow: 0 4px 10px hsl(340 50% 50% / 0.18);
+}
+
+.dc-emo-btn.dc-emo-selected {
+  background: linear-gradient(135deg, var(--dc-peach), var(--dc-rose));
+  border-color: var(--dc-rose);
+  box-shadow:
+    0 4px 14px hsl(340 70% 60% / 0.35),
+    0 0 0 2px hsl(0 0% 100% / 0.4) inset;
+}

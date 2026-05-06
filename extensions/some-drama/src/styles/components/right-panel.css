@@ -1,0 +1,173 @@
+/* ── Right Panel ─────────────────────────────────────────────────────────────
+   Episode badge + timestamp, progress bar, stats row, mood strip.
+   All text boosted for legibility against the glass card surface.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-card-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 130px;
+  max-width: 160px;
+}
+
+/* ── Episode row ─────────────────────────────────────────────────────────── */
+.dc-ep-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.dc-ep-badge {
+  background: linear-gradient(90deg, var(--dc-peach), var(--dc-rose));
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 9.5px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: bold;
+  color: hsl(0 0% 100%);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  /* Lift off the glass surface */
+  box-shadow:
+    0 2px 8px hsl(340 70% 55% / 0.35),
+    0 1px 0 hsl(0 0% 100% / 0.3) inset;
+  text-shadow: 0 1px 2px hsl(340 60% 30% / 0.4);
+}
+
+.dc-timestamp {
+  font-size: 10px;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  color: var(--dc-text-mid);
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.9);
+}
+
+/* ── Progress bar ────────────────────────────────────────────────────────── */
+.dc-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dc-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  color: var(--dc-text-mid);
+  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.85);
+}
+
+.dc-progress-track {
+  height: 5px;
+  background: hsl(340 25% 84%);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 1px 3px hsl(340 30% 50% / 0.15) inset;
+}
+
+.dc-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--dc-peach), var(--dc-rose));
+  border-radius: 3px;
+  width: var(--dc-prog-pct, 0%);
+  transition: width 1s linear;
+  position: relative;
+  box-shadow: 0 0 6px hsl(340 70% 65% / 0.5);
+}
+
+/* Glint dot at fill tip */
+.dc-progress-fill::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  translate: 50% -50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+  box-shadow:
+    0 0 0 2px var(--dc-rose),
+    0 0 8px hsl(340 80% 65% / 0.7);
+}
+
+/* ── Stats row ───────────────────────────────────────────────────────────── */
+.dc-stats-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dc-stat-label {
+  font-size: 8px;
+  color: var(--dc-text-light);
+  font-family: Georgia, serif;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.8);
+}
+
+.dc-stat-value {
+  font-size: 11px;
+  color: hsl(25 45% 15%);
+  font-family: Georgia, serif;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+  text-shadow: var(--dc-text-glow-warm);
+}
+
+/* ── Mood strip ──────────────────────────────────────────────────────────── */
+.dc-mood-strip {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dc-mood-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: hsl(var(--dc-mood-hue) 60% 72%);
+  opacity: 0.3;
+  border: 1px solid hsl(var(--dc-mood-hue) 40% 60% / 0.3);
+  transition: all 350ms var(--dc-ease);
+  cursor: pointer;
+}
+
+.dc-mood-dot:hover {
+  opacity: 0.65;
+  transform: scale(1.15);
+}
+
+.dc-mood-dot.dc-mood-active {
+  opacity: 1;
+  transform: scale(1.35);
+  box-shadow:
+    0 0 10px hsl(var(--dc-mood-hue) 65% 60% / 0.7),
+    0 0 3px hsl(var(--dc-mood-hue) 80% 75% / 0.9);
+  border-color: hsl(var(--dc-mood-hue) 60% 65% / 0.6);
+}
+
+.dc-mood-label {
+  font-size: 9px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: bold;
+  color: hsl(var(--dc-mood-hue) 40% 28%);
+  margin-left: 3px;
+  text-shadow: 0 1px 3px hsl(0 0% 100% / 0.85);
+  transition: color 400ms var(--dc-ease);
+}

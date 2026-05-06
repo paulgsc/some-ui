@@ -1,0 +1,49 @@
+/* ── Blossom Particles ───────────────────────────────────────────────────────
+   FIX: Layer needs explicit full-viewport dimensions so absolute children
+   resolve offsets correctly. animation-fill-mode: forwards would freeze the
+   final frame at opacity:0, so we omit it — infinite handles looping.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-blossom-layer {
+  position: fixed;
+  inset: 0; /* full viewport — fixes coordinate resolution */
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 2147483646;
+  overflow: visible; /* never clip flying particles */
+}
+
+.dc-blossom {
+  position: absolute;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  will-change: transform, opacity;
+
+  /* Each particle gets its own duration/delay via inline CSS custom props */
+  animation-name: dc-blossom-drift;
+  animation-duration: var(--b-dur, 6s);
+  animation-delay: var(--b-delay, 0s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  /* No fill-mode — infinite handles looping; forwards would freeze at opacity:0 */
+}
+
+@keyframes dc-blossom-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.75);
+  }
+  12% {
+    opacity: 0.9;
+  }
+  65% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--b-tx, -40px), var(--b-ty, -80px))
+      rotate(var(--b-rot, 180deg)) scale(0.35);
+  }
+}

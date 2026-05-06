@@ -1,0 +1,70 @@
+/* ── Title Pill ──────────────────────────────────────────────────────────────
+   Floating label above the card. Glassmorphic pill with pulsing dot.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-title-pill {
+  background: hsl(30 50% 97% / 0.3);
+  backdrop-filter: var(--dc-blur);
+  -webkit-backdrop-filter: var(--dc-blur);
+  border: 1px solid hsl(20 60% 80% / 0.55);
+  border-radius: var(--dc-r-pill);
+  padding: 5px 14px 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow:
+    0 4px 20px var(--dc-shadow),
+    0 1px 0 hsl(0 0% 100% / 0.7) inset;
+  max-width: 260px;
+  overflow: hidden;
+
+  animation: dc-bob 4s ease-in-out infinite;
+}
+
+@keyframes dc-bob {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Live indicator dot */
+.dc-title-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dc-peach);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px hsl(18 95% 65% / 0.9);
+  animation: dc-dot-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes dc-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}
+
+/* Drama title text — sharp and warm against glass */
+.dc-title-text {
+  font-family: Georgia, serif;
+  font-size: 11.5px;
+  font-style: italic;
+  font-weight: bold;
+  color: var(--dc-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.03em;
+  /* Warm glow so it reads on any background */
+  text-shadow: var(--dc-text-glow-warm);
+}

@@ -1,25 +1,23 @@
-// content.ts — logic layer for Drama Sentiment Tracker
-// Drives SentimentWidget (pure UI) with all runtime detection + storage bridging.
+// — logic layer for some-drama overlay
+// Drives DramaCard (pure UI) with runtime detection + storage bridging.
 // Zero shared chunks: all types inlined.
 
-import "../components/drama-tracker/index.css"
+import "@drama/components/drama-tracker/index.css"
 
-import {
-  SentimentWidget,
-  type EmotionType,
-  type WidgetEvents,
-  type WidgetState,
-} from "../components/drama-tracker/sentiment-widget"
+import type {
+  CardEvents,
+  CardSize,
+  CardState,
+  MoodType,
+} from "@drama/components/drama-tracker"
+import { DramaCard } from "@drama/components/drama-tracker"
 
-// ─── Types (inlined) ─────────────────────────────────────────────────────────
+// ─── Types (inlined) ──────────────────────────────────────────────
 
-type CapturedMoment = {
+type CapturedMood = {
   id: string
   timestamp: number
-  emotion: EmotionType
-  intensity: number
-  emoji: string
-  note?: string
+  mood: MoodType
   episodeId: string
   dramaTitle: string
   capturedAt: number
@@ -28,145 +26,165 @@ type CapturedMoment = {
 type DramaContext = {
   dramaTitle: string
   episodeId: string // "Ep 8"
-  episodeRaw: string // "ep-8" — used as storage key segment
+  episodeNum: number // 8
+  totalEps: number // 24 (best-effort)
+  episodeRaw: string // "ep-8"
 }
 
-type PersistedWidgetMeta = {
+type PersistedMeta = {
   x: number
   y: number
-  size: "min" | "compact" | "full"
+  size: CardSize
+  rating: number
+  completionLikelihood: number
+  featuredQuote: string
+  emotionLabel: string
+  overallProgress: number
 }
 
-// ─── Emoji map (parallel to widget's EMOTIONS) ────────────────────────────────
+// ─── Drama context detection ──────────────────────────────────────
 
-const EMOTION_EMOJI: Record<EmotionType, string> = {
-  joy: "😊",
-  love: "😍",
-  sadness: "😭",
-  rage: "😡",
-  fear: "😱",
-  neutral: "😐",
-}
-
-// ─── Drama context detection ─────────────────────────────────────────────────
-
-/**
- * Platform-aware title + episode extraction.
- * Falls back to document.title parsing for unknown hosts.
- */
 function detectDramaContext(): DramaContext {
   const host = window.location.hostname
 
-  // Netflix
+  let rawTitle = ""
+  let rawEpisode = ""
+
   if (host.includes("netflix.com")) {
-    const titleEl =
-      document.querySelector<HTMLElement>(".video-title h4") ??
-      document.querySelector<HTMLElement>("[data-uia='video-title']")
-    const episodeEl =
-      document.querySelector<HTMLElement>("[data-uia='current-episode']") ??
-      document.querySelector<HTMLElement>(".ellipsize-text span")
-    const raw = titleEl?.textContent?.trim() ?? document.title
-    const epRaw = episodeEl?.textContent?.trim() ?? ""
-    return makeContext(raw, epRaw)
+    rawTitle =
+      document
+        .querySelector<HTMLElement>(".video-title h4, [data-uia='video-title']")
+        ?.textContent?.trim() ?? ""
+    rawEpisode =
+      document
+        .querySelector<HTMLElement>("[data-uia='current-episode']")
+        ?.textContent?.trim() ?? ""
+  } else if (host.includes("viki.com")) {
+    rawTitle =
+      document
+        .querySelector<HTMLElement>(".episode-title, .show-title")
+        ?.textContent?.trim() ?? ""
+    rawEpisode =
+      document
+        .querySelector<HTMLElement>(".episode-number")
+        ?.textContent?.trim() ?? ""
+  } else if (host.includes("youtube.com")) {
+    rawTitle =
+      document
+        .querySelector<HTMLElement>("h1.ytd-watch-metadata, h1.title")
+        ?.textContent?.trim() ?? document.title
   }
 
-  // Viki
-  if (host.includes("viki.com")) {
-    const titleEl = document.querySelector<HTMLElement>(
-      ".episode-title, .show-title"
-    )
-    const epEl = document.querySelector<HTMLElement>(".episode-number")
-    const raw = titleEl?.textContent?.trim() ?? document.title
-    const epRaw = epEl?.textContent?.trim() ?? ""
-    return makeContext(raw, epRaw)
-  }
+  if (!rawTitle) rawTitle = document.title
 
-  // Kocowa / Viu / WeTV — add more here
-  // if (host.includes("viu.com")) { … }
-
-  // Generic fallback — parse document.title
-  return makeContext(document.title, "")
+  return parseContext(rawTitle, rawEpisode)
 }
 
-/**
- * Regex-based episode extraction from combined title strings.
- * Handles: "Show Name - Episode 8", "Show Name EP.8", "Show Name Ep 08", etc.
- */
-function makeContext(rawTitle: string, rawEpisode: string): DramaContext {
-  // Try explicit episode string first
-  let epMatch = rawEpisode.match(/\d+/)
+function parseContext(rawTitle: string, rawEpisode: string): DramaContext {
+  let epNum: number | null = null
 
-  // Fall back to parsing the title itself
-  if (!epMatch) {
-    epMatch = rawTitle.match(/(?:ep(?:isode)?\.?\s*)(\d+)/i)
+  const epFromStr = rawEpisode.match(/\d+/)
+  if (epFromStr) epNum = parseInt(epFromStr[0], 10)
+
+  if (!epNum) {
+    const fromTitle = rawTitle.match(/(?:ep(?:isode)?\.?\s*)(\d+)/i)
+    if (fromTitle) epNum = parseInt(fromTitle[1], 10)
   }
 
-  const epNum = epMatch ? epMatch[1] : null
+  // Try to detect total episode count from patterns like "Ep 8/24" or "8화/16화"
+  let totalEps = 0
+  const totalMatch = rawTitle.match(/(?:\/|of)\s*(\d+)/)
+  if (totalMatch) totalEps = parseInt(totalMatch[1], 10)
 
-  // Strip episode segment from title for cleaner display
   const dramaTitle =
     rawTitle
       .replace(/[-–|]\s*ep(isode)?\.?\s*\d+.*/i, "")
       .replace(/\s*ep(isode)?\.?\s*\d+\s*/i, "")
-      .replace(/\s*\(\d{4}\)\s*/, "") // strip year
+      .replace(/\s*\(\d{4}\)\s*/, "")
       .trim() || "Unknown Drama"
 
   const episodeId = epNum ? `Ep ${epNum}` : "—"
   const episodeRaw = epNum ? `ep-${epNum}` : "ep-unknown"
 
-  return { dramaTitle, episodeId, episodeRaw }
+  return { dramaTitle, episodeId, episodeNum: epNum ?? 0, totalEps, episodeRaw }
 }
 
-// ─── Video detection ──────────────────────────────────────────────────────────
+// ─── Video helpers ────────────────────────────────────────────────
 
 function findVideo(): HTMLVideoElement | null {
-  const videos = Array.from(
-    document.querySelectorAll<HTMLVideoElement>("video")
+  return (
+    Array.from(document.querySelectorAll<HTMLVideoElement>("video")).sort(
+      (a, b) => (b.duration || 0) - (a.duration || 0)
+    )[0] ?? null
   )
-  // Prefer the longest-duration video (most likely the main episode)
-  return videos.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0] ?? null
 }
 
-function formatTimestamp(secs: number): string {
+function fmt(secs: number): string {
   if (!isFinite(secs) || secs < 0) return "0:00"
   const m = Math.floor(secs / 60)
   const s = Math.floor(secs % 60)
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
-// ─── Storage bridge ───────────────────────────────────────────────────────────
-
-async function persistMoment(moment: CapturedMoment): Promise<void> {
-  try {
-    await browser.runtime.sendMessage({ type: "SAVE_MOMENT", payload: moment })
-  } catch (err) {
-    console.error("[Drama Sentiment] Failed to save moment:", err)
-  }
+function overallProgress(ctx: DramaContext, episodeProgress: number): number {
+  if (!ctx.totalEps || !ctx.episodeNum) return episodeProgress * 0.5
+  const done = (ctx.episodeNum - 1) / ctx.totalEps
+  const inEp = episodeProgress / ctx.totalEps
+  return Math.min(1, done + inEp)
 }
 
-const META_KEY = "drama_widget_meta"
+// Heuristic: completion likelihood rises with overall progress + time invested
+function likelihoodHeuristic(overallProg: number, rating: number): number {
+  const ratingFactor = rating / 10
+  return Math.min(1, overallProg * 0.6 + ratingFactor * 0.4)
+}
 
-async function loadWidgetMeta(): Promise<PersistedWidgetMeta | null> {
+// ─── Storage ──────────────────────────────────────────────────────
+
+const META_KEY = "drama_card_meta_v2"
+const MOOD_KEY = "drama_moods_v2"
+
+async function loadMeta(): Promise<PersistedMeta | null> {
   try {
-    const result = await browser.storage.local.get(META_KEY)
-    return (result[META_KEY] as PersistedWidgetMeta | undefined) ?? null
+    const r = await browser.storage.local.get(META_KEY)
+    return (r[META_KEY] as PersistedMeta | undefined) ?? null
   } catch {
     return null
   }
 }
 
-async function saveWidgetMeta(meta: PersistedWidgetMeta): Promise<void> {
+async function saveMeta(meta: PersistedMeta): Promise<void> {
   try {
     await browser.storage.local.set({ [META_KEY]: meta })
-  } catch {
-    // non-critical
+  } catch {}
+}
+
+async function saveMood(moment: CapturedMood): Promise<void> {
+  try {
+    await browser.runtime.sendMessage({ type: "SAVE_MOMENT", payload: moment })
+  } catch (err) {
+    console.error("[Drama Card] Failed to save mood:", err)
   }
 }
 
-// ─── Main entry ───────────────────────────────────────────────────────────────
+// ─── Poster URL detection ─────────────────────────────────────────
+// Best-effort: grab the OG image or the thumbnail from the page.
+function detectPosterUrl(): string | null {
+  const og = document.querySelector<HTMLMetaElement>(
+    "meta[property='og:image']"
+  )
+  if (og?.content) return og.content
+  const img = document.querySelector<HTMLImageElement>(
+    ".ytp-cued-thumbnail-overlay-image, [class*='thumbnail'] img"
+  )
+  if (img?.src) return img.src
+  return null
+}
+
+// ─── Main ─────────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
-  console.log("[Drama Sentiment] Initializing…")
+  console.log("[Drama Card] Initializing…")
 
   // Wait for a video element — retry up to 10s
   let video = findVideo()
@@ -178,105 +196,125 @@ async function init(): Promise<void> {
   }
 
   if (!video) {
-    console.log("[Drama Sentiment] No <video> found — aborting.")
+    console.log("[Drama Card] No <video> — aborting.")
     return
   }
 
   const ctx = detectDramaContext()
-  console.log("[Drama Sentiment] Initialized", ctx)
+  console.log("[Drama Card] Context:", ctx)
 
-  // ─── Widget container ──────────────────────────────────────────────────────
+  // Load persisted meta (rating, quote, likelihood, position)
+  const meta = await loadMeta()
+
   const container = document.createElement("div")
-  container.id = "drama-sentiment-root"
-  // Base positioning — will be overridden by persisted drag position
+  container.id = "drama-card-mount"
   Object.assign(container.style, {
     position: "fixed",
     right: "20px",
     bottom: "80px",
     zIndex: "2147483646",
-    fontFamily: "system-ui, sans-serif",
   })
   document.body.appendChild(container)
 
-  // ─── Initial widget state ──────────────────────────────────────────────────
-  const initialState: WidgetState = {
+  const epProg = video.duration > 0 ? video.currentTime / video.duration : 0
+  const oProg = overallProgress(ctx, epProg)
+
+  const initialState: CardState = {
     dramaTitle: ctx.dramaTitle,
-    episode: ctx.episodeId,
-    timestamp: formatTimestamp(video.currentTime),
-    progress: video.duration > 0 ? video.currentTime / video.duration : 0,
-    activeEmotion: null,
-    intensity: 0.7,
+    posterUrl: detectPosterUrl(),
+    episode:
+      ctx.episodeNum && ctx.totalEps
+        ? `Ep ${ctx.episodeNum} / ${ctx.totalEps}`
+        : ctx.episodeId,
+    timestamp: fmt(video.currentTime),
+    progress: epProg,
+    overallProgress: meta?.overallProgress ?? oProg,
+    rating: meta?.rating ?? 7.5,
+    completionLikelihood: meta?.completionLikelihood ?? 0.75,
+    activeMood: null,
+    featuredQuote: meta?.featuredQuote ?? "",
+    emotionLabel: meta?.emotionLabel ?? "enjoying it",
     isPlaying: !video.paused,
   }
 
-  // ─── Events wired to logic layer ──────────────────────────────────────────
-  const events: WidgetEvents = {
-    onEmotionSelect(emotion, intensity, note) {
+  const events: CardEvents = {
+    onMoodSelect(mood) {
       const v = findVideo()
       const ts = v?.currentTime ?? 0
-      const moment: CapturedMoment = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      const moment: CapturedMood = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: ts,
-        emotion,
-        intensity,
-        emoji: EMOTION_EMOJI[emotion],
-        note: note || undefined,
+        mood,
         episodeId: ctx.episodeRaw,
         dramaTitle: ctx.dramaTitle,
         capturedAt: Date.now(),
       }
-      void persistMoment(moment)
-      console.log(
-        "[Drama Sentiment] Captured:",
-        emotion,
-        "@",
-        formatTimestamp(ts),
-        note || ""
-      )
+      void saveMood(moment)
+      // Update emotion label live
+      const labels: Record<MoodType, string> = {
+        joy: "loving this",
+        love: "heart eyes",
+        sadness: "crying rn",
+        tension: "on edge",
+        cringe: "oh no...",
+        neutral: "taking it in",
+      }
+      card.update({ activeMood: mood, emotionLabel: labels[mood] })
+      console.log("[Drama Card] Mood captured:", mood, "@", fmt(ts))
     },
 
     onSizeChange(size) {
-      void saveWidgetMeta({
-        x: parseFloat(widget.root?.style.left ?? "-1"),
-        y: parseFloat(widget.root?.style.top ?? "-1"),
-        size,
-      })
+      persistCurrentMeta(size)
     },
 
     onDragEnd(x, y) {
-      void saveWidgetMeta({ x, y, size: "compact" })
+      persistCurrentMeta(card["currentSize"], x, y)
     },
   }
 
-  const widget = new SentimentWidget(container, initialState, events)
+  const card = new DramaCard(container, initialState, events)
 
-  // ─── Restore persisted position / size ────────────────────────────────────
-  const meta = await loadWidgetMeta()
+  // Restore position / size
   if (meta) {
-    if (meta.x >= 0 && meta.y >= 0) {
-      widget.setPosition(meta.x, meta.y)
-    }
-    if (meta.size) {
-      widget.setSize(meta.size, false)
-    }
+    if (meta.x >= 0 && meta.y >= 0) card.setPosition(meta.x, meta.y)
+    if (meta.size) card.setSize(meta.size, false)
   }
 
-  // ─── State sync loop ───────────────────────────────────────────────────────
-  // Runs on rAF while tab is active; falls back to 1s interval when hidden.
+  function persistCurrentMeta(size: CardSize, x?: number, y?: number): void {
+    const rect = card.root.getBoundingClientRect()
+    void saveMeta({
+      x: x ?? rect.left,
+      y: y ?? rect.top,
+      size,
+      rating: card["state"].rating,
+      completionLikelihood: card["state"].completionLikelihood,
+      featuredQuote: card["state"].featuredQuote,
+      emotionLabel: card["state"].emotionLabel,
+      overallProgress: card["state"].overallProgress,
+    })
+  }
+
+  // ─── State sync ────────────────────────────────────────────────
   let rafId: number | null = null
-  let intervalId: ReturnType<typeof setInterval> | null = null
 
   function tick(): void {
     const v = findVideo()
     if (!v) return
-
     const freshCtx = detectDramaContext()
+    const epP = v.duration > 0 ? v.currentTime / v.duration : 0
+    const oP = overallProgress(freshCtx, epP)
+    const likelihood = likelihoodHeuristic(oP, card["state"].rating)
 
-    widget.update({
+    card.update({
       dramaTitle: freshCtx.dramaTitle,
-      episode: freshCtx.episodeId,
-      timestamp: formatTimestamp(v.currentTime),
-      progress: v.duration > 0 ? v.currentTime / v.duration : 0,
+      episode:
+        freshCtx.episodeNum && freshCtx.totalEps
+          ? `Ep ${freshCtx.episodeNum} / ${freshCtx.totalEps}`
+          : freshCtx.episodeId,
+      timestamp: fmt(v.currentTime),
+      progress: epP,
+      overallProgress: oP,
+      completionLikelihood: likelihood,
       isPlaying: !v.paused,
     })
   }
@@ -300,52 +338,42 @@ async function init(): Promise<void> {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       stopRaf()
-      intervalId = setInterval(tick, 1000)
+      setInterval(tick, 1000)
     } else {
-      if (intervalId) {
-        clearInterval(intervalId)
-        intervalId = null
-      }
       startRaf()
     }
   })
 
   startRaf()
 
-  // ─── Fullscreen sync ───────────────────────────────────────────────────────
+  // Fullscreen: re-parent widget
   document.addEventListener("fullscreenchange", () => {
-    // Keep widget visible in fullscreen by re-parenting to fullscreen element
     const fs = document.fullscreenElement
-    if (fs && fs !== document.body) {
-      fs.appendChild(container)
-    } else {
-      document.body.appendChild(container)
-    }
-    widget.setVisible(true)
+    if (fs && fs !== document.body) fs.appendChild(container)
+    else document.body.appendChild(container)
+    card.setVisible(true)
   })
 
-  // ─── Video events → widget ────────────────────────────────────────────────
-  video.addEventListener("play", () => widget.update({ isPlaying: true }))
-  video.addEventListener("pause", () => widget.update({ isPlaying: false }))
+  video.addEventListener("play", () => card.update({ isPlaying: true }))
+  video.addEventListener("pause", () => card.update({ isPlaying: false }))
 
-  // Re-detect context on URL change (SPA navigation)
+  // SPA nav
   let lastHref = location.href
-  const navObserver = new MutationObserver(() => {
+  new MutationObserver(() => {
     if (location.href !== lastHref) {
       lastHref = location.href
-      const newCtx = detectDramaContext()
-      widget.update({
-        dramaTitle: newCtx.dramaTitle,
-        episode: newCtx.episodeId,
+      const c = detectDramaContext()
+      card.update({
+        dramaTitle: c.dramaTitle,
+        episode: c.episodeId,
+        posterUrl: detectPosterUrl(),
       })
     }
-  })
-  navObserver.observe(document.body, { childList: true, subtree: true })
+  }).observe(document.body, { childList: true, subtree: true })
 
-  console.log("[Drama Sentiment] Running.")
+  console.log("[Drama Card] Running.")
 }
 
-// Kick off after DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => void init())
 } else {

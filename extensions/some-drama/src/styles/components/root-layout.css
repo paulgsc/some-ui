@@ -1,0 +1,86 @@
+/* ── Root & Layout ───────────────────────────────────────────────────────────
+   Handles: root positioning, size variants (min/compact/full),
+   entrance/exit transitions, drag cursor.
+   ────────────────────────────────────────────────────────────────────────── */
+
+#dc-root {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+
+  /* Entrance — starts invisible, JS adds .dc-visible */
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+  transition:
+    opacity 500ms var(--dc-ease),
+    transform 500ms var(--dc-ease);
+}
+
+#dc-root.dc-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+#dc-root.dc-hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(12px) scale(0.94);
+}
+
+#dc-root.dc-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+/* ── Size: min — only the spinning pip ──────────────────────────────────────*/
+#dc-root[data-size="min"] .dc-card {
+  border-radius: var(--dc-r-pill);
+  padding: 6px;
+  cursor: pointer;
+}
+#dc-root[data-size="min"] .dc-card-right,
+#dc-root[data-size="min"] .dc-title-pill,
+#dc-root[data-size="min"] .dc-slideshow-inner,
+#dc-root[data-size="min"] .dc-chat-bubble,
+#dc-root[data-size="min"] .dc-slide-label {
+  display: none;
+}
+#dc-root[data-size="min"] .dc-circle-wrap {
+  width: 42px;
+  height: 42px;
+}
+
+/* ── Size: compact — circle + right panel, no chat bubble ───────────────────*/
+#dc-root[data-size="compact"] .dc-card {
+  padding: 14px 16px 14px 14px;
+  gap: 12px;
+}
+#dc-root[data-size="compact"] .dc-chat-bubble {
+  display: none !important;
+}
+
+/* ── Size: full — everything visible ────────────────────────────────────────*/
+#dc-root[data-size="full"] .dc-card {
+  padding: 16px 18px 16px 16px;
+  gap: 14px;
+}
+#dc-root[data-size="full"] .dc-circle-wrap {
+  width: 112px;
+  height: 112px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────*/
+@media (max-width: 440px) {
+  #dc-root[data-size="compact"] .dc-card-right {
+    min-width: 100px;
+  }
+}
