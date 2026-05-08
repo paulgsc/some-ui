@@ -8,8 +8,8 @@ ytd-video-renderer:not([data-boyo]),
 ytd-rich-item-renderer:not([data-boyo]),
 ytd-grid-video-renderer:not([data-boyo]),
 ytd-compact-video-renderer:not([data-boyo]) {
-  filter: blur(20px);
-  opacity: 0.2;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px);
+  opacity: 0.5;
 
   pointer-events: none;
   cursor: default;
@@ -33,8 +33,9 @@ ytd-rich-item-renderer[data-boyo],
 ytd-grid-video-renderer[data-boyo],
 ytd-compact-video-renderer[data-boyo],
 ytd-playlist-panel-video-renderer[data-boyo] {
-  position: relative !important;
+  isolation: isolate;
   overflow: hidden !important;
+  position: relative !important;
   /* Don't touch filter here — the overlay handles occlusion */
   transition: box-shadow 0.25s ease !important;
 }
@@ -50,7 +51,7 @@ ytd-video-renderer[data-boyo] {
   /* Stretch to fill the renderer */
   position: absolute !important;
   inset: 0 !important;
-  z-index: 9000 !important;
+  z-index: 2 !important;
 
   /* Interaction surface */
   cursor: pointer !important;

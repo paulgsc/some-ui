@@ -1,13 +1,8 @@
-import type { VideoManager } from "./video-manager"
 
-const VIDEO_SELECTORS = [
-  "ytd-video-renderer",
-  "ytd-rich-item-renderer",
-  "ytd-grid-video-renderer",
-  "ytd-compact-video-renderer",
-  "ytd-playlist-panel-video-renderer",
-]
-export const SEL = VIDEO_SELECTORS.join(",")
+import type { VideoManager } from "./video-manager"
+import { SEL } from "./selectors"
+
+export { SEL } from "./selectors"
 
 /**
  * DOM observer.
@@ -66,13 +61,13 @@ export function startObserver(mgr: VideoManager): MutationObserver {
       }
     }
 
-    // Process new elements
+    // Process new/updated elements
     candidates.forEach((el) => mgr.upsert(el))
 
-    // Final cleanup and retry logic (Once per batch)
+    // Retry previously unresolved elements
     mgr.retryUnresolved()
-    mgr.reconcileSession()
 
+    // Evict disconnected entries on any removal
     if (needsPrune) {
       mgr.prune()
     }
@@ -83,6 +78,30 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     subtree: true,
     attributes: true,
     attributeFilter: ["data-video-id"],
+  })
+
+  // yt-navigate-finish fires after every SPA navigation YouTube completes —
+  // banner clicks, category chips, sidebar links, back/forward.
+  //
+  // We do NOT use it as a teardown/restart trigger. The observer stays alive.
+  // Instead we use it for two things:
+  //
+  //   1. prune() immediately — evict any entries whose elements were removed
+  //      during the navigation DOM teardown that the childList observer may
+  //      have batched away (YouTube sometimes does bulk innerHTML replacement
+  //      which produces a single removedNodes entry, not per-element removals).
+  //
+  //   2. scan() after a short delay — catch already-hydrated cards that didn't
+  //      fire a data-video-id attribute mutation because their attribute was
+  //      already set before our observer saw them (e.g. YouTube recycled cards
+  //      across navigations with the new data-video-id pre-set).
+  //
+  // Per-card identity changes (data-video-id mutation on a tracked element) are
+  // handled by the attribute watch + upsert() rawPreviousId check — no session
+  // bump needed. This listener is purely a deferred cleanup + rescan.
+  window.addEventListener("yt-navigate-finish", () => {
+    mgr.prune()
+    setTimeout(() => mgr.scan(), 400)
   })
 
   return obs

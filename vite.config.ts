@@ -47,6 +47,7 @@ export default defineConfig({
       "@tab": path.resolve(__dirname, "./extensions/tab-tracker/src"),
       "@censor": path.resolve(__dirname, "./extensions/some-filter/src"),
       "@mujik": path.resolve(__dirname, "./extensions/some-mujik/src"),
+      "@filter": path.resolve(__dirname, "./extensions/some-filter/src"),
 
       // Add more aliases for other packages as needed
     },

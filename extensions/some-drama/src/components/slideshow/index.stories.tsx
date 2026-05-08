@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react"
+import type { MoodType } from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import type { MoodType } from "@drama/types"
 import { Slideshow } from "."
+
+import "@drama/styles/content.css"
 
 // ── Bridge ───────────────────────────────────────────────────────────────────
 // Mounts a bare Slideshow instance in a fixed-size circle viewport.
