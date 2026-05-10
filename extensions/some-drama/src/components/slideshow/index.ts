@@ -1,3 +1,4 @@
+
 // ── Slideshow ─────────────────────────────────────────────────────────────────
 // Owns: circle ring DOM, three slides, slide nav dots, chat bubble.
 // Does NOT know about card size, drag, or right-panel state.
@@ -23,12 +24,13 @@ export class Slideshow {
   private slides: Array<HTMLDivElement>
   private dots: Array<HTMLSpanElement>
 
-  // Slide internals
-  private ratingValue: HTMLSpanElement
-  private ratingStars: HTMLSpanElement
-  private emotionBackdrop: HTMLDivElement
-  private emotionEmoji: HTMLSpanElement
-  private emotionLabel: HTMLSpanElement
+  // Fields initialized inside buildRatingSlide() / buildEmotionSlide()
+  // called from the constructor — guaranteed non-null after construction.
+  private ratingValue!: HTMLSpanElement
+  private ratingStars!: HTMLSpanElement
+  private emotionBackdrop!: HTMLDivElement
+  private emotionEmoji!: HTMLSpanElement
+  private emotionLabel!: HTMLSpanElement
 
   // Chat bubble
   private bubble: HTMLDivElement
@@ -79,7 +81,7 @@ export class Slideshow {
     this.wrap.appendChild(this.bubble)
 
     // Click circle to advance
-    this.wrap.addEventListener("click", () => this.onSlideClick())
+    this.wrap.addEventListener("click", () => this.onSlideClick?.())
   }
 
   // ── Public interface ────────────────────────────────────────────────────────

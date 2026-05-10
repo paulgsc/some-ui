@@ -37,7 +37,7 @@ export class DramaCard {
   private currentSize: CardSize = "compact"
   private events: CardEvents
 
-  // Particles teardown
+  // Particles teardown — assigned in rAF callback, never called before then
   private killBlossoms: (() => void) | null = null
 
   constructor(container: HTMLElement, initial: CardState, events: CardEvents) {
@@ -134,7 +134,7 @@ export class DramaCard {
 
   destroy(): void {
     this.slideshow.destroy()
-    this.killBlossoms()
+    this.killBlossoms?.()
     this.root.remove()
   }
 

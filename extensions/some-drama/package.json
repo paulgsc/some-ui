@@ -6,10 +6,15 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build:[not-active]": "vite build",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.{ts,tsx}\" --cache",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "clean": "rimraf dist .turbo .eslintcache"
+  },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

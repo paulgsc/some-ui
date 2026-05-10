@@ -1,18 +1,12 @@
-// — logic layer for some-drama overlay
-// Drives DramaCard (pure UI) with runtime detection + storage bridging.
-// Zero shared chunks: all types inlined.
+/* eslint-disable no-console */
 
-import "@drama/components/drama-tracker/index.css"
+import "@drama/styles/content.css"
 
-import type {
-  CardEvents,
-  CardSize,
-  CardState,
-  MoodType,
-} from "@drama/components/drama-tracker"
-import { DramaCard } from "@drama/components/drama-tracker"
+import { DramaCard } from "@drama/components/drama-card"
+import type { CardEvents, CardSize, CardState, MoodType } from "@drama/types"
+import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
-// ─── Types (inlined) ──────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────
 
 type CapturedMood = {
   id: string
@@ -25,10 +19,10 @@ type CapturedMood = {
 
 type DramaContext = {
   dramaTitle: string
-  episodeId: string // "Ep 8"
-  episodeNum: number // 8
-  totalEps: number // 24 (best-effort)
-  episodeRaw: string // "ep-8"
+  episodeId: string
+  episodeNum: number
+  totalEps: number
+  episodeRaw: string
 }
 
 type PersistedMeta = {
@@ -42,43 +36,16 @@ type PersistedMeta = {
   overallProgress: number
 }
 
-// ─── Drama context detection ──────────────────────────────────────
+// ─── Logger ─────────────────────────────────────────────
 
-function detectDramaContext(): DramaContext {
-  const host = window.location.hostname
-
-  let rawTitle = ""
-  let rawEpisode = ""
-
-  if (host.includes("netflix.com")) {
-    rawTitle =
-      document
-        .querySelector<HTMLElement>(".video-title h4, [data-uia='video-title']")
-        ?.textContent?.trim() ?? ""
-    rawEpisode =
-      document
-        .querySelector<HTMLElement>("[data-uia='current-episode']")
-        ?.textContent?.trim() ?? ""
-  } else if (host.includes("viki.com")) {
-    rawTitle =
-      document
-        .querySelector<HTMLElement>(".episode-title, .show-title")
-        ?.textContent?.trim() ?? ""
-    rawEpisode =
-      document
-        .querySelector<HTMLElement>(".episode-number")
-        ?.textContent?.trim() ?? ""
-  } else if (host.includes("youtube.com")) {
-    rawTitle =
-      document
-        .querySelector<HTMLElement>("h1.ytd-watch-metadata, h1.title")
-        ?.textContent?.trim() ?? document.title
-  }
-
-  if (!rawTitle) rawTitle = document.title
-
-  return parseContext(rawTitle, rawEpisode)
+const log = {
+  info: (...args: Array<unknown>): void =>
+    console.info("[Drama Card]", ...args),
+  error: (...args: Array<unknown>): void =>
+    console.error("[Drama Card]", ...args),
 }
+
+// ─── Context parsing ────────────────────────────────────
 
 function parseContext(rawTitle: string, rawEpisode: string): DramaContext {
   let epNum: number | null = null
@@ -91,64 +58,98 @@ function parseContext(rawTitle: string, rawEpisode: string): DramaContext {
     if (fromTitle) epNum = parseInt(fromTitle[1], 10)
   }
 
-  // Try to detect total episode count from patterns like "Ep 8/24" or "8화/16화"
   let totalEps = 0
   const totalMatch = rawTitle.match(/(?:\/|of)\s*(\d+)/)
   if (totalMatch) totalEps = parseInt(totalMatch[1], 10)
 
   const dramaTitle =
     rawTitle
-      .replace(/[-–|]\s*ep(isode)?\.?\s*\d+.*/i, "")
-      .replace(/\s*ep(isode)?\.?\s*\d+\s*/i, "")
+      .replace(/[-–|]\s*ep(?:isode)?\.?\s*\d+.*/i, "")
+      .replace(/\s*ep(?:isode)?\.?\s*\d+\s*/i, "")
       .replace(/\s*\(\d{4}\)\s*/, "")
       .trim() || "Unknown Drama"
 
-  const episodeId = epNum ? `Ep ${epNum}` : "—"
-  const episodeRaw = epNum ? `ep-${epNum}` : "ep-unknown"
-
-  return { dramaTitle, episodeId, episodeNum: epNum ?? 0, totalEps, episodeRaw }
+  return {
+    dramaTitle,
+    episodeId: epNum ? `Ep ${epNum}` : "—",
+    episodeNum: epNum ?? 0,
+    totalEps,
+    episodeRaw: epNum ? `ep-${epNum}` : "ep-unknown",
+  }
 }
 
-// ─── Video helpers ────────────────────────────────────────────────
+function detectDramaContext(): DramaContext {
+  const host = window.location.hostname
+
+  let rawTitle = ""
+  let rawEpisode = ""
+
+  if (host.includes("netflix.com")) {
+    rawTitle =
+      document
+        .querySelector(".video-title h4, [data-uia='video-title']")
+        ?.textContent?.trim() ?? ""
+    rawEpisode =
+      document
+        .querySelector("[data-uia='current-episode']")
+        ?.textContent?.trim() ?? ""
+  } else if (host.includes("viki.com")) {
+    rawTitle =
+      document
+        .querySelector(".episode-title, .show-title")
+        ?.textContent?.trim() ?? ""
+    rawEpisode =
+      document.querySelector(".episode-number")?.textContent?.trim() ?? ""
+  } else if (host.includes("youtube.com")) {
+    rawTitle =
+      document
+        .querySelector("h1.ytd-watch-metadata, h1.title")
+        ?.textContent?.trim() ?? document.title
+  }
+
+  return parseContext(rawTitle || document.title, rawEpisode)
+}
+
+// ─── Video helpers ──────────────────────────────────────
 
 function findVideo(): HTMLVideoElement | null {
-  return (
-    Array.from(document.querySelectorAll<HTMLVideoElement>("video")).sort(
-      (a, b) => (b.duration || 0) - (a.duration || 0)
-    )[0] ?? null
-  )
+  const videos = Array.from(document.querySelectorAll("video"))
+  return videos.sort((a, b) => (b.duration || 0) - (a.duration || 0))[0] ?? null
 }
 
 function fmt(secs: number): string {
-  if (!isFinite(secs) || secs < 0) return "0:00"
+  if (!Number.isFinite(secs) || secs < 0) return "0:00"
   const m = Math.floor(secs / 60)
   const s = Math.floor(secs % 60)
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
-function overallProgress(ctx: DramaContext, episodeProgress: number): number {
+function calculateOverallProgress(
+  ctx: DramaContext,
+  episodeProgress: number
+): number {
   if (!ctx.totalEps || !ctx.episodeNum) return episodeProgress * 0.5
+
   const done = (ctx.episodeNum - 1) / ctx.totalEps
   const inEp = episodeProgress / ctx.totalEps
+
   return Math.min(1, done + inEp)
 }
 
-// Heuristic: completion likelihood rises with overall progress + time invested
 function likelihoodHeuristic(overallProg: number, rating: number): number {
-  const ratingFactor = rating / 10
-  return Math.min(1, overallProg * 0.6 + ratingFactor * 0.4)
+  return Math.min(1, overallProg * 0.6 + (rating / 10) * 0.4)
 }
 
-// ─── Storage ──────────────────────────────────────────────────────
+// ─── Storage ────────────────────────────────────────────
 
 const META_KEY = "drama_card_meta_v2"
-const MOOD_KEY = "drama_moods_v2"
 
 async function loadMeta(): Promise<PersistedMeta | null> {
   try {
     const r = await browser.storage.local.get(META_KEY)
-    return (r[META_KEY] as PersistedMeta | undefined) ?? null
-  } catch {
+    return (r[META_KEY] as PersistedMeta) ?? null
+  } catch (err) {
+    log.error("Failed to load meta", err)
     return null
   }
 }
@@ -156,70 +157,75 @@ async function loadMeta(): Promise<PersistedMeta | null> {
 async function saveMeta(meta: PersistedMeta): Promise<void> {
   try {
     await browser.storage.local.set({ [META_KEY]: meta })
-  } catch {}
+  } catch (err) {
+    log.error("Failed to save meta", err)
+  }
 }
 
 async function saveMood(moment: CapturedMood): Promise<void> {
   try {
-    await browser.runtime.sendMessage({ type: "SAVE_MOMENT", payload: moment })
+    await browser.runtime.sendMessage({
+      type: "SAVE_MOMENT",
+      payload: moment,
+    })
   } catch (err) {
-    console.error("[Drama Card] Failed to save mood:", err)
+    log.error("Failed to save mood:", err)
   }
 }
 
-// ─── Poster URL detection ─────────────────────────────────────────
-// Best-effort: grab the OG image or the thumbnail from the page.
 function detectPosterUrl(): string | null {
   const og = document.querySelector<HTMLMetaElement>(
     "meta[property='og:image']"
   )
   if (og?.content) return og.content
+
   const img = document.querySelector<HTMLImageElement>(
     ".ytp-cued-thumbnail-overlay-image, [class*='thumbnail'] img"
   )
-  if (img?.src) return img.src
-  return null
+
+  return img?.src ?? null
 }
 
-// ─── Main ─────────────────────────────────────────────────────────
+// ─── Main ───────────────────────────────────────────────
 
 async function init(): Promise<void> {
-  console.log("[Drama Card] Initializing…")
-
-  // Wait for a video element — retry up to 10s
-  let video = findVideo()
+  let video: HTMLVideoElement | null = findVideo()
   let attempts = 0
+
   while (!video && attempts < 20) {
-    await new Promise((r) => setTimeout(r, 500))
+    await new Promise<void>((r) => setTimeout(r, 500))
     video = findVideo()
     attempts++
   }
 
   if (!video) {
-    console.log("[Drama Card] No <video> — aborting.")
+    log.info("No <video> found — aborting.")
     return
   }
 
   const ctx = detectDramaContext()
-  console.log("[Drama Card] Context:", ctx)
-
-  // Load persisted meta (rating, quote, likelihood, position)
   const meta = await loadMeta()
 
+  const root = getOverlayRoot()
   const container = document.createElement("div")
   container.id = "drama-card-mount"
+
   Object.assign(container.style, {
     position: "fixed",
     right: "20px",
     bottom: "80px",
     zIndex: "2147483646",
   })
-  document.body.appendChild(container)
+
+  root.appendChild(container)
 
   const epProg = video.duration > 0 ? video.currentTime / video.duration : 0
-  const oProg = overallProgress(ctx, epProg)
 
-  const initialState: CardState = {
+  const oProg = calculateOverallProgress(ctx, epProg)
+
+  let currentSize: CardSize = meta?.size ?? "compact"
+
+  let internalState: CardState = {
     dramaTitle: ctx.dramaTitle,
     posterUrl: detectPosterUrl(),
     episode:
@@ -237,10 +243,26 @@ async function init(): Promise<void> {
     isPlaying: !video.paused,
   }
 
+  const persistCurrentMeta = (size: CardSize, x?: number, y?: number): void => {
+    const rect = container.getBoundingClientRect()
+
+    void saveMeta({
+      x: x ?? rect.left,
+      y: y ?? rect.top,
+      size,
+      rating: internalState.rating,
+      completionLikelihood: internalState.completionLikelihood,
+      featuredQuote: internalState.featuredQuote,
+      emotionLabel: internalState.emotionLabel,
+      overallProgress: internalState.overallProgress,
+    })
+  }
+
   const events: CardEvents = {
-    onMoodSelect(mood) {
+    onMoodSelect(mood: MoodType): void {
       const v = findVideo()
       const ts = v?.currentTime ?? 0
+
       const moment: CapturedMood = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: ts,
@@ -249,8 +271,9 @@ async function init(): Promise<void> {
         dramaTitle: ctx.dramaTitle,
         capturedAt: Date.now(),
       }
+
       void saveMood(moment)
-      // Update emotion label live
+
       const labels: Record<MoodType, string> = {
         joy: "loving this",
         love: "heart eyes",
@@ -259,53 +282,45 @@ async function init(): Promise<void> {
         cringe: "oh no...",
         neutral: "taking it in",
       }
-      card.update({ activeMood: mood, emotionLabel: labels[mood] })
-      console.log("[Drama Card] Mood captured:", mood, "@", fmt(ts))
+
+      internalState.activeMood = mood
+      internalState.emotionLabel = labels[mood]
+      card.update({
+        activeMood: mood,
+        emotionLabel: labels[mood],
+      })
     },
 
-    onSizeChange(size) {
+    onSizeChange(size: CardSize): void {
+      currentSize = size
       persistCurrentMeta(size)
     },
 
-    onDragEnd(x, y) {
-      persistCurrentMeta(card["currentSize"], x, y)
+    onDragEnd(x: number, y: number): void {
+      persistCurrentMeta(currentSize, x, y)
     },
   }
 
-  const card = new DramaCard(container, initialState, events)
+  const card = new DramaCard(container, internalState, events)
 
-  // Restore position / size
   if (meta) {
     if (meta.x >= 0 && meta.y >= 0) card.setPosition(meta.x, meta.y)
     if (meta.size) card.setSize(meta.size, false)
   }
 
-  function persistCurrentMeta(size: CardSize, x?: number, y?: number): void {
-    const rect = card.root.getBoundingClientRect()
-    void saveMeta({
-      x: x ?? rect.left,
-      y: y ?? rect.top,
-      size,
-      rating: card["state"].rating,
-      completionLikelihood: card["state"].completionLikelihood,
-      featuredQuote: card["state"].featuredQuote,
-      emotionLabel: card["state"].emotionLabel,
-      overallProgress: card["state"].overallProgress,
-    })
-  }
-
-  // ─── State sync ────────────────────────────────────────────────
   let rafId: number | null = null
 
-  function tick(): void {
+  const tick = (): void => {
     const v = findVideo()
     if (!v) return
+
     const freshCtx = detectDramaContext()
     const epP = v.duration > 0 ? v.currentTime / v.duration : 0
-    const oP = overallProgress(freshCtx, epP)
-    const likelihood = likelihoodHeuristic(oP, card["state"].rating)
+    const oP = calculateOverallProgress(freshCtx, epP)
 
-    card.update({
+    const likelihood = likelihoodHeuristic(oP, internalState.rating)
+
+    const updates: Partial<CardState> = {
       dramaTitle: freshCtx.dramaTitle,
       episode:
         freshCtx.episodeNum && freshCtx.totalEps
@@ -316,19 +331,24 @@ async function init(): Promise<void> {
       overallProgress: oP,
       completionLikelihood: likelihood,
       isPlaying: !v.paused,
-    })
+    }
+
+    Object.assign(internalState, updates)
+    card.update(updates)
   }
 
-  function startRaf(): void {
+  const startRaf = (): void => {
     if (rafId !== null) return
+
     const loop = (): void => {
       tick()
       rafId = requestAnimationFrame(loop)
     }
+
     rafId = requestAnimationFrame(loop)
   }
 
-  function stopRaf(): void {
+  const stopRaf = (): void => {
     if (rafId !== null) {
       cancelAnimationFrame(rafId)
       rafId = null
@@ -346,38 +366,17 @@ async function init(): Promise<void> {
 
   startRaf()
 
-  // Fullscreen: re-parent widget
-  document.addEventListener("fullscreenchange", () => {
-    const fs = document.fullscreenElement
-    if (fs && fs !== document.body) fs.appendChild(container)
-    else document.body.appendChild(container)
-    card.setVisible(true)
-  })
-
   video.addEventListener("play", () => card.update({ isPlaying: true }))
+
   video.addEventListener("pause", () => card.update({ isPlaying: false }))
 
-  // SPA nav
-  let lastHref = location.href
-  new MutationObserver(() => {
-    if (location.href !== lastHref) {
-      lastHref = location.href
-      const c = detectDramaContext()
-      card.update({
-        dramaTitle: c.dramaTitle,
-        episode: c.episodeId,
-        posterUrl: detectPosterUrl(),
-      })
-    }
-  }).observe(document.body, { childList: true, subtree: true })
-
-  console.log("[Drama Card] Running.")
+  log.info("Running.")
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => void init())
+  document.addEventListener("DOMContentLoaded", () => {
+    void init()
+  })
 } else {
   void init()
 }
-
-export {}

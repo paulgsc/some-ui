@@ -18,7 +18,7 @@ export class DragController {
 
   constructor(
     /** Element that listens for pointerdown to start drag */
-    private readonly handle: HTMLElement,
+    handle: HTMLElement,
     /** Element that is repositioned (used for dimension clamping) */
     private readonly target: HTMLElement,
     /** Elements whose pointerdown should NOT start a drag */
@@ -68,7 +68,7 @@ export class DragController {
       window.innerHeight - this.target.offsetHeight
     )
 
-    this.onMove(cx, cy)
+    this.onMove?.(cx, cy)
   }
 
   private onPointerUp(): void {
@@ -77,7 +77,7 @@ export class DragController {
     this.target.classList.remove("dc-dragging")
 
     const rect = this.target.getBoundingClientRect()
-    this.onDragEnd(rect.left, rect.top)
+    this.onDragEnd?.(rect.left, rect.top)
 
     // Give click handlers time to read didDrag before resetting
     setTimeout(() => {

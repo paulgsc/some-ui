@@ -1,3 +1,4 @@
+
 // ── RightPanel ────────────────────────────────────────────────────────────────
 // Owns: episode badge, timestamp, progress bar, stat values, mood dot strip.
 // Does NOT know about drag, size cycling, or slideshow.
@@ -16,10 +17,12 @@ export class RightPanel {
   private progressFill: HTMLDivElement
   private progressLabelLeft: HTMLSpanElement
   private progressLabelRight: HTMLSpanElement
-  private statRating: HTMLSpanElement
-  private statLikelihood: HTMLSpanElement
+  // Fields initialized inside buildStatsRow() called from constructor
+  private statRating!: HTMLSpanElement
+  private statLikelihood!: HTMLSpanElement
   private moodDots: Map<MoodType, HTMLSpanElement> = new Map()
-  private moodLabel: HTMLSpanElement
+  // Field initialized inside buildMoodStrip() called from constructor
+  private moodLabel!: HTMLSpanElement
 
   /** Fired when user clicks a mood dot */
   onMoodSelect?: (mood: MoodType) => void
@@ -48,10 +51,10 @@ export class RightPanel {
     progWrap.appendChild(progLabels)
     progWrap.appendChild(track)
 
-    // Stats
+    // Stats — assigns this.statRating / this.statLikelihood
     const statsRow = this.buildStatsRow()
 
-    // Mood strip
+    // Mood strip — assigns this.moodLabel
     const moodStrip = this.buildMoodStrip()
 
     this.root.appendChild(epRow)

@@ -5,7 +5,6 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        // popup: resolve(__dirname, "src/popup/popup.html"),
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
       },
@@ -14,7 +13,6 @@ export default defineConfig({
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "content") return "content.js"
           if (chunkInfo.name === "background") return "background.js"
-          if (chunkInfo.name === "popupScript") return "popup.js"
           return "[name].js"
         },
         chunkFileNames: "[name].js",
@@ -30,7 +28,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      "@drama": resolve(__dirname, "src"),
     },
   },
 })
