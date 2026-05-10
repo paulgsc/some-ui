@@ -30,7 +30,7 @@
     "@tanstack/router-plugin": "^1.121.2",
     "attributions": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
-    "makjang": "workspace:*",
+    "@some-ui/makjang": "workspace:*",
     "overlays": "workspace:*",
     "portfolio-chart": "workspace:*",
     "react": "^19.0.0",

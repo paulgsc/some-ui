@@ -22,8 +22,7 @@ export default defineConfig({
     jsxA11yPlugin.flatConfigs.recommended,
     reactPlugin.configs.flat?.recommended,
     // Native flat config — no FlatCompat or fixupPluginRules needed
-    reactHooksPlugin.configs?.["flat/recommended"] ||
-      reactHooksPlugin.configs?.recommended,
+    reactHooksPlugin.configs.flat.recommended,
   ].filter(Boolean),
   settings: {
     react: {

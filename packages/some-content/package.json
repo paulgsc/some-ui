@@ -2,7 +2,7 @@
   "dependencies": {
     "attributions": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
-    "makjang": "workspace:*",
+    "@some-ui/makjang": "workspace:*",
     "portfolio-chart": "workspace:*",
     "some-types-utils": "workspace:*",
     "some-ui-chat": "workspace:*",

@@ -4,7 +4,7 @@
   },
   "dependencies": {
     "attributions": "workspace:*",
-    "makjang": "workspace:*",
+    "@some-ui/makjang": "workspace:*",
     "portfolio-chart": "workspace:*",
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
