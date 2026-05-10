@@ -1,18 +1,17 @@
 //@ts-check
 import eslint from "@eslint/js"
-import tsPlugin from "@typescript-eslint/eslint-plugin"
 import typescriptParser from "@typescript-eslint/parser"
+import { defineConfig } from "eslint/config"
 import tseslint from "typescript-eslint"
-import type { ConfigWithExtends } from "typescript-eslint"
 
 // NOTE: eslint-plugin-deprecation has been removed. Its functionality is
 // superseded by @typescript-eslint/no-deprecated (type-aware, more accurate).
 
-const config: Array<ConfigWithExtends> = [
+export default defineConfig(
   {
     files: ["**/*.{ts,tsx,cts,mts}"],
     plugins: {
-      "@typescript-eslint": tsPlugin,
+      "@typescript-eslint": tseslint.plugin,
     },
     languageOptions: {
       parser: typescriptParser,
@@ -181,7 +180,5 @@ const config: Array<ConfigWithExtends> = [
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/no-deprecated": "off",
     },
-  },
-]
-
-export default config
+  }
+)

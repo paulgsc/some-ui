@@ -1,7 +1,7 @@
 //@ts-check
-import type { ConfigWithExtends } from "typescript-eslint"
+import { defineConfig } from "eslint/config"
 
-const config: ConfigWithExtends = {
+export default defineConfig({
   files: [
     "**/tests/**/*.{ts,tsx,cts,mts}",
     "packages/integration-tests/**/*.{ts,tsx,cts,mts}",
@@ -15,5 +15,4 @@ const config: ConfigWithExtends = {
     // Floating promises are common in test assertions (fire-and-forget expect)
     "@typescript-eslint/no-floating-promises": "off",
   },
-}
-export default config
+})

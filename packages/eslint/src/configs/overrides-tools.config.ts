@@ -1,7 +1,7 @@
 //@ts-check
-import type { ConfigWithExtends } from "typescript-eslint"
+import { defineConfig } from "eslint/config"
 
-const config: ConfigWithExtends = {
+export default defineConfig({
   files: ["**/tools/**/*.{ts,tsx,cts,mts}", "repo-tools/**/*.{ts,tsx,cts,mts}"],
   rules: {
     "no-console": "off",
@@ -9,6 +9,4 @@ const config: ConfigWithExtends = {
     "@typescript-eslint/no-deprecated": "off",
     "@typescript-eslint/no-explicit-any": "warn",
   },
-}
-
-export default config
+})

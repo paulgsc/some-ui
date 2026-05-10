@@ -6,7 +6,6 @@ import {
   baseConfig,
   eslintPluginStorybook,
   reactConfig,
-  tailwindConfig,
   testsOverrideConfig,
   toolsOverrideConfig,
   typescriptConfig,
@@ -18,7 +17,6 @@ import {
 export const maishatuRecommended: Config = defineConfig(
   ...baseConfig,
   ...typescriptConfig,
-  ...tailwindConfig,
   ...reactConfig,
   ...eslintPluginStorybook,
   toolsOverrideConfig,
