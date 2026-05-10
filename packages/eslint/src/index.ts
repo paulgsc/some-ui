@@ -1,4 +1,5 @@
-import tseslint from "typescript-eslint"
+// @ts-check
+import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 
 import {
@@ -11,33 +12,32 @@ import {
   typescriptConfig,
 } from "./configs/index.js"
 
-export const maishatuRecommended: Config = {
+/**
+ * Full recommended preset
+ */
+export const maishatuRecommended: Config = defineConfig(
   ...baseConfig,
   ...typescriptConfig,
   ...tailwindConfig,
   ...reactConfig,
   ...eslintPluginStorybook,
-  ...toolsOverrideConfig,
-  ...testsOverrideConfig,
-}
+  toolsOverrideConfig,
+  testsOverrideConfig
+)
 
-export const maishatuNonStylistic: Config = {
+/**
+ * Non-stylistic preset
+ */
+export const maishatuNonStylistic: Config = defineConfig(
   ...baseConfig,
   ...typescriptConfig,
   ...reactConfig,
   ...eslintPluginStorybook,
-  ...toolsOverrideConfig,
-  ...testsOverrideConfig,
-}
-
-export default <Config>(
-  tseslint.config(
-    ...baseConfig,
-    ...typescriptConfig,
-    ...tailwindConfig,
-    ...reactConfig,
-    ...eslintPluginStorybook,
-    toolsOverrideConfig,
-    testsOverrideConfig
-  )
+  toolsOverrideConfig,
+  testsOverrideConfig
 )
+
+/**
+ * Default export
+ */
+export default maishatuRecommended

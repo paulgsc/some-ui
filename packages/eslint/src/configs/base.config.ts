@@ -2,10 +2,10 @@
 import prettier from "eslint-config-prettier"
 import prettierPlugin from "eslint-plugin-prettier"
 import unusedImports from "eslint-plugin-unused-imports"
+import { defineConfig } from "eslint/config"
 import globals from "globals"
-import type { ConfigWithExtends } from "typescript-eslint"
 
-export default <Array<ConfigWithExtends>>[
+export default defineConfig(
   prettier,
   {
     plugins: {
@@ -60,6 +60,15 @@ export default <Array<ConfigWithExtends>>[
       "no-useless-concat": "error",
       "no-var": "error",
       "one-var": ["error", "never"],
+      // Enforce explicit radix in parseInt — aligns with ESLint v10 deprecation
+      // of the "always"/"as-needed" options; "always" is now the only behavior
+      radix: "error",
+      // Prefer template literals over string concatenation
+      "prefer-template": "error",
+      // Disallow loose equality
+      eqeqeq: ["error", "always", { null: "ignore" }],
+      // Enforce arrow callbacks where possible
+      "prefer-arrow-callback": "error",
     },
-  },
-]
+  }
+)

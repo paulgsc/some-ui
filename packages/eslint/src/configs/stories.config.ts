@@ -2,7 +2,7 @@
 import eslintPluginStorybook from "eslint-plugin-storybook"
 import type { ConfigWithExtends } from "typescript-eslint"
 
-export default <Array<ConfigWithExtends>>[
+const config: Array<ConfigWithExtends> = [
   {
     files: ["**/*.stories.tsx"],
     plugins: {
@@ -16,3 +16,5 @@ export default <Array<ConfigWithExtends>>[
     },
   },
 ]
+
+export default config
