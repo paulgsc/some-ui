@@ -1,40 +1,19 @@
+
 /**
  *
  * LAYER 2 — Lint-time integration tests (lintText)
  *
- * WHAT THIS PROVES:
- *   The configured rules actually produce (or suppress) lint messages when
- *   ESLint processes real code snippets.  Layer 1 (typescript.config.test.ts)
- *   proves the rules are wired with the right severity.  This layer proves
- *   the parser, plugin, and rule implementation are all connected correctly
- *   so the rules can actually fire.
+ * Proves the configured rules actually produce (or suppress) lint messages
+ * when ESLint processes real code.  Layer 1 (typescript.config.test.ts)
+ * proves severity is wired; this layer proves parser + plugin + rule are
+ * all connected so rules can actually fire.
  *
- *   This is the strongest possible invariant: if a rule fires on bad code
- *   and stays silent on good code, we have end-to-end proof that the exported
- *   config enforces what the author declared.
- *
- * IMPORTANT SCOPE LIMIT:
- *   Type-aware rules (no-floating-promises, no-deprecated, etc.) require a
- *   TypeScript language service, which in turn requires a tsconfig.json and
- *   real project files.  These tests are therefore skipped by default and
- *   should be run as a separate CI step with `vitest run --project type-aware`
- *   or via an environment variable: TYPE_AWARE_TESTS=1 vitest run.
- *
- *   Non-type-aware rules (explicit-function-return-type, no-explicit-any,
- *   consistent-type-imports, array-type, no-useless-constructor, etc.) do
- *   NOT require a language service and run in every environment.
- *
- * FAILURE MODES CAUGHT:
- *   - Parser not wired (rule can't parse TS syntax → all rules silent)
- *   - Plugin not registered (rule unknown → ESLint ignores it)
- *   - Rule fires on compliant code (false positive regression)
- *   - Rule silent on clearly violating code (false negative regression)
- *   - JS override broken: type-aware rule fires on .js code
+ * filePath passed to lintSnippet must be RELATIVE (e.g. "src/foo.ts").
+ * ESLint evaluates files[] globs relative to cwd (PACKAGE_ROOT). Absolute
+ * paths can silently fail to match globs, producing zero messages.
  */
 
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 import typescriptConfig from "../src/configs/typescript.config.js"
 import {
@@ -43,11 +22,6 @@ import {
   lintSnippet,
 } from "./helpers/eslint-resolver.js"
 
-const HERE = fileURLToPath(import.meta.url)
-const FIXTURES = path.resolve(HERE, "../../lint-fixtures")
-
-const TS = (rel: string): string => path.join(FIXTURES, rel)
-
 // ── explicit-function-return-type ──────────────────────────────────────────
 
 describe("lint: @typescript-eslint/explicit-function-return-type", () => {
@@ -55,7 +29,7 @@ describe("lint: @typescript-eslint/explicit-function-return-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function greet(name: string) { return "hello " + name }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -68,7 +42,7 @@ describe("lint: @typescript-eslint/explicit-function-return-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function greet(name: string): string { return "hello " + name }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -81,7 +55,7 @@ describe("lint: @typescript-eslint/explicit-function-return-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function greet(name) { return "hello " + name }`,
-      TS("src/util.js")
+      "src/foo.js"
     )
     expectNoMessageForRule(
       messages,
@@ -94,7 +68,7 @@ describe("lint: @typescript-eslint/explicit-function-return-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function build() { return {} }`,
-      TS("src/rollup.config.ts")
+      "src/rollup.config.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -110,8 +84,8 @@ describe("lint: @typescript-eslint/no-explicit-any", () => {
   it("fires when `any` is used as a type annotation", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
-      `export function process(data: any): void { console.log(data) }`,
-      TS("src/service.ts")
+      `export function process(data: any): void { void data }`,
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -123,8 +97,8 @@ describe("lint: @typescript-eslint/no-explicit-any", () => {
   it("does NOT fire when a proper type is used", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
-      `export function process(data: unknown): void { console.log(data) }`,
-      TS("src/service.ts")
+      `export function process(data: unknown): void { void data }`,
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -138,11 +112,11 @@ describe("lint: @typescript-eslint/no-explicit-any", () => {
 
 describe("lint: @typescript-eslint/consistent-type-imports", () => {
   it("fires when a type-only import lacks the `type` keyword", async () => {
-    // Importing only Foo which is a type — should require `import type`
     const messages = await lintSnippet(
       typescriptConfig,
-      `import { Foo } from "./foo"; export type Bar = Foo`,
-      TS("src/service.ts")
+      // Foo is used only as a type — should require `import type`
+      `import { Linter } from "eslint"; export type Bar = Linter.Config`,
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -154,8 +128,8 @@ describe("lint: @typescript-eslint/consistent-type-imports", () => {
   it("does NOT fire when `import type` is used correctly", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
-      `import type { Foo } from "./foo"; export type Bar = Foo`,
-      TS("src/service.ts")
+      `import type { Linter } from "eslint"; export type Bar = Linter.Config`,
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -172,7 +146,7 @@ describe("lint: @typescript-eslint/consistent-type-definitions", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export interface Foo { bar: string }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -185,7 +159,7 @@ describe("lint: @typescript-eslint/consistent-type-definitions", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export type Foo = { bar: string }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -202,7 +176,7 @@ describe("lint: @typescript-eslint/array-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function ids(): number[] { return [] }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -215,7 +189,7 @@ describe("lint: @typescript-eslint/array-type", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export function ids(): Array<number> { return [] }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -232,7 +206,7 @@ describe("lint: @typescript-eslint/no-useless-constructor", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export class Foo { constructor() {} }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -245,7 +219,7 @@ describe("lint: @typescript-eslint/no-useless-constructor", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `export class Foo { private x: number; constructor(x: number) { this.x = x } }`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -262,7 +236,7 @@ describe("lint: no-restricted-syntax (indexed access guard)", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `const arr = [1, 2, 3]; export const x = arr[0]`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -271,11 +245,11 @@ describe("lint: no-restricted-syntax (indexed access guard)", () => {
     )
   })
 
-  it("does NOT fire on property access without computed key", async () => {
+  it("does NOT fire on dot property access", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `const obj = { x: 1 }; export const x = obj.x`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
@@ -286,17 +260,13 @@ describe("lint: no-restricted-syntax (indexed access guard)", () => {
 })
 
 // ── no-unused-vars replacement ─────────────────────────────────────────────
-//
-// Key invariant: the CORE rule must not fire (it's off) and the TS version
-// must fire.  If both fire we get duplicate messages; if neither fires
-// unused variables go undetected.
 
 describe("lint: no-unused-vars replacement (core off, TS-aware on)", () => {
   it("@typescript-eslint/no-unused-vars fires on an unused variable", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `const unused = 42; export const x = 1`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectMessageForRule(
       messages,
@@ -309,12 +279,12 @@ describe("lint: no-unused-vars replacement (core off, TS-aware on)", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `const unused = 42; export const x = 1`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
       "no-unused-vars",
-      ".ts file — core rule replaced"
+      ".ts file — core rule must be off"
     )
   })
 
@@ -322,38 +292,35 @@ describe("lint: no-unused-vars replacement (core off, TS-aware on)", () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `const _ignored = 42; export const x = 1`,
-      TS("src/service.ts")
+      "src/foo.ts"
     )
     expectNoMessageForRule(
       messages,
       "@typescript-eslint/no-unused-vars",
-      ".ts file with _-prefixed var (should be ignored)"
+      ".ts file with _-prefixed var"
     )
   })
 })
 
-// ── JS file: verify no TS-plugin messages bleed through ───────────────────
+// ── JS file: no type-aware bleed ──────────────────────────────────────────
 
 describe("lint: JS file — no type-aware rule messages emitted", () => {
   it("no @typescript-eslint/* rule fires on a plain .js file", async () => {
     const messages = await lintSnippet(
       typescriptConfig,
       `async function x() { Promise.resolve(1) }`,
-      TS("src/util.js")
+      "src/foo.js"
     )
-
     const tsMessages = messages.filter(
       (m) =>
         m.ruleId?.startsWith("@typescript-eslint/") &&
-        // These non-type-aware rules may still apply to JS:
         m.ruleId !== "@typescript-eslint/no-unused-vars"
     )
-
-    expect(
-      tsMessages,
-      `No type-aware @typescript-eslint rules should fire on .js files, but got: ${tsMessages
-        .map((m) => `${m.ruleId} (line ${m.line})`)
-        .join(", ")}`
-    ).toHaveLength(0)
+    if (tsMessages.length > 0) {
+      throw new Error(
+        `No type-aware @typescript-eslint rules should fire on .js, but got:\n` +
+          tsMessages.map((m) => `  ${m.ruleId} (line ${m.line})`).join("\n")
+      )
+    }
   })
 })
