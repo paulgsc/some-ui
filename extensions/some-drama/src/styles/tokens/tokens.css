@@ -1,49 +1,56 @@
-/* ── Design Tokens ───────────────────────────────────────────────────────────
-   Single source of truth. All other CSS files reference these vars only.
+/* ── Drama Tracker — Design Tokens ─────────────────────────────────────────
+   All CSS custom properties in one place for easy theming.
+   Optimized for dark theme environments while maintaining a bright, colorful mood.
    ────────────────────────────────────────────────────────────────────────── */
 
-#dc-root {
-  /* Palette */
-  --dc-peach: hsl(18 95% 72%);
-  --dc-rose: hsl(340 80% 72%);
-  --dc-blush: hsl(350 70% 85%);
-  --dc-cream: hsl(35 60% 94%);
-  --dc-warm-brown: hsl(25 40% 22%);
-  --dc-gold: hsl(42 90% 65%);
+:root {
+  /* ── Core Brand Colors — Vibrant & saturated for dark backgrounds ─────── */
+  --dc-peach: hsl(18 95% 65%);
+  --dc-rose: hsl(340 85% 60%);
+  --dc-gold: hsl(42 100% 55%);
+  --dc-coral: hsl(12 90% 62%);
 
-  /* Glass surfaces */
-  --dc-glass: hsl(20 40% 96% / 0.22);
-  --dc-glass-hover: hsl(20 40% 96% / 0.32);
-  --dc-border: hsl(20 60% 80% / 0.4);
-  --dc-shadow: hsl(340 50% 30% / 0.32);
+  /* ── Surface Colors — Semi-opaque with solid fallbacks ────────────────── */
+  --dc-surface-solid: hsl(25 30% 18%);
+  --dc-surface-glass: hsl(25 25% 15% / 0.92);
+  --dc-surface-elevated: hsl(25 20% 22% / 0.96);
 
-  /* Text — boosted contrast for dark backgrounds */
-  --dc-text-dark: hsl(25 35% 10%); /* near-black warm */
-  --dc-text-mid: hsl(25 30% 30%); /* warm dark brown */
-  --dc-text-light: hsl(25 20% 55%); /* muted label */
+  /* ── Text Colors — High contrast for legibility ───────────────────────── */
+  --dc-text-primary: hsl(30 20% 95%);
+  --dc-text-secondary: hsl(30 15% 75%);
+  --dc-text-muted: hsl(30 10% 55%);
+  --dc-text-dark: hsl(25 50% 12%);
 
-  /* Text glows for legibility on glass */
+  /* ── Border Colors — Visible but subtle ───────────────────────────────── */
+  --dc-border: hsl(340 40% 45% / 0.5);
+  --dc-border-strong: hsl(340 50% 55% / 0.7);
+  --dc-border-glow: hsl(340 60% 65% / 0.4);
+
+  /* ── Shadows — Colored shadows for depth on dark backgrounds ──────────── */
+  --dc-shadow: hsl(340 60% 20% / 0.5);
+  --dc-shadow-strong: hsl(340 70% 15% / 0.7);
+  --dc-shadow-glow: hsl(340 80% 55% / 0.35);
+
+  /* ── Text Shadows — For text to pop on any background ─────────────────── */
   --dc-text-glow-warm:
-    0 0 8px hsl(35 80% 70% / 0.7), 0 1px 3px hsl(0 0% 100% / 0.9);
-  --dc-text-glow-rose:
-    0 0 10px hsl(340 80% 70% / 0.6), 0 1px 2px hsl(0 0% 100% / 0.8);
+    0 0 12px hsl(18 90% 60% / 0.5), 0 0 4px hsl(0 0% 0% / 0.8),
+    0 1px 2px hsl(0 0% 0% / 0.6);
   --dc-text-glow-gold:
-    0 0 8px hsl(42 90% 60% / 0.8), 0 1px 2px hsl(42 80% 90% / 0.9);
+    0 0 10px hsl(42 100% 55% / 0.6), 0 0 4px hsl(0 0% 0% / 0.8);
+  --dc-text-glow-subtle:
+    0 1px 3px hsl(0 0% 0% / 0.7), 0 0 8px hsl(340 60% 50% / 0.3);
 
-  /* Motion */
-  --dc-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --dc-ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --dc-ease-out: cubic-bezier(0, 0, 0.2, 1);
-
-  /* Radii */
-  --dc-r-card: 24px;
+  /* ── Radii ────────────────────────────────────────────────────────────── */
+  --dc-r-card: 20px;
   --dc-r-pill: 999px;
-  --dc-r-circle: 50%;
+  --dc-r-sm: 8px;
 
-  /* Effects */
-  --dc-blur: blur(20px) saturate(160%);
+  /* ── Effects ──────────────────────────────────────────────────────────── */
+  --dc-blur: blur(16px);
+  --dc-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dc-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Mood — JS sets --dc-mood-hue per selection */
+  /* ── Dynamic Mood (set via JS) ────────────────────────────────────────── */
   --dc-mood-hue: 340;
-  --dc-mood-accent: hsl(var(--dc-mood-hue) 75% 68%);
+  --dc-prog-pct: 0%;
 }

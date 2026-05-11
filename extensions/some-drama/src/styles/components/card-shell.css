@@ -1,23 +1,30 @@
 /* ── Card Shell ──────────────────────────────────────────────────────────────
-   The outer card container: glassmorphic surface, shadow, drag handle chrome.
-   Does NOT include children layout (see slideshow.css, right-panel.css).
+   The outer card container: solid dark surface with vibrant accents.
+   Fixed: Solid backgrounds for dark theme visibility, increased padding.
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-card {
+  /* Solid dark background with warm tint — visible on any dark page */
   background: linear-gradient(
     135deg,
-    hsl(30 60% 97% / 0.94) 0%,
-    hsl(350 55% 96% / 0.9) 50%,
-    hsl(20 70% 95% / 0.92) 100%
+    hsl(25 25% 16% / 0.97) 0%,
+    hsl(340 20% 14% / 0.95) 50%,
+    hsl(20 25% 15% / 0.97) 100%
   );
   backdrop-filter: var(--dc-blur);
   -webkit-backdrop-filter: var(--dc-blur);
-  border: 1px solid var(--dc-border);
+
+  /* Visible border with glow */
+  border: 1.5px solid var(--dc-border-strong);
   border-radius: var(--dc-r-card);
+
+  /* Layered shadows for depth + glow effect */
   box-shadow:
-    0 8px 40px var(--dc-shadow),
-    0 2px 0 hsl(0 0% 100% / 0.75) inset,
-    0 -1px 0 hsl(340 50% 70% / 0.18) inset;
+    0 0 0 1px hsl(340 50% 40% / 0.15),
+    0 8px 32px var(--dc-shadow-strong),
+    0 0 60px hsl(340 60% 50% / 0.15),
+    inset 0 1px 0 hsl(340 40% 50% / 0.2),
+    inset 0 -1px 0 hsl(340 30% 30% / 0.3);
 
   display: flex;
   flex-direction: row;
@@ -26,30 +33,38 @@
   position: relative;
   cursor: grab;
 
+  /* Prevent jitter */
+  will-change: box-shadow;
+  transform: translateZ(0);
+
   transition:
     box-shadow 300ms var(--dc-ease),
     border-color 300ms var(--dc-ease);
 }
 
 .dc-card:hover {
+  border-color: var(--dc-rose);
   box-shadow:
-    0 14px 54px var(--dc-shadow),
-    0 2px 0 hsl(0 0% 100% / 0.85) inset;
+    0 0 0 1px hsl(340 60% 50% / 0.3),
+    0 12px 48px var(--dc-shadow-strong),
+    0 0 80px hsl(340 70% 55% / 0.2),
+    inset 0 1px 0 hsl(340 50% 55% / 0.25),
+    inset 0 -1px 0 hsl(340 30% 30% / 0.3);
 }
 
 /* Drag handle affordance — subtle pill that appears on hover */
 .dc-card::before {
   content: "";
   position: absolute;
-  top: 8px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 28px;
-  height: 3px;
+  width: 32px;
+  height: 4px;
   border-radius: 2px;
-  background: var(--dc-border);
+  background: hsl(340 40% 50% / 0.4);
   opacity: 0;
-  transition: opacity 300ms;
+  transition: opacity 300ms var(--dc-ease);
 }
 
 .dc-card:hover::before {
@@ -59,26 +74,28 @@
 /* Size toggle button — top-right corner */
 .dc-size-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: hsl(0 0% 100% / 0.65);
+  background: hsl(340 30% 25% / 0.8);
   border: 1px solid var(--dc-border);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--dc-text-mid);
-  font-size: 9px;
+  color: var(--dc-text-secondary);
+  font-size: 10px;
   z-index: 20;
   transition:
-    background 200ms,
-    color 200ms;
+    background 200ms var(--dc-ease),
+    color 200ms var(--dc-ease),
+    border-color 200ms var(--dc-ease);
 }
 
 .dc-size-btn:hover {
-  background: hsl(0 0% 100% / 0.95);
-  color: var(--dc-text-dark);
+  background: hsl(340 40% 35% / 0.9);
+  color: var(--dc-text-primary);
+  border-color: var(--dc-border-strong);
 }

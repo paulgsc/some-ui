@@ -1,49 +1,50 @@
 /* ── Blossom Particles ───────────────────────────────────────────────────────
-   FIX: Layer needs explicit full-viewport dimensions so absolute children
-   resolve offsets correctly. animation-fill-mode: forwards would freeze the
-   final frame at opacity:0, so we omit it — infinite handles looping.
+   Floating particle layer. Reduced animation intensity to prevent jitter.
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-blossom-layer {
   position: fixed;
-  inset: 0; /* full viewport — fixes coordinate resolution */
+  inset: 0;
   width: 100vw;
   height: 100vh;
   pointer-events: none;
   z-index: 2147483646;
-  overflow: visible; /* never clip flying particles */
+  overflow: visible;
 }
 
 .dc-blossom {
   position: absolute;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1;
   opacity: 0;
+
+  /* GPU acceleration for smooth animation */
   will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 
   /* Each particle gets its own duration/delay via inline CSS custom props */
   animation-name: dc-blossom-drift;
-  animation-duration: var(--b-dur, 6s);
+  animation-duration: var(--b-dur, 7s);
   animation-delay: var(--b-delay, 0s);
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
-  /* No fill-mode — infinite handles looping; forwards would freeze at opacity:0 */
 }
 
 @keyframes dc-blossom-drift {
   0% {
     opacity: 0;
-    transform: translate(0, 0) rotate(0deg) scale(0.75);
+    transform: translate(0, 0) rotate(0deg) scale(0.8) translateZ(0);
   }
-  12% {
-    opacity: 0.9;
+  15% {
+    opacity: 0.85;
   }
-  65% {
-    opacity: 0.55;
+  60% {
+    opacity: 0.5;
   }
   100% {
     opacity: 0;
-    transform: translate(var(--b-tx, -40px), var(--b-ty, -80px))
-      rotate(var(--b-rot, 180deg)) scale(0.35);
+    transform: translate(var(--b-tx, -35px), var(--b-ty, -70px))
+      rotate(var(--b-rot, 160deg)) scale(0.4) translateZ(0);
   }
 }

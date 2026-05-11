@@ -1,55 +1,59 @@
 /* ── Right Panel ─────────────────────────────────────────────────────────────
    Episode badge + timestamp, progress bar, stats row, mood strip.
-   All text boosted for legibility against the glass card surface.
+   Fixed: High-contrast text, increased spacing, visible elements on dark.
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-card-right {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 130px;
-  max-width: 160px;
+  gap: 12px;
+  min-width: 140px;
+  max-width: 170px;
+  padding-left: 4px;
 }
 
 /* ── Episode row ─────────────────────────────────────────────────────────── */
 .dc-ep-row {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
 .dc-ep-badge {
+  /* Vibrant gradient background */
   background: linear-gradient(90deg, var(--dc-peach), var(--dc-rose));
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 9.5px;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 10px;
   font-family: Georgia, serif;
   font-style: italic;
   font-weight: bold;
   color: hsl(0 0% 100%);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   white-space: nowrap;
-  /* Lift off the glass surface */
+
+  /* Glow effect */
   box-shadow:
-    0 2px 8px hsl(340 70% 55% / 0.35),
-    0 1px 0 hsl(0 0% 100% / 0.3) inset;
-  text-shadow: 0 1px 2px hsl(340 60% 30% / 0.4);
+    0 2px 12px hsl(340 70% 55% / 0.45),
+    0 0 20px hsl(18 85% 60% / 0.25),
+    inset 0 1px 0 hsl(0 0% 100% / 0.25);
+  text-shadow: 0 1px 2px hsl(340 60% 25% / 0.5);
 }
 
 .dc-timestamp {
-  font-size: 10px;
+  font-size: 11px;
   font-family: "Courier New", monospace;
   font-weight: bold;
-  color: var(--dc-text-mid);
-  letter-spacing: 0.08em;
-  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.9);
+  color: var(--dc-text-secondary);
+  letter-spacing: 0.1em;
+  text-shadow: var(--dc-text-glow-subtle);
 }
 
 /* ── Progress bar ────────────────────────────────────────────────────────── */
 .dc-progress-wrap {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
 }
 
 .dc-progress-labels {
@@ -58,27 +62,33 @@
   font-size: 9px;
   font-family: "Courier New", monospace;
   font-weight: bold;
-  color: var(--dc-text-mid);
-  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.85);
+  color: var(--dc-text-secondary);
+  text-shadow: var(--dc-text-glow-subtle);
 }
 
 .dc-progress-track {
-  height: 5px;
-  background: hsl(340 25% 84%);
-  border-radius: 3px;
+  height: 6px;
+  background: hsl(340 20% 25%);
+  border-radius: 4px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 1px 3px hsl(340 30% 50% / 0.15) inset;
+  box-shadow:
+    inset 0 1px 3px hsl(0 0% 0% / 0.4),
+    0 1px 0 hsl(340 30% 35% / 0.3);
 }
 
 .dc-progress-fill {
   height: 100%;
   background: linear-gradient(to right, var(--dc-peach), var(--dc-rose));
-  border-radius: 3px;
+  border-radius: 4px;
   width: var(--dc-prog-pct, 0%);
   transition: width 1s linear;
   position: relative;
-  box-shadow: 0 0 6px hsl(340 70% 65% / 0.5);
+
+  /* Glow on the fill */
+  box-shadow:
+    0 0 10px hsl(340 70% 60% / 0.5),
+    0 0 20px hsl(18 80% 60% / 0.3);
 }
 
 /* Glint dot at fill tip */
@@ -88,86 +98,90 @@
   right: 0;
   top: 50%;
   translate: 50% -50%;
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: white;
+  background: hsl(0 0% 100%);
   box-shadow:
     0 0 0 2px var(--dc-rose),
-    0 0 8px hsl(340 80% 65% / 0.7);
+    0 0 12px hsl(340 80% 65% / 0.8),
+    0 0 24px hsl(340 70% 60% / 0.5);
 }
 
 /* ── Stats row ───────────────────────────────────────────────────────────── */
 .dc-stats-row {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
 .dc-stat {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
 
 .dc-stat-label {
   font-size: 8px;
-  color: var(--dc-text-light);
+  color: var(--dc-text-muted);
   font-family: Georgia, serif;
   font-style: italic;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  text-shadow: 0 1px 2px hsl(0 0% 100% / 0.8);
+  letter-spacing: 0.08em;
+  text-shadow: var(--dc-text-glow-subtle);
 }
 
 .dc-stat-value {
-  font-size: 11px;
-  color: hsl(25 45% 15%);
+  font-size: 12px;
+  color: var(--dc-text-primary);
   font-family: Georgia, serif;
   font-weight: bold;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   text-shadow: var(--dc-text-glow-warm);
 }
 
 /* ── Mood strip ──────────────────────────────────────────────────────────── */
 .dc-mood-strip {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
 
 .dc-mood-dot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: hsl(var(--dc-mood-hue) 60% 72%);
-  opacity: 0.3;
-  border: 1px solid hsl(var(--dc-mood-hue) 40% 60% / 0.3);
+  background: hsl(var(--dc-mood-hue) 65% 55%);
+  opacity: 0.4;
+  border: 1.5px solid hsl(var(--dc-mood-hue) 50% 45% / 0.5);
   transition: all 350ms var(--dc-ease);
   cursor: pointer;
 }
 
 .dc-mood-dot:hover {
-  opacity: 0.65;
+  opacity: 0.7;
   transform: scale(1.15);
 }
 
 .dc-mood-dot.dc-mood-active {
   opacity: 1;
-  transform: scale(1.35);
+  transform: scale(1.4);
   box-shadow:
-    0 0 10px hsl(var(--dc-mood-hue) 65% 60% / 0.7),
-    0 0 3px hsl(var(--dc-mood-hue) 80% 75% / 0.9);
-  border-color: hsl(var(--dc-mood-hue) 60% 65% / 0.6);
+    0 0 12px hsl(var(--dc-mood-hue) 70% 55% / 0.7),
+    0 0 24px hsl(var(--dc-mood-hue) 65% 50% / 0.4),
+    0 0 4px hsl(var(--dc-mood-hue) 80% 70%);
+  border-color: hsl(var(--dc-mood-hue) 60% 60%);
 }
 
 .dc-mood-label {
-  font-size: 9px;
+  font-size: 10px;
   font-family: Georgia, serif;
   font-style: italic;
   font-weight: bold;
-  color: hsl(var(--dc-mood-hue) 40% 28%);
-  margin-left: 3px;
-  text-shadow: 0 1px 3px hsl(0 0% 100% / 0.85);
+  color: hsl(var(--dc-mood-hue) 50% 70%);
+  margin-left: 4px;
+  text-shadow:
+    0 0 8px hsl(var(--dc-mood-hue) 60% 50% / 0.4),
+    0 1px 2px hsl(0 0% 0% / 0.5);
   transition: color 400ms var(--dc-ease);
 }
