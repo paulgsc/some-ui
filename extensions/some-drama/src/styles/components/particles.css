@@ -14,6 +14,11 @@
 
 .dc-blossom {
   position: absolute;
+  /* Positioned relative to tracked origin */
+  left: calc(
+    var(--b-ox, 0px) + var(--b-ox, 0px)
+  ); /* layer origin + per-particle offset */
+  top: var(--b-oy, 0px);
   font-size: 16px;
   line-height: 1;
   opacity: 0;

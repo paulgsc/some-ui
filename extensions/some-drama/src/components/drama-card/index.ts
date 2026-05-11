@@ -86,7 +86,7 @@ export class DramaCard {
     this.drag = new DragController(this.card, this.root, [
       "button",
       ".dc-mood-dot",
-      ".dc-circle-wrap",
+      // ".dc-circle-wrap",
     ])
     this.drag.onMove = (x, y) => this.applyPosition(x, y)
     this.drag.onDragEnd = (x, y) => this.events.onDragEnd(x, y)
@@ -124,6 +124,11 @@ export class DramaCard {
     if (emit) this.events.onSizeChange(size)
     // Close capture panel when minimising
     if (size === "min" && this.capturePanel.isOpen) this.capturePanel.close()
+    if (size === "min") {
+      this.slideshow.stopAutoAdvance()
+    } else {
+      this.slideshow.startAutoAdvance()
+    }
     // Bubble only visible in full + poster slide
     this.syncBubbleVisibility()
   }

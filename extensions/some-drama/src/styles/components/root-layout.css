@@ -58,8 +58,13 @@
 #dc-root[data-size="min"] .dc-title-pill,
 #dc-root[data-size="min"] .dc-slideshow-inner,
 #dc-root[data-size="min"] .dc-chat-bubble,
+#dc-root[data-size="min"] .dc-blossom,
 #dc-root[data-size="min"] .dc-slide-label {
   display: none;
+}
+#dc-root[data-size="min"] .dc-circle-ring,
+#dc-root[data-size="min"] .dc-title-dot {
+  animation-play-state: paused;
 }
 #dc-root[data-size="min"] .dc-circle-wrap {
   width: 48px;
