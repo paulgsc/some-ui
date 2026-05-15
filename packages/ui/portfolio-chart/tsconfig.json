@@ -3,17 +3,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "declarationDir": "./",
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "paths": {
-      "@portfolio-chart/*": ["./src/*"]
+      "@portfolio/*": ["./src/*"]
     }
   },
-  "include": [
-    "tailwind.config.ts",
-    "eslint.config.js",
-    "../../../assets/**/*",
-    "src"
-  ],
+  "include": ["tailwind.config.ts", "eslint.config.js", "src"],
   "exclude": ["node_modules", "build", "dist"]
 }

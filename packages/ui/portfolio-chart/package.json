@@ -34,7 +34,7 @@
   "license": "MIT",
   "main": "./dist/some-ui-portfolio-chart.cjs.js",
   "module": "./dist/some-ui-portfolio-chart.es.js",
-  "name": "portfolio-chart",
+  "name": "@some-ui/portfolio",
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
