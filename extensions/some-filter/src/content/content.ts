@@ -20,9 +20,12 @@ import { classifyPage } from "@filter/lib/content/classify"
 import {
   DARK_THEME_ATTR,
   injectDarkTheme,
-  PRE_FILTER_STYLE_ID,
   removeDarkTheme,
 } from "@filter/lib/content/dark-theme"
+import {
+  commitVisualState,
+  disablePrepaint,
+} from "@filter/lib/content/prepaint"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -100,19 +103,21 @@ function applyState(state: TabState): void {
 
   deactivateDarkTheme()
   removeLegacyFilter()
+  disablePrepaint()
 
   switch (state) {
     case "auto":
+      commitVisualState()
       runAutoClassify()
       break
     case "legacy":
       // Pre-filter style is no longer needed once legacy takes over
-      document.getElementById(PRE_FILTER_STYLE_ID)?.remove()
+      commitVisualState()
       applyLegacyFilter(filterConfig)
       break
     case "off":
       // Both already cleared; also remove the pre-filter if still present
-      document.getElementById(PRE_FILTER_STYLE_ID)?.remove()
+      disablePrepaint()
       break
   }
 
@@ -138,7 +143,7 @@ function runAutoClassify(): void {
     activateDarkTheme()
   } else {
     // Page is already dark or classification skipped — remove pre-filter
-    document.getElementById(PRE_FILTER_STYLE_ID)?.remove()
+    disablePrepaint()
   }
 
   // Debug attrs on body (no page layer div anymore)

@@ -1,19 +1,72 @@
-/* Apply ONLY while postpaint is NOT present */
-html:not([data-sw-postpaint]),
-html:not([data-sw-postpaint]) body {
-  background: #0d1117 !important;
+/* repaint.css */
+/* document_start prepaint shell */
+
+/*
+  Goal:
+  - eliminate white flashes before site theme stabilizes
+  - avoid transparent punch-through
+  - keep browser dark canvas visible underneath
+  - safely disengage after real paint stabilizes
+*/
+
+html[data-sw-prepaint],
+html[data-sw-prepaint] body {
+  background-color: #0d1117 !important;
   color-scheme: dark !important;
 }
 
-/* aggressive wipe */
-html:not([data-sw-postpaint]) body * {
+/*
+  Prevent vendor white backgrounds during initial parse.
+  Avoid blanket transparent wipes.
+*/
+
+html[data-sw-prepaint] body,
+html[data-sw-prepaint] div,
+html[data-sw-prepaint] section,
+html[data-sw-prepaint] main,
+html[data-sw-prepaint] article,
+html[data-sw-prepaint] aside,
+html[data-sw-prepaint] header,
+html[data-sw-prepaint] footer,
+html[data-sw-prepaint] nav {
   background-color: transparent !important;
 }
 
-/* preserve media */
-html:not([data-sw-postpaint]) img,
-html:not([data-sw-postpaint]) video,
-html:not([data-sw-postpaint]) canvas,
-html:not([data-sw-postpaint]) picture {
+/*
+  Common offenders.
+*/
+
+html[data-sw-prepaint] [style*="background:#fff"],
+html[data-sw-prepaint] [style*="background: #fff"],
+html[data-sw-prepaint] [style*="background:white"],
+html[data-sw-prepaint] [style*="background: white"],
+html[data-sw-prepaint] [style*="background-color:#fff"],
+html[data-sw-prepaint] [style*="background-color: #fff"],
+html[data-sw-prepaint] [style*="background-color:white"],
+html[data-sw-prepaint] [style*="background-color: white"] {
+  background: transparent !important;
   background-color: transparent !important;
+}
+
+/*
+  Preserve media/compositor layers.
+*/
+
+html[data-sw-prepaint] img,
+html[data-sw-prepaint] video,
+html[data-sw-prepaint] canvas,
+html[data-sw-prepaint] picture,
+html[data-sw-prepaint] svg {
+  background-color: transparent !important;
+}
+
+/*
+  Optional:
+  reduce harsh transitions during hydration.
+*/
+
+html[data-sw-prepaint] {
+  transition:
+    background-color 80ms linear,
+    color 80ms linear;
 }

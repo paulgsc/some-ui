@@ -1,4 +1,3 @@
-
 /**
  *
  * Two-part dark theme application:
@@ -20,9 +19,9 @@
  */
 
 import { parseColor, relativeLuminance } from "./classify"
+import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
-export const PRE_FILTER_STYLE_ID = "__sw_pre_filter"
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -225,9 +224,20 @@ function classifyElement(
 }
 
 const SKIP_TAGS = new Set([
-  "SCRIPT", "STYLE", "LINK", "META", "NOSCRIPT",
-  "IMG", "VIDEO", "CANVAS", "AUDIO", "PICTURE",
-  "EMBED", "OBJECT", "SVG", "IFRAME",
+  "SCRIPT",
+  "STYLE",
+  "LINK",
+  "META",
+  "NOSCRIPT",
+  "IMG",
+  "VIDEO",
+  "CANVAS",
+  "AUDIO",
+  "PICTURE",
+  "EMBED",
+  "OBJECT",
+  "SVG",
+  "IFRAME",
 ])
 
 function shouldSkip(el: Element): boolean {
@@ -289,10 +299,6 @@ function stopPatchObserver(): void {
 const STYLE_ID = "__sw_dark_theme"
 
 export function injectDarkTheme(): void {
-  // Remove the pre-filter style now that the real theme is taking over.
-  // This avoids a double-application and lets our more precise rules win.
-  document.getElementById(PRE_FILTER_STYLE_ID)?.remove()
-
   let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
   if (!style) {
     style = document.createElement("style")
@@ -304,11 +310,13 @@ export function injectDarkTheme(): void {
   // Walk from body — patcher already skips [data-my-ext] nodes
   patchAll(document.body)
   startPatchObserver(document.body)
+
+  commitVisualState()
 }
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
-  document.getElementById(PRE_FILTER_STYLE_ID)?.remove()
+  commitVisualState()
   stopPatchObserver()
 
   document.querySelectorAll("[data-sw-patched]").forEach((el) => {

@@ -20,8 +20,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "css": ["repaint.css"],
-      "js": ["prepaint.js"],
+      "css": ["prepaint.css"],
+      "js": ["prepaint-start.js"],
       "run_at": "document_start"
     },
     {
