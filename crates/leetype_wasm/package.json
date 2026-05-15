@@ -2,6 +2,9 @@
   "name": "leetype-wasm",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/leetype_wasm.js",
+  "module": "dist/leetype_wasm.js",
+  "types": "dist/leetype_wasm.d.ts",
   "type": "module",
   "scripts": {
     "build": "pnpm wasm:dev",
@@ -10,6 +13,9 @@
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},
