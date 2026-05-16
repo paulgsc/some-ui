@@ -1,14 +1,24 @@
 /* ── Root & Layout ───────────────────────────────────────────────────────────
    Handles: root positioning, size variants (min/compact/full),
    entrance/exit transitions, drag cursor.
-   Fixed: Increased spacing, reduced jitter with will-change and backface.
+
+   PATCH #1 FIX — drag deadzone & spawn:
+   - Removed `bottom` and `right` from #dc-root. These fought JS-set `left`/
+     `top` values, creating a deadzone in the bottom-right ~10% of the viewport
+     where drag targets were unreachable (the browser resolves conflicting
+     position properties by honouring both, which distorts the element rect).
+   - Initial `left`/`top` are set to a safe off-screen value and immediately
+     overwritten by content.ts#initCardPosition() before the entrance
+     animation fires — so there's no visible bottom-left flash.
    ────────────────────────────────────────────────────────────────────────── */
 
 #dc-root {
   position: fixed;
-  bottom: 32px;
-  right: 24px;
-  z-index: 2147483647;
+  /* JS owns left/top exclusively — no bottom/right here */
+  left: -9999px;
+  top: -9999px;
+  z-index: 40000;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -18,15 +28,13 @@
   -webkit-user-select: none;
   pointer-events: auto;
 
-  /* Prevent jitter with GPU acceleration */
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
 
-  /* Entrance — starts invisible, JS adds .dc-visible */
+  /* Entrance — starts invisible, JS adds .dc-visible after positioning */
   opacity: 0;
-  transform: translateY(16px) scale(0.96) translateZ(0);
   transition:
     opacity 400ms var(--dc-ease),
     transform 400ms var(--dc-ease);
@@ -34,7 +42,7 @@
 
 #dc-root.dc-visible {
   opacity: 1;
-  transform: translateY(0) scale(1) translateZ(0);
+  transform: translateZ(0);
 }
 
 #dc-root.dc-hidden {
@@ -94,9 +102,5 @@
 @media (max-width: 440px) {
   #dc-root[data-size="compact"] .dc-card-right {
     min-width: 110px;
-  }
-  #dc-root {
-    bottom: 20px;
-    right: 16px;
   }
 }

@@ -1,12 +1,22 @@
 // ── Particles ─────────────────────────────────────────────────────────────────
 // Blossom particle system. Single responsibility: spawn + teardown.
 //
-//   • Layer gets `inset: 0` + explicit 100vw/100vh so absolute children
-//     resolve viewport-relative offsets correctly.
-//   • Uses programmatic style injection instead of relying on the import
-//     pipeline being ready — guarantees the keyframe exists when particles run.
-//   • animation-fill-mode intentionally omitted (infinite loops; fill-mode
-//     'forwards' would freeze last frame at opacity:0 and hide particles).
+// PATCH #1 FIX — blossom following the card:
+//   The original code used --b-ox / --b-oy for BOTH the layer-level origin
+//   (updated by the RAF loop) AND per-particle relative offsets (set as inline
+//   styles). Because CSS custom properties inherit, the per-particle inline
+//   values silently clobbered the layer's tracked origin in the cascade, so
+//   every particle was anchored to (0,0) regardless of card position.
+//
+//   Fix: two distinct namespaces.
+//     --b-layer-x / --b-layer-y  — set on the layer element by the RAF loop;
+//                                   track the card's current viewport position.
+//     --b-px / --b-py            — set per-particle inline; static relative
+//                                   offset from the layer origin.
+//   particles.css combines them:  left: calc(var(--b-layer-x) + var(--b-px))
+//
+//   Particles use `position: fixed` (not `absolute`) so their left/top resolve
+//   against the viewport directly — no intermediate offset parent confusion.
 
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
@@ -16,13 +26,15 @@ const BLOSSOM_GLYPHS = ["🌸", "🌺", "🌼", "✿", "❀"] as const
 const PARTICLE_COUNT = 7
 
 /**
- * Spawn floating blossom particles anchored near `anchorEl`.
- * Returns a teardown function — call it to remove the layer from the DOM.
+ * Spawn floating blossom particles that track `anchorEl`'s position.
+ * Returns a teardown function — call it to remove the layer and stop the RAF.
  */
-// particles.ts — updated spawnBlossoms
 export function spawnBlossoms(anchorEl: HTMLElement): () => void {
   const root = getOverlayRoot()
   const layer = el("div", "dc-blossom-layer")
+
+  // Layer is position:fixed, inset:0 — it's a full-viewport canvas.
+  // Per-particle positions are computed as viewport coords via CSS calc().
   Object.assign(layer.style, {
     position: "fixed",
     inset: "0",
@@ -33,10 +45,12 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
     overflow: "visible",
   })
 
+  /** Update --b-layer-x/y on the layer from the anchor's current rect. */
   const updateOrigin = (): void => {
     const rect = anchorEl.getBoundingClientRect()
-    layer.style.setProperty("--b-ox", `${rect.right}px`)
-    layer.style.setProperty("--b-oy", `${rect.top + rect.height / 2}px`)
+    // Anchor near the right-centre of the card for a natural floating effect
+    layer.style.setProperty("--b-layer-x", `${rect.right}px`)
+    layer.style.setProperty("--b-layer-y", `${rect.top + rect.height / 2}px`)
   }
 
   updateOrigin()
@@ -46,17 +60,18 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
     const b = el("span", "dc-blossom")
     b.textContent = glyph
 
-    // Relative offsets from origin — set via custom props
-    const ox = rnd(-20, 40) // offset from anchor right edge
-    const oy = rnd(-30, 30) // offset from anchor vertical center
-    const tx = rnd(-70, 70)
-    const ty = rnd(-110, -35)
+    // Per-particle STATIC offset from the layer origin — use --b-px / --b-py
+    // so they don't collide with the layer-level tracking vars.
+    const px = rnd(-20, 40)   // horizontal scatter around anchor right edge
+    const py = rnd(-30, 30)   // vertical scatter around anchor centre
+    const tx = rnd(-70, 70)   // drift X over lifetime
+    const ty = rnd(-110, -35) // drift Y (upward)
     const rot = rnd(-210, 210)
     const dur = rnd(5, 9)
     const delay = rnd(0, 4)
 
-    b.style.setProperty("--b-ox", `${ox}px`)
-    b.style.setProperty("--b-oy", `${oy}px`)
+    b.style.setProperty("--b-px", `${px}px`)
+    b.style.setProperty("--b-py", `${py}px`)
     b.style.setProperty("--b-tx", `${tx}px`)
     b.style.setProperty("--b-ty", `${ty}px`)
     b.style.setProperty("--b-rot", `${rot}deg`)
@@ -68,7 +83,8 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
 
   root.appendChild(layer)
 
-  // Poll for position on RAF — cheap, just reads bounding rect
+  // RAF loop: re-read anchor rect each frame and push to --b-layer-x/y.
+  // Cheap — just two getBoundingClientRect reads + two setProperty calls.
   let rafId: number
   const track = (): void => {
     updateOrigin()
