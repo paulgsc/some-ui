@@ -1,53 +1,25 @@
+
 /* eslint-disable no-console */
 
 // ── content.ts ────────────────────────────────────────────────────────────────
-// PATCH #2 REWRITE:
-//   This script now runs on any NON-video tab (excluded in manifest).
-//   It is purely a display consumer — it owns NO video detection, NO
-//   heuristic scraping, and NO watchlist mutations.
+// Display consumer: renders DramaCard from persisted watchlist state.
+// All CardState fields now drawn from real DramaEntry values.
+// No video detection, no heuristic scraping, no watchlist mutations.
 //
-//   Responsibilities:
-//     1. On mount: request current state from background (GET_STATE).
-//     2. Render the DramaCard from persisted active entry.
-//     3. Listen for STATE_UPDATE messages broadcast by background when
-//        the user edits the watchlist via the popup.
-//     4. Persist card position/size locally (unchanged from original).
-//     5. Mood capture still works — saves a moment to background storage.
-//     6. Keybinding: Ctrl+Shift+M then K → toggle card visibility.
-//        (See keybindings.ts for the chord implementation.)
-//
-//   Typestate: the card can be in one of:
-//     LOADING   — awaiting first GET_STATE response
-//     EMPTY     — state received but watchlist empty / no active entry
-//     READY     — active entry exists, card rendered
-//
-//   On EMPTY the card is hidden and a subtle "no drama active" pill is shown.
+// Typestate:
+//   LOADING → awaiting first GET_STATE response
+//   EMPTY   → state received but no active entry
+//   READY   → active entry exists, card rendered
 
 import "@drama/styles/content.css"
 
 import { DramaCard } from "@drama/components/drama-card"
 import { installKeybindings } from "@drama/lib/content/keybindings"
 import type { CardEvents, CardSize, CardState, MoodType } from "@drama/types"
+import type { DramaEntry, WatchlistState } from "@drama/types"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
-// ─── Inline types (no shared chunks) ────────────────────────────────────────
-
-type DramaEntry = {
-  id: string
-  title: string
-  episode: string
-  network: string
-  year: string
-  genre: string
-  note: string
-  color: string
-  addedAt: number
-}
-
-type WatchlistState = {
-  watchlist: Array<DramaEntry>
-  activeId: string | null
-}
+// ─── Local types ──────────────────────────────────────────────────────────────
 
 type PersistedCardMeta = {
   x: number
@@ -60,7 +32,7 @@ type ContentTypestate =
   | { phase: "EMPTY" }
   | { phase: "READY"; entry: DramaEntry }
 
-// ─── Logger ─────────────────────────────────────────────────────────────────
+// ─── Logger ───────────────────────────────────────────────────────────────────
 
 const log = {
   info: (...args: Array<unknown>): void =>
@@ -69,7 +41,7 @@ const log = {
     console.error("[Drama Overlay / content]", ...args),
 }
 
-// ─── Storage ─────────────────────────────────────────────────────────────────
+// ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CARD_META_KEY = "drama_card_position_v3"
 
@@ -94,37 +66,45 @@ async function saveCardMeta(meta: PersistedCardMeta): Promise<void> {
 
 const SPAWN_MARGIN = 24
 
-/**
- * Safe initial position: bottom-right corner, within viewport.
- * Called before the entrance animation fires to avoid the off-screen flash.
- */
-function safeSpawnPosition(
-  cardW: number,
-  cardH: number
-): { x: number; y: number } {
+function safeSpawnPosition(cardW: number, cardH: number): { x: number; y: number } {
   return {
     x: window.innerWidth - cardW - SPAWN_MARGIN,
     y: window.innerHeight - cardH - SPAWN_MARGIN,
   }
 }
 
-// ─── Entry → CardState mapping ────────────────────────────────────────────────
+// ─── Entry → CardState ────────────────────────────────────────────────────────
+//
+// All fields sourced from DramaEntry. No sentinel dummy values.
+// Fields the user hasn't filled yet surface gracefully as nulls / empty strings.
 
 function entryToCardState(entry: DramaEntry): CardState {
   return {
     dramaTitle: entry.title || "Unknown Drama",
-    posterUrl: null,
+    posterUrl: entry.posterUrl ?? null,
     episode: entry.episode || "—",
-    timestamp: "—",
-    progress: 0,
-    overallProgress: 0,
-    rating: 0,
-    completionLikelihood: 0.5,
-    activeMood: null,
-    featuredQuote: entry.note || "",
-    emotionLabel: entry.genre || "",
-    isPlaying: false,
+    timestamp: entry.timestamp || "—",
+    progress: entry.progress ?? 0,
+    overallProgress: entry.overallProgress ?? 0,
+    rating: entry.rating ?? 0,
+    completionLikelihood: entry.completionLikelihood ?? 0.5,
+    activeMood: entry.activeMood ?? null,
+    featuredQuote: entry.featuredQuote || entry.note || "",
+    emotionLabel: entry.emotionLabel || entry.genre || "",
+    isPlaying: entry.isPlaying ?? false,
   }
+}
+
+// ─── Typestate resolution ─────────────────────────────────────────────────────
+
+function resolveTypestate(
+  ws: Partial<WatchlistState> | null | undefined
+): ContentTypestate {
+  const list = ws?.watchlist ?? []
+  const activeId = ws?.activeId ?? null
+  const entry = list.find((e) => e?.id === activeId) ?? null
+  if (!entry) return { phase: "EMPTY" }
+  return { phase: "READY", entry }
 }
 
 // ─── Empty-state pill ─────────────────────────────────────────────────────────
@@ -158,38 +138,17 @@ function renderEmptyPill(container: HTMLElement): () => void {
 async function init(): Promise<void> {
   log.info("Initialising display layer…")
 
-  // ── Resolve active entry ──────────────────────────────────────────────────
   let state: WatchlistState | null = null
   try {
-    state = await browser.runtime.sendMessage({
-      type: "GET_STATE",
-    })
+    state = await browser.runtime.sendMessage({ type: "GET_STATE" })
   } catch (err) {
     log.error("GET_STATE failed:", err)
-    // Background not ready — treat as empty for now; STATE_UPDATE will arrive
   }
 
   const root = getOverlayRoot()
-
-  // Container is just a DOM anchor — #dc-root inside DramaCard is the actual
-  // fixed element. We do NOT set position styles on the container itself,
-  // which was a second-fixed-ancestor bug in the original code.
   const container = document.createElement("div")
   container.id = "drama-card-mount"
   root.appendChild(container)
-
-  // ── Typestate resolution ──────────────────────────────────────────────────
-  const resolveTypestate = (
-    ws: Partial<WatchlistState> | null | undefined
-  ): ContentTypestate => {
-    // If the background state is completely broken, malformed, or missing a watchlist, fail-soft to EMPTY
-    const list = ws?.watchlist ?? []
-    const activeId = ws?.activeId ?? null
-
-    const entry = list.find((e) => e?.id === activeId) ?? null
-    if (!entry) return { phase: "EMPTY" }
-    return { phase: "READY", entry }
-  }
 
   let typestate = resolveTypestate(state)
   let card: DramaCard | null = null
@@ -203,6 +162,12 @@ async function init(): Promise<void> {
   const destroyCard = (): void => {
     card?.destroy()
     card = null
+  }
+
+  const currentCardPosition = (): { x: number; y: number } => {
+    if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
+    const rect = (card as unknown as { root: HTMLElement }).root?.getBoundingClientRect?.()
+    return rect ? { x: rect.left, y: rect.top } : (cardMeta ?? safeSpawnPosition(290, 130))
   }
 
   const renderCard = (entry: DramaEntry): void => {
@@ -242,8 +207,6 @@ async function init(): Promise<void> {
 
     card = new DramaCard(container, cardState, events)
 
-    // Apply persisted or safe-spawn position BEFORE the entrance animation
-    // so the card never flashes at the CSS default (now off-screen -9999px).
     const approxW = currentSize === "full" ? 340 : 290
     const approxH = currentSize === "full" ? 160 : 130
     const spawn = cardMeta
@@ -259,17 +222,6 @@ async function init(): Promise<void> {
     destroyCard()
     removeEmptyPill?.()
     removeEmptyPill = renderEmptyPill(root)
-  }
-
-  // ── Helper to read last known card position ───────────────────────────────
-  const currentCardPosition = (): { x: number; y: number } => {
-    if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
-    const rect = (
-      card as unknown as { root: HTMLElement }
-    ).root?.getBoundingClientRect?.()
-    return rect
-      ? { x: rect.left, y: rect.top }
-      : (cardMeta ?? safeSpawnPosition(290, 130))
   }
 
   // ── Initial render ────────────────────────────────────────────────────────
@@ -294,7 +246,6 @@ async function init(): Promise<void> {
       typestate = next
       renderEmpty()
     } else if (next.phase === "READY") {
-      // Re-render only if entry changed (id differs or data changed)
       const prev = typestate
       const entryChanged =
         prev.phase !== "READY" ||
@@ -302,7 +253,6 @@ async function init(): Promise<void> {
         JSON.stringify(prev.entry) !== JSON.stringify(next.entry)
 
       if (entryChanged) {
-        // Persist current position before teardown
         const pos = currentCardPosition()
         cardMeta = { x: pos.x, y: pos.y, size: currentSize }
         typestate = next
@@ -318,7 +268,6 @@ async function init(): Promise<void> {
       if (card) {
         card.setVisible(visible)
       } else if (removeEmptyPill) {
-        // Toggle the empty pill too
         const pill = document.getElementById("drama-empty-pill")
         if (pill) pill.style.opacity = visible ? "0.7" : "0"
       }

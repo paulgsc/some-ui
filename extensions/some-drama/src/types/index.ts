@@ -13,16 +13,16 @@ export type CardSize = "min" | "compact" | "full"
 
 export type CardState = {
   dramaTitle: string
-  posterUrl: string | null // null → placeholder emoji
-  episode: string // e.g. "Ep 12 / 24"
-  timestamp: string // e.g. "27:43"
-  progress: number // 0–1 (position within current episode)
-  overallProgress: number // 0–1 (episodes watched / total)
-  rating: number // 0–10
-  completionLikelihood: number // 0–1 (heuristic: will they finish?)
+  posterUrl: string | null
+  episode: string
+  timestamp: string
+  progress: number
+  overallProgress: number
+  rating: number
+  completionLikelihood: number
   activeMood: MoodType | null
-  featuredQuote: string // shown in chat bubble
-  emotionLabel: string // e.g. "bittersweet", "tense"
+  featuredQuote: string
+  emotionLabel: string
   isPlaying: boolean
 }
 
@@ -32,8 +32,8 @@ export type CardEvents = {
   onDragEnd: (x: number, y: number) => void
 }
 
-export type DramaEntry = {
-  id: string
+// ─── Structural fields: scraped or manually entered factual metadata ──────────
+export type DramaEntryStructural = {
   title: string
   episode: string
   network: string
@@ -41,13 +41,29 @@ export type DramaEntry = {
   genre: string
   note: string
   color: string
-  addedAt: number
-  // Scraped structural context frames
+  // Scraped context frames
   posterUrl: string | null
   timestamp: string
   progress: number
   isPlaying: boolean
 }
+
+// ─── Opinionated fields: ephemeral, feeling-at-the-moment values ─────────────
+export type DramaEntryOpinionated = {
+  rating: number // 0–10
+  completionLikelihood: number // 0–1
+  activeMood: MoodType | null
+  featuredQuote: string
+  emotionLabel: string
+  overallProgress: number // 0–1 (episodes watched / total, user-tracked)
+}
+
+// ─── Full entry: union of both concerns + identity ────────────────────────────
+export type DramaEntry = {
+  id: string
+  addedAt: number
+} & DramaEntryStructural &
+  DramaEntryOpinionated
 
 export type WatchlistState = {
   watchlist: Array<DramaEntry>
@@ -92,3 +108,13 @@ export type MessageBridge =
   | { type: "UPSERT_ENTRY"; entry: Partial<DramaEntry> & { title: string } }
   | { type: "SET_ACTIVE"; id: string }
   | { type: "REMOVE_ENTRY"; id: string }
+  | { type: "SAVE_MOMENT"; payload: MomentRecord }
+
+export type MomentRecord = {
+  id: string
+  timestamp: number
+  mood: MoodType
+  episodeId: string
+  dramaTitle: string
+  capturedAt: number
+}
