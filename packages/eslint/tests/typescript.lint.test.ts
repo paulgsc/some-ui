@@ -1,4 +1,3 @@
-
 /**
  *
  * LAYER 2 — Lint-time integration tests (lintText)
@@ -318,8 +317,9 @@ describe("lint: JS file — no type-aware rule messages emitted", () => {
     )
     if (tsMessages.length > 0) {
       throw new Error(
-        `No type-aware @typescript-eslint rules should fire on .js, but got:\n` +
-          tsMessages.map((m) => `  ${m.ruleId} (line ${m.line})`).join("\n")
+        `No type-aware @typescript-eslint rules should fire on .js, but got:\n${tsMessages
+          .map((m) => `  ${m.ruleId} (line ${m.line})`)
+          .join("\n")}`
       )
     }
   })

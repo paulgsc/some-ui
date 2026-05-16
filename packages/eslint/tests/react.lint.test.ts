@@ -194,7 +194,6 @@ describe("lint: react-hooks/exhaustive-deps (severity escalated to error)", () =
       `,
       "src/useData.ts"
     )
-    console.log(messages)
     const msg = messages.find((m) => m.ruleId === "react-hooks/exhaustive-deps")
     if (msg === undefined) {
       const fired = messages.map((m) => m.ruleId).join(", ") || "(none)"
