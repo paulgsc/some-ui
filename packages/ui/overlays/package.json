@@ -5,7 +5,7 @@
   "dependencies": {
     "attributions": "workspace:*",
     "@some-ui/makjang": "workspace:*",
-    "portfolio-chart": "workspace:*",
+    "@some-ui/portfolio": "workspace:*",
     "react-d3-tree": "3.6.2",
     "react-resizable-panels": "^2.1.0",
     "some-types-utils": "workspace:*",
@@ -44,7 +44,7 @@
   "license": "MIT",
   "main": "./dist/overlays.cjs.js",
   "module": "./dist/overlays.es.js",
-  "name": "overlays",
+  "name": "@some-ui/overlays",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
