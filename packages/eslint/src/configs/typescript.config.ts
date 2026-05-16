@@ -57,7 +57,7 @@ export default defineConfig(
       "@typescript-eslint/consistent-type-definitions": ["error", "type"],
       "@typescript-eslint/consistent-type-assertions": [
         "error",
-        { assertionStyle: "as", objectLiteralTypeAssertions: "never" },
+        { assertionStyle: "never" },
       ],
 
       // ── Function signatures ──────────────────────────────────────────────
