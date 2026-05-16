@@ -1,22 +1,33 @@
-
 /* eslint-disable no-console */
 
-// ── content.ts ────────────────────────────────────────────────────────────────
-// Display consumer: renders DramaCard from persisted watchlist state.
-// All CardState fields now drawn from real DramaEntry values.
-// No video detection, no heuristic scraping, no watchlist mutations.
+// Display consumer only. No video detection, no scraping, no watchlist mutations.
+//
+// Responsibilities:
+//   1. Request current state from background (GET_STATE).
+//   2. Render DramaCard from the active entry — all fields real, no dummies.
+//   3. React to STATE_UPDATE broadcasts from background.
+//   4. Persist card position/size locally.
+//   5. Forward mood captures to background (SAVE_MOMENT).
+//   6. Keybinding: Ctrl+Shift+M → K — toggle card visibility.
 //
 // Typestate:
-//   LOADING → awaiting first GET_STATE response
-//   EMPTY   → state received but no active entry
-//   READY   → active entry exists, card rendered
+//   LOADING — awaiting first GET_STATE response
+//   EMPTY   — no active entry in watchlist
+//   READY   — active entry present, card rendered
 
 import "@drama/styles/content.css"
 
 import { DramaCard } from "@drama/components/drama-card"
 import { installKeybindings } from "@drama/lib/content/keybindings"
-import type { CardEvents, CardSize, CardState, MoodType } from "@drama/types"
-import type { DramaEntry, WatchlistState } from "@drama/types"
+import type {
+  CardEvents,
+  CardSize,
+  CardState,
+  DramaEntry,
+  MomentRecord,
+  MoodType,
+  WatchlistState,
+} from "@drama/types"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -66,7 +77,10 @@ async function saveCardMeta(meta: PersistedCardMeta): Promise<void> {
 
 const SPAWN_MARGIN = 24
 
-function safeSpawnPosition(cardW: number, cardH: number): { x: number; y: number } {
+function safeSpawnPosition(
+  cardW: number,
+  cardH: number
+): { x: number; y: number } {
   return {
     x: window.innerWidth - cardW - SPAWN_MARGIN,
     y: window.innerHeight - cardH - SPAWN_MARGIN,
@@ -75,23 +89,32 @@ function safeSpawnPosition(cardW: number, cardH: number): { x: number; y: number
 
 // ─── Entry → CardState ────────────────────────────────────────────────────────
 //
-// All fields sourced from DramaEntry. No sentinel dummy values.
-// Fields the user hasn't filled yet surface gracefully as nulls / empty strings.
+// Every field sourced from the real DramaEntry. The fallback chain is:
+//   opinionated field (user-entered) → structural fallback → null/zero
+//
+// Fields the user hasn't filled yet surface gracefully without sentinel fakes.
 
 function entryToCardState(entry: DramaEntry): CardState {
   return {
+    // Structural
     dramaTitle: entry.title || "Unknown Drama",
     posterUrl: entry.posterUrl ?? null,
     episode: entry.episode || "—",
     timestamp: entry.timestamp || "—",
     progress: entry.progress ?? 0,
+    isPlaying: entry.isPlaying ?? false,
+
+    // Opinionated — user-entered in the Feels panel
     overallProgress: entry.overallProgress ?? 0,
     rating: entry.rating ?? 0,
     completionLikelihood: entry.completionLikelihood ?? 0.5,
     activeMood: entry.activeMood ?? null,
+
+    // Quote: prefer explicit featuredQuote, fall back to the note field
     featuredQuote: entry.featuredQuote || entry.note || "",
+
+    // Emotion label: prefer explicit label, fall back to genre
     emotionLabel: entry.emotionLabel || entry.genre || "",
-    isPlaying: entry.isPlaying ?? false,
   }
 }
 
@@ -142,7 +165,7 @@ async function init(): Promise<void> {
   try {
     state = await browser.runtime.sendMessage({ type: "GET_STATE" })
   } catch (err) {
-    log.error("GET_STATE failed:", err)
+    log.error("GET_STATE failed — background not ready:", err)
   }
 
   const root = getOverlayRoot()
@@ -150,24 +173,28 @@ async function init(): Promise<void> {
   container.id = "drama-card-mount"
   root.appendChild(container)
 
-  let typestate = resolveTypestate(state)
+  let typestate: ContentTypestate = resolveTypestate(state)
   let card: DramaCard | null = null
   let removeEmptyPill: (() => void) | null = null
-  let visible = true
+  let visible: boolean = true
   let currentSize: CardSize = "compact"
-  let cardMeta = await loadCardMeta()
+  let cardMeta: PersistedCardMeta | null = await loadCardMeta()
 
-  // ── Render helpers ────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const currentCardPosition = (): { x: number; y: number } => {
+    if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
+    const rect = (
+      card as unknown as { root: HTMLElement }
+    ).root?.getBoundingClientRect?.()
+    return rect
+      ? { x: rect.left, y: rect.top }
+      : (cardMeta ?? safeSpawnPosition(290, 130))
+  }
 
   const destroyCard = (): void => {
     card?.destroy()
     card = null
-  }
-
-  const currentCardPosition = (): { x: number; y: number } => {
-    if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
-    const rect = (card as unknown as { root: HTMLElement }).root?.getBoundingClientRect?.()
-    return rect ? { x: rect.left, y: rect.top } : (cardMeta ?? safeSpawnPosition(290, 130))
   }
 
   const renderCard = (entry: DramaEntry): void => {
@@ -175,12 +202,11 @@ async function init(): Promise<void> {
     removeEmptyPill?.()
     removeEmptyPill = null
 
-    const cardState = entryToCardState(entry)
     currentSize = cardMeta?.size ?? "compact"
 
     const events: CardEvents = {
       onMoodSelect(mood: MoodType): void {
-        const moment = {
+        const moment: MomentRecord = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           timestamp: 0,
           mood,
@@ -205,7 +231,7 @@ async function init(): Promise<void> {
       },
     }
 
-    card = new DramaCard(container, cardState, events)
+    card = new DramaCard(container, entryToCardState(entry), events)
 
     const approxW = currentSize === "full" ? 340 : 290
     const approxH = currentSize === "full" ? 160 : 130
@@ -225,6 +251,7 @@ async function init(): Promise<void> {
   }
 
   // ── Initial render ────────────────────────────────────────────────────────
+
   switch (typestate.phase) {
     case "LOADING":
     case "EMPTY":
@@ -236,6 +263,7 @@ async function init(): Promise<void> {
   }
 
   // ── Background message listener ───────────────────────────────────────────
+
   browser.runtime.onMessage.addListener((msg: unknown) => {
     const m = msg as { type: string; payload?: Partial<WatchlistState> }
     if (m.type !== "STATE_UPDATE" || !m.payload) return
@@ -245,7 +273,10 @@ async function init(): Promise<void> {
     if (next.phase === "EMPTY") {
       typestate = next
       renderEmpty()
-    } else if (next.phase === "READY") {
+      return
+    }
+
+    if (next.phase === "READY") {
       const prev = typestate
       const entryChanged =
         prev.phase !== "READY" ||
@@ -262,16 +293,17 @@ async function init(): Promise<void> {
   })
 
   // ── Keybindings ───────────────────────────────────────────────────────────
+
   installKeybindings({
     toggleVisibility(): void {
       visible = !visible
       if (card) {
         card.setVisible(visible)
-      } else if (removeEmptyPill) {
+      } else {
         const pill = document.getElementById("drama-empty-pill")
         if (pill) pill.style.opacity = visible ? "0.7" : "0"
       }
-      log.info(`Card visibility toggled → ${visible ? "visible" : "hidden"}`)
+      log.info(`Visibility → ${visible ? "visible" : "hidden"}`)
     },
   })
 

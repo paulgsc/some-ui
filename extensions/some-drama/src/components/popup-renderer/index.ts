@@ -1,20 +1,29 @@
-
 /**
  *
- * Popup renderer. Delegates form construction to:
- *   - form-structural.ts  (factual / scrapable fields)
- *   - form-opinionated.ts (ephemeral / mood fields)
+ * Popup renderer. Delegates form panel construction to:
+ *   form-structural.ts  (factual / scrapable fields)
+ *   form-opinionated.ts (ephemeral / mood fields)
  *
- * The two sections live under a two-tab switcher so the popup never feels
- * bloated. Default tab is FACTS; user switches to FEELS for the mood panel.
+ * Tab visibility works by toggling `.pf-panel-visible` on the bare shell
+ * divs returned by the builders. Those shells carry no layout `display` rule —
+ * only `.pf-panel { display: none }` and `.pf-panel-visible { display: block }`.
+ * The actual flex layout lives on inner `.pf-structural` / `.pf-mood` children.
  */
 
 import { buildOpinionatedSection } from "@drama/components/form-opinionated"
 import { buildStructuralSection } from "@drama/components/form-structural"
-import { MAX_WATCHLIST } from "@drama/lib/popup/constants"
+import { ACCENT_COLORS, MAX_WATCHLIST } from "@drama/lib/popup/constants"
 import type { PopupStateMachine } from "@drama/lib/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
-import { ACCENT_COLORS } from "@drama/lib/popup/constants"
+
+const MOOD_EMOJI: Record<string, string> = {
+  joy: "✨",
+  love: "💗",
+  sadness: "🌧",
+  tension: "⚡",
+  cringe: "😬",
+  neutral: "〰️",
+}
 
 export class PopupRenderer {
   private root: HTMLElement
@@ -42,19 +51,19 @@ export class PopupRenderer {
 
     switch (phase.tag) {
       case "LOADING":
-        body.appendChild(this.renderLoading())
+        body.appendChild(this.spinnerScreen("Syncing…"))
         break
       case "IDLE":
         body.appendChild(this.renderIdle(phase))
         break
       case "SCRAPING":
-        body.appendChild(this.renderScraping())
+        body.appendChild(this.spinnerScreen("Reading tab…"))
         break
       case "FORM":
         body.appendChild(this.renderForm(phase))
         break
       case "SAVING":
-        body.appendChild(this.renderSaving())
+        body.appendChild(this.spinnerScreen("Saving…"))
         break
       case "ERROR":
         body.appendChild(this.renderError(phase))
@@ -93,18 +102,6 @@ export class PopupRenderer {
 
   // ── Spinners ───────────────────────────────────────────────────────────────
 
-  private renderLoading(): HTMLElement {
-    return this.spinnerScreen("Syncing…")
-  }
-
-  private renderScraping(): HTMLElement {
-    return this.spinnerScreen("Reading tab…")
-  }
-
-  private renderSaving(): HTMLElement {
-    return this.spinnerScreen("Saving…")
-  }
-
   private spinnerScreen(label: string): HTMLElement {
     const wrap = this.el("div", "p-center")
     wrap.appendChild(this.el("div", "p-spinner"))
@@ -124,19 +121,18 @@ export class PopupRenderer {
       "div",
       isVideoTab ? "p-banner p-banner-video" : "p-banner p-banner-other"
     )
-    if (isVideoTab) {
-      banner.textContent =
-        videoCount > 0
-          ? `📺 ${videoCount} media frame(s) detected`
-          : "📺 Platform detected — no media yet"
-    } else {
-      banner.textContent = "🖥️ Management view"
-    }
+    banner.textContent = isVideoTab
+      ? videoCount > 0
+        ? `📺 ${videoCount} media frame(s) detected`
+        : "📺 Platform detected — no media yet"
+      : "🖥️ Management view"
     wrap.appendChild(banner)
 
     const syncRow = this.el("div", "p-sync-action-row")
     const scrapeBtn = this.el("button", "p-btn p-btn-block p-btn-ghost")
-    scrapeBtn.textContent = isVideoTab ? "⟳ Extract Tab Context" : "⚡ Force Capture"
+    scrapeBtn.textContent = isVideoTab
+      ? "⟳ Extract Tab Context"
+      : "⚡ Force Capture"
     scrapeBtn.addEventListener("click", () =>
       this.fsm.triggerScrape(state, tabId)
     )
@@ -158,7 +154,6 @@ export class PopupRenderer {
     const cap = this.el("div", "p-capacity")
     cap.textContent = `${state.watchlist.length} / ${MAX_WATCHLIST}`
     wrap.appendChild(cap)
-
     return wrap
   }
 
@@ -180,12 +175,13 @@ export class PopupRenderer {
     info.appendChild(titleEl)
 
     const meta = this.el("div", "p-entry-meta")
-    const seg = [entry.episode, entry.network, entry.year].filter(Boolean).join(" · ")
-    // Show rating if set
+    const seg = [entry.episode, entry.network, entry.year]
+      .filter(Boolean)
+      .join(" · ")
     const ratingPart = entry.rating > 0 ? `★${entry.rating}` : ""
     const moodPart = entry.activeMood ? MOOD_EMOJI[entry.activeMood] : ""
-    const extras = [seg, ratingPart, moodPart].filter(Boolean).join("  ")
-    meta.textContent = extras || "—"
+    meta.textContent =
+      [seg, ratingPart, moodPart].filter(Boolean).join("  ") || "—"
     info.appendChild(meta)
     row.appendChild(info)
 
@@ -228,7 +224,7 @@ export class PopupRenderer {
     return row
   }
 
-  // ── Form (tabbed: FACTS | FEELS) ───────────────────────────────────────────
+  // ── Form (tabbed) ──────────────────────────────────────────────────────────
 
   private renderForm(phase: Extract<PopupPhase, { tag: "FORM" }>): HTMLElement {
     const { state, tabId, prefill, editId } = phase
@@ -241,51 +237,52 @@ export class PopupRenderer {
     const factsTab = this.el("button", "pf-tab pf-tab-active")
     factsTab.textContent = "📋 Facts"
     const feelsTab = this.el("button", "pf-tab")
-    feelsTab.innerHTML = "✦ Feels"
+    feelsTab.textContent = "✦ Feels"
     tabBar.appendChild(factsTab)
     tabBar.appendChild(feelsTab)
     wrapper.appendChild(tabBar)
 
-    // ── Panel host ───────────────────────────────────────────────────────────
+    // ── Panel host ────────────────────────────────────────────────────────────
     const panelHost = this.el("div", "pf-panel-host")
     wrapper.appendChild(panelHost)
 
-    // ── Build both panels ────────────────────────────────────────────────────
-    const { root: structuralPanel, refs: structRefs } = buildStructuralSection(
+    // ── Build panels — builders return bare shell divs ─────────────────────
+    const { root: structShell, refs: structRefs } = buildStructuralSection(
       this.el.bind(this),
       prefill
     )
-    structuralPanel.classList.add("pf-panel", "pf-panel-visible")
+    // Assign visibility classes to the shell (not to the inner layout div)
+    structShell.className = "pf-panel pf-panel-visible"
 
-    const { root: moodPanel, refs: moodRefs } = buildOpinionatedSection(
+    const { root: moodShell, refs: moodRefs } = buildOpinionatedSection(
       this.el.bind(this),
       prefill
     )
-    moodPanel.classList.add("pf-panel")
+    moodShell.className = "pf-panel"
 
-    panelHost.appendChild(structuralPanel)
-    panelHost.appendChild(moodPanel)
+    panelHost.appendChild(structShell)
+    panelHost.appendChild(moodShell)
 
-    // ── Tab switching ────────────────────────────────────────────────────────
+    // ── Tab switching ─────────────────────────────────────────────────────────
     factsTab.addEventListener("click", () => {
       factsTab.classList.add("pf-tab-active")
       feelsTab.classList.remove("pf-tab-active")
-      structuralPanel.classList.add("pf-panel-visible")
-      moodPanel.classList.remove("pf-panel-visible")
+      structShell.classList.add("pf-panel-visible")
+      moodShell.classList.remove("pf-panel-visible")
     })
     feelsTab.addEventListener("click", () => {
       feelsTab.classList.add("pf-tab-active")
       factsTab.classList.remove("pf-tab-active")
-      moodPanel.classList.add("pf-panel-visible")
-      structuralPanel.classList.remove("pf-panel-visible")
+      moodShell.classList.add("pf-panel-visible")
+      structShell.classList.remove("pf-panel-visible")
     })
 
-    // ── Action row ───────────────────────────────────────────────────────────
+    // ── Action row ────────────────────────────────────────────────────────────
     const actions = this.el("div", "p-btn-row pf-form-actions")
 
     const cancelBtn = this.el("button", "p-btn p-btn-ghost")
     cancelBtn.textContent = "Cancel"
-    cancelBtn.addEventListener("click", () =>
+    cancelBtn.addEventListener("click", () => {
       this.fsm.transition({
         tag: "IDLE",
         state,
@@ -293,7 +290,7 @@ export class PopupRenderer {
         isVideoTab: false,
         videoCount: 0,
       })
-    )
+    })
     actions.appendChild(cancelBtn)
 
     const saveBtn = this.el("button", "p-btn p-btn-primary")
@@ -303,7 +300,6 @@ export class PopupRenderer {
       if (!rawTitle) {
         structRefs.titleInput.classList.add("p-input-error")
         structRefs.titleInput.focus()
-        // Switch to facts tab so the error is visible
         factsTab.click()
         return
       }
@@ -316,12 +312,12 @@ export class PopupRenderer {
         year: structRefs.yearInput.value.trim(),
         genre: structRefs.genreInput.value.trim(),
         note: structRefs.noteInput.value.trim(),
+        url: structRefs.urlInput.value.trim(),
         color: structRefs.getColor(),
         posterUrl: prefill.posterUrl ?? null,
         timestamp: prefill.timestamp ?? "00:00",
         progress: prefill.progress ?? 0,
         isPlaying: prefill.isPlaying ?? false,
-        // Opinionated
         rating: moodRefs.getRating(),
         completionLikelihood: moodRefs.getLikelihood(),
         activeMood: moodRefs.getMood(),
@@ -356,14 +352,4 @@ export class PopupRenderer {
     wrap.appendChild(retry)
     return wrap
   }
-}
-
-// ── Local emoji map (no import cycle) ─────────────────────────────────────────
-const MOOD_EMOJI: Record<string, string> = {
-  joy: "✨",
-  love: "💗",
-  sadness: "🌧",
-  tension: "⚡",
-  cringe: "😬",
-  neutral: "〰️",
 }

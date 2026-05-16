@@ -1,3 +1,4 @@
+
 // Single source of truth for all shared types across the extension.
 // No logic, no side effects — import freely from any module.
 
@@ -32,7 +33,7 @@ export type CardEvents = {
   onDragEnd: (x: number, y: number) => void
 }
 
-// ─── Structural fields: scraped or manually entered factual metadata ──────────
+// ─── Structural: factual / scrapable metadata ─────────────────────────────────
 export type DramaEntryStructural = {
   title: string
   episode: string
@@ -41,28 +42,25 @@ export type DramaEntryStructural = {
   genre: string
   note: string
   color: string
-  // Scraped context frames
+  url: string          // source URL — scrapable from window.location.href
   posterUrl: string | null
   timestamp: string
   progress: number
   isPlaying: boolean
 }
 
-// ─── Opinionated fields: ephemeral, feeling-at-the-moment values ─────────────
+// ─── Opinionated: ephemeral, feeling-at-the-moment values ────────────────────
 export type DramaEntryOpinionated = {
-  rating: number // 0–10
+  rating: number              // 0–10
   completionLikelihood: number // 0–1
   activeMood: MoodType | null
   featuredQuote: string
   emotionLabel: string
-  overallProgress: number // 0–1 (episodes watched / total, user-tracked)
+  overallProgress: number     // 0–1  (episodes watched / total, user-tracked)
 }
 
-// ─── Full entry: union of both concerns + identity ────────────────────────────
-export type DramaEntry = {
-  id: string
-  addedAt: number
-} & DramaEntryStructural &
+// ─── Full entry ───────────────────────────────────────────────────────────────
+export type DramaEntry = { id: string; addedAt: number } & DramaEntryStructural &
   DramaEntryOpinionated
 
 export type WatchlistState = {

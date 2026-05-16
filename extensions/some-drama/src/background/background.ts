@@ -1,60 +1,38 @@
-// ── background.ts ─────────────────────────────────────────────────────────────
-// PATCH #2: Extended with watchlist state management.
 //
 // Storage schema (browser.storage.local):
-//   drama_moments: CapturedMoment[]     — mood capture log (unchanged)
-//   drama_watchlist: DramaEntry[]       — ordered list, max N=5
-//   drama_active_id: string | null      — id of entry currently displayed
+//   drama_moments:  CapturedMoment[]   — mood capture log
+//   drama_watchlist: DramaEntry[]      — ordered list, max N=5
+//   drama_active_id: string | null     — id of entry currently displayed
 //
-// Message types added:
-//   GET_STATE      → { watchlist, activeId }
+// Message types:
+//   GET_STATE      → { ok, state }
 //   UPSERT_ENTRY   → add or update a DramaEntry; broadcasts STATE_UPDATE
 //   REMOVE_ENTRY   → remove by id; broadcasts STATE_UPDATE
 //   SET_ACTIVE     → set activeId; broadcasts STATE_UPDATE
 //   SCRAPE_TAB     → executeScript heuristic on given tabId, returns raw meta
-//
-// Existing messages unchanged:
-//   SAVE_MOMENT, GET_MOMENTS, CLEAR_MOMENTS
+//   SAVE_MOMENT, GET_MOMENTS, CLEAR_MOMENTS — mood capture log (unchanged)
 
-// ── Shared inline types (no shared chunks) ────────────────────────────────────
+// ── Inline types (no shared chunks) ──────────────────────────────────────────
+import type {
+  DramaEntry,
+  MoodType,
+  ScrapedMeta,
+  WatchlistState,
+} from "@drama/types"
 
-type EmotionType = "joy" | "sadness" | "love" | "rage" | "fear" | "neutral"
-
-interface CapturedMoment {
+type CapturedMoment = {
   id: string
   timestamp: number
-  emotion: EmotionType
-  intensity: number
-  emoji: string
-  note?: string
+  mood: MoodType
   episodeId: string
   dramaTitle: string
   capturedAt: number
 }
 
-interface DramaEntry {
-  id: string
-  title: string
-  episode: string
-  network: string
-  year: string
-  genre: string
-  note: string
-  color: string
-  addedAt: number
-}
-
-interface WatchlistState {
-  watchlist: DramaEntry[]
-  activeId: string | null
-}
-
 type BackgroundMessage =
-  // ── Existing ──
   | { type: "SAVE_MOMENT"; payload: CapturedMoment }
   | { type: "GET_MOMENTS"; payload?: { dramaTitle?: string } }
   | { type: "CLEAR_MOMENTS" }
-  // ── Watchlist ──
   | { type: "GET_STATE" }
   | { type: "UPSERT_ENTRY"; entry: Partial<DramaEntry> & { title: string } }
   | { type: "REMOVE_ENTRY"; id: string }
@@ -62,24 +40,22 @@ type BackgroundMessage =
   | { type: "SCRAPE_TAB"; tabId: number }
 
 type BackgroundResponse =
-  | { ok: true; moments?: CapturedMoment[]; state?: WatchlistState; data?: ScrapedMeta }
+  | {
+      ok: true
+      moments?: Array<CapturedMoment>
+      state?: WatchlistState
+      data?: ScrapedMeta
+    }
   | { ok: false; error: string }
-
-interface ScrapedMeta {
-  title: string
-  episode: string
-  network: string
-  url: string
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MOMENTS_KEY   = "drama_moments"
+const MOMENTS_KEY = "drama_moments"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
 const MAX_WATCHLIST = 5
 
-// ── Video-tab host list (mirrors manifest exclude_matches) ────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const VIDEO_HOSTS = [
   "youtube.com",
@@ -104,18 +80,22 @@ function isVideoTab(url: string | undefined): boolean {
   }
 }
 
+function uuid(): string {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+}
+
 // ── Moment helpers ────────────────────────────────────────────────────────────
 
-async function loadMoments(): Promise<CapturedMoment[]> {
-  const result = await browser.storage.local.get(MOMENTS_KEY)
-  return (result[MOMENTS_KEY] as CapturedMoment[] | undefined) ?? []
+async function loadMoments(): Promise<Array<CapturedMoment>> {
+  const r = await browser.storage.local.get(MOMENTS_KEY)
+  return (r[MOMENTS_KEY] as Array<CapturedMoment> | undefined) ?? []
 }
 
 async function saveMoment(moment: CapturedMoment): Promise<void> {
   const existing = await loadMoments()
   existing.push(moment)
   await browser.storage.local.set({ [MOMENTS_KEY]: existing })
-  console.log("[Background] Saved moment:", moment.id, "@", moment.timestamp)
+  console.log("[Background] Saved moment:", moment.id)
 }
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
@@ -123,25 +103,48 @@ async function saveMoment(moment: CapturedMoment): Promise<void> {
 async function getWatchlistState(): Promise<WatchlistState> {
   const r = await browser.storage.local.get([WATCHLIST_KEY, ACTIVE_ID_KEY])
   return {
-    watchlist: (r[WATCHLIST_KEY] as DramaEntry[] | undefined) ?? [],
+    watchlist: (r[WATCHLIST_KEY] as Array<DramaEntry> | undefined) ?? [],
     activeId: (r[ACTIVE_ID_KEY] as string | null | undefined) ?? null,
   }
 }
 
-async function setWatchlistState(patch: Partial<WatchlistState>): Promise<void> {
+async function setWatchlistState(
+  patch: Partial<WatchlistState>
+): Promise<void> {
   const update: Record<string, unknown> = {}
   if ("watchlist" in patch) update[WATCHLIST_KEY] = patch.watchlist
   if ("activeId" in patch) update[ACTIVE_ID_KEY] = patch.activeId
   await browser.storage.local.set(update)
 }
 
-function uuid(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+/**
+ * Defaults for fields that must always be present on a stored DramaEntry.
+ * Used only on INSERT — update path merges with the existing stored entry
+ * so no defaults are needed there.
+ */
+const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
+  episode: "",
+  network: "",
+  year: "",
+  genre: "",
+  note: "",
+  color: "",
+  url: "",
+  posterUrl: null,
+  timestamp: "00:00",
+  progress: 0,
+  isPlaying: false,
+  rating: 0,
+  completionLikelihood: 0.5,
+  activeMood: null,
+  featuredQuote: "",
+  emotionLabel: "",
+  overallProgress: 0,
 }
 
-/** Broadcast updated watchlist state to all eligible content-script tabs. */
+/** Broadcast updated state to all non-video content-script tabs. */
 async function broadcastState(state: WatchlistState): Promise<void> {
-  let tabs: browser.tabs.Tab[]
+  let tabs: Array<browser.tabs.Tab>
   try {
     tabs = await browser.tabs.query({})
   } catch {
@@ -151,9 +154,12 @@ async function broadcastState(state: WatchlistState): Promise<void> {
     if (!tab.id || tab.status !== "complete") continue
     if (isVideoTab(tab.url)) continue
     try {
-      await browser.tabs.sendMessage(tab.id, { type: "STATE_UPDATE", payload: state })
+      await browser.tabs.sendMessage(tab.id, {
+        type: "STATE_UPDATE",
+        payload: state,
+      })
     } catch {
-      // Tab has no content script loaded — expected for some pages
+      // Tab has no content script — expected
     }
   }
 }
@@ -169,13 +175,14 @@ browser.runtime.onMessage.addListener(
     const message = msg as BackgroundMessage
 
     switch (message.type) {
-
-      // ── Mood moments (unchanged) ──────────────────────────────────────────
+      // ── Moments ───────────────────────────────────────────────────────────
 
       case "SAVE_MOMENT":
         saveMoment(message.payload)
           .then(() => sendResponse({ ok: true }))
-          .catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+          .catch((err: unknown) =>
+            sendResponse({ ok: false, error: String(err) })
+          )
         return true
 
       case "GET_MOMENTS":
@@ -187,40 +194,57 @@ browser.runtime.onMessage.addListener(
               : moments
             sendResponse({ ok: true, moments: filtered })
           })
-          .catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+          .catch((err: unknown) =>
+            sendResponse({ ok: false, error: String(err) })
+          )
         return true
 
       case "CLEAR_MOMENTS":
         browser.storage.local
           .remove(MOMENTS_KEY)
           .then(() => sendResponse({ ok: true }))
-          .catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+          .catch((err: unknown) =>
+            sendResponse({ ok: false, error: String(err) })
+          )
         return true
 
-      // ── Watchlist: read ───────────────────────────────────────────────────
+      // ── State: read ───────────────────────────────────────────────────────
 
       case "GET_STATE":
         getWatchlistState()
           .then((state) => sendResponse({ ok: true, state }))
-          .catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+          .catch((err: unknown) =>
+            sendResponse({ ok: false, error: String(err) })
+          )
         return true
 
-      // ── Watchlist: upsert ─────────────────────────────────────────────────
+      // ── State: upsert ─────────────────────────────────────────────────────
+      //
+      // UPDATE path: spread stored entry then incoming — all fields preserved,
+      //   only provided fields overwritten. posterUrl, rating, etc. survive.
+      //
+      // INSERT path: spread ENTRY_DEFAULTS then incoming — all fields present,
+      //   user-provided values win, nothing is silently dropped.
+      //   `id` and `addedAt` are always generated fresh on insert.
 
       case "UPSERT_ENTRY": {
         const incoming = message.entry
         ;(async () => {
           const { watchlist, activeId } = await getWatchlistState()
-          const idx = incoming.id
+          const existingIdx = incoming.id
             ? watchlist.findIndex((e) => e.id === incoming.id)
             : -1
 
-          let next: DramaEntry[]
-          if (idx >= 0) {
+          let next: Array<DramaEntry>
+
+          if (existingIdx >= 0) {
+            // UPDATE — merge stored entry with incoming; stored fields not in
+            // incoming are untouched, so opinionated fields survive a Facts-only edit.
             next = watchlist.map((e, i) =>
-              i === idx ? { ...e, ...incoming } as DramaEntry : e
+              i === existingIdx ? { ...e, ...incoming } : e
             )
           } else {
+            // INSERT — guard capacity first
             if (watchlist.length >= MAX_WATCHLIST) {
               sendResponse({
                 ok: false,
@@ -228,31 +252,29 @@ browser.runtime.onMessage.addListener(
               })
               return
             }
+            // Spread order: defaults → incoming → identity fields
+            // This means every field in DramaEntry is present; nothing dropped.
             const newEntry: DramaEntry = {
+              ...ENTRY_DEFAULTS,
+              ...incoming,
               id: uuid(),
-              title: incoming.title,
-              episode: incoming.episode ?? "",
-              network: incoming.network ?? "",
-              year: incoming.year ?? "",
-              genre: incoming.genre ?? "",
-              note: incoming.note ?? "",
-              color: incoming.color ?? "",
               addedAt: Date.now(),
             }
             next = [...watchlist, newEntry]
           }
 
-          // Auto-activate if this is the first entry
           const newActive = activeId ?? (next.length === 1 ? next[0].id : null)
           await setWatchlistState({ watchlist: next, activeId: newActive })
           const state: WatchlistState = { watchlist: next, activeId: newActive }
           await broadcastState(state)
           sendResponse({ ok: true, state })
-        })().catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+        })().catch((err: unknown) =>
+          sendResponse({ ok: false, error: String(err) })
+        )
         return true
       }
 
-      // ── Watchlist: remove ─────────────────────────────────────────────────
+      // ── State: remove ─────────────────────────────────────────────────────
 
       case "REMOVE_ENTRY": {
         const { id } = message
@@ -264,11 +286,13 @@ browser.runtime.onMessage.addListener(
           const state: WatchlistState = { watchlist: next, activeId: newActive }
           await broadcastState(state)
           sendResponse({ ok: true, state })
-        })().catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+        })().catch((err: unknown) =>
+          sendResponse({ ok: false, error: String(err) })
+        )
         return true
       }
 
-      // ── Watchlist: set active ─────────────────────────────────────────────
+      // ── State: set active ─────────────────────────────────────────────────
 
       case "SET_ACTIVE": {
         const { id } = message
@@ -278,11 +302,13 @@ browser.runtime.onMessage.addListener(
           const state: WatchlistState = { watchlist, activeId: id }
           await broadcastState(state)
           sendResponse({ ok: true, state })
-        })().catch((err: unknown) => sendResponse({ ok: false, error: String(err) }))
+        })().catch((err: unknown) =>
+          sendResponse({ ok: false, error: String(err) })
+        )
         return true
       }
 
-      // ── Heuristic scrape (popup → background → video tab DOM) ────────────
+      // ── Scrape tab ────────────────────────────────────────────────────────
 
       case "SCRAPE_TAB": {
         const { tabId } = message
@@ -291,10 +317,10 @@ browser.runtime.onMessage.addListener(
             const results = await browser.tabs.executeScript(tabId, {
               code: `
                 (function() {
-                  var ytTitle  = document.querySelector(
+                  var ytTitle   = document.querySelector(
                     'h1.ytd-watch-metadata yt-formatted-string, h1.title.ytd-video-primary-info-renderer'
                   )?.textContent?.trim();
-                  var nfTitle  = document.querySelector(
+                  var nfTitle   = document.querySelector(
                     '.video-title h4, [data-uia="video-title"]'
                   )?.textContent?.trim();
                   var vikiTitle = document.querySelector(
@@ -307,22 +333,49 @@ browser.runtime.onMessage.addListener(
 
                   var network = document.querySelector(
                     'meta[name="application-name"]'
-                  )?.content?.trim() || new URL(location.href).hostname.replace(/^www\\./, '');
+                  )?.content?.trim()
+                    || new URL(location.href).hostname.replace(/^www\\./, '');
 
                   var epMatch = (ytTitle || vikiTitle || metaTitle || docTitle || '').match(
                     /ep(?:isode)?[.\\s]*([\\d]+)/i
                   );
 
+                  var video    = Array.from(document.querySelectorAll('video'))
+                    .sort((a, b) => (b.getBoundingClientRect().width * b.getBoundingClientRect().height)
+                      - (a.getBoundingClientRect().width * a.getBoundingClientRect().height))[0];
+                  var posterUrl = video?.poster
+                    || document.querySelector("meta[property='og:image']")?.content
+                    || null;
+                  var progress  = video && video.duration
+                    ? video.currentTime / video.duration : 0;
+                  var timestamp = video
+                    ? (function(s) {
+                        var h = Math.floor(s / 3600),
+                            m = Math.floor((s % 3600) / 60),
+                            sec = Math.floor(s % 60);
+                        var p = function(n) { return String(n).padStart(2, '0'); };
+                        return h > 0 ? h + ':' + p(m) + ':' + p(sec) : p(m) + ':' + p(sec);
+                      })(video.currentTime)
+                    : '00:00';
+
                   return {
-                    title:   ytTitle || nfTitle || vikiTitle || metaTitle || docTitle || '',
-                    episode: epMatch ? 'Ep ' + epMatch[1] : '',
-                    network: network || '',
-                    url:     location.href,
+                    title:      ytTitle || nfTitle || vikiTitle || metaTitle || docTitle || '',
+                    episode:    epMatch ? 'Ep ' + epMatch[1] : '',
+                    network:    network || '',
+                    url:        location.href,
+                    posterUrl:  posterUrl,
+                    timestamp:  timestamp,
+                    progress:   progress,
+                    isPlaying:  video ? (!video.paused && !video.ended) : false,
+                    videoCount: document.querySelectorAll('video').length,
                   };
                 })()
               `,
             })
-            sendResponse({ ok: true, data: results?.[0] as ScrapedMeta ?? null })
+            sendResponse({
+              ok: true,
+              data: (results?.[0] as ScrapedMeta) ?? null,
+            })
           } catch (err) {
             sendResponse({ ok: false, error: String(err) })
           }
@@ -336,7 +389,7 @@ browser.runtime.onMessage.addListener(
   }
 )
 
-// ── Install ────────────────────────────────────────────────────────────────────
+// ── Install ───────────────────────────────────────────────────────────────────
 
 browser.runtime.onInstalled.addListener(async () => {
   const existing = await browser.storage.local.get([WATCHLIST_KEY])

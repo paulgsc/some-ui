@@ -2,8 +2,14 @@
 /**
  *
  * Builds the structural (factual / scrapable) section of the entry form.
- * Concern: title, episode, network, year, genre, note, color, poster, timestamp.
- * No opinionated / mood fields here.
+ * Fields: title, episode, network, year, genre, note, url, color, poster, timestamp.
+ *
+ * ── Panel shell contract ────────────────────────────────────────────────────
+ * The returned `root` is a bare <div> with NO class of its own.
+ * The renderer assigns `.pf-panel` and `.pf-panel-visible` to it.
+ * The actual flex layout lives on the inner `.pf-structural` child.
+ * This way `.pf-panel { display: none }` is never overridden by
+ * `.pf-structural { display: flex }` — different elements, no conflict.
  */
 
 import { ACCENT_COLORS } from "@drama/lib/popup/constants"
@@ -21,6 +27,7 @@ export type StructuralFieldRefs = {
   yearInput: HTMLInputElement
   genreInput: HTMLInputElement
   noteInput: HTMLInputElement
+  urlInput: HTMLInputElement
   getColor: () => string
 }
 
@@ -28,20 +35,25 @@ export function buildStructuralSection(
   el: El,
   prefill: Partial<DramaEntry>
 ): { root: HTMLElement; refs: StructuralFieldRefs } {
-  const root = el("div", "pf-structural")
+  // Panel shell — visibility only, no layout styles
+  const root = el("div")
 
-  // ── Telemetry badge bar ────────────────────────────────────────────────────
-  if (prefill.timestamp || prefill.progress) {
+  // Inner layout container
+  const inner = el("div", "pf-structural")
+  root.appendChild(inner)
+
+  // ── Telemetry badge bar (when scraped data is present) ────────────────────
+  if (prefill.timestamp || prefill.progress != null) {
     const bar = el("div", "p-telemetry-badge-bar")
     bar.innerHTML = `
       <span class="p-tbadge">⏱️ ${prefill.timestamp || "00:00"}</span>
       <span class="p-tbadge">📈 ${Math.round((prefill.progress || 0) * 100)}%</span>
       <span class="p-tbadge">${prefill.isPlaying ? "🟢 Live" : "⏸ Paused"}</span>
     `
-    root.appendChild(bar)
+    inner.appendChild(bar)
   }
 
-  // ── Title (full width) ─────────────────────────────────────────────────────
+  // ── Title (full width) ────────────────────────────────────────────────────
   const titleGroup = el("div", "p-field")
   const titleLabel = el("label", "p-label")
   titleLabel.textContent = "Title *"
@@ -51,9 +63,9 @@ export function buildStructuralSection(
   titleInput.placeholder = "e.g., Love Between Fairy and Devil"
   titleGroup.appendChild(titleLabel)
   titleGroup.appendChild(titleInput)
-  root.appendChild(titleGroup)
+  inner.appendChild(titleGroup)
 
-  // ── 2-col grid: episode / network / year / genre ───────────────────────────
+  // ── 2-col grid ────────────────────────────────────────────────────────────
   const grid = el("div", "p-form-grid")
 
   const gridField = (lbl: string, id: string, val = "", ph = "") => {
@@ -69,38 +81,31 @@ export function buildStructuralSection(
     return { grp, inp }
   }
 
-  const { grp: epGrp, inp: episodeInput } = gridField(
-    "Episode",
-    "episode",
-    prefill.episode ?? "",
-    "Ep 12"
-  )
-  const { grp: netGrp, inp: networkInput } = gridField(
-    "Network",
-    "network",
-    prefill.network ?? "",
-    "tvN"
-  )
-  const { grp: yrGrp, inp: yearInput } = gridField(
-    "Year",
-    "year",
-    prefill.year ?? "",
-    "2024"
-  )
-  const { grp: genreGrp, inp: genreInput } = gridField(
-    "Genre",
-    "genre",
-    prefill.genre ?? "",
-    "Xianxia, Fantasy"
-  )
+  const { grp: epGrp, inp: episodeInput } = gridField("Episode", "episode", prefill.episode ?? "", "Ep 12")
+  const { grp: netGrp, inp: networkInput } = gridField("Network", "network", prefill.network ?? "", "tvN")
+  const { grp: yrGrp, inp: yearInput } = gridField("Year", "year", prefill.year ?? "", "2024")
+  const { grp: genreGrp, inp: genreInput } = gridField("Genre", "genre", prefill.genre ?? "", "Xianxia, Fantasy")
 
   grid.appendChild(epGrp)
   grid.appendChild(netGrp)
   grid.appendChild(yrGrp)
   grid.appendChild(genreGrp)
-  root.appendChild(grid)
+  inner.appendChild(grid)
 
-  // ── Note (full width) ──────────────────────────────────────────────────────
+  // ── Source URL (full width) ───────────────────────────────────────────────
+  const urlGroup = el("div", "p-field")
+  const urlLabel = el("label", "p-label")
+  urlLabel.textContent = "Source URL"
+  const urlInput = el("input", "p-input")
+  urlInput.id = "pf-url"
+  urlInput.type = "url"
+  urlInput.value = prefill.url ?? ""
+  urlInput.placeholder = "https://www.viki.com/tv/…"
+  urlGroup.appendChild(urlLabel)
+  urlGroup.appendChild(urlInput)
+  inner.appendChild(urlGroup)
+
+  // ── Notes (full width) ────────────────────────────────────────────────────
   const noteGroup = el("div", "p-field")
   const noteLabel = el("label", "p-label")
   noteLabel.textContent = "Notes"
@@ -110,9 +115,9 @@ export function buildStructuralSection(
   noteInput.placeholder = "Context, reminders…"
   noteGroup.appendChild(noteLabel)
   noteGroup.appendChild(noteInput)
-  root.appendChild(noteGroup)
+  inner.appendChild(noteGroup)
 
-  // ── Color picker ───────────────────────────────────────────────────────────
+  // ── Color picker ──────────────────────────────────────────────────────────
   const colorGroup = el("div", "p-field")
   const colorLabel = el("label", "p-label")
   colorLabel.textContent = "Accent"
@@ -121,10 +126,7 @@ export function buildStructuralSection(
   let chosenColor = prefill.color || ACCENT_COLORS[0]
 
   for (const c of ACCENT_COLORS) {
-    const swatch = el(
-      "button",
-      `p-color-swatch${c === chosenColor ? " p-color-selected" : ""}`
-    )
+    const swatch = el("button", `p-color-swatch${c === chosenColor ? " p-color-selected" : ""}`)
     swatch.style.background = c
     swatch.addEventListener("click", () => {
       chosenColor = c
@@ -135,18 +137,10 @@ export function buildStructuralSection(
     colorRow.appendChild(swatch)
   }
   colorGroup.appendChild(colorRow)
-  root.appendChild(colorGroup)
+  inner.appendChild(colorGroup)
 
   return {
     root,
-    refs: {
-      titleInput,
-      episodeInput,
-      networkInput,
-      yearInput,
-      genreInput,
-      noteInput,
-      getColor: () => chosenColor,
-    },
+    refs: { titleInput, episodeInput, networkInput, yearInput, genreInput, noteInput, urlInput, getColor: () => chosenColor },
   }
 }

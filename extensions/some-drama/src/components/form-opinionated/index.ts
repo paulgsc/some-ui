@@ -1,17 +1,13 @@
+
 /**
  *
  * Builds the opinionated / ephemeral section of the entry form.
- * These fields capture how you feel right now:
- * rating, likelihood, mood, quote, emotion label, and overall progress.
+ * Captures how you feel right now: rating, likelihood, mood, quote, emotion label,
+ * overall progress.
  *
- * Visual contract:
- *  - Hazy gradient background (rose → violet tones)
- *  - Animated shimmer on the section header
- *  - Star rating via clickable glyphs
- *  - Likelihood slider with live gradient fill
- *  - Mood chip row (single-select)
- *  - Featured quote textarea
- *  - Emotion label freeform tag
+ * ── Panel shell contract ────────────────────────────────────────────────────
+ * Same pattern as form-structural: root is a bare <div>, renderer assigns
+ * `.pf-panel` / `.pf-panel-visible`. Inner `.pf-mood` carries the layout.
  */
 
 import type { DramaEntry, MoodType } from "@drama/types"
@@ -22,11 +18,11 @@ type El = <K extends keyof HTMLElementTagNameMap>(
 ) => HTMLElementTagNameMap[K]
 
 const MOOD_META: Record<MoodType, { emoji: string; label: string }> = {
-  joy: { emoji: "✨", label: "Joy" },
-  love: { emoji: "💗", label: "Love" },
+  joy:     { emoji: "✨", label: "Joy" },
+  love:    { emoji: "💗", label: "Love" },
   sadness: { emoji: "🌧", label: "Sad" },
   tension: { emoji: "⚡", label: "Tension" },
-  cringe: { emoji: "😬", label: "Cringe" },
+  cringe:  { emoji: "😬", label: "Cringe" },
   neutral: { emoji: "〰️", label: "Meh" },
 }
 
@@ -43,293 +39,178 @@ export function buildOpinionatedSection(
   el: El,
   prefill: Partial<DramaEntry>
 ): { root: HTMLElement; refs: OpinionatedFieldRefs } {
-  const root = el("div", "pf-mood")
+  // Panel shell — visibility only
+  const root = el("div")
 
-  /* ────────────────────────────────────────────────────────
-     Section Header
-  ───────────────────────────────────────────────────────── */
+  // Inner layout container
+  const inner = el("div", "pf-mood")
+  root.appendChild(inner)
 
+  // ── Section header ────────────────────────────────────────────────────────
   const header = el("div", "pf-mood-header")
-  header.innerHTML = '<span class="pf-mood-header-shimmer">✦ this moment</span>'
+  header.innerHTML = `<span class="pf-mood-header-shimmer">✦ this moment</span>`
+  inner.appendChild(header)
 
-  root.appendChild(header)
-
-  /* ────────────────────────────────────────────────────────
-     Star Rating
-  ───────────────────────────────────────────────────────── */
-
+  // ── Star rating ───────────────────────────────────────────────────────────
   let currentRating = Math.round(prefill.rating ?? 0)
-
   const ratingGroup = el("div", "pf-mood-field")
   const ratingLabel = el("div", "pf-mood-label")
-
   ratingLabel.textContent = "Rating"
-
   ratingGroup.appendChild(ratingLabel)
 
   const stars = el("div", "pf-stars")
-  const starEls: Array<HTMLButtonElement> = []
+  const starEls: HTMLButtonElement[] = []
 
   const paintStars = (n: number) => {
-    starEls.forEach((star, i) => {
-      star.classList.toggle("pf-star-on", i < n)
-    })
+    starEls.forEach((s, i) => s.classList.toggle("pf-star-on", i < n))
   }
 
+  const ratingValue = el("div", "pf-stars-val")
+  ratingValue.textContent = currentRating > 0 ? `${currentRating} / 10` : "—"
+
   for (let i = 1; i <= 10; i++) {
-    const star = el("button", "pf-star")
-
-    star.type = "button"
-    star.textContent = "★"
-    star.dataset.val = String(i)
-
-    star.addEventListener("click", () => {
+    const s = el("button", "pf-star")
+    s.textContent = "★"
+    s.addEventListener("click", () => {
       currentRating = i
       paintStars(i)
       ratingValue.textContent = `${currentRating} / 10`
     })
-
-    star.addEventListener("mouseenter", () => {
-      paintStars(i)
-    })
-
-    star.addEventListener("mouseleave", () => {
-      paintStars(currentRating)
-    })
-
-    starEls.push(star)
-    stars.appendChild(star)
+    s.addEventListener("mouseenter", () => paintStars(i))
+    s.addEventListener("mouseleave", () => paintStars(currentRating))
+    starEls.push(s)
+    stars.appendChild(s)
   }
-
   paintStars(currentRating)
-
   ratingGroup.appendChild(stars)
-
-  const ratingValue = el("div", "pf-stars-val")
-
-  ratingValue.textContent = currentRating > 0 ? `${currentRating} / 10` : "—"
-
   ratingGroup.appendChild(ratingValue)
+  inner.appendChild(ratingGroup)
 
-  root.appendChild(ratingGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Overall Progress
-  ───────────────────────────────────────────────────────── */
-
+  // ── Overall progress slider ───────────────────────────────────────────────
   let overallProg = prefill.overallProgress ?? 0
-
   const progGroup = el("div", "pf-mood-field")
   const progLabel = el("div", "pf-mood-label")
-
   progLabel.textContent = "Series Progress"
-
   progGroup.appendChild(progLabel)
 
-  const progSliderWrap = el("div", "pf-slider-wrap")
-
-  const progSlider = el("input", "pf-slider")
-
+  const progWrap = el("div", "pf-slider-wrap")
+  const progSlider = el("input", "pf-slider") as HTMLInputElement
   progSlider.type = "range"
   progSlider.min = "0"
   progSlider.max = "100"
   progSlider.value = String(Math.round(overallProg * 100))
 
   const progDisplay = el("span", "pf-slider-val")
+  progDisplay.textContent = `${Math.round(overallProg * 100)}%`
 
-  const updateProgSlider = () => {
+  const syncProg = () => {
     const pct = Number(progSlider.value)
-
     overallProg = pct / 100
-
     progDisplay.textContent = `${pct}%`
-
     progSlider.style.setProperty("--fill", `${pct}%`)
   }
+  progSlider.style.setProperty("--fill", `${Math.round(overallProg * 100)}%`)
+  progSlider.addEventListener("input", syncProg)
+  progWrap.appendChild(progSlider)
+  progWrap.appendChild(progDisplay)
+  progGroup.appendChild(progWrap)
+  inner.appendChild(progGroup)
 
-  updateProgSlider()
-
-  progSlider.addEventListener("input", updateProgSlider)
-
-  progSliderWrap.appendChild(progSlider)
-  progSliderWrap.appendChild(progDisplay)
-
-  progGroup.appendChild(progSliderWrap)
-
-  root.appendChild(progGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Completion Likelihood
-  ───────────────────────────────────────────────────────── */
-
+  // ── Completion likelihood slider ──────────────────────────────────────────
   let likelihood = prefill.completionLikelihood ?? 0.5
-
   const likeGroup = el("div", "pf-mood-field")
   const likeLabel = el("div", "pf-mood-label")
-
   likeLabel.textContent = "Will I finish this?"
-
   likeGroup.appendChild(likeLabel)
 
-  const likeSliderWrap = el("div", "pf-slider-wrap")
-
-  const likeSlider = el("input", "pf-slider pf-slider-likelihood")
-
+  const likeWrap = el("div", "pf-slider-wrap")
+  const likeSlider = el("input", "pf-slider pf-slider-likelihood") as HTMLInputElement
   likeSlider.type = "range"
   likeSlider.min = "0"
   likeSlider.max = "100"
   likeSlider.value = String(Math.round(likelihood * 100))
 
+  const likeEmoji = (n: number) => n < 25 ? "😶" : n < 50 ? "🤔" : n < 75 ? "👀" : "🔥"
+  const likeEmojiEl = el("span", "pf-slider-emoji")
+  likeEmojiEl.textContent = likeEmoji(Math.round(likelihood * 100))
   const likeDisplay = el("span", "pf-slider-val")
-  const likeText = el("span", "pf-slider-emoji")
+  likeDisplay.textContent = `${Math.round(likelihood * 100)}%`
 
-  const likeEmoji = (n: number): string => {
-    if (n < 25) return "😶"
-    if (n < 50) return "🤔"
-    if (n < 75) return "👀"
-
-    return "🔥"
-  }
-
-  const updateLikeSlider = () => {
+  const syncLike = () => {
     const pct = Number(likeSlider.value)
-
     likelihood = pct / 100
-
     likeDisplay.textContent = `${pct}%`
-    likeText.textContent = likeEmoji(pct)
-
     likeSlider.style.setProperty("--fill", `${pct}%`)
+    likeEmojiEl.textContent = likeEmoji(pct)
   }
+  likeSlider.style.setProperty("--fill", `${Math.round(likelihood * 100)}%`)
+  likeSlider.addEventListener("input", syncLike)
+  likeWrap.appendChild(likeEmojiEl)
+  likeWrap.appendChild(likeSlider)
+  likeWrap.appendChild(likeDisplay)
+  likeGroup.appendChild(likeWrap)
+  inner.appendChild(likeGroup)
 
-  updateLikeSlider()
-
-  likeSlider.addEventListener("input", updateLikeSlider)
-
-  likeSliderWrap.appendChild(likeText)
-  likeSliderWrap.appendChild(likeSlider)
-  likeSliderWrap.appendChild(likeDisplay)
-
-  likeGroup.appendChild(likeSliderWrap)
-
-  root.appendChild(likeGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Mood Chips
-  ───────────────────────────────────────────────────────── */
-
+  // ── Mood chips ────────────────────────────────────────────────────────────
   let activeMood: MoodType | null = prefill.activeMood ?? null
-
   const moodGroup = el("div", "pf-mood-field")
   const moodLabel = el("div", "pf-mood-label")
-
   moodLabel.textContent = "Vibe right now"
-
   moodGroup.appendChild(moodLabel)
 
   const moodRow = el("div", "pf-mood-chips")
-
   const chipEls = new Map<MoodType, HTMLButtonElement>()
 
   const paintChips = (selected: MoodType | null) => {
-    chipEls.forEach((chip, mood) => {
-      chip.classList.toggle("pf-mood-chip-on", mood === selected)
-    })
+    chipEls.forEach((chip, mood) => chip.classList.toggle("pf-mood-chip-on", mood === selected))
   }
 
-  for (const [mood, meta] of Object.entries(MOOD_META) as Array<
-    [MoodType, { emoji: string; label: string }]
-  >) {
+  for (const [mood, meta] of Object.entries(MOOD_META) as Array<[MoodType, { emoji: string; label: string }]>) {
     const chip = el("button", "pf-mood-chip")
-
-    chip.type = "button"
-
-    chip.innerHTML = `
-      <span>${meta.emoji}</span>
-      <span>${meta.label}</span>
-    `
-
+    chip.innerHTML = `<span>${meta.emoji}</span><span>${meta.label}</span>`
     chip.addEventListener("click", () => {
       activeMood = activeMood === mood ? null : mood
-
       paintChips(activeMood)
     })
-
     chipEls.set(mood, chip)
-
     moodRow.appendChild(chip)
   }
-
   paintChips(activeMood)
-
   moodGroup.appendChild(moodRow)
+  inner.appendChild(moodGroup)
 
-  root.appendChild(moodGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Featured Quote
-  ───────────────────────────────────────────────────────── */
-
+  // ── Featured quote ────────────────────────────────────────────────────────
   const quoteGroup = el("div", "pf-mood-field")
-
   const quoteLabel = el("div", "pf-mood-label")
-
   quoteLabel.textContent = "A line that got you"
-
   quoteGroup.appendChild(quoteLabel)
-
-  const quoteInput = el("textarea", "pf-quote-input")
-
+  const quoteInput = document.createElement("textarea")
+  quoteInput.className = "pf-quote-input"
   quoteInput.value = prefill.featuredQuote ?? ""
-
-  quoteInput.placeholder = "“Even heaven is not enough…”"
-
+  quoteInput.placeholder = "\u201cEven heaven is not enough\u2026\u201d"
   quoteInput.rows = 2
-
   quoteGroup.appendChild(quoteInput)
+  inner.appendChild(quoteGroup)
 
-  root.appendChild(quoteGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Emotion Label
-  ───────────────────────────────────────────────────────── */
-
+  // ── Emotion label ─────────────────────────────────────────────────────────
   const emotionGroup = el("div", "pf-mood-field")
-
   const emotionLabel = el("div", "pf-mood-label")
-
   emotionLabel.textContent = "One word for the feeling"
-
   emotionGroup.appendChild(emotionLabel)
-
   const emotionInput = el("input", "p-input pf-emotion-input")
-
   emotionInput.value = prefill.emotionLabel ?? ""
-
   emotionInput.placeholder = "bittersweet · aching · electric"
-
   emotionGroup.appendChild(emotionInput)
-
-  root.appendChild(emotionGroup)
-
-  /* ────────────────────────────────────────────────────────
-     Public Refs
-  ───────────────────────────────────────────────────────── */
+  inner.appendChild(emotionGroup)
 
   return {
     root,
-
     refs: {
       getRating: () => currentRating,
-
       getLikelihood: () => likelihood,
-
       getMood: () => activeMood,
-
       getQuote: () => quoteInput.value.trim(),
-
       getEmotionLabel: () => emotionInput.value.trim(),
-
       getOverallProgress: () => overallProg,
     },
   }
