@@ -1,5 +1,5 @@
-import { VIDEO_HOSTS } from "@drama/lib/background/constants"
-import { isVideoHost, sendMsg } from "@drama/lib/background/messaging"
+import { VIDEO_HOSTS } from "@drama/lib/popup/constants"
+import { isVideoHost, sendMsg } from "@drama/lib/popup/messaging"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 // Statically import the scraper function using modern ES module syntax

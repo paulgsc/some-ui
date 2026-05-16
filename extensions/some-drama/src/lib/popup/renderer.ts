@@ -1,5 +1,5 @@
-import { ACCENT_COLORS, MAX_WATCHLIST } from "@drama/lib/background/constants"
-import type { PopupStateMachine } from "@drama/lib/background/fsm"
+import { ACCENT_COLORS, MAX_WATCHLIST } from "@drama/lib/popup/constants"
+import type { PopupStateMachine } from "@drama/lib/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 export class PopupRenderer {
