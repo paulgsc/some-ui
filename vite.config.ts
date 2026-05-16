@@ -24,7 +24,7 @@ export default defineConfig({
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
-      "@portfolio-chart": path.resolve(
+      "@portfolio": path.resolve(
         __dirname,
         "./packages/ui/portfolio-chart/src"
       ),
