@@ -6,7 +6,8 @@
     "lucide-react": "^0.477.0",
     "maishatu-fetch-kit": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "workspace:*",
+    "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
@@ -29,7 +30,7 @@
   "license": "MIT",
   "main": "./dist/attributions.cjs.js",
   "module": "./dist/attributions.es.js",
-  "name": "attributions",
+  "name": "@some-ui/attributions",
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

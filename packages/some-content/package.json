@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "attributions": "workspace:*",
+    "@some-ui/attributions": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/portfolio": "workspace:*",
