@@ -31,7 +31,7 @@
 .dc-blossom {
   position: fixed; /* fixed so left/top are viewport-relative, not layer-relative */
   left: calc(var(--b-layer-x, 0px) + var(--b-px, 0px));
-  top:  calc(var(--b-layer-y, 0px) + var(--b-py, 0px));
+  top: calc(var(--b-layer-y, 0px) + var(--b-py, 0px));
   font-size: 16px;
   line-height: 1;
   opacity: 0;

@@ -20,11 +20,22 @@ type SliderProps = {
   accent?: boolean
 }
 
-const Slider: React.FC<SliderProps> = ({ label, value, min, max, step, format, onChange, accent }) => {
+const Slider: React.FC<SliderProps> = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+  accent,
+}) => {
   const pct = ((value - min) / (max - min)) * 100
   return (
     <div className="flex items-center gap-3">
-      <span className="w-10 shrink-0 font-mono text-[11px] text-neutral-400">{label}</span>
+      <span className="w-10 shrink-0 font-mono text-[11px] text-neutral-400">
+        {label}
+      </span>
       <input
         type="range"
         min={min}

@@ -9,7 +9,7 @@
  * Runtime isolation: no imports from src/content/ or src/popup/ at runtime.
  * Type imports from src/types/ are erased — safe.
  */
-import { createMessageHandler, ApiClient } from "@censor/lib/background"
+import { ApiClient, createMessageHandler } from "@censor/lib/background"
 
 async function init(): Promise<void> {
   const api = new ApiClient()

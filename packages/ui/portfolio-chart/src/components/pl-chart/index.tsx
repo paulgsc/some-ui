@@ -25,11 +25,23 @@ function fmtPL(n: number): string {
   const s = abs >= 1000 ? `$${(abs / 1000).toFixed(1)}k` : `$${abs.toFixed(0)}`
   return n >= 0 ? `+${s}` : `-${s}`
 }
-function fmtSpot(n: number): string { return `$${n.toFixed(0)}` }
+function fmtSpot(n: number): string {
+  return `$${n.toFixed(0)}`
+}
 
-export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, className = "" }) => {
+export const PLChart: React.FC<PLChartProps> = ({
+  curve,
+  spot,
+  breakevens,
+  className = "",
+}) => {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [hover, setHover] = useState<{ x: number; y: number; spot: number; pl: number } | null>(null)
+  const [hover, setHover] = useState<{
+    x: number
+    y: number
+    spot: number
+    pl: number
+  } | null>(null)
 
   const derived = useMemo(() => {
     if (curve.length < 2) return null
@@ -44,7 +56,10 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
     const maxPL = rawMax + pad
 
     const path = curve
-      .map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.spot, minSpot, maxSpot).toFixed(1)},${sy(p.pl, minPL, maxPL).toFixed(1)}`)
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"}${sx(p.spot, minSpot, maxSpot).toFixed(1)},${sy(p.pl, minPL, maxPL).toFixed(1)}`
+      )
       .join(" ")
 
     const zeroY = sy(0, minPL, maxPL)
@@ -61,15 +76,30 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
     const lo = Math.ceil(minPL / yStep) * yStep
     for (let v = lo; v <= maxPL + 0.5; v += yStep) yTicks.push(v)
 
-    const xTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => minSpot + t * (maxSpot - minSpot))
+    const xTicks = [0, 0.25, 0.5, 0.75, 1].map(
+      (t) => minSpot + t * (maxSpot - minSpot)
+    )
 
-    return { minSpot, maxSpot, minPL, maxPL, path, zeroY, spotX, yTicks, xTicks }
+    return {
+      minSpot,
+      maxSpot,
+      minPL,
+      maxPL,
+      path,
+      zeroY,
+      spotX,
+      yTicks,
+      xTicks,
+    }
   }, [curve, spot])
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!derived || !svgRef.current || curve.length < 2) return
     const rect = svgRef.current.getBoundingClientRect()
-    const frac = Math.max(0, Math.min(1, ((e.clientX - rect.left) / rect.width * W - PAD.left) / IW))
+    const frac = Math.max(
+      0,
+      Math.min(1, (((e.clientX - rect.left) / rect.width) * W - PAD.left) / IW)
+    )
     const idx = Math.round(frac * (curve.length - 1))
     const pt = curve[idx]
     if (!pt) return
@@ -84,12 +114,15 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
   if (!derived) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <span className="font-mono text-[12px] text-neutral-700">add legs to see P/L surface</span>
+        <span className="font-mono text-[12px] text-neutral-700">
+          add legs to see P/L surface
+        </span>
       </div>
     )
   }
 
-  const { minSpot, maxSpot, minPL, maxPL, path, zeroY, spotX, yTicks, xTicks } = derived
+  const { minSpot, maxSpot, minPL, maxPL, path, zeroY, spotX, yTicks, xTicks } =
+    derived
   const clampedZero = Math.min(Math.max(zeroY, PAD.top), PAD.top + IH)
 
   const profitArea = `${path} L${sx(curve[curve.length - 1]!.spot, minSpot, maxSpot).toFixed(1)},${clampedZero} L${sx(curve[0]!.spot, minSpot, maxSpot).toFixed(1)},${clampedZero} Z`
@@ -107,35 +140,103 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
       aria-label="P/L curve — simulated NVDA options position"
     >
       <defs>
-        <clipPath id="sl-profit"><rect x={PAD.left} y={PAD.top} width={IW} height={clampedZero - PAD.top} /></clipPath>
-        <clipPath id="sl-loss"><rect x={PAD.left} y={clampedZero} width={IW} height={PAD.top + IH - clampedZero} /></clipPath>
-        <clipPath id="sl-chart"><rect x={PAD.left} y={PAD.top} width={IW} height={IH} /></clipPath>
+        <clipPath id="sl-profit">
+          <rect
+            x={PAD.left}
+            y={PAD.top}
+            width={IW}
+            height={clampedZero - PAD.top}
+          />
+        </clipPath>
+        <clipPath id="sl-loss">
+          <rect
+            x={PAD.left}
+            y={clampedZero}
+            width={IW}
+            height={PAD.top + IH - clampedZero}
+          />
+        </clipPath>
+        <clipPath id="sl-chart">
+          <rect x={PAD.left} y={PAD.top} width={IW} height={IH} />
+        </clipPath>
       </defs>
 
       {/* grid */}
       {yTicks.map((v) => {
         const y = sy(v, minPL, maxPL)
         if (y < PAD.top || y > PAD.top + IH) return null
-        return <line key={v} x1={PAD.left} x2={PAD.left + IW} y1={y} y2={y} stroke="currentColor" strokeOpacity={v === 0 ? 0.2 : 0.06} strokeWidth={v === 0 ? 1.5 : 0.5} />
+        return (
+          <line
+            key={v}
+            x1={PAD.left}
+            x2={PAD.left + IW}
+            y1={y}
+            y2={y}
+            stroke="currentColor"
+            strokeOpacity={v === 0 ? 0.2 : 0.06}
+            strokeWidth={v === 0 ? 1.5 : 0.5}
+          />
+        )
       })}
 
       {/* fills */}
-      <path d={profitArea} fill="#22c55e" fillOpacity={0.1} clipPath="url(#sl-profit)" />
-      <path d={lossArea} fill="#ef4444" fillOpacity={0.1} clipPath="url(#sl-loss)" />
+      <path
+        d={profitArea}
+        fill="#22c55e"
+        fillOpacity={0.1}
+        clipPath="url(#sl-profit)"
+      />
+      <path
+        d={lossArea}
+        fill="#ef4444"
+        fillOpacity={0.1}
+        clipPath="url(#sl-loss)"
+      />
 
       {/* P/L curve */}
-      <path d={path} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" clipPath="url(#sl-chart)" />
+      <path
+        d={path}
+        fill="none"
+        stroke="#3b82f6"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        clipPath="url(#sl-chart)"
+      />
 
       {/* y labels */}
       {yTicks.map((v) => {
         const y = sy(v, minPL, maxPL)
         if (y < PAD.top - 4 || y > PAD.top + IH + 4) return null
-        return <text key={v} x={PAD.left - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="currentColor" fillOpacity={0.4}>{v === 0 ? "$0" : fmtPL(v)}</text>
+        return (
+          <text
+            key={v}
+            x={PAD.left - 6}
+            y={y}
+            textAnchor="end"
+            dominantBaseline="middle"
+            fontSize={10}
+            fill="currentColor"
+            fillOpacity={0.4}
+          >
+            {v === 0 ? "$0" : fmtPL(v)}
+          </text>
+        )
       })}
 
       {/* x labels */}
       {xTicks.map((v, i) => (
-        <text key={i} x={sx(v, minSpot, maxSpot)} y={PAD.top + IH + 18} textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.4}>{fmtSpot(v)}</text>
+        <text
+          key={i}
+          x={sx(v, minSpot, maxSpot)}
+          y={PAD.top + IH + 18}
+          textAnchor="middle"
+          fontSize={10}
+          fill="currentColor"
+          fillOpacity={0.4}
+        >
+          {fmtSpot(v)}
+        </text>
       ))}
 
       {/* breakeven lines */}
@@ -144,8 +245,26 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
         if (bx < PAD.left || bx > PAD.left + IW) return null
         return (
           <g key={i}>
-            <line x1={bx} x2={bx} y1={PAD.top} y2={PAD.top + IH} stroke="currentColor" strokeOpacity={0.25} strokeWidth={1} strokeDasharray="4 3" />
-            <text x={bx} y={PAD.top - 5} textAnchor="middle" fontSize={9} fill="currentColor" fillOpacity={0.45}>BE {fmtSpot(be)}</text>
+            <line
+              x1={bx}
+              x2={bx}
+              y1={PAD.top}
+              y2={PAD.top + IH}
+              stroke="currentColor"
+              strokeOpacity={0.25}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+            <text
+              x={bx}
+              y={PAD.top - 5}
+              textAnchor="middle"
+              fontSize={9}
+              fill="currentColor"
+              fillOpacity={0.45}
+            >
+              BE {fmtSpot(be)}
+            </text>
           </g>
         )
       })}
@@ -153,19 +272,77 @@ export const PLChart: React.FC<PLChartProps> = ({ curve, spot, breakevens, class
       {/* spot line */}
       {spotX >= PAD.left && spotX <= PAD.left + IW && (
         <g>
-          <line x1={spotX} x2={spotX} y1={PAD.top} y2={PAD.top + IH} stroke="#3b82f6" strokeOpacity={0.65} strokeWidth={1.5} />
-          <text x={spotX} y={PAD.top + IH + 18} textAnchor="middle" fontSize={10} fill="#3b82f6" fontWeight={600}>{fmtSpot(spot)}</text>
+          <line
+            x1={spotX}
+            x2={spotX}
+            y1={PAD.top}
+            y2={PAD.top + IH}
+            stroke="#3b82f6"
+            strokeOpacity={0.65}
+            strokeWidth={1.5}
+          />
+          <text
+            x={spotX}
+            y={PAD.top + IH + 18}
+            textAnchor="middle"
+            fontSize={10}
+            fill="#3b82f6"
+            fontWeight={600}
+          >
+            {fmtSpot(spot)}
+          </text>
         </g>
       )}
 
       {/* hover */}
       {hover && (
         <g>
-          <line x1={hover.x} x2={hover.x} y1={PAD.top} y2={PAD.top + IH} stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} />
-          <circle cx={hover.x} cy={hover.y} r={4} fill="#3b82f6" stroke="white" strokeWidth={1.5} />
-          <rect x={hover.x + 8} y={hover.y - 20} width={78} height={34} rx={4} fill="#111" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} />
-          <text x={hover.x + 16} y={hover.y - 7} fontSize={10} fill="currentColor" fillOpacity={0.55}>{fmtSpot(hover.spot)}</text>
-          <text x={hover.x + 16} y={hover.y + 9} fontSize={11} fontWeight={600} fill={hover.pl >= 0 ? "#22c55e" : "#ef4444"}>{fmtPL(hover.pl)}</text>
+          <line
+            x1={hover.x}
+            x2={hover.x}
+            y1={PAD.top}
+            y2={PAD.top + IH}
+            stroke="currentColor"
+            strokeOpacity={0.15}
+            strokeWidth={1}
+          />
+          <circle
+            cx={hover.x}
+            cy={hover.y}
+            r={4}
+            fill="#3b82f6"
+            stroke="white"
+            strokeWidth={1.5}
+          />
+          <rect
+            x={hover.x + 8}
+            y={hover.y - 20}
+            width={78}
+            height={34}
+            rx={4}
+            fill="#111"
+            stroke="currentColor"
+            strokeOpacity={0.12}
+            strokeWidth={0.5}
+          />
+          <text
+            x={hover.x + 16}
+            y={hover.y - 7}
+            fontSize={10}
+            fill="currentColor"
+            fillOpacity={0.55}
+          >
+            {fmtSpot(hover.spot)}
+          </text>
+          <text
+            x={hover.x + 16}
+            y={hover.y + 9}
+            fontSize={11}
+            fontWeight={600}
+            fill={hover.pl >= 0 ? "#22c55e" : "#ef4444"}
+          >
+            {fmtPL(hover.pl)}
+          </text>
         </g>
       )}
     </svg>

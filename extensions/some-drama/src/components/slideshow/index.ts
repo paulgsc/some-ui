@@ -1,4 +1,3 @@
-
 // ── Slideshow ─────────────────────────────────────────────────────────────────
 // Owns: circle ring DOM, three slides, slide nav dots, chat bubble.
 // Does NOT know about card size, drag, or right-panel state.

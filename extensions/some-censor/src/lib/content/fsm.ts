@@ -1,4 +1,3 @@
-
 /**
  * FSM types and pure transition functions.
  *
@@ -28,40 +27,40 @@ import type { SessionId } from "./session"
 
 export type MetaData = {
   readonly channelName: string | null
-  readonly duration:    string | null
-  readonly uploadDate:  string | null
+  readonly duration: string | null
+  readonly uploadDate: string | null
 }
 
 export type TitleData = {
-  readonly text:       string
+  readonly text: string
   readonly translated: boolean
 }
 
 export type Masked = {
-  readonly kind:    "masked"
+  readonly kind: "masked"
   readonly session: SessionId
 }
 
 export type MetaState = {
-  readonly kind:    "meta"
+  readonly kind: "meta"
   readonly session: SessionId
-  readonly meta:    MetaData
+  readonly meta: MetaData
 }
 
 export type TitleState = {
-  readonly kind:    "title"
+  readonly kind: "title"
   readonly session: SessionId
-  readonly meta:    MetaData
-  readonly title:   TitleData
+  readonly meta: MetaData
+  readonly title: TitleData
 }
 
 export type Revealed = {
-  readonly kind:    "revealed"
+  readonly kind: "revealed"
   readonly session: SessionId
 }
 
 export type Whitelisted = {
-  readonly kind:    "whitelisted"
+  readonly kind: "whitelisted"
   readonly session: SessionId
 }
 
@@ -73,12 +72,12 @@ export type ViewState = Masked | MetaState | TitleState | Revealed | Whitelisted
 // is meaningful.  The overload signatures are the machine's transition table.
 // The implementation union handles structural sharing.
 
-export function applyClick(s: Masked,    meta: MetaData): MetaState
+export function applyClick(s: Masked, meta: MetaData): MetaState
 export function applyClick(s: MetaState, rawTitle: string): TitleState
 export function applyClick(s: TitleState | Revealed | Whitelisted): typeof s
 export function applyClick(
-  s:       ViewState,
-  payload?: MetaData | string,
+  s: ViewState,
+  payload?: MetaData | string
 ): ViewState {
   switch (s.kind) {
     case "masked":
@@ -86,10 +85,10 @@ export function applyClick(
 
     case "meta":
       return {
-        kind:    "title",
+        kind: "title",
         session: s.session,
-        meta:    s.meta,
-        title:   { text: (payload as string) ?? "", translated: false },
+        meta: s.meta,
+        title: { text: (payload as string) ?? "", translated: false },
       }
 
     default:
@@ -116,13 +115,17 @@ export type DataBoyo = "0" | "1" | "2" | "3" | "wl"
 
 export type VeilContent =
   | { readonly kind: "empty" }
-  | { readonly kind: "meta";  readonly meta: MetaData }
-  | { readonly kind: "title"; readonly meta: MetaData; readonly title: TitleData }
+  | { readonly kind: "meta"; readonly meta: MetaData }
+  | {
+      readonly kind: "title"
+      readonly meta: MetaData
+      readonly title: TitleData
+    }
 
 export type RenderModel = {
-  readonly dataBoyo:    DataBoyo
+  readonly dataBoyo: DataBoyo
   readonly veilContent: VeilContent
-  readonly removeVeil:  boolean  // true only for "revealed"
+  readonly removeVeil: boolean // true only for "revealed"
 }
 
 /**
@@ -137,37 +140,37 @@ export function project(state: ViewState): RenderModel {
   switch (state.kind) {
     case "masked":
       return {
-        dataBoyo:    "0",
+        dataBoyo: "0",
         veilContent: { kind: "empty" },
-        removeVeil:  false,
+        removeVeil: false,
       }
 
     case "meta":
       return {
-        dataBoyo:    "1",
+        dataBoyo: "1",
         veilContent: { kind: "meta", meta: state.meta },
-        removeVeil:  false,
+        removeVeil: false,
       }
 
     case "title":
       return {
-        dataBoyo:    "2",
+        dataBoyo: "2",
         veilContent: { kind: "title", meta: state.meta, title: state.title },
-        removeVeil:  false,
+        removeVeil: false,
       }
 
     case "revealed":
       return {
-        dataBoyo:    "3",
+        dataBoyo: "3",
         veilContent: { kind: "empty" },
-        removeVeil:  true,
+        removeVeil: true,
       }
 
     case "whitelisted":
       return {
-        dataBoyo:    "wl",
+        dataBoyo: "wl",
         veilContent: { kind: "empty" },
-        removeVeil:  false,
+        removeVeil: false,
       }
 
     // TypeScript will error here if a new variant is added to ViewState

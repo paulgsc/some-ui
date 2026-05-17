@@ -1,4 +1,3 @@
-
 /**
  *
  * Builds the opinionated / ephemeral section of the entry form.
@@ -18,11 +17,11 @@ type El = <K extends keyof HTMLElementTagNameMap>(
 ) => HTMLElementTagNameMap[K]
 
 const MOOD_META: Record<MoodType, { emoji: string; label: string }> = {
-  joy:     { emoji: "✨", label: "Joy" },
-  love:    { emoji: "💗", label: "Love" },
+  joy: { emoji: "✨", label: "Joy" },
+  love: { emoji: "💗", label: "Love" },
   sadness: { emoji: "🌧", label: "Sad" },
   tension: { emoji: "⚡", label: "Tension" },
-  cringe:  { emoji: "😬", label: "Cringe" },
+  cringe: { emoji: "😬", label: "Cringe" },
   neutral: { emoji: "〰️", label: "Meh" },
 }
 
@@ -124,13 +123,17 @@ export function buildOpinionatedSection(
   likeGroup.appendChild(likeLabel)
 
   const likeWrap = el("div", "pf-slider-wrap")
-  const likeSlider = el("input", "pf-slider pf-slider-likelihood") as HTMLInputElement
+  const likeSlider = el(
+    "input",
+    "pf-slider pf-slider-likelihood"
+  ) as HTMLInputElement
   likeSlider.type = "range"
   likeSlider.min = "0"
   likeSlider.max = "100"
   likeSlider.value = String(Math.round(likelihood * 100))
 
-  const likeEmoji = (n: number) => n < 25 ? "😶" : n < 50 ? "🤔" : n < 75 ? "👀" : "🔥"
+  const likeEmoji = (n: number) =>
+    n < 25 ? "😶" : n < 50 ? "🤔" : n < 75 ? "👀" : "🔥"
   const likeEmojiEl = el("span", "pf-slider-emoji")
   likeEmojiEl.textContent = likeEmoji(Math.round(likelihood * 100))
   const likeDisplay = el("span", "pf-slider-val")
@@ -162,10 +165,14 @@ export function buildOpinionatedSection(
   const chipEls = new Map<MoodType, HTMLButtonElement>()
 
   const paintChips = (selected: MoodType | null) => {
-    chipEls.forEach((chip, mood) => chip.classList.toggle("pf-mood-chip-on", mood === selected))
+    chipEls.forEach((chip, mood) =>
+      chip.classList.toggle("pf-mood-chip-on", mood === selected)
+    )
   }
 
-  for (const [mood, meta] of Object.entries(MOOD_META) as Array<[MoodType, { emoji: string; label: string }]>) {
+  for (const [mood, meta] of Object.entries(MOOD_META) as Array<
+    [MoodType, { emoji: string; label: string }]
+  >) {
     const chip = el("button", "pf-mood-chip")
     chip.innerHTML = `<span>${meta.emoji}</span><span>${meta.label}</span>`
     chip.addEventListener("click", () => {

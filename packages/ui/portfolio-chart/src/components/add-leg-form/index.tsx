@@ -74,7 +74,8 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
             style={{
               background: side === s ? sideBg[s] : "#1a1a1a",
               color: side === s ? sideColor[s] : "#737373",
-              border: side === s ? `1px solid ${sideColor[s]}` : "1px solid #333",
+              border:
+                side === s ? `1px solid ${sideColor[s]}` : "1px solid #333",
             }}
           >
             {s}
@@ -85,13 +86,26 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
       {/* strike + expiry */}
       <div className="flex gap-2">
         <Field label="strike">
-          <input type="number" value={strike} step={1} onChange={(e) => setStrike(Number(e.target.value))} className={fieldCls} />
+          <input
+            type="number"
+            value={strike}
+            step={1}
+            onChange={(e) => setStrike(Number(e.target.value))}
+            className={fieldCls}
+          />
         </Field>
         <Field label="expiry">
-          <select value={expiry} onChange={(e) => setExpiry(e.target.value)} className={fieldCls}>
+          <select
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+            className={fieldCls}
+          >
             {suggestedExpiries.map((d) => (
               <option key={d} value={d}>
-                {new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
               </option>
             ))}
           </select>
@@ -101,22 +115,50 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
       {/* premium + qty + IV */}
       <div className="flex gap-2">
         <Field label="prem">
-          <input type="number" value={premium} step={0.05} min={0} onChange={(e) => setPremium(Number(e.target.value))} className={fieldCls} />
+          <input
+            type="number"
+            value={premium}
+            step={0.05}
+            min={0}
+            onChange={(e) => setPremium(Number(e.target.value))}
+            className={fieldCls}
+          />
         </Field>
         <Field label="qty">
-          <input type="number" value={quantity} step={1} min={1} onChange={(e) => setQuantity(Number(e.target.value))} className={fieldCls} />
+          <input
+            type="number"
+            value={quantity}
+            step={1}
+            min={1}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            className={fieldCls}
+          />
         </Field>
         <Field label="IV %">
-          <input type="number" value={iv} step={1} min={1} max={500} onChange={(e) => setIV(Number(e.target.value))} className={fieldCls} />
+          <input
+            type="number"
+            value={iv}
+            step={1}
+            min={1}
+            max={500}
+            onChange={(e) => setIV(Number(e.target.value))}
+            className={fieldCls}
+          />
         </Field>
       </div>
 
       {/* actions */}
       <div className="flex gap-2">
-        <button onClick={handleAdd} className="flex-1 rounded bg-blue-700 py-1.5 font-mono text-[12px] font-medium text-white transition-colors hover:bg-blue-600">
+        <button
+          onClick={handleAdd}
+          className="flex-1 rounded bg-blue-700 py-1.5 font-mono text-[12px] font-medium text-white transition-colors hover:bg-blue-600"
+        >
           add leg
         </button>
-        <button onClick={onCancel} className="rounded border border-neutral-700 px-3 py-1.5 font-mono text-[12px] text-neutral-500 transition-colors hover:text-neutral-300">
+        <button
+          onClick={onCancel}
+          className="rounded border border-neutral-700 px-3 py-1.5 font-mono text-[12px] text-neutral-500 transition-colors hover:text-neutral-300"
+        >
           cancel
         </button>
       </div>
@@ -127,7 +169,10 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
 const fieldCls =
   "w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 font-mono text-[12px] text-neutral-100 outline-none focus:border-blue-500"
 
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
   <div className="flex flex-1 flex-col gap-1">
     <label className="font-mono text-[10px] text-neutral-500">{label}</label>
     {children}

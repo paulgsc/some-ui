@@ -1,4 +1,3 @@
-
 /**
  * VIDEO_SELECTORS — the canonical list of YouTube renderer element tag names
  * that BOYO tracks. Shared between observer.ts and video-manager.ts to avoid

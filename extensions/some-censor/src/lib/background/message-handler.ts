@@ -1,5 +1,5 @@
+import type { BgBroadcast, BgRequest, BgResponse } from "@censor/types/messages"
 
-import type { BgRequest, BgResponse, BgBroadcast } from "@censor/types/messages"
 import type { ApiClient } from "./api-client"
 
 /**
@@ -15,11 +15,10 @@ import type { ApiClient } from "./api-client"
 export function createMessageHandler(api: ApiClient) {
   return async (
     msg: BgRequest,
-    _sender: browser.runtime.MessageSender,
+    _sender: browser.runtime.MessageSender
   ): Promise<BgResponse> => {
     try {
       switch (msg.type) {
-
         case "IS_WHITELISTED": {
           const whitelisted = await api.isWhitelisted(msg.channelId)
           return { ok: true, whitelisted }
@@ -33,7 +32,7 @@ export function createMessageHandler(api: ApiClient) {
         case "ADD_WHITELIST": {
           await api.addToWhitelist(msg.channelId, msg.channelName)
           await broadcastToYouTubeTabs({
-            type:      "CHANNEL_WHITELISTED",
+            type: "CHANNEL_WHITELISTED",
             channelId: msg.channelId,
           })
           return { ok: true }
@@ -52,7 +51,7 @@ export function createMessageHandler(api: ApiClient) {
         case "SET_ENABLED": {
           const settings = await api.putSettings({ enabled: msg.enabled })
           await broadcastToYouTubeTabs({
-            type:    "ENABLED_CHANGED",
+            type: "ENABLED_CHANGED",
             enabled: settings.enabled,
           })
           return { ok: true, enabled: settings.enabled }
@@ -61,13 +60,17 @@ export function createMessageHandler(api: ApiClient) {
         default: {
           // Exhaustiveness guard — TypeScript will flag unhandled cases
           const _: never = msg
-          return { ok: false, error: `Unknown message type: ${(_  as BgRequest).type}` }
+          return {
+            ok: false,
+            error: `Unknown message type: ${(_ as BgRequest).type}`,
+          }
         }
       }
     } catch (err) {
-      const message = err instanceof Error
-        ? err.message
-        : (err as { message?: string }).message ?? "Unknown error"
+      const message =
+        err instanceof Error
+          ? err.message
+          : ((err as { message?: string }).message ?? "Unknown error")
       console.error("[BOYO Background] Error handling message:", msg.type, err)
       return { ok: false, error: message }
     }
@@ -82,7 +85,7 @@ async function broadcastToYouTubeTabs(msg: BgBroadcast): Promise<void> {
   const tabs = await browser.tabs.query({ url: "*://www.youtube.com/*" })
   await Promise.allSettled(
     tabs
-      .filter(t => t.id !== undefined)
-      .map(t => browser.tabs.sendMessage(t.id!, msg))
+      .filter((t) => t.id !== undefined)
+      .map((t) => browser.tabs.sendMessage(t.id!, msg))
   )
 }

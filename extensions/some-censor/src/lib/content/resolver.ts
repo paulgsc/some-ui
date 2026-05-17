@@ -1,7 +1,7 @@
+import type { Failed, NodeState, Resolved } from "@censor/types/states"
 
-import type { NodeState, Resolved, Failed } from "@censor/types/states"
-import { extractVideoId }   from "./extract/video-id"
 import { extractChannelId } from "./extract/channel-id"
+import { extractVideoId } from "./extract/video-id"
 
 /**
  * Pure classification function. No side effects.
@@ -13,10 +13,10 @@ import { extractChannelId } from "./extract/channel-id"
  * The caller is responsible for retry scheduling on Failed results.
  */
 export function tryResolve(el: HTMLElement): Resolved | Failed {
-  const videoId   = extractVideoId(el)
+  const videoId = extractVideoId(el)
   const channelId = extractChannelId(el)
 
-  if (!videoId)   return { kind: "failed", el, reason: "missing-video-id" }
+  if (!videoId) return { kind: "failed", el, reason: "missing-video-id" }
   if (!channelId) return { kind: "failed", el, reason: "missing-channel-id" }
 
   return { kind: "resolved", el, videoId, channelId }

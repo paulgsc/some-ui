@@ -1,4 +1,3 @@
-
 /**
  * — composable, type-safe keyboard shortcut system
  *
@@ -16,7 +15,7 @@
  */
 
 export type KeyCombo = {
-  key: string       // e.g. "b", "F2", "Escape" — matches KeyboardEvent.key
+  key: string // e.g. "b", "F2", "Escape" — matches KeyboardEvent.key
   ctrl?: boolean
   alt?: boolean
   shift?: boolean
@@ -27,10 +26,10 @@ export type KeyBindingCallback = (event: KeyboardEvent) => void
 
 function matches(event: KeyboardEvent, combo: KeyCombo): boolean {
   if (event.key.toLowerCase() !== combo.key.toLowerCase()) return false
-  if (!!combo.ctrl  !== event.ctrlKey)  return false
-  if (!!combo.alt   !== event.altKey)   return false
+  if (!!combo.ctrl !== event.ctrlKey) return false
+  if (!!combo.alt !== event.altKey) return false
   if (!!combo.shift !== event.shiftKey) return false
-  if (!!combo.meta  !== event.metaKey)  return false
+  if (!!combo.meta !== event.metaKey) return false
   return true
 }
 
@@ -50,7 +49,8 @@ export class KeyBinding {
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target.isContentEditable
-      ) return
+      )
+        return
 
       if (matches(e, this.combo)) {
         e.preventDefault()
@@ -77,10 +77,10 @@ export class KeyBinding {
   /** Human-readable combo string for display */
   describe(): string {
     const parts: string[] = []
-    if (this.combo.ctrl)  parts.push("Ctrl")
-    if (this.combo.alt)   parts.push("Alt")
+    if (this.combo.ctrl) parts.push("Ctrl")
+    if (this.combo.alt) parts.push("Alt")
     if (this.combo.shift) parts.push("Shift")
-    if (this.combo.meta)  parts.push("⌘")
+    if (this.combo.meta) parts.push("⌘")
     parts.push(this.combo.key.toUpperCase())
     return parts.join("+")
   }

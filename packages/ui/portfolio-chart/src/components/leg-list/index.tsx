@@ -1,4 +1,5 @@
 import type { Leg } from "@portfolio/types"
+
 import { LegRow } from "./leg-row"
 
 export type LegListProps = {
@@ -16,7 +17,12 @@ export const LegList: React.FC<LegListProps> = ({
 }) => (
   <div className="flex flex-col gap-2">
     {legs.map((leg) => (
-      <LegRow key={leg.id} leg={leg} pl={legPLs[leg.id] ?? 0} onRemove={onRemoveLeg} />
+      <LegRow
+        key={leg.id}
+        leg={leg}
+        pl={legPLs[leg.id] ?? 0}
+        onRemove={onRemoveLeg}
+      />
     ))}
     <button
       onClick={onAddLegClick}

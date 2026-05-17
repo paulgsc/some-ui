@@ -1,4 +1,3 @@
-
 /**
  *
  * LAYER 1 — Config wiring tests (calculateConfigForFile)
@@ -11,9 +10,7 @@
  */
 
 import path from "node:path"
-
-import { describe, it } from "vitest"
-import { expect } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import typescriptConfig from "../src/configs/typescript.config.js"
 import {
@@ -23,8 +20,8 @@ import {
   LINT_FIXTURES,
 } from "./helpers/eslint-resolver.js"
 
-const TS   = path.join(LINT_FIXTURES, "src/service.ts")
-const JS   = path.join(LINT_FIXTURES, "src/util.js")
+const TS = path.join(LINT_FIXTURES, "src/service.ts")
+const JS = path.join(LINT_FIXTURES, "src/util.js")
 const ROLL = path.join(LINT_FIXTURES, "src/rollup.config.ts")
 
 // ── TS file: all declared error rules ─────────────────────────────────────
@@ -130,7 +127,11 @@ describe("typescript.config — rollup override", () => {
 
   it("explicit-function-return-type is off for rollup configs", async () => {
     rules ??= await rulesPromise
-    expectOff(rules, "@typescript-eslint/explicit-function-return-type", "rollup.config.ts")
+    expectOff(
+      rules,
+      "@typescript-eslint/explicit-function-return-type",
+      "rollup.config.ts"
+    )
   })
 
   it("no-deprecated is off for rollup configs", async () => {
@@ -140,7 +141,11 @@ describe("typescript.config — rollup override", () => {
 
   it("other type-aware rules still apply to rollup configs", async () => {
     rules ??= await rulesPromise
-    expectError(rules, "@typescript-eslint/no-floating-promises", "rollup.config.ts")
+    expectError(
+      rules,
+      "@typescript-eslint/no-floating-promises",
+      "rollup.config.ts"
+    )
     expectError(rules, "@typescript-eslint/no-explicit-any", "rollup.config.ts")
   })
 })

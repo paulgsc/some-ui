@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+
 import { TopBar } from "."
 
 type Story = StoryObj<typeof TopBar>
@@ -11,7 +12,8 @@ export default {
   args: {
     spot: 118.4,
     positionName: "NVDA IC Jan17",
-    archetypeDesc: "range-bound income · theta decay · defined risk on both wings",
+    archetypeDesc:
+      "range-bound income · theta decay · defined risk on both wings",
     onPositionNameChange: () => {},
     onReset: () => {},
   },
@@ -40,7 +42,9 @@ export const Custom: Story = {
 export const Editable: Story = {
   render: (args) => {
     const [name, setName] = useState("NVDA IC Jan17")
-    return <TopBar {...args} positionName={name} onPositionNameChange={setName} />
+    return (
+      <TopBar {...args} positionName={name} onPositionNameChange={setName} />
+    )
   },
   args: { archetype: "iron condor" },
 }

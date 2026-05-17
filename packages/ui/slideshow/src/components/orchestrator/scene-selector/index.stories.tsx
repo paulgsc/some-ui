@@ -93,7 +93,8 @@ export const SomeSelections: Story = {
         id: "cdrama",
         fileName,
         instanceIndex: 0,
-        sourceConfig: mockLibraryItems[0] .config as SceneSelection["sourceConfig"],
+        sourceConfig: mockLibraryItems[0]
+          .config as SceneSelection["sourceConfig"],
       },
       {
         id: "constant",

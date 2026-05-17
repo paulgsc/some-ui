@@ -1,4 +1,3 @@
-
 /**
  * DomHandle — the ONLY class permitted to touch the DOM.
  *

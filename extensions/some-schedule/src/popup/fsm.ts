@@ -1,4 +1,3 @@
-
 /**
  *
  * Tab-centric FSM. Each state is the complete render specification —
@@ -35,7 +34,7 @@ export type PopupState =
   | {
       kind: "IDLE"
       tab_count: number // total tabs currently open in browser
-      db_count: number  // rows currently in tabs table
+      db_count: number // rows currently in tabs table
       last_synced_at: string | null
     }
 
@@ -95,7 +94,6 @@ export type PopupState =
 
   // Pruning stale tabs (maintenance).
   | { kind: "PRUNING" }
-
   | {
       kind: "PRUNE_DONE"
       pruned_count: number
@@ -129,7 +127,11 @@ export function onSyncTriggered(_prev: PopupState): PopupState {
   return { kind: "SYNCING", completed: 0, total: 0 }
 }
 
-export function onSyncProgress(prev: PopupState, completed: number, total: number): PopupState {
+export function onSyncProgress(
+  prev: PopupState,
+  completed: number,
+  total: number
+): PopupState {
   if (prev.kind !== "SYNCING") return prev
   return { kind: "SYNCING", completed, total }
 }
@@ -142,12 +144,8 @@ export function onSyncDone(
   return { kind: "SYNC_DONE", result, db_count }
 }
 
-export function onSyncFailed(
-  prev: PopupState,
-  error: string
-): PopupState {
-  const completed_before_failure =
-    prev.kind === "SYNCING" ? prev.completed : 0
+export function onSyncFailed(prev: PopupState, error: string): PopupState {
+  const completed_before_failure = prev.kind === "SYNCING" ? prev.completed : 0
   return { kind: "SYNC_FAILED", error, completed_before_failure }
 }
 

@@ -17,8 +17,7 @@ function normCDF(x: number): number {
   const sign = x < 0 ? -1 : 1
   const t = 1.0 / (1.0 + p * Math.abs(x))
   const y =
-    1.0 -
-    ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
+    1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
   return 0.5 * (1.0 + sign * y)
 }
 
@@ -57,8 +56,7 @@ export function bsPrice(
       ? spot * normCDF(d1) - strike * Math.exp(-r * T) * normCDF(d2)
       : strike * Math.exp(-r * T) * normCDF(-d2) - spot * normCDF(-d1)
 
-  const delta =
-    optionType === "call" ? normCDF(d1) : normCDF(d1) - 1
+  const delta = optionType === "call" ? normCDF(d1) : normCDF(d1) - 1
 
   const gamma = normPDF(d1) / (spot * iv * sqrtT)
 
@@ -92,7 +90,9 @@ export function legPLAtSpot(
     Math.max(leg.iv * (1 + ivShift), 0.01),
     leg.optionType
   )
-  return (leg.side === "long" ? 1 : -1) * (price - leg.premium) * leg.quantity * 100
+  return (
+    (leg.side === "long" ? 1 : -1) * (price - leg.premium) * leg.quantity * 100
+  )
 }
 
 export function positionPLAtSpot(
@@ -125,7 +125,10 @@ export function computeNetGreeks(
   dte: number,
   ivShift: number
 ): Greeks {
-  let delta = 0, gamma = 0, theta = 0, vega = 0
+  let delta = 0,
+    gamma = 0,
+    theta = 0,
+    vega = 0
   for (const leg of legs) {
     const bs = bsPrice(
       spot,
@@ -152,7 +155,13 @@ export function computePLMetrics(
   ivShift: number
 ): PLMetrics {
   if (legs.length === 0 || curve.length === 0) {
-    return { plAtSpot: 0, maxProfit: 0, maxLoss: 0, probProfit: 0, breakevens: [] }
+    return {
+      plAtSpot: 0,
+      maxProfit: 0,
+      maxLoss: 0,
+      probProfit: 0,
+      breakevens: [],
+    }
   }
   const pls = curve.map((p) => p.pl)
   const profitable = curve.filter((p) => p.pl > 0).length

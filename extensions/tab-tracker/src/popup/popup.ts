@@ -1,4 +1,3 @@
-
 /**
  *
  * Minimal. The popup's only job is to show a summary of all tracked nodes
@@ -7,7 +6,12 @@
  */
 
 import type { NodeState, OutboundMessage } from "@tab/types"
-import { OUTCOMES, OUTCOME_CONFIG, SEGMENT_DISPLAY, getDomain } from "@tab/types"
+import {
+  getDomain,
+  OUTCOME_CONFIG,
+  OUTCOMES,
+  SEGMENT_DISPLAY,
+} from "@tab/types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,9 +27,7 @@ function formatLastSeen(visits: NodeState["visits"]): string {
   return `${diffDay}d ago`
 }
 
-function countOutcomes(
-  visits: NodeState["visits"]
-): Record<string, number> {
+function countOutcomes(visits: NodeState["visits"]): Record<string, number> {
   const counts: Record<string, number> = { Progress: 0, Stuck: 0, Review: 0 }
   for (const v of visits) counts[v.outcome]++
   return counts
@@ -44,7 +46,9 @@ async function render(): Promise<void> {
     const tabs = await browser.tabs.query({})
     const responses = await Promise.all(
       tabs
-        .filter((t): t is browser.tabs.Tab & { id: number } => t.id !== undefined)
+        .filter(
+          (t): t is browser.tabs.Tab & { id: number } => t.id !== undefined
+        )
         .map(async (t) => {
           const resp = (await browser.runtime.sendMessage({
             type: "GET_NODE_STATE",

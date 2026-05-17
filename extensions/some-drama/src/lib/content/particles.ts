@@ -62,9 +62,9 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
 
     // Per-particle STATIC offset from the layer origin — use --b-px / --b-py
     // so they don't collide with the layer-level tracking vars.
-    const px = rnd(-20, 40)   // horizontal scatter around anchor right edge
-    const py = rnd(-30, 30)   // vertical scatter around anchor centre
-    const tx = rnd(-70, 70)   // drift X over lifetime
+    const px = rnd(-20, 40) // horizontal scatter around anchor right edge
+    const py = rnd(-30, 30) // vertical scatter around anchor centre
+    const tx = rnd(-70, 70) // drift X over lifetime
     const ty = rnd(-110, -35) // drift Y (upward)
     const rot = rnd(-210, 210)
     const dur = rnd(5, 9)

@@ -1,4 +1,3 @@
-
 // ── RightPanel ────────────────────────────────────────────────────────────────
 // Owns: episode badge, timestamp, progress bar, stat values, mood dot strip.
 // Does NOT know about drag, size cycling, or slideshow.

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+
 import { MetricsBar } from "."
 
 type Story = StoryObj<typeof MetricsBar>
@@ -47,7 +48,13 @@ export const ShortStrangleLoss: Story = {
 
 export const NullState: Story = {
   args: {
-    metrics: { plAtSpot: 0, maxProfit: 0, maxLoss: 0, probProfit: 0, breakevens: [] },
+    metrics: {
+      plAtSpot: 0,
+      maxProfit: 0,
+      maxLoss: 0,
+      probProfit: 0,
+      breakevens: [],
+    },
     greeks: { delta: 0, gamma: 0, theta: 0, vega: 0 },
   },
 }

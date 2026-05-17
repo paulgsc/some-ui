@@ -1,4 +1,3 @@
-
 /**
  * SessionId — opaque monotonic token minted exactly once per lifecycle start.
  *
@@ -17,5 +16,5 @@ export type SessionId = number & { readonly __brand: "SessionId" }
 let _counter = 0
 
 export function mkSession(): SessionId {
-  return (++_counter) as SessionId
+  return ++_counter as SessionId
 }

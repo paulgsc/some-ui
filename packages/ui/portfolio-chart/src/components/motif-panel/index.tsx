@@ -16,7 +16,12 @@ type PointRowProps = {
   onUpdate: (id: string, text: string) => void
 }
 
-const PointRow: React.FC<PointRowProps> = ({ point, onToggle, onRemove, onUpdate }) => {
+const PointRow: React.FC<PointRowProps> = ({
+  point,
+  onToggle,
+  onRemove,
+  onUpdate,
+}) => {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(point.text)
   const ref = useRef<HTMLInputElement>(null)
@@ -42,7 +47,13 @@ const PointRow: React.FC<PointRowProps> = ({ point, onToggle, onRemove, onUpdate
       >
         {point.checked && (
           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-            <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M1 4l3 3 5-6"
+              stroke="white"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       </button>
@@ -55,7 +66,10 @@ const PointRow: React.FC<PointRowProps> = ({ point, onToggle, onRemove, onUpdate
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit()
-            if (e.key === "Escape") { setDraft(point.text); setEditing(false) }
+            if (e.key === "Escape") {
+              setDraft(point.text)
+              setEditing(false)
+            }
           }}
           autoFocus
           className="flex-1 bg-transparent font-mono text-[12px] text-neutral-100 outline-none"
@@ -108,7 +122,13 @@ export const MotifPanel: React.FC<MotifPanelProps> = ({
       )}
 
       {points.map((p) => (
-        <PointRow key={p.id} point={p} onToggle={onToggle} onRemove={onRemove} onUpdate={onUpdate} />
+        <PointRow
+          key={p.id}
+          point={p}
+          onToggle={onToggle}
+          onRemove={onRemove}
+          onUpdate={onUpdate}
+        />
       ))}
 
       <div className="mt-1 flex items-center gap-2">
@@ -116,7 +136,9 @@ export const MotifPanel: React.FC<MotifPanelProps> = ({
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAdd() }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleAdd()
+          }}
           placeholder="add talking point…"
           className="flex-1 rounded border border-neutral-800 bg-transparent px-2 py-1 font-mono text-[11px] text-neutral-400 placeholder-neutral-700 outline-none focus:border-neutral-600"
         />

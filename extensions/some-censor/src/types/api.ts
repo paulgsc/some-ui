@@ -1,4 +1,3 @@
-
 /**
  * Contract for the localhost persistence API.
  * Background script is the only consumer of the concrete client;
@@ -14,18 +13,18 @@ export type ApiConfig = {
 
 // ── Request / Response shapes ─────────────────────────────────────────────────
 
-export type GetWhitelistResponse  = { channels: WhitelistEntry[] }
-export type PostWhitelistRequest  = { channelId: string; channelName: string }
+export type GetWhitelistResponse = { channels: WhitelistEntry[] }
+export type PostWhitelistRequest = { channelId: string; channelName: string }
 export type PostWhitelistResponse = { channel: WhitelistEntry }
 export type DeleteWhitelistResponse = { ok: true }
 
-export type GetSettingsResponse   = { enabled: boolean }
-export type PutSettingsRequest    = { enabled: boolean }
-export type PutSettingsResponse   = { enabled: boolean }
+export type GetSettingsResponse = { enabled: boolean }
+export type PutSettingsRequest = { enabled: boolean }
+export type PutSettingsResponse = { enabled: boolean }
 
 // ── API Error ─────────────────────────────────────────────────────────────────
 
 export type ApiError = {
-  status:  number
+  status: number
   message: string
 }

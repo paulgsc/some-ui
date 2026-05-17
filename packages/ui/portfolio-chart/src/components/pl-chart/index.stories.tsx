@@ -1,5 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { PLPoint } from "@portfolio/types"
+import type { Meta, StoryObj } from "@storybook/react-vite"
+
 import { PLChart } from "."
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -13,14 +14,19 @@ function ironCondorCurve(centerSpot = 118): Array<PLPoint> {
     const beLeft = centerSpot * 0.88
     const beRight = centerSpot * 1.13
     let pl: number
-    if (spot < beLeft)        pl = Math.max(-770, maxProfit - (beLeft - spot) * 77)
-    else if (spot > beRight)  pl = Math.max(-770, maxProfit - (spot - beRight) * 77)
-    else                      pl = maxProfit
+    if (spot < beLeft) pl = Math.max(-770, maxProfit - (beLeft - spot) * 77)
+    else if (spot > beRight)
+      pl = Math.max(-770, maxProfit - (spot - beRight) * 77)
+    else pl = maxProfit
     return { spot, pl }
   })
 }
 
-function shortCallCurve(strike = 130, premium = 210, centerSpot = 118): Array<PLPoint> {
+function shortCallCurve(
+  strike = 130,
+  premium = 210,
+  centerSpot = 118
+): Array<PLPoint> {
   const lo = centerSpot * 0.7
   const hi = centerSpot * 1.3
   return Array.from({ length: 120 }, (_, i) => {

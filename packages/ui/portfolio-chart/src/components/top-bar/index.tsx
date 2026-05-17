@@ -39,9 +39,13 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* left: brand + ticker + archetype */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] tracking-widest text-neutral-600">SANDLOT</span>
+          <span className="font-mono text-[11px] tracking-widest text-neutral-600">
+            SANDLOT
+          </span>
           <span className="text-neutral-700">·</span>
-          <span className="font-mono text-[15px] font-semibold tracking-wide text-neutral-100">NVDA</span>
+          <span className="font-mono text-[15px] font-semibold tracking-wide text-neutral-100">
+            NVDA
+          </span>
           <span className="rounded-sm border border-neutral-800 bg-neutral-900 px-1.5 py-0.5 font-mono text-[10px] text-neutral-600">
             hypothetical
           </span>
@@ -52,7 +56,10 @@ export const TopBar: React.FC<TopBarProps> = ({
             className="flex items-center gap-1.5 rounded-full px-3 py-0.5"
             style={{ background: `${color}18`, border: `1px solid ${color}40` }}
           >
-            <span className="font-mono text-[11px] font-medium" style={{ color }}>
+            <span
+              className="font-mono text-[11px] font-medium"
+              style={{ color }}
+            >
               {archetype}
             </span>
           </div>
@@ -70,7 +77,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         <span className="font-mono text-[22px] font-semibold tracking-tight text-neutral-100">
           ${spot.toFixed(2)}
         </span>
-        <span className="font-mono text-[10px] text-neutral-600">sim spot · not live</span>
+        <span className="font-mono text-[10px] text-neutral-600">
+          sim spot · not live
+        </span>
       </div>
 
       {/* right: name + reset */}

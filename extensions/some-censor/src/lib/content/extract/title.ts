@@ -1,4 +1,3 @@
-
 /**
  * Extract video title text from a renderer element.
  * Returns null if no title node is found or text is empty.

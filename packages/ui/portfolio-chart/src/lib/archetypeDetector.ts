@@ -13,7 +13,8 @@ export const ARCHETYPE_DESCRIPTIONS: Record<SpreadArchetype, string> = {
   "short straddle": "mean reversion · theta decay · high risk",
   "long strangle": "volatility play · cheaper than straddle · wider breakevens",
   "short strangle": "high theta income · neutral bias · wing risk unprotected",
-  "iron condor": "range-bound income · theta decay · defined risk on both wings",
+  "iron condor":
+    "range-bound income · theta decay · defined risk on both wings",
   "iron butterfly": "ATM premium capture · tighter range · higher max profit",
   "covered call": "yield enhancement on long stock · capped upside",
   "long butterfly": "low-cost neutral · max profit at ATM · defined risk",
@@ -29,7 +30,8 @@ export function detectArchetype(legs: Array<Leg>): SpreadArchetype {
 
   if (legs.length === 1) {
     const [leg] = legs as [Leg]
-    if (leg.optionType === "call") return leg.side === "long" ? "long call" : "short call"
+    if (leg.optionType === "call")
+      return leg.side === "long" ? "long call" : "short call"
     return leg.side === "long" ? "long put" : "short put"
   }
 
@@ -64,20 +66,38 @@ export function detectArchetype(legs: Array<Leg>): SpreadArchetype {
   if (legs.length === 3 && legs.every((l) => l.expiry === legs[0]!.expiry)) {
     const sameType = legs.every((l) => l.optionType === legs[0]!.optionType)
     if (sameType) {
-      const [lo, mid, hi] = [...legs].sort((a, b) => a.strike - b.strike) as [Leg, Leg, Leg]
-      const equidist = Math.abs((hi.strike - mid.strike) - (mid.strike - lo.strike)) < 0.5
-      if (equidist && lo.side === "long" && mid.side === "short" && hi.side === "long")
+      const [lo, mid, hi] = [...legs].sort((a, b) => a.strike - b.strike) as [
+        Leg,
+        Leg,
+        Leg,
+      ]
+      const equidist =
+        Math.abs(hi.strike - mid.strike - (mid.strike - lo.strike)) < 0.5
+      if (
+        equidist &&
+        lo.side === "long" &&
+        mid.side === "short" &&
+        hi.side === "long"
+      )
         return "long butterfly"
     }
   }
 
   if (legs.length === 4 && legs.every((l) => l.expiry === legs[0]!.expiry)) {
     if (c.length === 2 && p.length === 2) {
-      const [cLo, cHi] = [...c].sort((a, b) => a.strike - b.strike) as [Leg, Leg]
-      const [pLo, pHi] = [...p].sort((a, b) => a.strike - b.strike) as [Leg, Leg]
+      const [cLo, cHi] = [...c].sort((a, b) => a.strike - b.strike) as [
+        Leg,
+        Leg,
+      ]
+      const [pLo, pHi] = [...p].sort((a, b) => a.strike - b.strike) as [
+        Leg,
+        Leg,
+      ]
       if (
-        cLo.side === "short" && cHi.side === "long" &&
-        pLo.side === "long"  && pHi.side === "short"
+        cLo.side === "short" &&
+        cHi.side === "long" &&
+        pLo.side === "long" &&
+        pHi.side === "short"
       ) {
         return cLo.strike === pHi.strike ? "iron butterfly" : "iron condor"
       }

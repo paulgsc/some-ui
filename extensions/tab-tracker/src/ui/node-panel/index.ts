@@ -1,9 +1,8 @@
-
 import type { NodeState, Outcome, Segment } from "@tab/types"
 import {
   MIN_ACTIVE_MS_TO_REGISTER,
-  OUTCOMES,
   OUTCOME_CONFIG,
+  OUTCOMES,
   SEGMENT_DISPLAY,
 } from "@tab/types"
 
@@ -100,10 +99,7 @@ export class NodePanel {
     stats.className = "__tl2_stats"
 
     // Visit count
-    const visitStat = this.makeStat(
-      String(nodeState.visits.length),
-      "visits"
-    )
+    const visitStat = this.makeStat(String(nodeState.visits.length), "visits")
     this.visitCountEl = visitStat.valEl
     stats.appendChild(visitStat.el)
 
@@ -346,9 +342,7 @@ export class NodePanel {
     return { el, valEl }
   }
 
-  private countOutcomes(
-    visits: NodeState["visits"]
-  ): Record<Outcome, number> {
+  private countOutcomes(visits: NodeState["visits"]): Record<Outcome, number> {
     const counts: Record<Outcome, number> = {
       Progress: 0,
       Stuck: 0,
@@ -372,9 +366,7 @@ export class NodePanel {
   }
 
   private gateText(activeMs: number): string {
-    const remaining = Math.ceil(
-      (MIN_ACTIVE_MS_TO_REGISTER - activeMs) / 1000
-    )
+    const remaining = Math.ceil((MIN_ACTIVE_MS_TO_REGISTER - activeMs) / 1000)
     if (remaining > 60) return `${Math.ceil(remaining / 60)}m to unlock`
     return `${remaining}s to unlock`
   }

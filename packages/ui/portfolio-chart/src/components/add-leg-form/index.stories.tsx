@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
+
 import { AddLegForm } from "."
 
 type Story = StoryObj<typeof AddLegForm>
@@ -8,8 +9,12 @@ export default {
   component: AddLegForm,
   parameters: { layout: "padded" },
   args: {
-    onAdd: (leg) => { console.log("leg added:", leg) },
-    onCancel: () => { console.log("cancelled") },
+    onAdd: (leg) => {
+      console.log("leg added:", leg)
+    },
+    onCancel: () => {
+      console.log("cancelled")
+    },
   },
 } as Meta<typeof AddLegForm>
 

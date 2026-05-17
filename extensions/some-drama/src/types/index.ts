@@ -1,4 +1,3 @@
-
 // Single source of truth for all shared types across the extension.
 // No logic, no side effects — import freely from any module.
 
@@ -42,7 +41,7 @@ export type DramaEntryStructural = {
   genre: string
   note: string
   color: string
-  url: string          // source URL — scrapable from window.location.href
+  url: string // source URL — scrapable from window.location.href
   posterUrl: string | null
   timestamp: string
   progress: number
@@ -51,16 +50,19 @@ export type DramaEntryStructural = {
 
 // ─── Opinionated: ephemeral, feeling-at-the-moment values ────────────────────
 export type DramaEntryOpinionated = {
-  rating: number              // 0–10
+  rating: number // 0–10
   completionLikelihood: number // 0–1
   activeMood: MoodType | null
   featuredQuote: string
   emotionLabel: string
-  overallProgress: number     // 0–1  (episodes watched / total, user-tracked)
+  overallProgress: number // 0–1  (episodes watched / total, user-tracked)
 }
 
 // ─── Full entry ───────────────────────────────────────────────────────────────
-export type DramaEntry = { id: string; addedAt: number } & DramaEntryStructural &
+export type DramaEntry = {
+  id: string
+  addedAt: number
+} & DramaEntryStructural &
   DramaEntryOpinionated
 
 export type WatchlistState = {

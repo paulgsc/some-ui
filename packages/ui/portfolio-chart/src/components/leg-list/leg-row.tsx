@@ -38,11 +38,15 @@ export const LegRow: React.FC<LegRowProps> = ({ leg, pl, onRemove }) => {
           </span>
         </div>
         <span className="font-mono text-[10px] text-neutral-500">
-          {fmtExpiry(leg.expiry)} · ×{leg.quantity} · prem ${leg.premium.toFixed(2)} · IV {Math.round(leg.iv * 100)}%
+          {fmtExpiry(leg.expiry)} · ×{leg.quantity} · prem $
+          {leg.premium.toFixed(2)} · IV {Math.round(leg.iv * 100)}%
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <span className="font-mono text-[13px] font-semibold" style={{ color: plColor }}>
+        <span
+          className="font-mono text-[13px] font-semibold"
+          style={{ color: plColor }}
+        >
           {pl >= 0 ? "+" : ""}${pl.toFixed(0)}
         </span>
         {hovered && (

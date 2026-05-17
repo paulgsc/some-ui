@@ -1,4 +1,3 @@
-
 import type { MetaData } from "@censor/types/states"
 
 /**
@@ -19,7 +18,8 @@ export function extractMeta(el: HTMLElement): MetaData {
       ?.textContent?.trim() ?? null
 
   const uploadDate =
-    el.querySelector("#metadata-line span:nth-child(2)")?.textContent?.trim() ?? null
+    el.querySelector("#metadata-line span:nth-child(2)")?.textContent?.trim() ??
+    null
 
   return { channelName, duration, uploadDate }
 }

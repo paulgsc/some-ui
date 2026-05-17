@@ -1,4 +1,3 @@
-
 /**
  *
  * Tab state model (per-tab):
@@ -33,7 +32,11 @@ type StoredState = {
 }
 
 async function getState(): Promise<StoredState> {
-  const data = await browser.storage.local.get(["filteredTabIds", "tabStates", "filterConfig"])
+  const data = await browser.storage.local.get([
+    "filteredTabIds",
+    "tabStates",
+    "filterConfig",
+  ])
   return {
     filteredTabIds: (data.filteredTabIds as number[]) ?? [],
     tabStates: (data.tabStates as Record<number, TabState>) ?? {},
@@ -46,9 +49,10 @@ async function setTabState(tabId: number, state: TabState): Promise<void> {
   const tabStates = { ...stored.tabStates, [tabId]: state }
 
   // Keep filteredTabIds in sync for popup compat (legacy = filtered)
-  const filteredTabIds = state === "legacy"
-    ? [...new Set([...stored.filteredTabIds, tabId])]
-    : stored.filteredTabIds.filter((id) => id !== tabId)
+  const filteredTabIds =
+    state === "legacy"
+      ? [...new Set([...stored.filteredTabIds, tabId])]
+      : stored.filteredTabIds.filter((id) => id !== tabId)
 
   await browser.storage.local.set({ tabStates, filteredTabIds })
 }
@@ -140,7 +144,10 @@ const STATE_CYCLE: Record<TabState, TabState> = {
 browser.commands.onCommand.addListener(async (command) => {
   if (command !== "toggle-filter") return
 
-  const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true })
+  const [activeTab] = await browser.tabs.query({
+    active: true,
+    currentWindow: true,
+  })
   if (!activeTab?.id) return
 
   const tabId = activeTab.id

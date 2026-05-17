@@ -1,4 +1,3 @@
-
 /**
  *
  * LAYER 1 — Config wiring tests for react.config.ts (calculateConfigForFile)
@@ -33,7 +32,6 @@
  */
 
 import path from "node:path"
-
 import { describe, expect, it } from "vitest"
 
 import reactConfig from "../src/configs/react.config.js"
@@ -46,8 +44,8 @@ import {
 } from "./helpers/eslint-resolver.js"
 
 const TSX = path.join(LINT_FIXTURES, "src/Component.tsx")
-const TS  = path.join(LINT_FIXTURES, "src/service.ts")
-const JS  = path.join(LINT_FIXTURES, "src/util.js")
+const TS = path.join(LINT_FIXTURES, "src/service.ts")
+const JS = path.join(LINT_FIXTURES, "src/util.js")
 
 // ── Import rules ───────────────────────────────────────────────────────────
 //

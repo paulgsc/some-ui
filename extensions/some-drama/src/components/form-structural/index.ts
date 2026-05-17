@@ -1,4 +1,3 @@
-
 /**
  *
  * Builds the structural (factual / scrapable) section of the entry form.
@@ -81,10 +80,30 @@ export function buildStructuralSection(
     return { grp, inp }
   }
 
-  const { grp: epGrp, inp: episodeInput } = gridField("Episode", "episode", prefill.episode ?? "", "Ep 12")
-  const { grp: netGrp, inp: networkInput } = gridField("Network", "network", prefill.network ?? "", "tvN")
-  const { grp: yrGrp, inp: yearInput } = gridField("Year", "year", prefill.year ?? "", "2024")
-  const { grp: genreGrp, inp: genreInput } = gridField("Genre", "genre", prefill.genre ?? "", "Xianxia, Fantasy")
+  const { grp: epGrp, inp: episodeInput } = gridField(
+    "Episode",
+    "episode",
+    prefill.episode ?? "",
+    "Ep 12"
+  )
+  const { grp: netGrp, inp: networkInput } = gridField(
+    "Network",
+    "network",
+    prefill.network ?? "",
+    "tvN"
+  )
+  const { grp: yrGrp, inp: yearInput } = gridField(
+    "Year",
+    "year",
+    prefill.year ?? "",
+    "2024"
+  )
+  const { grp: genreGrp, inp: genreInput } = gridField(
+    "Genre",
+    "genre",
+    prefill.genre ?? "",
+    "Xianxia, Fantasy"
+  )
 
   grid.appendChild(epGrp)
   grid.appendChild(netGrp)
@@ -126,7 +145,10 @@ export function buildStructuralSection(
   let chosenColor = prefill.color || ACCENT_COLORS[0]
 
   for (const c of ACCENT_COLORS) {
-    const swatch = el("button", `p-color-swatch${c === chosenColor ? " p-color-selected" : ""}`)
+    const swatch = el(
+      "button",
+      `p-color-swatch${c === chosenColor ? " p-color-selected" : ""}`
+    )
     swatch.style.background = c
     swatch.addEventListener("click", () => {
       chosenColor = c
@@ -141,6 +163,15 @@ export function buildStructuralSection(
 
   return {
     root,
-    refs: { titleInput, episodeInput, networkInput, yearInput, genreInput, noteInput, urlInput, getColor: () => chosenColor },
+    refs: {
+      titleInput,
+      episodeInput,
+      networkInput,
+      yearInput,
+      genreInput,
+      noteInput,
+      urlInput,
+      getColor: () => chosenColor,
+    },
   }
 }

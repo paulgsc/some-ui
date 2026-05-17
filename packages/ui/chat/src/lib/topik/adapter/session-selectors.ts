@@ -354,11 +354,9 @@ export function getAllQuestions(state: SessionState): Array<Question> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CATALOG ACCESSORS - Read from state.dataRef.catalog.data 
+// CATALOG ACCESSORS - Read from state.dataRef.catalog.data
 // ═══════════════════════════════════════════════════════════════════════════
-export function getAvailableTopiks(
-  state: SessionState
-): Array<TopikMetadata> {
+export function getAvailableTopiks(state: SessionState): Array<TopikMetadata> {
   return state.dataRef.catalog.data ?? []
 }
 

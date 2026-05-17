@@ -1,6 +1,5 @@
-
-import type { VideoManager } from "./video-manager"
 import { SEL } from "./selectors"
+import type { VideoManager } from "./video-manager"
 
 export { SEL } from "./selectors"
 
