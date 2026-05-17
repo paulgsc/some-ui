@@ -12,7 +12,12 @@ export const Default: Story = {
     }
     const { data, isLoading, error } = useGetCredits({ ...params })
     if (isLoading) return <div>Loading...</div>
-    if (error) return <div>error...{`${error}`}</div>
+    if (error)
+      return (
+        <div>
+          error...{error instanceof Error ? error.message : String(error)}
+        </div>
+      )
     const transform = data?.map(({ source_type, thanks, ...rest }) => ({
       sourceType: source_type,
       thankYouMessage: thanks,
@@ -27,7 +32,8 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta: Meta<typeof ScrollingCredits> = {
   title: "UI/Attributions/ScrollingCredits",
   component: ScrollingCredits,
-} as Meta
+}
+export default meta

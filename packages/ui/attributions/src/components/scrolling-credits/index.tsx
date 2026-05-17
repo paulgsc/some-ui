@@ -30,7 +30,10 @@ export const ScrollingCredits: FC<ScrollingCreditsProps> = ({
           <h1 className="mb-12 text-5xl">Ending Credits & Attributions</h1>
 
           {credits.map((credit, index) => (
-            <AttributionCard key={index} attribution={credit} />
+            <AttributionCard
+              key={`attribution_card_${index}`}
+              attribution={credit}
+            />
           ))}
         </div>
       </div>
