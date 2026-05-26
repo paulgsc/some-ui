@@ -1,18 +1,4 @@
-/**
- *
- * Tab state model (per-tab):
- *   "auto"   → dark theme CSS (default)
- *   "legacy" → aggressive invert filter on <html>
- *   "off"    → no filtering
- *
- * Keyboard shortcut (Ctrl+Shift+F / Cmd+Shift+F) cycles: auto → legacy → off → auto
- *
- * Storage schema:
- *   filteredTabIds: number[]        legacy compat — tabs with legacy filter enabled
- *   tabStates: Record<number, TabState>   per-tab state (new)
- *   filterConfig: FilterConfig
- */
-
+import { isExtensionMessage } from "@filter/lib/background/guard"
 import type { FilterConfig } from "@filter/types/popup"
 
 type TabState = "auto" | "legacy" | "off"
@@ -26,9 +12,19 @@ const DEFAULT_FILTER: FilterConfig = {
 }
 
 type StoredState = {
-  filteredTabIds: number[]
+  filteredTabIds: Array<number>
   tabStates: Record<number, TabState>
   filterConfig: FilterConfig
+}
+
+function normalizeState(data: Partial<StoredState>): StoredState {
+  return {
+    filteredTabIds: Array.isArray(data.filteredTabIds)
+      ? data.filteredTabIds
+      : [],
+    tabStates: data.tabStates ?? {},
+    filterConfig: data.filterConfig ?? DEFAULT_FILTER,
+  }
 }
 
 async function getState(): Promise<StoredState> {
@@ -37,24 +33,27 @@ async function getState(): Promise<StoredState> {
     "tabStates",
     "filterConfig",
   ])
-  return {
-    filteredTabIds: (data.filteredTabIds as number[]) ?? [],
-    tabStates: (data.tabStates as Record<number, TabState>) ?? {},
-    filterConfig: (data.filterConfig as FilterConfig) ?? DEFAULT_FILTER,
-  }
+
+  return normalizeState(data)
 }
 
 async function setTabState(tabId: number, state: TabState): Promise<void> {
   const stored = await getState()
-  const tabStates = { ...stored.tabStates, [tabId]: state }
 
-  // Keep filteredTabIds in sync for popup compat (legacy = filtered)
+  const tabStates: Record<number, TabState> = {
+    ...stored.tabStates,
+    [tabId]: state,
+  }
+
   const filteredTabIds =
     state === "legacy"
-      ? [...new Set([...stored.filteredTabIds, tabId])]
+      ? Array.from(new Set([...stored.filteredTabIds, tabId]))
       : stored.filteredTabIds.filter((id) => id !== tabId)
 
-  await browser.storage.local.set({ tabStates, filteredTabIds })
+  await browser.storage.local.set({
+    tabStates,
+    filteredTabIds,
+  })
 }
 
 async function sendToTab(
@@ -63,77 +62,113 @@ async function sendToTab(
 ): Promise<void> {
   try {
     await browser.tabs.sendMessage(tabId, msg)
-  } catch {}
+  } catch {
+    // intentionally ignored
+  }
 }
 
-// ── Install ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// install
+// ─────────────────────────────────────────────
 
-browser.runtime.onInstalled.addListener(() => {
-  browser.storage.local.set({
+browser.runtime.onInstalled.addListener((): void => {
+  void browser.storage.local.set({
     filteredTabIds: [],
     tabStates: {},
     filterConfig: DEFAULT_FILTER,
   })
 })
 
-// ── Messages ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// message handling
+// ─────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener((msg, sender) => {
-  const m = msg as { type: string; ids?: number[] }
+browser.runtime.onMessage.addListener(
+  (msg, sender): boolean | Promise<unknown> => {
+    if (!isExtensionMessage(msg)) {
+      return false
+    }
 
-  // Content script asking for its current state on load
-  if (m.type === "GET_TAB_FILTER_STATE") {
-    return (async () => {
-      const tabId = sender.tab?.id
-      if (!tabId) return { enabled: false, config: DEFAULT_FILTER }
-      const { filteredTabIds, filterConfig, tabStates } = await getState()
-      const tabState = tabStates[tabId]
-      return {
-        enabled: filteredTabIds.includes(tabId),
-        config: filterConfig,
-        tabState: tabState ?? "auto",
-      }
-    })()
-  }
+    if (msg.type === "GET_TAB_FILTER_STATE") {
+      const handler = async (): Promise<unknown> => {
+        const tabId = sender.tab?.id
+        if (!tabId) {
+          return { enabled: false, config: DEFAULT_FILTER }
+        }
 
-  // Popup apply button — set specific tabs to legacy filter
-  if (m.type === "SET_FILTERED_TABS" && Array.isArray(m.ids)) {
-    return (async () => {
-      const { filteredTabIds, filterConfig, tabStates } = await getState()
-      const desired = new Set(m.ids)
-      const current = new Set(filteredTabIds)
+        const { filteredTabIds, filterConfig, tabStates } = await getState()
 
-      // Update tabStates for affected tabs
-      const newTabStates = { ...tabStates }
-      for (const tabId of [...desired, ...current]) {
-        newTabStates[tabId] = desired.has(tabId) ? "legacy" : "auto"
+        return {
+          enabled: filteredTabIds.includes(tabId),
+          config: filterConfig,
+          tabState: tabStates[tabId] ?? "auto",
+        }
       }
 
-      await browser.storage.local.set({
-        filteredTabIds: m.ids,
-        tabStates: newTabStates,
-      })
+      void handler()
+      return true
+    }
 
-      const tabs = await browser.tabs.query({})
-      await Promise.allSettled(
-        tabs
-          .filter((t): t is typeof t & { id: number } => t.id !== undefined)
-          .map((t) => {
-            const wasFiltered = current.has(t.id)
-            const willFilter = desired.has(t.id)
-            if (wasFiltered === willFilter) return Promise.resolve()
-            return sendToTab(t.id, {
+    if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
+      const handler = async (): Promise<void> => {
+        const { filteredTabIds, filterConfig, tabStates } = await getState()
+
+        const desired = new Set(msg.ids)
+        const current = new Set(filteredTabIds)
+
+        const nextTabStates: Record<number, TabState> = {
+          ...tabStates,
+        }
+
+        const allTabs = new Set([
+          ...Array.from(desired),
+          ...Array.from(current),
+        ])
+
+        for (const tabId of allTabs) {
+          nextTabStates[tabId] = desired.has(tabId) ? "legacy" : "auto"
+        }
+
+        await browser.storage.local.set({
+          filteredTabIds: msg.ids,
+          tabStates: nextTabStates,
+        })
+
+        const tabs = await browser.tabs.query({})
+
+        const tasks: Array<Promise<unknown>> = []
+
+        for (const t of tabs) {
+          if (typeof t.id !== "number") continue
+
+          const wasFiltered = current.has(t.id)
+          const willFilter = desired.has(t.id)
+
+          if (wasFiltered === willFilter) continue
+
+          tasks.push(
+            sendToTab(t.id, {
               type: "TOGGLE_FILTER",
               enabled: willFilter,
               config: filterConfig,
             })
-          })
-      )
-    })()
-  }
-})
+          )
+        }
 
-// ── Keyboard shortcut: cycle state ───────────────────────────────────────────
+        await Promise.all(tasks)
+      }
+
+      void handler()
+      return true
+    }
+
+    return false
+  }
+)
+
+// ─────────────────────────────────────────────
+// keyboard shortcut
+// ─────────────────────────────────────────────
 
 const STATE_CYCLE: Record<TabState, TabState> = {
   auto: "legacy",
@@ -141,50 +176,59 @@ const STATE_CYCLE: Record<TabState, TabState> = {
   off: "auto",
 }
 
-browser.commands.onCommand.addListener(async (command) => {
+browser.commands.onCommand.addListener((command): void => {
   if (command !== "toggle-filter") return
 
-  const [activeTab] = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  })
-  if (!activeTab?.id) return
-
-  const tabId = activeTab.id
-  const { tabStates } = await getState()
-  const current = tabStates[tabId] ?? "auto"
-  const next = STATE_CYCLE[current]
-
-  await setTabState(tabId, next)
-  await sendToTab(tabId, { type: "CYCLE_TAB_STATE" })
-})
-
-// ── Reapply on tab load ───────────────────────────────────────────────────────
-
-browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  if (changeInfo.status !== "complete") return
-  const { tabStates, filterConfig } = await getState()
-  const state = tabStates[tabId]
-
-  // Only need to push legacy state — auto and off are handled by content.ts init
-  if (state === "legacy") {
-    await sendToTab(tabId, {
-      type: "TOGGLE_FILTER",
-      enabled: true,
-      config: filterConfig,
+  void (async (): Promise<void> => {
+    const [activeTab] = await browser.tabs.query({
+      active: true,
+      currentWindow: true,
     })
-  }
+
+    if (!activeTab || typeof activeTab.id !== "number") return
+
+    const { tabStates } = await getState()
+    const current = tabStates[activeTab.id] ?? "auto"
+    const next = STATE_CYCLE[current]
+
+    await setTabState(activeTab.id, next)
+    await sendToTab(activeTab.id, {
+      type: "CYCLE_TAB_STATE",
+    })
+  })()
 })
 
-// ── Cleanup on tab close ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// tab lifecycle
+// ─────────────────────────────────────────────
 
-browser.tabs.onRemoved.addListener(async (tabId) => {
-  const { filteredTabIds, tabStates } = await getState()
-  const { [tabId]: _, ...remainingStates } = tabStates
-  await browser.storage.local.set({
-    filteredTabIds: filteredTabIds.filter((id) => id !== tabId),
-    tabStates: remainingStates,
-  })
+browser.tabs.onUpdated.addListener((tabId, changeInfo): void => {
+  if (changeInfo.status !== "complete") return
+
+  void (async (): Promise<void> => {
+    const { tabStates, filterConfig } = await getState()
+
+    if (tabStates[tabId] === "legacy") {
+      await sendToTab(tabId, {
+        type: "TOGGLE_FILTER",
+        enabled: true,
+        config: filterConfig,
+      })
+    }
+  })()
+})
+
+browser.tabs.onRemoved.addListener((tabId): void => {
+  void (async (): Promise<void> => {
+    const { filteredTabIds, tabStates } = await getState()
+
+    const { [tabId]: _, ...remaining } = tabStates
+
+    await browser.storage.local.set({
+      filteredTabIds: filteredTabIds.filter((id) => id !== tabId),
+      tabStates: remaining,
+    })
+  })()
 })
 
 export {}

@@ -1,21 +1,3 @@
-/**
- *
- * Three tab states, cycled by keyboard shortcut (Ctrl+Shift+F):
- *
- *   "auto"    Default. Luminance classifier runs; dark theme applied if page is light.
- *
- *   "legacy"  Defeat mode. Aggressive invert filter on <html>.
- *             Used when auto dark theme fails badly on a particular page.
- *
- *   "off"     Zero filtering.
- *
- * State cycle: auto → legacy → off → auto → ...
- *
- * DOM surgery removed: vendor DOM is no longer wrapped in a container div.
- * Extension-owned nodes carry data-my-ext=""; the patcher and CSS rules
- * self-exclude on that attribute. See layers.ts for the updated contract.
- */
-
 import { classifyPage } from "@filter/lib/content/classify"
 import {
   DARK_THEME_ATTR,
@@ -23,21 +5,15 @@ import {
   removeDarkTheme,
 } from "@filter/lib/content/dark-theme"
 import {
+  isExtensionMessage,
+  isGetTabFilterStateResponse,
+} from "@filter/lib/content/guard"
+import {
   commitVisualState,
   disablePrepaint,
 } from "@filter/lib/content/prepaint"
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type FilterConfig = {
-  invert?: number
-  hueRotate?: number
-  sepia?: number
-  brightness?: number
-  contrast?: number
-}
-
-type TabState = "auto" | "legacy" | "off"
+import type { FilterConfig } from "@filter/types/config"
+import type { TabState } from "@filter/types/tab"
 
 // ── Legacy filter ─────────────────────────────────────────────────────────────
 
@@ -53,6 +29,7 @@ const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
 
 function buildFilterString(config: FilterConfig): string {
   const parts: Array<string> = []
+
   if (config.invert !== undefined) parts.push(`invert(${config.invert})`)
   if (config.hueRotate !== undefined)
     parts.push(`hue-rotate(${config.hueRotate}deg)`)
@@ -60,19 +37,26 @@ function buildFilterString(config: FilterConfig): string {
   if (config.brightness !== undefined)
     parts.push(`brightness(${config.brightness})`)
   if (config.contrast !== undefined) parts.push(`contrast(${config.contrast})`)
+
   return parts.join(" ")
 }
 
 function applyLegacyFilter(config: FilterConfig): void {
   let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+
   if (!style) {
     style = document.createElement("style")
     style.id = LEGACY_FILTER_STYLE_ID
-    ;(document.head ?? document.documentElement).appendChild(style)
+
+    const root = document.head
+    root.appendChild(style)
   }
+
   style.textContent = `
     html { filter: ${buildFilterString(config)} !important; }
-    img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }
+    img, video, canvas, picture {
+      filter: invert(1) hue-rotate(180deg) !important;
+    }
   `
 }
 
@@ -80,7 +64,7 @@ function removeLegacyFilter(): void {
   document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
 }
 
-// ── Auto dark theme ───────────────────────────────────────────────────────────
+// ── Dark theme ───────────────────────────────────────────────────────────────
 
 function activateDarkTheme(): void {
   document.documentElement.setAttribute(DARK_THEME_ATTR, "")
@@ -105,21 +89,20 @@ function applyState(state: TabState): void {
   removeLegacyFilter()
   disablePrepaint()
 
-  switch (state) {
-    case "auto":
-      commitVisualState()
-      runAutoClassify()
-      break
-    case "legacy":
-      // Pre-filter style is no longer needed once legacy takes over
-      commitVisualState()
-      applyLegacyFilter(filterConfig)
-      break
-    case "off":
-      // Both already cleared; also remove the pre-filter if still present
-      disablePrepaint()
-      break
+  if (state === "auto") {
+    commitVisualState()
+    runAutoClassify()
+    return
   }
+
+  if (state === "legacy") {
+    commitVisualState()
+    applyLegacyFilter(filterConfig)
+    return
+  }
+
+  // off
+  disablePrepaint()
 
   updateDebugAttrs()
 }
@@ -130,6 +113,7 @@ function cycleState(): void {
     legacy: "off",
     off: "auto",
   }
+
   applyState(next[currentState])
 }
 
@@ -137,18 +121,22 @@ function cycleState(): void {
 
 function runAutoClassify(): void {
   const { isLight, skip, avgLuminance } = classifyPage()
-  autoWasApplied = !skip && isLight
+
+  autoWasApplied = Boolean(!skip && isLight)
 
   if (autoWasApplied) {
     activateDarkTheme()
   } else {
-    // Page is already dark or classification skipped — remove pre-filter
     disablePrepaint()
   }
 
-  // Debug attrs on body (no page layer div anymore)
-  document.body.dataset.swLuminance = avgLuminance?.toFixed(3) ?? "unknown"
+  document.body.dataset.swLuminance =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    avgLuminance !== undefined ? avgLuminance?.toFixed(3) : "unknown"
+
   document.body.dataset.swThemeApplied = autoWasApplied ? "dark" : "none"
+
+  updateDebugAttrs()
 }
 
 function updateDebugAttrs(): void {
@@ -158,58 +146,61 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
-  // No DOM surgery. Vendor DOM is untouched.
-  // Extension nodes self-exclude via data-my-ext.
-
-  ;(async () => {
+  const bootstrap = async (): Promise<void> => {
     try {
-      const response = (await browser.runtime.sendMessage({
+      const response = await browser.runtime.sendMessage({
         type: "GET_TAB_FILTER_STATE",
-      })) as
-        | { enabled: boolean; config: FilterConfig; tabState?: TabState }
-        | undefined
+      })
 
-      if (response?.config) {
+      if (isGetTabFilterStateResponse(response)) {
         filterConfig = response.config
-      }
 
-      if (response?.enabled) {
-        currentState = "legacy"
+        if (response.enabled) {
+          currentState = "legacy"
+        }
       }
     } catch {
-      // Background not ready — proceed with defaults
+      // background unavailable
     }
 
     setTimeout(() => {
       applyState(currentState)
     }, 0)
-  })()
+  }
+
+  void bootstrap()
 }
 
 // ── Message listener ──────────────────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener((msg) => {
-  const m = msg as {
-    type: string
-    enabled?: boolean
-    config?: FilterConfig
-    tabState?: TabState
-  }
-
-  if (m.type === "CYCLE_TAB_STATE") {
-    cycleState()
+browser.runtime.onMessage.addListener((msg: unknown): void => {
+  if (!isExtensionMessage(msg)) {
     return
   }
 
-  if (m.type === "TOGGLE_FILTER") {
-    if (m.config) filterConfig = m.config
-    applyState(m.enabled ? "legacy" : "auto")
-    return
-  }
+  switch (msg.type) {
+    case "CYCLE_TAB_STATE": {
+      cycleState()
+      return
+    }
 
-  if (m.type === "SET_DARK_THEME") {
-    applyState(m.enabled ? "auto" : "off")
-    return
+    case "TOGGLE_FILTER": {
+      applyState("legacy")
+      return
+    }
+
+    case "SET_FILTERED_TABS": {
+      // background-only message
+      return
+    }
+
+    case "GET_TAB_FILTER_STATE": {
+      // background request message
+      return
+    }
+    default: {
+      msg satisfies never
+    }
   }
 })
 

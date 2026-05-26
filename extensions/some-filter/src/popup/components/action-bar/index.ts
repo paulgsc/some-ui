@@ -40,12 +40,16 @@ export function ActionBar({
   const pillsRow = document.createElement("div")
   pillsRow.className = "action-bar__pills"
 
-  const createPill = (label: string, value: string | null, icon?: string) => {
+  const createPill = (
+    label: string,
+    value: string | null,
+    icon?: string
+  ): HTMLButtonElement => {
     const btn = document.createElement("button")
     const isActive = statusFilter === value
     btn.className = `action-bar__pill ${isActive ? "action-bar__pill--active" : ""}`
     btn.innerHTML = icon ? `${icon}<span>${label}</span>` : label
-    btn.onclick = () => onStatusFilterChange(isActive ? null : value)
+    btn.onclick = (): void => onStatusFilterChange(isActive ? null : value)
     return btn
   }
 

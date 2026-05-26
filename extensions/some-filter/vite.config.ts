@@ -10,7 +10,7 @@ export default defineConfig({
         popup: resolve(__dirname, "popup.html"),
       },
       output: {
-        manualChunks: undefined,
+        manualChunks: () => {}, // prevents shared chunks
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "content") return "content.js"
           if (chunkInfo.name === "background") return "background.js"
@@ -18,15 +18,8 @@ export default defineConfig({
           return "[name].js"
         },
         chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name === "popup.css") return "popup.css"
-          if (assetInfo.name?.endsWith(".css")) return "[name][extname]"
-          if (assetInfo.name?.match(/\.(png|jpg|jpeg|svg|gif)$/)) {
-            return "assets/[name][extname]"
-          }
-          return "[name][extname]"
-        },
+        // Forces assets (CSS, images) to drop their hashes too
+        assetFileNames: "[name][extname]",
       },
     },
     outDir: "dist",

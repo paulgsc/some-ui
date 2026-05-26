@@ -23,27 +23,45 @@ export type RGBA = [number, number, number, number]
 
 /**
  * Parse any CSS color string to [r, g, b, a] in 0–1 range.
- * Returns null for unparseable values (gradients, "none", transparent).
+ * Returns null for unparseable values.
  */
 export function parseColor(css: string): RGBA | null {
-  if (!css || css === "none") return null
-  if (css === "transparent" || css === "rgba(0, 0, 0, 0)") return null
-
-  const rgba = css.match(
-    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
-  )
-  if (rgba) {
-    const a = rgba[4] !== undefined ? parseFloat(rgba[4]) : 1
-    if (a < 0.05) return null // effectively transparent
-    return [
-      parseInt(rgba[1]) / 255,
-      parseInt(rgba[2]) / 255,
-      parseInt(rgba[3]) / 255,
-      a,
-    ]
+  if (
+    css.length === 0 ||
+    css === "none" ||
+    css === "transparent" ||
+    css === "rgba(0, 0, 0, 0)"
+  ) {
+    return null
   }
 
-  return null
+  const match = css.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
+  )
+
+  if (match === null) {
+    return null
+  }
+
+  const [, r, g, b, alpha] = match
+
+  // Defensive narrowing for strict indexed access
+  if (r === undefined || g === undefined || b === undefined) {
+    return null
+  }
+
+  const a = alpha === undefined ? 1 : Number.parseFloat(alpha)
+
+  if (a < 0.05) {
+    return null
+  }
+
+  return [
+    Number.parseInt(r, 10) / 255,
+    Number.parseInt(g, 10) / 255,
+    Number.parseInt(b, 10) / 255,
+    a,
+  ]
 }
 
 /**
@@ -51,7 +69,7 @@ export function parseColor(css: string): RGBA | null {
  * Input: r, g, b in 0–1 range.
  */
 export function relativeLuminance(r: number, g: number, b: number): number {
-  const lin = (c: number) =>
+  const lin = (c: number): number =>
     c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 }
@@ -100,8 +118,13 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
   const samples: Array<{ lum: number; weight: number }> = []
 
   // Tier 1: html and body
-  for (const el of [document.documentElement, document.body]) {
-    if (!el) continue
+  const root = document.documentElement
+  const body = document.body
+
+  const elements: Array<HTMLElement | null> = [root, body]
+
+  for (const el of elements) {
+    if (el == null) continue
     const bg = getComputedStyle(el).backgroundColor
     const c = parseColor(bg)
     if (c) samples.push({ lum: relativeLuminance(c[0], c[1], c[2]), weight: 2 })
