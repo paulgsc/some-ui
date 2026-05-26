@@ -1,4 +1,3 @@
-//@ts-check
 import storybook from "eslint-plugin-storybook"
 import { defineConfig } from "eslint/config"
 

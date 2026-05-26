@@ -1,4 +1,3 @@
-//@ts-check
 // NOTE: FlatCompat has been removed from this file.
 // - eslint-plugin-react-hooks now exports configs.flat.recommended directly
 // - eslint-plugin-import has been replaced with eslint-plugin-import-x

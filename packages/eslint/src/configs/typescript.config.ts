@@ -1,11 +1,7 @@
-//@ts-check
 import eslint from "@eslint/js"
 import typescriptParser from "@typescript-eslint/parser"
 import { defineConfig } from "eslint/config"
 import tseslint from "typescript-eslint"
-
-// NOTE: eslint-plugin-deprecation has been removed. Its functionality is
-// superseded by @typescript-eslint/no-deprecated (type-aware, more accurate).
 
 export default defineConfig(
   {

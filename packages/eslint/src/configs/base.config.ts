@@ -1,4 +1,3 @@
-//@ts-check
 import prettier from "eslint-config-prettier"
 import prettierPlugin from "eslint-plugin-prettier"
 import unusedImports from "eslint-plugin-unused-imports"

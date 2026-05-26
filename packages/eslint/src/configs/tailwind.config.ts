@@ -1,4 +1,3 @@
-//@ts-check
 import * as tailwindPlugin from "eslint-plugin-tailwindcss"
 import type { ConfigWithExtends } from "typescript-eslint"
 
