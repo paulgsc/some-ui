@@ -19,7 +19,7 @@ importers:
     devDependencies:
       '@babel/eslint-parser':
         specifier: 7.26.5
-        version: 7.26.5(@babel/core@7.29.0)(eslint@9.39.4(jiti@2.7.0))
+        version: 7.26.5(@babel/core@7.28.3)(eslint@9.39.4(jiti@2.7.0))
       '@changesets/changelog-github':
         specifier: ^0.5.0
         version: 0.5.0
@@ -47,6 +47,9 @@ importers:
       '@ianvs/prettier-plugin-sort-imports':
         specifier: 4.4.0
         version: 4.4.0(prettier@3.4.2)
+      '@playwright/test':
+        specifier: 1.60.0
+        version: 1.60.0
       '@some-ui/styles':
         specifier: workspace:*
         version: link:packages/some-styles
@@ -540,6 +543,9 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.4
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
@@ -681,9 +687,6 @@ importers:
       eslint-config-prettier:
         specifier: 9.1.0
         version: 9.1.0(eslint@9.39.4(jiti@2.7.0))
-      eslint-import-resolver-typescript:
-        specifier: 3.7.0
-        version: 3.7.0(eslint-plugin-import-x@4.16.2(@typescript-eslint/utils@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint@9.39.4(jiti@2.7.0)))(eslint-plugin-import@2.31.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-import-x:
         specifier: ^4.16.2
         version: 4.16.2(@typescript-eslint/utils@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint@9.39.4(jiti@2.7.0))
@@ -734,7 +737,7 @@ importers:
         version: 0.436.0(react@19.1.0)
       next-contentlayer2:
         specifier: ^0.4.6
-        version: 0.4.6(acorn@8.16.0)(contentlayer2@0.4.6(acorn@8.16.0)(esbuild@0.25.9))(esbuild@0.25.9)(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 0.4.6(acorn@8.16.0)(contentlayer2@0.4.6(acorn@8.16.0)(esbuild@0.25.9))(esbuild@0.25.9)(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -1400,10 +1403,10 @@ importers:
         version: link:../../some-vite-config
       next:
         specifier: 14.2.3
-        version: 14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       nuqs:
         specifier: 1.18.0
-        version: 1.18.0(next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+        version: 1.18.0(next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1742,7 +1745,7 @@ importers:
         version: link:../ui/maishatu-fetch-kit
       nuqs:
         specifier: 1.18.0
-        version: 1.18.0(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+        version: 1.18.0(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
       polyhedron:
         specifier: workspace:*
         version: link:../../crates/polyhedron
@@ -3387,8 +3390,8 @@ packages:
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@playwright/test@1.57.0':
-    resolution: {integrity: sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA==}
+  '@playwright/test@1.60.0':
+    resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -9529,13 +9532,13 @@ packages:
   pkg-types@2.3.1:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
 
-  playwright-core@1.57.0:
-    resolution: {integrity: sha512-agTcKlMw/mjBWOnD6kFZttAAGHgi/Nw0CZ2o6JqWSbMlI219lAFLZZCyqByTsvVAJq5XA5H8cA6PrvBRpBWEuQ==}
+  playwright-core@1.60.0:
+    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.57.0:
-    resolution: {integrity: sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw==}
+  playwright@1.60.0:
+    resolution: {integrity: sha512-hheHdokM8cdqCb0lcE3s+zT4t4W+vvjpGxsZlDnikarzx8tSzMebh3UiFtgqwFwnTnjYQcsyMF8ei2mCO/tpeA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -11832,9 +11835,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/eslint-parser@7.26.5(@babel/core@7.29.0)(eslint@9.39.4(jiti@2.7.0))':
+  '@babel/eslint-parser@7.26.5(@babel/core@7.28.3)(eslint@9.39.4(jiti@2.7.0))':
     dependencies:
-      '@babel/core': 7.29.0
+      '@babel/core': 7.28.3
       '@nicolo-ribaudo/eslint-scope-5-internals': 5.1.1-v1
       eslint: 9.39.4(jiti@2.7.0)
       eslint-visitor-keys: 2.1.0
@@ -13491,10 +13494,9 @@ snapshots:
 
   '@pkgr/core@0.2.9': {}
 
-  '@playwright/test@1.57.0':
+  '@playwright/test@1.60.0':
     dependencies:
-      playwright: 1.57.0
-    optional: true
+      playwright: 1.60.0
 
   '@pnpm/config.env-replace@1.1.0': {}
 
@@ -17458,7 +17460,7 @@ snapshots:
 
   escape-string-regexp@5.0.0: {}
 
-  eslint-config-airbnb-base@15.0.0(eslint-plugin-import@2.31.0)(eslint@9.39.4(jiti@2.7.0)):
+  eslint-config-airbnb-base@15.0.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2))(eslint-import-resolver-typescript@3.7.0)(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       confusing-browser-globals: 1.0.11
       eslint: 9.39.4(jiti@2.7.0)
@@ -17472,7 +17474,7 @@ snapshots:
       '@typescript-eslint/eslint-plugin': 8.59.2(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2))(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2)
       '@typescript-eslint/parser': 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2)
       eslint: 9.39.4(jiti@2.7.0)
-      eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.31.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.8.2))(eslint-import-resolver-typescript@3.7.0)(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - eslint-plugin-import
 
@@ -20271,12 +20273,12 @@ snapshots:
   ncp@2.0.0:
     optional: true
 
-  next-contentlayer2@0.4.6(acorn@8.16.0)(contentlayer2@0.4.6(acorn@8.16.0)(esbuild@0.25.9))(esbuild@0.25.9)(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next-contentlayer2@0.4.6(acorn@8.16.0)(contentlayer2@0.4.6(acorn@8.16.0)(esbuild@0.25.9))(esbuild@0.25.9)(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@contentlayer2/core': 0.4.3(acorn@8.16.0)(esbuild@0.25.9)
       '@contentlayer2/utils': 0.4.3
       contentlayer2: 0.4.6(acorn@8.16.0)(esbuild@0.25.9)
-      next: 15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      next: 15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
     transitivePeerDependencies:
@@ -20286,7 +20288,7 @@ snapshots:
       - markdown-wasm
       - supports-color
 
-  next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       '@next/env': 14.2.3
       '@swc/helpers': 0.5.5
@@ -20296,7 +20298,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
-      styled-jsx: 5.1.1(@babel/core@7.29.0)(react@19.0.0)
+      styled-jsx: 5.1.1(@babel/core@7.28.3)(react@19.0.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 14.2.3
       '@next/swc-darwin-x64': 14.2.3
@@ -20308,12 +20310,12 @@ snapshots:
       '@next/swc-win32-ia32-msvc': 14.2.3
       '@next/swc-win32-x64-msvc': 14.2.3
       '@opentelemetry/api': 1.9.0
-      '@playwright/test': 1.57.0
+      '@playwright/test': 1.60.0
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@next/env': 15.5.0
       '@swc/helpers': 0.5.15
@@ -20321,7 +20323,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
-      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.1.0)
+      styled-jsx: 5.1.6(@babel/core@7.28.3)(react@19.1.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.0
       '@next/swc-darwin-x64': 15.5.0
@@ -20332,7 +20334,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 15.5.0
       '@next/swc-win32-x64-msvc': 15.5.0
       '@opentelemetry/api': 1.9.0
-      '@playwright/test': 1.57.0
+      '@playwright/test': 1.60.0
       sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
@@ -20408,15 +20410,15 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nuqs@1.18.0(next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
+  nuqs@1.18.0(next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
     dependencies:
       mitt: 3.0.1
-      next: 14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      next: 14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
-  nuqs@1.18.0(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
+  nuqs@1.18.0(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
     dependencies:
       mitt: 3.0.1
-      next: 15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      next: 15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
 
   nwsapi@2.2.16: {}
 
@@ -20727,15 +20729,13 @@ snapshots:
       exsolve: 1.0.8
       pathe: 2.0.3
 
-  playwright-core@1.57.0:
-    optional: true
+  playwright-core@1.60.0: {}
 
-  playwright@1.57.0:
+  playwright@1.60.0:
     dependencies:
-      playwright-core: 1.57.0
+      playwright-core: 1.60.0
     optionalDependencies:
       fsevents: 2.3.2
-    optional: true
 
   plimit-lit@1.6.1:
     dependencies:
@@ -22164,19 +22164,19 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.4
 
-  styled-jsx@5.1.1(@babel/core@7.29.0)(react@19.0.0):
+  styled-jsx@5.1.1(@babel/core@7.28.3)(react@19.0.0):
     dependencies:
       client-only: 0.0.1
       react: 19.0.0
     optionalDependencies:
-      '@babel/core': 7.29.0
+      '@babel/core': 7.28.3
 
-  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.1.0):
+  styled-jsx@5.1.6(@babel/core@7.28.3)(react@19.1.0):
     dependencies:
       client-only: 0.0.1
       react: 19.1.0
     optionalDependencies:
-      '@babel/core': 7.29.0
+      '@babel/core': 7.28.3
 
   stylehacks@5.1.1(postcss@8.5.6):
     dependencies:

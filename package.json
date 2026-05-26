@@ -49,6 +49,7 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.39.0",
     "@ianvs/prettier-plugin-sort-imports": "4.4.0",
+    "@playwright/test": "1.60.0",
     "@some-ui/styles": "workspace:*",
     "@storybook/addon-docs": "^10.1.10",
     "@storybook/addon-links": "^10.1.10",

@@ -3,12 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -19,119 +17,93 @@
     flake-utils,
     ...
   }:
-    flake-utils.lib.eachDefaultSystem (
-      system: let
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = import nixpkgs {
+        inherit system;
         overlays = [rust-overlay.overlays.default];
-        pkgs = import nixpkgs {
-          inherit system overlays;
+      };
+
+      # ── Load concern modules ─────────────────────────────────────────────
+      # Each module is a plain attrset — no mkShell inside, just deps/env/ldLibs.
+      # Composition happens here in flake.nix.
+      rust = import ./nix/rust {inherit pkgs;};
+      desktop = import ./nix/desktop {inherit pkgs;};
+      node = import ./nix/node {inherit pkgs;};
+      playwright = import ./nix/playwright {inherit pkgs;};
+
+      # ── Helpers ───────────────────────────────────────────────────────────
+      mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
+    in {
+      devShells = {
+        # ── default: full local dev ────────────────────────────────────────
+        # Rust + wasm + desktop GUI + dev ergonomics.
+        # Everything you need to work on the monorepo locally.
+        # Does NOT include Playwright (use .#playwright shell for E2E runs).
+        default = pkgs.mkShell {
+          buildInputs =
+            rust.deps
+            ++ rust.devDeps
+            ++ desktop.deps;
+
+          LD_LIBRARY_PATH = mkLdPath desktop.ldLibs;
+
+          shellHook = ''
+            export RUST_BACKTRACE=${rust.env.RUST_BACKTRACE}
+            export RUST_LOG=${rust.env.RUST_LOG}
+            export WINIT_UNIX_BACKEND=${desktop.env.WINIT_UNIX_BACKEND}
+            echo "🛠️  Dev shell ready (full)"
+          '';
         };
 
-        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [
-            "rust-src"
-            "rust-analyzer"
-            "clippy"
-          ];
-          targets = [
-            "x86_64-unknown-linux-gnu"
-            "wasm32-unknown-unknown"
-          ];
+        # ── ci: lean CI shell ──────────────────────────────────────────────
+        # Only what the CI pipeline needs: Rust compile + pnpm workspace.
+        # No GUI libs, no dev ergonomics, no Playwright.
+        # Playwright tests run in a separate CI job using .#playwright.
+        ci = pkgs.mkShell {
+          buildInputs = rust.deps ++ node.deps;
+
+          shellHook = ''
+            export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
+            export RUST_LOG=${rust.ciEnv.RUST_LOG}
+          '';
         };
 
-        commonRustDeps = with pkgs; [
-          rustToolchain
-          wasm-pack
-          pkg-config
-          openssl
-          openssl.dev
-        ];
-      in {
-        devShells = {
-          # -------------------------
-          # Full local dev environment
-          # -------------------------
-          default = pkgs.mkShell {
-            buildInputs =
-              commonRustDeps
-              ++ (with pkgs; [
-                # Dev tooling
-                rust-analyzer
-                cargo-audit
-                cargo-edit
-                cargo-watch
-                cargo-expand
-                cargo-flamegraph
-                sqlx-cli
-                jq
-                mkcert
+        # ── extension: browser extension dev ──────────────────────────────
+        # Node + pnpm only. For working on the BOYO extension without
+        # pulling in the full Rust toolchain or GUI libs.
+        extension = pkgs.mkShell {
+          buildInputs = node.deps;
 
-                # DB
-                sqlite
-
-                # UI / Desktop / Slint / Winit
-                alsa-lib
-                slint-lsp
-                freetype
-                fontconfig
-                libGL
-                mesa
-                wayland
-                vulkan-loader
-                udev
-
-                xorg.libX11
-                xorg.libXcursor
-                xorg.libXrandr
-                xorg.libXrender
-                xorg.libxcb
-                xorg.libXi
-                xorg.libXext
-                xorg.libXfixes
-                libxkbcommon
-                xorg.libxkbfile
-              ]);
-
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
-              xorg.libX11
-              xorg.libXcursor
-              xorg.libXrandr
-              xorg.libXrender
-              xorg.libxcb
-              xorg.libXi
-              xorg.libXext
-              xorg.libXfixes
-              freetype
-              fontconfig
-              libGL
-              mesa
-              libxkbcommon
-              xorg.libxkbfile
-              wayland
-              vulkan-loader
-              alsa-lib
-              udev
-            ]);
-
-            shellHook = ''
-              export RUST_BACKTRACE=1
-              export RUST_LOG=debug
-              export WINIT_UNIX_BACKEND=x11
-              echo "🛠️  Dev shell ready (full)"
-            '';
-          };
-
-          # -------------------------
-          # CI shell (lean + fast)
-          # -------------------------
-          ci = pkgs.mkShell {
-            buildInputs = commonRustDeps ++ [pkgs.nodejs_latest pkgs.nodePackages.pnpm];
-
-            shellHook = ''
-              export RUST_BACKTRACE=1
-              export RUST_LOG=info
-            '';
-          };
+          shellHook = ''
+            echo "🧩 Extension dev shell ready (Node + pnpm)"
+          '';
         };
-      }
-    );
+
+        # ── playwright: E2E test runner ────────────────────────────────────
+        # Node + pnpm + Playwright + Nix-patched Chromium.
+        # Headed Chromium is required for extension testing — extensions
+        # do not load in headless mode.
+        #
+        # Usage:
+        #   nix develop .#playwright
+        #   pnpm exec playwright test --config=playwright.config.ts
+        #
+        # On NixOS, PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH points at the
+        # Nix-patched binary so no `playwright install` download is needed.
+        playwright = pkgs.mkShell {
+          buildInputs = playwright.deps;
+
+          LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;
+
+          shellHook = ''
+            export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH='${playwright.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}'
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='${playwright.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD}'
+            export PLAYWRIGHT_BROWSERS_PATH='${playwright.env.PLAYWRIGHT_BROWSERS_PATH}'
+            export DISPLAY="${playwright.env.DISPLAY}"
+            echo "🎭 Playwright shell ready"
+            echo "   Chromium: $PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
+          '';
+        };
+      };
+    });
 }
