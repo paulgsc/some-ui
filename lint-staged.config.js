@@ -1,74 +1,83 @@
-// lint-staged.config.js
 import fs from "node:fs"
 import path from "node:path"
 
 /**
- * Walk upward from a file until a package.json is found.
+ * Find nearest package root (directory containing package.json)
  */
 function getPackageRoot(file) {
-  let currentDir = path.dirname(path.resolve(file))
-  const filesystemRoot = path.parse(currentDir).root
+  let dir = path.dirname(path.resolve(file))
+  const root = path.parse(dir).root
 
-  while (currentDir !== filesystemRoot) {
-    const packageJsonPath = path.join(currentDir, "package.json")
-
-    if (fs.existsSync(packageJsonPath)) {
-      return currentDir
+  while (dir !== root) {
+    if (fs.existsSync(path.join(dir, "package.json"))) {
+      return dir
     }
-
-    currentDir = path.dirname(currentDir)
+    dir = path.dirname(dir)
   }
 
   return null
 }
 
 /**
- * Group staged files by nearest package root.
+ * Shared grouping utility
  */
-function groupFilesByPackage(files) {
-  /** @type {Map<string, string[]>} */
-  const grouped = new Map()
+function groupByPackage(files) {
+  const byPackage = new Map()
 
   for (const file of files) {
     const packageRoot = getPackageRoot(file) ?? process.cwd()
-    const existing = grouped.get(packageRoot)
 
-    if (existing !== undefined) {
+    const existing = byPackage.get(packageRoot)
+    if (existing) {
       existing.push(file)
-      continue
+    } else {
+      byPackage.set(packageRoot, [file])
     }
-
-    grouped.set(packageRoot, [file])
   }
 
-  return grouped
+  return byPackage
 }
 
 /**
- * Build one ESLint command per package.
- *
- * Running ESLint from the package root ensures:
- * - local eslint.config.* resolution
- * - local tsconfig resolution
- * - workspace-relative import resolution
+ * ESLint per-package execution
  */
 function buildEslintCommands(files) {
-  const grouped = groupFilesByPackage(files)
+  const grouped = groupByPackage(files)
 
-  return [...grouped.entries()].map(([packageRoot, packageFiles]) => {
-    const relativeFiles = packageFiles
-      .map((file) => `"${path.relative(packageRoot, file)}"`)
+  return [...grouped.entries()].map(([pkgRoot, pkgFiles]) => {
+    const relative = pkgFiles
+      .map((f) => `"${path.relative(pkgRoot, f)}"`)
       .join(" ")
 
     return [
       "sh -c",
-      `'cd "${packageRoot}" && NODE_OPTIONS=--max_old_space_size=4096 eslint --fix --no-ignore ${relativeFiles}'`,
+      `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`,
     ].join(" ")
   })
 }
 
-const lintStagedConfig = {
-  "**/*.{js,mjs,ts,tsx}": buildEslintCommands,
+/**
+ * TypeScript per-package execution (project-based)
+ *
+ * Uses tsconfig.json in each package root.
+ */
+function buildTscCommands(files) {
+  const grouped = groupByPackage(files)
+
+  return [...grouped.keys()].map((pkgRoot) => {
+    return ["sh -c", `'cd "${pkgRoot}" && tsc -p tsconfig.json --noEmit'`].join(
+      " "
+    )
+  })
 }
 
-export default lintStagedConfig
+const config = {
+  "**/*.{js,mjs,ts,tsx}": buildEslintCommands,
+  "**/*.{ts,tsx}": buildTscCommands,
+
+  "**/*.{md,mdx,json,yml,css}": ["prettier --write"],
+
+  "**/*.css": ["stylelint --allow-empty-input"],
+}
+
+export default config

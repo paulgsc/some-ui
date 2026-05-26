@@ -9,8 +9,7 @@
     "eslint.config.*.{cjs, mjs, js, ts}",
     "src",
     "tests",
-    "fixtures",
     "vitest.config.*.{cjs, mjs, js, ts}"
   ],
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": ["node_modules", "build", "dist", "**/lint-fixtures"]
 }

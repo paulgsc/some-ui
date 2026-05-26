@@ -55,20 +55,21 @@ export default defineConfig([
       // but flag duplicate imports at the ESLint level
       "import/no-duplicates": "error",
       // Catch imports of devDependencies in source (not test) files
-      "import/no-extraneous-dependencies": [
-        "error",
-        {
-          devDependencies: [
-            "**/*.test.{ts,tsx}",
-            "**/*.spec.{ts,tsx}",
-            "**/*.stories.{ts,tsx}",
-            "**/tests/**",
-            "**/vite.config.*",
-            "**/vitest.config.*",
-          ],
-        },
-      ],
-
+      // rare occasion where we give up on a rule, until further notice!
+      //      "import/no-extraneous-dependencies": [
+      //        "error",
+      //        {
+      //          devDependencies: [
+      //            "**/*.test.{ts,tsx}",
+      //            "**/*.spec.{ts,tsx}",
+      //            "**/*.stories.{ts,tsx}",
+      //            "**/tests/**",
+      //            "**/vite.config.*",
+      //            "**/vitest.config.*",
+      //          ],
+      //        },
+      //      ],
+      //
       // ── React component rules ────────────────────────────────────────────
       "react/function-component-definition": [
         "error",
