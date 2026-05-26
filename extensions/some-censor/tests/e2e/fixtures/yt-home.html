@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — YouTube Home</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      #primary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        max-width: 1200px;
+      }
+      ytd-rich-item-renderer {
+        background: #1f1f1f;
+        border-radius: 8px;
+        overflow: hidden;
+        min-height: 200px;
+        display: block;
+        position: relative;
+      }
+      .thumbnail {
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #333;
+        display: block;
+      }
+      #video-title {
+        padding: 8px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      ytd-channel-name yt-formatted-string {
+        padding: 4px 8px;
+        font-size: 12px;
+        color: #aaa;
+        display: block;
+      }
+      #metadata-line span {
+        font-size: 11px;
+        color: #aaa;
+        padding: 0 8px 8px;
+        display: inline-block;
+      }
+      span.ytd-thumbnail-overlay-time-status-renderer {
+        position: absolute;
+        bottom: 110px;
+        right: 4px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 2px 4px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture — static YouTube-shaped DOM.
+
+    Structure mirrors the real YouTube renderer tree closely enough that:
+      - extractVideoId() finds data-video-id or the anchor href
+      - extractChannelId() finds the channel anchor href
+      - extractMeta() finds channelName, duration, uploadDate
+      - extractTitle() finds #video-title
+
+    No JavaScript, no network, no authentication.
+    The extension content script is injected by Playwright's fixture setup.
+  -->
+
+    <!-- ytd-app is required for Controller._waitForApp() to fire -->
+    <ytd-app></ytd-app>
+
+    <div id="primary">
+      <!-- Card 1: fully hydrated at page load -->
+      <ytd-rich-item-renderer data-video-id="vid_aaa111">
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">12:34</span>
+        <a id="video-title" href="/watch?v=vid_aaa111">
+          How Compilers Work: A Deep Dive
+        </a>
+        <ytd-channel-name>
+          <yt-formatted-string>LowLevelLearning</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/channel/UC4DVVoMDcpAHJBKP0ZrEIog">LowLevelLearning</a>
+        <div id="metadata-line">
+          <span>1.2M views</span>
+          <span>3 days ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 2: fully hydrated at page load -->
+      <ytd-rich-item-renderer data-video-id="vid_bbb222">
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">8:07</span>
+        <a id="video-title" href="/watch?v=vid_bbb222"> Rust in 100 Seconds </a>
+        <ytd-channel-name>
+          <yt-formatted-string>Fireship</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/channel/UCsBjURrPoezykLs9EqgamOA">Fireship</a>
+        <div id="metadata-line">
+          <span>4.5M views</span>
+          <span>1 week ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 3: fully hydrated at page load -->
+      <ytd-rich-item-renderer data-video-id="vid_ccc333">
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">24:01</span>
+        <a id="video-title" href="/watch?v=vid_ccc333">
+          Building a Parser from Scratch
+        </a>
+        <ytd-channel-name>
+          <yt-formatted-string>CodeAesthetic</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/@CodeAesthetic">CodeAesthetic</a>
+        <div id="metadata-line">
+          <span>890K views</span>
+          <span>2 weeks ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 4: partially hydrated — no data-video-id yet (will be set via JS) -->
+      <ytd-rich-item-renderer id="late-hydrate-card">
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">5:22</span>
+        <!-- Anchor present but data-video-id not set — simulates hydration lag -->
+        <a id="video-title" href="/watch?v=vid_ddd444">
+          The Beauty of Functional Programming
+        </a>
+        <ytd-channel-name>
+          <yt-formatted-string>ThePrimeTime</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/@ThePrimeagen">ThePrimeagen</a>
+        <div id="metadata-line">
+          <span>2.1M views</span>
+          <span>5 days ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Cards 5–6: injected by JS after 800ms to simulate SPA dynamic insertion -->
+      <!-- See fixture-controls.js -->
+    </div>
+
+    <!--
+    Fixture controls — exposes helpers Playwright can call via page.evaluate().
+    These simulate YouTube's SPA behaviors: late hydration, navigation, card injection.
+  -->
+    <script>
+      window.__FIXTURE__ = {
+        /**
+         * Simulate YouTube's late data-video-id hydration on card 4.
+         * This fires an attribute mutation that the observer should catch.
+         */
+        hydrateCard4() {
+          const el = document.getElementById("late-hydrate-card")
+          if (el) el.setAttribute("data-video-id", "vid_ddd444")
+        },
+
+        /**
+         * Simulate SPA navigation: inject two new cards into #primary,
+         * then fire yt-navigate-finish so the extension's listener runs.
+         * Old cards are NOT removed — this tests the stale-state scenario
+         * where existing elements survive a navigation and should be pruned/rescanned.
+         */
+        simulateNavigation(label = "Gaming") {
+          const grid = document.getElementById("primary")
+          if (!grid) return
+
+          // Remove existing cards to simulate full feed swap
+          grid.innerHTML = ""
+
+          const newCards = [
+            {
+              videoId: "vid_nav001",
+              title: `${label}: Best Moments`,
+              channel: "GamingHighlights",
+              channelHref: "/channel/UCgaming001",
+              duration: "18:44",
+              views: "5.2M views",
+              age: "yesterday",
+            },
+            {
+              videoId: "vid_nav002",
+              title: `${label}: Tips and Tricks`,
+              channel: "ProGamer",
+              channelHref: "/@ProGamer",
+              duration: "9:12",
+              views: "1.8M views",
+              age: "2 days ago",
+            },
+            {
+              videoId: "vid_nav003",
+              title: `${label}: Full Playthrough`,
+              channel: "LetsPlayChannel",
+              channelHref: "/channel/UClets003",
+              duration: "1:24:07",
+              views: "320K views",
+              age: "1 week ago",
+            },
+          ]
+
+          for (const c of newCards) {
+            const renderer = document.createElement("ytd-rich-item-renderer")
+            renderer.setAttribute("data-video-id", c.videoId)
+            renderer.innerHTML = `
+            <div class="thumbnail"></div>
+            <span class="ytd-thumbnail-overlay-time-status-renderer">${c.duration}</span>
+            <a id="video-title" href="/watch?v=${c.videoId}">${c.title}</a>
+            <ytd-channel-name>
+              <yt-formatted-string>${c.channel}</yt-formatted-string>
+            </ytd-channel-name>
+            <a href="${c.channelHref}">${c.channel}</a>
+            <div id="metadata-line">
+              <span>${c.views}</span>
+              <span>${c.age}</span>
+            </div>
+          `
+            grid.appendChild(renderer)
+          }
+
+          // Fire yt-navigate-finish — extension listener calls prune() + deferred scan()
+          window.dispatchEvent(new Event("yt-navigate-finish"))
+        },
+
+        /**
+         * Simulate element recycling: mutate an existing card's data-video-id
+         * in-place, as YouTube's scroll virtualizer does.
+         * The observer's attributeFilter should catch this and trigger upsert().
+         */
+        recycleCard(videoId = "vid_aaa111", newVideoId = "vid_recycled999") {
+          const el = document.querySelector(
+            `ytd-rich-item-renderer[data-video-id="${videoId}"]`
+          )
+          if (!el) return false
+          el.setAttribute("data-video-id", newVideoId)
+          const anchor = el.querySelector("#video-title")
+          if (anchor) {
+            anchor.textContent = "Recycled Card Content"
+            anchor.setAttribute("href", `/watch?v=${newVideoId}`)
+          }
+          const channelName = el.querySelector(
+            "ytd-channel-name yt-formatted-string"
+          )
+          if (channelName) channelName.textContent = "RecycledChannel"
+          const channelAnchor = el.querySelector('a[href*="/channel/"]')
+          if (channelAnchor)
+            channelAnchor.setAttribute("href", "/channel/UCrecycled")
+          return true
+        },
+
+        /** Return the current card count in #primary for quick assertions. */
+        cardCount() {
+          return document.querySelectorAll("ytd-rich-item-renderer").length
+        },
+
+        /** Return data-boyo attribute value for a given videoId */
+        dataBoyoFor(videoId) {
+          const el = document.querySelector(
+            `ytd-rich-item-renderer[data-video-id="${videoId}"]`
+          )
+          return el ? el.getAttribute("data-boyo") : null
+        },
+
+        /** Return whether a .boyo-veil exists inside the card */
+        hasVeil(videoId) {
+          const el = document.querySelector(
+            `ytd-rich-item-renderer[data-video-id="${videoId}"]`
+          )
+          return el ? el.querySelector(".boyo-veil") !== null : false
+        },
+      }
+    </script>
+  </body>
+</html>

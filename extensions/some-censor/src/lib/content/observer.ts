@@ -1,3 +1,4 @@
+import { notifyMutation, notifyNavigation } from "./debug"
 import { SEL } from "./selectors"
 import type { VideoManager } from "./video-manager"
 
@@ -70,6 +71,9 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     if (needsPrune) {
       mgr.prune()
     }
+
+    // Notify debug layer of mutation activity
+    notifyMutation()
   })
 
   obs.observe(document.body, {
@@ -100,6 +104,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
   // bump needed. This listener is purely a deferred cleanup + rescan.
   window.addEventListener("yt-navigate-finish", () => {
     mgr.prune()
+    notifyNavigation()
     setTimeout(() => mgr.scan(), 400)
   })
 

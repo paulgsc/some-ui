@@ -74,6 +74,11 @@ export class VideoEntry {
     return this._handle.element.isConnected
   }
 
+  /** Exposed for the debug/observability layer — read-only snapshot of FSM kind. */
+  get viewKind(): ViewState["kind"] {
+    return this._view.kind
+  }
+
   // ── FSM dispatch ──────────────────────────────────────────────────────────
 
   private _onCommit(event: "CLICK" | "DBLCLICK" | "WHITELIST"): void {

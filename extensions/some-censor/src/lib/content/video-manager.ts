@@ -30,6 +30,8 @@
 
 import type { ChannelId, VideoId } from "@censor/types/ids"
 
+import type { EntryDebugInfo } from "./debug"
+import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
 import { makeRecord } from "./record"
 import { SEL } from "./selectors"
@@ -53,6 +55,57 @@ export class VideoManager {
   private _session: SessionId = mkSession()
   private _retryInterval: ReturnType<typeof setInterval> | null = null
 
+  constructor() {
+    // Register with the debug layer so Playwright can observe state
+    registerDebugSource({
+      get phase() {
+        return (this as any)._mgr._phase as Phase
+      },
+      get size() {
+        return (this as any)._mgr._byVideo.size
+      },
+      get unresolvedSize() {
+        return (this as any)._mgr._unresolved.size
+      },
+      get sessionOrdinal() {
+        return (this as any)._mgr._session as number
+      },
+      entryInfos: () => [],
+    })
+    this._registerDebug()
+  }
+
+  private _registerDebug(): void {
+    // Use a closure that reads live state so snapshots are always fresh
+    const mgr = this
+    registerDebugSource({
+      get phase(): Phase {
+        return mgr._phase
+      },
+      get size(): number {
+        return mgr._byVideo.size
+      },
+      get unresolvedSize(): number {
+        return mgr._unresolved.size
+      },
+      get sessionOrdinal(): number {
+        return mgr._session
+      },
+      entryInfos(): ReadonlyArray<EntryDebugInfo> {
+        const out: Array<EntryDebugInfo> = []
+        for (const [videoId, entry] of mgr._byVideo) {
+          out.push({
+            videoId,
+            channelId: entry.record.channelId,
+            viewKind: entry.viewKind,
+            isConnected: entry.isConnected,
+          })
+        }
+        return out
+      },
+    })
+  }
+
   // ── Phase management ──────────────────────────────────────────────────────
 
   /**
@@ -68,6 +121,7 @@ export class VideoManager {
     }
     this._session = mkSession()
     this._phase = "running"
+    publish()
     return this._session
   }
 
@@ -85,6 +139,7 @@ export class VideoManager {
     }
 
     this._phase = "idle"
+    publish()
   }
 
   get size(): number {
@@ -181,6 +236,7 @@ export class VideoManager {
         this._byVideo.delete(videoId)
       }
     }
+    publish()
   }
 
   handleClick(videoId: VideoId): void {
@@ -261,6 +317,7 @@ export class VideoManager {
       const entry = new VideoEntry(record, el, isWhitelisted)
       this._byVideo.set(videoId, entry)
       entry.mount()
+      publish()
     } finally {
       this._promoting.delete(el)
     }
@@ -272,6 +329,7 @@ export class VideoManager {
         entry.dispatchWhitelist()
       }
     }
+    publish()
   }
 
   private _ensureRetryLoop(): void {
