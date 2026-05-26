@@ -23,11 +23,22 @@
 #   pnpm exec playwright test --config=playwright.config.ts
 {pkgs, ...}: let
   driver = pkgs.playwright-driver;
+  browsers = driver.browsers;
+
+  # Resolve the versioned chromium-NNNN directory at eval time.
+  # builtins.readDir returns an attrset of { name → type };
+  # we pick the first entry whose name starts with "chromium-".
+  chromiumDir = pkgs.lib.pipe (builtins.readDir browsers) [
+    builtins.attrNames
+    (pkgs.lib.filter (n: pkgs.lib.hasPrefix "chromium-" n))
+    pkgs.lib.head
+  ];
+
+  chromiumBin = "${browsers}/${chromiumDir}/chrome-linux/chrome";
 in {
   deps = with pkgs; [
     playwright-driver.browsers
 
-    # System libs Chromium needs at runtime on NixOS
     alsa-lib
     at-spi2-atk
     cairo
@@ -60,20 +71,16 @@ in {
 
   env = {
     # Point Playwright at the Nix-patched binary
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${driver.browsers}/chromium-*/chrome-linux/chrome";
-
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = chromiumBin;
     # Prevent Playwright from downloading its own (unpatched) Chromium
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
-
     # Playwright needs this to find its driver
-    PLAYWRIGHT_BROWSERS_PATH = "${driver.browsers}";
-
+    PLAYWRIGHT_BROWSERS_PATH = "${browsers}";
     # Required for headed Chromium on Wayland/X11 in NixOS
     # Extensions do not work in headless mode — must be headed.
-    DISPLAY = ":0";
+    DISPLAY = "localhost:10.0";
   };
 
-  # All libs Chromium dlopen()s — must be on LD_LIBRARY_PATH
   ldLibs = with pkgs; [
     alsa-lib
     at-spi2-atk
