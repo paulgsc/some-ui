@@ -74,8 +74,7 @@ function buildTscCommands(files) {
 const config = {
   "**/*.{js,mjs,ts,tsx}": buildEslintCommands,
   "**/*.{ts,tsx}": buildTscCommands,
-
-  "**/*.{md,mdx,json,yml,css}": ["prettier --write"],
+  "**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}": ["prettier --write"],
 
   "**/*.css": ["stylelint --allow-empty-input"],
 }
