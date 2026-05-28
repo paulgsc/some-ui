@@ -57,11 +57,11 @@ export default defineConfig({
   // No projects — single Chromium persistent context configured in fixture.ts
   projects: [
     {
-      name: "boyo-chromium",
+      name: "boyo-firefox",
       use: {
         // browserName is ignored — fixture.ts uses chromium.launchPersistentContext directly
         // But we specify it here for the reporter
-        browserName: "chromium",
+        browserName: "firefox",
       },
     },
   ],

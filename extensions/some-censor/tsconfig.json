@@ -21,6 +21,6 @@
     },
     "types": ["firefox-webext-browser"]
   },
-  "include": ["src/**/*"],
+  "include": ["src", "tests/e2e/fixture.ts", "tests/e2e/boyo.spec.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

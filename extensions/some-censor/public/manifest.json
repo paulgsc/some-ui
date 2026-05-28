@@ -3,6 +3,12 @@
   "name": "BOYO - Content Censor",
   "version": "1.0.0",
   "description": "Progressive content masking with intentional disclosure",
+  "version": "1.0.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "boyo-extension@local.internal"
+    }
+  },
 
   "permissions": ["storage", "tabs", "*://*.youtube.com/*"],
 
@@ -13,33 +19,14 @@
 
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
+      "matches": ["*://*.youtube.com/*", "file://*/*"],
       "js": ["content.js"],
       "css": ["styles/content.css"],
-      "run_at": "document_end",
-      "all_frames": false
+      "run_at": "document_end"
     }
   ],
 
   "browser_action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "assets/icon-16.png",
-      "48": "assets/icon-48.png",
-      "128": "assets/icon-128.png"
-    }
-  },
-
-  "icons": {
-    "16": "assets/icon-16.png",
-    "48": "assets/icon-48.png",
-    "128": "assets/icon-128.png"
-  },
-
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "boyo-censor@example.com",
-      "strict_min_version": "91.0"
-    }
+    "default_popup": "popup.html"
   }
 }
