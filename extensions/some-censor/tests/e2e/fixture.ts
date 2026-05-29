@@ -132,8 +132,8 @@ export const test = base.extend<
         window.__BOYO_DEBUG__ = JSON.parse(e.detail)
       })
 
-      if (!(window as any).browser?.runtime?.sendMessage) {
-        ;(window as any).browser = {
+      if (!(window as any).chrome?.runtime?.sendMessage) {
+        ;(window as any).chrome = {
           runtime: {
             sendMessage: async (msg: any) => {
               if (msg.type === "IS_WHITELISTED")

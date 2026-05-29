@@ -20,7 +20,7 @@
       "@censor/*": ["src/*"],
       "@censor/playwright/*": ["tests/e2e/*"]
     },
-    "types": ["firefox-webext-browser"]
+    "types": ["firefox-webext-browser", "chrome"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
   "exclude": [
