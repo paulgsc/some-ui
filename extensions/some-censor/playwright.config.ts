@@ -1,27 +1,25 @@
 /**
- * — BOYO extension E2E configuration.
+ * BOYO extension E2E configuration.
  *
  * Key decisions:
  *
- *   1. Chromium only (for now). Extensions in Playwright require a persistent
- *      context, which only Chromium supports directly. Firefox needs a separate
- *      strategy (temporary addon install via geckodriver). Add a separate
- *      playwright.firefox.config.ts when needed.
+ *   1. globalSetup/globalTeardown own the Firefox process lifecycle.
+ *      globalSetup spawns `web-ext run --remote-debugging-port=9222` and
+ *      waits for CDP readiness. globalTeardown kills it. Tests never restart
+ *      Firefox — the extension stays loaded for the entire suite.
  *
- *   2. No retries on CI. Our tests assert runtime convergence via pollDebug —
- *      flakiness should surface as a real bug, not be masked by retries.
- *      If a test fails consistently, it means a regression in the runtime,
- *      not a timing issue in the test.
+ *   2. No `projects` block. The fixture attaches via chromium.connectOverCDP()
+ *      to the already-running Firefox. A projects entry would cause Playwright
+ *      to spin up a second managed Firefox with no extension.
  *
- *   3. No baseURL. We load file:// URLs (static fixtures), so no server needed.
+ *   3. chromium.connectOverCDP() against Firefox. Playwright's `firefox` type
+ *      has no connectOverCDP(). Firefox implements enough CDP for page.evaluate()
+ *      and page.goto() — which is all pollDebug() needs.
  *
- *   4. Headed mode is required. Chromium extensions do not run in headless mode
- *      in Playwright. Set PLAYWRIGHT_HEADED=1 or use --headed. The config
- *      forces this via the fixture setup (see fixture.ts).
+ *   4. No retries. pollDebug has its own timeout/retry loop. Test-level retries
+ *      would mask real regressions.
  *
- *   5. Single worker. Extension state is process-global (content script
- *      singleton). Parallel workers sharing the same --load-extension profile
- *      cause undefined behavior. Run serially.
+ *   5. Single worker. The Firefox process is a singleton.
  */
 
 import { defineConfig } from "@playwright/test"
@@ -30,39 +28,23 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "**/*.spec.ts",
 
-  // Timeout per test (not per assertion — pollDebug has its own timeouts)
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
+
   timeout: 30_000,
-
-  // No retries — flakiness is a bug signal, not noise to suppress
   retries: 0,
-
-  // Serial execution — extension context is a singleton
   workers: 1,
 
-  // Output
   reporter: [
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
 
   use: {
-    // Trace on failure — gives us a timeline to diagnose timing issues
     trace: "retain-on-failure",
-    // Screenshot on failure
     screenshot: "only-on-failure",
-    // Video on failure
     video: "retain-on-failure",
   },
 
-  // No projects — single Chromium persistent context configured in fixture.ts
-  projects: [
-    {
-      name: "boyo-firefox",
-      use: {
-        // browserName is ignored — fixture.ts uses chromium.launchPersistentContext directly
-        // But we specify it here for the reporter
-        browserName: "firefox",
-      },
-    },
-  ],
+  // No projects — fixture.ts attaches to the web-ext Firefox via CDP.
 })

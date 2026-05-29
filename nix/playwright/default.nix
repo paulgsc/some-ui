@@ -1,11 +1,11 @@
 #
-# Playwright + Chromium for E2E extension testing.
+# Playwright + Firefox for E2E extension testing.
 #
 # NixOS specifics:
-#   Playwright bundles its own Chromium binary by default, but that binary
+#   Playwright bundles its own Firefox binary by default, but that binary
 #   is not patched for NixOS's non-FHS filesystem layout and will segfault.
 #   The canonical NixOS solution is to use pkgs.playwright-driver, which
-#   ships a Nix-patched Chromium, and point PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+#   ships a Nix-patched Firefox, and point PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
 #   at it so Playwright skips its own download.
 #
 #   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 prevents `playwright install` from
@@ -13,7 +13,7 @@
 #
 #   playwright-driver.browsers exposes the pre-built browser set; we only
 #   need chromium here because:
-#     a) extensions require a persistent Chromium context
+#     a) extensions require a persistent Firefox context
 #     b) Firefox extension testing needs a separate geckodriver strategy
 #
 # Shell usage:
@@ -34,10 +34,18 @@
     pkgs.lib.head
   ];
 
+  firefoxDir = pkgs.lib.pipe (builtins.readDir browsers) [
+    builtins.attrNames
+    (pkgs.lib.filter (n: pkgs.lib.hasPrefix "firefox-" n))
+    pkgs.lib.head
+  ];
+
+  # firefoxBin = "${browsers}/${firefoxDir}/firefox/firefox";
   chromiumBin = "${browsers}/${chromiumDir}/chrome-linux/chrome";
 in {
   deps = with pkgs; [
     playwright-driver.browsers
+    nodePackages.web-ext
 
     alsa-lib
     at-spi2-atk
@@ -72,13 +80,13 @@ in {
   env = {
     # Point Playwright at the Nix-patched binary
     PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = chromiumBin;
-    # Prevent Playwright from downloading its own (unpatched) Chromium
+    # Prevent Playwright from downloading its own (unpatched) Firefox
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
     # Playwright needs this to find its driver
     PLAYWRIGHT_BROWSERS_PATH = "${browsers}";
-    # Required for headed Chromium on Wayland/X11 in NixOS
+    # Required for headed Firefox on Wayland/X11 in NixOS
     # Extensions do not work in headless mode — must be headed.
-    DISPLAY = "localhost:10.0";
+    # DISPLAY = "localhost:10.0";
   };
 
   ldLibs = with pkgs; [

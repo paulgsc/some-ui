@@ -12,6 +12,7 @@ node_modules
 # testing
 coverage
 .playwright*/
+.chromium*/
 playwright-report/
 test-results/
 playwright/.cache/

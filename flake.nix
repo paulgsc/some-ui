@@ -99,9 +99,8 @@
             export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH='${playwright.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}'
             export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='${playwright.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD}'
             export PLAYWRIGHT_BROWSERS_PATH='${playwright.env.PLAYWRIGHT_BROWSERS_PATH}'
-            export DISPLAY="${playwright.env.DISPLAY}"
-            echo "🎭 Playwright shell ready"
-            echo "   Chromium: $PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
+            echo "🎭 Playwright shell ready (Chromium)"
+            echo "   CHROMIUM: $PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
           '';
         };
       };

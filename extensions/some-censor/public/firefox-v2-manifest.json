@@ -1,16 +1,19 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "BOYO - Content Censor",
-  "version": "1.0.0",
   "description": "Progressive content masking with intentional disclosure",
+  "version": "1.0.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "boyo-extension@local.internal"
+    }
+  },
 
-  "permissions": ["storage", "tabs"],
-
-  "host_permissions": ["*://*.youtube.com/*"],
+  "permissions": ["storage", "tabs", "*://*.youtube.com/*"],
 
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "scripts": ["background.js"],
+    "persistent": false
   },
 
   "content_scripts": [
@@ -22,7 +25,7 @@
     }
   ],
 
-  "action": {
+  "browser_action": {
     "default_popup": "popup.html"
   }
 }
