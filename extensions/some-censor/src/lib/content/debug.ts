@@ -114,8 +114,7 @@ function _publish(): void {
         sessionOrdinal: 0,
       }
 
-  // Expose as a plain object for Playwright's page.evaluate() to JSON-serialize
-  ;(window as any).__BOYO_DEBUG__ = {
+  const snapObj = {
     tick: snap.tick,
     phase: snap.phase,
     mounted: snap.mounted,
@@ -125,4 +124,13 @@ function _publish(): void {
     navigations: snap.navigations,
     sessionOrdinal: snap.sessionOrdinal,
   }
+  // Expose as a plain object for Playwright's page.evaluate() to JSON-serialize
+  ;(window as any).__BOYO_DEBUG__ = snapObj
+
+  // Bridge to main world so page.evaluate() can read it
+  document.dispatchEvent(
+    new CustomEvent("__boyo_debug_update__", {
+      detail: JSON.stringify(snapObj),
+    })
+  )
 }

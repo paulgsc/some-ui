@@ -17,10 +17,36 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@censor/*": ["src/*"]
+      "@censor/*": ["src/*"],
+      "@censor/playwright/*": ["tests/e2e/*"]
     },
     "types": ["firefox-webext-browser"]
   },
-  "include": ["src", "tests/e2e/fixture.ts", "tests/e2e/boyo.spec.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+  "exclude": [
+    "node_modules",
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

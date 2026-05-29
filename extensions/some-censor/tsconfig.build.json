@@ -1,4 +1,33 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["**/*.test.ts", "**/*.stories.tsx", "**/*.stories.ts", "tests"]
+  "exclude": [
+    "node_modules",
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**",
+
+    "**/*.test.ts",
+    "**/*.stories.tsx",
+    "**/*.stories.ts",
+    "tests"
+  ]
 }

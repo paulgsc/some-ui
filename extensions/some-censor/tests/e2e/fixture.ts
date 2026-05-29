@@ -128,6 +128,10 @@ export const test = base.extend<
     // Stub browser.runtime for fixture page-level JS.
     // The content script uses the real extension API injected by Chromium.
     await context.addInitScript(() => {
+      document.addEventListener("__boyo_debug_update__", (e: any) => {
+        window.__BOYO_DEBUG__ = JSON.parse(e.detail)
+      })
+
       if (!(window as any).browser?.runtime?.sendMessage) {
         ;(window as any).browser = {
           runtime: {
