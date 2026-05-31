@@ -1,3 +1,4 @@
+import { ext } from "@censor/platform/background"
 import type {
   ApiConfig,
   DeleteWhitelistResponse,
@@ -35,7 +36,7 @@ export class ApiClient {
 
   async init(): Promise<void> {
     try {
-      const stored = await browser.storage.local.get("apiBaseUrl")
+      const stored = await ext.storage.local.get("apiBaseUrl")
       if (stored["apiBaseUrl"] && typeof stored["apiBaseUrl"] === "string") {
         this._baseUrl = stored["apiBaseUrl"]
       }

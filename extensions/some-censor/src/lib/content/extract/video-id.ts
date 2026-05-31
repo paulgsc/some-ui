@@ -20,14 +20,15 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
   for (const a of anchors) {
     const href = a.href || a.getAttribute("href") || ""
 
-    const watch = href.match(/[?&]v=([^&/#]+)/)
-    if (watch) return asVideoId(watch[1])
+    // Destructuring with nullish coalescing for safe extraction
+    const [, watch] = href.match(/[?&]v=([^&/#]+)/) ?? []
+    if (watch) return asVideoId(watch)
 
-    const shorts = href.match(/\/shorts\/([^/?#&]+)/)
-    if (shorts) return asVideoId(shorts[1])
+    const [, shorts] = href.match(/\/shorts\/([^/?#&]+)/) ?? []
+    if (shorts) return asVideoId(shorts)
 
-    const path = href.match(/\/watch\/([^/?#&]+)/)
-    if (path) return asVideoId(path[1])
+    const [, path] = href.match(/\/watch\/([^/?#&]+)/) ?? []
+    if (path) return asVideoId(path)
   }
 
   return null

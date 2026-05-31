@@ -17,6 +17,8 @@
  *        silent duplicate state.
  */
 
+import { ext } from "@censor/platform/content"
+
 import { attachEvents } from "./events"
 import { SEL, startObserver } from "./observer"
 import { VideoManager } from "./video-manager"
@@ -35,7 +37,7 @@ export class Controller {
   // ── Bootstrap ─────────────────────────────────────────────────────────────
 
   private _bootstrap(): void {
-    browser.runtime
+    ext.runtime
       .sendMessage({ type: "GET_ENABLED" })
       .then((r: any) => {
         const enabled =
@@ -101,7 +103,7 @@ export class Controller {
   // ── Background messages ───────────────────────────────────────────────────
 
   private _listenBroadcasts(): void {
-    browser.runtime.onMessage.addListener((msg: any) => {
+    ext.runtime.onMessage.addListener((msg: any) => {
       switch (msg.type) {
         case "ENABLED_CHANGED":
           if (msg.enabled) {

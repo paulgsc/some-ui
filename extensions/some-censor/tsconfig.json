@@ -1,4 +1,5 @@
 {
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -18,11 +19,20 @@
     "baseUrl": ".",
     "paths": {
       "@censor/*": ["src/*"],
-      "@censor/playwright/*": ["tests/e2e/*"]
+      "@censor/playwright/*": ["tests/e2e/*"],
+      "@censor/platform/api": ["src/lib/platform/api.ts"],
+      "@censor/platform/content": ["src/lib/platform/api.ts"],
+      "@censor/platform/background": ["src/lib/platform/api.ts"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config*.ts"
+  ],
   "exclude": [
     "node_modules",
 
@@ -47,6 +57,5 @@
     "packages/**/public/**",
 
     "extensions/**/test-results/**"
-  ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  ]
 }

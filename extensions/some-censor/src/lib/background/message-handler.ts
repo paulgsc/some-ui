@@ -1,3 +1,4 @@
+import { ext } from "@censor/platform/background"
 import type { BgBroadcast, BgRequest, BgResponse } from "@censor/types/messages"
 
 import type { ApiClient } from "./api-client"
@@ -82,10 +83,10 @@ export function createMessageHandler(api: ApiClient) {
  * Tabs without our content script (or not on youtube.com) will silently fail.
  */
 async function broadcastToYouTubeTabs(msg: BgBroadcast): Promise<void> {
-  const tabs = await browser.tabs.query({ url: "*://www.youtube.com/*" })
+  const tabs = await ext.tabs.query({ url: "*://www.youtube.com/*" })
   await Promise.allSettled(
     tabs
       .filter((t) => t.id !== undefined)
-      .map((t) => browser.tabs.sendMessage(t.id!, msg))
+      .map((t) => ext.tabs.sendMessage(t.id!, msg))
   )
 }

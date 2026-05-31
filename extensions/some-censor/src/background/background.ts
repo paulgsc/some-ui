@@ -10,6 +10,7 @@
  * Type imports from src/types/ are erased — safe.
  */
 import { ApiClient, createMessageHandler } from "@censor/lib/background"
+import { ext } from "@censor/platform/background"
 
 async function init(): Promise<void> {
   const api = new ApiClient()
@@ -17,7 +18,7 @@ async function init(): Promise<void> {
 
   console.log(`[BOYO Background] initialized — API at ${api.config.baseUrl}`)
 
-  browser.runtime.onMessage.addListener(createMessageHandler(api))
+  ext.runtime.onMessage.addListener(createMessageHandler(api))
 }
 
 init().catch((err) => console.error("[BOYO Background] init failed:", err))

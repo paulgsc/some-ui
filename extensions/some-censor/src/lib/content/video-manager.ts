@@ -28,6 +28,7 @@
  *        cancel all concurrent async promotes.
  */
 
+import { ext } from "@censor/platform/content"
 import type { ChannelId, VideoId } from "@censor/types/ids"
 
 import type { EntryDebugInfo } from "./debug"
@@ -57,21 +58,6 @@ export class VideoManager {
 
   constructor() {
     // Register with the debug layer so Playwright can observe state
-    registerDebugSource({
-      get phase() {
-        return (this as any)._mgr._phase as Phase
-      },
-      get size() {
-        return (this as any)._mgr._byVideo.size
-      },
-      get unresolvedSize() {
-        return (this as any)._mgr._unresolved.size
-      },
-      get sessionOrdinal() {
-        return (this as any)._mgr._session as number
-      },
-      entryInfos: () => [],
-    })
     this._registerDebug()
   }
 
@@ -254,7 +240,7 @@ export class VideoManager {
     const channelName = entry.record.channelId // fallback is the id itself
 
     try {
-      await browser.runtime.sendMessage({
+      await ext.runtime.sendMessage({
         type: "ADD_WHITELIST",
         channelId: entry.record.channelId,
         channelName,
@@ -299,7 +285,7 @@ export class VideoManager {
       // Stale entry (different session) or brand-new entry → replace.
       existing?.destroy()
 
-      const isWhitelisted = await browser.runtime
+      const isWhitelisted = await ext.runtime
         .sendMessage({ type: "IS_WHITELISTED", channelId: String(channelId) })
         .then((r: { ok: boolean; whitelisted: boolean }) => r.whitelisted)
         .catch(() => false)

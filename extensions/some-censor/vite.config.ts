@@ -1,34 +1,15 @@
-import { resolve } from "path"
-import { defineConfig } from "vite"
-
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        content: resolve(__dirname, "src/content/content.ts"),
-        background: resolve(__dirname, "src/background/background.ts"),
-      },
-      output: {
-        manualChunks: () => {}, // prevents shared chunks
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === "content") return "content.js"
-          if (chunkInfo.name === "background") return "background.js"
-          return "[name].js"
-        },
-        chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
-          return "assets/[name][extname]"
-        },
-      },
-    },
-    outDir: "dist",
-    emptyOutDir: true,
-  },
-  resolve: {
-    alias: {
-      "@censor": resolve(__dirname, "src"),
-    },
-  },
-})
+/**
+ * vite.config.ts — default config (Firefox).
+ *
+ * This re-exports the Chromium config so that bare `vite build` and `vite dev`
+ * continue to work without specifying --config. The canonical production builds
+ * should use the explicit configs:
+ 
+ *   pnpm build:firefox   → vite build --config vite.config.firefox.ts
+ *   pnpm build:chromium  → vite build --config vite.config.chromium.ts
+ *
+ * The Chromium config is chosen as the default because it is what Playwright
+ * uses, making local dev (pnpm dev + manual Chromium extension loading) the
+ * lower-friction path.
+ */
+export { default } from "./vite.config.firefox"
