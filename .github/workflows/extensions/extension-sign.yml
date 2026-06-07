@@ -1,0 +1,35 @@
+name: Firefox Signing
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        required: true
+        type: string
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(inputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v12
+      - uses: DeterminateSystems/magic-nix-cache-action@v7
+      - name: Build release artifact
+        run: |
+          nix develop .#ci --command bash -c '
+            pnpm install --frozen-lockfile
+
+            pnpm --filter "${{ matrix.extension_name }}" build
+          '
+      - name: Submit to AMO
+        run: |
+          nix develop .#ci --command web-ext sign \
+            --source-dir "${{ matrix.extension_path }}/dist" \
+            --channel unlisted \
+            --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
+            --artifacts-dir artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-${{ matrix.extension_name }}
+          path: artifacts/*.xpi

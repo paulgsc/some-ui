@@ -60,7 +60,10 @@
         # No GUI libs, no dev ergonomics, no Playwright.
         # Playwright tests run in a separate CI job using .#playwright.
         ci = pkgs.mkShell {
-          buildInputs = rust.deps ++ node.deps;
+          buildInputs =
+            rust.deps
+            ++ node.deps
+            ++ [pkgs.nodePackages.web-ext];
 
           shellHook = ''
             export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}

@@ -1,0 +1,36 @@
+name: Extension Context Detection
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        value: ${{ jobs.detect.outputs.matrix }}
+      has_changes:
+        value: ${{ jobs.detect.outputs.has_changes }}
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build detector
+        run: cargo build --release
+        working-directory: .github/scripts/detect
+      - id: detect
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+
+          git diff --name-only "$BASE_SHA...HEAD" \
+            | .github/scripts/detect/target/release/detect \
+            > matrix.json
+
+          echo "matrix=$(jq -c . matrix.json)" >> "$GITHUB_OUTPUT"
+
+          if [ "$(jq '.include | length' matrix.json)" -gt 0 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi

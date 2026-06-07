@@ -29,77 +29,89 @@ export function detectArchetype(legs: Array<Leg>): SpreadArchetype {
   const longs = legs.filter((l) => l.side === "long")
 
   if (legs.length === 1) {
-    const [leg] = legs as [Leg]
+    const leg = legs[0]
+    if (!leg) return "custom"
+
     if (leg.optionType === "call")
       return leg.side === "long" ? "long call" : "short call"
     return leg.side === "long" ? "long put" : "short put"
   }
 
   if (legs.length === 2) {
-    const sameExp = legs[0]!.expiry === legs[1]!.expiry
+    const firstLeg = legs[0]
+    const secondLeg = legs[1]
+    if (!firstLeg || !secondLeg) return "custom"
+
+    const sameExp = firstLeg.expiry === secondLeg.expiry
 
     // straddle / strangle
     if (c.length === 1 && p.length === 1 && sameExp) {
-      const [call] = c as [Leg]
-      const [put] = p as [Leg]
-      if (call.strike === put.strike)
-        return longs.length === 2 ? "long straddle" : "short straddle"
-      if (call.strike > put.strike)
-        return longs.length === 2 ? "long strangle" : "short strangle"
+      const call = c[0]
+      const put = p[0]
+      if (call && put) {
+        if (call.strike === put.strike)
+          return longs.length === 2 ? "long straddle" : "short straddle"
+        if (call.strike > put.strike)
+          return longs.length === 2 ? "long strangle" : "short strangle"
+      }
     }
 
     // call verticals
     if (c.length === 2 && sameExp) {
-      const [lo, hi] = [...c].sort((a, b) => a.strike - b.strike) as [Leg, Leg]
-      if (lo.side === "long" && hi.side === "short") return "bull call spread"
-      if (lo.side === "short" && hi.side === "long") return "bear call spread"
+      const [lo, hi] = [...c].sort((a, b) => a.strike - b.strike)
+      if (lo && hi) {
+        if (lo.side === "long" && hi.side === "short") return "bull call spread"
+        if (lo.side === "short" && hi.side === "long") return "bear call spread"
+      }
     }
 
     // put verticals
     if (p.length === 2 && sameExp) {
-      const [lo, hi] = [...p].sort((a, b) => a.strike - b.strike) as [Leg, Leg]
-      if (lo.side === "long" && hi.side === "short") return "bear put spread"
-      if (lo.side === "short" && hi.side === "long") return "bull put spread"
+      const [lo, hi] = [...p].sort((a, b) => a.strike - b.strike)
+      if (lo && hi) {
+        if (lo.side === "long" && hi.side === "short") return "bear put spread"
+        if (lo.side === "short" && hi.side === "long") return "bull put spread"
+      }
     }
   }
 
-  if (legs.length === 3 && legs.every((l) => l.expiry === legs[0]!.expiry)) {
-    const sameType = legs.every((l) => l.optionType === legs[0]!.optionType)
-    if (sameType) {
-      const [lo, mid, hi] = [...legs].sort((a, b) => a.strike - b.strike) as [
-        Leg,
-        Leg,
-        Leg,
-      ]
-      const equidist =
-        Math.abs(hi.strike - mid.strike - (mid.strike - lo.strike)) < 0.5
-      if (
-        equidist &&
-        lo.side === "long" &&
-        mid.side === "short" &&
-        hi.side === "long"
-      )
-        return "long butterfly"
+  if (legs.length === 3) {
+    const firstLeg = legs[0]
+    if (firstLeg && legs.every((l) => l.expiry === firstLeg.expiry)) {
+      const sameType = legs.every((l) => l.optionType === firstLeg.optionType)
+      if (sameType) {
+        const [lo, mid, hi] = [...legs].sort((a, b) => a.strike - b.strike)
+        if (lo && mid && hi) {
+          const equidist =
+            Math.abs(hi.strike - mid.strike - (mid.strike - lo.strike)) < 0.5
+          if (
+            equidist &&
+            lo.side === "long" &&
+            mid.side === "short" &&
+            hi.side === "long"
+          )
+            return "long butterfly"
+        }
+      }
     }
   }
 
-  if (legs.length === 4 && legs.every((l) => l.expiry === legs[0]!.expiry)) {
-    if (c.length === 2 && p.length === 2) {
-      const [cLo, cHi] = [...c].sort((a, b) => a.strike - b.strike) as [
-        Leg,
-        Leg,
-      ]
-      const [pLo, pHi] = [...p].sort((a, b) => a.strike - b.strike) as [
-        Leg,
-        Leg,
-      ]
-      if (
-        cLo.side === "short" &&
-        cHi.side === "long" &&
-        pLo.side === "long" &&
-        pHi.side === "short"
-      ) {
-        return cLo.strike === pHi.strike ? "iron butterfly" : "iron condor"
+  if (legs.length === 4) {
+    const firstLeg = legs[0]
+    if (firstLeg && legs.every((l) => l.expiry === firstLeg.expiry)) {
+      if (c.length === 2 && p.length === 2) {
+        const [cLo, cHi] = [...c].sort((a, b) => a.strike - b.strike)
+        const [pLo, pHi] = [...p].sort((a, b) => a.strike - b.strike)
+        if (cLo && cHi && pLo && pHi) {
+          if (
+            cLo.side === "short" &&
+            cHi.side === "long" &&
+            pLo.side === "long" &&
+            pHi.side === "short"
+          ) {
+            return cLo.strike === pHi.strike ? "iron butterfly" : "iron condor"
+          }
+        }
       }
     }
   }

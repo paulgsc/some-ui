@@ -41,7 +41,7 @@ export type PLMetrics = {
   maxProfit: number
   maxLoss: number
   probProfit: number // 0–1
-  breakevens: number[]
+  breakevens: Array<number>
 }
 
 export type SpreadArchetype =
