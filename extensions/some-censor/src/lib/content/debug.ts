@@ -15,7 +15,11 @@
  * BOYO_DEBUG compile-time constant (Vite defines plugin).
  */
 
-import type { BoyoDebugSnapshot, BoyoDebugSnapshotWire, EntryDebugInfo } from "@censor/types/debug"
+import type {
+  BoyoDebugSnapshot,
+  BoyoDebugSnapshotWire,
+  EntryDebugInfo,
+} from "@censor/types/debug"
 
 /** Interface that VideoManager must implement to be observable. */
 export type DebugSource = {

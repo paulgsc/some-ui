@@ -31,6 +31,13 @@ export default defineConfig(
       "**/storybook-static/**",
       ".stylelintrc.mjs",
       "**/vite-env.d.ts",
+
+      ".playwright*/**",
+      ".chromium*/**",
+
+      "playwright-report/**",
+      "test-results/**",
+      "blob-report/**",
     ],
   },
   {
