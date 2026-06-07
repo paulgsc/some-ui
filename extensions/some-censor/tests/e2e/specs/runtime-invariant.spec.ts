@@ -11,34 +11,34 @@
  * Run diagnostics.spec.ts first when debugging environment/setup issues.
  *
  * This suite assumes:
- *   - Firefox extension loaded correctly
- *   - content scripts injected
- *   - debug bridge operational
- *   - fixture HTML valid
+ * - Firefox extension loaded correctly
+ * - content scripts injected
+ * - debug bridge operational
+ * - fixture HTML valid
  *
  * What we're testing
  * ------------------
- *   T1 — Pre-hydrated cards converge to masked state.
- *   T2 — Late hydration eventually converges to masked state.
- *   T3 — SPA navigation prunes stale entries and masks new entries.
- *   T4 — Recycled DOM elements get fresh runtime state.
- *   T5 — Click progression advances masking state machine correctly.
- *   T6 — sessionOrdinal never decreases.
+ * T1 — Pre-hydrated cards converge to masked state.
+ * T2 — Late hydration eventually converges to masked state.
+ * T3 — SPA navigation prunes stale entries and masks new entries.
+ * T4 — Recycled DOM elements get fresh runtime state.
+ * T5 — Click progression advances masking state machine correctly.
+ * T6 — sessionOrdinal never decreases.
  *
  * Design philosophy
  * -----------------
  * Tests assert runtime invariants, not DOM structure.
  *
  * We care about:
- *   - convergence
- *   - state transitions
- *   - observer correctness
- *   - stale-state pruning
+ * - convergence
+ * - state transitions
+ * - observer correctness
+ * - stale-state pruning
  *
  * We do NOT care about:
- *   - pixel output
- *   - YouTube internals
- *   - exact DOM layout
+ * - pixel output
+ * - YouTube internals
+ * - exact DOM layout
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -70,7 +70,12 @@ test("T1: all pre-hydrated cards are masked within 5s of page load", async ({
   for (const id of preHydratedIds) {
     const entry = snap.entries[id]
 
-    expect(entry, `entry for ${id} should exist`).toBeTruthy()
+    expect(entry, `entry for ${id} should exist`).toBeDefined()
+
+    if (entry === undefined) {
+      throw new Error(`missing entry: ${id}`)
+    }
+
     expect(entry.viewKind, `${id} should be masked`).toBe("masked")
     expect(entry.isConnected, `${id} should be connected`).toBe(true)
   }
@@ -109,7 +114,13 @@ test("T2: late-hydrated card gets masked after attribute mutation", async ({
    */
   const before = await fixture.readDebug(page)
 
-  expect(before?.entries["vid_ddd444"]).toBeUndefined()
+  expect(before, "initial debug snapshot should exist").toBeDefined()
+
+  if (before === null) {
+    throw new Error("initial debug snapshot unavailable")
+  }
+
+  expect(before.entries["vid_ddd444"]).toBeUndefined()
 
   /**
    * Simulate YouTube asynchronously setting data-video-id.
@@ -123,7 +134,15 @@ test("T2: late-hydrated card gets masked after attribute mutation", async ({
     timeout: 4000,
   })
 
-  expect(snap.entries["vid_ddd444"].viewKind).toBe("masked")
+  const entry = snap.entries["vid_ddd444"]
+
+  expect(entry, "late-hydrated entry should exist").toBeDefined()
+
+  if (entry === undefined) {
+    throw new Error("missing vid_ddd444")
+  }
+
+  expect(entry.viewKind).toBe("masked")
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,7 +160,18 @@ test("T3: SPA navigation masks new cards and prunes stale entries", async ({
     { timeout: 5000 }
   )
 
-  const sessionBefore = (await fixture.readDebug(page))!.sessionOrdinal
+  const debugBefore = await fixture.readDebug(page)
+
+  expect(
+    debugBefore,
+    "debug snapshot before navigation should exist"
+  ).toBeDefined()
+
+  if (debugBefore === null) {
+    throw new Error("debug snapshot unavailable before navigation")
+  }
+
+  const sessionBefore = debugBefore.sessionOrdinal
 
   /**
    * Simulate YouTube SPA feed replacement.
@@ -161,9 +191,15 @@ test("T3: SPA navigation masks new cards and prunes stale entries", async ({
    * New feed cards should converge to masked state.
    */
   for (const id of newIds) {
-    expect(snap.entries[id].viewKind, `new card ${id} should be masked`).toBe(
-      "masked"
-    )
+    const entry = snap.entries[id]
+
+    expect(entry, `new card entry ${id} should exist`).toBeDefined()
+
+    if (entry === undefined) {
+      throw new Error(`missing new card: ${id}`)
+    }
+
+    expect(entry.viewKind, `new card ${id} should be masked`).toBe("masked")
   }
 
   /**
@@ -200,9 +236,13 @@ test("T4: recycled element receives fresh masked state", async ({
       'ytd-rich-item-renderer[data-video-id="vid_aaa111"]'
     )
 
-    const veil = el?.querySelector(".boyo-veil") as HTMLElement | null
+    const veil = el?.querySelector(".boyo-veil")
 
-    veil?.click()
+    if (!(veil instanceof HTMLElement)) {
+      throw new Error("veil not found or is not an HTMLElement")
+    }
+
+    veil.click()
   })
 
   await fixture.pollDebug(
@@ -231,7 +271,15 @@ test("T4: recycled element receives fresh masked state", async ({
     { timeout: 4000 }
   )
 
-  expect(snap.entries["vid_recycled999"].viewKind).toBe("masked")
+  const entry = snap.entries["vid_recycled999"]
+
+  expect(entry, "recycled entry should exist").toBeDefined()
+
+  if (entry === undefined) {
+    throw new Error("missing recycled entry")
+  }
+
+  expect(entry.viewKind).toBe("masked")
   expect(snap.entries["vid_aaa111"]).toBeUndefined()
 })
 
@@ -255,9 +303,13 @@ test("T5: clicking advances masked → meta → title", async ({ fixture }) => {
       'ytd-rich-item-renderer[data-video-id="vid_bbb222"]'
     )
 
-    const veil = el?.querySelector(".boyo-veil") as HTMLElement | null
+    const veil = el?.querySelector(".boyo-veil")
 
-    veil?.dispatchEvent(
+    if (!(veil instanceof HTMLElement)) {
+      throw new Error("veil not found or is not an HTMLElement")
+    }
+
+    veil.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
         cancelable: true,
@@ -280,9 +332,13 @@ test("T5: clicking advances masked → meta → title", async ({ fixture }) => {
       'ytd-rich-item-renderer[data-video-id="vid_bbb222"]'
     )
 
-    const veil = el?.querySelector(".boyo-veil") as HTMLElement | null
+    const veil = el?.querySelector(".boyo-veil")
 
-    veil?.dispatchEvent(
+    if (!(veil instanceof HTMLElement)) {
+      throw new Error("veil not found or is not an HTMLElement")
+    }
+
+    veil.dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
         cancelable: true,
@@ -296,13 +352,21 @@ test("T5: clicking advances masked → meta → title", async ({ fixture }) => {
     { timeout: 3000 }
   )
 
-  expect(snap.entries["vid_bbb222"].viewKind).toBe("title")
+  const entry = snap.entries["vid_bbb222"]
+
+  expect(entry, "entry should exist after progression").toBeDefined()
+
+  if (entry === undefined) {
+    throw new Error("missing vid_bbb222")
+  }
+
+  expect(entry.viewKind).toBe("title")
 
   /**
    * DOM encoding:
-   *   0 -> masked
-   *   1 -> meta
-   *   2 -> title
+   * 0 -> masked
+   * 1 -> meta
+   * 2 -> title
    */
   const dataBoyo = await fixture.fixtureCall<string | null>(
     page,
@@ -353,9 +417,16 @@ test("T6: sessionOrdinal never decreases", async ({ fixture }) => {
    * but never decrease.
    */
   for (let i = 1; i < snapshots.length; i++) {
+    const current = snapshots[i]
+    const previous = snapshots[i - 1]
+
+    if (current === undefined || previous === undefined) {
+      throw new Error(`missing snapshot at index ${i}`)
+    }
+
     expect(
-      snapshots[i],
+      current,
       `sessionOrdinal decreased at index ${i}`
-    ).toBeGreaterThanOrEqual(snapshots[i - 1])
+    ).toBeGreaterThanOrEqual(previous)
   }
 })

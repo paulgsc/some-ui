@@ -29,9 +29,9 @@
  */
 
 import { ext } from "@censor/platform/content"
+import type { EntryDebugInfo } from "@censor/types/debug"
 import type { ChannelId, VideoId } from "@censor/types/ids"
 
-import type { EntryDebugInfo } from "./debug"
 import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
 import { makeRecord } from "./record"
@@ -254,6 +254,20 @@ export class VideoManager {
 
   applyWhitelistBroadcast(channelId: string): void {
     this._whitelistChannelLocally(channelId)
+  }
+
+  /**
+   * Advance every masked or meta entry to TitleState in one operation.
+   *
+   * Called by the key-binding adapter (KeyBindingAdapater) on the configured
+   * hotkey. Phase-gated and idempotent - safe to call repeatedly.
+   */
+  advanceAllToTitle(): void {
+    if (this._phase !== "running") return
+    for (const entry of this._byVideo.values()) {
+      entry.advanceToTitle()
+    }
+    publish()
   }
 
   // ── Private ───────────────────────────────────────────────────────────────

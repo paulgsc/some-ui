@@ -20,6 +20,8 @@
 import { ext } from "@censor/platform/content"
 
 import { attachEvents } from "./events"
+import type { KeyBindingDispose } from "./key-binding"
+import { attachKeyBindings } from "./key-binding"
 import { SEL, startObserver } from "./observer"
 import { VideoManager } from "./video-manager"
 
@@ -28,6 +30,7 @@ export class Controller {
 
   private _observer: MutationObserver | null = null
   private _appWaiter: MutationObserver | null = null
+  private _disposeKeyBindings: KeyBindingDispose | null = null
 
   init(): void {
     this._listenBroadcasts()
@@ -62,6 +65,7 @@ export class Controller {
 
     attachEvents(this._mgr)
     this._observer = startObserver(this._mgr)
+    this._disposeKeyBindings = attachKeyBindings(this._mgr)
     requestAnimationFrame(() => this._scan())
   }
 
@@ -69,6 +73,8 @@ export class Controller {
     // Disconnect observer FIRST — no mutations during teardown
     this._observer?.disconnect()
     this._observer = null
+    this._disposeKeyBindings?.()
+    this._disposeKeyBindings = null
     this._mgr.reset()
   }
 

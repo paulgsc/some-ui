@@ -25,7 +25,13 @@ import { ClickGate } from "./click-gate"
 import { DomHandle } from "./dom-handle"
 import { extractMeta, extractTitle } from "./extract/index"
 import type { ViewState } from "./fsm"
-import { applyClick, applyDblClick, applyWhitelist, project } from "./fsm"
+import {
+  applyClick,
+  applyDblClick,
+  applySkipToTitle,
+  applyWhitelist,
+  project,
+} from "./fsm"
 import type { VideoRecord } from "./record"
 
 export class VideoEntry {
@@ -65,6 +71,39 @@ export class VideoEntry {
 
   dispatchWhitelist(): void {
     this._onCommit("WHITELIST")
+  }
+
+  /**
+   * Programmatically advance this entry to TitleState if it is currently below it.
+   *
+   * Called by VideoManager.advanceAllToTitle() on every entry in the registry.
+   * Safe to call unconditionally - the kind guard makes it a no-op for entries
+   * thata are already at or past title.
+   */
+  advanceToTitle(): void {
+    if (!this._handle.element.isConnected) return
+
+    switch (this._view.kind) {
+      case "title":
+      case "revealed":
+      case "whitelisted":
+        return
+      case "masked":
+      case "meta": {
+        const el = this._handle.element
+        const meta = extractMeta(el)
+        const titleText = extractTitle(el) ?? ""
+
+        const next = applySkipToTitle(this._view, meta, titleText)
+
+        void this._applyView(next)
+        return
+      }
+
+      default:
+        this._view satisfies never
+        throw new Error(`Unhandled shape`, { cause: this._view })
+    }
   }
 
   /** * Bridge to DomHandle connection status.

@@ -109,6 +109,29 @@ export function applyReset(newSession: SessionId): Masked {
   return { kind: "masked", session: newSession }
 }
 
+/**
+ * applySkipToTitle - advance directly to TitleState from any pre-title state.
+ *
+ * Accepts Masked or Metastate (the only two states that are "below"  title).
+ * Requires both MetaData and a title  string because TitleState carries both
+ * (meta is displayed compactly above the title chip).
+ *
+ * Calles that have a Masked source must supply MetaData themselves (a DOM read
+ * is required - same as _applyClickTransition does).
+ */
+export function applySkipToTitle(
+  s: Masked | MetaState,
+  meta: MetaData,
+  titleText: string
+): TitleState {
+  return {
+    kind: "title",
+    session: s.session,
+    meta,
+    title: { text: titleText, translated: false },
+  }
+}
+
 // ── RenderModel — pure projection output ─────────────────────────────────────
 
 export type DataBoyo = "0" | "1" | "2" | "3" | "wl"
