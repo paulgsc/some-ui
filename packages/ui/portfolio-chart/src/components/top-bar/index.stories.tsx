@@ -5,7 +5,7 @@ import { TopBar } from "."
 
 type Story = StoryObj<typeof TopBar>
 
-export default {
+const meta: Meta<typeof TopBar> = {
   title: "Sandlot/Components/TopBar",
   component: TopBar,
   parameters: { layout: "fullscreen" },
@@ -17,7 +17,9 @@ export default {
     onPositionNameChange: () => {},
     onReset: () => {},
   },
-} as Meta<typeof TopBar>
+}
+
+export default meta
 
 export const IronCondor: Story = {
   args: { archetype: "iron condor" },

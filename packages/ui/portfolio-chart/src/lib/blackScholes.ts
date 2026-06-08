@@ -125,10 +125,10 @@ export function computeNetGreeks(
   dte: number,
   ivShift: number
 ): Greeks {
-  let delta = 0,
-    gamma = 0,
-    theta = 0,
-    vega = 0
+  let delta = 0
+  let gamma = 0
+  let theta = 0
+  let vega = 0
   for (const leg of legs) {
     const bs = bsPrice(
       spot,
@@ -165,7 +165,7 @@ export function computePLMetrics(
   }
   const pls = curve.map((p) => p.pl)
   const profitable = curve.filter((p) => p.pl > 0).length
-  const breakevens: number[] = []
+  const breakevens: Array<number> = []
   for (let i = 1; i < curve.length; i++) {
     const prev = curve[i - 1]!
     const curr = curve[i]!

@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react"
 import { useMemo, useRef, useState } from "react"
 import type { PLPoint } from "@portfolio/types"
 
@@ -93,7 +94,7 @@ export const PLChart: React.FC<PLChartProps> = ({
     }
   }, [curve, spot])
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handleMouseMove = (e: MouseEvent<SVGSVGElement>): void => {
     if (!derived || !svgRef.current || curve.length < 2) return
     const rect = svgRef.current.getBoundingClientRect()
     const frac = Math.max(
@@ -225,9 +226,9 @@ export const PLChart: React.FC<PLChartProps> = ({
       })}
 
       {/* x labels */}
-      {xTicks.map((v, i) => (
+      {xTicks.map((v) => (
         <text
-          key={i}
+          key={`xtick-${v}`}
           x={sx(v, minSpot, maxSpot)}
           y={PAD.top + IH + 18}
           textAnchor="middle"
@@ -240,11 +241,11 @@ export const PLChart: React.FC<PLChartProps> = ({
       ))}
 
       {/* breakeven lines */}
-      {breakevens.map((be, i) => {
+      {breakevens.map((be) => {
         const bx = sx(be, minSpot, maxSpot)
         if (bx < PAD.left || bx > PAD.left + IW) return null
         return (
-          <g key={i}>
+          <g key={`breakevens-${be}`}>
             <line
               x1={bx}
               x2={bx}
