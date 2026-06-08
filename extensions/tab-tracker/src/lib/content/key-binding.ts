@@ -42,13 +42,13 @@ export class KeyBinding {
   constructor(combo: KeyCombo, callback: KeyBindingCallback) {
     this.combo = combo
     this.callback = callback
-    this.handler = (e: KeyboardEvent) => {
+    this.handler = (e: KeyboardEvent): void => {
       // Ignore when typing in an input
-      const target = e.target as HTMLElement
+      const { target } = e
       if (
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
-        target.isContentEditable
+        (target instanceof HTMLElement && target.isContentEditable)
       )
         return
 
@@ -76,7 +76,7 @@ export class KeyBinding {
 
   /** Human-readable combo string for display */
   describe(): string {
-    const parts: string[] = []
+    const parts: Array<string> = []
     if (this.combo.ctrl) parts.push("Ctrl")
     if (this.combo.alt) parts.push("Alt")
     if (this.combo.shift) parts.push("Shift")
