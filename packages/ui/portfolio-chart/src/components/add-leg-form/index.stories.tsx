@@ -4,19 +4,23 @@ import { AddLegForm } from "."
 
 type Story = StoryObj<typeof AddLegForm>
 
-export default {
+const meta: Meta<typeof AddLegForm> = {
   title: "Sandlot/Components/AddLegForm",
   component: AddLegForm,
   parameters: { layout: "padded" },
   args: {
     onAdd: (leg) => {
+      // eslint-disable-next-line no-console
       console.log("leg added:", leg)
     },
     onCancel: () => {
+      // eslint-disable-next-line no-console
       console.log("cancelled")
     },
   },
-} as Meta<typeof AddLegForm>
+}
+
+export default meta
 
 export const Default: Story = {
   args: {

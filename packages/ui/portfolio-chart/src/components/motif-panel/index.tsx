@@ -26,7 +26,7 @@ const PointRow: React.FC<PointRowProps> = ({
   const [draft, setDraft] = useState(point.text)
   const ref = useRef<HTMLInputElement>(null)
 
-  const commit = () => {
+  const commit = (): void => {
     if (draft.trim()) onUpdate(point.id, draft.trim())
     setEditing(false)
   }
@@ -71,7 +71,6 @@ const PointRow: React.FC<PointRowProps> = ({
               setEditing(false)
             }
           }}
-          autoFocus
           className="flex-1 bg-transparent font-mono text-[12px] text-neutral-100 outline-none"
         />
       ) : (
@@ -105,7 +104,7 @@ export const MotifPanel: React.FC<MotifPanelProps> = ({
   const [draft, setDraft] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleAdd = () => {
+  const handleAdd = (): void => {
     if (draft.trim()) {
       onAdd(draft.trim())
       setDraft("")

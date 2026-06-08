@@ -34,7 +34,7 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
   const [premium, setPremium] = useState(2.5)
   const [iv, setIV] = useState(72) // displayed as integer pct, stored as fraction
 
-  const handleAdd = () => {
+  const handleAdd = (): void => {
     if (!expiry || strike <= 0 || premium < 0) return
     onAdd({ optionType, side, strike, expiry, quantity, premium, iv: iv / 100 })
   }
@@ -102,7 +102,7 @@ export const AddLegForm: React.FC<AddLegFormProps> = ({
           >
             {suggestedExpiries.map((d) => (
               <option key={d} value={d}>
-                {new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+                {new Date(`${d}T00:00:00`).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
                 })}

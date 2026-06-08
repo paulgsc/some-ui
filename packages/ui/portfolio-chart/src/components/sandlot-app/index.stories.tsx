@@ -270,11 +270,13 @@ const SandlotApp: React.FC<SandlotAppProps> = ({
 
 type Story = StoryObj<typeof SandlotApp>
 
-export default {
+const meta: Meta<typeof SandlotApp> = {
   title: "Sandlot/App",
   component: SandlotApp,
   parameters: { layout: "fullscreen" },
-} as Meta<typeof SandlotApp>
+}
+
+export default meta
 
 export const EmptyState: Story = {}
 

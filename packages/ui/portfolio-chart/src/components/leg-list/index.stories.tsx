@@ -113,7 +113,7 @@ export const SingleLeg: ListStory = {
   },
 }
 
-export default {
+const meta: Meta<typeof LegList> = {
   title: "Sandlot/Components/LegList",
   component: LegList,
   parameters: { layout: "padded" },
@@ -121,4 +121,6 @@ export default {
     onRemoveLeg: () => {},
     onAddLegClick: () => {},
   },
-} as Meta<typeof LegList>
+}
+
+export default meta

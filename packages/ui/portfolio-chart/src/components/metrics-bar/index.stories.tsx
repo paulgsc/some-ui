@@ -4,11 +4,13 @@ import { MetricsBar } from "."
 
 type Story = StoryObj<typeof MetricsBar>
 
-export default {
+const meta: Meta<typeof MetricsBar> = {
   title: "Sandlot/Components/MetricsBar",
   component: MetricsBar,
   parameters: { layout: "fullscreen" },
-} as Meta<typeof MetricsBar>
+}
+
+export default meta
 
 export const IronCondor: Story = {
   args: {

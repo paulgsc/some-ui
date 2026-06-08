@@ -40,14 +40,16 @@ function shortCallCurve(
 
 type Story = StoryObj<typeof PLChart>
 
-export default {
+const meta: Meta<typeof PLChart> = {
   title: "Sandlot/Components/PLChart",
   component: PLChart,
   parameters: { layout: "padded" },
   argTypes: {
     spot: { control: { type: "range", min: 80, max: 160, step: 0.5 } },
   },
-} as Meta<typeof PLChart>
+}
+
+export default meta
 
 export const IronCondor: Story = {
   args: {

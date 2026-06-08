@@ -23,11 +23,13 @@ const Controlled: React.FC<Partial<SimState>> = (initial) => {
   )
 }
 
-export default {
+const meta: Meta<typeof SimControls> = {
   title: "Sandlot/Components/SimControls",
   component: SimControls,
   parameters: { layout: "padded" },
-} as Meta<typeof SimControls>
+}
+
+export default meta
 
 export const Default: Story = { render: () => <Controlled /> }
 export const HighIV: Story = { render: () => <Controlled ivShift={0.3} /> }

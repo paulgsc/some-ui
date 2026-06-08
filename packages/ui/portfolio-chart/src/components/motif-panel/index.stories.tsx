@@ -54,11 +54,13 @@ const Controlled: React.FC<{ initial: Array<MotifPoint> }> = ({ initial }) => {
 
 type Story = StoryObj<typeof MotifPanel>
 
-export default {
+const meta: Meta<typeof MotifPanel> = {
   title: "Sandlot/Components/MotifPanel",
   component: MotifPanel,
   parameters: { layout: "padded" },
-} as Meta<typeof MotifPanel>
+}
+
+export default meta
 
 export const WithPoints: Story = {
   render: () => <Controlled initial={SEED_POINTS} />,
