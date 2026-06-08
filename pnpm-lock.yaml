@@ -438,6 +438,21 @@ importers:
         specifier: 8.3.0
         version: 8.3.0
 
+  extensions/some-conveyor:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
+      some-ui-rollup-config:
+        specifier: workspace:*
+        version: link:../../packages/rollup-config
+      web-ext:
+        specifier: 8.3.0
+        version: 8.3.0
+
   extensions/some-cycle:
     dependencies:
       '@some-cycle/content':
