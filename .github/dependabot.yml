@@ -1,11 +1,45 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # npm / pnpm workspace
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+    groups:
+      typescript-tooling:
+        patterns:
+          - "typescript*"
+          - "@typescript-eslint/*"
+          - "tsc-*"
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+      storybook:
+        patterns:
+          - "@storybook/*"
+          - "storybook"
+      vite:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+  # Rust / Cargo workspace
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+  # GitHub Actions — keep action versions current
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      determinate-systems:
+        patterns:
+          - "DeterminateSystems/*"
+      actions-core:
+        patterns:
+          - "actions/*"

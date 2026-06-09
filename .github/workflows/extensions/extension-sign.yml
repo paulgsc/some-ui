@@ -5,22 +5,29 @@ on:
       matrix:
         required: true
         type: string
+    secrets:
+      AMO_JWT_ISSUER:
+        required: true
+      AMO_JWT_SECRET:
+        required: true
 jobs:
   sign:
+    name: Sign ${{ matrix.extension_name }}
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v12
-      - uses: DeterminateSystems/magic-nix-cache-action@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
       - name: Build release artifact
-        run: |
-          nix develop .#ci --command bash -c '
-            pnpm install --frozen-lockfile
-
-            pnpm --filter "${{ matrix.extension_name }}" build
-          '
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" build
       - name: Submit to AMO
         run: |
           nix develop .#ci --command web-ext sign \
@@ -33,3 +40,5 @@ jobs:
         with:
           name: signed-${{ matrix.extension_name }}
           path: artifacts/*.xpi
+          if-no-files-found: error
+          retention-days: 30

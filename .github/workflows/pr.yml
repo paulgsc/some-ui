@@ -1,0 +1,77 @@
+name: PR
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    uses: ./.github/workflows/shared/detect-changes.yml
+  rust:
+    name: Rust CI
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true'
+    uses: ./.github/workflows/shared/rust-ci.yml
+  node:
+    name: Node CI
+    needs: changes
+    if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    uses: ./.github/workflows/shared/node-ci.yml
+  deny:
+    name: Deny Checks
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    uses: ./.github/workflows/shared/deny-checks.yml
+    with:
+      rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
+      node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}
+  # Required status check — always runs, aggregates results.
+  # Configure branch protection to require this single job rather than
+  # individual rust/node/deny jobs (which are conditionally skipped).
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [changes, rust, node, deny]
+    if: always()
+    steps:
+      - name: Evaluate results
+        run: |
+          FAILED=false
+
+          # rust: required if rust or ci paths changed
+          RUST_REQUIRED="${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}"
+          if [ "$RUST_REQUIRED" = "true" ] && [ "${{ needs.rust.result }}" != "success" ]; then
+            echo "❌ rust job: ${{ needs.rust.result }}"
+            FAILED=true
+          else
+            echo "✅ rust job: ${{ needs.rust.result }} (required: $RUST_REQUIRED)"
+          fi
+
+          # node: required if node or ci paths changed
+          NODE_REQUIRED="${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}"
+          if [ "$NODE_REQUIRED" = "true" ] && [ "${{ needs.node.result }}" != "success" ]; then
+            echo "❌ node job: ${{ needs.node.result }}"
+            FAILED=true
+          else
+            echo "✅ node job: ${{ needs.node.result }} (required: $NODE_REQUIRED)"
+          fi
+
+          # deny: required whenever rust or node ran (skipped means no changes → OK)
+          DENY_RESULT="${{ needs.deny.result }}"
+          if [ "$DENY_RESULT" = "failure" ] || [ "$DENY_RESULT" = "cancelled" ]; then
+            echo "❌ deny job: $DENY_RESULT"
+            FAILED=true
+          else
+            echo "✅ deny job: $DENY_RESULT"
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            echo ""
+            echo "One or more required CI jobs failed. See above."
+            exit 1
+          fi
+
+          echo ""
+          echo "All required checks passed."

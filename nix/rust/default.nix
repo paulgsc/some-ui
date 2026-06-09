@@ -1,6 +1,9 @@
 #
 # Rust toolchain + core Rust build dependencies.
 # Consumed by every shell that touches Rust or wasm.
+#
+# Note: cargo-deny and cargo-audit live in nix/deny — kept out of here
+# so the ci shell closure stays small on pure Rust build jobs.
 {pkgs, ...}: let
   rustToolchain = pkgs.rust-bin.stable.latest.default.override {
     extensions = [
@@ -16,7 +19,7 @@
 in {
   inherit rustToolchain;
 
-  # Packages needed at compile time in every shell
+  # Packages needed at compile time in every shell that touches Rust
   deps = with pkgs; [
     rustToolchain
     wasm-pack
@@ -28,7 +31,6 @@ in {
   # Extra ergonomics — local dev only, not in CI
   devDeps = with pkgs; [
     rust-analyzer
-    cargo-audit
     cargo-edit
     cargo-watch
     cargo-expand

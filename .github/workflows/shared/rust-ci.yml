@@ -1,0 +1,25 @@
+name: Rust CI
+on:
+  workflow_call:
+jobs:
+  rust-ci:
+    name: Rust (fmt · clippy · test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
+        with:
+          key-suffix: workspace
+      - name: Build workspace
+        run: nix develop .#ci --command cargo build --workspace --locked
+      - name: Clippy
+        run: |
+          nix develop .#ci --command cargo clippy \
+            --workspace \
+            --all-targets \
+            -- -D warnings -A unknown-lints
+      - name: Format check
+        run: nix develop .#ci --command cargo fmt --all -- --check
+      - name: Tests
+        run: nix develop .#ci --command cargo test --workspace --verbose

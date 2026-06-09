@@ -23,22 +23,22 @@
         overlays = [rust-overlay.overlays.default];
       };
 
-      # ── Load concern modules ─────────────────────────────────────────────
+      # ── Load concern modules ──────────────────────────────────────────────
       # Each module is a plain attrset — no mkShell inside, just deps/env/ldLibs.
       # Composition happens here in flake.nix.
-      rust = import ./nix/rust {inherit pkgs;};
-      desktop = import ./nix/desktop {inherit pkgs;};
-      node = import ./nix/node {inherit pkgs;};
+      rust       = import ./nix/rust       {inherit pkgs;};
+      desktop    = import ./nix/desktop    {inherit pkgs;};
+      node       = import ./nix/node       {inherit pkgs;};
       playwright = import ./nix/playwright {inherit pkgs;};
+      deny       = import ./nix/deny       {inherit pkgs;};
 
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
     in {
       devShells = {
-        # ── default: full local dev ────────────────────────────────────────
+        # ── default: full local dev ───────────────────────────────────────
         # Rust + wasm + desktop GUI + dev ergonomics.
-        # Everything you need to work on the monorepo locally.
-        # Does NOT include Playwright (use .#playwright shell for E2E runs).
+        # Does NOT include Playwright — use .#playwright for E2E runs.
         default = pkgs.mkShell {
           buildInputs =
             rust.deps
@@ -55,10 +55,10 @@
           '';
         };
 
-        # ── ci: lean CI shell ──────────────────────────────────────────────
-        # Only what the CI pipeline needs: Rust compile + pnpm workspace.
-        # No GUI libs, no dev ergonomics, no Playwright.
-        # Playwright tests run in a separate CI job using .#playwright.
+        # ── ci: lean CI shell ─────────────────────────────────────────────
+        # Rust compile + pnpm workspace + web-ext.
+        # No GUI libs, no dev ergonomics, no Playwright, no audit tools.
+        # Audit tools live in .#deny to keep this closure small.
         ci = pkgs.mkShell {
           buildInputs =
             rust.deps
@@ -71,9 +71,23 @@
           '';
         };
 
-        # ── extension: browser extension dev ──────────────────────────────
-        # Node + pnpm only. For working on the BOYO extension without
-        # pulling in the full Rust toolchain or GUI libs.
+        # ── deny: cargo-deny + license audit ─────────────────────────────
+        # Minimal shell for dependency auditing in CI.
+        # Keeps cargo-deny out of the main ci shell closure.
+        deny = pkgs.mkShell {
+          buildInputs =
+            rust.deps
+            ++ node.deps
+            ++ deny.deps;
+
+          shellHook = ''
+            export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
+          '';
+        };
+
+        # ── extension: browser extension dev ─────────────────────────────
+        # Node + pnpm only. For working on extensions without the full
+        # Rust toolchain or GUI libs.
         extension = pkgs.mkShell {
           buildInputs = node.deps;
 
@@ -82,7 +96,7 @@
           '';
         };
 
-        # ── playwright: E2E test runner ────────────────────────────────────
+        # ── playwright: E2E test runner ───────────────────────────────────
         # Node + pnpm + Playwright + Nix-patched Chromium.
         # Headed Chromium is required for extension testing — extensions
         # do not load in headless mode.
@@ -90,9 +104,6 @@
         # Usage:
         #   nix develop .#playwright
         #   pnpm exec playwright test --config=playwright.config.ts
-        #
-        # On NixOS, PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH points at the
-        # Nix-patched binary so no `playwright install` download is needed.
         playwright = pkgs.mkShell {
           buildInputs = playwright.deps;
 

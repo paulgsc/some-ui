@@ -1,152 +1,145 @@
 name: WASM Release
-
 on:
   push:
+    branches: [main]
     paths:
-      - 'wasm-sources/**'
-    branches:
-      - main
-  workflow_dispatch:  # Allow manual triggering
-
+      - "wasm-sources/**"
+      - "Cargo.lock"
+  workflow_dispatch:
 permissions:
   contents: write
   pull-requests: write
-
 jobs:
-  build-and-release-wasm:
+  detect:
+    name: Detect Changed WASM Crates
     runs-on: ubuntu-latest
-
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for detecting changes
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+          fetch-depth: 0
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
         with:
-          targets: wasm32-unknown-unknown
-
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - uses: pnpm/action-setup@v4
-        name: Add pnpm
-        id: pnpm-install
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
+          key-suffix: wasm-detect-bin
+          target-dir: .github/scripts/target
+      - name: Build WASM detector binary
         run: |
-          echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+          nix develop .#ci --command cargo build \
+            --release \
+            --manifest-path .github/scripts/Cargo.toml \
+            --target-dir .github/scripts/target \
+            -p wasm-detect
+      - name: Emit matrix
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            export FORCE_BUILD=1
+            echo "" | .github/scripts/target/release/wasm-detect > matrix.json
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ] || [ -z "$BASE" ]; then
+              export FORCE_BUILD=1
+              echo "" | .github/scripts/target/release/wasm-detect > matrix.json
+            else
+              git diff --name-only "$BASE" "$HEAD" \
+                | .github/scripts/target/release/wasm-detect > matrix.json
+            fi
+          fi
 
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
+          MATRIX=$(jq -c . matrix.json)
+          COUNT=$(jq '.include | length' matrix.json)
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+  build:
+    name: Build WASM — ${{ matrix.crate_name }}
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
         with:
-          path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
+          key-suffix: wasm-${{ matrix.crate_name }}
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
       - name: Install dependencies
         run: |
-          pnpm install --frozen-lockfile --prefer-offline
-          npx husky disable
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
         env:
-          HUSKY_SKIP_INSTALL: 1
-          HUSKY_DISABLE: 1
-
-      - name: Detect changed crates
-        id: changed-crates
+          HUSKY: 0
+      # wasm-pack is in the ci nix shell (rust.deps includes wasm-pack).
+      - name: Build WASM package
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # For manual runs, build all crates
-            echo "Building all crates due to manual trigger"
-            echo "CRATES=$(ls -d wasm-sources/*/ | xargs -n1 basename)" >> $GITHUB_OUTPUT
-            echo "CHANGES_DETECTED=true" >> $GITHUB_OUTPUT
-          else
-            # Get changed files in this push
-            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep "^wasm-sources/" || true)
-            if [ -z "$CHANGED_FILES" ]; then
-              echo "No changes in wasm-sources directory"
-              echo "CHANGES_DETECTED=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            
-            # Extract unique crate names from changed files
-            CRATES=$(echo "$CHANGED_FILES" | awk -F/ '{print $2}' | sort -u | xargs)
-            echo "Changed crates: $CRATES"
-            echo "CRATES=$CRATES" >> $GITHUB_OUTPUT
-            echo "CHANGES_DETECTED=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build WASM packages
-        if: steps.changed-crates.outputs.CHANGES_DETECTED == 'true'
-        id: build-wasm
+          nix develop .#ci --command wasm-pack build \
+            --scope your-scope \
+            --target web \
+            --out-dir "../../dist/wasm/${{ matrix.crate_name }}" \
+            "wasm-sources/${{ matrix.crate_name }}"
+      - name: Create changeset
         run: |
-          # Create a temporary directory for changeset files
-          mkdir -p .changeset
-          
-          # Track which crates were updated
-          UPDATED_CRATES=""
-          
-          # Build each changed crate
-          for CRATE in ${{ steps.changed-crates.outputs.CRATES }}; do
-            if [ -f "wasm-sources/$CRATE/Cargo.toml" ]; then
-              echo "===== Building $CRATE ====="
-              
-              # Extract version from Cargo.toml
-              VERSION=$(grep "^version" "wasm-sources/$CRATE/Cargo.toml" | head -1 | cut -d '"' -f2 || echo "0.1.0")
-              
-              # Package name for NPM
-              PACKAGE_NAME="@your-scope/wasm-$CRATE"
-              
-              # Build with wasm-pack to dist directory
-              cd "wasm-sources/$CRATE"
-              wasm-pack build --scope your-scope --target web --out-dir "../../dist/wasm/$CRATE"
-              
-              # Create changeset file for this package
-              CHANGESET_ID=$(date +%s)-$CRATE
-              cat << EOF > "../../.changeset/$CHANGESET_ID.md"
----
-"$PACKAGE_NAME": patch
----
+          PACKAGE_NAME="@your-scope/wasm-${{ matrix.crate_name }}"
+          VERSION="${{ matrix.version }}"
+          CHANGESET_ID="${{ matrix.crate_name }}-$(date +%s)"
 
-Update WASM package for $CRATE to version $VERSION
-EOF
-              
-              UPDATED_CRATES="$UPDATED_CRATES $CRATE"
-              
-              cd ../../
-              echo "===== Completed $CRATE ====="
-            else
-              echo "Warning: $CRATE does not seem to be a valid Rust crate"
-            fi
-          done
-          
-          if [ -n "$UPDATED_CRATES" ]; then
-            echo "UPDATED_CRATES=$UPDATED_CRATES" >> $GITHUB_OUTPUT
-            echo "true" > wasm-changes.txt
-          else
-            echo "No crates were successfully built"
-            echo "false" > wasm-changes.txt
-          fi
+          cat > ".changeset/${CHANGESET_ID}.md" << EOF
+          ---
+          "${PACKAGE_NAME}": patch
+          ---
 
-      - name: Create Release Pull Request or Publish
-        if: steps.build-wasm.outputs.UPDATED_CRATES != ''
-        id: changesets
-        uses: changesets/action@v1.4.1
+          Update WASM package for ${{ matrix.crate_name }} to version ${VERSION}
+          EOF
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-dist-${{ matrix.crate_name }}
+          path: dist/wasm/${{ matrix.crate_name }}
+          if-no-files-found: error
+  release:
+    name: Changesets WASM Release
+    needs: [detect, build]
+    if: needs.detect.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Download all WASM dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wasm-dist-*
+          path: dist/wasm
+          merge-multiple: true
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1.4.9
         with:
           commit: "chore(release): update WASM packages"
           title: "chore(release): update WASM packages"
-          publish: npx changeset publish
+          publish: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
-          NODE_ENV: "production"
+          NODE_ENV: production

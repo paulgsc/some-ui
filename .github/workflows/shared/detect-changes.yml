@@ -1,0 +1,79 @@
+name: Detect Changes
+on:
+  workflow_call:
+    outputs:
+      rust:
+        description: "True if Rust sources changed"
+        value: ${{ jobs.detect.outputs.rust }}
+      node:
+        description: "True if Node/TS/CSS sources changed"
+        value: ${{ jobs.detect.outputs.node }}
+      extensions:
+        description: "True if extension sources changed"
+        value: ${{ jobs.detect.outputs.extensions }}
+      wasm:
+        description: "True if wasm-sources changed"
+        value: ${{ jobs.detect.outputs.wasm }}
+      storybook:
+        description: "True if storybook config or component stories changed"
+        value: ${{ jobs.detect.outputs.storybook }}
+      ci:
+        description: "True if CI config itself changed (force re-run all)"
+        value: ${{ jobs.detect.outputs.ci }}
+jobs:
+  detect:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      node: ${{ steps.filter.outputs.node }}
+      extensions: ${{ steps.filter.outputs.extensions }}
+      wasm: ${{ steps.filter.outputs.wasm }}
+      storybook: ${{ steps.filter.outputs.storybook }}
+      ci: ${{ steps.filter.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            rust:
+              - 'crates/**'
+              - 'apps/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/**'
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'nix/**'
+              - '!**/*.md'
+            node:
+              - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
+              - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - '.nvmrc'
+              - 'tsconfig*.json'
+              - 'vite.config.*'
+              - '!**/*.md'
+            extensions:
+              - 'extensions/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/extensions/**'
+            wasm:
+              - 'wasm-sources/**'
+              - 'Cargo.lock'
+            storybook:
+              - 'packages/**/*.stories.{ts,tsx}'
+              - '.storybook/**'
+              - 'packages/**/*.{ts,tsx,css}'
+              - 'pnpm-lock.yaml'
+            ci:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+              - 'flake.nix'
+              - 'nix/**'

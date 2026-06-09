@@ -1,4 +1,13 @@
 name: Extension Context Detection
+# Detects which extensions need verification/signing based on changed paths.
+#
+# Strategy: paths-filter with one group per extension plus a shared-packages
+# group. An extension is included if its own sources changed OR any shared
+# package it could depend on changed. CI config changes force all extensions.
+#
+# To add a new extension:
+#   1. Add an entry to the EXTENSIONS matrix below
+#   2. Add a matching group to the paths-filter filters block (same key)
 on:
   workflow_call:
     outputs:
@@ -8,28 +17,78 @@ on:
         value: ${{ jobs.detect.outputs.has_changes }}
 jobs:
   detect:
+    name: Detect Changed Extensions
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.detect.outputs.matrix }}
-      has_changes: ${{ steps.detect.outputs.has_changes }}
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      has_changes: ${{ steps.build-matrix.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
         with:
-          fetch-depth: 0
-      - name: Build detector
-        run: cargo build --release
-        working-directory: .github/scripts/detect
-      - id: detect
+          filters: |
+            shared:
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+            ci:
+              - '.github/workflows/extensions/**'
+            some-streak:
+              - 'extensions/some-streak/**'
+            some-filter:
+              - 'extensions/some-filter/**'
+            some-drama:
+              - 'extensions/some-drama/**'
+            some-conveyor:
+              - 'extensions/some-conveyor/**'
+            boyo:
+              - 'extensions/boyo/**'
+            mujik:
+              - 'extensions/mujik/**'
+      - name: Build matrix
+        id: build-matrix
+        env:
+          SHARED: ${{ steps.filter.outputs.shared }}
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+          SOME_STREAK: ${{ steps.filter.outputs.some-streak }}
+          SOME_FILTER: ${{ steps.filter.outputs.some-filter }}
+          SOME_DRAMA: ${{ steps.filter.outputs.some-drama }}
+          SOME_CONVEYOR: ${{ steps.filter.outputs.some-conveyor }}
+          BOYO: ${{ steps.filter.outputs.boyo }}
+          MUJIK: ${{ steps.filter.outputs.mujik }}
         run: |
-          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+          # Each entry: "filter-env-var|extension_name|extension_path"
+          EXTENSIONS=(
+            "${SOME_STREAK}|some-streak|extensions/some-streak"
+            "${SOME_FILTER}|some-filter|extensions/some-filter"
+            "${SOME_DRAMA}|some-drama|extensions/some-drama"
+            "${SOME_CONVEYOR}|some-conveyor|extensions/some-conveyor"
+            "${BOYO}|boyo|extensions/boyo"
+            "${MUJIK}|mujik|extensions/mujik"
+          )
 
-          git diff --name-only "$BASE_SHA...HEAD" \
-            | .github/scripts/detect/target/release/detect \
-            > matrix.json
+          FORCE_ALL="false"
+          if [ "$SHARED" = "true" ] || [ "$CI_CHANGED" = "true" ]; then
+            FORCE_ALL="true"
+          fi
 
-          echo "matrix=$(jq -c . matrix.json)" >> "$GITHUB_OUTPUT"
+          INCLUDE="[]"
+          for entry in "${EXTENSIONS[@]}"; do
+            IFS="|" read -r changed name path <<< "$entry"
+            if [ "$FORCE_ALL" = "true" ] || [ "$changed" = "true" ]; then
+              INCLUDE=$(echo "$INCLUDE" | jq \
+                --arg n "$name" \
+                --arg p "$path" \
+                '. + [{"extension_name": $n, "extension_path": $p}]')
+            fi
+          done
 
-          if [ "$(jq '.include | length' matrix.json)" -gt 0 ]; then
+          MATRIX=$(jq -cn --argjson inc "$INCLUDE" '{"include": $inc}')
+          COUNT=$(echo "$INCLUDE" | jq 'length')
+
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -gt 0 ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"

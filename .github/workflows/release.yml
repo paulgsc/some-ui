@@ -1,65 +1,41 @@
 name: Release
-
 on:
   push:
     branches: [main]
-
 permissions:
   contents: write
   pull-requests: write
-
+concurrency:
+  group: release-main
+  cancel-in-progress: false
 jobs:
   release:
+    name: Changesets Release
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
-
-      - uses: pnpm/action-setup@v4
-        name: Add pnpm
-        id: pnpm-install
+          fetch-depth: 0
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
         with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        run: |
-          echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
-        with:
-          path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
+          shell: ci
       - name: Install dependencies
         run: |
-          pnpm install --frozen-lockfile --prefer-offline
-          # Disable Husky explicitly
-          npx husky disable
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
         env:
-          HUSKY_SKIP_INSTALL: 1
-          HUSKY_DISABLE: 1
-          # NODE_ENV: production # need to ensure this is set for most packages
-
+          HUSKY: 0
       - name: Build packages
-        run: pnpm build
-
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@v1.4.1
+        run: nix develop .#ci --command pnpm build
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1.4.9
         with:
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
-          publish: npx changeset publish
+          publish: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
-          NODE_ENV: "production"
+          NODE_ENV: production

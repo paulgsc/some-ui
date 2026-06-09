@@ -3,7 +3,8 @@ on:
   pull_request:
     paths:
       - "extensions/**"
-      - ".github/workflows/**"
+      - "packages/**"
+      - ".github/workflows/extensions/**"
       - "pnpm-lock.yaml"
 jobs:
   detect:
