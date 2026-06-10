@@ -1,0 +1,57 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@conveyor/*": ["src/*"]
+    },
+    "types": ["firefox-webext-browser", "chrome"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**"
+  ]
+}
