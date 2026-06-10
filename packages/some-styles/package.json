@@ -1,36 +1,20 @@
 {
   "dependencies": {},
   "description": "Shared Vite configuration for monorepo packages",
-  "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*"
-  },
   "exports": {
     "./tailwind.css": "./tailwind.css",
     "./themes.css": "./themes.css"
   },
-  "files": [
-    "dist/**"
-  ],
   "keywords": [
-    "vite",
-    "config",
-    "monorepo",
-    "shared"
+    "some"
   ],
-  "main": "./dist/esm/src/index.js",
   "name": "@some-ui/styles",
-  "peerDependencies": {
-    "vite": "^6.0.7"
-  },
   "scripts": {
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-    "typecheck": "tsc --noEmit"
+    "lint": "pnpm prettier",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache"
   },
   "type": "module",
-  "types": "src/index.ts",
   "version": "1.0.0"
 }
