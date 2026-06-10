@@ -1,0 +1,106 @@
+name: Trunk
+# Full-workspace health check on every push to main.
+#
+# This workflow runs the complete test/lint/typecheck suite across ALL
+# workspaces with no filtering. A failure here means the trunk is broken
+# and should be treated as a production incident — investigate and fix
+# or revert before the next merge.
+#
+# Expensive artifact builds (Storybook deploy, AMO signing, WASM publish)
+# are NOT triggered from here — they live in their own path-filtered
+# workflows (storybook-build.yml, extension.yml, wasm-release.yml) and
+# run on push to main independently.
+#
+on:
+  push:
+    branches: [main]
+  # Allow manual re-runs to verify trunk is green after a hotfix.
+  workflow_dispatch:
+jobs:
+  # ── Full Rust suite ─────────────────────────────────────────────────────
+  rust:
+    name: Rust CI (full workspace)
+    uses: ./.github/workflows/_rust-ci.yml
+  # ── Full Node suite ─────────────────────────────────────────────────────
+  # No turbo filter — runs across all packages including extensions.
+  # This catches breakage in workspaces that PRs didn't touch.
+  node:
+    name: Node CI (full workspace)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Build all packages
+        run: nix develop .#ci --command pnpm build
+      - name: Typecheck all packages
+        run: nix develop .#ci --command pnpm typecheck
+      - name: Lint all packages
+        run: nix develop .#ci --command pnpm lint:js
+      - name: Prettier all packages
+        run: nix develop .#ci --command pnpm prettier
+      - name: Test all packages
+        run: nix develop .#ci --command pnpm test
+  # ── Full dependency audit ───────────────────────────────────────────────
+  deny:
+    name: Deny Checks (full)
+    uses: ./.github/workflows/_deny-checks.yml
+    with:
+      rust: true
+      node: true
+  # ── Trunk health gate ───────────────────────────────────────────────────
+  # Single aggregation point. Wire up branch status / Slack notifications
+  # to this job rather than individual jobs.
+  trunk-gate:
+    name: Trunk Gate
+    runs-on: ubuntu-latest
+    needs: [rust, node, deny]
+    if: always()
+    steps:
+      - name: Evaluate trunk health
+        run: |
+          FAILED=false
+
+          for job_result in \
+            "rust:${{ needs.rust.result }}" \
+            "node:${{ needs.node.result }}" \
+            "deny:${{ needs.deny.result }}"; do
+            name="${job_result%%:*}"
+            result="${job_result##*:}"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "❌ $name: $result"
+              FAILED=true
+            else
+              echo "✅ $name: $result"
+            fi
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo ""
+            echo "Trunk is broken. Investigate and fix or revert before next merge."
+            exit 1
+          fi
+
+          echo ""
+          echo "Trunk is healthy."
+
+# ── Optional: notify on failure ─────────────────────────────────────
+# Uncomment and configure SLACK_WEBHOOK_URL repository secret to
+# get notified when trunk breaks.
+#
+# - name: Notify on failure
+#   if: failure()
+#   uses: slackapi/slack-github-action@v1
+#   with:
+#     payload: |
+#       {
+#         "text": "🚨 Trunk broken on `${{ github.repository }}`\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+#       }
+#   env:
+#     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

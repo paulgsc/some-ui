@@ -1,4 +1,27 @@
 name: PR
+# Fast, dep-aware CI for pull requests.
+#
+# Philosophy (see docs/ci-architecture.md):
+#   PR CI answers: "does this change break what it touches?"
+#   Trunk CI (trunk.yml) answers: "is the whole repo healthy?"
+#
+# Filtering strategy:
+#   turbo --filter=...[HEAD^1] runs lint/typecheck/test for every package
+#   whose files changed AND every package that depends on a changed package
+#   (transitively). This is dep-graph-aware — dorny/paths-filter is not.
+#
+#   Rust uses cargo's --workspace for now; a fine-grained Rust workspace
+#   filter would require cargo-hakari or similar. Given Rust compile times,
+#   full workspace on any Rust touch is acceptable.
+#
+# What does NOT run on PR:
+#   - Artifact builds (Docker, Storybook deploy, AMO signing, WASM publish)
+#   - Full trunk health sweep (that's trunk.yml)
+#   Extension CI has its own workflow (extension.yml) and is not gated here.
+#
+# ci-gate is the single required status check. Configure branch protection
+# to require only this job, not the individual rust/node jobs (which may be
+# skipped when no relevant files changed).
 on:
   pull_request:
     branches: [main]
@@ -7,29 +30,98 @@ concurrency:
   group: pr-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # ── Path detection ──────────────────────────────────────────────────────
+  # Coarse-grained: did Rust files change? Node files? CI config?
+  # Used only to decide whether to run the Rust job and for the ci-gate
+  # logic. Node filtering is handled by turbo, not by this step.
   changes:
     uses: ./.github/workflows/_detect-changes.yml
+
+  # ── Rust CI ────────────────────────────────────────────────────────────
+  # Runs on any Rust or CI change. Full workspace — cargo doesn't have
+  # a turbo-equivalent dep-aware filter without additional tooling.
   rust:
     name: Rust CI
     needs: changes
     if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true'
     uses: ./.github/workflows/_rust-ci.yml
+
+  # ── Node CI (dep-aware, turbo-filtered) ────────────────────────────────
+  # Only runs if Node/TS/CSS files or CI config changed.
+  # turbo --filter=...[HEAD^1] scopes work to changed packages + dependents.
   node:
-    name: Node CI
+    name: Node CI (filtered)
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
-    uses: ./.github/workflows/_node-ci.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # turbo --filter=[HEAD^1] needs the parent commit to diff against.
+          fetch-depth: 2
+
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+
+      # Build only the packages that changed or whose dependents changed.
+      # The ...[HEAD^1] syntax means: this package and everything that
+      # depends on it, filtered to what changed since the last commit.
+      - name: Build (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run build \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**'
+
+      - name: Typecheck (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run typecheck \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**'
+
+      - name: Lint (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run lint:js \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**'
+
+      - name: Prettier (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run prettier \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**'
+
+      - name: Test (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run test \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**'
+
+  # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks
     needs: changes
-    if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
+    if: >
+      needs.changes.outputs.rust == 'true' ||
+      needs.changes.outputs.node == 'true' ||
+      needs.changes.outputs.ci == 'true'
     uses: ./.github/workflows/_deny-checks.yml
     with:
       rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
       node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}
-  # Required status check — always runs, aggregates results.
-  # Configure branch protection to require this single job rather than
-  # individual rust/node/deny jobs (which are conditionally skipped).
+
+  # ── CI Gate ────────────────────────────────────────────────────────────
+  # Always runs. Aggregates results from conditional jobs.
+  # Configure branch protection to require THIS job only.
+  #
+  # Skipped jobs are treated as passing (nothing to check → nothing broke).
+  # Failed or cancelled jobs that were required fail the gate.
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -40,36 +132,35 @@ jobs:
         run: |
           FAILED=false
 
-          # rust: required if rust or ci paths changed
           RUST_REQUIRED="${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}"
-          if [ "$RUST_REQUIRED" = "true" ] && [ "${{ needs.rust.result }}" != "success" ]; then
-            echo "❌ rust job: ${{ needs.rust.result }}"
+          RUST_RESULT="${{ needs.rust.result }}"
+          if [ "$RUST_REQUIRED" = "true" ] && [ "$RUST_RESULT" != "success" ]; then
+            echo "❌ rust: $RUST_RESULT (required)"
             FAILED=true
           else
-            echo "✅ rust job: ${{ needs.rust.result }} (required: $RUST_REQUIRED)"
+            echo "✅ rust: $RUST_RESULT (required: $RUST_REQUIRED)"
           fi
 
-          # node: required if node or ci paths changed
           NODE_REQUIRED="${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}"
-          if [ "$NODE_REQUIRED" = "true" ] && [ "${{ needs.node.result }}" != "success" ]; then
-            echo "❌ node job: ${{ needs.node.result }}"
+          NODE_RESULT="${{ needs.node.result }}"
+          if [ "$NODE_REQUIRED" = "true" ] && [ "$NODE_RESULT" != "success" ]; then
+            echo "❌ node: $NODE_RESULT (required)"
             FAILED=true
           else
-            echo "✅ node job: ${{ needs.node.result }} (required: $NODE_REQUIRED)"
+            echo "✅ node: $NODE_RESULT (required: $NODE_REQUIRED)"
           fi
 
-          # deny: required whenever rust or node ran (skipped means no changes → OK)
           DENY_RESULT="${{ needs.deny.result }}"
           if [ "$DENY_RESULT" = "failure" ] || [ "$DENY_RESULT" = "cancelled" ]; then
-            echo "❌ deny job: $DENY_RESULT"
+            echo "❌ deny: $DENY_RESULT"
             FAILED=true
           else
-            echo "✅ deny job: $DENY_RESULT"
+            echo "✅ deny: $DENY_RESULT"
           fi
 
           if [ "$FAILED" = "true" ]; then
             echo ""
-            echo "One or more required CI jobs failed. See above."
+            echo "One or more required CI jobs failed."
             exit 1
           fi
 

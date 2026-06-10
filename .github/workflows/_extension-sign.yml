@@ -1,4 +1,9 @@
 name: Firefox Signing
+# Signs each changed extension and uploads the .xpi artifact.
+#
+# Workspace packages (packages/*/dist) are consumed from the workspace-dist
+# artifact produced by the build-workspace job in extension.yml.
+# This job does NOT rebuild shared packages — only the extension itself.
 on:
   workflow_call:
     inputs:
@@ -22,12 +27,23 @@ jobs:
       - uses: ./.github/actions/pnpm-cache
         with:
           shell: ci
+
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
+
+      # Restore pre-built workspace packages produced by build-workspace.
+      - name: Download workspace dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-dist
+          path: packages
+
+      # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" build
+
       - name: Submit to AMO
         run: |
           nix develop .#ci --command web-ext sign \
@@ -36,6 +52,7 @@ jobs:
             --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
             --artifacts-dir artifacts
+
       - uses: actions/upload-artifact@v4
         with:
           name: signed-${{ matrix.extension_name }}

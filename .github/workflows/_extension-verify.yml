@@ -1,4 +1,9 @@
 name: Extension Verification
+# Verifies each changed extension: typecheck, lint, test, build, web-ext lint.
+#
+# Workspace packages (packages/*/dist) are consumed from the workspace-dist
+# artifact produced by the build-workspace job in extension.yml.
+# This job does NOT rebuild shared packages — only the extension itself.
 on:
   workflow_call:
     inputs:
@@ -18,18 +23,33 @@ jobs:
       - uses: ./.github/actions/pnpm-cache
         with:
           shell: ci
+
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
+
+      # Restore pre-built workspace packages so the extension build doesn't
+      # need to rebuild them. Produced by the build-workspace job.
+      - name: Download workspace dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-dist
+          path: packages
+
       - name: Typecheck
         run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" typecheck
+
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" lint
+
       - name: Test
         run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" test
+
+      # Build the extension itself — workspace deps already present from artifact.
       - name: Build
         run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" build
+
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \

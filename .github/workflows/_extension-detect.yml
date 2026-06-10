@@ -1,13 +1,19 @@
 name: Extension Context Detection
 # Detects which extensions need verification/signing based on changed paths.
 #
-# Strategy: paths-filter with one group per extension plus a shared-packages
-# group. An extension is included if its own sources changed OR any shared
-# package it could depend on changed. CI config changes force all extensions.
+# Strategy: scan extensions/ at runtime — no hardcoded enumeration.
+# An extension is included if:
+#   a) CI config or shared packages changed (force-all), OR
+#   b) any file under extensions/<name>/ appears in the git diff.
 #
-# To add a new extension:
-#   1. Add an entry to the EXTENSIONS matrix below
-#   2. Add a matching group to the paths-filter filters block (same key)
+# Adding a new extension requires no CI changes — drop a directory under
+# extensions/ and it is automatically discovered.
+#
+# Edge cases:
+#   - Initial push (before = 0000…): FORCE_ALL=1, all extensions included.
+#   - workflow_dispatch: FORCE_ALL=1.
+#   - PR: uses github.event.pull_request.base.sha vs github.sha.
+#   - push: uses github.event.before vs github.sha.
 on:
   workflow_call:
     outputs:
@@ -24,8 +30,14 @@ jobs:
       has_changes: ${{ steps.build-matrix.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
-      - name: Detect changed paths
-        id: filter
+        with:
+          # Need enough history to diff against base; 0 = full clone.
+          # A depth of 2 is sufficient for push events (before→sha).
+          # PRs need the base ref fetched — fetch-depth 0 is safest.
+          fetch-depth: 0
+
+      - name: Detect force-all triggers (shared / CI changes)
+        id: force
         uses: dorny/paths-filter@v3
         with:
           filters: |
@@ -34,55 +46,68 @@ jobs:
               - 'pnpm-lock.yaml'
             ci:
               - '.github/workflows/**'
-            some-streak:
-              - 'extensions/some-streak/**'
-            some-filter:
-              - 'extensions/some-filter/**'
-            some-drama:
-              - 'extensions/some-drama/**'
-            some-conveyor:
-              - 'extensions/some-conveyor/**'
-            some-censor:
-              - 'extensions/some-censor/**'
-            mujik:
-              - 'extensions/mujik/**'
-      - name: Build matrix
+              - '.github/actions/**'
+
+      - name: Build extension matrix
         id: build-matrix
         env:
-          SHARED: ${{ steps.filter.outputs.shared }}
-          CI_CHANGED: ${{ steps.filter.outputs.ci }}
-          SOME_STREAK: ${{ steps.filter.outputs.some-streak }}
-          SOME_FILTER: ${{ steps.filter.outputs.some-filter }}
-          SOME_DRAMA: ${{ steps.filter.outputs.some-drama }}
-          SOME_CONVEYOR: ${{ steps.filter.outputs.some-conveyor }}
-          SOME_CENSOR: ${{ steps.filter.outputs.boyo }}
-          MUJIK: ${{ steps.filter.outputs.mujik }}
+          SHARED: ${{ steps.force.outputs.shared }}
+          CI_CHANGED: ${{ steps.force.outputs.ci }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          # Each entry: "filter-env-var|extension_name|extension_path"
-          EXTENSIONS=(
-            "${SOME_STREAK}|some-streak|extensions/some-streak"
-            "${SOME_FILTER}|some-filter|extensions/some-filter"
-            "${SOME_DRAMA}|some-drama|extensions/some-drama"
-            "${SOME_CONVEYOR}|some-conveyor|extensions/some-conveyor"
-            "${SOME_CENSOR}|boyo|extensions/boyo"
-            "${MUJIK}|mujik|extensions/mujik"
-          )
+          # ── Determine base ref for diffing ─────────────────────────────
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE="$PR_BASE"
+          else
+            BASE="$BEFORE"
+          fi
 
+          # Null SHA = initial push or workflow_dispatch — force all
+          NULL_SHA="0000000000000000000000000000000000000000"
           FORCE_ALL="false"
           if [ "$SHARED" = "true" ] || [ "$CI_CHANGED" = "true" ]; then
             FORCE_ALL="true"
           fi
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            FORCE_ALL="true"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "$NULL_SHA" ]; then
+            FORCE_ALL="true"
+          fi
 
+          # ── Discover extensions from filesystem ────────────────────────
+          # Each immediate subdirectory of extensions/ is an extension.
           INCLUDE="[]"
-          for entry in "${EXTENSIONS[@]}"; do
-            IFS="|" read -r changed name path <<< "$entry"
-            if [ "$FORCE_ALL" = "true" ] || [ "$changed" = "true" ]; then
+          for ext_path in extensions/*/; do
+            [ -d "$ext_path" ] || continue
+            name=$(basename "$ext_path")
+
+            if [ "$FORCE_ALL" = "true" ]; then
+              CHANGED="true"
+            else
+              # Did any file under this extension change?
+              COUNT=$(git diff --name-only "$BASE" "$SHA" \
+                -- "$ext_path" 2>/dev/null | wc -l | tr -d ' ')
+              if [ "$COUNT" -gt 0 ]; then
+                CHANGED="true"
+              else
+                CHANGED="false"
+              fi
+            fi
+
+            if [ "$CHANGED" = "true" ]; then
               INCLUDE=$(echo "$INCLUDE" | jq \
                 --arg n "$name" \
-                --arg p "$path" \
+                --arg p "$ext_path" \
                 '. + [{"extension_name": $n, "extension_path": $p}]')
             fi
           done
+
+          # Strip trailing slash from paths (ls -d includes it)
+          INCLUDE=$(echo "$INCLUDE" | jq '[.[] | .extension_path |= rtrimstr("/")]')
 
           MATRIX=$(jq -cn --argjson inc "$INCLUDE" '{"include": $inc}')
           COUNT=$(echo "$INCLUDE" | jq 'length')
@@ -93,3 +118,9 @@ jobs:
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
+
+          # Debug summary
+          echo ""
+          echo "FORCE_ALL: $FORCE_ALL"
+          echo "Extensions included ($COUNT):"
+          echo "$INCLUDE" | jq -r '.[].extension_name' | sed 's/^/  - /'
