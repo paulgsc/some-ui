@@ -8,22 +8,22 @@ concurrency:
   cancel-in-progress: true
 jobs:
   changes:
-    uses: ./.github/workflows/shared/detect-changes.yml
+    uses: ./.github/workflows/_detect-changes.yml
   rust:
     name: Rust CI
     needs: changes
     if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true'
-    uses: ./.github/workflows/shared/rust-ci.yml
+    uses: ./.github/workflows/_rust-ci.yml
   node:
     name: Node CI
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
-    uses: ./.github/workflows/shared/node-ci.yml
+    uses: ./.github/workflows/_node-ci.yml
   deny:
     name: Deny Checks
     needs: changes
     if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
-    uses: ./.github/workflows/shared/deny-checks.yml
+    uses: ./.github/workflows/_deny-checks.yml
     with:
       rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
       node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}

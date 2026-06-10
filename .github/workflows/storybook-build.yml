@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   changes:
-    uses: ./.github/workflows/shared/detect-changes.yml
+    uses: ./.github/workflows/_detect-changes.yml
   build:
     name: Build Storybook
     needs: changes

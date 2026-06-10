@@ -33,7 +33,7 @@ jobs:
               - 'packages/**'
               - 'pnpm-lock.yaml'
             ci:
-              - '.github/workflows/extensions/**'
+              - '.github/workflows/**'
             some-streak:
               - 'extensions/some-streak/**'
             some-filter:
@@ -42,8 +42,8 @@ jobs:
               - 'extensions/some-drama/**'
             some-conveyor:
               - 'extensions/some-conveyor/**'
-            boyo:
-              - 'extensions/boyo/**'
+            some-censor:
+              - 'extensions/some-censor/**'
             mujik:
               - 'extensions/mujik/**'
       - name: Build matrix
@@ -55,7 +55,7 @@ jobs:
           SOME_FILTER: ${{ steps.filter.outputs.some-filter }}
           SOME_DRAMA: ${{ steps.filter.outputs.some-drama }}
           SOME_CONVEYOR: ${{ steps.filter.outputs.some-conveyor }}
-          BOYO: ${{ steps.filter.outputs.boyo }}
+          SOME_CENSOR: ${{ steps.filter.outputs.boyo }}
           MUJIK: ${{ steps.filter.outputs.mujik }}
         run: |
           # Each entry: "filter-env-var|extension_name|extension_path"
@@ -64,7 +64,7 @@ jobs:
             "${SOME_FILTER}|some-filter|extensions/some-filter"
             "${SOME_DRAMA}|some-drama|extensions/some-drama"
             "${SOME_CONVEYOR}|some-conveyor|extensions/some-conveyor"
-            "${BOYO}|boyo|extensions/boyo"
+            "${SOME_CENSOR}|boyo|extensions/boyo"
             "${MUJIK}|mujik|extensions/mujik"
           )
 

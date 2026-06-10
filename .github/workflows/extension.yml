@@ -1,0 +1,43 @@
+name: Extension CI
+on:
+  pull_request:
+    paths:
+      - "extensions/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "extensions/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/**"
+concurrency:
+  group: extension-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  detect:
+    name: Detect Changed Extensions
+    uses: ./.github/workflows/_extension-detect.yml
+  verify:
+    name: Verify Extensions
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'true'
+    uses: ./.github/workflows/_extension-verify.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+  sign:
+    name: Sign Firefox Extensions
+    needs:
+      - detect
+      - verify
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.has_changes == 'true'
+    uses: ./.github/workflows/_extension-sign.yml
+    secrets: inherit
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
