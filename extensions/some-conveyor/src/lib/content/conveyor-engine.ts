@@ -45,7 +45,7 @@ export class ConveyorEngine implements Disposable {
   private disposed = false
 
   constructor(
-    private readonly mount: ShadowRoot,
+    mount: ShadowRoot,
     private readonly wasmBridge: WasmBridge,
     private readonly themeEngine: ThemeEngine,
     private readonly effectBus: EffectBus,
@@ -270,6 +270,7 @@ export class ConveyorEngine implements Disposable {
       this.cubes.push(cube)
       cube
         .initialize()
+        // eslint-disable-next-line no-console
         .catch((e) => console.error("[ConveyorEngine] cube init error:", e))
     }
   }

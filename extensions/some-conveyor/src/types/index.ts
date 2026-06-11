@@ -104,6 +104,9 @@ export type CubeTheme = {
 export type ConveyorConfig = {
   /** Width of each cube in px. */
   cubeWidth: number
+  /** Optional Height of each cube in px. falls back to cubeWidth */
+  cubeHeight?: number
+  /** Gap between cubes in px. */
   /** Gap between cubes in px. */
   cubeGap: number
   /** Height of the conveyor strip in px. */
@@ -133,7 +136,7 @@ export type ViewportState = {
   cycleIndex: number
   cyclePosition: number
   cycleLength: number
-  cycleName: string
+  cycleName: WasmCycleName
   progress: number
 }
 

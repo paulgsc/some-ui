@@ -4,7 +4,6 @@ import type {
   FaceContent,
   FaceState,
   ViewportState,
-  WasmCycleName,
 } from "@conveyor/types"
 
 import { CycleRotationAdapter } from "./cycle-rotation-adapter"
@@ -127,7 +126,7 @@ export class CubeRenderer {
     const { cyclePosition, cycleLength, activeFace, cycleName } = state
 
     // Update rotation axis if cycle type changed.
-    const axis = cycleName as WasmCycleName
+    const axis = cycleName
     this.rotationAdapter.setAxis(axis)
 
     // Compute rotation angles.
@@ -155,13 +154,15 @@ export class CubeRenderer {
         const faceEl = this.faceEls[activeFace]
         const faceContent = this.faceContents[activeFace]
 
-        if (faceContent && !this.renderedFaces.has(activeFace)) {
-          const rendered = faceContent.render()
-          faceEl.appendChild(rendered)
-          this.renderedFaces.add(activeFace)
-        }
+        if (faceEl) {
+          if (faceContent && !this.renderedFaces.has(activeFace)) {
+            const rendered = faceContent.render()
+            faceEl.appendChild(rendered)
+            this.renderedFaces.add(activeFace)
+          }
 
-        faceEl.classList.add("sc-face--active")
+          faceEl.classList.add("sc-face--active")
+        }
       }
     }
 
@@ -203,6 +204,7 @@ export class CubeRenderer {
   onFaceClick(cb: (faceIndex: number) => void): void {
     for (let i = 0; i < this.faceEls.length; i++) {
       const faceEl = this.faceEls[i]
+      if (!faceEl) continue
       const idx = i
       faceEl.addEventListener("click", (e) => {
         e.stopPropagation()
