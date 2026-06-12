@@ -23,12 +23,10 @@ jobs:
       - uses: ./.github/actions/pnpm-cache
         with:
           shell: ci
-
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
-
       # Restore pre-built workspace packages so the extension build doesn't
       # need to rebuild them. Produced by the build-workspace job.
       - name: Download workspace dist artifact
@@ -36,20 +34,15 @@ jobs:
         with:
           name: workspace-dist
           path: packages
-
       - name: Typecheck
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" typecheck
-
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" lint
-
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
       - name: Test
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" test
-
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" test
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.extension_name }}" build
-
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \

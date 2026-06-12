@@ -35,7 +35,6 @@ jobs:
           # A depth of 2 is sufficient for push events (before→sha).
           # PRs need the base ref fetched — fetch-depth 0 is safest.
           fetch-depth: 0
-
       - name: Detect force-all triggers (shared / CI changes)
         id: force
         uses: dorny/paths-filter@v3
@@ -47,7 +46,6 @@ jobs:
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
-
       - name: Build extension matrix
         id: build-matrix
         env:
@@ -99,10 +97,12 @@ jobs:
             fi
 
             if [ "$CHANGED" = "true" ]; then
+              PKG_NAME=$(jq -r '.name' "${ext_path}package.json" 2>/dev/null || echo "$name")
               INCLUDE=$(echo "$INCLUDE" | jq \
                 --arg n "$name" \
                 --arg p "$ext_path" \
-                '. + [{"extension_name": $n, "extension_path": $p}]')
+                --arg pkg "$PKG_NAME" \
+                 '. + [{"extension_name": $n, "extension_path": $p, "package_name": $pkg}]')
             fi
           done
 
