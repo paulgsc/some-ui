@@ -110,6 +110,21 @@ export type MessageBridge =
   | { type: "REMOVE_ENTRY"; id: string }
   | { type: "SAVE_MOMENT"; payload: MomentRecord }
 
+// Wire envelope — what background.ts actually sends back for each message type.
+// `ok: false` is uniform across all variants (error path), so it's factored out.
+type Envelope<T> = ({ ok: true } & T) | { ok: false; error: string }
+
+export type MessageResponseMap = {
+  GET_STATE: Envelope<{ state: WatchlistState }>
+  SCRAPE_TAB: Envelope<{ data: ScrapedMeta | null }>
+  UPSERT_ENTRY: Envelope<{ state: WatchlistState }>
+  SET_ACTIVE: Envelope<{ state: WatchlistState }>
+  REMOVE_ENTRY: Envelope<{ state: WatchlistState }>
+  SAVE_MOMENT: Envelope<{}>
+  GET_MOMENTS: Envelope<{ moments: Array<MomentRecord> }>
+  CLEAR_MOMENTS: Envelope<{}>
+}
+
 export type MomentRecord = {
   id: string
   timestamp: number

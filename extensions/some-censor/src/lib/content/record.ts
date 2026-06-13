@@ -15,7 +15,7 @@
  *        this; the type makes the contract visible.
  */
 
-import type { FullyExtracted } from "./extract"
+import type { FullyExtracted, VideoOnlyExtracted } from "./extract/index"
 import type { SessionId } from "./session"
 
 export type VideoRecord = {
@@ -38,6 +38,28 @@ export function makeRecord(
   return {
     videoId: extracted.videoId,
     channelId: extracted.channelId,
+    session,
+  }
+}
+
+/**
+ * makeProvisionalRecord — constructor for a MASK-ONLY record.
+ *
+ * channelId is intentionally the empty string: a sentinel meaning "not yet
+ * resolved".  VideoEntry.hasChannel keys off this, and backfillChannel()
+ * replaces it with a concrete value exactly once.  Masking and registry keying
+ * need only videoId, so this is sufficient to mount a card immediately.
+ *
+ * The empty-string sentinel never escapes to the whitelist API: a provisional
+ * entry is excluded from whitelist matching until backfilled (channelId !== "").
+ */
+export function makeProvisionalRecord(
+  extracted: VideoOnlyExtracted,
+  session: SessionId
+): VideoRecord {
+  return {
+    videoId: extracted.videoId,
+    channelId: "",
     session,
   }
 }

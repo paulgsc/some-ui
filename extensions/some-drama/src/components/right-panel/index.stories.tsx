@@ -47,6 +47,7 @@ const RightPanelBridge = ({
     const panel = new RightPanel()
 
     panel.onMoodSelect = (mood) => {
+      // eslint-disable-next-line no-console
       console.log("Mood selected:", mood)
       panel.setMoodActive(mood)
     }

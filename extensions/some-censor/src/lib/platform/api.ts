@@ -33,7 +33,8 @@ export const ext: typeof browser =
   typeof browser !== "undefined"
     ? browser
     : typeof chrome !== "undefined"
-      ? (chrome as unknown as typeof browser)
+      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        (chrome as unknown as typeof browser)
       : // Final fallback: the vitest setup injects global.browser as a vi.fn() mock.
         // If neither is present we throw at module load so tests fail loudly.
         (() => {

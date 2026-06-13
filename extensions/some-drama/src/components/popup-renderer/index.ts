@@ -12,7 +12,7 @@
 
 import { buildOpinionatedSection } from "@drama/components/form-opinionated"
 import { buildStructuralSection } from "@drama/components/form-structural"
-import { ACCENT_COLORS, MAX_WATCHLIST } from "@drama/lib/popup/constants"
+import { DEFAULT_ACCENT, MAX_WATCHLIST } from "@drama/lib/popup/constants"
 import type { PopupStateMachine } from "@drama/lib/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
@@ -133,8 +133,9 @@ export class PopupRenderer {
     scrapeBtn.textContent = isVideoTab
       ? "⟳ Extract Tab Context"
       : "⚡ Force Capture"
-    scrapeBtn.addEventListener("click", () =>
-      this.fsm.triggerScrape(state, tabId)
+    scrapeBtn.addEventListener(
+      "click",
+      () => void this.fsm.triggerScrape(state, tabId)
     )
     syncRow.appendChild(scrapeBtn)
     wrap.appendChild(syncRow)
@@ -166,7 +167,7 @@ export class PopupRenderer {
     const row = this.el("div", `p-entry${isActive ? " p-entry-active" : ""}`)
 
     const swatch = this.el("div", "p-swatch")
-    swatch.style.background = entry.color || ACCENT_COLORS[0]
+    swatch.style.background = entry.color || DEFAULT_ACCENT
     row.appendChild(swatch)
 
     const info = this.el("div", "p-entry-info")
@@ -193,10 +194,25 @@ export class PopupRenderer {
     )
     activeToggle.title = isActive ? "Currently active" : "Set as active"
     activeToggle.textContent = isActive ? "◉" : "○"
-    activeToggle.addEventListener("click", () =>
-      this.fsm.setActive(entry.id, tabId)
+    activeToggle.addEventListener(
+      "click",
+      () => void this.fsm.setActive(entry.id, tabId)
     )
     actions.appendChild(activeToggle)
+
+    // QoL-3: refresh structural fields for the active entry without touching
+    // opinionated ones. Only shown on the active entry since that's the one
+    // content.ts is displaying — refreshing an inactive entry has no effect.
+    if (isActive) {
+      const refreshBtn = this.el("button", "p-btn p-btn-icon")
+      refreshBtn.textContent = "⟳"
+      refreshBtn.title = "Refresh tab context (keeps your ratings & mood)"
+      refreshBtn.addEventListener(
+        "click",
+        () => void this.fsm.refreshEntry(entry, tabId, state)
+      )
+      actions.appendChild(refreshBtn)
+    }
 
     const editBtn = this.el("button", "p-btn p-btn-icon")
     editBtn.textContent = "✎"
@@ -215,8 +231,9 @@ export class PopupRenderer {
     const removeBtn = this.el("button", "p-btn p-btn-icon p-btn-danger")
     removeBtn.textContent = "✕"
     removeBtn.title = "Remove"
-    removeBtn.addEventListener("click", () =>
-      this.fsm.removeEntry(entry.id, tabId)
+    removeBtn.addEventListener(
+      "click",
+      () => void this.fsm.removeEntry(entry.id, tabId)
     )
     actions.appendChild(removeBtn)
 

@@ -31,10 +31,11 @@
 import { ext } from "@censor/platform/content"
 import type { EntryDebugInfo } from "@censor/types/debug"
 import type { ChannelId, VideoId } from "@censor/types/ids"
+import { asVideoId } from "@censor/types/ids"
 
 import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
-import { makeRecord } from "./record"
+import { makeProvisionalRecord, makeRecord } from "./record"
 import { SEL } from "./selectors"
 import type { SessionId } from "./session"
 import { mkSession } from "./session"
@@ -49,6 +50,11 @@ export class VideoManager {
   private readonly _elToVid: WeakMap<HTMLElement, VideoId> = new WeakMap()
   // Failed-resolution queue
   private readonly _unresolved: Map<string, HTMLElement> = new Map()
+  // Mounted-but-channel-pending: videoId → element.  These entries are already
+  // masked in the DOM; the retry loop backfills their channelId.  Tracked
+  // separately from _unresolved (which is "not even maskable yet") so the retry
+  // loop stays alive while either set is non-empty.
+  private readonly _channelPending: Map<VideoId, HTMLElement> = new Map()
   // Concurrent-promotion guard
   private readonly _promoting: WeakSet<HTMLElement> = new WeakSet()
 
@@ -118,6 +124,7 @@ export class VideoManager {
     for (const entry of this._byVideo.values()) entry.destroy()
     this._byVideo.clear()
     this._unresolved.clear()
+    this._channelPending.clear()
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -143,7 +150,7 @@ export class VideoManager {
 
     const extracted = tryExtract(el)
 
-    if (extracted.kind === "full") {
+    if (extracted.kind === "full" || extracted.kind === "video-only") {
       this._unresolved.delete(elementKey(el))
 
       // Detect scroll-virtualizer element reuse: same HTMLElement, new videoId.
@@ -154,17 +161,32 @@ export class VideoManager {
       // event, not a lifecycle boundary.  Bumping _session would silently cancel
       // all concurrent in-flight promotes for every other card on the page.
       const rawPreviousId = el.dataset["boyoVid"]
-      const currentId = extracted.videoId as VideoId
+      const currentId = extracted.videoId
 
       if (rawPreviousId && rawPreviousId !== currentId) {
-        const oldEntry = this._byVideo.get(rawPreviousId as VideoId)
+        const rawAsPrevId = asVideoId(rawPreviousId)
+        const oldEntry = this._byVideo.get(rawAsPrevId)
         if (oldEntry) {
           oldEntry.destroy()
-          this._byVideo.delete(rawPreviousId as VideoId)
+          this._byVideo.delete(rawAsPrevId)
+          this._channelPending.delete(rawAsPrevId)
         }
       }
 
-      void this._promote(el, currentId, extracted.channelId as ChannelId)
+      if (extracted.kind === "full") {
+        // Full resolution: if a provisional entry exists, backfill it rather
+        // than tearing it down (avoids a mask flicker on the fast path).
+        const pending = this._byVideo.get(currentId)
+        if (pending && !pending.hasChannel) {
+          this._channelPending.delete(currentId)
+          void this._backfill(pending, extracted.channelId)
+        } else {
+          void this._promote(el, currentId, extracted.channelId)
+        }
+      } else {
+        // video-only: mask immediately, queue channel backfill.
+        this._promoteProvisional(el, currentId)
+      }
       this._maybeStopRetryLoop()
     } else {
       const key = elementKey(el)
@@ -196,11 +218,25 @@ export class VideoManager {
       const extracted = tryExtract(el)
       if (extracted.kind === "full") {
         this._unresolved.delete(key)
-        void this._promote(
-          el,
-          extracted.videoId as VideoId,
-          extracted.channelId as ChannelId
-        )
+        void this._promote(el, extracted.videoId, extracted.channelId)
+      } else if (extracted.kind === "video-only") {
+        // Maskable now — mount provisionally; channel resolves on a later pass.
+        this._unresolved.delete(key)
+        this._promoteProvisional(el, extracted.videoId)
+      }
+    }
+
+    // Backfill channel for already-masked provisional entries.
+    for (const [videoId, el] of this._channelPending) {
+      if (!el.isConnected) {
+        this._channelPending.delete(videoId)
+        continue
+      }
+      const extracted = tryExtract(el)
+      if (extracted.kind === "full") {
+        this._channelPending.delete(videoId)
+        const entry = this._byVideo.get(videoId)
+        if (entry) void this._backfill(entry, extracted.channelId)
       }
     }
     this._maybeStopRetryLoop()
@@ -220,6 +256,7 @@ export class VideoManager {
       if (!entry.isConnected) {
         entry.destroy()
         this._byVideo.delete(videoId)
+        this._channelPending.delete(videoId)
       }
     }
     publish()
@@ -246,6 +283,7 @@ export class VideoManager {
         channelName,
       })
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("[BOYO] whitelistChannel: sendMessage failed", err)
     }
 
@@ -323,6 +361,66 @@ export class VideoManager {
     }
   }
 
+  /**
+   * Mount a card masked on videoId alone (channel pending).
+   *
+   * Synchronous and side-effect-light: no whitelist round-trip here (we have no
+   * channel to check yet).  The card shows masked immediately — the whole point
+   * of the extension is that nothing leaks before the user progresses, so a
+   * whitelisted channel briefly showing masked until backfill is harmless.
+   *
+   * Idempotent: if an entry for this videoId already exists in this session,
+   * we repair rather than replace.
+   */
+  private _promoteProvisional(el: HTMLElement, videoId: VideoId): void {
+    const existing = this._byVideo.get(videoId)
+    if (existing?.record.session === this._session) {
+      existing.repair()
+      if (!existing.hasChannel) this._channelPending.set(videoId, el)
+      return
+    }
+    existing?.destroy()
+
+    const prevVid = this._elToVid.get(el)
+    if (prevVid !== undefined && prevVid !== videoId) {
+      this._byVideo.get(prevVid)?.destroy()
+      this._byVideo.delete(prevVid)
+      this._channelPending.delete(prevVid)
+    }
+
+    const record = makeProvisionalRecord(
+      { kind: "video-only", videoId, channelId: null },
+      this._session
+    )
+    this._elToVid.set(el, videoId)
+    const entry = new VideoEntry(record, el, /* isWhitelisted */ false)
+    this._byVideo.set(videoId, entry)
+    this._channelPending.set(videoId, el)
+    entry.mount()
+    publish()
+  }
+
+  /**
+   * Backfill a concrete channelId onto a provisional entry, running the
+   * whitelist check now that we have a channel to check.  Guarded against
+   * lifecycle changes across the await.
+   */
+  private async _backfill(
+    entry: VideoEntry,
+    channelId: ChannelId
+  ): Promise<void> {
+    if (entry.hasChannel) return
+    const session = this._session
+    const isWhitelisted = await ext.runtime
+      .sendMessage({ type: "IS_WHITELISTED", channelId: String(channelId) })
+      .then((r: { ok: boolean; whitelisted: boolean }) => r.whitelisted)
+      .catch(() => false)
+    if (this._phase !== "running") return
+    if (this._session !== session) return
+    entry.backfillChannel(String(channelId), isWhitelisted)
+    publish()
+  }
+
   private _whitelistChannelLocally(channelId: string): void {
     for (const entry of this._byVideo.values()) {
       if (entry.record.channelId === channelId) {
@@ -341,13 +439,18 @@ export class VideoManager {
         // lightweight reconciliation
         this.scan()
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("[VideoManager] retry threw", err)
       }
     }, 500)
   }
 
   private _maybeStopRetryLoop(): void {
-    if (this._unresolved.size === 0 && this._retryInterval !== null) {
+    if (
+      this._unresolved.size === 0 &&
+      this._channelPending.size === 0 &&
+      this._retryInterval !== null
+    ) {
       clearInterval(this._retryInterval)
       this._retryInterval = null
     }

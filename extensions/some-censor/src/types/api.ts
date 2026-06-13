@@ -13,7 +13,7 @@ export type ApiConfig = {
 
 // ── Request / Response shapes ─────────────────────────────────────────────────
 
-export type GetWhitelistResponse = { channels: WhitelistEntry[] }
+export type GetWhitelistResponse = { channels: Array<WhitelistEntry> }
 export type PostWhitelistRequest = { channelId: string; channelName: string }
 export type PostWhitelistResponse = { channel: WhitelistEntry }
 export type DeleteWhitelistResponse = { ok: true }

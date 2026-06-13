@@ -13,6 +13,17 @@
  *   E3 — Individual extractors (video-id, channel-id) are not exported from
  *        this module.  The only public surface is tryExtract.  This prevents
  *        callers from composing partial extraction themselves and bypassing E2.
+ *
+ *   E4 — Three-way classification:
+ *          full       — both ids present; can construct a VideoRecord.
+ *          video-only — videoId present, channelId absent; can MASK now,
+ *                       channel backfilled later by the retry loop.
+ *          raw        — videoId absent; nothing actionable yet.
+ *        The video-only rung is what fixes the <60% resolution rate: real
+ *        YouTube cards routinely expose a watch href (→ videoId) long before
+ *        the channel anchor / channel-name node hydrates.  Previously those
+ *        cards sat in `_unresolved` until an unrelated mutation happened to
+ *        re-trigger extraction — frequently never.
  */
 
 import { extractChannelId } from "./channel-id"
@@ -20,16 +31,21 @@ import type { Extracted } from "./extracted"
 import { extractVideoId } from "./video-id"
 
 export { extractTitle } from "./title"
-export type { FullyExtracted } from "./extracted"
 export { extractMeta } from "./meta"
+export type { FullyExtracted, VideoOnlyExtracted } from "./extracted"
+export { isFullyExtracted, isVideoOnly } from "./extracted"
 
 export function tryExtract(el: HTMLElement): Extracted {
   const videoId = extractVideoId(el)
   const channelId = extractChannelId(el)
 
-  if (videoId && channelId) {
-    return { kind: "full", videoId, channelId }
+  if (videoId === null) {
+    return { kind: "raw", videoId: null, channelId }
   }
 
-  return { kind: "raw", videoId, channelId }
+  if (channelId === null) {
+    return { kind: "video-only", videoId, channelId: null }
+  }
+
+  return { kind: "full", videoId, channelId }
 }

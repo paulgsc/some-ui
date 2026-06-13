@@ -58,9 +58,9 @@ export function buildOpinionatedSection(
   ratingGroup.appendChild(ratingLabel)
 
   const stars = el("div", "pf-stars")
-  const starEls: HTMLButtonElement[] = []
+  const starEls: Array<HTMLButtonElement> = []
 
-  const paintStars = (n: number) => {
+  const paintStars = (n: number): void => {
     starEls.forEach((s, i) => s.classList.toggle("pf-star-on", i < n))
   }
 
@@ -93,7 +93,7 @@ export function buildOpinionatedSection(
   progGroup.appendChild(progLabel)
 
   const progWrap = el("div", "pf-slider-wrap")
-  const progSlider = el("input", "pf-slider") as HTMLInputElement
+  const progSlider = el("input", "pf-slider")
   progSlider.type = "range"
   progSlider.min = "0"
   progSlider.max = "100"
@@ -102,7 +102,7 @@ export function buildOpinionatedSection(
   const progDisplay = el("span", "pf-slider-val")
   progDisplay.textContent = `${Math.round(overallProg * 100)}%`
 
-  const syncProg = () => {
+  const syncProg = (): void => {
     const pct = Number(progSlider.value)
     overallProg = pct / 100
     progDisplay.textContent = `${pct}%`
@@ -123,23 +123,20 @@ export function buildOpinionatedSection(
   likeGroup.appendChild(likeLabel)
 
   const likeWrap = el("div", "pf-slider-wrap")
-  const likeSlider = el(
-    "input",
-    "pf-slider pf-slider-likelihood"
-  ) as HTMLInputElement
+  const likeSlider = el("input", "pf-slider pf-slider-likelihood")
   likeSlider.type = "range"
   likeSlider.min = "0"
   likeSlider.max = "100"
   likeSlider.value = String(Math.round(likelihood * 100))
 
-  const likeEmoji = (n: number) =>
+  const likeEmoji = (n: number): string =>
     n < 25 ? "😶" : n < 50 ? "🤔" : n < 75 ? "👀" : "🔥"
   const likeEmojiEl = el("span", "pf-slider-emoji")
   likeEmojiEl.textContent = likeEmoji(Math.round(likelihood * 100))
   const likeDisplay = el("span", "pf-slider-val")
   likeDisplay.textContent = `${Math.round(likelihood * 100)}%`
 
-  const syncLike = () => {
+  const syncLike = (): void => {
     const pct = Number(likeSlider.value)
     likelihood = pct / 100
     likeDisplay.textContent = `${pct}%`
@@ -164,12 +161,13 @@ export function buildOpinionatedSection(
   const moodRow = el("div", "pf-mood-chips")
   const chipEls = new Map<MoodType, HTMLButtonElement>()
 
-  const paintChips = (selected: MoodType | null) => {
+  const paintChips = (selected: MoodType | null): void => {
     chipEls.forEach((chip, mood) =>
       chip.classList.toggle("pf-mood-chip-on", mood === selected)
     )
   }
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   for (const [mood, meta] of Object.entries(MOOD_META) as Array<
     [MoodType, { emoji: string; label: string }]
   >) {

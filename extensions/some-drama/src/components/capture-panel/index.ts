@@ -63,7 +63,11 @@ export class CapturePanel {
   }
 
   toggle(): void {
-    this._isOpen ? this.close() : this.open()
+    if (this._isOpen) {
+      this.close()
+    } else {
+      this.open()
+    }
   }
 
   // ── Internal ────────────────────────────────────────────────────────────────

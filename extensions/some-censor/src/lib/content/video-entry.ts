@@ -19,6 +19,14 @@
  *
  *   Entry-3 — destroy() is final.  After destroy(), the entry must not be used.
  *             VideoManager enforces this by deleting its reference immediately.
+ *
+ *   Entry-4 — Channel may arrive late.  An entry can be constructed with a
+ *             provisional record whose channelId is the empty string (mounted
+ *             masked on videoId alone).  backfillChannel() upgrades the record
+ *             in place exactly once and, if the channel turns out to be
+ *             whitelisted, transitions the view masked → whitelisted.  This is
+ *             the only mutation permitted to `record` after construction, and
+ *             it is monotonic: empty → concrete, never concrete → other.
  */
 
 import { ClickGate } from "./click-gate"
@@ -34,8 +42,10 @@ import {
 } from "./fsm"
 import type { VideoRecord } from "./record"
 
+type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
+
 export class VideoEntry {
-  readonly record: VideoRecord
+  private _record: VideoRecord
   readonly gate: ClickGate
 
   private _view: ViewState
@@ -43,7 +53,7 @@ export class VideoEntry {
   private _version: number = 0
 
   constructor(record: VideoRecord, el: HTMLElement, isWhitelisted: boolean) {
-    this.record = record
+    this._record = record
     this._handle = new DomHandle(el)
     this._view = isWhitelisted
       ? { kind: "whitelisted", session: record.session }
@@ -54,10 +64,37 @@ export class VideoEntry {
     el.dataset["boyoVid"] = record.videoId
   }
 
+  /** Read-only record accessor — record is private so backfill is the only mutator. */
+  get record(): VideoRecord {
+    return this._record
+  }
+
+  /** True once a concrete channelId is known (i.e. not the provisional empty string). */
+  get hasChannel(): boolean {
+    return this._record.channelId !== ""
+  }
+
+  /**
+   * Backfill a concrete channelId onto a provisionally-mounted entry.
+   *
+   * Idempotent and monotonic (Entry-4): no-op if a channel is already present.
+   * If the resolved channel is whitelisted AND the user has not already begun
+   * progressing the card, transitions masked → whitelisted.  We deliberately
+   * do NOT override meta/title/revealed: once the user has engaged, a late
+   * whitelist signal must not yank the card back.
+   */
+  backfillChannel(channelId: string, isWhitelisted: boolean): void {
+    if (this.hasChannel) return
+    this._record = { ...this._record, channelId }
+    if (isWhitelisted && this._view.kind === "masked") {
+      void this._applyView({ kind: "whitelisted", session: this._view.session })
+    }
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   mount(): void {
-    this._applyView(this._view)
+    void this._applyView(this._view)
   }
 
   repair(): void {
@@ -136,7 +173,7 @@ export class VideoEntry {
     }
 
     if (next === this._view) return
-    this._applyView(next)
+    void this._applyView(next)
   }
 
   private _applyClickTransition(): ViewState {
@@ -173,7 +210,7 @@ export class VideoEntry {
     if (view.kind === "whitelisted") {
       setTimeout(() => {
         if (version === this._version) {
-          this._applyView({ kind: "revealed", session: view.session })
+          void this._applyView({ kind: "revealed", session: view.session })
         }
       }, 1800)
     }
@@ -187,16 +224,12 @@ async function maybeTransformTitle(
   channelId: string
 ): Promise<{ text: string; translated: boolean }> {
   try {
-    const fn = (window as unknown as Record<string, unknown>)[
-      "__boyoTransformTitle"
-    ]
+    const fn = window.__boyoTransformTitle
     if (typeof fn === "function") {
-      const result = await (fn as (t: string, c: string) => Promise<unknown>)(
-        title,
-        channelId
-      )
-      if (result && typeof result === "string")
-        return { text: result, translated: true }
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const transform = fn as TransformTitleFn
+      const result = await transform(title, channelId)
+      if (typeof result === "string") return { text: result, translated: true }
     }
   } catch {
     // Hook failure must never break reveal flow

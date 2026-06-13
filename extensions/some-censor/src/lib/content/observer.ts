@@ -1,4 +1,4 @@
-import { notifyMutation, notifyNavigation } from "./debug"
+import { notifyMutation } from "./debug"
 import { SEL } from "./selectors"
 import type { VideoManager } from "./video-manager"
 
@@ -83,30 +83,12 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     attributeFilter: ["data-video-id"],
   })
 
-  // yt-navigate-finish fires after every SPA navigation YouTube completes —
-  // banner clicks, category chips, sidebar links, back/forward.
-  //
-  // We do NOT use it as a teardown/restart trigger. The observer stays alive.
-  // Instead we use it for two things:
-  //
-  //   1. prune() immediately — evict any entries whose elements were removed
-  //      during the navigation DOM teardown that the childList observer may
-  //      have batched away (YouTube sometimes does bulk innerHTML replacement
-  //      which produces a single removedNodes entry, not per-element removals).
-  //
-  //   2. scan() after a short delay — catch already-hydrated cards that didn't
-  //      fire a data-video-id attribute mutation because their attribute was
-  //      already set before our observer saw them (e.g. YouTube recycled cards
-  //      across navigations with the new data-video-id pre-set).
-  //
-  // Per-card identity changes (data-video-id mutation on a tracked element) are
-  // handled by the attribute watch + upsert() rawPreviousId check — no session
-  // bump needed. This listener is purely a deferred cleanup + rescan.
-  window.addEventListener("yt-navigate-finish", () => {
-    mgr.prune()
-    notifyNavigation()
-    setTimeout(() => mgr.scan(), 400)
-  })
-
+  // NOTE: yt-navigate-finish handling moved to Controller (C2).  Chip/SPA
+  // navigation reuses renderer elements in place, so prune() (which only evicts
+  // disconnected elements) could not clear stale view state from a reused card.
+  // The controller now does a full teardown + restart on navigation, which
+  // bumps the session and forces every card back to masked.  The observer is
+  // disconnected during that teardown, so it must NOT hold a nav listener of
+  // its own — that would be a second, conflicting source of truth.
   return obs
 }

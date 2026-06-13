@@ -16,5 +16,7 @@ export type SessionId = number & { readonly __brand: "SessionId" }
 let _counter = 0
 
 export function mkSession(): SessionId {
+  // Brand constructor: assertion is required because brands are type-only.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return ++_counter as SessionId
 }

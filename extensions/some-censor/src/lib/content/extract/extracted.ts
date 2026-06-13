@@ -13,7 +13,17 @@
  *   E3 — Fields inside FullyExtracted are `string`, not `string | null`.
  *        The narrowing from null to non-null happens exactly once, in tryExtract,
  *        and is never re-checked downstream.
+ *
+ *   E4 — VideoOnlyExtracted is a distinct, intermediate variant: videoId is
+ *        guaranteed non-null but channelId is still pending.  It is sufficient
+ *        to MASK a card (masking + registry keying need only videoId) but NOT
+ *        sufficient to construct a VideoRecord (makeRecord still demands
+ *        FullyExtracted — V2 is untouched).  This is what lets a card mount
+ *        masked on the fast path while channel-id hydrates late, instead of
+ *        being parked indefinitely in the unresolved queue.
  */
+
+import type { ChannelId, VideoId } from "@censor/types/ids"
 
 export type RawExtracted = {
   readonly kind: "raw"
@@ -21,15 +31,26 @@ export type RawExtracted = {
   readonly channelId: string | null
 }
 
-export type FullyExtracted = {
-  readonly kind: "full"
-  readonly videoId: string // guaranteed non-null by construction
-  readonly channelId: string // guaranteed non-null by construction
+export type VideoOnlyExtracted = {
+  readonly kind: "video-only"
+  readonly videoId: VideoId // guaranteed non-null by construction
+  readonly channelId: null // not yet hydrated — backfilled by retry loop
 }
 
-export type Extracted = RawExtracted | FullyExtracted
+export type FullyExtracted = {
+  readonly kind: "full"
+  readonly videoId: VideoId // guaranteed non-null by construction
+  readonly channelId: ChannelId // guaranteed non-null by construction
+}
+
+export type Extracted = RawExtracted | VideoOnlyExtracted | FullyExtracted
 
 /** Narrowing predicate — usable as a type guard in filter chains. */
 export function isFullyExtracted(x: Extracted): x is FullyExtracted {
   return x.kind === "full"
+}
+
+/** Narrowing predicate for the masked-but-channel-pending case. */
+export function isVideoOnly(x: Extracted): x is VideoOnlyExtracted {
+  return x.kind === "video-only"
 }

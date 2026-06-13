@@ -8,12 +8,25 @@
 //   3. React to STATE_UPDATE broadcasts from background.
 //   4. Persist card position/size locally.
 //   5. Forward mood captures to background (SAVE_MOMENT).
-//   6. Keybinding: Ctrl+Shift+M → K — toggle card visibility.
+//   6. Keybinding: Alt+Shift+D — toggle card visibility, or fetch+render if
+//      card is null (background was evicted on page load).
 //
 // Typestate:
 //   LOADING — awaiting first GET_STATE response
 //   EMPTY   — no active entry in watchlist
 //   READY   — active entry present, card rendered
+//
+// Bug fixes (see git log):
+//   BUG-1  broadcastState skips video tabs, so content.ts never receives
+//          STATE_UPDATE on Netflix/YouTube after SET_ACTIVE. Fixed in
+//          background.ts by broadcasting to ALL tabs and letting content.ts
+//          guard itself.
+//   BUG-2  GET_STATE races with background wake-up when the non-persistent
+//          background script is evicted. Fixed by extracting fetchAndRender()
+//          with a single 300 ms retry on failure.
+//   BUG-3  Keybinding was a no-op when card === null (EMPTY typestate after
+//          a failed init). Fixed: keybinding calls fetchAndRender() when no
+//          card exists instead of silently doing nothing.
 
 import "@drama/styles/content.css"
 
@@ -59,7 +72,7 @@ const CARD_META_KEY = "drama_card_position_v3"
 async function loadCardMeta(): Promise<PersistedCardMeta | null> {
   try {
     const r = await browser.storage.local.get(CARD_META_KEY)
-    return (r[CARD_META_KEY] as PersistedCardMeta) ?? null
+    return r[CARD_META_KEY] as PersistedCardMeta
   } catch {
     return null
   }
@@ -88,32 +101,20 @@ function safeSpawnPosition(
 }
 
 // ─── Entry → CardState ────────────────────────────────────────────────────────
-//
-// Every field sourced from the real DramaEntry. The fallback chain is:
-//   opinionated field (user-entered) → structural fallback → null/zero
-//
-// Fields the user hasn't filled yet surface gracefully without sentinel fakes.
 
 function entryToCardState(entry: DramaEntry): CardState {
   return {
-    // Structural
     dramaTitle: entry.title || "Unknown Drama",
     posterUrl: entry.posterUrl ?? null,
     episode: entry.episode || "—",
     timestamp: entry.timestamp || "—",
-    progress: entry.progress ?? 0,
-    isPlaying: entry.isPlaying ?? false,
-
-    // Opinionated — user-entered in the Feels panel
-    overallProgress: entry.overallProgress ?? 0,
-    rating: entry.rating ?? 0,
-    completionLikelihood: entry.completionLikelihood ?? 0.5,
+    progress: entry.progress,
+    isPlaying: entry.isPlaying,
+    overallProgress: entry.overallProgress,
+    rating: entry.rating,
+    completionLikelihood: entry.completionLikelihood,
     activeMood: entry.activeMood ?? null,
-
-    // Quote: prefer explicit featuredQuote, fall back to the note field
     featuredQuote: entry.featuredQuote || entry.note || "",
-
-    // Emotion label: prefer explicit label, fall back to genre
     emotionLabel: entry.emotionLabel || entry.genre || "",
   }
 }
@@ -125,7 +126,7 @@ function resolveTypestate(
 ): ContentTypestate {
   const list = ws?.watchlist ?? []
   const activeId = ws?.activeId ?? null
-  const entry = list.find((e) => e?.id === activeId) ?? null
+  const entry = list.find((e) => e.id === activeId) ?? null
   if (!entry) return { phase: "EMPTY" }
   return { phase: "READY", entry }
 }
@@ -161,19 +162,12 @@ function renderEmptyPill(container: HTMLElement): () => void {
 async function init(): Promise<void> {
   log.info("Initialising display layer…")
 
-  let state: WatchlistState | null = null
-  try {
-    state = await browser.runtime.sendMessage({ type: "GET_STATE" })
-  } catch (err) {
-    log.error("GET_STATE failed — background not ready:", err)
-  }
-
   const root = getOverlayRoot()
   const container = document.createElement("div")
   container.id = "drama-card-mount"
   root.appendChild(container)
 
-  let typestate: ContentTypestate = resolveTypestate(state)
+  let typestate: ContentTypestate = { phase: "LOADING" }
   let card: DramaCard | null = null
   let removeEmptyPill: (() => void) | null = null
   let visible: boolean = true
@@ -250,17 +244,38 @@ async function init(): Promise<void> {
     removeEmptyPill = renderEmptyPill(root)
   }
 
+  // ── fetchAndRender ────────────────────────────────────────────────────────
+  // GET_STATE then reconcile. Retries once after 300 ms to handle the race
+  // where the non-persistent background script is still waking up.
+
+  const fetchAndRender = async (retryOnFailure = true): Promise<void> => {
+    let state: WatchlistState | null = null
+    try {
+      state = await browser.runtime.sendMessage({ type: "GET_STATE" })
+    } catch (err) {
+      log.error("GET_STATE failed:", err)
+      if (retryOnFailure) {
+        await new Promise((r) => setTimeout(r, 300))
+        return fetchAndRender(false)
+      }
+      // Both attempts failed — render empty so the page isn't stuck on LOADING
+      renderEmpty()
+      return
+    }
+
+    const next = resolveTypestate(state)
+    if (next.phase === "EMPTY") {
+      typestate = next
+      renderEmpty()
+    } else if (next.phase === "READY") {
+      typestate = next
+      renderCard(next.entry)
+    }
+  }
+
   // ── Initial render ────────────────────────────────────────────────────────
 
-  switch (typestate.phase) {
-    case "LOADING":
-    case "EMPTY":
-      renderEmpty()
-      break
-    case "READY":
-      renderCard(typestate.entry)
-      break
-  }
+  await fetchAndRender()
 
   // ── Background message listener ───────────────────────────────────────────
 
@@ -296,14 +311,16 @@ async function init(): Promise<void> {
 
   installKeybindings({
     toggleVisibility(): void {
-      visible = !visible
       if (card) {
+        visible = !visible
         card.setVisible(visible)
-      } else {
-        const pill = document.getElementById("drama-empty-pill")
-        if (pill) pill.style.opacity = visible ? "0.7" : "0"
+        log.info(`Visibility → ${visible ? "visible" : "hidden"}`)
+        return
       }
-      log.info(`Visibility → ${visible ? "visible" : "hidden"}`)
+      // No card — background was likely evicted on page load.
+      // Attempt a fresh fetch; if state is available the card will appear.
+      log.info("No card on keybind — attempting fetchAndRender")
+      void fetchAndRender()
     },
   })
 

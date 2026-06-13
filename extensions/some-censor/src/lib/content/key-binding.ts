@@ -67,7 +67,7 @@ const KEY_BINDINGS = [
 // --------- Matching helpers ----------
 
 function modifiersMatch(e: KeyboardEvent, modifiers: ModifierSet): boolean {
-  const platformPrimary = navigator.platform.includes("Mac")
+  const platformPrimary = navigator.userAgent.includes("Mac")
     ? e.metaKey === modifiers.ctrl
     : e.ctrlKey === modifiers.ctrl
 
@@ -79,7 +79,7 @@ function modifiersMatch(e: KeyboardEvent, modifiers: ModifierSet): boolean {
 }
 
 function isInputContext(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false
+  if (!(target instanceof HTMLElement)) return false
 
   const tag = target.tagName
 
@@ -87,7 +87,7 @@ function isInputContext(target: EventTarget | null): boolean {
     return true
   }
 
-  return (target as HTMLElement).isContentEditable
+  return target.isContentEditable
 }
 
 // ----- Public API -----

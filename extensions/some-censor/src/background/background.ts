@@ -16,11 +16,10 @@ async function init(): Promise<void> {
   const api = new ApiClient()
   await api.init()
 
-  console.log(`[BOYO Background] initialized — API at ${api.config.baseUrl}`)
-
   ext.runtime.onMessage.addListener(createMessageHandler(api))
 }
 
+// eslint-disable-next-line no-console
 init().catch((err) => console.error("[BOYO Background] init failed:", err))
 
 export {}

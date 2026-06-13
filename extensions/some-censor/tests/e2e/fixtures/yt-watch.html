@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — YouTube Watch</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 24px;
+      }
+      #player {
+        background: #000;
+        aspect-ratio: 16/9;
+        border-radius: 12px;
+      }
+      #secondary {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      ytd-compact-video-renderer {
+        background: #1f1f1f;
+        border-radius: 8px;
+        overflow: hidden;
+        min-height: 94px;
+        display: flex;
+        position: relative;
+        padding: 8px;
+        gap: 8px;
+      }
+      .thumbnail {
+        width: 168px;
+        aspect-ratio: 16/9;
+        background: #333;
+        border-radius: 6px;
+        flex: 0 0 auto;
+      }
+      #video-title {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      ytd-channel-name yt-formatted-string {
+        font-size: 12px;
+        color: #aaa;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO watch-page fixture.
+
+    Reproduces issue #4: the right-hand "up next" sidebar uses
+    ytd-compact-video-renderer elements. These must be masked just like home
+    feed cards. The sidebar hydrates slightly after the player, so the
+    observer/scan path must pick it up under the CURRENT session — which only
+    works if navigation correctly tears down and restarts (issue #2).
+
+    Sidebar cards are href-only (realistic).
+  -->
+
+    <ytd-app>
+      <ytd-watch-flexy>
+        <div id="primary"><div id="player"></div></div>
+
+        <div id="secondary">
+          <ytd-compact-video-renderer>
+            <div class="thumbnail"></div>
+            <div>
+              <a id="video-title" href="/watch?v=vid_side001">
+                Next Up: Advanced Type Systems
+              </a>
+              <ytd-channel-name>
+                <yt-formatted-string>TypeTheory</yt-formatted-string>
+              </ytd-channel-name>
+              <a href="/channel/UCside001">TypeTheory</a>
+            </div>
+          </ytd-compact-video-renderer>
+
+          <ytd-compact-video-renderer>
+            <div class="thumbnail"></div>
+            <div>
+              <a id="video-title" href="/watch?v=vid_side002">
+                Recommended: Build Your Own Regex Engine
+              </a>
+              <ytd-channel-name>
+                <yt-formatted-string>RegexWizard</yt-formatted-string>
+              </ytd-channel-name>
+              <a href="/@RegexWizard">RegexWizard</a>
+            </div>
+          </ytd-compact-video-renderer>
+
+          <ytd-compact-video-renderer>
+            <div class="thumbnail"></div>
+            <div>
+              <a id="video-title" href="/watch?v=vid_side003">
+                Recommended: WASM Deep Dive
+              </a>
+              <ytd-channel-name>
+                <yt-formatted-string>WasmWeekly</yt-formatted-string>
+              </ytd-channel-name>
+              <a href="/channel/UCside003">WasmWeekly</a>
+            </div>
+          </ytd-compact-video-renderer>
+        </div>
+      </ytd-watch-flexy>
+    </ytd-app>
+
+    <script>
+      window.__FIXTURE__ = {
+        dataBoyoFor(videoId) {
+          const el = [
+            ...document.querySelectorAll("ytd-compact-video-renderer"),
+          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          return el ? el.getAttribute("data-boyo") : null
+        },
+        hasVeil(videoId) {
+          const el = [
+            ...document.querySelectorAll("ytd-compact-video-renderer"),
+          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          return el ? el.querySelector(".boyo-veil") !== null : false
+        },
+        sidebarCount() {
+          return document.querySelectorAll("ytd-compact-video-renderer").length
+        },
+      }
+    </script>
+  </body>
+</html>

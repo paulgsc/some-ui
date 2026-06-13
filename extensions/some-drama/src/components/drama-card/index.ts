@@ -88,8 +88,8 @@ export class DramaCard {
       ".dc-mood-dot",
       // ".dc-circle-wrap",
     ])
-    this.drag.onMove = (x, y) => this.applyPosition(x, y)
-    this.drag.onDragEnd = (x, y) => this.events.onDragEnd(x, y)
+    this.drag.onMove = (x, y): void => this.applyPosition(x, y)
+    this.drag.onDragEnd = (x, y): void => this.events.onDragEnd(x, y)
 
     // ── Initial render ────────────────────────────────────────────────────────
     this.applyState()
@@ -160,11 +160,14 @@ export class DramaCard {
     this.sizeBtn.addEventListener("click", (e) => {
       e.stopPropagation()
       const idx = SIZE_CYCLE.indexOf(this.currentSize)
-      this.setSize(SIZE_CYCLE[(idx + 1) % SIZE_CYCLE.length])
+
+      const nextSize =
+        SIZE_CYCLE[(idx + 1) % SIZE_CYCLE.length] ?? this.currentSize
+      this.setSize(nextSize)
     })
 
     // Circle click → advance slide
-    this.slideshow.onSlideClick = () => {
+    this.slideshow.onSlideClick = (): void => {
       if (this.drag.didDrag) return
       this.slideshow.stopAutoAdvance()
       this.slideshow.setSlide((this.slideshow.current + 1) % 3)
@@ -173,7 +176,7 @@ export class DramaCard {
     }
 
     // Mood selection from right panel dots
-    this.rightPanel.onMoodSelect = (mood) => {
+    this.rightPanel.onMoodSelect = (mood): void => {
       this.events.onMoodSelect(mood)
       this.applyMoodHue(mood)
       this.rightPanel.setMoodActive(mood)
@@ -181,7 +184,7 @@ export class DramaCard {
     }
 
     // Mood selection from capture panel
-    this.capturePanel.onMoodSelect = (mood) => {
+    this.capturePanel.onMoodSelect = (mood): void => {
       this.events.onMoodSelect(mood)
       this.applyMoodHue(mood)
       this.rightPanel.setMoodActive(mood)

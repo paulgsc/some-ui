@@ -72,8 +72,11 @@ export type ViewState = Masked | MetaState | TitleState | Revealed | Whitelisted
 // is meaningful.  The overload signatures are the machine's transition table.
 // The implementation union handles structural sharing.
 
+// eslint-disable-next-line no-redeclare
 export function applyClick(s: Masked, meta: MetaData): MetaState
+// eslint-disable-next-line no-redeclare
 export function applyClick(s: MetaState, rawTitle: string): TitleState
+// eslint-disable-next-line no-redeclare
 export function applyClick(s: TitleState | Revealed | Whitelisted): typeof s
 export function applyClick(
   s: ViewState,
@@ -81,6 +84,7 @@ export function applyClick(
 ): ViewState {
   switch (s.kind) {
     case "masked":
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       return { kind: "meta", session: s.session, meta: payload as MetaData }
 
     case "meta":
@@ -88,7 +92,7 @@ export function applyClick(
         kind: "title",
         session: s.session,
         meta: s.meta,
-        title: { text: (payload as string) ?? "", translated: false },
+        title: { text: typeof payload === "string" ? payload : "", translated: false },
       }
 
     default:

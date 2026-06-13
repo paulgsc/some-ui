@@ -30,9 +30,9 @@ export function scrapeActiveTabMedia(): ScrapedMeta {
   // Parsing algorithms for structural metadata
   const epRegex = /(?:ep|episode|화|회|第)\s*(\d+)/i
   const epMatch = cleanedTitle.match(epRegex)
-  const derivedEpisode = epMatch ? `Ep ${epMatch[1]}` : ""
+  const derivedEpisode = epMatch ? `Ep ${epMatch[1] ?? ""}` : ""
 
-  const networkSelector = () => {
+  const networkSelector = (): string => {
     const host = window.location.hostname.toLowerCase()
     if (host.includes("netflix")) return "Netflix"
     if (host.includes("viki")) return "Rakuten Viki"
@@ -46,7 +46,7 @@ export function scrapeActiveTabMedia(): ScrapedMeta {
     const h = Math.floor(secs / 3600)
     const m = Math.floor((secs % 3600) / 60)
     const s = Math.floor(secs % 60)
-    const pad = (num: number) => String(num).padStart(2, "0")
+    const pad = (num: number): string => String(num).padStart(2, "0")
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
   }
 
@@ -72,10 +72,9 @@ export function scrapeActiveTabMedia(): ScrapedMeta {
     timestamp: primaryTarget
       ? formatTimestamp(primaryTarget.currentTime)
       : "00:00",
-    progress:
-      primaryTarget && primaryTarget.duration
-        ? primaryTarget.currentTime / primaryTarget.duration
-        : 0,
+    progress: primaryTarget?.duration
+      ? primaryTarget.currentTime / primaryTarget.duration
+      : 0,
     isPlaying: primaryTarget
       ? !primaryTarget.paused && !primaryTarget.ended
       : false,

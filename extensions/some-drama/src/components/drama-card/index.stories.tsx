@@ -99,8 +99,11 @@ const DramaCardBridge = ({
         isPlaying,
       },
       {
+        // eslint-disable-next-line no-console
         onMoodSelect: (mood) => console.log("[DramaCard] mood selected:", mood),
+        // eslint-disable-next-line no-console
         onSizeChange: (s) => console.log("[DramaCard] size changed:", s),
+        // eslint-disable-next-line no-console
         onDragEnd: (x, y) => console.log("[DramaCard] dragged to:", { x, y }),
       }
     )

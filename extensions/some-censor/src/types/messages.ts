@@ -27,7 +27,7 @@ export type BgRequest =
 // ── Background responses ──────────────────────────────────────────────────────
 
 export type IsWhitelistedResp = { ok: true; whitelisted: boolean }
-export type WhitelistResp = { ok: true; channels: WhitelistEntry[] }
+export type WhitelistResp = { ok: true; channels: Array<WhitelistEntry> }
 export type EnabledResp = { ok: true; enabled: boolean }
 export type OkResp = { ok: true }
 export type ErrResp = { ok: false; error: string }

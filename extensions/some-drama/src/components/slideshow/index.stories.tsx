@@ -69,7 +69,7 @@ const SlideshowBridge = ({
       ssRef.current = null
       root.remove()
     }
-  }, [])
+  }, [circleSize])
 
   // Sync controls → instance
   useEffect(() => {

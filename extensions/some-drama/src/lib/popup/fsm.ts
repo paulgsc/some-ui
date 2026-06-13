@@ -26,19 +26,18 @@ export class PopupStateMachine {
     this.transition({ tag: "LOADING" })
     try {
       const [stateResp, tabs] = await Promise.all([
-        sendMsg<{ ok: boolean; state: WatchlistState }>({ type: "GET_STATE" }),
+        sendMsg({ type: "GET_STATE" }),
         browser.tabs.query({ active: true, currentWindow: true }),
       ])
 
-      const tab = tabs[0]
-      const tabId = tab?.id ?? -1
-      const tabUrl = tab?.url ?? ""
-      const isVideoTab = isVideoHost(tabUrl, VIDEO_HOSTS)
-
       if (!stateResp.ok)
         throw new Error(
-          "Failed to load backend state synchronization frameworks"
+          "Failed to load backend state synchronization frameworks",
+          { cause: stateResp.error }
         )
+
+      const [{ id: tabId = -1, url: tabUrl = "" } = {}] = tabs
+      const isVideoTab = isVideoHost(tabUrl, VIDEO_HOSTS)
 
       let videoCount = 0
       if (isVideoTab && tabId !== -1) {
@@ -47,7 +46,7 @@ export class PopupStateMachine {
             code: `document.querySelectorAll('video').length`,
           })
           .catch(() => [0])
-        videoCount = diagnostic[0] as number
+        videoCount = diagnostic[0] ?? 0
       }
 
       this.transition({
@@ -110,17 +109,15 @@ export class PopupStateMachine {
   ): Promise<void> {
     this.transition({ tag: "SAVING", state, tabId })
     try {
-      const resp = await sendMsg<{
-        ok: boolean
-        state: WatchlistState
-        error?: string
-      }>({
+      const resp = await sendMsg({
         type: "UPSERT_ENTRY",
         entry,
       })
-      if (!resp.ok) throw new Error(resp.error ?? "Failed to save entry")
 
-      this.reloadToIdle(tabId)
+      if (!resp.ok)
+        throw new Error("Failed to save Entry", { cause: resp.error })
+
+      void this.reloadToIdle(tabId)
     } catch (err) {
       this.transition({
         tag: "ERROR",
@@ -132,11 +129,14 @@ export class PopupStateMachine {
 
   public async setActive(id: string, tabId: number): Promise<void> {
     try {
-      const resp = await sendMsg<{ ok: boolean; state: WatchlistState }>({
+      const resp = await sendMsg({
         type: "SET_ACTIVE",
         id,
       })
-      if (resp.ok) this.reloadToIdle(tabId)
+      if (!resp.ok)
+        throw new Error("Failed to setActive", { cause: resp.error })
+
+      void this.reloadToIdle(tabId)
     } catch (err) {
       this.transition({
         tag: "ERROR",
@@ -148,11 +148,14 @@ export class PopupStateMachine {
 
   public async removeEntry(id: string, tabId: number): Promise<void> {
     try {
-      const resp = await sendMsg<{ ok: boolean; state: WatchlistState }>({
+      const resp = await sendMsg({
         type: "REMOVE_ENTRY",
         id,
       })
-      if (resp.ok) this.reloadToIdle(tabId)
+      if (!resp.ok)
+        throw new Error("Failed to remove Entry", { cause: resp.error })
+
+      void this.reloadToIdle(tabId)
     } catch (err) {
       this.transition({
         tag: "ERROR",
@@ -164,9 +167,12 @@ export class PopupStateMachine {
 
   private async reloadToIdle(tabId: number): Promise<void> {
     try {
-      const stateResp = await sendMsg<{ ok: boolean; state: WatchlistState }>({
+      const resp = await sendMsg({
         type: "GET_STATE",
       })
+      if (!resp.ok)
+        throw new Error("Failed to reloadIdle", { cause: resp.error })
+
       const tabs = await browser.tabs.query({
         active: true,
         currentWindow: true,
@@ -180,12 +186,12 @@ export class PopupStateMachine {
             code: `document.querySelectorAll('video').length`,
           })
           .catch(() => [0])
-        videoCount = diagnostic[0] as number
+        videoCount = diagnostic[0] ?? 0
       }
 
       this.transition({
         tag: "IDLE",
-        state: stateResp.state,
+        state: resp.state,
         tabId,
         isVideoTab: isVideoHost(url, VIDEO_HOSTS),
         videoCount,
@@ -194,6 +200,42 @@ export class PopupStateMachine {
       this.transition({
         tag: "ERROR",
         message: String(err),
+        prev: this.currentPhase,
+      })
+    }
+  }
+
+  public async refreshEntry(
+    entry: DramaEntry,
+    tabId: number,
+    state: WatchlistState
+  ): Promise<void> {
+    this.transition({ tag: "SCRAPING", state, tabId })
+    try {
+      const results = await browser.tabs.executeScript(tabId, {
+        code: `(${scrapeActiveTabMedia.toString()})()`,
+      })
+      const data = results[0]
+
+      // Only structural fields — opinionated ones intentionally omitted so the
+      // UPSERT_ENTRY merge path leaves them untouched.
+      const payload: Partial<DramaEntry> & { title: string } = {
+        id: entry.id,
+        title: data?.title || entry.title,
+        episode: data?.episode || entry.episode,
+        network: data?.network || entry.network,
+        posterUrl: data?.posterUrl ?? entry.posterUrl,
+        timestamp: data?.timestamp || entry.timestamp,
+        progress: data?.progress ?? entry.progress,
+        isPlaying: data?.isPlaying ?? entry.isPlaying,
+        url: data?.url || entry.url,
+      }
+
+      await this.saveEntry(payload, state, tabId)
+    } catch (err) {
+      this.transition({
+        tag: "ERROR",
+        message: `Refresh failed: ${String(err)}`,
         prev: this.currentPhase,
       })
     }

@@ -13,4 +13,6 @@ export const ACCENT_COLORS = [
   "#818cf8", // Indigo Pastel
   "#e879f9", // Orchid Violet
   "#fb7185", // Rose Quartz
-]
+] as const
+
+export const DEFAULT_ACCENT = ACCENT_COLORS[0]

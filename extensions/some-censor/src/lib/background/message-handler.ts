@@ -72,6 +72,7 @@ export function createMessageHandler(api: ApiClient) {
         err instanceof Error
           ? err.message
           : ((err as { message?: string }).message ?? "Unknown error")
+      // eslint-disable-next-line no-console
       console.error("[BOYO Background] Error handling message:", msg.type, err)
       return { ok: false, error: message }
     }
