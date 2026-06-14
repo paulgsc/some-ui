@@ -209,6 +209,11 @@ function classifyElement(
 
   if (!c) return null
 
+  // Near-transparent elements are glass layers over the dark body canvas.
+  // Tagging them `preserve` would revert their background to the author's
+  // color once the transition or opacity settles, permanently leaking white.
+  if (c[3] < 0.1) return null
+
   const lum = relativeLuminance(c[0], c[1], c[2])
 
   if (lum > LIGHT_THRESHOLD) {

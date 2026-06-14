@@ -26,28 +26,49 @@ function findPrepaintSheet(): CSSStyleSheet | null {
 }
 
 /**
- * Suppress the prepaint stylesheet for the duration of fn(), then restore it.
+ * Suppress the prepaint stylesheet for the duration of fn(), permanently.
  *
- * All steps run synchronously in one JS task — the user never sees the page
- * un-veiled. The getComputedStyle call after disabling the sheet forces the
- * browser to flush the cascade so fn() observes native (non-prepaint) styles.
+ * Three defences run synchronously in one JS task before fn() samples:
  *
- * If the sheet cannot be located (e.g. not yet loaded), fn() runs unguarded
- * and the caller should default to applying the dark theme (safe direction).
+ * 1. A transition-freeze style (`transition/animation: none !important`) is
+ *    injected so getComputedStyle reads destination colors, not mid-transition
+ *    interpolated values (transition trap — phantom near-zero alpha reads).
+ *
+ * 2. The prepaint sheet is disabled and a layout flush is forced via
+ *    getBoundingClientRect so the cascade reflects native site styles.
+ *
+ * 3. The sheet is NOT re-enabled after fn() returns. Once the dark theme is
+ *    in the DOM the prepaint canvas is superseded; re-enabling would open a
+ *    window where patchObserver catches new SPA nodes under active prepaint
+ *    `transparent !important` rules, reads near-zero luminance, tags them
+ *    `preserve`, and permanently exposes white backgrounds after veil drop.
+ *    Teardown is handled entirely by disablePrepaint() / commitVisualState().
+ *
+ * If the sheet cannot be located fn() runs unguarded; the caller should
+ * default to applying the dark theme (safe direction — recoverable by cycle).
  */
 export function withPrepaintSuppressed<T>(fn: () => T): T {
+  // Freeze transitions so getComputedStyle reads settled destination colors.
+  const freeze = document.createElement("style")
+  freeze.textContent =
+    "*, *::before, *::after { transition: none !important; animation: none !important; }"
+  document.head.appendChild(freeze)
+
   const sheet = findPrepaintSheet()
   if (sheet) {
     sheet.disabled = true
-    // Force a synchronous style + layout flush so fn() observes the
-    // cascade without the prepaint rules. getBoundingClientRect() is a
-    // recognised side-effectful call that is guaranteed to cause the flush.
+    // Force a synchronous style + layout flush so fn() sees the cascade
+    // without prepaint overrides. getBoundingClientRect() is a recognised
+    // side-effectful call guaranteed to trigger the flush.
     document.documentElement.getBoundingClientRect()
   }
+
   try {
     return fn()
   } finally {
-    if (sheet) sheet.disabled = false
+    // Remove the transition freeze. The sheet stays disabled permanently —
+    // see point 3 in the doc comment above.
+    freeze.remove()
   }
 }
 
