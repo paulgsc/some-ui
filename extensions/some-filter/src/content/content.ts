@@ -3,6 +3,7 @@ import {
   DARK_THEME_ATTR,
   injectDarkTheme,
   removeDarkTheme,
+  repatchPage,
 } from "@filter/lib/content/dark-theme"
 import {
   isExtensionMessage,
@@ -11,6 +12,7 @@ import {
 import {
   commitVisualState,
   disablePrepaint,
+  withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
@@ -89,7 +91,9 @@ function applyState(state: TabState): void {
   removeLegacyFilter()
 
   if (state === "auto") {
-    disablePrepaint()
+    // Do not pre-remove the veil here. runAutoClassify uses
+    // withPrepaintSuppressed for snapshot isolation and handles veil
+    // teardown atomically after theme injection.
     runAutoClassify()
     return
   }
@@ -119,13 +123,26 @@ function cycleState(): void {
 // ── Classification ────────────────────────────────────────────────────────────
 
 function runAutoClassify(): void {
-  const { isLight, skip, avgLuminance } = classifyPage()
+  // Sample native (non-prepaint) backgrounds by suppressing the prepaint
+  // stylesheet for the duration of the classify pass. All steps are
+  // synchronous — the user never sees the page un-veiled. If the sheet
+  // cannot be located, classifyPage() runs unguarded and defaults to
+  // isLight=true (the safe direction — a wrongly-applied dark theme is
+  // recoverable via cycle; a wrongly-skipped one strands the user on a
+  // light page).
+  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() =>
+    classifyPage()
+  )
 
   autoWasApplied = Boolean(!skip && isLight)
 
   if (autoWasApplied) {
-    commitVisualState()
+    // Atomic veil→theme swap (F1): inject theme CSS synchronously first so
+    // dark rules are in the cascade, then schedule veil removal. When the
+    // invert filter lifts, the dark substrate is already in effect and
+    // there is no intermediate white frame.
     activateDarkTheme()
+    commitVisualState()
   } else {
     disablePrepaint()
   }
@@ -146,7 +163,16 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
-  const bootstrap = async (): Promise<void> => {
+  // Run auto classify immediately at document_end without waiting for the
+  // background. The classify decision is purely local; the background round-
+  // trip is only needed to reconcile persisted tab state (e.g. legacy tabs).
+  // This collapses time-under-veil to local compute time, independent of
+  // background cold/warm state (Defect 2a).
+  applyState(currentState)
+
+  // Fire background request in parallel; reconcile when it arrives.
+  // Only forward transitions are allowed (auto → legacy), never auto → auto.
+  void (async (): Promise<void> => {
     try {
       const response = await browser.runtime.sendMessage({
         type: "GET_TAB_FILTER_STATE",
@@ -155,18 +181,27 @@ function init(): void {
       if (isGetTabFilterStateResponse(response)) {
         filterConfig = response.config
 
-        if (response.enabled) {
-          currentState = "legacy"
+        // Tab was persisted as "legacy" — transition forward. The atomic-swap
+        // machinery in applyState ensures this reconciliation transition is
+        // non-flashing (one deterministic change, legacy direction only).
+        if (response.enabled && currentState === "auto") {
+          applyState("legacy")
         }
       }
     } catch {
-      // background unavailable
+      // background unavailable — local auto decision already stands
     }
+  })()
 
-    applyState(currentState)
-  }
-
-  void bootstrap()
+  // SPA navigation re-patch: re-run the luminance patcher after pushState
+  // navigations and YouTube's custom navigation event so newly rendered
+  // subtrees are themed even when no new DOM nodes are added.
+  // Note: third-party tab suspenders that replace the page with their own
+  // origin URL are out-of-process and cannot be covered here; our re-
+  // engagement on the real-URL reload is handled by the normal init path.
+  window.addEventListener("yt-navigate-finish", () => {
+    if (autoWasApplied) queueMicrotask(repatchPage)
+  })
 }
 
 // ── Message listener ──────────────────────────────────────────────────────────

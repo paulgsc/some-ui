@@ -19,7 +19,6 @@
  */
 
 import { parseColor, relativeLuminance } from "./classify"
-import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 
@@ -264,8 +263,10 @@ function patchElement(el: Element): void {
 function patchAll(root: Element): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
   let node: Node | null = walker.nextNode()
-  while (node) {
-    patchElement(node as Element)
+  while (node !== null) {
+    if (node instanceof Element) {
+      patchElement(node)
+    }
     node = walker.nextNode()
   }
 }
@@ -277,16 +278,29 @@ function startPatchObserver(root: Element): void {
 
   patchObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node instanceof Element) {
-          patchElement(node)
-          patchAll(node)
+      if (mutation.type === "childList") {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof Element) {
+            patchElement(node)
+            patchAll(node)
+          }
+        }
+      } else if (mutation.type === "attributes") {
+        // Re-evaluate when class/style changes — the element's background
+        // may have changed during SPA re-renders or dynamic theming.
+        if (mutation.target instanceof Element) {
+          patchElement(mutation.target)
         }
       }
     }
   })
 
-  patchObserver.observe(root, { childList: true, subtree: true })
+  patchObserver.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class", "style"],
+  })
 }
 
 function stopPatchObserver(): void {
@@ -299,27 +313,40 @@ function stopPatchObserver(): void {
 const STYLE_ID = "__sw_dark_theme"
 
 export function injectDarkTheme(): void {
-  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
-  if (!style) {
-    style = document.createElement("style")
+  const existing = document.getElementById(STYLE_ID)
+  const style: HTMLStyleElement =
+    existing instanceof HTMLStyleElement
+      ? existing
+      : document.createElement("style")
+  if (!(existing instanceof HTMLStyleElement)) {
     style.id = STYLE_ID
-    ;(document.head ?? document.documentElement).appendChild(style)
+    document.head.appendChild(style)
   }
   style.textContent = buildDarkThemeCSS()
 
-  // Walk from body — patcher already skips [data-my-ext] nodes
+  // Walk from body — patcher already skips [data-my-ext] nodes.
   patchAll(document.body)
   startPatchObserver(document.body)
-
-  commitVisualState()
+  // Veil removal is the caller's responsibility: inject theme first,
+  // then call commitVisualState() so the dark CSS is in the cascade
+  // before the veil's invert filter is lifted (atomic swap, F1).
 }
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
-  commitVisualState()
   stopPatchObserver()
 
   document.querySelectorAll("[data-sw-patched]").forEach((el) => {
-    ;(el as HTMLElement).removeAttribute("data-sw-patched")
+    el.removeAttribute("data-sw-patched")
   })
+  // Veil removal is the caller's responsibility.
+}
+
+/**
+ * Re-run the luminance patcher over the full document body.
+ * Used after SPA navigation (e.g. YouTube pushState swaps) to catch
+ * subtrees that were re-rendered without being re-added via childList.
+ */
+export function repatchPage(): void {
+  patchAll(document.body)
 }
