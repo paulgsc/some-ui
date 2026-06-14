@@ -87,17 +87,16 @@ function applyState(state: TabState): void {
 
   deactivateDarkTheme()
   removeLegacyFilter()
-  disablePrepaint()
 
   if (state === "auto") {
-    commitVisualState()
+    disablePrepaint()
     runAutoClassify()
     return
   }
 
   if (state === "legacy") {
-    commitVisualState()
     applyLegacyFilter(filterConfig)
+    commitVisualState()
     return
   }
 
@@ -125,6 +124,7 @@ function runAutoClassify(): void {
   autoWasApplied = Boolean(!skip && isLight)
 
   if (autoWasApplied) {
+    commitVisualState()
     activateDarkTheme()
   } else {
     disablePrepaint()
@@ -163,9 +163,7 @@ function init(): void {
       // background unavailable
     }
 
-    setTimeout(() => {
-      applyState(currentState)
-    }, 0)
+    applyState(currentState)
   }
 
   void bootstrap()

@@ -11,6 +11,9 @@
 
 html[data-sw-prepaint],
 html[data-sw-prepaint] body {
+  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
+    contrast(0.92) !important;
+
   background-color: #0d1117 !important;
   color-scheme: dark !important;
 }
