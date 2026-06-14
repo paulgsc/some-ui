@@ -9,6 +9,20 @@ export type MoodType =
   | "cringe"
   | "neutral"
 
+export type MomentTag =
+  | "confession"
+  | "handTouch"
+  | "jealousy"
+  | "misunderstanding"
+  | "reveal"
+  | "argument"
+  | "reunion"
+  | "goodbye"
+  | "kiss"
+  | "promise"
+  | "sacrifice"
+  | "other"
+
 export type CardSize = "min" | "compact" | "full"
 
 export type CardState = {
@@ -24,6 +38,12 @@ export type CardState = {
   featuredQuote: string
   emotionLabel: string
   isPlaying: boolean
+
+  axes: DramaEntryOpinionated["axes"]
+  transition: DramaEntryOpinionated["transition"]
+  tags: DramaEntryOpinionated["tags"]
+  peakLine: DramaEntryOpinionated["peakLine"]
+  momentum: DramaEntryOpinionated["momentum"]
 }
 
 export type CardEvents = {
@@ -56,6 +76,20 @@ export type DramaEntryOpinionated = {
   featuredQuote: string
   emotionLabel: string
   overallProgress: number // 0–1  (episodes watched / total, user-tracked)
+
+  axes: {
+    connection: number // -100..+100  (+= Connection, -= Separation)
+    hope: number //       -100..+100  (+= Hope,       -= Despair)
+    trust: number //      -100..+100  (+= Trust,      -= Betrayal)
+    control: number //    -100..+100  (+= Control,    -= Helplessness)
+  }
+  transition: { before: string; after: string }
+  tags: Array<MomentTag> // house idiom is Array<T>, not T[]
+  peakLine: string // replaces/supplements featuredQuote
+  momentum: {
+    value: number // 0..100
+    direction: "rising" | "steady" | "falling"
+  }
 }
 
 // ─── Full entry ───────────────────────────────────────────────────────────────

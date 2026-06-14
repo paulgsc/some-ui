@@ -116,6 +116,12 @@ function entryToCardState(entry: DramaEntry): CardState {
     activeMood: entry.activeMood ?? null,
     featuredQuote: entry.featuredQuote || entry.note || "",
     emotionLabel: entry.emotionLabel || entry.genre || "",
+
+    axes: entry.axes ?? { connection: 0, hope: 0, trust: 0, control: 0 },
+    transition: entry.transition ?? { before: "", after: "" },
+    tags: entry.tags ?? [],
+    peakLine: entry.peakLine ?? "",
+    momentum: entry.momentum ?? { value: 50, direction: "steady" },
   }
 }
 

@@ -56,7 +56,7 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
   updateOrigin()
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const glyph = BLOSSOM_GLYPHS[i % BLOSSOM_GLYPHS.length]
+    const glyph = BLOSSOM_GLYPHS[i % BLOSSOM_GLYPHS.length]!
     const b = el("span", "dc-blossom")
     b.textContent = glyph
 

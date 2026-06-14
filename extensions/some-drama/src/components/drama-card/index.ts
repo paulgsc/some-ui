@@ -170,7 +170,9 @@ export class DramaCard {
     this.slideshow.onSlideClick = (): void => {
       if (this.drag.didDrag) return
       this.slideshow.stopAutoAdvance()
-      this.slideshow.setSlide((this.slideshow.current + 1) % 3)
+      this.slideshow.setSlide(
+        (this.slideshow.current + 1) % this.slideshow.slideCount
+      )
       this.syncBubbleVisibility()
       this.slideshow.startAutoAdvance()
     }
@@ -180,7 +182,6 @@ export class DramaCard {
       this.events.onMoodSelect(mood)
       this.applyMoodHue(mood)
       this.rightPanel.setMoodActive(mood)
-      this.slideshow.applyEmotionState(mood, this.state.emotionLabel)
     }
 
     // Mood selection from capture panel
@@ -188,7 +189,6 @@ export class DramaCard {
       this.events.onMoodSelect(mood)
       this.applyMoodHue(mood)
       this.rightPanel.setMoodActive(mood)
-      this.slideshow.applyEmotionState(mood, this.state.emotionLabel)
       this.state = { ...this.state, activeMood: mood }
     }
   }
@@ -200,9 +200,14 @@ export class DramaCard {
     this.titleText.textContent = s.dramaTitle
 
     // Delegate to sub-components
+    this.slideshow.applyAxesState(s.axes)
+    this.slideshow.applyTransitionState(s.transition)
     this.slideshow.applyPosterState(s)
+    this.slideshow.applyTagsState(s.tags, s.peakLine)
+    this.slideshow.applyMomentumState(s.momentum)
+    this.slideshow.applyAtmosphereState(s.axes)
     this.slideshow.applyRatingState(s.rating)
-    this.slideshow.applyEmotionState(s.activeMood, s.emotionLabel)
+    this.slideshow.applySummaryState(s)
     this.rightPanel.applyState(s)
 
     // Mood hue
@@ -218,7 +223,9 @@ export class DramaCard {
   }
 
   private syncBubbleVisibility(): void {
-    const visible = this.slideshow.current === 0 && this.currentSize === "full"
+    const visible =
+      this.slideshow.current === this.slideshow.posterSlideIndex &&
+      this.currentSize === "full"
     this.slideshow.setBubbleVisible(visible)
   }
 

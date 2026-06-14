@@ -337,10 +337,13 @@ export class PopupRenderer {
         isPlaying: prefill.isPlaying ?? false,
         rating: moodRefs.getRating(),
         completionLikelihood: moodRefs.getLikelihood(),
-        activeMood: moodRefs.getMood(),
         featuredQuote: moodRefs.getQuote(),
-        emotionLabel: moodRefs.getEmotionLabel(),
         overallProgress: moodRefs.getOverallProgress(),
+        axes: moodRefs.getAxes(),
+        transition: moodRefs.getTransition(),
+        tags: moodRefs.getTags(),
+        peakLine: moodRefs.getPeakLine(),
+        momentum: moodRefs.getMomentum(),
       }
 
       void this.fsm.saveEntry(payload, state, tabId)

@@ -201,6 +201,12 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
   featuredQuote: "",
   emotionLabel: "",
   overallProgress: 0,
+
+  axes: { connection: 0, hope: 0, trust: 0, control: 0 },
+  transition: { before: "", after: "" },
+  tags: [],
+  peakLine: "",
+  momentum: { value: 50, direction: "steady" },
 }
 
 /** Broadcast updated state to all non-video content-script tabs. */

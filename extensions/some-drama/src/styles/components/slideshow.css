@@ -340,4 +340,251 @@
   /* Warm glow for legibility */
   text-shadow: var(--dc-text-glow-subtle);
   letter-spacing: 0.03em;
+
+  /* Shared dark base so white text reads on the non-poster slides */
+  .dc-slide-axes,
+  .dc-slide-transition,
+  .dc-slide-tags,
+  .dc-slide-momentum,
+  .dc-slide-summary {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    background: linear-gradient(135deg, hsl(25 25% 14%), hsl(340 20% 12%));
+  }
+
+  /* ── Slide 0: axes ────────────────────────────────────────────────────────── */
+  .dc-slide-axes {
+    gap: 5px;
+    padding: 12px;
+  }
+  .dc-axis-bar {
+    display: grid;
+    grid-template-columns: 22px 1fr 22px;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+  }
+  .dc-axis-bar-label {
+    font-size: 7px;
+    color: hsl(30 12% 65%);
+    letter-spacing: 0.02em;
+  }
+  .dc-axis-bar-track {
+    height: 4px;
+    border-radius: 99px;
+    background: hsl(0 0% 100% / 0.12);
+    overflow: hidden;
+  }
+  .dc-axis-bar-fill {
+    height: 100%;
+    width: var(--fill, 50%);
+    border-radius: 99px;
+    background: hsl(0 0% 70%);
+    transition:
+      width 400ms var(--dc-ease),
+      background 400ms var(--dc-ease);
+  }
+  .dc-axis-pos .dc-axis-bar-fill {
+    background: var(--dc-warm);
+  }
+  .dc-axis-neg .dc-axis-bar-fill {
+    background: var(--dc-cool);
+  }
+  .dc-axis-bar-val {
+    font-size: 7px;
+    text-align: right;
+    color: hsl(30 14% 78%);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Slide 1: transition ──────────────────────────────────────────────────── */
+  .dc-trans-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .dc-trans-before {
+    font-family: Georgia, serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--dc-warm);
+    text-align: center;
+    line-height: 1.2;
+  }
+  .dc-trans-arrow {
+    color: hsl(0 0% 100% / 0.5);
+    font-size: 12px;
+  }
+  .dc-trans-after {
+    font-family: Georgia, serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--dc-cool);
+    text-align: center;
+    line-height: 1.2;
+  }
+  .dc-trans-prompt {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 11px;
+    color: hsl(30 12% 55%);
+  }
+
+  /* ── Slide 3: tags ────────────────────────────────────────────────────────── */
+  .dc-tags-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    max-width: 84px;
+  }
+  .dc-tag-chip {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: hsl(340 30% 22% / 0.85);
+    border: 1px solid hsl(340 50% 55% / 0.5);
+  }
+  .dc-tag-more {
+    font-size: 9px;
+    font-weight: bold;
+    color: hsl(340 70% 80%);
+  }
+  .dc-tags-peak {
+    margin-top: 4px;
+    max-width: 84px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 8px;
+    line-height: 1.3;
+    text-align: center;
+    color: hsl(30 16% 72%);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── Slide 4: momentum ────────────────────────────────────────────────────── */
+  .dc-mom-value {
+    font-family: Georgia, serif;
+    font-size: 30px;
+    font-weight: bold;
+    color: hsl(0 0% 100%);
+    line-height: 1;
+    text-shadow: 0 0 16px var(--dc-tension);
+  }
+  .dc-mom-arc {
+    width: 60px;
+    height: 24px;
+  }
+  .dc-mom-arc path {
+    stroke: var(--dc-tension);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+  .dc-mom-dir {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 9px;
+    color: hsl(322 60% 78%);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Slide 5: atmosphere (derived, ambient, no text) ──────────────────────── */
+  .dc-slide-atmosphere {
+    --dc-atmo-warm: 0.5;
+    --dc-atmo-tension: 0;
+    --dc-atmo-blur: 0px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .dc-atmo-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 35% 30%,
+        var(--dc-tension) 0%,
+        transparent 60%
+      ),
+      color-mix(
+        in oklab,
+        var(--dc-warm) calc(var(--dc-atmo-warm) * 100%),
+        var(--dc-cool)
+      );
+    filter: blur(var(--dc-atmo-blur));
+    will-change: transform;
+    animation: dc-atmo-drift 14s ease-in-out infinite;
+  }
+  /* Tension vignette — opacity driven by JS-set custom property */
+  .dc-atmo-layer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      transparent 40%,
+      var(--dc-tension) 130%
+    );
+    opacity: var(--dc-atmo-tension);
+  }
+  @keyframes dc-atmo-drift {
+    0%,
+    100% {
+      transform: scale(1) translate(0, 0);
+    }
+    50% {
+      transform: scale(1.08) translate(2px, -2px);
+    }
+  }
+
+  /* ── Slide 7: summary (compressed journal read) ───────────────────────────── */
+  .dc-slide-summary {
+    justify-content: center;
+  }
+  .dc-summary-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    max-width: 86px;
+  }
+  .dc-summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    font-family: Georgia, serif;
+    font-size: 7.5px;
+    line-height: 1.3;
+  }
+  .dc-summary-label {
+    color: hsl(30 10% 55%);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .dc-summary-value {
+    color: hsl(30 18% 82%);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Rating slide — small momentum badge below the stars (ADR-002 §3-7) */
+  .dc-rating-momentum {
+    font-size: 8px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    color: hsl(0 0% 100% / 0.85);
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 3px hsl(340 50% 25% / 0.5);
+  }
 }

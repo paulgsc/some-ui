@@ -53,6 +53,11 @@ const DEFAULT_STATE: CardState = {
   featuredQuote: "Don't look at me like that",
   emotionLabel: "heart eyes",
   isPlaying: true,
+  axes: { connection: 0, hope: 0, trust: 0, control: 0 },
+  transition: { before: "", after: "" },
+  tags: [],
+  peakLine: "",
+  momentum: { value: 50, direction: "steady" },
 }
 
 const DramaCardBridge = ({
