@@ -123,25 +123,27 @@ function cycleState(): void {
 // ── Classification ────────────────────────────────────────────────────────────
 
 function runAutoClassify(): void {
-  // Sample native (non-prepaint) backgrounds by suppressing the prepaint
-  // stylesheet for the duration of the classify pass. All steps are
-  // synchronous — the user never sees the page un-veiled. If the sheet
-  // cannot be located, classifyPage() runs unguarded and defaults to
-  // isLight=true (the safe direction — a wrongly-applied dark theme is
-  // recoverable via cycle; a wrongly-skipped one strands the user on a
-  // light page).
-  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() =>
-    classifyPage()
-  )
+  // classifyPage() AND activateDarkTheme() (which internally calls patchAll())
+  // must both run inside the same prepaint suppression lock. Extending the lock
+  // to cover patchAll() ensures the initial DOM patch reads native, non-
+  // transition-interpolated colors — the same guarantee we give classifyPage().
+  // Without this, patchAll() would run after the freeze style is removed and
+  // could catch mid-transition near-zero alpha values, tagging light elements
+  // as `preserve` and permanently exposing white after veil drop.
+  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() => {
+    const result = classifyPage()
+    if (!result.skip && result.isLight) {
+      // Inject theme CSS + run initial patchAll inside the lock.
+      // The dark substrate is in the cascade before withPrepaintSuppressed
+      // returns, so veil removal (commitVisualState below) is already atomic.
+      activateDarkTheme()
+    }
+    return result
+  })
 
   autoWasApplied = Boolean(!skip && isLight)
 
   if (autoWasApplied) {
-    // Atomic veil→theme swap (F1): inject theme CSS synchronously first so
-    // dark rules are in the cascade, then schedule veil removal. When the
-    // invert filter lifts, the dark substrate is already in effect and
-    // there is no intermediate white frame.
-    activateDarkTheme()
     commitVisualState()
   } else {
     disablePrepaint()
@@ -199,8 +201,12 @@ function init(): void {
   // Note: third-party tab suspenders that replace the page with their own
   // origin URL are out-of-process and cannot be covered here; our re-
   // engagement on the real-URL reload is handled by the normal init path.
+  // Run synchronously — yt-navigate-finish fires after YouTube's DOM is
+  // settled, so calling repatchPage() immediately stays ahead of the next
+  // frame paint. A microtask delay would yield the thread and risk a frame
+  // where newly inserted nodes are unpatched.
   window.addEventListener("yt-navigate-finish", () => {
-    if (autoWasApplied) queueMicrotask(repatchPage)
+    if (autoWasApplied) repatchPage()
   })
 }
 
