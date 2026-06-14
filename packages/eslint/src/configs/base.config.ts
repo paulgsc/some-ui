@@ -47,6 +47,7 @@ export default defineConfig(
         ...globals.node,
         ...globals.browser,
         browser: "readonly",
+        chrome: "readonly",
       },
     },
     rules: {
