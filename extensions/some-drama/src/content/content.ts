@@ -69,10 +69,22 @@ const log = {
 
 const CARD_META_KEY = "drama_card_position_v3"
 
+function isPersistedCardMeta(v: unknown): v is PersistedCardMeta {
+  if (typeof v !== "object" || v === null) return false
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  const o = v as Record<string, unknown>
+  return (
+    typeof o.x === "number" &&
+    typeof o.y === "number" &&
+    typeof o.size === "string"
+  )
+}
+
 async function loadCardMeta(): Promise<PersistedCardMeta | null> {
   try {
     const r = await browser.storage.local.get(CARD_META_KEY)
-    return r[CARD_META_KEY] as PersistedCardMeta
+    const v = r[CARD_META_KEY]
+    return isPersistedCardMeta(v) ? v : null
   } catch {
     return null
   }
@@ -117,11 +129,11 @@ function entryToCardState(entry: DramaEntry): CardState {
     featuredQuote: entry.featuredQuote || entry.note || "",
     emotionLabel: entry.emotionLabel || entry.genre || "",
 
-    axes: entry.axes ?? { connection: 0, hope: 0, trust: 0, control: 0 },
-    transition: entry.transition ?? { before: "", after: "" },
-    tags: entry.tags ?? [],
-    peakLine: entry.peakLine ?? "",
-    momentum: entry.momentum ?? { value: 50, direction: "steady" },
+    axes: entry.axes,
+    transition: entry.transition,
+    tags: entry.tags,
+    peakLine: entry.peakLine,
+    momentum: entry.momentum,
   }
 }
 
@@ -139,7 +151,13 @@ function resolveTypestate(
 
 // ─── Empty-state pill ─────────────────────────────────────────────────────────
 
-function renderEmptyPill(container: HTMLElement): () => void {
+function renderEmptyPill(
+  container: HTMLElement,
+  onAutoRemove: () => void
+): () => void {
+  const SHOW_MS = 4_000
+  const FADE_MS = 600
+
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
   Object.assign(pill.style, {
@@ -156,11 +174,41 @@ function renderEmptyPill(container: HTMLElement): () => void {
     fontSize: "12px",
     color: "hsl(30 15% 60%)",
     pointerEvents: "none",
-    opacity: "0.7",
+    opacity: "0",
+    transition: "opacity 0.5s ease",
   })
   pill.textContent = "no drama active — open popup on video tab"
   container.appendChild(pill)
-  return () => pill.remove()
+
+  // Fade in on next paint
+  requestAnimationFrame(() => {
+    pill.style.opacity = "0.7"
+  })
+
+  let gone = false
+  let fadeId: ReturnType<typeof setTimeout> | null = null
+
+  const destroy = (): void => {
+    if (gone) return
+    gone = true
+    if (fadeId !== null) clearTimeout(fadeId)
+    pill.remove()
+  }
+
+  // Auto-fade out after SHOW_MS, then remove
+  const showId = setTimeout(() => {
+    pill.style.opacity = "0"
+    fadeId = setTimeout(() => {
+      destroy()
+      onAutoRemove()
+    }, FADE_MS)
+  }, SHOW_MS)
+
+  // Immediate dismiss (keybinding or re-render)
+  return (): void => {
+    clearTimeout(showId)
+    destroy()
+  }
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -184,12 +232,8 @@ async function init(): Promise<void> {
 
   const currentCardPosition = (): { x: number; y: number } => {
     if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
-    const rect = (
-      card as unknown as { root: HTMLElement }
-    ).root?.getBoundingClientRect?.()
-    return rect
-      ? { x: rect.left, y: rect.top }
-      : (cardMeta ?? safeSpawnPosition(290, 130))
+    const rect = card.root.getBoundingClientRect()
+    return { x: rect.left, y: rect.top }
   }
 
   const destroyCard = (): void => {
@@ -247,7 +291,9 @@ async function init(): Promise<void> {
   const renderEmpty = (): void => {
     destroyCard()
     removeEmptyPill?.()
-    removeEmptyPill = renderEmptyPill(root)
+    removeEmptyPill = renderEmptyPill(root, () => {
+      removeEmptyPill = null
+    })
   }
 
   // ── fetchAndRender ────────────────────────────────────────────────────────
@@ -286,7 +332,9 @@ async function init(): Promise<void> {
   // ── Background message listener ───────────────────────────────────────────
 
   browser.runtime.onMessage.addListener((msg: unknown) => {
-    const m = msg as { type: string; payload?: Partial<WatchlistState> }
+    if (typeof msg !== "object" || msg === null) return
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const m = msg as { type?: unknown; payload?: Partial<WatchlistState> }
     if (m.type !== "STATE_UPDATE" || !m.payload) return
 
     const next = resolveTypestate(m.payload)
@@ -323,7 +371,14 @@ async function init(): Promise<void> {
         log.info(`Visibility → ${visible ? "visible" : "hidden"}`)
         return
       }
-      // No card — background was likely evicted on page load.
+      if (removeEmptyPill) {
+        // EMPTY state — dismiss the pill immediately on keybind
+        removeEmptyPill()
+        removeEmptyPill = null
+        log.info("Empty pill dismissed via keybind")
+        return
+      }
+      // No card, no pill — background was likely evicted on page load.
       // Attempt a fresh fetch; if state is available the card will appear.
       log.info("No card on keybind — attempting fetchAndRender")
       void fetchAndRender()
