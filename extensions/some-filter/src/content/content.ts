@@ -78,6 +78,30 @@ function deactivateDarkTheme(): void {
   removeDarkTheme()
 }
 
+// ── State cache ───────────────────────────────────────────────────────────────
+// sessionStorage is per-tab and persists across refreshes, letting legacy/off
+// tabs restore their state synchronously without waiting for the background.
+
+const STATE_CACHE_KEY = "__sw_tab_state"
+
+function readCachedState(): TabState | null {
+  try {
+    const val = sessionStorage.getItem(STATE_CACHE_KEY)
+    if (val === "auto" || val === "legacy" || val === "off") return val
+  } catch {
+    // Unavailable in some contexts (e.g. storage-restricted private browsing).
+  }
+  return null
+}
+
+function writeCachedState(state: TabState): void {
+  try {
+    sessionStorage.setItem(STATE_CACHE_KEY, state)
+  } catch {
+    // Ignore write failures.
+  }
+}
+
 // ── State machine ─────────────────────────────────────────────────────────────
 
 let currentState: TabState = "auto"
@@ -86,6 +110,7 @@ let autoWasApplied = false
 
 function applyState(state: TabState): void {
   currentState = state
+  writeCachedState(state)
 
   deactivateDarkTheme()
   removeLegacyFilter()
@@ -165,15 +190,17 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
-  // Run auto classify immediately at document_end without waiting for the
-  // background. The classify decision is purely local; the background round-
-  // trip is only needed to reconcile persisted tab state (e.g. legacy tabs).
-  // This collapses time-under-veil to local compute time, independent of
-  // background cold/warm state (Defect 2a).
+  // Restore the last-known state synchronously from sessionStorage so that
+  // legacy/off tabs can apply the correct visual state before the background
+  // responds. For a cold background this avoids a 100–300 ms window of
+  // un-filtered native page between veil drop and filter application.
+  // Falls back to "auto" on the very first visit (no cache yet).
+  const cached = readCachedState()
+  if (cached !== null) currentState = cached
+
   applyState(currentState)
 
   // Fire background request in parallel; reconcile when it arrives.
-  // Only forward transitions are allowed (auto → legacy), never auto → auto.
   void (async (): Promise<void> => {
     try {
       const response = await browser.runtime.sendMessage({
@@ -183,15 +210,17 @@ function init(): void {
       if (isGetTabFilterStateResponse(response)) {
         filterConfig = response.config
 
-        // Tab was persisted as "legacy" — transition forward. The atomic-swap
-        // machinery in applyState ensures this reconciliation transition is
-        // non-flashing (one deterministic change, legacy direction only).
-        if (response.enabled && currentState === "auto") {
-          applyState("legacy")
+        if (response.enabled) {
+          // Background confirms legacy — ensure we're there regardless of cache.
+          if (currentState !== "legacy") applyState("legacy")
+        } else if (currentState === "legacy") {
+          // Cache said legacy but this tab is no longer in the filter list
+          // (user removed it via popup). Re-classify with auto.
+          applyState("auto")
         }
       }
     } catch {
-      // background unavailable — local auto decision already stands
+      // background unavailable — cached/auto decision stands
     }
   })()
 

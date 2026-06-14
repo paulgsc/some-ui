@@ -19,7 +19,6 @@
  */
 
 import { parseColor, relativeLuminance } from "./classify"
-import { PREPAINT_ATTR } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 
@@ -259,11 +258,6 @@ function shouldSkip(el: Element): boolean {
 function patchElement(el: Element): void {
   if (!(el instanceof HTMLElement)) return
   if (shouldSkip(el)) return
-  // If the prepaint veil attribute is still present, the cascade may still be
-  // masking native backgrounds via external transitions or stacking contexts
-  // even with the prepaint sheet disabled. Skip — the double-rAF veil drop
-  // (commitVisualState) will trigger re-evaluation via the observer.
-  if (document.documentElement.hasAttribute(PREPAINT_ATTR)) return
 
   const token = classifyElement(el)
   if (token !== null) {
