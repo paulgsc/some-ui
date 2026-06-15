@@ -57,4 +57,16 @@
   --dc-warm: hsl(36 90% 64%);
   --dc-cool: hsl(250 70% 68%);
   --dc-tension: hsl(322 78% 62%);
+
+  --dj-bg: #fcfbf9; /* Notebook soft paper background */
+  --dj-text: #2c2a29; /* High contrast readability charcoal */
+  --dj-border: #e6e3df; /* Organic subtle baseline lines */
+  --dj-accent: #634eb8; /* Single warm violet character accent color */
+  --dj-muted: #8c8782; /* Auxiliary guidance text color */
+  --dj-surface: #ffffff; /* Foreground pristine element backing */
+  --dj-preview-bg: linear-gradient(
+    135deg,
+    #1e1b24 0%,
+    #121016 100%
+  ); /* Preview Card Gradient */
 }

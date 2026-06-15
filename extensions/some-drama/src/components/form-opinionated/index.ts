@@ -1,20 +1,11 @@
 /**
+ * Builds the Drama Journal Authoring UI v2.
  *
- * Builds the opinionated / ephemeral section of the entry form ("Feels" tab).
+ * This screen acts as a focused authoring tool optimized for low friction,
+ * memory recall, and quick completion. It follows a guided interview/notebook
+ * sequence: Scenes → Feelings → Interpretations.
  *
- * ADR-002: emotion is captured as a *vector*, not a flat label. The old mood
- * chip grid and "one word" emotion-label input are gone; in their place are
- * four bipolar tension axes, a before→after transition, key-moment tags with a
- * peak line, and an emotional-momentum control. Star rating, series progress,
- * likelihood, and the featured-quote textarea are kept.
- *
- * ── Panel shell contract ────────────────────────────────────────────────────
- * Same pattern as form-structural: root is a bare <div>, renderer assigns
- * `.pf-panel` / `.pf-panel-visible`. Inner `.pf-mood` carries the layout.
- *
- * ── Separation of concerns ──────────────────────────────────────────────────
- * This module builds DOM and returns getter refs only. It does not persist,
- * message, or import from background.ts. The renderer reads the refs on save.
+ * Advanced telemetry widgets are hidden inside a collapsed-by-default sub-panel.
  */
 
 import type { DramaEntry, MomentTag } from "@drama/types"
@@ -24,429 +15,435 @@ type El = <K extends keyof HTMLElementTagNameMap>(
   cls?: string
 ) => HTMLElementTagNameMap[K]
 
-// ── Axis config ────────────────────────────────────────────────────────────
-type AxisKey = "connection" | "hope" | "trust" | "control"
-
-const AXES: ReadonlyArray<{ key: AxisKey; left: string; right: string }> = [
-  { key: "connection", left: "Connection", right: "Separation" },
-  { key: "hope", left: "Hope", right: "Despair" },
-  { key: "trust", left: "Trust", right: "Betrayal" },
-  { key: "control", left: "Control", right: "Helplessness" },
+// ── Tag Configuration ──────────────────────────────────────────────────────
+const ALL_TAGS: ReadonlyArray<MomentTag> = [
+  "confession",
+  "reunion",
+  "betrayal",
+  "sacrifice",
+  "separation",
+  "kiss",
+  "rivalry",
+  "other",
 ] as const
 
-// ── Tag config ─────────────────────────────────────────────────────────────
-// Glyphs are placeholders — purely cosmetic, swap freely. They carry no logic.
-const TAG_META: ReadonlyArray<{ tag: MomentTag; icon: string; label: string }> =
-  [
-    { tag: "confession", icon: "💬", label: "confession" },
-    { tag: "handTouch", icon: "🤝", label: "hand touch" },
-    { tag: "jealousy", icon: "👁", label: "jealousy" },
-    { tag: "misunderstanding", icon: "🗯", label: "misunderstanding" },
-    { tag: "reveal", icon: "🔍", label: "reveal" },
-    { tag: "argument", icon: "💥", label: "argument" },
-    { tag: "reunion", icon: "🤗", label: "reunion" },
-    { tag: "goodbye", icon: "👋", label: "goodbye" },
-    { tag: "kiss", icon: "💋", label: "kiss" },
-    { tag: "promise", icon: "🤞", label: "promise" },
-    { tag: "sacrifice", icon: "🕯", label: "sacrifice" },
-    { tag: "other", icon: "⋯", label: "other" },
-  ] as const
-
-const PEAK_MAX = 80
-const WHY_MAX = 80
+const TAG_LABELS: Record<MomentTag, string> = {
+  confession: "Confession",
+  reunion: "Reunion",
+  betrayal: "Betrayal",
+  sacrifice: "Sacrifice",
+  separation: "Separation",
+  kiss: "First Kiss",
+  rivalry: "Rivalry",
+  other: "Family Conflict", // remapped / extended per spec example
+}
 
 type Direction = "rising" | "steady" | "falling"
 
-const DIRECTIONS: ReadonlyArray<{ dir: Direction; label: string }> = [
-  { dir: "rising", label: "Rising ↑" },
-  { dir: "steady", label: "Steady —" },
-  { dir: "falling", label: "Falling ↓" },
-] as const
-
 export type OpinionatedFieldRefs = {
-  getRating: () => number
-  getLikelihood: () => number
-  getQuote: () => string
-  getOverallProgress: () => number
-  getAxes: () => {
-    connection: number
-    hope: number
-    trust: number
-    control: number
-  }
-  getTransition: () => { before: string; after: string }
+  getDramaTitle: () => string
+  getEpisodeNumber: () => number
+  getWatchDate: () => string
   getTags: () => Array<MomentTag>
-  getPeakLine: () => string
-  getMomentum: () => { value: number; direction: Direction }
+  getTransitions: () => Array<{ before: string; after: string }>
+  getWhyItRimmed: () => string
+  getQuote: () => string
+  getRating: () => number
+  getMomentum: () => Direction
+  getLikelihood: () => number
+  getOverallProgress: () => number
 }
-
-// Format an axis value with an explicit sign: +70, -30, 0.
-const fmtAxis = (v: number): string => (v > 0 ? `+${v}` : String(v))
-
-// Map a -100..+100 axis value to a 0..100% track fill.
-const axisFillPct = (v: number): number => ((v + 100) / 200) * 100
 
 export function buildOpinionatedSection(
   el: El,
   prefill: Partial<DramaEntry>
 ): { root: HTMLElement; refs: OpinionatedFieldRefs } {
-  // Panel shell — visibility only
-  const root = el("div")
-
-  // Inner layout container
-  const inner = el("div", "pf-mood")
+  const root = el("div", "dj-authoring-container")
+  const inner = el("div", "dj-notebook")
   root.appendChild(inner)
 
-  // ── Section header ──────────────────────────────────────────────────────────
-  const header = el("div", "pf-mood-header")
-  header.innerHTML = `<span class="pf-mood-header-shimmer">✦ this moment</span>`
-  inner.appendChild(header)
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 1: Episode Metadata
+  // ──────────────────────────────────────────────────────────────────────────
+  const metaSection = el("div", "dj-section dj-metadata")
 
-  // ── Star rating (kept) ──────────────────────────────────────────────────────
-  let currentRating = Math.round(prefill.rating ?? 0)
-  const ratingGroup = el("div", "pf-mood-field")
-  const ratingLabel = el("div", "pf-mood-label")
+  const titleInput = el("input", "dj-input-text dj-meta-title")
+  titleInput.type = "text"
+  titleInput.placeholder = "Drama Title"
+  titleInput.value = prefill.title ?? ""
+
+  const epInput = el("input", "dj-input-text dj-meta-ep")
+  epInput.type = "number"
+  epInput.placeholder = "Ep #"
+  epInput.value = prefill.episode ? String(prefill.episode) : ""
+
+  const dateInput = el("input", "dj-input-text dj-meta-date")
+  dateInput.type = "date"
+  // Default to today if not provided
+  dateInput.value = prefill.watchDate ?? new Date().toISOString().split("T")[0]
+
+  metaSection.appendChild(titleInput)
+  metaSection.appendChild(epInput)
+  metaSection.appendChild(dateInput)
+  inner.appendChild(metaSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 2: What Happened? (Key Moments)
+  // ──────────────────────────────────────────────────────────────────────────
+  const happenedSection = el("div", "dj-section")
+  const happenedPrompt = el("label", "dj-prompt")
+  happenedPrompt.textContent = "What happened in this episode?"
+  happenedSection.appendChild(happenedPrompt)
+
+  const selectedTags = new Set<MomentTag>(prefill.tags ?? [])
+  const tagGrid = el("div", "dj-tag-grid")
+
+  ALL_TAGS.forEach((tag) => {
+    const label = el("label", "dj-tag-label-checkbox")
+    const cb = el("input")
+    cb.type = "checkbox"
+    cb.checked = selectedTags.has(tag)
+
+    const span = el("span")
+    span.textContent = ` ${TAG_LABELS[tag]}`
+
+    label.appendChild(cb)
+    label.appendChild(span)
+    tagGrid.appendChild(label)
+
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedTags.add(tag)
+      else selectedTags.delete(tag)
+      updateLivePreview()
+    })
+  })
+  happenedSection.appendChild(tagGrid)
+  inner.appendChild(happenedSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 3: What Changed? (Transitions Engine)
+  // ──────────────────────────────────────────────────────────────────────────
+  const changedSection = el("div", "dj-section dj-transitions-section")
+  const changedPrompt = el("label", "dj-prompt")
+  changedPrompt.textContent = "What changed?"
+  changedSection.appendChild(changedPrompt)
+
+  const transContainer = el("div", "dj-transitions-container")
+  changedSection.appendChild(transContainer)
+
+  const createTransitionRow = (beforeVal = "", afterVal = "") => {
+    const row = el("div", "dj-transition-row")
+
+    const beforeIn = el("input", "dj-trans-input")
+    beforeIn.placeholder = "Before"
+    beforeIn.value = beforeVal
+
+    const arrow = el("span", "dj-trans-arrow")
+    arrow.textContent = "→"
+
+    const afterIn = el("input", "dj-trans-input")
+    afterIn.placeholder = "After"
+    afterIn.value = afterVal
+
+    row.appendChild(beforeIn)
+    row.appendChild(arrow)
+    row.appendChild(afterIn)
+
+    const triggerUpdate = () => updateLivePreview()
+    beforeIn.addEventListener("input", triggerUpdate)
+    afterIn.addEventListener("input", triggerUpdate)
+
+    return row
+  }
+
+  // Seed initial values or at least one empty row
+  if (prefill.transitions && prefill.transitions.length > 0) {
+    prefill.transitions.forEach((t) =>
+      transContainer.appendChild(createTransitionRow(t.before, t.after))
+    )
+  } else if (prefill.transition) {
+    // fall back to single legacy transition structure
+    transContainer.appendChild(
+      createTransitionRow(prefill.transition.before, prefill.transition.after)
+    )
+  } else {
+    transContainer.appendChild(createTransitionRow())
+  }
+
+  const addTransBtn = el("button", "dj-btn-secondary")
+  addTransBtn.textContent = "+ Add Transition"
+  addTransBtn.type = "button"
+  addTransBtn.addEventListener("click", () => {
+    transContainer.appendChild(createTransitionRow())
+  })
+  changedSection.appendChild(addTransBtn)
+  inner.appendChild(changedSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 4: Why Did It Matter?
+  // ──────────────────────────────────────────────────────────────────────────
+  const matterSection = el("div", "dj-section")
+  const matterPrompt = el("label", "dj-prompt")
+  matterPrompt.textContent = "What made this episode memorable?"
+
+  const matterText = el("textarea", "dj-textarea")
+  matterText.rows = 3
+  matterText.placeholder =
+    "The confession finally broke the emotional stalemate..."
+  matterText.value = prefill.whyItRimmed ?? "" // mapping internal interpretation back
+
+  matterSection.appendChild(matterPrompt)
+  matterSection.appendChild(matterText)
+  inner.appendChild(matterSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 5: Memorable Quote
+  // ──────────────────────────────────────────────────────────────────────────
+  const quoteSection = el("div", "dj-section")
+  const quotePrompt = el("label", "dj-prompt")
+  quotePrompt.textContent = "What line stayed with you?"
+
+  const quoteText = el("textarea", "dj-textarea dj-textarea-quote")
+  quoteText.rows = 2
+  quoteText.placeholder = '"Stay. Just this once."'
+  quoteText.value = prefill.featuredQuote ?? ""
+
+  quoteSection.appendChild(quotePrompt)
+  quoteSection.appendChild(quoteText)
+  inner.appendChild(quoteSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 6: Live Preview Card
+  // ──────────────────────────────────────────────────────────────────────────
+  const previewSection = el("div", "dj-section dj-preview-section")
+  const previewTitle = el("div", "dj-section-label")
+  previewTitle.textContent = "Preview Card"
+  previewSection.appendChild(previewTitle)
+
+  const cardElement = el("div", "dj-preview-card")
+  previewSection.appendChild(cardElement)
+  inner.appendChild(previewSection)
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Section 7: Advanced Metrics (Accordion Drawer)
+  // ──────────────────────────────────────────────────────────────────────────
+  const advancedAccordion = el("details", "dj-advanced-accordion")
+  const summaryToggle = el("summary", "dj-advanced-summary")
+  summaryToggle.textContent = "Advanced Metrics"
+  advancedAccordion.appendChild(summaryToggle)
+
+  const advContent = el("div", "dj-advanced-content")
+
+  // Star Rating (1-5 stars max per spec visualization)
+  let currentRating = prefill.rating
+    ? Math.min(5, Math.max(1, Math.round(prefill.rating / 2)))
+    : 0
+  const ratingGroup = el("div", "dj-adv-field")
+  const ratingLabel = el("div", "dj-adv-label")
   ratingLabel.textContent = "Rating"
   ratingGroup.appendChild(ratingLabel)
 
-  const stars = el("div", "pf-stars")
-  const starEls: Array<HTMLButtonElement> = []
+  const starsContainer = el("div", "dj-stars")
+  const starButtons: Array<HTMLButtonElement> = []
 
-  const paintStars = (n: number): void => {
-    starEls.forEach((s, i) => s.classList.toggle("pf-star-on", i < n))
+  const paintStars = (starsCount: number) => {
+    starButtons.forEach((btn, index) => {
+      btn.textContent = index < starsCount ? "★" : "☆"
+      btn.classList.toggle("active", index < starsCount)
+    })
   }
 
-  const ratingValue = el("div", "pf-stars-val")
-  ratingValue.textContent = currentRating > 0 ? `${currentRating} / 10` : "—"
-
-  for (let i = 1; i <= 10; i++) {
-    const s = el("button", "pf-star")
-    s.textContent = "★"
-    s.addEventListener("click", () => {
+  for (let i = 1; i <= 5; i++) {
+    const star = el("button", "dj-star-btn")
+    star.type = "button"
+    star.textContent = "☆"
+    star.addEventListener("click", () => {
       currentRating = i
       paintStars(i)
-      ratingValue.textContent = `${currentRating} / 10`
+      updateLivePreview()
     })
-    s.addEventListener("mouseenter", () => paintStars(i))
-    s.addEventListener("mouseleave", () => paintStars(currentRating))
-    starEls.push(s)
-    stars.appendChild(s)
+    starButtons.push(star)
+    starsContainer.appendChild(star)
   }
   paintStars(currentRating)
-  ratingGroup.appendChild(stars)
-  ratingGroup.appendChild(ratingValue)
-  inner.appendChild(ratingGroup)
+  ratingGroup.appendChild(starsContainer)
+  advContent.appendChild(ratingGroup)
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // Section A — Emotional Tension Axes
-  // ════════════════════════════════════════════════════════════════════════════
-  const axisState: Record<AxisKey, number> = {
-    connection: prefill.axes?.connection ?? 0,
-    hope: prefill.axes?.hope ?? 0,
-    trust: prefill.axes?.trust ?? 0,
-    control: prefill.axes?.control ?? 0,
-  }
+  // Momentum (Radio buttons)
+  let currentMomentum: Direction = prefill.momentum?.direction ?? "steady"
+  const momentumGroup = el("div", "dj-adv-field")
+  const momentumLabel = el("div", "dj-adv-label")
+  momentumLabel.textContent = "Momentum"
+  momentumGroup.appendChild(momentumLabel)
 
-  const axesSection = el("div", "pf-mood-field pf-axes")
-  const axesTitle = el("div", "pf-section-title")
-  axesTitle.textContent = "Emotional tension"
-  axesSection.appendChild(axesTitle)
+  const directions: Array<Direction> = ["falling", "steady", "rising"]
+  directions.forEach((dir) => {
+    const label = el("label", "dj-radio-label")
+    const radio = el("input")
+    radio.type = "radio"
+    radio.name = "dj_momentum"
+    radio.value = dir
+    radio.checked = currentMomentum === dir
 
-  for (const axis of AXES) {
-    const row = el("div", "pf-axis")
-    const initial = axisState[axis.key]
+    const textNode = document.createTextNode(
+      ` ${dir.charAt(0).toUpperCase() + dir.slice(1)}`
+    )
+    label.appendChild(radio)
+    label.appendChild(textNode)
+    momentumGroup.appendChild(label)
 
-    const poleL = el("span", "pf-axis-pole pf-axis-pole-left")
-    poleL.textContent = axis.left
-    const poleR = el("span", "pf-axis-pole pf-axis-pole-right")
-    poleR.textContent = axis.right
+    radio.addEventListener("change", () => {
+      if (radio.checked) currentMomentum = dir
+    })
+  })
+  advContent.appendChild(momentumGroup)
 
-    const slider = el("input", "pf-slider pf-axis-slider")
-    slider.type = "range"
-    slider.min = "-100"
-    slider.max = "100"
-    slider.value = String(initial)
+  // Completion Likelihood (Slider 0 - 100)
+  const likelihoodGroup = el("div", "dj-adv-field")
+  const likelihoodLabel = el("div", "dj-adv-label")
+  likelihoodLabel.textContent = "Completion Likelihood"
+  likelihoodGroup.appendChild(likelihoodLabel)
 
-    const valBadge = el("span", "pf-axis-val")
-    valBadge.textContent = fmtAxis(initial)
+  const sliderWrapper = el("div", "dj-slider-wrap")
+  const likelihoodSlider = el("input", "dj-slider")
+  likelihoodSlider.type = "range"
+  likelihoodSlider.min = "0"
+  likelihoodSlider.max = "100"
+  likelihoodSlider.value = String(
+    prefill.completionLikelihood
+      ? Math.round(prefill.completionLikelihood * 100)
+      : 50
+  )
 
-    const paintAxis = (v: number): void => {
-      slider.style.setProperty("--fill", `${axisFillPct(v)}%`)
-      row.classList.toggle("pf-axis-pos", v > 0)
-      row.classList.toggle("pf-axis-neg", v < 0)
-      valBadge.textContent = fmtAxis(v)
+  const sliderValText = el("span", "dj-slider-val-indicator")
+  sliderValText.textContent = `${likelihoodSlider.value}%`
+
+  likelihoodSlider.addEventListener("input", () => {
+    sliderValText.textContent = `${likelihoodSlider.value}%`
+    updateLivePreview()
+  })
+
+  sliderWrapper.appendChild(likelihoodSlider)
+  sliderWrapper.appendChild(sliderValText)
+  likelihoodGroup.appendChild(sliderWrapper)
+  advContent.appendChild(likelihoodGroup)
+
+  // Episode Progress
+  const progressGroup = el("div", "dj-adv-field")
+  const progressLabel = el("div", "dj-adv-label")
+  progressLabel.textContent = "Episode Progress"
+  progressGroup.appendChild(progressLabel)
+
+  const progressWrap = el("div", "dj-progress-inputs")
+  const currentEpNum = el("input", "dj-input-text inline-ep")
+  currentEpNum.type = "number"
+  currentEpNum.value = epInput.value
+
+  const separator = el("span")
+  separator.textContent = " / "
+
+  const totalEpNum = el("input", "dj-input-text inline-ep")
+  totalEpNum.type = "number"
+  totalEpNum.value = "16" // sensible default
+
+  progressWrap.appendChild(currentEpNum)
+  progressWrap.appendChild(separator)
+  progressWrap.appendChild(totalEpNum)
+  progressGroup.appendChild(progressWrap)
+  advContent.appendChild(progressGroup)
+
+  advancedAccordion.appendChild(advContent)
+  inner.appendChild(advancedAccordion)
+
+  // Sync structural components together
+  epInput.addEventListener("input", () => {
+    currentEpNum.value = epInput.value
+    updateLivePreview()
+  })
+  titleInput.addEventListener("input", () => updateLivePreview())
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Live Preview Sync Renderer Layer
+  // ──────────────────────────────────────────────────────────────────────────
+  function updateLivePreview() {
+    cardElement.innerHTML = ""
+
+    // Line 1: Identity / Meta Context
+    const metaLine = el("div", "card-meta-line")
+    const titleText = titleInput.value.trim() || "Untitled Drama"
+    const epText = epInput.value ? `Episode ${epInput.value}` : "Exp. Episode"
+    metaLine.textContent = `${titleText} — ${epText}`
+    cardElement.appendChild(metaLine)
+
+    // Line 2: The Core Transitions (Heart of the journal layout)
+    const activeTransitions: Array<string> = []
+    transContainer.querySelectorAll(".dj-transition-row").forEach((row) => {
+      const inputs = row.querySelectorAll("input")
+      const b = inputs[0].value.trim()
+      const a = inputs[1].value.trim()
+      if (b || a) {
+        activeTransitions.push(`${b || "?"} → ${a || "?"}`)
+      }
+    })
+
+    if (activeTransitions.length > 0) {
+      const transLine = el("div", "card-transitions-line")
+      transLine.textContent = activeTransitions.join(" | ")
+      cardElement.appendChild(transLine)
     }
 
-    slider.addEventListener("input", () => {
-      const v = Number(slider.value)
-      axisState[axis.key] = v
-      paintAxis(v)
-    })
-    paintAxis(initial)
+    // Line 3: Active Moments Grid
+    if (selectedTags.size > 0) {
+      const chipsLine = el("div", "card-chips-line")
+      Array.from(selectedTags).forEach((tag) => {
+        const chip = el("span", "card-chip")
+        chip.textContent = TAG_LABELS[tag]
+        chipsLine.appendChild(chip)
+      })
+      cardElement.appendChild(chipsLine)
+    }
 
-    row.appendChild(poleL)
-    row.appendChild(slider)
-    row.appendChild(poleR)
-    row.appendChild(valBadge)
-    axesSection.appendChild(row)
+    // Line 4: Star Indicator
+    const starsLine = el("div", "card-stars-line")
+    let renderingStars = ""
+    for (let i = 1; i <= 5; i++) {
+      renderingStars += i <= currentRating ? "★" : "☆"
+    }
+    starsLine.textContent = renderingStars
+    cardElement.appendChild(starsLine)
   }
 
-  // Gradient legend bar with scale ticks
-  const legend = el("div", "pf-axis-legend")
-  const legendBar = el("div", "pf-axis-legend-bar")
-  legend.appendChild(legendBar)
-  const legendScale = el("div", "pf-axis-legend-scale")
-  for (const tick of ["-100", "-50", "0", "+50", "+100"]) {
-    const t = el("span", "pf-axis-legend-tick")
-    t.textContent = tick
-    legendScale.appendChild(t)
-  }
-  legend.appendChild(legendScale)
-  axesSection.appendChild(legend)
-  inner.appendChild(axesSection)
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // Section B — Before → After
-  // ════════════════════════════════════════════════════════════════════════════
-  const transitionSection = el("div", "pf-mood-field pf-transition")
-  const transTitle = el("div", "pf-section-title")
-  transTitle.textContent = "Before → after"
-  transitionSection.appendChild(transTitle)
-
-  const transRow = el("div", "pf-transition-row")
-  const beforeInput = el("input", "p-input pf-transition-input")
-  beforeInput.value = prefill.transition?.before ?? ""
-  beforeInput.placeholder = "before…"
-  const transArrow = el("span", "pf-transition-arrow")
-  transArrow.textContent = "→"
-  const afterInput = el("input", "p-input pf-transition-input")
-  afterInput.value = prefill.transition?.after ?? ""
-  afterInput.placeholder = "after…"
-
-  transRow.appendChild(beforeInput)
-  transRow.appendChild(transArrow)
-  transRow.appendChild(afterInput)
-  transitionSection.appendChild(transRow)
-  inner.appendChild(transitionSection)
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // Section C — Key Moment Tags
-  // ════════════════════════════════════════════════════════════════════════════
-  const selectedTags = new Set<MomentTag>(prefill.tags ?? [])
-
-  const tagsSection = el("div", "pf-mood-field pf-tags-section")
-  const tagsTitle = el("div", "pf-section-title")
-  tagsTitle.textContent = "Key moments"
-  tagsSection.appendChild(tagsTitle)
-
-  const tagGrid = el("div", "pf-tags")
-  for (const meta of TAG_META) {
-    const chip = el("button", "pf-tag-chip")
-    if (selectedTags.has(meta.tag)) chip.classList.add("pf-tag-chip-on")
-
-    const icon = el("span", "pf-tag-icon")
-    icon.textContent = meta.icon
-    const label = el("span", "pf-tag-label")
-    label.textContent = meta.label
-    chip.appendChild(icon)
-    chip.appendChild(label)
-
-    chip.addEventListener("click", () => {
-      if (selectedTags.has(meta.tag)) selectedTags.delete(meta.tag)
-      else selectedTags.add(meta.tag)
-      chip.classList.toggle("pf-tag-chip-on", selectedTags.has(meta.tag))
-    })
-    tagGrid.appendChild(chip)
-  }
-  tagsSection.appendChild(tagGrid)
-
-  // Peak moment line + char count
-  const peakWrap = el("div", "pf-peakline-wrap")
-  const peakInput = el("input", "p-input pf-peakline-input")
-  peakInput.value = (prefill.peakLine ?? "").slice(0, PEAK_MAX)
-  peakInput.placeholder = "Peak moment line (optional)"
-  peakInput.maxLength = PEAK_MAX
-  const peakCount = el("span", "pf-peakline-count")
-  peakCount.textContent = `${peakInput.value.length}/${PEAK_MAX}`
-  peakInput.addEventListener("input", () => {
-    peakCount.textContent = `${peakInput.value.length}/${PEAK_MAX}`
-  })
-  peakWrap.appendChild(peakInput)
-  peakWrap.appendChild(peakCount)
-  tagsSection.appendChild(peakWrap)
-  inner.appendChild(tagsSection)
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // Section D — Emotional Momentum
-  // ════════════════════════════════════════════════════════════════════════════
-  let momentumValue = prefill.momentum?.value ?? 50
-  let momentumDir: Direction = prefill.momentum?.direction ?? "steady"
-
-  const momentumSection = el("div", "pf-mood-field pf-momentum")
-  const momTitle = el("div", "pf-section-title")
-  momTitle.textContent = "Momentum"
-  momentumSection.appendChild(momTitle)
-
-  // Tension slider 0–100
-  const tensionLabel = el("div", "pf-mood-label")
-  tensionLabel.textContent = "Tension"
-  momentumSection.appendChild(tensionLabel)
-
-  const momWrap = el("div", "pf-slider-wrap")
-  const momSlider = el("input", "pf-slider pf-momentum-slider")
-  momSlider.type = "range"
-  momSlider.min = "0"
-  momSlider.max = "100"
-  momSlider.value = String(Math.round(momentumValue))
-  const momDisplay = el("span", "pf-slider-val")
-  momDisplay.textContent = String(Math.round(momentumValue))
-
-  const syncMomentum = (): void => {
-    const v = Number(momSlider.value)
-    momentumValue = v
-    momDisplay.textContent = String(v)
-    momSlider.style.setProperty("--fill", `${v}%`)
-  }
-  momSlider.style.setProperty("--fill", `${Math.round(momentumValue)}%`)
-  momSlider.addEventListener("input", syncMomentum)
-  momWrap.appendChild(momSlider)
-  momWrap.appendChild(momDisplay)
-  momentumSection.appendChild(momWrap)
-
-  // Direction toggle (radio behaviour)
-  const dirRow = el("div", "pf-momentum-dir")
-  const dirBtns = new Map<Direction, HTMLButtonElement>()
-  const paintDir = (active: Direction): void => {
-    dirBtns.forEach((btn, dir) =>
-      btn.classList.toggle("pf-momentum-dir-on", dir === active)
-    )
-  }
-  for (const { dir, label } of DIRECTIONS) {
-    const btn = el("button", "pf-momentum-dir-btn")
-    btn.textContent = label
-    btn.addEventListener("click", () => {
-      momentumDir = dir
-      paintDir(dir)
-    })
-    dirBtns.set(dir, btn)
-    dirRow.appendChild(btn)
-  }
-  paintDir(momentumDir)
-  momentumSection.appendChild(dirRow)
-
-  // "Why?" textarea + char count
-  const whyWrap = el("div", "pf-momentum-why-wrap")
-  const whyInput = el("textarea", "pf-momentum-why")
-  whyInput.value = "" // no storage backing — see open note below
-  whyInput.placeholder = "Why?"
-  whyInput.rows = 2
-  whyInput.maxLength = WHY_MAX
-  const whyCount = el("span", "pf-momentum-why-count")
-  whyCount.textContent = `${whyInput.value.length}/${WHY_MAX}`
-  whyInput.addEventListener("input", () => {
-    whyCount.textContent = `${whyInput.value.length}/${WHY_MAX}`
-  })
-  whyWrap.appendChild(whyInput)
-  whyWrap.appendChild(whyCount)
-  momentumSection.appendChild(whyWrap)
-  inner.appendChild(momentumSection)
-
-  // ── Overall progress slider (kept) ──────────────────────────────────────────
-  let overallProg = prefill.overallProgress ?? 0
-  const progGroup = el("div", "pf-mood-field")
-  const progLabel = el("div", "pf-mood-label")
-  progLabel.textContent = "Series Progress"
-  progGroup.appendChild(progLabel)
-
-  const progWrap = el("div", "pf-slider-wrap")
-  const progSlider = el("input", "pf-slider")
-  progSlider.type = "range"
-  progSlider.min = "0"
-  progSlider.max = "100"
-  progSlider.value = String(Math.round(overallProg * 100))
-
-  const progDisplay = el("span", "pf-slider-val")
-  progDisplay.textContent = `${Math.round(overallProg * 100)}%`
-
-  const syncProg = (): void => {
-    const pct = Number(progSlider.value)
-    overallProg = pct / 100
-    progDisplay.textContent = `${pct}%`
-    progSlider.style.setProperty("--fill", `${pct}%`)
-  }
-  progSlider.style.setProperty("--fill", `${Math.round(overallProg * 100)}%`)
-  progSlider.addEventListener("input", syncProg)
-  progWrap.appendChild(progSlider)
-  progWrap.appendChild(progDisplay)
-  progGroup.appendChild(progWrap)
-  inner.appendChild(progGroup)
-
-  // ── Completion likelihood slider (kept) ─────────────────────────────────────
-  let likelihood = prefill.completionLikelihood ?? 0.5
-  const likeGroup = el("div", "pf-mood-field")
-  const likeLabel = el("div", "pf-mood-label")
-  likeLabel.textContent = "Will I finish this?"
-  likeGroup.appendChild(likeLabel)
-
-  const likeWrap = el("div", "pf-slider-wrap")
-  const likeSlider = el("input", "pf-slider pf-slider-likelihood")
-  likeSlider.type = "range"
-  likeSlider.min = "0"
-  likeSlider.max = "100"
-  likeSlider.value = String(Math.round(likelihood * 100))
-
-  const likeEmoji = (n: number): string =>
-    n < 25 ? "😶" : n < 50 ? "🤔" : n < 75 ? "👀" : "🔥"
-  const likeEmojiEl = el("span", "pf-slider-emoji")
-  likeEmojiEl.textContent = likeEmoji(Math.round(likelihood * 100))
-  const likeDisplay = el("span", "pf-slider-val")
-  likeDisplay.textContent = `${Math.round(likelihood * 100)}%`
-
-  const syncLike = (): void => {
-    const pct = Number(likeSlider.value)
-    likelihood = pct / 100
-    likeDisplay.textContent = `${pct}%`
-    likeSlider.style.setProperty("--fill", `${pct}%`)
-    likeEmojiEl.textContent = likeEmoji(pct)
-  }
-  likeSlider.style.setProperty("--fill", `${Math.round(likelihood * 100)}%`)
-  likeSlider.addEventListener("input", syncLike)
-  likeWrap.appendChild(likeEmojiEl)
-  likeWrap.appendChild(likeSlider)
-  likeWrap.appendChild(likeDisplay)
-  likeGroup.appendChild(likeWrap)
-  inner.appendChild(likeGroup)
-
-  // ── Featured quote (kept → featuredQuote) ───────────────────────────────────
-  const quoteGroup = el("div", "pf-mood-field")
-  const quoteLabel = el("div", "pf-mood-label")
-  quoteLabel.textContent = "A line that got you"
-  quoteGroup.appendChild(quoteLabel)
-  const quoteInput = el("textarea", "pf-quote-input")
-  quoteInput.value = prefill.featuredQuote ?? ""
-  quoteInput.placeholder = "\u201cEven heaven is not enough\u2026\u201d"
-  quoteInput.rows = 2
-  quoteGroup.appendChild(quoteInput)
-  inner.appendChild(quoteGroup)
+  // Perform immediate initial layout paint
+  updateLivePreview()
 
   return {
     root,
     refs: {
-      getRating: () => currentRating,
-      getLikelihood: () => likelihood,
-      getQuote: () => quoteInput.value.trim(),
-      getOverallProgress: () => overallProg,
-      getAxes: () => ({ ...axisState }),
-      getTransition: () => ({
-        before: beforeInput.value.trim(),
-        after: afterInput.value.trim(),
-      }),
+      getDramaTitle: () => titleInput.value.trim(),
+      getEpisodeNumber: () => Number(epInput.value),
+      getWatchDate: () => dateInput.value,
       getTags: () => Array.from(selectedTags),
-      getPeakLine: () => peakInput.value.trim(),
-      getMomentum: () => ({
-        value: Math.round(momentumValue),
-        direction: momentumDir,
-      }),
+      getTransitions: () => {
+        const rows: Array<{ before: string; after: string }> = []
+        transContainer.querySelectorAll(".dj-transition-row").forEach((row) => {
+          const inputs = row.querySelectorAll("input")
+          rows.push({
+            before: inputs[0].value.trim(),
+            after: inputs[1].value.trim(),
+          })
+        })
+        return rows
+      },
+      getWhyItRimmed: () => matterText.value.trim(),
+      getQuote: () => quoteText.value.trim(),
+      getRating: () => currentRating * 2, // normalized back to a 10 point model if required downstream
+      getMomentum: () => currentMomentum,
+      getLikelihood: () => Number(likelihoodSlider.value) / 100,
+      getOverallProgress: () => {
+        const current = Number(currentEpNum.value) || 0
+        const total = Number(totalEpNum.value) || 1
+        return current / total
+      },
     },
   }
 }
