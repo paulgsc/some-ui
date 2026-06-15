@@ -1,4 +1,5 @@
 import { isExtensionMessage } from "@filter/lib/background/guard"
+import { ext } from "@filter/lib/platform/api"
 import type { FilterConfig } from "@filter/types/popup"
 
 type TabState = "auto" | "legacy" | "off"
@@ -28,7 +29,7 @@ function normalizeState(data: Partial<StoredState>): StoredState {
 }
 
 async function getState(): Promise<StoredState> {
-  const data = await browser.storage.local.get([
+  const data = await ext.storage.local.get([
     "filteredTabIds",
     "tabStates",
     "filterConfig",
@@ -50,7 +51,7 @@ async function setTabState(tabId: number, state: TabState): Promise<void> {
       ? Array.from(new Set([...stored.filteredTabIds, tabId]))
       : stored.filteredTabIds.filter((id) => id !== tabId)
 
-  await browser.storage.local.set({
+  await ext.storage.local.set({
     tabStates,
     filteredTabIds,
   })
@@ -61,7 +62,7 @@ async function sendToTab(
   msg: Record<string, unknown>
 ): Promise<void> {
   try {
-    await browser.tabs.sendMessage(tabId, msg)
+    await ext.tabs.sendMessage(tabId, msg)
   } catch {
     // intentionally ignored
   }
@@ -71,8 +72,8 @@ async function sendToTab(
 // install
 // ─────────────────────────────────────────────
 
-browser.runtime.onInstalled.addListener((): void => {
-  void browser.storage.local.set({
+ext.runtime.onInstalled.addListener((): void => {
+  void ext.storage.local.set({
     filteredTabIds: [],
     tabStates: {},
     filterConfig: DEFAULT_FILTER,
@@ -83,88 +84,83 @@ browser.runtime.onInstalled.addListener((): void => {
 // message handling
 // ─────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener(
-  (msg, sender): boolean | Promise<unknown> => {
-    if (!isExtensionMessage(msg)) {
-      return false
-    }
-
-    if (msg.type === "GET_TAB_FILTER_STATE") {
-      const handler = async (): Promise<unknown> => {
-        const tabId = sender.tab?.id
-        if (!tabId) {
-          return { enabled: false, config: DEFAULT_FILTER }
-        }
-
-        const { filteredTabIds, filterConfig, tabStates } = await getState()
-
-        return {
-          enabled: filteredTabIds.includes(tabId),
-          config: filterConfig,
-          tabState: tabStates[tabId] ?? "auto",
-        }
-      }
-
-      void handler()
-      return true
-    }
-
-    if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
-      const handler = async (): Promise<void> => {
-        const { filteredTabIds, filterConfig, tabStates } = await getState()
-
-        const desired = new Set(msg.ids)
-        const current = new Set(filteredTabIds)
-
-        const nextTabStates: Record<number, TabState> = {
-          ...tabStates,
-        }
-
-        const allTabs = new Set([
-          ...Array.from(desired),
-          ...Array.from(current),
-        ])
-
-        for (const tabId of allTabs) {
-          nextTabStates[tabId] = desired.has(tabId) ? "legacy" : "auto"
-        }
-
-        await browser.storage.local.set({
-          filteredTabIds: msg.ids,
-          tabStates: nextTabStates,
-        })
-
-        const tabs = await browser.tabs.query({})
-
-        const tasks: Array<Promise<unknown>> = []
-
-        for (const t of tabs) {
-          if (typeof t.id !== "number") continue
-
-          const wasFiltered = current.has(t.id)
-          const willFilter = desired.has(t.id)
-
-          if (wasFiltered === willFilter) continue
-
-          tasks.push(
-            sendToTab(t.id, {
-              type: "TOGGLE_FILTER",
-              enabled: willFilter,
-              config: filterConfig,
-            })
-          )
-        }
-
-        await Promise.all(tasks)
-      }
-
-      void handler()
-      return true
-    }
-
+ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
+  if (!isExtensionMessage(msg)) {
     return false
   }
-)
+
+  if (msg.type === "GET_TAB_FILTER_STATE") {
+    const handler = async (): Promise<unknown> => {
+      const tabId = sender.tab?.id
+      if (!tabId) {
+        return { enabled: false, config: DEFAULT_FILTER }
+      }
+
+      const { filteredTabIds, filterConfig, tabStates } = await getState()
+
+      return {
+        enabled: filteredTabIds.includes(tabId),
+        config: filterConfig,
+        tabState: tabStates[tabId] ?? "auto",
+      }
+    }
+
+    void handler()
+    return true
+  }
+
+  if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
+    const handler = async (): Promise<void> => {
+      const { filteredTabIds, filterConfig, tabStates } = await getState()
+
+      const desired = new Set(msg.ids)
+      const current = new Set(filteredTabIds)
+
+      const nextTabStates: Record<number, TabState> = {
+        ...tabStates,
+      }
+
+      const allTabs = new Set([...Array.from(desired), ...Array.from(current)])
+
+      for (const tabId of allTabs) {
+        nextTabStates[tabId] = desired.has(tabId) ? "legacy" : "auto"
+      }
+
+      await ext.storage.local.set({
+        filteredTabIds: msg.ids,
+        tabStates: nextTabStates,
+      })
+
+      const tabs = await ext.tabs.query({})
+
+      const tasks: Array<Promise<unknown>> = []
+
+      for (const t of tabs) {
+        if (typeof t.id !== "number") continue
+
+        const wasFiltered = current.has(t.id)
+        const willFilter = desired.has(t.id)
+
+        if (wasFiltered === willFilter) continue
+
+        tasks.push(
+          sendToTab(t.id, {
+            type: "TOGGLE_FILTER",
+            enabled: willFilter,
+            config: filterConfig,
+          })
+        )
+      }
+
+      await Promise.all(tasks)
+    }
+
+    void handler()
+    return true
+  }
+
+  return false
+})
 
 // ─────────────────────────────────────────────
 // keyboard shortcut
@@ -176,11 +172,11 @@ const STATE_CYCLE: Record<TabState, TabState> = {
   off: "auto",
 }
 
-browser.commands.onCommand.addListener((command): void => {
+ext.commands.onCommand.addListener((command): void => {
   if (command !== "toggle-filter") return
 
   void (async (): Promise<void> => {
-    const [activeTab] = await browser.tabs.query({
+    const [activeTab] = await ext.tabs.query({
       active: true,
       currentWindow: true,
     })
@@ -202,7 +198,7 @@ browser.commands.onCommand.addListener((command): void => {
 // tab lifecycle
 // ─────────────────────────────────────────────
 
-browser.tabs.onUpdated.addListener((tabId, changeInfo): void => {
+ext.tabs.onUpdated.addListener((tabId, changeInfo): void => {
   if (changeInfo.status !== "complete") return
 
   void (async (): Promise<void> => {
@@ -218,13 +214,13 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo): void => {
   })()
 })
 
-browser.tabs.onRemoved.addListener((tabId): void => {
+ext.tabs.onRemoved.addListener((tabId): void => {
   void (async (): Promise<void> => {
     const { filteredTabIds, tabStates } = await getState()
 
     const { [tabId]: _, ...remaining } = tabStates
 
-    await browser.storage.local.set({
+    await ext.storage.local.set({
       filteredTabIds: filteredTabIds.filter((id) => id !== tabId),
       tabStates: remaining,
     })

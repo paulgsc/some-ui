@@ -30,6 +30,7 @@
     "playwright.config.ts",
     "vite.config.ts",
     "vite.config.chromium.ts",
+    "vite.config.firefox.ts",
     "vitest.setup.ts"
   ],
   "exclude": [

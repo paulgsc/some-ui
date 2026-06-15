@@ -14,6 +14,7 @@ import {
   disablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
+import { ext } from "@filter/lib/platform/api"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
 
@@ -203,7 +204,7 @@ function init(): void {
   // Fire background request in parallel; reconcile when it arrives.
   void (async (): Promise<void> => {
     try {
-      const response = await browser.runtime.sendMessage({
+      const response = await ext.runtime.sendMessage({
         type: "GET_TAB_FILTER_STATE",
       })
 
@@ -241,7 +242,7 @@ function init(): void {
 
 // ── Message listener ──────────────────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener((msg: unknown): void => {
+ext.runtime.onMessage.addListener((msg: unknown): void => {
   if (!isExtensionMessage(msg)) {
     return
   }

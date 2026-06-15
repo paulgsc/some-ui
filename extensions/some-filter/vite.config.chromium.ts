@@ -1,11 +1,10 @@
 /**
- * Chromium build — used for Playwright E2E testing.
+ * Chromium MV3 build — used for Playwright E2E testing.
  *
- * Differences from the default vite.config.ts:
- *   - Excludes popup.html (not needed for E2E)
- *   - Outputs content.js and background.js to dist/
- *   - copyPublicDir: true (default) copies prepaint.css, prepaint-start.js,
- *     prepaint-end.js, and manifest.json to dist/ so --load-extension works.
+ * Key differences from the Firefox config:
+ *   - Aliases @filter/lib/platform/api → api.chrome.ts (chrome.* global)
+ *   - copyPublicDir: true (default) copies public/manifest.json (MV3) → dist/
+ *   - Excludes popup (not needed for E2E)
  *
  * Usage:
  *   pnpm build:chromium        # produces dist/ loadable via --load-extension
@@ -38,6 +37,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // Swap platform adapter: chrome.* → typeof browser cast
+      "@filter/lib/platform/api": resolve(
+        __dirname,
+        "src/lib/platform/api.chrome.ts"
+      ),
       "@filter": resolve(__dirname, "src"),
     },
   },

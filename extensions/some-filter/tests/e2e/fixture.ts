@@ -89,7 +89,8 @@ type FilterFixtures = {
 // ── Test fixture ──────────────────────────────────────────────────────────────
 
 export const test = base.extend<FilterFixtures & { page: Page }>({
-  context: async (_fixtures, use) => {
+  // eslint-disable-next-line no-empty-pattern
+  context: async ({}, use) => {
     const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
     if (!executablePath) {
       throw new Error(

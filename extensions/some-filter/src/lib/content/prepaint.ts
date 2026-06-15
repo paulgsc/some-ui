@@ -1,3 +1,5 @@
+import { ext } from "@filter/lib/platform/api"
+
 export const PREPAINT_ATTR = "data-sw-prepaint"
 
 /**
@@ -13,7 +15,7 @@ export const PREPAINT_ATTR = "data-sw-prepaint"
  * by the extension's own URL for prepaint.css is both simpler and reliable.
  */
 function findPrepaintSheet(): CSSStyleSheet | null {
-  const prepaintHref = browser.runtime.getURL("prepaint.css")
+  const prepaintHref = ext.runtime.getURL("prepaint.css")
   for (const sheet of document.styleSheets) {
     if (sheet.href === prepaintHref) return sheet
   }
