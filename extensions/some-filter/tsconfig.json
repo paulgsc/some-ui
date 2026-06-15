@@ -18,11 +18,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@filter/*": ["src/*"]
+      "@filter/*": ["./src/*"]
     },
-    "types": ["firefox-webext-browser", "chrome"]
+    "types": [
+      "firefox-webext-browser",
+      "chrome",
+      "vite/client",
+      "vitest/globals"
+    ]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "vitest.setup.ts"]
 }
