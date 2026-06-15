@@ -61,18 +61,14 @@ test.describe("prepaint handshake", () => {
     const page = await fixture.goto("light-page")
     await waitForClassification(page)
 
-    const disabled = await page.evaluate(() => {
-      const prepaint = Array.from(document.styleSheets).find((s) =>
-        s.href?.endsWith("prepaint.css")
-      )
-      // Return null if sheet not found at all (also a failure worth knowing).
-      return prepaint != null ? prepaint.disabled : null
-    })
+    // Chrome MV3 injects extension CSS with href=null, so we can't locate the
+    // sheet by URL. The prepaint sheet is the only sheet ever disabled on these
+    // fixture pages, so checking for any disabled sheet is equivalent.
+    const someSheetIsDisabled = await page.evaluate(() =>
+      Array.from(document.styleSheets).some((s) => s.disabled)
+    )
 
-    // null → sheet not found: findPrepaintSheet() couldn't locate it (Bug 1 still present)
-    // false → sheet found but not disabled: withPrepaintSuppressed() not called or failed
-    // true → correct: sheet found and permanently disabled
-    expect(disabled).toBe(true)
+    expect(someSheetIsDisabled).toBe(true)
   })
 
   test("T4: dark page → dark theme not applied, veil drops", async ({

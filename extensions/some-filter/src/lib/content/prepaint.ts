@@ -3,18 +3,27 @@ import { ext } from "@filter/platform/content"
 export const PREPAINT_ATTR = "data-sw-prepaint"
 
 /**
- * Locate the manifest-injected prepaint stylesheet by URL.
+ * Locate the manifest-injected prepaint stylesheet.
  *
- * Extension-injected stylesheets are cross-origin from the page's perspective
- * (moz-extension:// or chrome-extension:// vs https://). Accessing cssRules
- * on a cross-origin sheet throws SecurityError, which would cause a sentinel-
- * property scan to silently skip the prepaint sheet and return null — leaving
- * the sheet active during classification and poisoning the luminance samples.
+ * Two strategies, tried in order:
  *
- * sheet.href is always readable without cross-origin restrictions, so matching
- * by the extension's own URL for prepaint.css is both simpler and reliable.
+ * 1. Stored reference: prepaint-start.js (document_start) captures the last
+ *    entry of document.styleSheets immediately after the extension CSS is
+ *    injected — before any page CSS loads — and stores it as
+ *    window.__swPrepaintSheet. Chrome MV3 injects content-script CSS with
+ *    href=null, so URL matching fails there; the stored reference is the only
+ *    reliable path in Chrome.
+ *
+ * 2. URL fallback: Firefox exposes the moz-extension:// URL on sheet.href, so
+ *    the original URL-based scan still works there even if the stored reference
+ *    is somehow absent.
  */
 function findPrepaintSheet(): CSSStyleSheet | null {
+  // Strategy 1: reference captured by prepaint-start.js at document_start.
+  const stored: unknown = Reflect.get(window, "__swPrepaintSheet")
+  if (stored instanceof CSSStyleSheet) return stored
+
+  // Strategy 2: Firefox exposes the extension URL on sheet.href.
   const prepaintHref = ext.runtime.getURL("prepaint.css")
   for (const sheet of document.styleSheets) {
     if (sheet.href === prepaintHref) return sheet

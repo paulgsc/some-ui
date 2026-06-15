@@ -176,8 +176,7 @@ function runAutoClassify(): void {
   }
 
   document.body.dataset.swLuminance =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    avgLuminance !== undefined ? avgLuminance?.toFixed(3) : "unknown"
+    avgLuminance !== null ? avgLuminance.toFixed(3) : "unknown"
 
   document.body.dataset.swThemeApplied = autoWasApplied ? "dark" : "none"
 
