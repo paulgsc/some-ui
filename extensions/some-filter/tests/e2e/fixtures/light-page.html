@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!--
+  Light-page fixture: explicit white background on html, body, and <main>.
+
+  classifyPage() samples html (weight 2) + body (weight 2) + main (weight 1.5).
+  All three carry rgb(255,255,255) → luminance ≈ 1.0 → isLight=true, skip=false.
+  Expected outcome: data-sw-theme-applied="dark", data-sw-dark on <html>.
+
+  If Bug 1 is present (prepaint sheet not disabled before classification):
+    html and body read as rgb(13,17,23) from prepaint.css → luminance ≈ 0.005
+    → isLight=false, skip=true → data-sw-theme-applied="none"
+-->
+<html style="background-color: rgb(255, 255, 255);">
+<head>
+  <meta charset="utf-8" />
+  <title>Light Page Fixture</title>
+</head>
+<body style="background-color: rgb(255, 255, 255); margin: 0;">
+  <main style="background-color: rgb(255, 255, 255);">
+    <h1>Light Page Fixture</h1>
+    <p>White background — dark theme should be applied.</p>
+  </main>
+</body>
+</html>

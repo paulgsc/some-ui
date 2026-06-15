@@ -19,14 +19,24 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@filter/*": ["./src/*"]
+      "@filter/*": ["./src/*"],
+      "@filter/playwright/*": ["./tests/e2e/*"]
     },
-    "types": [
-      "firefox-webext-browser",
-      "chrome",
-      "vite/client",
-      "vitest/globals"
-    ]
+    "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },
-  "include": ["src", "vite.config.ts", "vitest.setup.ts"]
+  "include": [
+    "src",
+    "tests/**/*.ts",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "vite.config.chromium.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/e2e/.chromium-user-data",
+    "playwright-report",
+    "test-results"
+  ]
 }
