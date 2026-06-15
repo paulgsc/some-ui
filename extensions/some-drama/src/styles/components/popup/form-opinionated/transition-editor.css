@@ -1,0 +1,55 @@
+/* ── Transition Editor — emotional state cards ──────────────────────────── */
+
+.dj-transitions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.dj-transition-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dj-state-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--dj-border);
+  background: var(--dj-surface);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--dj-text);
+  outline: none;
+  transition:
+    border-color 180ms var(--dj-ease),
+    box-shadow 180ms var(--dj-ease),
+    transform 180ms var(--dj-ease);
+}
+
+.dj-state-card:focus {
+  border-color: var(--peach-400);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px var(--peach-300),
+    0 0 16px var(--strawberry-300);
+}
+
+.dj-state-card:empty::before {
+  content: attr(data-placeholder);
+  color: var(--dj-muted);
+}
+
+.dj-trans-arrow {
+  font-size: 18px;
+  color: var(--dj-muted);
+  user-select: none;
+  flex-shrink: 0;
+}

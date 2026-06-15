@@ -1,0 +1,77 @@
+/* ── Live Drama Card — the dopamine machine ─────────────────────────────── */
+
+.dj-preview-section {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+}
+
+.dj-preview-card {
+  background: linear-gradient(135deg, var(--moon-900) 0%, var(--moon-800) 100%);
+  border-radius: 16px;
+  padding: 22px;
+  color: #ffffff;
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.25),
+    0 0 30px rgba(255, 120, 180, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 240ms var(--dj-ease);
+}
+
+.dj-preview-card:hover {
+  transform: translateY(-2px);
+}
+
+.card-meta-line {
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: var(--strawberry-300);
+  text-transform: uppercase;
+}
+
+.card-transitions-line {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.card-chips-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-chip {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  animation: dj-chip-in 220ms var(--dj-spring) both;
+}
+
+@keyframes dj-chip-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card-stars-line {
+  color: var(--peach-300);
+  font-size: 16px;
+  letter-spacing: 2px;
+  transition: color 200ms var(--dj-ease);
+}
+
+.card-empty-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+}

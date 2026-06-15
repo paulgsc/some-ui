@@ -1,0 +1,149 @@
+/* ── Advanced Metrics — tabbed ──────────────────────────────────────────── */
+
+.dj-adv-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--dj-border);
+  margin-bottom: 14px;
+}
+
+.dj-adv-tab {
+  flex: 1;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dj-muted);
+  cursor: pointer;
+  transition:
+    color 160ms var(--dj-ease),
+    border-color 160ms var(--dj-ease);
+}
+
+.dj-adv-tab:hover {
+  color: var(--dj-text);
+}
+
+.dj-adv-tab.dj-adv-tab-active {
+  color: var(--dj-accent);
+  border-bottom-color: var(--dj-accent);
+}
+
+.dj-adv-panel {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dj-adv-panel.dj-adv-panel-active {
+  display: flex;
+}
+
+.dj-adv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dj-adv-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dj-text);
+}
+
+.dj-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.dj-star-btn {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--dj-border);
+  padding: 0;
+  outline: none;
+  transition:
+    transform 160ms var(--dj-spring),
+    color 160ms var(--dj-ease);
+}
+
+.dj-star-btn.active {
+  color: var(--peach-500);
+}
+
+.dj-star-btn.dj-star-pop {
+  transform: scale(1.25);
+}
+
+.dj-radio-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.dj-radio-label input {
+  accent-color: var(--dj-accent);
+  margin-right: 6px;
+}
+
+.dj-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dj-slider {
+  flex: 1;
+  accent-color: var(--dj-accent);
+  cursor: pointer;
+}
+
+.dj-slider-val-indicator {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dj-muted);
+  min-width: 36px;
+}
+
+.dj-progress-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-ep {
+  width: 50px;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.dj-axis-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dj-axis-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dj-axis-row-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--dj-muted);
+}
+
+.dj-axis-slider {
+  width: 100%;
+  accent-color: var(--dj-accent);
+  cursor: pointer;
+}
