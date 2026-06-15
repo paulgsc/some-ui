@@ -1,26 +1,21 @@
 export const PREPAINT_ATTR = "data-sw-prepaint"
 
-// Matches the sentinel declared in prepaint.css :root block.
-const PREPAINT_SENTINEL_PROP = "--sw-prepaint-sheet"
-
 /**
- * Locate the manifest-injected prepaint stylesheet by its sentinel custom
- * property so callers can toggle sheet.disabled without touching the DOM.
+ * Locate the manifest-injected prepaint stylesheet by URL.
+ *
+ * Extension-injected stylesheets are cross-origin from the page's perspective
+ * (moz-extension:// or chrome-extension:// vs https://). Accessing cssRules
+ * on a cross-origin sheet throws SecurityError, which would cause a sentinel-
+ * property scan to silently skip the prepaint sheet and return null — leaving
+ * the sheet active during classification and poisoning the luminance samples.
+ *
+ * sheet.href is always readable without cross-origin restrictions, so matching
+ * by the extension's own URL for prepaint.css is both simpler and reliable.
  */
 function findPrepaintSheet(): CSSStyleSheet | null {
+  const prepaintHref = browser.runtime.getURL("prepaint.css")
   for (const sheet of document.styleSheets) {
-    try {
-      for (const rule of sheet.cssRules) {
-        if (
-          rule instanceof CSSStyleRule &&
-          rule.style.getPropertyValue(PREPAINT_SENTINEL_PROP).trim() !== ""
-        ) {
-          return sheet
-        }
-      }
-    } catch {
-      // Cross-origin sheets throw on cssRules access — skip them.
-    }
+    if (sheet.href === prepaintHref) return sheet
   }
   return null
 }
@@ -34,8 +29,9 @@ function findPrepaintSheet(): CSSStyleSheet | null {
  *    injected so getComputedStyle reads destination colors, not mid-transition
  *    interpolated values (transition trap — phantom near-zero alpha reads).
  *
- * 2. The prepaint sheet is disabled and a layout flush is forced via
- *    getBoundingClientRect so the cascade reflects native site styles.
+ * 2. The prepaint sheet is disabled (located by its extension URL) and a
+ *    layout flush is forced via getBoundingClientRect so the cascade reflects
+ *    native site styles rather than prepaint-poisoned #0d1117 backgrounds.
  *
  * 3. The sheet is NOT re-enabled after fn() returns. Once the dark theme is
  *    in the DOM the prepaint canvas is superseded; re-enabling would open a
