@@ -1,4 +1,4 @@
-import { ext } from "@filter/lib/platform/api"
+import { ext } from "@filter/platform/content"
 
 export const PREPAINT_ATTR = "data-sw-prepaint"
 

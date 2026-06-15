@@ -14,7 +14,7 @@ import {
   disablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
-import { ext } from "@filter/lib/platform/api"
+import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
 

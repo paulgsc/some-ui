@@ -20,7 +20,10 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@filter/*": ["./src/*"],
-      "@filter/playwright/*": ["./tests/e2e/*"]
+      "@filter/playwright/*": ["./tests/e2e/*"],
+      "@filter/platform/api": ["./src/lib/platform/api.ts"],
+      "@filter/platform/content": ["./src/lib/platform/api.ts"],
+      "@filter/platform/background": ["./src/lib/platform/api.ts"]
     },
     "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },

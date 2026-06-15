@@ -1,5 +1,5 @@
 import { isExtensionMessage } from "@filter/lib/background/guard"
-import { ext } from "@filter/lib/platform/api"
+import { ext } from "@filter/platform/background"
 import type { FilterConfig } from "@filter/types/popup"
 
 type TabState = "auto" | "legacy" | "off"

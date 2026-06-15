@@ -57,11 +57,20 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Swap platform adapter: native browser.* global
-      "@filter/lib/platform/api": resolve(
+      // ── Platform adapter swap ────────────────────────────────────────────
+      // Replace the canonical api.ts with the Firefox-specific implementation.
+      // Vite resolves this alias before module resolution, so api.ts is never
+      // bundled — only api.firefox.ts is inlined into each IIFE.
+      "@filter/platform/content": resolve(
         __dirname,
-        "src/lib/platform/api.firefox.ts"
+        "src/lib/platform/content/api.firefox.ts"
       ),
+
+      "@filter/platform/background": resolve(
+        __dirname,
+        "src/lib/platform/background/api.firefox.ts"
+      ),
+
       "@filter": resolve(__dirname, "src"),
     },
   },
