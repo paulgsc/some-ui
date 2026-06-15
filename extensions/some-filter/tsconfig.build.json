@@ -4,6 +4,12 @@
     "**/*.test.ts",
     "**/*.stories.tsx",
     "**/*.stories.ts",
-    "vite.config.ts"
+    "vite.config*.ts",
+    "playwright.config.ts",
+    ".playwright*/**",
+    ".chromium*/**",
+    "playwright-report/**",
+    "test-results/**",
+    "tests"
   ]
 }
