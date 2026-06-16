@@ -17,6 +17,7 @@
  *   - CSS injected as a web_accessible_resource URL (shadow DOM scoped).
  */
 
+import { ext } from "@censor/platform/content"
 import { CoexistenceRuntime } from "@conveyor/lib/content/coexistence"
 import { ConveyorEngine } from "@conveyor/lib/content/conveyor-engine"
 import { EffectBus } from "@conveyor/lib/content/effect-bus"
@@ -153,7 +154,7 @@ function isConveyorMsg(v: unknown): v is ConveyorMsg {
   )
 }
 
-browser.runtime.onMessage.addListener((message: unknown): void => {
+ext.runtime.onMessage.addListener((message: unknown): void => {
   if (!isConveyorMsg(message)) return
 
   switch (message.type) {
