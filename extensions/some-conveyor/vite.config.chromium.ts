@@ -50,15 +50,6 @@ export default defineConfig({
     // The MV3 manifest is the canonical public/manifest.json, so no plugin needed.
   },
 
-  // Replace `browser` identifier with `globalThis.chrome` in the Chromium
-  // bundle. Content/background scripts use `browser.*` directly (typed via
-  // firefox-webext-browser); Chromium exposes this surface as `chrome.*`.
-  // Without this define, `browser` would be undefined in the Chromium extension
-  // context for environments where the MV3 browser namespace shim is absent.
-  define: {
-    browser: "globalThis.chrome",
-  },
-
   resolve: {
     alias: {
       // ── Platform adapter swap ────────────────────────────────────────────

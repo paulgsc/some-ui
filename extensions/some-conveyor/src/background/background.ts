@@ -12,18 +12,20 @@
  * the extension CSP rather than the host-page CSP) is tracked in issue #200.
  */
 
-browser.tabs.onActivated.addListener(({ tabId }): void => {
-  void browser.tabs.get(tabId).then((tab): void => {
+import { ext } from "@censor/platform/background"
+
+ext.tabs.onActivated.addListener(({ tabId }): void => {
+  void ext.tabs.get(tabId).then((tab): void => {
     if (!tab.active) return
-    void browser.tabs
+    void ext.tabs
       .sendMessage(tabId, { type: "CONVEYOR_RESUME" })
       .catch((_err: unknown): void => undefined)
   })
 })
 
-browser.tabs.onUpdated.addListener((tabId, changeInfo): void => {
+ext.tabs.onUpdated.addListener((tabId, changeInfo): void => {
   if (changeInfo.status === "loading") {
-    void browser.tabs
+    void ext.tabs
       .sendMessage(tabId, { type: "CONVEYOR_SUSPEND" })
       .catch((_err: unknown): void => undefined)
   }
