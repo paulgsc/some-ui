@@ -1,7 +1,8 @@
 /**
- * streak-store — the ONLY conveyor module that talks to browser.storage.
+ * streak-store — the ONLY conveyor module that talks to ext.storage.
  * Pure I/O + pure selectors. No DOM, no timers, no theming.
  */
+import { ext } from "@censor/platform/content"
 import {
   hasKey,
   isArrayField,
@@ -121,8 +122,9 @@ function isStreakData(value: unknown): value is StreakData {
 
 export async function loadStreakData(): Promise<StreakData | null> {
   try {
-    const result = await browser.storage.local.get(STORAGE_KEY)
-    const raw = result[STORAGE_KEY]
+    const result = await ext.storage.local.get(STORAGE_KEY)
+    // storage.local.get returns { [key]: value } — take the only value present.
+    const raw = Object.values(result)[0]
     if (typeof raw !== "string") return null
     const parsed = JSON.parse(raw)
     return isStreakData(parsed) ? parsed : null
