@@ -42,7 +42,7 @@ export function WindowGroupHeader({
   allBtn.textContent = isAllSelected ? "−" : "+"
   allBtn.title = isAllSelected ? "Deselect window" : "Select window"
 
-  allBtn.onclick = (e) => {
+  allBtn.onclick = (e): void => {
     e.stopPropagation() // Prevent triggering any parent row clicks
     if (isAllSelected) {
       onDeselect()

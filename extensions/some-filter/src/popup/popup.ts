@@ -94,11 +94,26 @@ async function getStorageState(): Promise<{
 
   if (isRecord(rawConfig)) {
     filterConfig = {
-      invert: typeof rawConfig.invert === "number" ? rawConfig.invert : DEFAULT_FILTER_CONFIG.invert,
-      hueRotate: typeof rawConfig.hueRotate === "number" ? rawConfig.hueRotate : DEFAULT_FILTER_CONFIG.hueRotate,
-      sepia: typeof rawConfig.sepia === "number" ? rawConfig.sepia : DEFAULT_FILTER_CONFIG.sepia,
-      brightness: typeof rawConfig.brightness === "number" ? rawConfig.brightness : DEFAULT_FILTER_CONFIG.brightness,
-      contrast: typeof rawConfig.contrast === "number" ? rawConfig.contrast : DEFAULT_FILTER_CONFIG.contrast,
+      invert:
+        typeof rawConfig.invert === "number"
+          ? rawConfig.invert
+          : DEFAULT_FILTER_CONFIG.invert,
+      hueRotate:
+        typeof rawConfig.hueRotate === "number"
+          ? rawConfig.hueRotate
+          : DEFAULT_FILTER_CONFIG.hueRotate,
+      sepia:
+        typeof rawConfig.sepia === "number"
+          ? rawConfig.sepia
+          : DEFAULT_FILTER_CONFIG.sepia,
+      brightness:
+        typeof rawConfig.brightness === "number"
+          ? rawConfig.brightness
+          : DEFAULT_FILTER_CONFIG.brightness,
+      contrast:
+        typeof rawConfig.contrast === "number"
+          ? rawConfig.contrast
+          : DEFAULT_FILTER_CONFIG.contrast,
     }
   }
 
