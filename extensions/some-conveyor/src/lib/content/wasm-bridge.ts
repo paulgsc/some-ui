@@ -66,6 +66,7 @@ async function ensureManager(): Promise<WasmViewportManager> {
 
   const promise = (async () => {
     try {
+      // eslint-disable-next-line import/no-unresolved, @typescript-eslint/consistent-type-assertions
       const mod = (await import("polyhedron")) as PolyhedronModule
       if (typeof mod.default === "function") {
         await mod.default()
@@ -105,6 +106,7 @@ export class ViewportHandle implements Disposable {
 
   refreshState(): ViewportState {
     if (this.disposed) return this._state
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const raw = this.manager.getState(this.id) as ViewportState
     this._state = raw
     return raw
@@ -119,6 +121,7 @@ export class ViewportHandle implements Disposable {
 
   applyTransition(transition: unknown): ViewportState {
     if (this.disposed) return this._state
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const raw = this.manager.applyTransition(
       this.id,
       transition
@@ -133,6 +136,7 @@ export class ViewportHandle implements Disposable {
     try {
       this.manager.removeViewport(this.id)
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.warn(`[WasmBridge] Error removing viewport "${this.id}":`, e)
     }
   }
@@ -164,6 +168,7 @@ export class WasmBridge implements Disposable {
     const items = opts.items
     const polyhedron = opts.polyhedron
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const rawState = mgr.createViewport(
       opts.id,
       items,

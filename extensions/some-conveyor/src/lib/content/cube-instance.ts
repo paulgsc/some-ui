@@ -78,11 +78,10 @@ export class CubeInstance implements Disposable {
     this.renderer.onFaceClick((faceIndex) => {
       const action = this.opts.faceActions[faceIndex]
       if (action) {
-        this.effectBus
-          .dispatch(action)
-          .catch((e) =>
-            console.error("[CubeInstance] EffectBus dispatch error:", e)
-          )
+        this.effectBus.dispatch(action).catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("[CubeInstance] EffectBus dispatch error:", e)
+        })
       }
       // Also call per-face onClick if defined.
       this.opts.faceContents[faceIndex]?.onClick?.()

@@ -40,10 +40,12 @@ export class CoexistenceRuntime implements Disposable {
   readonly shadowHost: ShadowHost
   readonly pageMonitor: PageMonitor
 
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   private readonly eventListeners = new Map<
     keyof RuntimeEventMap,
     Set<RuntimeListener<any>>
   >()
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   private disposed = false
 
@@ -110,6 +112,7 @@ export class CoexistenceRuntime implements Disposable {
       try {
         listener(payload)
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error("[CoexistenceRuntime]", e)
       }
     }

@@ -141,10 +141,16 @@ export class PageMonitor implements Disposable {
   // ── Mode computation ───────────────────────────────────────────────────────
 
   private detectFullscreen(): boolean {
+    type VendorDoc = {
+      webkitFullscreenElement?: Element | null
+      mozFullScreenElement?: Element | null
+    }
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    const doc = document as unknown as VendorDoc
     return !!(
-      document.fullscreenElement ||
-      (document as any).webkitFullscreenElement ||
-      (document as any).mozFullScreenElement
+      document.fullscreenElement ??
+      doc.webkitFullscreenElement ??
+      doc.mozFullScreenElement
     )
   }
 
@@ -156,6 +162,7 @@ export class PageMonitor implements Disposable {
         try {
           listener(next)
         } catch (e) {
+          // eslint-disable-next-line no-console
           console.error("[PageMonitor]", e)
         }
       }
