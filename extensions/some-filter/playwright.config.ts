@@ -27,7 +27,13 @@ import { defineConfig } from "@playwright/test"
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // *.manual.spec.ts is deliberately excluded — see smoke.manual.spec.ts's
+  // file header for why. Those files require non-headless Chromium via the
+  // `nix develop .#playwright` shell and are not CI-portable; they must be
+  // run explicitly by name (`playwright test smoke.manual`), never picked
+  // up implicitly by a bare `playwright test` invocation.
   testMatch: "**/*.spec.ts",
+  testIgnore: "**/*.manual.spec.ts",
 
   globalSetup: "./tests/e2e/global-setup.ts",
   globalTeardown: "./tests/e2e/global-teardown.ts",

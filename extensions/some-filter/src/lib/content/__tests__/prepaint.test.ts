@@ -8,27 +8,6 @@ import {
   withPrepaintSuppressed,
 } from "../prepaint"
 
-// Must match browser.runtime.getURL mock in vitest.setup.ts
-const PREPAINT_HREF = "chrome-extension://testextensionid/prepaint.css"
-
-/**
- * jsdom does not create a CSSStyleSheet for <link rel="stylesheet"> elements
- * (no resource fetching). Instead we inject a <style> element and override its
- * href via Object.defineProperty so findPrepaintSheet()'s URL comparison works.
- */
-function injectMockPrepaintSheet(): CSSStyleSheet {
-  const style = document.createElement("style")
-  document.head.appendChild(style)
-  // Non-null: we just appended a style element so the sheet exists.
-
-  const sheet = document.styleSheets[document.styleSheets.length - 1]!
-  Object.defineProperty(sheet, "href", {
-    configurable: true,
-    get: () => PREPAINT_HREF,
-  })
-  return sheet
-}
-
 describe("enablePrepaint / disablePrepaint", () => {
   it("enablePrepaint sets the data-sw-prepaint attribute on html", () => {
     enablePrepaint()
@@ -103,7 +82,7 @@ describe("withPrepaintSuppressed", () => {
     ).toThrow("test error")
   })
 
-  it("still calls fn when no prepaint sheet is found", () => {
+  it("always calls fn — there is no sheet-lookup failure mode anymore", () => {
     let called = false
     withPrepaintSuppressed(() => {
       called = true
@@ -111,32 +90,44 @@ describe("withPrepaintSuppressed", () => {
     expect(called).toBe(true)
   })
 
-  describe("when the prepaint sheet is present", () => {
-    it("disables the sheet before fn runs", () => {
-      const sheet = injectMockPrepaintSheet()
+  describe("attribute-based suppression (replaces deleted sheet-object strategy)", () => {
+    // Root cause: document.styleSheets never enumerated the manifest-injected
+    // prepaint.css sheet under Chrome MV3 content-script CSS injection — a
+    // 60-frame polling probe against a real browser showed it flat at 0
+    // indefinitely, even though the CSS rules demonstrably applied (a
+    // cascade sentinel custom property went live within one animation
+    // frame). Suppression now operates purely on the data-sw-prepaint
+    // attribute, which prepaint.css's selectors are entirely gated on.
+    // These tests cover the same invariants the old sheet.disabled tests
+    // covered, expressed against the attribute instead.
 
-      let disabledDuringFn = false
+    it("removes the prepaint attribute before fn runs", () => {
+      document.documentElement.setAttribute(PREPAINT_ATTR, "")
+
+      let attrPresentDuringFn = true
+
       withPrepaintSuppressed(() => {
-        disabledDuringFn = sheet.disabled
+        attrPresentDuringFn =
+          document.documentElement.hasAttribute(PREPAINT_ATTR)
       })
 
-      expect(disabledDuringFn).toBe(true)
+      expect(attrPresentDuringFn).toBe(false)
     })
 
-    it("keeps the sheet permanently disabled after fn returns", () => {
-      // Re-enabling the sheet after classification would allow the
+    it("keeps the attribute permanently removed after fn returns", () => {
+      // Re-adding the attribute after classification would allow the
       // patchObserver to see SPA nodes under prepaint's `transparent
       // !important` rules, sample near-zero luminance, and permanently
       // tag them `preserve` — exposing white backgrounds after veil drop.
-      const sheet = injectMockPrepaintSheet()
+      document.documentElement.setAttribute(PREPAINT_ATTR, "")
 
       withPrepaintSuppressed(() => {})
 
-      expect(sheet.disabled).toBe(true)
+      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
     })
 
-    it("keeps the sheet disabled even when fn throws", () => {
-      const sheet = injectMockPrepaintSheet()
+    it("keeps the attribute removed even when fn throws", () => {
+      document.documentElement.setAttribute(PREPAINT_ATTR, "")
 
       try {
         withPrepaintSuppressed(() => {
@@ -146,25 +137,14 @@ describe("withPrepaintSuppressed", () => {
         // expected
       }
 
-      expect(sheet.disabled).toBe(true)
+      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
     })
 
-    it("does not disable a sheet at a different href", () => {
-      // Inject an unrelated page stylesheet first.
-      const otherStyle = document.createElement("style")
-      otherStyle.textContent = "body { margin: 0 }"
-      document.head.appendChild(otherStyle)
+    it("is a no-op (not an error) when the attribute was never present", () => {
+      document.documentElement.removeAttribute(PREPAINT_ATTR)
 
-      const otherSheet = document.styleSheets[0]!
-      // Leave otherSheet.href as-is (null/undefined) — it won't match prepaint URL.
-
-      // Inject the prepaint mock second.
-      const prepaintSheet = injectMockPrepaintSheet()
-
-      withPrepaintSuppressed(() => {})
-
-      expect(prepaintSheet.disabled).toBe(true)
-      expect(otherSheet.disabled).not.toBe(true) // not touched by withPrepaintSuppressed
+      expect(() => withPrepaintSuppressed(() => {})).not.toThrow()
+      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
     })
   })
 })

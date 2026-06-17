@@ -123,15 +123,38 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
   },
 
   fixture: async ({ context }, use) => {
+    // Pages opened via fixture.goto() are tracked here and closed in this
+    // fixture's own teardown. Without this, every fixture.goto() call across
+    // every test in the file leaks a page for the lifetime of the worker —
+    // playwright.config.ts pins workers: 1, so all 12+ tests in this suite
+    // share one BrowserContext and accumulate pages with no bound. Enough
+    // orphaned pages eventually destabilizes the context (observed as
+    // "Target page, context or browser has been closed" mid-test).
+    const openedPages: Array<Page> = []
+
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name: string) {
         const page = await context.newPage()
+        openedPages.push(page)
         const filePath = path.join(FIXTURE_DIR, `${name}.html`)
         await page.goto(`file://${filePath}`)
         return page
       },
     })
+
+    // Teardown: close every page this fixture instance opened, regardless
+    // of whether the test passed, failed, or the page was already closed
+    // by the test itself. Closing an already-closed page is a no-op error
+    // we deliberately swallow — order of teardown vs. test-level cleanup
+    // is not guaranteed and either side may have already closed it.
+    await Promise.all(
+      openedPages.map((p) =>
+        p.close().catch(() => {
+          // already closed — fine
+        })
+      )
+    )
   },
 })
 
