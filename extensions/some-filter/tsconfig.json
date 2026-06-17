@@ -18,11 +18,29 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@filter/*": ["src/*"]
+      "@filter/*": ["./src/*"],
+      "@filter/playwright/*": ["./tests/e2e/*"],
+      "@filter/platform/api": ["./src/lib/platform/api.ts"],
+      "@filter/platform/content": ["./src/lib/platform/api.ts"],
+      "@filter/platform/background": ["./src/lib/platform/api.ts"]
     },
-    "types": ["firefox-webext-browser", "chrome"]
+    "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "vite.config.chromium.ts",
+    "vite.config.firefox.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/e2e/.chromium-user-data",
+    "playwright-report",
+    "test-results"
+  ]
 }

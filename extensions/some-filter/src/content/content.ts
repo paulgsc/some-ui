@@ -3,6 +3,7 @@ import {
   DARK_THEME_ATTR,
   injectDarkTheme,
   removeDarkTheme,
+  repatchPage,
 } from "@filter/lib/content/dark-theme"
 import {
   isExtensionMessage,
@@ -11,7 +12,9 @@ import {
 import {
   commitVisualState,
   disablePrepaint,
+  withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
+import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
 
@@ -76,6 +79,30 @@ function deactivateDarkTheme(): void {
   removeDarkTheme()
 }
 
+// ── State cache ───────────────────────────────────────────────────────────────
+// sessionStorage is per-tab and persists across refreshes, letting legacy/off
+// tabs restore their state synchronously without waiting for the background.
+
+const STATE_CACHE_KEY = "__sw_tab_state"
+
+function readCachedState(): TabState | null {
+  try {
+    const val = sessionStorage.getItem(STATE_CACHE_KEY)
+    if (val === "auto" || val === "legacy" || val === "off") return val
+  } catch {
+    // Unavailable in some contexts (e.g. storage-restricted private browsing).
+  }
+  return null
+}
+
+function writeCachedState(state: TabState): void {
+  try {
+    sessionStorage.setItem(STATE_CACHE_KEY, state)
+  } catch {
+    // Ignore write failures.
+  }
+}
+
 // ── State machine ─────────────────────────────────────────────────────────────
 
 let currentState: TabState = "auto"
@@ -84,12 +111,15 @@ let autoWasApplied = false
 
 function applyState(state: TabState): void {
   currentState = state
+  writeCachedState(state)
 
   deactivateDarkTheme()
   removeLegacyFilter()
 
   if (state === "auto") {
-    disablePrepaint()
+    // Do not pre-remove the veil here. runAutoClassify uses
+    // withPrepaintSuppressed for snapshot isolation and handles veil
+    // teardown atomically after theme injection.
     runAutoClassify()
     return
   }
@@ -119,20 +149,34 @@ function cycleState(): void {
 // ── Classification ────────────────────────────────────────────────────────────
 
 function runAutoClassify(): void {
-  const { isLight, skip, avgLuminance } = classifyPage()
+  // classifyPage() AND activateDarkTheme() (which internally calls patchAll())
+  // must both run inside the same prepaint suppression lock. Extending the lock
+  // to cover patchAll() ensures the initial DOM patch reads native, non-
+  // transition-interpolated colors — the same guarantee we give classifyPage().
+  // Without this, patchAll() would run after the freeze style is removed and
+  // could catch mid-transition near-zero alpha values, tagging light elements
+  // as `preserve` and permanently exposing white after veil drop.
+  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() => {
+    const result = classifyPage()
+    if (!result.skip && result.isLight) {
+      // Inject theme CSS + run initial patchAll inside the lock.
+      // The dark substrate is in the cascade before withPrepaintSuppressed
+      // returns, so veil removal (commitVisualState below) is already atomic.
+      activateDarkTheme()
+    }
+    return result
+  })
 
   autoWasApplied = Boolean(!skip && isLight)
 
   if (autoWasApplied) {
     commitVisualState()
-    activateDarkTheme()
   } else {
     disablePrepaint()
   }
 
   document.body.dataset.swLuminance =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    avgLuminance !== undefined ? avgLuminance?.toFixed(3) : "unknown"
+    avgLuminance !== null ? avgLuminance.toFixed(3) : "unknown"
 
   document.body.dataset.swThemeApplied = autoWasApplied ? "dark" : "none"
 
@@ -146,9 +190,20 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
-  const bootstrap = async (): Promise<void> => {
+  // Restore the last-known state synchronously from sessionStorage so that
+  // legacy/off tabs can apply the correct visual state before the background
+  // responds. For a cold background this avoids a 100–300 ms window of
+  // un-filtered native page between veil drop and filter application.
+  // Falls back to "auto" on the very first visit (no cache yet).
+  const cached = readCachedState()
+  if (cached !== null) currentState = cached
+
+  applyState(currentState)
+
+  // Fire background request in parallel; reconcile when it arrives.
+  void (async (): Promise<void> => {
     try {
-      const response = await browser.runtime.sendMessage({
+      const response = await ext.runtime.sendMessage({
         type: "GET_TAB_FILTER_STATE",
       })
 
@@ -156,22 +211,37 @@ function init(): void {
         filterConfig = response.config
 
         if (response.enabled) {
-          currentState = "legacy"
+          // Background confirms legacy — ensure we're there regardless of cache.
+          if (currentState !== "legacy") applyState("legacy")
+        } else if (currentState === "legacy") {
+          // Cache said legacy but this tab is no longer in the filter list
+          // (user removed it via popup). Re-classify with auto.
+          applyState("auto")
         }
       }
     } catch {
-      // background unavailable
+      // background unavailable — cached/auto decision stands
     }
+  })()
 
-    applyState(currentState)
-  }
-
-  void bootstrap()
+  // SPA navigation re-patch: re-run the luminance patcher after pushState
+  // navigations and YouTube's custom navigation event so newly rendered
+  // subtrees are themed even when no new DOM nodes are added.
+  // Note: third-party tab suspenders that replace the page with their own
+  // origin URL are out-of-process and cannot be covered here; our re-
+  // engagement on the real-URL reload is handled by the normal init path.
+  // Run synchronously — yt-navigate-finish fires after YouTube's DOM is
+  // settled, so calling repatchPage() immediately stays ahead of the next
+  // frame paint. A microtask delay would yield the thread and risk a frame
+  // where newly inserted nodes are unpatched.
+  window.addEventListener("yt-navigate-finish", () => {
+    if (autoWasApplied) repatchPage()
+  })
 }
 
 // ── Message listener ──────────────────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener((msg: unknown): void => {
+ext.runtime.onMessage.addListener((msg: unknown): void => {
   if (!isExtensionMessage(msg)) {
     return
   }

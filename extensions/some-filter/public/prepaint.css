@@ -1,4 +1,5 @@
 /* repaint.css */
+
 /* document_start prepaint shell */
 
 /*
@@ -9,21 +10,30 @@
   - safely disengage after real paint stabilizes
 */
 
+/*
+  Sentinel custom property — content scripts locate this specific stylesheet
+  by checking for this property, allowing them to toggle sheet.disabled for
+  prepaint-suppressed classification without touching the DOM attribute.
+*/
+:root {
+  --sw-prepaint-sheet: 1;
+}
+
 html[data-sw-prepaint],
 html[data-sw-prepaint] body {
-  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
-    contrast(0.92) !important;
-
   background-color: #0d1117 !important;
   color-scheme: dark !important;
+  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
+    contrast(0.92) !important;
 }
 
 /*
-  Prevent vendor white backgrounds during initial parse.
-  Avoid blanket transparent wipes.
+  Keep body dark (not transparent) so it acts as a solid dark canvas.
+  Child containers are transparent so they inherit this substrate instead
+  of their own vendor-set white backgrounds — avoiding punch-through to a
+  white stacking context that would leak through the invert filter.
 */
 
-html[data-sw-prepaint] body,
 html[data-sw-prepaint] div,
 html[data-sw-prepaint] section,
 html[data-sw-prepaint] main,

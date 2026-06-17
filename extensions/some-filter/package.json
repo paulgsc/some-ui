@@ -42,9 +42,11 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "build:background": "BUILD_TARGET=background vite build",
+    "build:chromium": "vite build --config vite.config.chromium.ts",
     "build:content": "BUILD_TARGET=content vite build",
+    "build:firefox": "vite build --config vite.config.firefox.ts",
     "build:popup": "vite build",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
@@ -53,6 +55,10 @@
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "test": "vitest",
+    "test:e2e": "pnpm build:chromium && playwright test",
+    "test:e2e:headed": "pnpm build:chromium && playwright test --headed",
+    "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
+    "test:e2e:ui": "pnpm build:chromium && playwright test --ui",
     "typecheck": "tsc --noEmit",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""

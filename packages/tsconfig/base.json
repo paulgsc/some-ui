@@ -5,7 +5,6 @@
     "outDir": "dist",
     "allowJs": true,
     "noEmit": true,
-    "downlevelIteration": true,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
