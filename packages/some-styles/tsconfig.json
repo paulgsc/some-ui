@@ -1,0 +1,12 @@
+{
+  "extends": "@some-ui/tsconfig/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src", "uno.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  Showcase input for `pnpm build:css`.
+
+  This is a plain HTML surface using the some-ui preset utilities and
+  shortcuts. Running the UnoCSS CLI over it produces `dist/some-ui.css`: a
+  static stylesheet that, combined with `tokens/base.css`, fully styles this
+  page at runtime with no CSS engine present. It doubles as a manual preview
+  of the shadcn-flavored components.
+-->
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>@some-ui/styles — showcase</title>
+    <link rel="stylesheet" href="../tokens/base.css" />
+    <link rel="stylesheet" href="../dist/some-ui.css" />
+  </head>
+  <body class="bg-background text-foreground font-sans p-8 flex flex-col gap-6">
+    <header class="flex flex-col gap-1">
+      <h1 class="text-2xl font-semibold tracking-tight">@some-ui/styles</h1>
+      <p class="text-sm text-muted-foreground">
+        Dev-time UnoCSS, runtime vanilla CSS.
+      </p>
+    </header>
+
+    <section class="flex flex-wrap gap-3">
+      <button class="btn-primary">Primary</button>
+      <button class="btn-secondary">Secondary</button>
+      <button class="btn-outline">Outline</button>
+      <button class="btn-ghost">Ghost</button>
+      <button class="btn-destructive">Destructive</button>
+      <button class="btn-link">Link</button>
+    </section>
+
+    <section class="flex flex-wrap gap-3">
+      <span class="badge-primary">Primary</span>
+      <span class="badge-secondary">Secondary</span>
+      <span class="badge-outline">Outline</span>
+      <span class="badge-destructive">Destructive</span>
+    </section>
+
+    <section class="card max-w-sm">
+      <div class="card-header">
+        <h2 class="card-title">Card title</h2>
+        <p class="card-description">A rounded, token-driven surface.</p>
+      </div>
+      <div class="card-content flex flex-col gap-3">
+        <label class="label" for="email">Email</label>
+        <input id="email" class="input" placeholder="you@example.com" />
+      </div>
+      <div class="card-footer gap-2">
+        <button class="btn-primary btn-sm">Save</button>
+        <button class="btn-ghost btn-sm">Cancel</button>
+      </div>
+    </section>
+  </body>
+</html>
