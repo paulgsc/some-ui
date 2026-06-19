@@ -271,10 +271,7 @@ export class PopupRenderer {
     // Assign visibility classes to the shell (not to the inner layout div)
     structShell.className = "pf-panel pf-panel-visible"
 
-    const { root: moodShell, refs: moodRefs } = buildOpinionatedSection(
-      this.el.bind(this),
-      prefill
-    )
+    const { root: moodShell, refs: moodRefs } = buildOpinionatedSection(prefill)
     moodShell.className = "pf-panel"
 
     panelHost.appendChild(structShell)

@@ -1,20 +1,10 @@
-import "@drama/styles/popup.css" // Assumes loading of the new .css engine
+import "@drama/styles/popup.css"
 
 import { useEffect, useRef } from "react"
 import type { DramaEntry, MomentTag } from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { buildOpinionatedSection } from "."
-
-// ── DOM Helper Bridge ────────────────────────────────────────────────────────
-const el = <K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls?: string
-): HTMLElementTagNameMap[K] => {
-  const e = document.createElement(tag)
-  if (cls) e.className = cls
-  return e
-}
 
 const ALL_TAGS: ReadonlyArray<MomentTag> = [
   "confession",
@@ -28,19 +18,13 @@ const ALL_TAGS: ReadonlyArray<MomentTag> = [
 ]
 
 type BridgeProps = {
-  /** Section 1: Metadata */
   title: string
   episode: number
-  watchDate: string
-  /** Section 2: What Happened? */
   tags: Array<MomentTag>
-  /** Section 3: What Changed? */
-  transitions: Array<{ before: string; after: string }>
-  /** Section 4: Why Did It Matter? */
-  whyItRimmed: string
-  /** Section 5: Memorable Quote */
+  transitionBefore: string
+  transitionAfter: string
+  reflection: string
   featuredQuote: string
-  /** Section 7: Advanced Metrics (Collapsed by default) */
   rating: number
   momentumDirection: "rising" | "steady" | "falling"
   completionLikelihood: number
@@ -49,10 +33,10 @@ type BridgeProps = {
 const FormOpinionatedBridge = ({
   title,
   episode,
-  watchDate,
   tags,
-  transitions,
-  whyItRimmed,
+  transitionBefore,
+  transitionAfter,
+  reflection,
   featuredQuote,
   rating,
   momentumDirection,
@@ -67,18 +51,16 @@ const FormOpinionatedBridge = ({
     const prefill: Partial<DramaEntry> = {
       title,
       episode,
-      watchDate,
       tags,
-      transitions,
-      whyItRimmed,
+      transition: { before: transitionBefore, after: transitionAfter },
+      note: reflection,
       featuredQuote,
       rating,
       momentum: { value: 50, direction: momentumDirection },
       completionLikelihood,
     }
 
-    // Mounts isolation component built strictly on the v2 single-column spec
-    const { root } = buildOpinionatedSection(el, prefill)
+    const { root } = buildOpinionatedSection(prefill)
 
     container.innerHTML = ""
     container.appendChild(root)
@@ -89,10 +71,10 @@ const FormOpinionatedBridge = ({
   }, [
     title,
     episode,
-    watchDate,
     tags,
-    transitions,
-    whyItRimmed,
+    transitionBefore,
+    transitionAfter,
+    reflection,
     featuredQuote,
     rating,
     momentumDirection,
@@ -108,7 +90,7 @@ const FormOpinionatedBridge = ({
         alignItems: "center",
         justifyContent: "center",
         padding: "40px 0",
-        background: "#121016",
+        background: "var(--moon-900)",
       }}
     >
       <div
@@ -125,15 +107,13 @@ const FormOpinionatedBridge = ({
           zIndex: 10,
         }}
       >
-        Journal Authoring Tool v2 — Single-Column Notebook Layout
+        Journal Authoring Tool v3 — Strawberry Moon · Accordion Layout
       </div>
 
-      {/* Main Authoring Wrapper Mimicking App Frame */}
       <div
         style={{
           width: "100%",
           maxWidth: "640px",
-          background: "#fcfbf9",
           borderRadius: "16px",
           boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
           overflow: "hidden",
@@ -145,34 +125,26 @@ const FormOpinionatedBridge = ({
   )
 }
 
-// ── Meta ─────────────────────────────────────────────────────────────────────
 const meta: Meta<BridgeProps> = {
-  title: "Extensions/Drama/Components/JournalAuthoringUI-v2",
+  title: "Extensions/Drama/Components/JournalAuthoringUI-v3",
   component: FormOpinionatedBridge,
   parameters: { layout: "fullscreen" },
   argTypes: {
     title: { control: "text", name: "Drama Title" },
-    episode: { control: { type: "number", min: 1 }, name: "Episode Number" },
-    watchDate: { control: "text", name: "Watch Date (YYYY-MM-DD)" },
-    tags: {
-      control: "check",
-      options: [...ALL_TAGS],
-      name: "Key Moments (What Happened?)",
-    },
-    transitions: {
-      control: "object",
-      name: "Transitions Grid (Before → After)",
-    },
-    whyItRimmed: { control: "text", name: "Why It Mattered Description" },
-    featuredQuote: { control: "text", name: "Memorable Quote Text" },
+    episode: { control: { type: "number", min: 0 }, name: "Episode Number" },
+    tags: { control: "check", options: [...ALL_TAGS], name: "Key Moments" },
+    transitionBefore: { control: "text", name: "Transition: Before" },
+    transitionAfter: { control: "text", name: "Transition: After" },
+    reflection: { control: "text", name: "Why It Mattered" },
+    featuredQuote: { control: "text", name: "Memorable Quote" },
     rating: {
       control: { type: "range", min: 0, max: 10, step: 2 },
-      description: "Maps internally to a 1–5 star display scale",
+      description: "Maps to 1–5 stars",
     },
     momentumDirection: {
       control: "inline-radio",
       options: ["rising", "steady", "falling"],
-      name: "Advanced: Momentum Direction",
+      name: "Advanced: Momentum",
     },
     completionLikelihood: {
       control: { type: "range", min: 0, max: 1, step: 0.05 },
@@ -184,34 +156,32 @@ const meta: Meta<BridgeProps> = {
 export default meta
 type Story = StoryObj<BridgeProps>
 
-// ── Stories ──────────────────────────────────────────────────────────────────
-
-/** Baseline spec goal: Simple, low friction, lightning-fast capture. */
+/** Baseline: pre-filled entry, "What Happened?" open by default. */
 export const StandardEntry: Story = {
   args: {
     title: "Crash Landing on You",
     episode: 12,
-    watchDate: "2026-06-14",
     tags: ["confession", "reunion"],
-    transitions: [{ before: "Distrust", after: "Trust" }],
-    whyItRimmed:
+    transitionBefore: "Distrust",
+    transitionAfter: "Trust",
+    reflection:
       "The confession finally broke the emotional stalemate that existed for six episodes.",
     featuredQuote: "Stay. Just this once.",
-    rating: 8, // Represents 4 out of 5 stars
+    rating: 8,
     momentumDirection: "rising",
     completionLikelihood: 0.9,
   },
 }
 
-/** Fresh journal slate: Empty state demonstrating immediate cognitive ease. */
+/** Fresh journal slate — empty state, preview shows the empty hint. */
 export const BlankSlate: Story = {
   args: {
     title: "",
     episode: 1,
-    watchDate: new Date().toISOString().split("T")[0],
     tags: [],
-    transitions: [{ before: "", after: "" }],
-    whyItRimmed: "",
+    transitionBefore: "",
+    transitionAfter: "",
+    reflection: "",
     featuredQuote: "",
     rating: 0,
     momentumDirection: "steady",
@@ -219,19 +189,15 @@ export const BlankSlate: Story = {
   },
 }
 
-/** Demonstrates scalability with multiple parallel emotional movements. */
-export const ComplexArcTransitions: Story = {
+/** Complex arc — multiple tags, full preview card with chips. */
+export const ComplexArc: Story = {
   args: {
     title: "Twenty-Five Twenty-One",
     episode: 14,
-    watchDate: "2026-05-20",
     tags: ["separation", "sacrifice", "other"],
-    transitions: [
-      { before: "Isolation", after: "Belonging" },
-      { before: "Enemies", after: "Partners" },
-      { before: "Certainty", after: "Heartbreak" },
-    ],
-    whyItRimmed:
+    transitionBefore: "Isolation",
+    transitionAfter: "Belonging",
+    reflection:
       "They promised forever but the realities of distance are changing their dynamic irrevocably.",
     featuredQuote: "Your support is the only thing I need to breathe.",
     rating: 10,
