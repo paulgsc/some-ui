@@ -10,6 +10,8 @@
  * Parent context: shadow root viewport edge — the strip docks to the bottom.
  */
 
+import "@conveyor/styles/conveyor.css"
+
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import { ClockFace } from "@conveyor/components/faces/clock"

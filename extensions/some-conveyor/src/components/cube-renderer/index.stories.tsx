@@ -9,6 +9,8 @@
  * Parent context: none — each cube is self-contained.
  */
 
+import "@conveyor/styles/conveyor.css"
+
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import { ClockFace } from "@conveyor/components/faces/clock"
