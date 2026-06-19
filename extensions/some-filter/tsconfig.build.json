@@ -5,6 +5,7 @@
     "**/*.stories.tsx",
     "**/*.stories.ts",
     "vite.config*.ts",
+    "vitest.*.ts",
     "playwright.config.ts",
     ".playwright*/**",
     ".chromium*/**",

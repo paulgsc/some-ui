@@ -15,6 +15,7 @@ export default defineConfig(
         // projectService replaces `project: true` — uses TS language service
         // for faster, more accurate type-aware linting in monorepos (stable TS-ESLint v8+)
         projectService: true,
+        tsconfigRootDir: import.meta.dirname,
         allowAutomaticSingleRunInference: true,
         ecmaFeatures: {
           jsx: true,

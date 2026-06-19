@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!--
   Dark-page fixture: a page that is genuinely dark (not prepaint-poisoned).
 
@@ -10,15 +10,21 @@
   both produce themeApplied="none", but only the poisoned case has luminance ≈ 0.005
   on what should be a white page.
 -->
-<html style="background-color: rgb(30, 30, 30);">
-<head>
-  <meta charset="utf-8" />
-  <title>Dark Page Fixture</title>
-</head>
-<body style="background-color: rgb(30, 30, 30); margin: 0; color: rgb(220, 220, 220);">
-  <main style="background-color: rgb(30, 30, 30);">
-    <h1>Dark Page Fixture</h1>
-    <p>Dark background — dark theme should NOT be applied.</p>
-  </main>
-</body>
+<html style="background-color: rgb(30, 30, 30)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dark Page Fixture</title>
+  </head>
+  <body
+    style="
+      background-color: rgb(30, 30, 30);
+      margin: 0;
+      color: rgb(220, 220, 220);
+    "
+  >
+    <main style="background-color: rgb(30, 30, 30)">
+      <h1>Dark Page Fixture</h1>
+      <p>Dark background — dark theme should NOT be applied.</p>
+    </main>
+  </body>
 </html>
