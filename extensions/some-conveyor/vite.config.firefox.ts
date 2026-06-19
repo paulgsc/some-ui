@@ -1,9 +1,9 @@
 /**
  *
- * Firefox MV2 production build.
+ * Firefox MV3 production build.
  *
  * Differences from the Chromium config:
- *   - Copies firefox-v2-manifest.json → dist/manifest.json
+ *   - Copies firefox-v3-manifest.json → dist/manifest.json (MV3 with background.scripts)
  *   - Aliases @censor/platform/api → api.firefox.ts  (browser.* global)
  *   - Output dir: dist/ (same — clean CI)
  *
@@ -19,7 +19,7 @@ import { defineConfig } from "vite"
 import tsconfigPaths from "vite-tsconfig-paths"
 
 /**
- * One-shot plugin: copies the MV2 manifest after the bundle is written so
+ * One-shot plugin: copies the MV3 manifest after the bundle is written so
  * Rollup's emptyOutDir: true doesn't race with a pre-copy.
  */
 function firefoxManifestPlugin(): Plugin {
@@ -27,11 +27,11 @@ function firefoxManifestPlugin(): Plugin {
     name: "boyo-firefox-manifest",
     closeBundle(): void {
       copyFileSync(
-        resolve(__dirname, "public/firefox-v2-manifest.json"),
+        resolve(__dirname, "public/firefox-v3-manifest.json"),
         resolve(__dirname, "dist/manifest.json")
       )
       // eslint-disable-next-line no-console
-      console.log("[BOYO] Wrote Firefox MV2 manifest → dist/manifest.json")
+      console.log("[BOYO] Wrote Firefox MV3 manifest → dist/manifest.json")
     },
   }
 }
