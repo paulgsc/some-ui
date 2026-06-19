@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!--
+  Basic fixture page for some-conveyor E2E tests.
+
+  The content script runs on all pages matching the manifest's content_scripts
+  pattern. This page provides a minimal host for:
+    - conveyor-init.spec.ts: shadow host insertion + guard attribute
+    - wasm-bridge.spec.ts: WASM graceful failure, conveyor still initialises
+
+  The page is intentionally content-free — the conveyor is page-agnostic and
+  does not inspect background colour or classify the page.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Conveyor Basic Page Fixture</title>
+</head>
+<body>
+  <h1>Conveyor Basic Page Fixture</h1>
+  <p>The conveyor shadow host should appear at the bottom of this page.</p>
+</body>
+</html>

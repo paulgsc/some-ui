@@ -13,7 +13,7 @@
   },
 
   "background": {
-    "service_worker": "background.js",
+    "scripts": ["background.js"],
     "type": "module"
   },
 
@@ -46,5 +46,12 @@
       "resources": ["*.wasm", "assets/*", "styles/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "some-conveyor@maishatu.com",
+      "strict_min_version": "109.0"
+    }
+  }
 }

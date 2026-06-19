@@ -401,7 +401,7 @@ Allows conveyor injection on arbitrary pages.
 ### Web Accessible Resources
 
 ```json
-["*.wasm", "assets/*"]
+["*.wasm", "assets/*", "styles/*"]
 ```
 
 Exposes:
@@ -409,6 +409,7 @@ Exposes:
 - Rust/WASM builds
 - icons
 - runtime assets
+- the shadow-DOM stylesheet (`styles/conveyor.css`), injected by URL
 
 ---
 

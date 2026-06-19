@@ -1,3 +1,4 @@
+import { ext } from "@censor/platform/content"
 import type { Disposable, FaceAction } from "@conveyor/types"
 
 /**
@@ -11,7 +12,7 @@ import type { Disposable, FaceAction } from "@conveyor/types"
  *   a. Browser behavior  — tab nav, play/pause, popup/messaging
  *   b. Fetch side effects — localhost service calls
  *
- * Note on browser.scripting.executeScript:
+ * Note on ext.scripting.executeScript:
  *   Requires Firefox 102+ and the "scripting" permission.
  *   Used for TogglePlayback — injecting play/pause into the active tab's
  *   media context. This is the only reliable cross-origin media control
@@ -32,6 +33,7 @@ export class EffectBus implements Disposable {
     try {
       await this.execute(action)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("[EffectBus] Action failed:", action.type, err)
     }
   }
@@ -42,18 +44,18 @@ export class EffectBus implements Disposable {
         return
 
       case "OpenTab":
-        await browser.tabs.create({ url: action.url })
+        await ext.tabs.create({ url: action.url })
         return
 
       case "FocusTab": {
-        const tabs = await browser.tabs.query({ url: action.url })
+        const tabs = await ext.tabs.query({ url: action.url })
         if (tabs.length > 0 && tabs[0]!.id != null) {
-          await browser.tabs.update(tabs[0]!.id, { active: true })
+          await ext.tabs.update(tabs[0]!.id, { active: true })
           if (tabs[0]!.windowId != null) {
-            await browser.windows.update(tabs[0]!.windowId, { focused: true })
+            await ext.windows.update(tabs[0]!.windowId, { focused: true })
           }
         } else {
-          await browser.tabs.create({ url: action.url })
+          await ext.tabs.create({ url: action.url })
         }
         return
       }
@@ -62,14 +64,14 @@ export class EffectBus implements Disposable {
         const tabs =
           action.tabId != null
             ? [{ id: action.tabId }]
-            : await browser.tabs.query({ active: true, currentWindow: true })
+            : await ext.tabs.query({ active: true, currentWindow: true })
 
         const tabId = tabs[0]?.id
         if (tabId == null) return
 
         // Inject a small script into the target tab to toggle media playback.
         // Requires "scripting" permission (MV3) — declared in manifest.
-        await browser.scripting.executeScript({
+        await ext.scripting.executeScript({
           target: { tabId },
           func: () => {
             const videos = document.querySelectorAll<HTMLVideoElement>("video")
@@ -86,13 +88,19 @@ export class EffectBus implements Disposable {
       }
 
       case "ShowPopup":
-        // Opens the extension action popup programmatically.
-        // browser.action.openPopup() is MV3 Firefox 109+.
-        await (browser.action as any).openPopup?.()
+        {
+          // ext.action.openPopup() is MV3 Firefox 109+ / Chrome 99+; not in the
+          // webextension-polyfill types yet so we widen through unknown first.
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          const actionApi = ext.action as unknown as {
+            openPopup?: () => Promise<void>
+          }
+          await actionApi.openPopup?.()
+        }
         return
 
       case "SendMessage":
-        await browser.runtime.sendMessage(action.payload)
+        await ext.runtime.sendMessage(action.payload)
         return
 
       case "LocalhostFetch": {

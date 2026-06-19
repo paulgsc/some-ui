@@ -18,6 +18,7 @@ export class DisposableRegistry implements Disposable {
 
   register<T extends Disposable>(d: T): T {
     if (this.disposed) {
+      // eslint-disable-next-line no-console
       console.warn(
         "[DisposableRegistry] Registering after dispose — disposing immediately"
       )
@@ -42,6 +43,7 @@ export class DisposableRegistry implements Disposable {
       try {
         entry.dispose()
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("[DisposableRegistry] Error during dispose:", err)
       }
     }

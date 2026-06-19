@@ -18,11 +18,21 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@conveyor/*": ["src/*"]
+      "@conveyor/*": ["src/*"],
+      "@conveyor/playwright/*": ["tests/e2e/*"],
+      "@censor/platform/content": ["src/lib/platform/api.ts"],
+      "@censor/platform/background": ["src/lib/platform/api.ts"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
-  "include": ["src", "tests/**/*.ts", "tests/**/*.tsx", "vite.config*.ts"],
+  "include": [
+    "src",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config*.ts",
+    "playwright.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": [
     "node_modules",
 
