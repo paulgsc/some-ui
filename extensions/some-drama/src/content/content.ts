@@ -28,8 +28,6 @@
 //          a failed init). Fixed: keybinding calls fetchAndRender() when no
 //          card exists instead of silently doing nothing.
 
-import "@drama/styles/content.css"
-
 import { DramaCard } from "@drama/components/drama-card"
 import { installKeybindings } from "@drama/lib/content/keybindings"
 import type {
