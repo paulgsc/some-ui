@@ -158,7 +158,7 @@ function renderEmptyPill(
 
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
-  pill.className = "dc-empty-pill"
+  pill.className = "dc-empty-pill bottom-5 right-5 w-3 h-3 rounded-full pointer-events-none opacity-0"
   container.appendChild(pill)
 
   // Fade in on next paint
