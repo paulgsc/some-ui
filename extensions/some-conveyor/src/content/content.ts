@@ -28,10 +28,15 @@ import type { FaceAction, ViewportItemSpec } from "@conveyor/types"
 import { DEFAULT_CONVEYOR_CONFIG } from "@conveyor/types"
 
 // ── Stylesheet URL ────────────────────────────────────────────────────────────
-// Vite resolves this import as a URL string at build time (via ?url suffix).
-// The URL points to the bundled conveyor.css in the extension package,
-// served as a web_accessible_resource.
-import styleUrl from "../styles/conveyor.css?url"
+// The shadow root loads the compiled stylesheet as a web_accessible_resource.
+// `src/styles/conveyor.css` is authored with `@apply` against the @some-ui/styles
+// preset and compiled to plain static CSS by `@unocss/cli` (the `build:css`
+// script) → `dist/styles/conveyor.css`. We resolve it via the extension runtime
+// rather than a Vite `?url` import so Vite never runs its CSS pipeline over the
+// directive source; the build-time CLI is the single producer of this asset and
+// no CSS engine ships to the page. `styles/*` is declared web_accessible_resources
+// in both manifests.
+const styleUrl = ext.runtime.getURL("styles/conveyor.css")
 
 // ── Duplicate injection guard ───────────────────────────────────────────────────
 

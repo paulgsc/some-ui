@@ -30,6 +30,7 @@
     "tests/**/*.ts",
     "tests/**/*.tsx",
     "vite.config*.ts",
+    "uno.config.ts",
     "playwright.config.ts",
     "vitest.setup.ts"
   ],
