@@ -67,7 +67,12 @@ export function buildStructuralSection(
   // ── 2-col grid ────────────────────────────────────────────────────────────
   const grid = el("div", "p-form-grid")
 
-  const gridField = (lbl: string, id: string, val = "", ph = "") => {
+  const gridField = (
+    lbl: string,
+    id: string,
+    val = "",
+    ph = ""
+  ): { grp: HTMLDivElement; inp: HTMLInputElement } => {
     const grp = el("div", "p-field")
     const l = el("label", "p-label")
     l.textContent = lbl

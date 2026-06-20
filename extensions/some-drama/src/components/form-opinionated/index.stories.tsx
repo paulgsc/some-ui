@@ -50,7 +50,7 @@ const FormOpinionatedBridge = ({
 
     const prefill: Partial<DramaEntry> = {
       title,
-      episode,
+      episode: String(episode),
       tags,
       transition: { before: transitionBefore, after: transitionAfter },
       note: reflection,

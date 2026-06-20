@@ -1,4 +1,3 @@
-
 // ── Accordion ─────────────────────────────────────────────────────────────
 // Single-open accordion item. Owns: open/close state, height animation.
 // Parent controls exclusivity via the `group` callback.
@@ -66,7 +65,7 @@ export function buildAccordionGroup(
   const root = el("div", "dj-accordion-group")
   const built: Array<AccordionItem> = []
 
-  items.forEach(({ title, body }, idx) => {
+  items.forEach(({ title, body }) => {
     const item = buildAccordionItem(title, body, (self) => {
       const wasOpen = self.isOpen()
       built.forEach((it) => it.setOpen(false))
@@ -77,7 +76,7 @@ export function buildAccordionGroup(
   })
 
   if (built[initiallyOpenIndex]) {
-    built[initiallyOpenIndex]!.setOpen(true)
+    built[initiallyOpenIndex].setOpen(true)
   }
 
   return { root, items: built }
