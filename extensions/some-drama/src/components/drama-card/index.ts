@@ -50,15 +50,15 @@ export class DramaCard {
     this.root.dataset.size = this.currentSize
 
     // ── Title pill ────────────────────────────────────────────────────────────
-    const titlePill = el("div", "dc-title-pill")
+    const titlePill = el("div", "dc-title-pill flex items-center overflow-hidden")
     const titleDot = el("span", "dc-title-dot")
     this.titleText = el("span", "dc-title-text")
     titlePill.appendChild(titleDot)
     titlePill.appendChild(this.titleText)
 
     // ── Card shell ────────────────────────────────────────────────────────────
-    this.card = el("div", "dc-card")
-    this.sizeBtn = el("button", "dc-size-btn")
+    this.card = el("div", "dc-card flex flex-row items-end overflow-visible relative cursor-grab")
+    this.sizeBtn = el("button", "dc-size-btn flex items-center justify-center")
     this.sizeBtn.title = "Resize"
     this.sizeBtn.textContent = "⊞"
 

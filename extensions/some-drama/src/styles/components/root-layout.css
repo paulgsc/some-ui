@@ -98,6 +98,25 @@
   height: 120px;
 }
 
+/* ── Empty-state pill ───────────────────────────────────────────────────────*/
+.dc-empty-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  background: hsl(25 25% 15% / 0.92);
+  border: 1.5px solid hsl(340 50% 55% / 0.4);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 12px;
+  color: hsl(30 15% 60%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────────*/
 @media (max-width: 440px) {
   #dc-root[data-size="compact"] .dc-card-right {

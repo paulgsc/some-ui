@@ -158,23 +158,7 @@ function renderEmptyPill(
 
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
-  Object.assign(pill.style, {
-    position: "fixed",
-    bottom: "24px",
-    right: "24px",
-    zIndex: "2147483647",
-    background: "hsl(25 25% 15% / 0.92)",
-    border: "1.5px solid hsl(340 50% 55% / 0.4)",
-    borderRadius: "999px",
-    padding: "8px 16px",
-    fontFamily: "Georgia, serif",
-    fontStyle: "italic",
-    fontSize: "12px",
-    color: "hsl(30 15% 60%)",
-    pointerEvents: "none",
-    opacity: "0",
-    transition: "opacity 0.5s ease",
-  })
+  pill.className = "dc-empty-pill"
   pill.textContent = "no drama active — open popup on video tab"
   container.appendChild(pill)
 

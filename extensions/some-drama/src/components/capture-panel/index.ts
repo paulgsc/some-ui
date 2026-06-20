@@ -26,10 +26,10 @@ export class CapturePanel {
     const title = el("div", "dc-panel-title")
     title.textContent = "how are you feeling right now?"
 
-    const grid = el("div", "dc-emotion-grid")
+    const grid = el("div", "dc-emotion-grid flex flex-wrap gap-2.5")
 
     MOODS.forEach((m) => {
-      const btn = el("button", "dc-emo-btn")
+      const btn = el("button", "dc-emo-btn flex items-center justify-center")
       btn.textContent = m.emoji
       btn.title = m.label
       btn.addEventListener("click", (e) => {

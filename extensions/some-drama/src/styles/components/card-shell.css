@@ -26,13 +26,6 @@
     inset 0 1px 0 hsl(340 40% 50% / 0.2),
     inset 0 -1px 0 hsl(340 30% 30% / 0.3);
 
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  overflow: visible;
-  position: relative;
-  cursor: grab;
-
   /* Prevent jitter */
   will-change: box-shadow;
   transform: translateZ(0);
@@ -81,9 +74,6 @@
   border-radius: 50%;
   background: hsl(340 30% 25% / 0.8);
   border: 1px solid var(--dc-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   color: var(--dc-text-secondary);
   font-size: 10px;

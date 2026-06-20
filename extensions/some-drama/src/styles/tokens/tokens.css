@@ -4,6 +4,9 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* ── UnoCSS spacing scale (not emitted when preflights are off) ─────── */
+  --spacing: 0.25rem;
+
   /* ── Core Brand Colors — Vibrant & saturated for dark backgrounds ─────── */
   --dc-peach: hsl(18 95% 65%);
   --dc-rose: hsl(340 85% 60%);
