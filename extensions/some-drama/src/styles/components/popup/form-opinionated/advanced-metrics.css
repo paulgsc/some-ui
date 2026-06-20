@@ -1,8 +1,6 @@
 /* ── Advanced Metrics — tabbed ──────────────────────────────────────────── */
 
 .dj-adv-tabs {
-  display: flex;
-  gap: 4px;
   border-bottom: 1px solid var(--dj-border);
   margin-bottom: 14px;
 }
@@ -33,19 +31,12 @@
 
 .dj-adv-panel {
   display: none;
-  flex-direction: column;
-  gap: 20px;
 }
 
 .dj-adv-panel.dj-adv-panel-active {
   display: flex;
 }
 
-.dj-adv-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
 .dj-adv-label {
   font-size: 12px;
@@ -53,10 +44,6 @@
   color: var(--dj-text);
 }
 
-.dj-stars {
-  display: flex;
-  gap: 4px;
-}
 
 .dj-star-btn {
   background: transparent;
@@ -80,8 +67,6 @@
 }
 
 .dj-radio-label {
-  display: inline-flex;
-  align-items: center;
   font-size: 13px;
   margin-right: 16px;
   cursor: pointer;
@@ -92,11 +77,6 @@
   margin-right: 6px;
 }
 
-.dj-slider-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
 .dj-slider {
   flex: 1;
@@ -111,11 +91,6 @@
   min-width: 36px;
 }
 
-.dj-progress-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .inline-ep {
   width: 50px;
@@ -123,21 +98,7 @@
   padding: 2px 0;
 }
 
-.dj-axis-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.dj-axis-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .dj-axis-row-labels {
-  display: flex;
-  justify-content: space-between;
   font-size: 11px;
   color: var(--dj-muted);
 }

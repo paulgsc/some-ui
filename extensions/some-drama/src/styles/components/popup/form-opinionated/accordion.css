@@ -9,9 +9,6 @@
 
 .dj-accordion-header {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 14px 18px;
   background: transparent;
   border: none;
@@ -24,7 +21,6 @@
 }
 
 .dj-accordion-chevron {
-  display: inline-flex;
   transition: transform var(--dj-spring);
   color: var(--dj-muted);
   font-size: 13px;

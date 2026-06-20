@@ -40,7 +40,7 @@ export function buildOpinionatedSection(prefill: Partial<DramaEntry>): {
   const root = document.createElement("div")
   root.className = "dj-authoring-container"
   const notebook = document.createElement("div")
-  notebook.className = "dj-notebook"
+  notebook.className = "dj-notebook flex flex-col gap-3.5"
   root.appendChild(notebook)
 
   // ── Episode header (always visible) ────────────────────────────────────────

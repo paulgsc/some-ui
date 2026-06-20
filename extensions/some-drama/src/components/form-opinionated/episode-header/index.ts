@@ -14,7 +14,7 @@ export function buildEpisodeHeader(
   value: Pick<JournalDraft, "title" | "episode" | "watchDate">,
   onChange: (patch: Partial<JournalDraft>) => void
 ): { root: HTMLDivElement; refs: EpisodeHeaderRefs } {
-  const root = el("div", "dj-episode-header")
+  const root = el("div", "dj-episode-header flex gap-4 items-end")
 
   const titleInput = el("input", "dj-input-text dj-meta-title")
   titleInput.type = "text"

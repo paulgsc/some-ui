@@ -38,12 +38,12 @@ export function buildStructuralSection(
   const root = el("div")
 
   // Inner layout container
-  const inner = el("div", "pf-structural")
+  const inner = el("div", "pf-structural flex flex-col gap-2.5")
   root.appendChild(inner)
 
   // ── Telemetry badge bar (when scraped data is present) ────────────────────
   if (prefill.timestamp || prefill.progress != null) {
-    const bar = el("div", "p-telemetry-badge-bar")
+    const bar = el("div", "p-telemetry-badge-bar flex flex-wrap gap-1")
     bar.innerHTML = `
       <span class="p-tbadge">⏱️ ${prefill.timestamp || "00:00"}</span>
       <span class="p-tbadge">📈 ${Math.round((prefill.progress || 0) * 100)}%</span>
@@ -53,7 +53,7 @@ export function buildStructuralSection(
   }
 
   // ── Title (full width) ────────────────────────────────────────────────────
-  const titleGroup = el("div", "p-field")
+  const titleGroup = el("div", "p-field flex flex-col gap-1")
   const titleLabel = el("label", "p-label")
   titleLabel.textContent = "Title *"
   const titleInput = el("input", "p-input")
@@ -73,7 +73,7 @@ export function buildStructuralSection(
     val = "",
     ph = ""
   ): { grp: HTMLDivElement; inp: HTMLInputElement } => {
-    const grp = el("div", "p-field")
+    const grp = el("div", "p-field flex flex-col gap-1")
     const l = el("label", "p-label")
     l.textContent = lbl
     const inp = el("input", "p-input")
@@ -117,7 +117,7 @@ export function buildStructuralSection(
   inner.appendChild(grid)
 
   // ── Source URL (full width) ───────────────────────────────────────────────
-  const urlGroup = el("div", "p-field")
+  const urlGroup = el("div", "p-field flex flex-col gap-1")
   const urlLabel = el("label", "p-label")
   urlLabel.textContent = "Source URL"
   const urlInput = el("input", "p-input")
@@ -130,7 +130,7 @@ export function buildStructuralSection(
   inner.appendChild(urlGroup)
 
   // ── Notes (full width) ────────────────────────────────────────────────────
-  const noteGroup = el("div", "p-field")
+  const noteGroup = el("div", "p-field flex flex-col gap-1")
   const noteLabel = el("label", "p-label")
   noteLabel.textContent = "Notes"
   const noteInput = el("input", "p-input")
@@ -142,11 +142,11 @@ export function buildStructuralSection(
   inner.appendChild(noteGroup)
 
   // ── Color picker ──────────────────────────────────────────────────────────
-  const colorGroup = el("div", "p-field")
+  const colorGroup = el("div", "p-field flex flex-col gap-1")
   const colorLabel = el("label", "p-label")
   colorLabel.textContent = "Accent"
   colorGroup.appendChild(colorLabel)
-  const colorRow = el("div", "p-color-row")
+  const colorRow = el("div", "p-color-row flex flex-wrap gap-1.5")
   let chosenColor = prefill.color || ACCENT_COLORS[0]
 
   for (const c of ACCENT_COLORS) {

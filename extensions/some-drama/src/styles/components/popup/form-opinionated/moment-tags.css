@@ -1,11 +1,5 @@
 /* ── Moment Tag Chips ────────────────────────────────────────────────────── */
 
-.dj-tag-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .dj-tag-chip {
   display: inline-flex;
   align-items: center;

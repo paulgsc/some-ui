@@ -1,16 +1,7 @@
 /* ── Transition Editor — emotional state cards ──────────────────────────── */
 
 .dj-transitions-container {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   margin-bottom: 12px;
-}
-
-.dj-transition-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
 }
 
 .dj-state-card {

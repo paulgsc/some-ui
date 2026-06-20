@@ -17,8 +17,8 @@ export function buildTransitionEditor(
   prompt.textContent = "What changed?"
   root.appendChild(prompt)
 
-  const container = el("div", "dj-transitions-container")
-  const row = el("div", "dj-transition-row")
+  const container = el("div", "dj-transitions-container flex flex-col gap-3.5")
+  const row = el("div", "dj-transition-row flex items-center gap-3.5")
 
   const beforeCard = el("div", "dj-state-card")
   beforeCard.contentEditable = "true"

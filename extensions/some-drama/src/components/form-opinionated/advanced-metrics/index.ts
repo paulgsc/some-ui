@@ -41,7 +41,7 @@ export function buildAdvancedMetrics(
   const root = el("div", "dj-advanced")
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
-  const tabBar = el("div", "dj-adv-tabs")
+  const tabBar = el("div", "dj-adv-tabs flex gap-1")
   const tabs = ["Metrics", "Prediction", "Progress"] as const
   const tabButtons = tabs.map((label, i) => {
     const btn = el("button", `dj-adv-tab${i === 0 ? " dj-adv-tab-active" : ""}`)
@@ -53,7 +53,7 @@ export function buildAdvancedMetrics(
   root.appendChild(tabBar)
 
   const panels = tabs.map((_, i) => {
-    const p = el("div", `dj-adv-panel${i === 0 ? " dj-adv-panel-active" : ""}`)
+    const p = el("div", `dj-adv-panel flex-col gap-5${i === 0 ? " dj-adv-panel-active" : ""}`)
     return p
   })
 
@@ -69,12 +69,12 @@ export function buildAdvancedMetrics(
   })
 
   // ── Panel 0: Metrics (rating + peak line) ──────────────────────────────────
-  const ratingGroup = el("div", "dj-adv-field")
+  const ratingGroup = el("div", "dj-adv-field flex flex-col gap-1.5")
   const ratingLabel = el("div", "dj-adv-label")
   ratingLabel.textContent = "Rating"
   ratingGroup.appendChild(ratingLabel)
 
-  const starsContainer = el("div", "dj-stars")
+  const starsContainer = el("div", "dj-stars flex gap-1")
   const starButtons: Array<HTMLButtonElement> = []
   let currentRating = Math.min(5, Math.max(0, Math.round(value.rating / 2)))
 
@@ -131,7 +131,7 @@ export function buildAdvancedMetrics(
 
   const directions: Array<Direction> = ["falling", "steady", "rising"]
   directions.forEach((dir) => {
-    const label = el("label", "dj-radio-label")
+    const label = el("label", "dj-radio-label inline-flex items-center")
     const radio = el("input")
     radio.type = "radio"
     radio.name = "dj_momentum"
@@ -158,7 +158,7 @@ export function buildAdvancedMetrics(
   likelihoodLabel.textContent = "Completion Likelihood"
   likelihoodGroup.appendChild(likelihoodLabel)
 
-  const sliderWrapper = el("div", "dj-slider-wrap")
+  const sliderWrapper = el("div", "dj-slider-wrap flex items-center gap-3")
   const likelihoodSlider = el("input", "dj-slider")
   likelihoodSlider.type = "range"
   likelihoodSlider.min = "0"
@@ -179,10 +179,10 @@ export function buildAdvancedMetrics(
   panels[1]!.appendChild(likelihoodGroup)
 
   // ── Panel 1: emotional axes ─────────────────────────────────────────────────
-  const axisGrid = el("div", "dj-axis-grid")
+  const axisGrid = el("div", "dj-axis-grid flex flex-col gap-3.5")
   AXIS_ORDER.forEach((key) => {
-    const row = el("div", "dj-axis-row")
-    const labels = el("div", "dj-axis-row-labels")
+    const row = el("div", "dj-axis-row flex flex-col gap-1")
+    const labels = el("div", "dj-axis-row-labels flex justify-between")
     const negLabel = el("span")
     negLabel.textContent = AXIS_LABELS[key].neg
     const posLabel = el("span")
@@ -211,7 +211,7 @@ export function buildAdvancedMetrics(
   progressLabel.textContent = "Episode Progress"
   progressGroup.appendChild(progressLabel)
 
-  const progressWrap = el("div", "dj-progress-inputs")
+  const progressWrap = el("div", "dj-progress-inputs flex items-center gap-2")
   const currentEpNum = el("input", "dj-input-text inline-ep")
   currentEpNum.type = "number"
   currentEpNum.value = String(value.currentEpisode)

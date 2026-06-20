@@ -1,11 +1,5 @@
 /* ── Episode Header ──────────────────────────────────────────────────────── */
 
-.dj-episode-header {
-  display: flex;
-  gap: 16px;
-  align-items: flex-end;
-}
-
 .dj-meta-title {
   flex: 2;
 }

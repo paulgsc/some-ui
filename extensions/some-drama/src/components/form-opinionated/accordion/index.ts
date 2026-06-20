@@ -17,11 +17,11 @@ export function buildAccordionItem(
 ): AccordionItem {
   const root = el("div", "dj-accordion-item")
 
-  const header = el("button", "dj-accordion-header")
+  const header = el("button", "dj-accordion-header flex items-center justify-between")
   header.type = "button"
   const titleSpan = el("span")
   titleSpan.textContent = title
-  const chevron = el("span", "dj-accordion-chevron")
+  const chevron = el("span", "dj-accordion-chevron inline-flex")
   chevron.textContent = "▾"
   header.appendChild(titleSpan)
   header.appendChild(chevron)

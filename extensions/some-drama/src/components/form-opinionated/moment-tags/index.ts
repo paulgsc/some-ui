@@ -46,7 +46,7 @@ export function buildMomentTagsSection(
   prompt.textContent = "What happened in this episode?"
   root.appendChild(prompt)
 
-  const grid = el("div", "dj-tag-grid")
+  const grid = el("div", "dj-tag-grid flex flex-wrap gap-2")
   const selected = new Set<MomentTag>(value.tags)
 
   ALL_TAGS.forEach((tag) => {

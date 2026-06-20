@@ -22,7 +22,7 @@ export function buildPreviewCard(value: JournalDraft): {
   root: HTMLDivElement
   render: (next: JournalDraft) => void
 } {
-  const root = el("div", "dj-preview-card")
+  const root = el("div", "dj-preview-card flex flex-col gap-3")
 
   const render = (draft: JournalDraft): void => {
     root.innerHTML = ""
@@ -43,7 +43,7 @@ export function buildPreviewCard(value: JournalDraft): {
     }
 
     if (draft.tags.length > 0) {
-      const chipsLine = el("div", "card-chips-line")
+      const chipsLine = el("div", "card-chips-line flex flex-wrap gap-1.5")
       draft.tags.forEach((tag) => {
         const chip = el("span", "card-chip")
         chip.textContent = TAG_LABELS[tag] ?? tag

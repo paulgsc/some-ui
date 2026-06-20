@@ -74,8 +74,8 @@ export class PopupRenderer {
   // ── Header ─────────────────────────────────────────────────────────────────
 
   private buildHeader(phase: PopupPhase): HTMLElement {
-    const h = this.el("header", "p-header")
-    const title = this.el("div", "p-header-title")
+    const h = this.el("header", "p-header flex items-center justify-between")
+    const title = this.el("div", "p-header-title flex items-center gap-2.5")
     title.appendChild(this.el("span", "p-header-dot"))
     const t = this.el("span")
     t.textContent = "Drama Overlay"
@@ -103,7 +103,7 @@ export class PopupRenderer {
   // ── Spinners ───────────────────────────────────────────────────────────────
 
   private spinnerScreen(label: string): HTMLElement {
-    const wrap = this.el("div", "p-center")
+    const wrap = this.el("div", "p-center flex flex-col items-center justify-center gap-3")
     wrap.appendChild(this.el("div", "p-spinner"))
     const l = this.el("div", "p-muted")
     l.textContent = label
@@ -145,7 +145,7 @@ export class PopupRenderer {
       empty.innerHTML = `<span class="p-empty-icon">🎬</span>No entries yet.`
       wrap.appendChild(empty)
     } else {
-      const list = this.el("div", "p-list")
+      const list = this.el("div", "p-list flex flex-col gap-1.5")
       for (const entry of state.watchlist) {
         list.appendChild(this.renderEntryRow(entry, state, tabId))
       }
@@ -164,7 +164,7 @@ export class PopupRenderer {
     tabId: number
   ): HTMLElement {
     const isActive = entry.id === state.activeId
-    const row = this.el("div", `p-entry${isActive ? " p-entry-active" : ""}`)
+    const row = this.el("div", `p-entry flex items-center gap-2.5${isActive ? " p-entry-active" : ""}`)
 
     const swatch = this.el("div", "p-swatch")
     swatch.style.background = entry.color || DEFAULT_ACCENT
@@ -186,7 +186,7 @@ export class PopupRenderer {
     info.appendChild(meta)
     row.appendChild(info)
 
-    const actions = this.el("div", "p-entry-actions")
+    const actions = this.el("div", "p-entry-actions flex gap-1")
 
     const activeToggle = this.el(
       "button",
@@ -247,7 +247,7 @@ export class PopupRenderer {
     const { state, tabId, prefill, editId } = phase
     const isEdit = Boolean(editId)
 
-    const wrapper = this.el("div", "pf-wrapper")
+    const wrapper = this.el("div", "pf-wrapper flex flex-col")
 
     // ── Tab bar ──────────────────────────────────────────────────────────────
     const tabBar = this.el("div", "pf-tab-bar")
@@ -292,7 +292,7 @@ export class PopupRenderer {
     })
 
     // ── Action row ────────────────────────────────────────────────────────────
-    const actions = this.el("div", "p-btn-row pf-form-actions")
+    const actions = this.el("div", "p-btn-row pf-form-actions flex justify-end gap-2")
 
     const cancelBtn = this.el("button", "p-btn p-btn-ghost")
     cancelBtn.textContent = "Cancel"
@@ -356,7 +356,7 @@ export class PopupRenderer {
   private renderError(
     phase: Extract<PopupPhase, { tag: "ERROR" }>
   ): HTMLElement {
-    const wrap = this.el("div", "p-error-state")
+    const wrap = this.el("div", "p-error-state flex flex-col items-center gap-2.5")
     const icon = this.el("div", "p-error-icon")
     icon.textContent = "⚠"
     wrap.appendChild(icon)
