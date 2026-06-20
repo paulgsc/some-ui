@@ -60,14 +60,11 @@ export class ConveyorEngine implements Disposable {
   ) {
     // Build the strip container.
     this.strip = document.createElement("div")
-    this.strip.className = "sc-strip"
-    Object.assign(this.strip.style, {
-      position: "relative",
-      width: "100%",
-      height: `${config.stripHeight}px`,
-      overflow: "visible",
-      pointerEvents: "none", // individual cubes re-enable via their own style
-    })
+    // Static box as preset utilities; only the configured height stays inline.
+    // (Individual cubes re-enable pointer events via their own utilities.)
+    this.strip.className =
+      "sc-strip relative w-full overflow-visible pointer-events-none"
+    this.strip.style.height = `${config.stripHeight}px`
     mount.appendChild(this.strip)
 
     this.resizeObserver = new ResizeObserver(() => this.onResize())

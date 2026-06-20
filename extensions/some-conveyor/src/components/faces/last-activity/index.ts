@@ -11,17 +11,16 @@ export type LastActivityProps = {
 }
 
 export function LastActivityFace(props: LastActivityProps): HTMLElement {
-  const container = faceContainer("sc-face-last-activity")
-  container.style.alignItems = "stretch"
-  container.style.gap = "6px"
+  const container = faceContainer("sc-face-last-activity", {
+    align: "stretch",
+    gap: "gap-[6px]",
+  })
 
-  const time = terminalValue(props.lastActiveText, false)
-  time.style.fontSize = "14px"
+  const time = terminalValue(props.lastActiveText, { size: "text-[14px]" })
   const focus = terminalValue(
     props.focusName === "--"
       ? "--"
-      : `${props.focusIcon} ${props.focusName}`.trim(),
-    false
+      : `${props.focusIcon} ${props.focusName}`.trim()
   )
 
   container.append(

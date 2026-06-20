@@ -14,6 +14,7 @@ import {
   resolveAxis,
 } from "./cube-geometry"
 import { CycleRotationAdapter } from "./cycle-rotation-adapter"
+import { SC_CUBE_LAYOUT, SC_FACE_LAYOUT } from "./theme-engine"
 
 const FACE_COUNT = 6
 
@@ -67,57 +68,35 @@ export class CubeRenderer {
       this.currentAxis === "x" ? "cube:x" : "cube:y"
     )
 
-    // Outer wrapper — ConveyorEngine moves this via translateX.
+    // Outer wrapper — ConveyorEngine moves this via translateX. Static box is
+    // expressed as preset utilities; only the measured size stays inline.
     this.el = document.createElement("div")
-    this.el.className = "sc-cube-wrapper"
+    this.el.className =
+      "sc-cube-wrapper absolute bottom-0 pointer-events-auto will-change-transform"
     this.el.dataset["cubeId"] = cubeId
     Object.assign(this.el.style, {
-      position: "absolute",
-      bottom: "0",
       width: `${cubeWidth}px`,
       height: `${cubeHeight}px`,
-      pointerEvents: "auto",
     })
 
     // Perspective scene. Focal distance is derived from the rect + axis so the
     // leading face faces the viewer without ballooning. preserve-3d on the cube
     // makes the six faces compose a solid box.
     this.scene = document.createElement("div")
-    this.scene.className = "sc-scene"
-    Object.assign(this.scene.style, {
-      width: "100%",
-      height: "100%",
-      perspective: `${computePerspective(this.dims, this.currentAxis)}px`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    })
+    this.scene.className =
+      "sc-scene flex h-full w-full items-center justify-center"
+    this.scene.style.perspective = `${computePerspective(this.dims, this.currentAxis)}px`
 
-    // Cube — preserve-3d, will be rotated.
+    // Cube — preserve-3d (kept in conveyor.css), rotated each frame.
     this.cube = document.createElement("div")
-    this.cube.className = "sc-cube"
-    Object.assign(this.cube.style, {
-      width: "100%",
-      height: "100%",
-      position: "relative",
-      transformStyle: "preserve-3d",
-      transition: `transform var(--transition-duration, 500ms) var(--transition-easing, ease)`,
-    })
+    this.cube.className = `sc-cube ${SC_CUBE_LAYOUT}`
 
     // Build 6 face elements. Backfaces stay visible so the box reads as a solid
     // dice from every angle (opaque face backgrounds form the topology).
     this.faceEls = Array.from({ length: FACE_COUNT }, (_, i) => {
       const face = document.createElement("div")
-      face.className = "sc-face"
+      face.className = `sc-face ${SC_FACE_LAYOUT}`
       face.dataset["faceIndex"] = String(i)
-      Object.assign(face.style, {
-        position: "absolute",
-        inset: "0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      })
       return face
     })
 

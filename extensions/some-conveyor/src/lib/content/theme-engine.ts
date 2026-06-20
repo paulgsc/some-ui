@@ -1,5 +1,17 @@
 import type { CubeState, CubeTheme, FaceState } from "@conveyor/types"
 
+// ─── Structural layout classes ──────────────────────────────────────────────────
+// Static box/layout for the cube + faces, authored as @some-ui/styles preset
+// utilities (compiled to plain CSS by @unocss/cli). They live here — not inline in
+// the renderer — because `CubeRenderer.applyState` rewrites `cube.className` /
+// `face.className` from `cubeClass()` / `faceClass()` every frame, so the layout
+// has to travel with the theme class string to survive those resets. Colors,
+// preserve-3d, backface-visibility, fonts and state/effect rules stay in
+// `styles/conveyor.css` (themeable custom props / no utility equivalent).
+export const SC_CUBE_LAYOUT = "relative h-full w-full"
+export const SC_FACE_LAYOUT =
+  "absolute inset-0 flex items-center justify-center overflow-hidden box-border"
+
 // ─── Terminal theme ────────────────────────────────────────────────────────────
 
 /**
@@ -39,14 +51,14 @@ export const TerminalTheme: CubeTheme = {
   },
 
   faceClass(state: FaceState): string {
-    const classes: Array<string> = ["sc-face"]
+    const classes: Array<string> = ["sc-face", SC_FACE_LAYOUT]
     if (state.isActive) classes.push("sc-face--active")
     if (state.isHovered) classes.push("sc-face--hovered")
     return classes.join(" ")
   },
 
   cubeClass(state: CubeState): string {
-    const classes: Array<string> = ["sc-cube"]
+    const classes: Array<string> = ["sc-cube", SC_CUBE_LAYOUT]
     if (state.attentionMode === "Suspended") classes.push("sc-cube--suspended")
     if (state.attentionMode === "Reduced") classes.push("sc-cube--reduced")
     return classes.join(" ")

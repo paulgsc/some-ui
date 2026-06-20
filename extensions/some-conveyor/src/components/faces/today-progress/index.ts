@@ -10,36 +10,31 @@ export type TodayProgressProps = {
 }
 
 export function TodayProgressFace(props: TodayProgressProps): HTMLElement {
-  const container = faceContainer("sc-face-today")
-  container.style.padding = "10px 12px"
-  container.style.gap = "6px"
-
-  const tasksEl = terminalEl("div", "sc-face-tasks")
-  Object.assign(tasksEl.style, {
-    display: "flex",
-    flexDirection: "column",
-    gap: "3px",
+  const container = faceContainer("sc-face-today", {
+    padding: "px-[12px] py-[10px]",
+    gap: "gap-[6px]",
   })
+
+  const tasksEl = terminalEl("div", "sc-face-tasks flex flex-col gap-[3px]")
 
   for (const task of props.tasks) {
     const row = terminalRow()
-    const tick = terminalEl("span")
+    const tick = terminalEl(
+      "span",
+      task.done
+        ? "text-[var(--face-text-active)]"
+        : "text-[var(--face-text-secondary)]"
+    )
     tick.textContent = task.done ? "▪" : "▫"
-    tick.style.color = task.done
-      ? "var(--face-text-active, #00ff41)"
-      : "var(--face-text-secondary, #2a4a2a)"
-    const label = terminalEl("span")
+    const label = terminalEl(
+      "span",
+      `flex-1 truncate ${
+        task.done
+          ? "text-[var(--face-text)] line-through"
+          : "text-[var(--face-text-secondary)] no-underline"
+      }`
+    )
     label.textContent = task.label
-    label.style.color = task.done
-      ? "var(--face-text, #4a7c4a)"
-      : "var(--face-text-secondary, #2a4a2a)"
-    label.style.textDecoration = task.done ? "line-through" : "none"
-    Object.assign(label.style, {
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      flex: "1",
-    })
     row.append(tick, label)
     tasksEl.append(row)
   }

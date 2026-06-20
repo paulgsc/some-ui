@@ -3,24 +3,21 @@ import { defineSomeUiConfig } from "@some-ui/styles/config"
 /**
  * UnoCSS config for the `some-conveyor` extension.
  *
- * some-conveyor is a *content-script* surface: its UI lives inside a closed
- * shadow root injected into arbitrary host pages (see `lib/content/shadow-host.ts`).
- * Two consequences shape this config:
+ * some-conveyor is a content-script surface: its UI lives inside a closed shadow
+ * root injected into arbitrary host pages (see `lib/content/shadow-host.ts`). The
+ * UI is built imperatively (DOM in TS, not JSX), so `build:css` scans `src` for
+ * the utility class strings authored in `cube-renderer`, `conveyor-engine`,
+ * `theme-engine`, `terminal`, and the face modules, and compiles them — plus the
+ * irreducible rules in `styles/conveyor.css` — to plain static CSS via @unocss/cli.
  *
- *   1. `preflight: false` — unlike a self-contained popup/options page, a global
- *      reset is undesirable here. The shadow root already isolates us from the
- *      page, and the authored geometry CSS is deliberately reset-free; shipping
- *      preflight would only risk perturbing the carefully-tuned cube layout.
+ * preflight: scanning a content-script surface must NOT ship a global reset (it
+ * would leak into the shadow tree and perturb the tuned cube geometry). Disabled
+ * both here and via the CLI's `--no-preflights` flag in the `build:css` script.
  *
- *   2. The stylesheet is consumed as a single linked sheet inside the shadow
- *      root, so `@apply` (via `transformerDirectives`, enabled by
- *      `defineSomeUiConfig`) is the ergonomic seam: the authored
- *      `src/styles/conveyor.css` leans on preset utilities at dev time and the
- *      CLI compiles them to plain static CSS at build time — no engine ships.
- *
- * Runtime colors stay on the ThemeEngine custom-property contract
- * (`--face-bg`, `--strip-bg`, …); those are the extension's live theming knobs,
- * not dead bespoke tokens, so they are intentionally preserved.
+ * blocklist: scanning raw `.ts` also harvests bare identifiers that collide with
+ * preset utilities/shortcuts (`container`, `grid`, `label`, `surface`, …). None of
+ * these are authored by the extension, so they are blocked to keep the shadow
+ * stylesheet to exactly the classes the UI uses.
  */
 export default defineSomeUiConfig(
   { preflight: false },
@@ -28,5 +25,25 @@ export default defineSomeUiConfig(
     content: {
       filesystem: ["src/**/*.{ts,tsx,html}", "src/styles/*.css"],
     },
+    blocklist: [
+      "container",
+      "contents",
+      "grid",
+      "hidden",
+      "inline",
+      "fixed",
+      "static",
+      "border",
+      "shadow",
+      "surface",
+      "label",
+      "visible",
+      "transform",
+      "transition",
+      "resize",
+      "ms",
+      "tab",
+      "px",
+    ],
   }
 )
