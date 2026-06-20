@@ -159,7 +159,6 @@ function renderEmptyPill(
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
   pill.className = "dc-empty-pill"
-  pill.textContent = "no drama active — open popup on video tab"
   container.appendChild(pill)
 
   // Fade in on next paint
@@ -206,6 +205,7 @@ async function init(): Promise<void> {
   let typestate: ContentTypestate = { phase: "LOADING" }
   let card: DramaCard | null = null
   let removeEmptyPill: (() => void) | null = null
+  let emptyPillConsumed = false
   let visible: boolean = true
   let currentSize: CardSize = "compact"
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
@@ -224,6 +224,7 @@ async function init(): Promise<void> {
   }
 
   const renderCard = (entry: DramaEntry): void => {
+    emptyPillConsumed = false
     destroyCard()
     removeEmptyPill?.()
     removeEmptyPill = null
@@ -272,6 +273,8 @@ async function init(): Promise<void> {
 
   const renderEmpty = (): void => {
     destroyCard()
+    if (emptyPillConsumed) return
+    emptyPillConsumed = true
     removeEmptyPill?.()
     removeEmptyPill = renderEmptyPill(root, () => {
       removeEmptyPill = null

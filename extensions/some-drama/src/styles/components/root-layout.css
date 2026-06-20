@@ -98,23 +98,31 @@
   height: 120px;
 }
 
-/* ── Empty-state pill ───────────────────────────────────────────────────────*/
+/* ── Empty-state dot ────────────────────────────────────────────────────────*/
 .dc-empty-pill {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 20px;
+  right: 20px;
   z-index: 2147483647;
-  background: hsl(25 25% 15% / 0.92);
-  border: 1.5px solid hsl(340 50% 55% / 0.4);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 12px;
-  color: hsl(30 15% 60%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: hsl(340 55% 55% / 0.65);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.5s ease;
+  animation: dc-pill-throb 2s ease-in-out infinite;
+}
+
+@keyframes dc-pill-throb {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px hsl(340 55% 55% / 0.25);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 5px hsl(340 55% 55% / 0.55);
+    transform: scale(1.22);
+  }
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────*/
