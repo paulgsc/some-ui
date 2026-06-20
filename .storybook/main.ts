@@ -99,6 +99,14 @@ const config: StorybookConfig = {
           __dirname,
           "../__mocks__/webextension-polyfill.ts"
         ),
+        // oxc-parser is pulled into the client graph only via unocss'
+        // attributify-jsx transformer (unused here). Its `browser` entry imports
+        // the wasm binding that pnpm doesn't install for native platforms, so
+        // point it at a stub — the parser is never invoked in Storybook.
+        "@oxc-parser/binding-wasm32-wasi": resolve(
+          __dirname,
+          "../__mocks__/oxc-parser-binding-stub.ts"
+        ),
         "preact/hooks": "react",
         "preact/compat": "react",
         preact: "react",
@@ -109,20 +117,6 @@ const config: StorybookConfig = {
       ...config.server,
       host: "0.0.0.0", // bind all interfaces so both nixos.local + localhost resolve
       allowedHosts: ["nixos.local", "localhost", "127.0.0.1"],
-    }
-
-    // oxc-parser (pulled in transitively by unocss' attributify-jsx transformer)
-    // ships a wasm fallback entry that statically `export *`s the wasm32-wasi
-    // binding. The correct *native* binding is selected at runtime, but esbuild's
-    // dep pre-bundling eagerly resolves the wasm import and fails. Exclude it from
-    // optimization so the native binding loads normally at runtime.
-    config.optimizeDeps = {
-      ...config.optimizeDeps,
-      exclude: [
-        ...(config.optimizeDeps?.exclude ?? []),
-        "oxc-parser",
-        "@oxc-parser/binding-wasm32-wasi",
-      ],
     }
 
     // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
