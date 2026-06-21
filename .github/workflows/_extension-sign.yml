@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
         with:
@@ -33,7 +33,7 @@ jobs:
           HUSKY: 0
       # Restore pre-built workspace packages produced by build-workspace.
       - name: Download workspace dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: workspace-dist
           path: packages
@@ -48,7 +48,7 @@ jobs:
             --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
             --artifacts-dir artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: signed-${{ matrix.extension_name }}
           path: artifacts/*.xpi
