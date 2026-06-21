@@ -7,11 +7,10 @@ import {
 export type StreakCountProps = { complete: number; total: number }
 
 export function StreakCountFace(props: StreakCountProps): HTMLElement {
-  const container = faceContainer("sc-face-streak-count")
-  container.style.alignItems = "flex-start"
+  const container = faceContainer("sc-face-streak-count", { align: "start" })
   container.append(
     terminalLabel("STREAK"),
-    terminalValue(String(props.complete), true),
+    terminalValue(String(props.complete), { bright: true }),
     terminalLabel(`/ ${props.total} categories`)
   )
   return container

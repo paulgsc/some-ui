@@ -13,8 +13,6 @@
   border: 1.5px solid var(--dc-border-strong);
   border-radius: var(--dc-r-pill);
   padding: 7px 16px 7px 12px;
-  display: flex;
-  align-items: center;
   gap: 10px;
 
   /* Layered shadow + glow */
@@ -24,7 +22,6 @@
     inset 0 1px 0 hsl(340 40% 50% / 0.15);
 
   max-width: 280px;
-  overflow: hidden;
 
   /* Prevent jitter — use subtle float instead of bob */
   will-change: transform;

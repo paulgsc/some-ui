@@ -24,6 +24,10 @@ export default defineConfig({
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
       },
+      // polyhedron is a wasm-bindgen crate built separately (crates/polyhedron).
+      // Its dist/ doesn't exist at tsc/vite time; the runtime import is already
+      // guarded with a .catch in WasmBridge, so externalizing here is safe.
+      external: ["polyhedron"],
       output: {
         manualChunks: () => {}, // single IIFE per entry — no shared runtime chunk
         entryFileNames: (chunkInfo) => {
@@ -32,9 +36,10 @@ export default defineConfig({
           return "[name].js"
         },
         chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
+        assetFileNames: (assetInfo): string => {
+          if (assetInfo.names.includes("popup.html")) return "popup.html"
+          if (assetInfo.names.some((n): boolean => n.endsWith(".css")))
+            return "styles/[name][extname]"
           return "assets/[name][extname]"
         },
       },

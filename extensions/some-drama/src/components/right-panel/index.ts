@@ -27,18 +27,18 @@ export class RightPanel {
   onMoodSelect?: (mood: MoodType) => void
 
   constructor() {
-    this.root = el("div", "dc-card-right")
+    this.root = el("div", "dc-card-right flex flex-col gap-3")
 
     // Episode + timestamp
-    const epRow = el("div", "dc-ep-row")
+    const epRow = el("div", "dc-ep-row flex items-center gap-2.5")
     this.epBadge = el("span", "dc-ep-badge")
     this.timestampEl = el("span", "dc-timestamp")
     epRow.appendChild(this.epBadge)
     epRow.appendChild(this.timestampEl)
 
     // Progress bar
-    const progWrap = el("div", "dc-progress-wrap")
-    const progLabels = el("div", "dc-progress-labels")
+    const progWrap = el("div", "dc-progress-wrap flex flex-col")
+    const progLabels = el("div", "dc-progress-labels flex justify-between")
     this.progressLabelLeft = el("span")
     this.progressLabelRight = el("span")
     progLabels.appendChild(this.progressLabelLeft)
@@ -92,10 +92,10 @@ export class RightPanel {
   // ── DOM builders ────────────────────────────────────────────────────────────
 
   private buildStatsRow(): HTMLDivElement {
-    const row = el("div", "dc-stats-row")
+    const row = el("div", "dc-stats-row flex flex-wrap gap-3.5")
 
     const makestat = (labelText: string): HTMLSpanElement => {
-      const wrap = el("div", "dc-stat")
+      const wrap = el("div", "dc-stat flex flex-col")
       const label = el("span", "dc-stat-label")
       const value = el("span", "dc-stat-value")
       label.textContent = labelText
@@ -111,7 +111,7 @@ export class RightPanel {
   }
 
   private buildMoodStrip(): HTMLDivElement {
-    const strip = el("div", "dc-mood-strip")
+    const strip = el("div", "dc-mood-strip flex items-center gap-1.5")
     this.moodLabel = el("span", "dc-mood-label")
 
     MOODS.forEach((m) => {

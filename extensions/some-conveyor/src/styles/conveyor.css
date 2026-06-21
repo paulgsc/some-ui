@@ -1,53 +1,39 @@
-/* some-conveyor — shadow-scoped stylesheet
+/* some-conveyor — shadow-scoped stylesheet (irreducible CSS only)
  * All selectors are safe inside shadow DOM.
- * This file knows geometry and layout. It does NOT hardcode colors.
- * All color values come from CSS custom properties set by ThemeEngine.
+ *
+ * After the M3 UnoCSS migration, the *static layout* of the cube/strip/faces and
+ * all face content lives as @some-ui/styles preset utilities authored directly on
+ * the elements (cube-renderer, conveyor-engine, terminal, faces) and compiled to
+ * static CSS by @unocss/cli. What remains here is only what has no utility
+ * equivalent or must be themeable at runtime:
+ *   - themed colors/borders/fonts driven by the ThemeEngine custom-property
+ *     contract (--face-bg, --strip-bg, …) — preserved so terminal theming works,
+ *   - 3-D primitives (preserve-3d, backface-visibility) and the cube transition,
+ *   - face state rules (--active / --hovered) and the scan-line / corner effects,
+ *   - keyframes and the reduced-motion guard.
  * ─────────────────────────────────────────────────────────────────── */
 
-/* ── Strip ──────────────────────────────────────────────────────────── */
-
-.sc-strip {
-  backdrop-filter: var(--strip-backdrop, blur(8px));
-  -webkit-backdrop-filter: var(--strip-backdrop, blur(8px));
-  background: var(--strip-bg, rgba(6, 10, 6, 0.92));
-  border-top: var(--strip-border-top, 1px solid #1a2e1a);
-  overflow: visible;
-  pointer-events: none;
-  position: relative;
-  width: 100%;
+/* ── Shadow-scope preset primitives ──────────────────────────────────────────
+ * The page's :root design tokens don't cross the shadow boundary, so the
+ * presetWind4 base values that compiled utilities reference are surfaced here on
+ * :host:
+ *   - --spacing      → spacing-scale utilities, e.g. `inset-0`/`bottom-0`
+ *                      compile to calc(var(--spacing) * 0).
+ *   - --un-text-opacity → preset color utilities compile to
+ *                      color-mix(in oklab, <color> var(--un-text-opacity), transparent);
+ *                      at 100% that is exactly <color>. Normally seeded by
+ *                      preflight, which is intentionally off for this surface. */
+:host {
+  --spacing: 0.25rem;
+  --un-text-opacity: 100%;
 }
 
-/* ── Cube wrapper (translated by ConveyorEngine) ────────────────────── */
-
-.sc-cube-wrapper {
-  bottom: 0;
-  pointer-events: auto;
-  position: absolute;
-  will-change: transform;
-}
-
-/* ── Perspective scene ───────────────────────────────────────────────── */
-
-.sc-scene {
-  align-items: center;
-  display: flex;
-  height: 100%;
-  justify-content: center;
-  width: 100%;
-}
-
-/* ── 3D cube ─────────────────────────────────────────────────────────── */
+/* ── Cube — 3-D + rotation transition (layout is utilities on the element) ── */
 
 .sc-cube {
-  background: var(--cube-bg, #0a0e0a);
-  border: 1px solid var(--cube-border, #1a2e1a);
-  box-shadow: var(--cube-shadow, none);
-  height: 100%;
-  position: relative;
   transform-style: preserve-3d;
   transition: transform var(--transition-duration, 500ms)
     var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
-  width: 100%;
 }
 
 .sc-cube--suspended {
@@ -58,27 +44,21 @@
   opacity: 0.85;
 }
 
-/* ── Faces ────────────────────────────────────────────────────────────── */
+/* ── Faces — themed base (layout is utilities on the element) ──────────────── */
 
 .sc-face {
-  align-items: center;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  /* Backfaces stay visible: with opaque face backgrounds the cube reads as a
+   * solid dice from every angle. Hiding them would make the box hollow. */
+  backface-visibility: visible;
   background: var(--face-bg, #0d120d);
   border: 1px solid var(--face-border, #1c2e1c);
   border-radius: 4px;
-  box-sizing: border-box;
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  overflow: hidden;
-  position: absolute;
+  color: var(--face-text, #4a7c4a);
 
   /* Default face text styles — content elements inherit these. */
   font-family: var(--face-font, "Courier New", monospace);
   font-size: var(--face-font-size, 11px);
   line-height: var(--face-line-height, 1.5);
-  color: var(--face-text, #4a7c4a);
 }
 
 .sc-face--active {
@@ -88,72 +68,79 @@
   color: var(--face-text-active, #00ff41);
 }
 
+/* ── Content fade ─────────────────────────────────────────────────────────
+ * Only the face facing the viewer shows legible content. Rich content on the
+ * other faces fades out so the side panels read as the solid sides of the box
+ * rather than competing, mirrored text. Crossfades over the rotation. */
+
+.sc-face > * {
+  opacity: 0;
+  transition: opacity var(--transition-duration, 500ms)
+    var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.sc-face--active > * {
+  opacity: 1;
+}
+
 .sc-face--hovered {
   border-color: var(--face-border-active, #00ff41);
   opacity: 0.9;
 }
 
-/* ── Face content primitives ──────────────────────────────────────────── */
+/* ── Strip — themed surface (layout is utilities on the element) ──────────── */
 
-.sc-face-label {
-  font-family: var(--face-font, "Courier New", monospace);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: var(--face-text-secondary, #2a4a2a);
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: 2px;
-  user-select: none;
-}
-
-.sc-face-value {
-  font-family: var(--face-font, "Courier New", monospace);
-  color: var(--face-text, #4a7c4a);
-  display: block;
+.sc-strip {
+  backdrop-filter: var(--strip-backdrop, blur(8px));
+  background: var(--strip-bg, rgb(6 10 6 / 92%));
+  border-top: var(--strip-border-top, 1px solid #1a2e1a);
 }
 
 /* ── Face geometry transforms (set inline by CubeRenderer) ───────────── */
-/* Listed here as documentation. The actual values are set via JS to allow
- * dynamic cube sizing. */
-/*
-  face 0 (front):  translateZ(halfW)
-  face 1 (right):  rotateY(90deg)  translateZ(halfW)
-  face 2 (back):   rotateY(180deg) translateZ(halfW)
-  face 3 (left):   rotateY(-90deg) translateZ(halfW)
-  face 4 (top):    rotateX(90deg)  translateZ(halfH)
-  face 5 (bottom): rotateX(-90deg) translateZ(halfH)
-*/
+
+/* The transform + visibility of each face is computed in lib/content/
+ * cube-geometry.ts and applied via JS, because it depends on both the cube's
+ * dimensions and the resolved rotation axis (see that module for the math):
+ *
+ *   - Y axis (front→right→back→left): cycle faces at translateZ(halfW);
+ *     top/bottom hidden for non-square rects.
+ *   - X axis (front→top→back→bottom): cycle faces at translateZ(halfH);
+ *     left/right hidden for non-square rects.
+ *
+ * The axis is chosen from the aspect ratio so a wide rect rotates about X and a
+ * tall rect about Y — the opposite always stretches the side faces into slabs.
+ */
 
 /* ── Scan-line effect on active face ─────────────────────────────────── */
 
 .sc-face--active::after {
-  content: "";
-  position: absolute;
-  inset: 0;
   background: repeating-linear-gradient(
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 255, 65, 0.015) 2px,
-    rgba(0, 255, 65, 0.015) 4px
+    rgb(0 255 65 / 1.5%) 2px,
+    rgb(0 255 65 / 1.5%) 4px
   );
-  pointer-events: none;
   border-radius: inherit;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 /* ── Corner accent on active face ────────────────────────────────────── */
 
 .sc-face--active::before {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  border-top: 1px solid var(--face-border-active, #00ff41);
   border-right: 1px solid var(--face-border-active, #00ff41);
+  border-top: 1px solid var(--face-border-active, #00ff41);
+  content: "";
+  height: 6px;
   opacity: 0.8;
   pointer-events: none;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 6px;
 }
 
 /* ── Cursor blink on active face ─────────────────────────────────────── */
@@ -163,6 +150,7 @@
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0;
   }
@@ -174,6 +162,7 @@
   .sc-cube {
     transition: none;
   }
+
   .sc-cube-wrapper {
     will-change: auto;
   }

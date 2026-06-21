@@ -3,9 +3,12 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "devDependencies": {
+    "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
+    "@unocss/cli": "^66.0.0",
     "some-ui-rollup-config": "workspace:*",
+    "unocss": "^66.0.0",
     "web-ext": "8.3.0"
   },
   "exports": {
@@ -40,8 +43,9 @@
   },
   "scripts": {
     "build": "pnpm build:firefox",
-    "build:chromium": "tsc -p tsconfig.build.json && vite build --config vite.config.chromium.ts",
-    "build:firefox": "tsc -p tsconfig.build.json && vite build",
+    "build:chromium": "tsc -p tsconfig.build.json && vite build --config vite.config.chromium.ts && pnpm build:css",
+    "build:css": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/conveyor.css\" --config uno.config.ts --no-preflights -o dist/styles/conveyor.css",
+    "build:firefox": "tsc -p tsconfig.build.json && vite build && pnpm build:css",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite",

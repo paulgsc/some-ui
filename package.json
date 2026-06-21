@@ -118,6 +118,7 @@
     "typescript-eslint": "^8.59.2",
     "typescript-language-server": "4.3.3",
     "typescript-transform-paths": "3.5.3",
+    "unocss": "^66.0.0",
     "vite": "^6.0.7",
     "vite-plugin-dts": "4.5.4",
     "vite-plugin-top-level-await": "1.5.0",

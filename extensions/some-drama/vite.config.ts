@@ -19,9 +19,10 @@ export default defineConfig({
         },
         chunkFileNames: "[name].js",
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name === "popup.css") return "popup.css"
-          if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
+          if (assetInfo.names.includes("popup.html")) return "popup.html"
+          if (assetInfo.names.includes("popup.css")) return "popup.css"
+          if (assetInfo.names.some((n) => n.endsWith(".css")))
+            return "styles/[name][extname]"
           return "assets/[name][extname]"
         },
       },

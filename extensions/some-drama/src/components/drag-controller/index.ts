@@ -38,7 +38,8 @@ export class DragController {
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   private onPointerDown(e: PointerEvent): void {
-    const target = e.target as HTMLElement
+    if (!(e.target instanceof HTMLElement)) return
+    const target = e.target
     const shouldIgnore = this.dragIgnoreSelectors.some((sel) =>
       target.closest(sel)
     )
@@ -50,7 +51,7 @@ export class DragController {
     this.offX = e.clientX - rect.left
     this.offY = e.clientY - rect.top
     this.target.classList.add("dc-dragging")
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    target.setPointerCapture(e.pointerId)
   }
 
   private onPointerMove(e: PointerEvent): void {

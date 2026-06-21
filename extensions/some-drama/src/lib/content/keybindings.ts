@@ -12,11 +12,11 @@ type KeybindingHandlers = {
 export function installKeybindings(handlers: KeybindingHandlers): void {
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     // Ignore events from inputs / textareas / contenteditable elements
-    const target = e.target as HTMLElement
+    if (!(e.target instanceof HTMLElement)) return
     if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable
+      e.target.tagName === "INPUT" ||
+      e.target.tagName === "TEXTAREA" ||
+      e.target.isContentEditable
     ) {
       return
     }

@@ -28,8 +28,6 @@
 //          a failed init). Fixed: keybinding calls fetchAndRender() when no
 //          card exists instead of silently doing nothing.
 
-import "@drama/styles/content.css"
-
 import { DramaCard } from "@drama/components/drama-card"
 import { installKeybindings } from "@drama/lib/content/keybindings"
 import type {
@@ -160,24 +158,7 @@ function renderEmptyPill(
 
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
-  Object.assign(pill.style, {
-    position: "fixed",
-    bottom: "24px",
-    right: "24px",
-    zIndex: "2147483647",
-    background: "hsl(25 25% 15% / 0.92)",
-    border: "1.5px solid hsl(340 50% 55% / 0.4)",
-    borderRadius: "999px",
-    padding: "8px 16px",
-    fontFamily: "Georgia, serif",
-    fontStyle: "italic",
-    fontSize: "12px",
-    color: "hsl(30 15% 60%)",
-    pointerEvents: "none",
-    opacity: "0",
-    transition: "opacity 0.5s ease",
-  })
-  pill.textContent = "no drama active — open popup on video tab"
+  pill.className = "dc-empty-pill bottom-5 right-5 w-3 h-3 rounded-full pointer-events-none opacity-0"
   container.appendChild(pill)
 
   // Fade in on next paint
@@ -224,6 +205,7 @@ async function init(): Promise<void> {
   let typestate: ContentTypestate = { phase: "LOADING" }
   let card: DramaCard | null = null
   let removeEmptyPill: (() => void) | null = null
+  let emptyPillConsumed = false
   let visible: boolean = true
   let currentSize: CardSize = "compact"
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
@@ -242,6 +224,7 @@ async function init(): Promise<void> {
   }
 
   const renderCard = (entry: DramaEntry): void => {
+    emptyPillConsumed = false
     destroyCard()
     removeEmptyPill?.()
     removeEmptyPill = null
@@ -290,6 +273,8 @@ async function init(): Promise<void> {
 
   const renderEmpty = (): void => {
     destroyCard()
+    if (emptyPillConsumed) return
+    emptyPillConsumed = true
     removeEmptyPill?.()
     removeEmptyPill = renderEmptyPill(root, () => {
       removeEmptyPill = null

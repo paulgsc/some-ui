@@ -48,6 +48,7 @@ export default defineConfig({
       "@censor": path.resolve(__dirname, "./extensions/some-filter/src"),
       "@mujik": path.resolve(__dirname, "./extensions/some-mujik/src"),
       "@filter": path.resolve(__dirname, "./extensions/some-filter/src"),
+      "@conveyor": path.resolve(__dirname, "./extensions/some-conveyor/src"),
 
       // Add more aliases for other packages as needed
     },

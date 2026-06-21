@@ -31,6 +31,9 @@ const TAG_GLYPH: Record<MomentTag, string> = {
   kiss: "💋",
   promise: "🤞",
   sacrifice: "🕯",
+  betrayal: "🗡",
+  separation: "💔",
+  rivalry: "⚔",
   other: "⋯",
 }
 
@@ -240,7 +243,7 @@ export class Slideshow {
 
     const quoteIndex =
       Math.floor(Date.now() / SLIDE_INTERVAL_MS) % FALLBACK_QUOTES.length
-    const q = state.featuredQuote ?? FALLBACK_QUOTES[quoteIndex]
+    const q = state.featuredQuote || FALLBACK_QUOTES[quoteIndex] || ""
 
     this.setBubbleQuote(q)
   }

@@ -6,74 +6,41 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { buildOpinionatedSection } from "."
 
-// ── Bridge ───────────────────────────────────────────────────────────────────
-// Mounts the opinionated (Feels) form panel in isolation so axis sliders,
-// momentum controls, tag grid, and quote textarea can be verified without
-// PopupRenderer or the FSM.
-//
-// Re-mounts on any prop change — buildOpinionatedSection has no update() API.
-
-const el = <K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls?: string
-): HTMLElementTagNameMap[K] => {
-  const e = document.createElement(tag)
-  if (cls) e.className = cls
-  return e
-}
-
 const ALL_TAGS: ReadonlyArray<MomentTag> = [
   "confession",
-  "handTouch",
-  "jealousy",
-  "misunderstanding",
-  "reveal",
-  "argument",
   "reunion",
-  "goodbye",
-  "kiss",
-  "promise",
+  "betrayal",
   "sacrifice",
+  "separation",
+  "kiss",
+  "rivalry",
   "other",
 ]
 
 type BridgeProps = {
-  /** Pre-selected star rating (0–10) */
-  rating: number
-  /** Series progress slider initial value (0–1) */
-  overallProgress: number
-  /** Completion likelihood slider initial value — drives emoji threshold */
-  completionLikelihood: number
-  /** Pre-fills the featured quote textarea */
-  featuredQuote: string
-  axisConnection: number
-  axisHope: number
-  axisTrust: number
-  axisControl: number
-  transBefore: string
-  transAfter: string
-  /** Pre-selected key moment tags */
+  title: string
+  episode: number
   tags: Array<MomentTag>
-  peakLine: string
-  momentumValue: number
+  transitionBefore: string
+  transitionAfter: string
+  reflection: string
+  featuredQuote: string
+  rating: number
   momentumDirection: "rising" | "steady" | "falling"
+  completionLikelihood: number
 }
 
 const FormOpinionatedBridge = ({
-  rating,
-  overallProgress,
-  completionLikelihood,
-  featuredQuote,
-  axisConnection,
-  axisHope,
-  axisTrust,
-  axisControl,
-  transBefore,
-  transAfter,
+  title,
+  episode,
   tags,
-  peakLine,
-  momentumValue,
+  transitionBefore,
+  transitionAfter,
+  reflection,
+  featuredQuote,
+  rating,
   momentumDirection,
+  completionLikelihood,
 }: BridgeProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -82,24 +49,18 @@ const FormOpinionatedBridge = ({
     if (!container) return
 
     const prefill: Partial<DramaEntry> = {
-      rating,
-      overallProgress,
-      completionLikelihood,
-      featuredQuote,
-      axes: {
-        connection: axisConnection,
-        hope: axisHope,
-        trust: axisTrust,
-        control: axisControl,
-      },
-      transition: { before: transBefore, after: transAfter },
+      title,
+      episode: String(episode),
       tags,
-      peakLine,
-      momentum: { value: momentumValue, direction: momentumDirection },
+      transition: { before: transitionBefore, after: transitionAfter },
+      note: reflection,
+      featuredQuote,
+      rating,
+      momentum: { value: 50, direction: momentumDirection },
+      completionLikelihood,
     }
 
-    const { root } = buildOpinionatedSection(el, prefill)
-    root.className = "pf-panel pf-panel-visible"
+    const { root } = buildOpinionatedSection(prefill)
 
     container.innerHTML = ""
     container.appendChild(root)
@@ -108,120 +69,86 @@ const FormOpinionatedBridge = ({
       root.remove()
     }
   }, [
-    rating,
-    overallProgress,
-    completionLikelihood,
-    featuredQuote,
-    axisConnection,
-    axisHope,
-    axisTrust,
-    axisControl,
-    transBefore,
-    transAfter,
+    title,
+    episode,
     tags,
-    peakLine,
-    momentumValue,
+    transitionBefore,
+    transitionAfter,
+    reflection,
+    featuredQuote,
+    rating,
     momentumDirection,
+    completionLikelihood,
   ])
 
   return (
     <div
       style={{
         width: "100vw",
-        height: "100vh",
+        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background:
-          "linear-gradient(135deg, hsl(220 30% 14%), hsl(240 25% 8%))",
+        padding: "40px 0",
+        background: "var(--moon-900)",
       }}
     >
       <div
         style={{
-          position: "absolute",
-          top: 20,
+          position: "fixed",
+          top: 15,
           left: 0,
           right: 0,
           textAlign: "center",
-          color: "rgba(255,255,255,0.25)",
+          color: "rgba(255,255,255,0.3)",
           fontFamily: "monospace",
           fontSize: 11,
+          pointerEvents: "none",
+          zIndex: 10,
         }}
       >
-        FormOpinionated — Feels panel, isolated from PopupRenderer
+        Journal Authoring Tool v3 — Strawberry Moon · Accordion Layout
       </div>
 
-      {/* Popup chrome shell */}
       <div
         style={{
-          width: 340,
-          maxHeight: 560,
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--p-bg)",
-          borderRadius: 12,
+          width: "100%",
+          maxWidth: "640px",
+          borderRadius: "16px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
           overflow: "hidden",
-          boxShadow: "0 12px 48px hsl(340 50% 10% / 0.5)",
         }}
       >
-        <div ref={containerRef} style={{ flex: 1, overflowY: "auto" }} />
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          bottom: 20,
-          left: 0,
-          right: 0,
-          textAlign: "center",
-          color: "rgba(255,255,255,0.12)",
-          fontFamily: "Georgia, serif",
-          fontStyle: "italic",
-          fontSize: 11,
-        }}
-      >
-        FormOpinionated — no FSM, no PopupRenderer
+        <div ref={containerRef} />
       </div>
     </div>
   )
 }
 
-// ── Meta ─────────────────────────────────────────────────────────────────────
-
 const meta: Meta<BridgeProps> = {
-  title: "Extensions/Drama/Components/FormOpinionated",
+  title: "Extensions/Drama/Components/JournalAuthoringUI-v3",
   component: FormOpinionatedBridge,
   parameters: { layout: "fullscreen" },
   argTypes: {
-    rating: { control: { type: "range", min: 0, max: 10, step: 1 } },
-    overallProgress: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
+    title: { control: "text", name: "Drama Title" },
+    episode: { control: { type: "number", min: 0 }, name: "Episode Number" },
+    tags: { control: "check", options: [...ALL_TAGS], name: "Key Moments" },
+    transitionBefore: { control: "text", name: "Transition: Before" },
+    transitionAfter: { control: "text", name: "Transition: After" },
+    reflection: { control: "text", name: "Why It Mattered" },
+    featuredQuote: { control: "text", name: "Memorable Quote" },
+    rating: {
+      control: { type: "range", min: 0, max: 10, step: 2 },
+      description: "Maps to 1–5 stars",
     },
-    completionLikelihood: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Drives emoji threshold: 😶 <25 · 🤔 <50 · 👀 <75 · 🔥 ≥75",
-    },
-    featuredQuote: { control: "text" },
-    axisConnection: {
-      control: { type: "range", min: -100, max: 100, step: 5 },
-    },
-    axisHope: { control: { type: "range", min: -100, max: 100, step: 5 } },
-    axisTrust: { control: { type: "range", min: -100, max: 100, step: 5 } },
-    axisControl: { control: { type: "range", min: -100, max: 100, step: 5 } },
-    transBefore: { control: "text" },
-    transAfter: { control: "text" },
-    tags: {
-      control: "check",
-      options: [...ALL_TAGS],
-      description: "Pre-selected key moment tags",
-    },
-    peakLine: { control: "text" },
-    momentumValue: { control: { type: "range", min: 0, max: 100, step: 1 } },
     momentumDirection: {
       control: "inline-radio",
-      options: ["rising", "steady", "falling"] satisfies Array<
-        "rising" | "steady" | "falling"
-      >,
+      options: ["rising", "steady", "falling"],
+      name: "Advanced: Momentum",
+    },
+    completionLikelihood: {
+      control: { type: "range", min: 0, max: 1, step: 0.05 },
+      name: "Advanced: Likelihood",
     },
   },
 }
@@ -229,129 +156,52 @@ const meta: Meta<BridgeProps> = {
 export default meta
 type Story = StoryObj<BridgeProps>
 
-// ── Base args ─────────────────────────────────────────────────────────────────
-
-const BASE: BridgeProps = {
-  rating: 9,
-  overallProgress: 0.74,
-  completionLikelihood: 0.92,
-  featuredQuote: "Don't look at me like that",
-  axisConnection: 70,
-  axisHope: -30,
-  axisTrust: -80,
-  axisControl: 40,
-  transBefore: "hopeful",
-  transAfter: "devastated",
-  tags: ["handTouch", "reveal"],
-  peakLine: "The umbrella scene in the rain",
-  momentumValue: 75,
-  momentumDirection: "falling",
-}
-
-// ── Stories ──────────────────────────────────────────────────────────────────
-
-/** All fields pre-filled — mixed tension/hope baseline. */
-export const Prefilled: Story = {
-  args: { ...BASE },
-}
-
-/** Blank — no prefill; axes at zero, no tags, sliders at default. */
-export const Blank: Story = {
+/** Baseline: pre-filled entry, "What Happened?" open by default. */
+export const StandardEntry: Story = {
   args: {
-    rating: 0,
-    overallProgress: 0,
-    completionLikelihood: 0.5,
-    featuredQuote: "",
-    axisConnection: 0,
-    axisHope: 0,
-    axisTrust: 0,
-    axisControl: 0,
-    transBefore: "",
-    transAfter: "",
+    title: "Crash Landing on You",
+    episode: 12,
+    tags: ["confession", "reunion"],
+    transitionBefore: "Distrust",
+    transitionAfter: "Trust",
+    reflection:
+      "The confession finally broke the emotional stalemate that existed for six episodes.",
+    featuredQuote: "Stay. Just this once.",
+    rating: 8,
+    momentumDirection: "rising",
+    completionLikelihood: 0.9,
+  },
+}
+
+/** Fresh journal slate — empty state, preview shows the empty hint. */
+export const BlankSlate: Story = {
+  args: {
+    title: "",
+    episode: 1,
     tags: [],
-    peakLine: "",
-    momentumValue: 50,
+    transitionBefore: "",
+    transitionAfter: "",
+    reflection: "",
+    featuredQuote: "",
+    rating: 0,
     momentumDirection: "steady",
+    completionLikelihood: 0.5,
   },
 }
 
-/** All-positive axes — every bar warm-gold, euphoric arc. */
-export const AxesAllPositive: Story = {
+/** Complex arc — multiple tags, full preview card with chips. */
+export const ComplexArc: Story = {
   args: {
-    ...BASE,
-    axisConnection: 80,
-    axisHope: 60,
-    axisTrust: 70,
-    axisControl: 90,
-    transBefore: "hopeful",
-    transAfter: "euphoric",
-    momentumDirection: "rising",
-    momentumValue: 85,
-  },
-}
-
-/** All-negative axes — every bar cool-violet; despair/betrayal territory. */
-export const AxesAllNegative: Story = {
-  args: {
-    ...BASE,
-    axisConnection: -80,
-    axisHope: -70,
-    axisTrust: -90,
-    axisControl: -60,
-    transBefore: "steady",
-    transAfter: "shattered",
+    title: "Twenty-Five Twenty-One",
+    episode: 14,
+    tags: ["separation", "sacrifice", "other"],
+    transitionBefore: "Isolation",
+    transitionAfter: "Belonging",
+    reflection:
+      "They promised forever but the realities of distance are changing their dynamic irrevocably.",
+    featuredQuote: "Your support is the only thing I need to breathe.",
+    rating: 10,
     momentumDirection: "falling",
-    momentumValue: 85,
-  },
-}
-
-/** Likelihood high — 🔥 emoji; Finishing ✓ threshold. */
-export const LikelihoodHigh: Story = {
-  name: "Likelihood / High (🔥 Finishing)",
-  args: {
-    ...BASE,
-    completionLikelihood: 0.94,
-    overallProgress: 0.9,
-    momentumDirection: "rising",
-  },
-}
-
-/** Likelihood low — 😶 emoji; dropping candidate. */
-export const LikelihoodLow: Story = {
-  name: "Likelihood / Low (😶 Dropping?)",
-  args: {
-    ...BASE,
-    completionLikelihood: 0.12,
-    rating: 4,
-    momentumDirection: "falling",
-    momentumValue: 80,
-  },
-}
-
-/** All tags selected — verify 4-col grid handles the full 12-tag set. */
-export const AllTagsSelected: Story = {
-  args: {
-    ...BASE,
-    tags: [...ALL_TAGS],
-    peakLine: "Literally every trope fired in one episode",
-  },
-}
-
-/** Finale collapse — axes mirror end-of-series emotional breakdown. */
-export const FinaleCollapse: Story = {
-  args: {
-    ...BASE,
-    rating: 9,
-    axisConnection: -40,
-    axisHope: -90,
-    axisTrust: 60,
-    axisControl: -70,
-    transBefore: "holding on",
-    transAfter: "let go",
-    tags: ["goodbye", "sacrifice", "promise"],
-    peakLine: "I'll find you wherever you go",
-    momentumValue: 95,
-    momentumDirection: "falling",
-    featuredQuote: "I'll remember you in every life",
+    completionLikelihood: 0.95,
   },
 }

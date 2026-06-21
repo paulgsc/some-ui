@@ -21,6 +21,9 @@ export type MomentTag =
   | "kiss"
   | "promise"
   | "sacrifice"
+  | "betrayal"
+  | "separation"
+  | "rivalry"
   | "other"
 
 export type CardSize = "min" | "compact" | "full"

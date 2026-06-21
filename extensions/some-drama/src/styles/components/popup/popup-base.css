@@ -52,9 +52,6 @@ body {
 }
 
 #popup-root {
-  display: flex;
-  flex-direction: column;
-
   min-height: 200px;
   max-height: 600px;
 }
@@ -64,10 +61,6 @@ body {
 ────────────────────────────────────────────────────────── */
 
 .p-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
   padding: 14px 16px 12px;
 
   background: var(--p-surface);
@@ -77,10 +70,6 @@ body {
 }
 
 .p-header-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
   font-family: "Bebas Neue", sans-serif;
   font-size: 16px;
   letter-spacing: 0.06em;
@@ -134,12 +123,6 @@ body {
 ────────────────────────────────────────────────────────── */
 
 .p-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  gap: 12px;
   padding: 40px 16px;
 }
 
@@ -218,16 +201,10 @@ body {
 }
 
 .p-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   padding: 4px 14px;
 }
 
 .p-entry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 10px 12px;
   background: var(--p-surface);
   border: 1px solid var(--p-border);
@@ -274,8 +251,6 @@ body {
 }
 
 .p-entry-actions {
-  display: flex;
-  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -297,11 +272,6 @@ body {
   gap: 8px;
 }
 
-.p-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
 .p-label {
   color: var(--p-muted);
@@ -339,9 +309,6 @@ body {
 ────────────────────────────────────────────────────────── */
 
 .p-telemetry-badge-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   padding: 6px 8px;
   background: var(--p-surface2);
   border: 1px dashed var(--p-border);
@@ -363,11 +330,6 @@ body {
    Color Picker
 ────────────────────────────────────────────────────────── */
 
-.p-color-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 
 .p-color-swatch {
   width: 20px;
@@ -482,9 +444,6 @@ body {
 }
 
 .p-btn-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
   padding-top: 4px;
 }
 
@@ -493,10 +452,6 @@ body {
 ────────────────────────────────────────────────────────── */
 
 .p-error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
   padding: 32px 20px;
   text-align: center;
 }

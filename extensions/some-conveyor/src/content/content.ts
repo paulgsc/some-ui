@@ -17,6 +17,7 @@
  *   - CSS injected as a web_accessible_resource URL (shadow DOM scoped).
  */
 
+import { ext } from "@censor/platform/content"
 import { CoexistenceRuntime } from "@conveyor/lib/content/coexistence"
 import { ConveyorEngine } from "@conveyor/lib/content/conveyor-engine"
 import { EffectBus } from "@conveyor/lib/content/effect-bus"
@@ -27,11 +28,15 @@ import type { FaceAction, ViewportItemSpec } from "@conveyor/types"
 import { DEFAULT_CONVEYOR_CONFIG } from "@conveyor/types"
 
 // ── Stylesheet URL ────────────────────────────────────────────────────────────
-// Vite resolves this import as a URL string at build time (via ?url suffix).
-// The URL points to the bundled conveyor.css in the extension package,
-// served as a web_accessible_resource.
-// @ts-ignore — Vite URL import; not in standard TS lib
-import styleUrl from "./styles/conveyor.css?url"
+// The shadow root loads the compiled stylesheet as a web_accessible_resource.
+// `src/styles/conveyor.css` is authored with `@apply` against the @some-ui/styles
+// preset and compiled to plain static CSS by `@unocss/cli` (the `build:css`
+// script) → `dist/styles/conveyor.css`. We resolve it via the extension runtime
+// rather than a Vite `?url` import so Vite never runs its CSS pipeline over the
+// directive source; the build-time CLI is the single producer of this asset and
+// no CSS engine ships to the page. `styles/*` is declared web_accessible_resources
+// in both manifests.
+const styleUrl = ext.runtime.getURL("styles/conveyor.css")
 
 // ── Duplicate injection guard ───────────────────────────────────────────────────
 
@@ -87,7 +92,8 @@ async function init(): Promise<void> {
   // Pre-warm WASM — don't block rendering on it.
   wasmBridge
     .initialize()
-    .catch((e) => console.error("[some-conveyor] WASM init error:", e))
+    // eslint-disable-next-line no-console
+    .catch((e: unknown) => console.error("[some-conveyor] WASM init error:", e))
 
   // Build the conveyor and register it for lifecycle management.
   conveyor = runtime.register(
@@ -111,6 +117,7 @@ async function init(): Promise<void> {
   // Start the conveyor (builds cube pool, begins rAF loop).
   await conveyor.start()
 
+  // eslint-disable-next-line no-console
   console.debug("[some-conveyor] Runtime started.")
 }
 
@@ -121,6 +128,7 @@ function teardown(): void {
   runtime = null
   conveyor = null
   document.documentElement.removeAttribute(GUARD_ATTR)
+  // eslint-disable-next-line no-console
   console.debug("[some-conveyor] Runtime torn down.")
 }
 
@@ -131,7 +139,7 @@ window.addEventListener("beforeunload", teardown)
 // SPA navigation: treat popstate/hashchange as a signal to re-evaluate.
 // Some SPAs navigate without unloading — the conveyor stays alive through
 // navigation but we want to ensure the guard stays correct.
-const handleSpaNav = () => {
+const handleSpaNav = (): void => {
   // Currently a no-op: the conveyor is page-agnostic.
   // Add URL-based show/hide logic here if needed (e.g., hide on specific routes).
 }
@@ -140,13 +148,23 @@ window.addEventListener("hashchange", handleSpaNav)
 
 // ── Message handler (from background service worker) ─────────────────────────
 
-browser.runtime.onMessage.addListener((message: unknown) => {
-  if (!message || typeof message !== "object") return
-  const msg = message as Record<string, unknown>
+type ConveyorMsg = { type: string }
 
-  switch (msg["type"]) {
+function isConveyorMsg(v: unknown): v is ConveyorMsg {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "type" in v &&
+    typeof v.type === "string"
+  )
+}
+
+ext.runtime.onMessage.addListener((message: unknown): void => {
+  if (!isConveyorMsg(message)) return
+
+  switch (message.type) {
     case "CONVEYOR_SUSPEND":
-      runtime?.pageMonitor // PageMonitor re-evaluates automatically
+      // PageMonitor re-evaluates attention state automatically.
       conveyor?.suspend()
       break
     case "CONVEYOR_RESUME":
@@ -160,4 +178,5 @@ browser.runtime.onMessage.addListener((message: unknown) => {
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
-init().catch((e) => console.error("[some-conveyor] Init failed:", e))
+// eslint-disable-next-line no-console
+init().catch((e: unknown) => console.error("[some-conveyor] Init failed:", e))

@@ -33,18 +33,6 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
   const root = getOverlayRoot()
   const layer = el("div", "dc-blossom-layer")
 
-  // Layer is position:fixed, inset:0 — it's a full-viewport canvas.
-  // Per-particle positions are computed as viewport coords via CSS calc().
-  Object.assign(layer.style, {
-    position: "fixed",
-    inset: "0",
-    width: "100vw",
-    height: "100vh",
-    pointerEvents: "none",
-    zIndex: "2147483646",
-    overflow: "visible",
-  })
-
   /** Update --b-layer-x/y on the layer from the anchor's current rect. */
   const updateOrigin = (): void => {
     const rect = anchorEl.getBoundingClientRect()

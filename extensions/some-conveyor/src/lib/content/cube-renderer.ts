@@ -6,7 +6,15 @@ import type {
   ViewportState,
 } from "@conveyor/types"
 
+import type { CubeDims, RotationAxis } from "./cube-geometry"
+import {
+  axisForCycle,
+  computeFaceTransforms,
+  computePerspective,
+  resolveAxis,
+} from "./cube-geometry"
 import { CycleRotationAdapter } from "./cycle-rotation-adapter"
+import { SC_CUBE_LAYOUT, SC_FACE_LAYOUT } from "./theme-engine"
 
 const FACE_COUNT = 6
 
@@ -40,69 +48,60 @@ export class CubeRenderer {
   private readonly faceEls: Array<HTMLElement>
 
   private readonly rotationAdapter: CycleRotationAdapter
+  private readonly dims: CubeDims
+  private currentAxis: RotationAxis
   private currentActiveFace = -1
   private renderedFaces = new Set<number>()
   private faceContents: Array<FaceContent> = []
 
   constructor(
     private readonly cubeId: string,
-    private readonly cubeWidth: number,
-    private readonly cubeHeight: number
+    cubeWidth: number,
+    cubeHeight: number
   ) {
-    this.rotationAdapter = new CycleRotationAdapter("cube:y")
+    this.dims = { width: cubeWidth, height: cubeHeight }
 
-    // Outer wrapper — ConveyorEngine moves this via translateX.
+    // Default WASM cycle is cube:y; resolve against aspect ratio so a non-square
+    // rect can never be asked to rotate about its stretching axis.
+    this.currentAxis = resolveAxis(this.dims, axisForCycle("cube:y"))
+    this.rotationAdapter = new CycleRotationAdapter(
+      this.currentAxis === "x" ? "cube:x" : "cube:y"
+    )
+
+    // Outer wrapper — ConveyorEngine moves this via translateX. Static box is
+    // expressed as preset utilities; only the measured size stays inline.
     this.el = document.createElement("div")
-    this.el.className = "sc-cube-wrapper"
+    this.el.className =
+      "sc-cube-wrapper absolute bottom-0 pointer-events-auto will-change-transform"
     this.el.dataset["cubeId"] = cubeId
     Object.assign(this.el.style, {
-      position: "absolute",
-      bottom: "0",
       width: `${cubeWidth}px`,
       height: `${cubeHeight}px`,
-      pointerEvents: "auto",
     })
 
-    // Perspective scene.
+    // Perspective scene. Focal distance is derived from the rect + axis so the
+    // leading face faces the viewer without ballooning. preserve-3d on the cube
+    // makes the six faces compose a solid box.
     this.scene = document.createElement("div")
-    this.scene.className = "sc-scene"
-    Object.assign(this.scene.style, {
-      width: "100%",
-      height: "100%",
-      perspective: `${cubeWidth * 2.5}px`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    })
+    this.scene.className =
+      "sc-scene flex h-full w-full items-center justify-center"
+    this.scene.style.perspective = `${computePerspective(this.dims, this.currentAxis)}px`
 
-    // Cube — preserve-3d, will be rotated.
+    // Cube — preserve-3d (kept in conveyor.css), rotated each frame.
     this.cube = document.createElement("div")
-    this.cube.className = "sc-cube"
-    Object.assign(this.cube.style, {
-      width: "100%",
-      height: "100%",
-      position: "relative",
-      transformStyle: "preserve-3d",
-      transition: `transform var(--transition-duration, 500ms) var(--transition-easing, ease)`,
-    })
+    this.cube.className = `sc-cube ${SC_CUBE_LAYOUT}`
 
-    // Build 6 face elements.
+    // Build 6 face elements. Backfaces stay visible so the box reads as a solid
+    // dice from every angle (opaque face backgrounds form the topology).
     this.faceEls = Array.from({ length: FACE_COUNT }, (_, i) => {
       const face = document.createElement("div")
-      face.className = "sc-face"
+      face.className = `sc-face ${SC_FACE_LAYOUT}`
       face.dataset["faceIndex"] = String(i)
-      Object.assign(face.style, {
-        position: "absolute",
-        inset: "0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backfaceVisibility: "hidden",
-        overflow: "hidden",
-      })
-      this.applyFaceTransform(face, i)
       return face
     })
+
+    // Position faces for the resolved axis.
+    this.applyAxisGeometry(this.currentAxis)
 
     // Assemble.
     for (const face of this.faceEls) this.cube.appendChild(face)
@@ -125,9 +124,17 @@ export class CubeRenderer {
   applyState(state: ViewportState, theme: CubeTheme): void {
     const { cyclePosition, cycleLength, activeFace, cycleName } = state
 
-    // Update rotation axis if cycle type changed.
-    const axis = cycleName
-    this.rotationAdapter.setAxis(axis)
+    // Resolve the axis the WASM cycle wants against the rect's aspect ratio, so
+    // a non-square cube is never rotated about its stretching axis. Re-lay out
+    // the faces + perspective only when the axis actually changes.
+    const axis = resolveAxis(this.dims, axisForCycle(cycleName))
+    if (axis !== this.currentAxis) {
+      this.applyAxisGeometry(axis)
+    }
+
+    // Drive the rotation adapter with the resolved axis (kept in lockstep with
+    // the geometry) rather than the raw cycle name.
+    this.rotationAdapter.setAxis(axis === "x" ? "cube:x" : "cube:y")
 
     // Compute rotation angles.
     const { xRotation, yRotation } = this.rotationAdapter.update(
@@ -215,18 +222,23 @@ export class CubeRenderer {
 
   // ── Face transforms ────────────────────────────────────────────────────────
 
-  private applyFaceTransform(el: HTMLElement, index: number): void {
-    const halfW = this.cubeWidth / 2
-    const halfH = this.cubeHeight / 2
-    const transforms: Record<number, string> = {
-      0: `translateZ(${halfW}px)`,
-      1: `rotateY(90deg) translateZ(${halfW}px)`,
-      2: `rotateY(180deg) translateZ(${halfW}px)`,
-      3: `rotateY(-90deg) translateZ(${halfW}px)`,
-      4: `rotateX(90deg) translateZ(${halfH}px)`,
-      5: `rotateX(-90deg) translateZ(${halfH}px)`,
+  /**
+   * Lay out the six faces for a rotation axis: position each in 3-D and hide
+   * the perpendicular pair that would stretch into slabs on a non-square rect.
+   * Also updates the scene's focal distance for the new axis.
+   */
+  private applyAxisGeometry(axis: RotationAxis): void {
+    this.currentAxis = axis
+    this.scene.style.perspective = `${computePerspective(this.dims, axis)}px`
+
+    const faces = computeFaceTransforms(this.dims, axis)
+    for (let i = 0; i < this.faceEls.length; i++) {
+      const faceEl = this.faceEls[i]
+      const spec = faces[i]
+      if (!faceEl || !spec) continue
+      faceEl.style.transform = spec.transform
+      faceEl.style.visibility = spec.hidden ? "hidden" : "visible"
     }
-    el.style.transform = transforms[index] ?? ""
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
