@@ -101,9 +101,9 @@ function runAutoClassify(): void {
   // run after the freeze style is removed and could catch mid-transition near-
   // zero alpha values, tagging light elements as `preserve` and permanently
   // exposing white after veil drop.
-  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() => {
+  const { alreadyDark, avgLuminance } = withPrepaintSuppressed(() => {
     const result = detect()
-    if (!result.skip && result.isLight) {
+    if (!result.alreadyDark) {
       // Inject theme CSS + run initial patchAll inside the lock.
       // The dark substrate is in the cascade before withPrepaintSuppressed
       // returns, so veil removal (commitVisualState below) is already atomic.
@@ -112,7 +112,7 @@ function runAutoClassify(): void {
     return result
   })
 
-  autoWasApplied = Boolean(!skip && isLight)
+  autoWasApplied = !alreadyDark
 
   if (autoWasApplied) {
     commitVisualState()

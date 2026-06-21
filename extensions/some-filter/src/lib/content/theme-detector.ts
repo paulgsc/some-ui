@@ -130,11 +130,35 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
   return { avgLuminance: avg, isLight, skip }
 }
 
+export type DetectionResult = {
+  /**
+   * The page is already dark enough that applying our theme would double-darken
+   * it — the orchestrator should restore vendor styles instead of theming.
+   */
+  alreadyDark: boolean
+  /** Weighted average luminance of sampled backgrounds, or null if none found. */
+  avgLuminance: number | null
+  /** 0–1, how far the sampled luminance sits from the decision threshold. */
+  confidence: number
+}
+
 /**
- * Public detection entry point used by the orchestrator. Currently a thin
- * wrapper over classifyPage(); #236 will evolve the returned shape toward an
- * explicit already-dark decision. Read-only.
+ * Public detection entry point used by the orchestrator. Read-only.
+ *
+ * Reframes classifyPage()'s light/dark verdict as an explicit already-dark
+ * decision: we theme by default and only restore vendor styles when the page is
+ * already dark. A null luminance (no opaque samples) is treated as light — the
+ * browser-default-white assumption — so we keep the theme.
  */
-export function detect(threshold?: number): ClassificationResult {
-  return classifyPage(threshold)
+export function detect(threshold = 0.4): DetectionResult {
+  const { avgLuminance, isLight } = classifyPage(threshold)
+
+  const alreadyDark = avgLuminance !== null && !isLight
+
+  const confidence =
+    avgLuminance === null
+      ? 0
+      : Math.min(1, Math.abs(avgLuminance - threshold) / threshold)
+
+  return { alreadyDark, avgLuminance, confidence }
 }

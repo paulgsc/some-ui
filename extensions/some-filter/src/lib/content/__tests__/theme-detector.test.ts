@@ -90,15 +90,42 @@ describe("detect", () => {
     document.body.innerHTML = ""
   })
 
-  it("delegates to classifyPage (same result for the same DOM)", () => {
+  it("reports alreadyDark=false for a light page (keep the theme)", () => {
     document.body.style.backgroundColor = "rgb(255, 255, 255)"
-    expect(detect()).toEqual(classifyPage())
+    const result = detect()
+    expect(result.alreadyDark).toBe(false)
+    expect(result.avgLuminance).not.toBeNull()
   })
 
-  it("forwards a custom threshold", () => {
+  it("reports alreadyDark=true for a dark page (restore vendor)", () => {
+    document.body.style.backgroundColor = "rgb(20, 20, 20)"
+    expect(detect().alreadyDark).toBe(true)
+  })
+
+  it("treats a transparent/unknown page as light (alreadyDark=false)", () => {
+    // No explicit bg anywhere → zero opaque samples → browser-default-white
+    // assumption → keep the theme.
+    const result = detect()
+    expect(result.avgLuminance).toBeNull()
+    expect(result.alreadyDark).toBe(false)
+    expect(result.confidence).toBe(0)
+  })
+
+  it("flips the decision with a custom threshold (mixed mid-grey page)", () => {
+    // rgb(161, 161, 161) → lum ≈ 0.37
     document.body.style.backgroundColor = "rgb(161, 161, 161)"
-    expect(detect(0.3).isLight).toBe(true)
-    expect(detect(0.4).isLight).toBe(false)
+    expect(detect(0.3).alreadyDark).toBe(false) // 0.37 > 0.3 → light
+    expect(detect(0.4).alreadyDark).toBe(true) // 0.37 < 0.4 → dark
+  })
+
+  it("reports higher confidence the further luminance is from the threshold", () => {
+    document.body.style.backgroundColor = "rgb(0, 0, 0)"
+    const veryDark = detect().confidence
+
+    document.body.style.backgroundColor = "rgb(120, 120, 120)" // near threshold
+    const nearThreshold = detect().confidence
+
+    expect(veryDark).toBeGreaterThan(nearThreshold)
   })
 
   it("does not mutate the DOM (read-only)", () => {

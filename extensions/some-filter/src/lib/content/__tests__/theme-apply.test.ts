@@ -240,4 +240,22 @@ describe("restoreVendor", () => {
   it("is safe to call when nothing is applied", () => {
     expect(() => restoreVendor()).not.toThrow()
   })
+
+  it("leaves vendor DOM byte-identical after apply + restore", () => {
+    // #236 invariant: restoring an already-dark (or any) page must leave the
+    // vendor subtree exactly as it was — no leftover data-sw-patched attrs.
+    document.body.innerHTML =
+      '<div style="background-color: rgb(255, 255, 255)">' +
+      '<p style="background-color: rgb(200, 200, 200)">hi</p></div>'
+    const before = document.body.innerHTML
+
+    applyTheme("dark")
+    expect(document.querySelectorAll("[data-sw-patched]").length).toBeGreaterThan(
+      0
+    )
+
+    restoreVendor()
+
+    expect(document.body.innerHTML).toBe(before)
+  })
 })
