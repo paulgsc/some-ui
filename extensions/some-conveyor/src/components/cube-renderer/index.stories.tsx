@@ -18,7 +18,11 @@ import { LastActivityFace } from "@conveyor/components/faces/last-activity"
 import { StreakCountFace } from "@conveyor/components/faces/streak-count"
 import { TodayProgressFace } from "@conveyor/components/faces/today-progress"
 import { CubeRenderer } from "@conveyor/lib/content/cube-renderer"
-import { TerminalTheme, ThemeEngine } from "@conveyor/lib/content/theme-engine"
+import {
+  CONVEYOR_TOKENS,
+  SteelTheme,
+  ThemeEngine,
+} from "@conveyor/lib/content/theme-engine"
 import type { FaceContent, ViewportState } from "@conveyor/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -102,7 +106,7 @@ const CubeStory = (props: CubeStoryProps): JSX.Element => {
     const container = containerRef.current
     if (!container) return
 
-    const engine = new ThemeEngine(TerminalTheme)
+    const engine = new ThemeEngine(SteelTheme)
     const renderer = new CubeRenderer("story-cube", 180, 180)
     rendererRef.current = renderer
     renderer.setFaceContents(MOCK_FACES)
@@ -120,7 +124,7 @@ const CubeStory = (props: CubeStoryProps): JSX.Element => {
           cyclePosition: props.cyclePosition,
           cycleLength: props.cycleLength,
         })
-        renderer.applyState(state, TerminalTheme)
+        renderer.applyState(state, SteelTheme)
         return
       }
 
@@ -133,9 +137,9 @@ const CubeStory = (props: CubeStoryProps): JSX.Element => {
         cycleLength: props.cycleLength,
         cycleName: "cube:y",
       })
-      renderer.applyState(state, TerminalTheme)
+      renderer.applyState(state, SteelTheme)
       rafRef.current = requestAnimationFrame(() => {
-        setTimeout(tick, TerminalTheme.transitionDuration + 200)
+        setTimeout(tick, SteelTheme.transitionDuration + 200)
       })
     }
 
@@ -152,15 +156,14 @@ const CubeStory = (props: CubeStoryProps): JSX.Element => {
       style={{
         width: "180px",
         height: "200px",
-        background: "var(--strip-bg, rgba(6,10,6,0.92))",
-        borderTop: "var(--strip-border-top, 1px solid #1a2e1a)",
+        background: "var(--strip-bg, rgb(16 20 27 / 92%))",
+        borderTop: "var(--strip-border-top, 1px solid #39444f)",
         backdropFilter: "var(--strip-backdrop, blur(8px))",
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
-        ...Object.fromEntries(
-          Object.entries(TerminalTheme.cssVariables).map(([k, v]) => [k, v])
-        ),
+        ...CONVEYOR_TOKENS,
+        ...SteelTheme.cssVariables,
       }}
     >
       <div

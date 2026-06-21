@@ -19,7 +19,11 @@ import { LastActivityFace } from "@conveyor/components/faces/last-activity"
 import { StreakCountFace } from "@conveyor/components/faces/streak-count"
 import { TodayProgressFace } from "@conveyor/components/faces/today-progress"
 import { CubeRenderer } from "@conveyor/lib/content/cube-renderer"
-import { TerminalTheme, ThemeEngine } from "@conveyor/lib/content/theme-engine"
+import {
+  CONVEYOR_TOKENS,
+  SteelTheme,
+  ThemeEngine,
+} from "@conveyor/lib/content/theme-engine"
 import type { FaceContent, ViewportState } from "@conveyor/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -159,7 +163,7 @@ const ConveyorStripStory = (props: StripStoryProps): JSX.Element => {
 
     strip.innerHTML = ""
 
-    const engine = new ThemeEngine(TerminalTheme)
+    const engine = new ThemeEngine(SteelTheme)
     const count = Math.min(props.cubeCount, CUBE_FACE_SETS.length)
     const renderers: Array<CubeRenderer> = []
 
@@ -176,7 +180,7 @@ const ConveyorStripStory = (props: StripStoryProps): JSX.Element => {
 
       // Each cube starts on a different face for variety.
       const initPos = i % 4
-      renderer.applyState(makeState(initPos, initPos), TerminalTheme)
+      renderer.applyState(makeState(initPos, initPos), SteelTheme)
 
       strip.appendChild(renderer.el)
       renderers.push(renderer)
@@ -224,7 +228,7 @@ const ConveyorStripStory = (props: StripStoryProps): JSX.Element => {
         if (didTick) {
           cyclePosPerCube[i] = (cyclePosPerCube[i]! + 1) % 4
           const pos = cyclePosPerCube[i]!
-          renderer.applyState(makeState(pos, pos), TerminalTheme)
+          renderer.applyState(makeState(pos, pos), SteelTheme)
         }
       }
 
@@ -245,13 +249,12 @@ const ConveyorStripStory = (props: StripStoryProps): JSX.Element => {
         width: `${props.viewportWidth}px`,
         height: `${STRIP_HEIGHT}px`,
         position: "relative",
-        background: "var(--strip-bg, rgba(6,10,6,0.92))",
-        borderTop: "var(--strip-border-top, 1px solid #1a2e1a)",
+        background: "var(--strip-bg, rgb(16 20 27 / 92%))",
+        borderTop: "var(--strip-border-top, 1px solid #39444f)",
         backdropFilter: "var(--strip-backdrop, blur(8px))",
         overflow: "hidden",
-        ...Object.fromEntries(
-          Object.entries(TerminalTheme.cssVariables).map(([k, v]) => [k, v])
-        ),
+        ...CONVEYOR_TOKENS,
+        ...SteelTheme.cssVariables,
       }}
     >
       <div
