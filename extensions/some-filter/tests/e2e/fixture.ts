@@ -66,8 +66,7 @@ export async function waitForClassification(
       luminance: document.body.dataset["swLuminance"],
       tabState: document.body.dataset["swTabState"],
       hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
-      hasPrepaintVeil:
-        document.getElementById("__sw_prepaint_veil") !== null,
+      hasPrepaintVeil: document.getElementById("__sw_prepaint_veil") !== null,
     }
   })
 }

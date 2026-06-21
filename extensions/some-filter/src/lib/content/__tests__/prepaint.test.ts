@@ -115,8 +115,7 @@ describe("withPrepaintSuppressed", () => {
     enablePrepaint()
     let veilPresentDuringFn = false
     withPrepaintSuppressed(() => {
-      veilPresentDuringFn =
-        document.getElementById(PREPAINT_VEIL_ID) !== null
+      veilPresentDuringFn = document.getElementById(PREPAINT_VEIL_ID) !== null
     })
     expect(veilPresentDuringFn).toBe(true)
     // and it is still present after — teardown is the caller's job
