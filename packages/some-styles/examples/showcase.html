@@ -13,6 +13,7 @@
     <meta charset="UTF-8" />
     <title>@some-ui/styles — showcase</title>
     <link rel="stylesheet" href="../tokens/base.css" />
+    <link rel="stylesheet" href="../themes/conveyor.css" />
     <link rel="stylesheet" href="../dist/some-ui.css" />
   </head>
   <body class="bg-background text-foreground font-sans p-8 flex flex-col gap-6">
@@ -51,6 +52,59 @@
       <div class="card-footer gap-2">
         <button class="btn-primary btn-sm">Save</button>
         <button class="btn-ghost btn-sm">Cancel</button>
+      </div>
+    </section>
+
+    <!-- Conveyor app-theme: steel substrate + signal/live/alert semantics +
+         instrumentation typography. Scoped to a `.conveyor` container so the
+         theme tokens override the shadcn contract for this subtree only. -->
+    <section
+      class="conveyor bg-background text-foreground border-border flex flex-col gap-4 rounded-md border p-6"
+    >
+      <header class="flex flex-col gap-1">
+        <p
+          class="text-muted-foreground font-mono text-[11px] tracking-[0.26em] uppercase"
+        >
+          Browser attention · scheduled
+        </p>
+        <h2 class="font-display text-2xl font-bold tracking-tight">
+          some-<span class="text-muted-foreground font-mono">conveyor</span>
+        </h2>
+      </header>
+
+      <!-- semantic swatches -->
+      <div class="flex flex-wrap gap-2 font-mono text-xs">
+        <span
+          class="bg-card text-card-foreground border-border inline-flex items-center gap-2 rounded-md border px-2.5 py-1"
+        >
+          <i class="size-1.5 rounded-full bg-[var(--cv-live)]"></i> scheduler
+          running
+        </span>
+        <span
+          class="bg-card text-card-foreground border-border inline-flex items-center gap-2 rounded-md border px-2.5 py-1"
+        >
+          <i class="size-1.5 rounded-full bg-[var(--cv-signal)]"></i> tick
+          <b class="text-[var(--cv-signal)]">0x3F</b>
+        </span>
+        <span
+          class="bg-card text-card-foreground border-border inline-flex items-center gap-2 rounded-md border px-2.5 py-1"
+        >
+          <i class="size-1.5 rounded-full bg-[var(--cv-alert)]"></i> IV crush
+        </span>
+      </div>
+
+      <!-- steel ramp -->
+      <div class="flex gap-1">
+        <span class="h-8 flex-1 rounded-sm bg-[var(--cv-steel-900)]"></span>
+        <span class="h-8 flex-1 rounded-sm bg-[var(--cv-steel-700)]"></span>
+        <span class="h-8 flex-1 rounded-sm bg-[var(--cv-steel-600)]"></span>
+        <span class="h-8 flex-1 rounded-sm bg-[var(--cv-steel-550)]"></span>
+        <span class="h-8 flex-1 rounded-sm bg-[var(--cv-line)]"></span>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button class="btn-primary btn-sm">Primary (signal)</button>
+        <button class="btn-destructive btn-sm">Alert</button>
       </div>
     </section>
   </body>

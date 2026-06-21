@@ -77,7 +77,25 @@ export const radius = {
   full: "9999px",
 } as const
 
+/**
+ * Font families wired to the single `--font-*` tokens (tokens/base.css),
+ * so `font-sans` / `font-mono` / `font-display` resolve through the same
+ * indirection as colors. A theme overriding a token (e.g. `.conveyor`
+ * pointing `--font-mono` at IBM Plex Mono) restyles the utility with no
+ * duplicated output. `display` is the additive brand/heading family.
+ *
+ * presetWind4 keys font families under `theme.font` (each `font-<key>`
+ * utility emits `font-family: var(--font-<key>)`); this deep-merges with
+ * Wind's defaults to add the `display` family alongside sans/mono.
+ */
+export const fontFamily = {
+  sans: "var(--font-sans)",
+  mono: "var(--font-mono)",
+  display: "var(--font-display)",
+} as const
+
 export const someUiTheme = {
   colors,
   radius,
+  font: fontFamily,
 }
