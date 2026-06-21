@@ -21,6 +21,7 @@
  *   shouldSkip(). Vendor DOM is left in place; extension nodes self-exclude.
  */
 
+import { commitVisualState } from "@filter/lib/content/prepaint"
 import type { FilterConfig } from "@filter/types/config"
 
 import { parseColor, relativeLuminance } from "./color"
@@ -451,11 +452,19 @@ export type ThemeMode = "dark" | "legacy"
  * restoreVendor() first when switching.
  */
 export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
-  if (mode === "legacy") {
-    if (config !== undefined) applyLegacyFilter(config)
-    return
+  try {
+    if (mode === "legacy") {
+      // 1. Tag the document element synchronously so prepaint.css can read it immediately
+      document.documentElement.setAttribute("data-sw-prepaint-mode", "legacy")
+
+      // 2. Fire the legacy filter rules
+      if (config !== undefined) applyLegacyFilter(config)
+      return
+    }
+    activateDarkTheme()
+  } finally {
+    commitVisualState()
   }
-  activateDarkTheme()
 }
 
 /**
@@ -463,6 +472,7 @@ export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
  * Veil teardown remains the orchestrator's responsibility.
  */
 export function restoreVendor(): void {
+  document.documentElement.removeAttribute("data-sw-prepaint-mode")
   deactivateDarkTheme()
   removeLegacyFilter()
 }

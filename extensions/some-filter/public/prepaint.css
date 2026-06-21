@@ -18,19 +18,19 @@
 
 #__sw_prepaint_veil,
 #__sw_prepaint_veil:popover-open {
-  position: fixed;
+  border: 0;
+  color-scheme: dark;
+  height: 100vh;
   inset: 0;
   margin: 0;
-  padding: 0;
-  border: 0;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
   max-height: 100vh;
+  max-width: 100vw;
   overflow: hidden;
-  background-color: #0d1117;
-  color-scheme: dark;
+  padding: 0;
   pointer-events: none;
+  position: fixed;
+  width: 100vw;
+
   /* Fallback stacking for the non-top-layer path. */
   z-index: 2147483647;
 }
@@ -38,5 +38,19 @@
 /* When the element is promoted to the top layer, its backdrop should also be
    the dark canvas so nothing light shows through at the edges. */
 #__sw_prepaint_veil::backdrop {
-  background-color: #0d1117;
+  background-color: #05070a;
+}
+
+/* ── Legacy Mode Matching Veil ───────────────────────────────────────────── */
+
+/* When loading into legacy mode, match the exact inversion and brightness 
+   dimming stack to prevent the drop-away flash. */
+[data-sw-prepaint-mode="legacy"] #__sw_prepaint_veil,
+[data-sw-prepaint-mode="legacy"] #__sw_prepaint_veil:popover-open {
+  /* Since invert(1) turns our #0d1117 background into an off-white, 
+     we flip the raw color to white (#fff) so that the invert() operation 
+     turns it back into perfect pitch black/dark filtered canvas. */
+  background-color: #fff !important;
+  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
+    contrast(0.92) !important;
 }

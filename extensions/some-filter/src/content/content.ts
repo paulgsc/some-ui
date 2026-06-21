@@ -72,7 +72,6 @@ function applyState(state: TabState): void {
 
   if (state === "legacy") {
     applyTheme("legacy", filterConfig)
-    commitVisualState()
     return
   }
 
