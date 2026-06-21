@@ -35,7 +35,7 @@ backgrounds must be tagged by the JS patcher **after** they paint. A random
 vendor re-render therefore shows a white frame until the observer catches it —
 the "flashbang".
 
-### Finding 2 — classification currently must *drop the veil* to read truth
+### Finding 2 — classification currently must _drop the veil_ to read truth
 
 A document-start prepaint veil (`public/prepaint.css`, `public/prepaint-start.js`)
 paints a dark substrate to hide the white-flash during load. It works by
@@ -71,7 +71,7 @@ From `src/inject/dynamic-theme/index.ts`:
 
 1. Detect conflicting instances.
 2. **Apply an immediate fallback dark style** (`getModifiedFallbackStyle`, strict
-   mode) *before* analysis — prevents flash of light content.
+   mode) _before_ analysis — prevents flash of light content.
 3. Once `<head>` exists, `createOrUpdateDynamicTheme()` runs:
    - `createStaticStyleOverrides()` — base user-agent / text / inversion /
      variables styles.
@@ -83,33 +83,33 @@ From `src/inject/dynamic-theme/index.ts`:
 
 **Key insight:** DarkReader **applies first, refines after.** It does **not**
 classify "is this page already dark?" — it themes universally based on user
-settings and per-site *fixes* (CSS overrides selected by URL). It has **no
+settings and per-site _fixes_ (CSS overrides selected by URL). It has **no
 already-dark detector.**
 
 ### 2.2 Module mapping — DarkReader → ours
 
-| DarkReader (`src/inject/dynamic-theme/`) | Responsibility | Our counterpart |
-|---|---|---|
-| `index.ts` | Orchestration / lifecycle | `src/content/content.ts` |
-| `getModifiedFallbackStyle()` (immediate) | Anti-flash substrate before analysis | `public/prepaint.*` (veil) |
-| `createStaticStyleOverrides()` | Base dark CSS (ua/text/vars) | `buildDarkThemeCSS()` (`dark-theme.ts`) |
-| `style-manager.ts` / `stylesheet-modifier.ts` / `css-rules.ts` | Parse & rewrite author stylesheets | *(none — we patch elements, not rules)* |
-| `modify-colors.ts` / `palette.ts` | HSL color transformation | naive `invert()` + `data-sw-patched` luminance buckets |
-| `image.ts` | Per-image invert decision | blanket `invert(1) hue-rotate` / `filter:none` |
-| `variables.ts` | Author CSS custom properties | *(none)* |
-| `watch/` | Mutation observer for dynamic content | `startPatchObserver` (`dark-theme.ts:281-309`) |
-| `inline-style.ts` | Inline `style=""` attrs | partial (observer watches `style` attr) |
-| `removeDynamicTheme()` | Teardown | `removeDarkTheme()` (`dark-theme.ts:340-348`) |
+| DarkReader (`src/inject/dynamic-theme/`)                       | Responsibility                        | Our counterpart                                        |
+| -------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
+| `index.ts`                                                     | Orchestration / lifecycle             | `src/content/content.ts`                               |
+| `getModifiedFallbackStyle()` (immediate)                       | Anti-flash substrate before analysis  | `public/prepaint.*` (veil)                             |
+| `createStaticStyleOverrides()`                                 | Base dark CSS (ua/text/vars)          | `buildDarkThemeCSS()` (`dark-theme.ts`)                |
+| `style-manager.ts` / `stylesheet-modifier.ts` / `css-rules.ts` | Parse & rewrite author stylesheets    | _(none — we patch elements, not rules)_                |
+| `modify-colors.ts` / `palette.ts`                              | HSL color transformation              | naive `invert()` + `data-sw-patched` luminance buckets |
+| `image.ts`                                                     | Per-image invert decision             | blanket `invert(1) hue-rotate` / `filter:none`         |
+| `variables.ts`                                                 | Author CSS custom properties          | _(none)_                                               |
+| `watch/`                                                       | Mutation observer for dynamic content | `startPatchObserver` (`dark-theme.ts:281-309`)         |
+| `inline-style.ts`                                              | Inline `style=""` attrs               | partial (observer watches `style` attr)                |
+| `removeDynamicTheme()`                                         | Teardown                              | `removeDarkTheme()` (`dark-theme.ts:340-348`)          |
 
 **Conclusion: our architecture is the same shape** (static overrides + dynamic
 observer + teardown). We are not structurally behind; the gaps are (a) the
-flash-prone *flow order*, (b) prepaint poisoning measurement, and (c) crude
+flash-prone _flow order_, (b) prepaint poisoning measurement, and (c) crude
 color/image heuristics.
 
 ### 2.3 Heuristics worth borrowing
 
 - **HSL color modification** (`modify-colors.ts` + `palette.ts`): RGB→HSL, scale
-  *lightness* toward dark "poles" while preserving hue/saturation, with separate
+  _lightness_ toward dark "poles" while preserving hue/saturation, with separate
   curves for background (lightness ~0.5–1 → 0–0.4), foreground (lift to ≥~0.55),
   and border (mid tones). Neutral/low-sat colors snap toward pole colors; results
   cached. This is materially better than our blanket invert + three luminance
@@ -140,14 +140,14 @@ vendor colors **while the veil is still up** — eliminating the need for
 `withPrepaintSuppressed` to drop the veil before sampling (Finding 2).
 
 Trade-off: an opaque cover can only show a **flat dark fill**, not the
-`invert(1) hue-rotate` *preview* (invert requires restyling real elements). We
+`invert(1) hue-rotate` _preview_ (invert requires restyling real elements). We
 accept this — readable truth + continuous dark is worth more than an inverted
 preview during the sub-second pre-theme window. Must use the real top layer; a
 plain high-z `div` can be painted over by vendor stacking contexts.
 
 ### (b) Invert the control flow: apply-then-detect — #235
 
-Adopt DarkReader's order. Instead of *classify → maybe apply*:
+Adopt DarkReader's order. Instead of _classify → maybe apply_:
 
 1. Apply the dark theme immediately (always-on), under the overlay veil.
 2. Run the detector against true vendor styles (readable thanks to (a)).
@@ -156,7 +156,7 @@ Adopt DarkReader's order. Instead of *classify → maybe apply*:
 
 This is DarkReader's "apply first, refine after" — **plus** an already-dark
 restore branch that DarkReader does not have. We stay dark continuously and the
-only remaining flash is a *purposeful* user toggle into a re-classify, never a
+only remaining flash is a _purposeful_ user toggle into a re-classify, never a
 random re-render.
 
 ### (c) Split concerns — #233
@@ -178,16 +178,16 @@ fixtures.
 
 ### Adopt / skip summary
 
-| DarkReader idea | Decision |
-|---|---|
-| Apply-first-then-refine flow | **Adopt** — (b) |
-| Immediate fallback as overlay (not element restyle) | **Adopt (adapted)** — (a) |
-| HSL color modification (`modify-colors`/`palette`) | **Adopt** — (d), first |
-| Image pixel analysis for invert decision | **Adopt** — (d), second |
-| CSS variable adjustment | **Adopt** — (d), third |
+| DarkReader idea                                     | Decision                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------- |
+| Apply-first-then-refine flow                        | **Adopt** — (b)                                                        |
+| Immediate fallback as overlay (not element restyle) | **Adopt (adapted)** — (a)                                              |
+| HSL color modification (`modify-colors`/`palette`)  | **Adopt** — (d), first                                                 |
+| Image pixel analysis for invert decision            | **Adopt** — (d), second                                                |
+| CSS variable adjustment                             | **Adopt** — (d), third                                                 |
 | Full stylesheet parsing/rewriting (`style-manager`) | **Skip for now** — large; our element-patching is good enough post-(d) |
-| Per-site fixes config | **Skip** — out of scope |
-| Already-dark detector | **Net-new (ours)** — (c)/#236; no DarkReader reference exists |
+| Per-site fixes config                               | **Skip** — out of scope                                                |
+| Already-dark detector                               | **Net-new (ours)** — (c)/#236; no DarkReader reference exists          |
 
 ---
 

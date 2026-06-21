@@ -1,9 +1,6 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import eslint from "@eslint/js"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import typescriptParser from "@typescript-eslint/parser"
 import { defineConfig } from "eslint/config"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import tseslint from "typescript-eslint"
 
 export default defineConfig(

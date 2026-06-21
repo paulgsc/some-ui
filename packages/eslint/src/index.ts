@@ -3,6 +3,7 @@ import type { Config } from "typescript-eslint"
 
 import {
   baseConfig,
+  depsOverrideConfig,
   eslintPluginStorybook,
   reactConfig,
   testsOverrideConfig,
@@ -19,7 +20,8 @@ export const maishatuRecommended: Config = defineConfig(
   ...reactConfig,
   ...eslintPluginStorybook,
   toolsOverrideConfig,
-  testsOverrideConfig
+  testsOverrideConfig,
+  depsOverrideConfig
 )
 
 /**
