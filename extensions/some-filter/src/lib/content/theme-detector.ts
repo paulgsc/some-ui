@@ -1,7 +1,10 @@
 /**
- * Luminance classification utilities.
+ * Theme detector — decides whether a page needs our dark theme.
  *
- * Goal: decide whether a page is "light" (needs our dark theme) or already dark.
+ * Read-only: this module samples computed styles via getComputedStyle but never
+ * mutates the DOM. It is the counterpart to theme-apply, which owns all writes.
+ * Keeping detection side-effect-free lets the orchestrator (content.ts) run it
+ * inside a prepaint-suppression lock without worrying about ordering of writes.
  *
  * Key design decisions:
  *   - When body.backgroundColor is transparent, we don't skip — we bias toward
@@ -12,82 +15,15 @@
  *   - Conservative only against false-darkening: dark pages almost always set
  *     an explicit bg, so they'll be caught. Light pages with no bg → assume light.
  *
- * Change from previous version:
- *   Tier 3 previously sampled `#__sw_page_layer > *` — that wrapper div no
- *   longer exists. Tier 3 now samples `body > *` directly, which is equivalent
- *   since vendor DOM is no longer moved. Extension-owned nodes are still excluded
- *   via the [data-my-ext] attribute filter.
+ * Tier 3 samples `body > *` directly (vendor DOM is not wrapped). Extension-owned
+ * nodes are excluded via the [data-my-ext] attribute filter.
+ *
+ * NOTE: the `isLight` framing is retained from the classify-then-apply era. The
+ * always-apply / already-dark reframe is tracked in #236; this module's split
+ * (#233) is structural only and preserves the existing decision semantics.
  */
 
-export type RGBA = [number, number, number, number]
-
-/**
- * Parse any CSS color string to [r, g, b, a] in 0–1 range.
- * Returns null for unparseable values.
- */
-export function parseColor(css: string): RGBA | null {
-  if (
-    css.length === 0 ||
-    css === "none" ||
-    css === "transparent" ||
-    css === "rgba(0, 0, 0, 0)"
-  ) {
-    return null
-  }
-
-  const match = css.match(
-    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
-  )
-
-  if (match === null) {
-    return null
-  }
-
-  const [, r, g, b, alpha] = match
-
-  // Defensive narrowing for strict indexed access
-  if (r === undefined || g === undefined || b === undefined) {
-    return null
-  }
-
-  const a = alpha === undefined ? 1 : Number.parseFloat(alpha)
-
-  if (a < 0.05) {
-    return null
-  }
-
-  return [
-    Number.parseInt(r, 10) / 255,
-    Number.parseInt(g, 10) / 255,
-    Number.parseInt(b, 10) / 255,
-    a,
-  ]
-}
-
-/**
- * Relative luminance per WCAG 2.1.
- * Input: r, g, b in 0–1 range.
- */
-export function relativeLuminance(r: number, g: number, b: number): number {
-  const lin = (c: number): number =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-}
-
-/**
- * Walk up the DOM from el to find the first ancestor with a non-transparent
- * background-color. Returns luminance 0-1, or null if none found.
- */
-export function effectiveBgLuminance(el: Element): number | null {
-  let cur: Element | null = el
-  while (cur) {
-    const bg = getComputedStyle(cur).backgroundColor
-    const c = parseColor(bg)
-    if (c) return relativeLuminance(c[0], c[1], c[2])
-    cur = cur.parentElement
-  }
-  return null
-}
+import { effectiveBgLuminance, parseColor, relativeLuminance } from "./color"
 
 function viewportCoverage(el: Element): number {
   const rect = el.getBoundingClientRect()
@@ -192,4 +128,13 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
   const skip = avg < threshold * 0.5
 
   return { avgLuminance: avg, isLight, skip }
+}
+
+/**
+ * Public detection entry point used by the orchestrator. Currently a thin
+ * wrapper over classifyPage(); #236 will evolve the returned shape toward an
+ * explicit already-dark decision. Read-only.
+ */
+export function detect(threshold?: number): ClassificationResult {
+  return classifyPage(threshold)
 }

@@ -1,16 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest"
 
 import {
+  applyTheme,
   DARK_THEME_ATTR,
   injectDarkTheme,
   removeDarkTheme,
   repatchPage,
-} from "../dark-theme"
+  restoreVendor,
+} from "../theme-apply"
 
 const STYLE_ID = "__sw_dark_theme"
+const LEGACY_STYLE_ID = "__sw_legacy_filter"
 
 afterEach(() => {
-  removeDarkTheme()
+  restoreVendor()
 })
 
 describe("DARK_THEME_ATTR", () => {
@@ -56,11 +59,7 @@ describe("injectDarkTheme", () => {
   })
 
   it("patches a mid-grey element as 'bg-2' (0.3 < lum <= 0.5)", () => {
-    // rgb(140, 140, 140) → lin(0.549) ≈ 0.254 → lum ≈ 0.254 ... let's find the right value
-    // We need lum in (0.3, 0.5].
-    // rgb(170, 170, 170) → c = 170/255 ≈ 0.667
-    // lin(0.667) = ((0.667 + 0.055) / 1.055)^2.4 = (0.684)^2.4 ≈ 0.415
-    // lum ≈ 0.415 → in (0.3, 0.5]  → 'bg-2'
+    // rgb(170, 170, 170) → lum ≈ 0.415 → in (0.3, 0.5]  → 'bg-2'
     const div = document.createElement("div")
     div.style.backgroundColor = "rgb(170, 170, 170)"
     document.body.appendChild(div)
@@ -71,9 +70,7 @@ describe("injectDarkTheme", () => {
   })
 
   it("tags near-black elements as 'preserve' (lum < 0.06)", () => {
-    // rgb(30, 30, 30) → c = 30/255 ≈ 0.118
-    // lin(0.118) = 0.118 / 12.92 ≈ 0.00913  (≤ 0.03928, so linear branch)
-    // lum ≈ 0.00913 → < 0.06 → 'preserve'
+    // rgb(30, 30, 30) → lum ≈ 0.00913 → < 0.06 → 'preserve'
     const div = document.createElement("div")
     div.style.backgroundColor = "rgb(30, 30, 30)"
     document.body.appendChild(div)
@@ -192,5 +189,55 @@ describe("repatchPage", () => {
     repatchPage()
 
     expect(div.dataset.swPatched).toBe("surface")
+  })
+})
+
+describe("applyTheme", () => {
+  it("'dark' sets the dark attribute and injects the theme style", () => {
+    applyTheme("dark")
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    expect(document.getElementById(STYLE_ID)).not.toBeNull()
+  })
+
+  it("'legacy' installs the global filter style with the configured values", () => {
+    applyTheme("legacy", { invert: 1, hueRotate: 180 })
+    const style = document.getElementById(LEGACY_STYLE_ID)
+    expect(style).not.toBeNull()
+    expect(style?.textContent).toContain("invert(1)")
+    expect(style?.textContent).toContain("hue-rotate(180deg)")
+  })
+
+  it("'legacy' does not touch the dark-theme attribute or style", () => {
+    applyTheme("legacy", { invert: 1 })
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    expect(document.getElementById(STYLE_ID)).toBeNull()
+  })
+})
+
+describe("restoreVendor", () => {
+  it("removes dark theme (attr + style + patched attrs)", () => {
+    const div = document.createElement("div")
+    div.style.backgroundColor = "rgb(255, 255, 255)"
+    document.body.appendChild(div)
+    applyTheme("dark")
+
+    restoreVendor()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    expect(document.getElementById(STYLE_ID)).toBeNull()
+    expect(document.querySelectorAll("[data-sw-patched]")).toHaveLength(0)
+  })
+
+  it("removes the legacy filter style", () => {
+    applyTheme("legacy", { invert: 1 })
+    expect(document.getElementById(LEGACY_STYLE_ID)).not.toBeNull()
+
+    restoreVendor()
+
+    expect(document.getElementById(LEGACY_STYLE_ID)).toBeNull()
+  })
+
+  it("is safe to call when nothing is applied", () => {
+    expect(() => restoreVendor()).not.toThrow()
   })
 })

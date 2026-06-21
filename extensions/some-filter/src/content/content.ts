@@ -1,10 +1,3 @@
-import { classifyPage } from "@filter/lib/content/classify"
-import {
-  DARK_THEME_ATTR,
-  injectDarkTheme,
-  removeDarkTheme,
-  repatchPage,
-} from "@filter/lib/content/dark-theme"
 import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
@@ -14,11 +7,15 @@ import {
   disablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
+import {
+  applyTheme,
+  repatchPage,
+  restoreVendor,
+} from "@filter/lib/content/theme-apply"
+import { detect } from "@filter/lib/content/theme-detector"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
-
-// ── Legacy filter ─────────────────────────────────────────────────────────────
 
 const DEFAULT_FILTER: FilterConfig = {
   invert: 1,
@@ -26,57 +23,6 @@ const DEFAULT_FILTER: FilterConfig = {
   sepia: 0.12,
   brightness: 0.5,
   contrast: 0.92,
-}
-
-const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
-
-function buildFilterString(config: FilterConfig): string {
-  const parts: Array<string> = []
-
-  if (config.invert !== undefined) parts.push(`invert(${config.invert})`)
-  if (config.hueRotate !== undefined)
-    parts.push(`hue-rotate(${config.hueRotate}deg)`)
-  if (config.sepia !== undefined) parts.push(`sepia(${config.sepia})`)
-  if (config.brightness !== undefined)
-    parts.push(`brightness(${config.brightness})`)
-  if (config.contrast !== undefined) parts.push(`contrast(${config.contrast})`)
-
-  return parts.join(" ")
-}
-
-function applyLegacyFilter(config: FilterConfig): void {
-  let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
-
-  if (!style) {
-    style = document.createElement("style")
-    style.id = LEGACY_FILTER_STYLE_ID
-
-    const root = document.head
-    root.appendChild(style)
-  }
-
-  style.textContent = `
-    html { filter: ${buildFilterString(config)} !important; }
-    img, video, canvas, picture {
-      filter: invert(1) hue-rotate(180deg) !important;
-    }
-  `
-}
-
-function removeLegacyFilter(): void {
-  document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
-}
-
-// ── Dark theme ───────────────────────────────────────────────────────────────
-
-function activateDarkTheme(): void {
-  document.documentElement.setAttribute(DARK_THEME_ATTR, "")
-  injectDarkTheme()
-}
-
-function deactivateDarkTheme(): void {
-  document.documentElement.removeAttribute(DARK_THEME_ATTR)
-  removeDarkTheme()
 }
 
 // ── State cache ───────────────────────────────────────────────────────────────
@@ -113,8 +59,7 @@ function applyState(state: TabState): void {
   currentState = state
   writeCachedState(state)
 
-  deactivateDarkTheme()
-  removeLegacyFilter()
+  restoreVendor()
 
   if (state === "auto") {
     // Do not pre-remove the veil here. runAutoClassify uses
@@ -125,7 +70,7 @@ function applyState(state: TabState): void {
   }
 
   if (state === "legacy") {
-    applyLegacyFilter(filterConfig)
+    applyTheme("legacy", filterConfig)
     commitVisualState()
     return
   }
@@ -149,20 +94,20 @@ function cycleState(): void {
 // ── Classification ────────────────────────────────────────────────────────────
 
 function runAutoClassify(): void {
-  // classifyPage() AND activateDarkTheme() (which internally calls patchAll())
-  // must both run inside the same prepaint suppression lock. Extending the lock
-  // to cover patchAll() ensures the initial DOM patch reads native, non-
-  // transition-interpolated colors — the same guarantee we give classifyPage().
-  // Without this, patchAll() would run after the freeze style is removed and
-  // could catch mid-transition near-zero alpha values, tagging light elements
-  // as `preserve` and permanently exposing white after veil drop.
+  // detect() AND applyTheme("dark") (which internally patches the DOM) must
+  // both run inside the same prepaint suppression lock. Extending the lock to
+  // cover the initial patch ensures it reads native, non-transition-interpolated
+  // colors — the same guarantee we give detect(). Without this, the patch would
+  // run after the freeze style is removed and could catch mid-transition near-
+  // zero alpha values, tagging light elements as `preserve` and permanently
+  // exposing white after veil drop.
   const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() => {
-    const result = classifyPage()
+    const result = detect()
     if (!result.skip && result.isLight) {
       // Inject theme CSS + run initial patchAll inside the lock.
       // The dark substrate is in the cascade before withPrepaintSuppressed
       // returns, so veil removal (commitVisualState below) is already atomic.
-      activateDarkTheme()
+      applyTheme("dark")
     }
     return result
   })
