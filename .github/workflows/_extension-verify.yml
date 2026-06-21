@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
         with:
@@ -30,7 +30,7 @@ jobs:
       # Restore pre-built workspace packages so the extension build doesn't
       # need to rebuild them. Produced by the build-workspace job.
       - name: Download workspace dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: workspace-dist
           path: packages

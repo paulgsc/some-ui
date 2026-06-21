@@ -27,19 +27,19 @@ jobs:
       || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
         with:
           shell: ci
       - name: Cache workspace build outputs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: packages/*/dist
           key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
           restore-keys: workspace-dist-${{ runner.os }}-
       - name: Cache Storybook intermediates
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules/.cache/storybook
@@ -65,7 +65,7 @@ jobs:
           STORYBOOK_DISABLE_TELEMETRY: 1
           STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./storybook-static
   deploy:
@@ -80,4 +80,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
