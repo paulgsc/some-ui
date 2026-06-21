@@ -21,11 +21,11 @@
  *   shouldSkip(). Vendor DOM is left in place; extension nodes self-exclude.
  */
 
-import { commitVisualState } from "@filter/lib/content/prepaint"
 import type { FilterConfig } from "@filter/types/config"
 
 import { parseColor, relativeLuminance } from "./color"
 import { modifyBackgroundColor, rgbaToCss } from "./modify-colors"
+import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 
