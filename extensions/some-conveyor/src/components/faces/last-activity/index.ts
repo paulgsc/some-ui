@@ -1,8 +1,4 @@
-import {
-  faceContainer,
-  terminalLabel,
-  terminalValue,
-} from "@conveyor/components/terminal"
+import { ProjectionCell } from "@conveyor/components/projection-cell"
 
 export type LastActivityProps = {
   lastActiveText: string
@@ -11,23 +7,15 @@ export type LastActivityProps = {
 }
 
 export function LastActivityFace(props: LastActivityProps): HTMLElement {
-  const container = faceContainer("sc-face-last-activity", {
-    align: "stretch",
-    gap: "gap-[6px]",
-  })
-
-  const time = terminalValue(props.lastActiveText, { size: "text-[14px]" })
-  const focus = terminalValue(
+  const focus =
     props.focusName === "--"
       ? "--"
       : `${props.focusIcon} ${props.focusName}`.trim()
-  )
 
-  container.append(
-    terminalLabel("LAST ACTIVE"),
-    time,
-    terminalLabel("CURRENT FOCUS"),
-    focus
-  )
-  return container
+  return ProjectionCell({
+    tag: "FOCUS",
+    status: "idle",
+    body: focus,
+    meta: `active ${props.lastActiveText}`,
+  })
 }

@@ -1,44 +1,50 @@
-import {
-  faceContainer,
-  terminalEl,
-  terminalLabel,
-  terminalRow,
-} from "@conveyor/components/terminal"
+import { cellNode, ProjectionCell } from "@conveyor/components/projection-cell"
 
 export type TodayProgressProps = {
   tasks: Array<{ label: string; done: boolean }>
 }
 
 export function TodayProgressFace(props: TodayProgressProps): HTMLElement {
-  const container = faceContainer("sc-face-today", {
-    padding: "px-[12px] py-[10px]",
-    gap: "gap-[6px]",
-  })
-
-  const tasksEl = terminalEl("div", "sc-face-tasks flex flex-col gap-[3px]")
+  const list = cellNode("div", "flex flex-col gap-[3px]")
 
   for (const task of props.tasks) {
-    const row = terminalRow()
-    const tick = terminalEl(
+    const row = cellNode(
+      "div",
+      "flex items-center gap-[6px] font-sans text-[12px] font-normal"
+    )
+    const tick = cellNode(
       "span",
-      task.done
-        ? "text-[var(--face-text-active)]"
-        : "text-[var(--face-text-secondary)]"
+      task.done ? "text-[var(--cv-live)]" : "text-[var(--cv-ink-3)]"
     )
     tick.textContent = task.done ? "▪" : "▫"
-    const label = terminalEl(
+    const label = cellNode(
       "span",
       `flex-1 truncate ${
         task.done
-          ? "text-[var(--face-text)] line-through"
-          : "text-[var(--face-text-secondary)] no-underline"
+          ? "text-[var(--cv-ink-2)] line-through"
+          : "text-[var(--cv-ink-3)] no-underline"
       }`
     )
     label.textContent = task.label
     row.append(tick, label)
-    tasksEl.append(row)
+    list.append(row)
   }
 
-  container.append(terminalLabel("TODAY"), tasksEl)
-  return container
+  const done = props.tasks.filter((t) => t.done).length
+  const total = props.tasks.length
+
+  return ProjectionCell({
+    tag: "TODAY",
+    status: total > 0 && done === total ? "live" : "idle",
+    body: list,
+    meta:
+      total > 0
+        ? [
+            {
+              text: `${done}/${total}`,
+              tone: done === total ? "pos" : "default",
+            },
+          ]
+        : undefined,
+  })
 }

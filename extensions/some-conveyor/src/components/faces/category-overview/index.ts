@@ -1,9 +1,4 @@
-import {
-  faceContainer,
-  terminalEl,
-  terminalLabel,
-  terminalRow,
-} from "@conveyor/components/terminal"
+import { cellNode, ProjectionCell } from "@conveyor/components/projection-cell"
 
 export type CategoryOverviewProps = {
   categories: Array<{ icon: string; name: string; pct: number }>
@@ -12,28 +7,21 @@ export type CategoryOverviewProps = {
 export function CategoryOverviewFace(
   props: CategoryOverviewProps
 ): HTMLElement {
-  const container = faceContainer("sc-face-categories", {
-    padding: "px-[12px] py-[10px]",
-    extra: "overflow-y-hidden",
-  })
-
-  const grid = terminalEl(
-    "div",
-    "sc-face-cat-grid flex flex-col gap-[3px] mt-[4px]"
-  )
+  const grid = cellNode("div", "flex flex-col gap-[3px]")
 
   for (const cat of props.categories) {
-    const row = terminalRow()
-    const icon = terminalEl("span", "text-[13px] leading-none")
+    const row = cellNode(
+      "div",
+      "flex items-center gap-[6px] font-sans text-[12px] font-normal"
+    )
+    const icon = cellNode("span", "text-[13px] leading-none")
     icon.textContent = cat.icon
-    const name = terminalEl("span", "flex-1 truncate")
+    const name = cellNode("span", "flex-1 truncate text-[var(--cv-ink-2)]")
     name.textContent = cat.name
-    const pct = terminalEl(
+    const pct = cellNode(
       "span",
-      `min-w-[30px] text-right ${
-        cat.pct === 100
-          ? "text-[var(--face-text-active)]"
-          : "text-[var(--face-text)]"
+      `min-w-[30px] text-right font-mono ${
+        cat.pct === 100 ? "text-[var(--cv-live)]" : "text-[var(--cv-ink-3)]"
       }`
     )
     pct.textContent = `${cat.pct}%`
@@ -41,6 +29,5 @@ export function CategoryOverviewFace(
     grid.append(row)
   }
 
-  container.append(terminalLabel("CATEGORIES"), grid)
-  return container
+  return ProjectionCell({ tag: "CATEGORIES", status: "idle", body: grid })
 }

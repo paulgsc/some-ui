@@ -1,17 +1,13 @@
-import {
-  faceContainer,
-  terminalLabel,
-  terminalValue,
-} from "@conveyor/components/terminal"
+import { ProjectionCell } from "@conveyor/components/projection-cell"
 
 export type StreakCountProps = { complete: number; total: number }
 
 export function StreakCountFace(props: StreakCountProps): HTMLElement {
-  const container = faceContainer("sc-face-streak-count", { align: "start" })
-  container.append(
-    terminalLabel("STREAK"),
-    terminalValue(String(props.complete), { bright: true }),
-    terminalLabel(`/ ${props.total} categories`)
-  )
-  return container
+  return ProjectionCell({
+    tag: "STREAK",
+    status: props.complete > 0 ? "live" : "idle",
+    body: String(props.complete),
+    emphasizeBody: true,
+    meta: `/ ${props.total} categories`,
+  })
 }
