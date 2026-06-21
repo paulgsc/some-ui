@@ -11,15 +11,15 @@
 // script's detector and luminance patcher both skip it.
 
 ;(function () {
-  var ID = "__sw_prepaint_veil"
+  const ID = "__sw_prepaint_veil"
   if (document.getElementById(ID)) return
 
-  var veil = document.createElement("div")
+  const veil = document.createElement("div")
   veil.id = ID
   veil.setAttribute("data-my-ext", "")
   veil.setAttribute("popover", "manual")
 
-  var root = document.body || document.documentElement
+  const root = document.body || document.documentElement
   root.appendChild(veil)
 
   try {
