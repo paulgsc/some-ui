@@ -1,85 +1,42 @@
-/* repaint.css */
+/* prepaint.css */
 
-/* document_start prepaint shell */
+/* document_start prepaint veil */
 
 /*
   Goal:
-  - eliminate white flashes before site theme stabilizes
-  - avoid transparent punch-through
-  - keep browser dark canvas visible underneath
-  - safely disengage after real paint stabilizes
+  - eliminate white flashes before the site theme stabilizes
+  - do NOT restyle vendor elements (so classification can read true vendor
+    computed styles while the veil is up)
+  - keep a solid dark canvas visible on top until the content script commits
+
+  The veil is a single overlay element (#__sw_prepaint_veil) created at
+  document_start. It is promoted to the top layer via the popover API when
+  available; the fixed/max-z rules below are the fallback and also style the
+  popover box itself. It is never an ancestor of vendor DOM, so it cannot poison
+  getComputedStyle on the page.
 */
 
-/*
-  Sentinel custom property — content scripts locate this specific stylesheet
-  by checking for this property, allowing them to toggle sheet.disabled for
-  prepaint-suppressed classification without touching the DOM attribute.
-*/
-:root {
-  --sw-prepaint-sheet: 1;
+#__sw_prepaint_veil,
+#__sw_prepaint_veil:popover-open {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: #0d1117;
+  color-scheme: dark;
+  pointer-events: none;
+  /* Fallback stacking for the non-top-layer path. */
+  z-index: 2147483647;
 }
 
-html[data-sw-prepaint],
-html[data-sw-prepaint] body {
-  background-color: #0d1117 !important;
-  color-scheme: dark !important;
-  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
-    contrast(0.92) !important;
-}
-
-/*
-  Keep body dark (not transparent) so it acts as a solid dark canvas.
-  Child containers are transparent so they inherit this substrate instead
-  of their own vendor-set white backgrounds — avoiding punch-through to a
-  white stacking context that would leak through the invert filter.
-*/
-
-html[data-sw-prepaint] div,
-html[data-sw-prepaint] section,
-html[data-sw-prepaint] main,
-html[data-sw-prepaint] article,
-html[data-sw-prepaint] aside,
-html[data-sw-prepaint] header,
-html[data-sw-prepaint] footer,
-html[data-sw-prepaint] nav {
-  background-color: transparent !important;
-}
-
-/*
-  Common offenders.
-*/
-
-html[data-sw-prepaint] [style*="background:#fff"],
-html[data-sw-prepaint] [style*="background: #fff"],
-html[data-sw-prepaint] [style*="background:white"],
-html[data-sw-prepaint] [style*="background: white"],
-html[data-sw-prepaint] [style*="background-color:#fff"],
-html[data-sw-prepaint] [style*="background-color: #fff"],
-html[data-sw-prepaint] [style*="background-color:white"],
-html[data-sw-prepaint] [style*="background-color: white"] {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-/*
-  Preserve media/compositor layers.
-*/
-
-html[data-sw-prepaint] img,
-html[data-sw-prepaint] video,
-html[data-sw-prepaint] canvas,
-html[data-sw-prepaint] picture,
-html[data-sw-prepaint] svg {
-  background-color: transparent !important;
-}
-
-/*
-  Optional:
-  reduce harsh transitions during hydration.
-*/
-
-html[data-sw-prepaint] {
-  transition:
-    background-color 80ms linear,
-    color 80ms linear;
+/* When the element is promoted to the top layer, its backdrop should also be
+   the dark canvas so nothing light shows through at the edges. */
+#__sw_prepaint_veil::backdrop {
+  background-color: #0d1117;
 }

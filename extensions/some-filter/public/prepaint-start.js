@@ -1,14 +1,31 @@
 // document_start
+//
+// Install the dark prepaint veil as an overlay that sits ABOVE the page rather
+// than restyling vendor elements. This eliminates the white-flash during load
+// while leaving vendor computed styles intact, so the content script's detector
+// can read true vendor colors with the veil still up (no veil-drop required).
+//
+// The veil is promoted to the top layer via the popover API when supported so
+// vendor stacking contexts cannot paint over it; prepaint.css provides the
+// fixed/max-z fallback. The element carries [data-my-ext] so the content
+// script's detector and luminance patcher both skip it.
 
-// This file previously also captured a reference to the manifest-injected
-// prepaint.css CSSStyleSheet object and exposed it on window for content.js
-// to locate and disable. That mechanism is gone — see prepaint.ts for the
-// full root-cause writeup. document.styleSheets never enumerated this sheet
-// at all under Chrome MV3 content-script CSS injection (confirmed via a
-// 60-frame polling probe, flat at 0 the entire time), even though the CSS
-// rules themselves apply to the page correctly and fast (confirmed via a
-// cascade-sentinel custom property going live within a single animation
-// frame). Suppression now operates purely on this attribute; no sheet
-// object is ever needed, so there is nothing left for this file to capture.
+;(function () {
+  var ID = "__sw_prepaint_veil"
+  if (document.getElementById(ID)) return
 
-document.documentElement.setAttribute("data-sw-prepaint", "")
+  var veil = document.createElement("div")
+  veil.id = ID
+  veil.setAttribute("data-my-ext", "")
+  veil.setAttribute("popover", "manual")
+
+  var root = document.body || document.documentElement
+  root.appendChild(veil)
+
+  try {
+    if (typeof veil.showPopover === "function") veil.showPopover()
+  } catch (e) {
+    // Popover unsupported or element not eligible — the fixed/max-z fallback
+    // styling keeps the veil covering the viewport regardless.
+  }
+})()
