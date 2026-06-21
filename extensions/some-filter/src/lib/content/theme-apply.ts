@@ -24,6 +24,7 @@
 import type { FilterConfig } from "@filter/types/config"
 
 import { parseColor, relativeLuminance } from "./color"
+import { modifyBackgroundColor, rgbaToCss } from "./modify-colors"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 
@@ -182,18 +183,9 @@ body${EXT_GUARD} {
 
 /* ── JS luminance patcher targets ───────────────────────────────────────── */
 
-[data-sw-patched="surface"]${EXT_GUARD} {
-  background-color: var(--sw-surface) !important;
-  color: var(--sw-text-0) !important;
-}
-
-[data-sw-patched="bg-1"]${EXT_GUARD} {
-  background-color: var(--sw-bg-1) !important;
-}
-
-[data-sw-patched="bg-2"]${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-}
+/* Light backgrounds are tagged with a generated token (c0, c1, …) whose
+   hue-preserving dark color is emitted into the dynamic stylesheet by the
+   patcher (see tokenForBackground). Near-black backgrounds are preserved. */
 
 [data-sw-patched="preserve"]${EXT_GUARD} {
   background-color: revert !important;
@@ -206,25 +198,58 @@ body${EXT_GUARD} {
 
 const LIGHT_THRESHOLD = 0.3
 
-function classifyElement(
-  el: Element
-): "surface" | "bg-1" | "bg-2" | "preserve" | null {
+// ── Dynamic per-element color registry ──────────────────────────────────────────
+// Light backgrounds get a hue-preserving dark color computed via modify-colors.
+// To keep the patcher attribute-only (so restoreVendor is byte-identical — no
+// inline-style clobbering of vendor nodes), each distinct modified color is
+// assigned a token and a matching `[data-sw-patched="<token>"]` rule is appended
+// to a dynamic stylesheet. Elements only ever receive a data attribute.
+
+const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
+const colorTokens = new Map<string, string>()
+let colorTokenSeq = 0
+
+function dynamicStyleEl(): HTMLStyleElement {
+  const existing = document.getElementById(DYNAMIC_STYLE_ID)
+  if (existing instanceof HTMLStyleElement) return existing
+  const style = document.createElement("style")
+  style.id = DYNAMIC_STYLE_ID
+  document.head.appendChild(style)
+  return style
+}
+
+function tokenForBackground(modifiedCss: string): string {
+  const cached = colorTokens.get(modifiedCss)
+  if (cached !== undefined) return cached
+
+  const token = `c${colorTokenSeq++}`
+  colorTokens.set(modifiedCss, token)
+  dynamicStyleEl().textContent += `[data-sw-patched="${token}"]${EXT_GUARD}{background-color:${modifiedCss}!important}\n`
+  return token
+}
+
+function clearDynamicColors(): void {
+  document.getElementById(DYNAMIC_STYLE_ID)?.remove()
+  colorTokens.clear()
+  colorTokenSeq = 0
+}
+
+function classifyElement(el: Element): string | null {
   const bg = getComputedStyle(el).backgroundColor
   const c = parseColor(bg)
 
   if (!c) return null
 
   // Near-transparent elements are glass layers over the dark body canvas.
-  // Tagging them `preserve` would revert their background to the author's
-  // color once the transition or opacity settles, permanently leaking white.
+  // Tagging them would revert/repaint their background once the transition or
+  // opacity settles, permanently leaking white.
   if (c[3] < 0.1) return null
 
   const lum = relativeLuminance(c[0], c[1], c[2])
 
   if (lum > LIGHT_THRESHOLD) {
-    if (lum > 0.7) return "surface"
-    if (lum > 0.5) return "bg-1"
-    return "bg-2"
+    // Hue-preserving dark surface instead of a flat grey bucket.
+    return tokenForBackground(rgbaToCss(modifyBackgroundColor(c)))
   }
 
   if (lum < 0.06) return "preserve"
@@ -344,6 +369,7 @@ export function injectDarkTheme(): void {
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
+  clearDynamicColors()
   stopPatchObserver()
 
   document.querySelectorAll("[data-sw-patched]").forEach((el) => {

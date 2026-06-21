@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 
+import { parseColor, relativeLuminance } from "../color"
 import {
   applyTheme,
   DARK_THEME_ATTR,
@@ -10,11 +11,31 @@ import {
 } from "../theme-apply"
 
 const STYLE_ID = "__sw_dark_theme"
+const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
 const LEGACY_STYLE_ID = "__sw_legacy_filter"
 
 afterEach(() => {
   restoreVendor()
 })
+
+/** Read the generated background-color a patcher token maps to, or null. */
+function colorForToken(token: string): string | null {
+  const text = document.getElementById(DYNAMIC_STYLE_ID)?.textContent ?? ""
+  const m = text.match(
+    new RegExp(
+      `\\[data-sw-patched="${token}"\\][^{]*\\{background-color:([^!]+)!important`
+    )
+  )
+  return m && m[1] !== undefined ? m[1].trim() : null
+}
+
+function luminanceForToken(token: string): number {
+  const css = colorForToken(token)
+  expect(css).not.toBeNull()
+  const c = parseColor(css as string)
+  expect(c).not.toBeNull()
+  return relativeLuminance(c![0], c![1], c![2])
+}
 
 describe("DARK_THEME_ATTR", () => {
   it("is the expected attribute name", () => {
@@ -37,40 +58,47 @@ describe("injectDarkTheme", () => {
     expect(document.querySelectorAll(`#${STYLE_ID}`)).toHaveLength(1)
   })
 
-  it("patches an element with a white background as 'surface' (lum > 0.7)", () => {
+  it("tags a light background with a token mapped to a dark, hue-preserving color", () => {
     const div = document.createElement("div")
     div.style.backgroundColor = "rgb(255, 255, 255)"
     document.body.appendChild(div)
 
     injectDarkTheme()
 
-    expect(div.dataset.swPatched).toBe("surface")
+    const token = div.dataset.swPatched
+    expect(token).toMatch(/^c\d+$/)
+    // The generated color must actually be dark.
+    expect(luminanceForToken(token as string)).toBeLessThan(0.3)
   })
 
-  it("patches a light-grey element as 'bg-1' (0.5 < lum <= 0.7)", () => {
-    // rgb(200, 200, 200) → lin(0.784) ≈ 0.576 → lum ≈ 0.576
+  it("preserves hue when darkening a colored surface", () => {
+    // A light-blue panel should become a dark *blue* surface, not grey.
     const div = document.createElement("div")
-    div.style.backgroundColor = "rgb(200, 200, 200)"
+    div.style.backgroundColor = "rgb(200, 220, 255)" // light blue
     document.body.appendChild(div)
 
     injectDarkTheme()
 
-    expect(div.dataset.swPatched).toBe("bg-1")
+    const css = colorForToken(div.dataset.swPatched as string)
+    const c = parseColor(css as string)!
+    // blue channel dominant → hue preserved
+    expect(c[2]).toBeGreaterThan(c[0])
+    expect(c[2]).toBeGreaterThan(c[1])
   })
 
-  it("patches a mid-grey element as 'bg-2' (0.3 < lum <= 0.5)", () => {
-    // rgb(170, 170, 170) → lum ≈ 0.415 → in (0.3, 0.5]  → 'bg-2'
-    const div = document.createElement("div")
-    div.style.backgroundColor = "rgb(170, 170, 170)"
-    document.body.appendChild(div)
+  it("reuses one token for repeated identical backgrounds", () => {
+    const a = document.createElement("div")
+    const b = document.createElement("div")
+    a.style.backgroundColor = "rgb(255, 255, 255)"
+    b.style.backgroundColor = "rgb(255, 255, 255)"
+    document.body.append(a, b)
 
     injectDarkTheme()
 
-    expect(div.dataset.swPatched).toBe("bg-2")
+    expect(a.dataset.swPatched).toBe(b.dataset.swPatched)
   })
 
   it("tags near-black elements as 'preserve' (lum < 0.06)", () => {
-    // rgb(30, 30, 30) → lum ≈ 0.00913 → < 0.06 → 'preserve'
     const div = document.createElement("div")
     div.style.backgroundColor = "rgb(30, 30, 30)"
     document.body.appendChild(div)
@@ -81,7 +109,6 @@ describe("injectDarkTheme", () => {
   })
 
   it("does not patch elements with near-transparent backgrounds (alpha < 0.1)", () => {
-    // alpha = 0.08: parseColor passes (> 0.05), classifyElement guards (< 0.1)
     const div = document.createElement("div")
     div.style.backgroundColor = "rgba(255, 255, 255, 0.08)"
     document.body.appendChild(div)
@@ -138,13 +165,18 @@ describe("injectDarkTheme", () => {
 })
 
 describe("removeDarkTheme", () => {
-  it("removes the __sw_dark_theme style element", () => {
+  it("removes the base and dynamic style elements", () => {
+    const div = document.createElement("div")
+    div.style.backgroundColor = "rgb(255, 255, 255)"
+    document.body.appendChild(div)
     injectDarkTheme()
     expect(document.getElementById(STYLE_ID)).not.toBeNull()
+    expect(document.getElementById(DYNAMIC_STYLE_ID)).not.toBeNull()
 
     removeDarkTheme()
 
     expect(document.getElementById(STYLE_ID)).toBeNull()
+    expect(document.getElementById(DYNAMIC_STYLE_ID)).toBeNull()
   })
 
   it("clears all data-sw-patched attributes", () => {
@@ -166,7 +198,7 @@ describe("removeDarkTheme", () => {
 })
 
 describe("repatchPage", () => {
-  it("classifies elements that gained a background after initial injection", () => {
+  it("tags elements that gained a background after initial injection", () => {
     const div = document.createElement("div")
     document.body.appendChild(div)
     injectDarkTheme()
@@ -175,20 +207,8 @@ describe("repatchPage", () => {
     div.style.backgroundColor = "rgb(255, 255, 255)"
     repatchPage()
 
-    expect(div.dataset.swPatched).toBe("surface")
-  })
-
-  it("re-classifies an element whose background changed", () => {
-    const div = document.createElement("div")
-    div.style.backgroundColor = "rgb(200, 200, 200)" // bg-1
-    document.body.appendChild(div)
-    injectDarkTheme()
-    expect(div.dataset.swPatched).toBe("bg-1")
-
-    div.style.backgroundColor = "rgb(255, 255, 255)" // now surface
-    repatchPage()
-
-    expect(div.dataset.swPatched).toBe("surface")
+    expect(div.dataset.swPatched).toMatch(/^c\d+$/)
+    expect(luminanceForToken(div.dataset.swPatched as string)).toBeLessThan(0.3)
   })
 })
 
@@ -215,7 +235,7 @@ describe("applyTheme", () => {
 })
 
 describe("restoreVendor", () => {
-  it("removes dark theme (attr + style + patched attrs)", () => {
+  it("removes dark theme (attr + styles + patched attrs)", () => {
     const div = document.createElement("div")
     div.style.backgroundColor = "rgb(255, 255, 255)"
     document.body.appendChild(div)
@@ -225,6 +245,7 @@ describe("restoreVendor", () => {
 
     expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
     expect(document.getElementById(STYLE_ID)).toBeNull()
+    expect(document.getElementById(DYNAMIC_STYLE_ID)).toBeNull()
     expect(document.querySelectorAll("[data-sw-patched]")).toHaveLength(0)
   })
 
@@ -242,17 +263,18 @@ describe("restoreVendor", () => {
   })
 
   it("leaves vendor DOM byte-identical after apply + restore", () => {
-    // #236 invariant: restoring an already-dark (or any) page must leave the
-    // vendor subtree exactly as it was — no leftover data-sw-patched attrs.
+    // #236 invariant: the patcher is attribute-only, so apply + restore must
+    // leave the vendor subtree exactly as it was (no inline-style clobbering,
+    // no leftover data-sw-patched attrs).
     document.body.innerHTML =
       '<div style="background-color: rgb(255, 255, 255)">' +
       '<p style="background-color: rgb(200, 200, 200)">hi</p></div>'
     const before = document.body.innerHTML
 
     applyTheme("dark")
-    expect(document.querySelectorAll("[data-sw-patched]").length).toBeGreaterThan(
-      0
-    )
+    expect(
+      document.querySelectorAll("[data-sw-patched]").length
+    ).toBeGreaterThan(0)
 
     restoreVendor()
 
