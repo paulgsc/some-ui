@@ -86,6 +86,9 @@ export class CubeRenderer {
     this.scene.className =
       "sc-scene flex h-full w-full items-center justify-center"
     this.scene.style.perspective = `${computePerspective(this.dims, this.currentAxis)}px`
+    // Slightly elevated viewpoint (matches the design floor) so the leading
+    // face reads as the top-front of a machined box on the belt.
+    this.scene.style.perspectiveOrigin = "50% 32%"
 
     // Cube — preserve-3d (kept in conveyor.css), rotated each frame.
     this.cube = document.createElement("div")

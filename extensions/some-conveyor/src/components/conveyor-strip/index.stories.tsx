@@ -245,13 +245,11 @@ const ConveyorStripStory = (props: StripStoryProps): JSX.Element => {
 
   return (
     <div
+      className="sc-strip"
       style={{
         width: `${props.viewportWidth}px`,
         height: `${STRIP_HEIGHT}px`,
         position: "relative",
-        background: "var(--strip-bg, rgb(16 20 27 / 92%))",
-        borderTop: "var(--strip-border-top, 1px solid #39444f)",
-        backdropFilter: "var(--strip-backdrop, blur(8px))",
         overflow: "hidden",
         ...CONVEYOR_TOKENS,
         ...SteelTheme.cssVariables,
