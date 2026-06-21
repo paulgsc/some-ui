@@ -7,15 +7,10 @@
 // - fixupConfigRules wraps eslint-plugin-react and eslint-plugin-jsx-a11y
 //   recommended configs: both plugins still call context.getFilename() and
 //   other ESLint v8/v9 context methods removed in ESLint v10.
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { fixupConfigRules } from "@eslint/compat"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import importPlugin from "eslint-plugin-import-x"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import reactPlugin from "eslint-plugin-react"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import reactHooksPlugin from "eslint-plugin-react-hooks"
 import { defineConfig } from "eslint/config"
 
@@ -55,12 +50,18 @@ export default defineConfig([
         "error",
         {
           devDependencies: [
-            "**/*.test.{ts,tsx}",
-            "**/*.spec.{ts,tsx}",
-            "**/*.stories.{ts,tsx}",
-            "**/tests/**",
             "**/vite.config.*",
             "**/vitest.config.*",
+            "**/playwright.config.*",
+
+            "**/*.stories.*",
+            "**/*.spec.*",
+            "**/*.test.*",
+
+            "**/*.setup.*",
+
+            "**/__tests__/**",
+            "**/tests/**",
           ],
         },
       ],

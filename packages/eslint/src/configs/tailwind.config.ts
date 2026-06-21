@@ -1,7 +1,5 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { fixupPluginRules } from "@eslint/compat"
 import type { FixupPluginDefinition } from "@eslint/compat"
-// eslint-disable-next-line import/no-extraneous-dependencies
 import tailwindPlugin from "eslint-plugin-tailwindcss"
 import { defineConfig } from "eslint/config"
 
