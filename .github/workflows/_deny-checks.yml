@@ -25,7 +25,7 @@ jobs:
         checks: [advisories, bans, licenses, sources]
     continue-on-error: ${{ matrix.checks == 'advisories' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/cargo-cache
         with:
@@ -41,7 +41,7 @@ jobs:
     if: inputs.node
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
         with:

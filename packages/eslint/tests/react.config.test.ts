@@ -55,7 +55,7 @@ const JS = path.join(LINT_FIXTURES, "src/util.js")
 
 describe("react.config — import/* rules wired for .tsx files", () => {
   const rulesPromise = calculateConfig(reactConfig, TSX)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const IMPORT_ERRORS = [
     "import/no-unresolved",
@@ -79,7 +79,7 @@ describe("react.config — import/* rules wired for .tsx files", () => {
 
 describe("react.config — react/* rules wired for .tsx files", () => {
   const rulesPromise = calculateConfig(reactConfig, TSX)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it('"react/function-component-definition" is error', async () => {
     rules ??= await rulesPromise
@@ -135,7 +135,7 @@ describe("react.config — react/* rules wired for .tsx files", () => {
 
 describe("react.config — react-hooks/* rules wired for .tsx files", () => {
   const rulesPromise = calculateConfig(reactConfig, TSX)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it('"react-hooks/exhaustive-deps" is error (escalated from plugin default warn)', async () => {
     rules ??= await rulesPromise
@@ -155,7 +155,7 @@ describe("react.config — react-hooks/* rules wired for .tsx files", () => {
 
 describe("react.config — jsx-a11y rules wired for .tsx files", () => {
   const rulesPromise = calculateConfig(reactConfig, TSX)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const A11Y_ERRORS = [
     "jsx-a11y/alt-text",
@@ -202,7 +202,7 @@ describe("react.config — no-restricted-syntax React import selectors present",
 
 describe("react.config — critical rule options preserved", () => {
   const rulesPromise = calculateConfig(reactConfig, TSX)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it("react/function-component-definition enforces arrow-function for named components", async () => {
     rules ??= await rulesPromise

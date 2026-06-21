@@ -29,7 +29,7 @@ jobs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
       has_changes: ${{ steps.build-matrix.outputs.has_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Need enough history to diff against base; 0 = full clone.
           # A depth of 2 is sufficient for push events (before→sha).
@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
       - name: Detect force-all triggers (shared / CI changes)
         id: force
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             shared:

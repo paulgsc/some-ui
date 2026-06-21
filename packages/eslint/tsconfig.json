@@ -6,10 +6,11 @@
     }
   },
   "include": [
-    "eslint.config.*.{cjs, mjs, js, ts}",
+    "eslint.config.*.{cjs,mjs,js,ts}",
+    "eslint.config.{cjs,mjs,js,ts}",
     "src",
     "tests",
-    "vitest.config.*.{cjs, mjs, js, ts}"
+    "vitest.config.*.{cjs,mjs,js,ts}"
   ],
   "exclude": ["node_modules", "build", "dist", "**/lint-fixtures"]
 }

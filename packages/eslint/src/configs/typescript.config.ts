@@ -177,5 +177,15 @@ export default defineConfig(
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/no-deprecated": "off",
     },
+  },
+
+  // ── Tool config files: disable type-aware parsing ─────────────────────────
+  // vitest.config.ts and similar tool configs often have peer-dep version
+  // mismatches that make them impossible to type-check with the project's
+  // tsconfig. Disabling type-aware parsing avoids "not found by project
+  // service" errors without requiring these files to be in tsconfig.json.
+  {
+    files: ["vitest.config.{ts,js}", "vitest.config.*.{ts,js}"],
+    extends: [tseslint.configs.disableTypeChecked],
   }
 )

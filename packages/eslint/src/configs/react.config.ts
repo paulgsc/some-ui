@@ -4,6 +4,10 @@
 //   (maintained drop-in replacement with native flat config support)
 // - react/jsx-uses-vars has been removed: ESLint v10 tracks JSX references
 //   natively via scope analysis, making this rule redundant/conflicting.
+// - fixupConfigRules wraps eslint-plugin-react and eslint-plugin-jsx-a11y
+//   recommended configs: both plugins still call context.getFilename() and
+//   other ESLint v8/v9 context methods removed in ESLint v10.
+import { fixupConfigRules } from "@eslint/compat"
 import importPlugin from "eslint-plugin-import-x"
 import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
 import reactPlugin from "eslint-plugin-react"
@@ -13,25 +17,14 @@ import { defineConfig } from "eslint/config"
 const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
 
 export default defineConfig([
-  {
-    files,
-    ...jsxA11yPlugin.flatConfigs.recommended,
-  },
-
-  {
-    files,
-    ...reactPlugin.configs.flat.recommended,
-  },
-
-  {
-    files,
-    ...reactHooksPlugin.configs.flat.recommended,
-  },
+  ...fixupConfigRules([
+    { files, ...jsxA11yPlugin.flatConfigs.recommended },
+    { files, ...reactPlugin.configs.flat.recommended },
+    { files, ...reactHooksPlugin.configs.flat.recommended },
+  ]),
   {
     files,
     plugins: {
-      react: reactPlugin,
-      "react-hooks": reactHooksPlugin,
       import: importPlugin,
     },
     settings: {
@@ -53,22 +46,25 @@ export default defineConfig([
       // Enforce consistent import ordering is handled by prettier plugin —
       // but flag duplicate imports at the ESLint level
       "import/no-duplicates": "error",
-      // Catch imports of devDependencies in source (not test) files
-      // rare occasion where we give up on a rule, until further notice!
-      //      "import/no-extraneous-dependencies": [
-      //        "error",
-      //        {
-      //          devDependencies: [
-      //            "**/*.test.{ts,tsx}",
-      //            "**/*.spec.{ts,tsx}",
-      //            "**/*.stories.{ts,tsx}",
-      //            "**/tests/**",
-      //            "**/vite.config.*",
-      //            "**/vitest.config.*",
-      //          ],
-      //        },
-      //      ],
-      //
+      "import/no-extraneous-dependencies": [
+        "error",
+        {
+          devDependencies: [
+            "**/vite.config.*",
+            "**/vitest.config.*",
+            "**/playwright.config.*",
+
+            "**/*.stories.*",
+            "**/*.spec.*",
+            "**/*.test.*",
+
+            "**/*.setup.*",
+
+            "**/__tests__/**",
+            "**/tests/**",
+          ],
+        },
+      ],
       // ── React component rules ────────────────────────────────────────────
       "react/function-component-definition": [
         "error",

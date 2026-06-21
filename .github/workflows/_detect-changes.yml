@@ -35,10 +35,10 @@ jobs:
       storybook: ${{ steps.filter.outputs.storybook }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Filter paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             rust:

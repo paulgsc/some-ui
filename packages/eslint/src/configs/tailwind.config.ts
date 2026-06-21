@@ -1,10 +1,18 @@
-import * as tailwindPlugin from "eslint-plugin-tailwindcss"
-import type { ConfigWithExtends } from "typescript-eslint"
+import { fixupPluginRules } from "@eslint/compat"
+import type { FixupPluginDefinition } from "@eslint/compat"
+import tailwindPlugin from "eslint-plugin-tailwindcss"
+import { defineConfig } from "eslint/config"
 
-const config: Array<ConfigWithExtends> = [
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+const tailwindPluginFixed = tailwindPlugin as unknown as FixupPluginDefinition
+
+export default defineConfig([
   {
     plugins: {
-      tailwindcss: tailwindPlugin,
+      // eslint-plugin-tailwindcss v4 types rules with @typescript-eslint/utils RuleModule,
+      // which conflicts with ESLint v10's RuleDefinition. fixupPluginRules bridges the gap
+      // at both runtime and type level.
+      tailwindcss: fixupPluginRules(tailwindPluginFixed),
     },
     settings: {
       tailwindcss: {
@@ -12,14 +20,12 @@ const config: Array<ConfigWithExtends> = [
       },
     },
     rules: {
-      // removed rules that no longer exist in beta
-      // "tailwindcss/classnames-order": "warn",
-      // "tailwindcss/enforces-shorthand": "warn",
-      // "tailwindcss/no-custom-classname": "warn",
-      // "tailwindcss/no-contradicting-classname": "error",
-      // "tailwindcss/no-unnecessary-arbitrary-value": "error",
+      "tailwindcss/classnames-order": "warn",
+      "tailwindcss/enforces-negative-arbitrary-values": "warn",
+      "tailwindcss/enforces-shorthand": "warn",
+      "tailwindcss/no-custom-classname": "warn",
+      "tailwindcss/no-contradicting-classname": "error",
+      "tailwindcss/no-unnecessary-arbitrary-value": "error",
     },
   },
-]
-
-export default config
+])
