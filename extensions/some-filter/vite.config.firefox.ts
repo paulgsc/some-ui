@@ -31,15 +31,26 @@ function firefoxManifestPlugin(): Plugin {
   }
 }
 
+// See the note in vite.config.chromium.ts: entries are built one per invocation
+// (BUILD_TARGET) so cross-entry shared modules (e.g. lib/tab-state) inline into
+// each standalone bundle instead of splitting into a chunk content scripts
+// cannot load. package.json's build:firefox orchestrates the passes.
+const ENTRIES: Record<string, string> = {
+  content: resolve(__dirname, "src/content/content.ts"),
+  background: resolve(__dirname, "src/background/background.ts"),
+  popup: resolve(__dirname, "popup.html"),
+}
+
+const TARGET = process.env["BUILD_TARGET"]
+const input =
+  TARGET && ENTRIES[TARGET] ? { [TARGET]: ENTRIES[TARGET] } : ENTRIES
+
 export default defineConfig({
   plugins: [firefoxManifestPlugin()],
   build: {
+    emptyOutDir: process.env["BUILD_CLEAN"] === "1" || !TARGET,
     rollupOptions: {
-      input: {
-        content: resolve(__dirname, "src/content/content.ts"),
-        background: resolve(__dirname, "src/background/background.ts"),
-        popup: resolve(__dirname, "popup.html"),
-      },
+      input,
       output: {
         manualChunks: () => {},
         entryFileNames: (chunkInfo) => {
@@ -53,7 +64,6 @@ export default defineConfig({
       },
     },
     outDir: "dist",
-    emptyOutDir: true,
   },
   resolve: {
     alias: {

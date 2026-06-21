@@ -13,6 +13,7 @@ import {
   restoreVendor,
 } from "@filter/lib/content/theme-apply"
 import { detect } from "@filter/lib/content/theme-detector"
+import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
@@ -51,7 +52,7 @@ function writeCachedState(state: TabState): void {
 
 // ── State machine ─────────────────────────────────────────────────────────────
 
-let currentState: TabState = "auto"
+let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 let autoWasApplied = false
 
@@ -82,13 +83,7 @@ function applyState(state: TabState): void {
 }
 
 function cycleState(): void {
-  const next: Record<TabState, TabState> = {
-    auto: "legacy",
-    legacy: "off",
-    off: "auto",
-  }
-
-  applyState(next[currentState])
+  applyState(nextTabState(currentState))
 }
 
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────

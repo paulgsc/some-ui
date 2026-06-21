@@ -42,12 +42,12 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "pnpm build:firefox",
     "build:background": "BUILD_TARGET=background vite build",
-    "build:chromium": "vite build --config vite.config.chromium.ts",
+    "build:chromium": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.chromium.ts && BUILD_TARGET=background vite build --config vite.config.chromium.ts",
     "build:content": "BUILD_TARGET=content vite build",
-    "build:firefox": "vite build --config vite.config.firefox.ts",
-    "build:popup": "vite build",
+    "build:firefox": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.firefox.ts && BUILD_TARGET=background vite build --config vite.config.firefox.ts && BUILD_TARGET=popup vite build --config vite.config.firefox.ts",
+    "build:popup": "BUILD_TARGET=popup vite build",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite",

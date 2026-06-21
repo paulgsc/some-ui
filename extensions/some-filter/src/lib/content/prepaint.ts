@@ -20,11 +20,6 @@
 
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
 
-type PopoverEl = HTMLElement & {
-  showPopover?: () => void
-  hidePopover?: () => void
-}
-
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
 }
@@ -38,16 +33,15 @@ function getVeil(): HTMLElement | null {
 export function enablePrepaint(): void {
   if (getVeil()) return
 
-  const veil: PopoverEl = document.createElement("div")
+  const veil = document.createElement("div")
   veil.id = PREPAINT_VEIL_ID
   veil.setAttribute("data-my-ext", "")
   veil.setAttribute("popover", "manual")
 
-  const parent = document.body ?? document.documentElement
-  parent.appendChild(veil)
+  document.body.appendChild(veil)
 
   try {
-    veil.showPopover?.()
+    veil.showPopover()
   } catch {
     // Popover unsupported or element not eligible — the fixed/max-z fallback
     // styling in prepaint.css keeps the veil covering the viewport regardless.
@@ -59,10 +53,10 @@ export function enablePrepaint(): void {
  * call when no veil exists.
  */
 export function disablePrepaint(): void {
-  const veil = getVeil() as PopoverEl | null
+  const veil = getVeil()
   if (!veil) return
   try {
-    veil.hidePopover?.()
+    veil.hidePopover()
   } catch {
     // not open / unsupported — removal below still tears it down
   }
