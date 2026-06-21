@@ -1,5 +1,5 @@
-import type { WindowGroupHeaderProps } from "@censor/popup/components/window-group-header"
-import type { TabEntry, WindowGroup } from "@censor/types/popup"
+import type { WindowGroupHeaderProps } from "@filter/popup/components/window-group-header"
+import type { TabEntry, WindowGroup } from "@filter/types/popup"
 
 export type TabListProps = {
   groups: Array<WindowGroup>
@@ -11,7 +11,7 @@ export type TabListProps = {
   WindowGroupHeader: (props: WindowGroupHeaderProps) => HTMLElement
 }
 
-const getFaviconSvg = () => `
+const getFaviconSvg = (): string => `
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
   </svg>`
@@ -43,7 +43,7 @@ function buildTabRow(
     img.src = tab.favIconUrl
     img.width = 14
     img.height = 14
-    img.onerror = () => {
+    img.onerror = (): void => {
       favicon.innerHTML = getFaviconSvg()
     }
     favicon.append(img)
@@ -73,7 +73,7 @@ function buildTabRow(
   const badges = document.createElement("div")
   badges.className = "tab-row__badges"
 
-  const addBadge = (className: string, title: string, icon: string) => {
+  const addBadge = (className: string, title: string, icon: string): void => {
     const b = document.createElement("span")
     b.className = `badge ${className}`
     b.title = title
@@ -125,7 +125,8 @@ export function TabList(props: TabListProps): HTMLElement {
   const el = document.createElement("div")
   el.className = "tab-list"
 
-  if (!groups || groups.every((g) => g.tabs.length === 0)) {
+  const hasAnyTabs = groups.some((g) => g.tabs.length > 0)
+  if (!hasAnyTabs) {
     const empty = document.createElement("div")
     empty.className = "tab-list__empty"
     empty.textContent = "No tabs match the current filter."

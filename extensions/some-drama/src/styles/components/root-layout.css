@@ -1,0 +1,128 @@
+/* ── Root & Layout ───────────────────────────────────────────────────────────
+   Handles: root positioning, size variants (min/compact/full),
+   entrance/exit transitions, drag cursor.
+
+   PATCH #1 FIX — drag deadzone & spawn:
+   - Removed `bottom` and `right` from #dc-root. These fought JS-set `left`/
+     `top` values, creating a deadzone in the bottom-right ~10% of the viewport
+     where drag targets were unreachable (the browser resolves conflicting
+     position properties by honouring both, which distorts the element rect).
+   - Initial `left`/`top` are set to a safe off-screen value and immediately
+     overwritten by content.ts#initCardPosition() before the entrance
+     animation fires — so there's no visible bottom-left flash.
+   ────────────────────────────────────────────────────────────────────────── */
+
+#dc-root {
+  position: fixed;
+  /* JS owns left/top exclusively — no bottom/right here */
+  left: -9999px;
+  top: -9999px;
+  z-index: 40000;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+
+  /* Entrance — starts invisible, JS adds .dc-visible after positioning */
+  opacity: 0;
+  transition:
+    opacity 400ms var(--dc-ease),
+    transform 400ms var(--dc-ease);
+}
+
+#dc-root.dc-visible {
+  opacity: 1;
+  transform: translateZ(0);
+}
+
+#dc-root.dc-hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translateY(12px) scale(0.94) translateZ(0);
+}
+
+#dc-root.dc-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+/* ── Size: min — only the spinning pip ──────────────────────────────────────*/
+#dc-root[data-size="min"] .dc-card {
+  border-radius: var(--dc-r-pill);
+  padding: 8px;
+  cursor: pointer;
+}
+#dc-root[data-size="min"] .dc-card-right,
+#dc-root[data-size="min"] .dc-title-pill,
+#dc-root[data-size="min"] .dc-slideshow-inner,
+#dc-root[data-size="min"] .dc-chat-bubble,
+#dc-root[data-size="min"] .dc-blossom,
+#dc-root[data-size="min"] .dc-slide-label {
+  display: none;
+}
+#dc-root[data-size="min"] .dc-circle-ring,
+#dc-root[data-size="min"] .dc-title-dot {
+  animation-play-state: paused;
+}
+#dc-root[data-size="min"] .dc-circle-wrap {
+  width: 48px;
+  height: 48px;
+}
+
+/* ── Size: compact — circle + right panel, no chat bubble ───────────────────*/
+#dc-root[data-size="compact"] .dc-card {
+  padding: 18px 20px 18px 18px;
+  gap: 16px;
+}
+#dc-root[data-size="compact"] .dc-chat-bubble {
+  display: none !important;
+}
+
+/* ── Size: full — everything visible ────────────────────────────────────────*/
+#dc-root[data-size="full"] .dc-card {
+  padding: 20px 24px 20px 20px;
+  gap: 18px;
+}
+#dc-root[data-size="full"] .dc-circle-wrap {
+  width: 120px;
+  height: 120px;
+}
+
+/* ── Empty-state dot ────────────────────────────────────────────────────────*/
+/* Utilities on element: bottom-5 right-5 w-3 h-3 rounded-full pointer-events-none opacity-0 */
+/* 'fixed', 'transition' are blocklisted in uno.config.ts — must stay here  */
+.dc-empty-pill {
+  position: fixed;
+  z-index: 2147483647;
+  background: hsl(340 55% 55% / 0.65);
+  transition: opacity 0.5s ease;
+  animation: dc-pill-throb 2s ease-in-out infinite;
+}
+
+@keyframes dc-pill-throb {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px hsl(340 55% 55% / 0.25);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 5px hsl(340 55% 55% / 0.55);
+    transform: scale(1.22);
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────*/
+@media (max-width: 440px) {
+  #dc-root[data-size="compact"] .dc-card-right {
+    min-width: 110px;
+  }
+}

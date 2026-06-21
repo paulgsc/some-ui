@@ -1,0 +1,37 @@
+name: "Cargo Cache"
+description: "Restore Cargo registry and build cache. Speeds up all Rust jobs."
+inputs:
+  key-suffix:
+    description: "Extra suffix to scope the cache (e.g. a crate name or job label)"
+    required: false
+    default: "workspace"
+  cache-target:
+    description: "Whether to cache the target/ directory"
+    required: false
+    default: "true"
+  target-dir:
+    description: "Path to the Cargo target directory to cache (default: target)"
+    required: false
+    default: "target"
+runs:
+  using: composite
+  steps:
+    - name: Cache Cargo registry + index
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          cargo-registry-${{ runner.os }}-
+    - name: Cache Cargo build artifacts
+      if: inputs.cache-target == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.target-dir }}
+        key: cargo-target-${{ runner.os }}-${{ inputs.key-suffix }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          cargo-target-${{ runner.os }}-${{ inputs.key-suffix }}-
+          cargo-target-${{ runner.os }}-

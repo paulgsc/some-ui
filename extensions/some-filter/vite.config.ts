@@ -1,40 +1,11 @@
-import { resolve } from "path"
-import { defineConfig } from "vite"
-
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        content: resolve(__dirname, "src/content/content.ts"),
-        background: resolve(__dirname, "src/background/background.ts"),
-        popup: resolve(__dirname, "popup.html"),
-      },
-      output: {
-        manualChunks: undefined,
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === "content") return "content.js"
-          if (chunkInfo.name === "background") return "background.js"
-          if (chunkInfo.name === "popup") return "popup.js"
-          return "[name].js"
-        },
-        chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === "popup.html") return "popup.html"
-          if (assetInfo.name === "popup.css") return "popup.css"
-          if (assetInfo.name?.endsWith(".css")) return "[name][extname]"
-          if (assetInfo.name?.match(/\.(png|jpg|jpeg|svg|gif)$/)) {
-            return "assets/[name][extname]"
-          }
-          return "[name][extname]"
-        },
-      },
-    },
-    outDir: "dist",
-    emptyOutDir: true,
-  },
-  resolve: {
-    alias: {
-      "@censor": resolve(__dirname, "src"),
-    },
-  },
-})
+/**
+ * vite.config.ts — default config (re-exports Firefox build).
+ *
+ * Canonical production builds use the explicit configs:
+ *   pnpm build:firefox   → vite build --config vite.config.firefox.ts
+ *   pnpm build:chromium  → vite build --config vite.config.chromium.ts
+ *
+ * The default re-exports Firefox because that is the primary distribution
+ * target. Playwright E2E uses build:chromium explicitly.
+ */
+export { default } from "./vite.config.firefox"

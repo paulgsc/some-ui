@@ -1,0 +1,169 @@
+/* some-conveyor — shadow-scoped stylesheet (irreducible CSS only)
+ * All selectors are safe inside shadow DOM.
+ *
+ * After the M3 UnoCSS migration, the *static layout* of the cube/strip/faces and
+ * all face content lives as @some-ui/styles preset utilities authored directly on
+ * the elements (cube-renderer, conveyor-engine, terminal, faces) and compiled to
+ * static CSS by @unocss/cli. What remains here is only what has no utility
+ * equivalent or must be themeable at runtime:
+ *   - themed colors/borders/fonts driven by the ThemeEngine custom-property
+ *     contract (--face-bg, --strip-bg, …) — preserved so terminal theming works,
+ *   - 3-D primitives (preserve-3d, backface-visibility) and the cube transition,
+ *   - face state rules (--active / --hovered) and the scan-line / corner effects,
+ *   - keyframes and the reduced-motion guard.
+ * ─────────────────────────────────────────────────────────────────── */
+
+/* ── Shadow-scope preset primitives ──────────────────────────────────────────
+ * The page's :root design tokens don't cross the shadow boundary, so the
+ * presetWind4 base values that compiled utilities reference are surfaced here on
+ * :host:
+ *   - --spacing      → spacing-scale utilities, e.g. `inset-0`/`bottom-0`
+ *                      compile to calc(var(--spacing) * 0).
+ *   - --un-text-opacity → preset color utilities compile to
+ *                      color-mix(in oklab, <color> var(--un-text-opacity), transparent);
+ *                      at 100% that is exactly <color>. Normally seeded by
+ *                      preflight, which is intentionally off for this surface. */
+:host {
+  --spacing: 0.25rem;
+  --un-text-opacity: 100%;
+}
+
+/* ── Cube — 3-D + rotation transition (layout is utilities on the element) ── */
+
+.sc-cube {
+  transform-style: preserve-3d;
+  transition: transform var(--transition-duration, 500ms)
+    var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.sc-cube--suspended {
+  opacity: 0.4;
+}
+
+.sc-cube--reduced {
+  opacity: 0.85;
+}
+
+/* ── Faces — themed base (layout is utilities on the element) ──────────────── */
+
+.sc-face {
+  /* Backfaces stay visible: with opaque face backgrounds the cube reads as a
+   * solid dice from every angle. Hiding them would make the box hollow. */
+  backface-visibility: visible;
+  background: var(--face-bg, #0d120d);
+  border: 1px solid var(--face-border, #1c2e1c);
+  border-radius: 4px;
+  color: var(--face-text, #4a7c4a);
+
+  /* Default face text styles — content elements inherit these. */
+  font-family: var(--face-font, "Courier New", monospace);
+  font-size: var(--face-font-size, 11px);
+  line-height: var(--face-line-height, 1.5);
+}
+
+.sc-face--active {
+  background: var(--face-bg-active, #0a1a0a);
+  border-color: var(--face-border-active, #00ff41);
+  box-shadow: var(--face-glow-active, none);
+  color: var(--face-text-active, #00ff41);
+}
+
+/* ── Content fade ─────────────────────────────────────────────────────────
+ * Only the face facing the viewer shows legible content. Rich content on the
+ * other faces fades out so the side panels read as the solid sides of the box
+ * rather than competing, mirrored text. Crossfades over the rotation. */
+
+.sc-face > * {
+  opacity: 0;
+  transition: opacity var(--transition-duration, 500ms)
+    var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.sc-face--active > * {
+  opacity: 1;
+}
+
+.sc-face--hovered {
+  border-color: var(--face-border-active, #00ff41);
+  opacity: 0.9;
+}
+
+/* ── Strip — themed surface (layout is utilities on the element) ──────────── */
+
+.sc-strip {
+  backdrop-filter: var(--strip-backdrop, blur(8px));
+  background: var(--strip-bg, rgb(6 10 6 / 92%));
+  border-top: var(--strip-border-top, 1px solid #1a2e1a);
+}
+
+/* ── Face geometry transforms (set inline by CubeRenderer) ───────────── */
+
+/* The transform + visibility of each face is computed in lib/content/
+ * cube-geometry.ts and applied via JS, because it depends on both the cube's
+ * dimensions and the resolved rotation axis (see that module for the math):
+ *
+ *   - Y axis (front→right→back→left): cycle faces at translateZ(halfW);
+ *     top/bottom hidden for non-square rects.
+ *   - X axis (front→top→back→bottom): cycle faces at translateZ(halfH);
+ *     left/right hidden for non-square rects.
+ *
+ * The axis is chosen from the aspect ratio so a wide rect rotates about X and a
+ * tall rect about Y — the opposite always stretches the side faces into slabs.
+ */
+
+/* ── Scan-line effect on active face ─────────────────────────────────── */
+
+.sc-face--active::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgb(0 255 65 / 1.5%) 2px,
+    rgb(0 255 65 / 1.5%) 4px
+  );
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* ── Corner accent on active face ────────────────────────────────────── */
+
+.sc-face--active::before {
+  border-right: 1px solid var(--face-border-active, #00ff41);
+  border-top: 1px solid var(--face-border-active, #00ff41);
+  content: "";
+  height: 6px;
+  opacity: 0.8;
+  pointer-events: none;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 6px;
+}
+
+/* ── Cursor blink on active face ─────────────────────────────────────── */
+
+@keyframes sc-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── Reduced-motion: disable transitions ──────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-cube {
+    transition: none;
+  }
+
+  .sc-cube-wrapper {
+    will-change: auto;
+  }
+}

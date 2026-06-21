@@ -1,4 +1,4 @@
-use js_sys::{Array, Object};
+use js_sys::Object;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -62,7 +62,7 @@ impl BrickLadderCalculator {
             let mut extra_index = 0;
             for _ in 0..remaining {
                 distribution[extra_index] += 1;
-                extra_index = (extra_index + 1) % std::cmp::min(distribution.len(), (n / 2 + n % 2));
+                extra_index = (extra_index + 1) % std::cmp::min(distribution.len(), n / 2 + n % 2);
             }
         }
 
@@ -72,7 +72,7 @@ impl BrickLadderCalculator {
             total_elements_used: total_elements,
         };
 
-        JsValue::from_serde(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     /// Calculate brick positions for a given layer
@@ -112,7 +112,7 @@ impl BrickLadderCalculator {
             });
         }
 
-        JsValue::from_serde(&positions).unwrap()
+        serde_wasm_bindgen::to_value(&positions).unwrap()
     }
 
     /// Calculate normalized color intensity based on data value
@@ -130,18 +130,18 @@ impl BrickLadderCalculator {
     /// Sort data items by value (descending)
     #[wasm_bindgen]
     pub fn sort_data(&self, data: JsValue) -> JsValue {
-        let mut data_items: Vec<DataItem> = data.into_serde().unwrap();
+        let mut data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).unwrap();
 
         // Sort by value in descending order
         data_items.sort_by(|a, b| b.value.partial_cmp(&a.value).unwrap());
 
-        JsValue::from_serde(&data_items).unwrap()
+        serde_wasm_bindgen::to_value(&data_items).unwrap()
     }
 
     /// Get min and max values from data
     #[wasm_bindgen]
     pub fn get_data_range(&self, data: JsValue) -> JsValue {
-        let data_items: Vec<DataItem> = data.into_serde().unwrap();
+        let data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).unwrap();
 
         let min_value = data_items.iter().map(|item| item.value).fold(f64::INFINITY, f64::min);
 

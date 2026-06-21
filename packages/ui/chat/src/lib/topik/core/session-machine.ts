@@ -26,9 +26,7 @@ export class SessionMachine implements ISessionMachine {
   private state: SessionState
   private listeners = new Set<(state: SessionState) => void>()
 
-  constructor(
-    initialState?: SessionState
-  ) {
+  constructor(initialState?: SessionState) {
     this.state = initialState ?? createInitialState()
   }
 

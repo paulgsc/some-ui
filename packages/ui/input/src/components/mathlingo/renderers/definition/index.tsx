@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-
 import { MathExpression } from "@input/components/mathlingo/renderers/math-expression"
 
 type DefinitionProps = {

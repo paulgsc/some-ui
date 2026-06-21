@@ -21,8 +21,8 @@ export const CreditsFetch = () => {
   return (
     <main className="size-96 border border-red-500 text-center text-red-500">
       <p> {JSON.stringify(data)}</p>
-      isLoading: {`${isLoading}`}
-      error: {`${error}`}
+      isLoading: {String(isLoading)}
+      error: {error instanceof Error ? error.message : String(error)}
     </main>
   )
 }
@@ -32,7 +32,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta: Meta<typeof AttributionCard> = {
   title: "UI/Attributions/AttributionCard",
   component: AttributionCard,
-} as Meta
+}
+
+export default meta

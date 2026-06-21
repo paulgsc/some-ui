@@ -1,0 +1,487 @@
+/**
+ * BannerMarquee — IDE Syntax Theme Edition
+ *
+ * Visual approach:
+ *   - IDE/syntax highlighting aesthetic: each semantic token gets a distinct color
+ *   - Segment anchor = "keyword" (pink/magenta)
+ *   - Action = "function" (blue/cyan)
+ *   - Detail = "string" (green/yellow)
+ *   - Clock = "number" (orange)
+ *   - Separator = "punctuation" (muted)
+ *   - Pops against dark backgrounds like code in an editor
+ */
+
+/* ─── CSS Variables: IDE Color Palette ────────────────────────────────────── */
+
+:root {
+  /* Banner backdrop - subtle dark like an editor */
+  --banner-bg: rgba(30, 30, 36, 0.96);
+  --banner-bg-subtle: rgba(40, 40, 48, 0.5);
+  --banner-border: rgba(80, 80, 100, 0.3);
+  --banner-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+
+  /* Syntax colors - inspired by popular IDE themes */
+  --syntax-keyword: #ff79c6; /* Pink - segment anchor */
+  --syntax-function: #8be9fd; /* Cyan - action verb */
+  --syntax-string: #50fa7b; /* Green - detail/description */
+  --syntax-number: #ffb86c; /* Orange - clock/time */
+  --syntax-type: #bd93f9; /* Purple - secondary emphasis */
+  --syntax-comment: #6272a4; /* Muted blue - separators, hints */
+  --syntax-variable: #f8f8f2; /* Off-white - default text */
+  --syntax-constant: #f1fa8c; /* Yellow - highlights */
+
+  /* Segment accent colors - vivid category badges */
+  --segment-math: #8be9fd; /* Cyan */
+  --segment-dsa: #bd93f9; /* Purple */
+  --segment-systems: #ff79c6; /* Pink */
+  --segment-infra: #ffb86c; /* Orange */
+  --segment-language: #50fa7b; /* Green */
+  --segment-career: #f1fa8c; /* Yellow */
+  --segment-leisure: #6272a4; /* Muted */
+  --segment-unset: #44475a; /* Dark gray */
+
+  /* Input */
+  --banner-input-bg: rgba(68, 71, 90, 0.5);
+  --banner-input-border: rgba(98, 114, 164, 0.4);
+  --banner-input-focus: #bd93f9;
+
+  /* Error */
+  --banner-error-bg: rgba(255, 85, 85, 0.15);
+  --banner-error-text: #ff5555;
+  --banner-error-border: rgba(255, 85, 85, 0.4);
+
+  /* Clock active dot */
+  --clock-active: #50fa7b;
+}
+
+/* ─── Light Mode (still IDE-ish but inverted) ─────────────────────────────── */
+
+:root:not(.dark):not([data-theme="dark"]) {
+  --banner-bg: rgba(250, 250, 252, 0.96);
+  --banner-bg-subtle: rgba(235, 235, 245, 0.6);
+  --banner-border: rgba(100, 100, 140, 0.15);
+  --banner-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+
+  /* Syntax colors - darker for light bg */
+  --syntax-keyword: #d63384;
+  --syntax-function: #0d9488;
+  --syntax-string: #16a34a;
+  --syntax-number: #ea580c;
+  --syntax-type: #7c3aed;
+  --syntax-comment: #64748b;
+  --syntax-variable: #1e293b;
+  --syntax-constant: #ca8a04;
+
+  /* Segment colors - richer for light mode */
+  --segment-math: #0891b2;
+  --segment-dsa: #7c3aed;
+  --segment-systems: #db2777;
+  --segment-infra: #ea580c;
+  --segment-language: #16a34a;
+  --segment-career: #ca8a04;
+  --segment-leisure: #64748b;
+  --segment-unset: #94a3b8;
+
+  --banner-input-bg: rgba(100, 116, 139, 0.1);
+  --banner-input-border: rgba(100, 116, 139, 0.2);
+  --banner-input-focus: #7c3aed;
+
+  --banner-error-bg: rgba(220, 38, 38, 0.1);
+  --banner-error-text: #dc2626;
+  --banner-error-border: rgba(220, 38, 38, 0.3);
+
+  --clock-active: #16a34a;
+}
+
+/* ─── Root Banner ─────────────────────────────────────────────────────────── */
+
+#__tl2_banner__ {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2147483646;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 16px;
+
+  background: var(--banner-bg);
+  border-top: 1px solid var(--banner-border);
+  box-shadow: var(--banner-shadow);
+
+  pointer-events: auto;
+
+  /* Monospace vibe for that code feel */
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo,
+    Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+#__tl2_banner__.__tl2_banner_hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Glow Shim (event pulse) ─────────────────────────────────────────────── */
+
+.__tl2_banner_shim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--syntax-keyword) 25%,
+    var(--syntax-function) 50%,
+    var(--syntax-string) 75%,
+    transparent 100%
+  );
+  mix-blend-mode: overlay;
+  transition: opacity 0.15s ease-out;
+}
+
+#__tl2_banner__.__tl2_banner_glow .__tl2_banner_shim {
+  animation: banner-glow-pulse 0.7s ease-out;
+}
+
+@keyframes banner-glow-pulse {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.3);
+  }
+  25% {
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1.2);
+  }
+}
+
+/* ─── Segment Anchor (Keyword Badge) ──────────────────────────────────────── */
+
+.__tl2_ribbon_anchor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  background: var(--segment-unset);
+  color: var(--banner-bg);
+
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Segment-specific colors */
+#__tl2_banner__[data-segment="math"] .__tl2_ribbon_anchor {
+  background: var(--segment-math);
+  box-shadow: 0 0 12px -2px var(--segment-math);
+}
+
+#__tl2_banner__[data-segment="dsa"] .__tl2_ribbon_anchor {
+  background: var(--segment-dsa);
+  box-shadow: 0 0 12px -2px var(--segment-dsa);
+}
+
+#__tl2_banner__[data-segment="systems"] .__tl2_ribbon_anchor {
+  background: var(--segment-systems);
+  box-shadow: 0 0 12px -2px var(--segment-systems);
+}
+
+#__tl2_banner__[data-segment="infra"] .__tl2_ribbon_anchor {
+  background: var(--segment-infra);
+  box-shadow: 0 0 12px -2px var(--segment-infra);
+}
+
+#__tl2_banner__[data-segment="language"] .__tl2_ribbon_anchor {
+  background: var(--segment-language);
+  box-shadow: 0 0 12px -2px var(--segment-language);
+}
+
+#__tl2_banner__[data-segment="career"] .__tl2_ribbon_anchor {
+  background: var(--segment-career);
+  box-shadow: 0 0 12px -2px var(--segment-career);
+}
+
+#__tl2_banner__[data-segment="leisure"] .__tl2_ribbon_anchor {
+  background: var(--segment-leisure);
+  box-shadow: none;
+}
+
+.__tl2_ribbon_anchor.__tl2_anchor_unset {
+  background: var(--segment-unset);
+  color: var(--syntax-comment);
+  box-shadow: none;
+}
+
+.__tl2_ribbon_anchor_glyph {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.__tl2_ribbon_anchor_label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Content Track ───────────────────────────────────────────────────────── */
+
+.__tl2_banner_track {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+
+  mask-image: linear-gradient(
+    90deg,
+    black 0%,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    black 0%,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.__tl2_ribbon_content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Action = "function" color (cyan) */
+.__tl2_ribbon_action {
+  font-weight: 600;
+  color: var(--syntax-function);
+}
+
+/* Separator = "punctuation" (muted) */
+.__tl2_ribbon_sep {
+  color: var(--syntax-comment);
+  font-weight: 400;
+  margin: 0 4px;
+  opacity: 0.8;
+}
+
+/* Detail = "string" color (green) */
+.__tl2_ribbon_detail {
+  color: var(--syntax-string);
+  font-weight: 500;
+}
+
+/* Flat mode (no action parsed) */
+.__tl2_ribbon_content.__tl2_flat .__tl2_ribbon_detail {
+  color: var(--syntax-variable);
+  font-weight: 500;
+}
+
+/* ─── Marquee Animation ───────────────────────────────────────────────────── */
+
+.__tl2_ribbon_content.__tl2_marquee {
+  animation: banner-marquee 40s linear infinite;
+}
+
+@keyframes banner-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.__tl2_banner_track:hover .__tl2_ribbon_content.__tl2_marquee {
+  animation-play-state: paused;
+}
+
+/* ─── Clock (Number styling) ──────────────────────────────────────────────── */
+
+.__tl2_ribbon_clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: var(--banner-bg-subtle);
+  border: 1px solid var(--banner-border);
+  flex-shrink: 0;
+}
+
+.__tl2_ribbon_clock_dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--syntax-comment);
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Active state */
+#__tl2_banner__[data-segment]:not([data-segment=""]) .__tl2_ribbon_clock_dot {
+  background: var(--clock-active);
+  box-shadow: 0 0 8px 2px var(--clock-active);
+  animation: clock-dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes clock-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px var(--clock-active);
+  }
+  50% {
+    box-shadow: 0 0 4px 1px var(--clock-active);
+  }
+}
+
+/* Time = "number" color (orange) */
+.__tl2_ribbon_clock_time {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--syntax-number);
+  min-width: 42px;
+  text-align: right;
+}
+
+/* ─── Edit Zone ───────────────────────────────────────────────────────────── */
+
+.__tl2_banner_edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 120px;
+  overflow: hidden;
+  transition: max-width 0.25s ease;
+}
+
+.__tl2_banner_edit:hover,
+.__tl2_banner_edit:focus-within {
+  max-width: 260px;
+}
+
+/* Hint = "comment" styling */
+.__tl2_banner_edit_hint {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--syntax-comment);
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
+}
+
+.__tl2_banner_edit:hover .__tl2_banner_edit_hint,
+.__tl2_banner_edit:focus-within .__tl2_banner_edit_hint {
+  opacity: 1;
+  color: var(--syntax-type);
+}
+
+.__tl2_banner_input {
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--syntax-variable);
+  background: var(--banner-input-bg);
+  border: 1px solid var(--banner-input-border);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.__tl2_banner_input::placeholder {
+  color: var(--syntax-comment);
+}
+
+.__tl2_banner_input:focus {
+  border-color: var(--banner-input-focus);
+  box-shadow: 0 0 0 2px rgba(189, 147, 249, 0.3);
+}
+
+/* ─── Error Tooltip ───────────────────────────────────────────────────────── */
+
+.__tl2_banner_error {
+  position: absolute;
+  bottom: 100%;
+  right: 16px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+
+  background: var(--banner-error-bg);
+  color: var(--banner-error-text);
+  border: 1px solid var(--banner-error-border);
+
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.__tl2_banner_error.__tl2_error_visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ─── High Contrast Support ───────────────────────────────────────────────── */
+
+@media (prefers-contrast: high) {
+  #__tl2_banner__ {
+    --banner-bg: #000;
+    --banner-border: #fff;
+    --syntax-function: #00ffff;
+    --syntax-string: #00ff00;
+    --syntax-number: #ffaa00;
+    --syntax-keyword: #ff00ff;
+  }
+}
+
+/* ─── Reduced Motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .__tl2_ribbon_content.__tl2_marquee {
+    animation: none;
+  }
+
+  #__tl2_banner__.__tl2_banner_glow .__tl2_banner_shim {
+    animation: none;
+  }
+
+  .__tl2_ribbon_clock_dot {
+    animation: none;
+  }
+}

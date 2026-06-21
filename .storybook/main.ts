@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
+import UnoCSS from "unocss/vite"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -43,7 +44,11 @@ function storyGlobs(): Array<string> {
     (name) => `!../**/${name}.stories.@(js|jsx|mjs|ts|tsx)`
   )
 
-  return [...base, ...excluded]
+  // Design-system catalog (@some-ui/styles) — always included regardless of
+  // scope so the preset reference is available in every Storybook run.
+  const catalog = "../.storybook/*.stories.@(js|jsx|mjs|ts|tsx)"
+
+  return [catalog, ...base, ...excluded]
 }
 
 /**
@@ -94,6 +99,14 @@ const config: StorybookConfig = {
           __dirname,
           "../__mocks__/webextension-polyfill.ts"
         ),
+        // oxc-parser is pulled into the client graph only via unocss'
+        // attributify-jsx transformer (unused here). Its `browser` entry imports
+        // the wasm binding that pnpm doesn't install for native platforms, so
+        // point it at a stub — the parser is never invoked in Storybook.
+        "@oxc-parser/binding-wasm32-wasi": resolve(
+          __dirname,
+          "../__mocks__/oxc-parser-binding-stub.ts"
+        ),
         "preact/hooks": "react",
         "preact/compat": "react",
         preact: "react",
@@ -105,6 +118,14 @@ const config: StorybookConfig = {
       host: "0.0.0.0", // bind all interfaces so both nixos.local + localhost resolve
       allowedHosts: ["nixos.local", "localhost", "127.0.0.1"],
     }
+
+    // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
+    // .storybook/uno.config.ts to the .storybook/ files only, so it adds the
+    // catalog's utilities without altering how other stories render.
+    config.plugins = [
+      ...(config.plugins ?? []),
+      ...UnoCSS({ configFile: resolve(__dirname, "uno.config.ts") }),
+    ]
 
     return config
   },

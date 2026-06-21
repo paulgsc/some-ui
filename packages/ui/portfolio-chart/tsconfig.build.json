@@ -3,6 +3,7 @@
   "exclude": [
     "tailwind.config.ts",
     "eslint.config.js",
+    "vite.config.ts",
     "setupVitest.ts",
     "../../../assets/**/*",
     "src/data",

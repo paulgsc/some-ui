@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 
-import "@censor/popup/popup.css"
+import "@filter/popup/popup.css"
 
 import type { Meta, StoryObj } from "@storybook/react-vite"
 

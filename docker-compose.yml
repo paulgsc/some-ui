@@ -18,7 +18,6 @@ services:
       DEFAULT_SPEED: ${DEFAULT_SPEED:-1.0}
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-en-US}
     restart: unless-stopped
-
   nginx:
     image: nginx:alpine
     container_name: openai-edge-tts-proxy

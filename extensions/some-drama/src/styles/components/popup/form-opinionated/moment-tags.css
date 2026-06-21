@@ -1,0 +1,60 @@
+/* ── Moment Tag Chips ────────────────────────────────────────────────────── */
+
+.dj-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--dj-border);
+  background: var(--dj-surface);
+  color: var(--dj-text);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    transform 180ms var(--dj-spring),
+    box-shadow 180ms var(--dj-ease),
+    background 180ms var(--dj-ease),
+    border-color 180ms var(--dj-ease);
+}
+
+.dj-tag-chip:hover {
+  transform: translateY(-1px);
+}
+
+.dj-tag-chip.dj-tag-selected {
+  background: linear-gradient(135deg, var(--strawberry-300), var(--peach-300));
+  border-color: var(--strawberry-400);
+  transform: scale(1.03);
+  box-shadow: 0 0 12px var(--strawberry-300);
+}
+
+.dj-tag-chip.dj-tag-selected::before {
+  content: "✨ ";
+}
+
+.dj-tag-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.dj-tag-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: dj-shimmer 900ms ease-out;
+}
+
+@keyframes dj-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}

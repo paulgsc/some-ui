@@ -1,4 +1,3 @@
-
 export type ActionBarProps = {
   selectedCount: number
   statusFilter: string | null
@@ -9,9 +8,21 @@ export type ActionBarProps = {
 }
 
 const STATUS_FILTERS = [
-  { label: "Active", value: "active", icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>` },
-  { label: "Audible", value: "audible", icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>` },
-  { label: "Pinned", value: "pinned", icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>` },
+  {
+    label: "Active",
+    value: "active",
+    icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>`,
+  },
+  {
+    label: "Audible",
+    value: "audible",
+    icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
+  },
+  {
+    label: "Pinned",
+    value: "pinned",
+    icon: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>`,
+  },
 ]
 
 export function ActionBar({
@@ -29,17 +40,23 @@ export function ActionBar({
   const pillsRow = document.createElement("div")
   pillsRow.className = "action-bar__pills"
 
-  const createPill = (label: string, value: string | null, icon?: string) => {
+  const createPill = (
+    label: string,
+    value: string | null,
+    icon?: string
+  ): HTMLButtonElement => {
     const btn = document.createElement("button")
     const isActive = statusFilter === value
     btn.className = `action-bar__pill ${isActive ? "action-bar__pill--active" : ""}`
     btn.innerHTML = icon ? `${icon}<span>${label}</span>` : label
-    btn.onclick = () => onStatusFilterChange(isActive ? null : value)
+    btn.onclick = (): void => onStatusFilterChange(isActive ? null : value)
     return btn
   }
 
   pillsRow.append(createPill("All", null))
-  STATUS_FILTERS.forEach(f => pillsRow.append(createPill(f.label, f.value, f.icon)))
+  STATUS_FILTERS.forEach((f) =>
+    pillsRow.append(createPill(f.label, f.value, f.icon))
+  )
 
   // ── Selection Controls ──────────────────────────────────────────────────
   const ctrlRow = document.createElement("div")

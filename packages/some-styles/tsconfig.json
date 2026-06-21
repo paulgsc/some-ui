@@ -1,21 +1,12 @@
 {
-  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "extends": "@some-ui/tsconfig/base.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "dist",
-    "moduleResolution": "NodeNext",
-    "module": "NodeNext",
-    "declaration": true,
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": false,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "build", "dist"]
+  "include": ["src", "uno.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }

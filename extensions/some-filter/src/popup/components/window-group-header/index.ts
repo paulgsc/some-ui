@@ -1,4 +1,3 @@
-
 export type WindowGroupHeaderProps = {
   windowIndex: number
   windowId: number
@@ -20,7 +19,7 @@ export function WindowGroupHeader({
 
   const label = document.createElement("div")
   label.className = "window-header__label"
-  
+
   // Icon and Text
   label.innerHTML = `
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -37,13 +36,13 @@ export function WindowGroupHeader({
   actions.className = "window-header__actions"
 
   const isAllSelected = selectedCount === tabCount
-  
+
   const allBtn = document.createElement("button")
   allBtn.className = "window-header__btn"
   allBtn.textContent = isAllSelected ? "−" : "+"
   allBtn.title = isAllSelected ? "Deselect window" : "Select window"
-  
-  allBtn.onclick = (e) => {
+
+  allBtn.onclick = (e): void => {
     e.stopPropagation() // Prevent triggering any parent row clicks
     if (isAllSelected) {
       onDeselect()

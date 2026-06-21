@@ -5,5 +5,3 @@ declare global {
     webkitFullscreenElement?: Element | null
   }
 }
-
-

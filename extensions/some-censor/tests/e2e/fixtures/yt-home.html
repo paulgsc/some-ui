@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BOYO Fixture — YouTube Home</title>
+    <style>
+      body {
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      #primary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        max-width: 1200px;
+      }
+      ytd-rich-item-renderer {
+        background: #1f1f1f;
+        border-radius: 8px;
+        overflow: hidden;
+        min-height: 200px;
+        display: block;
+        position: relative;
+      }
+      .thumbnail {
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #333;
+        display: block;
+      }
+      #video-title {
+        padding: 8px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      ytd-channel-name yt-formatted-string {
+        padding: 4px 8px;
+        font-size: 12px;
+        color: #aaa;
+        display: block;
+      }
+      #metadata-line span {
+        font-size: 11px;
+        color: #aaa;
+        padding: 0 8px 8px;
+        display: inline-block;
+      }
+      span.ytd-thumbnail-overlay-time-status-renderer {
+        position: absolute;
+        bottom: 110px;
+        right: 4px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 2px 4px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    BOYO fixture — static YouTube-shaped DOM.
+
+    IMPORTANT (resolution realism):
+      Real YouTube cards expose a watch HREF well before data-video-id is set,
+      and the channel anchor frequently hydrates LATER than the video anchor.
+      The previous fixture hardcoded data-video-id on every card, which let the
+      extension take the attribute fast-path and channel-name fallback every
+      time — masking the production resolution failures entirely.
+
+      This fixture therefore:
+        - Cards 1-3: HREF-ONLY video id (no data-video-id), channel anchor present.
+                     Exercises the href→videoId + channel-anchor path.
+        - Card 4:    HREF-ONLY video id, channel anchor MISSING at load.
+                     Exercises video-only → masked-now, channel backfilled later.
+        - hydrateChannel4(): adds the channel anchor to drive the backfill path.
+        - Navigation REUSES existing elements in place (no innerHTML wipe),
+          which is how chip/feed swaps actually behave.
+  -->
+
+    <ytd-app></ytd-app>
+
+    <div id="primary">
+      <!-- Card 1: href-only, channel anchor present -->
+      <ytd-rich-item-renderer>
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">12:34</span>
+        <a id="video-title" href="/watch?v=vid_aaa111">
+          How Compilers Work: A Deep Dive
+        </a>
+        <ytd-channel-name>
+          <yt-formatted-string>LowLevelLearning</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/channel/UC4DVVoMDcpAHJBKP0ZrEIog">LowLevelLearning</a>
+        <div id="metadata-line">
+          <span>1.2M views</span>
+          <span>3 days ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 2: href-only, channel anchor present -->
+      <ytd-rich-item-renderer>
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">8:07</span>
+        <a id="video-title" href="/watch?v=vid_bbb222"> Rust in 100 Seconds </a>
+        <ytd-channel-name>
+          <yt-formatted-string>Fireship</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/channel/UCsBjURrPoezykLs9EqgamOA">Fireship</a>
+        <div id="metadata-line">
+          <span>4.5M views</span>
+          <span>1 week ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 3: href-only, handle-style channel anchor -->
+      <ytd-rich-item-renderer>
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">24:01</span>
+        <a id="video-title" href="/watch?v=vid_ccc333">
+          Building a Parser from Scratch
+        </a>
+        <ytd-channel-name>
+          <yt-formatted-string>CodeAesthetic</yt-formatted-string>
+        </ytd-channel-name>
+        <a href="/@CodeAesthetic">CodeAesthetic</a>
+        <div id="metadata-line">
+          <span>890K views</span>
+          <span>2 weeks ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+
+      <!-- Card 4: href-only video id, NO channel anchor yet.
+           Resolves video-only → masked immediately; channel backfills later. -->
+      <ytd-rich-item-renderer id="late-channel-card">
+        <div class="thumbnail"></div>
+        <span class="ytd-thumbnail-overlay-time-status-renderer">5:22</span>
+        <a id="video-title" href="/watch?v=vid_ddd444">
+          The Beauty of Functional Programming
+        </a>
+        <!-- channel anchor + channel-name intentionally absent at load -->
+        <div id="metadata-line">
+          <span>2.1M views</span>
+          <span>5 days ago</span>
+        </div>
+      </ytd-rich-item-renderer>
+    </div>
+
+    <script>
+      // Builds a YouTube-shaped card's inner HTML.
+      function cardInner(c, withChannel = true) {
+        const channel = withChannel
+          ? `
+            <ytd-channel-name>
+              <yt-formatted-string>${c.channel}</yt-formatted-string>
+            </ytd-channel-name>
+            <a href="${c.channelHref}">${c.channel}</a>`
+          : ""
+        return `
+          <div class="thumbnail"></div>
+          <span class="ytd-thumbnail-overlay-time-status-renderer">${c.duration}</span>
+          <a id="video-title" href="/watch?v=${c.videoId}">${c.title}</a>
+          ${channel}
+          <div id="metadata-line">
+            <span>${c.views}</span>
+            <span>${c.age}</span>
+          </div>`
+      }
+
+      window.__FIXTURE__ = {
+        /**
+         * Add the channel anchor to card 4, driving the channel-backfill path.
+         */
+        hydrateChannel4() {
+          const el = document.getElementById("late-channel-card")
+          if (!el) return false
+          const a = document.createElement("a")
+          a.setAttribute("href", "/@ThePrimeagen")
+          a.textContent = "ThePrimeTime"
+          el.appendChild(a)
+          return true
+        },
+
+        /**
+         * Simulate YouTube SPA chip navigation — the realistic version.
+         *
+         * YouTube REUSES the existing ytd-rich-item-renderer elements in place:
+         * it rewrites their href/title/channel rather than removing and
+         * recreating them. Old elements stay CONNECTED, so prune() alone cannot
+         * clear stale view state — only a session bump (controller teardown on
+         * yt-navigate-finish) does. This is the scenario the old innerHTML-wipe
+         * fixture could not reproduce.
+         */
+        simulateNavigation(label = "Gaming") {
+          const grid = document.getElementById("primary")
+          if (!grid) return
+
+          const newCards = [
+            {
+              videoId: "vid_nav001",
+              title: `${label}: Best Moments`,
+              channel: "GamingHighlights",
+              channelHref: "/channel/UCgaming001",
+              duration: "18:44",
+              views: "5.2M views",
+              age: "yesterday",
+            },
+            {
+              videoId: "vid_nav002",
+              title: `${label}: Tips and Tricks`,
+              channel: "ProGamer",
+              channelHref: "/@ProGamer",
+              duration: "9:12",
+              views: "1.8M views",
+              age: "2 days ago",
+            },
+            {
+              videoId: "vid_nav003",
+              title: `${label}: Full Playthrough`,
+              channel: "LetsPlayChannel",
+              channelHref: "/channel/UClets003",
+              duration: "1:24:07",
+              views: "320K views",
+              age: "1 week ago",
+            },
+          ]
+
+          const existing = Array.from(
+            grid.querySelectorAll("ytd-rich-item-renderer")
+          )
+
+          // Reuse elements in place: rewrite content, do NOT remove nodes.
+          newCards.forEach((c, i) => {
+            const el =
+              existing[i] ?? document.createElement("ytd-rich-item-renderer")
+            // Clear any extension artifacts the way a real content swap would NOT —
+            // we deliberately leave data-boyo on to prove the session bump clears it.
+            el.innerHTML = cardInner(c)
+            if (!el.isConnected) grid.appendChild(el)
+          })
+
+          // Remove any surplus old elements beyond the new set.
+          for (let i = newCards.length; i < existing.length; i++) {
+            existing[i].remove()
+          }
+
+          window.dispatchEvent(new Event("yt-navigate-finish"))
+        },
+
+        /**
+         * Simulate scroll-virtualizer recycling: mutate a card's identity
+         * in-place via data-video-id (the one path that DOES use the attribute).
+         */
+        recycleCard(videoId = "vid_aaa111", newVideoId = "vid_recycled999") {
+          const el =
+            document.querySelector(
+              `ytd-rich-item-renderer[data-boyo-vid="${videoId}"]`
+            ) ||
+            [...document.querySelectorAll("ytd-rich-item-renderer")].find((n) =>
+              n.querySelector(`a[href*="${videoId}"]`)
+            )
+          if (!el) return false
+          el.setAttribute("data-video-id", newVideoId)
+          const anchor = el.querySelector("#video-title")
+          if (anchor) {
+            anchor.textContent = "Recycled Card Content"
+            anchor.setAttribute("href", `/watch?v=${newVideoId}`)
+          }
+          let channelAnchor = el.querySelector(
+            'a[href*="/channel/"], a[href*="/@"]'
+          )
+          if (channelAnchor)
+            channelAnchor.setAttribute("href", "/channel/UCrecycled")
+          return true
+        },
+
+        cardCount() {
+          return document.querySelectorAll("ytd-rich-item-renderer").length
+        },
+
+        dataBoyoFor(videoId) {
+          const el = [
+            ...document.querySelectorAll("ytd-rich-item-renderer"),
+          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          return el ? el.getAttribute("data-boyo") : null
+        },
+
+        hasVeil(videoId) {
+          const el = [
+            ...document.querySelectorAll("ytd-rich-item-renderer"),
+          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          return el ? el.querySelector(".boyo-veil") !== null : false
+        },
+      }
+    </script>
+  </body>
+</html>

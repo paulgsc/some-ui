@@ -1,249 +1,226 @@
 /**
- * background.ts — TabLedger service worker
  *
- * Architecture: MV3 / Firefox-first
- *   - Uses browser.action (MV3) not browser.browserAction (MV2)
- *   - Single type source: webextension-polyfill only
- *     (remove @types/firefox-webext-browser from devDeps entirely)
- *   - Promise-based message handler — no sendResponse, no `return true`
- *   - No setInterval heartbeat: liveMs() computes elapsed on-demand,
- *     badge updates happen on activation events only
- *   - storage.local is canonical truth; in-memory state is a warm cache
- *     that can be reconstructed from storage on worker revival
+ * Architecture:
+ *   - Each tab is a "node" in the user's topology graph
+ *   - Outcomes POST to local Axum server; errors are typestated
+ *   - No duration tracking — active time only gates outcome registration
+ *   - Banner text fetched from / persisted to Axum; falls back to local cache
  */
 
 import type {
-  BadgeTier,
+  BannerState,
   InboundMessage,
-  LedgerState,
+  NodeState,
   OutboundMessage,
-  TabRecord,
+  Outcome,
+  Segment,
 } from "@tab/types"
 
-const STORAGE_KEY = "tabledger_state"
-const BUCKET_SIZE_MS = 15 * 60 * 1000 // 15 minutes
-const NEGLECT_ACTIVE_THRESHOLD_MS = 45 * 60 * 1000
-const NEGLECT_IDLE_THRESHOLD_MS = 5 * 60 * 1000
+// ─── Config ───────────────────────────────────────────────────────────────────
 
-function getBadgeTier(ms: number): BadgeTier {
-  const m = ms / 60_000
-  if (m < 15) return "green"
-  if (m < 45) return "amber"
-  if (m < 90) return "red"
-  return "violet"
+const MIN_ACTIVE_MS_TO_REGISTER = 5 * 60 * 1000 // 5 minutes
+const STORAGE_KEY = "tabledger_v2_nodes"
+const AXUM_BASE = "http://localhost:3737"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type AxumVisitResponse = {
+  timestamp: number
 }
 
-const BADGE_COLORS: Record<BadgeTier, string> = {
-  green: "#22c55e",
-  amber: "#f59e0b",
-  red: "#ef4444",
-  violet: "#7c3aed",
+type AxumBannerResponse = {
+  text: string
 }
 
-// ─── In-memory state (warm cache) ─────────────────────────────────────────────
+type PersistedNode = Pick<NodeState, "url" | "segment" | "visits">
+type StorageShape = Record<string, PersistedNode>
 
-let state: LedgerState = {
-  records: {},
-  activeTabId: null,
-  sessionStart: Date.now(),
-  seenNeglectPairs: [],
+// ─── In-memory state ──────────────────────────────────────────────────────────
+
+const nodes: Map<number, NodeState> = new Map()
+let activeTabId: number | null = null
+
+let bannerState: BannerState = {
+  text: "",
+  visible: true,
+  lastFetchError: null,
 }
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
-async function loadState(): Promise<void> {
-  const stored = await browser.storage.local.get(STORAGE_KEY)
-  const saved = stored[STORAGE_KEY]
-  if (!saved) return
+function isStorageShape(data: unknown): data is StorageShape {
+  if (typeof data !== "object" || data === null) return false
 
-  state = {
-    ...saved,
-    // Runtime-only fields reset on each worker boot
-    activeTabId: null,
-    sessionStart: Date.now(),
-    seenNeglectPairs: [],
-  }
-
-  // All tabs start inactive — we'll re-activate the current one in bootstrap()
-  for (const id of Object.keys(state.records)) {
-    const record = state.records[Number(id)]
-    record.isActive = false
-    record.lastActivated = 0
-    record.sessionMs = 0
-  }
-}
-
-async function persistState(): Promise<void> {
-  await browser.storage.local.set({ [STORAGE_KEY]: state })
-}
-
-// ─── Record helpers ───────────────────────────────────────────────────────────
-
-function ensureRecord(tabId: number, tab?: browser.tabs.Tab): TabRecord {
-  if (state.records[tabId] === undefined) {
-    state.records[tabId] = {
-      tabId,
-      url: tab?.url ?? "",
-      title: tab?.title ?? "",
-      favicon: tab?.favIconUrl ?? "",
-      totalMs: 0,
-      sessionMs: 0,
-      lastActivated: 0,
-      isActive: false,
-      intentional: false,
-      buckets: [],
-      bucketStart: Date.now(),
-    }
-  }
-
-  // Refresh mutable metadata from live tab
-  const record = state.records[tabId]
-  if (typeof tab?.url === "string") record.url = tab.url
-  if (typeof tab?.title === "string") record.title = tab.title
-  if (typeof tab?.favIconUrl === "string") record.favicon = tab.favIconUrl
-
-  return record
-}
-
-/** Live total ms, including currently-active unflashed duration */
-function liveMs(record: TabRecord): number {
-  if (!record.isActive || record.lastActivated === 0) return record.totalMs
-  return record.totalMs + (Date.now() - record.lastActivated)
-}
-
-/** Live session ms, including currently-active unflashed duration */
-function liveMsSession(record: TabRecord): number {
-  if (!record.isActive || record.lastActivated === 0) return record.sessionMs
-  return record.sessionMs + (Date.now() - record.lastActivated)
-}
-
-/** Snapshot entire state with live-flushed ms values (for popup) */
-function snapshotState(): LedgerState {
-  return {
-    ...state,
-    records: Object.fromEntries(
-      Object.entries(state.records).map(([id, r]) => [
-        id,
-        { ...r, totalMs: liveMs(r), sessionMs: liveMsSession(r) },
-      ])
-    ),
-  }
-}
-
-// ─── Bucket accounting ────────────────────────────────────────────────────────
-
-function addToBucket(record: TabRecord, elapsedMs: number): void {
-  if (record.buckets.length === 0) {
-    record.bucketStart = Date.now()
-    record.buckets.push(0)
-  }
-  const idx = Math.floor((Date.now() - record.bucketStart) / BUCKET_SIZE_MS)
-  while (record.buckets.length <= idx) record.buckets.push(0)
-  record.buckets[idx] += elapsedMs
-}
-
-// ─── Badge (MV3 — browser.action) ─────────────────────────────────────────────
-
-async function updateBadge(tabId: number): Promise<void> {
-  const record = state.records[tabId]
-  if (record === undefined) return
-
-  const ms = liveMs(record)
-  const tier = getBadgeTier(ms)
-  const color = BADGE_COLORS[tier]
-  const mins = Math.floor(ms / 60_000)
-  const hours = Math.floor(mins / 60)
-  const text = hours > 0 ? `${hours}h` : `${mins}m`
-
-  await Promise.all([
-    browser.action.setBadgeText({ text }),
-    browser.action.setBadgeBackgroundColor({ color }),
-  ])
-}
-
-async function clearBadge(): Promise<void> {
-  await browser.action.setBadgeText({ text: "" })
-}
-
-// ─── Tab activation / deactivation ────────────────────────────────────────────
-
-async function activateTab(tabId: number): Promise<void> {
-  // Flush the previously active tab before switching
-  if (state.activeTabId !== null && state.activeTabId !== tabId) {
-    await deactivateTab(state.activeTabId)
-  }
-
-  const tab = await browser.tabs.get(tabId).catch(() => null)
-  if (tab === null) return
-
-  const record = ensureRecord(tabId, tab)
-  record.isActive = true
-  record.lastActivated = Date.now()
-  state.activeTabId = tabId
-
-  await updateBadge(tabId)
-}
-
-async function deactivateTab(tabId: number): Promise<void> {
-  const record = state.records[tabId]
-  if (record === undefined || !record.isActive || record.lastActivated === 0)
-    return
-
-  const elapsed = Date.now() - record.lastActivated
-  record.totalMs += elapsed
-  record.sessionMs += elapsed
-  addToBucket(record, elapsed)
-  record.isActive = false
-  record.lastActivated = 0
-
-  if (state.activeTabId === tabId) state.activeTabId = null
-}
-
-// ─── Neglect detection ────────────────────────────────────────────────────────
-
-function checkNeglect(activeTabId: number): string | null {
-  const active = state.records[activeTabId]
-  if (active === undefined) return null
-  if (liveMsSession(active) < NEGLECT_ACTIVE_THRESHOLD_MS) return null
-
-  const intentional = Object.values(state.records).filter(
-    (r) => r.intentional && r.tabId !== activeTabId
+  // Check if every value in the record matches our PersistedNode shape
+  return Object.values(data).every(
+    (node: any) =>
+      typeof node.url === "string" &&
+      Array.isArray(node.visits) &&
+      (node.segment === null || typeof node.segment === "string")
   )
+}
 
-  for (const tab of intentional) {
-    const key = `${activeTabId}_${tab.tabId}`
-    if (state.seenNeglectPairs.includes(key)) continue
-    if (tab.sessionMs < NEGLECT_IDLE_THRESHOLD_MS) {
-      state.seenNeglectPairs.push(key)
-      const domain = getDomainShort(tab.url)
-      return domain.length > 0
-        ? domain
-        : tab.title.length > 0
-          ? tab.title
-          : "another tab"
+async function loadStorage(): Promise<void> {
+  const stored = await browser.storage.local.get(STORAGE_KEY)
+  const raw = stored[STORAGE_KEY]
+  if (!isStorageShape(raw)) return
+  for (const [idStr, data] of Object.entries(raw)) {
+    const tabId = Number(idStr)
+    nodes.set(tabId, {
+      tabId,
+      url: data.url,
+      segment: data.segment,
+      visits: data.visits,
+      lastActiveMs: 0,
+      activeStart: null,
+      lastPostError: null,
+    })
+  }
+}
+
+async function persistStorage(): Promise<void> {
+  const shape: StorageShape = {}
+  for (const [id, node] of nodes.entries()) {
+    shape[String(id)] = {
+      url: node.url,
+      segment: node.segment,
+      visits: node.visits,
     }
   }
-  return null
+  await browser.storage.local.set({ [STORAGE_KEY]: shape })
 }
 
-function getDomainShort(url: string): string {
+// ─── Node helpers ─────────────────────────────────────────────────────────────
+
+function ensureNode(tabId: number, url?: string): NodeState {
+  if (!nodes.has(tabId)) {
+    nodes.set(tabId, {
+      tabId,
+      url: url ?? "",
+      segment: null,
+      visits: [],
+      lastActiveMs: 0,
+      activeStart: null,
+      lastPostError: null,
+    })
+  }
+  const node = nodes.get(tabId)!
+  if (url) node.url = url
+  return node
+}
+
+function liveActiveMs(node: NodeState): number {
+  if (node.activeStart === null) return node.lastActiveMs
+  return node.lastActiveMs + (Date.now() - node.activeStart)
+}
+
+function snapshotNode(node: NodeState): NodeState {
+  return { ...node, lastActiveMs: liveActiveMs(node) }
+}
+
+// ─── Tab focus tracking ───────────────────────────────────────────────────────
+
+function activateTab(tabId: number): void {
+  if (activeTabId !== null && activeTabId !== tabId) {
+    deactivateTab(activeTabId)
+  }
+  const node = ensureNode(tabId)
+  node.activeStart = Date.now()
+  activeTabId = tabId
+}
+
+function deactivateTab(tabId: number): void {
+  const node = nodes.get(tabId)
+  if (!node || node.activeStart === null) return
+  node.lastActiveMs += Date.now() - node.activeStart
+  node.activeStart = null
+  if (activeTabId === tabId) activeTabId = null
+}
+
+// ─── Axum API ─────────────────────────────────────────────────────────────────
+
+function connectionError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  if (msg.includes("Failed to fetch") || msg.includes("ECONNREFUSED")) {
+    return "Axum server unreachable (is it running on :3737?)"
+  }
+  return msg
+}
+
+async function postVisit(
+  tabId: number,
+  outcome: Outcome,
+  segment: Segment
+): Promise<{ timestamp: number } | { error: string }> {
   try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return ""
+    const resp = await fetch(`${AXUM_BASE}/visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tab_id: tabId, outcome, segment }),
+    })
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => `HTTP ${resp.status}`)
+      return { error: `Server ${resp.status}: ${text}` }
+    }
+    const data: unknown = await resp.json()
+    // Narrow the unknown response strictly
+    if (
+      typeof data === "object" &&
+      data !== null &&
+      "timestamp" in data &&
+      typeof (data as Record<string, unknown>).timestamp === "number"
+    ) {
+      return { timestamp: (data as AxumVisitResponse).timestamp }
+    }
+    return { error: "Unexpected response shape from /visit" }
+  } catch (err) {
+    return { error: connectionError(err) }
   }
 }
 
-// ─── Message handler (Promise-based, exhaustively typed) ──────────────────────
-//
-// webextension-polyfill wraps the callback-style API so returning a Promise
-// here is fully supported on both Firefox and Chrome MV3.
-// No sendResponse. No `return true`. Discriminated union narrows cleanly via
-// switch (message.type) because InboundMessage is a proper tagged union.
+async function fetchBannerText(): Promise<string | { error: string }> {
+  try {
+    const resp = await fetch(`${AXUM_BASE}/banner`)
+    if (!resp.ok) {
+      return { error: `Server ${resp.status}` }
+    }
+    const data: unknown = await resp.json()
+    if (
+      typeof data === "object" &&
+      data !== null &&
+      "text" in data &&
+      typeof (data as Record<string, unknown>).text === "string"
+    ) {
+      return (data as AxumBannerResponse).text
+    }
+    return { error: "Unexpected response shape from /banner" }
+  } catch (err) {
+    return { error: connectionError(err) }
+  }
+}
+
+async function putBannerText(
+  text: string
+): Promise<{ ok: true } | { error: string }> {
+  try {
+    const resp = await fetch(`${AXUM_BASE}/banner`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    })
+    if (!resp.ok) {
+      return { error: `Server ${resp.status}` }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { error: connectionError(err) }
+  }
+}
+
+// ─── Message handler ──────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener(
   (rawMessage, sender): Promise<OutboundMessage> => {
-    // Cast once at the boundary — all subsequent access is type-safe
     const message = rawMessage as InboundMessage
 
     switch (message.type) {
@@ -254,45 +231,95 @@ browser.runtime.onMessage.addListener(
         })
       }
 
-      case "GET_TAB_STATE": {
-        const record = state.records[message.tabId] ?? null
-        const neglect = record !== null ? checkNeglect(message.tabId) : null
+      case "GET_NODE_STATE": {
+        const node = nodes.get(message.tabId)
         return Promise.resolve({
-          type: "TAB_STATE",
-          record,
-          now: Date.now(),
-          neglect,
+          type: "NODE_STATE",
+          state: node ? snapshotNode(node) : null,
         })
       }
 
-      case "GET_FULL_STATE": {
-        return Promise.resolve({
-          type: "FULL_STATE",
-          state: snapshotState(),
-          now: Date.now(),
-        })
-      }
-
-      case "PIN_TAB": {
-        const record = state.records[message.tabId]
-        if (record !== undefined) {
-          record.intentional = !record.intentional
-        }
-        // Fire-and-forget persist; caller doesn't need to await it
-        void persistState()
+      case "SET_SEGMENT": {
+        const node = ensureNode(message.tabId)
+        node.segment = message.segment
+        void persistStorage()
         return Promise.resolve({ type: "OK" })
       }
 
-      case "RESET_SESSION": {
-        for (const id of Object.keys(state.records)) {
-          const record = state.records[Number(id)]
-          record.sessionMs = 0
-          if (record.isActive) record.lastActivated = Date.now()
-        }
-        state.sessionStart = Date.now()
-        state.seenNeglectPairs = []
-        void persistState()
+      case "REGISTER_SESSION": {
+        return (async (): Promise<OutboundMessage> => {
+          const node = nodes.get(message.tabId)
+          if (!node) return { type: "ERR", message: "Unknown tab" }
+
+          const activeMs = liveActiveMs(node)
+          if (activeMs < MIN_ACTIVE_MS_TO_REGISTER) {
+            const remaining = Math.ceil(
+              (MIN_ACTIVE_MS_TO_REGISTER - activeMs) / 1000
+            )
+            return {
+              type: "ERR",
+              message: `Need ${remaining}s more active time`,
+            }
+          }
+
+          if (!node.segment) {
+            return { type: "ERR", message: "Assign a segment first" }
+          }
+
+          const result = await postVisit(
+            message.tabId,
+            message.outcome,
+            node.segment
+          )
+
+          if ("error" in result) {
+            node.lastPostError = result.error
+            // Fallback: record locally with local timestamp
+            node.visits.push({
+              outcome: message.outcome,
+              timestamp: Date.now(),
+            })
+            void persistStorage()
+            return { type: "ERR", message: result.error }
+          }
+
+          node.lastPostError = null
+          node.visits.push({
+            outcome: message.outcome,
+            timestamp: result.timestamp,
+          })
+          void persistStorage()
+          return { type: "OK" }
+        })()
+      }
+
+      case "TICK_ACTIVE": {
         return Promise.resolve({ type: "OK" })
+      }
+
+      case "GET_BANNER": {
+        return (async (): Promise<OutboundMessage> => {
+          const result = await fetchBannerText()
+          if (typeof result === "string") {
+            bannerState = { ...bannerState, text: result, lastFetchError: null }
+          } else {
+            bannerState = { ...bannerState, lastFetchError: result.error }
+          }
+          return { type: "BANNER_STATE", banner: bannerState }
+        })()
+      }
+
+      case "SET_BANNER_TEXT": {
+        return (async (): Promise<OutboundMessage> => {
+          bannerState = { ...bannerState, text: message.text }
+          const result = await putBannerText(message.text)
+          if ("error" in result) {
+            bannerState = { ...bannerState, lastFetchError: result.error }
+            return { type: "ERR", message: result.error }
+          }
+          bannerState = { ...bannerState, lastFetchError: null }
+          return { type: "OK" }
+        })()
       }
     }
   }
@@ -301,72 +328,59 @@ browser.runtime.onMessage.addListener(
 // ─── Tab lifecycle ────────────────────────────────────────────────────────────
 
 browser.tabs.onActivated.addListener(async ({ tabId }) => {
-  await activateTab(tabId)
-  await persistState()
+  try {
+    const tab = await browser.tabs.get(tabId)
+    ensureNode(tabId, tab.url)
+  } catch {}
+  activateTab(tabId)
+  void persistStorage()
 })
 
 browser.tabs.onUpdated.addListener((_tabId, _changeInfo, tab) => {
-  // tab.id is typed as optional in webextension-polyfill
   const id = tab.id
   if (id === undefined) return
-  const record = state.records[id]
-  if (record === undefined) return
-  if (typeof tab.url === "string") record.url = tab.url
-  if (typeof tab.title === "string") record.title = tab.title
-  if (typeof tab.favIconUrl === "string") record.favicon = tab.favIconUrl
+  const node = nodes.get(id)
+  if (!node) return
+  if (typeof tab.url === "string") node.url = tab.url
 })
 
-browser.tabs.onRemoved.addListener(async (tabId) => {
-  await deactivateTab(tabId)
-  delete state.records[tabId]
-  await persistState()
+browser.tabs.onRemoved.addListener((tabId) => {
+  deactivateTab(tabId)
+  void persistStorage()
 })
 
 browser.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === browser.windows.WINDOW_ID_NONE) {
-    // Browser lost focus — flush and pause active tab
-    if (state.activeTabId !== null) {
-      await deactivateTab(state.activeTabId)
-      await clearBadge()
-      await persistState()
+    if (activeTabId !== null) {
+      deactivateTab(activeTabId)
+      void persistStorage()
     }
     return
   }
-
-  // Browser regained focus — re-activate the focused window's active tab
   try {
     const tabs = await browser.tabs.query({ active: true, windowId })
     const tab = tabs[0]
     if (tab.id !== undefined) {
-      await activateTab(tab.id)
-      await persistState()
+      ensureNode(tab.id, tab.url)
+      activateTab(tab.id)
+      void persistStorage()
     }
-  } catch {
-    // Window may have closed between event and query
-  }
+  } catch {}
 })
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
-//
-// In MV3 the service worker can spin up in response to any event, so we must
-// be ready to reconstruct state before any listener fires. We register all
-// listeners synchronously above (the browser buffers events), then hydrate
-// async here. If a listener fires before bootstrap completes, state will be
-// empty but self-consistent — no crashes.
 
 async function bootstrap(): Promise<void> {
-  await loadState()
-
+  await loadStorage()
   try {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true })
     const tab = tabs[0]
     if (tab.id !== undefined) {
-      await activateTab(tab.id)
-      await persistState()
+      ensureNode(tab.id, tab.url)
+      activateTab(tab.id)
+      void persistStorage()
     }
-  } catch {
-    // No active window (e.g. startup with no windows yet)
-  }
+  } catch {}
 }
 
 void bootstrap()

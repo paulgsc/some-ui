@@ -332,7 +332,8 @@ export function sessionReducer(
           hydrationEpoch: state.hydrationEpoch,
           sessionEpoch: state.sessionEpoch + 1,
         },
-        [{ type: "STOP_TIMER" }, { type: "NOTIFY_SESSION_RESET" }])
+        [{ type: "STOP_TIMER" }, { type: "NOTIFY_SESSION_RESET" }]
+      )
     }
 
     // RESET_SESSION: Back to selection with same topik

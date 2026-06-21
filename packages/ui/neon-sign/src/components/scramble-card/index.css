@@ -1,51 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --glow-color: hsl(186 100% 69%);
-}
-
-@layer utilities {
+  --glow-color: hsl(186deg 100% 69%);
 }
 
 @theme inline {
   --color-neon: var(--glow-color);
-  --shadow-inset-neon:
-    inset 0px 0px 0.5em 0px var(--glow-color),
+  --shadow-inset-neon: inset 0px 0px 0.5em 0px var(--glow-color),
     0px 0px 0.5em 0px var(--glow-color);
   --animate-wiggle: wiggle 1s ease-in-out infinite;
+
   @keyframes wiggle {
     0% {
       transform: translate(2px, -2px) rotate(1deg) scale(1.03);
     }
+
     10% {
       transform: translate(-3px, 3px) rotate(-2deg) scale(0.98);
     }
+
     20% {
       transform: translate(4px, -4px) rotate(2deg) scale(1.1);
     }
+
     30% {
       transform: translate(-5px, 5px) rotate(-3deg) scale(1.02);
     }
+
     40% {
       transform: translate(3px, -3px) rotate(1.5deg) scale(0.98);
     }
+
     50% {
       transform: translate(-2px, 2px) rotate(-1deg) scale(1.03);
     }
+
     60% {
       transform: translate(4px, -4px) rotate(2deg) scale(1.07);
     }
+
     70% {
       transform: translate(-3px, 3px) rotate(-2deg) scale(1.02);
     }
+
     80% {
       transform: translate(5px, -5px) rotate(2.5deg) scale(0.95);
     }
+
     90% {
       transform: translate(-4px, 4px) rotate(-1.5deg) scale(1.1);
     }
+
     100% {
-      transform: translate(0px, 0px) rotate(0deg) scale(1);
+      transform: translate(0, 0) rotate(0deg) scale(1);
     }
   }
 }

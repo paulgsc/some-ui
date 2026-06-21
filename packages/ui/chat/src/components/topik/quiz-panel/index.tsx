@@ -1,11 +1,15 @@
-
 import type { JSX } from "react"
 import { QuizActive } from "@chat/components/topik/quiz-states/quiz-active"
 import { QuizFeedback } from "@chat/components/topik/quiz-states/quiz-feedback"
 import { QuizIdle } from "@chat/components/topik/quiz-states/quiz-idle"
 import { QuizSummary } from "@chat/components/topik/quiz-states/quiz-summary"
-import type { Message, Question } from "@chat/lib/topik"
-import type { FeedbackData, PlayState, QuizStage } from "@chat/lib/topik"
+import type {
+  FeedbackData,
+  Message,
+  PlayState,
+  Question,
+  QuizStage,
+} from "@chat/lib/topik"
 
 type QuizPanelProps = {
   quizStage: QuizStage

@@ -1,0 +1,111 @@
+/* ── Capture Panel ───────────────────────────────────────────────────────────
+   Expandable emotion-picker panel that slides below the card.
+   Fixed: Solid background, visible buttons, increased spacing.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-capture-panel {
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96) translateY(6px) translateZ(0);
+  transition:
+    max-height 350ms var(--dc-ease),
+    opacity 250ms var(--dc-ease),
+    transform 250ms var(--dc-ease);
+  transform-origin: top right;
+  pointer-events: none;
+
+  /* Prevent jitter */
+  will-change: max-height, opacity, transform;
+}
+
+.dc-capture-panel.dc-panel-open {
+  max-height: 220px;
+  opacity: 1;
+  transform: scale(1) translateY(0) translateZ(0);
+  pointer-events: auto;
+}
+
+.dc-capture-inner {
+  /* Solid dark background */
+  background: linear-gradient(
+    135deg,
+    hsl(25 25% 16% / 0.97) 0%,
+    hsl(340 20% 14% / 0.96) 100%
+  );
+  backdrop-filter: var(--dc-blur);
+  -webkit-backdrop-filter: var(--dc-blur);
+  border: 1.5px solid var(--dc-border-strong);
+  border-radius: var(--dc-r-card);
+  padding: 16px 18px;
+  margin-top: 8px;
+
+  /* Glow shadow */
+  box-shadow:
+    0 6px 28px var(--dc-shadow),
+    0 0 50px hsl(340 60% 50% / 0.12),
+    inset 0 1px 0 hsl(340 40% 50% / 0.15);
+}
+
+/* Panel heading */
+.dc-panel-title {
+  font-size: 10px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: bold;
+  color: var(--dc-text-secondary);
+  letter-spacing: 0.07em;
+  margin-bottom: 12px;
+  text-shadow: var(--dc-text-glow-subtle);
+}
+
+/* Emotion button grid */
+.dc-emo-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+
+  /* Dark button surface */
+  background: hsl(340 20% 22% / 0.9);
+  border: 1.5px solid var(--dc-border);
+
+  font-size: 20px;
+  cursor: pointer;
+
+  /* Subtle shadow */
+  box-shadow:
+    0 2px 8px hsl(0 0% 0% / 0.3),
+    inset 0 1px 0 hsl(340 30% 40% / 0.2);
+
+  transition:
+    transform 200ms var(--dc-ease-bounce),
+    background 200ms var(--dc-ease),
+    border-color 200ms var(--dc-ease),
+    box-shadow 200ms var(--dc-ease);
+}
+
+.dc-emo-btn:hover {
+  transform: scale(1.12) translateY(-3px);
+  background: hsl(340 25% 28% / 0.95);
+  border-color: var(--dc-border-strong);
+  box-shadow:
+    0 6px 16px hsl(340 50% 40% / 0.35),
+    0 0 24px hsl(340 60% 50% / 0.2),
+    inset 0 1px 0 hsl(340 40% 50% / 0.25);
+}
+
+.dc-emo-btn.dc-emo-selected {
+  /* Vibrant gradient for selected state */
+  background: linear-gradient(135deg, var(--dc-peach), var(--dc-rose));
+  border-color: var(--dc-rose);
+
+  box-shadow:
+    0 4px 18px hsl(340 70% 55% / 0.5),
+    0 0 30px hsl(18 80% 60% / 0.3),
+    inset 0 0 0 2px hsl(0 0% 100% / 0.2);
+}
+
+.dc-emo-btn.dc-emo-selected:hover {
+  transform: scale(1.15) translateY(-3px);
+}

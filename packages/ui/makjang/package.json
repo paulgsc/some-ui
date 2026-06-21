@@ -28,7 +28,7 @@
   "license": "MIT",
   "main": "./dist/some-ui-makjang.cjs.js",
   "module": "./dist/some-ui-makjang.es.js",
-  "name": "makjang",
+  "name": "@some-ui/makjang",
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

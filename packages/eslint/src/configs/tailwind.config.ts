@@ -1,8 +1,7 @@
-//@ts-check
 import * as tailwindPlugin from "eslint-plugin-tailwindcss"
 import type { ConfigWithExtends } from "typescript-eslint"
 
-export default <Array<ConfigWithExtends>>[
+const config: Array<ConfigWithExtends> = [
   {
     plugins: {
       tailwindcss: tailwindPlugin,
@@ -22,3 +21,5 @@ export default <Array<ConfigWithExtends>>[
     },
   },
 ]
+
+export default config

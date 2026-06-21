@@ -1,0 +1,85 @@
+/* repaint.css */
+
+/* document_start prepaint shell */
+
+/*
+  Goal:
+  - eliminate white flashes before site theme stabilizes
+  - avoid transparent punch-through
+  - keep browser dark canvas visible underneath
+  - safely disengage after real paint stabilizes
+*/
+
+/*
+  Sentinel custom property — content scripts locate this specific stylesheet
+  by checking for this property, allowing them to toggle sheet.disabled for
+  prepaint-suppressed classification without touching the DOM attribute.
+*/
+:root {
+  --sw-prepaint-sheet: 1;
+}
+
+html[data-sw-prepaint],
+html[data-sw-prepaint] body {
+  background-color: #0d1117 !important;
+  color-scheme: dark !important;
+  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
+    contrast(0.92) !important;
+}
+
+/*
+  Keep body dark (not transparent) so it acts as a solid dark canvas.
+  Child containers are transparent so they inherit this substrate instead
+  of their own vendor-set white backgrounds — avoiding punch-through to a
+  white stacking context that would leak through the invert filter.
+*/
+
+html[data-sw-prepaint] div,
+html[data-sw-prepaint] section,
+html[data-sw-prepaint] main,
+html[data-sw-prepaint] article,
+html[data-sw-prepaint] aside,
+html[data-sw-prepaint] header,
+html[data-sw-prepaint] footer,
+html[data-sw-prepaint] nav {
+  background-color: transparent !important;
+}
+
+/*
+  Common offenders.
+*/
+
+html[data-sw-prepaint] [style*="background:#fff"],
+html[data-sw-prepaint] [style*="background: #fff"],
+html[data-sw-prepaint] [style*="background:white"],
+html[data-sw-prepaint] [style*="background: white"],
+html[data-sw-prepaint] [style*="background-color:#fff"],
+html[data-sw-prepaint] [style*="background-color: #fff"],
+html[data-sw-prepaint] [style*="background-color:white"],
+html[data-sw-prepaint] [style*="background-color: white"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/*
+  Preserve media/compositor layers.
+*/
+
+html[data-sw-prepaint] img,
+html[data-sw-prepaint] video,
+html[data-sw-prepaint] canvas,
+html[data-sw-prepaint] picture,
+html[data-sw-prepaint] svg {
+  background-color: transparent !important;
+}
+
+/*
+  Optional:
+  reduce harsh transitions during hydration.
+*/
+
+html[data-sw-prepaint] {
+  transition:
+    background-color 80ms linear,
+    color 80ms linear;
+}

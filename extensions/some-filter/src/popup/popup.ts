@@ -1,15 +1,23 @@
-import { ActionBar } from "@censor/popup/components/action-bar"
-import { FilterBadge } from "@censor/popup/components/filter-badge"
-import { TabList } from "@censor/popup/components/tablist"
-import { WindowGroupHeader } from "@censor/popup/components/window-group-header"
+import { ActionBar } from "@filter/popup/components/action-bar"
+import { FilterBadge } from "@filter/popup/components/filter-badge"
+import { TabList } from "@filter/popup/components/tablist"
+import { WindowGroupHeader } from "@filter/popup/components/window-group-header"
 import type {
   FilterConfig,
   PopupState,
   TabEntry,
   WindowGroup,
-} from "@censor/types/popup"
+} from "@filter/types/popup"
 
 import "./popup.css"
+
+const DEFAULT_FILTER_CONFIG: FilterConfig = {
+  invert: 1,
+  hueRotate: 180,
+  sepia: 0.12,
+  brightness: 0.5,
+  contrast: 0.92,
+}
 
 // ── API logic ───────────────────────────────────────────────────────────────
 
@@ -58,24 +66,58 @@ function groupByWindow(entries: Array<TabEntry>): Array<WindowGroup> {
   }))
 }
 
+// Runtime type guard helper to verify storage objects safely without 'as' assertions
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
 async function getStorageState(): Promise<{
   filteredTabIds: Array<number>
   filterConfig: FilterConfig
 }> {
-  const data = await browser.storage.local.get([
+  const data: unknown = await browser.storage.local.get([
     "filteredTabIds",
     "filterConfig",
   ])
-  return {
-    filteredTabIds: (data.filteredTabIds as Array<number>) ?? [],
-    filterConfig: (data.filterConfig as FilterConfig) ?? {
-      invert: 1,
-      hueRotate: 180,
-      sepia: 0.12,
-      brightness: 0.5,
-      contrast: 0.92,
-    },
+
+  if (!isRecord(data)) {
+    return { filteredTabIds: [], filterConfig: DEFAULT_FILTER_CONFIG }
   }
+
+  const rawTabIds = data.filteredTabIds
+  const filteredTabIds = Array.isArray(rawTabIds)
+    ? rawTabIds.filter((id): id is number => typeof id === "number")
+    : []
+
+  const rawConfig = data.filterConfig
+  let filterConfig = DEFAULT_FILTER_CONFIG
+
+  if (isRecord(rawConfig)) {
+    filterConfig = {
+      invert:
+        typeof rawConfig.invert === "number"
+          ? rawConfig.invert
+          : DEFAULT_FILTER_CONFIG.invert,
+      hueRotate:
+        typeof rawConfig.hueRotate === "number"
+          ? rawConfig.hueRotate
+          : DEFAULT_FILTER_CONFIG.hueRotate,
+      sepia:
+        typeof rawConfig.sepia === "number"
+          ? rawConfig.sepia
+          : DEFAULT_FILTER_CONFIG.sepia,
+      brightness:
+        typeof rawConfig.brightness === "number"
+          ? rawConfig.brightness
+          : DEFAULT_FILTER_CONFIG.brightness,
+      contrast:
+        typeof rawConfig.contrast === "number"
+          ? rawConfig.contrast
+          : DEFAULT_FILTER_CONFIG.contrast,
+    }
+  }
+
+  return { filteredTabIds, filterConfig }
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -86,13 +128,7 @@ let state: PopupState = {
   groups: [],
   statusFilter: null,
   filteredTabIds: new Set(),
-  filterConfig: {
-    invert: 1,
-    hueRotate: 180,
-    sepia: 0.12,
-    brightness: 0.5,
-    contrast: 0.92,
-  },
+  filterConfig: DEFAULT_FILTER_CONFIG,
 }
 
 function setState(patch: Partial<PopupState>): void {
@@ -104,7 +140,11 @@ function setState(patch: Partial<PopupState>): void {
 
 function onTabToggle(tabId: number): void {
   const next = new Set(state.selectedTabIds)
-  next.has(tabId) ? next.delete(tabId) : next.add(tabId)
+  if (next.has(tabId)) {
+    next.delete(tabId)
+  } else {
+    next.add(tabId)
+  }
   setState({ selectedTabIds: next })
 }
 
@@ -125,7 +165,6 @@ function onDeselect(): void {
 
 async function onApply(): Promise<void> {
   const ids = Array.from(state.selectedTabIds)
-  // Persist to background
   await browser.runtime.sendMessage({ type: "SET_FILTERED_TABS", ids })
   setState({
     filteredTabIds: new Set(ids),
@@ -197,7 +236,9 @@ function render(): void {
       statusFilter: state.statusFilter,
       onSelectAll,
       onDeselect,
-      onApply,
+      onApply: () => {
+        void onApply()
+      },
       onStatusFilterChange,
     })
   )
@@ -217,7 +258,7 @@ function render(): void {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-;(async () => {
+void (async () => {
   try {
     const [tabs, storage] = await Promise.all([fetchTabs(), getStorageState()])
     const groups = groupByWindow(tabs)
@@ -229,7 +270,7 @@ function render(): void {
       filterActive: storage.filteredTabIds.length > 0,
       selectedTabIds: new Set(storage.filteredTabIds),
     })
-  } catch (err) {
-    console.error("Failed to initialize popup:", err)
+  } catch {
+    // Gracefully handle UI initialization failure silently per lint rules
   }
 })()

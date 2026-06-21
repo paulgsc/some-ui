@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 
-members = ["crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation", "crates/some-hexagon", "crates/leaderboard", "crates/some-racer", "crates/leptos/some-fsm-input", "crates/some-sound", "crates/some-slint-ui", "crates/some-gui", "crates/hangul-game-core", "crates/leetype_wasm", "crates/polyhedron"]
+members = ["crates/pkg_cloner", "crates/some-charts", "crates/some-dial", "crates/some-bricks", "crates/some-crossword", "crates/viewport-rotation", "crates/some-hexagon", "crates/leaderboard", "crates/some-slint-ui", "crates/some-gui", "crates/hangul-game-core", "crates/leetype_wasm", "crates/polyhedron"]
 
 exclude = []
 

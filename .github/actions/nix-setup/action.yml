@@ -1,0 +1,18 @@
+name: "Nix Setup"
+description: "Install Nix with flakes + DeterminateSystems magic cache. Single source of truth."
+inputs:
+  shell:
+    description: "Which flake devShell to warm (e.g. ci, playwright, deny). Empty = no warm-up."
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@v14
+      with:
+        extra-conf: |
+          experimental-features = nix-command flakes
+          accept-flake-config = true
+    - name: Cache Nix store
+      uses: DeterminateSystems/magic-nix-cache-action@v8

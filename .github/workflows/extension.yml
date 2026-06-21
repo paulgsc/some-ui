@@ -1,0 +1,95 @@
+name: Extension CI
+# Orchestrates extension verification (PR) and signing (push to main).
+#
+# Job graph:
+#   detect
+#     └── build-workspace          (shared packages, paid once)
+#           ├── verify[matrix]     (per-extension: typecheck/lint/test/build)
+#           │     └── sign[matrix] (post-merge only: AMO submit + xpi upload)
+#
+# Workspace packages are built once and shared via the workspace-dist artifact.
+# Neither verify nor sign rebuilds shared packages — they only bundle the
+# extension itself, which is fast.
+on:
+  pull_request:
+    paths:
+      - "extensions/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "extensions/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/**"
+      - ".github/actions/**"
+concurrency:
+  group: extension-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  detect:
+    name: Detect Changed Extensions
+    uses: ./.github/workflows/_extension-detect.yml
+
+  # Build shared workspace packages once. Both verify and sign download this
+  # artifact rather than each rebuilding the full upstream dep graph.
+  build-workspace:
+    name: Build Workspace Packages
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+
+      # Build only workspace packages — explicitly exclude extensions so we
+      # don't pay for any extension builds here.
+      - name: Build workspace packages
+        run: |
+          nix develop .#ci --command pnpm build \
+            --filter='!./extensions/**'
+        env:
+          NODE_ENV: production
+
+      # Upload packages/*/dist so verify and sign jobs can consume it.
+      # Retention of 1 day is sufficient — these artifacts are only needed
+      # within the same workflow run.
+      - name: Upload workspace dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-dist
+          path: packages/*/dist
+          if-no-files-found: warn
+          retention-days: 1
+
+  verify:
+    name: Verify Extensions
+    needs: [detect, build-workspace]
+    if: needs.detect.outputs.has_changes == 'true'
+    uses: ./.github/workflows/_extension-verify.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+
+  sign:
+    name: Sign Firefox Extensions
+    needs: [detect, build-workspace, verify]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect.outputs.has_changes == 'true'
+    uses: ./.github/workflows/_extension-sign.yml
+    secrets: inherit
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}

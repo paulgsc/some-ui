@@ -1,8 +1,9 @@
 {
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -17,10 +18,44 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@censor/*": ["src/*"]
+      "@censor/*": ["src/*"],
+      "@censor/playwright/*": ["tests/e2e/*"],
+      "@censor/platform/api": ["src/lib/platform/api.ts"],
+      "@censor/platform/content": ["src/lib/platform/api.ts"],
+      "@censor/platform/background": ["src/lib/platform/api.ts"]
     },
-    "types": ["firefox-webext-browser"]
+    "types": ["firefox-webext-browser", "chrome"]
   },
-  "include": ["src/**/*"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**"
+  ]
 }

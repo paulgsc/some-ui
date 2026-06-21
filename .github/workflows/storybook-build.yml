@@ -1,4 +1,4 @@
-name: Deploy Storybook to GitHub Pages
+name: Storybook
 on:
   pull_request:
     branches: [main]
@@ -10,110 +10,69 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: storybook-pages
+  group: storybook-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  changes:
+    uses: ./.github/workflows/_detect-changes.yml
   build:
+    name: Build Storybook
+    needs: changes
+    # Run on storybook changes, node changes (component updates), or CI changes.
+    # Always run on workflow_dispatch.
+    if: |
+      github.event_name == 'workflow_dispatch'
+      || needs.changes.outputs.storybook == 'true'
+      || needs.changes.outputs.node == 'true'
+      || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      # -------------------------------------------------
-      # Checkout
-      # -------------------------------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
-      # -------------------------------------------------
-      # Nix Environment (Single Source of Truth)
-      # -------------------------------------------------
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v12
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
         with:
-          extra-conf: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-      - name: Cache Nix store
-        uses: DeterminateSystems/magic-nix-cache-action@v7
-      # -------------------------------------------------
-      # pnpm Store Cache
-      # -------------------------------------------------
-      - name: Get pnpm store path (inside nix shell)
-        id: pnpm-store
-        run: |
-          nix develop .#ci --command bash -c \
-          'echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT'
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
-          key: >
-            ${{ runner.os }}-pnpm- ${{ hashFiles('pnpm-lock.yaml') }}
-
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-      # -------------------------------------------------
-      # Workspace Build Output Cache
-      # -------------------------------------------------
+          shell: ci
       - name: Cache workspace build outputs
         uses: actions/cache@v4
         with:
-          path: |
-            packages/*/dist
-          key: >
-            ${{ runner.os }}-workspace- ${{ hashFiles('packages/**/src/**/*') }}
-
-          restore-keys: |
-            ${{ runner.os }}-workspace-
-      # -------------------------------------------------
-      # Storybook Cache (All relevant paths)
-      # -------------------------------------------------
-      - name: Cache Storybook
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
+          restore-keys: workspace-dist-${{ runner.os }}-
+      - name: Cache Storybook intermediates
         uses: actions/cache@v4
         with:
           path: |
             node_modules/.cache/storybook
             node_modules/.cache/sb-vite-plugin-externals
-            packages/*/node_modules/.cache/storybook
-          key: >
-            ${{ runner.os }}-storybook- ${{ hashFiles('pnpm-lock.yaml') }}- ${{ hashFiles('.storybook/**/*') }}- ${{ hashFiles('packages/**/*.{ts,tsx,js,jsx,mdx}') }}
-
-          restore-keys: |
-            ${{ runner.os }}-storybook-
-      # -------------------------------------------------
-      # Install Dependencies
-      # -------------------------------------------------
+          key: storybook-cache-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', '.storybook/**', 'packages/**/*.stories.*') }}
+          restore-keys: storybook-cache-${{ runner.os }}-
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm install \
             --frozen-lockfile \
             --prefer-offline
         env:
-          HUSKY_SKIP_INSTALL: 1
-      # -------------------------------------------------
-      # Build Workspace Libraries
-      # -------------------------------------------------
+          HUSKY: 0
       - name: Build workspace packages
         run: nix develop .#ci --command pnpm build
         env:
           NODE_ENV: production
-      # -------------------------------------------------
-      # Build Storybook (Heavy Step)
-      # -------------------------------------------------
       - name: Build Storybook
-        run: nix develop .#ci --command pnpm run build-storybook
+        run: nix develop .#ci --command pnpm build-storybook
         env:
           NODE_ENV: production
-          NODE_OPTIONS: "--max-old-space-size=4096"
+          NODE_OPTIONS: --max-old-space-size=4096
           STORYBOOK_DISABLE_TELEMETRY: 1
           STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/
-      # -------------------------------------------------
-      # Upload Pages Artifact
-      # -------------------------------------------------
-      - name: Upload artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./storybook-static
   deploy:
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
+    # Only deploy on pushes to main — not PRs, not workflow_dispatch previews.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages

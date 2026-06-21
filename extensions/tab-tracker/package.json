@@ -2,6 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4"
@@ -31,7 +34,7 @@
   "license": "MIT",
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "@some-ui/tab-tracker",
+  "name": "@some-extension/tab-tracker",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

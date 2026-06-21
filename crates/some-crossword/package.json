@@ -2,12 +2,18 @@
   "name": "some-crossword",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/some_crossword.js",
+  "module": "dist/some_crossword.js",
+  "types": "dist/some_crossword.d.ts",
   "type": "module",
   "scripts": {
-    "build": "wasm-pack build --target web --out-dir dist",
+    "build": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},

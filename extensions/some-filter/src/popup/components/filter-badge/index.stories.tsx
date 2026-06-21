@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import "@censor/popup/popup.css"
+import "@filter/popup/popup.css"
 
 // Assuming your vanilla component is exported from a local file
 import { FilterBadge, type FilterBadgeProps } from "."

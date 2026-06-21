@@ -5,6 +5,11 @@
       "@eslint/*": ["./src/*"]
     }
   },
-  "include": ["eslint.config.*.{cjs, mjs, js, ts}", "src"],
-  "exclude": ["node_modules", "build", "dist"]
+  "include": [
+    "eslint.config.*.{cjs, mjs, js, ts}",
+    "src",
+    "tests",
+    "vitest.config.*.{cjs, mjs, js, ts}"
+  ],
+  "exclude": ["node_modules", "build", "dist", "**/lint-fixtures"]
 }

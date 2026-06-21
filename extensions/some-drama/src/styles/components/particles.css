@@ -1,0 +1,66 @@
+/* ── Blossom Particles ───────────────────────────────────────────────────────
+   Floating particle layer.
+
+   PATCH #1 FIX — blossom tracking:
+   The original .dc-blossom rule had:
+     left: calc(var(--b-ox, 0px) + var(--b-ox, 0px))
+   This doubled the per-particle offset instead of combining layer origin +
+   per-particle offset. Worse, both the layer AND each particle used --b-ox /
+   --b-oy as variable names, so inline particle styles clobbered the layer's
+   tracking values inherited through the cascade.
+
+   Fix: particles.ts now sets layer-level origin via --b-layer-x / --b-layer-y,
+   and per-particle relative offset via --b-px / --b-py. This CSS combines them:
+     left: calc(var(--b-layer-x) + var(--b-px))
+     top:  calc(var(--b-layer-y) + var(--b-py))
+   The RAF loop in particles.ts updates only --b-layer-x/y on the layer element,
+   so all particles move together with the card without touching their own offset
+   vars.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-blossom-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 2147483646;
+  overflow: visible;
+}
+
+.dc-blossom {
+  position: fixed; /* fixed so left/top are viewport-relative, not layer-relative */
+  left: calc(var(--b-layer-x, 0px) + var(--b-px, 0px));
+  top: calc(var(--b-layer-y, 0px) + var(--b-py, 0px));
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+
+  animation-name: dc-blossom-drift;
+  animation-duration: var(--b-dur, 7s);
+  animation-delay: var(--b-delay, 0s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes dc-blossom-drift {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.8) translateZ(0);
+  }
+  15% {
+    opacity: 0.85;
+  }
+  60% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--b-tx, -35px), var(--b-ty, -70px))
+      rotate(var(--b-rot, 160deg)) scale(0.4) translateZ(0);
+  }
+}

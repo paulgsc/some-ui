@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+  "name": "tabsched capture",
+  "version": "0.1.0",
+  "description": "Capture open tabs as structured learning resources for the tabsched pipeline",
+
+  "permissions": ["tabs", "storage", "activeTab", "<all_urls>"],
+
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "web_accessible_resources": ["content.js"],
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "tabsched capture"
+  },
+
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tabsched-capture@local",
+      "strict_min_version": "109.0"
+    }
+  }
+}

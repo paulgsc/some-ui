@@ -32,6 +32,7 @@
       "@attributions/*": ["./packages/ui/attributions/src/"],
       "@overlays/*": ["./packages/ui/overlays/src/"],
       "@mujik/*": ["./extensions/some-mujik/src/"],
+      "@filter/*": ["./extensions/some-filter/src/"],
       "@some-ui/content/*": ["./packages/some-content/src/"]
     }
   },
@@ -45,6 +46,7 @@
     "prettier.config.cjs",
     "tailwind.config.ts",
     "vite.config.ts",
-    "vitest.config.mts"
+    "vitest.config.mts",
+    "vitest.config.ts"
   ]
 }

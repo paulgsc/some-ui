@@ -2,8 +2,12 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "maishatu-eslint-kit": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
     "some-ui-rollup-config": "workspace:*"
   },
@@ -32,23 +36,30 @@
   "license": "MIT",
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "@some-ui/filter",
+  "name": "@some-extension/filter",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "build:background": "BUILD_TARGET=background vite build",
+    "build:chromium": "vite build --config vite.config.chromium.ts",
     "build:content": "BUILD_TARGET=content vite build",
+    "build:firefox": "vite build --config vite.config.firefox.ts",
     "build:popup": "vite build",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "prettier": "prettier . --check --cache",
+    "prettier:fix": "prettier . --write",
     "test": "vitest",
+    "test:e2e": "pnpm build:chromium && playwright test",
+    "test:e2e:headed": "pnpm build:chromium && playwright test --headed",
+    "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
+    "test:e2e:ui": "pnpm build:chromium && playwright test --ui",
     "typecheck": "tsc --noEmit",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""

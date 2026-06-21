@@ -24,7 +24,7 @@ export default defineConfig({
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
-      "@portfolio-chart": path.resolve(
+      "@portfolio": path.resolve(
         __dirname,
         "./packages/ui/portfolio-chart/src"
       ),
@@ -47,6 +47,8 @@ export default defineConfig({
       "@tab": path.resolve(__dirname, "./extensions/tab-tracker/src"),
       "@censor": path.resolve(__dirname, "./extensions/some-filter/src"),
       "@mujik": path.resolve(__dirname, "./extensions/some-mujik/src"),
+      "@filter": path.resolve(__dirname, "./extensions/some-filter/src"),
+      "@conveyor": path.resolve(__dirname, "./extensions/some-conveyor/src"),
 
       // Add more aliases for other packages as needed
     },

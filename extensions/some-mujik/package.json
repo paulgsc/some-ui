@@ -16,6 +16,9 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4"

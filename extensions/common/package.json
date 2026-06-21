@@ -1,0 +1,43 @@
+{
+  "dependencies": {},
+  "description": "Shared Vite configuration for monorepo packages",
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/firefox-webext-browser": "^120.0.4"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./*": {
+      "import": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "vite",
+    "config",
+    "monorepo",
+    "shared"
+  ],
+  "name": "@some-extension/common",
+  "peerDependencies": {
+    "vite": "^6.0.7"
+  },
+  "scripts": {
+    "build:manifest": "tsx scripts/generate-manifest.ts",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "seed": "tsx src/scripts/mood-events/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

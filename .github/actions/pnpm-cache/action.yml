@@ -1,0 +1,23 @@
+name: "pnpm Cache"
+description: "Resolve pnpm store path inside Nix shell and restore/save the cache."
+inputs:
+  shell:
+    description: "Nix devShell to run pnpm store path in"
+    required: false
+    default: "ci"
+runs:
+  using: composite
+  steps:
+    - name: Get pnpm store path
+      id: store
+      shell: bash
+      run: |
+        PATH_VAL=$(nix develop ".#${{ inputs.shell }}" --command pnpm store path 2>/dev/null)
+        echo "path=${PATH_VAL}" >> "$GITHUB_OUTPUT"
+    - name: Restore pnpm store cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-

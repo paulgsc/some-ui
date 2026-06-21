@@ -1,36 +1,40 @@
 {
-  "dependencies": {},
-  "description": "Shared Vite configuration for monorepo packages",
-  "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*"
-  },
-  "exports": {
-    "./tailwind.css": "./tailwind.css",
-    "./themes.css": "./themes.css"
-  },
-  "files": [
-    "dist/**"
-  ],
-  "keywords": [
-    "vite",
-    "config",
-    "monorepo",
-    "shared"
-  ],
-  "main": "./dist/esm/src/index.js",
   "name": "@some-ui/styles",
-  "peerDependencies": {
-    "vite": "^6.0.7"
+  "version": "1.0.0",
+  "description": "Shared design system (UnoCSS preset + shadcn tokens/themes) for the some-ui monorepo",
+  "type": "module",
+  "keywords": [
+    "some",
+    "unocss",
+    "design-system",
+    "shadcn",
+    "css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./preset": "./src/preset/index.ts",
+    "./config": "./src/config.ts",
+    "./uno.config": "./uno.config.ts",
+    "./tokens.css": "./tokens/base.css",
+    "./tailwind.css": "./tailwind.css",
+    "./themes.css": "./themes.css",
+    "./themes/*": "./themes/*"
   },
   "scripts": {
+    "build:css": "unocss \"examples/**/*.{html,ts,tsx}\" --config uno.config.ts --out-file dist/some-ui.css",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm prettier && pnpm typecheck",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
     "typecheck": "tsc --noEmit"
   },
-  "type": "module",
-  "types": "src/index.ts",
-  "version": "1.0.0"
+  "peerDependencies": {
+    "unocss": "^66.0.0"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/node": "^22.10.5",
+    "@unocss/cli": "^66.0.0",
+    "unocss": "^66.0.0"
+  }
 }

@@ -1,0 +1,80 @@
+name: Deny Checks
+on:
+  workflow_call:
+    inputs:
+      rust:
+        description: "Run Rust deny checks"
+        type: boolean
+        required: false
+        default: true
+      node:
+        description: "Run Node license checks"
+        type: boolean
+        required: false
+        default: true
+jobs:
+  # cargo-deny runs from the .#deny nix shell — same binary version as local dev.
+  # Advisories are continue-on-error to avoid flapping on newly published CVEs
+  # that don't affect our code.
+  rust-deny:
+    name: Rust Deny (${{ matrix.checks }})
+    if: inputs.rust
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        checks: [advisories, bans, licenses, sources]
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
+        with:
+          key-suffix: deny-${{ matrix.checks }}
+          cache-target: "false"
+      - name: cargo deny check ${{ matrix.checks }}
+        run: nix develop .#deny --command cargo deny check ${{ matrix.checks }}
+  # Node: license audit via pnpm licenses list.
+  # We write the JSON to a temp file so we can run the audit script in the
+  # same nix shell invocation as pnpm — avoids the stdin-across-subshells problem.
+  node-deny:
+    name: Node License Audit
+    if: inputs.node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Audit Node licenses
+        run: |
+          nix develop .#ci --command bash -c '
+            pnpm licenses list --json > /tmp/licenses.json
+
+            node -e "
+              const ALLOWED = new Set([
+                \"MIT\", \"Apache-2.0\", \"ISC\",
+                \"BSD-2-Clause\", \"BSD-3-Clause\",
+                \"0BSD\", \"BlueOak-1.0.0\",
+              ]);
+              const data = JSON.parse(require(\"fs\").readFileSync(\"/tmp/licenses.json\", \"utf8\"));
+              const packages = data.packages ?? data;
+              const violations = packages.filter(p => {
+                const lic = (p.license ?? \"\").replace(/[()|]/g, \"\");
+                return !lic.split(\" OR \").some(l => ALLOWED.has(l.trim()));
+              });
+              if (violations.length > 0) {
+                console.error(\"License violations:\");
+                violations.forEach(p => console.error(\" -\", p.name, p.version, p.license));
+                process.exit(1);
+              }
+              console.log(\"All licenses OK (\", packages.length, \"packages)\");
+            "
+          '

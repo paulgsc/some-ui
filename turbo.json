@@ -61,6 +61,12 @@
     "test": {
       "cache": false
     },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "inputs": ["src/**", "tests/**", "playwright.config.ts"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
     "clean": {
       "cache": false
     },

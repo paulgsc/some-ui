@@ -1,0 +1,62 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@conveyor/*": ["src/*"],
+      "@conveyor/playwright/*": ["tests/e2e/*"],
+      "@censor/platform/content": ["src/lib/platform/api.ts"],
+      "@censor/platform/background": ["src/lib/platform/api.ts"]
+    },
+    "types": ["firefox-webext-browser", "chrome"]
+  },
+  "include": [
+    "src",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config*.ts",
+    "uno.config.ts",
+    "playwright.config.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": [
+    "node_modules",
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**"
+  ]
+}

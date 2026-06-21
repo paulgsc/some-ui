@@ -2,12 +2,18 @@
   "name": "viewport-rotation",
   "private": true,
   "version": "0.0.0",
+  "main": "dist/viewport_rotation.js",
+  "module": "dist/viewport_rotation.js",
+  "types": "dist/viewport_rotation.d.ts",
   "type": "module",
   "scripts": {
-    "build": "wasm-pack build --target web --out-dir dist",
+    "build": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {},
   "dependencies": {},
   "devDependencies": {},

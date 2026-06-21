@@ -5,6 +5,7 @@
 .ytmo-card,
 .ytmo-card * {
   box-sizing: border-box;
+  pointer-events: auto;
   margin: 0;
   padding: 0;
   font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
@@ -14,11 +15,11 @@
 /* ── Card shell ── */
 .ytmo-card {
   position: fixed;
-  z-index: 2147483647; /* max z-index */
+  z-index: 3; /* max z-index */
   width: 240px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(6, 6, 18, 0.72);
+  background: #000;
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
   padding: 12px;

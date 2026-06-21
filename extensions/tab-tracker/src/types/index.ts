@@ -1,67 +1,93 @@
-export type TabRecord = {
+// ─── Segments ─────────────────────────────────────────────────────────────────
+
+export const SEGMENTS = [
+  "math",
+  "dsa",
+  "systems",
+  "infra",
+  "language",
+  "career",
+  "leisure",
+] as const
+
+export type Segment = (typeof SEGMENTS)[number]
+
+export const SEGMENT_DISPLAY: Record<
+  Segment,
+  { label: string; abbr: string; accent: string }
+> = {
+  math: { label: "Mathematics", abbr: "MTH", accent: "#60a5fa" },
+  dsa: { label: "DSA", abbr: "DSA", accent: "#34d399" },
+  systems: { label: "Systems", abbr: "SYS", accent: "#f97316" },
+  infra: { label: "Infra", abbr: "INF", accent: "#a78bfa" },
+  language: { label: "Language", abbr: "LNG", accent: "#f43f5e" },
+  career: { label: "Career", abbr: "CAR", accent: "#facc15" },
+  leisure: { label: "Leisure", abbr: "LSR", accent: "#94a3b8" },
+}
+
+// ─── Outcome ──────────────────────────────────────────────────────────────────
+
+export type Outcome = "Progress" | "Stuck" | "Review"
+
+export const OUTCOMES: Array<Outcome> = ["Progress", "Stuck", "Review"]
+
+export const OUTCOME_CONFIG: Record<
+  Outcome,
+  { symbol: string; color: string }
+> = {
+  Progress: { symbol: "↑", color: "#34d399" },
+  Stuck: { symbol: "×", color: "#f43f5e" },
+  Review: { symbol: "↺", color: "#facc15" },
+}
+
+// ─── Node state (per tab, local) ──────────────────────────────────────────────
+
+export type VisitRecord = {
+  outcome: Outcome
+  timestamp: number // unix ms — from server if available, local fallback
+}
+
+export type NodeState = {
   tabId: number
   url: string
-  title: string
-  favicon: string
-  totalMs: number
-  sessionMs: number
-  lastActivated: number // Unix timestamp when became active, 0 if inactive
-  isActive: boolean
-  intentional: boolean
-  buckets: Array<number> // 15-minute time buckets for sparkline
-  bucketStart: number // timestamp of first bucket epoch
+  segment: Segment | null
+  visits: Array<VisitRecord>
+  lastActiveMs: number
+  activeStart: number | null // Date.now() when tab became active, null if inactive
+  lastPostError: string | null
 }
 
-export type LedgerState = {
-  records: Record<number, TabRecord>
-  activeTabId: number | null
-  sessionStart: number
-  seenNeglectPairs: Array<string> // "activeTabId_neglectedTabId" pairs already shown
+// ─── Banner state ─────────────────────────────────────────────────────────────
+
+export type BannerState = {
+  text: string
+  visible: boolean
+  lastFetchError: string | null
 }
 
-// ─── Message protocol ─────────────────────────────────────────────────────────
-// All messages the content/popup scripts can send to the background.
-// GET_OWN_TAB_ID is folded in here so the message handler can narrow via
-// exhaustive switch without any unsafe casts.
+// ─── Messages ─────────────────────────────────────────────────────────────────
 
 export type InboundMessage =
   | { type: "GET_OWN_TAB_ID" }
-  | { type: "GET_TAB_STATE"; tabId: number }
-  | { type: "GET_FULL_STATE" }
-  | { type: "PIN_TAB"; tabId: number }
-  | { type: "RESET_SESSION" }
+  | { type: "GET_NODE_STATE"; tabId: number }
+  | { type: "SET_SEGMENT"; tabId: number; segment: Segment }
+  | { type: "REGISTER_SESSION"; tabId: number; outcome: Outcome }
+  | { type: "TICK_ACTIVE"; tabId: number }
+  | { type: "GET_BANNER" }
+  | { type: "SET_BANNER_TEXT"; text: string }
 
 export type OutboundMessage =
   | { type: "OWN_TAB_ID"; tabId: number | null }
-  | {
-      type: "TAB_STATE"
-      record: TabRecord | null
-      now: number
-      neglect: string | null
-    }
-  | { type: "FULL_STATE"; state: LedgerState; now: number }
+  | { type: "NODE_STATE"; state: NodeState | null }
+  | { type: "BANNER_STATE"; banner: BannerState }
   | { type: "OK" }
+  | { type: "ERR"; message: string }
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
+// ─── Config ───────────────────────────────────────────────────────────────────
 
-export type BadgeTier = "green" | "amber" | "red" | "violet"
+export const MIN_ACTIVE_MS_TO_REGISTER = 5 * 60 * 1000 // 5 minutes
 
-export function getBadgeTier(ms: number): BadgeTier {
-  const m = ms / 60_000
-  if (m < 15) return "green"
-  if (m < 45) return "amber"
-  if (m < 90) return "red"
-  return "violet"
-}
-
-export const BADGE_COLORS: Record<BadgeTier, string> = {
-  green: "#22c55e",
-  amber: "#f59e0b",
-  red: "#ef4444",
-  violet: "#7c3aed",
-}
-
-// ─── Formatters ───────────────────────────────────────────────────────────────
+// ─── Formatters (kept for popup + other consumers) ────────────────────────────
 
 export function formatMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000)
@@ -88,10 +114,3 @@ export function getDomain(url: string): string {
     return url
   }
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-export const STORAGE_KEY = "tabledger_state"
-export const BUCKET_SIZE_MS = 15 * 60 * 1000 // 15 minutes
-export const NEGLECT_ACTIVE_THRESHOLD_MS = 45 * 60 * 1000
-export const NEGLECT_IDLE_THRESHOLD_MS = 5 * 60 * 1000
