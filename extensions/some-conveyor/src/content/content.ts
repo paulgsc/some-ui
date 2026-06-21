@@ -20,6 +20,7 @@
 import { ext } from "@censor/platform/content"
 import { CoexistenceRuntime } from "@conveyor/lib/content/coexistence"
 import { ConveyorEngine } from "@conveyor/lib/content/conveyor-engine"
+import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
 import { EffectBus } from "@conveyor/lib/content/effect-bus"
 import { makeCubeFaceContents } from "@conveyor/lib/content/face-contents"
 import { ThemeEngine } from "@conveyor/lib/content/theme-engine"
@@ -76,6 +77,18 @@ function makeViewportItems(_cubeId: string): Array<ViewportItemSpec> {
   }))
 }
 
+// ── Manifest segments (static placeholder) ──────────────────────────────────────
+// Display-only cargo manifest framing the cubes as scheduled content. Static for
+// now; a later logic-layer issue can derive these from the live schedule.
+const MANIFEST_SEGMENTS = [
+  { cube: "01", face: "front", source: "ci/some-ui", window: "6.0s" },
+  { cube: "02", face: "right", source: "nvda/journal", window: "9.0s" },
+  { cube: "03", face: "top", source: "kor/단어", window: "12.0s" },
+  { cube: "04", face: "back", source: "rss/rust-blog", window: "8.0s" },
+  { cube: "05", face: "front", source: "metric/mrr", window: "6.0s" },
+  { cube: "06", face: "bottom", source: "reminder/review", window: "9.0s" },
+] as const
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init(): Promise<void> {
@@ -95,10 +108,16 @@ async function init(): Promise<void> {
     // eslint-disable-next-line no-console
     .catch((e: unknown) => console.error("[some-conveyor] WASM init error:", e))
 
+  // Assemble the instrumentation zone (rail → manifest → belt) and mount it in
+  // the shadow root. The belt renders into the zone's belt mount. Rail/manifest
+  // values are static for now (typed seams for a later logic-layer issue).
+  const zone = buildConveyorZone({ manifestSegments: MANIFEST_SEGMENTS })
+  runtime.mountPoint.appendChild(zone.root)
+
   // Build the conveyor and register it for lifecycle management.
   conveyor = runtime.register(
     new ConveyorEngine(
-      runtime.mountPoint,
+      zone.beltMount,
       wasmBridge,
       themeEngine,
       effectBus,

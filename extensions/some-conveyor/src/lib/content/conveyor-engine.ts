@@ -45,7 +45,7 @@ export class ConveyorEngine implements Disposable {
   private disposed = false
 
   constructor(
-    mount: ShadowRoot,
+    mount: ShadowRoot | HTMLElement,
     private readonly wasmBridge: WasmBridge,
     private readonly themeEngine: ThemeEngine,
     private readonly effectBus: EffectBus,

@@ -221,6 +221,55 @@
   }
 }
 
+/* ── Control rail — live pulse dot ───────────────────────────────────────── */
+
+.sc-rail-pulse {
+  animation: sc-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sc-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(95 209 187 / 55%);
+  }
+
+  70% {
+    box-shadow: 0 0 0 7px rgb(95 209 187 / 0%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(95 209 187 / 0%);
+  }
+}
+
+/* ── Manifest ticker — masked edges + seamless scroll ────────────────────── */
+
+.sc-manifest {
+  background: var(--cv-steel-850);
+  border-left: 1px solid var(--cv-line);
+  border-right: 1px solid var(--cv-line);
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 5%,
+    #000 95%,
+    transparent
+  );
+}
+
+.sc-manifest-track {
+  animation: sc-slide 26s linear infinite;
+}
+
+@keyframes sc-slide {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 /* ── Reduced-motion: disable transitions + belt-floor scroll ───────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -233,6 +282,11 @@
   }
 
   .sc-strip::before {
+    animation: none;
+  }
+
+  .sc-rail-pulse,
+  .sc-manifest-track {
     animation: none;
   }
 }
