@@ -72,7 +72,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "eslint-import-resolver-alias": "^1.1.2",
-    "eslint-import-resolver-typescript": "3.7.0",
+    "eslint-import-resolver-typescript": "4.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
