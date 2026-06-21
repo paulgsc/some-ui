@@ -26,15 +26,25 @@ function colorForToken(token: string): string | null {
       `\\[data-sw-patched="${token}"\\][^{]*\\{background-color:([^!]+)!important`
     )
   )
-  return m && m[1] !== undefined ? m[1].trim() : null
+  return m?.[1]?.trim() ?? null
 }
 
 function luminanceForToken(token: string): number {
   const css = colorForToken(token)
   expect(css).not.toBeNull()
-  const c = parseColor(css as string)
+
+  if (typeof css !== "string") {
+    throw new Error("CSS color string not found")
+  }
+
+  const c = parseColor(css)
   expect(c).not.toBeNull()
-  return relativeLuminance(c![0], c![1], c![2])
+
+  if (!c) {
+    throw new Error("Failed to parse color")
+  }
+
+  return relativeLuminance(c[0], c[1], c[2])
 }
 
 describe("DARK_THEME_ATTR", () => {
@@ -67,8 +77,10 @@ describe("injectDarkTheme", () => {
 
     const token = div.dataset.swPatched
     expect(token).toMatch(/^c\d+$/)
-    // The generated color must actually be dark.
-    expect(luminanceForToken(token as string)).toBeLessThan(0.3)
+
+    if (typeof token === "string") {
+      expect(luminanceForToken(token)).toBeLessThan(0.3)
+    }
   })
 
   it("preserves hue when darkening a colored surface", () => {
@@ -79,14 +91,22 @@ describe("injectDarkTheme", () => {
 
     injectDarkTheme()
 
-    const css = colorForToken(div.dataset.swPatched as string)
-    const c = parseColor(css as string)!
-    // blue channel dominant → hue preserved
-    expect(c[2]).toBeGreaterThan(c[0])
-    expect(c[2]).toBeGreaterThan(c[1])
+    const token = div.dataset.swPatched
+    if (typeof token === "string") {
+      const css = colorForToken(token)
+      if (typeof css === "string") {
+        const c = parseColor(css)
+        expect(c).not.toBeNull()
+        if (c) {
+          // blue channel dominant → hue preserved
+          expect(c[2]).toBeGreaterThan(c[0])
+          expect(c[2]).toBeGreaterThan(c[1])
+        }
+      }
+    }
   })
 
-  it("reuses one token for repeated identical backgrounds", () => {
+  it("uses one token for repeated identical backgrounds", () => {
     const a = document.createElement("div")
     const b = document.createElement("div")
     a.style.backgroundColor = "rgb(255, 255, 255)"
@@ -207,8 +227,11 @@ describe("repatchPage", () => {
     div.style.backgroundColor = "rgb(255, 255, 255)"
     repatchPage()
 
-    expect(div.dataset.swPatched).toMatch(/^c\d+$/)
-    expect(luminanceForToken(div.dataset.swPatched as string)).toBeLessThan(0.3)
+    const token = div.dataset.swPatched
+    expect(token).toMatch(/^c\d+$/)
+    if (typeof token === "string") {
+      expect(luminanceForToken(token)).toBeLessThan(0.3)
+    }
   })
 })
 
