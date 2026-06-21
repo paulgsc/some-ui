@@ -62,10 +62,10 @@ function applyState(state: TabState): void {
   restoreVendor()
 
   if (state === "auto") {
-    // Do not pre-remove the veil here. runAutoClassify uses
-    // withPrepaintSuppressed for snapshot isolation and handles veil
-    // teardown atomically after theme injection.
-    runAutoClassify()
+    // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
+    // for snapshot isolation and handles veil teardown atomically after the
+    // theme is committed (or restored).
+    runAutoTheme()
     return
   }
 
@@ -91,25 +91,30 @@ function cycleState(): void {
   applyState(next[currentState])
 }
 
-// ── Classification ────────────────────────────────────────────────────────────
+// ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
-function runAutoClassify(): void {
-  // detect() AND applyTheme("dark") (which internally patches the DOM) must
-  // both run inside the same prepaint suppression lock. Extending the lock to
-  // cover the initial patch ensures it reads native, non-transition-interpolated
-  // colors — the same guarantee we give detect(). Without this, the patch would
-  // run after the freeze style is removed and could catch mid-transition near-
-  // zero alpha values, tagging light elements as `preserve` and permanently
-  // exposing white after veil drop.
+function runAutoTheme(): void {
+  // Apply-then-detect. The dark theme is the default; the detector only takes
+  // it back off for pages that are already dark.
+  //
+  // Ordering note: our theme is injected with `!important`, so once it is in the
+  // cascade getComputedStyle no longer reports vendor colors. The detector must
+  // therefore snapshot the verdict from TRUE vendor styles first — which it can
+  // do safely because the overlay veil (unlike the old restyle-in-place
+  // prepaint) does not poison computed styles. We then apply the theme
+  // unconditionally (default-on) and restore vendor only when the verdict says
+  // the page was already dark.
+  //
+  // detect(), applyTheme(), and the optional restoreVendor() all run inside the
+  // same suppression lock so the initial patch reads settled, non-transition-
+  // interpolated colors and the veil teardown below is atomic.
   const { alreadyDark, avgLuminance } = withPrepaintSuppressed(() => {
-    const result = detect()
-    if (!result.alreadyDark) {
-      // Inject theme CSS + run initial patchAll inside the lock.
-      // The dark substrate is in the cascade before withPrepaintSuppressed
-      // returns, so veil removal (commitVisualState below) is already atomic.
-      applyTheme("dark")
+    const verdict = detect()
+    applyTheme("dark")
+    if (verdict.alreadyDark) {
+      restoreVendor()
     }
-    return result
+    return verdict
   })
 
   autoWasApplied = !alreadyDark
