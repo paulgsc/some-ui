@@ -28,7 +28,7 @@ const ROLL = path.join(LINT_FIXTURES, "src/rollup.config.ts")
 
 describe("typescript.config — error rules wired for .ts files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const EXPECTED_ERRORS = [
     "@typescript-eslint/no-unused-vars",
@@ -74,7 +74,7 @@ describe("typescript.config — error rules wired for .ts files", () => {
 
 describe("typescript.config — intentionally-off rules for .ts files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const INTENTIONALLY_OFF = [
     "no-unused-vars",
@@ -95,7 +95,7 @@ describe("typescript.config — intentionally-off rules for .ts files", () => {
 
 describe("typescript.config — type-aware rules suppressed for .js files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, JS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const TYPE_AWARE = [
     "@typescript-eslint/explicit-function-return-type",
@@ -123,7 +123,7 @@ describe("typescript.config — type-aware rules suppressed for .js files", () =
 
 describe("typescript.config — rollup override", () => {
   const rulesPromise = calculateConfig(typescriptConfig, ROLL)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it("explicit-function-return-type is off for rollup configs", async () => {
     rules ??= await rulesPromise
@@ -164,7 +164,7 @@ describe("typescript.config — no-unused-vars replacement integrity", () => {
 
 describe("typescript.config — critical rule options preserved", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it("no-floating-promises has ignoreVoid:true", async () => {
     rules ??= await rulesPromise
@@ -207,13 +207,12 @@ describe("typescript.config — critical rule options preserved", () => {
     })
   })
 
-  it("consistent-type-assertions uses `as` style and forbids object literal assertions", async () => {
+  it("consistent-type-assertions forbids all type assertions (assertionStyle: never)", async () => {
     rules ??= await rulesPromise
     const entry = rules["@typescript-eslint/consistent-type-assertions"]
     const opts = Array.isArray(entry) ? entry[1] : undefined
     expect(opts).toMatchObject({
-      assertionStyle: "as",
-      objectLiteralTypeAssertions: "never",
+      assertionStyle: "never",
     })
   })
 

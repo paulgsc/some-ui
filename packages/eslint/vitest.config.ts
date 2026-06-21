@@ -13,6 +13,7 @@ export default defineConfig({
     name: "maishatu-eslint-kit",
     environment: "node",
     include: ["tests/**/*.test.ts", "fixtures"],
+    exclude: ["tests/lint-fixtures/**"],
     // Type-aware rules spin up a TS language service per-suite.
     // A generous timeout prevents false failures on slow CI machines.
     testTimeout: 30_000,

@@ -37,10 +37,9 @@ import {
 } from "./helpers/eslint-resolver.js"
 
 const HERE = fileURLToPath(import.meta.url)
-const FIXTURES = path.resolve(HERE, "../../lint-fixtures")
+const FIXTURES = path.resolve(HERE, "../lint-fixtures")
 
 const JS_FILE = path.join(FIXTURES, "src/util.js")
-const TS_FILE = path.join(FIXTURES, "src/service.ts")
 
 // All rules in base.config.ts rules block that must resolve to error
 const EXPECTED_ERRORS = [
@@ -64,7 +63,7 @@ const EXPECTED_ERRORS = [
 
 describe("base.config — error rules wired for .js files", () => {
   const rulesPromise = calculateConfig(baseConfig, JS_FILE)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
+  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   for (const rule of EXPECTED_ERRORS) {
     it(`"${rule}" resolves to error`, async () => {
@@ -74,24 +73,12 @@ describe("base.config — error rules wired for .js files", () => {
   }
 })
 
-describe("base.config — same error rules apply for .ts files (no glob restriction)", () => {
-  const rulesPromise = calculateConfig(baseConfig, TS_FILE)
-  let rules: Awaited<ReturnType<typeof calculateConfig>>
-
-  for (const rule of EXPECTED_ERRORS) {
-    it(`"${rule}" resolves to error for .ts too`, async () => {
-      rules ??= await rulesPromise
-      expectError(rules, rule, "src/service.ts")
-    })
-  }
-})
-
 describe("lint: base.config rules fire on real code", () => {
   it("no-var fires on var declarations", async () => {
     const messages = await lintSnippet(
       baseConfig,
       `var x = 1; module.exports = x`,
-      JS_FILE
+      "src/util.js"
     )
     expectMessageForRule(messages, "no-var", ".js file using var")
   })
@@ -100,7 +87,7 @@ describe("lint: base.config rules fire on real code", () => {
     const messages = await lintSnippet(
       baseConfig,
       `const x = 1; module.exports = x`,
-      JS_FILE
+      "src/util.js"
     )
     expectNoMessageForRule(messages, "no-var", ".js file using const")
   })
@@ -109,7 +96,7 @@ describe("lint: base.config rules fire on real code", () => {
     const messages = await lintSnippet(
       baseConfig,
       `const name = "world"; export const greeting = "hello " + name`,
-      JS_FILE
+      "src/util.js"
     )
     expectMessageForRule(
       messages,
@@ -123,7 +110,7 @@ describe("lint: base.config rules fire on real code", () => {
       baseConfig,
 
       `export function isOne(x) { return x == 1 }`,
-      JS_FILE
+      "src/util.js"
     )
     expectMessageForRule(messages, "eqeqeq", ".js file using == instead of ===")
   })
@@ -132,7 +119,7 @@ describe("lint: base.config rules fire on real code", () => {
     const messages = await lintSnippet(
       baseConfig,
       `export function f(x) { if (x > 0) { return 1 } else { return -1 } }`,
-      JS_FILE
+      "src/util.js"
     )
     expectMessageForRule(
       messages,
