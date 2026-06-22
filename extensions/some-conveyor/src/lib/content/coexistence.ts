@@ -32,6 +32,10 @@ type RuntimeListener<K extends keyof RuntimeEventMap> = (
  *
  *   - On Active/Reduced: shadow host visible, pointer-events enabled.
  *
+ *   - While the window holds OS focus (and not Suspended): the overlay is
+ *     dimmed (focus fade) and click-through, so it never interrupts the user
+ *     looking at the page. It returns to full presence when the window blurs.
+ *
  *   - Runtime is a singleton per content script execution.
  *     If the same page reloads or SPA navigates, dispose() and recreate.
  */
@@ -49,15 +53,23 @@ export class CoexistenceRuntime implements Disposable {
 
   private disposed = false
 
+  // Cached inputs to the host-presentation decision (visibility / dim / clicks).
+  private mode: AttentionMode
+  private windowFocused: boolean
+
   constructor(styleUrl: string) {
     this.registry = new DisposableRegistry()
     this.shadowHost = this.registry.register(new ShadowHost(styleUrl))
     this.pageMonitor = this.registry.register(new PageMonitor())
 
+    this.mode = this.pageMonitor.currentMode
+    this.windowFocused = this.pageMonitor.windowFocused
+
     this.pageMonitor.onModeChange(this.handleModeChange.bind(this))
+    this.pageMonitor.onFocusChange(this.handleFocusChange.bind(this))
 
     // Apply initial state.
-    this.applyMode(this.pageMonitor.currentMode)
+    this.applyHostState()
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -92,14 +104,30 @@ export class CoexistenceRuntime implements Disposable {
   // ── Mode handling ──────────────────────────────────────────────────────────
 
   private handleModeChange(mode: AttentionMode): void {
-    this.applyMode(mode)
+    this.mode = mode
+    this.applyHostState()
     this.emit("attentionChange", mode)
   }
 
-  private applyMode(mode: AttentionMode): void {
-    const visible = mode !== "Suspended"
+  private handleFocusChange(focused: boolean): void {
+    this.windowFocused = focused
+    this.applyHostState()
+  }
+
+  /**
+   * Reconcile the host element from the two orthogonal inputs:
+   *   - AttentionMode → hard visibility (Suspended hides the host entirely).
+   *   - window focus  → the soft focus fade. While the window holds focus the
+   *     overlay dims to transparent (CSS effect) and stops intercepting clicks,
+   *     so it never interrupts the user actually looking at the page. Blurred
+   *     (the OBS-capture case), it stays fully present.
+   */
+  private applyHostState(): void {
+    const visible = this.mode !== "Suspended"
+    const dimmed = visible && this.windowFocused
     this.shadowHost.setVisibility(visible)
-    this.shadowHost.setPointerEvents(visible)
+    this.shadowHost.setOverlayDimmed(dimmed)
+    this.shadowHost.setPointerEvents(visible && !dimmed)
   }
 
   private emit<K extends keyof RuntimeEventMap>(

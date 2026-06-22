@@ -270,10 +270,33 @@
   }
 }
 
+/* ── Focus fade ────────────────────────────────────────────────────────────
+ * Beta presentation rule: the overlay is meant for the captured-but-unfocused
+ * tab (e.g. an OBS scene), so while the window actually holds focus it fades out
+ * of the user's way and returns when the window blurs. This is the CSS half of
+ * the cake layer — the runtime only toggles `data-overlay-dimmed` on the shadow
+ * host (see coexistence.ts) and pointer-events; the opacity animation lives
+ * here. `.sc-zone--dimmed` is the light-DOM equivalent the stories toggle to
+ * preview the same transition. */
+
+.sc-zone {
+  transition: opacity var(--overlay-fade-duration, 420ms)
+    var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+:host([data-overlay-dimmed]) .sc-zone,
+.sc-zone--dimmed {
+  opacity: 0;
+}
+
 /* ── Reduced-motion: disable transitions + belt-floor scroll ───────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .sc-cube {
+    transition: none;
+  }
+
+  .sc-zone {
     transition: none;
   }
 

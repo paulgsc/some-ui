@@ -1,6 +1,7 @@
 import type { AttentionMode, Disposable } from "@conveyor/types"
 
 type AttentionListener = (mode: AttentionMode) => void
+type FocusListener = (focused: boolean) => void
 
 /**
  * PageMonitor
@@ -22,10 +23,22 @@ type AttentionListener = (mode: AttentionMode) => void
  *   - We detect video play state by querying document.querySelector("video"),
  *     not by inspecting extension state.
  *   - All listeners are passive to never block the vendor page's event loop.
+ *
+ * Window focus is tracked on a separate channel from AttentionMode. Tab
+ * visibility (document.hidden) is "is this the foreground tab in its window";
+ * window focus (document.hasFocus()) is "does this window own the OS focus".
+ * They differ exactly in the beta's target scenario: the tab is captured into an
+ * OBS scene (visible, not hidden) while the user's focus sits on another app
+ * (window blurred). The overlay is meant to show then and fade once the user
+ * returns focus to the page — a presentation concern, kept orthogonal to the
+ * rAF-governing AttentionMode so the belt logic is unaffected.
  */
 export class PageMonitor implements Disposable {
   private mode: AttentionMode = "Active"
   private readonly listeners = new Set<AttentionListener>()
+
+  private isWindowFocused = true
+  private readonly focusListeners = new Set<FocusListener>()
 
   // Flags driving the mode computation.
   private isFullscreen = false
@@ -58,6 +71,15 @@ export class PageMonitor implements Disposable {
     return () => this.listeners.delete(listener)
   }
 
+  get windowFocused(): boolean {
+    return this.isWindowFocused
+  }
+
+  onFocusChange(listener: FocusListener): () => void {
+    this.focusListeners.add(listener)
+    return () => this.focusListeners.delete(listener)
+  }
+
   // ── Setup ──────────────────────────────────────────────────────────────────
 
   private setup(): void {
@@ -69,6 +91,8 @@ export class PageMonitor implements Disposable {
     )
     this.addListener(document, "mozfullscreenchange", this.onFullscreenChange)
     this.addListener(document, "visibilitychange", this.onVisibilityChange)
+    this.addListener(window, "focus", this.onWindowFocus)
+    this.addListener(window, "blur", this.onWindowBlur)
     this.addListener(document, "keydown", this.onKeydown, { passive: true })
     this.addListener(document, "keyup", this.onKeyup, { passive: true })
     this.addListener(document, "scroll", this.onScroll, { passive: true })
@@ -80,6 +104,7 @@ export class PageMonitor implements Disposable {
     // Snap initial state.
     this.isHidden = document.hidden
     this.isFullscreen = this.detectFullscreen()
+    this.isWindowFocused = document.hasFocus()
     this.pollVideoState()
     this.recompute()
   }
@@ -105,6 +130,14 @@ export class PageMonitor implements Disposable {
   private onVisibilityChange(): void {
     this.isHidden = document.hidden
     this.recompute()
+  }
+
+  private onWindowFocus(): void {
+    this.setWindowFocused(true)
+  }
+
+  private onWindowBlur(): void {
+    this.setWindowFocused(false)
   }
 
   private onKeydown(): void {
@@ -169,6 +202,19 @@ export class PageMonitor implements Disposable {
     }
   }
 
+  private setWindowFocused(focused: boolean): void {
+    if (focused === this.isWindowFocused) return
+    this.isWindowFocused = focused
+    for (const listener of this.focusListeners) {
+      try {
+        listener(focused)
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("[PageMonitor]", e)
+      }
+    }
+  }
+
   private computeMode(): AttentionMode {
     if (this.isFullscreen || this.isHidden) return "Suspended"
     if (this.isVideoPlaying || this.isTyping || this.isScrolling)
@@ -188,5 +234,6 @@ export class PageMonitor implements Disposable {
     if (this.videoPollInterval !== null) clearInterval(this.videoPollInterval)
 
     this.listeners.clear()
+    this.focusListeners.clear()
   }
 }

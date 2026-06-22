@@ -75,6 +75,16 @@ export class ShadowHost implements Disposable {
     this.hostEl.style.display = visible ? "" : "none"
   }
 
+  /**
+   * Toggle the focus-fade state. JS only flips the attribute; the opacity
+   * transition itself lives in conveyor.css (`:host([data-overlay-dimmed])`),
+   * keeping the DOM plumbing disjoint from the CSS effect.
+   */
+  setOverlayDimmed(dimmed: boolean): void {
+    if (dimmed) this.hostEl.setAttribute("data-overlay-dimmed", "")
+    else this.hostEl.removeAttribute("data-overlay-dimmed")
+  }
+
   dispose(): void {
     this.hostEl.remove()
   }
