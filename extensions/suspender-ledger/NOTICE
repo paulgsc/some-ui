@@ -1,0 +1,31 @@
+suspender-ledger
+================
+
+This workspace contains files under two licenses:
+
+MPL-2.0 (Mozilla Public License 2.0)
+-------------------------------------
+The following files were ported from auto-tab-discard v3
+(https://github.com/rNeomy/auto-tab-discard, MPL-2.0):
+
+  src/worker/           — ported from v3/worker/
+  src/content/watch.ts  — ported from v3/data/inject/watch.js
+  src/lib/platform/firefox.ts — ported from v3/firefox.mjs
+
+These files carry the MPL-2.0 header:
+  "This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at https://mozilla.org/MPL/2.0/."
+
+The full text of the MPL-2.0 is available at:
+  https://www.mozilla.org/en-US/MPL/2.0/
+and is reproduced in COPYING.MPL-2.0.
+
+MIT License
+-----------
+All other files in this workspace (src/popup/, src/suspend/, new business
+logic, build configuration) are Copyright (c) 2024 paulgsc and licensed
+under the MIT License.
+
+The package.json declares "license": "MPL-2.0 AND MIT" to reflect this
+dual-license structure. License scope is file-level per MPL-2.0 § 3.3.

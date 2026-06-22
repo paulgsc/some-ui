@@ -44,6 +44,11 @@
       "cache": false,
       "outputs": []
     },
+    "lint:ext": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputs": []
+    },
     "lint:md": {
       "cache": false,
       "outputs": []

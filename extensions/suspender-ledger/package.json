@@ -1,0 +1,36 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/chrome": "^0.0.293",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "eslint": "^10.5.0",
+    "maishatu-eslint-kit": "workspace:*",
+    "web-ext": "^8.4.0"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MPL-2.0 AND MIT",
+  "name": "@some-extension/suspender-ledger",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "vite build --config vite.config.firefox.ts",
+    "build:firefox": "vite build --config vite.config.firefox.ts",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm lint:ext && pnpm typecheck",
+    "lint:ext": "web-ext lint --source-dir dist",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "sign:firefox": "web-ext sign --source-dir dist --channel=unlisted --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "version": "0.1.0"
+}
