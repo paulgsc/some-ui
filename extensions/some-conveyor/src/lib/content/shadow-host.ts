@@ -2,6 +2,11 @@ import type { Disposable } from "@conveyor/types"
 
 const SHADOW_HOST_ID = "some-conveyor-host"
 
+// Must match the `--overlay-fade-duration` opacity transition in conveyor.css.
+// The host is only detached from layout/paint (display:none) once the fade has
+// played, so the value lives in both layers and is kept in sync by hand.
+const OVERLAY_FADE_MS = 420
+
 /**
  * ShadowHost
  *
@@ -24,6 +29,10 @@ const SHADOW_HOST_ID = "some-conveyor-host"
 export class ShadowHost implements Disposable {
   private readonly hostEl: HTMLElement
   readonly shadowRoot: ShadowRoot
+
+  // Pending display:none after a fade-out, so a quick re-activation can cancel
+  // the tear-down and keep the overlay mounted.
+  private hideTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(private readonly styleUrl: string) {
     // Prevent duplicate injection on SPA navigations that don't unload.
@@ -67,25 +76,51 @@ export class ShadowHost implements Disposable {
     return this.shadowRoot
   }
 
-  setPointerEvents(enabled: boolean): void {
-    this.hostEl.style.pointerEvents = enabled ? "auto" : "none"
-  }
-
-  setVisibility(visible: boolean): void {
-    this.hostEl.style.display = visible ? "" : "none"
-  }
-
   /**
-   * Toggle the focus-fade state. JS only flips the attribute; the opacity
-   * transition itself lives in conveyor.css (`:host([data-overlay-dimmed])`),
-   * keeping the DOM plumbing disjoint from the CSS effect.
+   * Drive the host's whole presentation lifecycle from a single live/yielded
+   * bit. This is the DOM half of the cake layer — it never touches the opacity
+   * animation itself (that is `--overlay-fade-duration` on `.sc-zone` in
+   * conveyor.css); it only flips `data-overlay-dimmed` and detaches the host
+   * from layout once the fade has played.
+   *
+   * The host itself stays `pointer-events: none` permanently (only the cubes
+   * opt back in, via a class), so it never blocks clicks in the gaps. While
+   * dimmed, CSS neutralises the cubes too — so the page is fully interactive the
+   * instant we yield, even during the fade, well before display:none lands.
+   *
+   *   active   → reveal, then fade the overlay in.
+   *   inactive → fade out, then display:none after the fade so we stop
+   *              painting/animating and fully detach. The belt's rAF is
+   *              suspended separately by the runtime; this is purely the
+   *              visible surface.
    */
-  setOverlayDimmed(dimmed: boolean): void {
-    if (dimmed) this.hostEl.setAttribute("data-overlay-dimmed", "")
-    else this.hostEl.removeAttribute("data-overlay-dimmed")
+  setActive(active: boolean): void {
+    if (this.hideTimer !== null) {
+      clearTimeout(this.hideTimer)
+      this.hideTimer = null
+    }
+
+    if (active) {
+      this.hostEl.style.display = ""
+      // Reflow so dropping the dimmed flag animates from the opacity-0 state
+      // rather than snapping.
+      void this.hostEl.offsetWidth
+      this.hostEl.removeAttribute("data-overlay-dimmed")
+      return
+    }
+
+    this.hostEl.setAttribute("data-overlay-dimmed", "")
+    this.hideTimer = setTimeout(() => {
+      this.hostEl.style.display = "none"
+      this.hideTimer = null
+    }, OVERLAY_FADE_MS)
   }
 
   dispose(): void {
+    if (this.hideTimer !== null) {
+      clearTimeout(this.hideTimer)
+      this.hideTimer = null
+    }
     this.hostEl.remove()
   }
 }

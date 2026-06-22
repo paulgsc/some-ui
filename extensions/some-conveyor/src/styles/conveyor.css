@@ -270,14 +270,20 @@
   }
 }
 
-/* ── Focus fade ────────────────────────────────────────────────────────────
- * Beta presentation rule: the overlay is meant for the captured-but-unfocused
- * tab (e.g. an OBS scene), so while the window actually holds focus it fades out
- * of the user's way and returns when the window blurs. This is the CSS half of
- * the cake layer — the runtime only toggles `data-overlay-dimmed` on the shadow
- * host (see coexistence.ts) and pointer-events; the opacity animation lives
- * here. `.sc-zone--dimmed` is the light-DOM equivalent the stories toggle to
- * preview the same transition. */
+/* ── Focus fade / yield ────────────────────────────────────────────────────
+ * The overlay is meant for a captured-but-unfocused tab (e.g. an OBS scene), so
+ * when the window regains focus it yields out of the user's way. This is the
+ * CSS half of the cake layer: the runtime only toggles `data-overlay-dimmed` on
+ * the shadow host (see ShadowHost.setActive) and then detaches the host once
+ * this fade has played; the opacity animation lives here.
+ *
+ * The cubes opt back into pointer events for clicks, so while the overlay is
+ * fading out — before the host is display:none'd — they are explicitly
+ * neutralised, otherwise a descendant `pointer-events: auto` would keep
+ * intercepting clicks on the page the user just returned to.
+ *
+ * `.sc-zone--dimmed` is the light-DOM equivalent the stories toggle to preview
+ * the same transition. */
 
 .sc-zone {
   transition: opacity var(--overlay-fade-duration, 420ms)
@@ -287,6 +293,11 @@
 :host([data-overlay-dimmed]) .sc-zone,
 .sc-zone--dimmed {
   opacity: 0;
+}
+
+:host([data-overlay-dimmed]) .sc-cube-wrapper,
+.sc-zone--dimmed .sc-cube-wrapper {
+  pointer-events: none;
 }
 
 /* ── Reduced-motion: disable transitions + belt-floor scroll ───────────── */

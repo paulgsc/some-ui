@@ -26,15 +26,14 @@ type RuntimeListener<K extends keyof RuntimeEventMap> = (
  *
  * Extension-specific rules enforced here:
  *
- *   - On Suspended: shadow host hidden, pointer-events disabled.
- *     Callers (ConveyorEngine) must separately suspend their rAF loop.
- *     The runtime only controls visibility — it does not own the rAF.
+ *   - On Suspended (hidden tab, focused window, or fullscreen): the overlay
+ *     fades out, goes click-through, and detaches from layout/paint, so it
+ *     never burns CPU or intercepts clicks behind a page the user is reading.
+ *     Callers (ConveyorEngine) must separately suspend their rAF loop — the
+ *     runtime owns the visible surface, not the rAF.
  *
- *   - On Active/Reduced: shadow host visible, pointer-events enabled.
- *
- *   - While the window holds OS focus (and not Suspended): the overlay is
- *     dimmed (focus fade) and click-through, so it never interrupts the user
- *     looking at the page. It returns to full presence when the window blurs.
+ *   - On Active/Reduced (a foreground tab in a blurred window — the capture
+ *     case): shadow host visible and interactive, belt running.
  *
  *   - Runtime is a singleton per content script execution.
  *     If the same page reloads or SPA navigates, dispose() and recreate.
@@ -53,23 +52,15 @@ export class CoexistenceRuntime implements Disposable {
 
   private disposed = false
 
-  // Cached inputs to the host-presentation decision (visibility / dim / clicks).
-  private mode: AttentionMode
-  private windowFocused: boolean
-
   constructor(styleUrl: string) {
     this.registry = new DisposableRegistry()
     this.shadowHost = this.registry.register(new ShadowHost(styleUrl))
     this.pageMonitor = this.registry.register(new PageMonitor())
 
-    this.mode = this.pageMonitor.currentMode
-    this.windowFocused = this.pageMonitor.windowFocused
-
     this.pageMonitor.onModeChange(this.handleModeChange.bind(this))
-    this.pageMonitor.onFocusChange(this.handleFocusChange.bind(this))
 
     // Apply initial state.
-    this.applyHostState()
+    this.applyMode(this.pageMonitor.currentMode)
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -104,30 +95,19 @@ export class CoexistenceRuntime implements Disposable {
   // ── Mode handling ──────────────────────────────────────────────────────────
 
   private handleModeChange(mode: AttentionMode): void {
-    this.mode = mode
-    this.applyHostState()
+    this.applyMode(mode)
     this.emit("attentionChange", mode)
   }
 
-  private handleFocusChange(focused: boolean): void {
-    this.windowFocused = focused
-    this.applyHostState()
-  }
-
   /**
-   * Reconcile the host element from the two orthogonal inputs:
-   *   - AttentionMode → hard visibility (Suspended hides the host entirely).
-   *   - window focus  → the soft focus fade. While the window holds focus the
-   *     overlay dims to transparent (CSS effect) and stops intercepting clicks,
-   *     so it never interrupts the user actually looking at the page. Blurred
-   *     (the OBS-capture case), it stays fully present.
+   * Drive the host surface off the single attention mode. Suspended — a hidden
+   * tab, a *focused* window, or fullscreen — yields: the overlay fades out, goes
+   * click-through, and detaches from layout (ShadowHost.setActive). Active or
+   * Reduced keep it live. The belt's rAF is suspended/resumed off the same
+   * attentionChange event, so a yielded overlay costs nothing.
    */
-  private applyHostState(): void {
-    const visible = this.mode !== "Suspended"
-    const dimmed = visible && this.windowFocused
-    this.shadowHost.setVisibility(visible)
-    this.shadowHost.setOverlayDimmed(dimmed)
-    this.shadowHost.setPointerEvents(visible && !dimmed)
+  private applyMode(mode: AttentionMode): void {
+    this.shadowHost.setActive(mode !== "Suspended")
   }
 
   private emit<K extends keyof RuntimeEventMap>(

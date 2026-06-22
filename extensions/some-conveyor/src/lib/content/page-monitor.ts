@@ -1,19 +1,19 @@
 import type { AttentionMode, Disposable } from "@conveyor/types"
 
 type AttentionListener = (mode: AttentionMode) => void
-type FocusListener = (focused: boolean) => void
 
 /**
  * PageMonitor
  *
  * Single source of truth for page attention state. Watches:
  *
- *   Fullscreen     → Suspended  (hard suspend — cancel rAF, hide DOM)
- *   Tab hidden     → Suspended
- *   Video playing  → Reduced    (user is consuming, not idle)
- *   User typing    → Reduced
- *   Scroll active  → Reduced    (brief window)
- *   Otherwise      → Active
+ *   Fullscreen      → Suspended  (hard suspend — cancel rAF, tear down DOM)
+ *   Tab hidden      → Suspended
+ *   Window focused  → Suspended
+ *   Video playing   → Reduced    (user is consuming, not idle)
+ *   User typing     → Reduced
+ *   Scroll active   → Reduced    (brief window)
+ *   Otherwise       → Active
  *
  * Emits AttentionMode changes to registered listeners.
  * Does NOT know about ConveyorEngine or the DOM tree — it only observes.
@@ -24,25 +24,24 @@ type FocusListener = (focused: boolean) => void
  *     not by inspecting extension state.
  *   - All listeners are passive to never block the vendor page's event loop.
  *
- * Window focus is tracked on a separate channel from AttentionMode. Tab
- * visibility (document.hidden) is "is this the foreground tab in its window";
- * window focus (document.hasFocus()) is "does this window own the OS focus".
- * They differ exactly in the beta's target scenario: the tab is captured into an
- * OBS scene (visible, not hidden) while the user's focus sits on another app
- * (window blurred). The overlay is meant to show then and fade once the user
- * returns focus to the page — a presentation concern, kept orthogonal to the
- * rAF-governing AttentionMode so the belt logic is unaffected.
+ * Window focus is a first-class suspend input, not a cosmetic overlay. The
+ * overlay is meant for a captured-but-unfocused tab — e.g. the tab is pulled
+ * into an OBS scene (visible, document.hidden === false) while the user's OS
+ * focus sits on another app (window blurred). That is the *only* state in which
+ * the conveyor should run; the moment the window regains focus (the user is
+ * actually looking at the page) it must yield like any other suspend, so it
+ * never burns CPU or intercepts clicks behind a page the user is reading.
+ * Tab visibility and window focus are distinct (a foreground tab in a blurred
+ * window is visible-but-unfocused), so both are tracked and both gate the mode.
  */
 export class PageMonitor implements Disposable {
   private mode: AttentionMode = "Active"
   private readonly listeners = new Set<AttentionListener>()
 
-  private isWindowFocused = true
-  private readonly focusListeners = new Set<FocusListener>()
-
   // Flags driving the mode computation.
   private isFullscreen = false
   private isHidden = false
+  private isWindowFocused = true
   private isVideoPlaying = false
   private isTyping = false
   private isScrolling = false
@@ -69,15 +68,6 @@ export class PageMonitor implements Disposable {
   onModeChange(listener: AttentionListener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
-  }
-
-  get windowFocused(): boolean {
-    return this.isWindowFocused
-  }
-
-  onFocusChange(listener: FocusListener): () => void {
-    this.focusListeners.add(listener)
-    return () => this.focusListeners.delete(listener)
   }
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -133,11 +123,13 @@ export class PageMonitor implements Disposable {
   }
 
   private onWindowFocus(): void {
-    this.setWindowFocused(true)
+    this.isWindowFocused = true
+    this.recompute()
   }
 
   private onWindowBlur(): void {
-    this.setWindowFocused(false)
+    this.isWindowFocused = false
+    this.recompute()
   }
 
   private onKeydown(): void {
@@ -202,21 +194,12 @@ export class PageMonitor implements Disposable {
     }
   }
 
-  private setWindowFocused(focused: boolean): void {
-    if (focused === this.isWindowFocused) return
-    this.isWindowFocused = focused
-    for (const listener of this.focusListeners) {
-      try {
-        listener(focused)
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error("[PageMonitor]", e)
-      }
-    }
-  }
-
   private computeMode(): AttentionMode {
-    if (this.isFullscreen || this.isHidden) return "Suspended"
+    // The conveyor only runs for a foreground tab in an unfocused window. A
+    // hidden tab, a focused window, or fullscreen are all hard suspends.
+    if (this.isFullscreen || this.isHidden || this.isWindowFocused) {
+      return "Suspended"
+    }
     if (this.isVideoPlaying || this.isTyping || this.isScrolling)
       return "Reduced"
     return "Active"
@@ -234,6 +217,5 @@ export class PageMonitor implements Disposable {
     if (this.videoPollInterval !== null) clearInterval(this.videoPollInterval)
 
     this.listeners.clear()
-    this.focusListeners.clear()
   }
 }
