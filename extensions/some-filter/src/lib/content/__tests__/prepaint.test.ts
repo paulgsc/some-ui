@@ -10,6 +10,7 @@ import {
 
 afterEach(() => {
   document.getElementById(PREPAINT_VEIL_ID)?.remove()
+  document.documentElement.classList.remove("sw-dirty")
   document.head.querySelectorAll("style").forEach((el) => el.remove())
 })
 
@@ -32,6 +33,26 @@ describe("enablePrepaint", () => {
     enablePrepaint()
     expect(document.querySelectorAll(`#${PREPAINT_VEIL_ID}`)).toHaveLength(1)
   })
+
+  it("anchors the veil to documentElement so body mutations cannot remove it", () => {
+    enablePrepaint()
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    expect(veil?.parentElement).toBe(document.documentElement)
+  })
+
+  it("adds sw-dirty class to html to activate the CSS backstop", () => {
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+  })
+
+  it("sw-dirty is added even when a veil element already exists", () => {
+    document.documentElement.classList.remove("sw-dirty")
+    enablePrepaint() // creates veil
+    disablePrepaint() // removes both class and veil
+    // Simulate a re-enable (e.g. SPA navigation)
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+  })
 })
 
 describe("disablePrepaint", () => {
@@ -44,9 +65,24 @@ describe("disablePrepaint", () => {
     expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
   })
 
+  it("removes sw-dirty class from html", () => {
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+
+    disablePrepaint()
+
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(false)
+  })
+
   it("is a no-op when no veil exists", () => {
     expect(() => disablePrepaint()).not.toThrow()
     expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("removes sw-dirty even when no veil element is present", () => {
+    document.documentElement.classList.add("sw-dirty")
+    disablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(false)
   })
 })
 

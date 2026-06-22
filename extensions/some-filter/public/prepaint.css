@@ -10,11 +10,36 @@
   - keep a solid dark canvas visible on top until the content script commits
 
   The veil is a single overlay element (#__sw_prepaint_veil) created at
-  document_start. It is promoted to the top layer via the popover API when
-  available; the fixed/max-z rules below are the fallback and also style the
-  popover box itself. It is never an ancestor of vendor DOM, so it cannot poison
-  getComputedStyle on the page.
+  document_start and anchored to <html> (not <body>) so that body.innerHTML
+  replacements cannot remove it. It is promoted to the top layer via the popover
+  API when available; the fixed/max-z rules below are the fallback and also style
+  the popover box itself. It is never an ancestor of vendor DOM, so it cannot
+  poison getComputedStyle on the page.
+
+  Dirty-by-default backstop
+  ─────────────────────────
+  prepaint-start.js adds html.sw-dirty at document_start. The rule below targets
+  body directly so that even if the veil element is removed (e.g. by a
+  document.documentElement.replaceChildren call) the body canvas stays black.
+  disablePrepaint() removes sw-dirty first, then tears down the veil element, so
+  the backstop is released atomically with intentional veil teardown.
+
+  Under the legacy invert filter the entire <html> is inverted. The veil is
+  deliberately white in that mode (so inversion produces black). We mirror that
+  here: the body backstop must also be white so it inverts to black.
 */
+
+/* Dirty-by-default: body stays black until we explicitly release it. */
+html.sw-dirty > body {
+  background-color: #000 !important;
+  color-scheme: dark !important;
+}
+
+/* Mirror the veil's colour-inversion correction for the legacy filter path. */
+html[data-sw-legacy].sw-dirty > body {
+  background-color: #fff !important;
+  color-scheme: light !important;
+}
 
 #__sw_prepaint_veil,
 #__sw_prepaint_veil:popover-open {

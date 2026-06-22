@@ -5,6 +5,7 @@ import {
 import {
   commitVisualState,
   disablePrepaint,
+  enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import {
@@ -174,12 +175,17 @@ function init(): void {
   // Note: third-party tab suspenders that replace the page with their own
   // origin URL are out-of-process and cannot be covered here; our re-
   // engagement on the real-URL reload is handled by the normal init path.
-  // Run synchronously — yt-navigate-finish fires after YouTube's DOM is
-  // settled, so calling repatchPage() immediately stays ahead of the next
-  // frame paint. A microtask delay would yield the thread and risk a frame
-  // where newly inserted nodes are unpatched.
+  //
+  // We re-enable the veil before repatching so there is no frame where
+  // newly rendered vendor elements are visible without the dark theme token.
+  // commitVisualState() lifts the veil after two rAFs — by which point the
+  // repatch tokens are already in the cascade.
   window.addEventListener("yt-navigate-finish", () => {
-    if (autoWasApplied) repatchPage()
+    if (autoWasApplied) {
+      enablePrepaint()
+      repatchPage()
+      commitVisualState()
+    }
   })
 }
 
