@@ -1,8 +1,8 @@
 import { isExtensionMessage } from "@filter/lib/background/guard"
+import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/background"
 import type { FilterConfig } from "@filter/types/popup"
-
-type TabState = "auto" | "legacy" | "off"
+import type { TabState } from "@filter/types/tab"
 
 const DEFAULT_FILTER: FilterConfig = {
   invert: 1,
@@ -101,7 +101,7 @@ ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
       return {
         enabled: filteredTabIds.includes(tabId),
         config: filterConfig,
-        tabState: tabStates[tabId] ?? "auto",
+        tabState: tabStates[tabId] ?? DEFAULT_TAB_STATE,
       }
     }
 
@@ -123,7 +123,7 @@ ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
       const allTabs = new Set([...Array.from(desired), ...Array.from(current)])
 
       for (const tabId of allTabs) {
-        nextTabStates[tabId] = desired.has(tabId) ? "legacy" : "auto"
+        nextTabStates[tabId] = desired.has(tabId) ? "legacy" : DEFAULT_TAB_STATE
       }
 
       await ext.storage.local.set({
@@ -166,12 +166,6 @@ ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
 // keyboard shortcut
 // ─────────────────────────────────────────────
 
-const STATE_CYCLE: Record<TabState, TabState> = {
-  auto: "legacy",
-  legacy: "off",
-  off: "auto",
-}
-
 ext.commands.onCommand.addListener((command): void => {
   if (command !== "toggle-filter") return
 
@@ -184,8 +178,8 @@ ext.commands.onCommand.addListener((command): void => {
     if (!activeTab || typeof activeTab.id !== "number") return
 
     const { tabStates } = await getState()
-    const current = tabStates[activeTab.id] ?? "auto"
-    const next = STATE_CYCLE[current]
+    const current = tabStates[activeTab.id] ?? DEFAULT_TAB_STATE
+    const next = nextTabState(current)
 
     await setTabState(activeTab.id, next)
     await sendToTab(activeTab.id, {

@@ -1,10 +1,3 @@
-import { classifyPage } from "@filter/lib/content/classify"
-import {
-  DARK_THEME_ATTR,
-  injectDarkTheme,
-  removeDarkTheme,
-  repatchPage,
-} from "@filter/lib/content/dark-theme"
 import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
@@ -12,13 +5,19 @@ import {
 import {
   commitVisualState,
   disablePrepaint,
+  enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
+import {
+  applyTheme,
+  repatchPage,
+  restoreVendor,
+} from "@filter/lib/content/theme-apply"
+import { detect } from "@filter/lib/content/theme-detector"
+import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
-
-// ── Legacy filter ─────────────────────────────────────────────────────────────
 
 const DEFAULT_FILTER: FilterConfig = {
   invert: 1,
@@ -26,57 +25,6 @@ const DEFAULT_FILTER: FilterConfig = {
   sepia: 0.12,
   brightness: 0.5,
   contrast: 0.92,
-}
-
-const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
-
-function buildFilterString(config: FilterConfig): string {
-  const parts: Array<string> = []
-
-  if (config.invert !== undefined) parts.push(`invert(${config.invert})`)
-  if (config.hueRotate !== undefined)
-    parts.push(`hue-rotate(${config.hueRotate}deg)`)
-  if (config.sepia !== undefined) parts.push(`sepia(${config.sepia})`)
-  if (config.brightness !== undefined)
-    parts.push(`brightness(${config.brightness})`)
-  if (config.contrast !== undefined) parts.push(`contrast(${config.contrast})`)
-
-  return parts.join(" ")
-}
-
-function applyLegacyFilter(config: FilterConfig): void {
-  let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
-
-  if (!style) {
-    style = document.createElement("style")
-    style.id = LEGACY_FILTER_STYLE_ID
-
-    const root = document.head
-    root.appendChild(style)
-  }
-
-  style.textContent = `
-    html { filter: ${buildFilterString(config)} !important; }
-    img, video, canvas, picture {
-      filter: invert(1) hue-rotate(180deg) !important;
-    }
-  `
-}
-
-function removeLegacyFilter(): void {
-  document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
-}
-
-// ── Dark theme ───────────────────────────────────────────────────────────────
-
-function activateDarkTheme(): void {
-  document.documentElement.setAttribute(DARK_THEME_ATTR, "")
-  injectDarkTheme()
-}
-
-function deactivateDarkTheme(): void {
-  document.documentElement.removeAttribute(DARK_THEME_ATTR)
-  removeDarkTheme()
 }
 
 // ── State cache ───────────────────────────────────────────────────────────────
@@ -105,7 +53,7 @@ function writeCachedState(state: TabState): void {
 
 // ── State machine ─────────────────────────────────────────────────────────────
 
-let currentState: TabState = "auto"
+let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 let autoWasApplied = false
 
@@ -113,20 +61,18 @@ function applyState(state: TabState): void {
   currentState = state
   writeCachedState(state)
 
-  deactivateDarkTheme()
-  removeLegacyFilter()
+  restoreVendor()
 
   if (state === "auto") {
-    // Do not pre-remove the veil here. runAutoClassify uses
-    // withPrepaintSuppressed for snapshot isolation and handles veil
-    // teardown atomically after theme injection.
-    runAutoClassify()
+    // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
+    // for snapshot isolation and handles veil teardown atomically after the
+    // theme is committed (or restored).
+    runAutoTheme()
     return
   }
 
   if (state === "legacy") {
-    applyLegacyFilter(filterConfig)
-    commitVisualState()
+    applyTheme("legacy", filterConfig)
     return
   }
 
@@ -137,37 +83,36 @@ function applyState(state: TabState): void {
 }
 
 function cycleState(): void {
-  const next: Record<TabState, TabState> = {
-    auto: "legacy",
-    legacy: "off",
-    off: "auto",
-  }
-
-  applyState(next[currentState])
+  applyState(nextTabState(currentState))
 }
 
-// ── Classification ────────────────────────────────────────────────────────────
+// ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
-function runAutoClassify(): void {
-  // classifyPage() AND activateDarkTheme() (which internally calls patchAll())
-  // must both run inside the same prepaint suppression lock. Extending the lock
-  // to cover patchAll() ensures the initial DOM patch reads native, non-
-  // transition-interpolated colors — the same guarantee we give classifyPage().
-  // Without this, patchAll() would run after the freeze style is removed and
-  // could catch mid-transition near-zero alpha values, tagging light elements
-  // as `preserve` and permanently exposing white after veil drop.
-  const { isLight, skip, avgLuminance } = withPrepaintSuppressed(() => {
-    const result = classifyPage()
-    if (!result.skip && result.isLight) {
-      // Inject theme CSS + run initial patchAll inside the lock.
-      // The dark substrate is in the cascade before withPrepaintSuppressed
-      // returns, so veil removal (commitVisualState below) is already atomic.
-      activateDarkTheme()
+function runAutoTheme(): void {
+  // Apply-then-detect. The dark theme is the default; the detector only takes
+  // it back off for pages that are already dark.
+  //
+  // Ordering note: our theme is injected with `!important`, so once it is in the
+  // cascade getComputedStyle no longer reports vendor colors. The detector must
+  // therefore snapshot the verdict from TRUE vendor styles first — which it can
+  // do safely because the overlay veil (unlike the old restyle-in-place
+  // prepaint) does not poison computed styles. We then apply the theme
+  // unconditionally (default-on) and restore vendor only when the verdict says
+  // the page was already dark.
+  //
+  // detect(), applyTheme(), and the optional restoreVendor() all run inside the
+  // same suppression lock so the initial patch reads settled, non-transition-
+  // interpolated colors and the veil teardown below is atomic.
+  const { alreadyDark, avgLuminance } = withPrepaintSuppressed(() => {
+    const verdict = detect()
+    applyTheme("dark")
+    if (verdict.alreadyDark) {
+      restoreVendor()
     }
-    return result
+    return verdict
   })
 
-  autoWasApplied = Boolean(!skip && isLight)
+  autoWasApplied = !alreadyDark
 
   if (autoWasApplied) {
     commitVisualState()
@@ -230,12 +175,17 @@ function init(): void {
   // Note: third-party tab suspenders that replace the page with their own
   // origin URL are out-of-process and cannot be covered here; our re-
   // engagement on the real-URL reload is handled by the normal init path.
-  // Run synchronously — yt-navigate-finish fires after YouTube's DOM is
-  // settled, so calling repatchPage() immediately stays ahead of the next
-  // frame paint. A microtask delay would yield the thread and risk a frame
-  // where newly inserted nodes are unpatched.
+  //
+  // We re-enable the veil before repatching so there is no frame where
+  // newly rendered vendor elements are visible without the dark theme token.
+  // commitVisualState() lifts the veil after two rAFs — by which point the
+  // repatch tokens are already in the cascade.
   window.addEventListener("yt-navigate-finish", () => {
-    if (autoWasApplied) repatchPage()
+    if (autoWasApplied) {
+      enablePrepaint()
+      repatchPage()
+      commitVisualState()
+    }
   })
 }
 

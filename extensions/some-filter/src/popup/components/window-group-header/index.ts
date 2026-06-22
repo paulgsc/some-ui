@@ -20,12 +20,45 @@ export function WindowGroupHeader({
   const label = document.createElement("div")
   label.className = "window-header__label"
 
-  // Icon and Text
-  label.innerHTML = `
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
-    <span>Window ${windowIndex}</span>`
+  // 1. Create the SVG safely using the XML namespace
+  const svgNS = "http://www.w3.org/2000/svg"
+  const svg = document.createElementNS(svgNS, "svg")
+  svg.setAttribute("width", "11")
+  svg.setAttribute("height", "11")
+  svg.setAttribute("viewBox", "0 0 24 24")
+  svg.setAttribute("fill", "none")
+  svg.setAttribute("stroke", "currentColor")
+  svg.setAttribute("stroke-width", "2.2")
+  svg.setAttribute("stroke-linecap", "round")
+  svg.setAttribute("stroke-linejoin", "round")
+
+  const rect = document.createElementNS(svgNS, "rect")
+  rect.setAttribute("x", "2")
+  rect.setAttribute("y", "3")
+  rect.setAttribute("width", "20")
+  rect.setAttribute("height", "14")
+  rect.setAttribute("rx", "2")
+
+  const line1 = document.createElementNS(svgNS, "line")
+  line1.setAttribute("x1", "8")
+  line1.setAttribute("y1", "21")
+  line1.setAttribute("x2", "16")
+  line1.setAttribute("y2", "21")
+
+  const line2 = document.createElementNS(svgNS, "line")
+  line2.setAttribute("x1", "12")
+  line2.setAttribute("y1", "17")
+  line2.setAttribute("x2", "12")
+  line2.setAttribute("y2", "21")
+
+  svg.append(rect, line1, line2)
+
+  // 2. Create the text span safely
+  const textSpan = document.createElement("span")
+  textSpan.textContent = `Window ${windowIndex}`
+
+  // Append SVG and text to the label
+  label.append(svg, textSpan)
 
   const countBadge = document.createElement("span")
   countBadge.className = "window-header__count"
@@ -43,7 +76,7 @@ export function WindowGroupHeader({
   allBtn.title = isAllSelected ? "Deselect window" : "Select window"
 
   allBtn.onclick = (e): void => {
-    e.stopPropagation() // Prevent triggering any parent row clicks
+    e.stopPropagation()
     if (isAllSelected) {
       onDeselect()
     } else {

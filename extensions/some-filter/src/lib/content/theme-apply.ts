@@ -1,26 +1,34 @@
 /**
+ * Theme applier — owns every DOM write involved in theming a page.
  *
- * Two-part dark theme application:
+ * Two strategies live here behind one surface:
+ *   - dark theme: a static CSS layer (buildDarkThemeCSS) plus a JS luminance
+ *     patcher (patchAll + MutationObserver) that tags vendor backgrounds.
+ *   - legacy filter: a single global root `filter: invert(...)` rule.
+ *
+ * Public surface:
+ *   - applyTheme(mode, config?) — apply the dark theme or the legacy filter.
+ *   - restoreVendor()           — remove all theming, returning to native styles.
+ * The granular dark-theme exports (injectDarkTheme/removeDarkTheme/repatchPage)
+ * are retained for the SPA re-patch path and unit tests.
  *
  * Part A — CSS layer (static rules):
- *   Previously scoped to #__sw_page_layer. Now scoped to body (and html),
- *   with :not([data-my-ext]) / :not([data-my-ext] *) guards on rules that
- *   could bleed into extension-owned subtrees.
- *
- *   The [data-my-ext] attribute marks extension-owned nodes. Any node
- *   carrying it — or descended from one — is excluded from theming.
+ *   Scoped to body (and html) with :not([data-my-ext]) / :not([data-my-ext] *)
+ *   guards on rules that could bleed into extension-owned subtrees.
  *
  * Part B — JS luminance patcher (dynamic):
- *   Unchanged in contract. Walks document.body, skips [data-my-ext] nodes
- *   and their descendants via shouldSkip().
- *
- * The #__sw_page_layer wrapper div has been removed entirely. Vendor DOM
- * is left in place; extension nodes self-exclude via the attribute.
+ *   Walks document.body, skips [data-my-ext] nodes and their descendants via
+ *   shouldSkip(). Vendor DOM is left in place; extension nodes self-exclude.
  */
 
-import { parseColor, relativeLuminance } from "./classify"
+import type { FilterConfig } from "@filter/types/config"
+
+import { parseColor, relativeLuminance } from "./color"
+import { modifyBackgroundColor, rgbaToCss } from "./modify-colors"
+import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
+export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -177,18 +185,9 @@ body${EXT_GUARD} {
 
 /* ── JS luminance patcher targets ───────────────────────────────────────── */
 
-[data-sw-patched="surface"]${EXT_GUARD} {
-  background-color: var(--sw-surface) !important;
-  color: var(--sw-text-0) !important;
-}
-
-[data-sw-patched="bg-1"]${EXT_GUARD} {
-  background-color: var(--sw-bg-1) !important;
-}
-
-[data-sw-patched="bg-2"]${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-}
+/* Light backgrounds are tagged with a generated token (c0, c1, …) whose
+   hue-preserving dark color is emitted into the dynamic stylesheet by the
+   patcher (see tokenForBackground). Near-black backgrounds are preserved. */
 
 [data-sw-patched="preserve"]${EXT_GUARD} {
   background-color: revert !important;
@@ -201,25 +200,58 @@ body${EXT_GUARD} {
 
 const LIGHT_THRESHOLD = 0.3
 
-function classifyElement(
-  el: Element
-): "surface" | "bg-1" | "bg-2" | "preserve" | null {
+// ── Dynamic per-element color registry ──────────────────────────────────────────
+// Light backgrounds get a hue-preserving dark color computed via modify-colors.
+// To keep the patcher attribute-only (so restoreVendor is byte-identical — no
+// inline-style clobbering of vendor nodes), each distinct modified color is
+// assigned a token and a matching `[data-sw-patched="<token>"]` rule is appended
+// to a dynamic stylesheet. Elements only ever receive a data attribute.
+
+const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
+const colorTokens = new Map<string, string>()
+let colorTokenSeq = 0
+
+function dynamicStyleEl(): HTMLStyleElement {
+  const existing = document.getElementById(DYNAMIC_STYLE_ID)
+  if (existing instanceof HTMLStyleElement) return existing
+  const style = document.createElement("style")
+  style.id = DYNAMIC_STYLE_ID
+  document.head.appendChild(style)
+  return style
+}
+
+function tokenForBackground(modifiedCss: string): string {
+  const cached = colorTokens.get(modifiedCss)
+  if (cached !== undefined) return cached
+
+  const token = `c${colorTokenSeq++}`
+  colorTokens.set(modifiedCss, token)
+  dynamicStyleEl().textContent += `[data-sw-patched="${token}"]${EXT_GUARD}{background-color:${modifiedCss}!important}\n`
+  return token
+}
+
+function clearDynamicColors(): void {
+  document.getElementById(DYNAMIC_STYLE_ID)?.remove()
+  colorTokens.clear()
+  colorTokenSeq = 0
+}
+
+function classifyElement(el: Element): string | null {
   const bg = getComputedStyle(el).backgroundColor
   const c = parseColor(bg)
 
   if (!c) return null
 
   // Near-transparent elements are glass layers over the dark body canvas.
-  // Tagging them `preserve` would revert their background to the author's
-  // color once the transition or opacity settles, permanently leaking white.
+  // Tagging them would revert/repaint their background once the transition or
+  // opacity settles, permanently leaking white.
   if (c[3] < 0.1) return null
 
   const lum = relativeLuminance(c[0], c[1], c[2])
 
   if (lum > LIGHT_THRESHOLD) {
-    if (lum > 0.7) return "surface"
-    if (lum > 0.5) return "bg-1"
-    return "bg-2"
+    // Hue-preserving dark surface instead of a flat grey bucket.
+    return tokenForBackground(rgbaToCss(modifyBackgroundColor(c)))
   }
 
   if (lum < 0.06) return "preserve"
@@ -313,7 +345,7 @@ function stopPatchObserver(): void {
   patchObserver = null
 }
 
-// ── Injection ─────────────────────────────────────────────────────────────────
+// ── Dark theme injection ────────────────────────────────────────────────────────
 
 const STYLE_ID = "__sw_dark_theme"
 
@@ -339,6 +371,7 @@ export function injectDarkTheme(): void {
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
+  clearDynamicColors()
   stopPatchObserver()
 
   document.querySelectorAll("[data-sw-patched]").forEach((el) => {
@@ -354,4 +387,92 @@ export function removeDarkTheme(): void {
  */
 export function repatchPage(): void {
   patchAll(document.body)
+}
+
+// ── Legacy filter ─────────────────────────────────────────────────────────────
+
+const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
+
+function buildFilterString(config: FilterConfig): string {
+  const parts: Array<string> = []
+
+  if (config.invert !== undefined) parts.push(`invert(${config.invert})`)
+  if (config.hueRotate !== undefined)
+    parts.push(`hue-rotate(${config.hueRotate}deg)`)
+  if (config.sepia !== undefined) parts.push(`sepia(${config.sepia})`)
+  if (config.brightness !== undefined)
+    parts.push(`brightness(${config.brightness})`)
+  if (config.contrast !== undefined) parts.push(`contrast(${config.contrast})`)
+
+  return parts.join(" ")
+}
+
+function applyLegacyFilter(config: FilterConfig): void {
+  // Set the attribute on html so prepaint CSS can react instantly
+  document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
+
+  let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+
+  if (!style) {
+    style = document.createElement("style")
+    style.id = LEGACY_FILTER_STYLE_ID
+
+    const root = document.head
+    root.appendChild(style)
+  }
+
+  style.textContent = `
+    html { filter: ${buildFilterString(config)} !important; }
+    img, video, canvas, picture {
+      filter: invert(1) hue-rotate(180deg) !important;
+    }
+  `
+}
+
+function removeLegacyFilter(): void {
+  document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
+  document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
+}
+
+// ── Dark theme activation (internal) ────────────────────────────────────────────
+
+function activateDarkTheme(): void {
+  document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+  injectDarkTheme()
+}
+
+function deactivateDarkTheme(): void {
+  document.documentElement.removeAttribute(DARK_THEME_ATTR)
+  removeDarkTheme()
+}
+
+// ── Public surface ──────────────────────────────────────────────────────────────
+
+export type ThemeMode = "dark" | "legacy"
+
+/**
+ * Apply a theme. `dark` injects the dark-theme CSS layer + patcher; `legacy`
+ * installs the global invert filter (pass `config` for legacy — omitted/undefined
+ * is a no-op). Does not clear the other mode — the orchestrator calls
+ * restoreVendor() first when switching.
+ */
+export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
+  try {
+    if (mode === "legacy") {
+      if (config !== undefined) applyLegacyFilter(config)
+      return
+    }
+    activateDarkTheme()
+  } finally {
+    commitVisualState()
+  }
+}
+
+/**
+ * Remove all theming and return the page to its native vendor styles.
+ * Veil teardown remains the orchestrator's responsibility.
+ */
+export function restoreVendor(): void {
+  deactivateDarkTheme()
+  removeLegacyFilter()
 }

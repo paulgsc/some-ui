@@ -1,85 +1,81 @@
-/* repaint.css */
+/* prepaint.css */
 
-/* document_start prepaint shell */
+/* document_start prepaint veil */
 
 /*
   Goal:
-  - eliminate white flashes before site theme stabilizes
-  - avoid transparent punch-through
-  - keep browser dark canvas visible underneath
-  - safely disengage after real paint stabilizes
+  - eliminate white flashes before the site theme stabilizes
+  - do NOT restyle vendor elements (so classification can read true vendor
+    computed styles while the veil is up)
+  - keep a solid dark canvas visible on top until the content script commits
+
+  The veil is a single overlay element (#__sw_prepaint_veil) created at
+  document_start and anchored to <html> (not <body>) so that body.innerHTML
+  replacements cannot remove it. It is promoted to the top layer via the popover
+  API when available; the fixed/max-z rules below are the fallback and also style
+  the popover box itself. It is never an ancestor of vendor DOM, so it cannot
+  poison getComputedStyle on the page.
+
+  Dirty-by-default backstop
+  ─────────────────────────
+  prepaint-start.js adds html.sw-dirty at document_start. The rule below targets
+  body directly so that even if the veil element is removed (e.g. by a
+  document.documentElement.replaceChildren call) the body canvas stays black.
+  disablePrepaint() removes sw-dirty first, then tears down the veil element, so
+  the backstop is released atomically with intentional veil teardown.
+
+  Under the legacy invert filter the entire <html> is inverted. The veil is
+  deliberately white in that mode (so inversion produces black). We mirror that
+  here: the body backstop must also be white so it inverts to black.
 */
 
-/*
-  Sentinel custom property — content scripts locate this specific stylesheet
-  by checking for this property, allowing them to toggle sheet.disabled for
-  prepaint-suppressed classification without touching the DOM attribute.
-*/
-:root {
-  --sw-prepaint-sheet: 1;
-}
-
-html[data-sw-prepaint],
-html[data-sw-prepaint] body {
-  background-color: #0d1117 !important;
+/* Dirty-by-default: body stays black until we explicitly release it. */
+html.sw-dirty > body {
+  background-color: #000 !important;
   color-scheme: dark !important;
-  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
-    contrast(0.92) !important;
 }
 
-/*
-  Keep body dark (not transparent) so it acts as a solid dark canvas.
-  Child containers are transparent so they inherit this substrate instead
-  of their own vendor-set white backgrounds — avoiding punch-through to a
-  white stacking context that would leak through the invert filter.
-*/
-
-html[data-sw-prepaint] div,
-html[data-sw-prepaint] section,
-html[data-sw-prepaint] main,
-html[data-sw-prepaint] article,
-html[data-sw-prepaint] aside,
-html[data-sw-prepaint] header,
-html[data-sw-prepaint] footer,
-html[data-sw-prepaint] nav {
-  background-color: transparent !important;
+/* Mirror the veil's colour-inversion correction for the legacy filter path. */
+html[data-sw-legacy].sw-dirty > body {
+  background-color: #fff !important;
+  color-scheme: light !important;
 }
 
-/*
-  Common offenders.
-*/
+#__sw_prepaint_veil,
+#__sw_prepaint_veil:popover-open {
+  background-color: black;
+  border: 0;
+  color-scheme: dark;
+  height: 100vh;
+  inset: 0;
+  margin: 0;
+  max-height: 100vh;
+  max-width: 100vw;
+  overflow: hidden;
+  padding: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 100vw;
 
-html[data-sw-prepaint] [style*="background:#fff"],
-html[data-sw-prepaint] [style*="background: #fff"],
-html[data-sw-prepaint] [style*="background:white"],
-html[data-sw-prepaint] [style*="background: white"],
-html[data-sw-prepaint] [style*="background-color:#fff"],
-html[data-sw-prepaint] [style*="background-color: #fff"],
-html[data-sw-prepaint] [style*="background-color:white"],
-html[data-sw-prepaint] [style*="background-color: white"] {
-  background: transparent !important;
-  background-color: transparent !important;
+  /* Fallback stacking for the non-top-layer path. */
+  z-index: 2147483647;
 }
 
-/*
-  Preserve media/compositor layers.
+/* When the legacy filter is applied to <html>, it flips the colors. 
+  Setting the background to white here means the inversion turns it back to black perfectly.
 */
-
-html[data-sw-prepaint] img,
-html[data-sw-prepaint] video,
-html[data-sw-prepaint] canvas,
-html[data-sw-prepaint] picture,
-html[data-sw-prepaint] svg {
-  background-color: transparent !important;
+html[data-sw-legacy] #__sw_prepaint_veil,
+html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
+  background-color: white !important;
+  color-scheme: light !important;
 }
 
-/*
-  Optional:
-  reduce harsh transitions during hydration.
-*/
+/* When the element is promoted to the top layer, its backdrop should also be
+   the dark canvas so nothing light shows through at the edges. */
+#__sw_prepaint_veil::backdrop {
+  background-color: black; /* Note: changed from green to black to match standard veil, but update to white under the guard if needed */
+}
 
-html[data-sw-prepaint] {
-  transition:
-    background-color 80ms linear,
-    color 80ms linear;
+html[data-sw-legacy] #__sw_prepaint_veil::backdrop {
+  background-color: white !important;
 }
