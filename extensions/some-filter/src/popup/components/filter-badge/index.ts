@@ -1,3 +1,5 @@
+import { svgNode } from "@filter/popup/svg"
+
 export type FilterBadgeProps = {
   filteredCount: number
   selectedCount: number
@@ -16,9 +18,11 @@ export function FilterBadge({
 
   const iconWrap = document.createElement("div")
   iconWrap.className = "filter-badge__icon"
-  iconWrap.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-  </svg>`
+  iconWrap.appendChild(
+    svgNode(
+      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`
+    )
+  )
 
   const title = document.createElement("span")
   title.className = "filter-badge__title"
@@ -47,9 +51,11 @@ export function FilterBadge({
   refreshBtn.className = "filter-badge__refresh"
   refreshBtn.setAttribute("title", "Refresh tabs")
   refreshBtn.setAttribute("aria-label", "Refresh tabs")
-  refreshBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-  </svg>`
+  refreshBtn.appendChild(
+    svgNode(
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`
+    )
+  )
   refreshBtn.addEventListener("click", () => window.location.reload())
 
   el.appendChild(iconWrap)
