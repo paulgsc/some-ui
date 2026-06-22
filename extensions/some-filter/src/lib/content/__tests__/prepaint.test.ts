@@ -4,49 +4,105 @@ import {
   commitVisualState,
   disablePrepaint,
   enablePrepaint,
-  PREPAINT_ATTR,
+  PREPAINT_VEIL_ID,
   withPrepaintSuppressed,
 } from "../prepaint"
 
-describe("enablePrepaint / disablePrepaint", () => {
-  it("enablePrepaint sets the data-sw-prepaint attribute on html", () => {
+afterEach(() => {
+  document.getElementById(PREPAINT_VEIL_ID)?.remove()
+  document.documentElement.classList.remove("sw-dirty")
+  document.head.querySelectorAll("style").forEach((el) => el.remove())
+})
+
+describe("enablePrepaint", () => {
+  it("creates the overlay veil element", () => {
     enablePrepaint()
-    expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(true)
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    expect(veil).not.toBeNull()
+    expect(veil?.tagName).toBe("DIV")
   })
 
-  it("disablePrepaint removes the data-sw-prepaint attribute from html", () => {
-    document.documentElement.setAttribute(PREPAINT_ATTR, "")
+  it("marks the veil [data-my-ext] so the detector/patcher skip it", () => {
+    enablePrepaint()
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    expect(veil?.hasAttribute("data-my-ext")).toBe(true)
+  })
+
+  it("is idempotent — a second call does not create a duplicate", () => {
+    enablePrepaint()
+    enablePrepaint()
+    expect(document.querySelectorAll(`#${PREPAINT_VEIL_ID}`)).toHaveLength(1)
+  })
+
+  it("anchors the veil to documentElement so body mutations cannot remove it", () => {
+    enablePrepaint()
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    expect(veil?.parentElement).toBe(document.documentElement)
+  })
+
+  it("adds sw-dirty class to html to activate the CSS backstop", () => {
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+  })
+
+  it("sw-dirty is added even when a veil element already exists", () => {
+    document.documentElement.classList.remove("sw-dirty")
+    enablePrepaint() // creates veil
+    disablePrepaint() // removes both class and veil
+    // Simulate a re-enable (e.g. SPA navigation)
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+  })
+})
+
+describe("disablePrepaint", () => {
+  it("removes the overlay veil", () => {
+    enablePrepaint()
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
     disablePrepaint()
-    expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
+
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
   })
 
-  it("disablePrepaint is a no-op when the attribute is already absent", () => {
+  it("removes sw-dirty class from html", () => {
+    enablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+
+    disablePrepaint()
+
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(false)
+  })
+
+  it("is a no-op when no veil exists", () => {
     expect(() => disablePrepaint()).not.toThrow()
-    expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("removes sw-dirty even when no veil element is present", () => {
+    document.documentElement.classList.add("sw-dirty")
+    disablePrepaint()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(false)
   })
 })
 
 describe("commitVisualState", () => {
-  it("removes data-sw-prepaint after two rAFs", () => {
-    document.documentElement.setAttribute(PREPAINT_ATTR, "")
+  it("removes the veil after two rAFs", () => {
+    enablePrepaint()
     commitVisualState()
     // vitest.setup.ts stubs rAF to execute synchronously,
     // so both nested rAFs fire immediately.
-    expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
   })
 })
 
 describe("withPrepaintSuppressed", () => {
-  afterEach(() => {
-    document.head.querySelectorAll("style").forEach((el) => el.remove())
-  })
-
   it("returns the value produced by fn", () => {
     expect(withPrepaintSuppressed(() => 42)).toBe(42)
   })
 
   it("returns the object produced by fn (referential equality)", () => {
-    const obj = { isLight: true }
+    const obj = { alreadyDark: true }
     expect(withPrepaintSuppressed(() => obj)).toBe(obj)
   })
 
@@ -56,6 +112,15 @@ describe("withPrepaintSuppressed", () => {
       styleCountDuringFn = document.head.querySelectorAll("style").length
     })
     expect(styleCountDuringFn).toBe(1)
+  })
+
+  it("the freeze style is marked [data-my-ext]", () => {
+    let marked = false
+    withPrepaintSuppressed(() => {
+      const style = document.head.querySelector("style")
+      marked = style?.hasAttribute("data-my-ext") ?? false
+    })
+    expect(marked).toBe(true)
   })
 
   it("removes the transition-freeze style after fn returns", () => {
@@ -82,69 +147,14 @@ describe("withPrepaintSuppressed", () => {
     ).toThrow("test error")
   })
 
-  it("always calls fn — there is no sheet-lookup failure mode anymore", () => {
-    let called = false
+  it("does not touch the veil — vendor styles are read with the veil up", () => {
+    enablePrepaint()
+    let veilPresentDuringFn = false
     withPrepaintSuppressed(() => {
-      called = true
+      veilPresentDuringFn = document.getElementById(PREPAINT_VEIL_ID) !== null
     })
-    expect(called).toBe(true)
-  })
-
-  describe("attribute-based suppression (replaces deleted sheet-object strategy)", () => {
-    // Root cause: document.styleSheets never enumerated the manifest-injected
-    // prepaint.css sheet under Chrome MV3 content-script CSS injection — a
-    // 60-frame polling probe against a real browser showed it flat at 0
-    // indefinitely, even though the CSS rules demonstrably applied (a
-    // cascade sentinel custom property went live within one animation
-    // frame). Suppression now operates purely on the data-sw-prepaint
-    // attribute, which prepaint.css's selectors are entirely gated on.
-    // These tests cover the same invariants the old sheet.disabled tests
-    // covered, expressed against the attribute instead.
-
-    it("removes the prepaint attribute before fn runs", () => {
-      document.documentElement.setAttribute(PREPAINT_ATTR, "")
-
-      let attrPresentDuringFn = true
-
-      withPrepaintSuppressed(() => {
-        attrPresentDuringFn =
-          document.documentElement.hasAttribute(PREPAINT_ATTR)
-      })
-
-      expect(attrPresentDuringFn).toBe(false)
-    })
-
-    it("keeps the attribute permanently removed after fn returns", () => {
-      // Re-adding the attribute after classification would allow the
-      // patchObserver to see SPA nodes under prepaint's `transparent
-      // !important` rules, sample near-zero luminance, and permanently
-      // tag them `preserve` — exposing white backgrounds after veil drop.
-      document.documentElement.setAttribute(PREPAINT_ATTR, "")
-
-      withPrepaintSuppressed(() => {})
-
-      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
-    })
-
-    it("keeps the attribute removed even when fn throws", () => {
-      document.documentElement.setAttribute(PREPAINT_ATTR, "")
-
-      try {
-        withPrepaintSuppressed(() => {
-          throw new Error()
-        })
-      } catch {
-        // expected
-      }
-
-      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
-    })
-
-    it("is a no-op (not an error) when the attribute was never present", () => {
-      document.documentElement.removeAttribute(PREPAINT_ATTR)
-
-      expect(() => withPrepaintSuppressed(() => {})).not.toThrow()
-      expect(document.documentElement.hasAttribute(PREPAINT_ATTR)).toBe(false)
-    })
+    expect(veilPresentDuringFn).toBe(true)
+    // and it is still present after — teardown is the caller's job
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
   })
 })

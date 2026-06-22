@@ -66,7 +66,7 @@ test.describe("pre-release smoke check (manual only — see file header)", () =>
 
     expect(snap.themeApplied).toBe("dark")
     expect(snap.hasDarkAttr).toBe(true)
-    expect(snap.hasPrepaintAttr).toBe(false)
+    expect(snap.hasPrepaintVeil).toBe(false)
   })
 
   test("cold load on a dark page: theme does not apply, veil still drops", async ({
@@ -77,6 +77,6 @@ test.describe("pre-release smoke check (manual only — see file header)", () =>
 
     expect(snap.themeApplied).toBe("none")
     expect(snap.hasDarkAttr).toBe(false)
-    expect(snap.hasPrepaintAttr).toBe(false)
+    expect(snap.hasPrepaintVeil).toBe(false)
   })
 })

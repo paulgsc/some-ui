@@ -213,7 +213,7 @@ function matchesFilter(tab: TabEntry, filter: string): boolean {
 function render(): void {
   const root = document.getElementById("app")
   if (!root) return
-  root.innerHTML = ""
+  root.replaceChildren()
 
   const visibleGroups = state.groups.map((g) => ({
     ...g,

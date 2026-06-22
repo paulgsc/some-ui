@@ -37,9 +37,8 @@ export type FilterDebug = {
   luminance: string | undefined
   tabState: string | undefined
   hasDarkAttr: boolean
-  hasPrepaintAttr: boolean
-  /** null = no prepaint sheet found in document.styleSheets */
-  prepaintSheetDisabled: boolean | null
+  /** the overlay veil element is still present in the DOM */
+  hasPrepaintVeil: boolean
 }
 
 // ── Classification poller ─────────────────────────────────────────────────────
@@ -62,17 +61,12 @@ export async function waitForClassification(
   )
 
   return page.evaluate((): FilterDebug => {
-    const sheets = Array.from(document.styleSheets)
-    const prepaint = sheets.find((s) => s.href?.endsWith("prepaint.css"))
-
     return {
       themeApplied: document.body.dataset["swThemeApplied"],
       luminance: document.body.dataset["swLuminance"],
       tabState: document.body.dataset["swTabState"],
       hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
-      hasPrepaintAttr:
-        document.documentElement.hasAttribute("data-sw-prepaint"),
-      prepaintSheetDisabled: prepaint ? prepaint.disabled : null,
+      hasPrepaintVeil: document.getElementById("__sw_prepaint_veil") !== null,
     }
   })
 }

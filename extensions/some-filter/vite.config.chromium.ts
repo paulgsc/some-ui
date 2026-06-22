@@ -14,13 +14,27 @@
 import { resolve } from "path"
 import { defineConfig } from "vite"
 
+// Content scripts and the MV3 service worker are loaded as standalone files
+// listed in the manifest — they cannot resolve a shared ES import chunk. When a
+// module is imported by more than one entry (e.g. lib/tab-state), rollup would
+// hoist it into its own chunk. To keep every entry self-contained we build one
+// entry per invocation (BUILD_TARGET) so shared modules are inlined into each.
+// package.json's build:chromium orchestrates the passes; BUILD_CLEAN=1 marks the
+// first pass that may wipe dist.
+const ENTRIES: Record<string, string> = {
+  content: resolve(__dirname, "src/content/content.ts"),
+  background: resolve(__dirname, "src/background/background.ts"),
+}
+
+const TARGET = process.env["BUILD_TARGET"]
+const input =
+  TARGET && ENTRIES[TARGET] ? { [TARGET]: ENTRIES[TARGET] } : ENTRIES
+
 export default defineConfig({
   build: {
+    emptyOutDir: process.env["BUILD_CLEAN"] === "1" || !TARGET,
     rollupOptions: {
-      input: {
-        content: resolve(__dirname, "src/content/content.ts"),
-        background: resolve(__dirname, "src/background/background.ts"),
-      },
+      input,
       output: {
         manualChunks: () => {},
         entryFileNames: (chunkInfo) => {
@@ -33,7 +47,6 @@ export default defineConfig({
       },
     },
     outDir: "dist",
-    emptyOutDir: true,
   },
   resolve: {
     alias: {
