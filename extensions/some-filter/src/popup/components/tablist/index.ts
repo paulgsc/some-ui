@@ -1,4 +1,5 @@
 import type { WindowGroupHeaderProps } from "@filter/popup/components/window-group-header"
+import { svgNode } from "@filter/popup/svg"
 import type { TabEntry, WindowGroup } from "@filter/types/popup"
 
 export type TabListProps = {
@@ -11,10 +12,7 @@ export type TabListProps = {
   WindowGroupHeader: (props: WindowGroupHeaderProps) => HTMLElement
 }
 
-const getFaviconSvg = (): string => `
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-  </svg>`
+const FAVICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`
 
 function buildTabRow(
   tab: TabEntry,
@@ -32,7 +30,11 @@ function buildTabRow(
   const checkbox = document.createElement("div")
   checkbox.className = `tab-row__checkbox ${selected ? "tab-row__checkbox--checked" : ""}`
   if (selected) {
-    checkbox.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+    checkbox.appendChild(
+      svgNode(
+        `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+      )
+    )
   }
 
   // Favicon logic
@@ -44,11 +46,11 @@ function buildTabRow(
     img.width = 14
     img.height = 14
     img.onerror = (): void => {
-      favicon.innerHTML = getFaviconSvg()
+      favicon.replaceChildren(svgNode(FAVICON_SVG))
     }
     favicon.append(img)
   } else {
-    favicon.innerHTML = getFaviconSvg()
+    favicon.appendChild(svgNode(FAVICON_SVG))
   }
 
   // Content
@@ -77,7 +79,7 @@ function buildTabRow(
     const b = document.createElement("span")
     b.className = `badge ${className}`
     b.title = title
-    b.innerHTML = icon
+    b.appendChild(svgNode(icon))
     badges.append(b)
   }
 

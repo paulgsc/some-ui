@@ -16,9 +16,22 @@
  * The element is created at document_start by prepaint-start.js; its styles live
  * in prepaint.css (gated on the element id), so it paints the instant it is
  * inserted. It carries [data-my-ext] so the detector and patcher both skip it.
+ *
+ * Rerender resilience
+ * ───────────────────
+ * The veil is anchored to document.documentElement (<html>), not document.body.
+ * This means body.innerHTML replacements cannot remove the veil. A secondary CSS
+ * backstop in prepaint.css (html.sw-dirty > body { background: #000 }) ensures
+ * the body canvas stays black even if the veil element itself is removed.
+ *
+ * The sw-dirty class on <html> is the ownership signal:
+ *   enablePrepaint()  → adds sw-dirty + creates veil element
+ *   disablePrepaint() → removes sw-dirty first (prevents self-healing observer
+ *                       from re-creating) then removes veil element
  */
 
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
+const DIRTY_CLASS = "sw-dirty"
 
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
@@ -29,8 +42,13 @@ function getVeil(): HTMLElement | null {
  * (e.g. the one inserted by prepaint-start.js). Uses the top layer via the
  * popover API when available so vendor stacking contexts cannot paint over it,
  * falling back to the plain fixed/max-z element styled by prepaint.css.
+ *
+ * Anchors the veil to document.documentElement so vendor body mutations cannot
+ * remove it. Also adds the sw-dirty class which activates the CSS backstop.
  */
 export function enablePrepaint(): void {
+  document.documentElement.classList.add(DIRTY_CLASS)
+
   if (getVeil()) return
 
   const veil = document.createElement("div")
@@ -38,7 +56,10 @@ export function enablePrepaint(): void {
   veil.setAttribute("data-my-ext", "")
   veil.setAttribute("popover", "manual")
 
-  document.body.appendChild(veil)
+  // Anchor to <html>, not <body>. Body replacements by vendor SPAs cannot
+  // remove a sibling of <body>; only a full documentElement.replaceChildren
+  // could do so, and the CSS backstop covers that extreme case.
+  document.documentElement.appendChild(veil)
 
   try {
     veil.showPopover()
@@ -51,8 +72,16 @@ export function enablePrepaint(): void {
 /**
  * Remove the overlay veil, returning the page to normal compositing. Safe to
  * call when no veil exists.
+ *
+ * Removes sw-dirty before the veil element so the self-healing MutationObserver
+ * in prepaint-start.js sees the class gone and does not re-create the veil after
+ * this intentional teardown.
  */
 export function disablePrepaint(): void {
+  // Remove dirty class first — this is what the self-healing observer checks
+  // to distinguish intentional teardown from an accidental vendor removal.
+  document.documentElement.classList.remove(DIRTY_CLASS)
+
   const veil = getVeil()
   if (!veil) return
   try {

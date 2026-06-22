@@ -1,3 +1,5 @@
+import { svgNode } from "@filter/popup/svg"
+
 export type ActionBarProps = {
   selectedCount: number
   statusFilter: string | null
@@ -48,7 +50,13 @@ export function ActionBar({
     const btn = document.createElement("button")
     const isActive = statusFilter === value
     btn.className = `action-bar__pill ${isActive ? "action-bar__pill--active" : ""}`
-    btn.innerHTML = icon ? `${icon}<span>${label}</span>` : label
+    if (icon) {
+      const labelSpan = document.createElement("span")
+      labelSpan.textContent = label
+      btn.replaceChildren(svgNode(icon), labelSpan)
+    } else {
+      btn.textContent = label
+    }
     btn.onclick = (): void => onStatusFilterChange(isActive ? null : value)
     return btn
   }
@@ -64,22 +72,39 @@ export function ActionBar({
 
   const selectAllBtn = document.createElement("button")
   selectAllBtn.className = "action-bar__ctrl"
-  selectAllBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Select All</span>`
+  const selectAllLabel = document.createElement("span")
+  selectAllLabel.textContent = "Select All"
+  selectAllBtn.replaceChildren(
+    svgNode(
+      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`
+    ),
+    selectAllLabel
+  )
   selectAllBtn.onclick = onSelectAll
 
   const deselectBtn = document.createElement("button")
   deselectBtn.className = "action-bar__ctrl"
-  deselectBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span>Deselect</span>`
+  const deselectLabel = document.createElement("span")
+  deselectLabel.textContent = "Deselect"
+  deselectBtn.replaceChildren(
+    svgNode(
+      `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`
+    ),
+    deselectLabel
+  )
   deselectBtn.onclick = onDeselect
 
   const applyBtn = document.createElement("button")
   const hasSelection = selectedCount > 0
   applyBtn.className = `action-bar__apply ${hasSelection ? "action-bar__apply--active" : ""}`
-  applyBtn.innerHTML = `
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-    </svg>
-    <span>Apply Filter${hasSelection ? ` (${selectedCount})` : ""}</span>`
+  const applyLabel = document.createElement("span")
+  applyLabel.textContent = `Apply Filter${hasSelection ? ` (${selectedCount})` : ""}`
+  applyBtn.replaceChildren(
+    svgNode(
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`
+    ),
+    applyLabel
+  )
   applyBtn.onclick = onApply
 
   ctrlRow.append(selectAllBtn, deselectBtn, applyBtn)
