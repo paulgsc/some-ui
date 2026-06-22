@@ -26,11 +26,14 @@ type RuntimeListener<K extends keyof RuntimeEventMap> = (
  *
  * Extension-specific rules enforced here:
  *
- *   - On Suspended: shadow host hidden, pointer-events disabled.
- *     Callers (ConveyorEngine) must separately suspend their rAF loop.
- *     The runtime only controls visibility — it does not own the rAF.
+ *   - On Suspended (hidden tab, focused window, or fullscreen): the overlay
+ *     fades out, goes click-through, and detaches from layout/paint, so it
+ *     never burns CPU or intercepts clicks behind a page the user is reading.
+ *     Callers (ConveyorEngine) must separately suspend their rAF loop — the
+ *     runtime owns the visible surface, not the rAF.
  *
- *   - On Active/Reduced: shadow host visible, pointer-events enabled.
+ *   - On Active/Reduced (a foreground tab in a blurred window — the capture
+ *     case): shadow host visible and interactive, belt running.
  *
  *   - Runtime is a singleton per content script execution.
  *     If the same page reloads or SPA navigates, dispose() and recreate.
@@ -96,10 +99,15 @@ export class CoexistenceRuntime implements Disposable {
     this.emit("attentionChange", mode)
   }
 
+  /**
+   * Drive the host surface off the single attention mode. Suspended — a hidden
+   * tab, a *focused* window, or fullscreen — yields: the overlay fades out, goes
+   * click-through, and detaches from layout (ShadowHost.setActive). Active or
+   * Reduced keep it live. The belt's rAF is suspended/resumed off the same
+   * attentionChange event, so a yielded overlay costs nothing.
+   */
   private applyMode(mode: AttentionMode): void {
-    const visible = mode !== "Suspended"
-    this.shadowHost.setVisibility(visible)
-    this.shadowHost.setPointerEvents(visible)
+    this.shadowHost.setActive(mode !== "Suspended")
   }
 
   private emit<K extends keyof RuntimeEventMap>(

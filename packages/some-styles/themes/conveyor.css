@@ -1,0 +1,122 @@
+/* ============================================================
+   CONVEYOR THEME — Steel transport system
+   ------------------------------------------------------------
+   The shared design floor for the `some-conveyor` extension: a
+   machined steel control surface with three semantic accents —
+     signal  scheduler tick / caution   (amber)
+     live    in-window / online         (teal)
+     alert   failed / down              (coral)
+   and instrumentation typography (display / mono / sans).
+
+   Two layers of tokens live here:
+     1. Raw conveyor tokens (`--cv-*`) — the literal steel ramp,
+        ink ramp and semantics, reproduced verbatim from the design
+        intent. These are what the extension's cube/face/strip
+        ThemeEngine contract maps onto (see extensions/some-conveyor).
+     2. The shadcn token contract (`--background`, `--card`, …) mapped
+        onto the raw tokens, so the shared preset utilities
+        (`bg-card`, `text-muted-foreground`, `border-border`, …) and
+        shortcuts resolve under `.conveyor`.
+
+   Values are kept as hex (not oklch) to reproduce the intent palette
+   exactly; CSS custom properties are colour-space agnostic.
+
+   Typography: families resolve through the shared `--font-*` tokens
+   (see tokens/base.css). `.conveyor` opts into the brand families with
+   robust fallback stacks. Delivery is shadow-DOM-safe — NO runtime
+   web-font `<link>` (the extension injects into arbitrary host pages
+   inside a closed shadow root). Until the woff2 set is self-hosted,
+   the fallback stacks apply; self-hosting is a documented follow-up
+   (add @font-face + assets, then these stacks degrade gracefully).
+   ============================================================ */
+
+.conveyor {
+  /* ── Raw steel substrate ──────────────────────────────────── */
+  --cv-steel-950: #0a0d12;
+  --cv-steel-900: #0c0f14;
+  --cv-steel-850: #10141b;
+  --cv-steel-800: #141922;
+  --cv-steel-700: #1a2029;
+  --cv-steel-650: #212834;
+  --cv-steel-600: #28313e;
+  --cv-steel-550: #323d4c;
+  --cv-line: #39444f;
+
+  /* ── Raw ink ramp ─────────────────────────────────────────── */
+  --cv-ink: #e9eef3;
+  --cv-ink-2: #aab6c4;
+  --cv-ink-3: #717f8e;
+
+  /* ── Raw semantics (used with restraint) ──────────────────── */
+  --cv-signal: #f4b740; /* scheduler tick / caution */
+  --cv-live: #5fd1bb; /* in-window / online */
+  --cv-alert: #e8745c; /* failed / down */
+
+  /* ── Typography — brand families, shadow-safe fallback stacks ─ */
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo",
+    "Consolas", monospace;
+
+  /* ── shadcn contract → steel mapping ──────────────────────── */
+  --background: var(--cv-steel-900);
+  --foreground: var(--cv-ink);
+  --card: var(--cv-steel-800);
+  --card-foreground: var(--cv-ink);
+  --popover: var(--cv-steel-700);
+  --popover-foreground: var(--cv-ink);
+  --secondary: var(--cv-steel-700);
+  --secondary-foreground: var(--cv-ink-2);
+  --muted: var(--cv-steel-650);
+  --muted-foreground: var(--cv-ink-3);
+  --accent: var(--cv-steel-650);
+  --accent-foreground: var(--cv-ink);
+
+  /* signal is the brand accent — the scheduler is the authority. */
+  --primary: var(--cv-signal);
+  --primary-foreground: var(--cv-steel-950);
+  --destructive: var(--cv-alert);
+  --destructive-foreground: var(--cv-steel-950);
+  --border: var(--cv-line);
+  --input: var(--cv-steel-600);
+  --ring: var(--cv-signal);
+
+  /* ── Sidebar (mirrors the steel surfaces) ─────────────────── */
+  --sidebar: var(--cv-steel-850);
+  --sidebar-foreground: var(--cv-ink-2);
+  --sidebar-primary: var(--cv-signal);
+  --sidebar-primary-foreground: var(--cv-steel-950);
+  --sidebar-accent: var(--cv-steel-700);
+  --sidebar-accent-foreground: var(--cv-ink);
+  --sidebar-border: var(--cv-line);
+  --sidebar-ring: var(--cv-signal);
+
+  /* ── Surface / code extras ────────────────────────────────── */
+  --surface: var(--cv-steel-800);
+  --surface-foreground: var(--cv-ink-2);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: var(--cv-steel-700);
+  --code-number: var(--cv-ink-3);
+  --selection: var(--cv-signal);
+  --selection-foreground: var(--cv-steel-950);
+
+  /* ── Charts — semantics first, then steel tones ───────────── */
+  --chart-1: var(--cv-signal);
+  --chart-2: var(--cv-live);
+  --chart-3: var(--cv-alert);
+  --chart-4: var(--cv-ink-2);
+  --chart-5: var(--cv-steel-550);
+
+  /* ── Status tokens (shared convention with the scheduler theme) ─ */
+  --status-ok: var(--cv-live);
+  --status-warn: var(--cv-signal);
+  --status-err: var(--cv-alert);
+
+  /* ── Radius — machined, modest corners ────────────────────── */
+  --radius: 0.375rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

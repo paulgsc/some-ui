@@ -13,6 +13,7 @@ export {
   presetSomeUi,
   type PresetSomeUiOptions,
   colors,
+  fontFamily,
   radius,
   someUiTheme,
 } from "./preset"

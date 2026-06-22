@@ -58,6 +58,6 @@ export const presetSomeUi = definePreset(
 export default presetSomeUi
 
 export { shortcuts } from "./shortcuts"
-export { colors, radius, someUiTheme } from "./theme"
+export { colors, fontFamily, radius, someUiTheme } from "./theme"
 export type { ThemeKind, ThemeMeta } from "./themes"
 export { appThemes, colorThemes, themeIds, themes } from "./themes"

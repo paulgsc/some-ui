@@ -1,26 +1,17 @@
-import {
-  faceContainer,
-  terminalEl,
-  terminalLabel,
-  terminalValue,
-} from "@conveyor/components/terminal"
+import { cellNode, ProjectionCell } from "@conveyor/components/projection-cell"
 
 export type ClockProps = { time: string; date: string }
 
 export function ClockFace(props: ClockProps): HTMLElement {
-  const container = faceContainer("sc-face-clock", { align: "start" })
+  // Time reads as instrumentation — mono + tabular figures.
+  const time = cellNode("span", "font-mono tabular-nums")
+  time.textContent = props.time
 
-  const time = terminalValue(props.time, {
-    bright: true,
-    size: "text-[20px]",
-    cls: "tabular-nums",
+  return ProjectionCell({
+    tag: "LOCAL TIME",
+    status: "live",
+    body: time,
+    emphasizeBody: true,
+    meta: props.date,
   })
-  const date = terminalEl(
-    "span",
-    "text-[10px] text-[var(--face-text-secondary)]"
-  )
-  date.textContent = props.date
-
-  container.append(terminalLabel("LOCAL TIME"), time, date)
-  return container
 }

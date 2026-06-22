@@ -7,9 +7,10 @@
  * static CSS by @unocss/cli. What remains here is only what has no utility
  * equivalent or must be themeable at runtime:
  *   - themed colors/borders/fonts driven by the ThemeEngine custom-property
- *     contract (--face-bg, --strip-bg, …) — preserved so terminal theming works,
+ *     contract (--face-bg, --strip-bg, …) — preserved so steel theming works
+ *     and the canonical --cv-* palette is surfaced on :host,
  *   - 3-D primitives (preserve-3d, backface-visibility) and the cube transition,
- *   - face state rules (--active / --hovered) and the scan-line / corner effects,
+ *   - face state rules (--active / --hovered) and the corner accent,
  *   - keyframes and the reduced-motion guard.
  * ─────────────────────────────────────────────────────────────────── */
 
@@ -26,6 +27,32 @@
 :host {
   --spacing: 0.25rem;
   --un-text-opacity: 100%;
+
+  /* Canonical steel palette + brand typography surfaced into the shadow scope.
+   * Source of truth: @some-ui/styles/themes/conveyor.css (`.conveyor`). The
+   * page's :root tokens don't cross the shadow boundary, so the `--cv-*` tokens
+   * the SteelTheme contract maps onto are mirrored here. If the shared theme
+   * CSS is ever injected into the shadow root as a web-accessible resource,
+   * this block can be dropped. */
+  --cv-steel-950: #0a0d12;
+  --cv-steel-900: #0c0f14;
+  --cv-steel-850: #10141b;
+  --cv-steel-800: #141922;
+  --cv-steel-700: #1a2029;
+  --cv-steel-650: #212834;
+  --cv-steel-600: #28313e;
+  --cv-steel-550: #323d4c;
+  --cv-line: #39444f;
+  --cv-ink: #e9eef3;
+  --cv-ink-2: #aab6c4;
+  --cv-ink-3: #717f8e;
+  --cv-signal: #f4b740;
+  --cv-live: #5fd1bb;
+  --cv-alert: #e8745c;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo",
+    "Consolas", monospace;
 }
 
 /* ── Cube — 3-D + rotation transition (layout is utilities on the element) ── */
@@ -50,22 +77,22 @@
   /* Backfaces stay visible: with opaque face backgrounds the cube reads as a
    * solid dice from every angle. Hiding them would make the box hollow. */
   backface-visibility: visible;
-  background: var(--face-bg, #0d120d);
-  border: 1px solid var(--face-border, #1c2e1c);
+  background: var(--face-bg, #212834);
+  border: 1px solid var(--face-border, #323d4c);
   border-radius: 4px;
-  color: var(--face-text, #4a7c4a);
+  color: var(--face-text, #aab6c4);
 
   /* Default face text styles — content elements inherit these. */
-  font-family: var(--face-font, "Courier New", monospace);
-  font-size: var(--face-font-size, 11px);
-  line-height: var(--face-line-height, 1.5);
+  font-family: var(--face-font, "Inter", ui-sans-serif, sans-serif);
+  font-size: var(--face-font-size, 13px);
+  line-height: var(--face-line-height, 1.3);
 }
 
 .sc-face--active {
-  background: var(--face-bg-active, #0a1a0a);
-  border-color: var(--face-border-active, #00ff41);
+  background: var(--face-bg-active, #28313e);
+  border-color: var(--face-border-active, #f4b740);
   box-shadow: var(--face-glow-active, none);
-  color: var(--face-text-active, #00ff41);
+  color: var(--face-text-active, #e9eef3);
 }
 
 /* ── Content fade ─────────────────────────────────────────────────────────
@@ -84,7 +111,7 @@
 }
 
 .sc-face--hovered {
-  border-color: var(--face-border-active, #00ff41);
+  border-color: var(--face-border-active, #f4b740);
   opacity: 0.9;
 }
 
@@ -92,8 +119,64 @@
 
 .sc-strip {
   backdrop-filter: var(--strip-backdrop, blur(8px));
-  background: var(--strip-bg, rgb(6 10 6 / 92%));
-  border-top: var(--strip-border-top, 1px solid #1a2e1a);
+  background: var(--strip-bg, rgb(16 20 27 / 92%));
+  border-top: var(--strip-border-top, 1px solid #39444f);
+}
+
+/* ── Belt depth — the strip reads as a transport channel ──────────────────
+ * ::before — a moving belt-floor texture (segment ticks) along the base,
+ *            painted behind the cubes (which are later, positioned siblings).
+ * ::after  — the visibility window: cubes dissolve into the steel surface at
+ *            the dock edges as they enter/exit the viewport. Above the cubes. */
+
+.sc-strip::before {
+  animation: sc-floor 1.8s linear infinite;
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(255 255 255 / 2.5%) 0 2px,
+    transparent 2px 40px
+  );
+  border-top: 1px solid rgb(255 255 255 / 4%);
+  bottom: 0;
+  content: "";
+  height: 46px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.sc-strip::after {
+  background: linear-gradient(
+    90deg,
+    var(--cv-steel-850, #10141b) 0%,
+    transparent 12%,
+    transparent 88%,
+    var(--cv-steel-850, #10141b) 100%
+  );
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+/* ── Per-cube contact shadow on the belt floor ───────────────────────────── */
+
+.sc-cube-wrapper::after {
+  background: radial-gradient(
+    50% 60% at 50% 50%,
+    rgb(0 0 0 / 45%),
+    transparent 72%
+  );
+  bottom: -8px;
+  content: "";
+  height: 18px;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  translate: -50% 0;
+  width: 90%;
+  z-index: -1;
 }
 
 /* ── Face geometry transforms (set inline by CubeRenderer) ───────────── */
@@ -111,28 +194,11 @@
  * tall rect about Y — the opposite always stretches the side faces into slabs.
  */
 
-/* ── Scan-line effect on active face ─────────────────────────────────── */
-
-.sc-face--active::after {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgb(0 255 65 / 1.5%) 2px,
-    rgb(0 255 65 / 1.5%) 4px
-  );
-  border-radius: inherit;
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
 /* ── Corner accent on active face ────────────────────────────────────── */
 
 .sc-face--active::before {
-  border-right: 1px solid var(--face-border-active, #00ff41);
-  border-top: 1px solid var(--face-border-active, #00ff41);
+  border-right: 1px solid var(--face-border-active, #f4b740);
+  border-top: 1px solid var(--face-border-active, #f4b740);
   content: "";
   height: 6px;
   opacity: 0.8;
@@ -143,27 +209,118 @@
   width: 6px;
 }
 
-/* ── Cursor blink on active face ─────────────────────────────────────── */
+/* ── Belt-floor scroll ─────────────────────────────────────────────────── */
 
-@keyframes sc-cursor-blink {
-  0%,
-  100% {
-    opacity: 1;
+@keyframes sc-floor {
+  from {
+    transform: translateX(0);
   }
 
-  50% {
-    opacity: 0;
+  to {
+    transform: translateX(-40px);
   }
 }
 
-/* ── Reduced-motion: disable transitions ──────────────────────────────── */
+/* ── Control rail — live pulse dot ───────────────────────────────────────── */
+
+.sc-rail-pulse {
+  animation: sc-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sc-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(95 209 187 / 55%);
+  }
+
+  70% {
+    box-shadow: 0 0 0 7px rgb(95 209 187 / 0%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(95 209 187 / 0%);
+  }
+}
+
+/* ── Manifest ticker — masked edges + seamless scroll ────────────────────── */
+
+.sc-manifest {
+  background: var(--cv-steel-850);
+  border-left: 1px solid var(--cv-line);
+  border-right: 1px solid var(--cv-line);
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 5%,
+    #000 95%,
+    transparent
+  );
+}
+
+.sc-manifest-track {
+  animation: sc-slide 26s linear infinite;
+}
+
+@keyframes sc-slide {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Focus fade / yield ────────────────────────────────────────────────────
+ * The overlay is meant for a captured-but-unfocused tab (e.g. an OBS scene), so
+ * when the window regains focus it yields out of the user's way. This is the
+ * CSS half of the cake layer: the runtime only toggles `data-overlay-dimmed` on
+ * the shadow host (see ShadowHost.setActive) and then detaches the host once
+ * this fade has played; the opacity animation lives here.
+ *
+ * The cubes opt back into pointer events for clicks, so while the overlay is
+ * fading out — before the host is display:none'd — they are explicitly
+ * neutralised, otherwise a descendant `pointer-events: auto` would keep
+ * intercepting clicks on the page the user just returned to.
+ *
+ * `.sc-zone--dimmed` is the light-DOM equivalent the stories toggle to preview
+ * the same transition. */
+
+.sc-zone {
+  transition: opacity var(--overlay-fade-duration, 420ms)
+    var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+:host([data-overlay-dimmed]) .sc-zone,
+.sc-zone--dimmed {
+  opacity: 0;
+}
+
+:host([data-overlay-dimmed]) .sc-cube-wrapper,
+.sc-zone--dimmed .sc-cube-wrapper {
+  pointer-events: none;
+}
+
+/* ── Reduced-motion: disable transitions + belt-floor scroll ───────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .sc-cube {
     transition: none;
   }
 
+  .sc-zone {
+    transition: none;
+  }
+
   .sc-cube-wrapper {
     will-change: auto;
+  }
+
+  .sc-strip::before {
+    animation: none;
+  }
+
+  .sc-rail-pulse,
+  .sc-manifest-track {
+    animation: none;
   }
 }

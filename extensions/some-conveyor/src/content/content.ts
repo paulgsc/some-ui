@@ -20,11 +20,16 @@
 import { ext } from "@censor/platform/content"
 import { CoexistenceRuntime } from "@conveyor/lib/content/coexistence"
 import { ConveyorEngine } from "@conveyor/lib/content/conveyor-engine"
+import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
 import { EffectBus } from "@conveyor/lib/content/effect-bus"
 import { makeCubeFaceContents } from "@conveyor/lib/content/face-contents"
 import { ThemeEngine } from "@conveyor/lib/content/theme-engine"
 import { WasmBridge } from "@conveyor/lib/content/wasm-bridge"
-import type { FaceAction, ViewportItemSpec } from "@conveyor/types"
+import type {
+  AttentionMode,
+  FaceAction,
+  ViewportItemSpec,
+} from "@conveyor/types"
 import { DEFAULT_CONVEYOR_CONFIG } from "@conveyor/types"
 
 // ── Stylesheet URL ────────────────────────────────────────────────────────────
@@ -76,9 +81,21 @@ function makeViewportItems(_cubeId: string): Array<ViewportItemSpec> {
   }))
 }
 
+// ── Manifest segments (static placeholder) ──────────────────────────────────────
+// Display-only cargo manifest framing the cubes as scheduled content. Static for
+// now; a later logic-layer issue can derive these from the live schedule.
+const MANIFEST_SEGMENTS = [
+  { cube: "01", face: "front", source: "ci/some-ui", window: "6.0s" },
+  { cube: "02", face: "right", source: "nvda/journal", window: "9.0s" },
+  { cube: "03", face: "top", source: "kor/단어", window: "12.0s" },
+  { cube: "04", face: "back", source: "rss/rust-blog", window: "8.0s" },
+  { cube: "05", face: "front", source: "metric/mrr", window: "6.0s" },
+  { cube: "06", face: "bottom", source: "reminder/review", window: "9.0s" },
+] as const
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-async function init(): Promise<void> {
+function init(): void {
   if (runtime) return
 
   // Build the runtime (shadow DOM, page monitor, disposable registry).
@@ -95,10 +112,16 @@ async function init(): Promise<void> {
     // eslint-disable-next-line no-console
     .catch((e: unknown) => console.error("[some-conveyor] WASM init error:", e))
 
+  // Assemble the instrumentation zone (rail → manifest → belt) and mount it in
+  // the shadow root. The belt renders into the zone's belt mount. Rail/manifest
+  // values are static for now (typed seams for a later logic-layer issue).
+  const zone = buildConveyorZone({ manifestSegments: MANIFEST_SEGMENTS })
+  runtime.mountPoint.appendChild(zone.root)
+
   // Build the conveyor and register it for lifecycle management.
   conveyor = runtime.register(
     new ConveyorEngine(
-      runtime.mountPoint,
+      zone.beltMount,
       wasmBridge,
       themeEngine,
       effectBus,
@@ -109,16 +132,39 @@ async function init(): Promise<void> {
     )
   )
 
-  // Wire attention mode → conveyor suspend/resume.
-  runtime.on("attentionChange", (mode) => {
+  // The conveyor only runs for a foreground tab in a blurred window (see
+  // PageMonitor). Build the cube pool + begin the rAF loop lazily on the first
+  // such activation, so a tab that loads focused — the common case — renders
+  // nothing at all, and yields cleanly (rAF suspended) on every refocus.
+  let started = false
+  const activate = (mode: AttentionMode): void => {
+    if (!started) {
+      // Stay dormant until the first live moment — no pool, no frames.
+      if (mode === "Suspended") return
+      started = true
+      conveyor
+        ?.start()
+        // Reconcile against the live mode in case it changed during the
+        // async pool build (e.g. the window refocused).
+        .then(() =>
+          conveyor?.handleAttentionChange(runtime?.attentionMode ?? mode)
+        )
+        .catch((e: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error("[some-conveyor] conveyor start error:", e)
+        })
+      return
+    }
     conveyor?.handleAttentionChange(mode)
-  })
+  }
 
-  // Start the conveyor (builds cube pool, begins rAF loop).
-  await conveyor.start()
+  // Wire attention mode → lazy start / suspend / resume, then sync to the
+  // current state (only actually starts if we loaded live).
+  runtime.on("attentionChange", activate)
+  activate(runtime.attentionMode)
 
   // eslint-disable-next-line no-console
-  console.debug("[some-conveyor] Runtime started.")
+  console.debug("[some-conveyor] Runtime initialised.")
 }
 
 // ── Teardown ──────────────────────────────────────────────────────────────────
@@ -178,5 +224,9 @@ ext.runtime.onMessage.addListener((message: unknown): void => {
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line no-console
-init().catch((e: unknown) => console.error("[some-conveyor] Init failed:", e))
+try {
+  init()
+} catch (e: unknown) {
+  // eslint-disable-next-line no-console
+  console.error("[some-conveyor] Init failed:", e)
+}

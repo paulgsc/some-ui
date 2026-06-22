@@ -7,12 +7,13 @@ type AttentionListener = (mode: AttentionMode) => void
  *
  * Single source of truth for page attention state. Watches:
  *
- *   Fullscreen     → Suspended  (hard suspend — cancel rAF, hide DOM)
- *   Tab hidden     → Suspended
- *   Video playing  → Reduced    (user is consuming, not idle)
- *   User typing    → Reduced
- *   Scroll active  → Reduced    (brief window)
- *   Otherwise      → Active
+ *   Fullscreen      → Suspended  (hard suspend — cancel rAF, tear down DOM)
+ *   Tab hidden      → Suspended
+ *   Window focused  → Suspended
+ *   Video playing   → Reduced    (user is consuming, not idle)
+ *   User typing     → Reduced
+ *   Scroll active   → Reduced    (brief window)
+ *   Otherwise       → Active
  *
  * Emits AttentionMode changes to registered listeners.
  * Does NOT know about ConveyorEngine or the DOM tree — it only observes.
@@ -22,6 +23,16 @@ type AttentionListener = (mode: AttentionMode) => void
  *   - We detect video play state by querying document.querySelector("video"),
  *     not by inspecting extension state.
  *   - All listeners are passive to never block the vendor page's event loop.
+ *
+ * Window focus is a first-class suspend input, not a cosmetic overlay. The
+ * overlay is meant for a captured-but-unfocused tab — e.g. the tab is pulled
+ * into an OBS scene (visible, document.hidden === false) while the user's OS
+ * focus sits on another app (window blurred). That is the *only* state in which
+ * the conveyor should run; the moment the window regains focus (the user is
+ * actually looking at the page) it must yield like any other suspend, so it
+ * never burns CPU or intercepts clicks behind a page the user is reading.
+ * Tab visibility and window focus are distinct (a foreground tab in a blurred
+ * window is visible-but-unfocused), so both are tracked and both gate the mode.
  */
 export class PageMonitor implements Disposable {
   private mode: AttentionMode = "Active"
@@ -30,6 +41,7 @@ export class PageMonitor implements Disposable {
   // Flags driving the mode computation.
   private isFullscreen = false
   private isHidden = false
+  private isWindowFocused = true
   private isVideoPlaying = false
   private isTyping = false
   private isScrolling = false
@@ -69,6 +81,8 @@ export class PageMonitor implements Disposable {
     )
     this.addListener(document, "mozfullscreenchange", this.onFullscreenChange)
     this.addListener(document, "visibilitychange", this.onVisibilityChange)
+    this.addListener(window, "focus", this.onWindowFocus)
+    this.addListener(window, "blur", this.onWindowBlur)
     this.addListener(document, "keydown", this.onKeydown, { passive: true })
     this.addListener(document, "keyup", this.onKeyup, { passive: true })
     this.addListener(document, "scroll", this.onScroll, { passive: true })
@@ -80,6 +94,7 @@ export class PageMonitor implements Disposable {
     // Snap initial state.
     this.isHidden = document.hidden
     this.isFullscreen = this.detectFullscreen()
+    this.isWindowFocused = document.hasFocus()
     this.pollVideoState()
     this.recompute()
   }
@@ -104,6 +119,16 @@ export class PageMonitor implements Disposable {
 
   private onVisibilityChange(): void {
     this.isHidden = document.hidden
+    this.recompute()
+  }
+
+  private onWindowFocus(): void {
+    this.isWindowFocused = true
+    this.recompute()
+  }
+
+  private onWindowBlur(): void {
+    this.isWindowFocused = false
     this.recompute()
   }
 
@@ -170,7 +195,11 @@ export class PageMonitor implements Disposable {
   }
 
   private computeMode(): AttentionMode {
-    if (this.isFullscreen || this.isHidden) return "Suspended"
+    // The conveyor only runs for a foreground tab in an unfocused window. A
+    // hidden tab, a focused window, or fullscreen are all hard suspends.
+    if (this.isFullscreen || this.isHidden || this.isWindowFocused) {
+      return "Suspended"
+    }
     if (this.isVideoPlaying || this.isTyping || this.isScrolling)
       return "Reduced"
     return "Active"

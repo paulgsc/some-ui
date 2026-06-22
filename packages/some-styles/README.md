@@ -99,4 +99,25 @@ import { appThemes, colorThemes } from "@some-ui/styles"
 - **Color themes** layer a `--primary` palette onto light/dark
   (`.theme-blue .theme-container`).
 - **App themes** are standalone palettes applied to a root element
-  (`.scheduler`, `.code`).
+  (`.scheduler`, `.code`, `.conveyor`).
+
+The **`conveyor`** app theme (`themes/conveyor.css`) is the steel transport
+palette for the `some-conveyor` extension: a steel substrate plus three
+semantic accents — `signal` (scheduler tick / caution), `live` (in-window /
+online), `alert` (failed / down) — exposed both as raw `--cv-*` tokens (for the
+extension's cube/face/strip custom-property contract) and mapped onto the shadcn
+contract so the shared utilities/shortcuts resolve under `.conveyor`.
+
+## Typography
+
+Font families resolve through single tokens — `--font-sans`, `--font-mono`, and
+the additive `--font-display` — so `font-sans` / `font-mono` / `font-display`
+are token-driven utilities. The global defaults reproduce the prior implicit
+stacks (no visual change to existing surfaces); a theme overrides a token to opt
+into brand families (e.g. `.conveyor` → Inter / IBM Plex Mono / Space Grotesk).
+
+Delivery is **shadow-DOM-safe**: there is no runtime web-font `<link>` (the
+conveyor injects into arbitrary host pages inside a closed shadow root). Until
+the woff2 set is self-hosted, the fallback stacks apply; self-hosting is an
+additive follow-up (drop in `@font-face` + assets and the stacks degrade
+gracefully).
