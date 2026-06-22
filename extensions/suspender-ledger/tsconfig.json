@@ -1,0 +1,35 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@suspender/*": ["./src/*"],
+      "@suspender/platform": ["./src/lib/platform/firefox.ts"]
+    },
+    "types": ["firefox-webext-browser", "chrome", "vite/client"]
+  },
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vite.config.firefox.ts",
+    "vitest.setup.ts",
+    "vitest.*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

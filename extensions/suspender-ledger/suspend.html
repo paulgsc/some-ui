@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      color-scheme: dark tells the browser to render system UI controls (scrollbars,
+      form elements) in dark mode immediately — before any JS or CSS loads.
+      This, combined with the inline background-color below, prevents the
+      flash-bang white frame that vendor suspend pages cause.
+    -->
+    <meta name="color-scheme" content="dark light" />
+    <title>Suspended — Suspender Ledger</title>
+    <style>
+      /*
+       * Inline critical CSS — rendered before external stylesheets load.
+       * Uses CSS custom properties that some-filter injects via its dark-mode
+       * pipeline, falling back to safe dark values when some-filter is absent.
+       */
+      :root {
+        color-scheme: dark light;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100dvh;
+        background-color: var(--sl-bg, #1a1a1a);
+        color: var(--sl-fg, #e0e0e0);
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./src/suspend/index.ts"></script>
+  </body>
+</html>
