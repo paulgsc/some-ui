@@ -18,6 +18,7 @@
 
 #__sw_prepaint_veil,
 #__sw_prepaint_veil:popover-open {
+  background-color: black;
   border: 0;
   color-scheme: dark;
   height: 100vh;
@@ -35,22 +36,21 @@
   z-index: 2147483647;
 }
 
+/* When the legacy filter is applied to <html>, it flips the colors. 
+  Setting the background to white here means the inversion turns it back to black perfectly.
+*/
+html[data-sw-legacy] #__sw_prepaint_veil,
+html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
+  background-color: white !important;
+  color-scheme: light !important;
+}
+
 /* When the element is promoted to the top layer, its backdrop should also be
    the dark canvas so nothing light shows through at the edges. */
 #__sw_prepaint_veil::backdrop {
-  background-color: #05070a;
+  background-color: black; /* Note: changed from green to black to match standard veil, but update to white under the guard if needed */
 }
 
-/* ── Legacy Mode Matching Veil ───────────────────────────────────────────── */
-
-/* When loading into legacy mode, match the exact inversion and brightness 
-   dimming stack to prevent the drop-away flash. */
-[data-sw-prepaint-mode="legacy"] #__sw_prepaint_veil,
-[data-sw-prepaint-mode="legacy"] #__sw_prepaint_veil:popover-open {
-  /* Since invert(1) turns our #0d1117 background into an off-white, 
-     we flip the raw color to white (#fff) so that the invert() operation 
-     turns it back into perfect pitch black/dark filtered canvas. */
-  background-color: #fff !important;
-  filter: invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5)
-    contrast(0.92) !important;
+html[data-sw-legacy] #__sw_prepaint_veil::backdrop {
+  background-color: white !important;
 }

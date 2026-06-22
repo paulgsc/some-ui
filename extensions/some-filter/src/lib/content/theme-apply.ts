@@ -28,6 +28,7 @@ import { modifyBackgroundColor, rgbaToCss } from "./modify-colors"
 import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
+export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -407,6 +408,9 @@ function buildFilterString(config: FilterConfig): string {
 }
 
 function applyLegacyFilter(config: FilterConfig): void {
+  // Set the attribute on html so prepaint CSS can react instantly
+  document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
+
   let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
 
   if (!style) {
@@ -426,6 +430,7 @@ function applyLegacyFilter(config: FilterConfig): void {
 }
 
 function removeLegacyFilter(): void {
+  document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
   document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
 }
 
@@ -454,10 +459,6 @@ export type ThemeMode = "dark" | "legacy"
 export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
   try {
     if (mode === "legacy") {
-      // 1. Tag the document element synchronously so prepaint.css can read it immediately
-      document.documentElement.setAttribute("data-sw-prepaint-mode", "legacy")
-
-      // 2. Fire the legacy filter rules
       if (config !== undefined) applyLegacyFilter(config)
       return
     }
@@ -472,7 +473,6 @@ export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
  * Veil teardown remains the orchestrator's responsibility.
  */
 export function restoreVendor(): void {
-  document.documentElement.removeAttribute("data-sw-prepaint-mode")
   deactivateDarkTheme()
   removeLegacyFilter()
 }
