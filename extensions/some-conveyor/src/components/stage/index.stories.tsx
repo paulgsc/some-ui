@@ -14,6 +14,7 @@ import "@conveyor/styles/conveyor.css"
 
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
+import { startBeltMotion } from "@conveyor/components/belt-motion"
 import { el, elText } from "@conveyor/components/dom"
 import { ProjectionCell } from "@conveyor/components/projection-cell"
 import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
@@ -94,18 +95,33 @@ const MANIFEST = [
   { cube: "05", face: "bottom", source: "reminder/review", window: "9.0s" },
 ] as const
 
-function frontState(): ViewportState {
+// yRotation = pos·90°, so cube:y positions 0→3 surface face indices 0,3,2,1.
+// Keeping `activeFace` on the genuine front face is what keeps the projection
+// legible (only the active face un-fades its content) through the rotation.
+const FRONT_FACE_FOR_POS = [0, 3, 2, 1] as const
+
+function rotatingState(cyclePosition: number): ViewportState {
+  const pos = ((cyclePosition % 4) + 4) % 4
   return {
     faceLayout: [[0], [1], [2], [3]],
-    activeFace: 0,
+    activeFace: FRONT_FACE_FOR_POS[pos] ?? 0,
     activeItemInFace: 0,
     cursor: 0,
     cycleIndex: 0,
-    cyclePosition: 0,
+    cyclePosition,
     cycleLength: 4,
     cycleName: "cube:y",
     progress: 0,
   }
+}
+
+// Four projections per cube so a quarter turn reveals a fresh face rather than a
+// blank steel side; the per-cube offset keeps neighbours out of phase.
+function faceSetFor(index: number): Array<FaceContent> {
+  return Array.from({ length: 4 }, (_, f) => {
+    const front = FRONTS[(index + f) % FRONTS.length]
+    return front ?? FRONTS[0]!
+  })
 }
 
 function buildHostHint(): HTMLElement {
@@ -227,7 +243,13 @@ function buildFooter(): HTMLElement {
   return footer
 }
 
-const StageStory = (): JSX.Element => {
+type StageProps = {
+  animate: boolean
+  /** Preview the focus fade: the overlay dims while the window holds focus. */
+  focusDimmed: boolean
+}
+
+const StageStory = (props: StageProps): JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -258,24 +280,44 @@ const StageStory = (): JSX.Element => {
     zone.beltMount.appendChild(strip)
 
     const renderers: Array<CubeRenderer> = []
-    FRONTS.forEach((front, i) => {
+    FRONTS.forEach((_front, i) => {
       const r = new CubeRenderer(`stage-cube-${i}`, CUBE, CUBE)
       engine.applyToElement(r.el)
-      r.setFaceContents([front])
-      r.setXPosition(40 + i * (CUBE + GAP))
-      r.applyState(frontState(), SteelTheme)
+      r.setFaceContents(faceSetFor(i))
       strip.appendChild(r.el)
       renderers.push(r)
     })
+
+    const stop = props.animate
+      ? startBeltMotion({
+          renderers,
+          theme: SteelTheme,
+          stride: CUBE + GAP,
+          startX: 40,
+          makeState: rotatingState,
+        })
+      : (renderers.forEach((r, i) => {
+          r.setXPosition(40 + i * (CUBE + GAP))
+          r.applyState(rotatingState(0), SteelTheme)
+        }),
+        (): void => {})
 
     stage.append(zone.root)
     stage.append(buildFooter())
     mount.appendChild(stage)
 
     return (): void => {
+      stop()
       for (const r of renderers) r.dispose()
     }
-  }, [])
+  }, [props.animate])
+
+  // Focus fade is a pure CSS effect (conveyor.css); JS only toggles the class.
+  // The runtime toggles it on the shadow host — here on the zone root preview.
+  useEffect(() => {
+    const zoneRoot = ref.current?.querySelector(".sc-zone")
+    zoneRoot?.classList.toggle("sc-zone--dimmed", props.focusDimmed)
+  }, [props.focusDimmed, props.animate])
 
   return (
     <div
@@ -295,12 +337,18 @@ const StageStory = (): JSX.Element => {
   )
 }
 
-const meta: Meta = {
+const meta: Meta<StageProps> = {
   title: "Extensions/Conveyor/Stage",
   component: StageStory,
   parameters: { layout: "fullscreen", backgrounds: { default: "dark" } },
+  argTypes: {
+    animate: { control: "boolean" },
+    focusDimmed: { control: "boolean" },
+  },
 }
 export default meta
-type Story = StoryObj
+type Story = StoryObj<StageProps>
 
-export const IntentFloor: Story = {}
+export const IntentFloor: Story = {
+  args: { animate: true, focusDimmed: false },
+}

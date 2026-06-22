@@ -1,15 +1,17 @@
 /**
  * ConveyorZone — the assembled overlay: rail HUD → manifest ticker → belt.
  *
- * Composition: buildConveyorZone (rail + manifest) + a static belt of cubes
- * rendered with CubeRenderer. No WASM/scheduler — the belt is static here; the
- * running belt is storied separately under ConveyorStrip.
+ * Composition: buildConveyorZone (rail + manifest) + a running belt of cubes
+ * rendered with CubeRenderer and driven by the Storybook belt driver — the
+ * cubes slide toroidally and rotate through their projections, the way
+ * ConveyorEngine drives them in production (no WASM/scheduler here).
  */
 
 import "@conveyor/styles/conveyor.css"
 
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
+import { startBeltMotion } from "@conveyor/components/belt-motion"
 import { ProjectionCell } from "@conveyor/components/projection-cell"
 import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
 import { CubeRenderer } from "@conveyor/lib/content/cube-renderer"
@@ -81,18 +83,34 @@ const FRONTS: ReadonlyArray<FaceContent> = [
   },
 ]
 
-function frontState(): ViewportState {
+// The face that actually points at the viewer for each cube:y quarter turn.
+// yRotation = pos·90°, so positions 0→3 surface face indices 0,3,2,1. Keeping
+// `activeFace` aligned to the front face is what keeps the projection legible
+// (only the active face un-fades its content) as the cube rotates.
+const FRONT_FACE_FOR_POS = [0, 3, 2, 1] as const
+
+function rotatingState(cyclePosition: number): ViewportState {
+  const pos = ((cyclePosition % 4) + 4) % 4
   return {
     faceLayout: [[0], [1], [2], [3]],
-    activeFace: 0,
+    activeFace: FRONT_FACE_FOR_POS[pos] ?? 0,
     activeItemInFace: 0,
     cursor: 0,
     cycleIndex: 0,
-    cyclePosition: 0,
+    cyclePosition,
     cycleLength: 4,
     cycleName: "cube:y",
     progress: 0,
   }
+}
+
+// Four projections per cube so a quarter turn reveals a fresh face rather than a
+// blank steel side. Offsetting the slice per cube keeps neighbours out of sync.
+function faceSetFor(index: number): Array<FaceContent> {
+  return Array.from({ length: 4 }, (_, f) => {
+    const front = FRONTS[(index + f) % FRONTS.length]
+    return front ?? FRONTS[0]!
+  })
 }
 
 const MANIFEST = [
@@ -103,7 +121,12 @@ const MANIFEST = [
   { cube: "05", face: "front", source: "metric/mrr", window: "6.0s" },
 ] as const
 
-type ZoneProps = { cubeCount: number }
+type ZoneProps = {
+  cubeCount: number
+  animate: boolean
+  /** Preview the focus fade: the overlay dims while the window holds focus. */
+  focusDimmed: boolean
+}
 
 const ZoneStory = (props: ZoneProps): JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
@@ -135,19 +158,39 @@ const ZoneStory = (props: ZoneProps): JSX.Element => {
     for (let i = 0; i < count; i++) {
       const r = new CubeRenderer(`zone-cube-${i}`, CUBE, CUBE)
       engine.applyToElement(r.el)
-      const front = FRONTS[i]
-      if (front) r.setFaceContents([front])
-      r.setXPosition(40 + i * (CUBE + GAP))
-      r.applyState(frontState(), SteelTheme)
+      r.setFaceContents(faceSetFor(i))
       strip.appendChild(r.el)
       renderers.push(r)
     }
 
+    const stop = props.animate
+      ? startBeltMotion({
+          renderers,
+          theme: SteelTheme,
+          stride: CUBE + GAP,
+          startX: 40,
+          makeState: rotatingState,
+        })
+      : (renderers.forEach((r, i) => {
+          r.setXPosition(40 + i * (CUBE + GAP))
+          r.applyState(rotatingState(0), SteelTheme)
+        }),
+        (): void => {})
+
     host.appendChild(zone.root)
     return (): void => {
+      stop()
       for (const r of renderers) r.dispose()
     }
-  }, [props.cubeCount])
+  }, [props.cubeCount, props.animate])
+
+  // The focus fade is a pure CSS effect (see conveyor.css): JS only toggles the
+  // class. In the runtime the equivalent toggle lives on the shadow host; here a
+  // class on the zone root previews the same transition.
+  useEffect(() => {
+    const zoneRoot = ref.current?.querySelector(".sc-zone")
+    zoneRoot?.classList.toggle("sc-zone--dimmed", props.focusDimmed)
+  }, [props.focusDimmed, props.cubeCount, props.animate])
 
   return (
     <div
@@ -169,9 +212,18 @@ const meta: Meta<ZoneProps> = {
   parameters: { layout: "centered", backgrounds: { default: "dark" } },
   argTypes: {
     cubeCount: { control: { type: "range", min: 1, max: 5, step: 1 } },
+    animate: { control: "boolean" },
+    focusDimmed: { control: "boolean" },
   },
 }
 export default meta
 type Story = StoryObj<ZoneProps>
 
-export const Assembled: Story = { args: { cubeCount: 5 } }
+export const Assembled: Story = {
+  args: { cubeCount: 5, animate: true, focusDimmed: false },
+}
+
+export const FocusDimmed: Story = {
+  name: "Focus dimmed (window focused)",
+  args: { cubeCount: 5, animate: true, focusDimmed: true },
+}
