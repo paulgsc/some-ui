@@ -33,6 +33,7 @@ const mockRuntimeApi = {
   onStartup: { addListener: vi.fn() },
   onMessage: { addListener: vi.fn() },
   onMessageExternal: { addListener: vi.fn() },
+  sendMessage: vi.fn(),
   getURL: (path: string): string => `moz-extension://testid/${path}`,
   getManifest: (): { name: string; version: string } => ({
     name: "Suspender Ledger",
