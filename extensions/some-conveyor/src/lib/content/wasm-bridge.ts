@@ -66,8 +66,11 @@ async function ensureManager(): Promise<WasmViewportManager> {
 
   const promise = (async () => {
     try {
-      // eslint-disable-next-line import/no-unresolved, @typescript-eslint/consistent-type-assertions
-      const mod = (await import("polyhedron")) as PolyhedronModule
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const mod = (await import(
+        /* @vite-ignore */
+        chrome.runtime.getURL("polyhedron/polyhedron.js")
+      )) as PolyhedronModule
       if (typeof mod.default === "function") {
         await mod.default()
       }
