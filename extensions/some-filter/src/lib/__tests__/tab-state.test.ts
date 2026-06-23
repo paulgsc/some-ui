@@ -4,13 +4,13 @@ import { DEFAULT_TAB_STATE, nextTabState, STATE_CYCLE } from "../tab-state"
 
 describe("tab-state", () => {
   it("defaults to auto (themed-by-default)", () => {
-    expect(DEFAULT_TAB_STATE).toBe("auto")
+    expect(DEFAULT_TAB_STATE).toBe("legacy")
   })
 
-  it("cycles auto → legacy → off → auto", () => {
-    expect(nextTabState("auto")).toBe("legacy")
-    expect(nextTabState("legacy")).toBe("off")
-    expect(nextTabState("off")).toBe("auto")
+  it("cycles legacy → auto → off → legacy", () => {
+    expect(nextTabState("legacy")).toBe("auto")
+    expect(nextTabState("auto")).toBe("off")
+    expect(nextTabState("off")).toBe("legacy")
   })
 
   it("cycle returns to the start after three steps", () => {

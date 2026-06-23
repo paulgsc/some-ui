@@ -17,13 +17,13 @@ import type { TabState } from "@filter/types/tab"
  *   - "off"    — explicit opt-out (no theming at all).
  */
 
-export const DEFAULT_TAB_STATE: TabState = "auto"
+export const DEFAULT_TAB_STATE: TabState = "legacy"
 
 /** Keybind cycle order: auto → legacy → off → auto. */
 export const STATE_CYCLE: Record<TabState, TabState> = {
-  auto: "legacy",
-  legacy: "off",
-  off: "auto",
+  auto: "off",
+  legacy: "auto",
+  off: "legacy",
 }
 
 export function nextTabState(current: TabState): TabState {
