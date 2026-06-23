@@ -118,8 +118,8 @@ export type ConveyorConfig = {
 }
 
 export const DEFAULT_CONVEYOR_CONFIG: ConveyorConfig = {
-  cubeWidth: 180,
-  cubeGap: 16,
+  cubeWidth: 150,
+  cubeGap: 56,
   stripHeight: 200,
   tConveyor: 30_000,
   overscan: 2,
