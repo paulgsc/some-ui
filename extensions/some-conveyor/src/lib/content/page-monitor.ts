@@ -58,6 +58,13 @@ export class PageMonitor implements Disposable {
   // in-flight activation without needing any debounce duration.
   private activationTimer: ReturnType<typeof setTimeout> | null = null
 
+  // One-shot flag set by the rail-zone pointerdown handler so the immediately
+  // following window focus event does not suspend the conveyor. Cleared by a
+  // 200ms safety timer in case focus never arrives (e.g. the clicked element
+  // is unfocusable and the browser never fires the focus event).
+  private focusSuppressed = false
+  private focusSuppressTimer: ReturnType<typeof setTimeout> | null = null
+
   private readonly boundHandlers: Array<[EventTarget, string, EventListener]> =
     []
 
@@ -74,6 +81,22 @@ export class PageMonitor implements Disposable {
   onModeChange(listener: AttentionListener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  /**
+   * Suppress the next window focus event so a click inside the rail zone does
+   * not suspend the conveyor. Called by the ShadowHost's pointerdown handler
+   * before the browser fires window focus. The suppression expires after 200ms
+   * regardless, so a stray pointerdown that never triggers focus leaves no
+   * lasting effect.
+   */
+  suppressNextFocus(): void {
+    this.focusSuppressed = true
+    if (this.focusSuppressTimer !== null) clearTimeout(this.focusSuppressTimer)
+    this.focusSuppressTimer = setTimeout(() => {
+      this.focusSuppressed = false
+      this.focusSuppressTimer = null
+    }, 200)
   }
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -143,6 +166,15 @@ export class PageMonitor implements Disposable {
 
   private onWindowFocus(): void {
     this.isWindowFocused = true
+    if (this.focusSuppressed) {
+      // Click was inside the rail zone — keep the conveyor live.
+      this.focusSuppressed = false
+      if (this.focusSuppressTimer !== null) {
+        clearTimeout(this.focusSuppressTimer)
+        this.focusSuppressTimer = null
+      }
+      return
+    }
     this.applySuspend()
   }
 
@@ -273,6 +305,7 @@ export class PageMonitor implements Disposable {
     if (this.scrollTimer !== null) clearTimeout(this.scrollTimer)
     if (this.videoPollInterval !== null) clearInterval(this.videoPollInterval)
     if (this.activationTimer !== null) clearTimeout(this.activationTimer)
+    if (this.focusSuppressTimer !== null) clearTimeout(this.focusSuppressTimer)
 
     this.listeners.clear()
   }

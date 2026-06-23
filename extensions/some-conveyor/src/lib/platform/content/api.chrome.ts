@@ -5,7 +5,7 @@
  * used by conveyor content scripts (runtime, storage) is identical.
  *
  * Aliased in by vite.config.chromium.ts:
- *   resolve.alias["@censor/platform/content"] = ".../content/api.chrome.ts"
+ *   resolve.alias["@conveyor/platform/content"] = ".../content/api.chrome.ts"
  *
  * Kept in a separate content/ directory from background/ so Rollup's
  * manualChunks: () => {} cannot accidentally pull both into a shared chunk.

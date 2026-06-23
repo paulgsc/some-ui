@@ -59,20 +59,28 @@ export function startBeltMotion(opts: BeltMotionOptions): () => void {
   let raf = 0
   let last = 0
   let offset = 0
-  let sinceTick = 0
+  // Per-cube rotation timers, staggered so cubes rotate independently.
+  // Cube i starts (i * hold / count) ms into its own hold cycle so they
+  // are evenly spread in time rather than all rotating in lockstep.
+  const sinceTicks: Array<number> = Array.from(
+    { length: count },
+    (_, i) => (i * hold) / count
+  )
 
   const frame = (now: number): void => {
     const dt = last === 0 ? 0 : Math.min(now - last, 100)
     last = now
 
     offset += (speed * dt) / 1000
-    sinceTick += dt
-    const tick = sinceTick >= hold
-    if (tick) sinceTick = 0
 
     for (let i = 0; i < count; i++) {
       const r = renderers[i]
       if (!r) continue
+
+      const st = (sinceTicks[i] ?? 0) + dt
+      sinceTicks[i] = st
+      const tick = st >= hold
+      if (tick) sinceTicks[i] = st - hold
 
       // Toroidal position: slide left, wrap one cube off the left edge.
       let x = startX + i * stride - offset

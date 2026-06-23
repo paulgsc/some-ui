@@ -18,10 +18,10 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
+      "@conveyor/platform/content": ["src/lib/platform/api.ts"],
+      "@conveyor/platform/background": ["src/lib/platform/api.ts"],
       "@conveyor/*": ["src/*"],
-      "@conveyor/playwright/*": ["tests/e2e/*"],
-      "@censor/platform/content": ["src/lib/platform/api.ts"],
-      "@censor/platform/background": ["src/lib/platform/api.ts"]
+      "@conveyor/playwright/*": ["tests/e2e/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },

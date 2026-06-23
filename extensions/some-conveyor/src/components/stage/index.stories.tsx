@@ -15,9 +15,9 @@ import "@conveyor/styles/conveyor.css"
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import { startBeltMotion } from "@conveyor/components/belt-motion"
+import { buildConveyorZone } from "@conveyor/components/conveyor-zone"
 import { el, elText } from "@conveyor/components/dom"
 import { ProjectionCell } from "@conveyor/components/projection-cell"
-import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
 import { CubeRenderer } from "@conveyor/lib/content/cube-renderer"
 import {
   CONVEYOR_TOKENS,

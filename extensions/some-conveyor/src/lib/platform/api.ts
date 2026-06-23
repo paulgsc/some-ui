@@ -3,8 +3,8 @@
  *
  * THIS FILE IS NEVER BUNDLED DIRECTLY.
  *
- * Both Vite configs alias `@censor/platform/content` and
- * `@censor/platform/background` to the platform-specific implementation
+ * Both Vite configs alias `@conveyor/platform/content` and
+ * `@conveyor/platform/background` to the platform-specific implementation
  * (api.chrome.ts or api.firefox.ts) before module resolution runs.
  *
  * This file exists so that:
@@ -13,7 +13,7 @@
  *   2. vitest falls back here — `browser` is stubbed in vitest.setup.ts.
  *
  * Consumer pattern (content scripts and background):
- *   import { ext } from "@censor/platform/content"
+ *   import { ext } from "@conveyor/platform/content"
  *   ext.runtime.getURL("conveyor.css")
  *   ext.storage.local.get(key)
  *

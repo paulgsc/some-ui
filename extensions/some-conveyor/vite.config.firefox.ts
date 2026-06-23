@@ -4,7 +4,7 @@
  *
  * Differences from the Chromium config:
  *   - Copies firefox-v3-manifest.json → dist/manifest.json (MV3 with background.scripts)
- *   - Aliases @censor/platform/api → api.firefox.ts  (browser.* global)
+ *   - Aliases @conveyor/platform/api → api.firefox.ts  (browser.* global)
  *   - Output dir: dist/ (same — clean CI)
  *
  * Usage:
@@ -75,17 +75,17 @@ export default defineConfig({
       // Replace the canonical api.ts with the Firefox-specific implementation.
       // Vite resolves this alias before module resolution, so api.ts is never
       // bundled — only api.firefox.ts is inlined into each IIFE.
-      "@censor/platform/content": resolve(
+      "@conveyor/platform/content": resolve(
         __dirname,
         "src/lib/platform/content/api.firefox.ts"
       ),
 
-      "@censor/platform/background": resolve(
+      "@conveyor/platform/background": resolve(
         __dirname,
         "src/lib/platform/background/api.firefox.ts"
       ),
 
-      "@censor": resolve(__dirname, "src"),
+      "@conveyor": resolve(__dirname, "src"),
     },
   },
 })

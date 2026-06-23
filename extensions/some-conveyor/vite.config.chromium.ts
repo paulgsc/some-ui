@@ -4,7 +4,7 @@
  *
  * Differences from the Firefox config:
  *   - Uses public/manifest.json (MV3) as-is — copyPublicDir: true handles it
- *   - Aliases @censor/platform/api → api.chrome.ts  (chrome.* global)
+ *   - Aliases @conveyor/platform/api → api.chrome.ts  (chrome.* global)
  *
  * Usage:
  *   pnpm build:chromium          # produces dist/ loadable via --load-extension
@@ -56,17 +56,17 @@ export default defineConfig({
       // Replace the canonical api.ts with the Chromium-specific implementation.
       // Only api.chrome.ts is inlined — api.ts and api.firefox.ts are never
       // seen by this bundle.
-      "@censor/platform/content": resolve(
+      "@conveyor/platform/content": resolve(
         __dirname,
         "src/lib/platform/content/api.chrome.ts"
       ),
 
-      "@censor/platform/background": resolve(
+      "@conveyor/platform/background": resolve(
         __dirname,
         "src/lib/platform/background/api.chrome.ts"
       ),
 
-      "@censor": resolve(__dirname, "src"),
+      "@conveyor": resolve(__dirname, "src"),
     },
   },
 })

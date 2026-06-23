@@ -5,7 +5,7 @@
  * used by the conveyor service worker (tabs) is identical.
  *
  * Aliased in by vite.config.chromium.ts:
- *   resolve.alias["@censor/platform/background"] = ".../background/api.chrome.ts"
+ *   resolve.alias["@conveyor/platform/background"] = ".../background/api.chrome.ts"
  *
  * Kept in a separate background/ directory from content/ so Rollup's
  * manualChunks: () => {} cannot accidentally pull both into a shared chunk.
