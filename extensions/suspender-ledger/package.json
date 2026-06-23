@@ -31,7 +31,11 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/worker/**",
+    "./src/content/**",
+    "./src/lib/platform/**"
+  ],
   "type": "module",
   "version": "0.1.0"
 }

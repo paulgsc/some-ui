@@ -4,6 +4,10 @@ const mockTabsApi = {
   discard: vi.fn(),
   query: vi.fn(),
   get: vi.fn(),
+  update: vi.fn(),
+  reload: vi.fn(),
+  // remove is mocked so the never-close invariant can be asserted (call count 0)
+  remove: vi.fn(),
   onUpdated: { addListener: vi.fn(), removeListener: vi.fn() },
   onActivated: { addListener: vi.fn(), removeListener: vi.fn() },
   onRemoved: { addListener: vi.fn(), removeListener: vi.fn() },
@@ -20,12 +24,20 @@ const mockAlarmsApi = {
 const mockStorageApi = {
   local: { get: vi.fn(), set: vi.fn() },
   sync: { get: vi.fn(), set: vi.fn() },
+  session: { get: vi.fn(), set: vi.fn() },
+  onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
 }
 
 const mockRuntimeApi = {
   onInstalled: { addListener: vi.fn() },
+  onStartup: { addListener: vi.fn() },
   onMessage: { addListener: vi.fn() },
+  onMessageExternal: { addListener: vi.fn() },
   getURL: (path: string): string => `moz-extension://testid/${path}`,
+  getManifest: (): { name: string; version: string } => ({
+    name: "Suspender Ledger",
+    version: "0.1.0",
+  }),
 }
 
 const mockIdleApi = {
