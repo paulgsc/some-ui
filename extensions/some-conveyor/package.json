@@ -2,6 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "polyhedron": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",

@@ -43,7 +43,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["*.wasm", "assets/*", "styles/*"],
+      "resources": ["*.wasm", "assets/*", "styles/*", "polyhedron/*"],
       "matches": ["<all_urls>"]
     }
   ]

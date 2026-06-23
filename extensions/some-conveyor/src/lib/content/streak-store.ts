@@ -2,7 +2,7 @@
  * streak-store — the ONLY conveyor module that talks to ext.storage.
  * Pure I/O + pure selectors. No DOM, no timers, no theming.
  */
-import { ext } from "@censor/platform/content"
+import { ext } from "@conveyor/platform/content"
 import {
   hasKey,
   isArrayField,

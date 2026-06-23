@@ -68,6 +68,11 @@ export class ShadowHost implements Disposable {
     this.shadowRoot.appendChild(link)
   }
 
+  /** The host element in the page's light DOM. */
+  get hostElement(): HTMLElement {
+    return this.hostEl
+  }
+
   /**
    * The conveyor mount point inside the shadow root.
    * ConveyorEngine appends cube elements here.

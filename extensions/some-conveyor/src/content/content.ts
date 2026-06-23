@@ -17,14 +17,14 @@
  *   - CSS injected as a web_accessible_resource URL (shadow DOM scoped).
  */
 
-import { ext } from "@censor/platform/content"
+import { buildConveyorZone } from "@conveyor/components/conveyor-zone"
 import { CoexistenceRuntime } from "@conveyor/lib/content/coexistence"
 import { ConveyorEngine } from "@conveyor/lib/content/conveyor-engine"
-import { buildConveyorZone } from "@conveyor/lib/content/conveyor-zone"
 import { EffectBus } from "@conveyor/lib/content/effect-bus"
 import { makeCubeFaceContents } from "@conveyor/lib/content/face-contents"
 import { ThemeEngine } from "@conveyor/lib/content/theme-engine"
 import { WasmBridge } from "@conveyor/lib/content/wasm-bridge"
+import { ext } from "@conveyor/platform/content"
 import type {
   AttentionMode,
   FaceAction,

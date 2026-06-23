@@ -6,6 +6,6 @@
  * global directly (which would break the Chromium build).
  *
  * Aliased in by vite.config.firefox.ts:
- *   resolve.alias["@censor/platform/background"] = ".../background/api.firefox.ts"
+ *   resolve.alias["@conveyor/platform/background"] = ".../background/api.firefox.ts"
  */
 export const ext: typeof browser = globalThis.browser

@@ -4,7 +4,7 @@
  *
  * Differences from the Chromium config:
  *   - Copies firefox-v3-manifest.json → dist/manifest.json (MV3 with background.scripts)
- *   - Aliases @censor/platform/api → api.firefox.ts  (browser.* global)
+ *   - Aliases @conveyor/platform/api → api.firefox.ts  (browser.* global)
  *   - Output dir: dist/ (same — clean CI)
  *
  * Usage:
@@ -12,11 +12,13 @@
  *   web-ext run --source-dir dist/
  */
 
-import { copyFileSync } from "fs"
+import { copyFileSync, cpSync, existsSync } from "fs"
 import { resolve } from "path"
 import type { Plugin } from "vite"
 import { defineConfig } from "vite"
 import tsconfigPaths from "vite-tsconfig-paths"
+
+const repoRoot = resolve(__dirname, "../..")
 
 /**
  * One-shot plugin: copies the MV3 manifest after the bundle is written so
@@ -36,8 +38,29 @@ function firefoxManifestPlugin(): Plugin {
   }
 }
 
+function polyhedronAssetsPlugin(): Plugin {
+  return {
+    name: "boyo-polyhedron-assets",
+    closeBundle(): void {
+      const src = resolve(repoRoot, "crates/polyhedron/dist")
+      const dst = resolve(__dirname, "dist/polyhedron")
+
+      if (!existsSync(src)) {
+        throw new Error(`Missing polyhedron build output: ${src}`)
+      }
+
+      cpSync(src, dst, {
+        recursive: true,
+        force: true,
+      })
+      // eslint-disable-next-line no-console
+      console.log("[BOYO] Copied crates/polyhedron/dist → dist/polyhedron")
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [tsconfigPaths(), firefoxManifestPlugin()],
+  plugins: [tsconfigPaths(), firefoxManifestPlugin(), polyhedronAssetsPlugin()],
 
   build: {
     rollupOptions: {
@@ -75,17 +98,17 @@ export default defineConfig({
       // Replace the canonical api.ts with the Firefox-specific implementation.
       // Vite resolves this alias before module resolution, so api.ts is never
       // bundled — only api.firefox.ts is inlined into each IIFE.
-      "@censor/platform/content": resolve(
+      "@conveyor/platform/content": resolve(
         __dirname,
         "src/lib/platform/content/api.firefox.ts"
       ),
 
-      "@censor/platform/background": resolve(
+      "@conveyor/platform/background": resolve(
         __dirname,
         "src/lib/platform/background/api.firefox.ts"
       ),
 
-      "@censor": resolve(__dirname, "src"),
+      "@conveyor": resolve(__dirname, "src"),
     },
   },
 })

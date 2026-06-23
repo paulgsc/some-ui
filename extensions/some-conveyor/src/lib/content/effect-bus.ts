@@ -1,4 +1,4 @@
-import { ext } from "@censor/platform/content"
+import { ext } from "@conveyor/platform/content"
 import type { Disposable, FaceAction } from "@conveyor/types"
 
 /**

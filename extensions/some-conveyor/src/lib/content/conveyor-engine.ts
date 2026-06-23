@@ -13,6 +13,13 @@ import type { EffectBus } from "./effect-bus"
 import type { ThemeEngine } from "./theme-engine"
 import type { WasmBridge } from "./wasm-bridge"
 
+// cube:y rotates through 4 faces; the WASM scheduler advances one quarter turn
+// every `FACE_CAPACITY` timeline items (see polyhedron sync_cycle_position).
+// Seeding each cube `i % CYCLE_FACE_COUNT` quarter turns ahead desyncs the belt
+// so neighbours present different faces instead of rotating in lockstep.
+const FACE_CAPACITY = 3
+const CYCLE_FACE_COUNT = 4
+
 /**
  * ConveyorEngine
  *
@@ -193,7 +200,7 @@ export class ConveyorEngine implements Disposable {
             id: cubeId,
             items: this.makeViewportItems(cubeId),
             polyhedron: { type: "cube" },
-            faceCapacity: 3,
+            faceCapacity: FACE_CAPACITY,
             cycleName: "cube:y",
           },
           faceContents: this.makeFaceContents(cubeId),
@@ -214,6 +221,18 @@ export class ConveyorEngine implements Disposable {
     }
 
     await Promise.all(creations)
+
+    // Desync rotation once the WASM viewports exist: seed each cube a different
+    // whole number of quarter turns so the belt presents independent faces
+    // rather than every cube turning in lockstep (mirrors the stories' i % 4
+    // face seed). The cubes still tick together per frame, so this phase offset
+    // stays constant and stable.
+    this.cubes.forEach((cube, i) => this.seedCubePhase(cube, i))
+  }
+
+  /** Seed a cube's rotation phase from its pool index. */
+  private seedCubePhase(cube: CubeInstance, index: number): void {
+    cube.seedQuarterTurns(index % CYCLE_FACE_COUNT, FACE_CAPACITY)
   }
 
   private computeCubeCount(): number {
@@ -249,7 +268,7 @@ export class ConveyorEngine implements Disposable {
             id: cubeId,
             items: this.makeViewportItems(cubeId),
             polyhedron: { type: "cube" },
-            faceCapacity: 3,
+            faceCapacity: FACE_CAPACITY,
             cycleName: "cube:y",
           },
           faceContents: this.makeFaceContents(cubeId),
@@ -264,9 +283,13 @@ export class ConveyorEngine implements Disposable {
 
       cube.setXPosition(startX)
       this.strip.appendChild(cube.domElement)
+      const poolIndex = this.cubes.length
       this.cubes.push(cube)
       cube
         .initialize()
+        // Seed the new cube's phase from its pool index so resize-added cubes
+        // join the belt already desynced rather than snapping to the front face.
+        .then(() => this.seedCubePhase(cube, poolIndex))
         // eslint-disable-next-line no-console
         .catch((e) => console.error("[ConveyorEngine] cube init error:", e))
     }

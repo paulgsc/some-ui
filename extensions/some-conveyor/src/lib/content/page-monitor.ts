@@ -52,6 +52,19 @@ export class PageMonitor implements Disposable {
   // Video poll interval (videos don't emit reliable events in content scripts).
   private videoPollInterval: ReturnType<typeof setInterval> | null = null
 
+  // Deferred recompute guard for potential-activate transitions (blur, tab
+  // becoming visible, fullscreen exit). Definite-suspend events cancel this
+  // and recompute immediately, so a suspend signal always wins over an
+  // in-flight activation without needing any debounce duration.
+  private activationTimer: ReturnType<typeof setTimeout> | null = null
+
+  // One-shot flag set by the rail-zone pointerdown handler so the immediately
+  // following window focus event does not suspend the conveyor. Cleared by a
+  // 200ms safety timer in case focus never arrives (e.g. the clicked element
+  // is unfocusable and the browser never fires the focus event).
+  private focusSuppressed = false
+  private focusSuppressTimer: ReturnType<typeof setTimeout> | null = null
+
   private readonly boundHandlers: Array<[EventTarget, string, EventListener]> =
     []
 
@@ -68,6 +81,22 @@ export class PageMonitor implements Disposable {
   onModeChange(listener: AttentionListener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  /**
+   * Suppress the next window focus event so a click inside the rail zone does
+   * not suspend the conveyor. Called by the ShadowHost's pointerdown handler
+   * before the browser fires window focus. The suppression expires after 200ms
+   * regardless, so a stray pointerdown that never triggers focus leaves no
+   * lasting effect.
+   */
+  suppressNextFocus(): void {
+    this.focusSuppressed = true
+    if (this.focusSuppressTimer !== null) clearTimeout(this.focusSuppressTimer)
+    this.focusSuppressTimer = setTimeout(() => {
+      this.focusSuppressed = false
+      this.focusSuppressTimer = null
+    }, 200)
   }
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -114,22 +143,49 @@ export class PageMonitor implements Disposable {
 
   private onFullscreenChange(): void {
     this.isFullscreen = this.detectFullscreen()
-    this.recompute()
+    // Entering fullscreen is a definite suspend; exiting is a potential
+    // activate — defer to let concurrent focus/hide events settle first.
+    if (this.isFullscreen) {
+      this.applySuspend()
+    } else {
+      this.scheduleActivationCheck()
+    }
   }
 
   private onVisibilityChange(): void {
     this.isHidden = document.hidden
-    this.recompute()
+    // Becoming hidden is a definite suspend; becoming visible could be an
+    // activate, but a focus event may follow in the next task (tab switch).
+    // Defer so the focus event can cancel the activation before it fires.
+    if (this.isHidden) {
+      this.applySuspend()
+    } else {
+      this.scheduleActivationCheck()
+    }
   }
 
   private onWindowFocus(): void {
     this.isWindowFocused = true
-    this.recompute()
+    if (this.focusSuppressed) {
+      // Click was inside the rail zone — keep the conveyor live.
+      this.focusSuppressed = false
+      if (this.focusSuppressTimer !== null) {
+        clearTimeout(this.focusSuppressTimer)
+        this.focusSuppressTimer = null
+      }
+      return
+    }
+    this.applySuspend()
   }
 
   private onWindowBlur(): void {
     this.isWindowFocused = false
-    this.recompute()
+    // Do not recompute immediately — if this blur accompanies a tab switch
+    // away, a visibilitychange(hidden) is about to fire on this tab and will
+    // keep the mode Suspended. Deferring ensures a lone blur (window losing
+    // focus while the tab stays visible) still activates, but a tab switch
+    // collapses to a no-op because the hide lands before the timer fires.
+    this.scheduleActivationCheck()
   }
 
   private onKeydown(): void {
@@ -160,6 +216,39 @@ export class PageMonitor implements Disposable {
     this.isVideoPlaying = Array.from(videos).some(
       (v) => !v.paused && !v.ended && v.readyState > 2
     )
+    this.recompute()
+  }
+
+  // ── Activation guard ───────────────────────────────────────────────────────
+
+  /**
+   * For potential-activate events: defer recompute by one task tick.
+   *
+   * Idempotent — a second call while the timer is pending is a no-op. Any
+   * number of concurrent blur/visible/fullscreen-exit events collapse into a
+   * single evaluation that reads the final settled flag values. By then,
+   * any concurrent suspend signal (focus, hide) will have already landed via
+   * applySuspend() and cancelled this timer, so no false-positive Active
+   * frame can escape.
+   */
+  private scheduleActivationCheck(): void {
+    if (this.activationTimer !== null) return
+    this.activationTimer = setTimeout(() => {
+      this.activationTimer = null
+      this.recompute()
+    }, 0)
+  }
+
+  /**
+   * For definite-suspend events: cancel any pending activation and recompute
+   * immediately. A suspend signal must always win over an in-flight
+   * activation regardless of event ordering.
+   */
+  private applySuspend(): void {
+    if (this.activationTimer !== null) {
+      clearTimeout(this.activationTimer)
+      this.activationTimer = null
+    }
     this.recompute()
   }
 
@@ -215,6 +304,8 @@ export class PageMonitor implements Disposable {
 
     if (this.scrollTimer !== null) clearTimeout(this.scrollTimer)
     if (this.videoPollInterval !== null) clearInterval(this.videoPollInterval)
+    if (this.activationTimer !== null) clearTimeout(this.activationTimer)
+    if (this.focusSuppressTimer !== null) clearTimeout(this.focusSuppressTimer)
 
     this.listeners.clear()
   }

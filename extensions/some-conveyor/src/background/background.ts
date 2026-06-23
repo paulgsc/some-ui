@@ -12,7 +12,7 @@
  * the extension CSP rather than the host-page CSP) is tracked in issue #200.
  */
 
-import { ext } from "@censor/platform/background"
+import { ext } from "@conveyor/platform/background"
 
 ext.tabs.onActivated.addListener(({ tabId }): void => {
   void ext.tabs.get(tabId).then((tab): void => {

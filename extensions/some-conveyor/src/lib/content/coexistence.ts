@@ -59,6 +59,17 @@ export class CoexistenceRuntime implements Disposable {
 
     this.pageMonitor.onModeChange(this.handleModeChange.bind(this))
 
+    // A pointerdown inside the rail zone fires before the browser fires
+    // window focus, so we suppress the next focus event to keep the conveyor
+    // live when the user clicks within the overlay rather than on the page.
+    this.shadowHost.hostElement.addEventListener(
+      "pointerdown",
+      () => {
+        this.pageMonitor.suppressNextFocus()
+      },
+      { capture: true }
+    )
+
     // Apply initial state.
     this.applyMode(this.pageMonitor.currentMode)
   }

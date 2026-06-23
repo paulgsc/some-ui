@@ -109,6 +109,29 @@ export class CubeInstance implements Disposable {
   }
 
   /**
+   * Seed this cube's rotation phase by a whole number of quarter turns, applied
+   * once at pool build so the belt doesn't rotate in lockstep.
+   *
+   * The WASM scheduler advances its cycle position one quarter turn every
+   * `itemsPerTurn` timeline items, so we advance the timeline that many item
+   * boundaries. The timeline discards any remainder past an item's duration on
+   * advance, so a single oversized tick crosses exactly one boundary and lands
+   * the cube cleanly on the next item — meaning `quarterTurns * itemsPerTurn`
+   * ticks land it exactly `quarterTurns` quarter turns ahead. The renderer is
+   * synced once at the end, so no intermediate frames are painted.
+   */
+  seedQuarterTurns(quarterTurns: number, itemsPerTurn: number): void {
+    if (!this.viewport || this.disposed) return
+    const steps = Math.max(0, Math.trunc(quarterTurns)) * itemsPerTurn
+    if (steps === 0) return
+    // Larger than any plausible item duration → each tick advances exactly one
+    // item boundary (remainder discarded), regardless of the item's real length.
+    const STEP_MS = 3_600_000
+    for (let s = 0; s < steps; s++) this.viewport.tick(STEP_MS)
+    this.syncRenderer()
+  }
+
+  /**
    * Speed factor this cube requests from ConveyorEngine.
    * 0.25 when hovered (slow), 1.0 otherwise.
    * ConveyorEngine applies this to the conveyor-wide speed, not just this cube.
