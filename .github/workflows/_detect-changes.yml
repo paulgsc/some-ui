@@ -55,7 +55,6 @@ jobs:
               - 'packages/**/*.{ts,tsx,js,jsx,css,json}'
               - 'apps/**/*.{ts,tsx,js,jsx,css,json}'
               - 'package.json'
-              - 'pnpm-lock.yaml'
               - '.nvmrc'
               - 'tsconfig*.json'
               - 'vite.config.*'
@@ -71,7 +70,6 @@ jobs:
               - 'packages/**/*.stories.{ts,tsx}'
               - '.storybook/**'
               - 'packages/**/*.{ts,tsx,css}'
-              - 'pnpm-lock.yaml'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
