@@ -15,6 +15,12 @@ import {
 } from "@filter/lib/content/theme-apply"
 import { detect } from "@filter/lib/content/theme-detector"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
+import {
+  nextPhase,
+  vendorBgCovered,
+  type ContentEvent,
+  type ContentPhase,
+} from "@filter/lib/typestate"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
@@ -57,6 +63,31 @@ let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 let autoWasApplied = false
 
+// ── Typestate tracker ─────────────────────────────────────────────────────────
+// Tracks the content script lifecycle phase independently of the tab mode so
+// the invariant can be observed and tested via DOM attributes and console logs.
+//
+// Invariant: vendorBgCovered({ phase, mode: currentState }) must hold at all
+// times except the one intentional exposure: settled + off (user opt-out).
+
+let typestatePhase: ContentPhase = "prepaint"
+
+function fireTypestateEvent(event: ContentEvent): void {
+  const from = typestatePhase
+  const to = nextPhase(typestatePhase, event)
+  typestatePhase = to
+  if (from !== to) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[sw:typestate]",
+      `${from}:${currentState}`,
+      "→",
+      `${to}:${currentState}`,
+      `(${event})`
+    )
+  }
+}
+
 function applyState(state: TabState): void {
   currentState = state
   writeCachedState(state)
@@ -68,21 +99,19 @@ function applyState(state: TabState): void {
     // for snapshot isolation and handles veil teardown atomically after the
     // theme is committed (or restored).
     runAutoTheme()
-    return
-  }
-
-  if (state === "legacy") {
+  } else if (state === "legacy") {
     applyTheme("legacy", filterConfig)
-    return
+  } else {
+    // off
+    disablePrepaint()
   }
 
-  // off
-  disablePrepaint()
-
+  fireTypestateEvent("state_committed")
   updateDebugAttrs()
 }
 
 function cycleState(): void {
+  fireTypestateEvent("user_cycle")
   applyState(nextTabState(currentState))
 }
 
@@ -130,11 +159,19 @@ function runAutoTheme(): void {
 
 function updateDebugAttrs(): void {
   document.body.dataset.swTabState = currentState
+  document.body.dataset.swPhase = typestatePhase
+  document.body.dataset.swVendorBgCovered = vendorBgCovered({
+    phase: typestatePhase,
+    mode: currentState,
+  }).toString()
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
+  // Transition from document_start prepaint phase to active init.
+  fireTypestateEvent("script_start")
+
   // Restore the last-known state synchronously from sessionStorage so that
   // legacy/off tabs can apply the correct visual state before the background
   // responds. For a cold background this avoids a 100–300 ms window of
@@ -157,10 +194,14 @@ function init(): void {
 
         if (response.enabled) {
           // Background confirms legacy — ensure we're there regardless of cache.
-          if (currentState !== "legacy") applyState("legacy")
+          if (currentState !== "legacy") {
+            fireTypestateEvent("bg_reconcile")
+            applyState("legacy")
+          }
         } else if (currentState === "legacy") {
           // Cache said legacy but this tab is no longer in the filter list
           // (user removed it via popup). Re-classify with auto.
+          fireTypestateEvent("bg_reconcile")
           applyState("auto")
         }
       }
@@ -182,9 +223,12 @@ function init(): void {
   // repatch tokens are already in the cascade.
   window.addEventListener("yt-navigate-finish", () => {
     if (autoWasApplied) {
+      fireTypestateEvent("vendor_repaint")
       enablePrepaint()
       repatchPage()
       commitVisualState()
+      fireTypestateEvent("state_committed")
+      updateDebugAttrs()
     }
   })
 }
@@ -203,6 +247,7 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
     }
 
     case "TOGGLE_FILTER": {
+      fireTypestateEvent("user_cycle")
       applyState("legacy")
       return
     }
