@@ -2,8 +2,20 @@ name: Storybook
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'packages/**'
+      - '.storybook/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/storybook-build.yml'
+      - '.github/workflows/_detect-changes.yml'
   push:
     branches: [main]
+    paths:
+      - 'packages/**'
+      - '.storybook/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/storybook-build.yml'
+      - '.github/workflows/_detect-changes.yml'
   workflow_dispatch:
 permissions:
   contents: read
