@@ -29,3 +29,67 @@ export function isContentToWorkerMessage(
   }
   return value.type === "TAB_ACTIVE" || value.type === "TAB_IDLE"
 }
+
+/**
+ * The discardable actions the popup can ask the worker to perform against the
+ * active tab. These map 1:1 onto the menu-item ids the worker's `menu.ts`
+ * dispatcher already understands (it resolves the active tab itself), so the
+ * popup never needs the `tabs` permission to drive a suspend.
+ *
+ * `move-next` / `move-previous` are focus-navigation commands handled by the
+ * worker's `navigate` module rather than the menu dispatcher; they are included
+ * here because the popup surfaces them as quick-jump controls.
+ */
+export type PopupCommand =
+  | "discard-tab"
+  | "discard-tree"
+  | "discard-tabs"
+  | "discard-window"
+  | "discard-other-windows"
+  | "whitelist-domain"
+  | "auto-discardable"
+  | "move-next"
+  | "move-previous"
+
+/**
+ * Messages the popup (and options surface, which the beta folds into the popup)
+ * sends to the service worker.
+ *
+ * - `popup` dispatches a {@link PopupCommand} against the active tab. The
+ *   optional `value` / `checked` / `shiftKey` fields mirror the menu
+ *   `OnClickData` superset the worker already accepts, letting a single channel
+ *   carry both plain actions (suspend) and toggles (auto-suspendable,
+ *   whitelist on/off).
+ * - `storage` reads the merged `local` + `session` snapshot back through the
+ *   worker — the same round-trip upstream's popup used to hydrate its controls.
+ */
+export type PopupToWorkerMessage =
+  | {
+      method: "popup"
+      cmd: PopupCommand
+      value?: boolean
+      checked?: boolean
+      shiftKey?: boolean
+    }
+  | {
+      method: "storage"
+      local?: Record<string, unknown>
+      session?: Record<string, unknown>
+    }
+
+/**
+ * The worker's reply to a {@link PopupToWorkerMessage} `storage` read: the
+ * merged `local` + `session` preference snapshot. Keys are untyped at the wire
+ * boundary; callers narrow against the `Prefs` schema before use.
+ */
+export type WorkerToPopupMessage = Record<string, unknown>
+
+/** Narrowing guard for the popup→worker protocol. */
+export function isPopupToWorkerMessage(
+  value: unknown
+): value is PopupToWorkerMessage {
+  if (value === null || typeof value !== "object" || !("method" in value)) {
+    return false
+  }
+  return value.method === "popup" || value.method === "storage"
+}
