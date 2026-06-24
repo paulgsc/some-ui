@@ -417,6 +417,10 @@ importers:
         version: 8.3.0
 
   extensions/some-conveyor:
+    dependencies:
+      polyhedron:
+        specifier: workspace:*
+        version: link:../../crates/polyhedron
     devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
