@@ -41,7 +41,7 @@ export function SuspendCard({
 
   const iconWrap = document.createElement("div")
   iconWrap.className = "suspend-card__icon"
-  if (favIconUrl && !recovery) {
+  if (favIconUrl && !recovery && isSafeFaviconUrl(favIconUrl)) {
     const img = document.createElement("img")
     img.className = "suspend-card__favicon"
     img.src = favIconUrl
@@ -104,6 +104,16 @@ function zGlyph(): Node {
     "image/svg+xml"
   )
   return document.importNode(doc.documentElement, true)
+}
+
+/** Only http/https/data favicons are safe to assign to img.src. */
+function isSafeFaviconUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url)
+    return protocol === "https:" || protocol === "http:" || protocol === "data:"
+  } catch {
+    return false
+  }
 }
 
 /** Best-effort hostname extraction for the title fallback. */

@@ -90,7 +90,8 @@ function main(): void {
   }
 
   const restore = (): void => {
-    if (recovery) return
+    // Validate scheme inline so static analysis can follow the guard directly.
+    if (!isRestorable(params.url)) return
     // Replace (not assign) so the suspended page leaves no back-button trap.
     location.replace(params.url)
   }
