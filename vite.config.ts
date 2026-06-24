@@ -49,6 +49,10 @@ export default defineConfig({
       "@mujik": path.resolve(__dirname, "./extensions/some-mujik/src"),
       "@filter": path.resolve(__dirname, "./extensions/some-filter/src"),
       "@conveyor": path.resolve(__dirname, "./extensions/some-conveyor/src"),
+      "@suspender": path.resolve(
+        __dirname,
+        "./extensions/suspender-ledger/src"
+      ),
 
       // Add more aliases for other packages as needed
     },
