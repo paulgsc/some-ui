@@ -10,6 +10,7 @@
 // the page enters a self-explanatory recovery state rather than stranding the
 // user on a dead tab.
 
+import { isRestorableUrl, isSafeFaviconUrl } from "@suspender/lib/safe-url"
 import { SuspendCard } from "@suspender/suspend/components/suspend-card"
 
 import "./suspend.css"
@@ -38,28 +39,13 @@ function readParams(): SuspendParams {
   }
 }
 
-/** A URL is restorable only if it parses and uses a navigable scheme. */
-function isRestorable(url: string): boolean {
-  try {
-    const { protocol } = new URL(url)
-    return (
-      protocol === "http:" ||
-      protocol === "https:" ||
-      protocol === "ftp:" ||
-      protocol === "file:"
-    )
-  } catch {
-    return false
-  }
-}
-
 /** Reflect the original title/favicon onto the tab strip while suspended. */
 function applyTabChrome(params: SuspendParams): void {
   const label = params.title || hostOf(params.url)
   if (label) {
     document.title = label
   }
-  if (params.favIconUrl) {
+  if (params.favIconUrl && isSafeFaviconUrl(params.favIconUrl)) {
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
     if (!link) {
       link = document.createElement("link")
@@ -83,7 +69,7 @@ function main(): void {
   if (!root) return
 
   const params = readParams()
-  const recovery = !isRestorable(params.url)
+  const recovery = !isRestorableUrl(params.url)
 
   if (!recovery) {
     applyTabChrome(params)
@@ -91,7 +77,7 @@ function main(): void {
 
   const restore = (): void => {
     // Validate scheme inline so static analysis can follow the guard directly.
-    if (!isRestorable(params.url)) return
+    if (!isRestorableUrl(params.url)) return
     // Replace (not assign) so the suspended page leaves no back-button trap.
     location.replace(params.url)
   }

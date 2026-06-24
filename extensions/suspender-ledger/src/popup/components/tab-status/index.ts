@@ -5,6 +5,7 @@
 // Adapted from auto-tab-discard v3/data/popup (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+import { isSafeFaviconUrl } from "@suspender/lib/safe-url"
 import { svgNode } from "@suspender/popup/svg"
 
 /** The discard state of the active tab, as surfaced to the popup header. */
@@ -40,7 +41,7 @@ export function TabStatus({
 
   const iconWrap = document.createElement("div")
   iconWrap.className = "tab-status__icon"
-  if (favIconUrl) {
+  if (favIconUrl && isSafeFaviconUrl(favIconUrl)) {
     const img = document.createElement("img")
     img.className = "tab-status__favicon"
     img.src = favIconUrl
