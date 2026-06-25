@@ -79,9 +79,19 @@ pnpm -F @some-extension/suspender-ledger build:firefox
 # unit tests (Vitest)
 pnpm -F @some-extension/suspender-ledger test
 
+# suspend-page E2E smoke (Playwright, headless Chromium against the built bundle)
+pnpm -F @some-extension/suspender-ledger test:e2e
+
 # full local gate: eslint, web-ext lint, MPL headers, typecheck
 pnpm -F @some-extension/suspender-ledger lint
 ```
+
+The `test:e2e` suite builds `dist/`, serves it over HTTP, and drives the
+suspend page (URL-param render, favicon injection, click/Enter restore) in
+headless Chromium — the one surface that is pure web and so CI-portable
+without loading an extension. It uses the Playwright-managed browser by
+default; set `PW_CHROMIUM_PATH` to point at a system Chromium when the
+Playwright CDN is unreachable.
 
 Individual checks:
 
