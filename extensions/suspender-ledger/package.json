@@ -3,6 +3,7 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@some-ui/tsconfig": "workspace:*",
     "@types/chrome": "^0.0.293",
     "@types/firefox-webext-browser": "^120.0.4",
@@ -25,10 +26,13 @@
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "check:headers": "node scripts/check-mpl-headers.js",
     "lint": "pnpm lint:js && pnpm lint:ext && pnpm check:headers && pnpm typecheck",
-    "lint:ext": "web-ext lint --source-dir dist",
+    "lint:ext": "web-ext lint --source-dir dist --self-hosted",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "sign:firefox": "web-ext sign --source-dir dist --channel=unlisted --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET",
+    "sign:firefox": "web-ext sign --source-dir dist --artifacts-dir artifacts --channel=unlisted --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET",
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit"
   },
   "sideEffects": [

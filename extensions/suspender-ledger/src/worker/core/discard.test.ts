@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { discard, inprogress } from "./discard"
+import { prefs } from "./prefs"
 
 type DiscardCb = () => void
 
@@ -108,6 +109,36 @@ describe("discard", () => {
     await flush()
 
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
+  })
+
+  it("logs chrome.runtime.lastError when the browser rejects a discard", async () => {
+    const consoleSpy = vi
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined)
+    prefs.log = true
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    vi.mocked(chrome.tabs.discard).mockImplementation(((
+      _id: number,
+      cb: DiscardCb
+    ) => {
+      Object.assign(chrome.runtime, {
+        lastError: { message: "Tab cannot be discarded." },
+      })
+      cb()
+      Object.assign(chrome.runtime, { lastError: undefined })
+    }) as never)
+
+    await discard(tab({ id: 50 }))
+
+    expect(
+      consoleSpy.mock.calls.some((c) =>
+        c.some((a) => String(a).includes("Tab cannot be discarded."))
+      )
+    ).toBe(true)
+
+    consoleSpy.mockRestore()
+    prefs.log = false
   })
 
   it("never calls chrome.tabs.remove across any path", async () => {

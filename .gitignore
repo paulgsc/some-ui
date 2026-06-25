@@ -80,6 +80,10 @@ packages/ui/**/public/
 # Test artifacts
 extensions/**/test-results/
 
+# Signed extension artifacts (web-ext sign) — never commit credentials or .xpi
+extensions/**/artifacts/
+*.xpi
+
 
 # Misc
 .fix
