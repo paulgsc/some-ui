@@ -44,7 +44,10 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
     }
     try {
       chrome.tabs.discard(tab.id, () => {
-        void chrome.runtime.lastError
+        const err = chrome.runtime.lastError
+        if (err) {
+          log("discard rejected by browser", err.message ?? err)
+        }
         resolve()
       })
     } catch (e) {
