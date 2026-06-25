@@ -53,7 +53,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["suspend.html"],
+      "resources": ["suspend.html", "data/inject/meta.js"],
       "matches": ["*://*/*"]
     }
   ],
