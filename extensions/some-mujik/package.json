@@ -1,26 +1,27 @@
 {
-  "name": "@some-extension/mujik",
-  "version": "1.0.0",
-  "description": "Ambient music visualizer overlay for YouTube/YouTube Music browser extension",
-  "type": "module",
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
-    "dev": "vite",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
-    "test": "vitest",
-    "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
-  },
-  "dependencies": {
-    "@some-extension/common": "workspace:*"
-  },
-  "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4"
-  }
+	"name": "@some-extension/mujik",
+	"version": "1.0.0",
+	"description": "Ambient music visualizer overlay for YouTube/YouTube Music browser extension",
+	"type": "module",
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json && vite build",
+		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+		"clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+		"dev": "vite",
+		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+		"package:source": "bash ../scripts/package-source.sh",
+		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+		"test": "vitest",
+		"typecheck": "tsc --noEmit",
+		"watch:build": "rollup --bundleConfigAsCjs -c --watch",
+		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+	},
+	"dependencies": {
+		"@some-extension/common": "workspace:*"
+	},
+	"devDependencies": {
+		"@some-ui/tsconfig": "workspace:*",
+		"@types/firefox-webext-browser": "^120.0.4"
+	}
 }

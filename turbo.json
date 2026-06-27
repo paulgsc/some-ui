@@ -77,6 +77,15 @@
     },
     "clean:build": {
       "cache": false
+    },
+    "package:source": {
+      "dependsOn": ["build"],
+      "outputs": ["artifacts/source-*.zip"],
+      "cache": false
+    },
+    "sign:firefox": {
+      "dependsOn": ["package:source"],
+      "cache": false
     }
   }
 }
