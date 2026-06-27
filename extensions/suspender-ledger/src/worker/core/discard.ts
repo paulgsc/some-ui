@@ -34,31 +34,45 @@ type DiscardFn = {
 }
 
 /**
- * The terminal action: navigate the tab to the themed suspend page. This is the
- * ONLY place a tab state is changed, and it is `chrome.tabs.update` — never
- * `chrome.tabs.remove`. Navigating to suspend.html applies the `prepends` title
- * marker and provides the visible, themed placeholder that native discard lacks.
+ * The terminal action: natively discard the tab to free renderer memory.
+ * Before discarding, a `prepends` title marker is injected via
+ * `scripting.executeScript` so the browser tab strip shows the "💤" prefix.
+ * If native discard is rejected (pinned tab, protected page, etc.), we fall
+ * back to navigating to the themed suspend page.
+ *
+ * This is the ONLY place tab state is changed — `chrome.tabs.discard` (or on
+ * failure `chrome.tabs.update`) — never `chrome.tabs.remove`.
  */
-const perform = (tab: chrome.tabs.Tab): Promise<void> =>
-  new Promise<void>((resolve) => {
-    if (tab.id === undefined) {
-      resolve()
-      return
-    }
-    const suspendUrl = buildSuspendUrl(tab, prefs.prepends)
+const perform = async (tab: chrome.tabs.Tab): Promise<void> => {
+  if (tab.id === undefined) return
+  const tabId = tab.id
+  const marker = prefs.prepends
+
+  if (marker && tab.title) {
     try {
-      chrome.tabs.update(tab.id, { url: suspendUrl }, () => {
-        const err = chrome.runtime.lastError
-        if (err) {
-          log("suspend navigation failed", err.message ?? err)
-        }
-        resolve()
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (m: string): void => {
+          document.title = `${m} ${document.title}`
+        },
+        args: [marker],
       })
     } catch (e) {
-      log("suspending failed", e)
-      resolve()
+      log("title injection rejected (protected page)", e)
     }
-  })
+  }
+
+  try {
+    await chrome.tabs.discard(tabId)
+  } catch (e) {
+    log("native discard rejected — falling back to suspend page", e)
+    try {
+      await chrome.tabs.update(tabId, { url: buildSuspendUrl(tab, marker) })
+    } catch (e2) {
+      log("suspend fallback navigation failed", e2)
+    }
+  }
+}
 
 function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   if (tab.id === undefined) {

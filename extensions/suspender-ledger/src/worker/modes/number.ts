@@ -298,6 +298,18 @@ const number: NumberMode = {
         meta.audible = ms.some((o) => o.audible === true)
         meta.paused = ms.some((o) => o.paused === true)
 
+        // Child iframes lack watch.ts so their time defaults to Date.now().
+        // Object.assign's last-wins would overwrite the main frame's meaningful
+        // lastVisit when allFrames:true is used, making every tab look too young.
+        // Restore main-frame time explicitly.
+        const mainFrame = results.find((r) => r.frameId === 0)
+        if (mainFrame !== undefined) {
+          const mainMeta = readMeta(mainFrame.result)
+          if (typeof mainMeta.time === "number") {
+            meta.time = mainMeta.time
+          }
+        }
+
         // using too much memory => discard instantly
         if (
           prefs["memory-enabled"] &&

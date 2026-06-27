@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { discard, inprogress } from "../core/discard"
 import { number } from "./number"
 
-type UpdateCb = (tab?: chrome.tabs.Tab) => void
 type QueryCb = (tabs: Array<chrome.tabs.Tab>) => void
 type StorageCb = (items: Record<string, unknown>) => void
 
@@ -101,19 +100,11 @@ beforeEach(() => {
     () => Promise.resolve(readyResult())
   )
 
-  // tabs.update (the suspend navigation) resolves its callback immediately.
-  // The chrome typings surface only the promise overload, so the callback form
-  // needs an assertion.
-   
-  vi.mocked(chrome.tabs.update).mockImplementation(((
-    _id: number,
-    _props: chrome.tabs.UpdateProperties,
-    cb: UpdateCb
-  ) => cb(undefined)))
-})
-
-const suspendUrlMatcher = expect.objectContaining({
-  url: expect.stringContaining("suspend.html"),
+  // tabs.discard (native discard) resolves immediately on the happy path.
+  vi.mocked(chrome.tabs.discard).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    () => Promise.resolve()
+  )
 })
 
 describe("number.check — auto-discard", () => {
@@ -128,11 +119,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.update).toHaveBeenCalledWith(
-      10,
-      suspendUrlMatcher,
-      expect.any(Function)
-    )
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(10)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 
@@ -150,7 +137,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.update).not.toHaveBeenCalled()
+    expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
   it("skips a tab that is too young (within the period threshold)", async () => {
@@ -167,7 +154,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.update).not.toHaveBeenCalled()
+    expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
   it("skips a tab with unsaved form input when form guard is on", async () => {
@@ -184,7 +171,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.update).not.toHaveBeenCalled()
+    expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
   it("does not suspend when tab count is at or below the threshold", async () => {
@@ -197,7 +184,7 @@ describe("number.check — auto-discard", () => {
     await number.check()
     await flush()
 
-    expect(chrome.tabs.update).not.toHaveBeenCalled()
+    expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
   it("suspends the oldest tab first when multiple candidates exist", async () => {
@@ -223,16 +210,8 @@ describe("number.check — auto-discard", () => {
     await number.check()
     await flush()
 
-    expect(chrome.tabs.update).toHaveBeenCalledWith(
-      20,
-      suspendUrlMatcher,
-      expect.any(Function)
-    )
-    expect(chrome.tabs.update).not.toHaveBeenCalledWith(
-      21,
-      suspendUrlMatcher,
-      expect.any(Function)
-    )
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(20)
+    expect(chrome.tabs.discard).not.toHaveBeenCalledWith(21)
   })
 
   it("never calls chrome.tabs.remove (never-close invariant)", async () => {
@@ -263,11 +242,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { "ignore.ready.state": true, number: 0 })
     await flush()
 
-    expect(chrome.tabs.update).toHaveBeenCalledWith(
-      40,
-      suspendUrlMatcher,
-      expect.any(Function)
-    )
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(40)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 })
