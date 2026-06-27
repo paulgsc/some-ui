@@ -15,10 +15,23 @@ ARCHIVE="$EXTENSION_DIR/artifacts/source-$VERSION.zip"
 mkdir -p "$EXTENSION_DIR/artifacts"
 
 # git archive only includes tracked files — naturally excludes node_modules, dist, .env*
+#
+# Include the full workspace context needed by `pnpm install --frozen-lockfile`:
+#   - The target extension directory
+#   - extensions/common: shared extension utilities
+#   - packages/*: workspace devDeps (tsconfig, eslint, rollup-config, vite-config, etc.)
+#   - Root config + lockfile: pnpm-workspace.yaml pins monorepo layout; pnpm-lock.yaml
+#     pins exact dep versions; tsconfig.json / tsconfig.build.json are referenced by
+#     extension tsconfig extends chains
 git -C "$REPO_ROOT" archive --format=zip HEAD \
   "$EXT_RELPATH/" \
+  extensions/common/ \
+  packages/ \
+  pnpm-workspace.yaml \
   pnpm-lock.yaml \
   package.json \
+  tsconfig.json \
+  tsconfig.build.json \
   -o "$ARCHIVE"
 
 echo "::notice::Source archive created: $ARCHIVE (git SHA: $GIT_SHA)"
