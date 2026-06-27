@@ -5,7 +5,6 @@
 
 import { isSafeFaviconUrl } from "@suspender/lib/safe-url"
 
-
 /** Presentational model for the suspended-tab card. */
 export type SuspendCardProps = {
   /** Original page title (falls back to the host, then a placeholder). */
@@ -94,7 +93,7 @@ export function SuspendCard({
 
   const hint = document.createElement("p")
   hint.className = "suspend-card__hint"
-  hint.textContent = "Click anywhere or press Enter to restore"
+  hint.textContent = "Press Enter or Space to restore"
 
   card.append(button, hint)
   return card

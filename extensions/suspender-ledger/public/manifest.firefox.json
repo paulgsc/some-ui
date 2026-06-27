@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Suspender Ledger",
+  "name": "Suspender Ledger (Beta)",
   "version": "0.1.0",
-  "description": "Tab suspender — pause tabs to reclaim RAM without losing history.",
+  "description": "Beta — Tab suspender: pause background tabs to reclaim RAM without losing history. Navigate to suspend.html for a themed placeholder; restore on explicit click.",
   "permissions": [
     "idle",
     "storage",
@@ -53,7 +53,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["suspend.html", "data/inject/meta.js"],
+      "resources": ["suspend.html"],
       "matches": ["*://*/*"]
     }
   ],

@@ -3,20 +3,30 @@
  *
  * Suspend page styling. The critical background/colour is already inlined in
  * suspend.html so the first paint is dark (anti-flash-bang); this sheet layers
- * the card presentation on top once it loads. All colours flow through the
- * --sl-* custom properties some-filter injects, with safe dark fallbacks so an
- * absent filter never produces a white frame.
+ * the card presentation on top once it loads.
+ *
+ * some-filter cannot reach this moz-extension:// page (its content scripts only
+ * match http/https), so the suspend page can never be dark-themed by the filter
+ * at runtime — it must carry the filter's look itself. The --sl-* tokens below
+ * are therefore pinned to some-filter's canonical dark palette (the --sw-*
+ * tokens in theme-apply.ts): --sw-bg-0 #0d1117 canvas, --sw-surface #1e222b
+ * card, --sw-text-* foregrounds, --sw-link accent. A suspended tab then looks
+ * byte-identical to a filtered page.
+ *
+ * There is intentionally NO `prefers-color-scheme: light` branch: the surface
+ * is unconditionally dark so an OS in light mode can never produce the white
+ * flash-bang this owned page exists to eliminate.
  */
 
 :root {
-  --sl-bg: #1a1a1a;
-  --sl-bg-card: #232326;
-  --sl-fg: #e0e0e0;
-  --sl-fg-dim: #9a9aa2;
-  --sl-fg-faint: #6a6a72;
-  --sl-border: rgb(255 255 255 / 8%);
-  --sl-accent: #6aa6ff;
-  --sl-accent-dim: rgb(106 166 255 / 16%);
+  --sl-bg: #0d1117; /* --sw-bg-0 */
+  --sl-bg-card: #1e222b; /* --sw-surface */
+  --sl-fg: #e2e8f0; /* --sw-text-0 */
+  --sl-fg-dim: #94a3b8; /* --sw-text-1 */
+  --sl-fg-faint: #475569; /* --sw-text-2 */
+  --sl-border: rgb(255 255 255 / 8%); /* --sw-border */
+  --sl-accent: #7aa2f7; /* --sw-link */
+  --sl-accent-dim: rgb(122 162 247 / 16%); /* --sw-link @ 16% */
 }
 
 *,
@@ -125,15 +135,4 @@ body {
 .suspend-card__hint {
   color: var(--sl-fg-faint);
   font-size: 12px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --sl-bg: #f3f3f5;
-    --sl-bg-card: #fff;
-    --sl-fg: #1c1c1f;
-    --sl-fg-dim: #55555c;
-    --sl-fg-faint: #8a8a90;
-    --sl-border: rgb(0 0 0 / 10%);
-  }
 }

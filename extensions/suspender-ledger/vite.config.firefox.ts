@@ -40,7 +40,6 @@ export default defineConfig({
       input: {
         worker: resolve(__dirname, "src/worker/worker.ts"),
         watch: resolve(__dirname, "src/content/watch.ts"),
-        meta: resolve(__dirname, "src/content/meta.ts"),
         popup: resolve(__dirname, "popup.html"),
         suspend: resolve(__dirname, "suspend.html"),
       },
@@ -49,7 +48,6 @@ export default defineConfig({
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "worker") return "worker.js"
           if (chunkInfo.name === "watch") return "watch.js"
-          if (chunkInfo.name === "meta") return "data/inject/meta.js"
           if (chunkInfo.name === "popup") return "popup.js"
           if (chunkInfo.name === "suspend") return "suspend.js"
           return "[name].js"
