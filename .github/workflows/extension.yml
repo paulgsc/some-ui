@@ -1,15 +1,18 @@
 name: Extension CI
-# Orchestrates extension verification (PR) and signing (push to main).
+# Orchestrates extension verification on PR and push to main.
 #
 # Job graph:
 #   detect
-#     └── build-workspace          (shared packages, paid once)
-#           ├── verify[matrix]     (per-extension: typecheck/lint/test/build)
-#           │     └── sign[matrix] (post-merge only: AMO submit + xpi upload)
+#     └── build-workspace      (shared packages, paid once)
+#           └── verify[matrix] (per-extension: typecheck/lint/test/build)
+#
+# Signing is intentionally NOT wired here. AMO compliance footguns are being
+# resolved under epic https://github.com/paulgsc/some-ui/issues/310 —
+# auto-signing on main is suspended until all A+B issues are closed.
+# Use extension-sign-manual.yml (workflow_dispatch) to sign when ready.
 #
 # Workspace packages are built once and shared via the workspace-dist artifact.
-# Neither verify nor sign rebuilds shared packages — they only bundle the
-# extension itself, which is fast.
+# verify does not rebuild shared packages — it only bundles the extension itself.
 on:
   pull_request:
     paths:
@@ -35,8 +38,8 @@ jobs:
     name: Detect Changed Extensions
     uses: ./.github/workflows/_extension-detect.yml
 
-  # Build shared workspace packages once. Both verify and sign download this
-  # artifact rather than each rebuilding the full upstream dep graph.
+  # Build shared workspace packages once. verify downloads this artifact
+  # rather than rebuilding the full upstream dep graph.
   build-workspace:
     name: Build Workspace Packages
     needs: detect
@@ -63,7 +66,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      # Upload packages/*/dist so verify and sign jobs can consume it.
+      # Upload packages/*/dist so verify jobs can consume it.
       # Retention of 1 day is sufficient — these artifacts are only needed
       # within the same workflow run.
       - name: Upload workspace dist
@@ -79,17 +82,5 @@ jobs:
     needs: [detect, build-workspace]
     if: needs.detect.outputs.has_changes == 'true'
     uses: ./.github/workflows/_extension-verify.yml
-    with:
-      matrix: ${{ needs.detect.outputs.matrix }}
-
-  sign:
-    name: Sign Firefox Extensions
-    needs: [detect, build-workspace, verify]
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.detect.outputs.has_changes == 'true'
-    uses: ./.github/workflows/_extension-sign.yml
-    secrets: inherit
     with:
       matrix: ${{ needs.detect.outputs.matrix }}
