@@ -248,6 +248,47 @@ describe("number.check — auto-discard", () => {
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 
+  it("uses tab.lastAccessed as age fallback when meta.time is undefined (pre-existing tab)", async () => {
+    const lastAccessed = Date.now() - 30 * 60 * 1000 // 30 min ago — older than period
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    vi.mocked(chrome.tabs.query).mockImplementation(((
+      _opts: unknown,
+      cb: QueryCb
+    ) => cb([makeTab({ id: 50, lastAccessed })])) as never)
+    vi.mocked(chrome.scripting.executeScript).mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      () => Promise.resolve(readyResult({ time: undefined }))
+    )
+
+    // number: 0 so 1 candidate > 0 threshold; tab.lastAccessed is 30 min old
+    await number.check(undefined, { number: 0 })
+    await flush()
+
+    expect(chrome.tabs.update).toHaveBeenCalledWith(
+      50,
+      suspendUrlMatcher,
+      expect.any(Function)
+    )
+  })
+
+  it("skips a pre-existing tab that is too young by tab.lastAccessed", async () => {
+    const lastAccessed = Date.now() - 60 * 1000 // 1 min ago — within period
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    vi.mocked(chrome.tabs.query).mockImplementation(((
+      _opts: unknown,
+      cb: QueryCb
+    ) => cb([makeTab({ id: 51, lastAccessed })])) as never)
+    vi.mocked(chrome.scripting.executeScript).mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      () => Promise.resolve(readyResult({ time: undefined }))
+    )
+
+    await number.check(undefined, { number: 0 })
+    await flush()
+
+    expect(chrome.tabs.update).not.toHaveBeenCalled()
+  })
+
   it("respects ignore.ready.state override — suspends even when meta.ready is false", async () => {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     vi.mocked(chrome.tabs.query).mockImplementation(((

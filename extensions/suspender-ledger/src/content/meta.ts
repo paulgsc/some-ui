@@ -21,7 +21,9 @@
 /** Metadata the worker reads from a tab before deciding to suspend it. */
 export type CollectedMeta = {
   ready: boolean
-  time: number
+  /** Undefined when watch.ts was not injected (pre-existing tab). The worker
+   *  falls back to tab.lastAccessed in that case. */
+  time: number | undefined
   forms: boolean
   audible: boolean
   paused: boolean
@@ -35,7 +37,10 @@ export function collectMeta(): CollectedMeta {
   )
   return {
     ready: true,
-    time: typeof window.lastVisit === "number" ? window.lastVisit : Date.now(),
+    // undefined when watch.ts has not yet injected window.lastVisit (e.g. tabs
+    // that were open before the extension was installed).  The worker falls back
+    // to tab.lastAccessed so these tabs are not permanently stuck as "too young".
+    time: typeof window.lastVisit === "number" ? window.lastVisit : undefined,
     forms: window.isReceivingFormInput === true,
     audible: media.some((m) => !m.paused && !m.muted && m.volume > 0),
     paused: media.some((m) => m.paused),

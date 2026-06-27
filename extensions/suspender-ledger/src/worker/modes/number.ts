@@ -358,7 +358,7 @@ const number: NumberMode = {
           icon(tb, "tab is not discardable")
           continue
         }
-        if (now - (meta.time ?? now) < prefs.period * 1000) {
+        if (now - (meta.time ?? tb.lastAccessed ?? now) < prefs.period * 1000) {
           log("discarding aborted", "tab is not old", tb)
           exceptionCount += 1
           icon.reset(tb)

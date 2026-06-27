@@ -94,8 +94,7 @@ function main(): void {
 
   if (recovery) return
 
-  // The whole page is a restore target — click or keyboard.
-  document.body.addEventListener("click", restore)
+  // Keyboard shortcut mirrors the explicit button for power users.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
