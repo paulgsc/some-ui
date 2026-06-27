@@ -1,0 +1,6 @@
+# Local AMO credentials — never commit
+.env.local
+
+# Signed extension artifacts produced by `pnpm sign:firefox` — never commit
+artifacts/
+*.xpi

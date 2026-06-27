@@ -32,13 +32,20 @@ const starters: Starters = {
 
 {
   // preferences are only hydrated once here; everywhere else, call storage().then()
-  const once = (): Promise<void> =>
-    storage(prefs).then((ps) => {
+  const once = (): Promise<void> => {
+    if (starters.ready) return Promise.resolve()
+    return storage(prefs).then((ps) => {
       Object.assign(prefs, ps)
       starters.ready = true
       starters.cache.forEach((c) => c())
       starters.cache.length = 0
     })
+  }
+
+  // MV3 SW respawn: neither onStartup nor onInstalled fires when the worker is
+  // respawned by an event — call once() at module evaluation so the gate opens
+  // regardless of how the worker started.
+  void once()
 
   chrome.runtime.onStartup.addListener(() => {
     void once()

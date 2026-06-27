@@ -43,6 +43,7 @@ const mockRuntimeApi = {
 
 const mockIdleApi = {
   setDetectionInterval: vi.fn(),
+  queryState: vi.fn(),
   onStateChanged: { addListener: vi.fn() },
 }
 
@@ -53,6 +54,16 @@ const mockMenusApi = {
   onClicked: { addListener: vi.fn() },
 }
 
+const mockScriptingApi = {
+  executeScript: vi.fn(),
+}
+
+const mockActionApi = {
+  setTitle: vi.fn(),
+  setIcon: vi.fn(),
+  setPopup: vi.fn(),
+}
+
 vi.stubGlobal("chrome", {
   tabs: mockTabsApi,
   alarms: mockAlarmsApi,
@@ -60,6 +71,8 @@ vi.stubGlobal("chrome", {
   runtime: mockRuntimeApi,
   idle: mockIdleApi,
   contextMenus: mockMenusApi,
+  scripting: mockScriptingApi,
+  action: mockActionApi,
 })
 
 vi.stubGlobal("browser", {
@@ -69,4 +82,6 @@ vi.stubGlobal("browser", {
   runtime: mockRuntimeApi,
   idle: mockIdleApi,
   menus: mockMenusApi,
+  scripting: mockScriptingApi,
+  action: mockActionApi,
 })

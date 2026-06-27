@@ -11,6 +11,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "jsx": "react-jsx",
     "strict": true,
     "strictNullChecks": true,
     "noImplicitAny": true,
@@ -25,6 +26,8 @@
   },
   "include": [
     "src",
+    "tests",
+    "playwright.config.ts",
     "vite.config.ts",
     "vite.config.firefox.ts",
     "vitest.setup.ts",

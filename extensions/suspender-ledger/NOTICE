@@ -29,3 +29,8 @@ under the MIT License.
 
 The package.json declares "license": "MPL-2.0 AND MIT" to reflect this
 dual-license structure. License scope is file-level per MPL-2.0 § 3.3.
+
+Signing credentials
+-------------------
+Never commit `.env.local` (AMO API key/secret) or signed `.xpi` files.
+Both are gitignored. See README.md for the signing workflow.

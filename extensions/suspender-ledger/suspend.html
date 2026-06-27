@@ -8,17 +8,24 @@
       form elements) in dark mode immediately — before any JS or CSS loads.
       This, combined with the inline background-color below, prevents the
       flash-bang white frame that vendor suspend pages cause.
+
+      It is deliberately `dark` only (never `dark light`): some-filter cannot
+      reach this moz-extension:// page to dark-theme it, and the whole reason
+      this suspend page is owned is to guarantee an unconditional dark surface
+      that matches a filtered page — no light-mode branch, no white frame.
     -->
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="dark" />
     <title>Suspended — Suspender Ledger</title>
     <style>
       /*
-       * Inline critical CSS — rendered before external stylesheets load.
-       * Uses CSS custom properties that some-filter injects via its dark-mode
-       * pipeline, falling back to safe dark values when some-filter is absent.
+       * Inline critical CSS — rendered before external stylesheets load. The
+       * background/foreground values are some-filter's canonical dark tokens
+       * (--sw-bg-0 / --sw-text-0) hard-coded here so the very first paint is
+       * byte-identical to a filtered page, with zero dependency on the filter
+       * or the external stylesheet having loaded yet.
        */
       :root {
-        color-scheme: dark light;
+        color-scheme: dark;
       }
 
       html,
@@ -26,8 +33,8 @@
         margin: 0;
         padding: 0;
         min-height: 100dvh;
-        background-color: var(--sl-bg, #1a1a1a);
-        color: var(--sl-fg, #e0e0e0);
+        background-color: #0d1117;
+        color: #e2e8f0;
         font-family: system-ui, -apple-system, sans-serif;
       }
     </style>

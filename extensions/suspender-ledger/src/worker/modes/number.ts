@@ -5,6 +5,8 @@
 // Ported from auto-tab-discard v3/worker/modes/number.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+import { collectMeta } from "@suspender/content/meta"
+
 import { discard } from "../core/discard"
 import { storage } from "../core/prefs"
 import { starters } from "../core/startup"
@@ -272,8 +274,9 @@ const number: NumberMode = {
             : await chrome.scripting
                 .executeScript({
                   target: { tabId: tb.id, allFrames: true },
-                  // collector ships with the content layer (story #256)
-                  files: ["/data/inject/meta.js"],
+                  // Inject the collector as a function, not a bundled file: a
+                  // bundler tree-shakes the file's completion-value payload.
+                  func: collectMeta,
                 })
                 .then(
                   (r) => r,
@@ -297,6 +300,18 @@ const number: NumberMode = {
         meta.forms = ms.some((o) => o.forms === true)
         meta.audible = ms.some((o) => o.audible === true)
         meta.paused = ms.some((o) => o.paused === true)
+
+        // Child iframes lack watch.ts so their time defaults to Date.now().
+        // Object.assign's last-wins would overwrite the main frame's meaningful
+        // lastVisit when allFrames:true is used, making every tab look too young.
+        // Restore main-frame time explicitly.
+        const mainFrame = results.find((r) => r.frameId === 0)
+        if (mainFrame !== undefined) {
+          const mainMeta = readMeta(mainFrame.result)
+          if (typeof mainMeta.time === "number") {
+            meta.time = mainMeta.time
+          }
+        }
 
         // using too much memory => discard instantly
         if (
@@ -343,7 +358,7 @@ const number: NumberMode = {
           icon(tb, "tab is not discardable")
           continue
         }
-        if (now - (meta.time ?? now) < prefs.period * 1000) {
+        if (now - (meta.time ?? tb.lastAccessed ?? now) < prefs.period * 1000) {
           log("discarding aborted", "tab is not old", tb)
           exceptionCount += 1
           icon.reset(tb)

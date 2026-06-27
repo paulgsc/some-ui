@@ -42,7 +42,6 @@ jobs:
           filters: |
             shared:
               - 'packages/**'
-              - 'pnpm-lock.yaml'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
