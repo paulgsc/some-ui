@@ -1,4 +1,4 @@
-import someUIEslint from "maishatu-eslint-kit"
+import { extensionsRecommended } from "maishatu-eslint-kit"
 
 // vitest.config.ts references vitest/config which bundles vite@5 internally,
 // while the workspace uses vite@6. Including it in tsconfig.json causes
@@ -8,7 +8,7 @@ import someUIEslint from "maishatu-eslint-kit"
 // service". allowDefaultProject inside projectService bridges the gap: ESLint
 // checks the file with a lightweight default program instead of the full
 // tsconfig.json project.
-const withAllowDefaultProject = someUIEslint.map((entry) => {
+const withAllowDefaultProject = extensionsRecommended.map((entry) => {
   if (entry.languageOptions?.parserOptions?.projectService !== true)
     return entry
   return {

@@ -1,7 +1,7 @@
 import { defineConfig } from "eslint/config"
-import someUIEslint from "maishatu-eslint-kit"
+import { extensionsRecommended } from "maishatu-eslint-kit"
 
-export default defineConfig(...someUIEslint, {
+export default defineConfig(...extensionsRecommended, {
   files: ["scripts/**/*.{js,mjs}"],
   rules: {
     "no-console": "off",

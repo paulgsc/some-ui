@@ -1,3 +1,3 @@
-import someUIEslint from "maishatu-eslint-kit"
+import { extensionsRecommended } from "maishatu-eslint-kit"
 
-export default someUIEslint
+export default extensionsRecommended

@@ -48,6 +48,16 @@ export {
 }
 
 /**
+ * Recommended preset for browser-extension workspaces.
+ * Extends maishatuRecommended with AMO security rules and Good-Citizen Charter lints.
+ */
+export const extensionsRecommended: Config = [
+  ...maishatuRecommended,
+  ...extensionsSecurityConfig,
+  ...extensionsCharterConfig,
+]
+
+/**
  * Default export
  */
 export default maishatuRecommended
