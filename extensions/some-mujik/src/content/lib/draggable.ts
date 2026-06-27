@@ -25,6 +25,7 @@ export function makeDraggable(
 
   if (storageKey) {
     try {
+      // eslint-disable-next-line extension-charter/no-raw-storage
       const stored = localStorage.getItem(storageKey)
       if (stored) {
         const { x, y } = JSON.parse(stored)
@@ -45,7 +46,7 @@ export function makeDraggable(
   let startElX = 0
   let startElY = 0
 
-  function applyPos() {
+  function applyPos(): void {
     // Clamp to viewport
     const maxX = window.innerWidth - el.offsetWidth - 8
     const maxY = window.innerHeight - el.offsetHeight - 8
@@ -55,8 +56,9 @@ export function makeDraggable(
     el.style.top = `${posY}px`
   }
 
-  function onPointerDown(e: PointerEvent) {
+  function onPointerDown(e: PointerEvent): void {
     // Only drag on the card itself (not child interactive elements)
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     if ((e.target as HTMLElement).closest("button, a, input")) return
     dragging = true
     startX = e.clientX
@@ -69,14 +71,14 @@ export function makeDraggable(
     e.preventDefault()
   }
 
-  function onPointerMove(e: PointerEvent) {
+  function onPointerMove(e: PointerEvent): void {
     if (!dragging) return
     posX = startElX + (e.clientX - startX)
     posY = startElY + (e.clientY - startY)
     applyPos()
   }
 
-  function onPointerUp(e: PointerEvent) {
+  function onPointerUp(e: PointerEvent): void {
     if (!dragging) return
     dragging = false
     el.releasePointerCapture(e.pointerId)
@@ -84,6 +86,7 @@ export function makeDraggable(
 
     if (storageKey) {
       try {
+        // eslint-disable-next-line extension-charter/no-raw-storage
         localStorage.setItem(storageKey, JSON.stringify({ x: posX, y: posY }))
       } catch {
         /* ignore */
@@ -91,7 +94,7 @@ export function makeDraggable(
     }
   }
 
-  function onResize() {
+  function onResize(): void {
     applyPos()
   }
 
@@ -104,7 +107,7 @@ export function makeDraggable(
   el.style.cursor = "grab"
 
   return {
-    destroy() {
+    destroy(): void {
       el.removeEventListener("pointerdown", onPointerDown)
       el.removeEventListener("pointermove", onPointerMove)
       el.removeEventListener("pointerup", onPointerUp)

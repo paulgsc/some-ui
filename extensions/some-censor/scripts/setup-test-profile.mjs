@@ -27,6 +27,7 @@
  *   Never run this script with a different binary than Playwright uses.
  */
 
+/* eslint-disable no-console, no-process-exit */
 import { spawn } from "child_process"
 import { existsSync, rmSync } from "fs"
 import { dirname, join, resolve } from "path"

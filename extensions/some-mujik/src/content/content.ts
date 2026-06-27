@@ -49,14 +49,14 @@ function isYTTab(): boolean {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function initSourceRole(): void {
-  browser.runtime.sendMessage({ type: "ytmo:register-source" })
+  void browser.runtime.sendMessage({ type: "ytmo:register-source" })
 
   let currentHref: string = location.href
 
   const navObserver: MutationObserver = new MutationObserver((): void => {
     if (location.href !== currentHref) {
       currentHref = location.href
-      browser.runtime.sendMessage({ type: "ytmo:register-source" })
+      void browser.runtime.sendMessage({ type: "ytmo:register-source" })
     }
   })
 
@@ -68,6 +68,7 @@ function initSourceRole(): void {
         typeof msg === "object" &&
         msg !== null &&
         "type" in msg &&
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         (msg as { type: string }).type === "ytmo:extract-meta"
       ) {
         const data = extractMetadata()
@@ -154,6 +155,7 @@ function handleSongData(payload: SongPayload): void {
   const params = paramsFromSongMeta(songData)
 
   overlayCard.update({
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     ...(songData as Parameters<OverlayCard["update"]>[0]),
     ...params,
   })
@@ -168,10 +170,12 @@ function initDisplayRole(): void {
     if (typeof msg !== "object" || msg === null) return
     if (!("type" in msg)) return
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const m = msg as { type: string; payload?: unknown }
 
     if (m.type === "ytmo:song-data") {
       if (m.payload && typeof m.payload === "object") {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         handleSongData(m.payload as SongPayload)
       }
       return

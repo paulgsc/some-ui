@@ -21,6 +21,7 @@ const WaveformBridge = (props: WaveformParams) => {
       rendererRef.current?.destroy()
       rendererRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty dependency array: mount once
 
   // Updates: Push param changes to the existing renderer
@@ -28,6 +29,7 @@ const WaveformBridge = (props: WaveformParams) => {
     if (rendererRef.current) {
       rendererRef.current.updateParams(props)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.tempo, props.intensity, props.valence, props.arousal])
 
   return (

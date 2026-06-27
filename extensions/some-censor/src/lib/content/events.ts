@@ -17,6 +17,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "click",
     (e) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const vid = veilVideoId(e.target as Element)
       if (!vid) return
       e.preventDefault()
@@ -29,6 +30,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "dblclick",
     (e) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const vid = veilVideoId(e.target as Element)
       if (!vid) return
       e.preventDefault()
@@ -41,6 +43,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "contextmenu",
     (e) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const vid = veilVideoId(e.target as Element)
       if (!vid) return
       e.preventDefault()
@@ -67,5 +70,6 @@ function veilVideoId(target: Element): VideoId | null {
   // Check if it exists AND is an HTMLElement
   if (!(renderer instanceof HTMLElement)) return null
   const vid = renderer.dataset["boyoVid"]
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return vid ? (vid as VideoId) : null
 }

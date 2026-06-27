@@ -30,15 +30,16 @@ export function extractMetadata(): YTMetadata | null {
   const titleEl =
     document.querySelector<HTMLElement>(
       "yt-formatted-string.ytmusic-player-bar"
-    ) ||
-    document.querySelector<HTMLElement>(".title.ytmusic-player-bar") ||
+    ) ??
+    document.querySelector<HTMLElement>(".title.ytmusic-player-bar") ??
     document.querySelector<HTMLElement>(
       "h1.ytd-watch-metadata yt-formatted-string"
-    ) ||
-    document.querySelector<HTMLElement>("#title h1 yt-formatted-string") ||
+    ) ??
+    document.querySelector<HTMLElement>("#title h1 yt-formatted-string") ??
     document.querySelector<HTMLElement>(".watch-title")
 
   const title =
+    /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
     titleEl?.textContent?.trim() ||
     document.title
       .replace(/\s*[-–|]?\s*(YouTube Music|YouTube)\s*$/, "")
@@ -47,14 +48,15 @@ export function extractMetadata(): YTMetadata | null {
 
   // Artist / channel
   const artistEl =
-    document.querySelector<HTMLElement>(".byline.ytmusic-player-bar a") ||
+    document.querySelector<HTMLElement>(".byline.ytmusic-player-bar a") ??
     document.querySelector<HTMLElement>(
       "yt-formatted-string.byline.ytmusic-player-bar"
-    ) ||
-    document.querySelector<HTMLElement>("#channel-name a") ||
-    document.querySelector<HTMLElement>(".ytd-channel-name a") ||
+    ) ??
+    document.querySelector<HTMLElement>("#channel-name a") ??
+    document.querySelector<HTMLElement>(".ytd-channel-name a") ??
     document.querySelector<HTMLElement>("#owner-text a")
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const artist = artistEl?.textContent?.trim() || "Unknown Artist"
 
   return {

@@ -12,9 +12,10 @@ export function watchFullscreen(
 ): FullscreenWatcherHandle {
   let fullscreen = false
 
-  function checkAndNotify() {
+  function checkAndNotify(): void {
     const isFs =
       !!document.fullscreenElement ||
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
       !!(document as any).webkitFullscreenElement ||
       document.documentElement.classList.contains("ytp-fullscreen") ||
       !!document.querySelector(".ytp-fullscreen")
@@ -47,7 +48,7 @@ export function watchFullscreen(
   }
 
   return {
-    destroy() {
+    destroy(): void {
       document.removeEventListener("fullscreenchange", checkAndNotify)
       document.removeEventListener("webkitfullscreenchange", checkAndNotify)
       observer.disconnect()

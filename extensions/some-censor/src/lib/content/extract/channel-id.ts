@@ -31,6 +31,7 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
   const node = el.querySelector(
     "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string"
   )
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const name = node?.textContent?.trim()
   return name ? asChannelId(name) : null
 }

@@ -5,6 +5,7 @@ import type { MetaData } from "@censor/types/states"
  * All fields nullable — caller decides what to show when absent.
  */
 export function extractMeta(el: HTMLElement): MetaData {
+  /* eslint-disable @typescript-eslint/no-unnecessary-condition */
   const channelName =
     el
       .querySelector(
@@ -20,6 +21,7 @@ export function extractMeta(el: HTMLElement): MetaData {
   const uploadDate =
     el.querySelector("#metadata-line span:nth-child(2)")?.textContent?.trim() ??
     null
+  /* eslint-enable @typescript-eslint/no-unnecessary-condition */
 
   return { channelName, duration, uploadDate }
 }

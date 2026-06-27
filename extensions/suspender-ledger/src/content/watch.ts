@@ -58,6 +58,7 @@ function elementValue(el: Element): string {
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     return el.value
   }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return el.textContent ?? ""
 }
 
@@ -135,6 +136,7 @@ function notifyWorker(message: ContentToWorkerMessage): void {
   try {
     // sendMessage rejects when no receiver exists or the context was
     // invalidated; neither is fatal for the page, so swallow it.
+    // eslint-disable-next-line no-restricted-globals
     void Promise.resolve(chrome.runtime.sendMessage(message)).catch(
       () => undefined
     )

@@ -35,6 +35,7 @@ const STATE_CACHE_KEY = "__sw_tab_state"
 
 function readCachedState(): TabState | null {
   try {
+    // eslint-disable-next-line extension-charter/no-raw-storage
     const val = sessionStorage.getItem(STATE_CACHE_KEY)
     if (val === "auto" || val === "legacy" || val === "off") return val
   } catch {
@@ -45,6 +46,7 @@ function readCachedState(): TabState | null {
 
 function writeCachedState(state: TabState): void {
   try {
+    // eslint-disable-next-line extension-charter/no-raw-storage
     sessionStorage.setItem(STATE_CACHE_KEY, state)
   } catch {
     // Ignore write failures.

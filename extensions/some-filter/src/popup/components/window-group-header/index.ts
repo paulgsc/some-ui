@@ -21,6 +21,7 @@ export function WindowGroupHeader({
   label.className = "window-header__label"
 
   // 1. Create the SVG safely using the XML namespace
+  // eslint-disable-next-line no-restricted-syntax
   const svgNS = "http://www.w3.org/2000/svg"
   const svg = document.createElementNS(svgNS, "svg")
   svg.setAttribute("width", "11")

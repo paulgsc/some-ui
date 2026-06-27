@@ -31,7 +31,9 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx",
-    "vite.config*.ts"
+    "vite.config*.ts",
+    "playwright.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": [
     "node_modules",

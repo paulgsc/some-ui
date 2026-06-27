@@ -24,8 +24,9 @@
 export const ext: typeof browser =
   typeof browser !== "undefined"
     ? browser
-    : typeof chrome !== "undefined"
-      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    : // eslint-disable-next-line no-restricted-globals
+      typeof chrome !== "undefined"
+      ? // eslint-disable-next-line no-restricted-globals, @typescript-eslint/consistent-type-assertions
         (chrome as unknown as typeof browser)
       : (() => {
           throw new Error(

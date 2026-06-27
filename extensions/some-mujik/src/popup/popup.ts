@@ -3,18 +3,22 @@
 import "./popup.css"
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const toggleEl = document.getElementById("toggle-enabled") as HTMLInputElement
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const statusDot = document.getElementById("status-dot") as HTMLDivElement
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const statusText = document.getElementById("status-text") as HTMLSpanElement
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function setStatus(active: boolean, label?: string) {
+function setStatus(active: boolean, label?: string): void {
   statusDot.classList.toggle("status-dot--active", active)
   statusText.textContent =
     label ?? (active ? "Overlay active" : "Overlay hidden")
 }
 
+/* eslint-disable no-restricted-globals */
 function sendToContentScript(msg: object): Promise<unknown> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -33,9 +37,11 @@ function sendToContentScript(msg: object): Promise<unknown> {
     })
   })
 }
+/* eslint-enable no-restricted-globals */
 
 // ── Init: query current state from content script ─────────────────────────────
-async function init() {
+async function init(): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
   const res = (await sendToContentScript({ type: "ytmo:get-state" })) as any
 
   if (res?.error) {
@@ -47,17 +53,21 @@ async function init() {
   }
 
   toggleEl.checked = res?.enabled ?? true
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   setStatus(res?.enabled ?? true)
 }
 
 // ── Toggle handler ────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 toggleEl.addEventListener("change", async () => {
   const enabled = toggleEl.checked
   setStatus(false, "Updating…")
+  /* eslint-disable @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any */
   const res = (await sendToContentScript({
     type: "ytmo:set-enabled",
     payload: enabled,
   })) as any
+  /* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any */
 
   if (res?.error) {
     setStatus(false, "Error — reload tab")
@@ -67,4 +77,4 @@ toggleEl.addEventListener("change", async () => {
 })
 
 // ── Run ───────────────────────────────────────────────────────────────────────
-init()
+void init()

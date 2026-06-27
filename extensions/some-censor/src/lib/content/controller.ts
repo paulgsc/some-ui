@@ -58,9 +58,13 @@ export class Controller {
   private _bootstrap(): void {
     ext.runtime
       .sendMessage({ type: "GET_ENABLED" })
-      .then((r: any) => {
+      .then((r: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const resp = r as { ok?: boolean; enabled?: boolean } | null
         const enabled =
-          r?.ok && typeof r.enabled === "boolean" ? r.enabled : true
+          resp?.ok === true && typeof resp.enabled === "boolean"
+            ? resp.enabled
+            : true
         if (enabled) this._waitForApp()
         // If disabled, do nothing — _waitForApp never called, runtime never starts
       })
@@ -102,7 +106,7 @@ export class Controller {
    * teardown/setup cycles, since each navigation triggers exactly one of them.
    */
   private _listenNavigation(): void {
-    this._navListener = () => {
+    this._navListener = (): void => {
       if (this._navDebounce !== null) clearTimeout(this._navDebounce)
       this._navDebounce = setTimeout(() => {
         this._navDebounce = null
@@ -145,10 +149,12 @@ export class Controller {
   // ── Background messages ───────────────────────────────────────────────────
 
   private _listenBroadcasts(): void {
-    ext.runtime.onMessage.addListener((msg: any) => {
-      switch (msg.type) {
+    ext.runtime.onMessage.addListener((msg: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const m = msg as { type?: string; enabled?: boolean; channelId?: string }
+      switch (m.type) {
         case "ENABLED_CHANGED":
-          if (msg.enabled) {
+          if (m.enabled) {
             this._setupRuntime()
           } else {
             this._teardownRuntime()
@@ -156,7 +162,9 @@ export class Controller {
           break
 
         case "CHANNEL_WHITELISTED":
-          this._mgr.applyWhitelistBroadcast(msg.channelId)
+          if (m.channelId !== undefined) {
+            this._mgr.applyWhitelistBroadcast(m.channelId)
+          }
           break
       }
     })
