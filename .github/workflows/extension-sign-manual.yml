@@ -26,6 +26,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   preflight:
     name: Compliance Gate
