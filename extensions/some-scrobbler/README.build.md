@@ -10,12 +10,9 @@ from this source archive on a clean machine using only public package registries
 ├── extensions/
 │   ├── common/          # shared extension utilities
 │   └── some-scrobbler/          # this extension (source + README.build.md)
-├── packages/            # workspace devDependencies
-│   ├── eslint/          # shared ESLint config
-│   ├── tsconfig/        # shared TypeScript config
-│   ├── rollup-config/
-│   ├── some-vite-config/
-│   └── ...
+├── packages/
+│   ├── eslint/          # shared ESLint config (workspace devDep)
+│   └── tsconfig/        # shared TypeScript config (workspace devDep)
 ├── package.json         # root workspace manifest
 ├── pnpm-workspace.yaml  # monorepo workspace layout
 ├── pnpm-lock.yaml       # pinned dependency versions
