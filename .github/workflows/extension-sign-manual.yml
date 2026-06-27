@@ -1,0 +1,125 @@
+name: Sign Firefox Extension (Manual)
+# Manual-only AMO signing gate. Auto-sign on main is suspended while AMO
+# compliance footguns are resolved: https://github.com/paulgsc/some-ui/issues/310
+#
+# Usage:
+#   Actions → "Sign Firefox Extension (Manual)" → Run workflow
+#   Fill in the extension name and check the compliance confirmation box.
+#
+# The compliance_confirmed checkbox is a hard gate — the workflow fails
+# immediately if it is not checked. This prevents accidental signs before
+# all A+B issues in epic #310 are closed.
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+    inputs:
+      extension:
+        description: "Extension directory name (e.g. suspender-ledger)"
+        required: true
+        type: string
+      compliance_confirmed:
+        description: >
+          I confirm that all A+B issues in
+          https://github.com/paulgsc/some-ui/issues/310 are resolved for
+          this extension and the pre-sign checklist in
+          extensions/docs/amo-compliance.md §11 has been completed.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    name: Compliance Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if compliance not confirmed
+        if: ${{ inputs.compliance_confirmed != true }}
+        run: |
+          echo "::error::compliance_confirmed must be checked before signing."
+          echo "::error::Resolve all A+B issues in https://github.com/paulgsc/some-ui/issues/310 first."
+          echo "::error::Then complete the pre-sign checklist in extensions/docs/amo-compliance.md §11."
+          exit 1
+
+      - name: Confirm target extension
+        run: |
+          echo "Signing extension: ${{ inputs.extension }}"
+          echo "Compliance confirmed: ${{ inputs.compliance_confirmed }}"
+
+  build-matrix:
+    name: Build Sign Matrix
+    needs: preflight
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve extension metadata
+        id: matrix
+        run: |
+          ext="${{ inputs.extension }}"
+          ext_path="extensions/${ext}"
+
+          if [ ! -d "$ext_path" ]; then
+            echo "::error::Extension directory '${ext_path}' does not exist."
+            exit 1
+          fi
+
+          pkg_name=$(jq -r '.name' "${ext_path}/package.json" 2>/dev/null)
+          if [ -z "$pkg_name" ] || [ "$pkg_name" = "null" ]; then
+            echo "::error::Could not read .name from ${ext_path}/package.json"
+            exit 1
+          fi
+
+          matrix=$(jq -cn \
+            --arg n  "$ext" \
+            --arg p  "$ext_path" \
+            --arg pkg "$pkg_name" \
+            '{"include":[{"extension_name":$n,"extension_path":$p,"package_name":$pkg}]}')
+
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "Matrix: ${matrix}"
+
+  build-workspace:
+    name: Build Workspace Packages
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+
+      - name: Build workspace packages
+        run: |
+          nix develop .#ci --command pnpm build \
+            --filter='!./extensions/**'
+        env:
+          NODE_ENV: production
+
+      - name: Upload workspace dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: workspace-dist
+          path: packages/*/dist
+          if-no-files-found: warn
+          retention-days: 1
+
+  sign:
+    name: Sign ${{ inputs.extension }}
+    needs: [build-matrix, build-workspace]
+    uses: ./.github/workflows/_extension-sign.yml
+    secrets: inherit
+    with:
+      matrix: ${{ needs.build-matrix.outputs.matrix }}
