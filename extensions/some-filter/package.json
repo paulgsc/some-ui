@@ -1,72 +1,73 @@
 {
-  "bugs": {
-    "url": "https://github.com/paulgsc/some-ui/issues"
-  },
-  "dependencies": {
-    "@some-extension/common": "workspace:*"
-  },
-  "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4",
-    "some-ui-rollup-config": "workspace:*"
-  },
-  "exports": {
-    ".": {
-      "import": {
-        "default": "./dist/esm/some-ui-utils.esm.js",
-        "types": "./dist/esm/index.d.ts"
-      },
-      "require": {
-        "default": "./dist/cjs/some-ui-utils.cjs.js",
-        "types": "./dist/cjs/index.d.ts"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "some-ui-utils*",
-    "./dist/src/**/*",
-    "index.d.ts",
-    "./dist/esm/**/*",
-    "./dist/cjs/**/*"
-  ],
-  "homepage": "https://pgdev.maishatu.com/?tab=github",
-  "keywords": [],
-  "license": "MIT",
-  "main": "./dist/some-ui-utils.umd.js",
-  "module": "./dist/esm/some-ui-utils.esm.js",
-  "name": "@some-extension/filter",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/paulgsc/some-ui"
-  },
-  "scripts": {
-    "build": "pnpm build:firefox",
-    "build:background": "BUILD_TARGET=background vite build",
-    "build:chromium": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.chromium.ts && BUILD_TARGET=background vite build --config vite.config.chromium.ts",
-    "build:content": "BUILD_TARGET=content vite build",
-    "build:firefox": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.firefox.ts && BUILD_TARGET=background vite build --config vite.config.firefox.ts && BUILD_TARGET=popup vite build --config vite.config.firefox.ts",
-    "build:popup": "BUILD_TARGET=popup vite build",
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
-    "dev": "vite",
-    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier . --check --cache",
-    "prettier:fix": "prettier . --write",
-    "test": "vitest",
-    "test:e2e": "pnpm build:chromium && playwright test",
-    "test:e2e:headed": "pnpm build:chromium && playwright test --headed",
-    "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
-    "test:e2e:ui": "pnpm build:chromium && playwright test --ui",
-    "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
-    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
-  },
-  "sideEffects": false,
-  "type": "module",
-  "types": "index.d.ts",
-  "unpkg": "some-ui-utils.umd.js",
-  "version": "1.1.0"
+	"bugs": {
+		"url": "https://github.com/paulgsc/some-ui/issues"
+	},
+	"dependencies": {
+		"@some-extension/common": "workspace:*"
+	},
+	"devDependencies": {
+		"@some-ui/tsconfig": "workspace:*",
+		"maishatu-eslint-kit": "workspace:*",
+		"@types/firefox-webext-browser": "^120.0.4",
+		"some-ui-rollup-config": "workspace:*"
+	},
+	"exports": {
+		".": {
+			"import": {
+				"default": "./dist/esm/some-ui-utils.esm.js",
+				"types": "./dist/esm/index.d.ts"
+			},
+			"require": {
+				"default": "./dist/cjs/some-ui-utils.cjs.js",
+				"types": "./dist/cjs/index.d.ts"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"some-ui-utils*",
+		"./dist/src/**/*",
+		"index.d.ts",
+		"./dist/esm/**/*",
+		"./dist/cjs/**/*"
+	],
+	"homepage": "https://pgdev.maishatu.com/?tab=github",
+	"keywords": [],
+	"license": "MIT",
+	"main": "./dist/some-ui-utils.umd.js",
+	"module": "./dist/esm/some-ui-utils.esm.js",
+	"name": "@some-extension/filter",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/paulgsc/some-ui"
+	},
+	"scripts": {
+		"build": "pnpm build:firefox",
+		"build:background": "BUILD_TARGET=background vite build",
+		"build:chromium": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.chromium.ts && BUILD_TARGET=background vite build --config vite.config.chromium.ts",
+		"build:content": "BUILD_TARGET=content vite build",
+		"build:firefox": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.firefox.ts && BUILD_TARGET=background vite build --config vite.config.firefox.ts && BUILD_TARGET=popup vite build --config vite.config.firefox.ts",
+		"build:popup": "BUILD_TARGET=popup vite build",
+		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+		"clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+		"dev": "vite",
+		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+		"package:source": "bash ../scripts/package-source.sh",
+		"prettier": "prettier . --check --cache",
+		"prettier:fix": "prettier . --write",
+		"test": "vitest",
+		"test:e2e": "pnpm build:chromium && playwright test",
+		"test:e2e:debug": "pnpm build:chromium && playwright test --debug",
+		"test:e2e:headed": "pnpm build:chromium && playwright test --headed",
+		"test:e2e:ui": "pnpm build:chromium && playwright test --ui",
+		"typecheck": "tsc --noEmit",
+		"watch:build": "rollup --bundleConfigAsCjs -c --watch",
+		"watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+	},
+	"sideEffects": false,
+	"type": "module",
+	"types": "index.d.ts",
+	"unpkg": "some-ui-utils.umd.js",
+	"version": "1.1.0"
 }
