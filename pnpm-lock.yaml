@@ -19,7 +19,7 @@ importers:
     devDependencies:
       '@babel/eslint-parser':
         specifier: 7.26.5
-        version: 7.26.5(@babel/core@7.28.3)(eslint@10.5.0(jiti@2.7.0))
+        version: 7.26.5(@babel/core@7.29.0)(eslint@10.5.0(jiti@2.7.0))
       '@changesets/changelog-github':
         specifier: ^0.5.0
         version: 0.5.0
@@ -409,6 +409,12 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.4
+      eslint:
+        specifier: ^10.5.0
+        version: 10.5.0(jiti@2.7.0)
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
@@ -420,7 +426,7 @@ importers:
     dependencies:
       polyhedron:
         specifier: workspace:*
-        version: link:../../crates/polyhedron
+        version: link:dist/polyhedron
     devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
@@ -434,6 +440,12 @@ importers:
       '@unocss/cli':
         specifier: ^66.0.0
         version: 66.7.2
+      eslint:
+        specifier: ^10.5.0
+        version: 10.5.0(jiti@2.7.0)
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
@@ -443,6 +455,8 @@ importers:
       web-ext:
         specifier: 8.3.0
         version: 8.3.0
+
+  extensions/some-conveyor/dist/polyhedron: {}
 
   extensions/some-cycle:
     dependencies:
@@ -465,6 +479,12 @@ importers:
       '@types/webextension-polyfill':
         specifier: ^0.10.0
         version: 0.10.7
+      eslint:
+        specifier: ^10.5.0
+        version: 10.5.0(jiti@2.7.0)
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
@@ -617,6 +637,12 @@ importers:
       '@types/webextension-polyfill':
         specifier: ^0.10.0
         version: 0.10.7
+      eslint:
+        specifier: ^10.5.0
+        version: 10.5.0(jiti@2.7.0)
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
       some-ui-rollup-config:
         specifier: workspace:*
         version: link:../../packages/rollup-config
@@ -785,7 +811,7 @@ importers:
         version: 0.436.0(react@19.1.0)
       next-contentlayer2:
         specifier: ^0.4.6
-        version: 0.4.6(acorn@8.17.0)(contentlayer2@0.4.6(acorn@8.17.0)(esbuild@0.25.12))(esbuild@0.25.12)(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 0.4.6(acorn@8.17.0)(contentlayer2@0.4.6(acorn@8.17.0)(esbuild@0.25.12))(esbuild@0.25.12)(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -1456,10 +1482,10 @@ importers:
         version: link:../../some-vite-config
       next:
         specifier: 14.2.3
-        version: 14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       nuqs:
         specifier: 1.18.0
-        version: 1.18.0(next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+        version: 1.18.0(next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1798,10 +1824,10 @@ importers:
         version: link:../ui/maishatu-fetch-kit
       nuqs:
         specifier: 1.18.0
-        version: 1.18.0(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+        version: 1.18.0(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
       polyhedron:
         specifier: workspace:*
-        version: link:../../crates/polyhedron
+        version: link:../../extensions/some-conveyor/dist/polyhedron
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -13072,9 +13098,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/eslint-parser@7.26.5(@babel/core@7.28.3)(eslint@10.5.0(jiti@2.7.0))':
+  '@babel/eslint-parser@7.26.5(@babel/core@7.29.0)(eslint@10.5.0(jiti@2.7.0))':
     dependencies:
-      '@babel/core': 7.28.3
+      '@babel/core': 7.29.0
       '@nicolo-ribaudo/eslint-scope-5-internals': 5.1.1-v1
       eslint: 10.5.0(jiti@2.7.0)
       eslint-visitor-keys: 2.1.0
@@ -22533,12 +22559,12 @@ snapshots:
   ncp@2.0.0:
     optional: true
 
-  next-contentlayer2@0.4.6(acorn@8.17.0)(contentlayer2@0.4.6(acorn@8.17.0)(esbuild@0.25.12))(esbuild@0.25.12)(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next-contentlayer2@0.4.6(acorn@8.17.0)(contentlayer2@0.4.6(acorn@8.17.0)(esbuild@0.25.12))(esbuild@0.25.12)(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@contentlayer2/core': 0.4.3(acorn@8.17.0)(esbuild@0.25.12)
       '@contentlayer2/utils': 0.4.3
       contentlayer2: 0.4.6(acorn@8.17.0)(esbuild@0.25.12)
-      next: 15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      next: 15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
     transitivePeerDependencies:
@@ -22548,7 +22574,7 @@ snapshots:
       - markdown-wasm
       - supports-color
 
-  next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       '@next/env': 14.2.3
       '@swc/helpers': 0.5.5
@@ -22558,7 +22584,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
-      styled-jsx: 5.1.1(@babel/core@7.28.3)(react@19.0.0)
+      styled-jsx: 5.1.1(@babel/core@7.29.0)(react@19.0.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 14.2.3
       '@next/swc-darwin-x64': 14.2.3
@@ -22575,7 +22601,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@next/env': 15.5.0
       '@swc/helpers': 0.5.15
@@ -22583,7 +22609,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
-      styled-jsx: 5.1.6(@babel/core@7.28.3)(react@19.1.0)
+      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.1.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.0
       '@next/swc-darwin-x64': 15.5.0
@@ -22672,15 +22698,15 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nuqs@1.18.0(next@14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
+  nuqs@1.18.0(next@14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)):
     dependencies:
       mitt: 3.0.1
-      next: 14.2.3(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      next: 14.2.3(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
-  nuqs@1.18.0(next@15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
+  nuqs@1.18.0(next@15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
     dependencies:
       mitt: 3.0.1
-      next: 15.5.0(@babel/core@7.28.3)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      next: 15.5.0(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
 
   nwsapi@2.2.16: {}
 
@@ -24647,19 +24673,19 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.4
 
-  styled-jsx@5.1.1(@babel/core@7.28.3)(react@19.0.0):
+  styled-jsx@5.1.1(@babel/core@7.29.0)(react@19.0.0):
     dependencies:
       client-only: 0.0.1
       react: 19.0.0
     optionalDependencies:
-      '@babel/core': 7.28.3
+      '@babel/core': 7.29.0
 
-  styled-jsx@5.1.6(@babel/core@7.28.3)(react@19.1.0):
+  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.1.0):
     dependencies:
       client-only: 0.0.1
       react: 19.1.0
     optionalDependencies:
-      '@babel/core': 7.28.3
+      '@babel/core': 7.29.0
 
   stylehacks@5.1.1(postcss@8.5.15):
     dependencies:
