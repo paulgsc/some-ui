@@ -9,6 +9,8 @@ name: Sign Firefox Extension (Manual)
 # The compliance_confirmed checkbox is a hard gate — the workflow fails
 # immediately if it is not checked. This prevents accidental signs before
 # all A+B issues in epic #310 are closed.
+permissions:
+  contents: read
 on:
   workflow_dispatch:
     inputs:
