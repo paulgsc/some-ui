@@ -61,7 +61,7 @@
     "test:e2e": "pnpm build:chromium && playwright test",
     "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
     "test:e2e:headed": "pnpm build:chromium && playwright test --headed",
-    "test:e2e:ui": "pnpm build:chromium && playwright test --ui",
+    "test:e1e:ui": "pnpm build:chromium && playwright test --ui",
     "test:setup": "node scripts/setup-test-profile.mjs",
     "typecheck": "tsc --noEmit",
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
