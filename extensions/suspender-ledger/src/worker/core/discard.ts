@@ -6,17 +6,18 @@
 // Copyright (C) auto-tab-discard contributors
 
 import { prefs, storage } from "./prefs"
+import { buildSuspendUrl, isSuspendTab } from "./suspend-url"
 import { log } from "./utils"
 
 /**
  * The single suspend operation this extension performs. There is intentionally
- * **no** `close` variant: suspender-ledger only ever calls
- * `chrome.tabs.discard` — it never removes a tab. This type exists to make that
+ * **no** `close` variant: suspender-ledger navigates a tab to its themed
+ * suspend page — it never removes a tab. This type exists to make that
  * invariant structural rather than incidental.
  */
 export type SuspendOperation = { tabId: number }
 
-/** Tab ids currently mid-discard, used to debounce duplicate requests. */
+/** Tab ids currently mid-suspend, used to debounce duplicate requests. */
 const inprogress = new Set<number>()
 
 /**
@@ -33,8 +34,10 @@ type DiscardFn = {
 }
 
 /**
- * The terminal action: discard the tab natively. This is the ONLY place a tab
- * state is changed, and it is `chrome.tabs.discard` — never `chrome.tabs.remove`.
+ * The terminal action: navigate the tab to the themed suspend page. This is the
+ * ONLY place a tab state is changed, and it is `chrome.tabs.update` — never
+ * `chrome.tabs.remove`. Navigating to suspend.html applies the `prepends` title
+ * marker and provides the visible, themed placeholder that native discard lacks.
  */
 const perform = (tab: chrome.tabs.Tab): Promise<void> =>
   new Promise<void>((resolve) => {
@@ -42,16 +45,17 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
       resolve()
       return
     }
+    const suspendUrl = buildSuspendUrl(tab, prefs.prepends)
     try {
-      chrome.tabs.discard(tab.id, () => {
+      chrome.tabs.update(tab.id, { url: suspendUrl }, () => {
         const err = chrome.runtime.lastError
         if (err) {
-          log("discard rejected by browser", err.message ?? err)
+          log("suspend navigation failed", err.message ?? err)
         }
         resolve()
       })
     } catch (e) {
-      log("discarding failed", e)
+      log("suspending failed", e)
       resolve()
     }
   })
@@ -76,6 +80,10 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   }
   if (tab.discarded) {
     log("already discarded", tab)
+    return
+  }
+  if (isSuspendTab(tab)) {
+    log("tab already suspended", tab)
     return
   }
 
