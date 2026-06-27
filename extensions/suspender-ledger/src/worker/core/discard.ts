@@ -34,45 +34,39 @@ type DiscardFn = {
 }
 
 /**
- * The terminal action: natively discard the tab to free renderer memory.
- * Before discarding, a `prepends` title marker is injected via
- * `scripting.executeScript` so the browser tab strip shows the "💤" prefix.
- * If native discard is rejected (pinned tab, protected page, etc.), we fall
- * back to navigating to the themed suspend page.
+ * The terminal action: navigate the tab to the themed suspend page. This is the
+ * ONLY place a tab's state is changed, and it is `chrome.tabs.update` — never
+ * `chrome.tabs.remove`.
  *
- * This is the ONLY place tab state is changed — `chrome.tabs.discard` (or on
- * failure `chrome.tabs.update`) — never `chrome.tabs.remove`.
+ * Why navigate instead of `chrome.tabs.discard`? Native discard reloads the
+ * original page when the user reactivates the tab, and that browser-driven
+ * reload flashes the page's own (usually white) background before some-filter's
+ * content script can paint its dark veil. The owned suspend page avoids this:
+ * it is unconditionally dark, and its restore path is a normal top-level
+ * `location.replace(url)` navigation, which some-filter *does* veil at
+ * `document_start`. The `prepends` marker rides along in the URL and is applied
+ * to the tab title by the suspend page.
  */
-const perform = async (tab: chrome.tabs.Tab): Promise<void> => {
-  if (tab.id === undefined) return
-  const tabId = tab.id
-  const marker = prefs.prepends
-
-  if (marker && tab.title) {
+const perform = (tab: chrome.tabs.Tab): Promise<void> =>
+  new Promise<void>((resolve) => {
+    if (tab.id === undefined) {
+      resolve()
+      return
+    }
+    const suspendUrl = buildSuspendUrl(tab, prefs.prepends)
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        func: (m: string): void => {
-          document.title = `${m} ${document.title}`
-        },
-        args: [marker],
+      chrome.tabs.update(tab.id, { url: suspendUrl }, () => {
+        const err = chrome.runtime.lastError
+        if (err) {
+          log("suspend navigation failed", err.message ?? err)
+        }
+        resolve()
       })
     } catch (e) {
-      log("title injection rejected (protected page)", e)
+      log("suspending failed", e)
+      resolve()
     }
-  }
-
-  try {
-    await chrome.tabs.discard(tabId)
-  } catch (e) {
-    log("native discard rejected — falling back to suspend page", e)
-    try {
-      await chrome.tabs.update(tabId, { url: buildSuspendUrl(tab, marker) })
-    } catch (e2) {
-      log("suspend fallback navigation failed", e2)
-    }
-  }
-}
+  })
 
 function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   if (tab.id === undefined) {

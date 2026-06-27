@@ -5,6 +5,8 @@
 // Ported from auto-tab-discard v3/worker/modes/number.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+import { collectMeta } from "@suspender/content/meta"
+
 import { discard } from "../core/discard"
 import { storage } from "../core/prefs"
 import { starters } from "../core/startup"
@@ -272,8 +274,9 @@ const number: NumberMode = {
             : await chrome.scripting
                 .executeScript({
                   target: { tabId: tb.id, allFrames: true },
-                  // collector ships with the content layer (story #256)
-                  files: ["/data/inject/meta.js"],
+                  // Inject the collector as a function, not a bundled file: a
+                  // bundler tree-shakes the file's completion-value payload.
+                  func: collectMeta,
                 })
                 .then(
                   (r) => r,
