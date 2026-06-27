@@ -5,6 +5,9 @@ import {
   baseConfig,
   depsOverrideConfig,
   eslintPluginStorybook,
+  extensionCharterPlugin,
+  extensionsCharterConfig,
+  extensionsSecurityConfig,
   reactConfig,
   testsOverrideConfig,
   toolsOverrideConfig,
@@ -35,6 +38,24 @@ export const maishatuNonStylistic: Config = defineConfig(
   toolsOverrideConfig,
   testsOverrideConfig
 )
+
+// ── Extension configs ──────────────────────────────────────────────────────
+
+export {
+  extensionsSecurityConfig,
+  extensionsCharterConfig,
+  extensionCharterPlugin,
+}
+
+/**
+ * Recommended preset for browser-extension workspaces.
+ * Extends maishatuRecommended with AMO security rules and Good-Citizen Charter lints.
+ */
+export const extensionsRecommended: Config = [
+  ...maishatuRecommended,
+  ...extensionsSecurityConfig,
+  ...extensionsCharterConfig,
+]
 
 /**
  * Default export
