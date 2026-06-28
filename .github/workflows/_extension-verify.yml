@@ -1,9 +1,14 @@
 name: Extension Verification
 # Verifies each changed extension: typecheck, lint, test, build, web-ext lint.
 #
-# Workspace packages (packages/*/dist) are consumed from the workspace-dist
-# artifact produced by the build-workspace job in extension.yml.
+# Workspace packages (packages/*/dist) and wasm crates (crates/*/dist) are
+# consumed from artifacts produced by the build-workspace job in extension.yml.
 # This job does NOT rebuild shared packages — only the extension itself.
+#
+# Forbidden-dep check: extensions must not list React/preact/lucide-react or
+# any packages/ui/* package as a runtime dependency. All deps bundled by Vite
+# must appear in devDependencies so the distinction is semantically accurate and
+# so the workspace build can be kept lean (packages/ui/** are never pulled in).
 on:
   workflow_call:
     inputs:
@@ -27,22 +32,91 @@ jobs:
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
+
+      # ── Forbidden runtime dependency check ─────────────────────────────
+      # Extensions must not depend at runtime on:
+      #   • packages/ui/* component libraries (React-based, DOM-bloating)
+      #   • React/preact/lucide-react framework packages
+      # These should be devDependencies (build-time only) or removed entirely.
+      - name: Check for forbidden runtime dependencies
+        run: |
+          PKG_JSON="${{ matrix.extension_path }}/package.json"
+
+          # Collect names of all packages/ui/* workspace packages
+          UI_PKG_NAMES=$(
+            for f in packages/ui/*/package.json; do
+              [ -f "$f" ] && jq -r '.name // empty' "$f" 2>/dev/null
+            done
+          )
+
+          # Runtime dependencies declared by this extension
+          EXT_DEPS=$(jq -r '(.dependencies // {}) | keys[]' "$PKG_JSON" 2>/dev/null || true)
+
+          # Framework/ESM packages that must never be runtime deps in extensions
+          BANNED="react react-dom preact lucide-react"
+
+          FAILED=false
+          for dep in $EXT_DEPS; do
+            for ui_pkg in $UI_PKG_NAMES; do
+              if [ "$dep" = "$ui_pkg" ]; then
+                echo "❌ ${{ matrix.extension_name }}: forbidden runtime dep '$dep' (packages/ui package — move to devDependencies)"
+                FAILED=true
+              fi
+            done
+            for banned in $BANNED; do
+              if [ "$dep" = "$banned" ]; then
+                echo "❌ ${{ matrix.extension_name }}: forbidden runtime dep '$dep' (framework/ESM — move to devDependencies)"
+                FAILED=true
+              fi
+            done
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo ""
+            echo "Extensions bundle all code via Vite — framework packages belong in"
+            echo "devDependencies (build-time), not dependencies (runtime)."
+            exit 1
+          fi
+          echo "✅ No forbidden runtime dependencies."
+
       # Restore pre-built workspace packages so the extension build doesn't
       # need to rebuild them. Produced by the build-workspace job.
-      - name: Download workspace dist artifact
+      - name: Download workspace package dist
         uses: actions/download-artifact@v8
         with:
-          name: workspace-dist
+          name: workspace-packages-dist
           path: packages
+
+      # Restore pre-built wasm crate outputs (e.g. crates/polyhedron/dist).
+      # Some extensions have no crate deps — the artifact may be empty; that's fine.
+      - name: Download workspace crate dist
+        uses: actions/download-artifact@v8
+        with:
+          name: workspace-crates-dist
+          path: crates
+        continue-on-error: true
+
       - name: Typecheck
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
       - name: Test
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" test
+
+      # Restore cached extension build output. Key covers the extension source
+      # tree and the pnpm lockfile so a workspace-only change still rebuilds.
+      - name: Restore extension build cache
+        id: ext-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.extension_path }}/dist
+          key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'pnpm-lock.yaml') }}
+
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build
+        if: steps.ext-cache.outputs.cache-hit != 'true'
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
+
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \

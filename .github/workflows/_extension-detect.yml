@@ -4,7 +4,11 @@ name: Extension Context Detection
 # Strategy: scan extensions/ at runtime — no hardcoded enumeration.
 # An extension is included if:
 #   a) CI config or shared packages changed (force-all), OR
-#   b) any file under extensions/<name>/ appears in the git diff.
+#   b) any file under extensions/<name>/ appears in the git diff, OR
+#   c) a crate in crates/ that the extension lists as a workspace dependency changed.
+#
+# Rule (c) ensures that changes to wasm crates (e.g. crates/polyhedron) trigger
+# verification for the extensions that depend on them (e.g. some-conveyor).
 #
 # Adding a new extension requires no CI changes — drop a directory under
 # extensions/ and it is automatically discovered.
@@ -35,13 +39,15 @@ jobs:
           # A depth of 2 is sufficient for push events (before→sha).
           # PRs need the base ref fetched — fetch-depth 0 is safest.
           fetch-depth: 0
-      - name: Detect force-all triggers (shared / CI changes)
+      - name: Detect force-all triggers (shared / CI / crate changes)
         id: force
         uses: dorny/paths-filter@v4
         with:
           filters: |
             shared:
               - 'packages/**'
+            crates:
+              - 'crates/**'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
@@ -49,6 +55,7 @@ jobs:
         id: build-matrix
         env:
           SHARED: ${{ steps.force.outputs.shared }}
+          CRATES_CHANGED: ${{ steps.force.outputs.crates }}
           CI_CHANGED: ${{ steps.force.outputs.ci }}
           EVENT_NAME: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
@@ -75,6 +82,18 @@ jobs:
             FORCE_ALL="true"
           fi
 
+          # ── Detect which crates changed (for per-extension dep matching) ──
+          CHANGED_CRATE_NAMES=""
+          if [ "$CRATES_CHANGED" = "true" ] && [ "$FORCE_ALL" = "false" ] \
+             && [ -n "$BASE" ] && [ "$BASE" != "$NULL_SHA" ]; then
+            CHANGED_CRATE_NAMES=$(
+              git diff --name-only "$BASE" "$SHA" -- 'crates/' 2>/dev/null \
+                | grep '^crates/' \
+                | awk -F/ '{print $2}' \
+                | sort -u
+            )
+          fi
+
           # ── Discover extensions from filesystem ────────────────────────
           # Each immediate subdirectory of extensions/ is an extension.
           INCLUDE="[]"
@@ -82,16 +101,36 @@ jobs:
             [ -d "$ext_path" ] || continue
             name=$(basename "$ext_path")
 
+            CHANGED="false"
+
             if [ "$FORCE_ALL" = "true" ]; then
               CHANGED="true"
             else
-              # Did any file under this extension change?
+              # Did any file under this extension change directly?
               COUNT=$(git diff --name-only "$BASE" "$SHA" \
                 -- "$ext_path" 2>/dev/null | wc -l | tr -d ' ')
               if [ "$COUNT" -gt 0 ]; then
                 CHANGED="true"
-              else
-                CHANGED="false"
+              fi
+
+              # Did any workspace crate this extension depends on change?
+              # Only do this check if crates changed and the extension wasn't
+              # already marked changed, to avoid redundant jq calls.
+              if [ "$CHANGED" = "false" ] && [ -n "$CHANGED_CRATE_NAMES" ]; then
+                PKG_JSON="${ext_path}package.json"
+                if [ -f "$PKG_JSON" ]; then
+                  for crate_name in $CHANGED_CRATE_NAMES; do
+                    # Check both bare name and @scope/name variants
+                    if jq -e \
+                      --arg n "$crate_name" \
+                      '(.dependencies // {}) | has($n)' \
+                      "$PKG_JSON" > /dev/null 2>&1; then
+                      CHANGED="true"
+                      echo "  → $name includes changed crate dep: $crate_name"
+                      break
+                    fi
+                  done
+                fi
               fi
             fi
 
@@ -121,5 +160,6 @@ jobs:
           # Debug summary
           echo ""
           echo "FORCE_ALL: $FORCE_ALL"
+          echo "Changed crates: ${CHANGED_CRATE_NAMES:-none}"
           echo "Extensions included ($COUNT):"
           echo "$INCLUDE" | jq -r '.[].extension_name' | sed 's/^/  - /'

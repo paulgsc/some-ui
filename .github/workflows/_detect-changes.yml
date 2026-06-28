@@ -12,7 +12,7 @@ on:
         description: "True if extension sources changed"
         value: ${{ jobs.detect.outputs.extensions }}
       wasm:
-        description: "True if wasm-sources changed"
+        description: "True if wasm crate sources changed"
         value: ${{ jobs.detect.outputs.wasm }}
       storybook:
         description: "True if storybook config or component stories changed"
@@ -61,10 +61,12 @@ jobs:
               - '!**/*.md'
             extensions:
               - 'extensions/**'
+              - 'crates/**'
               - 'pnpm-lock.yaml'
-              - '.github/workflows/extensions/**'
+              - '.github/workflows/extension.yml'
+              - '.github/workflows/_extension-*.yml'
             wasm:
-              - 'wasm-sources/**'
+              - 'crates/**'
               - 'Cargo.lock'
             storybook:
               - 'packages/**/*.stories.{ts,tsx}'
