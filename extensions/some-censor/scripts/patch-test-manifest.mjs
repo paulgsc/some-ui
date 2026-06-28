@@ -43,6 +43,7 @@ if (Array.isArray(manifest.host_permissions)) {
   manifest.host_permissions = [FILE_PATTERN]
 }
 
-writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n")
+writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`)
 
+/* eslint-disable-next-line no-console */
 console.log("[BOYO] dist/manifest.json patched for E2E testing (file:// added)")
