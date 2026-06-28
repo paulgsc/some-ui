@@ -97,7 +97,7 @@ jobs:
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
       - name: Test
-        run: nix develop .#playwright --command pnpm --filter "${{ matrix.package_name }}" test
+        run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source
       # tree and the pnpm lockfile so a workspace-only change still rebuilds.
       - name: Restore extension build cache
