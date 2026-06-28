@@ -26,6 +26,7 @@ mkdir -p "$EXTENSION_DIR/artifacts"
 git -C "$REPO_ROOT" archive --format=zip HEAD \
   "$EXT_RELPATH/" \
   extensions/common/ \
+  extensions/docs/ \
   packages/eslint/ \
   packages/tsconfig/ \
   pnpm-workspace.yaml \
