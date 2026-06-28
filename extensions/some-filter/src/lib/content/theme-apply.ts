@@ -422,7 +422,7 @@ function applyLegacyFilter(config: FilterConfig): void {
   }
 
   style.textContent = `
-    html { filter: ${buildFilterString(config)} !important; }
+    html { filter: ${buildFilterString(config)} !important; background-color: #0d1117 !important; }
     img, video, canvas, picture {
       filter: invert(1) hue-rotate(180deg) !important;
     }
