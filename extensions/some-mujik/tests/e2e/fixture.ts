@@ -51,7 +51,7 @@ export async function readMujikState(page: Page): Promise<MujikDebug> {
     const root = document.getElementById("__sw_overlay_root")
     return {
       hasOverlayRoot: root !== null,
-      hasCard: root?.querySelector(".ytmo-card") !== null,
+      hasCard: root !== null && root.querySelector(".ytmo-card") !== null,
     }
   })
 }
@@ -79,6 +79,12 @@ export const test = base.extend<MujikFixtures & { page: Page }>({
       )
     }
 
+    // Chrome's new headless mode supports extensions and works without a
+    // display server (no DISPLAY/WAYLAND_DISPLAY). Use it in CI environments
+    // where no display is available; skip it locally so the window is visible.
+    const needsVirtualDisplay =
+      !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
+
     const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
       executablePath,
       headless: false,
@@ -86,6 +92,7 @@ export const test = base.extend<MujikFixtures & { page: Page }>({
         `--disable-extensions-except=${DIST}`,
         `--load-extension=${DIST}`,
         "--allow-file-access-from-files",
+        ...(needsVirtualDisplay ? ["--headless=new"] : []),
       ],
     })
 

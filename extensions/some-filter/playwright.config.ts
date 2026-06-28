@@ -16,6 +16,10 @@
  *   3. No retries — waitForFunction has its own timeout loop. Test-level
  *      retries would mask real regressions.
  *
+ *   4. CI portability — fixture.ts detects the absence of DISPLAY/WAYLAND_DISPLAY
+ *      and passes --headless=new to Chromium. Chrome's new headless mode
+ *      supports extension content script injection (unlike old headless).
+ *
  * NixOS setup:
  *   Enter the playwright nix shell before running tests:
  *     nix develop .#playwright
