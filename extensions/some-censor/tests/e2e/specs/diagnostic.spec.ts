@@ -60,9 +60,11 @@ test("D1: page is reachable and main world is writable", async ({
    * If this fails, evaluate() isolation or context wiring is broken.
    */
   await page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
     ;(window as any).__DIAG__ = "hello"
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
   const diag = await page.evaluate(() => (window as any).__DIAG__)
 
   expect(diag).toBe("hello")
@@ -104,6 +106,7 @@ test("D1: page is reachable and main world is writable", async ({
     )
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
   const debug = await page.evaluate(() => (window as any).__BOYO_DEBUG__)
 
   console.log("__BOYO_DEBUG__ after manual event:", debug)
@@ -160,6 +163,7 @@ test("D2: content script is injecting and running", async ({ fixture }) => {
    *
    * Useful when diagnosing whether the content script executed at all.
    */
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
   const loaded = await page.evaluate(() => (window as any).__BOYO_LOADED__)
 
   console.log("__BOYO_LOADED__:", loaded)

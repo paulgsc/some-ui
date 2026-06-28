@@ -40,9 +40,27 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "tests/e2e/.chromium-user-data",
-    "playwright-report",
-    "test-results"
+
+    ".playwright*/**",
+    ".chromium*/**",
+
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "out/**",
+
+    "target/**",
+
+    "**/cjs/**",
+    "**/esm/**",
+
+    "packages/**/public/**",
+
+    "extensions/**/test-results/**"
   ]
 }

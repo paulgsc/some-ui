@@ -1,10 +1,10 @@
-
 // ── MomentTagsSection ─────────────────────────────────────────────────────────
 // Owns: chip-based tag selector. Converts the old checkbox grid into chips
 // with selection state + shimmer feedback on activation.
 
 import { el } from "@drama/lib/content/utils"
 import type { MomentTag } from "@drama/types"
+
 import type { JournalDraft } from "../use-drama-journal-state"
 
 const ALL_TAGS: ReadonlyArray<MomentTag> = [

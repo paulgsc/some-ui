@@ -14,7 +14,8 @@ export function extractTitle(el: HTMLElement): string | null {
   for (const s of SELS) {
     const node = el.querySelector(s)
     if (!node) continue
-    const t = node.textContent?.trim() || node.getAttribute("aria-label")
+
+    const t = node.textContent.trim() || node.getAttribute("aria-label")
     if (t) return t
   }
 

@@ -1,9 +1,9 @@
 /**
- * Firefox MV2 production build.
+ * Firefox MV3 production build.
  *
  * Key differences from the Chromium config:
  *   - Aliases @filter/lib/platform/api → api.firefox.ts (browser.* global)
- *   - Plugin overwrites dist/manifest.json with Firefox MV2 manifest after bundle
+ *   - Plugin overwrites dist/manifest.json with Firefox MV3 manifest after bundle
  *   - Includes popup entry for the full extension
  *
  * Usage:

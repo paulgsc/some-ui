@@ -1,5 +1,3 @@
-
-
 /**
  * platform/api — Firefox adapter.
  *

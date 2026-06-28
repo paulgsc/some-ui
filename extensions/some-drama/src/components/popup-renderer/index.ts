@@ -103,7 +103,10 @@ export class PopupRenderer {
   // ── Spinners ───────────────────────────────────────────────────────────────
 
   private spinnerScreen(label: string): HTMLElement {
-    const wrap = this.el("div", "p-center flex flex-col items-center justify-center gap-3")
+    const wrap = this.el(
+      "div",
+      "p-center flex flex-col items-center justify-center gap-3"
+    )
     wrap.appendChild(this.el("div", "p-spinner"))
     const l = this.el("div", "p-muted")
     l.textContent = label
@@ -164,7 +167,10 @@ export class PopupRenderer {
     tabId: number
   ): HTMLElement {
     const isActive = entry.id === state.activeId
-    const row = this.el("div", `p-entry flex items-center gap-2.5${isActive ? " p-entry-active" : ""}`)
+    const row = this.el(
+      "div",
+      `p-entry flex items-center gap-2.5${isActive ? " p-entry-active" : ""}`
+    )
 
     const swatch = this.el("div", "p-swatch")
     swatch.style.background = entry.color || DEFAULT_ACCENT
@@ -292,7 +298,10 @@ export class PopupRenderer {
     })
 
     // ── Action row ────────────────────────────────────────────────────────────
-    const actions = this.el("div", "p-btn-row pf-form-actions flex justify-end gap-2")
+    const actions = this.el(
+      "div",
+      "p-btn-row pf-form-actions flex justify-end gap-2"
+    )
 
     const cancelBtn = this.el("button", "p-btn p-btn-ghost")
     cancelBtn.textContent = "Cancel"
@@ -356,7 +365,10 @@ export class PopupRenderer {
   private renderError(
     phase: Extract<PopupPhase, { tag: "ERROR" }>
   ): HTMLElement {
-    const wrap = this.el("div", "p-error-state flex flex-col items-center gap-2.5")
+    const wrap = this.el(
+      "div",
+      "p-error-state flex flex-col items-center gap-2.5"
+    )
     const icon = this.el("div", "p-error-icon")
     icon.textContent = "⚠"
     wrap.appendChild(icon)

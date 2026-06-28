@@ -39,7 +39,6 @@
     linear-gradient(180deg, var(--dj-paper) 0%, var(--dj-paper-soft) 100%);
 }
 
-
 .dj-prompt {
   display: block;
   font-size: 15px;

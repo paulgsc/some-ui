@@ -24,14 +24,16 @@
       "@censor/platform/content": ["src/lib/platform/api.ts"],
       "@censor/platform/background": ["src/lib/platform/api.ts"]
     },
-    "types": ["firefox-webext-browser", "chrome"]
+    "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx",
-    "vite.config*.ts"
+    "vite.config*.ts",
+    "playwright.config.ts",
+    "vitest.setup.ts"
   ],
   "exclude": [
     "node_modules",

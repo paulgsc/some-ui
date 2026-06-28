@@ -63,6 +63,7 @@ export function createMessageHandler(api: ApiClient) {
           const _: never = msg
           return {
             ok: false,
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
             error: `Unknown message type: ${(_ as BgRequest).type}`,
           }
         }
@@ -71,7 +72,8 @@ export function createMessageHandler(api: ApiClient) {
       const message =
         err instanceof Error
           ? err.message
-          : ((err as { message?: string }).message ?? "Unknown error")
+          : // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+            ((err as { message?: string }).message ?? "Unknown error")
       // eslint-disable-next-line no-console
       console.error("[BOYO Background] Error handling message:", msg.type, err)
       return { ok: false, error: message }

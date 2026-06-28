@@ -4,22 +4,17 @@ import type { MetaData } from "@censor/types/states"
  * Extract channel name, duration, and upload date from a renderer element.
  * All fields nullable — caller decides what to show when absent.
  */
+function text(el: ParentNode, selector: string): string | null {
+  return el.querySelector(selector)?.textContent.trim() ?? null
+}
+
 export function extractMeta(el: HTMLElement): MetaData {
-  const channelName =
-    el
-      .querySelector(
-        "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string"
-      )
-      ?.textContent?.trim() ?? null
-
-  const duration =
-    el
-      .querySelector("span.ytd-thumbnail-overlay-time-status-renderer")
-      ?.textContent?.trim() ?? null
-
-  const uploadDate =
-    el.querySelector("#metadata-line span:nth-child(2)")?.textContent?.trim() ??
-    null
-
-  return { channelName, duration, uploadDate }
+  return {
+    channelName: text(
+      el,
+      "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string"
+    ),
+    duration: text(el, "span.ytd-thumbnail-overlay-time-status-renderer"),
+    uploadDate: text(el, "#metadata-line span:nth-child(2)"),
+  }
 }

@@ -9,6 +9,7 @@ from this source archive on a clean machine using only public package registries
 /
 ├── extensions/
 │   ├── common/          # shared extension utilities
+│   ├── docs/            # AMO reviewer gateway and compliance notes
 │   └── suspender-ledger/          # this extension (source + README.build.md)
 ├── packages/
 │   ├── eslint/          # shared ESLint config (workspace devDep)
@@ -20,12 +21,22 @@ from this source archive on a clean machine using only public package registries
 └── tsconfig.build.json
 ```
 
+## AMO Reviewer Notes
+
+Permission justifications, data-collection declarations, and host-permission
+rationale for this extension are in the reviewer gateway:
+
+→ [`extensions/docs/REVIEWER.md`](../docs/REVIEWER.md)
+
+That document is the canonical entry point. It links to each extension's own
+`amo-notes.md` for deeper per-extension detail.
+
 ## Prerequisites
 
-| Tool    | Version |
-|---------|---------|
+| Tool    | Version    |
+| ------- | ---------- |
 | Node.js | ≥ 20 (LTS) |
-| pnpm    | ≥ 9 |
+| pnpm    | ≥ 9        |
 
 Install pnpm if not present:
 

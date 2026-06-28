@@ -23,7 +23,8 @@ function mount(overrides: Partial<ActionMenuProps> = {}): {
 
 function buttonByText(el: HTMLElement, text: string): HTMLButtonElement {
   const btn = Array.from(el.querySelectorAll("button")).find(
-    (b) => b.textContent?.trim() === text
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    (b) => b.textContent !== null && b.textContent.trim() === text
   )
   if (!btn) throw new Error(`button "${text}" not found`)
   return btn

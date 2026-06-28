@@ -31,6 +31,9 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
   const node = el.querySelector(
     "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string"
   )
-  const name = node?.textContent?.trim()
+
+  if (!node) return null
+
+  const name = node.textContent.trim()
   return name ? asChannelId(name) : null
 }

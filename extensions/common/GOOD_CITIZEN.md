@@ -1,7 +1,7 @@
 # The Good-Citizen Charter
 
 > Canonical reference for every extension workspace in this monorepo.
-> Lives in `@some-extension/common` because it is shared *judgement*, not shared *code*.
+> Lives in `@some-extension/common` because it is shared _judgement_, not shared _code_.
 
 A browser extension is a **guest runtime executing inside a host-owned
 environment.** Almost every extension bug we have shipped comes from accidentally
@@ -17,9 +17,9 @@ Two mandates are in tension and both must be honoured:
 2. **No reinvention.** We must not constantly reinvent hacky slop that creates
    collisions and complexity.
 
-The balance: **hoist the *contract* and the *typestate* into the commons; keep
-the *application* isolated per workspace; enforce the idioms with a shared
-linter rather than a shared runtime.** An idiom living here does *not* imply a
+The balance: **hoist the _contract_ and the _typestate_ into the commons; keep
+the _application_ isolated per workspace; enforce the idioms with a shared
+linter rather than a shared runtime.** An idiom living here does _not_ imply a
 shared implementation — where an idiom cannot be a single source of truth
 (namespacing, storage prefixes, z-index discipline), the shared artifact is a
 **lint rule** in `maishatu-eslint-kit` that keeps each workspace from drifting.
@@ -56,7 +56,7 @@ This sounds philosophical, but it drives dozens of implementation decisions belo
 ## 1. Existing behavior is specification, not implementation
 
 When porting `React/Tailwind → Vanilla TS/CSS`, the React version is a
-**behavioral / UX / visual specification.** It is *not* an implementation
+**behavioral / UX / visual specification.** It is _not_ an implementation
 constraint. The runtime architecture should be extension-native.
 
 ---
@@ -96,7 +96,7 @@ Then a hotkey, popup button, context menu, command palette, and automation can
 all feed the same command. This scales far better across extensions, and it is
 why keybindings are hoisted into the commons as a **typestate** (the binding
 table type, the platform-normalized matcher, the input-context guard) defined
-**once**, while the command *handlers* stay local to each workspace.
+**once**, while the command _handlers_ stay local to each workspace.
 
 ---
 
@@ -104,20 +104,20 @@ table type, the platform-normalized matcher, the input-context guard) defined
 
 A good citizen assumes every namespace is **already occupied.**
 
-| Concern  | Good                            | Bad          |
-| -------- | ------------------------------- | ------------ |
-| CSS      | `.ph-root`, `.ph-card`          | `.card`      |
-| DOM      | `<div data-polyhedron-root>`    | `<div id="root">` |
-| Storage  | `polyhedron.boyo.*`             | `settings`   |
-| Events   | `polyhedron:toggle`             | `toggle`     |
+| Concern | Good                         | Bad               |
+| ------- | ---------------------------- | ----------------- |
+| CSS     | `.ph-root`, `.ph-card`       | `.card`           |
+| DOM     | `<div data-polyhedron-root>` | `<div id="root">` |
+| Storage | `polyhedron.boyo.*`          | `settings`        |
+| Events  | `polyhedron:toggle`          | `toggle`          |
 
 Each workspace owns **one** prefix and uses it for CSS classes, `data-*`
 attributes, storage keys, and custom event names. The prefix is the workspace's
 identity; collisions across workspaces are then structurally impossible.
 
-> **Enforced by:** a per-workspace namespace lint rule. The prefix is *declared*
+> **Enforced by:** a per-workspace namespace lint rule. The prefix is _declared_
 > per workspace (config), not shared — so workspaces stay disjoint while the
-> *discipline* is shared.
+> _discipline_ is shared.
 
 ---
 
@@ -181,8 +181,8 @@ loop is more reliable than imperative event chains.
 
 ## 10. Prepaint should hide uncertainty, not create certainty
 
-Bad: *guess vendor theme → paint immediately.* Good: *neutral veil → detect
-reality → commit theme → remove veil.* The prepaint layer exists to **buy
+Bad: _guess vendor theme → paint immediately._ Good: _neutral veil → detect
+reality → commit theme → remove veil._ The prepaint layer exists to **buy
 time**, not to become the theme engine.
 
 > **Reference implementation:** `some-filter`'s `prepaint` + `theme-detector`.
@@ -209,12 +209,12 @@ If a page update occurs, the extension degrades gracefully.
 
 ## How this charter is upheld
 
-| Idiom | Shared as… | Where |
-| ----- | ---------- | ----- |
-| Commands / keybindings (#3) | shared **typestate** (one definition) | `@some-extension/common` |
-| Isolation, fullscreen, disposal, attention (#5–#8) | shared **primitives** (reference impls) | `@some-extension/common` |
-| Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `maishatu-eslint-kit` |
-| Schema changes from any of the above | **per-workspace, isolated migrations** | each workspace's migration ledger |
+| Idiom                                                    | Shared as…                                   | Where                             |
+| -------------------------------------------------------- | -------------------------------------------- | --------------------------------- |
+| Commands / keybindings (#3)                              | shared **typestate** (one definition)        | `@some-extension/common`          |
+| Isolation, fullscreen, disposal, attention (#5–#8)       | shared **primitives** (reference impls)      | `@some-extension/common`          |
+| Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `maishatu-eslint-kit`             |
+| Schema changes from any of the above                     | **per-workspace, isolated migrations**       | each workspace's migration ledger |
 
 ### Migrations are per-workspace and isolated
 

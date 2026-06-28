@@ -66,8 +66,14 @@
     "test": {
       "cache": false
     },
+    "test:invariants": {
+      "dependsOn": ["^build"],
+      "inputs": ["tests/browser-invariants/**", "playwright.config.ts"],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
     "test:e2e": {
-      "dependsOn": ["build"],
+      "dependsOn": ["build", "^test:invariants"],
       "inputs": ["src/**", "tests/**", "playwright.config.ts"],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false

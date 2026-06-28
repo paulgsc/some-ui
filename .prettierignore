@@ -1,84 +1,150 @@
-#git
+# VCS
 .git
 .gitmodules
+.hg
 
-# dependencies
+# Node.js dependencies
 node_modules/
 .pnp
 .pnp.js
+pnpm-lock.yaml.bak
+package-lock.json.bak
+yarn.lock.bak
 
-# testing
-coverage
+# Build outputs (all patterns)
+dist/
+build/
+out/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Next.js
+.next/
+.vercel
+out/
+
+# Framework outputs
+.nuxt/
+.svelte-kit/
+.env.generated
+
+# Contentlayer & MDX
+.contentlayer
+.contentlayer.cache
+
+# Workspace build outputs
+**/cjs/
+**/esm/
+packages/**/public/
+packages/ui/**/public/
+extensions/**/public/
+
+# Testing & coverage
+coverage/
+.nyc_output/
+coverage/
+test-results/
+**/test-results/
+extensions/**/test-results/
+blob-report/
 .playwright*/
 .chromium*/
 playwright-report/
-test-results/
 playwright/.cache/
-blob-report/
 
-# next.js
-.next/
-out/
-build
-dist/
+# Cache directories (all tools)
+.cache/
+.*cache/
+.eslintcache
+.rollup.cache
+.swc-cache/
+.turbo/
+.jest_cache/
+.vitest/
+node_modules/.cache/
 
-# misc
-.DS_Store
-*.pem
+# Build tool caches
+.webpack/
+.parcel-cache/
+.esbuild-cache/
 
-# debug
+# Linter & formatter caches
+.stylelintcache
+.prettier-cache
+
+# Logs
 npm-debug.log*
+npm-error.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
+pnpm-error.log*
+yarn-error.log*
 
-# local env files
+# Environment files
+.env
 .env.local
+.env.*.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env
+.env.example.local
 
-# turbo
-.turbo
-
-.contentlayer
-*.tsbuildinfo 
-
-
-# Added by cargo
-
+# Rust/Cargo
 /target
-*/.vercel
-*storybook.log
-storybook-static
+crates/**/target/
+Cargo.lock
+.cargo/registry/
+.cargo/git/
 
-.eslintcache
-.rollup.cache
-.*cache/
-**/cjs
-**/esm
+# Rust binaries
+bin/
+*.wasm
 
-tsconfig.tsbuildinfo
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.pem
+*.key
+*.cert
 
-# mdx contentlayer
-.contentlayer
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.vim/
+.project
+.classpath
+.c9/
+.iml
+*.sublime-workspace
 
-# Vim swap files
+# OS temp files
+.tmp/
+tmp/
+temp/
+*.tmp
 
-# bin - rust binaries
-bin
-
-# Static files
-packages/**/public
-
-# Generated UI build outputs
-packages/ui/**/public/
-
-# Test artifacts
-extensions/**/test-results/
-
-
-# Misc
+# Misc generated/deployment
 .fix
 certs/*
+.storybook/
+storybook-static/
+*.log
+*storybook.log
+
+# Documentation generated outputs
+docs/.vuepress/dist/
+docs/.cache/
+docs/.docusaurus/
+.typedoc/
+api-docs/
+api/

@@ -22,10 +22,10 @@ from this source archive on a clean machine using only public package registries
 
 ## Prerequisites
 
-| Tool    | Version |
-|---------|---------|
+| Tool    | Version    |
+| ------- | ---------- |
 | Node.js | ≥ 20 (LTS) |
-| pnpm    | ≥ 9 |
+| pnpm    | ≥ 9        |
 
 Install pnpm if not present:
 

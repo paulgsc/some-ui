@@ -1,4 +1,5 @@
 import type { VideoId } from "@censor/types/ids"
+import { asVideoId } from "@censor/types/ids"
 
 import { SEL } from "./observer"
 import type { VideoManager } from "./video-manager"
@@ -17,7 +18,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "click",
     (e) => {
-      const vid = veilVideoId(e.target as Element)
+      const vid = veilVideoId(e.target)
       if (!vid) return
       e.preventDefault()
       e.stopImmediatePropagation()
@@ -29,7 +30,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "dblclick",
     (e) => {
-      const vid = veilVideoId(e.target as Element)
+      const vid = veilVideoId(e.target)
       if (!vid) return
       e.preventDefault()
       e.stopImmediatePropagation()
@@ -41,7 +42,7 @@ export function attachEvents(mgr: VideoManager): void {
   document.addEventListener(
     "contextmenu",
     (e) => {
-      const vid = veilVideoId(e.target as Element)
+      const vid = veilVideoId(e.target)
       if (!vid) return
       e.preventDefault()
       if (
@@ -60,12 +61,19 @@ export function attachEvents(mgr: VideoManager): void {
  * Walk up from an event target to the nearest .boyo-veil, then to the
  * renderer element, and return the cached VideoId (data-boyo-vid).
  */
-function veilVideoId(target: Element): VideoId | null {
+function veilVideoId(target: EventTarget | null): VideoId | null {
+  if (!(target instanceof Element)) {
+    return null
+  }
+
   const veil = target.closest(".boyo-veil")
   if (!veil) return null
+
   const renderer = veil.closest(SEL)
-  // Check if it exists AND is an HTMLElement
-  if (!(renderer instanceof HTMLElement)) return null
-  const vid = renderer.dataset["boyoVid"]
-  return vid ? (vid as VideoId) : null
+  if (!(renderer instanceof HTMLElement)) {
+    return null
+  }
+
+  const vid = renderer.dataset.boyoVid
+  return vid ? asVideoId(vid) : null
 }

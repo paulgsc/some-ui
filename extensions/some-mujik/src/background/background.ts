@@ -51,7 +51,7 @@ async function resolveSourceTab(): Promise<number | null> {
   if (sourceTabId !== null) {
     try {
       const tab = await browser.tabs.get(sourceTabId)
-      if (tab && isYTUrl(tab.url)) return sourceTabId
+      if (isYTUrl(tab.url)) return sourceTabId
     } catch {
       sourceTabId = null
     }
@@ -89,9 +89,10 @@ async function resolveDisplayTab(): Promise<number | null> {
 async function sendToTab<T>(tabId: number, msg: object): Promise<T | null> {
   try {
     // browser.tabs.sendMessage returns a Promise natively.
-    return (await browser.tabs.sendMessage(tabId, msg)) as T
+    return await browser.tabs.sendMessage(tabId, msg)
   } catch (err) {
     // Handles 'Could not establish connection' (tab closed or no listener)
+    // eslint-disable-next-line no-console
     console.error(err)
     return null
   }
@@ -116,7 +117,7 @@ async function poll(): Promise<void> {
   const isNewTrack = meta.videoId !== lastVideoId
   lastVideoId = meta.videoId
 
-  sendToTab(displayId, {
+  void sendToTab(displayId, {
     type: "ytmo:song-data",
     payload: { ...meta, isNewTrack },
   })
@@ -124,8 +125,12 @@ async function poll(): Promise<void> {
 
 function startPolling(): void {
   if (pollTimer !== null) return
-  setTimeout(poll, 1000)
-  pollTimer = setInterval(poll, POLL_INTERVAL_MS)
+  setTimeout(() => {
+    void poll()
+  }, 1000)
+  pollTimer = setInterval(() => {
+    void poll()
+  }, POLL_INTERVAL_MS)
 }
 
 function stopPolling(): void {
@@ -160,11 +165,12 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === "ytmo:set-enabled") {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     enabled = msg.payload as boolean
     if (enabled) startPolling()
     else {
       stopPolling()
-      broadcastClear()
+      void broadcastClear()
     }
     sendResponse({ ok: true })
     return

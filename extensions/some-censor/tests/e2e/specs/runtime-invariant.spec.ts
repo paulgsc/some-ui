@@ -77,6 +77,7 @@ test("T2: card with no channel anchor masks immediately, then backfills channel"
 
   // Channel id is provisionally empty until backfill.
   expect(
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     entry.channelId === "" || entry.channelId === undefined,
     "channel should be provisional before hydration"
   ).toBe(true)
@@ -88,6 +89,7 @@ test("T2: card with no channel anchor masks immediately, then backfills channel"
     page,
     (d) => {
       const e = d.entries["vid_ddd444"]
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       return e !== undefined && e.channelId !== "" && e.channelId !== undefined
     },
     { timeout: 5000 }
@@ -208,7 +210,7 @@ test("T5: clicking advances masked → meta → title", async ({ fixture }) => {
     timeout: 5000,
   })
 
-  const clickCard = () =>
+  const clickCard = (): Promise<void> =>
     page.evaluate(() => {
       const el = [...document.querySelectorAll("ytd-rich-item-renderer")].find(
         (n) => n.getAttribute("data-boyo-vid") === "vid_bbb222"

@@ -90,7 +90,7 @@ The `test:e2e` suite builds `dist/`, serves it over HTTP, and drives the
 suspend page (URL-param render, favicon injection, click/Enter restore) in
 headless Chromium — the one surface that is pure web and so CI-portable
 without loading an extension. It uses the Playwright-managed browser by
-default; set `PW_CHROMIUM_PATH` to point at a system Chromium when the
+default; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to point at a system Chromium when the
 Playwright CDN is unreachable.
 
 Individual checks:

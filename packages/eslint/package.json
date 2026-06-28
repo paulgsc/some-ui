@@ -24,7 +24,7 @@
     "gen:fixtures": "tsx scripts/gen-ts-lint-fixtures.ts",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "pnpm run check-dist && eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier . --check --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

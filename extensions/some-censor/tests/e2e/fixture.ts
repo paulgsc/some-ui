@@ -19,7 +19,12 @@
 
 import path from "path"
 import { fileURLToPath } from "url"
-import { test as base, chromium, type BrowserContext } from "@playwright/test"
+import {
+  test as base,
+  chromium,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.resolve(__dirname, "../../dist")
@@ -52,14 +57,16 @@ export type BoyoDebug = {
 
 // ── Polling helpers ───────────────────────────────────────────────────────────
 
-async function readDebug(
-  page: import("@playwright/test").Page
-): Promise<BoyoDebug | null> {
-  return page.evaluate(() => (window as any).__BOYO_DEBUG__ ?? null)
+async function readDebug(page: Page): Promise<BoyoDebug | null> {
+  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions */
+  return page.evaluate(
+    () => ((window as any).__BOYO_DEBUG__ as BoyoDebug | undefined) ?? null
+  )
+  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions */
 }
 
 async function pollDebug(
-  page: import("@playwright/test").Page,
+  page: Page,
   predicate: (d: BoyoDebug) => boolean,
   options: { timeout?: number; interval?: number } = {}
 ): Promise<BoyoDebug> {
@@ -84,15 +91,15 @@ async function pollDebug(
 type BoyoFixtures = {
   context: BrowserContext
   fixture: {
-    goto(name?: string): Promise<import("@playwright/test").Page>
+    goto(name?: string): Promise<Page>
     pollDebug(
-      page: import("@playwright/test").Page,
+      page: Page,
       predicate: (d: BoyoDebug) => boolean,
       options?: { timeout?: number }
     ): Promise<BoyoDebug>
-    readDebug(page: import("@playwright/test").Page): Promise<BoyoDebug | null>
+    readDebug(page: Page): Promise<BoyoDebug | null>
     fixtureCall<T>(
-      page: import("@playwright/test").Page,
+      page: Page,
       method: string,
       ...args: Array<unknown>
     ): Promise<T>
@@ -101,9 +108,8 @@ type BoyoFixtures = {
 
 // ── Test fixture ──────────────────────────────────────────────────────────────
 
-export const test = base.extend<
-  BoyoFixtures & { page: import("@playwright/test").Page }
->({
+export const test = base.extend<BoyoFixtures & { page: Page }>({
+  // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
     if (!executablePath) {
@@ -114,6 +120,12 @@ export const test = base.extend<
       )
     }
 
+    // Chrome's new headless mode supports extensions and works without a
+    // display server (no DISPLAY/WAYLAND_DISPLAY). Use it in CI environments
+    // where no display is available; skip it locally so the window is visible.
+    const needsVirtualDisplay =
+      !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
+
     const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
       executablePath,
       headless: false,
@@ -122,42 +134,57 @@ export const test = base.extend<
         `--load-extension=${DIST}`,
         // Required for file:// URLs to have access to extension APIs
         "--allow-file-access-from-files",
+        ...(needsVirtualDisplay ? ["--headless=new"] : []),
       ],
     })
 
     // Stub browser.runtime for fixture page-level JS.
     // The content script uses the real extension API injected by Chromium.
-    await context.addInitScript(() => {
-      document.addEventListener("__boyo_debug_update__", (e: any) => {
-        window.__BOYO_DEBUG__ = JSON.parse(e.detail)
-      })
+    await context.addInitScript(
+      /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
+      () => {
+        document.addEventListener("__boyo_debug_update__", (e: any) => {
+          window.__BOYO_DEBUG__ = JSON.parse(
+            e.detail
+          ) as typeof window.__BOYO_DEBUG__
+        })
 
-      if (!(window as any).chrome?.runtime?.sendMessage) {
-        ;(window as any).chrome = {
-          runtime: {
-            sendMessage: async (msg: any) => {
-              if (msg.type === "IS_WHITELISTED")
-                return { ok: true, whitelisted: false }
-              if (msg.type === "GET_ENABLED") return { ok: true, enabled: true }
-              if (msg.type === "ADD_WHITELIST") return { ok: true }
-              return { ok: true }
+        if (!(window as any).chrome?.runtime?.sendMessage) {
+          ;(window as any).chrome = {
+            runtime: {
+              // eslint-disable-next-line @typescript-eslint/require-await
+              sendMessage: async (msg: any): Promise<unknown> => {
+                if (msg.type === "IS_WHITELISTED")
+                  return { ok: true, whitelisted: false }
+                if (msg.type === "GET_ENABLED")
+                  return { ok: true, enabled: true }
+                if (msg.type === "ADD_WHITELIST") return { ok: true }
+                return { ok: true }
+              },
+              onMessage: {
+                addListener: (): void => {},
+                removeListener: (): void => {},
+              },
             },
-            onMessage: { addListener: () => {}, removeListener: () => {} },
-          },
+          }
         }
       }
-    })
+      /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
+    )
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(context)
     await context.close()
   },
 
   page: async ({ context }, use) => {
     const page = context.pages()[0] ?? (await context.newPage())
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)
   },
 
   fixture: async ({ context }, use) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use({
       async goto(name = "yt-home") {
         const page = await context.newPage()
@@ -167,11 +194,16 @@ export const test = base.extend<
       },
       pollDebug,
       readDebug,
-      async fixtureCall(page, method, ...args) {
+      async fixtureCall<T>(
+        page: Page,
+        method: string,
+        ...args: Array<unknown>
+      ): Promise<T> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-return
         return page.evaluate(([m, a]) => (window as any).__FIXTURE__[m](...a), [
           method,
           args,
-        ] as const)
+        ] as const) as Promise<T>
       },
     })
   },

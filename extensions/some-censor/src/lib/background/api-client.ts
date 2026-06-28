@@ -11,6 +11,7 @@ import type {
 } from "@censor/types/api"
 import type { WhitelistEntry } from "@censor/types/messages"
 
+// eslint-disable-next-line no-restricted-syntax
 const DEFAULT_BASE_URL = "http://localhost:7474"
 
 /**
@@ -61,10 +62,7 @@ export class ApiClient {
     channelName: string
   ): Promise<WhitelistEntry> {
     const body: PostWhitelistRequest = { channelId, channelName }
-    const data = await this._post<PostWhitelistRequest, PostWhitelistResponse>(
-      "/whitelist",
-      body
-    )
+    const data = await this._post<PostWhitelistResponse>("/whitelist", body)
     return data.channel
   }
 
@@ -88,17 +86,28 @@ export class ApiClient {
   }
 
   async putSettings(body: PutSettingsRequest): Promise<PutSettingsResponse> {
-    return this._put<PutSettingsRequest, PutSettingsResponse>("/settings", body)
+    return this._put<PutSettingsResponse>("/settings", body)
   }
 
   // ── HTTP helpers ──────────────────────────────────────────────────────────
 
+  private _assertDev(): void {
+    if (import.meta.env.PROD) {
+      throw new Error(
+        "[BOYO] ApiClient: network fetch is disabled in production builds. " +
+          "All production I/O must use browser.storage or HTTPS."
+      )
+    }
+  }
+
   private async _get<T>(path: string): Promise<T> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`)
     return this._unwrap<T>(res)
   }
 
-  private async _post<Req, Res>(path: string, body: Req): Promise<Res> {
+  private async _post<Res>(path: string, body: object): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -107,7 +116,8 @@ export class ApiClient {
     return this._unwrap<Res>(res)
   }
 
-  private async _put<Req, Res>(path: string, body: Req): Promise<Res> {
+  private async _put<Res>(path: string, body: object): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -117,6 +127,7 @@ export class ApiClient {
   }
 
   private async _delete<Res>(path: string): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, { method: "DELETE" })
     return this._unwrap<Res>(res)
   }
@@ -131,6 +142,7 @@ export class ApiClient {
       }
       throw { status: res.status, message }
     }
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return res.json() as Promise<T>
   }
 }

@@ -1,4 +1,3 @@
-
 /**
  * BOYO — Playwright global setup.
  *
@@ -29,14 +28,15 @@
  */
 
 import { existsSync } from "fs"
-import { resolve, dirname } from "path"
+import { dirname, resolve } from "path"
 import { fileURLToPath } from "url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = resolve(__dirname, "../../dist")
 const MANIFEST_PATH = resolve(DIST, "manifest.json")
 
-export default async function globalSetup() {
+// eslint-disable-next-line @typescript-eslint/require-await
+export default async function globalSetup(): Promise<void> {
   if (!existsSync(MANIFEST_PATH)) {
     throw new Error(
       `[BOYO] Extension not built — manifest.json not found at:\n  ${MANIFEST_PATH}\n\n` +
@@ -45,5 +45,7 @@ export default async function globalSetup() {
   }
 
   console.log(`[BOYO] Extension found at: ${DIST}`)
-  console.log(`[BOYO] Chromium will load it via --load-extension at test start.`)
+  console.log(
+    `[BOYO] Chromium will load it via --load-extension at test start.`
+  )
 }
