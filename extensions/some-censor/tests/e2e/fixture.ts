@@ -120,6 +120,12 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
       )
     }
 
+    // Chrome's new headless mode supports extensions and works without a
+    // display server (no DISPLAY/WAYLAND_DISPLAY). Use it in CI environments
+    // where no display is available; skip it locally so the window is visible.
+    const needsVirtualDisplay =
+      !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
+
     const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
       executablePath,
       headless: false,
@@ -128,6 +134,7 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
         `--load-extension=${DIST}`,
         // Required for file:// URLs to have access to extension APIs
         "--allow-file-access-from-files",
+        ...(needsVirtualDisplay ? ["--headless=new"] : []),
       ],
     })
 

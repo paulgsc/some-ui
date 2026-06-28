@@ -2,8 +2,8 @@
  * some-mujik — Playwright E2E configuration.
  *
  * Scope: content-script smoke tests only. Chromium via launchPersistentContext
- * + --load-extension. Non-headless: Chromium does not run extension content
- * scripts in headless mode.
+ * + --load-extension. fixture.ts passes --headless=new when no display server
+ * is detected, enabling extension content script injection in CI environments.
  *
  * Why Chromium and not Firefox:
  *   Playwright has no supported path for loading temporary unsigned extensions

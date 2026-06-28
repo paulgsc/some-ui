@@ -3,23 +3,25 @@
  *
  * Key decisions:
  *
- *   1. globalSetup/globalTeardown own the Firefox process lifecycle.
- *      globalSetup spawns `web-ext run --remote-debugging-port=9222` and
- *      waits for CDP readiness. globalTeardown kills it. Tests never restart
- *      Firefox — the extension stays loaded for the entire suite.
+ *   1. Chromium via launchPersistentContext + --load-extension.
+ *      Firefox has no supported Playwright path for loading temporary unsigned
+ *      extensions. Chromium's --load-extension loads an unpacked MV3 extension
+ *      directly from dist/, no signing required. The FSM / DOM masking logic
+ *      under test is browser-agnostic.
  *
- *   2. No `projects` block. The fixture attaches via chromium.connectOverCDP()
- *      to the already-running Firefox. A projects entry would cause Playwright
- *      to spin up a second managed Firefox with no extension.
+ *   2. Test manifest patch. The production manifest limits content script
+ *      injection to youtube.com URLs. test:e2e runs scripts/patch-test-manifest
+ *      after build:chromium to also match file:// URLs (the fixture pages).
+ *      Source public/manifest.json is never modified.
  *
- *   3. chromium.connectOverCDP() against Firefox. Playwright's `firefox` type
- *      has no connectOverCDP(). Firefox implements enough CDP for page.evaluate()
- *      and page.goto() — which is all pollDebug() needs.
+ *   3. CI portability. fixture.ts detects the absence of DISPLAY/WAYLAND_DISPLAY
+ *      and passes --headless=new to Chromium. Chrome's new headless mode
+ *      supports extension content script injection (unlike old headless).
  *
  *   4. No retries. pollDebug has its own timeout/retry loop. Test-level retries
  *      would mask real regressions.
  *
- *   5. Single worker. The Firefox process is a singleton.
+ *   5. Single worker. The browser context is a singleton per test run.
  */
 
 import { defineConfig } from "@playwright/test"
