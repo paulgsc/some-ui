@@ -24,7 +24,7 @@
       "@censor/platform/content": ["src/lib/platform/api.ts"],
       "@censor/platform/background": ["src/lib/platform/api.ts"]
     },
-    "types": ["firefox-webext-browser", "chrome"]
+    "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },
   "include": [
     "src/**/*.ts",

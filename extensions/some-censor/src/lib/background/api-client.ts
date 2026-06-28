@@ -91,12 +91,23 @@ export class ApiClient {
 
   // ── HTTP helpers ──────────────────────────────────────────────────────────
 
+  private _assertDev(): void {
+    if (import.meta.env.PROD) {
+      throw new Error(
+        "[BOYO] ApiClient: network fetch is disabled in production builds. " +
+          "All production I/O must use browser.storage or HTTPS."
+      )
+    }
+  }
+
   private async _get<T>(path: string): Promise<T> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`)
     return this._unwrap<T>(res)
   }
 
   private async _post<Res>(path: string, body: object): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,6 +117,7 @@ export class ApiClient {
   }
 
   private async _put<Res>(path: string, body: object): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -115,6 +127,7 @@ export class ApiClient {
   }
 
   private async _delete<Res>(path: string): Promise<Res> {
+    this._assertDev()
     const res = await fetch(`${this._baseUrl}${path}`, { method: "DELETE" })
     return this._unwrap<Res>(res)
   }
