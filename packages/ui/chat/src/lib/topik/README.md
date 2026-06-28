@@ -126,30 +126,35 @@ if (event.type === "HYDRATION_SUCCESS") {
 ### Core Modules (Framework-Agnostic)
 
 1. **session-types.ts**
+
    - Type definitions
    - Event algebra
    - Interface contracts
    - **0 dependencies** on React/DOM
 
 2. **session-reducer.ts**
+
    - Pure state transitions
    - Cursor validation
    - Bounds checking
    - **0 side effects**
 
 3. **topik-repository.ts**
+
    - Data caching layer
    - Idempotent loading
    - Metadata extraction
    - **0 React dependencies**
 
 4. **session-machine.ts**
+
    - Actor implementation
    - State management
    - Subscription system
    - **0 React dependencies**
 
 5. **effect-executor.ts**
+
    - Side effect orchestration
    - Async handling
    - Timer management

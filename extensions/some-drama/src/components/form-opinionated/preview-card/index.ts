@@ -1,11 +1,10 @@
-
 // ── PreviewCard ───────────────────────────────────────────────────────────────
 // State-driven "Live Drama Card" — the reward center. No DOM querying, no
 // innerHTML wipes of unrelated content; render() rebuilds only the card body
 // from the current JournalDraft.
 
-import { el } from "@drama/lib/content/utils"
 import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
+import { el } from "@drama/lib/content/utils"
 
 const TAG_LABELS: Record<string, string> = {
   confession: "Confession",

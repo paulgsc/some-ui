@@ -158,7 +158,8 @@ function renderEmptyPill(
 
   const pill = document.createElement("div")
   pill.id = "drama-empty-pill"
-  pill.className = "dc-empty-pill bottom-5 right-5 w-3 h-3 rounded-full pointer-events-none opacity-0"
+  pill.className =
+    "dc-empty-pill bottom-5 right-5 w-3 h-3 rounded-full pointer-events-none opacity-0"
   container.appendChild(pill)
 
   // Fade in on next paint
@@ -286,7 +287,7 @@ async function init(): Promise<void> {
   // where the non-persistent background script is still waking up.
 
   const fetchAndRender = async (retryOnFailure = true): Promise<void> => {
-    let state: WatchlistState | null = null
+    let state: WatchlistState | null
     try {
       state = await browser.runtime.sendMessage({ type: "GET_STATE" })
     } catch (err) {

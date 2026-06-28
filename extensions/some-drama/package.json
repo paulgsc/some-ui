@@ -1,34 +1,34 @@
 {
-	"name": "@some-extension/drama",
-	"private": true,
-	"version": "1.0.0",
-	"description": "Track your C-drama watching experience with emotional reactions and detailed metrics",
-	"license": "MIT",
-	"scripts": {
-		"build": "tsc -p tsconfig.build.json && vite build && pnpm build:css",
-		"build:css": "pnpm build:css:content && pnpm build:css:popup",
-		"build:css:content": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/tokens/tokens.css\" \"src/styles/components/root-layout.css\" \"src/styles/components/title-pill.css\" \"src/styles/components/card-shell.css\" \"src/styles/components/slideshow.css\" \"src/styles/components/right-panel.css\" \"src/styles/components/capture-panel.css\" \"src/styles/components/particles.css\" --config uno.config.ts --no-preflights -o dist/styles/content.css",
-		"build:css:popup": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/tokens/tokens.css\" \"src/styles/components/popup/popup-base.css\" \"src/styles/components/popup/form-structural/popup-form-structural.css\" \"src/styles/components/popup/form-opinionated/opinionated-form.css\" \"src/styles/components/popup/form-opinionated/accordion.css\" \"src/styles/components/popup/form-opinionated/episode-header.css\" \"src/styles/components/popup/form-opinionated/moment-tags.css\" \"src/styles/components/popup/form-opinionated/transition-editor.css\" \"src/styles/components/popup/form-opinionated/reflection-editor.css\" \"src/styles/components/popup/form-opinionated/quote-capture.css\" \"src/styles/components/popup/form-opinionated/preview-card.css\" \"src/styles/components/popup/form-opinionated/advanced-metrics.css\" --config uno.config.popup.ts -o dist/popup.css",
-		"clean": "rimraf dist .turbo .eslintcache",
-		"dev": "vite",
-		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
-		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-		"package:source": "bash ../scripts/package-source.sh",
-		"prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-		"typecheck": "tsc --noEmit"
-	},
-	"dependencies": {
-		"@some-extension/common": "workspace:*"
-	},
-	"devDependencies": {
-		"@some-ui/styles": "workspace:*",
-		"@some-ui/tsconfig": "workspace:*",
-		"@types/firefox-webext-browser": "^120.0.4",
-		"@unocss/cli": "^66.0.0",
-		"some-ui-rollup-config": "workspace:*",
-		"maishatu-fetch-kit": "workspace:*",
-		"unocss": "^66.0.0",
-		"vite": "^5.0.0",
-		"typescript": "^5.4.0"
-	}
+  "name": "@some-extension/drama",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Track your C-drama watching experience with emotional reactions and detailed metrics",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build && pnpm build:css",
+    "build:css": "pnpm build:css:content && pnpm build:css:popup",
+    "build:css:content": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/tokens/tokens.css\" \"src/styles/components/root-layout.css\" \"src/styles/components/title-pill.css\" \"src/styles/components/card-shell.css\" \"src/styles/components/slideshow.css\" \"src/styles/components/right-panel.css\" \"src/styles/components/capture-panel.css\" \"src/styles/components/particles.css\" --config uno.config.ts --no-preflights -o dist/styles/content.css",
+    "build:css:popup": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/tokens/tokens.css\" \"src/styles/components/popup/popup-base.css\" \"src/styles/components/popup/form-structural/popup-form-structural.css\" \"src/styles/components/popup/form-opinionated/opinionated-form.css\" \"src/styles/components/popup/form-opinionated/accordion.css\" \"src/styles/components/popup/form-opinionated/episode-header.css\" \"src/styles/components/popup/form-opinionated/moment-tags.css\" \"src/styles/components/popup/form-opinionated/transition-editor.css\" \"src/styles/components/popup/form-opinionated/reflection-editor.css\" \"src/styles/components/popup/form-opinionated/quote-capture.css\" \"src/styles/components/popup/form-opinionated/preview-card.css\" \"src/styles/components/popup/form-opinionated/advanced-metrics.css\" --config uno.config.popup.ts -o dist/popup.css",
+    "clean": "rimraf dist .turbo .eslintcache",
+    "dev": "vite",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "package:source": "bash ../scripts/package-source.sh",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
+  "devDependencies": {
+    "@some-ui/styles": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "@unocss/cli": "^66.0.0",
+    "some-ui-rollup-config": "workspace:*",
+    "maishatu-fetch-kit": "workspace:*",
+    "unocss": "^66.0.0",
+    "vite": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
 }

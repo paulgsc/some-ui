@@ -14,26 +14,26 @@ directions:
 2. **No reinvention** — we must not keep reinventing hacky slop that creates
    collisions and complexity.
 
-The balance: **hoist the *contract* and the *typestate* here; keep the
-*application* isolated per workspace; enforce the idioms with a shared linter
+The balance: **hoist the _contract_ and the _typestate_ here; keep the
+_application_ isolated per workspace; enforce the idioms with a shared linter
 ([`maishatu-eslint-kit`](../../packages/eslint)) rather than a shared runtime.**
 
 ## 📜 The Good-Citizen Charter
 
 **[`GOOD_CITIZEN.md`](./GOOD_CITIZEN.md) is the canonical reference for every
-extension workspace.** A browser extension is a *guest runtime executing inside
-a host-owned environment* — read it before touching any content script. The
+extension workspace.** A browser extension is a _guest runtime executing inside
+a host-owned environment_ — read it before touching any content script. The
 [Extension Commons](https://github.com/paulgsc/some-ui/labels/commons) epics
 exist to uphold it.
 
 ## Governance — how each idiom is upheld
 
-| Idiom | Shared as… | Where |
-| ----- | ---------- | ----- |
-| Commands / keybindings | shared **typestate** (one definition) | `@some-extension/common` |
-| Isolation, fullscreen, disposal, attention | shared **primitives** (reference impls) | `@some-extension/common` |
+| Idiom                                       | Shared as…                                   | Where                                          |
+| ------------------------------------------- | -------------------------------------------- | ---------------------------------------------- |
+| Commands / keybindings                      | shared **typestate** (one definition)        | `@some-extension/common`                       |
+| Isolation, fullscreen, disposal, attention  | shared **primitives** (reference impls)      | `@some-extension/common`                       |
 | Namespacing, storage, z-index, logic-purity | shared **lint rules** (per-workspace config) | [`maishatu-eslint-kit`](../../packages/eslint) |
-| Schema changes from any of the above | **per-workspace, isolated migrations** | each workspace's migration ledger |
+| Schema changes from any of the above        | **per-workspace, isolated migrations**       | each workspace's migration ledger              |
 
 Migrations are namespaced per workspace: workspace `w` may have applied `m`
 migrations while `u` has applied `n`; the counters are independent and a

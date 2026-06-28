@@ -1,4 +1,3 @@
-
 import "@drama/styles/popup.css"
 
 import { useEffect, useRef, useState } from "react"
@@ -47,7 +46,13 @@ const EpisodeHeaderBridge = ({ title, episode, watchDate }: BridgeProps) => {
       <div style={{ width: "100%", maxWidth: 480 }}>
         <div ref={containerRef} />
       </div>
-      <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 11 }}>
+      <div
+        style={{
+          color: "rgba(255,255,255,0.4)",
+          fontFamily: "monospace",
+          fontSize: 11,
+        }}
+      >
         last onChange: {log || "—"}
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import "@drama/styles/popup.css"
 
 import { useEffect, useRef, useState } from "react"
@@ -43,7 +42,9 @@ const AdvancedMetricsBridge = (props: BridgeProps) => {
       totalEpisodes: props.totalEpisodes,
     }
 
-    const { root } = buildAdvancedMetrics(value, (patch) => setLog(JSON.stringify(patch)))
+    const { root } = buildAdvancedMetrics(value, (patch) =>
+      setLog(JSON.stringify(patch))
+    )
 
     container.innerHTML = ""
     container.appendChild(root)
@@ -64,10 +65,25 @@ const AdvancedMetricsBridge = (props: BridgeProps) => {
         background: "var(--moon-900)",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 480, background: "var(--dj-paper)", borderRadius: 12, padding: 16 }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          background: "var(--dj-paper)",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
         <div ref={containerRef} />
       </div>
-      <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 11, maxWidth: 480 }}>
+      <div
+        style={{
+          color: "rgba(255,255,255,0.4)",
+          fontFamily: "monospace",
+          fontSize: 11,
+          maxWidth: 480,
+        }}
+      >
         last onChange: {log || "—"}
       </div>
     </div>
@@ -80,8 +96,13 @@ const meta: Meta<BridgeProps> = {
   parameters: { layout: "fullscreen" },
   argTypes: {
     rating: { control: { type: "range", min: 0, max: 10, step: 2 } },
-    momentumDirection: { control: "inline-radio", options: ["rising", "steady", "falling"] },
-    completionLikelihood: { control: { type: "range", min: 0, max: 1, step: 0.05 } },
+    momentumDirection: {
+      control: "inline-radio",
+      options: ["rising", "steady", "falling"],
+    },
+    completionLikelihood: {
+      control: { type: "range", min: 0, max: 1, step: 0.05 },
+    },
     connection: { control: { type: "range", min: -100, max: 100, step: 5 } },
     hope: { control: { type: "range", min: -100, max: 100, step: 5 } },
     trust: { control: { type: "range", min: -100, max: 100, step: 5 } },

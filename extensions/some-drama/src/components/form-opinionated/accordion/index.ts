@@ -17,7 +17,10 @@ export function buildAccordionItem(
 ): AccordionItem {
   const root = el("div", "dj-accordion-item")
 
-  const header = el("button", "dj-accordion-header flex items-center justify-between")
+  const header = el(
+    "button",
+    "dj-accordion-header flex items-center justify-between"
+  )
   header.type = "button"
   const titleSpan = el("span")
   titleSpan.textContent = title

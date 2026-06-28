@@ -53,7 +53,10 @@ export function buildAdvancedMetrics(
   root.appendChild(tabBar)
 
   const panels = tabs.map((_, i) => {
-    const p = el("div", `dj-adv-panel flex-col gap-5${i === 0 ? " dj-adv-panel-active" : ""}`)
+    const p = el(
+      "div",
+      `dj-adv-panel flex-col gap-5${i === 0 ? " dj-adv-panel-active" : ""}`
+    )
     return p
   })
 
