@@ -84,17 +84,16 @@ jobs:
           restore-keys: |
             workspace-dist-${{ runner.os }}-
 
-      # Build only the packages/crates that extensions actually depend on.
+      # Build only the packages/crates that extensions depend on.
       # pnpm build at the root invokes `turbo run build` (see package.json).
-      # Turbo's '...{./extensions/*}' filter expands to every extension package
-      # plus all their transitive workspace dependencies (e.g. polyhedron wasm).
-      # The second filter drops the extensions themselves so we only build deps.
+      # Turbo's '...{./extensions/*}' dependency selector walks the graph
+      # upstream from every extension, building their transitive workspace deps
+      # (packages, wasm crates like polyhedron) without the extensions themselves.
       - name: Build workspace deps
         if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
           nix develop .#ci --command pnpm build \
-            --filter '...{./extensions/*}' \
-            --filter '!{./extensions/*}'
+            --filter '...{./extensions/*}'
         env:
           NODE_ENV: production
 
