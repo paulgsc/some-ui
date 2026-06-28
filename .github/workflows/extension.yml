@@ -15,10 +15,11 @@ name: Extension CI
 # workspace-packages-dist / workspace-crates-dist artifacts.
 # verify does not rebuild shared packages — it only bundles the extension itself.
 #
-# Smart filter: build-workspace excludes extensions/** and packages/ui/**
-# (React component libraries that extensions never import) so we don't pay
-# for unrelated builds. Crates (wasm packages) are included automatically
-# since crates/* are workspace packages not covered by those exclusions.
+# Smart filter: build-workspace uses Turbo's dep-graph filter
+# '...{./extensions/*}' (transitive deps of all extensions) minus the
+# extensions themselves. This means only the packages and wasm crates that
+# extensions actually import are built — packages/ui/** and other unrelated
+# workspaces are skipped automatically by the dep graph.
 on:
   pull_request:
     paths:
@@ -83,17 +84,17 @@ jobs:
           restore-keys: |
             workspace-dist-${{ runner.os }}-
 
-      # Build workspace deps that extensions actually need.
-      # Excludes extensions themselves and packages/ui/* component libraries
-      # (React-based, never imported by extensions). Crates (wasm packages like
-      # polyhedron) are included because they live in crates/* workspace packages
-      # and the filter only excludes extensions/** and packages/ui/**.
+      # Build only the packages/crates that extensions actually depend on.
+      # pnpm build at the root invokes `turbo run build` (see package.json).
+      # Turbo's '...{./extensions/*}' filter expands to every extension package
+      # plus all their transitive workspace dependencies (e.g. polyhedron wasm).
+      # The second filter drops the extensions themselves so we only build deps.
       - name: Build workspace deps
         if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
-          nix develop .#ci --command pnpm --recursive build \
-            --filter '!./extensions/**' \
-            --filter '!./packages/ui/**'
+          nix develop .#ci --command pnpm build \
+            --filter '...{./extensions/*}' \
+            --filter '!{./extensions/*}'
         env:
           NODE_ENV: production
 
