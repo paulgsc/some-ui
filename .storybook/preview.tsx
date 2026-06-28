@@ -29,6 +29,11 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    options: {
+      storySort: {
+        order: ["Introduction", "Docs", "Content", "*"],
+      },
+    },
   },
 
   tags: ["autodocs"],
