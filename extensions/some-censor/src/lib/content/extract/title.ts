@@ -14,8 +14,8 @@ export function extractTitle(el: HTMLElement): string | null {
   for (const s of SELS) {
     const node = el.querySelector(s)
     if (!node) continue
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    const t = node.textContent?.trim() || node.getAttribute("aria-label")
+
+    const t = node.textContent.trim() || node.getAttribute("aria-label")
     if (t) return t
   }
 
