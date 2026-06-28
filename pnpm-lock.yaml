@@ -405,6 +405,10 @@ importers:
         version: 120.0.5
 
   extensions/some-censor:
+    dependencies:
+      '@some-extension/common':
+        specifier: workspace:*
+        version: link:../common
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
