@@ -53,8 +53,8 @@ export default defineConfig({
         // Allow pointing at a system / pre-provisioned Chromium when the
         // Playwright CDN is unreachable (e.g. locked-down CI). Falls back to
         // the Playwright-managed browser when unset.
-        launchOptions: process.env.PW_CHROMIUM_PATH
-          ? { executablePath: process.env.PW_CHROMIUM_PATH }
+        launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+          ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
           : {},
       },
     },

@@ -11,7 +11,7 @@
  *      No launchPersistentContext, no --load-extension. Tests exercise vanilla
  *      browser APIs, not extension surfaces.
  *
- *   2. PW_CHROMIUM_PATH allows CI runners or nix shells to point at a
+ *   2. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH allows CI runners or nix shells to point at a
  *      pre-provisioned binary (same convention as suspender-ledger).
  *
  *   3. Single worker. Tests are stateless and fast; parallelism adds noise.
@@ -45,8 +45,11 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        launchOptions: process.env["PW_CHROMIUM_PATH"]
-          ? { executablePath: process.env["PW_CHROMIUM_PATH"] }
+        launchOptions: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
+          ? {
+              executablePath:
+                process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],
+            }
           : {},
       },
     },
