@@ -23,7 +23,7 @@
 import { defineConfig, devices } from "@playwright/test"
 
 export default defineConfig({
-  testDir: "./tests/browser-invariants",
+  testDir: "./tests",
   testMatch: "**/*.spec.ts",
 
   timeout: 15_000,
