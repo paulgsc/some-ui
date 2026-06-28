@@ -15,9 +15,10 @@ name: Extension CI
 # workspace-packages-dist / workspace-crates-dist artifacts.
 # verify does not rebuild shared packages — it only bundles the extension itself.
 #
-# Smart filter: build-workspace uses pnpm's dep-graph filter to build only
-# the packages/crates that extensions actually depend on — not packages/ui/**
-# or other packages that extensions never import.
+# Smart filter: build-workspace excludes extensions/** and packages/ui/**
+# (React component libraries that extensions never import) so we don't pay
+# for unrelated builds. Crates (wasm packages) are included automatically
+# since crates/* are workspace packages not covered by those exclusions.
 on:
   pull_request:
     paths:
@@ -82,27 +83,30 @@ jobs:
           restore-keys: |
             workspace-dist-${{ runner.os }}-
 
-      # Only build what extensions actually depend on (transitive dep graph).
-      # The filter '...{./extensions/**}' expands to extensions + all their
-      # upstream workspace dependencies; '!./extensions/**' then drops the
-      # extensions themselves, leaving only the shared deps.
+      # Build workspace deps that extensions actually need.
+      # Excludes extensions themselves and packages/ui/* component libraries
+      # (React-based, never imported by extensions). Crates (wasm packages like
+      # polyhedron) are included because they live in crates/* workspace packages
+      # and the filter only excludes extensions/** and packages/ui/**.
       - name: Build workspace deps
         if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
-          nix develop .#ci --command pnpm build \
-            --filter '...{./extensions/**}' \
-            --filter '!./extensions/**'
+          nix develop .#ci --command pnpm --recursive build \
+            --filter '!./extensions/**' \
+            --filter '!./packages/ui/**'
         env:
           NODE_ENV: production
 
       # Upload packages/*/dist and crates/*/dist as separate artifacts so
       # verify jobs can download each to its correct location.
+      # Use 'error' so a broken build fails loudly here rather than silently
+      # producing a missing artifact that breaks all downstream verify jobs.
       - name: Upload package dist
         uses: actions/upload-artifact@v7
         with:
           name: workspace-packages-dist
           path: packages/*/dist
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 1
 
       - name: Upload crate dist
