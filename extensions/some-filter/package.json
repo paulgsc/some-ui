@@ -54,7 +54,7 @@
 		"lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
 		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
 		"package:source": "bash ../scripts/package-source.sh",
-		"prettier": "prettier . --check --cache",
+		"prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
 		"prettier:fix": "prettier . --write",
 		"test": "vitest",
 		"test:e2e": "pnpm build:chromium && playwright test",

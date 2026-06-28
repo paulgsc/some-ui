@@ -35,7 +35,7 @@
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --check --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "seed": "tsx src/scripts/mood-events/seed.ts",
     "test": "playwright test --config playwright.config.ts",
     "typecheck": "tsc --noEmit"
