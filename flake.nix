@@ -26,11 +26,11 @@
       # ── Load concern modules ──────────────────────────────────────────────
       # Each module is a plain attrset — no mkShell inside, just deps/env/ldLibs.
       # Composition happens here in flake.nix.
-      rust       = import ./nix/rust       {inherit pkgs;};
-      desktop    = import ./nix/desktop    {inherit pkgs;};
-      node       = import ./nix/node       {inherit pkgs;};
+      rust = import ./nix/rust {inherit pkgs;};
+      desktop = import ./nix/desktop {inherit pkgs;};
+      node = import ./nix/node {inherit pkgs;};
       playwright = import ./nix/playwright {inherit pkgs;};
-      deny       = import ./nix/deny       {inherit pkgs;};
+      deny = import ./nix/deny {inherit pkgs;};
 
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
@@ -115,6 +115,24 @@
             export PLAYWRIGHT_BROWSERS_PATH='${playwright.env.PLAYWRIGHT_BROWSERS_PATH}'
             echo "🎭 Playwright shell ready (Chromium)"
             echo "   CHROMIUM: $PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
+          '';
+        };
+
+        ci-playwright = pkgs.mkShell {
+          buildInputs =
+            node.deps
+            ++ [pkgs.nodePackages.web-ext]
+            ++ playwright.deps;
+
+          LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;
+
+          shellHook = ''
+            export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
+            export RUST_LOG=${rust.ciEnv.RUST_LOG}
+
+            export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH='${playwright.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}'
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='${playwright.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD}'
+            export PLAYWRIGHT_BROWSERS_PATH='${playwright.env.PLAYWRIGHT_BROWSERS_PATH}'
           '';
         };
       };

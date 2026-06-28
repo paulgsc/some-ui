@@ -32,7 +32,6 @@ jobs:
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
-
       # ── Forbidden runtime dependency check ─────────────────────────────
       # Extensions must not depend at runtime on:
       #   • packages/ui/* component libraries (React-based, DOM-bloating)
@@ -78,7 +77,6 @@ jobs:
             exit 1
           fi
           echo "✅ No forbidden runtime dependencies."
-
       # Restore pre-built workspace packages so the extension build doesn't
       # need to rebuild them. Produced by the build-workspace job.
       - name: Download workspace package dist
@@ -86,7 +84,6 @@ jobs:
         with:
           name: workspace-packages-dist
           path: packages
-
       # Restore pre-built wasm crate outputs (e.g. crates/polyhedron/dist).
       # Some extensions have no crate deps — the artifact may be empty; that's fine.
       - name: Download workspace crate dist
@@ -95,14 +92,12 @@ jobs:
           name: workspace-crates-dist
           path: crates
         continue-on-error: true
-
       - name: Typecheck
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
       - name: Test
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" test
-
+        run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source
       # tree and the pnpm lockfile so a workspace-only change still rebuilds.
       - name: Restore extension build cache
@@ -111,12 +106,10 @@ jobs:
         with:
           path: ${{ matrix.extension_path }}/dist
           key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'pnpm-lock.yaml') }}
-
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build
         if: steps.ext-cache.outputs.cache-hit != 'true'
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
-
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \
