@@ -26,6 +26,13 @@ describe("SuspendCard", () => {
     document.body.innerHTML = ""
   })
 
+  it("identifies itself as the extension's suspend page", () => {
+    const { el } = mount()
+    expect(el.querySelector(".suspend-card__badge")?.textContent).toBe(
+      "Tab suspended by Suspender Ledger"
+    )
+  })
+
   it("renders the title, url, and a restore button", () => {
     const { el } = mount()
     expect(el.querySelector(".suspend-card__title")?.textContent).toBe(

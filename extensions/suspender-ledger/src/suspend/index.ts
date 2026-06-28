@@ -10,50 +10,45 @@
 // the page enters a self-explanatory recovery state rather than stranding the
 // user on a dead tab.
 
-import { isRestorableUrl, isSafeFaviconUrl } from "@suspender/lib/safe-url"
+import { isRestorableUrl } from "@suspender/lib/safe-url"
 import { SuspendCard } from "@suspender/suspend/components/suspend-card"
+import {
+  parseSuspendParams,
+  type SuspendParams,
+} from "@suspender/suspend/params"
 
 import "./suspend.css"
 
-/** Decoded parameters describing the tab that was suspended. */
-type SuspendParams = {
-  url: string
-  title: string
-  favIconUrl: string
-}
+/**
+ * The suspended-state favicon. An inline SVG (no network, no file dependency)
+ * showing a "Z" sleep glyph on the filter's dark canvas. It deliberately
+ * replaces the original site's favicon: a moz-extension page that serves another
+ * origin's exact icon reads as phishing scaffolding to AMO's classifier (#317),
+ * and it stops the real tab and its suspended twin from looking identical in the
+ * tab strip.
+ */
+const SUSPENDED_FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><rect width="24" height="24" rx="5" fill="#0d1117"/><g fill="none" stroke="#7aa2f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h6l-6 8h6"/><path d="M14 5h5l-5 6h5" opacity="0.55"/></g></svg>`
+const SUSPENDED_FAVICON = `data:image/svg+xml,${encodeURIComponent(
+  SUSPENDED_FAVICON_SVG
+)}`
 
 /**
- * Read suspend parameters from the page address. Both the query string and the
- * hash are checked: the hash form lets the worker update the marker without the
- * browser treating it as a fresh navigation.
+ * Reflect the suspended state onto the tab strip. The title carries the marker
+ * prefix that `buildSuspendUrl` guarantees (never the verbatim original), and
+ * the favicon is our own suspended badge — never the original site's icon.
  */
-function readParams(): SuspendParams {
-  const fromSearch = new URLSearchParams(location.search)
-  const fromHash = new URLSearchParams(location.hash.replace(/^#/, ""))
-  const pick = (key: string): string =>
-    fromSearch.get(key) ?? fromHash.get(key) ?? ""
-  return {
-    url: pick("url"),
-    title: pick("title"),
-    favIconUrl: pick("favicon"),
-  }
-}
-
-/** Reflect the original title/favicon onto the tab strip while suspended. */
 function applyTabChrome(params: SuspendParams): void {
   const label = params.title || hostOf(params.url)
   if (label) {
     document.title = label
   }
-  if (params.favIconUrl && isSafeFaviconUrl(params.favIconUrl)) {
-    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-    if (!link) {
-      link = document.createElement("link")
-      link.rel = "icon"
-      document.head.appendChild(link)
-    }
-    link.href = params.favIconUrl
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement("link")
+    link.rel = "icon"
+    document.head.appendChild(link)
   }
+  link.href = SUSPENDED_FAVICON
 }
 
 function hostOf(url: string): string {
@@ -68,7 +63,7 @@ function main(): void {
   const root = document.getElementById("app")
   if (!root) return
 
-  const params = readParams()
+  const params = parseSuspendParams(location.search, location.hash)
   const recovery = !isRestorableUrl(params.url)
 
   if (!recovery) {
@@ -86,7 +81,6 @@ function main(): void {
     SuspendCard({
       title: params.title,
       url: params.url,
-      favIconUrl: params.favIconUrl || undefined,
       recovery,
       onRestore: restore,
     })

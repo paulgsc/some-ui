@@ -149,12 +149,39 @@ top-level navigation, which fires `document_start` in content scripts and lets
 or in-place DOM swaps bypass `document_start` entirely — do not use them as
 an alternative restore mechanism.
 
-### Suspend URL embeds the `prepends` marker at suspend time
+### Suspend URL carries its params in the hash, address last and raw (#339)
 
-The `💤` prefix is baked into the `title` query parameter of the suspend URL
-(`?title=%F0%9F%92%A4+My+Tab`). Changing `prefs.prepends` after tabs are
-already suspended does not update their displayed titles — the marker only
-refreshes when a tab is next suspended.
+The suspend URL is `suspend.html#title=<encoded>&uri=<original address raw>`.
+The address lives in the **hash fragment**, not the query string, and is the
+verbatim tail after `uri=` — `parseSuspendParams` slices everything after `uri=`
+rather than splitting on `&`, so an embedded query string (`?a=1&b=2`) or `#`
+survives intact. This exists so Firefox's `%` awesome-bar (which restricts
+matching to open tabs, against title + URL) sees the real address instead of a
+wall of `%3A%2F%2F` percent-soup. The legacy `?url=…&title=…&favicon=…` query
+form is still parsed so tabs suspended by an older build survive an update.
+
+The writer (`buildSuspendUrl`, `src/worker/core/suspend-url.ts`) and the reader
+(`parseSuspendParams`, `src/suspend/params.ts`) are **deliberately split across
+the worker/page boundary.** If the page imported the writer's module, Rollup
+would emit it as a chunk shared with the classic background script, and
+`worker.js` would gain a top-level ESM `import` that Firefox cannot load. The
+`uri=` separator is duplicated in both files; `suspend-url.test.ts` round-trips
+build → parse to keep them in lockstep — do not merge them back into one module.
+
+### Suspended tabs never reflect the original title/favicon verbatim (#317)
+
+`buildSuspendUrl` guarantees a non-empty marker (an empty `prefs.prepends` falls
+back to a literal `[Suspended]` prefix), so the tab-strip title can never be the
+bare original — and the suspend page sets its **own** inline-SVG "sleep" badge as
+the favicon, never the original site's icon. A `moz-extension://…/suspend.html`
+page that served another origin's exact title + favicon reads as phishing
+scaffolding to AMO's classifier (it triggered the original block). The favicon is
+no longer embedded in the URL at all, which also removes the single largest
+contributor to the `%`-search string-soup above.
+
+The `💤` prefix is baked into the `title` field at suspend time. Changing
+`prefs.prepends` after tabs are already suspended does not update their displayed
+titles — the marker only refreshes when a tab is next suspended.
 
 ### "No tab to switch to" is not an audio/video bug
 

@@ -67,6 +67,14 @@ body {
   text-align: center;
 }
 
+.suspend-card__badge {
+  color: var(--sl-fg-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .suspend-card__icon {
   color: var(--sl-fg-dim);
   display: grid;

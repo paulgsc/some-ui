@@ -9,37 +9,60 @@
 
 import { expect, test } from "@playwright/test"
 
-/** Build a suspend-page URL with the given params. */
-function suspendUrl(params: Record<string, string>): string {
-  const qs = new URLSearchParams(params).toString()
-  return `/suspend.html?${qs}`
+/**
+ * Build a suspend-page URL in the current hash form: `title` is encoded, the
+ * original address is the verbatim tail after `uri=` (mirrors buildSuspendUrl).
+ */
+function suspendUrl({ title, uri }: { title?: string; uri?: string }): string {
+  const fields = new URLSearchParams()
+  if (title) fields.set("title", title)
+  let fragment = fields.toString()
+  if (uri) fragment += `${fragment ? "&" : ""}uri=${uri}`
+  return fragment ? `/suspend.html#${fragment}` : "/suspend.html"
 }
 
 test.describe("suspend page", () => {
-  test("renders a restorable card from query params", async ({ page }) => {
+  test("renders a restorable card from hash params", async ({ page }) => {
     const target = "https://example.com/article"
-    const favicon = "https://example.com/favicon.ico"
-    await page.goto(suspendUrl({ url: target, title: "My Tab", favicon }))
+    await page.goto(suspendUrl({ title: "💤 My Tab", uri: target }))
 
     const card = page.locator("main.suspend-card")
     await expect(card).toBeVisible()
     await expect(card).toHaveAttribute("data-recovery", "false")
-    await expect(page.locator(".suspend-card__title")).toHaveText("My Tab")
+    await expect(page.locator(".suspend-card__badge")).toHaveText(
+      "Tab suspended by Suspender Ledger"
+    )
+    await expect(page.locator(".suspend-card__title")).toHaveText("💤 My Tab")
     await expect(page.locator(".suspend-card__url")).toHaveText(target)
     await expect(page.locator(".suspend-card__restore")).toBeVisible()
 
-    // Tab chrome is reflected onto the real document.
-    await expect(page).toHaveTitle("My Tab")
-    await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
-      "href",
-      favicon
+    // The tab title carries the marker prefix — never the verbatim original.
+    await expect(page).toHaveTitle("💤 My Tab")
+  })
+
+  test("preserves a query string in the restored address", async ({ page }) => {
+    const target = "https://example.com/search?a=1&b=2&c=3"
+    await page.goto(suspendUrl({ title: "💤 Results", uri: target }))
+    await expect(page.locator(".suspend-card__url")).toHaveText(target)
+  })
+
+  test("shows its own suspended badge favicon, never the original site's", async ({
+    page,
+  }) => {
+    // Even a legacy URL that smuggles an origin favicon must be ignored: the
+    // suspend page always serves its own badge (deceptive-pattern fix, #317).
+    await page.goto(
+      "/suspend.html?url=https%3A%2F%2Fexample.com%2F&favicon=https%3A%2F%2Fexample.com%2Ffavicon.ico"
     )
+    const href = await page.locator('link[rel="icon"]').getAttribute("href")
+    expect(href).toContain("data:image/svg+xml")
+    expect(href).not.toContain("example.com")
   })
 
   test("falls back to the host name when no title is given", async ({
     page,
   }) => {
-    await page.goto(suspendUrl({ url: "https://news.example.org/path" }))
+    await page.goto(suspendUrl({ uri: "https://news.example.org/path" }))
     await expect(page.locator(".suspend-card__title")).toHaveText(
       "news.example.org"
     )
@@ -58,37 +81,38 @@ test.describe("suspend page", () => {
     await expect(page.locator(".suspend-card__restore")).toHaveCount(0)
   })
 
-  test("rejects an unsafe favicon scheme", async ({ page }) => {
-    await page.goto(
-      suspendUrl({
-        url: "https://example.com/",
-        favicon: "javascript:alert(1)",
-      })
-    )
-    // The guard keeps the payload out of both the <head> and the card <img>.
-    await expect(page.locator('link[rel="icon"]')).toHaveCount(0)
-    await expect(page.locator(".suspend-card__favicon")).toHaveCount(0)
-  })
-
   test("restores by navigating to the original url on click", async ({
     page,
     baseURL,
   }) => {
     // Restore to a real, served page so the navigation actually lands.
     const target = new URL("/popup.html", baseURL).href
-    await page.goto(suspendUrl({ url: target, title: "Restore me" }))
+    await page.goto(suspendUrl({ title: "💤 Restore me", uri: target }))
 
     await page.locator(".suspend-card__restore").click()
-    await page.waitForURL("**/popup.html")
+    await page.waitForURL(target)
     expect(page.url()).toBe(target)
   })
 
   test("restores on Enter as well as click", async ({ page, baseURL }) => {
     const target = new URL("/popup.html", baseURL).href
-    await page.goto(suspendUrl({ url: target, title: "Keyboard restore" }))
+    await page.goto(suspendUrl({ title: "💤 Keyboard restore", uri: target }))
 
     await page.keyboard.press("Enter")
-    await page.waitForURL("**/popup.html")
+    await page.waitForURL(target)
+    expect(page.url()).toBe(target)
+  })
+
+  test("still restores tabs suspended by an older build (legacy query form)", async ({
+    page,
+    baseURL,
+  }) => {
+    const target = new URL("/popup.html", baseURL).href
+    const legacy = `/suspend.html?url=${encodeURIComponent(target)}&title=Old`
+    await page.goto(legacy)
+
+    await page.locator(".suspend-card__restore").click()
+    await page.waitForURL(target)
     expect(page.url()).toBe(target)
   })
 })

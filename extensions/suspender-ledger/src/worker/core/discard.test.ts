@@ -65,21 +65,24 @@ describe("discard", () => {
     const call = vi.mocked(chrome.tabs.update).mock.calls[0]
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const url = new URL((call?.[1] as chrome.tabs.UpdateProperties).url ?? "")
-    expect(url.searchParams.get("title")).toBe("💤 My Tab")
+    // Title rides in the hash now (#339), not the query string.
+    const fields = new URLSearchParams(url.hash.slice(1).split("&uri=")[0])
+    expect(fields.get("title")).toBe("💤 My Tab")
   })
 
-  it("includes the original URL in the suspend URL params", async () => {
-    await discard(
-      tab({ id: 1, url: "https://example.com/article", title: "A" })
-    )
+  it("embeds the original URL as the readable hash tail", async () => {
+    const target = "https://example.com/article"
+    await discard(tab({ id: 1, url: target, title: "A" }))
 
     const call = vi.mocked(chrome.tabs.update).mock.calls[0]
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const url = new URL((call?.[1] as chrome.tabs.UpdateProperties).url ?? "")
-    expect(url.searchParams.get("url")).toBe("https://example.com/article")
+    const built = (call?.[1] as chrome.tabs.UpdateProperties).url ?? ""
+    // No query-string soup; the address is the verbatim tail after `uri=`.
+    expect(new URL(built).search).toBe("")
+    expect(built).toContain(`uri=${target}`)
   })
 
-  it("includes the favicon in the suspend URL params when present", async () => {
+  it("never embeds the favicon in the suspend URL", async () => {
     const favicon = "https://example.com/favicon.ico"
     await discard(
       tab({ id: 1, url: "https://example.com/", favIconUrl: favicon })
@@ -87,8 +90,8 @@ describe("discard", () => {
 
     const call = vi.mocked(chrome.tabs.update).mock.calls[0]
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const url = new URL((call?.[1] as chrome.tabs.UpdateProperties).url ?? "")
-    expect(url.searchParams.get("favicon")).toBe(favicon)
+    const built = (call?.[1] as chrome.tabs.UpdateProperties).url ?? ""
+    expect(built).not.toContain("favicon")
   })
 
   it("skips an active tab", async () => {

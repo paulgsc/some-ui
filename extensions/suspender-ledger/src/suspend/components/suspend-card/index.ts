@@ -41,6 +41,13 @@ export function SuspendCard({
   card.className = "suspend-card"
   card.setAttribute("data-recovery", String(recovery))
 
+  // Unambiguously identify this as the extension's own page, not the original
+  // site (#317): the suspended tab must never masquerade as the page it parked.
+  const badge = document.createElement("p")
+  badge.className = "suspend-card__badge"
+  badge.textContent = "Tab suspended by Suspender Ledger"
+  card.appendChild(badge)
+
   const iconWrap = document.createElement("div")
   iconWrap.className = "suspend-card__icon"
   if (favIconUrl && !recovery && isSafeFaviconUrl(favIconUrl)) {
