@@ -37,13 +37,11 @@
   display: flex;
 }
 
-
 .dj-adv-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--dj-text);
 }
-
 
 .dj-star-btn {
   background: transparent;
@@ -77,7 +75,6 @@
   margin-right: 6px;
 }
 
-
 .dj-slider {
   flex: 1;
   accent-color: var(--dj-accent);
@@ -90,7 +87,6 @@
   color: var(--dj-muted);
   min-width: 36px;
 }
-
 
 .inline-ep {
   width: 50px;

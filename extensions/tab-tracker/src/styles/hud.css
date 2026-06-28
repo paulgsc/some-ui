@@ -5,9 +5,8 @@
 /* ─── Custom properties ───────────────────────────────────────────────────── */
 
 #__tl2_hud__ {
-  --tl-font:
-    "TX-02", "Iosevka", "Fira Code", "Cascadia Code", "SF Mono", "Menlo",
-    monospace;
+  --tl-font: "TX-02", "Iosevka", "Fira Code", "Cascadia Code", "SF Mono",
+    "Menlo", monospace;
   --tl-bg: rgba(6, 6, 9, 0.92);
   --tl-bg-raised: rgba(12, 12, 18, 0.96);
   --tl-border: rgba(255, 255, 255, 0.07);
