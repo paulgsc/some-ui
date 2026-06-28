@@ -464,13 +464,10 @@ importers:
       '@some-cycle/content':
         specifier: workspace:*
         version: link:packages/content
+    devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
-      lucide-react:
-        specifier: ^0.263.1
-        version: 0.263.1(react@19.0.0)
-    devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -483,6 +480,9 @@ importers:
       eslint:
         specifier: ^10.5.0
         version: 10.5.0(jiti@2.7.0)
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@19.0.0)
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
@@ -501,19 +501,13 @@ importers:
       '@some-cycle/types':
         specifier: workspace:*
         version: link:../types
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../../../packages/some-styles
-      lucide-react:
-        specifier: ^0.263.1
-        version: 0.263.1(react@19.0.0)
-      preact:
-        specifier: ^10.27.1
-        version: 10.29.3
     devDependencies:
       '@preact/preset-vite':
         specifier: ^2.10.2
         version: 2.10.5(@babel/core@7.29.7)(preact@10.29.3)(rollup@4.62.2)(vite@6.4.3(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../../../packages/some-styles
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../../../packages/tsconfig
@@ -523,6 +517,12 @@ importers:
       '@types/webextension-polyfill':
         specifier: ^0.10.0
         version: 0.10.7
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@19.0.0)
+      preact:
+        specifier: ^10.27.1
+        version: 10.29.3
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
@@ -624,14 +624,10 @@ importers:
         version: 120.0.5
 
   extensions/some-scrobbler:
-    dependencies:
+    devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
-      lucide-react:
-        specifier: ^0.263.1
-        version: 0.263.1(react@19.0.0)
-    devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -644,6 +640,9 @@ importers:
       eslint:
         specifier: ^10.5.0
         version: 10.5.0(jiti@2.7.0)
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@19.0.0)
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint

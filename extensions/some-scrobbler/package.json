@@ -2,15 +2,14 @@
 	"bugs": {
 		"url": "https://github.com/paulgsc/some-ui/issues"
 	},
-	"dependencies": {
-		"@some-ui/styles": "workspace:*",
-		"lucide-react": "^0.263.1"
-	},
+	"dependencies": {},
 	"devDependencies": {
+		"@some-ui/styles": "workspace:*",
 		"@some-ui/tsconfig": "workspace:*",
 		"@types/firefox-webext-browser": "^120.0.4",
 		"@types/webextension-polyfill": "^0.10.0",
 		"eslint": "^10.5.0",
+		"lucide-react": "^0.263.1",
 		"maishatu-eslint-kit": "workspace:*",
 		"some-ui-rollup-config": "workspace:*",
 		"web-ext": "^7.6.2",

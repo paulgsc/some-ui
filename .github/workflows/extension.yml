@@ -3,7 +3,7 @@ name: Extension CI
 #
 # Job graph:
 #   detect
-#     └── build-workspace      (shared packages, paid once)
+#     └── build-workspace      (shared packages + wasm crates, paid once)
 #           └── verify[matrix] (per-extension: typecheck/lint/test/build)
 #
 # Signing is intentionally NOT wired here. AMO compliance footguns are being
@@ -11,13 +11,21 @@ name: Extension CI
 # auto-signing on main is suspended until all A+B issues are closed.
 # Use extension-sign-manual.yml (workflow_dispatch) to sign when ready.
 #
-# Workspace packages are built once and shared via the workspace-dist artifact.
+# Workspace packages and wasm crates are built once and shared via the
+# workspace-packages-dist / workspace-crates-dist artifacts.
 # verify does not rebuild shared packages — it only bundles the extension itself.
+#
+# Smart filter: build-workspace uses Turbo's dep-graph filter
+# '...{./extensions/*}' (transitive deps of all extensions) minus the
+# extensions themselves. This means only the packages and wasm crates that
+# extensions actually import are built — packages/ui/** and other unrelated
+# workspaces are skipped automatically by the dep graph.
 on:
   pull_request:
     paths:
       - "extensions/**"
       - "packages/**"
+      - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/**"
       - ".github/actions/**"
@@ -27,6 +35,7 @@ on:
     paths:
       - "extensions/**"
       - "packages/**"
+      - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/**"
       - ".github/actions/**"
@@ -38,8 +47,10 @@ jobs:
     name: Detect Changed Extensions
     uses: ./.github/workflows/_extension-detect.yml
 
-  # Build shared workspace packages once. verify downloads this artifact
-  # rather than rebuilding the full upstream dep graph.
+  # Build shared workspace packages and wasm crates once.
+  # Uses a dep-graph-aware filter so only packages/crates that extensions
+  # actually depend on are built — packages/ui/** and other unrelated
+  # packages are skipped automatically.
   build-workspace:
     name: Build Workspace Packages
     needs: detect
@@ -48,6 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
+        with:
+          key-suffix: wasm-ext-deps
       - uses: ./.github/actions/pnpm-cache
         with:
           shell: ci
@@ -57,23 +71,49 @@ jobs:
         env:
           HUSKY: 0
 
-      # Build only workspace packages — explicitly exclude extensions so we
-      # don't pay for any extension builds here.
-      - name: Build workspace packages
+      # Restore cached dist to skip rebuilding when nothing relevant changed.
+      # Key covers pnpm-lock + all package/crate source trees.
+      - name: Restore workspace dist cache
+        id: ws-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/*/dist
+            crates/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'packages/**/package.json', 'crates/**/Cargo.toml', 'Cargo.lock') }}
+          restore-keys: |
+            workspace-dist-${{ runner.os }}-
+
+      # Build only the packages/crates that extensions depend on.
+      # pnpm build at the root invokes `turbo run build` (see package.json).
+      # Turbo's '...{./extensions/*}' dependency selector walks the graph
+      # upstream from every extension, building their transitive workspace deps
+      # (packages, wasm crates like polyhedron) without the extensions themselves.
+      - name: Build workspace deps
+        if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
           nix develop .#ci --command pnpm build \
-            --filter='!./extensions/**'
+            --filter '...{./extensions/*}'
         env:
           NODE_ENV: production
 
-      # Upload packages/*/dist so verify jobs can consume it.
-      # Retention of 1 day is sufficient — these artifacts are only needed
-      # within the same workflow run.
-      - name: Upload workspace dist
+      # Upload packages/*/dist and crates/*/dist as separate artifacts so
+      # verify jobs can download each to its correct location.
+      # Use 'error' so a broken build fails loudly here rather than silently
+      # producing a missing artifact that breaks all downstream verify jobs.
+      - name: Upload package dist
         uses: actions/upload-artifact@v7
         with:
-          name: workspace-dist
+          name: workspace-packages-dist
           path: packages/*/dist
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload crate dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: workspace-crates-dist
+          path: crates/*/dist
           if-no-files-found: warn
           retention-days: 1
 
