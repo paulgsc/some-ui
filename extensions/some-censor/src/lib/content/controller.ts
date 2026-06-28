@@ -29,10 +29,10 @@
  */
 
 import { ext } from "@censor/platform/content"
+import type { KeyBindingDisposer } from "@some-extension/common"
 
+import { attachKeyBindings } from "./commands"
 import { attachEvents } from "./events"
-import type { KeyBindingDispose } from "./key-binding"
-import { attachKeyBindings } from "./key-binding"
 import { SEL, startObserver } from "./observer"
 import { VideoManager } from "./video-manager"
 
@@ -43,7 +43,7 @@ export class Controller {
 
   private _observer: MutationObserver | null = null
   private _appWaiter: MutationObserver | null = null
-  private _disposeKeyBindings: KeyBindingDispose | null = null
+  private _disposeKeyBindings: KeyBindingDisposer | null = null
   private _navListener: (() => void) | null = null
   private _navDebounce: ReturnType<typeof setTimeout> | null = null
 

@@ -2,6 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
