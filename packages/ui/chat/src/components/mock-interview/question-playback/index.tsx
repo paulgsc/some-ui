@@ -158,7 +158,7 @@ export const QuestionPlayback = ({
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              Listen as many times as you'd like
+              Listen as many times as you&apos;d like
             </p>
           </div>
         </Card>

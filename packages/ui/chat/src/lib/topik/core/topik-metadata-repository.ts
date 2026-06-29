@@ -42,7 +42,8 @@ export function createTopikMetadataRepository(
         `Failed to load topik manifest: ${response.status} ${response.statusText}`
       )
     }
-    return response.json()
+    const data: TopikManifestFile = await response.json()
+    return data
   }
 
   return new TopikMetadataRepository(loader, TopikManifestSchema)

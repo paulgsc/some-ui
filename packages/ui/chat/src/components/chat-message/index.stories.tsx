@@ -31,4 +31,4 @@ export const Default: Story = {
 export default {
   title: "UI/Chat/Components/ChatMessage",
   component: ChatMessage,
-} as Meta
+} satisfies Meta

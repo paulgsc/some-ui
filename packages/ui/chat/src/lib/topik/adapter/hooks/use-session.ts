@@ -85,14 +85,8 @@ export function useSession(
   // MACHINE INSTANCE (stable across remounts)
   // ══════════════════════════════════════════════════════
 
-  const machineRef = useRef<ISessionMachine | null>(null)
+  const [machine] = useState<ISessionMachine>(() => createSessionMachine())
   const executorRef = useRef<EffectExecutor | null>(null)
-
-  if (!machineRef.current) {
-    machineRef.current = createSessionMachine()
-  }
-
-  const machine = machineRef.current
 
   // ══════════════════════════════════════════════════════
   // REACT STATE SYNC
@@ -185,8 +179,7 @@ export function useSession(
       onSessionComplete: handleSessionComplete,
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
-      onError: (error, effect) =>
-        console.error("[Executor] Error:", effect, error),
+      onError: undefined,
     })
 
     return (): void => {
@@ -197,6 +190,7 @@ export function useSession(
     machine,
     repository,
     queryBridge,
+    audioTTS,
     componentId,
     enableTTS,
     timerInterval,

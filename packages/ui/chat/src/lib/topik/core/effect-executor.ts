@@ -65,23 +65,23 @@ export class EffectExecutor {
         componentId: config.componentId,
         machine: config.machine,
 
-        onMessageComplete: (messageId) => {
-          console.log(`[Executor] TTS complete for message: ${messageId}`)
+        onMessageComplete: (_messageId) => {
+          // TTS message complete
         },
 
         onSpeechStart: (messageId) => {
-          this.config.onSpeechStart && this.config.onSpeechStart(messageId)
+          this.config.onSpeechStart?.(messageId)
         },
 
         onSpeechEnd: (messageId) => {
           // Dispatch ADVANCE_MESSAGE event to FSM
           const effects = this.config.machine.dispatch(actions.advanceMessage())
           this.execute(effects)
-          if (this.config.onSpeechEnd) this.config.onSpeechEnd(messageId)
+          this.config.onSpeechEnd?.(messageId)
         },
 
-        onError: (error, messageId) => {
-          console.error(`[Executor] TTS error for message ${messageId}:`, error)
+        onError: (_error, _messageId) => {
+          // TTS error handled by caller
         },
       })
     }
@@ -96,7 +96,6 @@ export class EffectExecutor {
    */
   execute(effects: Array<SessionEffect>): void {
     if (this.destroyed) {
-      console.warn("[Executor] Ignoring effects - executor destroyed")
       return
     }
 
@@ -110,7 +109,6 @@ export class EffectExecutor {
    */
   async speakMessage(message: Message): Promise<void> {
     if (!this.ttsHandler) {
-      console.warn("[Executor] TTS not enabled")
       return
     }
     await this.ttsHandler.speakManually(message)
@@ -150,11 +148,11 @@ export class EffectExecutor {
     try {
       switch (effect.type) {
         case "TRIGGER_CATALOG_QUERY":
-          this._triggerCatalogQuery()
+          void this._triggerCatalogQuery()
           break
 
         case "TRIGGER_TOPIK_QUERY":
-          this._triggerTopikQuery(effect.key)
+          void this._triggerTopikQuery(effect.key)
           break
 
         case "START_TIMER":
@@ -185,18 +183,16 @@ export class EffectExecutor {
           this._notifySessionReset()
           break
 
-        default:
-          // Exhaustiveness check
+        default: {
           const _exhaustive: never = effect
-          console.warn("[Executor] Unknown effect type:", _exhaustive)
+          void _exhaustive
+        }
       }
     } catch (error) {
-      console.error("[Executor] error executing effects", error, effect)
-      if (this.config.onError)
-        this.config.onError(
-          error instanceof Error ? error : new Error(String(error)),
-          effect
-        )
+      this.config.onError?.(
+        error instanceof Error ? error : new Error(String(error)),
+        effect
+      )
     }
   }
 
@@ -207,19 +203,15 @@ export class EffectExecutor {
     let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
-    console.log("[Executor] Triggering catalog query")
-
     // Dispatch loading immediately
     effects = machine.dispatch({ type: "CATALOG_LOADING" })
     this.execute(effects)
 
     try {
       const data = await queryBridge.fetchCatalog()
-      console.log("[Executor] Catalog query succeeded")
       effects = machine.dispatch({ type: "CATALOG_SUCCESS", data: data.topiks })
       this.execute(effects)
     } catch (error) {
-      console.error("[Executor] Catalog query failed:", error)
       effects = machine.dispatch({
         type: "CATALOG_FAILURE",
         error: error instanceof Error ? error.message : String(error),
@@ -232,25 +224,20 @@ export class EffectExecutor {
     let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
-    console.log(`[Executor] Triggering topik query for key: ${key}`)
-
     // Dispatch loading immediately
     effects = machine.dispatch({ type: "HYDRATION_STARTED", key })
     this.execute(effects)
 
     try {
       const batches = await queryBridge.fetchTopik(key)
-      console.log(`[Executor] Topik query succeeded: ${key}`)
       effects = machine.dispatch({
         type: "HYDRATION_SUCCESS",
         key,
         batches,
       })
 
-      console.info("[executor] effects", effects)
       this.execute(effects) // This triggers the PLAY_AUDIO and START_TIMER
     } catch (error) {
-      console.error(`[Executor] Topik query failed: ${key}`, error)
       effects = machine.dispatch({
         type: "HYDRATION_FAILURE",
         key,
@@ -266,13 +253,10 @@ export class EffectExecutor {
 
   private _startTimer(): void {
     if (this.timerHandle) {
-      console.log("[Executor] Timer already running")
       return
     }
 
     const interval = this.config.timerInterval ?? 1000
-
-    console.log(`[Executor] Starting timer (interval: ${interval}ms)`)
 
     this.timerHandle = setInterval(() => {
       const effects = this.config.machine.dispatch({ type: "TIMER_TICK" })
@@ -284,7 +268,6 @@ export class EffectExecutor {
     if (this.timerHandle) {
       clearInterval(this.timerHandle)
       this.timerHandle = null
-      console.log("[Executor] Stopped timer")
     }
   }
 
@@ -294,26 +277,20 @@ export class EffectExecutor {
 
   private _playAudio(): void {
     if (!this.ttsHandler) {
-      console.warn("[Executor] TTS not enabled, skipping audio")
       return
     }
 
     const message = getCurrentMessage(this.config.machine.getState())
 
     if (!message) {
-      console.warn(`[Executor] Message not found`)
       return
     }
 
-    console.log(`[Executor] Enqueuing audio for message: ${message.id}`)
-
-    // ENQUEUE instead of direct speak
     this.ttsHandler.enqueue(message, true)
   }
 
   private _stopAudio(): void {
     if (!this.ttsHandler) return
-    console.log("[Executor] Stopping audio")
     this.ttsHandler.handleStopAudio()
   }
 
@@ -322,17 +299,14 @@ export class EffectExecutor {
   // ═════════════════════════════════════════════════════════════════════════
 
   private _notifyBatchComplete(batchIndex: number): void {
-    console.log(`[Executor] Batch complete: ${batchIndex}`)
-    if (this.config.onBatchComplete) this.config.onBatchComplete(batchIndex)
+    this.config.onBatchComplete?.(batchIndex)
   }
 
   private _notifySessionComplete(): void {
-    console.log("[Executor] Session complete")
-    if (this.config.onSessionComplete) this.config.onSessionComplete()
+    this.config.onSessionComplete?.()
   }
 
   private _notifySessionReset(): void {
-    console.log("[Executor] Session reset")
     this.destroy()
   }
 }

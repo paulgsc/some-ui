@@ -10,4 +10,4 @@ export const Default: Story = {}
 export default {
   title: "UI/Chat/Interview/InterviewApp",
   component: InterviewApp,
-} as Meta
+} satisfies Meta

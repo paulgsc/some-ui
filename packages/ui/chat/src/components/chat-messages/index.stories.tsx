@@ -1,4 +1,4 @@
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { Message } from "@chat/types/chat"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { formatRelativeTime } from "some-ui-utils"
 
@@ -8,7 +8,7 @@ import { pgdevPng } from "../../../../../../assets"
 type Story = StoryObj<typeof ChatMessages>
 type Meta = MetaObj<typeof ChatMessages>
 
-const mockMessages: Array<ChatMessageProps> = Array.from(
+const mockMessages: Array<Message> = Array.from(
   { length: 20 },
   (_, index) => ({
     id: `msg-${index}`,
@@ -39,4 +39,4 @@ export const Default: Story = {
 export default {
   title: "UI/Chat/Components/ChatMessages",
   component: ChatMessages,
-} as Meta
+} satisfies Meta

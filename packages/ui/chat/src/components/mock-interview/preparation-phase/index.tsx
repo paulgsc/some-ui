@@ -51,14 +51,14 @@ export const PreparationPhase = ({
 
             <div className="text-center space-y-4">
               <p className="text-muted-foreground">
-                When you're ready, you can start speaking
+                When you&apos;re ready, you can start speaking
               </p>
               <Button
                 size="lg"
                 onClick={onStartRecording}
                 className="px-12 rounded-full"
               >
-                I'm ready to speak
+                I&apos;m ready to speak
               </Button>
             </div>
           </div>

@@ -78,7 +78,7 @@ export const useAudioRecorder = (
         }
       }
 
-      uploadAndComplete()
+      void uploadAndComplete()
     }
   }, [state, onComplete])
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react"
+import { useMemo, useRef } from "react"
 import {
   actions,
   getCurrentBatch,
@@ -11,17 +11,7 @@ import {
 import { getAvailableTopiks } from "@chat/lib/topik/adapter/session-selectors"
 
 export function createId(): string {
-  // Check if the modern API exists and is in a secure context
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-
-  // Fallback: A simple manual UUID generator (or use a library like 'nanoid')
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === "x" ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+  return crypto.randomUUID()
 }
 
 export function useKoreanStudyPageVM() {
@@ -42,9 +32,6 @@ export function useKoreanStudyPageVM() {
   })
 
   const { state, dispatch } = session
-  useEffect(() => {
-    console.info("state: ", state)
-  }, [state])
 
   // Cleanup audio on unmount
 

@@ -37,13 +37,7 @@ const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (audioTTS.supported) {
-      try {
-        console.log("Speech context initialized for Storybook")
-      } catch (error) {
-        console.log("Speech context already initialized or error:", error)
-      } finally {
-        setIsSpeechContextReady(true)
-      }
+      setIsSpeechContextReady(true)
     }
   }, [audioTTS.supported]) // Only depend on supported, not the entire hook
 
@@ -56,7 +50,7 @@ const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
       <div className={cn("flex items-center justify-center gap-3 p-4")}>
         <div
           className={cn("bg-primary/20 size-12 animate-pulse rounded-full")}
-        ></div>
+        />
 
         <span className={cn("text-muted-foreground animate-pulse font-medium")}>
           {message}
@@ -91,6 +85,6 @@ export default {
       </WithSessionConfig>
     ),
   ],
-} as Meta
+} satisfies Meta
 
 export const Default: Story = {}

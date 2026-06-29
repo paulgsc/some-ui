@@ -14,7 +14,7 @@ export const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           </h1>
           <p className="text-lg text-muted-foreground text-pretty leading-relaxed">
             This is a supportive space to practice speaking your thoughts out
-            loud. There's no pressure, no judgment, and no wrong answers.
+            loud. There&apos;s no pressure, no judgment, and no wrong answers.
           </p>
         </div>
 
@@ -25,7 +25,7 @@ export const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           <ul className="space-y-3 text-left text-muted-foreground">
             <li className="flex items-start gap-3">
               <span className="text-accent-foreground mt-0.5">•</span>
-              <span>Listen to questions as many times as you'd like</span>
+              <span>Listen to questions as many times as you&apos;d like</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-accent-foreground mt-0.5">•</span>
@@ -47,7 +47,7 @@ export const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
           onClick={onStart}
           className="w-full md:w-auto px-12 text-base rounded-full"
         >
-          Begin when you're ready
+          Begin when you&apos;re ready
         </Button>
 
         <p className="text-sm text-muted-foreground">

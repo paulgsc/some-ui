@@ -122,17 +122,15 @@ export const QuizSummary = ({
                 Continue to Next Conversation
               </Button>
             ) : (
-              <>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => onAssessmentComplete(false)}
-                  className="flex-1 text-lg py-6"
-                >
-                  <RotateCcw className="size-5 mr-2" />
-                  Retry Conversation
-                </Button>
-              </>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => onAssessmentComplete(false)}
+                className="flex-1 text-lg py-6"
+              >
+                <RotateCcw className="size-5 mr-2" />
+                Retry Conversation
+              </Button>
             )}
           </div>
         </div>
