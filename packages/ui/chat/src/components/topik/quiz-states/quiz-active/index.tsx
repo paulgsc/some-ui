@@ -97,14 +97,12 @@ export const QuizActive = ({
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      let nextId = 1
-                      const msg_id = (nextId++).toString()
                       const msg: Message = {
-                        id: msg_id,
+                        id: "1",
                         role: "assistant",
                         content: "",
                         timestamp: "",
-                        korean: question.korean ?? "",
+                        korean: question.korean,
                         english: "",
                       }
                       onSpeakMessage(msg)

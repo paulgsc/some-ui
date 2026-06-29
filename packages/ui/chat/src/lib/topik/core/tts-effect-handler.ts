@@ -53,7 +53,6 @@ export class TTSEffectHandler {
   constructor(private readonly config: TTSEffectHandlerConfig) {
     // Force stop any existing audio on construction (handles remount case)
     this.config.audioTTS.stop()
-    console.log(`[TTS] Handler initialized: ${config.componentId}`)
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -67,16 +66,14 @@ export class TTSEffectHandler {
   enqueue(message: Message, isAuto: boolean = true): void {
     // Deduplicate auto-play
     if (isAuto && this.spokenAutoIds.has(message.id)) {
-      console.log(`[TTS] Skipping already-spoken message: ${message.id}`)
       return
     }
 
-    console.log(`[TTS] Enqueuing message: ${message.id} (auto: ${isAuto})`)
     this.queue.push({ message, isAuto })
 
     // Start processing if not already running
     if (!this.processing) {
-      this.processQueue()
+      void this.processQueue()
     }
   }
 
@@ -85,8 +82,6 @@ export class TTSEffectHandler {
    * Clears deduplication for this message
    */
   async speakManually(message: Message): Promise<void> {
-    console.log(`[TTS] Manual speak requested: ${message.id}`)
-
     // Clear deduplication for this message
     this.spokenAutoIds.delete(message.id)
     this.completedIds.delete(message.id)
@@ -111,7 +106,6 @@ export class TTSEffectHandler {
    */
   handleStopAudio(): void {
     if (this.currentMessageId) {
-      console.log(`[TTS] 🔇 Stopping speech for ${this.currentMessageId}`)
       this.config.audioTTS.stop()
       this.speaking = false
 
@@ -148,7 +142,6 @@ export class TTSEffectHandler {
   }
 
   destroy(): void {
-    console.log(`[TTS] Destroying handler: ${this.config.componentId}`)
     this.handleStopAudio()
     this.config.audioTTS.stop()
     this.spokenAutoIds.clear()
@@ -170,14 +163,12 @@ export class TTSEffectHandler {
 
       // Double-check deduplication (in case queue was filled before processing)
       if (isAuto && this.spokenAutoIds.has(message.id)) {
-        console.log(`[TTS] Skipping (already spoken): ${message.id}`)
         continue
       }
 
       try {
         await this._speak(message, isAuto)
-      } catch (error) {
-        console.error(`[TTS] Error speaking ${message.id}:`, error)
+      } catch {
         // Continue processing queue even on error
       }
     }
@@ -192,11 +183,9 @@ export class TTSEffectHandler {
     this.currentMessageId = message.id
     this.speaking = true
 
-    console.log(`[TTS] Speaking message: ${message.id} (auto: ${isAuto})`)
-
     let completionFired = false // Guard against double-firing
 
-    const cleanupAndComplete = () => {
+    const cleanupAndComplete = (): void => {
       if (completionFired) return
       completionFired = true
 
@@ -220,30 +209,23 @@ export class TTSEffectHandler {
     // Update options with callbacks BEFORE calling speak
     this.config.audioTTS.updateOptions({
       onStart: () => {
-        console.log(`[TTS] 🔊 Speaking: ${message.id}`)
         this.config.onSpeechStart?.(message.id)
       },
 
       onEnd: () => {
-        // Guard against duplicate onEnd calls
         if (completionFired) {
-          console.log(`[TTS] ⚠️ Duplicate onEnd ignored: ${message.id}`)
           return
         }
 
-        console.log(`[TTS] ✅ Complete: ${message.id}`)
         this.config.onSpeechEnd?.(message.id)
         cleanupAndComplete()
       },
 
-      onError: (error) => {
-        // Guard against duplicate onError calls
+      onError: (error: Error) => {
         if (completionFired) {
-          console.log(`[TTS] ⚠️ Duplicate onError ignored: ${message.id}`)
           return
         }
 
-        console.error(`[TTS] ❌ Error: ${message.id}`, error)
         this.config.onError?.(error, message.id)
         this.config.onSpeechEnd?.(message.id)
         cleanupAndComplete()
@@ -253,9 +235,8 @@ export class TTSEffectHandler {
     try {
       // Await the speak promise - this will block until audio completes
       await this.config.audioTTS.speak(message.content)
-    } catch (error) {
+    } catch {
       // Error already handled by onError callback
-      console.log(`[TTS] Speak promise rejected for ${message.id}`)
     }
   }
 }

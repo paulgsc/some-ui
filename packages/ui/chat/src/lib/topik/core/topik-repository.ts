@@ -64,7 +64,8 @@ export function createTopikRepository(): TopikRepository {
       )
     }
 
-    return response.json()
+    const data: TopikFile = await response.json()
+    return data
   }
 
   return new TopikRepository(loader, TopikFileSchema)

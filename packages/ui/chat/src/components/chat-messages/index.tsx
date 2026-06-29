@@ -39,12 +39,11 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     const currentItem = { index: currentIndex - 1, content }
 
     // Don't speak the same content again
-    if (
-      lastSpokenRef.current &&
-      lastSpokenRef.current.index === currentItem.index &&
-      lastSpokenRef.current.content === currentItem.content
-    ) {
-      return
+    const prevSpoken = lastSpokenRef.current
+    if (prevSpoken) {
+      if (prevSpoken.index === currentItem.index && prevSpoken.content === currentItem.content) {
+        return
+      }
     }
 
     const speakContent = async () => {
@@ -60,22 +59,20 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
             setIsSpeaking(false)
             onResume()
           },
-          onError: (error: Error): void => {
+          onError: (): void => {
             setIsSpeaking(false)
-            console.error("TTS Error:", error)
           },
         }
 
         // increment counter for each speak invocation
         const priority = ++priorityCounter.current
         await speak(content, options, priority)
-      } catch (error) {
-        console.error("Failed to announce topic:", error)
+      } catch {
         setIsSpeaking(false)
       }
     }
 
-    speakContent()
+    void speakContent()
   }, [chats, currentIndex, isSpeaking, speak, onResume, onPause])
 
   useEffect(() => {

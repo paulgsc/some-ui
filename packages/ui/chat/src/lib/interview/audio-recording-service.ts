@@ -11,10 +11,6 @@ export class AudioRecordingService {
       )
     }
 
-    if (!navigator.mediaDevices.getUserMedia) {
-      throw new Error("Your browser does not support audio recording.")
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {

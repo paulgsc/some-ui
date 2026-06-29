@@ -52,7 +52,7 @@ export const ReviewPhase = ({
             <div className="space-y-4">
               <h2 className="text-2xl font-medium">Your Response</h2>
               <p className="text-muted-foreground">
-                This is just for you—edit or review as you'd like
+                This is just for you—edit or review as you&apos;d like
               </p>
             </div>
 
@@ -64,7 +64,7 @@ export const ReviewPhase = ({
 
             <div className="bg-accent/30 rounded-2xl p-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Remember, there's no scoring or evaluation here. This space is
+                Remember, there&apos;s no scoring or evaluation here. This space is
                 for you to practice expressing your thoughts and building
                 confidence.
               </p>

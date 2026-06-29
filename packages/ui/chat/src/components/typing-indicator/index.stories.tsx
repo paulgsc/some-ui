@@ -10,4 +10,4 @@ export const Default: Story = {}
 export default {
   title: "UI/Chat/Components/TypingIndicator",
   component: TypingIndicator,
-} as Meta
+} satisfies Meta
