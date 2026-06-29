@@ -1,4 +1,5 @@
-export const Bookshelf = () => {
+import type { JSX } from "react"
+export const Bookshelf = (): JSX.Element => {
   return (
     <svg
       viewBox="0 0 512 146"

@@ -73,9 +73,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       if (!scene.ui) continue
 
       for (const layout of scene.ui) {
-        for (const [region, panel] of Object.entries(
-          layout.panels ?? {}
-        ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        for (const [region, panel] of Object.entries(layout.panels ?? {}) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
           const factory = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,
@@ -90,6 +89,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return Object.fromEntries(
       Object.entries(panels).map(([k, factories]) => [
         k,
@@ -136,23 +136,25 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     setPopup(null)
   }, [])
 
-  const renderLeaf = useMemo(() => {
-    const RenderLeaf = (id: YouTubeRegion): ReactNode => {
-      if (typeof mergedPanels[id] !== "function")
-        return (
-          <div
-            className={cn(
-              "size-full inline-flex text-center items-center justify-center",
-              regionColors[id]
-            )}
-          >
-            <h3 className="text-lg font-bold uppercase">{id}</h3>
-          </div>
-        )
-      return mergedPanels[id]()
-    }
-    return RenderLeaf
-  }, [mergedPanels])
+  const renderLeaf = useMemo(
+    () =>
+      // eslint-disable-next-line react/no-unstable-nested-components, react/display-name
+      (id: YouTubeRegion): ReactNode => {
+        if (typeof mergedPanels[id] !== "function")
+          return (
+            <div
+              className={cn(
+                "size-full inline-flex text-center items-center justify-center",
+                regionColors[id]
+              )}
+            >
+              <h3 className="text-lg font-bold uppercase">{id}</h3>
+            </div>
+          )
+        return mergedPanels[id]()
+      },
+    [mergedPanels]
+  )
 
   return (
     <div className="absolute inset-0 flex-1 size-full" ref={ref}>

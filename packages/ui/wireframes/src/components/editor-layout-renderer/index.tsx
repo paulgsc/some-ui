@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
 import type { YouTubeRegion } from "@wireframes/lib/youtube-config"
 import { regionColors } from "@wireframes/lib/youtube-config"
@@ -47,11 +47,6 @@ export const LayoutNodeRenderer = ({
     "left" | "right" | "top" | "bottom" | null
   >(null)
   const [isResizing, setIsResizing] = useState(false)
-  const resizeStartRef = useRef<{
-    startX: number
-    startY: number
-    edge: "left" | "right" | "top" | "bottom"
-  } | null>(null)
 
   if (node.type === "leaf") {
     const isSelected = selectedLeaf === node.id
@@ -85,9 +80,8 @@ export const LayoutNodeRenderer = ({
       e.preventDefault()
       e.stopPropagation()
 
-      const draggedRegion = e.dataTransfer.getData("text/plain") as
-        | YouTubeRegion
-        | undefined
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const draggedRegion = e.dataTransfer.getData("text/plain") as YouTubeRegion | undefined
 
       if (draggedRegion && draggedRegion !== node.id) {
         if (draggedOver) {
@@ -159,11 +153,6 @@ export const LayoutNodeRenderer = ({
     }
 
     const getCursorStyle = (): string => {
-      if (isResizing) {
-        const edge = resizeStartRef.current?.edge
-        if (edge === "left" || edge === "right") return "ew-resize"
-        if (edge === "top" || edge === "bottom") return "ns-resize"
-      }
       if (resizeEdge === "left" || resizeEdge === "right") return "ew-resize"
       if (resizeEdge === "top" || resizeEdge === "bottom") return "ns-resize"
       return "move"
@@ -265,9 +254,9 @@ export const LayoutNodeRenderer = ({
 
   return (
     <>
-      {node.children.map((child, i) => (
+      {node.children.map((child) => (
         <LayoutNodeRenderer
-          key={i}
+          key={child.type === "leaf" ? child.id : child.splitId}
           node={child}
           onLeafClick={onLeafClick}
           selectedLeaf={selectedLeaf}

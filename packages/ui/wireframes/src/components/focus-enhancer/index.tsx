@@ -1,4 +1,4 @@
-import type { ComponentType } from "react"
+import type { ComponentType, JSX } from "react"
 import { useRequestFocus } from "@wireframes/hooks/focus-system"
 import type { YouTubeRegion } from "some-types-utils"
 import type { ComponentEnhancer } from "some-ui-utils"
@@ -34,13 +34,13 @@ export function withFocus<P extends object>(
   region: YouTubeRegion
 ): ComponentEnhancer<P & FocusCapableProps> {
   return (Component: ComponentType<P & FocusCapableProps>) => {
-    const FocusWrapped = (props: P) => {
+    const FocusWrapped = (props: P): JSX.Element => {
       const requestFocus = useRequestFocus(region)
       return <Component {...props} requestFocus={requestFocus} />
     }
 
     // Preserve display name for debugging
-    FocusWrapped.displayName = `withFocus(${region})(${
+    FocusWrapped.displayName = `withFocus(${String(region)})(${
       Component.displayName || Component.name || "Component"
     })`
 

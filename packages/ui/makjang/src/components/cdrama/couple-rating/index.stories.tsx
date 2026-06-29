@@ -23,7 +23,7 @@ export default {
       ],
     },
   },
-} as Meta
+} satisfies Meta
 
 const baseArgs = {
   coupleName: "Min Jae & Hae Won",

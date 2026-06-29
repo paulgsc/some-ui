@@ -209,7 +209,7 @@ function insertRelativeTo<R>(
     }
 
     const targetChild = newChildren[childIndex]
-    if (!targetChild || targetChild.node.type !== "split") {
+    if (targetChild?.node.type !== "split") {
       return { ...node, children: newChildren }
     }
 

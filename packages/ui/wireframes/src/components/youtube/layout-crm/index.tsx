@@ -108,6 +108,7 @@ export const LayoutEditor = (): JSX.Element => {
   const handleCanvasDrop = (e: React.DragEvent): void => {
     e.preventDefault()
 
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const draggedRegion = e.dataTransfer.getData("text/plain") as
       | YouTubeRegion
       | undefined
@@ -118,6 +119,7 @@ export const LayoutEditor = (): JSX.Element => {
         handleIntent({
           kind: "move",
           region: draggedRegion,
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           relativeTo: "root" as YouTubeRegion,
           edge: canvasDropEdge,
         })
@@ -125,6 +127,7 @@ export const LayoutEditor = (): JSX.Element => {
         handleIntent({
           kind: "place",
           region: draggedRegion,
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           relativeTo: "root" as YouTubeRegion,
           edge: canvasDropEdge,
         })
@@ -214,20 +217,8 @@ export const LayoutEditor = (): JSX.Element => {
 
   async function copyText(text: string): Promise<boolean> {
     try {
-      const textarea = document.createElement("textarea")
-      textarea.value = text
-      textarea.setAttribute("readonly", "")
-      textarea.style.position = "fixed"
-      textarea.style.top = "-9999px"
-      document.body.appendChild(textarea)
-
-      textarea.focus()
-      textarea.select()
-
-      const success = document.execCommand("copy")
-      document.body.removeChild(textarea)
-
-      return success
+      await navigator.clipboard.writeText(text)
+      return true
     } catch {
       return false
     }

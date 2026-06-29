@@ -18,7 +18,7 @@ export default {
       { minute: 41, emoji: "🔥", context: "Peak chemistry showdown" },
     ],
   },
-} as Meta
+} satisfies Meta
 
 // --- Stories --------------------------------------------------------------
 

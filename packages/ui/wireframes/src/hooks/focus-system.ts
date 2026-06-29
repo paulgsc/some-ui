@@ -28,12 +28,12 @@ type FocusStore = {
 export const useFocusStore = create<FocusStore>((set) => ({
   proposals: [],
 
-  emit: (p) =>
+  emit: (p): void =>
     set((s) => ({
       proposals: [...s.proposals, p],
     })),
 
-  prune: (now) =>
+  prune: (now): void =>
     set((s) => ({
       proposals: s.proposals.filter(
         (p) => p.expiresAt == null || p.expiresAt > now
@@ -42,7 +42,7 @@ export const useFocusStore = create<FocusStore>((set) => ({
 }))
 
 // Focus Resolution (Pure Function)
-export function selectResolvedFocus(now: number) {
+export function selectResolvedFocus(now: number): (s: FocusStore) => ResolvedFocus {
   return (s: FocusStore): ResolvedFocus => {
     const active = s.proposals.filter(
       (p) => p.expiresAt == null || p.expiresAt > now
@@ -53,6 +53,7 @@ export function selectResolvedFocus(now: number) {
     const winner = active.reduce((a, b) => (b.priority > a.priority ? b : a))
 
     return {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       region: winner.region as YouTubeRegion,
       intensity: winner.intensity,
     }
@@ -60,10 +61,10 @@ export function selectResolvedFocus(now: number) {
 }
 
 // Hook for components to request focus (sandboxed)
-export function useRequestFocus(region: YouTubeRegion) {
+export function useRequestFocus(region: YouTubeRegion): (intensity: number, ttlMs?: number) => void {
   const emit = useFocusStore((s) => s.emit)
 
-  return (intensity: number, ttlMs = 1000) => {
+  return (intensity: number, ttlMs = 1000): void => {
     emit({
       source: "component",
       region,

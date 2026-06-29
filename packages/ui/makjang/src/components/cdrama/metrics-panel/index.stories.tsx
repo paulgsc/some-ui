@@ -13,7 +13,7 @@ export default {
     likelihoodToFinish: 9.2,
     rewatchValue: 7.4,
   },
-} as Meta
+} satisfies Meta
 
 // --- Stories --------------------------------------------------------------
 

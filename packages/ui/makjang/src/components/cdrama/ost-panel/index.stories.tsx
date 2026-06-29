@@ -13,7 +13,7 @@ export default {
     ranking: 3,
     favoriteTrack: "Moonlight Echoes",
   },
-} as Meta
+} satisfies Meta
 
 // --- Stories --------------------------------------------------------------
 

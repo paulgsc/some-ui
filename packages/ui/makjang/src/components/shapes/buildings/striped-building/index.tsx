@@ -1,6 +1,8 @@
 import type { FC } from "react"
 import { cn } from "some-ui-utils"
 
+const STRIPES = [0, 1, 2, 3, 4, 5]
+
 type StripedBuildingProps = {
   className?: string
 }
@@ -11,8 +13,8 @@ export const StripedBuilding: FC<StripedBuildingProps> = ({
     <div className={cn("relative h-40 w-28", className)}>
       <div className="absolute inset-0 bg-green-400">
         <div className="flex h-full flex-col justify-between py-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-2 bg-green-300" />
+          {STRIPES.map((id) => (
+            <div key={id} className="h-2 bg-green-300" />
           ))}
         </div>
       </div>

@@ -126,7 +126,7 @@ export const CoupleRating: FC<CoupleRatingProps> = ({
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [rating])
+  }, [rating, isHighRating])
 
   const cardClasses = cn(
     "relative overflow-hidden rounded-3xl border-2 p-8 backdrop-blur-md transition-all duration-700",

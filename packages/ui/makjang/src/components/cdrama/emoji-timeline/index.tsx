@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import type { JSX } from "react"
+import { startTransition, useEffect, useState } from "react"
 import { Clock } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -18,11 +19,11 @@ export const EmojiTimeline = ({
   reactions,
   currentMinute,
   className,
-}: EmojiTimelineProps) => {
+}: EmojiTimelineProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    startTransition(() => setMounted(true))
   }, [])
 
   return (
@@ -61,19 +62,19 @@ export const EmojiTimeline = ({
         {/* Reactions */}
         <div className="relative space-y-2">
           <div className="flex justify-between">
-            {reactions.map((reaction, index) => {
+            {reactions.map((reaction, reactionIndex) => {
               const isPast = reaction.minute <= currentMinute
               const position = (reaction.minute / 45) * 100
 
               return (
                 <div
-                  key={index}
+                  key={reaction.minute}
                   className="group relative flex flex-col items-center transition-all duration-300"
                   style={{
                     marginLeft:
-                      index === 0
+                      reactionIndex === 0
                         ? "0"
-                        : `${position - ((reactions[index - 1]?.minute || 0) / 45) * 100}%`,
+                        : `${position - ((reactions[reactionIndex - 1]?.minute || 0) / 45) * 100}%`,
                   }}
                 >
                   {/* Emoji bubble */}
