@@ -1,9 +1,9 @@
 import type { FC } from "react"
-
-const BAR_INDICES = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 import { startTransition, useEffect, useState } from "react"
 import { Disc3, Music, Star } from "lucide-react"
 import { cn } from "some-ui-utils"
+
+const BAR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 type OSTPanelProps = {
   score: number
