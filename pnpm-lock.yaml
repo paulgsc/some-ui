@@ -413,9 +413,6 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
       web-ext:
         specifier: 8.3.0
         version: 8.3.0
@@ -444,9 +441,6 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
       unocss:
         specifier: ^66.0.0
         version: 66.7.3(vite@7.3.6(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -481,9 +475,6 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
@@ -552,9 +543,6 @@ importers:
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../../packages/ui/maishatu-fetch-kit
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -580,9 +568,6 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
 
   extensions/some-mujik:
     dependencies:
@@ -605,9 +590,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
 
   extensions/some-schedule:
     devDependencies:
@@ -641,9 +623,6 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
@@ -659,18 +638,12 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.5
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
 
   extensions/some-tab-meta:
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
-      some-ui-rollup-config:
-        specifier: workspace:*
-        version: link:../../packages/rollup-config
 
   extensions/suspender-ledger:
     devDependencies:

@@ -13,7 +13,6 @@
     "eslint": "^10.5.0",
     "lucide-react": "^0.263.1",
     "maishatu-eslint-kit": "workspace:*",
-    "some-ui-rollup-config": "workspace:*",
     "web-ext": "^7.6.2",
     "webextension-polyfill": "^0.10.0"
   },
@@ -58,7 +57,6 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": false,

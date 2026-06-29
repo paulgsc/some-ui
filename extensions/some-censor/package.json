@@ -10,7 +10,6 @@
     "@types/firefox-webext-browser": "^120.0.4",
     "eslint": "^10.5.0",
     "maishatu-eslint-kit": "workspace:*",
-    "some-ui-rollup-config": "workspace:*",
     "web-ext": "8.3.0"
   },
   "exports": {
@@ -60,7 +59,6 @@
     "test:e2e:headed": "pnpm build:chromium && node scripts/patch-test-manifest.mjs && playwright test --headed",
     "test:e2e:ui": "pnpm build:chromium && node scripts/patch-test-manifest.mjs && playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": false,

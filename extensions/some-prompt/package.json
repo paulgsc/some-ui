@@ -4,8 +4,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "some-ui-rollup-config": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*"
   },
   "exports": {
     ".": {
@@ -49,7 +48,6 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": false,

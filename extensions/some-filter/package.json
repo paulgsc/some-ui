@@ -8,8 +8,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "maishatu-eslint-kit": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4",
-    "some-ui-rollup-config": "workspace:*"
+    "@types/firefox-webext-browser": "^120.0.4"
   },
   "exports": {
     ".": {
@@ -62,7 +61,6 @@
     "test:e2e:headed": "pnpm build:chromium && playwright test --headed",
     "test:e2e:ui": "pnpm build:chromium && playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": false,

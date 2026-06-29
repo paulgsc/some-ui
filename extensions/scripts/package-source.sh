@@ -27,7 +27,6 @@ git -C "$REPO_ROOT" archive --format=zip HEAD \
   extensions/common/ \
   extensions/docs/ \
   packages/eslint/ \
-  packages/rollup-config/ \
   packages/tsconfig/ \
   packages/some-styles/ \
   pnpm-workspace.yaml \
