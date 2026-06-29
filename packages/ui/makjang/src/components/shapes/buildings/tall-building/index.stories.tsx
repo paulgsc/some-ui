@@ -10,4 +10,4 @@ export const Default: Story = {}
 export default {
   title: "UI/Makjang/Shapes/Buildings/TallBuilding",
   component: TallBuilding,
-} as Meta
+} satisfies Meta

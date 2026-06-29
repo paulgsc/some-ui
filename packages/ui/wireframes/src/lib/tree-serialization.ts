@@ -13,6 +13,7 @@ export function deserializeLayout<T>(json: string): LayoutNode<T> | null {
   if (parsed.empty === true) {
     return null
   }
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return parsed as LayoutNode<T>
 }
 

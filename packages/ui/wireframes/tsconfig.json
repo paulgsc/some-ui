@@ -8,6 +8,7 @@
     "outDir": "./dist",
     "paths": {
       "@wireframes/*": ["./src/*"],
+      "@content/*": ["../../some-content/src/*"],
       "@some-ui/content/*": ["../../some-content/src/*"],
       "@some-ui/content": ["../../some-content/src"]
     }

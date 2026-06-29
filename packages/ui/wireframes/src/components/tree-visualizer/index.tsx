@@ -63,8 +63,8 @@ const TreeNode = ({
         </span>
         <span className="text-xs text-muted-foreground ml-auto">(derived)</span>
       </div>
-      {node.children.map(({ node: child, weight }, i) => (
-        <div key={i} className="relative">
+      {node.children.map(({ node: child, weight }) => (
+        <div key={child.type === "leaf" ? child.id : child.splitId} className="relative">
           <TreeNode
             node={child}
             depth={depth + 1}

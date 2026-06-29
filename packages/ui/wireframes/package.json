@@ -10,6 +10,7 @@
     "some-ui-shared": "workspace:*",
     "some-ui-slideshow": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "zod": "^3.24.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

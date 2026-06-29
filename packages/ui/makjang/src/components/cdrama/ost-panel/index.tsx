@@ -1,7 +1,9 @@
 import type { FC } from "react"
-import { useEffect, useState } from "react"
+import { startTransition, useEffect, useState } from "react"
 import { Disc3, Music, Star } from "lucide-react"
 import { cn } from "some-ui-utils"
+
+const BAR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 type OSTPanelProps = {
   score: number
@@ -25,12 +27,14 @@ export const OSTPanel: FC<OSTPanelProps> = ({
   const [visualizerBars, setVisualizerBars] = useState<Array<number>>([])
 
   useEffect(() => {
-    setMounted(true)
+    startTransition(() => setMounted(true))
     // Initialize visualizer bars
-    setVisualizerBars(
-      Array(16)
-        .fill(0)
-        .map(() => Math.random() * 100)
+    startTransition(() =>
+      setVisualizerBars(
+        Array(16)
+          .fill(0)
+          .map((): number => Math.random() * 100)
+      )
     )
 
     // Animate visualizer bars
@@ -38,7 +42,7 @@ export const OSTPanel: FC<OSTPanelProps> = ({
       setVisualizerBars((prev) => prev.map(() => Math.random() * 100))
     }, 500)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [])
 
   return (
@@ -144,16 +148,16 @@ export const OSTPanel: FC<OSTPanelProps> = ({
           )}
         >
           <div className="flex h-20 items-end justify-center gap-1">
-            {visualizerBars.map((height, i) => (
+            {BAR_INDICES.map((barId) => (
               <div
-                key={i}
+                key={barId}
                 className={cn(
                   "w-1.5 rounded-full transition-all duration-500 ease-out",
                   "bg-gradient-to-t from-[color:var(--cdrama-accent)] via-[color:var(--cdrama-blossom)] to-[color:var(--cdrama-accent)]"
                 )}
                 style={{
-                  height: `${height}%`,
-                  opacity: 0.7 + (height / 100) * 0.3,
+                  height: `${visualizerBars[barId] ?? 0}%`,
+                  opacity: 0.7 + ((visualizerBars[barId] ?? 0) / 100) * 0.3,
                 }}
               />
             ))}

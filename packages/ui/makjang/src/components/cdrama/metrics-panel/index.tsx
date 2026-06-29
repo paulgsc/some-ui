@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
+import { startTransition, useEffect, useState } from "react"
 import { Eye, Gauge, RotateCcw, TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -34,7 +34,7 @@ export const MetricsPanel = ({
   const [animatedRating, setAnimatedRating] = useState(0)
 
   useEffect(() => {
-    setMounted(true)
+    startTransition(() => setMounted(true))
     // Animate rating counter
     const duration = 1000
     const steps = 60

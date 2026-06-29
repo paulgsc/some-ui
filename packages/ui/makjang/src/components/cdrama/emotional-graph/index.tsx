@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import type { JSX } from "react"
+import { startTransition, useEffect, useMemo, useState } from "react"
 import { TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -39,14 +40,14 @@ const emotionConfig: Record<
 export const EmotionalGraph = ({
   data,
   currentMinute,
-}: EmotionalGraphProps) => {
+}: EmotionalGraphProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
   const maxIntensity = 1
   const graphHeight = 300
   const graphWidth = 800
 
   useEffect(() => {
-    setMounted(true)
+    startTransition(() => setMounted(true))
   }, [])
 
   const points = useMemo(() => {
@@ -187,15 +188,15 @@ export const EmotionalGraph = ({
 
           {/* Data points */}
           {mounted &&
-            points.map((point, index) => {
-              const fallback = emotionConfig.neutral
+            points.map((point, pointIndex) => {
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               const emotionKey = point.emotion as Emotions
-              const config = emotionConfig[emotionKey] ?? fallback
+              const config = emotionConfig[emotionKey]
               return (
                 <g
-                  key={index}
+                  key={point.minute}
                   className="transition-all duration-500"
-                  style={{ transitionDelay: `${index * 50}ms` }}
+                  style={{ transitionDelay: `${pointIndex * 50}ms` }}
                 >
                   <circle
                     cx={point.x}

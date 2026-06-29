@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import type { JSX } from "react"
+import { startTransition, useEffect, useState } from "react"
 
 type FocusControlPopupProps<T extends string> = {
   regionId: T
@@ -22,7 +23,7 @@ export const FocusControlPopup = <T extends string>({
   minIntensity = 0,
   maxIntensity = 1,
   step = 0.05,
-}: FocusControlPopupProps<T>) => {
+}: FocusControlPopupProps<T>): JSX.Element => {
   const [intensity, setIntensity] = useState(maxIntensity)
   const [popupPosition, setPopupPosition] = useState(position)
 
@@ -34,7 +35,7 @@ export const FocusControlPopup = <T extends string>({
     const clampedX = Math.max(100, Math.min(innerWidth - 100, position.x))
     const clampedY = Math.max(50, Math.min(innerHeight - 150, position.y))
 
-    setPopupPosition({ x: clampedX, y: clampedY })
+    startTransition(() => setPopupPosition({ x: clampedX, y: clampedY }))
   }, [position])
 
   return (

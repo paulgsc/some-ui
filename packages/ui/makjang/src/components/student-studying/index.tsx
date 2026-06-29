@@ -1,6 +1,9 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 
-export const StudyScene = () => {
+const BOOK_SLOTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+export const StudyScene = (): JSX.Element => {
   // State for animations
   const [textProgress, setTextProgress] = useState(0)
   const [thoughtBubbleVisible, setThoughtBubbleVisible] = useState(true)
@@ -43,7 +46,7 @@ export const StudyScene = () => {
       setHeadRotation((prev) => (prev === 0 ? -2 : 0))
     }, 3000)
 
-    return () => {
+    return (): void => {
       clearInterval(textInterval)
       clearInterval(thoughtInterval)
       clearInterval(breatheInterval)
@@ -94,19 +97,19 @@ export const StudyScene = () => {
           }}
         >
           {/* Books on shelf - top row */}
-          {[...Array(12)].map((_, i) => (
+          {BOOK_SLOTS.map((slot) => (
             <div
-              key={`book-top-${i}`}
+              key={`book-top-${slot}`}
               className="absolute"
               style={{
-                left: `${8 + i * 7}%`,
+                left: `${8 + slot * 7}%`,
                 top: "15%",
                 width: "5%",
                 height: "70%",
                 backgroundColor:
-                  colors.shelfBooks[i % colors.shelfBooks.length],
-                borderRadius: "2px", // Rounded book corners
-                boxShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)", // Subtle shadow
+                  colors.shelfBooks[slot % colors.shelfBooks.length],
+                borderRadius: "2px",
+                boxShadow: "1px 1px 2px rgba(0, 0, 0, 0.1)",
               }}
             />
           ))}
@@ -203,7 +206,7 @@ export const StudyScene = () => {
             className="absolute"
             style={{
               bottom: "8px", // Adjusted cursor position
-              left: (textProgress % 30) + "px",
+              left: `${textProgress % 30}px`,
               width: "3px", // Thicker cursor
               height: "12px", // Taller cursor
               backgroundColor: "#222",

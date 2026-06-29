@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { Film, Play } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -15,7 +16,7 @@ export const DramaHeader = ({
   thumbnailUrl,
   currentMinute,
   className,
-}: DramaHeaderProps) => {
+}: DramaHeaderProps): JSX.Element => {
   const progress = (currentMinute / 45) * 100
 
   return (

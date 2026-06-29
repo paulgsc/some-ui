@@ -10,4 +10,4 @@ export const Default: Story = {}
 export default {
   title: "UI/Makjang/Shapes/Tables/SemiTable",
   component: SemiTable,
-} as Meta
+} satisfies Meta

@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react"
+import { useCallback, useEffect } from "react"
 import {
   selectResolvedFocus,
   useFocusStore,
 } from "@wireframes/hooks/focus-system"
+import type { ResolvedFocus } from "@wireframes/hooks/focus-system"
 import type { SceneConfig } from "some-types-utils"
 
 /* -----------------------------------------------------------
@@ -24,6 +25,6 @@ export function useFocusPruning(intervalMs = 100): void {
   }, [prune, intervalMs])
 }
 
-export function useCurrentResolvedFocus() {
-  return useFocusStore(useMemo(() => selectResolvedFocus(Date.now()), []))
+export function useCurrentResolvedFocus(): ResolvedFocus {
+  return useFocusStore(useCallback((s) => selectResolvedFocus(Date.now())(s), []))
 }
