@@ -1,4 +1,3 @@
-import type { ChangeEvent } from "react"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { Button, Card, Textarea } from "some-ui-shared"
@@ -59,7 +58,7 @@ export const ReviewPhase = ({
 
             <Textarea
               value={editedTranscript}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setEditedTranscript(e.target.value)}
+              onChange={(e) => setEditedTranscript(e.target.value)}
               className="min-h-48 resize-none leading-relaxed"
             />
 

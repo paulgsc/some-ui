@@ -236,7 +236,7 @@ export class TTSEffectHandler {
         cleanupAndComplete()
       },
 
-      onError: (error: Error) => {
+      onError: (error) => {
         // Guard against duplicate onError calls
         if (completionFired) {
           console.log(`[TTS] ⚠️ Duplicate onError ignored: ${message.id}`)

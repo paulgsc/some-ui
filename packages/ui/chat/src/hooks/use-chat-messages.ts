@@ -31,7 +31,7 @@ export function useChatMessages({
   }, [])
 
   const tick = useCallback(() => {
-    setCurrentIndex((prevIndex: number) => {
+    setCurrentIndex((prevIndex) => {
       const nextIndex = prevIndex + 1
       if (nextIndex < chats.length) {
         setMessages(chats.slice(0, nextIndex))

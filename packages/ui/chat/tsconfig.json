@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "rootDir": "../../../",
     "outDir": "./dist",

@@ -1,4 +1,4 @@
-import type { RefObject } from "react"
+import type { FC, RefObject } from "react"
 import { useCallback, useRef } from "react"
 import { ChatHeader } from "@chat/components/chat-header"
 import { ChatMessages } from "@chat/components/chat-messages"
@@ -16,7 +16,7 @@ type ChatInterfaceProps = {
   pause?: boolean
 }
 
-export const ChatInterface = ({
+export const ChatInterface: FC<ChatInterfaceProps> = ({
   className,
   chatMessagesClassName,
   messages,
@@ -24,7 +24,7 @@ export const ChatInterface = ({
   pause,
   messagesTitle,
   messagesHeight = 0.92,
-}: ChatInterfaceProps) => {
+}): React.JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
 
   const { height } = useMeasureRect({

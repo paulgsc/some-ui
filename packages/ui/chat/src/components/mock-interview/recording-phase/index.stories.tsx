@@ -1,5 +1,4 @@
 // RecordingPhase.stories.tsx
-import type { ComponentProps } from "react"
 import { useEffect, useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -58,7 +57,7 @@ export const Default: Story = {
 // 🎭 SMART MOCK: Permission Denied State (No real mic needed)
 export const PermissionDenied: Story = {
   ...Default,
-  render: (args: ComponentProps<typeof RecordingPhase>) => {
+  render: (args) => {
     // Mock ONLY for this story - doesn't affect other stories
     const [isMockActive, setIsMockActive] = useState(false)
 

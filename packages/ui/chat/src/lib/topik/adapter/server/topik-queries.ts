@@ -77,7 +77,7 @@ export function useTopikBatchMetadata(
   return useQuery<Array<ConversationBatch>, Error, BatchMetadata | null>({
     queryKey: topikKeys.detail(key),
     queryFn: () => repository.load(key),
-    select: (batches: Array<ConversationBatch>) => {
+    select: (batches) => {
       const batch = batches[batchIndex]
       if (!batch) return null
 
@@ -109,7 +109,7 @@ export function useTopikCurrentBatch(
   return useQuery<Array<ConversationBatch>, Error, ConversationBatch | null>({
     queryKey: topikKeys.detail(key),
     queryFn: () => repository.load(key),
-    select: (batches: Array<ConversationBatch>) => batches[batchIndex] ?? null,
+    select: (batches) => batches[batchIndex] ?? null,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     ...options,

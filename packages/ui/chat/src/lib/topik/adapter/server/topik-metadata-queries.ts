@@ -68,7 +68,7 @@ export function useTopikMetadataList(
   return useQuery<TopikManifest, Error, Array<TopikMetadata>>({
     queryKey: metadataKeys.manifest(),
     queryFn: () => repository.loadCatalog(),
-    select: (manifest: TopikManifest) =>
+    select: (manifest) =>
       [...manifest.topiks].sort((a, b) =>
         a.displayName.localeCompare(b.displayName)
       ),
@@ -96,7 +96,7 @@ export function useTopikMetadata(
   return useQuery<TopikManifest, Error, TopikMetadata | undefined>({
     queryKey: metadataKeys.manifest(),
     queryFn: () => repository.loadCatalog(),
-    select: (manifest: TopikManifest) => manifest.topiks.find((t: TopikMetadata) => t.key === key),
+    select: (manifest) => manifest.topiks.find((t) => t.key === key),
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: 2,

@@ -1,4 +1,4 @@
-import type { ChangeEvent, JSX } from "react"
+import type { JSX } from "react"
 import { useCallback, useEffect, useRef } from "react"
 import type { TopikMetadata } from "@chat/lib/topik"
 import { Search } from "lucide-react"
@@ -64,7 +64,7 @@ export const OmniSearchInput = ({
       <Input
         ref={inputRef}
         value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Search materials..."
         disabled={disabled}

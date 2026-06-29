@@ -109,7 +109,7 @@ export function useSession(
     // Subscribe to machine changes.
     // We do NOT setState here initially, because useState already initializes
     // with the machine's current state. This avoids double render on mount.
-    const unsubscribe = machine.subscribe((newState: SessionState) => setState(newState))
+    const unsubscribe = machine.subscribe((newState) => setState(newState))
     return unsubscribe
   }, [machine])
 

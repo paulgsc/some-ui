@@ -1,4 +1,4 @@
-import type { ChangeEvent, CSSProperties } from "react"
+import type { ChangeEvent, CSSProperties, FC } from "react"
 import type { AvatarGroupProps } from "some-ui-shared"
 import {
   AvatarGroup,
@@ -15,11 +15,11 @@ type ChatHeaderProps = {
   title?: string
 }
 
-export const ChatHeader = ({
+export const ChatHeader: FC<ChatHeaderProps> = ({
   characters,
   height,
   title = "Change me...",
-}: ChatHeaderProps) => {
+}): React.JSX.Element => {
   const RefreshIcon = SvgIcons.refresh
   const { value: chatbotTitle, setValue: updateTitle } = useLocalStorage(
     "chatbot",
