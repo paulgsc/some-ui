@@ -19,21 +19,20 @@ mkdir -p "$EXTENSION_DIR/artifacts"
 # Include the workspace context needed by `pnpm install --frozen-lockfile`:
 #   - The target extension directory
 #   - extensions/common: shared extension utilities
-#   - packages/eslint + packages/tsconfig: the only workspace devDeps extensions use
+#   - packages/eslint + packages/tsconfig + packages/some-styles: workspace devDeps extensions use
 #   - Root config + lockfile: pnpm-workspace.yaml pins monorepo layout; pnpm-lock.yaml
-#     pins exact dep versions; tsconfig.json / tsconfig.build.json are referenced by
-#     extension tsconfig extends chains
+#     pins exact dep versions; tsconfig.json is referenced by extension tsconfig extends chains
 git -C "$REPO_ROOT" archive --format=zip HEAD \
   "$EXT_RELPATH/" \
   extensions/common/ \
   extensions/docs/ \
   packages/eslint/ \
   packages/tsconfig/ \
+  packages/some-styles/ \
   pnpm-workspace.yaml \
   pnpm-lock.yaml \
   package.json \
   tsconfig.json \
-  tsconfig.build.json \
   -o "$ARCHIVE"
 
 echo "::notice::Source archive created: $ARCHIVE (git SHA: $GIT_SHA)"

@@ -46,6 +46,7 @@ jobs:
           filters: |
             shared:
               - 'packages/**'
+              - '!packages/ui/**'
             crates:
               - 'crates/**'
             ci:
