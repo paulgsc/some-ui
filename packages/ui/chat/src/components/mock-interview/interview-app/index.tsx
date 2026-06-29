@@ -64,7 +64,7 @@ export const InterviewApp = () => {
       setTranscript("")
       setNotes("")
     } else {
-      setCurrentQuestionIndex((prev) => prev + 1)
+      setCurrentQuestionIndex((prev: number) => prev + 1)
       setPhase("question")
       setTranscript("")
       setNotes("")

@@ -1,4 +1,4 @@
-import type { CSSProperties, FC } from "react"
+import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
@@ -14,11 +14,11 @@ type ChatMessagesProps = {
 
 const COMPONENT_ID = "chatbot"
 
-export const ChatMessages: FC<ChatMessagesProps> = ({
+export const ChatMessages = ({
   className,
   height,
   messages = [],
-}) => {
+}: ChatMessagesProps) => {
   const lastSpokenRef = useRef<{ index: number; content: string } | null>(null)
   const priorityCounter = useRef<number>(0)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)

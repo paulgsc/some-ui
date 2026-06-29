@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { JSX, MouseEvent } from "react"
 import type { Message, PlayState } from "@chat/lib/topik"
 import {
   Loader2,
@@ -139,7 +139,7 @@ export const ChatPanel = ({
                   >
                     {message.content}
                     <button
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation()
                         onSpeakMessage(message)
                       }}

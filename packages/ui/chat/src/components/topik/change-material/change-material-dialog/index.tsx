@@ -73,7 +73,7 @@ export const ChangeMaterialDialog = ({
     if (!search.trim()) return items
     const q = search.toLowerCase()
     return items.filter(
-      (item) =>
+      (item: TopikMetadata) =>
         item.displayName.toLowerCase().includes(q) ||
         item.description.toLowerCase().includes(q)
     )
@@ -82,7 +82,7 @@ export const ChangeMaterialDialog = ({
   const recommendedItems = useMemo(() => getRecommendedItems(items), [items])
 
   const selectedItem = useMemo(
-    () => items.find((i) => i.key === selectedKey),
+    () => items.find((i: TopikMetadata) => i.key === selectedKey),
     [items, selectedKey]
   )
 
@@ -275,7 +275,7 @@ export const ChangeMaterialDialog = ({
                   </h4>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2">
-                  {recommendedItems.map((item) => (
+                  {recommendedItems.map((item: TopikMetadata) => (
                     <TopikBookCard
                       key={item.key}
                       item={item}

@@ -1,3 +1,4 @@
+import type { ChangeEvent, KeyboardEvent } from "react"
 import { useState } from "react"
 import type { Message } from "@chat/lib/topik"
 import { CheckCircle2, Volume2 } from "lucide-react"
@@ -164,9 +165,9 @@ export const QuizActive = ({
                 <Textarea
                   placeholder="Type your answer here..."
                   value={textAnswer}
-                  onChange={(e) => setTextAnswer(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTextAnswer(e.target.value)}
                   className="min-h-[120px] text-lg resize-none"
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
                     if (e.key === "Enter" && !e.shiftKey && canSubmit) {
                       e.preventDefault()
                       handleSubmit()

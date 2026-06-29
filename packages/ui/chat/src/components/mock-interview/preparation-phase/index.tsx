@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react"
 import { Button, Card, Textarea } from "some-ui-shared"
 
 type PreparationPhaseProps = {
@@ -34,7 +35,7 @@ export const PreparationPhase = ({
               <Textarea
                 placeholder="Your private notes (optional)..."
                 value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onNotesChange(e.target.value)}
                 className="min-h-32 resize-none bg-background/50 border-muted"
               />
             </div>

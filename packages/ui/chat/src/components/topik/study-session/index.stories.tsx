@@ -1,3 +1,4 @@
+import type { ComponentType } from "react"
 import { useEffect, useState } from "react"
 import {
   createTopikMetadataRepository,
@@ -85,7 +86,7 @@ export default {
   title: "UI/Chat/Components/Topik/KoreanStudyPage",
   component: KoreanStudyPage,
   decorators: [
-    (Story) => (
+    (Story: ComponentType) => (
       <WithSessionConfig>
         <Story />
       </WithSessionConfig>

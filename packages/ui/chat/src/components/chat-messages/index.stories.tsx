@@ -1,4 +1,5 @@
-import type { ChatMessageProps } from "@chat/types/chat"
+import type { ComponentProps } from "react"
+import type { Message as ChatMessageProps } from "@chat/types/chat"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { formatRelativeTime } from "some-ui-utils"
 
@@ -29,7 +30,7 @@ export const Default: Story = {
     messages: mockMessages,
     className: "h-[600px] w-[400px]",
   },
-  render: (args) => (
+  render: (args: ComponentProps<typeof ChatMessages>) => (
     <main className="h-[610px] w-[410px] border border-red-600">
       <ChatMessages {...args} />
     </main>
