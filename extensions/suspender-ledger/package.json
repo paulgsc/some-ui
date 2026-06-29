@@ -5,7 +5,7 @@
 	"devDependencies": {
 		"@playwright/test": "1.60.0",
 		"@some-ui/tsconfig": "workspace:*",
-		"@types/chrome": "^0.0.293",
+		"@types/chrome": "^0.2.0",
 		"@types/firefox-webext-browser": "^120.0.4",
 		"eslint": "^10.5.0",
 		"maishatu-eslint-kit": "workspace:*",
