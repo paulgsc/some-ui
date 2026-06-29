@@ -25,7 +25,6 @@ on:
     paths:
       - "extensions/**"
       - "packages/**"
-      - "!packages/ui/**"
       - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/**"
@@ -36,7 +35,6 @@ on:
     paths:
       - "extensions/**"
       - "packages/**"
-      - "!packages/ui/**"
       - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/**"

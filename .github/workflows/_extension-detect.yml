@@ -3,11 +3,16 @@ name: Extension Context Detection
 #
 # Strategy: scan extensions/ at runtime — no hardcoded enumeration.
 # An extension is included if:
-#   a) CI config or shared packages changed (force-all), OR
-#   b) any file under extensions/<name>/ appears in the git diff, OR
-#   c) a crate in crates/ that the extension lists as a workspace dependency changed.
+#   a) CI config changed (force-all), OR
+#   b) a workspace package that extensions transitively depend on changed (force-all), OR
+#   c) any file under extensions/<name>/ appears in the git diff, OR
+#   d) a crate in crates/ that the extension lists as a workspace dependency changed.
 #
-# Rule (c) ensures that changes to wasm crates (e.g. crates/polyhedron) trigger
+# Rule (b) is enforced by a Node.js graph-walk of package.json files — not a static
+# path pattern — so it automatically tracks the real dep graph as it evolves.
+# No pnpm install is needed; Node.js is always present on ubuntu-latest.
+#
+# Rule (d) ensures that changes to wasm crates (e.g. crates/polyhedron) trigger
 # verification for the extensions that depend on them (e.g. some-conveyor).
 #
 # Adding a new extension requires no CI changes — drop a directory under
@@ -39,23 +44,152 @@ jobs:
           # A depth of 2 is sufficient for push events (before→sha).
           # PRs need the base ref fetched — fetch-depth 0 is safest.
           fetch-depth: 0
-      - name: Detect force-all triggers (shared / CI / crate changes)
+
+      - name: Detect force-all triggers (CI config changes)
         id: force
         uses: dorny/paths-filter@v4
         with:
           filters: |
-            shared:
-              - 'packages/**'
-              - '!packages/ui/**'
             crates:
               - 'crates/**'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
+
+      - name: Resolve changed shared extension deps
+        id: shared-deps
+        # Walk the workspace dependency graph (via package.json files only —
+        # no pnpm install required) and set shared=true if any changed file
+        # lives under a package that extensions transitively depend on.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          node - <<'SCRIPT'
+          const fs   = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
+
+          const root      = process.cwd();
+          const eventName = process.env.EVENT_NAME;
+          const sha       = process.env.SHA;
+          const base      = eventName === 'pull_request'
+            ? process.env.PR_BASE
+            : process.env.BEFORE;
+          const NULL_SHA  = '0000000000000000000000000000000000000000';
+
+          function writeOutput(value) {
+            const line = `shared=${value}\n`;
+            process.stdout.write(line);
+            const f = process.env.GITHUB_OUTPUT;
+            if (f) fs.appendFileSync(f, line);
+          }
+
+          // Can't diff on initial push — build-matrix null-SHA guard handles it.
+          if (!base || base === NULL_SHA) {
+            writeOutput('false');
+            process.exit(0);
+          }
+
+          // ── 1. Build workspace package name → relative path map ──────────
+          // Scan the top-level directories that pnpm-workspace.yaml covers.
+          const workspaceMap = {};  // { "@some-ui/styles": "packages/some-styles" }
+
+          function scanPackageDir(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              if (!entry.isDirectory()) continue;
+              const pkgJson = path.join(dir, entry.name, 'package.json');
+              if (!fs.existsSync(pkgJson)) continue;
+              try {
+                const pkg = JSON.parse(fs.readFileSync(pkgJson, 'utf8'));
+                if (pkg.name) workspaceMap[pkg.name] = path.join(dir, entry.name);
+              } catch {}
+            }
+          }
+
+          scanPackageDir('packages');
+          scanPackageDir('packages/ui');   // packages/ui/* pattern
+          scanPackageDir('extensions');
+          scanPackageDir('apps');
+
+          // ── 2. Compute transitive non-extension workspace deps ────────────
+          // Starting from every directory under extensions/, walk dependencies
+          // and collect all workspace package paths that are NOT extensions themselves.
+          const visited    = new Set();
+          const extDepPaths = new Set();
+
+          function walkDeps(relPath) {
+            if (visited.has(relPath)) return;
+            visited.add(relPath);
+
+            const pkgJsonPath = path.join(root, relPath, 'package.json');
+            if (!fs.existsSync(pkgJsonPath)) return;
+
+            let pkg;
+            try { pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')); }
+            catch { return; }
+
+            const allDeps = Object.assign(
+              {},
+              pkg.dependencies,
+              pkg.devDependencies,
+              pkg.peerDependencies,
+            );
+
+            for (const name of Object.keys(allDeps)) {
+              const depPath = workspaceMap[name];
+              if (!depPath) continue;                        // not a workspace package
+              if (depPath.startsWith('extensions/')) continue; // skip sibling extensions
+              extDepPaths.add(depPath);
+              walkDeps(depPath);                             // recurse for transitive deps
+            }
+          }
+
+          const extDirs = fs.readdirSync('extensions', { withFileTypes: true })
+            .filter(e => e.isDirectory())
+            .map(e => path.join('extensions', e.name));
+
+          for (const d of extDirs) walkDeps(d);
+
+          // ── 3. Get changed files ──────────────────────────────────────────
+          let changedFiles = [];
+          try {
+            changedFiles = execSync(`git diff --name-only ${base} ${sha}`, { encoding: 'utf8' })
+              .trim().split('\n').filter(Boolean);
+          } catch {}
+
+          // ── 4. Check intersection ─────────────────────────────────────────
+          let shared = false;
+          const hits = [];
+          for (const file of changedFiles) {
+            for (const depPath of extDepPaths) {
+              if (file === depPath || file.startsWith(depPath + '/')) {
+                shared = true;
+                hits.push(`  ${file}  (workspace dep: ${depPath})`);
+                break;
+              }
+            }
+          }
+
+          // ── Debug output ──────────────────────────────────────────────────
+          const depList = [...extDepPaths].sort().map(p => '  ' + p).join('\n');
+          console.log(`Extension transitive workspace deps:\n${depList || '  (none)'}`);
+          if (shared) {
+            console.log(`Changed files touching extension deps:\n${hits.join('\n')}`);
+          } else {
+            console.log('No extension workspace deps changed.');
+          }
+
+          writeOutput(shared);
+          SCRIPT
+
       - name: Build extension matrix
         id: build-matrix
         env:
-          SHARED: ${{ steps.force.outputs.shared }}
+          SHARED: ${{ steps.shared-deps.outputs.shared }}
           CRATES_CHANGED: ${{ steps.force.outputs.crates }}
           CI_CHANGED: ${{ steps.force.outputs.ci }}
           EVENT_NAME: ${{ github.event_name }}
