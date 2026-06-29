@@ -10,7 +10,7 @@ edition.workspace = true
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 enum-name-derive = { git = "https://github.com/paulgsc/server.git", branch = "main" }
-dialoguer = { version = "0.11" }
+dialoguer = { version = "0.12" }
 serde_json = { workspace = true }
 
 [dev-dependencies]
