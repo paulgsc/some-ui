@@ -1,3 +1,5 @@
+import type { Chapter, SubChapter } from "@slideshow/types/gantt"
+
 export function formatTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
@@ -9,7 +11,10 @@ export function formatTime(seconds: number): string {
   return `${minutes}:${secs.toString().padStart(2, "0")}`
 }
 
-export function findCurrentChapter(time: number, chapters: Array<any>) {
+export function findCurrentChapter(
+  time: number,
+  chapters: Array<any>
+): Chapter | SubChapter {
   // First check main chapters
   for (const chapter of chapters) {
     if (time >= chapter.startTime && time < chapter.endTime) {

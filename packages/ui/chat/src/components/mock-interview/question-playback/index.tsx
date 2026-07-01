@@ -22,7 +22,7 @@ export const QuestionPlayback = ({
   questionNumber,
   totalQuestions,
   onComplete,
-}: QuestionPlaybackProps) => {
+}: QuestionPlaybackProps): React.JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [showMetadata, setShowMetadata] = useState(false)

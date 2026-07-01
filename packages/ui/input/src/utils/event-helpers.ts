@@ -18,7 +18,15 @@ export const validateAndParseJson = (jsonString: string): any => {
   }
 }
 
-export const getEventRequirements = (eventType: EventType) => {
+export const getEventRequirements = (
+  eventType: EventType
+): {
+  needsUID: boolean
+  needsContext: boolean
+  needsTimestamp: boolean
+  needsPayload: boolean
+  needsFinalPayload: boolean
+} => {
   return {
     needsUID: eventType !== "ClearAll",
     needsContext: eventType === "StartChapter" || eventType === "UpdateContext",

@@ -57,7 +57,7 @@ export const SidebarCarousel: FC<SideBarCarouselProps> = ({
     const observer = new IntersectionObserver(
       (entries) => {
         const [firstEntry, _] = entries
-        if (firstEntry && firstEntry.isIntersecting) {
+        if (firstEntry?.isIntersecting) {
           fetchMoreItems()
         }
       },
@@ -74,7 +74,7 @@ export const SidebarCarousel: FC<SideBarCarouselProps> = ({
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader></SidebarHeader>
+      <SidebarHeader />
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>

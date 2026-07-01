@@ -184,6 +184,7 @@ export function useAudioFromStorage({
   // Handle query errors
   useEffect(() => {
     if (audioQuery.error) {
+      // eslint-disable-next-line no-console
       console.error("Audio fetch error:", audioQuery.error)
       const errorObj =
         audioQuery.error instanceof Error
@@ -201,12 +202,14 @@ export function useAudioFromStorage({
         const audioBuffer = base64ToArrayBuffer(audioQuery.data.data)
 
         audioSpeech.play(audioBuffer).catch((error) => {
+          // eslint-disable-next-line no-console
           console.error("Audio play error:", error)
           const errorObj =
             error instanceof Error ? error : new Error("Audio playback failed")
           optionsRef.current.fetchOptions.onError?.(errorObj)
         })
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Audio data conversion error:", error)
         const errorObj =
           error instanceof Error
@@ -225,6 +228,7 @@ export function useAudioFromStorage({
   const speak = useCallback(
     async (text: string): Promise<void> => {
       if (!text.trim() || !selectedVoice) {
+        // eslint-disable-next-line no-console
         console.warn("Cannot speak: text is empty or no voice selected")
         return
       }
@@ -244,6 +248,7 @@ export function useAudioFromStorage({
           }
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Audio speak error:", error)
         const errorObj =
           error instanceof Error ? error : new Error("Audio speak failed")
@@ -272,6 +277,7 @@ export function useAudioFromStorage({
         }
         throw new Error("No search results returned")
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Audio search error:", error)
         // Return empty response on error
         return {
@@ -301,6 +307,7 @@ export function useAudioFromStorage({
 
         return result.data ?? null
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Get audio by ID error:", error)
         return null
       }

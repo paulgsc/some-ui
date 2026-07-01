@@ -52,12 +52,14 @@ const HUDBridge = ({
 
     const hud = new FloatingHUD({
       onSegmentSelect: (seg: Segment) => {
+        // eslint-disable-next-line no-console
         console.log("[story] segment selected:", seg)
         // Simulate background response: update node state
         const updated: NodeState = { ...nodeState, segment: seg }
         hud.updateNode(updated, activeMs)
       },
       onOutcomeRegister: (outcome: Outcome) => {
+        // eslint-disable-next-line no-console
         console.log("[story] outcome registered:", outcome)
         if (simulateRegisterResult === "ok") {
           hud.onRegisterSuccess(outcome)

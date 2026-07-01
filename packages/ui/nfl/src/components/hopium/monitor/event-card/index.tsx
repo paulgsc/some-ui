@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { SatelliteDataItem } from "@nfl/types/hopium/hopium-tracker"
 import {
   getFreshnessStatus,
@@ -17,7 +18,10 @@ type SatelliteCardProps<T> = {
   onClick: (item: SatelliteDataItem<T>) => void
 }
 
-export function SatelliteCard<T>({ item, onClick }: SatelliteCardProps<T>) {
+export function SatelliteCard<T>({
+  item,
+  onClick,
+}: SatelliteCardProps<T>): JSX.Element {
   const status = getFreshnessStatus(item.freshness)
   const urgencyClass = getUrgencyClass(item.freshness, item.priority)
 

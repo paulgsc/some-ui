@@ -40,14 +40,13 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
 
     // Don't speak the same content again
     if (
-      lastSpokenRef.current &&
-      lastSpokenRef.current.index === currentItem.index &&
+      lastSpokenRef.current?.index === currentItem.index &&
       lastSpokenRef.current.content === currentItem.content
     ) {
       return
     }
 
-    const speakContent = async () => {
+    const speakContent = async (): Promise<void> => {
       try {
         lastSpokenRef.current = currentItem
         const options = {
@@ -62,6 +61,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
           },
           onError: (error: Error): void => {
             setIsSpeaking(false)
+            // eslint-disable-next-line no-console
             console.error("TTS Error:", error)
           },
         }
@@ -70,6 +70,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
         const priority = ++priorityCounter.current
         await speak(content, options, priority)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
         setIsSpeaking(false)
       }

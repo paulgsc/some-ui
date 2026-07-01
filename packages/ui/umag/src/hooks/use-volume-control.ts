@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react"
 
-export function useVolumeControl(gainNode: GainNode | null) {
+type UseVolumeControlReturn = {
+  volume: number
+  setVolume: React.Dispatch<React.SetStateAction<number>>
+}
+
+export function useVolumeControl(
+  gainNode: GainNode | null
+): UseVolumeControlReturn {
   const [volume, setVolume] = useState(0.5)
 
   useEffect(() => {

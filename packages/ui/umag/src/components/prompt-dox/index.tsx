@@ -54,12 +54,14 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
           },
           onError: (error: Error): void => {
             setIsSpeaking(false)
+            // eslint-disable-next-line no-console
             console.error("TTS Error:", error)
           },
         }
 
         await speak(text, options, Infinity)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
         setIsSpeaking(false)
       }
@@ -86,7 +88,6 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
       selectedVoice={selectedVoice}
       onVoiceSelect={(voice) => {
         setVoice(voice)
-        console.log(`[v0] Voice selected: ${voice.name} (${voice.provider})`)
       }}
       className={className}
     >

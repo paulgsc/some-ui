@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import type { Context } from "@input/types/timeline-events"
 import { Plus, X } from "lucide-react"
@@ -13,13 +14,13 @@ export const ContextBuilder = ({
   value,
   onChange,
   show,
-}: ContextBuilderProps) => {
+}: ContextBuilderProps): JSX.Element | null => {
   const [newTagKey, setNewTagKey] = useState("")
   const [newTagValue, setNewTagValue] = useState("")
 
   if (!show) return null
 
-  const addTag = () => {
+  const addTag = (): void => {
     if (newTagKey && newTagValue) {
       onChange({
         ...value,
@@ -30,7 +31,7 @@ export const ContextBuilder = ({
     }
   }
 
-  const removeTag = (key: string) => {
+  const removeTag = (key: string): void => {
     onChange({
       ...value,
       tags: Object.fromEntries(
@@ -39,11 +40,11 @@ export const ContextBuilder = ({
     })
   }
 
-  const updateTitle = (title: string) => {
+  const updateTitle = (title: string): void => {
     onChange({ ...value, title })
   }
 
-  const updateRevisionTag = (revision_tag: string) => {
+  const updateRevisionTag = (revision_tag: string): void => {
     onChange({ ...value, revision_tag: revision_tag || undefined })
   }
 

@@ -5,7 +5,7 @@ import { cn } from "@shared/lib/utils"
 const Switch = ({
   className,
   ...props
-}: ComponentProps<typeof SwitchPrimitive.Root>) => {
+}: ComponentProps<typeof SwitchPrimitive.Root>): React.JSX.Element => {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"

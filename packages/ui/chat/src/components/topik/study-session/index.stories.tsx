@@ -38,8 +38,9 @@ const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (audioTTS.supported) {
       try {
-        console.log("Speech context initialized for Storybook")
+        // Speech context initialized for Storybook
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.log("Speech context already initialized or error:", error)
       } finally {
         setIsSpeechContextReady(true)
@@ -56,7 +57,7 @@ const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
       <div className={cn("flex items-center justify-center gap-3 p-4")}>
         <div
           className={cn("bg-primary/20 size-12 animate-pulse rounded-full")}
-        ></div>
+        />
 
         <span className={cn("text-muted-foreground animate-pulse font-medium")}>
           {message}

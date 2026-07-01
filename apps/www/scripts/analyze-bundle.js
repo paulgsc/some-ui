@@ -3,6 +3,7 @@ import { visualizer } from "rollup-plugin-visualizer"
 import { build } from "vite"
 
 async function analyzeBundles() {
+  // eslint-disable-next-line no-console
   console.log("🔍 Starting bundle analysis...")
 
   try {
@@ -95,12 +96,19 @@ async function analyzeBundles() {
       },
     })
 
+    // eslint-disable-next-line no-console
     console.log("✅ Bundle analysis complete!")
+    // eslint-disable-next-line no-console
     console.log("📊 Reports generated:")
+    // eslint-disable-next-line no-console
     console.log("  - dist/bundle-analysis.html (interactive treemap)")
+    // eslint-disable-next-line no-console
     console.log("  - dist/bundle-network.html (dependency network)")
+    // eslint-disable-next-line no-console
     console.log("  - dist/bundle-stats.json (raw data)")
+    // eslint-disable-next-line no-console
     console.log("")
+    // eslint-disable-next-line no-console
     console.log("🔍 Tree shaking analysis:")
 
     // Read and analyze the stats
@@ -115,6 +123,7 @@ async function analyzeBundles() {
         module.id?.includes("@yourorg/") || module.id?.includes("packages/")
     )
 
+    // eslint-disable-next-line no-console
     console.log(
       `📦 Found ${authoredModules.length} modules from your authored packages`
     )
@@ -143,6 +152,7 @@ async function analyzeBundles() {
     })
 
     // Report tree shaking effectiveness
+    // eslint-disable-next-line no-console
     console.table(
       Object.entries(packageStats).map(([name, stats]) => ({
         Package: name,
@@ -158,14 +168,17 @@ async function analyzeBundles() {
       .sort((a, b) => (b.renderedLength || 0) - (a.renderedLength || 0))
 
     if (largeModules.length > 0) {
+      // eslint-disable-next-line no-console
       console.log("\n⚠️  Large modules that might need tree shaking attention:")
       largeModules.forEach((module) => {
+        // eslint-disable-next-line no-console
         console.log(
           `  - ${module.id}: ${Math.round((module.renderedLength || 0) / 1024)}KB`
         )
       })
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("❌ Bundle analysis failed:", error)
     process.exit(1)
   }

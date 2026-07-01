@@ -39,7 +39,7 @@ const StoryFromFile = ({
 
   // Consume the full FSM state
   const state = useFormattedCode(path, {
-    prettierParser: prettierParser as any,
+    prettierParser: prettierParser,
   })
 
   // --- Handle FSM States ---

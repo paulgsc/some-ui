@@ -159,7 +159,7 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
 
     // --- Internal setters ---
     // This is the KEY normalization point - handles concurrent lifetimes and mode
-    _setState: (next) =>
+    _setState: (next): void =>
       set((prev) => {
         const prevSceneIds = prev.lifetimes.active_scene_ids
         const nextSceneIds = extractSceneIds(next.active_lifetimes)
@@ -191,18 +191,21 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
         }
       }),
 
-    _setConnectionStatus: (isConnected, isInitializing) =>
+    _setConnectionStatus: (isConnected, isInitializing): void =>
       set({ isConnected, isInitializing }),
 
-    _setError: (error) => set({ error }),
+    _setError: (error): void => set({ error }),
 
-    _setCommandSender: (sender, streamId) =>
+    _setCommandSender: (sender, streamId): void =>
       set({ _commandSender: sender, _streamId: streamId }),
 
     // --- Commands ---
-    configure: async (scenes) => {
+    configure: async (scenes): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("configure")
+      if (!_commandSender) {
+        warn("configure")
+        return
+      }
       await _commandSender({
         Configure: {
           scenes,
@@ -212,57 +215,82 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
       })
     },
 
-    start: async () => {
+    start: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("start")
+      if (!_commandSender) {
+        warn("start")
+        return
+      }
       await _commandSender({ Start: null })
     },
 
-    stop: async () => {
+    stop: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("stop")
+      if (!_commandSender) {
+        warn("stop")
+        return
+      }
       await _commandSender({ Stop: null })
     },
 
-    reset: async () => {
+    reset: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("reset")
+      if (!_commandSender) {
+        warn("reset")
+        return
+      }
       await _commandSender({ Reset: null })
     },
 
-    pause: async () => {
+    pause: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("pause")
+      if (!_commandSender) {
+        warn("pause")
+        return
+      }
       await _commandSender({ Pause: null })
     },
 
-    resume: async () => {
+    resume: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("resume")
+      if (!_commandSender) {
+        warn("resume")
+        return
+      }
       await _commandSender({ Resume: null })
     },
 
-    forceScene: async (scene) => {
+    forceScene: async (scene): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("forceScene")
+      if (!_commandSender) {
+        warn("forceScene")
+        return
+      }
       await _commandSender({ ForceScene: scene })
     },
 
-    skipCurrentScene: async () => {
+    skipCurrentScene: async (): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("skipCurrentScene")
+      if (!_commandSender) {
+        warn("skipCurrentScene")
+        return
+      }
       await _commandSender({ SkipCurrentScene: null })
     },
 
-    updateStreamStatus: async (status) => {
+    updateStreamStatus: async (status): Promise<void> => {
       const { _commandSender } = get()
-      if (!_commandSender) return warn("updateStreamStatus")
+      if (!_commandSender) {
+        warn("updateStreamStatus")
+        return
+      }
       await _commandSender({ UpdateStreamStatus: status })
     },
   })
 )
 
-function warn(action: string) {
+function warn(action: string): void {
+  // eslint-disable-next-line no-console
   console.warn(`Cannot ${action}: orchestrator not connected`)
 }
 
@@ -277,18 +305,19 @@ function warn(action: string) {
 
 export const selectClock = (s: OrchestratorStoreState): ClockState => s.clock
 
-export const useOrchestratorClock = () =>
+export const useOrchestratorClock = (): ClockState =>
   useOrchestratorStore(useShallow(selectClock))
 
-export const selectCurrentTime = (s: OrchestratorStoreState) =>
+export const selectCurrentTime = (s: OrchestratorStoreState): number =>
   s.clock.current_time
 
-export const selectProgress = (s: OrchestratorStoreState) => s.clock.progress
+export const selectProgress = (s: OrchestratorStoreState): number =>
+  s.clock.progress
 
-export const selectTimeRemaining = (s: OrchestratorStoreState) =>
+export const selectTimeRemaining = (s: OrchestratorStoreState): number =>
   s.clock.time_remaining
 
-export const selectTotalDuration = (s: OrchestratorStoreState) =>
+export const selectTotalDuration = (s: OrchestratorStoreState): number =>
   s.clock.total_duration
 
 // -----------------------------------------------------------------------------
@@ -305,7 +334,7 @@ export const selectSceneLifetimes = (
   s: OrchestratorStoreState
 ): Array<ActiveLifetime> => s.lifetimes.scene_lifetimes
 
-export const useSceneLifetimes = () =>
+export const useSceneLifetimes = (): Array<ActiveLifetime> =>
   useOrchestratorStore(useShallow(selectSceneLifetimes))
 
 /**
@@ -315,15 +344,17 @@ export const useSceneLifetimes = () =>
 export const selectActiveSceneIds = (s: OrchestratorStoreState): Set<string> =>
   s.lifetimes.active_scene_ids
 
-export const useActiveSceneIds = () =>
+export const useActiveSceneIds = (): Set<string> =>
   useOrchestratorStore(selectActiveSceneIds)
 
 /**
  * Returns a specific lifetime by ID.
  * STABLE: Only changes when that lifetime starts/ends.
  */
-export const selectLifetimeById = (id: number) => (s: OrchestratorStoreState) =>
-  s.lifetimes.lifetimes.get(id) ?? null
+export const selectLifetimeById =
+  (id: number) =>
+  (s: OrchestratorStoreState): ActiveLifetime | null =>
+    s.lifetimes.lifetimes.get(id) ?? null
 
 /**
  * Returns all active lifetimes as a Map.
@@ -345,7 +376,7 @@ export const selectAllLifetimes = (
 export const selectMode = (s: OrchestratorStoreState): OrchestratorMode =>
   s.mode.mode
 
-export const useMode = () => useOrchestratorStore(selectMode)
+export const useMode = (): OrchestratorMode => useOrchestratorStore(selectMode)
 
 /**
  * Returns true if orchestrator is actively running.
@@ -354,7 +385,7 @@ export const useMode = () => useOrchestratorStore(selectMode)
 export const selectIsRunning = (s: OrchestratorStoreState): boolean =>
   s.mode.is_running
 
-export const useIsRunning = () => useOrchestratorStore(selectIsRunning)
+export const useIsRunning = (): boolean => useOrchestratorStore(selectIsRunning)
 
 /**
  * Returns true if orchestrator is paused.
@@ -363,7 +394,7 @@ export const useIsRunning = () => useOrchestratorStore(selectIsRunning)
 export const selectIsPaused = (s: OrchestratorStoreState): boolean =>
   s.mode.is_paused
 
-export const useIsPaused = () => useOrchestratorStore(selectIsPaused)
+export const useIsPaused = (): boolean => useOrchestratorStore(selectIsPaused)
 
 /**
  * Returns true if orchestrator is in a terminal state (Finished, Stopped, Error).
@@ -372,7 +403,8 @@ export const useIsPaused = () => useOrchestratorStore(selectIsPaused)
 export const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
   s.mode.is_terminal
 
-export const useIsTerminal = () => useOrchestratorStore(selectIsTerminal)
+export const useIsTerminal = (): boolean =>
+  useOrchestratorStore(selectIsTerminal)
 
 /**
  * Returns true if orchestrator can accept playback commands (Idle, Running, Paused).
@@ -383,7 +415,7 @@ export const selectIsActive = (s: OrchestratorStoreState): boolean =>
   s.mode.mode === "Running" ||
   s.mode.mode === "Paused"
 
-export const useIsActive = () => useOrchestratorStore(selectIsActive)
+export const useIsActive = (): boolean => useOrchestratorStore(selectIsActive)
 
 // -----------------------------------------------------------------------------
 // LEGACY COMPATIBILITY (deprecated but kept for migration)
@@ -402,27 +434,30 @@ export const selectCurrentSceneId = (
   return sceneIds.size === 1 ? (Array.from(sceneIds).at(0) ?? null) : null
 }
 
-export const useCurrentSceneId = () =>
+export const useCurrentSceneId = (): string | null =>
   useOrchestratorStore(selectCurrentSceneId)
 
 // -----------------------------------------------------------------------------
 // OTHER STATE SELECTORS
 // -----------------------------------------------------------------------------
 
-export const selectStreamStatus = (s: OrchestratorStoreState) =>
+export const selectStreamStatus = (s: OrchestratorStoreState): StreamStatus =>
   s.rawState.stream_status
 
-export const useStreamStatus = () =>
+export const useStreamStatus = (): StreamStatus =>
   useOrchestratorStore(useShallow(selectStreamStatus))
 
-export const selectConnectionStatus = (s: OrchestratorStoreState) => ({
+export const selectConnectionStatus = (
+  s: OrchestratorStoreState
+): { isConnected: boolean; isInitializing: boolean; error: string | null } => ({
   isConnected: s.isConnected,
   isInitializing: s.isInitializing,
   error: s.error,
 })
 
-export const useConnectionStatus = () =>
-  useOrchestratorStore(useShallow(selectConnectionStatus))
+export const useConnectionStatus = (): ReturnType<
+  typeof selectConnectionStatus
+> => useOrchestratorStore(useShallow(selectConnectionStatus))
 
 // -----------------------------------------------------------------------------
 // ESCAPE HATCH (use only for debugging)

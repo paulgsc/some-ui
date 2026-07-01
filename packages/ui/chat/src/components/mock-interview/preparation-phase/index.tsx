@@ -12,7 +12,7 @@ export const PreparationPhase = ({
   notes,
   onNotesChange,
   onStartRecording,
-}: PreparationPhaseProps) => {
+}: PreparationPhaseProps): React.JSX.Element => {
   return (
     <div className="flex absolute inset-0 items-center justify-center p-6">
       <div className="max-w-3xl w-full space-y-6">

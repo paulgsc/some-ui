@@ -126,7 +126,7 @@ export function useTopikCurrentBatch(
 export function usePrefetchTopik(repository: ITopikRepository) {
   const queryClient = useQueryClient()
 
-  return async (key: string) => {
+  return async (key: string): Promise<void> => {
     await queryClient.prefetchQuery({
       queryKey: topikKeys.detail(key),
       queryFn: () => repository.load(key),

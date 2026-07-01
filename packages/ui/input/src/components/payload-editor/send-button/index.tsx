@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { EventType } from "@input/types/timeline-events"
 import { Send } from "lucide-react"
 import { Button } from "some-ui-shared"
@@ -12,7 +13,7 @@ export const SendButton = ({
   eventType,
   isLoading,
   onClick,
-}: SendButtonProps) => {
+}: SendButtonProps): JSX.Element => {
   return (
     <div className="flex justify-center">
       <Button

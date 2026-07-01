@@ -11,15 +11,22 @@ type UseGameTimerProps = {
   onTimeout?: (status: GameStatus) => void
 }
 
+type UseGameTimerReturn = {
+  gameStatus: GameStatus | null
+  isGameOver: boolean
+  timeRemainingMs: number
+  progress: GameStatus["progress"] | undefined
+}
+
 export function useGameTimer({
   gameBridge,
   isInitialized,
   onComplete,
   onTimeout,
-}: UseGameTimerProps) {
+}: UseGameTimerProps): UseGameTimerReturn {
   // Subscribe to WASM status changes
   const gameStatus = useSyncExternalStore(
-    (callback) => {
+    (callback): (() => void) => {
       if (!gameBridge) return () => {}
       return gameBridge.subscribeToStatus(callback)
     },

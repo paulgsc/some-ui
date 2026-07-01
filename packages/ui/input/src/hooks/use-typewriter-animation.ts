@@ -20,7 +20,15 @@ export function useTypewriterAnimation({
   vibrationDuration = 300,
   solved = false,
   onComplete,
-}: TypewriterAnimationOptions) {
+}: TypewriterAnimationOptions): {
+  currentLetter: string
+  isAnimating: boolean
+  isValid: boolean
+  isVibrating: boolean
+  isHighlighted: boolean
+  startAnimation: () => void
+  setRef: (element: SVGSVGElement | null) => void
+} {
   const [currentLetter, setCurrentLetter] = useState<string>("")
   const [isAnimating, setIsAnimating] = useState(false)
   const [isValid, setIsValid] = useState(false)
@@ -64,7 +72,7 @@ export function useTypewriterAnimation({
   }, [solved])
 
   // Run the full animation sequence
-  const runAnimationSequence = () => {
+  const runAnimationSequence = (): void => {
     if (!elementRef.current) return
 
     let currentAttempt = 0
@@ -109,7 +117,7 @@ export function useTypewriterAnimation({
         })
 
         // When vibration animation ends
-        animationRef.current.onfinish = () => {
+        animationRef.current.onfinish = (): void => {
           setIsVibrating(false)
 
           // Keep the invalid letter visible for a moment
@@ -128,7 +136,7 @@ export function useTypewriterAnimation({
     }
 
     // Function to animate the valid letter
-    function animateValidLetter() {
+    function animateValidLetter(): void {
       setCurrentLetter(validLetter)
       setIsValid(true)
 
@@ -145,7 +153,7 @@ export function useTypewriterAnimation({
           easing: "ease-out",
         })
 
-        animationRef.current.onfinish = () => {
+        animationRef.current.onfinish = (): void => {
           setIsAnimating(false)
 
           // Call onComplete callback if provided

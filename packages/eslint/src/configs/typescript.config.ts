@@ -185,7 +185,12 @@ export default defineConfig(
   // tsconfig. Disabling type-aware parsing avoids "not found by project
   // service" errors without requiring these files to be in tsconfig.json.
   {
-    files: ["vitest.config.{ts,js}", "vitest.config.*.{ts,js}"],
+    files: [
+      "**/vitest.config.{ts,js}",
+      "**/vitest.config.*.{ts,js}",
+      "**/vite.config.{ts,js}",
+      "**/vite.config.*.{ts,js}",
+    ],
     extends: [tseslint.configs.disableTypeChecked],
   }
 )

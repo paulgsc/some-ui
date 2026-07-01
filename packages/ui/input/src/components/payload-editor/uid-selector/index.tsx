@@ -33,7 +33,11 @@ type UIDSelectorProps = {
   show: boolean
 }
 
-export const UIDSelector = ({ value, onChange, show }: UIDSelectorProps) => {
+export const UIDSelector = ({
+  value,
+  onChange,
+  show,
+}: UIDSelectorProps): React.JSX.Element | null => {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mode, setMode] = useState<"search" | "manual">("search")
@@ -43,17 +47,17 @@ export const UIDSelector = ({ value, onChange, show }: UIDSelectorProps) => {
   const searchResults = searchExistingChapters(searchQuery)
   const selectedChapter = getChapterByUID(value)
 
-  const handleSelectChapter = (chapter: ExistingChapter) => {
+  const handleSelectChapter = (chapter: ExistingChapter): void => {
     onChange(chapter.uid)
     setOpen(false)
     setSearchQuery("")
   }
 
-  const formatTimestamp = (timestamp: number) => {
+  const formatTimestamp = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString()
   }
 
-  const formatDuration = (start: number, end?: number) => {
+  const formatDuration = (start: number, end?: number): string => {
     if (!end) return "Active"
     const duration = Math.round((end - start) / 1000)
     return `${duration}s`

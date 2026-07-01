@@ -22,19 +22,19 @@ export const StatsPanel = ({
   timeRemaining,
   progress,
 }: StatsPanelProps): React.JSX.Element => {
-  const getDifficultyLabel = () => {
+  const getDifficultyLabel = (): string => {
     if (timingParams.characterLifetimeMs < 2000) return "🔥 Hard"
     if (timingParams.characterLifetimeMs < 3000) return "⚡ Medium"
     return "🌱 Easy"
   }
 
-  const getAccuracyColor = () => {
+  const getAccuracyColor = (): string => {
     if (stats.accuracy >= 80) return "text-green-400"
     if (stats.accuracy >= 60) return "text-yellow-400"
     return "text-red-400"
   }
 
-  const formatTime = (ms: number) => {
+  const formatTime = (ms: number): string => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = seconds % 60

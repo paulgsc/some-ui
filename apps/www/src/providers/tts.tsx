@@ -1,8 +1,12 @@
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { cn, initializeSpeechQueue, useAudioTTS } from "some-ui-utils"
 
-export const TTSProvider = ({ children }: { children: ReactNode }) => {
+export const TTSProvider = ({
+  children,
+}: {
+  children: ReactNode
+}): JSX.Element => {
   const [isSpeechContextReady, setIsSpeechContextReady] = useState(false)
 
   const ttsHook = useAudioTTS({
@@ -20,8 +24,8 @@ export const TTSProvider = ({ children }: { children: ReactNode }) => {
     if (ttsHook.supported) {
       try {
         initializeSpeechQueue(ttsHook)
-        console.log("Speech context initialized")
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.log("Speech context already initialized or error:", error)
       } finally {
         setIsSpeechContextReady(true)

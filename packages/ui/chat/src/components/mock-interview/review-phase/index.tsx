@@ -14,7 +14,7 @@ export const ReviewPhase = ({
   onContinue,
   onRetry,
   isLastQuestion,
-}: ReviewPhaseProps) => {
+}: ReviewPhaseProps): React.JSX.Element => {
   const [isTranscribing, setIsTranscribing] = useState(true)
   const [editedTranscript, setEditedTranscript] = useState("")
 

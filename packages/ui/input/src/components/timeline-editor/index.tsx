@@ -15,7 +15,7 @@ import {
   validateAndParseJson,
 } from "@input/utils/event-helpers"
 
-export const TimelineEditor = () => {
+export const TimelineEditor = (): React.JSX.Element => {
   const [eventType, setEventType] = useState<EventType>("StartChapter")
   const [uid, setUid] = useState("")
   const [context, setContext] = useState<Context>({ title: "", tags: {} })
@@ -98,7 +98,7 @@ export const TimelineEditor = () => {
     return event
   }
 
-  const handleSendEvent = async () => {
+  const handleSendEvent = async (): Promise<void> => {
     try {
       setJsonError("")
       setIsLoading(true)
@@ -109,7 +109,6 @@ export const TimelineEditor = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       setLastSentEvent(event)
-      console.log("Event sent:", event)
 
       // Reset form for new event
       if (eventType === "StartChapter") {

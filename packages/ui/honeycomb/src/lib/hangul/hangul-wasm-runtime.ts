@@ -33,7 +33,7 @@ export function getLastError(): Error | null {
 export function getCoreInstance(): HangulGameCore | null {
   return coreInstance
 }
-export function getBridgeInstance() {
+export function getBridgeInstance(): WasmGameBridge | null {
   return bridgeInstance
 }
 
@@ -53,7 +53,7 @@ export async function loadHangulWasm(
 
   loadPromise = (async () => {
     try {
-      const module = (await import("hangul-game-core")) as any
+      const module = await import("hangul-game-core")
       await module.default()
       wasmModule = module
 

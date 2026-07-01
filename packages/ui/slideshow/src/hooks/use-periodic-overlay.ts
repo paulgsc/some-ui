@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react"
 import { useEffect, useState } from "react"
 
 /**
@@ -22,7 +23,15 @@ export function usePeriodicOverlay({
   showDuration = 8000,
   showInterval = 30000,
   autoHide = true,
-}: UsePeriodicOverlayOptions = {}) {
+}: UsePeriodicOverlayOptions = {}): {
+  showOverlay: boolean
+  setShowOverlay: Dispatch<SetStateAction<boolean>>
+  isHovering: boolean
+  mouseHandlers: {
+    onMouseEnter: () => void
+    onMouseLeave: () => void
+  }
+} {
   const [showOverlay, setShowOverlay] = useState(initialState)
   const [isHovering, setIsHovering] = useState(false)
 
@@ -46,12 +55,12 @@ export function usePeriodicOverlay({
       }, showDuration)
     }
 
-    return () => clearInterval(overlayInterval)
+    return (): void => clearInterval(overlayInterval)
   }, [isHovering, autoHide, showDuration, showInterval])
 
   const mouseHandlers = {
-    onMouseEnter: () => setIsHovering(true),
-    onMouseLeave: () => setIsHovering(false),
+    onMouseEnter: (): void => setIsHovering(true),
+    onMouseLeave: (): void => setIsHovering(false),
   }
 
   return {

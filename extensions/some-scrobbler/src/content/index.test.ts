@@ -100,7 +100,7 @@ let testState: ExtensionState = {
 }
 
 // Test functions
-function updateBadge(badge: BadgeStatus) {
+function updateBadge(badge: BadgeStatus): void {
   chrome.action.setBadgeText({ text: badge.text })
   chrome.action.setBadgeBackgroundColor({ color: badge.color })
 }

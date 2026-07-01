@@ -31,8 +31,6 @@ export class ViewportManager {
 
     // Create factory
     this.factory = new ViewportFactory(wasmManager)
-
-    console.log("✅ [ViewportManager] Initialized")
   }
 
   /**
@@ -64,12 +62,10 @@ export class ViewportManager {
     // Check if exists
     const existing = this.viewports.get(validConfig.id)
     if (existing) {
-      console.log(`♻️ [ViewportManager] Reusing viewport: ${validConfig.id}`)
       return existing
     }
 
     // Create new
-    console.log(`🆕 [ViewportManager] Creating viewport: ${validConfig.id}`)
     const viewport = await this.factory.create(validConfig)
     this.viewports.set(validConfig.id, viewport)
     this.wasmRefCount++
@@ -109,12 +105,10 @@ export class ViewportManager {
     this.wasmRefCount--
 
     if (this.wasmRefCount === 0) {
-      console.log("🗑️ No active viewports, freeing WASM runtime...")
       resetWasmRuntime()
       this.factory = null
     }
 
-    console.log(`🗑️ [ViewportManager] Removed viewport: ${id}`)
     return true
   }
 
@@ -143,10 +137,6 @@ export class ViewportManager {
    * Clear all viewports (but keep manager initialized)
    */
   clearAll(): void {
-    console.log(
-      `🧹 [ViewportManager] Clearing ${this.viewports.size} viewports...`
-    )
-
     // Dispose all viewports
     for (const viewport of this.viewports.values()) {
       viewport.dispose()
@@ -157,8 +147,6 @@ export class ViewportManager {
     this.wasmRefCount = 0
     resetWasmRuntime()
     this.factory = null
-
-    console.log("✅ [ViewportManager] All viewports cleared")
   }
 
   getStats(): {
@@ -212,7 +200,6 @@ export function getViewportManager(): ViewportManager {
  * To reset WASM runtime, call resetWasmRuntime() separately.
  */
 export function resetViewportManager(): void {
-  console.log("🔄 [ViewportManager] Resetting shared manager...")
   sharedManager.clearAll()
 }
 
@@ -225,15 +212,11 @@ export function resetViewportManager(): void {
  * - Complete system reset
  */
 export function resetViewportSystem(): void {
-  console.log("🔄 [Viewport System] Full system reset...")
-
   // 1. Clear viewports
   resetViewportManager()
 
   // 2. Reset WASM runtime
   resetWasmRuntime()
-
-  console.log("✅ [Viewport System] Full reset complete")
 }
 
 /**

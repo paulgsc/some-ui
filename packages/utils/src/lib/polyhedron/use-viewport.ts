@@ -79,7 +79,7 @@ export function useViewport(
     let mounted = true
     let eng: ViewportEngine | null = null
 
-    const initEngine = async () => {
+    const initEngine = async (): Promise<void> => {
       try {
         setIsLoading(true)
         setError(null)
@@ -126,6 +126,7 @@ export function useViewport(
           const message = err instanceof Error ? err.message : String(err)
           setError(message)
           setIsLoading(false)
+          // eslint-disable-next-line no-console
           console.error("useViewport initialization failed:", message)
         }
       }

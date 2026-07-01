@@ -75,7 +75,7 @@ export function useCyclicClock(
     }
 
     frameId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(frameId)
+    return (): void => cancelAnimationFrame(frameId)
   }, [])
 
   const toggleRunning = useCallback(() => {

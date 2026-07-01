@@ -33,14 +33,14 @@ export class ViewportEngine {
   /**
    * Update event callbacks without restarting engine
    */
-  updateEvents(events: Partial<ViewportEngineEvents>) {
+  updateEvents(events: Partial<ViewportEngineEvents>): void {
     this.events = { ...this.events, ...events }
   }
 
   /**
    * Stop auto-tick loop
    */
-  stopAutoTick() {
+  stopAutoTick(): void {
     if (this.tickTimer) {
       clearInterval(this.tickTimer)
       this.tickTimer = null
@@ -50,7 +50,7 @@ export class ViewportEngine {
   /**
    * Manual tick
    */
-  async tick(dtMs: number) {
+  async tick(dtMs: number): Promise<void> {
     if (this.disposed) return
 
     try {
@@ -62,6 +62,7 @@ export class ViewportEngine {
       if (!this.disposed) {
         const message = err instanceof Error ? err.message : String(err)
         this.events.onError?.(message)
+        // eslint-disable-next-line no-console
         console.error("Tick failed:", err)
       }
     }
@@ -70,7 +71,7 @@ export class ViewportEngine {
   /**
    * Start auto-tick loop
    */
-  startAutoTick(intervalMs: number) {
+  startAutoTick(intervalMs: number): void {
     if (this.tickTimer || this.disposed) return
 
     this.tickTimer = setInterval(async () => {
@@ -82,7 +83,7 @@ export class ViewportEngine {
   /**
    * Handle state updates and auto-rotation logic
    */
-  private async handleStateUpdate(checkAdvance: boolean) {
+  private async handleStateUpdate(checkAdvance: boolean): Promise<void> {
     if (this.disposed) return
 
     const state = this.viewport.getState()
@@ -94,7 +95,10 @@ export class ViewportEngine {
   /**
    * Emit state and change events
    */
-  private emitStateChanges(state: WasmViewportState, wasAdvance: boolean) {
+  private emitStateChanges(
+    state: WasmViewportState,
+    wasAdvance: boolean
+  ): void {
     this.events.onState(state)
 
     if (state.activeFace !== this.lastFace) {
@@ -111,7 +115,7 @@ export class ViewportEngine {
   /**
    * Apply transition
    */
-  async transition(trans: WasmTransition) {
+  async transition(trans: WasmTransition): Promise<void> {
     if (this.disposed) return
 
     try {
@@ -143,7 +147,7 @@ export class ViewportEngine {
   /**
    * Refresh state from viewport
    */
-  async refreshState() {
+  async refreshState(): Promise<void> {
     if (this.disposed) return
 
     try {
@@ -157,6 +161,7 @@ export class ViewportEngine {
       if (!this.disposed) {
         const message = err instanceof Error ? err.message : String(err)
         this.events.onError?.(message)
+        // eslint-disable-next-line no-console
         console.error("Refresh failed:", err)
       }
     }
@@ -165,35 +170,35 @@ export class ViewportEngine {
   /**
    * Pause auto-tick
    */
-  pause() {
+  pause(): void {
     this.paused = true
   }
 
   /**
    * Resume auto-tick
    */
-  resume() {
+  resume(): void {
     this.paused = false
   }
 
   /**
    * Get current paused state
    */
-  isPaused() {
+  isPaused(): boolean {
     return this.paused
   }
 
   /**
    * Get viewport instance
    */
-  getViewport() {
+  getViewport(): Viewport {
     return this.viewport
   }
 
   /**
    * Clean up resources
    */
-  dispose() {
+  dispose(): void {
     this.disposed = true
     this.stopAutoTick()
   }

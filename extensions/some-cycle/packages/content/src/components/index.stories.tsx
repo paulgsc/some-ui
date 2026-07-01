@@ -115,7 +115,7 @@ type Story = StoryObj<typeof meta>
 export const Critical: Story = {
   args: {
     event: createMockEvent("critical", [mockTasks[1]]),
-    onDismiss: () => console.log("Critical notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -123,7 +123,7 @@ export const Critical: Story = {
 export const HighUrgency: Story = {
   args: {
     event: createMockEvent("warning", [mockTasks[0], mockTasks[5]]),
-    onDismiss: () => console.log("High urgency notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -131,7 +131,7 @@ export const HighUrgency: Story = {
 export const MediumUrgency: Story = {
   args: {
     event: createMockEvent("reminder", [mockTasks[2], mockTasks[4]]),
-    onDismiss: () => console.log("Medium urgency notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -139,7 +139,7 @@ export const MediumUrgency: Story = {
 export const LowUrgency: Story = {
   args: {
     event: createMockEvent("reminder", [mockTasks[3]]),
-    onDismiss: () => console.log("Low urgency notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -147,7 +147,7 @@ export const LowUrgency: Story = {
 export const ManyTasks: Story = {
   args: {
     event: createMockEvent("warning", mockTasks.slice(0, 5)),
-    onDismiss: () => console.log("Many tasks notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -171,7 +171,7 @@ export const VariousTimeFormats: Story = {
         name: "Recently overdue task",
       },
     ]),
-    onDismiss: () => console.log("Various time formats notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -179,7 +179,7 @@ export const VariousTimeFormats: Story = {
 export const EmptyTasks: Story = {
   args: {
     event: createMockEvent("none", []),
-    onDismiss: () => console.log("Empty notification dismissed"),
+    onDismiss: () => {},
   },
 }
 
@@ -275,7 +275,7 @@ export const LongTaskName: StoryObj<typeof TaskItem> = {
 export const Playground: Story = {
   args: {
     event: createMockEvent("warning", [mockTasks[0], mockTasks[1]]),
-    onDismiss: () => console.log("Playground notification dismissed"),
+    onDismiss: () => {},
   },
   parameters: {
     docs: {

@@ -4,6 +4,7 @@ import { TextProcessor } from "@prompt/services/text-processor"
 import type {
   BackgroundMessage,
   ExtensionSettings,
+  UtteranceMetadata,
   UtterancePayload,
 } from "@prompt/types/storage"
 import { DOMUtils } from "@prompt/utils/dom-utils"
@@ -40,6 +41,7 @@ class TypingMirror {
       this.settings = await StorageService.getSettings()
       this.overlay.setVisibility(this.settings.enabled)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to load settings:", error)
     }
   }
@@ -100,13 +102,6 @@ class TypingMirror {
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
-    console.log("🪵 [handleKeyDown] Event fired:", {
-      key: e.key,
-      shiftKey: e.shiftKey,
-      currentElement: this.currentElement,
-      currentText: this.currentText,
-    })
-
     try {
       if (
         e.key === "Enter" &&
@@ -133,6 +128,7 @@ class TypingMirror {
       }
     } catch (err) {
       if (err instanceof Error && err.stack) {
+        // eslint-disable-next-line no-console
         console.error("📜 Stack trace:", err.stack)
       }
     }
@@ -145,7 +141,7 @@ class TypingMirror {
     return now - this.lastPostTime >= this.settings.postThrottleMs
   }
 
-  private getMetadata() {
+  private getMetadata(): UtteranceMetadata {
     const metadata = {
       url: window.location.href,
       domain: window.location.hostname,
@@ -167,6 +163,7 @@ class TypingMirror {
     )
 
     if (!utteranceText) {
+      // eslint-disable-next-line no-console
       console.warn("🚫 prepareTextForUtterance returned null")
       return
     }
@@ -179,8 +176,6 @@ class TypingMirror {
         metadata: this.getMetadata(),
       }
 
-      console.log("📦 Sending message to background:", payload)
-
       const message: BackgroundMessage = {
         type: "POST_UTTERANCE",
         payload,
@@ -189,11 +184,13 @@ class TypingMirror {
       const response = await chrome.runtime.sendMessage(message)
 
       if (response?.success) {
-        console.log("Text posted successfully:", payload)
+        // no-op: success path does not require diagnostic logging
       } else {
+        // eslint-disable-next-line no-console
         console.warn("Failed to post text:", response)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Error communicating with background script:", error)
     }
   }

@@ -24,7 +24,7 @@ type VoiceSelectorTriggerProps = {
   className?: string
 }
 
-const getProviderIcon = (provider: TTSProvider) => {
+const getProviderIcon = (provider: TTSProvider): string => {
   switch (provider) {
     case "elevenlabs":
       return "🎙️"
@@ -39,7 +39,7 @@ const getProviderIcon = (provider: TTSProvider) => {
   }
 }
 
-const getProviderColor = (provider: TTSProvider) => {
+const getProviderColor = (provider: TTSProvider): string => {
   switch (provider) {
     case "elevenlabs":
       return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
@@ -54,7 +54,7 @@ const getProviderColor = (provider: TTSProvider) => {
   }
 }
 
-const getGenderIcon = (gender?: string) => {
+const getGenderIcon = (gender?: string): React.JSX.Element => {
   switch (gender) {
     case "male":
       return <User className="size-3" />
@@ -73,7 +73,7 @@ export const VoiceSelectorTrigger = ({
   selectedVoice,
   onVoiceSelect,
   className,
-}: VoiceSelectorTriggerProps) => {
+}: VoiceSelectorTriggerProps): React.JSX.Element => {
   const [open, setOpen] = useState(false)
 
   // Group voices by provider
@@ -88,7 +88,7 @@ export const VoiceSelectorTrigger = ({
     {} as Record<TTSProvider, Array<VoiceConfig>>
   )
 
-  const handleVoiceSelect = (voice: VoiceConfig) => {
+  const handleVoiceSelect = (voice: VoiceConfig): void => {
     onVoiceSelect(voice)
     setOpen(false)
   }

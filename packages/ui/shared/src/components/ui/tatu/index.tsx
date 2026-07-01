@@ -17,7 +17,7 @@ const cards = [
   },
 ]
 
-export const Tatu = () => {
+export const Tatu = (): React.JSX.Element => {
   return (
     <div className="transform-3d perspective-distant relative h-64 w-96">
       <div className="transform-3d absolute inset-0 transition-all">

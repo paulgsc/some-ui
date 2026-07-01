@@ -2,6 +2,7 @@ import {
   ALL_MAPPINGS,
   getHangulColor,
 } from "@honeycomb/utils/hangul-keyboard-mapping"
+import type { HangulMapping } from "@honeycomb/utils/hangul-keyboard-mapping"
 import type { HangulGameCore } from "hangul-game-core"
 import { z } from "zod"
 
@@ -281,7 +282,7 @@ export class WasmGameBridge {
     }
   }
 
-  private getHangulMapping(hangul: string) {
+  private getHangulMapping(hangul: string): HangulMapping {
     const mapping = ALL_MAPPINGS.find((m) => m.hangul === hangul)
     return mapping || { qwerty: "", hangul, romanization: "" }
   }

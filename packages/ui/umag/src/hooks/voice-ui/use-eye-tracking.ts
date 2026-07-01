@@ -1,17 +1,26 @@
 import { useRef } from "react"
 
-export const useEyeTracking = () => {
+type EyeOffset = { x: number; y: number }
+
+type UseEyeTrackingReturn = {
+  eyeOffset: React.RefObject<EyeOffset>
+  targetEyeOffset: React.RefObject<EyeOffset>
+  handleMouseMove: (e: MouseEvent, canvas: HTMLCanvasElement) => void
+  updateEyeOffset: () => void
+}
+
+export const useEyeTracking = (): UseEyeTrackingReturn => {
   const eyeOffset = useRef({ x: 0, y: 0 })
   const targetEyeOffset = useRef({ x: 0, y: 0 })
 
-  const updateEyeOffset = () => {
+  const updateEyeOffset = (): void => {
     eyeOffset.current.x +=
       (targetEyeOffset.current.x - eyeOffset.current.x) * 0.08
     eyeOffset.current.y +=
       (targetEyeOffset.current.y - eyeOffset.current.y) * 0.08
   }
 
-  const handleMouseMove = (e: MouseEvent, canvas: HTMLCanvasElement) => {
+  const handleMouseMove = (e: MouseEvent, canvas: HTMLCanvasElement): void => {
     const rect = canvas.getBoundingClientRect()
     const mouseX = e.clientX - rect.left
     const mouseY = e.clientY - rect.top

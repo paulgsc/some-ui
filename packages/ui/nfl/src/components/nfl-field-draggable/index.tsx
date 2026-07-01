@@ -1,7 +1,9 @@
+import type { JSX } from "react"
+
 import { DraggableContainer, DraggableItem } from "../draggable"
 import FootballField from "../nfl-field"
 
-const FootballFieldDraggable = () => {
+const FootballFieldDraggable = (): JSX.Element => {
   return (
     <div className="flex justify-center items-center h-[75vh] relative">
       <div className="w-full h-full max-w-[calc(75vh*1.875)] max-h-[75vh] relative">
@@ -95,7 +97,7 @@ const PlayerIcon = ({
 }: {
   position: string
   number: string
-}) => (
+}): JSX.Element => (
   <div className="flex flex-col items-center">
     <div className="w-12 h-12 rounded-full bg-white border-2 border-black flex items-center justify-center font-bold">
       {number}

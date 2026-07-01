@@ -83,7 +83,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
             ref={vinylRecordRef}
             thumbnail={thumbnail}
             title={title}
-            onConnect={isConnected ? () => {} : () => {}}
+            onConnect={isConnected ? (): void => {} : (): void => {}}
           />
 
           {/* Song Info Section */}
@@ -118,7 +118,7 @@ export const ErrorBoundaryFallback = ({
 }: {
   error: string
   resetError?: () => void
-}) => {
+}): React.JSX.Element => {
   return (
     <div className="flex size-fit items-center justify-center p-4">
       <Card className="w-full max-w-lg">

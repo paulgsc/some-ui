@@ -63,10 +63,9 @@ export function useFloatingElements(config: FloatingElementsConfig): void {
     element.className = className
     element.textContent =
       content[Math.floor(Math.random() * content.length)] ?? ""
-    element.style.left = Math.random() * 100 + "vw"
-    element.style.animationDuration =
-      baseDuration + Math.random() * durationRange + "s"
-    element.style.animationDelay = Math.random() * maxDelay + "s"
+    element.style.left = `${Math.random() * 100}vw`
+    element.style.animationDuration = `${baseDuration + Math.random() * durationRange}s`
+    element.style.animationDelay = `${Math.random() * maxDelay}s`
 
     container.appendChild(element)
 

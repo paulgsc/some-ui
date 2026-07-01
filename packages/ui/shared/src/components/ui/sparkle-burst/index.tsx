@@ -86,11 +86,11 @@ function hexToRgb(hex: string): RGB {
   return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }
 }
 
-function rand(min: number, max: number) {
+function rand(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
-function toRad(deg: number) {
+function toRad(deg: number): number {
   return (deg * Math.PI) / 180
 }
 
@@ -99,7 +99,7 @@ function drawStarPath(
   spikes: number,
   outerRadius: number,
   innerRadius: number
-) {
+): void {
   let rot = (Math.PI / 2) * 3
   let x = 0
   let y = 0
@@ -130,7 +130,7 @@ export type SparkleBurstHandle = {
 }
 
 export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
-  function SparkleBurst(props: Options = {}, ref) {
+  (props: Options = {}, ref) => {
     const {
       colors = [
         "#FDE68A",
@@ -563,7 +563,7 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
     }, [autoPlay, burst])
 
     useEffect(() => {
-      return () => {
+      return (): void => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current)
       }
     }, [])

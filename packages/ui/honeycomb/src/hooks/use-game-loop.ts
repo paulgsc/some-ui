@@ -31,7 +31,7 @@ export const useGameLoop = ({
   setTimingParams,
   playSound,
   onBoardFull,
-}: UseGameLoopProps) => {
+}: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<NodeJS.Timeout | null>(null)
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
 

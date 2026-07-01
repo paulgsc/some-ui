@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { Activity } from "lucide-react"
 import {
   Button,
@@ -12,7 +13,10 @@ type SortButtonProps = {
   setSortBy: (sortBy: "lastActivity" | "name") => void
 }
 
-export const SortButton = ({ sortBy, setSortBy }: SortButtonProps) => {
+export const SortButton = ({
+  sortBy,
+  setSortBy,
+}: SortButtonProps): JSX.Element => {
   return (
     <TooltipProvider>
       <Tooltip>

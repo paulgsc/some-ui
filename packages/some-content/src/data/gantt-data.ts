@@ -1,7 +1,14 @@
 import { apiHooks } from "maishatu-fetch-kit"
 import { z } from "zod"
 
-const createChapterSchema = () =>
+const createChapterSchema = (): z.ZodObject<{
+  id: z.ZodString
+  title: z.ZodString
+  startTime: z.ZodNumber
+  endTime: z.ZodNumber
+  description: z.ZodString
+  color: z.ZodString
+}> =>
   z.object({
     id: z.string(),
     title: z.string(),

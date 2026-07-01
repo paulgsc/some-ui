@@ -28,7 +28,7 @@ const SearchBar: FC<SearchBarProps> = ({ config, param }) => {
     eventName: "keydown",
     keyBinding: ASCII.SLASH,
     isActive: (event, keyBinding) =>
-      event.key.charCodeAt(0) === (keyBinding as number) && !event.repeat,
+      event.key.charCodeAt(0) === keyBinding && !event.repeat,
   })
 
   useEventListener(slashKeyBinding.eventName, (event: KeyboardEvent) => {

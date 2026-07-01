@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import {
   EVENT_DESCRIPTIONS,
   type EventType,
@@ -19,7 +20,7 @@ type EventTypeSelectorProps = {
 export const EventTypeSelector = ({
   value,
   onChange,
-}: EventTypeSelectorProps) => {
+}: EventTypeSelectorProps): JSX.Element => {
   return (
     <div className="space-y-2">
       <Label htmlFor="event-type">Event Type</Label>

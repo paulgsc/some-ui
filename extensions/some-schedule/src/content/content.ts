@@ -18,10 +18,12 @@ import type {
 const DEBUG = true
 
 function log(...args: Array<unknown>): void {
+  // eslint-disable-next-line no-console
   if (DEBUG) console.log("[content-script]", ...args)
 }
 
 function logError(...args: Array<unknown>): void {
+  // eslint-disable-next-line no-console
   console.error("[content-script]", ...args)
 }
 
@@ -86,4 +88,5 @@ browser.runtime.onMessage.addListener(
   }
 )
 
+// eslint-disable-next-line no-console
 console.log("[tabsched content] loaded")

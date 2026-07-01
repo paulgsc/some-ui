@@ -59,6 +59,7 @@ function sendToServer(metadata) {
     },
     (response) => {
       if (chrome.runtime.lastError) {
+        // eslint-disable-next-line no-console
         console.log(
           "Failed to send to background:",
           chrome.runtime.lastError.message

@@ -21,9 +21,8 @@ export default defineConfig({
         },
         chunkFileNames: "[name].js",
         assetFileNames: (asset) => {
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
           if (asset.name?.endsWith(".css")) return "[name][extname]"
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
+
           if (asset.name?.match(/\.(png|jpg|jpeg|svg|gif|ico)$/)) {
             return "assets/[name][extname]"
           }

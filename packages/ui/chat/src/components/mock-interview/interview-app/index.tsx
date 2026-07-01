@@ -35,7 +35,7 @@ const mockQuestions = [
 
 type Phase = "welcome" | "question" | "preparation" | "recording" | "review"
 
-export const InterviewApp = () => {
+export const InterviewApp = (): React.JSX.Element | null => {
   const [phase, setPhase] = useState<Phase>("welcome")
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [transcript, setTranscript] = useState("")
@@ -49,14 +49,14 @@ export const InterviewApp = () => {
   const handleQuestionComplete = (): void => {
     setPhase("preparation")
   }
-  const handleStartRecording = () => {
+  const handleStartRecording = (): void => {
     setPhase("recording")
   }
-  const handleRecordingComplete = (recordedTranscript: string) => {
+  const handleRecordingComplete = (recordedTranscript: string): void => {
     setTranscript(recordedTranscript)
     setPhase("review")
   }
-  const handleContinue = () => {
+  const handleContinue = (): void => {
     if (isLastQuestion) {
       // Could show completion screen
       setPhase("welcome")
@@ -70,7 +70,7 @@ export const InterviewApp = () => {
       setNotes("")
     }
   }
-  const handleRetry = () => {
+  const handleRetry = (): void => {
     setPhase("preparation")
     setTranscript("")
   }

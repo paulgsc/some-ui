@@ -1,14 +1,14 @@
+import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import { cubeEvents, DiceCard } from "some-ui-slideshow"
 import { cn } from "some-ui-utils"
 
-export const DemoDice = () => {
+export const DemoDice = (): JSX.Element => {
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       cubeEvents.setState((prev) => {
-        console.log("previous is: ", prev)
         return {
           id: prev.id === "cube1" ? "cube2" : "cube1",
         }

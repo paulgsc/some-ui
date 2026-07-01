@@ -1,3 +1,4 @@
+import type { RefObject } from "react"
 import { useRef, useState } from "react"
 import type React from "react"
 
@@ -11,19 +12,23 @@ export function useDialDrag({
   setCurrentAngle,
   getCurrentSection,
   setCurrentSection,
-}: UseDialDragProps) {
+}: UseDialDragProps): {
+  isDragging: boolean
+  svgRef: RefObject<SVGSVGElement | null>
+  handlePointerMouseDown: (e: React.MouseEvent) => void
+} {
   const [isDragging, setIsDragging] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
 
   // Handle pointer drag
-  const handlePointerMouseDown = (e: React.MouseEvent) => {
+  const handlePointerMouseDown = (e: React.MouseEvent): void => {
     e.preventDefault()
     setIsDragging(true)
     document.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseup", handleMouseUp)
   }
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent): void => {
     if (!svgRef.current || !isDragging) return
 
     const svgRect = svgRef.current.getBoundingClientRect()
@@ -46,7 +51,7 @@ export function useDialDrag({
     }
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (): void => {
     setIsDragging(false)
     document.removeEventListener("mousemove", handleMouseMove)
     document.removeEventListener("mouseup", handleMouseUp)

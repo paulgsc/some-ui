@@ -66,7 +66,11 @@ export function createEventBus<Events extends EventMap, S extends object>(
 export function createEventBus<
   Events extends EventMap,
   S extends object = never,
->(initialState?: S) {
+>(
+  initialState?: S
+):
+  | EventBusWithoutState<Events>
+  | EventBusWithState<Events & { "state:changed": StateChangeEvent<S> }, S> {
   // Enhanced listener structure to support selectors
   type EventListener<T> = {
     callback: Listener<T>
@@ -197,7 +201,7 @@ export function createEventBus<
       nextState,
     } as unknown as Events[keyof Events]
 
-    emit("state:changed" as keyof Events, stateChangeEvent)
+    emit("state:changed", stateChangeEvent)
   }
 
   function subscribe<R>(

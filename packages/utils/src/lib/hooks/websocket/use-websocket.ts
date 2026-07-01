@@ -105,6 +105,7 @@ export function useWebSocket<I, O = unknown>({
       const result = incomingMessageSchema.safeParse(data)
 
       if (!result.success) {
+        // eslint-disable-next-line no-console
         console.warn("WebSocket schema mismatch", {
           data,
           error: result.error.format(),
@@ -142,11 +143,12 @@ export function useWebSocket<I, O = unknown>({
   useEffect(() => {
     let acquired = false
 
-    const acquire = async () => {
+    const acquire = async (): Promise<void> => {
       try {
         await manager.acquire(init)
         acquired = true
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("Failed to acquire connection:", err)
       }
     }
@@ -177,6 +179,7 @@ export function useWebSocket<I, O = unknown>({
   const sendMessage = useCallback(
     (message: O) => {
       if (!manager.isConnected) {
+        // eslint-disable-next-line no-console
         console.error("Cannot send message: WebSocket is not connected")
         return
       }
@@ -189,6 +192,7 @@ export function useWebSocket<I, O = unknown>({
 
         manager.sendMessage(message)
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(
           "Failed to send message:",
           err instanceof Error ? err.message : String(err)
@@ -215,6 +219,7 @@ export function useWebSocket<I, O = unknown>({
         const errorMessage = `Failed to send message: ${
           err instanceof Error ? err.message : String(err)
         }`
+        // eslint-disable-next-line no-console
         console.error(errorMessage)
         throw err
       }

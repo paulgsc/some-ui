@@ -1,7 +1,4 @@
-/* eslint-disable jsx-a11y/heading-has-content */ import {
-  forwardRef,
-  type HTMLAttributes,
-} from "react"
+import { forwardRef, type HTMLAttributes } from "react"
 import { cn } from "@shared/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 

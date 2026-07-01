@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { moodEmoji, moodLabel } from "@nfl/utils/hopium/mood"
@@ -10,10 +11,10 @@ type Props = {
   keySeed?: number
 }
 
-export const EventCard = ({ event, keySeed }: Props) => {
+export const EventCard = ({ event, keySeed }: Props): JSX.Element | null => {
   const [show, setShow] = useState(false)
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     setShow(false)
     const t = setTimeout(() => setShow(true), 10)
     return () => clearTimeout(t)

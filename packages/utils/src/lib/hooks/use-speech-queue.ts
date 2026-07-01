@@ -122,14 +122,29 @@ export function useSpeechQueueMetrics(): UseSpeechQueueMetricsReturn {
   }))
 }
 
-export function useSpeechQueueActions(componentId?: string) {
+type UseSpeechQueueActionsReturn = {
+  speak: (
+    text: string,
+    options?: TTSOptions,
+    priority?: number,
+    maxRetries?: number
+  ) => void
+  cancel: (itemId?: string) => void
+  pause: () => void
+  resume: () => void
+  clear: () => void
+}
+
+export function useSpeechQueueActions(
+  componentId?: string
+): UseSpeechQueueActionsReturn {
   const manager = getSpeechQueue()
   const autoComponentId = useId()
   const actualComponentId = componentId ?? autoComponentId
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       manager.cancel(actualComponentId)
     }
   }, [manager, actualComponentId])

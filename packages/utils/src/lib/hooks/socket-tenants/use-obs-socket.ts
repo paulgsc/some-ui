@@ -52,7 +52,11 @@ type UseObsStatusOptions = Omit<
  * }
  * ```
  */
-export function useObsStatus(options: UseObsStatusOptions) {
+export function useObsStatus(options: UseObsStatusOptions): {
+  isConnected: boolean
+  isConnecting: boolean
+  error: string | null
+} {
   const handleEvent = useObsStore((s) => s._handleEvent)
   const setConnectionStatus = useObsStore((s) => s._setConnectionStatus)
   const setCommandSender = useObsStore((s) => s._setCommandSender)
@@ -63,8 +67,6 @@ export function useObsStatus(options: UseObsStatusOptions) {
   )
 
   const init = useCallback(async (manager: WebSocketManager) => {
-    console.log("🎥 OBS init (atomic, singleton)")
-
     // Subscribe to OBS status updates
     await manager.sendSerialized({
       type: "subscribe",
@@ -127,7 +129,6 @@ export function useObsStatus(options: UseObsStatusOptions) {
 
     // Command sender wraps the ObsCommand in the OutgoingObsEvent envelope
     const sendCommand = async (cmd: ObsCommand): Promise<void> => {
-      console.log("🎥 Sending OBS command:", cmd)
       await sendRef.current!({
         type: "obsCmd",
         cmd,
@@ -139,7 +140,7 @@ export function useObsStatus(options: UseObsStatusOptions) {
 
   // Clean up: reset state on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       reset()
       setCommandSender(null)
     }

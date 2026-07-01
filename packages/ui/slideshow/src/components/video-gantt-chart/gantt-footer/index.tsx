@@ -22,7 +22,7 @@ export const GanttFooter = ({
             [currentChapter.color]: !!currentChapter.color,
           }
         )}
-      ></div>
+      />
       <span className="text-white">{currentChapter.title}</span>
       <span className="text-xs text-gray-400">
         {currentChapter.description}

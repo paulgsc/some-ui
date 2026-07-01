@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { Header } from "@resume/components/graveyard/header"
 import { Legend } from "@resume/components/graveyard/legend"
@@ -5,12 +6,12 @@ import { RepositoryColumn } from "@resume/components/graveyard/repository-column
 import { generateDummyData } from "@resume/data/graveyard"
 import type { Repository } from "@resume/types/graveyard"
 
-export const PackageGarden = () => {
+export const PackageGarden = (): JSX.Element => {
   const [repos, setRepos] = useState<Array<Repository>>(generateDummyData())
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<"lastActivity" | "name">("lastActivity")
 
-  const toggleRepo = (repoName: string) => {
+  const toggleRepo = (repoName: string): void => {
     setRepos(
       repos.map((repo) =>
         repo.name === repoName ? { ...repo, expanded: !repo.expanded } : repo
@@ -39,7 +40,7 @@ export const PackageGarden = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         sortBy={sortBy}
-        setSortBy={setSortBy as (sortBy: "lastActivity" | "name") => void}
+        setSortBy={setSortBy}
       />
 
       <div className="grid h-full grid-cols-1 gap-4 overflow-hidden md:grid-cols-2 lg:grid-cols-4">

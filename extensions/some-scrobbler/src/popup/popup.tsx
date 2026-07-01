@@ -1,8 +1,9 @@
+import type { JSX } from "react"
 import { createRoot } from "react-dom/client"
 
 const { useState, useEffect } = React
 
-const StatusIcon = ({ status }) => {
+const StatusIcon = ({ status }): JSX.Element => {
   const icons = {
     success: "✓",
     error: "⚠",
@@ -22,7 +23,7 @@ const StatusIcon = ({ status }) => {
   )
 }
 
-const Popup = () => {
+const Popup = (): JSX.Element => {
   const [state, setState] = useState({
     isEnabled: true,
     lastStatus: "idle",
@@ -40,7 +41,7 @@ const Popup = () => {
     })
   }, [])
 
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     chrome.runtime.sendMessage({ type: "toggle-tracking" }, () => {
       setState((prev) => ({ ...prev, isEnabled: !prev.isEnabled }))
     })
@@ -49,7 +50,7 @@ const Popup = () => {
   if (loading) {
     return (
       <div className="p-4 text-center">
-        <div className="mx-auto size-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+        <div className="mx-auto size-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
       </div>
     )
   }

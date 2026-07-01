@@ -348,4 +348,5 @@ async function handlePruneTabs(
   }
 }
 
+// eslint-disable-next-line no-console
 console.log("[tabsched bg] loaded")

@@ -72,7 +72,8 @@ async function withTimeout<T>(
   })
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms: number): Promise<void> =>
+  new Promise<void>((r) => setTimeout(r, ms))
 
 // ── Public Entry Point ─────────────────────────────────────────────────────
 
@@ -215,7 +216,10 @@ async function extractWithFallbackInject(
   }
 }
 
-async function sendExtractMessage(tabId: number, timeoutMs: number) {
+async function sendExtractMessage(
+  tabId: number,
+  timeoutMs: number
+): Promise<{ ok: true; content: ExtractedContent; extractorName: string }> {
   const response = await withTimeout(
     browser.tabs.sendMessage(tabId, {
       kind: "EXTRACT_CONTENT",
@@ -236,7 +240,10 @@ async function sendExtractMessage(tabId: number, timeoutMs: number) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-async function waitForTabComplete(tabId: number, maxWaitMs: number) {
+async function waitForTabComplete(
+  tabId: number,
+  maxWaitMs: number
+): Promise<void> {
   const start = Date.now()
   while (Date.now() - start < maxWaitMs) {
     try {

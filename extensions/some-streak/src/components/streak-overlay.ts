@@ -50,6 +50,7 @@ export function createStreakOverlay(): HTMLElement {
         render()
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error loading data:", error)
     }
   }
@@ -136,6 +137,7 @@ export function createStreakOverlay(): HTMLElement {
         updateState(response.data)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error switching category:", error)
     }
   }
@@ -152,6 +154,7 @@ export function createStreakOverlay(): HTMLElement {
         updateState(response.data)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error switching category:", error)
     }
   }
@@ -166,6 +169,7 @@ export function createStreakOverlay(): HTMLElement {
         updateState(response.data)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error switching category:", error)
     }
   }
@@ -184,6 +188,7 @@ export function createStreakOverlay(): HTMLElement {
         updateState(response.data)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error toggling task:", error)
     }
   }
@@ -197,6 +202,7 @@ export function createStreakOverlay(): HTMLElement {
         updateState(response.data)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[Content] Error resetting tasks:", error)
     }
   }

@@ -124,7 +124,6 @@ export const LivestreamTopicNotification: FC<
         const options: TTSOptions = {
           volume: 1.0,
           onStart: (): void => {
-            console.log("onStart was updated and invoked!")
             setIsSpeaking(true)
           },
           onEnd: (): void => {
@@ -139,6 +138,7 @@ export const LivestreamTopicNotification: FC<
             }, 1500)
           },
           onError: (error: Error): void => {
+            // eslint-disable-next-line no-console
             console.error("TTS Error:", error)
             setToastVisible(false)
             setActiveToast(null)
@@ -146,6 +146,7 @@ export const LivestreamTopicNotification: FC<
         }
         await speak(topic.description, options, Infinity)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
         // Fallback to showing toast without speech
         showToastNotification(topic)
@@ -218,7 +219,7 @@ export const LivestreamTopicNotification: FC<
       })
     }, updateIntervalMs)
 
-    return () => {
+    return (): void => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
@@ -237,7 +238,7 @@ export const LivestreamTopicNotification: FC<
 
   // Cleanup timeouts on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (hideToastTimeoutRef.current) {
         clearTimeout(hideToastTimeoutRef.current)
       }
@@ -299,15 +300,15 @@ export const LivestreamTopicNotification: FC<
           {isSpeaking && (
             <div className="absolute right-4 top-1 flex items-center space-x-2">
               <div className="flex space-x-1">
-                <div className="h-2 w-1 animate-pulse bg-red-500"></div>
+                <div className="h-2 w-1 animate-pulse bg-red-500" />
                 <div
                   className="h-2 w-1 animate-pulse bg-red-500"
                   style={{ animationDelay: "0.1s" }}
-                ></div>
+                />
                 <div
                   className="h-2 w-1 animate-pulse bg-red-500"
                   style={{ animationDelay: "0.2s" }}
-                ></div>
+                />
               </div>
               <span className="text-xs text-white">Speaking...</span>
             </div>
@@ -322,9 +323,9 @@ export const LivestreamTopicNotification: FC<
         >
           {activeToast && (
             <div className="relative">
-              <div className="absolute left-0 h-full w-1 bg-red-500"></div>
+              <div className="absolute left-0 h-full w-1 bg-red-500" />
               <div className="relative ml-4">
-                <div className="absolute -left-2 top-1/2 size-2 -translate-y-1/2 rotate-45 transform bg-red-500"></div>
+                <div className="absolute -left-2 top-1/2 size-2 -translate-y-1/2 rotate-45 transform bg-red-500" />
                 <div className="absolute -left-10 top-1/2 -translate-y-1/2 transform">
                   <svg
                     className="size-5 text-red-500"
@@ -337,8 +338,8 @@ export const LivestreamTopicNotification: FC<
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <path d="M5 12h14"></path>
-                    <path d="M12 5l7 7-7 7"></path>
+                    <path d="M5 12h14" />
+                    <path d="M12 5l7 7-7 7" />
                   </svg>
                 </div>
                 <div className="rounded-md border border-gray-800 bg-black bg-opacity-80 px-3 py-2 shadow-lg">
@@ -351,7 +352,7 @@ export const LivestreamTopicNotification: FC<
                     </h3>
                     {isSpeaking && (
                       <div className="ml-2 flex items-center">
-                        <div className="mr-1 size-1 animate-pulse rounded-full bg-green-400"></div>
+                        <div className="mr-1 size-1 animate-pulse rounded-full bg-green-400" />
                         <span className="text-xs text-green-400">Speaking</span>
                       </div>
                     )}

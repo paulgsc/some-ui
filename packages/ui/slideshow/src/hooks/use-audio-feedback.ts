@@ -1,3 +1,4 @@
+import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useEffect, useRef, useState } from "react"
 import type { DialSection } from "@slideshow/types/dial"
 
@@ -9,7 +10,13 @@ type UseAudioFeedbackProps = {
 export function useAudioFeedback({
   sections,
   currentSection,
-}: UseAudioFeedbackProps) {
+}: UseAudioFeedbackProps): {
+  volume: number
+  setVolume: Dispatch<SetStateAction<number>>
+  isMuted: boolean
+  setIsMuted: Dispatch<SetStateAction<boolean>>
+  audioRef: RefObject<HTMLAudioElement | null>
+} {
   const [previousSection, setPreviousSection] = useState<DialSection | null>(
     null
   )

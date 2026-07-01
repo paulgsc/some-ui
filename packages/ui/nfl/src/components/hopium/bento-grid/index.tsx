@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { cn } from "some-ui-utils"
 
 type BentoWireframeProps = {
@@ -27,7 +27,7 @@ export const BentoWireframe = ({
   asideTop,
   asideBottom,
   className,
-}: BentoWireframeProps) => {
+}: BentoWireframeProps): JSX.Element => {
   // Scalable sizing tokens that respond to viewport and container changes
   const pad = "clamp(10px, 1.4vmin, 22px)"
   const gap = "clamp(8px, 1.2vmin, 18px)"
@@ -44,7 +44,7 @@ export const BentoWireframe = ({
       )}
       style={{
         padding: pad,
-        borderRadius: radiusOuter as any,
+        borderRadius: radiusOuter,
         gap,
         gridTemplateRows: "0.22fr 0.24fr 1fr",
       }}
@@ -95,7 +95,7 @@ const Placeholder = ({
   label: string
   radius: string
   emphasis?: boolean
-}) => {
+}): JSX.Element => {
   return (
     <div
       className={cn(
@@ -104,7 +104,7 @@ const Placeholder = ({
         "ring-1 ring-zinc-400/70",
         emphasis ? "bg-amber-50" : "bg-zinc-100"
       )}
-      style={{ borderRadius: radius as any }}
+      style={{ borderRadius: radius }}
       aria-label={`Placeholder ${label}`}
     >
       {label}

@@ -1,7 +1,10 @@
 import type { ComponentProps } from "react"
 import { cn } from "@shared/lib/utils"
 
-const Textarea = ({ className, ...props }: ComponentProps<"textarea">) => {
+const Textarea = ({
+  className,
+  ...props
+}: ComponentProps<"textarea">): React.JSX.Element => {
   return (
     <textarea
       data-slot="textarea"

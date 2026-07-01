@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
@@ -17,7 +18,7 @@ export const SummarySidebar = ({
   summaries,
   currentWeek,
   currentMood,
-}: Props) => {
+}: Props): JSX.Element => {
   return (
     <div className="w-80 shrink-0 space-y-4">
       <Card className="border-white/10 bg-slate-900/70">

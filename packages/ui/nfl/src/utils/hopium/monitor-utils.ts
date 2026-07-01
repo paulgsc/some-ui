@@ -6,7 +6,12 @@ export const getFreshnessColor = (freshness: number): string => {
   return "bg-chart-3"
 }
 
-export const getFreshnessStatus = (freshness: number) => {
+export const getFreshnessStatus = (
+  freshness: number
+): {
+  label: string
+  variant: "default" | "secondary" | "outline" | "destructive"
+} => {
   if (freshness >= 80) return { label: "Fresh", variant: "default" as const }
   if (freshness >= 60) return { label: "Good", variant: "secondary" as const }
   if (freshness >= 40) return { label: "Aging", variant: "outline" as const }
@@ -31,7 +36,7 @@ export const getUrgencyClass = (
 export const calculateGridDimensions = (viewportSize: {
   width: number
   height: number
-}) => {
+}): { cols: number; rows: number; maxItems: number } => {
   const headerHeight = 200 // Approximate header + stats height
   const availableHeight = viewportSize.height - headerHeight - 48 // 48px for padding
   const availableWidth = viewportSize.width - 48 // 48px for padding

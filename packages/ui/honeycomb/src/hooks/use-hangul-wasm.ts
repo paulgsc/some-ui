@@ -38,7 +38,7 @@ export function useHangulGameWasm({
 
   const initializedRef = useRef(false)
 
-  const initialize = async () => {
+  const initialize = async (): Promise<void> => {
     if (initializedRef.current) return
     setIsLoading(true)
     setError(null)
@@ -65,7 +65,7 @@ export function useHangulGameWasm({
   }, [autoStart, config, mode])
 
   // cleanup effect
-  useEffect(() => {
+  useEffect((): (() => void) => {
     return () => {
       // optional: call any WASM destroy methods here
       // clear local refs

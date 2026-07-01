@@ -1,6 +1,18 @@
 import { useRef } from "react"
 
-export const useBlinking = () => {
+type BlinkState = {
+  isBlinking: boolean
+  blinkProgress: number
+  nextBlink: number
+  blinkDuration: number
+}
+
+type UseBlinkingReturn = {
+  blinkState: React.RefObject<BlinkState>
+  updateBlinking: (now: number) => void
+}
+
+export const useBlinking = (): UseBlinkingReturn => {
   const blinkState = useRef({
     isBlinking: false,
     blinkProgress: 0,
@@ -8,7 +20,7 @@ export const useBlinking = () => {
     blinkDuration: 0.12,
   })
 
-  const updateBlinking = (now: number) => {
+  const updateBlinking = (now: number): void => {
     if (now > blinkState.current.nextBlink && !blinkState.current.isBlinking) {
       blinkState.current.isBlinking = true
       blinkState.current.blinkProgress = 0

@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { PackageStatus } from "@resume/types/graveyard"
 import { SunIcon, Zap } from "lucide-react"
 
@@ -5,7 +6,9 @@ type ActivityIndicatorProps = {
   status: PackageStatus
 }
 
-export const ActivityIndicator = ({ status }: ActivityIndicatorProps) => {
+export const ActivityIndicator = ({
+  status,
+}: ActivityIndicatorProps): JSX.Element | null => {
   switch (status.name) {
     case "flourishing":
       return (

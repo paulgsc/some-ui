@@ -3,6 +3,7 @@ import { pushNowPlaying } from "@utils/lib/context/zustand-store"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
   UseWebSocketOptions,
+  UseWebSocketReturn,
   WebSocketManager,
 } from "@utils/lib/hooks/websocket"
 import type { IncomingEvent, OutgoingNowPlayingEvent } from "some-types-utils"
@@ -21,7 +22,9 @@ type UseNowPlayingOptions = Omit<
  *
  * Components can subscribe via `useLatestNowPlaying()`.
  */
-export function useNowPlaying(options: UseNowPlayingOptions) {
+export function useNowPlaying(
+  options: UseNowPlayingOptions
+): UseWebSocketReturn<IncomingEvent, OutgoingNowPlayingEvent> {
   // WebSocket init callback: subscribe to tabMetaData events
   const init = useCallback(async (manager: WebSocketManager) => {
     await manager.sendSerialized({

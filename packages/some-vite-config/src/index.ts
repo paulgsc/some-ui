@@ -27,6 +27,7 @@ export function createViteConfig(
     const packageJsonContent = readFileSync(packageJsonPath, "utf-8")
     pkg = JSON.parse(packageJsonContent)
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn(
       "Could not read package.json, external dependencies will not be automatically detected"
     )
@@ -43,6 +44,7 @@ export function createViteConfig(
     try {
       updatePackageJson(options, packageRoot)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to update package.json:", error)
     }
   }
@@ -75,7 +77,7 @@ export function createViteConfig(
 // Convenience function for common React library setup
 export function createReactLibConfig(
   options: Omit<ViteConfigOptions, "libraryName"> & { libraryName?: string }
-) {
+): UserConfig {
   return createViteConfig({
     ...options,
     libraryName:
@@ -88,6 +90,6 @@ export function createReactLibConfig(
 export function syncPackageJson(
   options: ViteConfigOptions,
   packageRoot: string = process.cwd()
-) {
+): Record<string, any> {
   return updatePackageJson(options, packageRoot)
 }

@@ -76,7 +76,7 @@ const BreadcrumbSeparator = ({
   children,
   className,
   ...props
-}: ComponentProps<"li">) => (
+}: ComponentProps<"li">): React.JSX.Element => (
   <li
     role="presentation"
     aria-hidden="true"
@@ -91,7 +91,7 @@ BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
 const BreadcrumbEllipsis = ({
   className,
   ...props
-}: ComponentProps<"span">) => (
+}: ComponentProps<"span">): React.JSX.Element => (
   <span
     role="presentation"
     aria-hidden="true"

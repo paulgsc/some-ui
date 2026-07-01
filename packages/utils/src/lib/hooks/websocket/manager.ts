@@ -64,7 +64,7 @@ export class WebSocketManager {
     private readonly options: WebSocketManagerOptions = {}
   ) {
     this.refCounter = new ReferenceCounter({
-      onZero: () => this.dispose(),
+      onZero: (): void => this.dispose(),
     })
   }
 
@@ -80,6 +80,7 @@ export class WebSocketManager {
 
   private log(...args: Array<unknown>): void {
     if (this.options.debugMode) {
+      // eslint-disable-next-line no-console
       console.log(`[WebSocket ${this.url}]`, ...args)
     }
   }
@@ -233,7 +234,7 @@ export class WebSocketManager {
       try {
         this.socket = new WebSocket(this.url)
 
-        this.socket.onopen = () => {
+        this.socket.onopen = (): void => {
           this.log("Connected")
           this.reconnectAttempts = 0
           this.updateSnapshot({ reconnectAttempts: 0 })
@@ -243,7 +244,7 @@ export class WebSocketManager {
           resolve()
         }
 
-        this.socket.onmessage = (event) => {
+        this.socket.onmessage = (event): void => {
           try {
             const data = JSON.parse(event.data)
             this.messageListeners.notify(data)
@@ -257,7 +258,7 @@ export class WebSocketManager {
           }
         }
 
-        this.socket.onclose = () => {
+        this.socket.onclose = (): void => {
           this.log("Disconnected")
           this.connectionListeners.notify(false)
           this.updateSnapshot({ isConnected: false })
@@ -289,7 +290,7 @@ export class WebSocketManager {
           }
         }
 
-        this.socket.onerror = (error) => {
+        this.socket.onerror = (error): void => {
           this.log("Connection error:", error)
           this.errorListeners.notify(error)
           this.updateSnapshot({ error: "WebSocket connection error" })
@@ -377,7 +378,7 @@ export class WebSocketManager {
    * Send a message immediately (not serialized)
    */
   sendMessage(message: unknown): void {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket is not connected")
     }
     this.socket.send(JSON.stringify(message))

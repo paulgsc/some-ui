@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useRef } from "react"
 import { GanttChapters } from "@slideshow/components/video-gantt-chart/gantt-chapters"
 import { GanttPositionIndicator } from "@slideshow/components/video-gantt-chart/gantt-indicator"
@@ -33,7 +34,7 @@ export const GanttTimeline = ({
   formatTime,
   onJumpToTimestamp,
   className,
-}: GanttTimelineProps) => {
+}: GanttTimelineProps): JSX.Element => {
   const timelineRef = useRef<HTMLDivElement>(null)
   const subChapters = chapters.flatMap((chapter) => chapter.subChapters)
 

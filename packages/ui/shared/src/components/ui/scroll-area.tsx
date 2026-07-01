@@ -6,7 +6,7 @@ const ScrollArea = ({
   className,
   children,
   ...props
-}: ComponentProps<typeof ScrollAreaPrimitive.Root>) => {
+}: ComponentProps<typeof ScrollAreaPrimitive.Root>): React.JSX.Element => {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -29,7 +29,9 @@ const ScrollBar = ({
   className,
   orientation = "vertical",
   ...props
-}: ComponentProps<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>) => {
+}: ComponentProps<
+  typeof ScrollAreaPrimitive.ScrollAreaScrollbar
+>): React.JSX.Element => {
   return (
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       data-slot="scroll-area-scrollbar"

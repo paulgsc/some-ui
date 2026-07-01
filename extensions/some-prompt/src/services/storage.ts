@@ -20,6 +20,7 @@ export class StorageService {
       const result = await chrome.storage.sync.get("settings")
       return { ...DEFAULT_SETTINGS, ...result.settings }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to load settings, using defaults:", error)
       return DEFAULT_SETTINGS
     }
@@ -33,6 +34,7 @@ export class StorageService {
       const newSettings = { ...currentSettings, ...settings }
       await chrome.storage.sync.set({ settings: newSettings })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to save settings:", error)
       throw error
     }
@@ -42,6 +44,7 @@ export class StorageService {
     try {
       await chrome.storage.sync.set({ settings: DEFAULT_SETTINGS })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to reset settings:", error)
       throw error
     }

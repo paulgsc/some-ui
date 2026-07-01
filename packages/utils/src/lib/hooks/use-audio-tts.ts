@@ -56,6 +56,7 @@ export function useAudioTTS(
       const currentOptions = optionsRef.current
 
       if (!text.trim() || !selectedVoice) {
+        // eslint-disable-next-line no-console
         console.warn("Cannot speak: text is empty or no voice selected")
         return
       }
@@ -70,6 +71,7 @@ export function useAudioTTS(
 
         await audioSpeech.play(audioData)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("TTS speak error:", error)
         const errorObj =
           error instanceof Error ? error : new Error("TTS failed")

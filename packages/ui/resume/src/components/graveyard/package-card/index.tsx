@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { ActivityIndicator } from "@resume/components/graveyard/activity-indicator"
 import type { Package } from "@resume/types/graveyard"
 import { formatDate } from "@resume/utils/graveyard"
@@ -9,7 +10,7 @@ type PackageCardProps = {
   pkg: Package
 }
 
-export const PackageCard = ({ pkg }: PackageCardProps) => {
+export const PackageCard = ({ pkg }: PackageCardProps): JSX.Element => {
   const StatusIcon = pkg.status.icon
 
   return (

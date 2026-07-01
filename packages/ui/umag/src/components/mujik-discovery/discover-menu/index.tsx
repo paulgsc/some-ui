@@ -78,7 +78,7 @@ const discoveryModes: Array<DiscoveryModeConfig> = [
   },
 ]
 
-export const DropdownMenuDemo = () => {
+export const DropdownMenuDemo = (): React.JSX.Element => {
   const [selectedMode, setSelectedMode] = useState<DiscoveryModeConfig | null>(
     null
   )

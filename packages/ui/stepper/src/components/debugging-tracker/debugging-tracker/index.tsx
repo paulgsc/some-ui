@@ -1,10 +1,11 @@
+import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import {
   AngledEnergyBar,
   GlassyHeart,
 } from "@stepper/components/debugging-tracker"
 
-export function DebuggingTracker() {
+export const DebuggingTracker = (): JSX.Element => {
   const [rustHealth, setRustHealth] = useState(92)
   const [tsHealth, setTsHealth] = useState(95)
   const [sessionTime, setSessionTime] = useState({
@@ -37,7 +38,7 @@ export function DebuggingTracker() {
       })
     }, 1000)
 
-    return () => clearInterval(interval)
+    return (): void => clearInterval(interval)
   }, [])
 
   // Simulate health changes and error flicker
@@ -51,7 +52,7 @@ export function DebuggingTracker() {
       )
     }, 3000)
 
-    return () => clearInterval(healthInterval)
+    return (): void => clearInterval(healthInterval)
   }, [])
 
   // CRT flicker effect on error events
@@ -63,7 +64,7 @@ export function DebuggingTracker() {
       }
     }, 5000)
 
-    return () => clearInterval(flickerInterval)
+    return (): void => clearInterval(flickerInterval)
   }, [])
 
   useEffect(() => {
@@ -71,10 +72,10 @@ export function DebuggingTracker() {
       setActiveLang((prev) => (prev === "rust" ? "typescript" : "rust"))
     }, 8000)
 
-    return () => clearInterval(langInterval)
+    return (): void => clearInterval(langInterval)
   }, [])
 
-  const formatTime = (num: number) => String(num).padStart(2, "0")
+  const formatTime = (num: number): string => String(num).padStart(2, "0")
 
   const bgGradient =
     activeLang === "rust"

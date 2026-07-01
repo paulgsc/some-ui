@@ -4,13 +4,13 @@ import { cn } from "@shared/lib/utils"
 
 const Popover = ({
   ...props
-}: ComponentProps<typeof PopoverPrimitive.Root>) => {
+}: ComponentProps<typeof PopoverPrimitive.Root>): React.JSX.Element => {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
 const PopoverTrigger = ({
   ...props
-}: ComponentProps<typeof PopoverPrimitive.Trigger>) => {
+}: ComponentProps<typeof PopoverPrimitive.Trigger>): React.JSX.Element => {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
 }
 
@@ -19,7 +19,7 @@ const PopoverContent = ({
   align = "center",
   sideOffset = 4,
   ...props
-}: ComponentProps<typeof PopoverPrimitive.Content>) => {
+}: ComponentProps<typeof PopoverPrimitive.Content>): React.JSX.Element => {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -38,7 +38,7 @@ const PopoverContent = ({
 
 const PopoverAnchor = ({
   ...props
-}: ComponentProps<typeof PopoverPrimitive.Anchor>) => {
+}: ComponentProps<typeof PopoverPrimitive.Anchor>): React.JSX.Element => {
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
 }
 

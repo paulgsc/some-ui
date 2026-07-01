@@ -24,7 +24,7 @@ export class NodePanel {
   private lastSeenEl: HTMLElement | null = null
   private gateFillEl: HTMLElement | null = null
   private gateLabelEl: HTMLElement | null = null
-  private outcomeBtns: HTMLElement[] = []
+  private outcomeBtns: Array<HTMLElement> = []
   private outcomeBarFills: Record<Outcome, HTMLElement | null> = {
     Progress: null,
     Stuck: null,
