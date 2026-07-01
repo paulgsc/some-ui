@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { Editor } from "@input/components/payload-editor/editor"
 import type { EventType } from "@input/types/timeline-events"
 import { getEventRequirements } from "@input/utils/event-helpers"
@@ -23,7 +24,7 @@ export const PayloadEditorCard = ({
   onPayloadJsonChange,
   metadataJson,
   onMetadataJsonChange,
-}: PayloadEditorCardProps) => {
+}: PayloadEditorCardProps): JSX.Element => {
   const requirements = getEventRequirements(eventType)
   const showPayloadEditor =
     requirements.needsPayload || requirements.needsFinalPayload

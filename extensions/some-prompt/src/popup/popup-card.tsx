@@ -25,7 +25,7 @@ const Popup: FC = () => {
     loadSettings()
   }, [])
 
-  const loadSettings = async () => {
+  const loadSettings = async (): Promise<void> => {
     try {
       const message: BackgroundMessage = { type: "GET_SETTINGS" }
       const response: BackgroundResponse =
@@ -43,7 +43,9 @@ const Popup: FC = () => {
     }
   }
 
-  const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
+  const updateSettings = async (
+    newSettings: Partial<ExtensionSettings>
+  ): Promise<void> => {
     setSaving(true)
     try {
       const message: BackgroundMessage = {
@@ -66,32 +68,32 @@ const Popup: FC = () => {
     }
   }
 
-  const showMessage = (type: "success" | "error", text: string) => {
+  const showMessage = (type: "success" | "error", text: string): void => {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 3000)
   }
 
-  const handleToggleEnabled = () => {
+  const handleToggleEnabled = (): void => {
     updateSettings({ enabled: !settings.enabled })
   }
 
-  const handleMaxLengthChange = (value: number) => {
+  const handleMaxLengthChange = (value: number): void => {
     if (value >= settings.minUtteranceLength && value <= 1000) {
       updateSettings({ maxUtteranceLength: value })
     }
   }
 
-  const handleMinLengthChange = (value: number) => {
+  const handleMinLengthChange = (value: number): void => {
     if (value >= 1 && value <= settings.maxUtteranceLength) {
       updateSettings({ minUtteranceLength: value })
     }
   }
 
-  const handleServerUrlChange = (url: string) => {
+  const handleServerUrlChange = (url: string): void => {
     updateSettings({ serverUrl: url })
   }
 
-  const handleThrottleChange = (value: number) => {
+  const handleThrottleChange = (value: number): void => {
     if (value >= 100 && value <= 5000) {
       updateSettings({ postThrottleMs: value })
     }

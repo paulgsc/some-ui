@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react"
 import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
   UseWebSocketOptions,
+  UseWebSocketReturn,
   WebSocketManager,
 } from "@utils/lib/hooks/websocket"
 import type {
@@ -37,12 +38,15 @@ export const defaultPrompt: UtterancePrompt = {
   },
 }
 
-export function useUtterance(options: UseUtteranceOptions) {
+export function useUtterance(options: UseUtteranceOptions): UseWebSocketReturn<
+  IncomingEvent,
+  UtteranceEvents
+> & {
+  prompt: UtterancePrompt
+} {
   const [prompt, setPrompt] = useState<UtterancePrompt>(defaultPrompt)
 
   const init = useCallback(async (manager: WebSocketManager) => {
-    console.log("🗣️ Utterance init (atomic, singleton)")
-
     await manager.sendSerialized({
       type: "subscribe",
       event_types: ["utterance"],

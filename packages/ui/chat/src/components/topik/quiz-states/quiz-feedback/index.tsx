@@ -23,7 +23,7 @@ export const QuizFeedback = ({
   correctAnswer,
   explanation,
   grammarNote,
-}: QuizFeedbackProps) => {
+}: QuizFeedbackProps): React.JSX.Element => {
   return (
     <Card className="h-full border-2 flex flex-col">
       {/* Progress Bar */}

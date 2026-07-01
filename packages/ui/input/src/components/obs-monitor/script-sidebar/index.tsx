@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import {
   Clock,
@@ -28,7 +29,7 @@ type ScriptSidebarProps = {
 export const ScriptSidebar = ({
   selectedScript,
   onScriptSelect,
-}: ScriptSidebarProps) => {
+}: ScriptSidebarProps): JSX.Element => {
   const [searchQuery, setSearchQuery] = useState("")
 
   // Mock script data

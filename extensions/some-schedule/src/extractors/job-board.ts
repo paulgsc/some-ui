@@ -119,7 +119,7 @@ export class JobBoardExtractor implements Extractor {
     const descText = descEl?.textContent?.trim() ?? metaSummary()
 
     // Extract seniority level
-    const fullText = (roleTitle + " " + descText).toLowerCase()
+    const fullText = `${roleTitle} ${descText}`.toLowerCase()
     const seniority = SENIORITY_TERMS.filter((t) => fullText.includes(t))
 
     // Extract tech keywords from description

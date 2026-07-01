@@ -131,6 +131,7 @@ async function getData(): Promise<StorageData> {
       return JSON.parse(result[STORAGE_KEY])
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("[Background] Error loading data:", error)
   }
 
@@ -146,8 +147,8 @@ async function saveData(data: StorageData): Promise<void> {
     await browser.storage.local.set({
       [STORAGE_KEY]: JSON.stringify(data),
     })
-    console.log("[Background] Data saved successfully")
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("[Background] Error saving data:", error)
   }
 }
@@ -201,9 +202,6 @@ async function autoCompleteTask(
     data.lastActivity = new Date().toISOString()
 
     await saveData(data)
-    console.log(
-      `[Background] Auto-completed task ${taskId} in category ${categoryId}`
-    )
   }
 
   return data
@@ -265,7 +263,6 @@ async function checkAndResetDaily(): Promise<void> {
     now.getDate() !== last.getDate()
 
   if (isDifferentDay) {
-    console.log("[Background] New day detected, resetting tasks")
     await resetAllTasks()
   }
 }
@@ -291,6 +288,7 @@ async function broadcastUpdate(data: StorageData): Promise<void> {
         })
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("[Background] Error broadcasting update:", error)
   }
 }
@@ -356,6 +354,7 @@ browser.runtime.onMessage.addListener(
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error"
+        // eslint-disable-next-line no-console
         console.error("[Background] Error handling message:", err)
         sendResponse({ success: false, error: msg })
       }
@@ -370,10 +369,8 @@ browser.runtime.onMessage.addListener(
  * ----------------------------------------------------- */
 
 async function init(): Promise<void> {
-  console.log("[Background] Initializing...")
   await checkAndResetDaily()
   setInterval(checkAndResetDaily, 60 * 60 * 1000)
-  console.log("[Background] Ready")
 }
 
 init()

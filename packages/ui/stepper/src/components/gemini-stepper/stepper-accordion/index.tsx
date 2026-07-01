@@ -84,7 +84,7 @@ const AccordionContent = forwardRef<
       className
     )}
     {...props}
-  ></AccordionPrimitive.Content>
+  />
 ))
 
 AccordionContent.displayName = AccordionPrimitive.Content.displayName

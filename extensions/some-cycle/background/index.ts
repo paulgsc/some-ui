@@ -31,6 +31,7 @@ class TaskTracker {
       this.lastPingTime = now
       return await response.json()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to ping backend, using dummy data:", error)
       return this.getDummyTaskEvent()
     }
@@ -85,7 +86,7 @@ class TaskTracker {
     }
   }
 
-  async handleTaskEvent(event: TaskEvent) {
+  async handleTaskEvent(event: TaskEvent): Promise<void> {
     if (event.type === "none") return
 
     // Store the event for popup and content script access
@@ -119,7 +120,7 @@ class TaskTracker {
     }
   }
 
-  private async notifyContentScripts(event: TaskEvent) {
+  private async notifyContentScripts(event: TaskEvent): Promise<void> {
     try {
       const tabs = await browser.tabs.query({})
       tabs.forEach((tab) => {
@@ -135,6 +136,7 @@ class TaskTracker {
         }
       })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to notify content scripts:", error)
     }
   }

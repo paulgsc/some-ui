@@ -66,7 +66,8 @@ function addImportExtensions(content: string, extension = "js"): string {
 function readFiles(dirname: string, onFileContent, onError) {
   fs.readdirSync(dirname, { withFileTypes: true }).forEach((entry) => {
     if (entry.isDirectory()) {
-      return readFiles(dirname + entry.name + "/", onFileContent, onError)
+      readFiles(`${dirname + entry.name}/`, onFileContent, onError)
+      return
     }
 
     fs.readFile(dirname + entry.name, "utf-8", (error, content) => {

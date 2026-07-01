@@ -16,7 +16,7 @@ let activityTracker: ReturnType<typeof createActivityTracker> | null = null
 /**
  * Initialize the content script
  */
-function init() {
+function init(): void {
   // Wait for DOM to be ready
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
@@ -32,10 +32,9 @@ function init() {
 /**
  * Inject the streak overlay into the page
  */
-function injectOverlay() {
+function injectOverlay(): void {
   // Check if overlay already exists (prevent duplicates)
   if (document.querySelector(".streak-overlay")) {
-    console.log("Streak overlay already exists")
     return
   }
 
@@ -43,8 +42,8 @@ function injectOverlay() {
     // Create and inject the overlay
     const overlay = createStreakOverlay()
     document.body.appendChild(overlay)
-    console.log("Streak overlay injected successfully")
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Failed to inject streak overlay:", error)
   }
 }
@@ -52,19 +51,18 @@ function injectOverlay() {
 /**
  * Initialize activity tracking for automatic task completion
  */
-function initActivityTracking() {
+function initActivityTracking(): void {
   const config = getMatchingConfig()
 
   if (!config) {
-    console.log("[Content] No activity tracking config for this page")
     return
   }
 
   try {
     activityTracker = createActivityTracker(config)
     activityTracker.init()
-    console.log("[Content] Activity tracking initialized")
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("[Content] Failed to initialize activity tracking:", error)
   }
 }

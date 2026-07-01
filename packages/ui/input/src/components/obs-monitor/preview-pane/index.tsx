@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import {
   Activity,
@@ -21,11 +22,14 @@ type PreviewPaneProps = {
   currentTime: number
 }
 
-export const PreviewPane = ({ currentTime }: PreviewPaneProps) => {
+export const PreviewPane = ({ currentTime }: PreviewPaneProps): JSX.Element => {
   const [previewMode, setPreviewMode] = useState<"live" | "staging">("staging")
 
   // Mock current state based on timeline
-  const getCurrentState = () => {
+  const getCurrentState = (): {
+    scene: string
+    sources: Array<{ name: string; active: boolean; muted: boolean }>
+  } => {
     if (currentTime < 5) {
       return {
         scene: "Intro Scene",

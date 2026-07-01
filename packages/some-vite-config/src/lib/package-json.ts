@@ -90,7 +90,7 @@ export function generatePackageJsonFields(
 export function updatePackageJson(
   options: ViteConfigOptions,
   packageRoot: string = process.cwd()
-) {
+): Record<string, any> {
   const packageJsonPath = resolve(packageRoot, "package.json")
 
   try {
@@ -112,14 +112,16 @@ export function updatePackageJson(
     // Write back to package.json with pretty formatting
     writeFileSync(
       packageJsonPath,
-      JSON.stringify(updatedPackageJson, null, 2) + "\n"
+      `${JSON.stringify(updatedPackageJson, null, 2)}\n`
     )
 
+    // eslint-disable-next-line no-console
     console.log(
       `📦 Updated package.json with build configuration for ${options.packageName}`
     )
     return updatedPackageJson
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(`Failed to update package.json: ${error}`)
     throw error
   }

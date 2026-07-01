@@ -22,7 +22,8 @@ type BatchCreateRequest = {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-async function seedMoodEvents() {
+async function seedMoodEvents(): Promise<void> {
+  // eslint-disable-next-line no-console
   console.log("🏈 Seeding 49ers mood events for Brock Purdy 2025 season...")
 
   try {
@@ -35,12 +36,14 @@ async function seedMoodEvents() {
     const rawData = fs.readFileSync(dataPath, "utf-8")
     const data: BatchCreateRequest = JSON.parse(rawData)
 
+    // eslint-disable-next-line no-console
     console.log(`📊 Loaded ${data.events.length} mood events`)
 
     // API endpoint - adjust as needed
     const API_BASE = process.env.API_BASE_URL || "http://localhost:3000"
     const endpoint = `${API_BASE}/mood_events/batch`
 
+    // eslint-disable-next-line no-console
     console.log(`🚀 Posting to ${endpoint}`)
 
     // Make the batch create request
@@ -65,19 +68,25 @@ async function seedMoodEvents() {
       throw new Error("Unexpected response format")
     }
 
+    // eslint-disable-next-line no-console
     console.log("✅ Successfully created mood events!")
+    // eslint-disable-next-line no-console
     console.log(`📈 Created ${result.length} events`)
 
     // Log sample events
+    // eslint-disable-next-line no-console
     console.log("\n🎯 Sample events created:")
     result.slice(0, 3).forEach((event: any) => {
+      // eslint-disable-next-line no-console
       console.log(
         `  Week ${event.week}: ${event.label} (${event.delta > 0 ? "+" : ""}${event.delta})`
       )
     })
 
+    // eslint-disable-next-line no-console
     console.log("\n🏆 Brock Purdy season mood tracker is ready!")
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(
       "❌ Failed to seed mood events:",
       error instanceof Error ? error.message : error

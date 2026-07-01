@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react"
 
+type UseAudioPlaybackReturn = {
+  isPlaying: boolean
+  togglePlay: () => void
+}
+
 export function useAudioPlayback(
   audioElement: HTMLAudioElement | null,
   audioContext: AudioContext | null
-) {
+): UseAudioPlaybackReturn {
   const [isPlaying, setIsPlaying] = useState(false)
 
-  const togglePlay = () => {
+  const togglePlay = (): void => {
     if (!audioElement) return
 
     if (audioContext?.state === "suspended") {
@@ -24,10 +29,10 @@ export function useAudioPlayback(
   useEffect(() => {
     if (!audioElement) return
 
-    const handleEnded = () => setIsPlaying(false)
+    const handleEnded = (): void => setIsPlaying(false)
     audioElement.addEventListener("ended", handleEnded)
 
-    return () => {
+    return (): void => {
       audioElement.removeEventListener("ended", handleEnded)
     }
   }, [audioElement])

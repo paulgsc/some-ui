@@ -8,7 +8,7 @@ type StorageOptions = {
 }
 
 // Example component demonstrating the refactored hook
-export const AudioStorageExample = () => {
+export const AudioStorageExample = (): React.JSX.Element => {
   const [inputText, setInputText] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Array<string>>([])
@@ -36,6 +36,7 @@ export const AudioStorageExample = () => {
       staleTime: 10 * 60 * 1000, // 10 minutes
       cacheTime: 20 * 60 * 1000, // 20 minutes
       onError: (error) => {
+        // eslint-disable-next-line no-console
         console.error("Audio storage error:", error)
         // You could show a toast notification here
       },
@@ -73,6 +74,7 @@ export const AudioStorageExample = () => {
     try {
       await speak(inputText)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to speak:", error)
     }
   }, [inputText, speak])
@@ -85,12 +87,15 @@ export const AudioStorageExample = () => {
       const results = await searchAudio(searchQuery)
       setSearchResults(results)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Search failed:", error)
     }
   }, [searchQuery, searchAudio])
 
   // Handle voice selection
-  const handleVoiceChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleVoiceChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ): void => {
     const voiceId = event.target.value
     const voice = voices.find((v) => (v.id || v.name) === voiceId)
     if (voice) {
@@ -99,7 +104,9 @@ export const AudioStorageExample = () => {
   }
 
   // Handle volume change
-  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVolumeChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void => {
     const volume = parseFloat(event.target.value)
     setVolume(volume)
     // Also update the hook's options if you want to persist this
@@ -109,7 +116,7 @@ export const AudioStorageExample = () => {
   // Handle playback rate change
   const handlePlaybackRateChange = (
     event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  ): void => {
     const rate = parseFloat(event.target.value)
     setPlaybackRate(rate)
     updateOptions({ playbackRate: rate })

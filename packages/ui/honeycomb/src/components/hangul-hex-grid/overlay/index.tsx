@@ -68,9 +68,8 @@ export const HangulHexGrid = ({
     volume: 0.5,
   })
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const handler = (_e: KeyboardEvent): void => {
-      console.log("[audio] global keydown → unlock")
       unlockAudio()
       window.removeEventListener("keydown", handler)
     }
@@ -86,11 +85,13 @@ export const HangulHexGrid = ({
     onComplete: (status) => {
       playSound("game_complete")
       setIsPaused(true)
+      // eslint-disable-next-line no-console
       console.log("🎉 Game completed!", status)
     },
     onTimeout: (status) => {
       playSound("game_timeout")
       setIsPaused(true)
+      // eslint-disable-next-line no-console
       console.log("⏰ Time ran out!", status)
     },
   })
@@ -105,7 +106,6 @@ export const HangulHexGrid = ({
     setTimingParams,
     playSound,
     onBoardFull: () => {
-      console.warn("Board is full!")
       playSound("board_full")
     },
   })

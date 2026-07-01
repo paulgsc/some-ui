@@ -16,7 +16,7 @@ type RecordingPhaseProps = {
 export const RecordingPhase = ({
   question,
   onComplete,
-}: RecordingPhaseProps) => {
+}: RecordingPhaseProps): React.JSX.Element => {
   const {
     state,
     elapsedTime,
@@ -201,15 +201,13 @@ export const RecordingPhase = ({
 
               {/* Success */}
               {state.type === "success" && (
-                <>
-                  <div className="w-full space-y-4">
-                    <AudioPlayer url={state.audioUrl} />
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Uploading and transcribing...</span>
-                    </div>
+                <div className="w-full space-y-4">
+                  <AudioPlayer url={state.audioUrl} />
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Uploading and transcribing...</span>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Error */}

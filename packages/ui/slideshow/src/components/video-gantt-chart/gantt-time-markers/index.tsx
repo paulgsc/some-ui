@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { GanttBaseProps } from "@slideshow/types/gantt"
 
 type GanttTimeMarkersProps = {
@@ -14,7 +15,7 @@ export const GanttTimeMarkers = ({
   totalDuration,
   formatTime,
   markerInterval = 600, // Default 10 minutes
-}: GanttTimeMarkersProps) => {
+}: GanttTimeMarkersProps): JSX.Element => {
   // Calculate number of markers needed
   const markerCount = Math.ceil(totalDuration / markerInterval) + 1
 
@@ -30,7 +31,7 @@ export const GanttTimeMarkers = ({
             transform: "translateX(-50%)",
           }}
         >
-          <div className="h-3 w-px bg-gray-700"></div>
+          <div className="h-3 w-px bg-gray-700" />
           <div className="mt-1">{formatTime(i * markerInterval)}</div>
         </div>
       ))}

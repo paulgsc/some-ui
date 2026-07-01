@@ -26,6 +26,7 @@ const PopupBridge = ({ state }: PopupBridgeProps) => {
     if (containerRef.current) {
       // Mock dispatch since stories are static views
       const mockDispatch = (action: any) =>
+        // eslint-disable-next-line no-console
         console.log("Action dispatched:", action)
 
       // The refactored view expects a #root element to exist [cite: 110]

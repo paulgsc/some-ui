@@ -41,7 +41,7 @@ export const useKeyboardInput = ({
   setLastPoints,
   setAmbiguousCharacters,
   playSound,
-}: UseKeyboardInputProps) => {
+}: UseKeyboardInputProps): void => {
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
 

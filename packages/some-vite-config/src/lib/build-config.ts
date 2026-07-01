@@ -5,7 +5,14 @@ import type { ViteConfigOptions } from "../types/index.js"
 export function createBuildConfig(
   options: ViteConfigOptions,
   packageRoot: string
-) {
+): {
+  lib: {
+    entry: string
+    name: string
+    fileName: (format: string) => string
+    formats: NonNullable<ViteConfigOptions["formats"]>
+  }
+} {
   const {
     packageName,
     entry = "src/index.ts",

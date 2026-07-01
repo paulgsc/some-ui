@@ -121,14 +121,14 @@ async function init(): Promise<void> {
 
   // ── HUD ────────────────────────────────────────────────────────────────────
   const hud = new FloatingHUD({
-    onSegmentSelect: async (segment: Segment) => {
+    onSegmentSelect: async (segment: Segment): Promise<void> => {
       const tabId = await resolveTabId()
       if (!tabId) return
       await sendMessage({ type: "SET_SEGMENT", tabId, segment })
       await poll(tabId, hud, banner)
     },
 
-    onOutcomeRegister: async (outcome: Outcome) => {
+    onOutcomeRegister: async (outcome: Outcome): Promise<void> => {
       const tabId = await resolveTabId()
       if (!tabId) return
 

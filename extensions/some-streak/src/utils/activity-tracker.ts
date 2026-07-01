@@ -20,7 +20,11 @@ type ActivitySession = {
 /**
  * Creates an activity tracker for a specific configuration
  */
-export function createActivityTracker(config: ActivityConfig) {
+export function createActivityTracker(config: ActivityConfig): {
+  init: () => Promise<void>
+  cleanup: () => void
+  getSessionInfo: () => ActivitySession | null
+} {
   let session: ActivitySession | null = null
   let checkInterval: number | null = null
 
@@ -55,7 +59,6 @@ export function createActivityTracker(config: ActivityConfig) {
       isActive: true,
     }
 
-    console.log(`[ActivityTracker] Session started for ${config.categoryId}`)
     startChecking()
   }
 
@@ -76,8 +79,6 @@ export function createActivityTracker(config: ActivityConfig) {
 
     session.isActive = false
     stopChecking()
-
-    console.log(`[ActivityTracker] Session stopped for ${config.categoryId}`)
   }
 
   /**
@@ -89,10 +90,6 @@ export function createActivityTracker(config: ActivityConfig) {
     const elapsed = Date.now() - session.startTime
 
     if (elapsed >= config.durationMs) {
-      console.log(
-        `[ActivityTracker] Duration requirement met for ${config.categoryId}`
-      )
-
       // Notify background to complete the task
       try {
         const response = await browser.runtime.sendMessage({
@@ -102,13 +99,11 @@ export function createActivityTracker(config: ActivityConfig) {
         })
 
         if (response.success) {
-          console.log(
-            `[ActivityTracker] Task completed successfully, stopping all tracking`
-          )
           stopSession()
           cleanup()
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("[ActivityTracker] Error completing task:", error)
       }
     }
@@ -127,6 +122,7 @@ export function createActivityTracker(config: ActivityConfig) {
 
       return response.success && response.isCompleted
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("[ActivityTracker] Error checking task status:", error)
       return false
     }
@@ -162,22 +158,14 @@ export function createActivityTracker(config: ActivityConfig) {
    */
   const init = async (): Promise<void> => {
     if (!matchesConfig()) {
-      console.log(
-        `[ActivityTracker] Page does not match config for ${config.categoryId}`
-      )
       return
     }
 
     // Check if task is already completed before starting
     const isCompleted = await checkTaskCompletion()
     if (isCompleted) {
-      console.log(
-        `[ActivityTracker] Task already completed for ${config.categoryId}, skipping tracking`
-      )
       return
     }
-
-    console.log(`[ActivityTracker] Initialized for ${config.categoryId}`)
 
     // Start session on page load
     startSession()

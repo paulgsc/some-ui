@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { SatelliteDataItem } from "@nfl/types/hopium/hopium-tracker"
 import { getFreshnessStatus } from "@nfl/utils/hopium/monitor-utils"
 import { RefreshCw } from "lucide-react"
@@ -24,7 +25,7 @@ export function DetailModal<T>({
   isOpen,
   onClose,
   onRefresh,
-}: DetailModalProps<T>) {
+}: DetailModalProps<T>): JSX.Element | null {
   if (!item) return null
 
   const mockData = item.data as any // Type assertion for mock data structure

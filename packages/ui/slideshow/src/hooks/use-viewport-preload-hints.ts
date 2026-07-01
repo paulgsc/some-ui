@@ -30,7 +30,7 @@ export function useViewportPreloadHints<K extends string>({
   cursor,
   facesAhead,
   registry,
-}: UseViewportPreloadHintsArgs<K>) {
+}: UseViewportPreloadHintsArgs<K>): void {
   // Create a stable key that changes only when the actual kinds change
   const preloadKey = useMemo(() => {
     const { items, faceCapacity } = viewportConfig

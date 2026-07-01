@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { PackageCard } from "@resume/components/graveyard/package-card"
 import type { Repository } from "@resume/types/graveyard"
 import { ChevronDown, ChevronUp, Package } from "lucide-react"
@@ -13,7 +14,7 @@ export const RepositoryColumn = ({
   repo,
   sortBy,
   toggleRepo,
-}: RepositoryColumnProps) => {
+}: RepositoryColumnProps): JSX.Element => {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div

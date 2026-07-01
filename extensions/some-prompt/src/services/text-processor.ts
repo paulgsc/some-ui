@@ -62,7 +62,7 @@ export class TextProcessor {
     }
 
     // Fallback: truncate at word boundary (natural behavior now)
-    return truncatedWords.join(" ").trim() + "..."
+    return `${truncatedWords.join(" ").trim()}...`
   }
 
   /**

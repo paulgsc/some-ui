@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { SlideData, Status } from "."
 import { createCodeSlide, createStatusCardSlide, Slideshow } from "."
 
-export const statusCards: Status[] = [
+export const statusCards: Array<Status> = [
   {
     id: "auth",
     icon: "✅",
@@ -93,7 +93,7 @@ export const codeSnippets = [
   "undefined",
 ]
 
-const createDefaultSlides = (statusCards: Status[]): SlideData[] => [
+const createDefaultSlides = (statusCards: Array<Status>): Array<SlideData> => [
   // Welcome slide
   createCodeSlide(
     "welcome",
@@ -350,7 +350,7 @@ export const MinimalPresentation: Story = {
               Sometimes the most powerful presentations are the ones that say
               the most with the least.
             </p>
-            <div className="mt-12 w-32 h-px bg-gradient-to-r from-transparent via-gray-400 to-transparent mx-auto"></div>
+            <div className="mt-12 w-32 h-px bg-gradient-to-r from-transparent via-gray-400 to-transparent mx-auto" />
           </div>
         ),
       },

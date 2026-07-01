@@ -4,7 +4,9 @@ type WelcomeScreenProps = {
   onStart: () => void
 }
 
-export const WelcomeScreen = ({ onStart }: WelcomeScreenProps) => {
+export const WelcomeScreen = ({
+  onStart,
+}: WelcomeScreenProps): React.JSX.Element => {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <Card className="max-w-2xl w-full p-8 md:p-12 space-y-8 text-center">

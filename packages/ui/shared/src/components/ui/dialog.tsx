@@ -3,32 +3,34 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { cn } from "@shared/lib/utils"
 import { XIcon } from "lucide-react"
 
-const Dialog = ({ ...props }: ComponentProps<typeof DialogPrimitive.Root>) => {
+const Dialog = ({
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Root>): React.JSX.Element => {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
 const DialogTrigger = ({
   ...props
-}: ComponentProps<typeof DialogPrimitive.Trigger>) => {
+}: ComponentProps<typeof DialogPrimitive.Trigger>): React.JSX.Element => {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
 const DialogPortal = ({
   ...props
-}: ComponentProps<typeof DialogPrimitive.Portal>) => {
+}: ComponentProps<typeof DialogPrimitive.Portal>): React.JSX.Element => {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
 const DialogClose = ({
   ...props
-}: ComponentProps<typeof DialogPrimitive.Close>) => {
+}: ComponentProps<typeof DialogPrimitive.Close>): React.JSX.Element => {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
 const DialogOverlay = ({
   className,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Overlay>) => {
+}: ComponentProps<typeof DialogPrimitive.Overlay>): React.JSX.Element => {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
@@ -89,7 +91,10 @@ const DialogContent: FC<DialogContentProps> = ({
   )
 }
 
-const DialogHeader = ({ className, ...props }: ComponentProps<"div">) => {
+const DialogHeader = ({
+  className,
+  ...props
+}: ComponentProps<"div">): React.JSX.Element => {
   return (
     <div
       data-slot="dialog-header"
@@ -99,7 +104,10 @@ const DialogHeader = ({ className, ...props }: ComponentProps<"div">) => {
   )
 }
 
-const DialogFooter = ({ className, ...props }: ComponentProps<"div">) => {
+const DialogFooter = ({
+  className,
+  ...props
+}: ComponentProps<"div">): React.JSX.Element => {
   return (
     <div
       data-slot="dialog-footer"
@@ -115,7 +123,7 @@ const DialogFooter = ({ className, ...props }: ComponentProps<"div">) => {
 const DialogTitle = ({
   className,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Title>) => {
+}: ComponentProps<typeof DialogPrimitive.Title>): React.JSX.Element => {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
@@ -128,7 +136,7 @@ const DialogTitle = ({
 const DialogDescription = ({
   className,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Description>) => {
+}: ComponentProps<typeof DialogPrimitive.Description>): React.JSX.Element => {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"

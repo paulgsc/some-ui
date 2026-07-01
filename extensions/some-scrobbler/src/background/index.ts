@@ -22,21 +22,21 @@ let state: ExtensionState = { ...initialState }
 //
 // State management
 //
-async function loadState() {
+async function loadState(): Promise<void> {
   const saved = await chrome.storage.local.get(["extensionState"])
   if (saved.extensionState) {
     state = { ...state, ...saved.extensionState }
   }
 }
 
-async function saveState() {
+async function saveState(): Promise<void> {
   await chrome.storage.local.set({ extensionState: state })
 }
 
 //
 // Badge handling
 //
-function updateBadge(badge: BadgeStatus) {
+function updateBadge(badge: BadgeStatus): void {
   chrome.action.setBadgeText({ text: badge.text })
   chrome.action.setBadgeBackgroundColor({ color: badge.color })
 }
@@ -44,7 +44,7 @@ function updateBadge(badge: BadgeStatus) {
 //
 // Server communication
 //
-async function sendToServer(metadata: VideoMetadata) {
+async function sendToServer(metadata: VideoMetadata): Promise<void> {
   try {
     const response = await fetch("http://nixos.local:3000/now-playing", {
       method: "POST",
@@ -73,6 +73,7 @@ async function sendToServer(metadata: VideoMetadata) {
     }
 
     updateBadge(BADGES.error)
+    // eslint-disable-next-line no-console
     console.error("Background fetch error:", error)
   }
 
@@ -86,7 +87,7 @@ async function handleMessage(
   message: Message,
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: any) => void
-) {
+): Promise<void> {
   switch (message.type) {
     case "now-playing":
       if (state.isEnabled && message.payload) {
@@ -109,9 +110,8 @@ async function handleMessage(
 //
 // Bootstrap
 //
-async function init() {
+async function init(): Promise<void> {
   chrome.runtime.onInstalled.addListener(() => {
-    console.log("YouTube Now Playing Tracker installed")
     updateBadge(BADGES.enabled)
   })
 

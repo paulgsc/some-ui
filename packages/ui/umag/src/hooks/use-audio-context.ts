@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 
-export function useAudioContext() {
+type UseAudioContextReturn = {
+  audioContext: AudioContext | null
+  analyser: AnalyserNode | null
+  gainNode: GainNode | null
+}
+
+export function useAudioContext(): UseAudioContextReturn {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const gainNodeRef = useRef<GainNode | null>(null)
@@ -19,7 +25,7 @@ export function useAudioContext() {
     analyserRef.current = analyser
     gainNodeRef.current = gainNode
 
-    return () => {
+    return (): void => {
       ctx.close()
     }
   }, [])

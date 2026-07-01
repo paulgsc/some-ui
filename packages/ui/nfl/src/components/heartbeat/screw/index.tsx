@@ -1,4 +1,6 @@
-export const Screw = () => {
+import type { JSX } from "react"
+
+export const Screw = (): JSX.Element => {
   return (
     <g id="screwHead">
       <defs>

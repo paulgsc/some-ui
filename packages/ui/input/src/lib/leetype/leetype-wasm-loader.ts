@@ -32,7 +32,6 @@ export async function loadWasm(): Promise<WasmModule> {
       const wasm = await import("leetype-wasm")
       await wasm.default() // Initialize the WASM module
       wasmModule = wasm as unknown as WasmModule
-      console.log("wasm leetype loaded successfully!")
       return wasmModule
     } catch (error) {
       wasmLoadPromise = null

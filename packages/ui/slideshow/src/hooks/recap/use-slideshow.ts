@@ -10,7 +10,12 @@ export function useSlideshow({
   totalSlides,
   autoAdvanceInterval = 5000,
   pauseDuration = 10000,
-}: UseSlideshowProps) {
+}: UseSlideshowProps): {
+  currentSlide: number
+  goToSlide: (index: number) => void
+  nextSlide: () => void
+  progressKey: number
+} {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [autoAdvance, setAutoAdvance] = useState(true)
   const [progressKey, setProgressKey] = useState(0)
@@ -35,7 +40,7 @@ export function useSlideshow({
   )
 
   // Auto-advance effect
-  useEffect(() => {
+  useEffect((): (() => void) | void => {
     if (!autoAdvance) return
 
     const interval = setInterval(() => {
@@ -46,8 +51,8 @@ export function useSlideshow({
   }, [autoAdvance, autoAdvanceInterval, nextSlide])
 
   // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  useEffect((): (() => void) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault()
         goToSlide((currentSlide + 1) % totalSlides)

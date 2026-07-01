@@ -54,9 +54,8 @@ export default defineConfig({
         },
         chunkFileNames: "[name].js",
         assetFileNames: (assetInfo) => {
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
           if (assetInfo.name === "popup.html") return "popup.html"
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
+
           if (assetInfo.name?.endsWith(".css")) return "styles/[name][extname]"
           return "assets/[name][extname]"
         },

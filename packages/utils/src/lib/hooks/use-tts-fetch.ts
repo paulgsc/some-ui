@@ -159,6 +159,7 @@ const synthesizeTTS = async (
           `TTS request timeout after ${timeout}ms for provider: ${config.provider}`
         )
       }
+      // eslint-disable-next-line no-console
       console.error("TTS synthesis error:", error)
       throw error
     }

@@ -17,6 +17,7 @@ export class ListenerRegistry<T> {
       try {
         listener(data)
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error("Listener error:", err)
       }
     })

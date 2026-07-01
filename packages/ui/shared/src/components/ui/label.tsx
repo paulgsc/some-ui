@@ -5,7 +5,7 @@ import { cn } from "@shared/lib/utils"
 const Label = ({
   className,
   ...props
-}: ComponentProps<typeof LabelPrimitive.Root>) => {
+}: ComponentProps<typeof LabelPrimitive.Root>): React.JSX.Element => {
   return (
     <LabelPrimitive.Root
       data-slot="label"

@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -26,7 +27,17 @@ type PlaybackPhase =
 // HOOKS
 // ============================================================================
 
-const useVideoInsertLifecycle = (onComplete?: () => void) => {
+const useVideoInsertLifecycle = (
+  onComplete?: () => void
+): {
+  phase: PlaybackPhase
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  handlers: {
+    handleEntryComplete: () => void
+    handleVideoEnd: () => void
+    handleExitComplete: () => void
+  }
+} => {
   const [phase, setPhase] = useState<PlaybackPhase>("mounting")
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -35,23 +46,24 @@ const useVideoInsertLifecycle = (onComplete?: () => void) => {
     if (phase === "mounting") {
       // Brief delay for render stabilization
       const timer = setTimeout(() => setPhase("entering"), 50)
-      return () => clearTimeout(timer)
+      return (): void => clearTimeout(timer)
     }
   }, [phase])
 
-  const handleEntryComplete = () => {
+  const handleEntryComplete = (): void => {
     setPhase("playing")
     // Ensure video plays after entry animation
     if (videoRef.current) {
+      // eslint-disable-next-line no-console
       videoRef.current.play().catch(console.error)
     }
   }
 
-  const handleVideoEnd = () => {
+  const handleVideoEnd = (): void => {
     setPhase("exiting")
   }
 
-  const handleExitComplete = () => {
+  const handleExitComplete = (): void => {
     setPhase("complete")
     onComplete()
   }
@@ -67,7 +79,9 @@ const useVideoInsertLifecycle = (onComplete?: () => void) => {
   }
 }
 
-const useVideoProgress = (videoRef: React.RefObject<HTMLVideoElement>) => {
+const useVideoProgress = (
+  videoRef: React.RefObject<HTMLVideoElement>
+): { progress: number; duration: number } => {
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
@@ -75,11 +89,11 @@ const useVideoProgress = (videoRef: React.RefObject<HTMLVideoElement>) => {
     const video = videoRef.current
     if (!video) return
 
-    const handleLoadedMetadata = () => {
+    const handleLoadedMetadata = (): void => {
       setDuration(video.duration)
     }
 
-    const handleTimeUpdate = () => {
+    const handleTimeUpdate = (): void => {
       if (video.duration) {
         setProgress((video.currentTime / video.duration) * 100)
       }
@@ -88,7 +102,7 @@ const useVideoProgress = (videoRef: React.RefObject<HTMLVideoElement>) => {
     video.addEventListener("loadedmetadata", handleLoadedMetadata)
     video.addEventListener("timeupdate", handleTimeUpdate)
 
-    return () => {
+    return (): void => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata)
       video.removeEventListener("timeupdate", handleTimeUpdate)
     }
@@ -107,7 +121,7 @@ const VideoInsertLabel = ({
 }: {
   role?: string
   phase: PlaybackPhase
-}) => {
+}): JSX.Element => {
   const shouldShow = phase === "entering" || phase === "playing"
 
   return (
@@ -140,7 +154,7 @@ const VideoInsertProgress = ({
 }: {
   progress: number
   show: boolean
-}) => {
+}): JSX.Element | null => {
   if (!show) return null
 
   return (
@@ -160,7 +174,7 @@ const VideoInsertTitle = ({
 }: {
   title?: string
   phase: PlaybackPhase
-}) => {
+}): JSX.Element => {
   const shouldShow = phase === "entering"
 
   return (
@@ -196,7 +210,7 @@ const VideoInsertOverlay = ({
   showProgress = false,
   showControls = "never",
   entryStyle = "ceremonial",
-}: VideoInsertProps) => {
+}: VideoInsertProps): JSX.Element => {
   const { phase, videoRef, handlers } = useVideoInsertLifecycle(onComplete)
   const { progress } = useVideoProgress(videoRef)
   const [isHovered, setIsHovered] = useState(false)
@@ -295,7 +309,7 @@ const VideoInsertOverlay = ({
 // DEMO
 // ============================================================================
 
-export const App = () => {
+export const App = (): JSX.Element => {
   const [currentVideo, setCurrentVideo] = useState(0)
   const [showVideo, setShowVideo] = useState(true)
 
@@ -312,7 +326,7 @@ export const App = () => {
     },
   ]
 
-  const handleComplete = () => {
+  const handleComplete = (): void => {
     setShowVideo(false)
     // Simulate switching to different content
     setTimeout(() => {

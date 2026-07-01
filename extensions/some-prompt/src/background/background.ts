@@ -18,6 +18,7 @@ export class StorageService {
       const result = await chrome.storage.sync.get("settings")
       return { ...DEFAULT_SETTINGS, ...result.settings }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn("Failed to load settings, using defaults:", error)
       return DEFAULT_SETTINGS
     }
@@ -31,6 +32,7 @@ export class StorageService {
       const newSettings = { ...currentSettings, ...settings }
       await chrome.storage.sync.set({ settings: newSettings })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to save settings:", error)
       throw error
     }
@@ -40,6 +42,7 @@ export class StorageService {
     try {
       await chrome.storage.sync.set({ settings: DEFAULT_SETTINGS })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to reset settings:", error)
       throw error
     }
@@ -93,6 +96,7 @@ async function handleMessage(
         })
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Error handling message:", error)
     sendResponse({
       success: false,
@@ -117,12 +121,12 @@ async function handlePostUtterance(
     })
 
     if (response.ok) {
-      console.log("Text posted successfully:", payload)
       sendResponse({
         success: true,
         data: { status: response.status },
       })
     } else {
+      // eslint-disable-next-line no-console
       console.warn("Failed to post text:", response.status, response.statusText)
       sendResponse({
         success: false,
@@ -130,6 +134,7 @@ async function handlePostUtterance(
       })
     }
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn("Error posting text:", error)
     sendResponse({
       success: false,

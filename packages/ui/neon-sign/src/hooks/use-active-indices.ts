@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
 
-export const useActiveIndices = (totalCount: number, activeCount: number) => {
+export const useActiveIndices = (
+  totalCount: number,
+  activeCount: number
+): Set<number> => {
   const [activeIndices, setActiveIndices] = useState<Set<number>>(new Set())
 
   useEffect(() => {
-    const updateActiveIndices = () => {
+    const updateActiveIndices = (): void => {
       const newActiveIndices = new Set<number>()
       for (let i = 0; i < activeCount; i++) {
         newActiveIndices.add(Math.floor(Math.random() * totalCount))
@@ -13,7 +16,7 @@ export const useActiveIndices = (totalCount: number, activeCount: number) => {
     }
 
     const flickerInterval = setInterval(updateActiveIndices, 50)
-    return () => clearInterval(flickerInterval)
+    return (): void => clearInterval(flickerInterval)
   }, [totalCount, activeCount])
 
   return activeIndices

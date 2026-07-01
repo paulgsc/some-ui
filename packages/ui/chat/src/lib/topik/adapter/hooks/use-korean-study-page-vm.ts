@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef } from "react"
+import { useMemo, useRef } from "react"
+import type {
+  FeedbackData,
+  Message,
+  PlayState,
+  Question,
+  QuizStage,
+  TopikMetadata,
+} from "@chat/lib/topik"
 import {
   actions,
   getCurrentBatch,
@@ -9,6 +17,58 @@ import {
   useSessionConfig,
 } from "@chat/lib/topik"
 import { getAvailableTopiks } from "@chat/lib/topik/adapter/session-selectors"
+
+export type KoreanStudyPageVM = {
+  header: {
+    timeRemaining: number
+    score: number
+    totalQuestions: number
+    currentBatch: number
+    totalBatches: number
+    topikDisplayName: string | null
+    onEndSession: () => void
+    topikItems: Array<TopikMetadata>
+    topikLoading: boolean
+    topikError: string | null
+    currentTopikKey: string | null
+    onTopikSelect: (key: string) => void
+    onTopikReload: () => void
+  }
+  chat: {
+    messages: Array<Message>
+    visibleMessages: Array<Message>
+    currentMessageIndex: number
+    playState: PlayState
+    isQuizActive: boolean
+    currentlySpeakingId: string
+    isSpeaking: boolean
+    onSpeakMessage: (message: Message) => Promise<void>
+  }
+  quiz: {
+    quizStage: QuizStage
+    isInQuiz: boolean
+    currentQuestion: number
+    totalQuestions: number
+    questions: Array<Question>
+    score: number
+    feedbackData: FeedbackData | null
+    chatPlayState: PlayState
+    isSpeaking: boolean
+    onSpeakMessage: (message: Message) => Promise<void>
+  }
+  actions: {
+    startChat: () => void
+    resumeChat: () => void
+    pauseChat: () => void
+    resetSession: () => void
+    jumpToMessage: (idx: number) => void
+    startQuiz: () => void
+    submitAnswer: (correct: boolean, answer: string) => void
+    advanceQuestion: () => void
+    passBatch: () => void
+    failBatch: () => void
+  }
+}
 
 export function createId(): string {
   // Check if the modern API exists and is in a secure context
@@ -24,7 +84,7 @@ export function createId(): string {
   })
 }
 
-export function useKoreanStudyPageVM() {
+export function useKoreanStudyPageVM(): KoreanStudyPageVM {
   const { topikRepository, metadataRepository, audioTTS } = useSessionConfig()
 
   const componentIdRef = useRef<string | null>(null)
@@ -42,9 +102,6 @@ export function useKoreanStudyPageVM() {
   })
 
   const { state, dispatch } = session
-  useEffect(() => {
-    console.info("state: ", state)
-  }, [state])
 
   // Cleanup audio on unmount
 

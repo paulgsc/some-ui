@@ -1,11 +1,11 @@
 import { useRef, useState } from "react"
 import { Pause, Play } from "lucide-react"
 
-export const AudioPlayer = ({ url }: { url: string }) => {
+export const AudioPlayer = ({ url }: { url: string }): React.JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  const togglePlay = () => {
+  const togglePlay = (): void => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause()

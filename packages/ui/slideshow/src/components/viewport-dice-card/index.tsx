@@ -60,7 +60,7 @@ export const ViewportDiceCard = <K extends string>({
 
         return (
           <Fragment key={itemIndex}>
-            {renderRegistryComponent(registry, kind as K, props, {
+            {renderRegistryComponent(registry, kind, props, {
               withSuspense: true,
               fallback: null,
             })}

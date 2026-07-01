@@ -2,7 +2,7 @@ import type { ElementInfo } from "@prompt/types/storage"
 
 export class DOMUtils {
   static isInputElement(element: Element): boolean {
-    if (!element || !element.tagName) return false
+    if (!element?.tagName) return false
 
     const tagName = element.tagName.toLowerCase()
 

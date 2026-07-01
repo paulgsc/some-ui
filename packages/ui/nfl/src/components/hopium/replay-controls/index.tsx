@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react"
 import { Button, Slider } from "some-ui-shared"
 
@@ -19,7 +20,7 @@ export const ReplayControls = ({
   onReset,
   speed,
   setSpeed,
-}: Props) => {
+}: Props): JSX.Element => {
   return (
     <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/60 p-2">
       <Button

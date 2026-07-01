@@ -29,7 +29,7 @@ export const QuizActive = ({
   isSpeaking,
   onSpeakMessage,
   onAnswerSubmit,
-}: QuizActiveProps) => {
+}: QuizActiveProps): React.JSX.Element => {
   const [selected, setSelected] = useState<number | null>(null)
   const [textAnswer, setTextAnswer] = useState("")
 

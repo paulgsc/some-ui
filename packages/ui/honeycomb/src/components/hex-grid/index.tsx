@@ -187,8 +187,7 @@ export const HexGrid = <T = unknown,>({
                 opacity={theme.opacity ?? 1}
                 filter={theme.filter}
               />
-              {renderCell &&
-                renderCell(cell, centerX, centerY, cellWidth, pathData)}
+              {renderCell?.(cell, centerX, centerY, cellWidth, pathData)}
             </g>
           )
         })}

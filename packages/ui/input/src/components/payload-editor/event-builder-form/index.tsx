@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { ContextBuilder } from "@input/components/payload-editor/context-builder"
 import { EventTypeSelector } from "@input/components/payload-editor/event-type-selector"
 import { TimestampControl } from "@input/components/payload-editor/timestamp-control"
@@ -37,7 +38,7 @@ export const EventBuilderForm = ({
   onUseCurrentTimeChange,
   timestamp,
   onTimestampChange,
-}: EventBuilderFormProps) => {
+}: EventBuilderFormProps): JSX.Element => {
   const requirements = getEventRequirements(eventType)
 
   return (

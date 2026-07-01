@@ -30,7 +30,9 @@ const urgencyColors = {
   low: { bg: "bg-blue-900", border: "border-blue-500", text: "text-blue-300" },
 } as const
 
-const getTaskColor = (urgency: string) =>
+const getTaskColor = (
+  urgency: string
+): (typeof urgencyColors)[keyof typeof urgencyColors] =>
   urgencyColors[urgency as keyof typeof urgencyColors] || urgencyColors.low
 
 const getMostUrgentTask = (tasks: Array<Task>): Task =>
@@ -51,7 +53,7 @@ const formatTimeOverdue = (task: Task): string => {
   return "overdue"
 }
 
-const getIcon = (type: string) => {
+const getIcon = (type: string): string => {
   const icons = {
     critical: "⚡",
     warning: "⚠️",
@@ -177,17 +179,17 @@ export const NotificationContainer = () => {
 
   // Message listener effect
   useEffect(() => {
-    const handleMessage = (message: any) => {
+    const handleMessage = (message: any): void => {
       if (message.type === "TASK_UPDATE" && message.event) {
         showNotification(message.event)
       }
     }
 
     browser.runtime.onMessage.addListener(handleMessage)
-    return () => browser.runtime.onMessage.removeListener(handleMessage)
+    return (): void => browser.runtime.onMessage.removeListener(handleMessage)
   }, [])
 
-  const showNotification = (event: TaskEvent) => {
+  const showNotification = (event: TaskEvent): void => {
     // Hide if no tasks or already visible
     if (event.type === "none" || event.tasks.length === 0) {
       hideNotification()
@@ -203,7 +205,7 @@ export const NotificationContainer = () => {
     timeoutRef.current = window.setTimeout(hideNotification, hideDelay)
   }
 
-  const hideNotification = () => {
+  const hideNotification = (): void => {
     setState((prev) => ({ ...prev, isVisible: false }))
 
     if (timeoutRef.current) {
@@ -214,7 +216,7 @@ export const NotificationContainer = () => {
 
   // Cleanup effect
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
@@ -242,7 +244,7 @@ export const NotificationContainer = () => {
 export { getTaskColor, getMostUrgentTask, formatTimeOverdue, getIcon }
 
 // Functional initialization
-export const initializeTaskNotifications = () => {
+export const initializeTaskNotifications = (): void => {
   // Create container element
   const container = document.createElement("div")
   container.id = "cyclical-tasks-notification"

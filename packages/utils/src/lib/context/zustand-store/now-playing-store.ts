@@ -25,20 +25,20 @@ type NowPlayingStore = {
 
 export const useNowPlayingStore = create<NowPlayingStore>((set) => ({
   latest: defaultNowPlaying,
-  setLatest: (event) => set({ latest: event }),
+  setLatest: (event): void => set({ latest: event }),
 }))
 
 /**
  * Always returns the latest event.
  * Any component mounting later immediately sees the last value.
  */
-export function useLatestNowPlaying() {
+export function useLatestNowPlaying(): NowPlayingType {
   return useNowPlayingStore((state) => state.latest)
 }
 
 /**
  * Update the latest event (e.g. from WebSocket)
  */
-export function pushNowPlaying(event: NowPlayingType) {
+export function pushNowPlaying(event: NowPlayingType): void {
   useNowPlayingStore.getState().setLatest(event)
 }

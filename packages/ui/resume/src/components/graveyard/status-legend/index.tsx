@@ -1,8 +1,9 @@
+import type { JSX } from "react"
 import type { StatusLegendItem } from "@resume/types/graveyard"
 import { AlertTriangle, Clock, Flower, Leaf, Skull } from "lucide-react"
 import { cn } from "some-ui-utils"
 
-export const StatusLegend = () => {
+export const StatusLegend = (): JSX.Element => {
   const statusItems: Array<StatusLegendItem> = [
     { icon: Flower, label: "Flourishing", color: "text-emerald-500" },
     { icon: Leaf, label: "Growing", color: "text-green-500" },

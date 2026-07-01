@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { GanttBaseProps } from "@slideshow/types/gantt"
 
 type GanttPositionIndicatorProps = {
@@ -10,7 +11,7 @@ type GanttPositionIndicatorProps = {
 export const GanttPositionIndicator = ({
   currentTime,
   totalDuration,
-}: GanttPositionIndicatorProps) => {
+}: GanttPositionIndicatorProps): JSX.Element => {
   return (
     <div
       className="absolute inset-y-0 z-10 w-px bg-white"
@@ -19,7 +20,7 @@ export const GanttPositionIndicator = ({
         boxShadow: "0 0 8px rgba(255, 255, 255, 0.8)",
       }}
     >
-      <div className="-ml-1.5 -mt-1 size-3 rounded-full bg-white"></div>
+      <div className="-ml-1.5 -mt-1 size-3 rounded-full bg-white" />
     </div>
   )
 }

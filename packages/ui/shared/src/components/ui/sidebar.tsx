@@ -45,7 +45,7 @@ type SidebarContext = {
 
 const SidebarContext = createContext<SidebarContext | null>(null)
 
-function useSidebar() {
+function useSidebar(): SidebarContext {
   const context = useContext(SidebarContext)
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
@@ -103,7 +103,7 @@ const SidebarProvider = forwardRef<
 
     // Adds a keyboard shortcut to toggle the sidebar.
     useEffect(() => {
-      const handleKeyDown = (event: KeyboardEvent) => {
+      const handleKeyDown = (event: KeyboardEvent): void => {
         if (
           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
           (event.metaKey || event.ctrlKey)
@@ -114,7 +114,7 @@ const SidebarProvider = forwardRef<
       }
 
       window.addEventListener("keydown", handleKeyDown)
-      return () => {
+      return (): void => {
         window.removeEventListener("keydown", handleKeyDown)
       }
     }, [toggleSidebar])

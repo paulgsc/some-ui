@@ -9,7 +9,10 @@ class ComponentErrorBoundary extends Component<
 > {
   state = { hasError: false, error: undefined }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): {
+    hasError: boolean
+    error: Error
+  } {
     return { hasError: true, error }
   }
 

@@ -39,7 +39,7 @@ async function render(): Promise<void> {
   const listEl = document.getElementById("nodeList")!
   listEl.textContent = "loading…"
 
-  let allNodes: NodeState[] = []
+  let allNodes: Array<NodeState> = []
 
   try {
     // Query all tabs and fetch their node state

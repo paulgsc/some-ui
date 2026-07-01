@@ -139,6 +139,7 @@ export function useLocalStorage<T>(
       // We dispatch a custom event so every similar useLocalStorage hook is notified
       window.dispatchEvent(new StorageEvent("local-storage", { key }))
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn(`Error setting localStorage key “${key}”:`, error)
     }
   })
@@ -146,6 +147,7 @@ export function useLocalStorage<T>(
   const removeValue = useEventCallback(() => {
     // Prevent build error "window is undefined" but keeps working
     if (IS_SERVER) {
+      // eslint-disable-next-line no-console
       console.warn(
         `Tried removing localStorage key “${key}” even though environment is not a client`
       )

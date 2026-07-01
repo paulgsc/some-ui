@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -30,7 +30,7 @@ export const OrchestratorTimeline = ({
   scenes,
   onEditScene,
   onDeleteScene,
-}: OrchestratorTimelineProps) => {
+}: OrchestratorTimelineProps): JSX.Element => {
   const currentTime = useOrchestratorStore(selectCurrentTime)
   const totalDuration = useOrchestratorStore(selectTotalDuration)
   const activeLifetimes = useSceneLifetimes()

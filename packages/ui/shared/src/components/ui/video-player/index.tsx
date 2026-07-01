@@ -26,7 +26,10 @@ const variables = {
   "--media-range-track-background": "var(--border)",
 } as CSSProperties
 
-export const VideoPlayer = ({ style, ...props }: VideoPlayerProps) => (
+export const VideoPlayer = ({
+  style,
+  ...props
+}: VideoPlayerProps): React.JSX.Element => (
   <MediaController
     style={{
       ...variables,
@@ -38,16 +41,16 @@ export const VideoPlayer = ({ style, ...props }: VideoPlayerProps) => (
 
 export type VideoPlayerControlBarProps = ComponentProps<typeof MediaControlBar>
 
-export const VideoPlayerControlBar = (props: VideoPlayerControlBarProps) => (
-  <MediaControlBar {...props} />
-)
+export const VideoPlayerControlBar = (
+  props: VideoPlayerControlBarProps
+): React.JSX.Element => <MediaControlBar {...props} />
 
 export type VideoPlayerTimeRangeProps = ComponentProps<typeof MediaTimeRange>
 
 export const VideoPlayerTimeRange = ({
   className,
   ...props
-}: VideoPlayerTimeRangeProps) => (
+}: VideoPlayerTimeRangeProps): React.JSX.Element => (
   <MediaTimeRange className={cn("p-2.5", className)} {...props} />
 )
 
@@ -58,7 +61,7 @@ export type VideoPlayerTimeDisplayProps = ComponentProps<
 export const VideoPlayerTimeDisplay = ({
   className,
   ...props
-}: VideoPlayerTimeDisplayProps) => (
+}: VideoPlayerTimeDisplayProps): React.JSX.Element => (
   <MediaTimeDisplay className={cn("p-2.5", className)} {...props} />
 )
 
@@ -69,7 +72,7 @@ export type VideoPlayerVolumeRangeProps = ComponentProps<
 export const VideoPlayerVolumeRange = ({
   className,
   ...props
-}: VideoPlayerVolumeRangeProps) => (
+}: VideoPlayerVolumeRangeProps): React.JSX.Element => (
   <MediaVolumeRange className={cn("p-2.5", className)} {...props} />
 )
 
@@ -78,7 +81,7 @@ export type VideoPlayerPlayButtonProps = ComponentProps<typeof MediaPlayButton>
 export const VideoPlayerPlayButton = ({
   className,
   ...props
-}: VideoPlayerPlayButtonProps) => (
+}: VideoPlayerPlayButtonProps): React.JSX.Element => (
   <MediaPlayButton className={cn("p-2.5", className)} {...props} />
 )
 
@@ -89,7 +92,7 @@ export type VideoPlayerSeekBackwardButtonProps = ComponentProps<
 export const VideoPlayerSeekBackwardButton = ({
   className,
   ...props
-}: VideoPlayerSeekBackwardButtonProps) => (
+}: VideoPlayerSeekBackwardButtonProps): React.JSX.Element => (
   <MediaSeekBackwardButton className={cn("p-2.5", className)} {...props} />
 )
 
@@ -100,7 +103,7 @@ export type VideoPlayerSeekForwardButtonProps = ComponentProps<
 export const VideoPlayerSeekForwardButton = ({
   className,
   ...props
-}: VideoPlayerSeekForwardButtonProps) => (
+}: VideoPlayerSeekForwardButtonProps): React.JSX.Element => (
   <MediaSeekForwardButton className={cn("p-2.5", className)} {...props} />
 )
 
@@ -109,7 +112,7 @@ export type VideoPlayerMuteButtonProps = ComponentProps<typeof MediaMuteButton>
 export const VideoPlayerMuteButton = ({
   className,
   ...props
-}: VideoPlayerMuteButtonProps) => (
+}: VideoPlayerMuteButtonProps): React.JSX.Element => (
   <MediaMuteButton className={cn("p-2.5", className)} {...props} />
 )
 
@@ -118,6 +121,6 @@ export type VideoPlayerContentProps = ComponentProps<"video">
 export const VideoPlayerContent = ({
   className,
   ...props
-}: VideoPlayerContentProps) => (
+}: VideoPlayerContentProps): React.JSX.Element => (
   <video className={cn("mt-0 mb-0", className)} {...props} />
 )

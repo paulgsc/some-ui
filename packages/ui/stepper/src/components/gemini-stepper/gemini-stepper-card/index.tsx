@@ -38,7 +38,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
         ""
       )}
     >
-      <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-10 bg-[oklch(85%_0.12_340/_0.3)]"></div>
+      <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-10 bg-[oklch(85%_0.12_340/_0.3)]" />
       <CardTitle className="z-50 h-fit max-h-24 py-2.5 ps-4 text-lg font-semibold capitalize tracking-wide text-pink-950">
         {steps.meta.title}
       </CardTitle>
@@ -70,7 +70,7 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
                   "inset-shadow-sm relative z-0 w-11/12 rounded-sm px-2 font-semibold text-rose-950"
                 )}
               >
-                <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-2 bg-[oklch(85%_0.12_340/_0.3)]"></div>
+                <div className="wavy-border absolute inset-x-0 -top-0 z-10 h-2 bg-[oklch(85%_0.12_340/_0.3)]" />
                 <div className="absolute inset-0 -z-10 bg-fuchsia-200 blur-3xl" />
                 {step.content}
               </AccordionContent>

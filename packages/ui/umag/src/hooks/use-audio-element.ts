@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react"
 
-export function useAudioElement() {
+type UseAudioElementReturn = {
+  audioElement: HTMLAudioElement | null
+  fileName: string
+  handleFileUpload: (
+    event: React.ChangeEvent<HTMLInputElement>,
+    audioContext: AudioContext | null,
+    gainNode: GainNode | null
+  ) => void
+}
+
+export function useAudioElement(): UseAudioElementReturn {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null
   )
@@ -11,7 +21,7 @@ export function useAudioElement() {
     event: React.ChangeEvent<HTMLInputElement>,
     audioContext: AudioContext | null,
     gainNode: GainNode | null
-  ) => {
+  ): void => {
     const file = event.target.files?.[0]
     if (!file || !audioContext || !gainNode) return
 
@@ -34,7 +44,7 @@ export function useAudioElement() {
   }
 
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (audioElement) {
         audioElement.pause()
         audioElement.src = ""

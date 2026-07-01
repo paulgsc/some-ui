@@ -34,7 +34,7 @@ export const FileNotFound: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -49,7 +49,7 @@ export const NetworkError: Story = {
   args: {
     error: new Error("Network request failed: Unable to connect to server"),
     path: "/code-samples/factorial.rs",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -64,7 +64,7 @@ export const PermissionDenied: Story = {
   args: {
     error: new Error("Permission denied: 403 Forbidden"),
     path: "/private/code-samples/secret-algorithm.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -79,7 +79,7 @@ export const TimeoutError: Story = {
   args: {
     error: new Error("Request timeout: Server did not respond in time"),
     path: "/code-samples/large-file.cpp",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -94,7 +94,7 @@ export const FormattingError: Story = {
   args: {
     error: new Error("Prettier formatting failed: Unexpected token at line 42"),
     path: "/code-samples/malformed.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -109,7 +109,7 @@ export const InvalidPath: Story = {
   args: {
     error: new Error("Invalid file path: Path contains illegal characters"),
     path: "/code-samples/<invalid>?path*.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -128,7 +128,7 @@ export const LongErrorMessage: Story = {
       "Failed to load code sample: The requested file could not be found in the file system. This error typically occurs when the file path is incorrect, the file has been moved or deleted, or there are permission issues preventing access. Please verify the file path and ensure the file exists in the expected location."
     ),
     path: "/very/long/path/to/some/deeply/nested/directory/structure/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -149,7 +149,7 @@ export const StackTrace: Story = {
     at mountIndeterminateComponent (/node_modules/react/cjs/react.development.js:5678)`
     ),
     path: "/code-samples/quicksort.cpp",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -198,7 +198,7 @@ export const RelativePath: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "./samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -213,7 +213,7 @@ export const AbsolutePath: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "/usr/local/share/code-samples/algorithm.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -228,7 +228,7 @@ export const URLPath: Story = {
   args: {
     error: new Error("CORS policy: Access blocked by CORS policy"),
     path: "https://example.com/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -245,7 +245,7 @@ export const InCard: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   decorators: [
     (Story) => (
@@ -269,7 +269,7 @@ export const FullWidth: Story = {
   args: {
     error: new Error("Network request failed"),
     path: "/code-samples/binary-search.c",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   decorators: [
     (Story) => (
@@ -291,7 +291,7 @@ export const Compact: Story = {
   args: {
     error: new Error("File not found"),
     path: "/samples/code.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   decorators: [
     (Story) => (
@@ -315,7 +315,7 @@ export const MobileView: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     viewport: {
@@ -333,7 +333,7 @@ export const TabletView: Story = {
   args: {
     error: new Error("Network request failed"),
     path: "/code-samples/quicksort.cpp",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     viewport: {
@@ -366,7 +366,6 @@ export const InteractiveRetry: Story = {
           {...args}
           onRetry={() => {
             setRetryCount((prev) => prev + 1)
-            console.log(`Retry attempt ${retryCount + 1}`)
           }}
         />
       </div>
@@ -387,7 +386,7 @@ export const ScreenReaderFriendly: Story = {
   args: {
     error: new Error("Failed to fetch: 404 Not Found"),
     path: "/code-samples/fibonacci.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {
@@ -403,7 +402,7 @@ export const KeyboardNavigation: Story = {
   args: {
     error: new Error("Network error occurred"),
     path: "/code-samples/algorithm.ts",
-    onRetry: () => console.log("Retry clicked"),
+    onRetry: () => {},
   },
   parameters: {
     docs: {

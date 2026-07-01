@@ -22,7 +22,7 @@ export const NFLJersey = ({
   textColor = NINER_TEXT_COLOR,
   centerX = 0,
   centerY = 0,
-}: NFLJerseyProps) => {
+}: NFLJerseyProps): React.JSX.Element => {
   return (
     <g
       transform={`translate(${centerX}, ${centerY}) scale(${scale}) translate(-150, -175)`}

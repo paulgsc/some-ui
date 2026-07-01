@@ -7,7 +7,14 @@ import { getRandomSubarray } from "some-ui-utils"
 
 // Define Zod schemas for result validation
 
-export function useCreateCrosswordWasm() {
+export function useCreateCrosswordWasm(): {
+  isLoading: boolean
+  error: string | null
+  randomClues: Array<CrosswordClue>
+  crossword: CrosswordResult | null
+  validationWarning: string | null
+  regenerate: () => Promise<void>
+} {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [crossword, setCrossword] = useState<CrosswordResult | null>(null)
@@ -40,6 +47,7 @@ export function useCreateCrosswordWasm() {
       const validatedResult = CrosswordResultSchema.parse(result)
       setCrossword(validatedResult)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("Error generating crossword:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
       setCrossword(null)

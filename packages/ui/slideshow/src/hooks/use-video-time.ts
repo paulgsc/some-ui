@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react"
 import { useEffect, useState } from "react"
 
 /**
@@ -20,10 +21,13 @@ export function useVideoTime({
   totalDuration,
   simulationSpeed = 5,
   loop = true,
-}: UseVideoTimeOptions) {
+}: UseVideoTimeOptions): {
+  currentTime: number
+  setCurrentTime: Dispatch<SetStateAction<number>>
+} {
   const [currentTime, setCurrentTime] = useState(0)
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const timeInterval = setInterval(() => {
       setCurrentTime((prev) => {
         // Loop back to beginning when reaching the end if loop is true

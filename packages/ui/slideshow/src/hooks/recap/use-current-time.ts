@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 
-export function useCurrentTime() {
+export function useCurrentTime(): string {
   const [time, setTime] = useState("")
 
-  useEffect(() => {
-    const updateTime = () => {
+  useEffect((): (() => void) => {
+    const updateTime = (): void => {
       const now = new Date()
       const timeString = now.toLocaleTimeString("en-US", {
         hour12: false,

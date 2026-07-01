@@ -187,6 +187,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
           capturedCallbacks.onStart?.()
           updateTime()
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error(error)
           setLoading(false)
           setSpeaking(false)
@@ -272,7 +273,7 @@ export function useAudioSpeech(options: UseAudioTTSOptions): AudioSpeechReturn {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       cleanupNodes()
       setSpeaking(false)
       setPaused(false)

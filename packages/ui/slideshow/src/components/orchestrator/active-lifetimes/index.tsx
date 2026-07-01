@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Activity, ChevronDown, Clock, Layers, LayoutGrid } from "lucide-react"
 import type { ActiveLifetime } from "some-types-utils"
@@ -23,9 +23,9 @@ export const ActiveLifetimesPanel: FC = () => {
   }, [activeLifetimes.length])
 
   // Ergonomic Height Calculation: Ensures the panel doesn't overflow its parent container
-  useLayoutEffect(() => {
+  useLayoutEffect((): (() => void) | void => {
     if (!containerRef.current) return
-    const observer = new ResizeObserver((entries) => {
+    const observer = new ResizeObserver((entries): void => {
       for (let entry of entries) {
         const availableHeight = entry.contentRect.height
         // Estimate: Card (approx 100px) + Gap (12px). Minimum 2 cards.
@@ -51,8 +51,8 @@ export const ActiveLifetimesPanel: FC = () => {
           <div className="relative">
             <Activity className="h-4 w-4 text-emerald-500" />
             <span className="absolute -right-1 -top-1 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
           </div>
           <h3 className="text-sm font-bold tracking-tight">Live Status</h3>
@@ -119,7 +119,7 @@ const LifetimeCard = ({
   lifetime: ActiveLifetime
   currentTime: number
   isConcurrent: boolean
-}) => {
+}): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Logic updated for new Discriminated Union
@@ -191,40 +191,39 @@ const LifetimeCard = ({
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               <LayoutGrid size={12} /> UI Composition
             </div>
-            {uiIntents &&
-              uiIntents.map((ui, i) => (
-                <div key={i} className="bg-muted/50 rounded p-2">
-                  {ui.panels &&
-                    Object.entries(ui.panels).map(([key, placement]) => (
-                      <>
-                        <div
-                          key={key}
-                          className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
+            {uiIntents?.map((ui, i) => (
+              <div key={i} className="bg-muted/50 rounded p-2">
+                {ui.panels &&
+                  Object.entries(ui.panels).map(([key, placement]) => (
+                    <>
+                      <div
+                        key={key}
+                        className="flex justify-between items-center text-[11px] mb-1 last:mb-0"
+                      >
+                        <span className="font-mono text-muted-foreground">
+                          {key}:
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] h-4 py-0"
                         >
-                          <span className="font-mono text-muted-foreground">
-                            {key}:
+                          {placement.registry_key}
+                        </Badge>
+                      </div>
+                      {placement.focus && (
+                        <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
+                          <span className="text-muted-foreground italic">
+                            Focus: {placement.focus.region}
                           </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] h-4 py-0"
-                          >
-                            {placement.registry_key}
-                          </Badge>
+                          <span className="text-primary">
+                            {(placement.focus.intensity * 100).toFixed(0)}%
+                          </span>
                         </div>
-                        {placement.focus && (
-                          <div className="mt-1 pt-1 border-t border-dashed flex justify-between text-[9px]">
-                            <span className="text-muted-foreground italic">
-                              Focus: {placement.focus.region}
-                            </span>
-                            <span className="text-primary">
-                              {(placement.focus.intensity * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ))}
-                </div>
-              ))}
+                      )}
+                    </>
+                  ))}
+              </div>
+            ))}
           </div>
         )}
       </div>

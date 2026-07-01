@@ -13,7 +13,7 @@ import { SearchIcon } from "lucide-react"
 const Command = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive>) => {
+}: ComponentProps<typeof CommandPrimitive>): React.JSX.Element => {
   return (
     <CommandPrimitive
       data-slot="command"
@@ -62,7 +62,7 @@ const CommandDialog: FC<CommandDialogProps> = ({
 const CommandInput = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive.Input>) => {
+}: ComponentProps<typeof CommandPrimitive.Input>): React.JSX.Element => {
   return (
     <div
       data-slot="command-input-wrapper"
@@ -84,7 +84,7 @@ const CommandInput = ({
 const CommandList = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive.List>) => {
+}: ComponentProps<typeof CommandPrimitive.List>): React.JSX.Element => {
   return (
     <CommandPrimitive.List
       data-slot="command-list"
@@ -99,7 +99,7 @@ const CommandList = ({
 
 const CommandEmpty = ({
   ...props
-}: ComponentProps<typeof CommandPrimitive.Empty>) => {
+}: ComponentProps<typeof CommandPrimitive.Empty>): React.JSX.Element => {
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
@@ -112,7 +112,7 @@ const CommandEmpty = ({
 const CommandGroup = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive.Group>) => {
+}: ComponentProps<typeof CommandPrimitive.Group>): React.JSX.Element => {
   return (
     <CommandPrimitive.Group
       data-slot="command-group"
@@ -128,7 +128,7 @@ const CommandGroup = ({
 const CommandSeparator = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive.Separator>) => {
+}: ComponentProps<typeof CommandPrimitive.Separator>): React.JSX.Element => {
   return (
     <CommandPrimitive.Separator
       data-slot="command-separator"
@@ -141,7 +141,7 @@ const CommandSeparator = ({
 const CommandItem = ({
   className,
   ...props
-}: ComponentProps<typeof CommandPrimitive.Item>) => {
+}: ComponentProps<typeof CommandPrimitive.Item>): React.JSX.Element => {
   return (
     <CommandPrimitive.Item
       data-slot="command-item"
@@ -154,7 +154,10 @@ const CommandItem = ({
   )
 }
 
-const CommandShortcut = ({ className, ...props }: ComponentProps<"span">) => {
+const CommandShortcut = ({
+  className,
+  ...props
+}: ComponentProps<"span">): React.JSX.Element => {
   return (
     <span
       data-slot="command-shortcut"

@@ -16,7 +16,7 @@ export const TimestampControl = ({
   timestamp,
   onTimestampChange,
   show,
-}: TimestampControlProps) => {
+}: TimestampControlProps): React.JSX.Element | null => {
   if (!show) return null
 
   return (

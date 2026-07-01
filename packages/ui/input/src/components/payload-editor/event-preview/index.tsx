@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import type { TimelineEvent } from "@input/types/timeline-events"
 import {
   Card,
@@ -12,7 +13,9 @@ type EventPreviewProps = {
   event: TimelineEvent | null
 }
 
-export const EventPreview = ({ event }: EventPreviewProps) => {
+export const EventPreview = ({
+  event,
+}: EventPreviewProps): JSX.Element | null => {
   if (!event) return null
 
   return (

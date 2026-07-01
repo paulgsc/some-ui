@@ -6,7 +6,10 @@ import { viewportEvents } from "@input/hooks/use-viewport-rotation-wasm"
 
 type Unsubscribe = () => void
 
-export function useClueQueueEvents() {
+export function useClueQueueEvents(): {
+  cluesQueue: CrosswordClueState
+  viewportStates: Record<string, ViewportResponse["state"]>
+} {
   const [cluesQueue, setCluesQueue] = useState<CrosswordClueState>(() =>
     clueEvents.getState()
   )

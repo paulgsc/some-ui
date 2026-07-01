@@ -13,7 +13,14 @@ export const useDialAnimation = ({
   animationDuration = 2000,
   animationPattern = "elastic",
   initialAngle,
-}: UseCircularMotionProps) => {
+}: UseCircularMotionProps): {
+  currentAngle: number
+  setAngle: (angle: number) => void
+  animateToMidpoint: () => void
+  isAnimating: boolean
+  isWithinSection: boolean
+  midpointAngle: number
+} => {
   const [currentAngle, setCurrentAngle] = useState<number>(
     initialAngle !== undefined ? initialAngle : Math.random() * Math.PI * 2
   )
@@ -86,7 +93,7 @@ export const useDialAnimation = ({
     setIsAnimating(true)
     startTimeRef.current = null
 
-    const animate = (timestamp: number) => {
+    const animate = (timestamp: number): void => {
       if (startTimeRef.current === null) {
         startTimeRef.current = timestamp
       }

@@ -416,7 +416,7 @@ export const useObsStore = create<ObsStoreState>((set, get) => ({
   _commandSender: null,
 
   // --- Internal setters ---
-  _handleEvent: (event) =>
+  _handleEvent: (event): void =>
     set((prev) => {
       // Apply event to raw state
       const next = applyObsEvent(prev.rawState, event)
@@ -471,12 +471,12 @@ export const useObsStore = create<ObsStoreState>((set, get) => ({
       }
     }),
 
-  _setConnectionStatus: (isConnected, error = null) =>
+  _setConnectionStatus: (isConnected, error = null): void =>
     set({ isConnected, error }),
 
-  _setCommandSender: (sender) => set({ _commandSender: sender }),
+  _setCommandSender: (sender): void => set({ _commandSender: sender }),
 
-  _reset: () =>
+  _reset: (): void =>
     set({
       stats: defaultStatsState,
       core: defaultCoreState,
@@ -486,127 +486,114 @@ export const useObsStore = create<ObsStoreState>((set, get) => ({
     }),
 
   // --- Commands ---
-  startStreaming: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 startStreaming called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("startStreaming")
+  startStreaming: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("startStreaming")
+      return
+    }
     await _commandSender({ type: "startStream" })
   },
 
-  stopStreaming: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 stopStreaming called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("stopStreaming")
+  stopStreaming: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("stopStreaming")
+      return
+    }
     await _commandSender({ type: "stopStream" })
   },
 
-  startRecording: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 startRecording called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("startRecording")
+  startRecording: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("startRecording")
+      return
+    }
     await _commandSender({ type: "startRecording" })
   },
 
-  stopRecording: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 stopRecording called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("stopRecording")
+  stopRecording: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("stopRecording")
+      return
+    }
     await _commandSender({ type: "stopRecording" })
   },
 
-  switchScene: async (scene: string) => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 switchScene called", {
-      scene,
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("switchScene")
+  switchScene: async (scene: string): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("switchScene")
+      return
+    }
     await _commandSender({ type: "switchScene", data: scene })
   },
 
-  setInputMute: async (inputName: string, muted: boolean) => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 setInputMute called", {
-      inputName,
-      muted,
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("setInputMute")
+  setInputMute: async (inputName: string, muted: boolean): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("setInputMute")
+      return
+    }
     await _commandSender({ type: "setInputMute", data: [inputName, muted] })
   },
 
-  setInputVolume: async (inputName: string, volumeDb: number) => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 setInputVolume called", {
-      inputName,
-      volumeDb,
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("setInputVolume")
+  setInputVolume: async (
+    inputName: string,
+    volumeDb: number
+  ): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("setInputVolume")
+      return
+    }
     await _commandSender({
       type: "setInputVolume",
       data: [inputName, volumeDb],
     })
   },
 
-  toggleStudioMode: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleStudioMode called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("toggleStudioMode")
+  toggleStudioMode: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("toggleStudioMode")
+      return
+    }
     await _commandSender({ type: "toggleStudioMode" })
   },
 
-  toggleVirtualCamera: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleVirtualCamera called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("toggleVirtualCamera")
+  toggleVirtualCamera: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("toggleVirtualCamera")
+      return
+    }
     await _commandSender({ type: "toggleVirtualCamera" })
   },
 
-  toggleReplayBuffer: async () => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 toggleReplayBuffer called", {
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("toggleReplayBuffer")
+  toggleReplayBuffer: async (): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("toggleReplayBuffer")
+      return
+    }
     await _commandSender({ type: "toggleReplayBuffer" })
   },
 
-  sendCustomCommand: async (data: unknown) => {
-    const { _commandSender, isConnected } = get()
-    console.log("🎥 sendCustomCommand called", {
-      data,
-      hasSender: !!_commandSender,
-      isConnected,
-    })
-    if (!_commandSender) return warn("sendCustomCommand")
+  sendCustomCommand: async (data: unknown): Promise<void> => {
+    const { _commandSender } = get()
+    if (!_commandSender) {
+      warn("sendCustomCommand")
+      return
+    }
     await _commandSender({ type: "custom", data })
   },
 }))
 
-function warn(action: string) {
+function warn(action: string): void {
+  // eslint-disable-next-line no-console
   console.warn(`Cannot ${action}: OBS not connected`)
 }
 
@@ -621,33 +608,33 @@ function warn(action: string) {
 
 export const selectStats = (s: ObsStoreState): ObsStats => s.stats.stats
 
-export const useObsStats = () => useObsStore(useShallow(selectStats))
+export const useObsStats = (): ObsStats => useObsStore(useShallow(selectStats))
 
 export const selectStreamTimecode = (s: ObsStoreState): string =>
   s.stats.streamTimecode
 
-export const useStreamTimecode = () => useObsStore(selectStreamTimecode)
+export const useStreamTimecode = (): string => useObsStore(selectStreamTimecode)
 
 export const selectRecordTimecode = (s: ObsStoreState): string =>
   s.stats.recordTimecode
 
-export const useRecordTimecode = () => useObsStore(selectRecordTimecode)
+export const useRecordTimecode = (): string => useObsStore(selectRecordTimecode)
 
 // Individual stat selectors (for targeted subscriptions)
 export const selectCpuUsage = (s: ObsStoreState): number =>
   s.stats.stats.cpuUsage
 
-export const useCpuUsage = () => useObsStore(selectCpuUsage)
+export const useCpuUsage = (): number => useObsStore(selectCpuUsage)
 
 export const selectMemoryUsage = (s: ObsStoreState): number =>
   s.stats.stats.memoryUsage
 
-export const useMemoryUsage = () => useObsStore(selectMemoryUsage)
+export const useMemoryUsage = (): number => useObsStore(selectMemoryUsage)
 
 export const selectActiveFps = (s: ObsStoreState): number =>
   s.stats.stats.activeFps
 
-export const useActiveFps = () => useObsStore(selectActiveFps)
+export const useActiveFps = (): number => useObsStore(selectActiveFps)
 
 // -----------------------------------------------------------------------------
 // 🟢 LOW-FREQUENCY SELECTORS (default for UI, NO frequent rerenders)
@@ -657,9 +644,17 @@ export const useActiveFps = () => useObsStore(selectActiveFps)
 // Connection
 export const selectIsConnected = (s: ObsStoreState): boolean => s.isConnected
 
-export const useIsConnected = () => useObsStore(selectIsConnected)
+export const useIsConnected = (): boolean => useObsStore(selectIsConnected)
 
-export const selectConnectionInfo = (s: ObsStoreState) => ({
+export const selectConnectionInfo = (
+  s: ObsStoreState
+): {
+  isConnected: boolean
+  error: string | null
+  obsVersion: string
+  websocketVersion: string
+  identified: boolean
+} => ({
   isConnected: s.isConnected,
   error: s.error,
   obsVersion: s.core.obsVersion,
@@ -667,170 +662,224 @@ export const selectConnectionInfo = (s: ObsStoreState) => ({
   identified: s.core.identified,
 })
 
-export const useConnectionInfo = () =>
+export const useConnectionInfo = (): ReturnType<typeof selectConnectionInfo> =>
   useObsStore(useShallow(selectConnectionInfo))
 
 // Stream/Record status (boolean only)
 export const selectIsStreaming = (s: ObsStoreState): boolean => s.core.streaming
 
-export const useIsStreaming = () => useObsStore(selectIsStreaming)
+export const useIsStreaming = (): boolean => useObsStore(selectIsStreaming)
 
 export const selectIsRecording = (s: ObsStoreState): boolean => s.core.recording
 
-export const useIsRecording = () => useObsStore(selectIsRecording)
+export const useIsRecording = (): boolean => useObsStore(selectIsRecording)
 
-export const selectStreamRecordStatus = (s: ObsStoreState) => ({
+export const selectStreamRecordStatus = (
+  s: ObsStoreState
+): { streaming: boolean; recording: boolean } => ({
   streaming: s.core.streaming,
   recording: s.core.recording,
 })
 
-export const useStreamRecordStatus = () =>
-  useObsStore(useShallow(selectStreamRecordStatus))
+export const useStreamRecordStatus = (): ReturnType<
+  typeof selectStreamRecordStatus
+> => useObsStore(useShallow(selectStreamRecordStatus))
 
 // Scenes
 export const selectScenes = (s: ObsStoreState): Array<SceneInfo> =>
   s.core.scenes
 
-export const useScenes = () => useObsStore(useShallow(selectScenes))
+export const useScenes = (): Array<SceneInfo> =>
+  useObsStore(useShallow(selectScenes))
 
 export const selectCurrentScene = (s: ObsStoreState): string =>
   s.core.currentScene
 
-export const useCurrentScene = () => useObsStore(selectCurrentScene)
+export const useCurrentScene = (): string => useObsStore(selectCurrentScene)
 
-export const selectSceneInfo = (s: ObsStoreState) => ({
+export const selectSceneInfo = (
+  s: ObsStoreState
+): { scenes: Array<SceneInfo>; currentScene: string } => ({
   scenes: s.core.scenes,
   currentScene: s.core.currentScene,
 })
 
-export const useSceneInfo = () => useObsStore(useShallow(selectSceneInfo))
+export const useSceneInfo = (): ReturnType<typeof selectSceneInfo> =>
+  useObsStore(useShallow(selectSceneInfo))
 
 // Sources and Inputs
 export const selectSources = (s: ObsStoreState): Array<SourceInfo> =>
   s.core.sources
 
-export const useSources = () => useObsStore(useShallow(selectSources))
+export const useSources = (): Array<SourceInfo> =>
+  useObsStore(useShallow(selectSources))
 
 export const selectInputs = (s: ObsStoreState): Array<InputInfo> =>
   s.core.inputs
 
-export const useInputs = () => useObsStore(useShallow(selectInputs))
+export const useInputs = (): Array<InputInfo> =>
+  useObsStore(useShallow(selectInputs))
 
 // Audio
 export const selectAudioMutes = (s: ObsStoreState): Record<string, boolean> =>
   s.core.audioMutes
 
-export const useAudioMutes = () => useObsStore(useShallow(selectAudioMutes))
+export const useAudioMutes = (): Record<string, boolean> =>
+  useObsStore(useShallow(selectAudioMutes))
 
 export const selectAudioVolumes = (
   s: ObsStoreState
 ): Record<string, { volumeDb: number; volumeMul: number }> =>
   s.core.audioVolumes
 
-export const useAudioVolumes = () => useObsStore(useShallow(selectAudioVolumes))
+export const useAudioVolumes = (): Record<
+  string,
+  { volumeDb: number; volumeMul: number }
+> => useObsStore(useShallow(selectAudioVolumes))
 
-export const selectInputAudio = (inputName: string) => (s: ObsStoreState) => ({
-  muted: s.core.audioMutes[inputName] ?? false,
-  volume: s.core.audioVolumes[inputName] ?? { volumeDb: 0, volumeMul: 1 },
-})
+export const selectInputAudio =
+  (inputName: string) =>
+  (
+    s: ObsStoreState
+  ): { muted: boolean; volume: { volumeDb: number; volumeMul: number } } => ({
+    muted: s.core.audioMutes[inputName] ?? false,
+    volume: s.core.audioVolumes[inputName] ?? { volumeDb: 0, volumeMul: 1 },
+  })
 
-export const useInputAudio = (inputName: string) =>
+export const useInputAudio = (
+  inputName: string
+): ReturnType<ReturnType<typeof selectInputAudio>> =>
   useObsStore(useShallow(selectInputAudio(inputName)))
 
 // Profiles and Collections
 export const selectProfiles = (s: ObsStoreState): Array<string> =>
   s.core.profiles
 
-export const useProfiles = () => useObsStore(useShallow(selectProfiles))
+export const useProfiles = (): Array<string> =>
+  useObsStore(useShallow(selectProfiles))
 
 export const selectCurrentProfile = (s: ObsStoreState): string =>
   s.core.currentProfile
 
-export const useCurrentProfile = () => useObsStore(selectCurrentProfile)
+export const useCurrentProfile = (): string => useObsStore(selectCurrentProfile)
 
 export const selectCollections = (s: ObsStoreState): Array<string> =>
   s.core.collections
 
-export const useCollections = () => useObsStore(useShallow(selectCollections))
+export const useCollections = (): Array<string> =>
+  useObsStore(useShallow(selectCollections))
 
 export const selectCurrentCollection = (s: ObsStoreState): string =>
   s.core.currentCollection
 
-export const useCurrentCollection = () => useObsStore(selectCurrentCollection)
+export const useCurrentCollection = (): string =>
+  useObsStore(selectCurrentCollection)
 
 // Features
 export const selectVirtualCamActive = (s: ObsStoreState): boolean =>
   s.core.virtualCamActive
 
-export const useVirtualCamActive = () => useObsStore(selectVirtualCamActive)
+export const useVirtualCamActive = (): boolean =>
+  useObsStore(selectVirtualCamActive)
 
 export const selectReplayBufferActive = (s: ObsStoreState): boolean =>
   s.core.replayBufferActive
 
-export const useReplayBufferActive = () => useObsStore(selectReplayBufferActive)
+export const useReplayBufferActive = (): boolean =>
+  useObsStore(selectReplayBufferActive)
 
 export const selectStudioModeEnabled = (s: ObsStoreState): boolean =>
   s.core.studioModeEnabled
 
-export const useStudioModeEnabled = () => useObsStore(selectStudioModeEnabled)
+export const useStudioModeEnabled = (): boolean =>
+  useObsStore(selectStudioModeEnabled)
 
-export const selectFeatureStatus = (s: ObsStoreState) => ({
+export const selectFeatureStatus = (
+  s: ObsStoreState
+): {
+  virtualCamActive: boolean
+  replayBufferActive: boolean
+  studioModeEnabled: boolean
+} => ({
   virtualCamActive: s.core.virtualCamActive,
   replayBufferActive: s.core.replayBufferActive,
   studioModeEnabled: s.core.studioModeEnabled,
 })
 
-export const useFeatureStatus = () =>
+export const useFeatureStatus = (): ReturnType<typeof selectFeatureStatus> =>
   useObsStore(useShallow(selectFeatureStatus))
 
 // Transitions
 export const selectTransitions = (s: ObsStoreState): Array<TransitionInfo> =>
   s.core.transitions
 
-export const useTransitions = () => useObsStore(useShallow(selectTransitions))
+export const useTransitions = (): Array<TransitionInfo> =>
+  useObsStore(useShallow(selectTransitions))
 
-export const selectCurrentTransition = (s: ObsStoreState) => ({
+export const selectCurrentTransition = (
+  s: ObsStoreState
+): { name: string; duration: number } => ({
   name: s.core.currentTransitionName,
   duration: s.core.currentTransitionDuration,
 })
 
-export const useCurrentTransition = () =>
-  useObsStore(useShallow(selectCurrentTransition))
+export const useCurrentTransition = (): ReturnType<
+  typeof selectCurrentTransition
+> => useObsStore(useShallow(selectCurrentTransition))
 
 // Filters
 export const selectSourceFilters = (
   s: ObsStoreState
 ): Record<string, Array<FilterInfo>> => s.core.sourceFilters
 
-export const useSourceFilters = () =>
+export const useSourceFilters = (): Record<string, Array<FilterInfo>> =>
   useObsStore(useShallow(selectSourceFilters))
 
 export const selectFiltersForSource =
-  (sourceName: string) => (s: ObsStoreState) =>
+  (sourceName: string) =>
+  (s: ObsStoreState): Array<FilterInfo> =>
     s.core.sourceFilters[sourceName] ?? []
 
-export const useFiltersForSource = (sourceName: string) =>
+export const useFiltersForSource = (sourceName: string): Array<FilterInfo> =>
   useObsStore(useShallow(selectFiltersForSource(sourceName)))
 
 // Hotkeys
 export const selectHotkeys = (s: ObsStoreState): Array<HotkeyInfo> =>
   s.core.hotkeys
 
-export const useHotkeys = () => useObsStore(useShallow(selectHotkeys))
+export const useHotkeys = (): Array<HotkeyInfo> =>
+  useObsStore(useShallow(selectHotkeys))
 
 // Scene Items
 export const selectSceneItemEnableStates = (
   s: ObsStoreState
 ): Record<string, Record<number, boolean>> => s.core.sceneItemEnableStates
 
-export const useSceneItemEnableStates = () =>
-  useObsStore(useShallow(selectSceneItemEnableStates))
+export const useSceneItemEnableStates = (): Record<
+  string,
+  Record<number, boolean>
+> => useObsStore(useShallow(selectSceneItemEnableStates))
 
 // -----------------------------------------------------------------------------
 // COMMAND SELECTORS (get command functions)
 // -----------------------------------------------------------------------------
 
-export const selectCommands = (s: ObsStoreState) => ({
+export const selectCommands = (
+  s: ObsStoreState
+): Pick<
+  ObsStoreState,
+  | "startStreaming"
+  | "stopStreaming"
+  | "startRecording"
+  | "stopRecording"
+  | "switchScene"
+  | "setInputMute"
+  | "setInputVolume"
+  | "toggleStudioMode"
+  | "toggleVirtualCamera"
+  | "toggleReplayBuffer"
+  | "sendCustomCommand"
+> => ({
   startStreaming: s.startStreaming,
   stopStreaming: s.stopStreaming,
   startRecording: s.startRecording,
@@ -844,7 +893,8 @@ export const selectCommands = (s: ObsStoreState) => ({
   sendCustomCommand: s.sendCustomCommand,
 })
 
-export const useObsCommands = () => useObsStore(useShallow(selectCommands))
+export const useObsCommands = (): ReturnType<typeof selectCommands> =>
+  useObsStore(useShallow(selectCommands))
 
 // -----------------------------------------------------------------------------
 // ESCAPE HATCH (use only for debugging)

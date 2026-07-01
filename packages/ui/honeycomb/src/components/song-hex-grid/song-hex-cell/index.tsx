@@ -19,7 +19,7 @@ export const SongHexCell = ({
   hexPath,
   opacity = 1,
   imageUrl,
-}: SongHexCellProps) => {
+}: SongHexCellProps): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
   const uniqueId = `cell-${song.id}`
 
@@ -30,7 +30,7 @@ export const SongHexCell = ({
 
   const textFill = "white"
   const truncated = (str: string, max: number): string =>
-    str.length > max ? str.slice(0, max - 2) + "…" : str
+    str.length > max ? `${str.slice(0, max - 2)}…` : str
 
   return (
     <g

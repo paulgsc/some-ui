@@ -40,7 +40,7 @@ export const ThemedCells: Story = {
           opacity: 0.9,
           filter: "url(#glow)",
         },
-      } as HexCellData<Record<string, never>>,
+      },
     }))
 
     return (
@@ -71,7 +71,7 @@ export const WithCustomRender: Story = {
       content: {
         data: { label: labels[i] ?? "" },
         theme: { fill: colors[i], stroke: "#222", strokeWidth: 1 },
-      } as HexCellData<CustomData>,
+      },
     }))
 
     return (

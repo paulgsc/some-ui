@@ -1,14 +1,18 @@
+import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 
-export function useElementSize<T extends HTMLElement>() {
+export function useElementSize<T extends HTMLElement>(): {
+  ref: RefObject<T | null>
+  size: { width: number; height: number }
+} {
   const ref = useRef<T | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
 
-  useEffect(() => {
+  useEffect((): (() => void) | void => {
     const el = ref.current
     if (!el) return
 
-    const update = () => {
+    const update = (): void => {
       setSize({
         width: el.clientWidth || el.offsetWidth || 0,
         height: el.clientHeight || el.offsetHeight || 0,

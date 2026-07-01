@@ -67,35 +67,15 @@ export async function getWasmManager(): Promise<WasmViewportManager | null> {
 
   loadPromise = (async () => {
     try {
-      const startTime = performance.now()
-
-      console.log("📦 [WASM Runtime] Importing WASM module...")
       const module = await import("polyhedron")
       wasmModule = module
       if (typeof module.default === "function") {
         await module.default()
       }
-      console.log(
-        `✅ [WASM Runtime] Module imported in ${(
-          performance.now() - startTime
-        ).toFixed(2)}ms`
-      )
 
-      console.log("🏗️ [WASM Runtime] Constructing WasmViewportManager...")
-      const constructStart = performance.now()
       managerInstance = new module.WasmViewportManager()
-      console.log(
-        `✅ [WASM Runtime] Manager constructed in ${(
-          performance.now() - constructStart
-        ).toFixed(2)}ms`
-      )
 
       state = RuntimeState.Loaded
-      console.log(
-        `🎉 [WASM Runtime] Total initialization: ${(
-          performance.now() - startTime
-        ).toFixed(2)}ms`
-      )
 
       return managerInstance
     } catch (err) {
@@ -103,6 +83,7 @@ export async function getWasmManager(): Promise<WasmViewportManager | null> {
       lastError = err instanceof Error ? err : new Error(String(err))
       managerInstance = null
 
+      // eslint-disable-next-line no-console
       console.error("❌ [WASM Runtime] Load failed:", lastError)
 
       // Reset promise to allow retry next time
@@ -134,8 +115,8 @@ export function getWasmManagerSync(): WasmViewportManager | null {
  */
 export function preloadWasm(): void {
   if (state === RuntimeState.Idle) {
-    console.log("🔥 [WASM Runtime] Preloading WASM...")
     getWasmManager().catch((err) => {
+      // eslint-disable-next-line no-console
       console.warn("[WASM Runtime] Preload failed:", err)
     })
   }
@@ -155,19 +136,11 @@ export function preloadWasm(): void {
  * - Manual recovery from error state
  */
 export function resetWasmRuntime(): void {
-  console.log("🔄 [WASM Runtime] Resetting runtime...")
-
-  const hadManager = managerInstance !== null
-
   state = RuntimeState.Idle
   wasmModule = null
   managerInstance = null
   loadPromise = null
   lastError = null
-
-  if (hadManager) {
-    console.log("✅ [WASM Runtime] Runtime reset complete")
-  }
 }
 
 /**

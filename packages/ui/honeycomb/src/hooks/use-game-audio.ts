@@ -18,10 +18,15 @@ type UseGameAudioProps = {
   volume?: number
 }
 
+type UseGameAudioReturn = {
+  playSound: (event: AudioEvent) => void
+  unlockAudio: () => void
+}
+
 export const useGameAudio = ({
   enabled = true,
   volume = 0.5,
-}: UseGameAudioProps = {}) => {
+}: UseGameAudioProps = {}): UseGameAudioReturn => {
   const audioContextRef = useRef<Map<AudioEvent, HTMLAudioElement>>(new Map())
   const unlockedRef = useRef(false)
 
@@ -66,7 +71,7 @@ export const useGameAudio = ({
   }, [])
 
   // Cleanup on unmount
-  useEffect(() => {
+  useEffect((): (() => void) => {
     return () => {
       audioContextRef.current.forEach((audio) => {
         audio.pause()
@@ -88,6 +93,7 @@ export const useGameAudio = ({
       if (!enabled) return
       const audio = audioContextRef.current.get(event)
       if (!audio) {
+        // eslint-disable-next-line no-console
         console.log("no audio found for event: ", event)
         return
       }
@@ -96,6 +102,7 @@ export const useGameAudio = ({
       const playPromise = audio.play()
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
+          // eslint-disable-next-line no-console
           console.warn(`Playback blocked for ${event}:`, err)
         })
       }

@@ -5,14 +5,17 @@ import type {
 } from "@nfl/types/hopium/hopium-tracker"
 import { calculateGridDimensions } from "@nfl/utils/hopium/monitor-utils"
 
-export function useViewport() {
+export function useViewport(): {
+  viewportSize: ViewportDimensions
+  gridDimensions: GridDimensions
+} {
   const [viewportSize, setViewportSize] = useState<ViewportDimensions>({
     width: 0,
     height: 0,
   })
 
-  useEffect(() => {
-    const updateViewportSize = () => {
+  useEffect((): (() => void) => {
+    const updateViewportSize = (): void => {
       setViewportSize({
         width: window.innerWidth,
         height: window.innerHeight,

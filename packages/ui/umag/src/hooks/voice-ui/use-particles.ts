@@ -1,20 +1,34 @@
 import { useRef } from "react"
 
-export const useParticles = () => {
-  const particles = useRef<
-    Array<{
-      x: number
-      y: number
-      vx: number
-      vy: number
-      life: number
-      maxLife: number
-      size: number
-      pulse: number
-    }>
-  >([])
+type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+  pulse: number
+}
 
-  const initializeParticles = (centerX: number, centerY: number) => {
+type UseParticlesReturn = {
+  particles: React.RefObject<Array<Particle>>
+  initializeParticles: (centerX: number, centerY: number) => void
+  updateParticles: (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    time: number,
+    r: number,
+    g: number,
+    b: number
+  ) => void
+}
+
+export const useParticles = (): UseParticlesReturn => {
+  const particles = useRef<Array<Particle>>([])
+
+  const initializeParticles = (centerX: number, centerY: number): void => {
     for (let i = 0; i < 12; i++) {
       particles.current.push({
         x: centerX + (Math.random() - 0.5) * 320,
@@ -37,7 +51,7 @@ export const useParticles = () => {
     r: number,
     g: number,
     b: number
-  ) => {
+  ): void => {
     particles.current.forEach((particle, index) => {
       particle.x += particle.vx + Math.sin(time + index) * 0.1
       particle.y += particle.vy + Math.cos(time + index) * 0.1

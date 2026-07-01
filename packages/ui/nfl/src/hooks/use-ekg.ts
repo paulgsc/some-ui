@@ -6,13 +6,13 @@ export const useEKGData = (
   params: EKGWaveParams,
   maxPoints: number,
   pointSpacing: number
-) => {
+): Array<{ x: number; y: number }> => {
   const [time, setTime] = useState<number>(0)
   const [points, setPoints] = useState<Array<{ x: number; y: number }>>([])
   const animationFrameRef = useRef<number | null>(null)
   const lastTimestampRef = useRef<number | null>(null)
 
-  const updateEKG = (timestamp: number) => {
+  const updateEKG = (timestamp: number): void => {
     if (!lastTimestampRef.current) {
       lastTimestampRef.current = timestamp
     }
@@ -25,7 +25,7 @@ export const useEKGData = (
     animationFrameRef.current = requestAnimationFrame(updateEKG)
   }
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     animationFrameRef.current = requestAnimationFrame(updateEKG)
     return () => {
       if (animationFrameRef.current) {
@@ -34,7 +34,7 @@ export const useEKGData = (
     }
   }, [])
 
-  useEffect(() => {
+  useEffect((): void => {
     const newPoints = []
     for (let i = 0; i < maxPoints; i++) {
       const x = i * pointSpacing

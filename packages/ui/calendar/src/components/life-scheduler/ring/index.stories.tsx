@@ -38,6 +38,7 @@ export const Default: Story = {
   args: {
     outerPos: 10,
     innerPos: 45,
+    // eslint-disable-next-line no-console
     onHit: (hit: RingHit) => console.log("Hit captured:", hit),
   },
 }

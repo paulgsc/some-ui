@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import { SatelliteCard } from "@nfl/components/hopium/monitor/event-card"
 import { DetailModal } from "@nfl/components/hopium/monitor/modal"
@@ -29,7 +30,7 @@ export const SatelliteDashboard = ({
   adapter,
   title = "Satellite Data Monitor",
   autoRefreshInterval = 3000,
-}: SatelliteDashboardProps) => {
+}: SatelliteDashboardProps): JSX.Element => {
   const [selectedItem, setSelectedItem] = useState<SatelliteDataItem | null>(
     null
   )
@@ -46,9 +47,10 @@ export const SatelliteDashboard = ({
   // Initialize data on first load
   useState(() => {
     refreshAll({
-      onSuccess: () => console.log("[v0] Initial data loaded successfully"),
-      onFailure: (error: Error) =>
-        console.error("[v0] Failed to load initial data:", error),
+      onFailure: (error: Error) => {
+        // eslint-disable-next-line no-console
+        console.error("[v0] Failed to load initial data:", error)
+      },
     })
   })
 
@@ -61,22 +63,21 @@ export const SatelliteDashboard = ({
   )
   const hiddenItemsCount = dataItems.length - visibleItems.length
 
-  const handleRefreshAll = () => {
+  const handleRefreshAll = (): void => {
     refreshAll({
-      onStart: () => console.log("[v0] Starting refresh all"),
-      onSuccess: () => console.log("[v0] Refresh all completed"),
-      onFailure: (error) => console.error("[v0] Refresh all failed:", error),
+      onFailure: (error) => {
+        // eslint-disable-next-line no-console
+        console.error("[v0] Refresh all failed:", error)
+      },
     })
   }
 
-  const handleRefreshItem = (id: string) => {
+  const handleRefreshItem = (id: string): void => {
     refreshItem(id, {
-      onStart: (itemId: string) =>
-        console.log(`[v0] Starting refresh for ${itemId}`),
-      onSuccess: (item: any) =>
-        console.log(`[v0] Successfully refreshed ${item.name}`),
-      onFailure: (error, itemId) =>
-        console.error(`[v0] Failed to refresh ${itemId}:`, error),
+      onFailure: (error, itemId) => {
+        // eslint-disable-next-line no-console
+        console.error(`[v0] Failed to refresh ${itemId}:`, error)
+      },
     })
   }
 
@@ -84,7 +85,7 @@ export const SatelliteDashboard = ({
   const avgFreshness =
     dataItems.reduce((sum, item) => sum + item.freshness, 0) / dataItems.length
 
-  const handleFilterClick = (filter: FilterType) => {
+  const handleFilterClick = (filter: FilterType): void => {
     setActiveFilter(activeFilter === filter ? "all" : filter)
   }
 

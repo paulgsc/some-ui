@@ -75,7 +75,7 @@ export const MusicDiscoveryButton = ({
   songTitle = "Amazing Song",
   artist = "Great Artist",
   onSave,
-}: MusicDiscoveryButtonProps) => {
+}: MusicDiscoveryButtonProps): React.JSX.Element => {
   const [isAnimating, setIsAnimating] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [selectedMode, setSelectedMode] = useState<DiscoveryMode>("new-find")
@@ -83,7 +83,7 @@ export const MusicDiscoveryButton = ({
 
   const currentMode = discoveryModes[selectedMode]
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<void> => {
     if (isAnimating) return
 
     setIsAnimating(true)
@@ -99,7 +99,7 @@ export const MusicDiscoveryButton = ({
       setIsAnimating(false)
     }, 2500)
 
-    onSave && onSave(selectedMode)
+    onSave?.(selectedMode)
   }
 
   return (

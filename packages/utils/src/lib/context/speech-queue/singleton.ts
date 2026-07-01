@@ -8,6 +8,7 @@ export function initializeSpeechQueue(
   ttsHook: UseAudioTTSReturn
 ): SpeechQueueManager {
   if (globalSpeechManager) {
+    // eslint-disable-next-line no-console
     console.warn("Speech queue already initialized")
     return globalSpeechManager
   }

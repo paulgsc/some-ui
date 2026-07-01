@@ -26,7 +26,7 @@ export const Headline: FC<HeadlineProps> = ({
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 50)
-    return () => clearTimeout(timer)
+    return (): void => clearTimeout(timer)
   }, [])
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {

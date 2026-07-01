@@ -1,3 +1,4 @@
+import type { RefObject } from "react"
 import { useEffect, useRef } from "react"
 
 type Options = {
@@ -5,15 +6,18 @@ type Options = {
   number: number
 }
 
-export function useAnimatedSteps(steps: Array<Options>) {
+export function useAnimatedSteps(steps: Array<Options>): {
+  containerRef: RefObject<HTMLDivElement | null>
+  beamRef: RefObject<SVGPathElement | null>
+} {
   const containerRef = useRef<HTMLDivElement>(null)
   const beamRef = useRef<SVGPathElement>(null)
 
   useEffect(() => {
-    const animate = async () => {
+    const animate = async (): Promise<void> => {
       if (!containerRef.current || !beamRef.current) return
 
-      const startAnimation = async (index: number) => {
+      const startAnimation = async (index: number): Promise<void> => {
         const step = containerRef.current?.querySelector(
           `[data-step="${index}"]`
         ) as HTMLElement
@@ -39,7 +43,7 @@ export function useAnimatedSteps(steps: Array<Options>) {
         const startTime = performance.now()
         const duration = 1500
 
-        const animateBeam = (currentTime: number) => {
+        const animateBeam = (currentTime: number): void => {
           const elapsed = currentTime - startTime
           const progress = Math.min(elapsed / duration, 1)
 

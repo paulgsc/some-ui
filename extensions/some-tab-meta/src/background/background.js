@@ -1,6 +1,7 @@
 // Background script handles HTTP requests (bypasses CORS/mixed-content restrictions)
 
 chrome.runtime.onInstalled.addListener(() => {
+  // eslint-disable-next-line no-console
   console.log("YouTube Now Playing Tracker installed")
 })
 
@@ -17,14 +18,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })
       .then((response) => {
         if (!response.ok) {
+          // eslint-disable-next-line no-console
           console.log("Server responded with error:", response.status)
         }
         return response.text()
       })
       .then((data) => {
+        // eslint-disable-next-line no-console
         console.log("Successfully sent to server:", message.payload.title)
       })
       .catch((error) => {
+        // eslint-disable-next-line no-console
         console.error("Background fetch error:", error)
       })
   }

@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { AlertCircle } from "lucide-react"
 import {
   Label,
@@ -24,7 +25,7 @@ export const Editor = ({
   onMetadataJsonChange,
   show,
   eventType,
-}: EditorProps) => {
+}: EditorProps): JSX.Element => {
   if (!show) {
     return (
       <div className="text-muted-foreground py-8 text-center">

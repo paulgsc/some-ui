@@ -40,7 +40,7 @@ export const SvgIcons = {
         fill="currentColor"
         fillRule="evenodd"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )),
   magnifyGlass: forwardRef<SVGSVGElement, SVGIconProps>(

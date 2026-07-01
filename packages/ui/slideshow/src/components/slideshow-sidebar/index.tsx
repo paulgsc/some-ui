@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import type { ComponentProps, JSX } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -145,10 +145,10 @@ const data = {
 
 export const SlideshowSidebar = ({
   ...props
-}: ComponentProps<typeof Sidebar>) => {
+}: ComponentProps<typeof Sidebar>): JSX.Element => {
   return (
     <Sidebar {...props}>
-      <SidebarHeader></SidebarHeader>
+      <SidebarHeader />
       <SidebarContent>
         {/* We create a SidebarGroup for each parent. */}
         {data.navMain.map((item) => (

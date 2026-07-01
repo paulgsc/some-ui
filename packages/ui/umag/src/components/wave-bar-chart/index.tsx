@@ -22,7 +22,7 @@ export const WaveBarChart: FC<WaveBarChartProps> = ({
   const barWidth = width / bars
   const midHeight = height / 2
 
-  const generateWaveData = useCallback(() => {
+  const generateWaveData = useCallback((): Array<{ x: number; y: number }> => {
     return Array.from({ length: bars }, (_, i) => {
       const x = (i / bars) * Math.PI * 2 * frequency + phase
       const y = Math.sin(x) * amplitude
@@ -33,14 +33,14 @@ export const WaveBarChart: FC<WaveBarChartProps> = ({
   useEffect(() => {
     let animationFrameId: number
 
-    const animate = () => {
+    const animate = (): void => {
       setPhase((prevPhase) => (prevPhase + speed / 100) % (Math.PI * 2))
       animationFrameId = requestAnimationFrame(animate)
     }
 
     animate()
 
-    return () => {
+    return (): void => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId)
       }

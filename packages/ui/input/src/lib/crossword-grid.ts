@@ -436,6 +436,7 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
 
         // Letter should match at intersections
         if (cell.letter && cell.letter !== letter) {
+          // eslint-disable-next-line no-console
           console.warn(
             `Letter mismatch at (${cx},${cy}): ${cell.letter} vs ${letter}`
           )

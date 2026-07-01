@@ -1,6 +1,6 @@
 import { logo } from "@overlays/components/youtube/assets"
 
-const Logo = () => {
+const Logo = (): React.JSX.Element => {
   return (
     <img
       src={logo}

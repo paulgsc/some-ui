@@ -12,7 +12,7 @@ export const VoiceAvatarControls = ({
   onToggle,
   onTest,
   onChangeTheme,
-}: ControlsProps) => {
+}: ControlsProps): React.JSX.Element => {
   const themeClass =
     themeName === "Amber"
       ? "amber"
@@ -22,7 +22,7 @@ export const VoiceAvatarControls = ({
           ? "purple"
           : "cyan"
 
-  const getButtonClass = (primary = false) =>
+  const getButtonClass = (primary = false): string =>
     `px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
       primary
         ? themeClass === "amber"

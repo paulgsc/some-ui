@@ -43,7 +43,7 @@ export type Extractor = {
 export function truncate(s: string, maxLen: number): string {
   if (!s) return ""
   const clean = s.trim().replace(/\s+/g, " ")
-  return clean.length <= maxLen ? clean : clean.slice(0, maxLen - 1) + "…"
+  return clean.length <= maxLen ? clean : `${clean.slice(0, maxLen - 1)}…`
 }
 
 /** Extract h1–h3 text from the document, deduped, max 20. */

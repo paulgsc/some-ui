@@ -1,6 +1,6 @@
 import "@some-ui/styles/tailwind.css"
 
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { useEffect, useState } from "react"
 import type { Task, TaskEvent } from "@/types"
 import {
@@ -22,17 +22,17 @@ const TaskPopup: FC = () => {
     loadTaskData()
 
     // Listen for updates from background script
-    const handleMessage = (message: any) => {
+    const handleMessage = (message: any): void => {
       if (message.type === "TASK_UPDATE") {
         setTaskEvent(message.event)
       }
     }
 
     browser.runtime.onMessage.addListener(handleMessage)
-    return () => browser.runtime.onMessage.removeListener(handleMessage)
+    return (): void => browser.runtime.onMessage.removeListener(handleMessage)
   }, [])
 
-  const loadTaskData = async () => {
+  const loadTaskData = async (): Promise<void> => {
     try {
       const result = await browser.storage.local.get([
         "lastTaskEvent",
@@ -42,6 +42,7 @@ const TaskPopup: FC = () => {
         setTaskEvent(result.lastTaskEvent)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load task data:", error)
     } finally {
       setIsLoading(false)
@@ -60,7 +61,7 @@ const TaskPopup: FC = () => {
     return "just now"
   }
 
-  const getUrgencyColor = (urgency: string, type: string = "bg") => {
+  const getUrgencyColor = (urgency: string, type: string = "bg"): string => {
     const colors = {
       critical:
         type === "bg"
@@ -90,7 +91,7 @@ const TaskPopup: FC = () => {
     return colors[urgency as keyof typeof colors] || colors.low
   }
 
-  const getEventIcon = (eventType: string) => {
+  const getEventIcon = (eventType: string): JSX.Element => {
     switch (eventType) {
       case "critical":
         return <Zap className="size-5 text-red-400" />
@@ -103,7 +104,7 @@ const TaskPopup: FC = () => {
     }
   }
 
-  const getEventTitle = (eventType: string) => {
+  const getEventTitle = (eventType: string): string => {
     switch (eventType) {
       case "critical":
         return "Critical Tasks Overdue"
@@ -228,7 +229,7 @@ const TaskPopup: FC = () => {
       {/* Pulsing indicator for critical tasks */}
       {taskEvent.type === "critical" && (
         <div className="absolute right-2 top-2">
-          <div className="size-3 animate-pulse rounded-full bg-red-500"></div>
+          <div className="size-3 animate-pulse rounded-full bg-red-500" />
         </div>
       )}
     </div>

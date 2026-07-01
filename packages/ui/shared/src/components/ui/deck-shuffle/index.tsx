@@ -10,7 +10,7 @@ export const Deck = forwardRef<
 >(({ className, ...props }, ref) => (
   <ul
     ref={ref}
-    style={{} as CSSProperties}
+    style={{}}
     className={cn(
       "grid grid-cols-1 grid-rows-1 will-change-transform",
       "animate-deck-float",
