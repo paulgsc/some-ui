@@ -38,22 +38,29 @@ function groupByPackage(files) {
   return byPackage
 }
 
+const ESLINT_CHUNK_SIZE = 8
+
 /**
- * ESLint per-package execution
+ * ESLint per-package execution, chunked to cap per-invocation memory.
  */
 function buildEslintCommands(files) {
   const grouped = groupByPackage(files)
+  const commands = []
 
-  return [...grouped.entries()].map(([pkgRoot, pkgFiles]) => {
-    const relative = pkgFiles
-      .map((f) => `"${path.relative(pkgRoot, f)}"`)
-      .join(" ")
+  for (const [pkgRoot, pkgFiles] of grouped.entries()) {
+    for (let i = 0; i < pkgFiles.length; i += ESLINT_CHUNK_SIZE) {
+      const chunk = pkgFiles.slice(i, i + ESLINT_CHUNK_SIZE)
+      const relative = chunk
+        .map((f) => `"${path.relative(pkgRoot, f)}"`)
+        .join(" ")
 
-    return [
-      "sh -c",
-      `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`,
-    ].join(" ")
-  })
+      commands.push(
+        ["sh -c", `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`].join(" ")
+      )
+    }
+  }
+
+  return commands
 }
 
 /**
