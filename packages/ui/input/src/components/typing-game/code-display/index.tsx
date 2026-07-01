@@ -4,7 +4,8 @@ import {
   buildDisplayMap,
   isWasmLoaded,
 } from "@input/lib/leetype/leetype-wasm-loader"
-import type { CanonicalUnit } from "@input/types/leetype"
+import type { CanonicalUnit, DisplayMode } from "@input/types/leetype"
+import { EyeOff } from "lucide-react"
 import Prism from "prismjs"
 
 // Import Prism.js and its components
@@ -26,6 +27,8 @@ type CodeDisplayProps = {
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
   cursorUnitIndex: number
+  displayMode?: DisplayMode
+  adaptiveMessage?: string
   className?: string
 }
 
@@ -35,6 +38,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   targetUnits,
   userUnits,
   cursorUnitIndex,
+  displayMode = "shown",
+  adaptiveMessage,
   className,
 }): JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -195,7 +200,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
+      className={`relative font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
         className ?? ""
       }`}
     >
@@ -204,6 +209,17 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           {renderHighlightedCode()}
         </code>
       </pre>
+      {displayMode === "hidden" && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-background/70 backdrop-blur-sm">
+          <EyeOff className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium text-muted-foreground">
+            Type from memory
+          </p>
+          {adaptiveMessage && (
+            <p className="text-xs text-muted-foreground/70">{adaptiveMessage}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

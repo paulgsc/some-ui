@@ -10,19 +10,36 @@ import { TypingInputCard } from "@input/components/typing-game/typing-input-card
 import { useGameTimer } from "@input/hooks"
 import { useTypingGame } from "@input/hooks/leetype"
 import { useChunkedCode } from "@input/hooks/leetype/use-chunked-code"
+import { ADAPTIVE_WPM_THRESHOLD } from "@input/lib/leetype/player-store"
 import type {
+  Challenge,
   ChunkCompletionStats,
+  CompletedSessionStats,
   DisplayMode,
   GameState,
   Language,
+  NContext,
 } from "@input/types/leetype"
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 
 type LeetypeProps = {
-  codePaths: Record<Language, string>
+  /** Direct code paths (legacy / story mode) */
+  codePaths?: Record<Language, string>
+  /** Challenge metadata — enables adaptive mode and difficulty enforcement */
+  challenge?: Challenge
+  /** Pre-selected language (challenge mode) */
+  initialLanguage?: Language
+  /** Pre-selected duration in seconds (challenge mode) */
+  initialDuration?: number
+  /** N context label (challenge mode, algo challenges only) */
+  nContext?: NContext | null
+  /** Called when the session ends (finished or timeout) */
+  onSessionComplete?: (stats: CompletedSessionStats) => void
 }
 
-const PRETTIER_PARSER_MAP: Record<Language, string> = {
+type PrettierParser = "typescript" | "babel" | "rust" | "cpp"
+
+const PRETTIER_PARSER_MAP: Record<Language, PrettierParser> = {
   typescript: "typescript",
   rust: "rust",
   cpp: "babel",
@@ -35,12 +52,24 @@ type CumulativeStats = {
   totalErrors: number
 }
 
-export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
+export const Leetype: FC<LeetypeProps> = ({
+  codePaths,
+  challenge,
+  initialLanguage,
+  initialDuration,
+  nContext,
+  onSessionComplete,
+}) => {
+  const isLegacyMode = !challenge
+
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
-  const [language, setLanguage] = useState<Language>("typescript")
-  const [duration, setDuration] = useState(300)
+  const [language, setLanguage] = useState<Language>(
+    initialLanguage ?? "typescript"
+  )
+  const [duration, setDuration] = useState(initialDuration ?? 300)
   const [settingsExpanded, setSettingsExpanded] = useState(true)
+  const [adaptiveHidden, setAdaptiveHidden] = useState(false)
   const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats>({
     totalChunks: 0,
     totalCharsTyped: 0,
@@ -49,37 +78,49 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const codeDisplayRef = useRef<HTMLDivElement>(null)
-
-  // Load code with automatic chunking for large files
-  const codeState = useChunkedCode(codePaths[language], {
-    prettierParser: PRETTIER_PARSER_MAP[language] as "rust" | "cpp" | "babel",
-    linesPerChunk: 150,
+  const onSessionCompleteRef = useRef(onSessionComplete)
+  const latestStatsRef = useRef<CompletedSessionStats>({
+    wpm: 0,
+    accuracy: 100,
+    elapsedTime: 0,
+    errors: 0,
+    displayMode: "shown",
+    wasAdaptive: false,
+    gameState: "finished",
   })
 
-  // Get current active chunk (bouonded memory - only one chunk at a time)
+  useEffect(() => {
+    onSessionCompleteRef.current = onSessionComplete
+  }, [onSessionComplete])
+
+  const effectiveCodePaths: Partial<Record<Language, string>> =
+    challenge?.codePaths ?? codePaths ?? {}
+
+  const codeState = useChunkedCode(
+    effectiveCodePaths[language] ?? "",
+    {
+      prettierParser: PRETTIER_PARSER_MAP[language],
+      linesPerChunk: 150,
+    }
+  )
+
   const targetCode = codeState.currentChunk?.content ?? ""
 
-  // Calculate which chunk number we're on
   const currentChunkNumber =
     codeState.totalLines > 0 ? Math.floor(codeState.currentLine / 100) + 1 : 1
   const totalChunksEstimate =
     codeState.totalLines > 0 ? Math.ceil(codeState.totalLines / 100) : 1
 
-  // Handle chunk completion
   const handleChunkComplete = (chunkStats: ChunkCompletionStats): void => {
-    // Update cumulative stats
     setCumulativeStats((prev) => ({
       totalChunks: prev.totalChunks + 1,
       totalCharsTyped: prev.totalCharsTyped + chunkStats.chars_typed,
       totalErrors: prev.totalErrors + chunkStats.errors,
     }))
 
-    // Check if there are more chunks
     if (codeState.hasMore) {
-      // Load Next chunk (old chunk is GC'd - bounded memory)
       codeState.loadNextChunk()
     } else {
-      // All chunks complete - game finished
       setGameState("finished")
     }
   }
@@ -114,15 +155,51 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
     onTimeout: () => setGameState("timeout"),
   })
 
-  // Reset game when language changes or code loads
+  // Adaptive mode: latch hidden flag when WPM crosses threshold during play.
+  // Calling setState during render (getDerivedStateFromProps equivalent) causes
+  // React to discard the current render and immediately re-render — not an effect.
+  if (!adaptiveHidden && gameState === "playing" && wpm >= ADAPTIVE_WPM_THRESHOLD) {
+    setAdaptiveHidden(true)
+  }
+
+  const isHardDifficulty = challenge?.difficulty === "hard"
+  const effectiveDisplayMode: DisplayMode =
+    isHardDifficulty || adaptiveHidden ? "hidden" : displayMode
+
+  const totalErrors = cumulativeStats.totalErrors + errors
+
+  useEffect(() => {
+    latestStatsRef.current = {
+      wpm,
+      accuracy,
+      elapsedTime,
+      errors: totalErrors,
+      displayMode: effectiveDisplayMode,
+      wasAdaptive: adaptiveHidden,
+      gameState: "finished",
+    }
+  }, [wpm, accuracy, elapsedTime, totalErrors, effectiveDisplayMode, adaptiveHidden])
+
+  // Fire onSessionComplete when game ends
+  useEffect(() => {
+    if (gameState !== "finished" && gameState !== "timeout") return
+    const statsSnapshot: CompletedSessionStats = {
+      ...latestStatsRef.current,
+      gameState,
+    }
+    onSessionCompleteRef.current?.(statsSnapshot)
+  }, [gameState])
+
   useEffect(() => {
     if (codeState.status === "SUCCESS") {
       reset()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGameState("idle")
-      setSettingsExpanded(true)
+      if (isLegacyMode) setSettingsExpanded(true)
       setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
+      setAdaptiveHidden(false)
     }
-  }, [reset, language, codeState.status])
+  }, [reset, language, codeState.status, isLegacyMode])
 
   const handleStart = (): void => {
     if (codeState.status !== "SUCCESS") return
@@ -135,18 +212,19 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
   const handleReset = (): void => {
     setGameState("idle")
     reset()
-    setSettingsExpanded(true)
+    if (isLegacyMode) setSettingsExpanded(true)
     setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
+    setAdaptiveHidden(false)
   }
 
   const handleLanguageChange = (lang: Language): void => {
     setLanguage(lang)
     setGameState("idle")
-    setSettingsExpanded(true)
+    if (isLegacyMode) setSettingsExpanded(true)
     setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
+    setAdaptiveHidden(false)
   }
 
-  // Calculate overall progress across all chunks
   const overallProgress =
     totalChunksEstimate > 0
       ? ((cumulativeStats.totalChunks + progress / 100) / totalChunksEstimate) *
@@ -155,7 +233,8 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
 
   return (
     <div className="dark code absolute inset-0 flex flex-col overflow-hidden">
-      {gameState === "idle" && (
+      {/* Settings card: only in legacy mode when idle */}
+      {isLegacyMode && gameState === "idle" && (
         <SettingsCard
           language={language}
           displayMode={displayMode}
@@ -168,13 +247,44 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
         />
       )}
 
+      {/* Challenge mode header */}
+      {challenge && (
+        <div className="mb-4 flex items-center gap-3">
+          <span className="text-base font-semibold text-card-foreground">
+            {challenge.title}
+          </span>
+          <Badge
+            variant={
+              challenge.difficulty === "easy"
+                ? "default"
+                : challenge.difficulty === "medium"
+                  ? "secondary"
+                  : "destructive"
+            }
+            className="capitalize"
+          >
+            {challenge.difficulty}
+          </Badge>
+          {nContext && (
+            <Badge variant="outline" className="font-mono text-xs capitalize">
+              N={nContext}
+            </Badge>
+          )}
+          {effectiveDisplayMode === "hidden" && (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              {adaptiveHidden ? "Adaptive: hidden" : "Hidden mode"}
+            </Badge>
+          )}
+        </div>
+      )}
+
       <StatsBar
         timeLeft={timer.timeLeft}
         duration={duration}
         wpm={wpm}
         accuracy={accuracy}
         progress={overallProgress}
-        errors={cumulativeStats.totalErrors + errors}
+        errors={totalErrors}
         gameState={gameState}
       />
 
@@ -182,7 +292,6 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
         {/* LEFT COLUMN */}
         <div className="flex min-w-0 flex-col">
           <Tabs defaultValue="code" className="flex flex-1 min-h-0 flex-col">
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <TabsList>
                 <TabsTrigger value="code">Code</TabsTrigger>
@@ -200,7 +309,6 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
               </div>
             </div>
 
-            {/* Content container */}
             <div className="relative flex-1 min-h-0">
               <TabsContent
                 value="code"
@@ -210,7 +318,6 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                   Target Code (Current Chunk)
                 </h2>
 
-                {/* Scroll containment */}
                 <div
                   ref={codeDisplayRef}
                   className="min-h-0 flex-1 overflow-auto"
@@ -220,7 +327,7 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                   ) : codeState.status === "ERROR" ? (
                     <ErrorCodeState
                       error={codeState.error}
-                      path={codePaths[language]}
+                      path={effectiveCodePaths[language] ?? ""}
                       onRetry={() => handleLanguageChange(language)}
                     />
                   ) : codeState.status === "SUCCESS" ? (
@@ -230,6 +337,12 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                       targetUnits={targetUnits}
                       cursorUnitIndex={cursorUnitIndex}
                       userUnits={userUnits}
+                      displayMode={effectiveDisplayMode}
+                      adaptiveMessage={
+                        adaptiveHidden
+                          ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
+                          : undefined
+                      }
                     />
                   ) : (
                     <LoadingCodeState attempt={0} />
@@ -242,13 +355,26 @@ export const Leetype: FC<LeetypeProps> = ({ codePaths }) => {
                 className="absolute inset-0 overflow-auto rounded-lg border bg-card p-6"
               >
                 <h2 className="mb-2 text-lg font-semibold text-card-foreground">
-                  Problem Description
+                  {challenge ? challenge.title : "Problem Description"}
                 </h2>
-
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Describe what the user is supposed to implement, constraints,
-                  edge cases, or reasoning hints here.
+                  {challenge
+                    ? challenge.description
+                    : "Describe what the user is supposed to implement, constraints, edge cases, or reasoning hints here."}
                 </p>
+                {challenge && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {challenge.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className="font-mono text-xs"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </div>
           </Tabs>
