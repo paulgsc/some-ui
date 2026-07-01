@@ -13,10 +13,12 @@ const CUSTOM_AT_RULES = [
   "screen",
   "tailwind",
   "variants",
+  "variant",
   "utility",
   "theme",
   "custom-variant",
   "source",
+  "plugin",
 ]
 
 // Enforces certain selectors to be only in camelCase notation

@@ -4,6 +4,55 @@ export type GameState = "idle" | "playing" | "finished" | "timeout"
 
 export type DisplayMode = "shown" | "hidden"
 export type Language = "typescript" | "rust" | "cpp" | "c"
+export type SessionMode = "data-structure" | "algorithm"
+export type Difficulty = "easy" | "medium" | "hard"
+export type NContext = "tiny" | "small" | "medium" | "large"
+
+export const N_VALUES: Record<NContext, number> = {
+  tiny: 10,
+  small: 100,
+  medium: 1000,
+  large: 10000,
+}
+
+export type Challenge = {
+  id: string
+  title: string
+  description: string
+  difficulty: Difficulty
+  mode: SessionMode
+  tags: Array<string>
+  codePaths: Record<Language, string>
+  levelRequired: number
+}
+
+export type CompletedSessionStats = {
+  wpm: number
+  accuracy: number
+  elapsedTime: number
+  errors: number
+  displayMode: DisplayMode
+  wasAdaptive: boolean
+  gameState: "finished" | "timeout"
+}
+
+export type SolveRecord = {
+  challengeId: string
+  solvedAt: number
+  wpm: number
+  accuracy: number
+  elapsedTime: number
+  errors: number
+  n: NContext | null
+  displayMode: DisplayMode
+  xpEarned: number
+}
+
+export type PlayerProgress = {
+  xp: number
+  level: number
+  solves: Array<SolveRecord>
+}
 
 export type CodeSample = {
   title: string
@@ -102,7 +151,7 @@ export type TypedTypingGame = {
   completeChunk(currentTimestamp: number): ChunkCompletionStats
   startNextChunk(newTargetCode: string): void
   resetGame(): void
-  getCumlativeStats(): [number, number]
+  getCumulativeStats(): [number, number]
 }
 
 // If you need to update the ref type used in createTypingGameStore:
