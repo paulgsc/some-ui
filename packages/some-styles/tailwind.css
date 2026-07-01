@@ -6,11 +6,11 @@
 @import "./themes/headline.css";
 @import "./themes/scheduler.css";
 @import "./themes/conveyor.css";
+@import "./themes/code.css";
 
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
-
 @custom-variant fixed (&:is(.layout-fixed *));
 
 @theme inline {
@@ -71,15 +71,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   ::selection {
     @apply bg-selection text-selection-foreground;
   }
+
   html {
     @apply scroll-smooth;
   }
+
   body {
     font-synthesis-weight: none;
-    text-rendering: optimizeLegibility;
+    text-rendering: optimizelegibility;
   }
 
   @supports (font: -apple-system-body) and (-webkit-appearance: none) {
@@ -129,10 +132,12 @@
 
 @utility step {
   counter-increment: step;
+
   @apply relative;
 
-  &:before {
+  &::before {
     @apply text-muted-foreground right-0 mr-2 hidden size-7 items-center justify-center rounded-full text-center -indent-px font-mono text-sm font-medium md:absolute;
+
     content: counter(step);
   }
 }
@@ -164,15 +169,16 @@
 
   [data-rehype-pretty-code-figure] {
     background-color: var(--color-code);
-    color: var(--color-code-foreground);
-    border-radius: var(--radius-lg);
-    border-width: 0px;
     border-color: var(--border);
-    margin-top: calc(var(--spacing) * 6);
-    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border-width: 0;
+    color: var(--color-code-foreground);
     font-size: var(--text-sm);
+    margin-top: calc(var(--spacing) * 6);
     outline: none;
+    overflow: hidden;
     position: relative;
+
     @apply md:-mx-1;
 
     &:has([data-rehype-pretty-code-title]) [data-slot="copy-button"] {
@@ -182,38 +188,38 @@
 
   [data-rehype-pretty-code-title] {
     border-bottom: color-mix(in oklab, var(--border) 30%, transparent);
-    border-bottom-width: 1px;
     border-bottom-style: solid;
+    border-bottom-width: 1px;
+    color: var(--color-code-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
     padding-block: calc(var(--spacing) * 2.5);
     padding-inline: calc(var(--spacing) * 4);
-    font-size: var(--text-sm);
-    font-family: var(--font-mono);
-    color: var(--color-code-foreground);
   }
 
   [data-line-numbers] {
+    background: transparent;
+    border: 0;
+    box-decoration-break: clone;
+    counter-reset: line;
     display: grid;
     min-width: 100%;
-    white-space: pre;
-    border: 0;
-    background: transparent;
     padding: 0;
-    counter-reset: line;
-    box-decoration-break: clone;
+    white-space: pre;
   }
 
   [data-line-numbers] [data-line]::before {
-    font-size: var(--text-sm);
-    counter-increment: line;
-    content: counter(line);
-    display: inline-block;
-    width: calc(var(--spacing) * 16);
-    padding-right: calc(var(--spacing) * 6);
-    text-align: right;
-    color: var(--color-code-number);
     background-color: var(--color-code);
-    position: sticky;
+    color: var(--color-code-number);
+    content: counter(line);
+    counter-increment: line;
+    display: inline-block;
+    font-size: var(--text-sm);
     left: 0;
+    padding-right: calc(var(--spacing) * 6);
+    position: sticky;
+    text-align: right;
+    width: calc(var(--spacing) * 16);
   }
 
   [data-line-numbers] [data-highlighted-line][data-line]::before {
@@ -221,11 +227,11 @@
   }
 
   [data-line] {
-    padding-top: calc(var(--spacing) * 0.5);
-    padding-bottom: calc(var(--spacing) * 0.5);
-    min-height: calc(var(--spacing) * 1);
-    width: 100%;
     display: inline-block;
+    min-height: calc(var(--spacing) * 1);
+    padding-bottom: calc(var(--spacing) * 0.5);
+    padding-top: calc(var(--spacing) * 0.5);
+    width: 100%;
   }
 
   [data-line] span {
@@ -238,31 +244,31 @@
 
   [data-highlighted-line],
   [data-highlighted-chars] {
-    position: relative;
     background-color: var(--color-code-highlight);
+    position: relative;
   }
 
   [data-highlighted-line] {
-    &:after {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 2px;
-      height: 100%;
-      content: "";
+    &::after {
       background-color: color-mix(
         in oklab,
         var(--muted-foreground) 50%,
         transparent
       );
+      content: "";
+      height: 100%;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 2px;
     }
   }
 
   [data-highlighted-chars] {
     border-radius: var(--radius-sm);
-    padding-inline: 0.3rem;
-    padding-block: 0.1rem;
     font-family: var(--font-mono);
     font-size: 0.8rem;
+    padding-block: 0.1rem;
+    padding-inline: 0.3rem;
   }
 }
