@@ -7,7 +7,9 @@
 // - fixupConfigRules wraps eslint-plugin-react and eslint-plugin-jsx-a11y
 //   recommended configs: both plugins still call context.getFilename() and
 //   other ESLint v8/v9 context methods removed in ESLint v10.
+import path from "node:path"
 import { fixupConfigRules } from "@eslint/compat"
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
 import importPlugin from "eslint-plugin-import-x"
 import jsxA11yPlugin from "eslint-plugin-jsx-a11y"
 import reactPlugin from "eslint-plugin-react"
@@ -15,6 +17,19 @@ import reactHooksPlugin from "eslint-plugin-react-hooks"
 import { defineConfig } from "eslint/config"
 
 const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
+
+// Cross-package bare specifiers (some-ui-shared, some-ui-utils, ...) resolve
+// via package.json main/exports pointing at dist/, which doesn't exist
+// without a build. tsconfig.workspace-resolve.json maps them straight to
+// source so every consuming package's ESLint run resolves them without
+// requiring a build — see #394. Resolved to an absolute path (via
+// import.meta.dirname, which follows the pnpm workspace symlink to this
+// package's real location) so it works regardless of which package's
+// eslint.config.js pulls this in or what its cwd is.
+const workspaceResolveTsconfig = path.resolve(
+  import.meta.dirname,
+  "../../../tsconfig.workspace-resolve.json"
+)
 
 export default defineConfig([
   ...fixupConfigRules([
@@ -31,10 +46,22 @@ export default defineConfig([
       react: {
         version: "detect",
       },
-      "import-x/resolver": {
-        typescript: true,
-        node: true,
-      },
+      // Two independent resolver instances, tried in order, rather than one
+      // instance with a multi-entry `project` array: eslint-import-resolver-
+      // typescript caches a resolved tsconfig's ResolverFactory keyed only by
+      // tsconfig path, not by (tsconfig path, specifier). With a single
+      // instance and multiple projects, the first specifier that resolves
+      // via a package's own tsconfig.json poisons that cache entry, and
+      // every later specifier short-circuits onto it — skipping the
+      // workspace-resolve fallback entirely for the rest of the lint run.
+      // Separate instances each get their own cache.
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({ alwaysTryTypes: true }),
+        createTypeScriptImportResolver({
+          project: workspaceResolveTsconfig,
+          alwaysTryTypes: true,
+        }),
+      ],
     },
     rules: {
       // ── Import rules ────────────────────────────────────────────────────

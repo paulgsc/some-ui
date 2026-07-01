@@ -34,7 +34,8 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "@types/prismjs": "^1.26.5"
+    "@types/prismjs": "^1.26.5",
+    "eslint-import-resolver-typescript": "4.4.5"
   },
   "repository": {
     "type": "git",
