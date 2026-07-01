@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@some-extension/common": ["../../extensions/common/src/index.ts"],
+      "@some-ui/attributions": ["../ui/attributions/src/index.ts"],
+      "@some-ui/calendar": ["../ui/calendar/src/index.ts"],
+      "@some-ui/content": ["../some-content/src/index.ts"],
+      "@some-ui/honeycomb": ["../ui/honeycomb/src/index.ts"],
+      "@some-ui/makjang": ["../ui/makjang/src/index.ts"],
+      "@some-ui/overlays": ["../ui/overlays/src/index.ts"],
+      "@some-ui/portfolio": ["../ui/portfolio-chart/src/index.ts"],
+      "@some-ui/resume": ["../ui/resume/src/index.ts"],
+      "@some-ui/styles": ["../some-styles/src/index.ts"],
+      "@some-ui/vidya": ["../ui/vidya/src/index.ts"],
+      "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
+      "maishatu-eslint-kit": ["src/index.ts"],
+      "maishatu-fetch-kit": ["../ui/maishatu-fetch-kit/src/index.ts"],
+      "some-cycle": ["../../extensions/some-cycle/src/index.ts"],
+      "some-types-utils": ["../types/src/index.ts"],
+      "some-ui-chat": ["../ui/chat/src/index.ts"],
+      "some-ui-emoji-animations": ["../ui/emoji-animations/src/index.ts"],
+      "some-ui-input": ["../ui/input/src/index.ts"],
+      "some-ui-mdx": ["../mdx-generator/src/index.ts"],
+      "some-ui-neon-sign": ["../ui/neon-sign/src/index.ts"],
+      "some-ui-nfl": ["../ui/nfl/src/index.ts"],
+      "some-ui-rollup-config": ["../rollup-config/src/index.ts"],
+      "some-ui-searchbar": ["../ui/searchbar/src/index.ts"],
+      "some-ui-shared": ["../ui/shared/src/index.ts"],
+      "some-ui-slideshow": ["../ui/slideshow/src/index.ts"],
+      "some-ui-stepper": ["../ui/stepper/src/index.ts"],
+      "some-ui-utils": ["../utils/src/index.ts"],
+      "umag": ["../ui/umag/src/index.ts"],
+      "wireframes": ["../ui/wireframes/src/index.ts"]
+    }
+  },
+  "include": ["../../**/*.ts", "../../**/*.tsx"]
+}

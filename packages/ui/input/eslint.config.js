@@ -1,3 +1,4 @@
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
 import someUIEslint from "maishatu-eslint-kit"
 
 const inputConfig = [
@@ -11,10 +12,19 @@ const inputConfig = [
       // maps those specifiers to source/stubs so ESLint can resolve them
       // without requiring a build — kept out of tsconfig.json so it has no
       // effect on the real tsc project (rootDir/include membership).
-      "import-x/resolver": {
-        typescript: { project: "./tsconfig.eslint.json" },
-        node: true,
-      },
+      //
+      // Overrides the base config's `import-x/resolver-next` entirely
+      // (settings merge per-key, and resolver-next always wins over the
+      // legacy `resolver` key if both are present) — so this package's own
+      // tsconfig.json still needs its own resolver instance here too, not
+      // just the tsconfig.eslint.json one.
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({ alwaysTryTypes: true }),
+        createTypeScriptImportResolver({
+          project: "./tsconfig.eslint.json",
+          alwaysTryTypes: true,
+        }),
+      ],
     },
   },
 ]
