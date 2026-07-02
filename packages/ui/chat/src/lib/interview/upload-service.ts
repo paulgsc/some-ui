@@ -1,9 +1,0 @@
-export const mockUploadAudio = async (_blob: Blob): Promise<void> => {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1500))
-
-  // Simulate occasional failures (10% chance)
-  if (Math.random() < 0.1) {
-    throw new Error("Network error: Failed to upload recording")
-  }
-}

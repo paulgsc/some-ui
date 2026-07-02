@@ -1,12 +1,14 @@
 import { useEffect, useReducer, useRef, useState } from "react"
 import { AudioRecordingService } from "@chat/lib/interview/audio-recording-service"
 import { recordingReducer } from "@chat/lib/interview/recording-reducer"
-import { mockUploadAudio } from "@chat/lib/interview/upload-service"
 import type { RecordingState } from "@chat/types/interview"
 
-type UseAudioRecorderReturn = {
+export type UseAudioRecorderReturn = {
   state: RecordingState
   elapsedTime: number
+  /** Live mic stream while recording/paused - null otherwise. Exposed so
+   * the UI can drive a real audio-level visualization. */
+  stream: MediaStream | null
   startRecording: () => Promise<void>
   pauseRecording: () => void
   resumeRecording: () => void
@@ -15,12 +17,19 @@ type UseAudioRecorderReturn = {
   retry: () => void
 }
 
+/**
+ * Owns microphone capture only - permission, start/pause/stop, elapsed
+ * time. What happens to the finished recording (upload, transcription)
+ * is the caller's concern, kept out of this hook so it stays reusable
+ * outside the interview flow.
+ */
 export const useAudioRecorder = (
-  onComplete: (transcript: string) => void
+  onRecordingComplete: (blob: Blob, audioUrl: string, durationSeconds: number) => void
 ): UseAudioRecorderReturn => {
   const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
   const serviceRef = useRef<AudioRecordingService | null>(null)
-  const [elapsedTime, setElapsedTime] = useState(0)
+  const [liveElapsed, setLiveElapsed] = useState(0)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Initialize service
@@ -28,66 +37,50 @@ export const useAudioRecorder = (
     serviceRef.current = new AudioRecordingService()
   }, [])
 
-  // Timer effect
+  // Tick a live counter only while actively recording; every other phase's
+  // elapsed time is derived below instead of mirrored into state here.
   useEffect(() => {
-    if (state.type === "recording") {
-      timerRef.current = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - state.startTime) / 1000))
-      }, 100)
-    } else if (state.type === "paused") {
-      setElapsedTime(state.elapsedBeforePause)
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      if (state.type === "idle" || state.type === "requesting_permission") {
-        setElapsedTime(0)
-      }
-    }
+    if (state.type !== "recording") return
+
+    const { startTime } = state
+    timerRef.current = setInterval(() => {
+      setLiveElapsed(Math.floor((Date.now() - startTime) / 1000))
+    }, 100)
 
     return (): void => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
+        timerRef.current = null
       }
     }
   }, [state])
 
-  // Handle success state - upload and complete
+  const elapsedTime =
+    state.type === "recording"
+      ? liveElapsed
+      : state.type === "paused"
+        ? state.elapsedBeforePause
+        : 0
+
+  // Hand the finished recording off to the caller exactly once per success
+  const notifiedRef = useRef(false)
   useEffect(() => {
-    if (state.type === "success") {
-      const uploadAndComplete = async (): Promise<void> => {
-        try {
-          await mockUploadAudio(state.audioBlob)
-
-          // Mock transcription
-          setTimeout(() => {
-            const mockTranscript = `I would design a URL shortening service with the following approach: First, I'd use a hash function to generate short codes from long URLs. The system would need a database to store mappings between short codes and original URLs. For scalability, I would implement caching using Redis and use a load balancer to distribute traffic.`
-            onComplete(mockTranscript)
-          }, 1000)
-        } catch (error) {
-          dispatch({
-            type: "ERROR",
-            error: error instanceof Error ? error.message : "Upload failed",
-            canRetry: true,
-          })
-        }
-      }
-
-      uploadAndComplete()
+    if (state.type !== "success") {
+      notifiedRef.current = false
+      return
     }
-  }, [state, onComplete])
+    if (notifiedRef.current) return
+    notifiedRef.current = true
+    onRecordingComplete(state.audioBlob, state.audioUrl, state.duration)
+  }, [state, onRecordingComplete])
 
   const startRecording = async (): Promise<void> => {
     dispatch({ type: "START_RECORDING" })
     try {
-      const stream = await serviceRef.current!.requestPermission()
-      dispatch({ type: "PERMISSION_GRANTED", stream })
-      serviceRef.current!.startRecording(stream)
+      const micStream = await serviceRef.current!.requestPermission()
+      dispatch({ type: "PERMISSION_GRANTED", stream: micStream })
+      serviceRef.current!.startRecording(micStream)
+      setStream(micStream)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error)
@@ -119,6 +112,7 @@ export const useAudioRecorder = (
         audioUrl: url,
         duration: elapsedTime,
       })
+      setStream(null)
     } catch (error) {
       dispatch({
         type: "ERROR",
@@ -126,11 +120,13 @@ export const useAudioRecorder = (
           error instanceof Error ? error.message : "Failed to stop recording",
         canRetry: false,
       })
+      setStream(null)
     }
   }
 
   const reset = (): void => {
     serviceRef.current?.cleanup()
+    setStream(null)
     dispatch({ type: "RESET" })
   }
 
@@ -141,6 +137,7 @@ export const useAudioRecorder = (
   return {
     state,
     elapsedTime,
+    stream,
     startRecording,
     pauseRecording,
     resumeRecording,

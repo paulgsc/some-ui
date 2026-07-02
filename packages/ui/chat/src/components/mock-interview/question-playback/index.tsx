@@ -2,18 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import { Pause, Play, RotateCcw } from "lucide-react"
 import { Button, Card } from "some-ui-shared"
 
-type Question = {
-  id: string
-  level: string
-  category: string
-  question: string
-  durationSeconds: number
-}
+import type {
+  InterviewTTSAdapter,
+  Question,
+} from "@chat/lib/interview/core/interview-types"
 
 type QuestionPlaybackProps = {
   question: Question
   questionNumber: number
   totalQuestions: number
+  ttsAdapter: InterviewTTSAdapter
   onComplete: () => void
 }
 
@@ -21,49 +19,54 @@ export const QuestionPlayback = ({
   question,
   questionNumber,
   totalQuestions,
+  ttsAdapter,
   onComplete,
 }: QuestionPlaybackProps): React.JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [showMetadata, setShowMetadata] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(null)
-
-  // Simulate TTS playback (5 seconds)
-  const playbackDuration = 5000
+  const playTokenRef = useRef(0)
 
   useEffect(() => {
-    if (isPlaying) {
-      const startTime = Date.now()
-      intervalRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTime
-        const newProgress = Math.min((elapsed / playbackDuration) * 100, 100)
-        setProgress(newProgress)
-
-        if (newProgress >= 100) {
-          setIsPlaying(false)
-          setProgress(100)
-        }
-      }, 50)
-    }
     return (): void => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      ttsAdapter.stop()
     }
-  }, [isPlaying])
+  }, [ttsAdapter])
 
-  const handlePlay = (): void => {
-    if (progress >= 100) {
-      setProgress(0)
-    }
+  const speak = (): void => {
+    const token = ++playTokenRef.current
     setIsPlaying(true)
+
+    void ttsAdapter
+      .speak(question.question, {
+        onBoundary: (charIndex) => {
+          if (playTokenRef.current !== token) return
+          setProgress(
+            Math.min(100, (charIndex / question.question.length) * 100)
+          )
+        },
+      })
+      .then(() => {
+        if (playTokenRef.current !== token) return
+        setIsPlaying(false)
+        setProgress(100)
+      })
   }
 
-  const handlePause = (): void => {
+  const handlePlay = (): void => {
+    if (progress >= 100) setProgress(0)
+    speak()
+  }
+
+  const handleStop = (): void => {
+    playTokenRef.current += 1
+    ttsAdapter.stop()
     setIsPlaying(false)
   }
 
   const handleReplay = (): void => {
     setProgress(0)
-    setIsPlaying(true)
+    speak()
   }
 
   return (
@@ -97,69 +100,78 @@ export const QuestionPlayback = ({
               )}
             </div>
 
-            {/* Waveform visualization */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 h-16 justify-center">
-                {[...Array(32)].map((_, i) => {
-                  const height = isPlaying
-                    ? Math.sin(progress * 0.1 + i * 0.5) * 20 + 30
-                    : 20
-                  return (
+            {ttsAdapter.supported ? (
+              <>
+                {/* Waveform visualization */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 h-16 justify-center">
+                    {[...Array(32)].map((_, i) => {
+                      const height = isPlaying
+                        ? Math.sin(progress * 0.1 + i * 0.5) * 20 + 30
+                        : 20
+                      return (
+                        <div
+                          key={i}
+                          className="w-1 bg-primary/30 rounded-full transition-all duration-100"
+                          style={{ height: `${height}%` }}
+                        />
+                      )
+                    })}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                     <div
-                      key={i}
-                      className="w-1 bg-primary/30 rounded-full transition-all duration-100"
-                      style={{ height: `${height}%` }}
+                      className="h-full bg-primary/50 transition-all duration-100"
+                      style={{ width: `${progress}%` }}
                     />
-                  )
-                })}
-              </div>
+                  </div>
+                </div>
 
-              {/* Progress bar */}
-              <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary/50 transition-all duration-100"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
+                {/* Controls */}
+                <div className="flex items-center justify-center gap-4">
+                  {!isPlaying ? (
+                    <Button
+                      size="lg"
+                      onClick={handlePlay}
+                      className="gap-2 rounded-full px-8"
+                    >
+                      <Play className="w-4 h-4" />
+                      {progress > 0 && progress < 100 ? "Resume" : "Play"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      onClick={handleStop}
+                      className="gap-2 rounded-full px-8"
+                    >
+                      <Pause className="w-4 h-4" />
+                      Stop
+                    </Button>
+                  )}
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-4">
-              {!isPlaying ? (
-                <Button
-                  size="lg"
-                  onClick={handlePlay}
-                  className="gap-2 rounded-full px-8"
-                >
-                  <Play className="w-4 h-4" />
-                  {progress > 0 && progress < 100 ? "Resume" : "Play"}
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  onClick={handlePause}
-                  className="gap-2 rounded-full px-8"
-                >
-                  <Pause className="w-4 h-4" />
-                  Pause
-                </Button>
-              )}
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={handleReplay}
+                    className="gap-2 rounded-full bg-transparent"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Replay
+                  </Button>
+                </div>
 
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={handleReplay}
-                className="gap-2 rounded-full bg-transparent"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Replay
-              </Button>
-            </div>
-
-            <p className="text-center text-sm text-muted-foreground">
-              Listen as many times as you'd like
-            </p>
+                <p className="text-center text-sm text-muted-foreground">
+                  Listen as many times as you&apos;d like
+                </p>
+              </>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground">
+                Playback isn&apos;t available in this browser — read the
+                question above whenever you&apos;re ready
+              </p>
+            )}
           </div>
         </Card>
 

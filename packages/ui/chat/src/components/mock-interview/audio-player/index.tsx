@@ -6,14 +6,14 @@ export const AudioPlayer = ({ url }: { url: string }): React.JSX.Element => {
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const togglePlay = (): void => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause()
-      } else {
-        audioRef.current.play()
-      }
-      setIsPlaying(!isPlaying)
+    if (!audioRef.current) return
+
+    if (isPlaying) {
+      audioRef.current.pause()
+    } else {
+      void audioRef.current.play()
     }
+    setIsPlaying(!isPlaying)
   }
 
   return (
@@ -31,6 +31,7 @@ export const AudioPlayer = ({ url }: { url: string }): React.JSX.Element => {
       <div className="flex-1">
         <p className="text-sm text-muted-foreground">Recording preview</p>
       </div>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- user's own unscripted recording, no caption track exists */}
       <audio
         ref={audioRef}
         src={url}

@@ -14,7 +14,7 @@ export const PreparationPhase = ({
   onStartRecording,
 }: PreparationPhaseProps): React.JSX.Element => {
   return (
-    <div className="flex absolute inset-0 items-center justify-center p-6">
+    <div className="flex min-h-screen items-center justify-center p-6">
       <div className="max-w-3xl w-full space-y-6">
         <Card className="p-8 md:p-12 space-y-8">
           <div className="space-y-6">
@@ -34,7 +34,9 @@ export const PreparationPhase = ({
               <Textarea
                 placeholder="Your private notes (optional)..."
                 value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  onNotesChange(e.target.value)
+                }
                 className="min-h-32 resize-none bg-background/50 border-muted"
               />
             </div>
@@ -51,14 +53,14 @@ export const PreparationPhase = ({
 
             <div className="text-center space-y-4">
               <p className="text-muted-foreground">
-                When you're ready, you can start speaking
+                When you&apos;re ready, you can start speaking
               </p>
               <Button
                 size="lg"
                 onClick={onStartRecording}
                 className="px-12 rounded-full"
               >
-                I'm ready to speak
+                I&apos;m ready to speak
               </Button>
             </div>
           </div>
