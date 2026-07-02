@@ -10,7 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@filter": resolve(__dirname, "./extensions/some-filter/src"),
+      "@filter": resolve(__dirname, "./src"),
     },
   },
 })

@@ -1,8 +1,21 @@
 import { isLegacyStyle } from "@filter/lib/legacy-presets"
+import type { FilterConfig } from "@filter/types/config"
 import type { ExtensionMessage } from "@filter/types/message"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
+}
+
+function isFilterConfig(value: unknown): value is FilterConfig {
+  if (!isRecord(value)) return false
+
+  return (
+    (value.invert === undefined || typeof value.invert === "number") &&
+    (value.hueRotate === undefined || typeof value.hueRotate === "number") &&
+    (value.sepia === undefined || typeof value.sepia === "number") &&
+    (value.brightness === undefined || typeof value.brightness === "number") &&
+    (value.contrast === undefined || typeof value.contrast === "number")
+  )
 }
 
 export function isExtensionMessage(msg: unknown): msg is ExtensionMessage {
@@ -17,9 +30,9 @@ export function isExtensionMessage(msg: unknown): msg is ExtensionMessage {
     return isLegacyStyle(msg.style)
   }
 
-  return (
-    msg.type === "GET_TAB_FILTER_STATE" ||
-    msg.type === "TOGGLE_FILTER" ||
-    msg.type === "CYCLE_TAB_STATE"
-  )
+  if (msg.type === "TOGGLE_FILTER") {
+    return typeof msg.enabled === "boolean" && isFilterConfig(msg.config)
+  }
+
+  return msg.type === "GET_TAB_FILTER_STATE" || msg.type === "CYCLE_TAB_STATE"
 }

@@ -19,11 +19,11 @@ export function isExtensionMessage(msg: unknown): msg is ExtensionMessage {
     return isLegacyStyle(msg.style)
   }
 
-  return (
-    msg.type === "GET_TAB_FILTER_STATE" ||
-    msg.type === "TOGGLE_FILTER" ||
-    msg.type === "CYCLE_TAB_STATE"
-  )
+  if (msg.type === "TOGGLE_FILTER") {
+    return typeof msg.enabled === "boolean" && isFilterConfig(msg.config)
+  }
+
+  return msg.type === "GET_TAB_FILTER_STATE" || msg.type === "CYCLE_TAB_STATE"
 }
 
 function isFilterConfig(value: unknown): value is FilterConfig {
