@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { discard, inprogress } from "./discard"
+import { discard, inprogress, reconcileActivatedTab } from "./discard"
 import { prefs } from "./prefs"
 
 type DiscardCb = (tab?: chrome.tabs.Tab) => void
@@ -105,6 +105,55 @@ describe("discard", () => {
     expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
+  it("skips an audible tab without marking it (the YouTube case)", async () => {
+    // The browser refuses to discard a playing tab; suspending it anyway would
+    // strand the sleep marker on a live, audible page. Skip before marking.
+    await discard(
+      tab({ id: 7, url: "https://youtube.com/watch", audible: true })
+    )
+
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled()
+    expect(chrome.tabs.discard).not.toHaveBeenCalled()
+  })
+
+  it("rolls back the marker when the browser rejects the discard", async () => {
+    prefs.prepends = "💤"
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    vi.mocked(chrome.tabs.discard).mockImplementation(((
+      _id: number,
+      cb: DiscardCb
+    ) => {
+      Object.assign(chrome.runtime, {
+        lastError: { message: "Tabs cannot be discarded." },
+      })
+      cb(undefined)
+      Object.assign(chrome.runtime, { lastError: undefined })
+    }) as never)
+
+    await discard(tab({ id: 8, url: "https://example.com/", title: "Example" }))
+
+    // Two executeScript calls: the mark, then the rollback (unmark).
+    expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(2)
+    expect(chrome.scripting.executeScript).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        target: { tabId: 8 },
+        args: ["__sl_resuming", "💤"],
+      })
+    )
+    expect(chrome.tabs.remove).not.toHaveBeenCalled()
+    prefs.prepends = ""
+  })
+
+  it("does not roll back the marker when the discard succeeds", async () => {
+    prefs.prepends = "💤"
+    await discard(tab({ id: 9, url: "https://example.com/", title: "Example" }))
+
+    // Only the mark ran; a successful discard tears down the page and the
+    // browser keeps showing the cached (marked) title — nothing to undo.
+    expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
+    prefs.prepends = ""
+  })
+
   it("ignores a duplicate request while a suspend is in progress", async () => {
     discard(tab({ id: 4, url: "https://example.com/" }))
     discard(tab({ id: 4, url: "https://example.com/" }))
@@ -186,5 +235,50 @@ describe("discard", () => {
     await discard(tab({ id: 22, discarded: true }))
 
     expect(chrome.tabs.remove).toHaveBeenCalledTimes(0)
+  })
+})
+
+describe("reconcileActivatedTab", () => {
+  type GetCb = (tab?: chrome.tabs.Tab) => void
+
+  const mockGet = (result?: chrome.tabs.Tab): void => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    vi.mocked(chrome.tabs.get).mockImplementation(((_id: number, cb: GetCb) =>
+      cb(result)) as never)
+  }
+
+  it("strips a stranded marker from a live, marked tab", () => {
+    prefs.prepends = "💤"
+    mockGet(tab({ id: 30, discarded: false, title: "💤 Example" }))
+
+    reconcileActivatedTab(30)
+
+    expect(chrome.scripting.executeScript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { tabId: 30 },
+        args: ["__sl_resuming", "💤"],
+      })
+    )
+    prefs.prepends = ""
+  })
+
+  it("leaves a properly discarded tab alone (cached marker is intended)", () => {
+    prefs.prepends = "💤"
+    mockGet(tab({ id: 31, discarded: true, title: "💤 Example" }))
+
+    reconcileActivatedTab(31)
+
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled()
+    prefs.prepends = ""
+  })
+
+  it("leaves an unmarked live tab alone", () => {
+    prefs.prepends = "💤"
+    mockGet(tab({ id: 32, discarded: false, title: "Example" }))
+
+    reconcileActivatedTab(32)
+
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled()
+    prefs.prepends = ""
   })
 })

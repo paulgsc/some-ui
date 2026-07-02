@@ -58,6 +58,44 @@ async function prepareForDiscard(tabId: number, marker: string): Promise<void> {
   }
 }
 
+/**
+ * Inverse of `markBeforeDiscard`: runs in the page and undoes the marker.
+ * Removes the sleep prefix from the live `document.title` (only when it is
+ * actually present) and clears the one-shot resume flag. Idempotent — safe to
+ * run on a tab that was never marked.
+ */
+function unmarkAfterDiscard(key: string, prefix: string): void {
+  try {
+    // eslint-disable-next-line extension-charter/no-raw-storage -- runs inside the target page, mirrors markBeforeDiscard.
+    sessionStorage.removeItem(key)
+  } catch {
+    // Storage unavailable — nothing to clear.
+  }
+  if (prefix && document.title.startsWith(`${prefix} `)) {
+    document.title = document.title.slice(prefix.length + 1)
+  }
+}
+
+/**
+ * The `ROLLING_BACK → MARKER_CLEARED` edge of the suspend FSM, made real: strip
+ * a marker that was applied for a discard that did not stick. Without this the
+ * page would sit live, playing, and wearing the sleep prefix forever — the
+ * ORPHANED state the FSM invariant forbids (see suspend-fsm.ts, #344/#345).
+ */
+async function rollbackMark(tabId: number, marker: string): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: unmarkAfterDiscard,
+      args: [RESUME_FLAG_KEY, marker],
+    })
+  } catch (e) {
+    // The page may be gone (a discard that *did* land) or unscriptable — either
+    // way there is no live marker left to strand.
+    log("could not roll back discard marker", e)
+  }
+}
+
 /** Tab ids currently mid-suspend, used to debounce duplicate requests. */
 const inprogress = new Set<number>()
 
@@ -100,13 +138,18 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
         chrome.tabs.discard(tabId, () => {
           const err = chrome.runtime.lastError
           if (err) {
+            // The browser refused to discard (e.g. an audible/media tab). We
+            // have already marked the page, so strip the marker before
+            // resolving — otherwise it is stranded on a live tab (ORPHANED).
             log("discard failed", err.message ?? err)
+            void rollbackMark(tabId, prefs.prepends).finally(resolve)
+            return
           }
           resolve()
         })
       } catch (e) {
         log("discarding failed", e)
-        resolve()
+        void rollbackMark(tabId, prefs.prepends).finally(resolve)
       }
     })
   })
@@ -131,6 +174,14 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   }
   if (tab.discarded) {
     log("already discarded", tab)
+    return
+  }
+  // The browser refuses to discard a tab that is playing audio (a YouTube tab,
+  // a music player). Skipping here — before marking — is the BLOCKED edge of
+  // the suspend FSM: it avoids applying a marker we would only have to roll
+  // back, and avoids the misleading "tab wears 💤 but keeps playing" state.
+  if (tab.audible) {
+    log("tab is audible; suspend skipped", tab)
     return
   }
 
@@ -172,4 +223,34 @@ const discard: DiscardFn = Object.assign(discardImpl, {
   perform,
 })
 
-export { discard, inprogress }
+/**
+ * Heal a stranded marker on tab activation.
+ *
+ * If an activated tab is still live (not discarded) yet its title carries the
+ * sleep prefix, the marker was left behind — a discard the browser refused, a
+ * refocus that raced the discard callback, or a tab orphaned by an older build.
+ * A reactivated *discarded* tab reloads and resets its own title, so those are
+ * left alone; only live, marker-bearing tabs are cleaned. Idempotent.
+ */
+function reconcileActivatedTab(tabId: number): void {
+  const marker = prefs.prepends
+  if (!marker) {
+    return
+  }
+  chrome.tabs.get(tabId, (tab) => {
+    // the typings mark `tab` non-optional, but it is undefined at runtime when
+    // the id is stale (tab closed between activation and this callback)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (chrome.runtime.lastError || !tab || tab.discarded) {
+      return
+    }
+    if (typeof tab.title === "string" && tab.title.startsWith(`${marker} `)) {
+      log("stripping stranded marker on activated tab", tabId)
+      void rollbackMark(tabId, marker)
+    }
+  })
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => reconcileActivatedTab(tabId))
+
+export { discard, inprogress, reconcileActivatedTab }

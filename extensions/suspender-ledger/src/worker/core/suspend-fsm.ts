@@ -79,7 +79,9 @@ export type SuspendState =
 
   // Live, marked, at rest — THE ILLEGAL STATE. A tab the browser refused to
   // discard, still playing, still wearing the marker, with nothing scheduled to
-  // fix it. Reachable in the current implementation; the invariant forbids it.
+  // fix it. Unreachable in the fixed transition table; retained as the named
+  // state the invariant forbids so the exhaustion/property tests keep pinning
+  // it, and any future edge that produces it fails loudly.
   | { readonly kind: "ORPHANED" }
 
 export type SuspendStateKind = SuspendState["kind"]
@@ -150,13 +152,15 @@ const s = (kind: SuspendStateKind): SuspendState => ({ kind })
  * Pure reducer. Unmapped (state, event) pairs are self-loops: an event that
  * does not apply to the current state leaves it unchanged.
  *
- * NOTE: this is the *current-behaviour* model. It is deliberately wrong in two
- * places so the property/exhaustion tests fail organically and pin the bugs:
+ * The two edges that make the invariant hold — and that fix the reported bugs:
  *
- *   - `MEDIA_PLAYING` is ignored (today the manual suspend path has no media
- *     guard — only `number.ts`'s auto path checks `audible`).
- *   - `SUSPENDING + DISCARD_FAILED` (and refocus mid-suspend) strands the
- *     marker in `ORPHANED` instead of rolling it back.
+ *   - `MEDIA_PLAYING` diverts a tab to `BLOCKED` *before* any marker is applied,
+ *     so an audible YouTube tab is never marked (#344 bug 1). The adapter must
+ *     emit this whenever `chrome.tabs.Tab.audible` (or a media probe) is set.
+ *   - `SUSPENDING + DISCARD_FAILED` (and a refocus mid-suspend) routes to
+ *     `ROLLING_BACK`, which carries the obligation to strip the marker, rather
+ *     than stranding it in `ORPHANED` (#345 bug 2). `ORPHANED` is consequently
+ *     unreachable — kept in the type as the named state the contract forbids.
  */
 export function reduce(state: SuspendState, event: SuspendEvent): SuspendState {
   switch (state.kind) {
@@ -164,14 +168,17 @@ export function reduce(state: SuspendState, event: SuspendEvent): SuspendState {
       switch (event.type) {
         case "SUSPEND_REQUESTED":
           return s("PREPARING")
-        // BUG (#1): MEDIA_PLAYING is not handled — an audible tab proceeds to
-        // suspend exactly like any other tab.
+        case "MEDIA_PLAYING":
+          return s("BLOCKED")
         default:
           return state
       }
 
     case "PREPARING":
       switch (event.type) {
+        // Media detected before the marker landed → abort cleanly, unmarked.
+        case "MEDIA_PLAYING":
+          return s("BLOCKED")
         case "MARK_APPLIED":
           return s("SUSPENDING")
         case "MARK_SKIPPED":
@@ -184,12 +191,12 @@ export function reduce(state: SuspendState, event: SuspendEvent): SuspendState {
       switch (event.type) {
         case "DISCARD_SUCCEEDED":
           return s("DISCARDED")
-        // BUG (#2): discard refused → marker stranded on a live tab, forever.
+        // Discard refused (audible tab, non-discardable) → strip the marker.
         case "DISCARD_FAILED":
-          return s("ORPHANED")
-        // BUG (#2): user refocuses before discard confirms → marker stranded.
+          return s("ROLLING_BACK")
+        // User refocused before discard confirmed → strip the marker.
         case "TAB_ACTIVATED":
-          return s("ORPHANED")
+          return s("ROLLING_BACK")
         default:
           return state
       }
@@ -238,6 +245,17 @@ export function reduce(state: SuspendState, event: SuspendEvent): SuspendState {
       }
 
     case "BLOCKED":
+      switch (event.type) {
+        // An explicit user re-request can force another attempt (e.g. media
+        // stopped since). Auto paths simply never emit SUSPEND_REQUESTED here.
+        case "SUSPEND_REQUESTED":
+          return s("PREPARING")
+        default:
+          return state
+      }
+
+    // Unreachable in this transition table — retained as the named illegal
+    // state the invariant forbids. A self-loop keeps `reduce` total.
     case "ORPHANED":
       return state
   }
