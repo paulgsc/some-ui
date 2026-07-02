@@ -3,7 +3,7 @@ import { useCallback } from "react"
 import { ClueList } from "@input/components/clues-list"
 import { useClueQueueEvents } from "@input/hooks/use-clue-queue-events"
 import type { CrosswordClueWithNum, Direction } from "@input/types/crossword"
-import { DiceCard } from "some-ui-slideshow"
+import { DiceCard } from "@some-ui/slideshow"
 import { cn } from "some-ui-utils"
 
 type ClueCarouselProps = {

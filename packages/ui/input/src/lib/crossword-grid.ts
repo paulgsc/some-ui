@@ -1,4 +1,6 @@
+// overwrite this file
 /**
+
  * TODO: Implement crossword difficulty rating system
  *
  * Potential factors to consider for difficulty calculation:
@@ -44,37 +46,24 @@
  * - Percentage of grid that's filled
  */
 
-export type Direction = "across" | "down"
-
-export type Word = {
-  x: number
-  y: number
-  direction: Direction
-  length: number
-  clueNumber?: number
-  word?: string
-}
-
-export type CrosswordCell = {
-  x: number
-  y: number
-  num?: number
-  letter?: string
-  across?: boolean
-  down?: boolean
-}
-
-export type CrosswordGrid = {
-  words: Array<Word>
-  size: number
-}
+import type {
+  CrosswordCell,
+  CrosswordGrid,
+  Direction,
+  Word,
+} from "@input/types/crossword"
 
 /**
  * Creates a crossword puzzle from a list of words
  * @param wordList List of words to include in the puzzle
  * @param gridSize Maximum size of the grid
  */
-export function createCrossword(wordList: Array<string>, gridSize = 15) {
+export function createCrossword(
+  wordList: Array<string>,
+  gridSize = 15
+):
+  | { crosswordGrid: CrosswordGrid; grid: Array<CrosswordCell> }
+  | { words: Array<never>; grid: Array<never>; size: number } {
   // Filter out empty words and ensure unique entries
   const validWords = [
     ...new Set(wordList.filter((word) => word && word.trim().length > 0)),
@@ -193,7 +182,7 @@ function generateCrosswordLayout(
     dir: Direction,
     x: number,
     y: number,
-    requireIntersection: boolean = true
+    requireIntersection = true
   ): boolean {
     let hasIntersection = false
 
@@ -214,11 +203,11 @@ function generateCrosswordLayout(
           return false
         }
         hasIntersection = true
-      } else {
-        // Check adjacent cells - no side-by-side words
-        if (hasAdjacentWord(cx, cy, dir, i === 0, i === wordText.length - 1)) {
-          return false
-        }
+      } else if (
+        hasAdjacentWord(cx, cy, dir, i === 0, i === wordText.length - 1)
+      ) {
+        // Fixed no-lonely-if by merging statement into an else-if block
+        return false
       }
     }
 
@@ -250,14 +239,12 @@ function generateCrosswordLayout(
     if (dir === "across") {
       // Check cells above and below
       adjacentKeys.push(`${x}-${y - 1}`, `${x}-${y + 1}`)
-
       // Check before/after if at word boundaries
       if (isStart) adjacentKeys.push(`${x - 1}-${y}`)
       if (isEnd) adjacentKeys.push(`${x + 1}-${y}`)
     } else {
       // Check cells left and right
       adjacentKeys.push(`${x - 1}-${y}`, `${x + 1}-${y}`)
-
       // Check before/after if at word boundaries
       if (isStart) adjacentKeys.push(`${x}-${y - 1}`)
       if (isEnd) adjacentKeys.push(`${x}-${y + 1}`)
@@ -322,11 +309,9 @@ function generateCrosswordLayout(
             if (canPlaceWord(newWord, newDir, newX, newY, true)) {
               placeWord(newWord, newDir, newX, newY)
               intersectionCount++
-
               // Update tracking lists
               availableWords.splice(availableWords.indexOf(newWord), 1)
               placedWordTexts.push(newWord)
-
               return true
             }
           }
@@ -363,11 +348,9 @@ function generateCrosswordLayout(
       // Pass false for requireIntersection to allow placement without intersection
       if (canPlaceWord(wordToPlace, dir, x, y, false)) {
         placeWord(wordToPlace, dir, x, y)
-
         // Update tracking lists
         availableWords.splice(randomIndex, 1)
         placedWordTexts.push(wordToPlace)
-
         return true
       }
     }
@@ -393,7 +376,6 @@ function generateCrosswordLayout(
     // First pass: assign numbers to starting positions
     for (const word of placedWords) {
       const key = `${word.x}-${word.y}`
-
       // Check if this position already has a number
       if (!numbered.has(key)) {
         numbered.set(key, clueNumber++)
@@ -416,7 +398,6 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
 
   for (const word of words) {
     const { x, y, direction, length, clueNumber, word: wordContent } = word
-
     // Skip if no word content
     if (!wordContent) continue
 
@@ -424,32 +405,40 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
       const cx = direction === "across" ? x + i : x
       const cy = direction === "down" ? y + i : y
       const key = `${cx}-${cy}`
-      const letter = wordContent[i]
+      const letter = wordContent[i] ?? ""
 
-      if (grid.has(key)) {
-        // Update existing cell
-        const cell = grid.get(key)!
-
-        // Combine directions
-        cell.across ||= direction === "across"
-        cell.down ||= direction === "down"
+      const existingCell = grid.get(key)
+      if (existingCell) {
+        // Safe check for structural intersection configurations
+        if (
+          i === 0 &&
+          clueNumber &&
+          !existingCell.clueNums.includes(clueNumber)
+        ) {
+          existingCell.clueNums.push(clueNumber)
+          existingCell.clueNum ??= clueNumber
+        }
 
         // Letter should match at intersections
-        if (cell.letter && cell.letter !== letter) {
+        if (existingCell.letter && existingCell.letter !== letter) {
           // eslint-disable-next-line no-console
           console.warn(
-            `Letter mismatch at (${cx},${cy}): ${cell.letter} vs ${letter}`
+            `Letter mismatch at (${cx},${cy}): ${existingCell.letter} vs ${letter}`
           )
         }
       } else {
-        // Create new cell
+        const associatedClueNums = i === 0 && clueNumber ? [clueNumber] : []
+
+        // Create matching CrosswordCell structurally
         grid.set(key, {
           x: cx,
           y: cy,
           letter,
-          across: direction === "across",
-          down: direction === "down",
-          ...(i === 0 && clueNumber ? { num: clueNumber } : {}),
+          direction,
+          word: wordContent,
+          clueNum: i === 0 && clueNumber ? clueNumber : undefined,
+          clueNums: associatedClueNums,
+          solved: false,
         })
       }
     }
@@ -463,14 +452,15 @@ function convertToGridCells(words: Array<Word>): Array<CrosswordCell> {
  */
 export function shuffleArray<T>(input: ReadonlyArray<T>): Array<T> {
   const array = [...input]
-
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
+    const currentElement = array[i]
+    const targetElement = array[j]
 
-    const temp = array[i]
-    array[i] = array[j] as T
-    array[j] = temp as T
+    if (currentElement !== undefined && targetElement !== undefined) {
+      array[i] = targetElement
+      array[j] = currentElement
+    }
   }
-
   return array
 }
