@@ -18,9 +18,11 @@
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.3",
     "@some-ui/styles": "workspace:*",
+    "@types/react": "^19.0.4",
     "lucide-react": "^0.562.0",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "workspace:*",
+    "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

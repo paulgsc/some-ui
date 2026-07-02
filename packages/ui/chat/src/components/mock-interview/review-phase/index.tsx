@@ -1,43 +1,69 @@
-import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { Button, Card, Textarea } from "some-ui-shared"
 
+import { AudioPlayer } from "@chat/components/mock-interview/audio-player"
+import type { TranscriptionResult } from "@chat/lib/interview/core/interview-types"
+
 type ReviewPhaseProps = {
-  transcript: string
+  audioUrl: string | null
+  transcription: TranscriptionResult | null
+  onTranscriptChange: (transcript: string) => void
   onContinue: () => void
   onRetry: () => void
   isLastQuestion: boolean
 }
 
 export const ReviewPhase = ({
-  transcript,
+  audioUrl,
+  transcription,
+  onTranscriptChange,
   onContinue,
   onRetry,
   isLastQuestion,
 }: ReviewPhaseProps): React.JSX.Element => {
-  const [isTranscribing, setIsTranscribing] = useState(true)
-  const [editedTranscript, setEditedTranscript] = useState("")
+  const status = transcription?.status ?? "pending"
 
-  // Simulate transcription delay
-  useState(() => {
-    setTimeout(() => {
-      setIsTranscribing(false)
-      setEditedTranscript(transcript)
-    }, 2000)
-  })
-
-  if (isTranscribing) {
+  if (status === "pending" || status === "processing") {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="max-w-2xl w-full p-12">
           <div className="flex flex-col items-center space-y-6">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-medium">Transcribing...</h2>
+              <h2 className="text-2xl font-medium">
+                {status === "pending" ? "Uploading..." : "Transcribing..."}
+              </h2>
               <p className="text-muted-foreground">
                 This will just take a moment
               </p>
             </div>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  if (status === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <Card className="max-w-2xl w-full p-12">
+          <div className="flex flex-col items-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-medium">Couldn&apos;t transcribe that</h2>
+              <p className="text-muted-foreground">
+                {transcription?.error ?? "Something went wrong. Give it another try."}
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={onRetry}
+              className="px-12 rounded-full"
+            >
+              Record again
+            </Button>
           </div>
         </Card>
       </div>
@@ -52,19 +78,23 @@ export const ReviewPhase = ({
             <div className="space-y-4">
               <h2 className="text-2xl font-medium">Your Response</h2>
               <p className="text-muted-foreground">
-                This is just for you—edit or review as you'd like
+                This is just for you—edit or review as you&apos;d like
               </p>
             </div>
 
+            {audioUrl && <AudioPlayer url={audioUrl} />}
+
             <Textarea
-              value={editedTranscript}
-              onChange={(e) => setEditedTranscript(e.target.value)}
+              value={transcription?.transcript ?? ""}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                onTranscriptChange(e.target.value)
+              }
               className="min-h-48 resize-none leading-relaxed"
             />
 
             <div className="bg-accent/30 rounded-2xl p-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Remember, there's no scoring or evaluation here. This space is
+                Remember, there&apos;s no scoring or evaluation here. This space is
                 for you to practice expressing your thoughts and building
                 confidence.
               </p>

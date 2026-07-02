@@ -1,32 +1,56 @@
+import { useEffect } from "react"
 import { AudioPlayer } from "@chat/components/mock-interview/audio-player"
-import { useAudioRecorder } from "@chat/hooks/use-audio-recorder"
+import type { UseAudioRecorderReturn } from "@chat/hooks/use-audio-recorder"
+import { useAudioLevel } from "@chat/hooks/use-audio-level"
+import { formatTime } from "@chat/lib/interview/format-time"
 import { AlertCircle, Loader2, Mic, RotateCcw, Square } from "lucide-react"
-
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, "0")}`
-}
 
 type RecordingPhaseProps = {
   question: string
-  onComplete: (transcript: string) => void
+  recording: UseAudioRecorderReturn
 }
 
 export const RecordingPhase = ({
   question,
-  onComplete,
+  recording,
 }: RecordingPhaseProps): React.JSX.Element => {
   const {
     state,
     elapsedTime,
+    stream,
     startRecording,
     pauseRecording,
     resumeRecording,
     stopRecording,
     reset,
     retry,
-  } = useAudioRecorder(onComplete)
+  } = recording
+
+  const levels = useAudioLevel(stream)
+
+  // Space bar toggles start/stop so practicing doesn't require reaching for the mouse
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.code !== "Space") return
+      if (
+        e.target instanceof HTMLElement &&
+        ["TEXTAREA", "INPUT"].includes(e.target.tagName)
+      ) {
+        return
+      }
+
+      if (state.type === "idle" || state.type === "error") {
+        e.preventDefault()
+        void startRecording()
+      } else if (state.type === "recording") {
+        e.preventDefault()
+        void stopRecording()
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return (): void => window.removeEventListener("keydown", onKeyDown)
+  }, [state.type, startRecording, stopRecording])
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6 bg-background">
@@ -43,7 +67,10 @@ export const RecordingPhase = ({
             </div>
 
             {/* State-based rendering */}
-            <div className="flex flex-col items-center justify-center space-y-8 py-8">
+            <div
+              className="flex flex-col items-center justify-center space-y-8 py-8"
+              aria-live="polite"
+            >
               {/* Idle State */}
               {state.type === "idle" && (
                 <>
@@ -60,7 +87,7 @@ export const RecordingPhase = ({
                     Start speaking
                   </button>
                   <p className="text-center text-sm text-muted-foreground">
-                    Click to begin recording your answer
+                    Click to begin recording your answer, or press space
                   </p>
                 </>
               )}
@@ -120,6 +147,19 @@ export const RecordingPhase = ({
                   <p className="text-2xl font-mono text-foreground">
                     {formatTime(elapsedTime)}
                   </p>
+
+                  <div
+                    className="flex items-center gap-1 h-10 justify-center w-full max-w-md"
+                    aria-hidden="true"
+                  >
+                    {levels.map((level, i) => (
+                      <div
+                        key={i}
+                        className="w-1 bg-primary/50 rounded-full transition-[height] duration-75"
+                        style={{ height: `${Math.round(level * 100)}%` }}
+                      />
+                    ))}
+                  </div>
 
                   <div className="flex items-center gap-4">
                     <button
@@ -205,7 +245,7 @@ export const RecordingPhase = ({
                   <AudioPlayer url={state.audioUrl} />
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Uploading and transcribing...</span>
+                    <span>Sending for transcription...</span>
                   </div>
                 </div>
               )}

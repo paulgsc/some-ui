@@ -1076,6 +1076,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.0.0)
@@ -1085,6 +1088,9 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+      zod:
+        specifier: 4.0.5
+        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -18741,8 +18747,8 @@ snapshots:
       '@babel/parser': 7.29.7
       eslint: 10.6.0(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 4.0.5
-      zod-validation-error: 4.0.2(zod@4.0.5)
+      zod: 3.25.76
+      zod-validation-error: 4.0.2(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
 
@@ -24812,9 +24818,9 @@ snapshots:
       async: 3.2.6
       jszip: 3.10.1
 
-  zod-validation-error@4.0.2(zod@4.0.5):
+  zod-validation-error@4.0.2(zod@3.25.76):
     dependencies:
-      zod: 4.0.5
+      zod: 3.25.76
 
   zod@3.25.76: {}
 
