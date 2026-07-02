@@ -7,6 +7,7 @@
  *   - Plugin overwrites dist/manifest.json with Firefox MV3 manifest after bundle
  *   - worker entry → worker.js (background service worker)
  *   - watch entry  → watch.js  (content script)
+ *   - resumeVeil entry → resume-veil.js (document_start content script)
  *
  * Usage:
  *   pnpm build:firefox
@@ -40,6 +41,7 @@ export default defineConfig({
       input: {
         worker: resolve(__dirname, "src/worker/worker.ts"),
         watch: resolve(__dirname, "src/content/watch.ts"),
+        resumeVeil: resolve(__dirname, "src/content/resume-veil.ts"),
         popup: resolve(__dirname, "popup.html"),
         suspend: resolve(__dirname, "suspend.html"),
       },
@@ -48,6 +50,7 @@ export default defineConfig({
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "worker") return "worker.js"
           if (chunkInfo.name === "watch") return "watch.js"
+          if (chunkInfo.name === "resumeVeil") return "resume-veil.js"
           if (chunkInfo.name === "popup") return "popup.js"
           if (chunkInfo.name === "suspend") return "suspend.js"
           return "[name].js"

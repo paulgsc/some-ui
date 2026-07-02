@@ -6,16 +6,57 @@
 // Copyright (C) auto-tab-discard contributors
 
 import { prefs, storage } from "./prefs"
-import { buildSuspendUrl, isSuspendTab } from "./suspend-url"
 import { log } from "./utils"
 
 /**
  * The single suspend operation this extension performs. There is intentionally
- * **no** `close` variant: suspender-ledger navigates a tab to its themed
- * suspend page — it never removes a tab. This type exists to make that
- * invariant structural rather than incidental.
+ * **no** `close` variant: suspender-ledger discards a tab natively — it never
+ * removes a tab. This type exists to make that invariant structural rather
+ * than incidental.
  */
 export type SuspendOperation = { tabId: number }
+
+const RESUME_FLAG_KEY = "__sl_resuming"
+
+/**
+ * Runs in the page just before it is discarded:
+ *   1. Sets a one-shot sessionStorage flag so `resume-veil.ts` (document_start)
+ *      paints a dark cover the instant the browser reloads this tab on
+ *      reactivation, instead of letting the page's own background flash first.
+ *      sessionStorage survives the discard → reload cycle because it's scoped
+ *      to the tab's browsing context, not the renderer process discard tears
+ *      down.
+ *   2. Prefixes the live `document.title` with the sleep marker. The browser
+ *      caches title/favicon at the moment a tab is discarded and keeps
+ *      showing that cached value in the tab strip while the tab stays
+ *      unloaded, so this is what gives a suspended tab its "💤" without
+ *      touching the tab's real address or requiring a second page.
+ */
+function markBeforeDiscard(key: string, prefix: string): void {
+  try {
+    // eslint-disable-next-line extension-charter/no-raw-storage -- runs inside the target page, not extension code; see docstring above.
+    sessionStorage.setItem(key, "1")
+  } catch {
+    // Storage unavailable (e.g. a sandboxed frame) — resume just won't veil.
+  }
+  if (prefix) {
+    document.title = `${prefix} ${document.title}`
+  }
+}
+
+async function prepareForDiscard(tabId: number, marker: string): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: markBeforeDiscard,
+      args: [RESUME_FLAG_KEY, marker],
+    })
+  } catch (e) {
+    // No content-injectable document (e.g. chrome:// or an about: page) —
+    // discard still proceeds; that tab simply won't get the veil or marker.
+    log("could not prepare tab for discard", e)
+  }
+}
 
 /** Tab ids currently mid-suspend, used to debounce duplicate requests. */
 const inprogress = new Set<number>()
@@ -34,18 +75,18 @@ type DiscardFn = {
 }
 
 /**
- * The terminal action: navigate the tab to the themed suspend page. This is the
- * ONLY place a tab's state is changed, and it is `chrome.tabs.update` — never
+ * The terminal action: natively discard the tab. This is the ONLY place a
+ * tab's state is changed, and it is `chrome.tabs.discard` — never
  * `chrome.tabs.remove`.
  *
- * Why navigate instead of `chrome.tabs.discard`? Native discard reloads the
- * original page when the user reactivates the tab, and that browser-driven
- * reload flashes the page's own (usually white) background before some-filter's
- * content script can paint its dark veil. The owned suspend page avoids this:
- * it is unconditionally dark, and its restore path is a normal top-level
- * `location.replace(url)` navigation, which some-filter *does* veil at
- * `document_start`. The `prepends` marker rides along in the URL and is applied
- * to the tab title by the suspend page.
+ * Native discard (rather than navigating to an owned `suspend.html`) keeps the
+ * browser's own tab.url/title/favIconUrl intact — no `moz-extension://` URL,
+ * full awesome-bar / "switch to tab" fidelity. `prepareForDiscard` runs first
+ * so `resume-veil.ts` can cover the reactivation reload before first paint
+ * (verified empirically: a document_start veil pre-empts the reload's own
+ * background every time, since document_start content scripts run before
+ * first paint regardless of what triggered the navigation) and so the tab
+ * strip shows the `prepends` marker while the tab stays discarded.
  */
 const perform = (tab: chrome.tabs.Tab): Promise<void> =>
   new Promise<void>((resolve) => {
@@ -53,19 +94,21 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
       resolve()
       return
     }
-    const suspendUrl = buildSuspendUrl(tab, prefs.prepends)
-    try {
-      chrome.tabs.update(tab.id, { url: suspendUrl }, () => {
-        const err = chrome.runtime.lastError
-        if (err) {
-          log("suspend navigation failed", err.message ?? err)
-        }
+    const tabId = tab.id
+    void prepareForDiscard(tabId, prefs.prepends).finally(() => {
+      try {
+        chrome.tabs.discard(tabId, () => {
+          const err = chrome.runtime.lastError
+          if (err) {
+            log("discard failed", err.message ?? err)
+          }
+          resolve()
+        })
+      } catch (e) {
+        log("discarding failed", e)
         resolve()
-      })
-    } catch (e) {
-      log("suspending failed", e)
-      resolve()
-    }
+      }
+    })
   })
 
 function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
@@ -88,10 +131,6 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   }
   if (tab.discarded) {
     log("already discarded", tab)
-    return
-  }
-  if (isSuspendTab(tab)) {
-    log("tab already suspended", tab)
     return
   }
 

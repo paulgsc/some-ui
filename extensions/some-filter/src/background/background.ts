@@ -1,21 +1,21 @@
 import { isExtensionMessage } from "@filter/lib/background/guard"
+import {
+  DEFAULT_LEGACY_STYLE,
+  isLegacyStyle,
+  LEGACY_PRESETS,
+} from "@filter/lib/legacy-presets"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/background"
-import type { FilterConfig } from "@filter/types/popup"
+import type { FilterConfig, LegacyStyle } from "@filter/types/popup"
 import type { TabState } from "@filter/types/tab"
 
-const DEFAULT_FILTER: FilterConfig = {
-  invert: 1,
-  hueRotate: 180,
-  sepia: 0.12,
-  brightness: 0.5,
-  contrast: 0.92,
-}
+const DEFAULT_FILTER: FilterConfig = LEGACY_PRESETS[DEFAULT_LEGACY_STYLE]
 
 type StoredState = {
   filteredTabIds: Array<number>
   tabStates: Record<number, TabState>
   filterConfig: FilterConfig
+  legacyStyle: LegacyStyle
 }
 
 function normalizeState(data: Partial<StoredState>): StoredState {
@@ -25,6 +25,9 @@ function normalizeState(data: Partial<StoredState>): StoredState {
       : [],
     tabStates: data.tabStates ?? {},
     filterConfig: data.filterConfig ?? DEFAULT_FILTER,
+    legacyStyle: isLegacyStyle(data.legacyStyle)
+      ? data.legacyStyle
+      : DEFAULT_LEGACY_STYLE,
   }
 }
 
@@ -33,6 +36,7 @@ async function getState(): Promise<StoredState> {
     "filteredTabIds",
     "tabStates",
     "filterConfig",
+    "legacyStyle",
   ])
 
   return normalizeState(data)
@@ -69,6 +73,51 @@ async function sendToTab(
 }
 
 // ─────────────────────────────────────────────
+// legacy style (invert vs dim)
+// ─────────────────────────────────────────────
+
+const LEGACY_STYLE_MENU_PARENT_ID = "sw-legacy-style"
+const LEGACY_STYLE_MENU_IDS: Record<LegacyStyle, string> = {
+  invert: "sw-legacy-style-invert",
+  dim: "sw-legacy-style-dim",
+}
+const MENU_ID_TO_LEGACY_STYLE: Record<string, LegacyStyle> = {
+  [LEGACY_STYLE_MENU_IDS.invert]: "invert",
+  [LEGACY_STYLE_MENU_IDS.dim]: "dim",
+}
+
+function syncLegacyStyleMenu(style: LegacyStyle): void {
+  for (const [candidate, id] of Object.entries(LEGACY_STYLE_MENU_IDS)) {
+    void ext.contextMenus
+      .update(id, { checked: candidate === style })
+      .catch(() => {
+        // Menu may not exist yet (e.g. Chrome, which has no "tab" context and
+        // may have failed to create these items) — nothing to reconcile.
+      })
+  }
+}
+
+/** Persist the chosen legacy style, push the new config to every tab
+ * currently in "legacy" mode, and reflect the choice in the context menu. */
+async function applyLegacyStyle(style: LegacyStyle): Promise<void> {
+  const filterConfig = LEGACY_PRESETS[style]
+
+  await ext.storage.local.set({ legacyStyle: style, filterConfig })
+  syncLegacyStyleMenu(style)
+
+  const { filteredTabIds } = await getState()
+  await Promise.all(
+    filteredTabIds.map((tabId) =>
+      sendToTab(tabId, {
+        type: "TOGGLE_FILTER",
+        enabled: true,
+        config: filterConfig,
+      })
+    )
+  )
+}
+
+// ─────────────────────────────────────────────
 // install
 // ─────────────────────────────────────────────
 
@@ -77,7 +126,43 @@ ext.runtime.onInstalled.addListener((): void => {
     filteredTabIds: [],
     tabStates: {},
     filterConfig: DEFAULT_FILTER,
+    legacyStyle: DEFAULT_LEGACY_STYLE,
   })
+
+  // "tab" (right-click the tab strip) is Firefox-only; Chrome has no such
+  // context and silently fails to create these items, which is fine — the
+  // popup toggle covers Chrome.
+  void ext.contextMenus.removeAll().then(() => {
+    ext.contextMenus.create({
+      id: LEGACY_STYLE_MENU_PARENT_ID,
+      title: "Legacy filter style",
+      contexts: ["tab"],
+    })
+    ext.contextMenus.create({
+      id: LEGACY_STYLE_MENU_IDS.invert,
+      parentId: LEGACY_STYLE_MENU_PARENT_ID,
+      title: "Invert colors",
+      type: "radio",
+      checked: DEFAULT_LEGACY_STYLE === "invert",
+      contexts: ["tab"],
+    })
+    ext.contextMenus.create({
+      id: LEGACY_STYLE_MENU_IDS.dim,
+      parentId: LEGACY_STYLE_MENU_PARENT_ID,
+      title: "Dim (pairs with browser dark theme)",
+      type: "radio",
+      checked: DEFAULT_LEGACY_STYLE === "dim",
+      contexts: ["tab"],
+    })
+  })
+})
+
+ext.contextMenus.onClicked.addListener((info): void => {
+  const style = MENU_ID_TO_LEGACY_STYLE[String(info.menuItemId)]
+
+  if (style) {
+    void applyLegacyStyle(style)
+  }
 })
 
 // ─────────────────────────────────────────────
@@ -107,6 +192,11 @@ ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
 
     void handler()
     return true
+  }
+
+  if (msg.type === "SET_LEGACY_STYLE") {
+    void applyLegacyStyle(msg.style)
+    return false
   }
 
   if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
