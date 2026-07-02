@@ -39,7 +39,10 @@ function markBeforeDiscard(key: string, prefix: string): void {
   } catch {
     // Storage unavailable (e.g. a sandboxed frame) — resume just won't veil.
   }
-  if (prefix) {
+  // Idempotent: a repeated suspend attempt against a tab snapshot that was
+  // never re-queried (so still reports discarded:false) must not re-stack the
+  // marker on top of itself.
+  if (prefix && !document.title.startsWith(`${prefix} `)) {
     document.title = `${prefix} ${document.title}`
   }
 }
@@ -71,7 +74,9 @@ function unmarkAfterDiscard(key: string, prefix: string): void {
   } catch {
     // Storage unavailable — nothing to clear.
   }
-  if (prefix && document.title.startsWith(`${prefix} `)) {
+  // Strip every stacked occurrence, not just one — belt-and-suspenders
+  // alongside markBeforeDiscard's own idempotency guard.
+  while (prefix && document.title.startsWith(`${prefix} `)) {
     document.title = document.title.slice(prefix.length + 1)
   }
 }
@@ -164,16 +169,26 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
     return
   }
 
-  // https://github.com/rNeomy/auto-tab-discard/issues/248
+  // https://github.com/rNeomy/auto-tab-discard/issues/248 — cooldown against
+  // rapid duplicate requests. Release is tied to the LATER of this cooldown
+  // and actual completion of whatever this call decides to do below: a fixed
+  // timer alone can expire while a queued or slow-to-complete suspend is still
+  // in flight, letting a second concurrent request re-enter and re-mark the
+  // same live tab.
   inprogress.add(tabId)
-  setTimeout(() => inprogress.delete(tabId), 2000)
+  const cooldown = new Promise<void>((resolve) => setTimeout(resolve, 2000))
+  const release = (op: Promise<void>): void => {
+    void Promise.all([cooldown, op]).finally(() => inprogress.delete(tabId))
+  }
 
   if (tab.active) {
     log("tab is active", tab)
+    release(Promise.resolve())
     return
   }
   if (tab.discarded) {
     log("already discarded", tab)
+    release(Promise.resolve())
     return
   }
   // The browser refuses to discard a tab that is playing audio (a YouTube tab,
@@ -182,10 +197,11 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   // back, and avoids the misleading "tab wears 💤 but keeps playing" state.
   if (tab.audible) {
     log("tab is audible; suspend skipped", tab)
+    release(Promise.resolve())
     return
   }
 
-  return storage(prefs).then((ps) => {
+  const op = storage(prefs).then((ps) => {
     if (
       discard.count > ps["simultaneous-jobs"] &&
       discard.time + 5000 < Date.now()
@@ -193,8 +209,13 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
       discard.count = 0
     }
     if (discard.count > ps["simultaneous-jobs"]) {
-      log("discarding queue for", tab)
-      discard.tabs.push(tab)
+      // A duplicate request for a tab already sitting in the queue must not
+      // push a second copy — that would eventually run perform() twice for
+      // the same tab and re-mark a title the first copy already marked.
+      if (!discard.tabs.some((qt) => qt.id === tabId)) {
+        log("discarding queue for", tab)
+        discard.tabs.push(tab)
+      }
       return
     }
 
@@ -214,6 +235,8 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
       })
     })
   })
+  release(op)
+  return op
 }
 
 const discard: DiscardFn = Object.assign(discardImpl, {
