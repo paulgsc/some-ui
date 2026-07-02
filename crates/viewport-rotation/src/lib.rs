@@ -429,19 +429,19 @@ impl ViewportManager {
 
     /// Get the current item index in the active viewport
     #[wasm_bindgen]
-    pub fn get_current_item_index(&self) -> Result<JsValue, JsValue> {
+    pub fn get_current_item_index(&self) -> Result<i32, JsValue> {
         let viewport_id = self.get_active_id()?;
         self.get_viewport_current_item_index(viewport_id)
     }
 
     /// Get the current item index in a specific viewport
     #[wasm_bindgen]
-    pub fn get_viewport_current_item_index(&self, viewport_id: &str) -> Result<JsValue, JsValue> {
+    pub fn get_viewport_current_item_index(&self, viewport_id: &str) -> Result<i32, JsValue> {
         let viewport = self.get_viewport(viewport_id)?;
 
         match viewport.get_current_item_index() {
-            Some(idx) => Ok(JsValue::from_f64(idx as f64)),
-            None => Ok(JsValue::null()),
+            Some(idx) => Ok(idx as i32),
+            None => Ok(-1),
         }
     }
 
