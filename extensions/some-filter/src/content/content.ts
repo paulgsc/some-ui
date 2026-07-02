@@ -218,6 +218,11 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
       // background request message
       return
     }
+
+    case "SET_LEGACY_STYLE": {
+      // background-only message
+      return
+    }
     default: {
       msg satisfies never
     }

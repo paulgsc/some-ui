@@ -421,11 +421,19 @@ function applyLegacyFilter(config: FilterConfig): void {
     root.appendChild(style)
   }
 
+  // "dim" style (no invert): the browser's native dark theme already darkened
+  // the background, so forcing a canvas colour here would fight it, and
+  // counter-inverting media would be a no-op filter applied for nothing.
+  // Only the "invert" style needs both.
+  const isInverted = Boolean(config.invert)
+  const canvasRule = isInverted ? "background-color: #0d1117 !important;" : ""
+  const mediaRule = isInverted
+    ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
+    : ""
+
   style.textContent = `
-    html { filter: ${buildFilterString(config)} !important; background-color: #0d1117 !important; }
-    img, video, canvas, picture {
-      filter: invert(1) hue-rotate(180deg) !important;
-    }
+    html { filter: ${buildFilterString(config)} !important; ${canvasRule} }
+    ${mediaRule}
   `
 }
 

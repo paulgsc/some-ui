@@ -255,6 +255,23 @@ describe("applyTheme", () => {
     expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
     expect(document.getElementById(STYLE_ID)).toBeNull()
   })
+
+  it("'legacy' with invert forces the canvas colour and counter-inverts media", () => {
+    applyTheme("legacy", { invert: 1, brightness: 0.5 })
+    const style = document.getElementById(LEGACY_STYLE_ID)
+    expect(style?.textContent).toContain("background-color: #0d1117")
+    expect(style?.textContent).toContain(
+      "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg)"
+    )
+  })
+
+  it("'legacy' without invert (dim style) skips the canvas colour and media counter-invert", () => {
+    applyTheme("legacy", { invert: 0, brightness: 0.7, contrast: 0.95 })
+    const style = document.getElementById(LEGACY_STYLE_ID)
+    expect(style?.textContent).toContain("brightness(0.7)")
+    expect(style?.textContent).not.toContain("background-color: #0d1117")
+    expect(style?.textContent).not.toContain("img, video, canvas, picture")
+  })
 })
 
 describe("restoreVendor", () => {

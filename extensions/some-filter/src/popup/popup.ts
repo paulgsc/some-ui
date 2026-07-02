@@ -1,9 +1,12 @@
+import { isLegacyStyle, LEGACY_PRESETS } from "@filter/lib/legacy-presets"
 import { ActionBar } from "@filter/popup/components/action-bar"
 import { FilterBadge } from "@filter/popup/components/filter-badge"
+import { LegacyStyleToggle } from "@filter/popup/components/legacy-style-toggle"
 import { TabList } from "@filter/popup/components/tablist"
 import { WindowGroupHeader } from "@filter/popup/components/window-group-header"
 import type {
   FilterConfig,
+  LegacyStyle,
   PopupState,
   TabEntry,
   WindowGroup,
@@ -11,13 +14,8 @@ import type {
 
 import "./popup.css"
 
-const DEFAULT_FILTER_CONFIG: FilterConfig = {
-  invert: 1,
-  hueRotate: 180,
-  sepia: 0.12,
-  brightness: 0.5,
-  contrast: 0.92,
-}
+const DEFAULT_LEGACY_STYLE: LegacyStyle = "invert"
+const DEFAULT_FILTER_CONFIG: FilterConfig = LEGACY_PRESETS[DEFAULT_LEGACY_STYLE]
 
 // ── API logic ───────────────────────────────────────────────────────────────
 
@@ -74,14 +72,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function getStorageState(): Promise<{
   filteredTabIds: Array<number>
   filterConfig: FilterConfig
+  legacyStyle: LegacyStyle
 }> {
   const data: unknown = await browser.storage.local.get([
     "filteredTabIds",
     "filterConfig",
+    "legacyStyle",
   ])
 
   if (!isRecord(data)) {
-    return { filteredTabIds: [], filterConfig: DEFAULT_FILTER_CONFIG }
+    return {
+      filteredTabIds: [],
+      filterConfig: DEFAULT_FILTER_CONFIG,
+      legacyStyle: DEFAULT_LEGACY_STYLE,
+    }
   }
 
   const rawTabIds = data.filteredTabIds
@@ -117,7 +121,11 @@ async function getStorageState(): Promise<{
     }
   }
 
-  return { filteredTabIds, filterConfig }
+  const legacyStyle = isLegacyStyle(data.legacyStyle)
+    ? data.legacyStyle
+    : DEFAULT_LEGACY_STYLE
+
+  return { filteredTabIds, filterConfig, legacyStyle }
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -129,6 +137,7 @@ let state: PopupState = {
   statusFilter: null,
   filteredTabIds: new Set(),
   filterConfig: DEFAULT_FILTER_CONFIG,
+  legacyStyle: DEFAULT_LEGACY_STYLE,
 }
 
 function setState(patch: Partial<PopupState>): void {
@@ -174,6 +183,11 @@ async function onApply(): Promise<void> {
 
 function onStatusFilterChange(filter: string | null): void {
   setState({ statusFilter: filter })
+}
+
+async function onLegacyStyleChange(style: LegacyStyle): Promise<void> {
+  setState({ legacyStyle: style, filterConfig: LEGACY_PRESETS[style] })
+  await browser.runtime.sendMessage({ type: "SET_LEGACY_STYLE", style })
 }
 
 function onWindowSelectAll(windowId: number): void {
@@ -231,6 +245,15 @@ function render(): void {
   )
 
   root.appendChild(
+    LegacyStyleToggle({
+      legacyStyle: state.legacyStyle,
+      onChange: (style) => {
+        void onLegacyStyleChange(style)
+      },
+    })
+  )
+
+  root.appendChild(
     ActionBar({
       selectedCount: state.selectedTabIds.size,
       statusFilter: state.statusFilter,
@@ -267,6 +290,7 @@ void (async () => {
       groups,
       filteredTabIds: new Set(storage.filteredTabIds),
       filterConfig: storage.filterConfig,
+      legacyStyle: storage.legacyStyle,
       filterActive: storage.filteredTabIds.length > 0,
       selectedTabIds: new Set(storage.filteredTabIds),
     })
