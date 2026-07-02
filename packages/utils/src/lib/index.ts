@@ -40,6 +40,7 @@ export {
 export type { SpeechQueueState } from "./context"
 export {
   preloadRegistryComponents,
+  hasRegistryKey,
   lazyWithPreload,
   renderRegistryComponent,
 } from "./registry"

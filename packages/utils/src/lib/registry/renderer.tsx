@@ -16,7 +16,7 @@ class ComponentErrorBoundary extends Component<
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: any): void {
+  componentDidCatch(error: Error, errorInfo: unknown): void {
     // eslint-disable-next-line no-console
     console.error("Component crashed:", error, errorInfo)
   }
@@ -53,7 +53,7 @@ function assertIsValidProps(
  * - Callers provide enhancers that inject whatever they need
  * - Composable and type-safe
  */
-export type ComponentEnhancer<P = any> = (
+export type ComponentEnhancer<P extends object = Record<string, unknown>> = (
   Component: ComponentType<P>
 ) => ComponentType<P>
 
@@ -74,9 +74,10 @@ export type RegistryRenderPolicy = {
   enhanceComponent?: ComponentEnhancer
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const enhancedCache = new WeakMap<ComponentType<any>, ComponentType<any>>()
 
-function getEnhanced<P>(
+function getEnhanced<P extends object>(
   Component: ComponentType<P>,
   enhance?: ComponentEnhancer<P>
 ): ComponentType<P> {
@@ -111,7 +112,6 @@ export function renderRegistryComponent<K extends string>(
   policy: RegistryRenderPolicy = {}
 ): ReactNode {
   const entry = registry[key]
-  if (!entry) return null
 
   assertIsValidProps(props)
 
@@ -139,4 +139,11 @@ export function renderRegistryComponent<K extends string>(
   }
 
   return node
+}
+
+export function hasRegistryKey<K extends string>(
+  registry: ComponentRegistry<K>,
+  key: string
+): key is K {
+  return key in registry
 }
