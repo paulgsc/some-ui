@@ -247,11 +247,28 @@ type ClickInfo = {
 
         if (otab?.id !== undefined) {
           chrome.tabs.update(otab.id, { active: true }, () => {
-            // one tab was active when htabs was recorded; mark it inactive
-            htabs.forEach((t) => (t.active = false))
-            htabs.forEach((t) => {
-              void discard(t)
-            })
+            // `htabs` snapshots predate the focus switch above — optimistically
+            // flipping `.active` here would bypass discard()'s own active-tab
+            // guard with a value we merely asserted, not one the browser has
+            // actually confirmed. The `tabs.update` callback firing means the
+            // request was processed, but not necessarily that every internal
+            // consumer (including discard-eligibility) has converged on the
+            // new focus yet — re-querying gets the browser's authoritative
+            // current state instead of gambling on that timing.
+            void Promise.all(
+              htabs.map(async (t) => {
+                const tId = t.id
+                if (tId === undefined) return
+                const fresh = await new Promise<chrome.tabs.Tab | undefined>(
+                  (resolve) => {
+                    chrome.tabs.get(tId, (tb) => {
+                      resolve(chrome.runtime.lastError ? undefined : tb)
+                    })
+                  }
+                )
+                if (fresh) void discard(fresh)
+              })
+            )
           })
         } else {
           notify(chrome.i18n.getMessage("menu_msg3") || "No tab to switch to")

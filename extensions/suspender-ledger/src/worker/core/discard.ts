@@ -117,6 +117,35 @@ type DiscardFn = {
   perform(tab: chrome.tabs.Tab): Promise<void>
 }
 
+type DiscardAttempt = { ok: true } | { ok: false; message: string }
+
+/** One `chrome.tabs.discard` call, normalized to a result instead of a callback. */
+function discardOnce(tabId: number): Promise<DiscardAttempt> {
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.discard(tabId, () => {
+        const err = chrome.runtime.lastError
+        resolve(
+          err
+            ? { ok: false, message: err.message ?? String(err) }
+            : { ok: true }
+        )
+      })
+    } catch (e) {
+      resolve({
+        ok: false,
+        message: e instanceof Error ? e.message : String(e),
+      })
+    }
+  })
+}
+
+const wait = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
+/** How long to let the browser settle before retrying a failed discard. */
+const RETRY_DELAY_MS = 250
+
 /**
  * The terminal action: natively discard the tab. This is the ONLY place a
  * tab's state is changed, and it is `chrome.tabs.discard` — never
@@ -130,6 +159,15 @@ type DiscardFn = {
  * background every time, since document_start content scripts run before
  * first paint regardless of what triggered the navigation) and so the tab
  * strip shows the `prepends` marker while the tab stays discarded.
+ *
+ * `discard()` is called immediately after `prepareForDiscard` injects a
+ * script into this same tab. That injection can itself leave the tab looking
+ * "recently touched" to the browser's own discard-eligibility check for a
+ * brief moment — and for the manual-suspend caller (menu.ts), this also runs
+ * right after a `tabs.update` focus switch away from this very tab, another
+ * transition the browser may not have fully settled yet. Both are transient:
+ * a single retry after a short delay is enough to let them clear, rather than
+ * immediately rolling back a mark that a moment later would have stuck.
  */
 const perform = (tab: chrome.tabs.Tab): Promise<void> =>
   new Promise<void>((resolve) => {
@@ -139,23 +177,23 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
     }
     const tabId = tab.id
     void prepareForDiscard(tabId, prefs.prepends).finally(() => {
-      try {
-        chrome.tabs.discard(tabId, () => {
-          const err = chrome.runtime.lastError
-          if (err) {
-            // The browser refused to discard (e.g. an audible/media tab). We
-            // have already marked the page, so strip the marker before
-            // resolving — otherwise it is stranded on a live tab (ORPHANED).
-            log("discard failed", err.message ?? err)
-            void rollbackMark(tabId, prefs.prepends).finally(resolve)
-            return
-          }
-          resolve()
-        })
-      } catch (e) {
-        log("discarding failed", e)
-        void rollbackMark(tabId, prefs.prepends).finally(resolve)
-      }
+      void (async () => {
+        let attempt = await discardOnce(tabId)
+        if (!attempt.ok) {
+          log("discard failed, retrying once", attempt.message)
+          await wait(RETRY_DELAY_MS)
+          attempt = await discardOnce(tabId)
+        }
+        if (!attempt.ok) {
+          // Still refused after the retry — a real block (audible, policy),
+          // not a transient race. We already marked the page, so strip the
+          // marker before resolving — otherwise it is stranded on a live tab
+          // (ORPHANED).
+          log("discard failed", attempt.message)
+          await rollbackMark(tabId, prefs.prepends)
+        }
+        resolve()
+      })()
     })
   })
 

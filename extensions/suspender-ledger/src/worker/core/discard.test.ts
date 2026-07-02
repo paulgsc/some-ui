@@ -116,32 +116,85 @@ describe("discard", () => {
     expect(chrome.tabs.discard).not.toHaveBeenCalled()
   })
 
-  it("rolls back the marker when the browser rejects the discard", async () => {
-    prefs.prepends = "💤"
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.discard).mockImplementation(((
-      _id: number,
-      cb: DiscardCb
-    ) => {
-      Object.assign(chrome.runtime, {
-        lastError: { message: "Tabs cannot be discarded." },
-      })
-      cb(undefined)
-      Object.assign(chrome.runtime, { lastError: undefined })
-    }) as never)
+  it("rolls back the marker when the browser rejects the discard on both attempts", async () => {
+    vi.useFakeTimers()
+    try {
+      prefs.prepends = "💤"
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      vi.mocked(chrome.tabs.discard).mockImplementation(((
+        _id: number,
+        cb: DiscardCb
+      ) => {
+        Object.assign(chrome.runtime, {
+          lastError: { message: "Tabs cannot be discarded." },
+        })
+        cb(undefined)
+        Object.assign(chrome.runtime, { lastError: undefined })
+      }) as never)
 
-    await discard(tab({ id: 8, url: "https://example.com/", title: "Example" }))
+      const done = discard(
+        tab({ id: 8, url: "https://example.com/", title: "Example" })
+      )
+      await vi.advanceTimersByTimeAsync(1000)
+      await done
 
-    // Two executeScript calls: the mark, then the rollback (unmark).
-    expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(2)
-    expect(chrome.scripting.executeScript).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        target: { tabId: 8 },
-        args: ["__sl_resuming", "💤"],
-      })
-    )
-    expect(chrome.tabs.remove).not.toHaveBeenCalled()
-    prefs.prepends = ""
+      // A persistent rejection is retried once (transient races get one more
+      // chance to clear) before giving up.
+      expect(chrome.tabs.discard).toHaveBeenCalledTimes(2)
+      // Two executeScript calls: the mark, then the rollback (unmark).
+      expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(2)
+      expect(chrome.scripting.executeScript).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          target: { tabId: 8 },
+          args: ["__sl_resuming", "💤"],
+        })
+      )
+      expect(chrome.tabs.remove).not.toHaveBeenCalled()
+      prefs.prepends = ""
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("recovers without rolling back when a retry succeeds after a transient rejection", async () => {
+    // Models the manual-suspend race: the browser momentarily refuses the
+    // first discard (e.g. the focus switch away from this tab, or the mark's
+    // own executeScript call, hasn't fully settled yet), then accepts it on
+    // the very next attempt.
+    vi.useFakeTimers()
+    try {
+      prefs.prepends = "💤"
+      let calls = 0
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      vi.mocked(chrome.tabs.discard).mockImplementation(((
+        _id: number,
+        cb: DiscardCb
+      ) => {
+        calls += 1
+        if (calls === 1) {
+          Object.assign(chrome.runtime, {
+            lastError: { message: "Tabs cannot be discarded." },
+          })
+          cb(undefined)
+          Object.assign(chrome.runtime, { lastError: undefined })
+        } else {
+          cb(undefined)
+        }
+      }) as never)
+
+      const done = discard(
+        tab({ id: 12, url: "https://example.com/", title: "Example" })
+      )
+      await vi.advanceTimersByTimeAsync(1000)
+      await done
+
+      expect(chrome.tabs.discard).toHaveBeenCalledTimes(2)
+      // Only the mark ran — the retry succeeded, so nothing was rolled back.
+      expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
+      prefs.prepends = ""
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("does not roll back the marker when the discard succeeds", async () => {
