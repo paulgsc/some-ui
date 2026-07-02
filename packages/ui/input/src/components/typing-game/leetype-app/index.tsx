@@ -26,7 +26,9 @@ type ResultState = {
 export const LeetypeApp: FC = () => {
   const [screen, setScreen] = useState<AppScreen>("selector")
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null)
-  const [sessionConfig, setSessionConfig] = useState<SessionStartConfig | null>(null)
+  const [sessionConfig, setSessionConfig] = useState<SessionStartConfig | null>(
+    null
+  )
   const [lastResult, setLastResult] = useState<ResultState | null>(null)
 
   const { progress, recordSolve } = usePlayerProgress()

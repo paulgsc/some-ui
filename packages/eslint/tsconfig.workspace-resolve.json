@@ -27,7 +27,7 @@
       "some-ui-rollup-config": ["../rollup-config/src/index.ts"],
       "some-ui-searchbar": ["../ui/searchbar/src/index.ts"],
       "some-ui-shared": ["../ui/shared/src/index.ts"],
-      "some-ui-slideshow": ["../ui/slideshow/src/index.ts"],
+      "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
       "some-ui-stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],
       "umag": ["../ui/umag/src/index.ts"],

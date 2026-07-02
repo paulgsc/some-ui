@@ -81,7 +81,9 @@ export const LayoutNodeRenderer = ({
       e.stopPropagation()
 
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const draggedRegion = e.dataTransfer.getData("text/plain") as YouTubeRegion | undefined
+      const draggedRegion = e.dataTransfer.getData("text/plain") as
+        | YouTubeRegion
+        | undefined
 
       if (draggedRegion && draggedRegion !== node.id) {
         if (draggedOver) {

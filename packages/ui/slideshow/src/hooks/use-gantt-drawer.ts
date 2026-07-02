@@ -25,29 +25,32 @@ type ReturnOptions = {
   mouseHandlers: { onMouseEnter: () => void; onMouseLeave: () => void }
   formatTime: (seconds: number) => string
 }
+
 export function useGanttDrawer({
   chapters,
   totalDuration,
 }: Options): ReturnOptions {
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
   const [showSubchapters, setShowSubchapters] = useState<boolean>(true)
-  const [currentChapter, setCurrentChapter] = useState<
-    Chapter | SubChapter | undefined
-  >(chapters[0])
 
   const { currentTime, setCurrentTime } = useVideoTime({ totalDuration })
   const { showOverlay, setShowOverlay, mouseHandlers } = usePeriodicOverlay()
+
+  // 1. Derive the current chapter directly during render
+  const currentChapter =
+    chapters.length > 0 ? findCurrentChapter(currentTime, chapters) : undefined
+
   const { setValue: updateStorage } = useLocalStorage(
     "gantt-chapter",
     currentChapter
   )
 
+  // 2. Use the effect solely for the side-effect (updating storage) when the chapter actually changes
   useEffect(() => {
-    if (chapters.length === 0 || currentChapter === undefined) return
-    const chapter = findCurrentChapter(currentTime, chapters)
-    setCurrentChapter(chapter)
-    updateStorage(chapter.id)
-  }, [currentTime, chapters])
+    if (currentChapter !== undefined) {
+      updateStorage(currentChapter)
+    }
+  }, [currentChapter, updateStorage])
 
   const jumpToTimestamp = (time: number): void => {
     setCurrentTime(time)

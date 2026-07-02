@@ -216,7 +216,9 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             Type from memory
           </p>
           {adaptiveMessage && (
-            <p className="text-xs text-muted-foreground/70">{adaptiveMessage}</p>
+            <p className="text-xs text-muted-foreground/70">
+              {adaptiveMessage}
+            </p>
           )}
         </div>
       )}

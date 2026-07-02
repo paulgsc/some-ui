@@ -96,13 +96,10 @@ export const Leetype: FC<LeetypeProps> = ({
   const effectiveCodePaths: Partial<Record<Language, string>> =
     challenge?.codePaths ?? codePaths ?? {}
 
-  const codeState = useChunkedCode(
-    effectiveCodePaths[language] ?? "",
-    {
-      prettierParser: PRETTIER_PARSER_MAP[language],
-      linesPerChunk: 150,
-    }
-  )
+  const codeState = useChunkedCode(effectiveCodePaths[language] ?? "", {
+    prettierParser: PRETTIER_PARSER_MAP[language],
+    linesPerChunk: 150,
+  })
 
   const targetCode = codeState.currentChunk?.content ?? ""
 
@@ -158,7 +155,11 @@ export const Leetype: FC<LeetypeProps> = ({
   // Adaptive mode: latch hidden flag when WPM crosses threshold during play.
   // Calling setState during render (getDerivedStateFromProps equivalent) causes
   // React to discard the current render and immediately re-render — not an effect.
-  if (!adaptiveHidden && gameState === "playing" && wpm >= ADAPTIVE_WPM_THRESHOLD) {
+  if (
+    !adaptiveHidden &&
+    gameState === "playing" &&
+    wpm >= ADAPTIVE_WPM_THRESHOLD
+  ) {
     setAdaptiveHidden(true)
   }
 
@@ -178,7 +179,14 @@ export const Leetype: FC<LeetypeProps> = ({
       wasAdaptive: adaptiveHidden,
       gameState: "finished",
     }
-  }, [wpm, accuracy, elapsedTime, totalErrors, effectiveDisplayMode, adaptiveHidden])
+  }, [
+    wpm,
+    accuracy,
+    elapsedTime,
+    totalErrors,
+    effectiveDisplayMode,
+    adaptiveHidden,
+  ])
 
   // Fire onSessionComplete when game ends
   useEffect(() => {

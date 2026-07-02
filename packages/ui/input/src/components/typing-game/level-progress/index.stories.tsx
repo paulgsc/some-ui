@@ -38,7 +38,9 @@ export const AlmostLevel3: Story = {
     },
   },
   parameters: {
-    docs: { description: { story: "Close to unlocking algorithm mode (Level 3)" } },
+    docs: {
+      description: { story: "Close to unlocking algorithm mode (Level 3)" },
+    },
   },
 }
 
@@ -51,7 +53,11 @@ export const AlgorithmUnlocked: Story = {
     },
   },
   parameters: {
-    docs: { description: { story: "Level 3 reached — algorithm mode is now accessible" } },
+    docs: {
+      description: {
+        story: "Level 3 reached — algorithm mode is now accessible",
+      },
+    },
   },
 }
 

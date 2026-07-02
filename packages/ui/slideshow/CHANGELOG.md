@@ -1,4 +1,4 @@
-# some-ui-slideshow
+# @some-ui/slideshow
 
 ## 0.0.5
 

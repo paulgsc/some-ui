@@ -2,7 +2,7 @@
 @import "some-ui-input/style.css";
 @import "some-ui-stepper/style.css";
 @import "some-ui-chat/style.css";
-@import "some-ui-slideshow/style.css";
+@import "@some-ui/slideshow/style.css";
 @import "some-ui-shared/style.css";
 @import "some-ui-neon-sign/style.css";
 @import "umag/style.css";

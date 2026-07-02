@@ -293,6 +293,9 @@ importers:
       '@some-ui/portfolio':
         specifier: workspace:*
         version: link:../../packages/ui/portfolio-chart
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../../packages/ui/slideshow
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -335,9 +338,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../../packages/ui/shared
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../../packages/ui/slideshow
       some-ui-stepper:
         specifier: workspace:*
         version: link:../../packages/ui/stepper
@@ -773,7 +773,7 @@ importers:
         version: 8.59.2(eslint@10.6.0(jiti@2.7.0))(typescript@5.9.3)
       vite-tsconfig-paths:
         specifier: 5.1.4
-        version: 5.1.4(typescript@5.9.3)(vite@6.4.3(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+        version: 5.1.4(typescript@5.9.3)(vite@7.3.6(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
       vitest:
         specifier: ^3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.1)(happy-dom@17.1.8)(jiti@2.7.0)(jsdom@26.0.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -913,6 +913,9 @@ importers:
       '@some-ui/resume':
         specifier: workspace:*
         version: link:../ui/resume
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../ui/slideshow
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../ui/maishatu-fetch-kit
@@ -931,9 +934,6 @@ importers:
       some-ui-nfl:
         specifier: workspace:*
         version: link:../ui/nfl
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../ui/slideshow
       some-ui-stepper:
         specifier: workspace:*
         version: link:../ui/stepper
@@ -1154,6 +1154,9 @@ importers:
 
   packages/ui/input:
     dependencies:
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../slideshow
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1181,9 +1184,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../slideshow
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1321,6 +1321,9 @@ importers:
       '@some-ui/portfolio':
         specifier: workspace:*
         version: link:../portfolio-chart
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../slideshow
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1348,9 +1351,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../slideshow
       some-ui-stepper:
         specifier: workspace:*
         version: link:../stepper
@@ -1719,6 +1719,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../honeycomb
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../slideshow
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1737,9 +1740,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../slideshow
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1762,6 +1762,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../honeycomb
+      '@some-ui/slideshow':
+        specifier: workspace:*
+        version: link:../slideshow
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1780,9 +1783,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
-      some-ui-slideshow:
-        specifier: workspace:*
-        version: link:../slideshow
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -24314,6 +24314,17 @@ snapshots:
       tsconfck: 3.1.6(typescript@5.9.3)
     optionalDependencies:
       vite: 6.4.3(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  vite-tsconfig-paths@5.1.4(typescript@5.9.3)(vite@7.3.6(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)):
+    dependencies:
+      debug: 4.4.3
+      globrex: 0.1.2
+      tsconfck: 3.1.6(typescript@5.9.3)
+    optionalDependencies:
+      vite: 7.3.6(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
       - typescript

@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CHALLENGES } from "@input/data/leetype"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ResultsCard } from "."
 
@@ -59,7 +59,11 @@ export const LevelUp: Story = {
     newLevel: 3,
   },
   parameters: {
-    docs: { description: { story: "Shows level-up banner when player reaches a new level" } },
+    docs: {
+      description: {
+        story: "Shows level-up banner when player reaches a new level",
+      },
+    },
   },
 }
 
@@ -82,7 +86,11 @@ export const HardModeHidden: Story = {
     newLevel: 4,
   },
   parameters: {
-    docs: { description: { story: "Hard challenge completed in hidden mode — large XP bonus" } },
+    docs: {
+      description: {
+        story: "Hard challenge completed in hidden mode — large XP bonus",
+      },
+    },
   },
 }
 
@@ -105,6 +113,10 @@ export const AlgorithmWithN: Story = {
     newLevel: 4,
   },
   parameters: {
-    docs: { description: { story: "Algorithm challenge solved with large N — N multiplier shown" } },
+    docs: {
+      description: {
+        story: "Algorithm challenge solved with large N — N multiplier shown",
+      },
+    },
   },
 }

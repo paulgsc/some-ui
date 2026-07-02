@@ -1,6 +1,10 @@
 import type { FC } from "react"
 import { useState } from "react"
-import type { Challenge, Difficulty, PlayerProgress } from "@input/types/leetype"
+import type {
+  Challenge,
+  Difficulty,
+  PlayerProgress,
+} from "@input/types/leetype"
 import { Lock } from "lucide-react"
 import {
   Badge,
@@ -30,7 +34,11 @@ type ChallengeCardProps = {
   onSelect: () => void
 }
 
-const ChallengeCard: FC<ChallengeCardProps> = ({ challenge, locked, onSelect }) => (
+const ChallengeCard: FC<ChallengeCardProps> = ({
+  challenge,
+  locked,
+  onSelect,
+}) => (
   <button
     onClick={onSelect}
     disabled={locked}
@@ -53,7 +61,10 @@ const ChallengeCard: FC<ChallengeCardProps> = ({ challenge, locked, onSelect }) 
       </span>
       <Badge
         variant="outline"
-        className={cn("shrink-0 text-xs capitalize", DIFFICULTY_COLORS[challenge.difficulty])}
+        className={cn(
+          "shrink-0 text-xs capitalize",
+          DIFFICULTY_COLORS[challenge.difficulty]
+        )}
       >
         {challenge.difficulty}
       </Badge>
@@ -81,7 +92,9 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
   progress,
   onSelect,
 }) => {
-  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all")
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">(
+    "all"
+  )
 
   const dsChallenges = challenges.filter((c) => c.mode === "data-structure")
   const algoChallenges = challenges.filter((c) => c.mode === "algorithm")
@@ -97,7 +110,9 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-card-foreground">Choose a Challenge</h2>
+        <h2 className="text-lg font-semibold text-card-foreground">
+          Choose a Challenge
+        </h2>
         <div className="flex gap-1.5">
           {(["all", "easy", "medium", "hard"] as const).map((d) => (
             <Button
@@ -141,7 +156,8 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
             <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
               <Lock className="h-4 w-4 shrink-0" />
               <span>
-                Algorithm mode unlocks at Level 3. Keep typing data structures to level up!
+                Algorithm mode unlocks at Level 3. Keep typing data structures
+                to level up!
               </span>
             </div>
           )}
