@@ -2,7 +2,11 @@ import type { JSX } from "react"
 import { Fragment } from "react"
 import { useViewportPreloadHints } from "@slideshow/hooks/use-viewport-preload-hints"
 import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
-import { renderRegistryComponent, useViewport } from "some-ui-utils"
+import {
+  hasRegistryKey,
+  renderRegistryComponent,
+  useViewport,
+} from "some-ui-utils"
 
 export type ViewportDiceCardProps<K extends string> = {
   viewportConfig: ViewportConfig
@@ -27,7 +31,7 @@ export const ViewportDiceCard = <K extends string>({
   viewportConfig,
   registry,
   facesAhead = 1,
-}: ViewportDiceCardProps<K>): JSX.Element => {
+}: ViewportDiceCardProps<K>): JSX.Element | null => {
   const { faces, state, isLoading, error } = useViewport(viewportConfig, {
     autoTick: true,
     tickIntervalMs: 100,
@@ -43,12 +47,12 @@ export const ViewportDiceCard = <K extends string>({
   })
 
   if (isLoading || error || !state) {
-    return <Fragment />
+    return null
   }
 
   // Determine active face
   const activeFace = faces.find((f) => f.isActive)
-  if (!activeFace) return <Fragment />
+  if (!activeFace) return null
 
   return (
     <div className="relative size-full flex items-center justify-center">
@@ -56,7 +60,9 @@ export const ViewportDiceCard = <K extends string>({
         const descriptor = viewportConfig.items[itemIndex]
         if (!descriptor) return null
         const { kind, props } = descriptor
-        if (!kind) return null
+        if (!kind || !hasRegistryKey(registry, kind)) {
+          return null
+        }
 
         return (
           <Fragment key={itemIndex}>

@@ -53,8 +53,7 @@ export const CHALLENGES: Array<Challenge> = [
   {
     id: "ds-binary-tree",
     title: "Binary Search Tree",
-    description:
-      "Implement a BST with insert, search, and in-order traversal.",
+    description: "Implement a BST with insert, search, and in-order traversal.",
     difficulty: "medium",
     mode: "data-structure",
     tags: ["bst", "trees", "recursion"],
@@ -153,6 +152,4 @@ export const CHALLENGES: Array<Challenge> = [
 export const DS_CHALLENGES = CHALLENGES.filter(
   (c) => c.mode === "data-structure"
 )
-export const ALGO_CHALLENGES = CHALLENGES.filter(
-  (c) => c.mode === "algorithm"
-)
+export const ALGO_CHALLENGES = CHALLENGES.filter((c) => c.mode === "algorithm")

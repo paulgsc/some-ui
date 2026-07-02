@@ -40,7 +40,7 @@
     "some-ui-neon-sign": "workspace:*",
     "some-ui-nfl": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-slideshow": "workspace:*",
+    "@some-ui/slideshow": "workspace:*",
     "some-ui-stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
     "umag": "workspace:*",

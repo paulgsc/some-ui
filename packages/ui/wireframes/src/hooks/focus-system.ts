@@ -42,7 +42,9 @@ export const useFocusStore = create<FocusStore>((set) => ({
 }))
 
 // Focus Resolution (Pure Function)
-export function selectResolvedFocus(now: number): (s: FocusStore) => ResolvedFocus {
+export function selectResolvedFocus(
+  now: number
+): (s: FocusStore) => ResolvedFocus {
   return (s: FocusStore): ResolvedFocus => {
     const active = s.proposals.filter(
       (p) => p.expiresAt == null || p.expiresAt > now
@@ -61,7 +63,9 @@ export function selectResolvedFocus(now: number): (s: FocusStore) => ResolvedFoc
 }
 
 // Hook for components to request focus (sandboxed)
-export function useRequestFocus(region: YouTubeRegion): (intensity: number, ttlMs?: number) => void {
+export function useRequestFocus(
+  region: YouTubeRegion
+): (intensity: number, ttlMs?: number) => void {
   const emit = useFocusStore((s) => s.emit)
 
   return (intensity: number, ttlMs = 1000): void => {

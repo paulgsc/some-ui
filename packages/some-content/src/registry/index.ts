@@ -39,7 +39,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   "cdrama-emoji": lazyWithPreload(() => import("makjang"), "EmojiTimeline"),
   "cdrama-ost": lazyWithPreload(() => import("makjang"), "OSTPanel"),
   scheduled: lazyWithPreload(
-    () => import("some-ui-slideshow"),
+    () => import("@some-ui/slideshow"),
     "ActiveLifetimesPanel"
   ),
   // ...

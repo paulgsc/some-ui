@@ -1,3 +1,4 @@
+// types file
 import { z } from "zod"
 
 export const WordPlacementSchema = z.object({
@@ -37,6 +38,20 @@ export type CrosswordClue = {
   clue: string
   word: string
   thumbnail?: string
+}
+
+export type Word = {
+  x: number
+  y: number
+  direction: Direction
+  length: number
+  clueNumber?: number
+  word?: string
+}
+
+export type CrosswordGrid = {
+  words: Array<Word>
+  size: number
 }
 
 export type CrosswordClueWithNum = {

@@ -1,6 +1,11 @@
 import type { ChangeEvent, FC } from "react"
 import { useState } from "react"
-import type { Challenge, Difficulty, Language, NContext } from "@input/types/leetype"
+import type {
+  Challenge,
+  Difficulty,
+  Language,
+  NContext,
+} from "@input/types/leetype"
 import { ArrowLeft, Eye, EyeOff } from "lucide-react"
 import {
   Badge,
@@ -82,15 +87,22 @@ export const SessionConfig: FC<SessionConfigProps> = ({
             </h2>
             <Badge
               variant="outline"
-              className={cn("capitalize", DIFFICULTY_COLORS[challenge.difficulty])}
+              className={cn(
+                "capitalize",
+                DIFFICULTY_COLORS[challenge.difficulty]
+              )}
             >
               {challenge.difficulty}
             </Badge>
             <Badge variant="secondary" className="capitalize text-xs">
-              {challenge.mode === "data-structure" ? "Data Structure" : "Algorithm"}
+              {challenge.mode === "data-structure"
+                ? "Data Structure"
+                : "Algorithm"}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground">{challenge.description}</p>
+          <p className="text-sm text-muted-foreground">
+            {challenge.description}
+          </p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {challenge.tags.map((tag) => (
               <span
@@ -109,7 +121,9 @@ export const SessionConfig: FC<SessionConfigProps> = ({
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {/* Language */}
           <div className="space-y-2">
-            <span className="text-sm font-medium text-card-foreground">Language</span>
+            <span className="text-sm font-medium text-card-foreground">
+              Language
+            </span>
             <Select
               value={language}
               onValueChange={(v: string) => {
@@ -131,7 +145,9 @@ export const SessionConfig: FC<SessionConfigProps> = ({
 
           {/* Duration */}
           <div className="space-y-2">
-            <span className="text-sm font-medium text-card-foreground">Duration</span>
+            <span className="text-sm font-medium text-card-foreground">
+              Duration
+            </span>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -191,7 +207,9 @@ export const SessionConfig: FC<SessionConfigProps> = ({
             <Eye className="h-4 w-4 shrink-0" />
           )}
           {isHard ? (
-            <span>Hard mode — source is always hidden. Type entirely from memory.</span>
+            <span>
+              Hard mode — source is always hidden. Type entirely from memory.
+            </span>
           ) : (
             <span>
               Source visible. Adaptive mode will hide it once you hit{" "}

@@ -1,13 +1,19 @@
 import { useCallback, useState } from "react"
 import {
   addSolve,
+  ALGORITHM_UNLOCK_LEVEL,
   computeLevel,
   loadProgress,
   saveProgress,
   xpForNextLevel,
-  ALGORITHM_UNLOCK_LEVEL,
 } from "@input/lib/leetype/player-store"
-import type { Difficulty, DisplayMode, NContext, PlayerProgress, SolveRecord } from "@input/types/leetype"
+import type {
+  Difficulty,
+  DisplayMode,
+  NContext,
+  PlayerProgress,
+  SolveRecord,
+} from "@input/types/leetype"
 
 type AddSolveInput = {
   challengeId: string
@@ -33,8 +39,7 @@ export function usePlayerProgress(): UsePlayerProgressReturn {
 
   const algorithmUnlocked = progress.level >= ALGORITHM_UNLOCK_LEVEL
 
-  const xpToNextLevel =
-    xpForNextLevel(progress.level) - progress.xp
+  const xpToNextLevel = xpForNextLevel(progress.level) - progress.xp
 
   const recordSolve = useCallback((input: AddSolveInput): number => {
     const { difficulty, ...rest } = input
@@ -58,5 +63,11 @@ export function usePlayerProgress(): UsePlayerProgressReturn {
     setProgress(fresh)
   }, [])
 
-  return { progress, algorithmUnlocked, xpToNextLevel, recordSolve, resetProgress }
+  return {
+    progress,
+    algorithmUnlocked,
+    xpToNextLevel,
+    recordSolve,
+    resetProgress,
+  }
 }

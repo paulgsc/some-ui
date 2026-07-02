@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CHALLENGES } from "@input/data/leetype"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ChallengeSelector } from "."
 
@@ -31,7 +31,9 @@ export const LeveledUp: Story = {
     progress: { xp: 120, level: 3, solves: [] },
   },
   parameters: {
-    docs: { description: { story: "Level 3 player — algorithm mode unlocked" } },
+    docs: {
+      description: { story: "Level 3 player — algorithm mode unlocked" },
+    },
   },
 }
 
@@ -41,6 +43,8 @@ export const FilteredMedium: Story = {
     progress: { xp: 200, level: 4, solves: [] },
   },
   parameters: {
-    docs: { description: { story: "Higher-level player viewing all challenges" } },
+    docs: {
+      description: { story: "Higher-level player viewing all challenges" },
+    },
   },
 }

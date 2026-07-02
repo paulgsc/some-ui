@@ -29,12 +29,15 @@ const words = [
   "ARRAY",
 ]
 
-const { grid, size } = createCrossword(words, 10)
+const result = createCrossword(words, 10)
 
 export const Default: Story = {
   args: {
-    cell: grid[0],
-    cellSize: size,
+    // Falls back gracefully if the grid array happens to be empty
+    cell: result.grid[0],
+    // Read cleanly across both union variants safely
+    cellSize:
+      "crosswordGrid" in result ? result.crosswordGrid.size : result.size,
   },
   render: (args) => (
     <svg viewBox="0 0 60 60" className="size-48 border border-red-500">
@@ -43,7 +46,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta: Meta = {
   title: "UI/Input/Components/CrosswordCellSvg",
   component: CrosswordCellSvg,
-} as Meta
+}
+
+export default meta

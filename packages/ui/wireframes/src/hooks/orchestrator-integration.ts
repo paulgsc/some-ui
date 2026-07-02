@@ -26,5 +26,7 @@ export function useFocusPruning(intervalMs = 100): void {
 }
 
 export function useCurrentResolvedFocus(): ResolvedFocus {
-  return useFocusStore(useCallback((s) => selectResolvedFocus(Date.now())(s), []))
+  return useFocusStore(
+    useCallback((s) => selectResolvedFocus(Date.now())(s), [])
+  )
 }

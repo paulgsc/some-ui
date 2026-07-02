@@ -1,5 +1,5 @@
 {
-  "name": "some-ui-slideshow",
+  "name": "@some-ui/slideshow",
   "version": "0.0.5",
   "type": "module",
   "scripts": {
@@ -54,18 +54,18 @@
   "sideEffects": [
     "*.css"
   ],
-  "unpkg": "some-ui-slideshow.umd.js",
-  "main": "./dist/some-ui-slideshow.cjs.js",
-  "module": "./dist/some-ui-slideshow.es.js",
-  "types": "./dist/some-ui-slideshow.d.ts",
+  "unpkg": "@some-ui/slideshow.umd.js",
+  "main": "./dist/@some-ui/slideshow.cjs.js",
+  "module": "./dist/@some-ui/slideshow.es.js",
+  "types": "./dist/@some-ui/slideshow.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/some-ui-slideshow.d.ts",
-      "import": "./dist/some-ui-slideshow.es.js",
-      "require": "./dist/some-ui-slideshow.cjs.js",
-      "default": "./dist/some-ui-slideshow.es.js"
+      "types": "./dist/@some-ui/slideshow.d.ts",
+      "import": "./dist/@some-ui/slideshow.es.js",
+      "require": "./dist/@some-ui/slideshow.cjs.js",
+      "default": "./dist/@some-ui/slideshow.es.js"
     },
-    "./style.css": "./dist/some-ui-slideshow.css"
+    "./style.css": "./dist/@some-ui/slideshow.css"
   },
-  "style": "./dist/some-ui-slideshow.css"
+  "style": "./dist/@some-ui/slideshow.css"
 }

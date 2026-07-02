@@ -74,7 +74,9 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
       for (const layout of scene.ui) {
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        for (const [region, panel] of Object.entries(layout.panels ?? {}) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
+        for (const [region, panel] of Object.entries(
+          layout.panels ?? {}
+        ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
           const factory = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,

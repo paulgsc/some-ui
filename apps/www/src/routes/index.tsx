@@ -1,7 +1,7 @@
 import type { JSX } from "react"
+import type { AllowedRotationAxis } from "@some-ui/slideshow"
+import { RotatingNeonSign } from "@some-ui/slideshow"
 import { createFileRoute } from "@tanstack/react-router"
-import type { AllowedRotationAxis } from "some-ui-slideshow"
-import { RotatingNeonSign } from "some-ui-slideshow"
 
 const App = (): JSX.Element => {
   const dof: AllowedRotationAxis = "X-axis"

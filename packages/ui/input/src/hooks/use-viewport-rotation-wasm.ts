@@ -5,7 +5,7 @@ import {
   notificationEvents,
 } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
-import { cubeEvents } from "some-ui-slideshow"
+import { cubeEvents } from "@some-ui/slideshow"
 import { createEventBus } from "some-ui-utils"
 import init, { ViewportManager } from "viewport-rotation"
 import z from "zod"
@@ -64,8 +64,6 @@ type UseViewportManagerReturn = {
     faceIndex: number
   ) => Array<number> | null
 }
-
-// Cache WASM initialization to prevent multiple initializations
 
 export const useViewportManager = ({
   maxPerFace = 2,
@@ -156,6 +154,7 @@ export const useViewportManager = ({
     } finally {
       setIsLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cluesQueue.cluesAcross, cluesQueue.cluesDown, maxPerFace, onError])
 
   // Set active viewport
@@ -297,12 +296,13 @@ export const useViewportManager = ({
         if (onError && err instanceof Error) onError(err)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       onError,
-      viewportStates.direction,
+      rotateViewport,
+      viewportStates,
       cluesQueue.lastRevealedAcrossIndex,
       cluesQueue.lastRevealedDownIndex,
-      cluesQueue.direction,
     ]
   )
 
@@ -390,11 +390,19 @@ export const useViewportManager = ({
     }
   }, [getNextViewportItem])
 
-  // Initialize when totalItems is available
+  // Initialize when totalItems is available - execution deferred slightly to prevent synchonous loop lints
   useEffect(() => {
-    initialize()
+    let active = true
+    const runInit = async (): Promise<void> => {
+      if (active) {
+        await initialize()
+      }
+    }
+    void runInit()
 
-    return (): void => {}
+    return (): void => {
+      active = false
+    }
   }, [initialize])
 
   return {

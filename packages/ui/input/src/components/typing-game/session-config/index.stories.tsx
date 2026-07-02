@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CHALLENGES } from "@input/data/leetype"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { SessionConfig } from "."
 
@@ -32,13 +32,19 @@ export const MediumDataStructure: Story = {
 export const HardMode: Story = {
   args: { challenge: hardChallenge },
   parameters: {
-    docs: { description: { story: "Hard mode — source always hidden, no adaptive toggle" } },
+    docs: {
+      description: {
+        story: "Hard mode — source always hidden, no adaptive toggle",
+      },
+    },
   },
 }
 
 export const AlgorithmChallenge: Story = {
   args: { challenge: algoChallenge },
   parameters: {
-    docs: { description: { story: "Algorithm mode — shows N context selector" } },
+    docs: {
+      description: { story: "Algorithm mode — shows N context selector" },
+    },
   },
 }

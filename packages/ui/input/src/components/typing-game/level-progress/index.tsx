@@ -69,14 +69,20 @@ export const LevelProgress: FC<LevelProgressProps> = ({
           {algorithmUnlocked ? (
             <>
               <Unlock className="h-3.5 w-3.5 text-primary" />
-              <span className="text-primary font-medium">Algorithm mode unlocked</span>
+              <span className="text-primary font-medium">
+                Algorithm mode unlocked
+              </span>
             </>
           ) : (
             <>
               <Lock className="h-3.5 w-3.5" />
               <span>
                 Algorithm mode unlocks at Level {ALGORITHM_UNLOCK_LEVEL} (
-                {Math.max(0, xpForNextLevel(ALGORITHM_UNLOCK_LEVEL - 1) - progress.xp)} XP away)
+                {Math.max(
+                  0,
+                  xpForNextLevel(ALGORITHM_UNLOCK_LEVEL - 1) - progress.xp
+                )}{" "}
+                XP away)
               </span>
             </>
           )}
