@@ -33,11 +33,11 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
     "TechnicalBlockAssessment"
   ),
   interview: lazyWithPreload(() => import("some-ui-chat"), "InterviewApp"),
-  "cdrama-header": lazyWithPreload(() => import("makjang"), "DramaHeader"),
-  "cdrama-couple": lazyWithPreload(() => import("makjang"), "CoupleRating"),
-  "cdrama-metrics": lazyWithPreload(() => import("makjang"), "MetricsPanel"),
-  "cdrama-emoji": lazyWithPreload(() => import("makjang"), "EmojiTimeline"),
-  "cdrama-ost": lazyWithPreload(() => import("makjang"), "OSTPanel"),
+  "cdrama-header": lazyWithPreload(() => import("@some-ui/makjang"), "DramaHeader"),
+  "cdrama-couple": lazyWithPreload(() => import("@some-ui/makjang"), "CoupleRating"),
+  "cdrama-metrics": lazyWithPreload(() => import("@some-ui/makjang"), "MetricsPanel"),
+  "cdrama-emoji": lazyWithPreload(() => import("@some-ui/makjang"), "EmojiTimeline"),
+  "cdrama-ost": lazyWithPreload(() => import("@some-ui/makjang"), "OSTPanel"),
   scheduled: lazyWithPreload(
     () => import("@some-ui/slideshow"),
     "ActiveLifetimesPanel"

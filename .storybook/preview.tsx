@@ -7,8 +7,12 @@ import "virtual:uno.css"
 import { withProviders } from "./storybook-decorator"
 import { themeGlobalTypes, withTheme } from "./theme-decorator"
 
-// Import all CSS files from packages
-import.meta.glob(["../packages/ui/**/*.css"], {
+// Import all CSS files from packages' source trees only. Each package also
+// ships a prebuilt `dist/*.css` (its own standalone Tailwind compile, used by
+// consumers outside Storybook) — matching those here loads a frozen snapshot
+// of the design system alongside the live one, and whichever loads last wins
+// the cascade, silently overriding current tokens/themes with stale ones.
+import.meta.glob(["../packages/ui/**/src/**/*.css"], {
   eager: true,
 })
 
