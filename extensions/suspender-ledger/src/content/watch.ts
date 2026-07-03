@@ -48,6 +48,18 @@ function isPrintableKey(key: string): boolean {
   return key.length === 1 && /[0-9a-zA-Z]/.test(key)
 }
 
+// TEMP DIAGNOSTIC for the silent-background-reload bug (#409 follow-up).
+// If this fires more than once for what should be a single navigation (watch
+// for two log lines with the same URL but different timestamps, without an
+// intervening full page load in between), Firefox is re-injecting this
+// document_idle content script into a live isolated world instead of a fresh
+// one — which is exactly the "SyntaxError: redeclaration of const" signature.
+// Delete alongside worker/core/trace.ts once the bug is found.
+// eslint-disable-next-line no-console -- temporary diagnostic instrumentation
+console.log(
+  `[SL:watch] init t=${performance.now().toFixed(1)}ms readyState=${document.readyState} url=${location.href} title=${JSON.stringify(document.title)}`
+)
+
 /** Elements that have received input and may hold unsaved content. */
 const dirtyElements = new Set<Element>()
 /** Latched once any tracked element is edited; reset by `submit`. */

@@ -1,46 +1,47 @@
 {
-	"bugs": {
-		"url": "https://github.com/paulgsc/some-ui/issues"
-	},
-	"devDependencies": {
-		"@playwright/test": "1.60.0",
-		"@some-ui/tsconfig": "workspace:*",
-		"@types/chrome": "^0.0.293",
-		"@types/firefox-webext-browser": "^120.0.4",
-		"eslint": "^10.6.0",
-		"maishatu-eslint-kit": "workspace:*",
-		"web-ext": "^8.4.0"
-	},
-	"homepage": "https://pgdev.maishatu.com/?tab=github",
-	"keywords": [],
-	"license": "MPL-2.0 AND MIT",
-	"name": "@some-extension/suspender-ledger",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/paulgsc/some-ui"
-	},
-	"scripts": {
-		"build": "vite build --config vite.config.firefox.ts",
-		"build:firefox": "vite build --config vite.config.firefox.ts",
-		"check:headers": "node scripts/check-mpl-headers.js",
-		"clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-		"clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
-		"lint": "pnpm lint:js && pnpm check:headers && pnpm typecheck",
-		"lint:ext": "web-ext lint --source-dir dist --self-hosted",
-		"lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
-		"package:source": "bash ../scripts/package-source.sh",
-		"sign:firefox": "web-ext sign --source-dir dist --artifacts-dir artifacts --channel=unlisted --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET",
-		"test": "vitest",
-		"test:e2e": "playwright test",
-		"test:e2e:headed": "playwright test --headed",
-		"test:e2e:ui": "playwright test --ui",
-		"typecheck": "tsc --noEmit"
-	},
-	"sideEffects": [
-		"./src/worker/**",
-		"./src/content/**",
-		"./src/lib/platform/**"
-	],
-	"type": "module",
-	"version": "0.1.0"
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "@some-ui/tsconfig": "workspace:*",
+    "@types/chrome": "^0.0.293",
+    "@types/firefox-webext-browser": "^120.0.4",
+    "eslint": "^10.6.0",
+    "fast-check": "^3.23.1",
+    "maishatu-eslint-kit": "workspace:*",
+    "web-ext": "^8.4.0"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MPL-2.0 AND MIT",
+  "name": "@some-extension/suspender-ledger",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "vite build --config vite.config.firefox.ts",
+    "build:firefox": "vite build --config vite.config.firefox.ts",
+    "check:headers": "node scripts/check-mpl-headers.js",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm check:headers && pnpm typecheck",
+    "lint:ext": "web-ext lint --source-dir dist --self-hosted",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "package:source": "bash ../scripts/package-source.sh",
+    "sign:firefox": "web-ext sign --source-dir dist --artifacts-dir artifacts --channel=unlisted --api-key=$WEB_EXT_API_KEY --api-secret=$WEB_EXT_API_SECRET",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "sideEffects": [
+    "./src/worker/**",
+    "./src/content/**",
+    "./src/lib/platform/**"
+  ],
+  "type": "module",
+  "version": "0.1.0"
 }

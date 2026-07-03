@@ -158,8 +158,19 @@ function init(): void {
         filterConfig = response.config
 
         if (response.enabled) {
-          // Background confirms legacy — ensure we're there regardless of cache.
-          if (currentState !== "legacy") applyState("legacy")
+          // Background confirms legacy — ensure we're there regardless of
+          // cache, and repaint with the authoritative config even if the
+          // cache already guessed "legacy": the synchronous cached paint
+          // above ran before this response arrived, using whatever config
+          // was in scope at that time (the module default, or a stale value
+          // from a previous style). Skipping the repaint here left tabs
+          // stuck on that stale look whenever the legacy style had changed
+          // (e.g. dim <-> invert) since the last paint.
+          if (currentState !== "legacy") {
+            applyState("legacy")
+          } else {
+            applyTheme("legacy", filterConfig)
+          }
         } else if (currentState === "legacy") {
           // Cache said legacy but this tab is no longer in the filter list
           // (user removed it via popup). Re-classify with auto.
@@ -205,7 +216,12 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
     }
 
     case "TOGGLE_FILTER": {
-      applyState("legacy")
+      // The background pushes this whenever the legacy style changes (e.g.
+      // dim <-> invert) or this tab's filtered membership changes — the
+      // config it carries is authoritative and must replace whatever this
+      // tab last painted with, not just re-trigger a repaint of the old one.
+      filterConfig = msg.config
+      applyState(msg.enabled ? "legacy" : "auto")
       return
     }
 

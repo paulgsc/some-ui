@@ -5,7 +5,37 @@
 // Ported from auto-tab-discard v3/worker/core/discard.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+/**
+ * Orchestrator: composes the domain FSM (`suspend-fsm.ts`) with the browser
+ * adapter (`discard-adapter.ts`) to drive one tab's suspend lifecycle, plus
+ * the multi-tab runtime coordination (queueing, cooldown, de-duplication)
+ * that the FSM — which only knows about a single tab in isolation — has no
+ * opinion on.
+ *
+ * `discard.ts` itself does not call `chrome.tabs.discard` or
+ * `chrome.scripting.executeScript` directly; every browser side effect goes
+ * through the adapter. That keeps this file answering "what should happen
+ * next for this tab" (via `reduce`) rather than "how does the browser behave
+ * today."
+ */
+
+import {
+  getTab,
+  getTabSnapshot,
+  injectMark,
+  injectUnmark,
+  requestDiscard,
+} from "./discard-adapter"
 import { prefs, storage } from "./prefs"
+import {
+  INITIAL_STATE,
+  invariant,
+  isSettled,
+  reduce,
+  type SuspendEvent,
+  type SuspendState,
+} from "./suspend-fsm"
+import { trace } from "./trace"
 import { log } from "./utils"
 
 /**
@@ -16,46 +46,38 @@ import { log } from "./utils"
  */
 export type SuspendOperation = { tabId: number }
 
-const RESUME_FLAG_KEY = "__sl_resuming"
-
 /**
- * Runs in the page just before it is discarded:
- *   1. Sets a one-shot sessionStorage flag so `resume-veil.ts` (document_start)
- *      paints a dark cover the instant the browser reloads this tab on
- *      reactivation, instead of letting the page's own background flash first.
- *      sessionStorage survives the discard → reload cycle because it's scoped
- *      to the tab's browsing context, not the renderer process discard tears
- *      down.
- *   2. Prefixes the live `document.title` with the sleep marker. The browser
- *      caches title/favicon at the moment a tab is discarded and keeps
- *      showing that cached value in the tab strip while the tab stays
- *      unloaded, so this is what gives a suspended tab its "💤" without
- *      touching the tab's real address or requiring a second page.
+ * In-flight FSM state per tab, for the lifetime of this worker instance. Only
+ * *unsettled* tabs are present — once a tab reaches a settled state (idle,
+ * blocked, or cleanly discarded) there is no follow-up obligation left to
+ * track, so its entry is dropped rather than kept around forever.
+ *
+ * MV3 service workers are recycled, so this map does not survive a worker
+ * restart. `reconcileActivatedTab` below has an explicit fallback for the
+ * case where a tab's marker outlived this map's memory of it.
  */
-function markBeforeDiscard(key: string, prefix: string): void {
-  try {
-    // eslint-disable-next-line extension-charter/no-raw-storage -- runs inside the target page, not extension code; see docstring above.
-    sessionStorage.setItem(key, "1")
-  } catch {
-    // Storage unavailable (e.g. a sandboxed frame) — resume just won't veil.
-  }
-  if (prefix) {
-    document.title = `${prefix} ${document.title}`
-  }
-}
+const tabStates = new Map<number, SuspendState>()
 
-async function prepareForDiscard(tabId: number, marker: string): Promise<void> {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: markBeforeDiscard,
-      args: [RESUME_FLAG_KEY, marker],
-    })
-  } catch (e) {
-    // No content-injectable document (e.g. chrome:// or an about: page) —
-    // discard still proceeds; that tab simply won't get the veil or marker.
-    log("could not prepare tab for discard", e)
+/** Apply one FSM transition for `tabId`, updating (or clearing) `tabStates`. */
+function transition(
+  tabId: number,
+  from: SuspendState,
+  event: SuspendEvent
+): SuspendState {
+  const next = reduce(from, event)
+  trace("fsm.transition", tabId, `${from.kind} + ${event.type} -> ${next.kind}`)
+  if (!invariant(next)) {
+    // Unreachable given the fixed transition table (see suspend-fsm.ts) — a
+    // future edge that produces this has a bug, not this tab a bad day.
+    log("suspend-fsm invariant violated", { tabId, from, event, next })
+    trace("fsm.INVARIANT_VIOLATED", tabId, { from, event, next })
   }
+  if (isSettled(next)) {
+    tabStates.delete(tabId)
+  } else {
+    tabStates.set(tabId, next)
+  }
+  return next
 }
 
 /** Tab ids currently mid-suspend, used to debounce duplicate requests. */
@@ -75,18 +97,17 @@ type DiscardFn = {
 }
 
 /**
- * The terminal action: natively discard the tab. This is the ONLY place a
- * tab's state is changed, and it is `chrome.tabs.discard` — never
- * `chrome.tabs.remove`.
+ * The terminal action: drive one tab through its suspend lifecycle by
+ * dispatching FSM events and letting the *resulting state* pick the next
+ * adapter call — never the other way around. This is the ONLY place a tab's
+ * state is changed, and it always routes through `chrome.tabs.discard` via
+ * the adapter — never `chrome.tabs.remove`.
  *
  * Native discard (rather than navigating to an owned `suspend.html`) keeps the
  * browser's own tab.url/title/favIconUrl intact — no `moz-extension://` URL,
- * full awesome-bar / "switch to tab" fidelity. `prepareForDiscard` runs first
- * so `resume-veil.ts` can cover the reactivation reload before first paint
- * (verified empirically: a document_start veil pre-empts the reload's own
- * background every time, since document_start content scripts run before
- * first paint regardless of what triggered the navigation) and so the tab
- * strip shows the `prepends` marker while the tab stays discarded.
+ * full awesome-bar / "switch to tab" fidelity. Marking runs first so
+ * `resume-veil.ts` can cover the reactivation reload before first paint, and
+ * so the tab strip shows the `prepends` marker while the tab stays discarded.
  */
 const perform = (tab: chrome.tabs.Tab): Promise<void> =>
   new Promise<void>((resolve) => {
@@ -95,19 +116,85 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
       return
     }
     const tabId = tab.id
-    void prepareForDiscard(tabId, prefs.prepends).finally(() => {
-      try {
-        chrome.tabs.discard(tabId, () => {
-          const err = chrome.runtime.lastError
-          if (err) {
-            log("discard failed", err.message ?? err)
+    trace("perform:start", tabId, { url: tab.url, title: tab.title })
+
+    let state = transition(tabId, tabStates.get(tabId) ?? INITIAL_STATE, {
+      type: "SUSPEND_REQUESTED",
+    })
+
+    void injectMark(tabId, prefs.prepends).then((outcome) => {
+      state = transition(
+        tabId,
+        state,
+        outcome === "applied"
+          ? { type: "MARK_APPLIED" }
+          : { type: "MARK_SKIPPED" }
+      )
+
+      void requestDiscard(tabId).then(async (attempt) => {
+        trace("perform:requestDiscard-result", tabId, attempt)
+        if (attempt.ok) {
+          transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
+          trace("perform:done-success", tabId)
+          resolve()
+          return
+        }
+
+        // A reported discard failure is NOT proof the tab is still live. On
+        // Firefox a discard can succeed while still surfacing `lastError`, and
+        // the adapter's retry can land on an already-discarded tab. Trusting
+        // the error alone and rolling back would run `executeScript`
+        // (injectUnmark) against a tab the browser has already discarded —
+        // which has no live renderer, so Firefox can only satisfy the
+        // injection by RELOADING the tab in the background: fresh document,
+        // marker gone, focus unchanged. That is the "suspended tab silently
+        // refreshes" bug. Verify ground truth first; `getTabSnapshot`
+        // (`tabs.get`) reads cached metadata and never materializes the tab.
+        const snapshot = await getTabSnapshot(tabId)
+        trace(
+          "perform:post-failure-snapshot",
+          tabId,
+          snapshot && {
+            discarded: snapshot.discarded,
+            status: snapshot.status,
           }
+        )
+        if (snapshot?.discarded !== false) {
+          // Gone, or actually discarded despite the error — the marker is now
+          // the browser's cached title, exactly as intended. Never inject into
+          // a non-live tab.
+          log(
+            "discard reported failure but tab is not live; keeping marker",
+            attempt.message
+          )
+          transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
+          trace("perform:done-false-negative", tabId)
+          resolve()
+          return
+        }
+
+        // Genuinely still live → a real block (audible, policy), not a
+        // transient race. Strip the marker so it is not stranded on a live tab
+        // (the ORPHANED state the FSM forbids).
+        log(
+          "discard refused; tab still live, rolling back marker",
+          attempt.message
+        )
+        state = transition(tabId, state, { type: "DISCARD_FAILED" })
+
+        if (state.kind !== "ROLLING_BACK") {
+          // Bare tab (never marked) — nothing to strip, just fall back to ACTIVE.
+          trace("perform:done-bare-refused", tabId)
+          resolve()
+          return
+        }
+
+        void injectUnmark(tabId, prefs.prepends).then(() => {
+          transition(tabId, state, { type: "MARKER_CLEARED" })
+          trace("perform:done-rolled-back", tabId)
           resolve()
         })
-      } catch (e) {
-        log("discarding failed", e)
-        resolve()
-      }
+      })
     })
   })
 
@@ -116,25 +203,57 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
     return
   }
   const tabId = tab.id
+  trace("discardImpl:called", tabId, {
+    active: tab.active,
+    discarded: tab.discarded,
+    audible: tab.audible,
+    status: tab.status,
+  })
 
   if (inprogress.has(tabId)) {
+    trace("discardImpl:skip-inprogress", tabId)
     return
   }
 
-  // https://github.com/rNeomy/auto-tab-discard/issues/248
+  // https://github.com/rNeomy/auto-tab-discard/issues/248 — cooldown against
+  // rapid duplicate requests. Release is tied to the LATER of this cooldown
+  // and actual completion of whatever this call decides to do below: a fixed
+  // timer alone can expire while a queued or slow-to-complete suspend is still
+  // in flight, letting a second concurrent request re-enter and re-mark the
+  // same live tab.
   inprogress.add(tabId)
-  setTimeout(() => inprogress.delete(tabId), 2000)
+  const cooldown = new Promise<void>((resolve) => setTimeout(resolve, 2000))
+  const release = (op: Promise<void>): void => {
+    void Promise.all([cooldown, op]).finally(() => inprogress.delete(tabId))
+  }
 
   if (tab.active) {
     log("tab is active", tab)
+    trace("discardImpl:skip-active", tabId)
+    release(Promise.resolve())
     return
   }
   if (tab.discarded) {
     log("already discarded", tab)
+    trace("discardImpl:skip-already-discarded", tabId)
+    release(Promise.resolve())
+    return
+  }
+  // The browser refuses to discard a tab that is playing audio (a YouTube tab,
+  // a music player). Skipping here — before marking — is the BLOCKED edge of
+  // the suspend FSM: it avoids applying a marker we would only have to roll
+  // back, and avoids the misleading "tab wears 💤 but keeps playing" state.
+  if (tab.audible) {
+    transition(tabId, tabStates.get(tabId) ?? INITIAL_STATE, {
+      type: "MEDIA_PLAYING",
+    })
+    log("tab is audible; suspend skipped", tab)
+    trace("discardImpl:skip-audible", tabId)
+    release(Promise.resolve())
     return
   }
 
-  return storage(prefs).then((ps) => {
+  const op = storage(prefs).then((ps) => {
     if (
       discard.count > ps["simultaneous-jobs"] &&
       discard.time + 5000 < Date.now()
@@ -142,8 +261,13 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
       discard.count = 0
     }
     if (discard.count > ps["simultaneous-jobs"]) {
-      log("discarding queue for", tab)
-      discard.tabs.push(tab)
+      // A duplicate request for a tab already sitting in the queue must not
+      // push a second copy — that would eventually run perform() twice for
+      // the same tab and re-mark a title the first copy already marked.
+      if (!discard.tabs.some((qt) => qt.id === tabId)) {
+        log("discarding queue for", tab)
+        discard.tabs.push(tab)
+      }
       return
     }
 
@@ -163,6 +287,8 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
       })
     })
   })
+  release(op)
+  return op
 }
 
 const discard: DiscardFn = Object.assign(discardImpl, {
@@ -172,4 +298,80 @@ const discard: DiscardFn = Object.assign(discardImpl, {
   perform,
 })
 
-export { discard, inprogress }
+/**
+ * Heal a marker on tab activation.
+ *
+ * Two distinct cases, in order:
+ *
+ *   1. This worker instance has a tracked in-flight suspend for the tab and
+ *      it is still `SUSPENDING` (marked, discard not yet confirmed) — the
+ *      user refocused mid-suspend. This is the FSM's own
+ *      `SUSPENDING + TAB_ACTIVATED → ROLLING_BACK` edge; route the actual
+ *      unmark through it rather than re-deriving the decision from scratch.
+ *
+ *   2. Nothing is tracked for this tab in `tabStates` — either it never
+ *      carried a marker, it's a cleanly discarded tab, or (the case this
+ *      exists for) an MV3 service-worker restart erased this module's memory
+ *      of an in-flight suspend between marking and discard. `tab.title` is a
+ *      projection of state, not the state itself, but once our own
+ *      bookkeeping is gone it is the only signal left — so it is used here
+ *      strictly as a recovery heuristic for that amnesia case, never as the
+ *      primary decision path.
+ *
+ * Idempotent either way.
+ */
+function reconcileActivatedTab(tabId: number): void {
+  trace("reconcileActivatedTab:called", tabId, {
+    tracked: tabStates.get(tabId)?.kind,
+  })
+  const marker = prefs.prepends
+  if (!marker) {
+    return
+  }
+
+  const tracked = tabStates.get(tabId)
+  if (tracked?.kind === "SUSPENDING") {
+    trace("reconcileActivatedTab:refocus-mid-suspend", tabId)
+    const rollingBack = transition(tabId, tracked, { type: "TAB_ACTIVATED" })
+    if (rollingBack.kind === "ROLLING_BACK") {
+      void injectUnmark(tabId, marker).then(() => {
+        transition(tabId, rollingBack, { type: "MARKER_CLEARED" })
+      })
+    }
+    return
+  }
+
+  getTab(tabId, (tab) => {
+    if (!tab || tab.discarded) {
+      return
+    }
+    if (typeof tab.title === "string" && tab.title.startsWith(`${marker} `)) {
+      log("stripping stranded marker on activated tab", tabId)
+      trace("reconcileActivatedTab:title-heuristic-rollback", tabId, tab.title)
+      void injectUnmark(tabId, marker)
+    }
+  })
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => reconcileActivatedTab(tabId))
+
+// TEMP DIAGNOSTIC LISTENERS for the silent-background-reload bug — delete
+// alongside trace.ts once found. These are the ground-truth signal: prior to
+// this, nothing in the extension observed onUpdated at all, so a tab
+// reloading in the background left no trace anywhere in our own logs.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  trace("browser.onUpdated", tabId, {
+    changeInfo,
+    discarded: tab.discarded,
+    status: tab.status,
+    active: tab.active,
+    title: tab.title,
+    tracked: tabStates.get(tabId)?.kind,
+    inprogress: inprogress.has(tabId),
+  })
+})
+chrome.tabs.onRemoved.addListener((tabId) => {
+  trace("browser.onRemoved", tabId)
+})
+
+export { discard, inprogress, reconcileActivatedTab }

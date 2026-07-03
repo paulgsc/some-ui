@@ -1,0 +1,181 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+/**
+ * Browser adapter: everything `discard.ts` needs to know about how
+ * `chrome.tabs.discard` / `chrome.scripting.executeScript` actually behave,
+ * normalized into plain result types.
+ *
+ * This is the ONLY module that calls `chrome.tabs.discard` or injects the
+ * title-marker scripts. It knows about retries, callback-vs-lastError
+ * normalization, and transient-rejection quirks — none of which are domain
+ * concerns (see suspend-fsm.ts) and none of which the orchestrator
+ * (discard.ts) should have to reason about beyond "did it work."
+ */
+
+import {
+  markBeforeDiscard,
+  RESUME_FLAG_KEY,
+  unmarkAfterDiscard,
+} from "./title-marker"
+import { trace } from "./trace"
+import { log } from "./utils"
+
+export type MarkOutcome = "applied" | "skipped"
+export type DiscardResult = { ok: true } | { ok: false; message: string }
+
+const wait = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
+/** How long to let the browser settle before retrying a failed discard. */
+const RETRY_DELAY_MS = 250
+
+/**
+ * Injects the sleep marker into the page. Returns `"skipped"` rather than
+ * throwing when the tab isn't script-injectable (chrome://, about:, …) — that
+ * is an expected, non-exceptional outcome the caller must branch on (the
+ * FSM's PREPARING → SUSPENDING_BARE edge), not a failure.
+ */
+export async function injectMark(
+  tabId: number,
+  marker: string
+): Promise<MarkOutcome> {
+  trace("adapter.injectMark:start", tabId)
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: markBeforeDiscard,
+      args: [RESUME_FLAG_KEY, marker],
+    })
+    trace("adapter.injectMark:applied", tabId)
+    return "applied"
+  } catch (e) {
+    // No content-injectable document — discard still proceeds; that tab
+    // simply won't get the veil or marker.
+    log("could not prepare tab for discard", e)
+    trace("adapter.injectMark:skipped", tabId, e)
+    return "skipped"
+  }
+}
+
+/**
+ * Strips a marker that was applied for a discard that did not stick. Safe to
+ * call on a tab with no marker (e.g. one that was never scripted) or one
+ * that's already gone (a discard that *did* land) — both are no-ops.
+ */
+export async function injectUnmark(
+  tabId: number,
+  marker: string
+): Promise<void> {
+  trace("adapter.injectUnmark:start", tabId)
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: unmarkAfterDiscard,
+      args: [RESUME_FLAG_KEY, marker],
+    })
+    trace("adapter.injectUnmark:done", tabId)
+  } catch (e) {
+    log("could not roll back discard marker", e)
+    trace("adapter.injectUnmark:error", tabId, e)
+  }
+}
+
+/**
+ * One `chrome.tabs.discard` call, normalized to a result instead of a
+ * callback/promise split.
+ *
+ * Deliberately called with ONLY `tabId` — no callback argument. The
+ * `@types/chrome` bindings advertise a `discard(tabId, callback)` overload
+ * (mirroring Chrome's own API), but Firefox's actual runtime implementation
+ * of `chrome.tabs.discard` only implements the Promise form (its native
+ * schema is `browser.tabs.discard(tabIds)`, no callback parameter at all).
+ * Passing a callback there fails Firefox's argument-shape validation and
+ * throws `"Incorrect argument types for tabs.discard."` SYNCHRONOUSLY, on
+ * every single call, regardless of tab state — not a race, a hard permanent
+ * break. The promise-only call form is genuinely cross-browser: Chrome's MV3
+ * implementation also returns a Promise whenever no callback is supplied.
+ */
+function discardOnce(tabId: number): Promise<DiscardResult> {
+  trace("adapter.discardOnce:call", tabId)
+  return Promise.resolve(chrome.tabs.discard(tabId))
+    .then((): DiscardResult => {
+      const result: DiscardResult = { ok: true }
+      trace("adapter.discardOnce:resolved", tabId, result)
+      return result
+    })
+    .catch((e: unknown): DiscardResult => {
+      const result: DiscardResult = {
+        ok: false,
+        message: e instanceof Error ? e.message : String(e),
+      }
+      trace("adapter.discardOnce:rejected", tabId, result)
+      return result
+    })
+}
+
+/**
+ * `chrome.tabs.discard`, with one retry on rejection.
+ *
+ * `discard()` is called immediately after a script injection into this same
+ * tab (`injectMark`), and — for the manual-suspend caller (menu.ts) — often
+ * right after a `tabs.update` focus switch away from this very tab. Both can
+ * leave the tab looking "recently touched" to the browser's own
+ * discard-eligibility check for a brief moment. That's transient: a single
+ * retry after a short delay is enough to let it clear, rather than treating
+ * every such race as a real, permanent refusal.
+ */
+export async function requestDiscard(tabId: number): Promise<DiscardResult> {
+  let attempt = await discardOnce(tabId)
+  if (!attempt.ok) {
+    log("discard failed, retrying once", attempt.message)
+    trace("adapter.requestDiscard:retrying", tabId, attempt.message)
+    await wait(RETRY_DELAY_MS)
+    attempt = await discardOnce(tabId)
+  }
+  trace("adapter.requestDiscard:final", tabId, attempt)
+  return attempt
+}
+
+/**
+ * Callback wrapper over `chrome.tabs.get`, normalizing the stale-id/lastError
+ * case to `undefined`. Deliberately callback-shaped (not a `Promise`) to
+ * match `chrome.tabs.onActivated`'s own synchronous-dispatch semantics in
+ * `reconcileActivatedTab`.
+ */
+export function getTab(
+  tabId: number,
+  callback: (tab: chrome.tabs.Tab | undefined) => void
+): void {
+  chrome.tabs.get(tabId, (tab) => {
+    // the typings mark `tab` non-optional, but it is undefined at runtime
+    // when the id is stale (tab closed between activation and this callback)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (chrome.runtime.lastError || !tab) {
+      trace("adapter.getTab:miss", tabId, chrome.runtime.lastError?.message)
+      callback(undefined)
+      return
+    }
+    trace("adapter.getTab:hit", tabId, {
+      discarded: tab.discarded,
+      status: tab.status,
+      active: tab.active,
+      title: tab.title,
+    })
+    callback(tab)
+  })
+}
+
+/**
+ * Promise form of `getTab`, for the async discard flow. `tabs.get` reads the
+ * browser's *cached* tab metadata — crucially it does NOT materialize (reload)
+ * a discarded tab the way `executeScript`/`sendMessage` would — so it is safe
+ * to use as the ground-truth liveness check before deciding to roll a marker
+ * back.
+ */
+export function getTabSnapshot(
+  tabId: number
+): Promise<chrome.tabs.Tab | undefined> {
+  return new Promise((resolve) => getTab(tabId, resolve))
+}

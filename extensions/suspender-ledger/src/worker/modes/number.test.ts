@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { discard, inprogress } from "../core/discard"
 import { number } from "./number"
 
-type DiscardCb = (tab?: chrome.tabs.Tab) => void
 type QueryCb = (tabs: Array<chrome.tabs.Tab>) => void
 type StorageCb = (items: Record<string, unknown>) => void
 
@@ -102,14 +101,14 @@ beforeEach(() => {
     () => Promise.resolve(readyResult())
   )
 
-  // tabs.discard (the suspend action) resolves its callback immediately. The
-  // chrome typings surface only the promise overload, so the callback form
-  // needs an assertion (same pattern as chrome.tabs.query above).
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  vi.mocked(chrome.tabs.discard).mockImplementation(((
-    _id: number,
-    cb: DiscardCb
-  ) => cb(undefined)) as never)
+  // tabs.discard (the suspend action) resolves immediately. Called with only
+  // a tabId, no callback — see discard-adapter.ts's discardOnce docstring for
+  // why the callback overload is Firefox-incompatible despite the types.
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    Promise.resolve({ id, discarded: true } as chrome.tabs.Tab)
+  )
 })
 
 describe("number.check — auto-discard", () => {
@@ -124,7 +123,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(10, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(10)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 
@@ -215,7 +214,7 @@ describe("number.check — auto-discard", () => {
     await number.check()
     await flush()
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(20, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(20)
     expect(chrome.tabs.discard).not.toHaveBeenCalledWith(
       21,
       expect.any(Function)
@@ -251,7 +250,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { number: 0 })
     await flush()
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(50, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(50)
   })
 
   it("skips a pre-existing tab that is too young by tab.lastAccessed", async () => {
@@ -287,7 +286,7 @@ describe("number.check — auto-discard", () => {
     await number.check(undefined, { "ignore.ready.state": true, number: 0 })
     await flush()
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(40, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(40)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 })

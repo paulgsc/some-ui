@@ -161,6 +161,47 @@ describe("lint: extension-security — no hardcoded http:// URLs", () => {
   })
 })
 
+describe("lint: extension-security — no chrome.tabs.discard(tabId, callback)", () => {
+  it("fires on chrome.tabs.discard(tabId, callback) — Firefox throws on the callback form", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      `chrome.tabs.discard(1, () => {})`,
+      TS_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "chrome.tabs.discard(tabId, callback)"
+    )
+  })
+
+  it("does NOT fire on chrome.tabs.discard(tabId) — the cross-browser-safe Promise form", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      `chrome.tabs.discard(1)`,
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "chrome.tabs.discard(tabId)"
+    )
+  })
+
+  it("does NOT fire on unrelated chrome.tabs.* calls with 2 arguments", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      `chrome.tabs.get(1, () => {})`,
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "chrome.tabs.get(tabId, callback)"
+    )
+  })
+})
+
 describe("lint: extension-security — no remote dynamic imports", () => {
   it("fires on import() from a remote URL", async () => {
     const msgs = await lintSnippet(

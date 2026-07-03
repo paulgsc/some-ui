@@ -51,7 +51,20 @@ function liftVeil(): void {
   )
 }
 
-if (consumeResumeFlag()) {
+const resumeFlagged = consumeResumeFlag()
+
+// TEMP DIAGNOSTIC for the silent-background-reload bug (#409 follow-up).
+// This runs at document_start on EVERY navigation of a matching page,
+// discarded-tab-revival or not. If you see this fire (flag=true) for tab A
+// while focus is still on B, the resume flag really did survive into a fresh
+// document — i.e. a genuine navigation/reload happened, which is the browser
+// confirming the tab materialized. Delete alongside worker/core/trace.ts.
+// eslint-disable-next-line no-console -- temporary diagnostic instrumentation
+console.log(
+  `[SL:veil] init t=${performance.now().toFixed(1)}ms flag=${String(resumeFlagged)} readyState=${document.readyState} url=${location.href} title=${JSON.stringify(document.title)}`
+)
+
+if (resumeFlagged) {
   paintVeil()
   if (document.readyState === "complete") {
     liftVeil()

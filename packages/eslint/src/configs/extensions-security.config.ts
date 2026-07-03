@@ -64,6 +64,22 @@ const extensionsSecurityConfig = defineConfig([
           message:
             "Dynamic imports from remote URLs are an immediate AMO block. Bundle all dependencies locally.",
         },
+        // @types/chrome advertises chrome.tabs.discard(tabId, callback), but
+        // Firefox's actual runtime implementation of chrome.tabs.discard only
+        // supports the Promise form (its native schema is
+        // browser.tabs.discard(tabIds), no callback parameter at all) — the
+        // callback form throws "Incorrect argument types for tabs.discard."
+        // synchronously, on every call, regardless of tab state. This is a
+        // types-vs-runtime mismatch tsc cannot catch on its own (see
+        // suspender-ledger/src/worker/core/discard-adapter.ts). Call with
+        // only a tabId and treat the return value as a Promise instead —
+        // that form works on both engines.
+        {
+          selector:
+            "CallExpression[callee.object.object.name='chrome'][callee.object.property.name='tabs'][callee.property.name='discard'][arguments.length>1]",
+          message:
+            "chrome.tabs.discard(tabId, callback) throws on Firefox — its runtime only implements the Promise form. Call chrome.tabs.discard(tabId) with no callback instead.",
+        },
       ],
     },
   },

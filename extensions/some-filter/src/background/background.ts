@@ -6,6 +6,7 @@ import {
 } from "@filter/lib/legacy-presets"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/background"
+import type { ExtensionMessage } from "@filter/types/message"
 import type { FilterConfig, LegacyStyle } from "@filter/types/popup"
 import type { TabState } from "@filter/types/tab"
 
@@ -61,10 +62,7 @@ async function setTabState(tabId: number, state: TabState): Promise<void> {
   })
 }
 
-async function sendToTab(
-  tabId: number,
-  msg: Record<string, unknown>
-): Promise<void> {
+async function sendToTab(tabId: number, msg: ExtensionMessage): Promise<void> {
   try {
     await ext.tabs.sendMessage(tabId, msg)
   } catch {
