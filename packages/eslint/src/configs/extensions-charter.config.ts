@@ -5,6 +5,7 @@ import {
   noRawStorage,
   noUnprefixedNamespace,
   noZindexEscalation,
+  requireStoryTitlePrefix,
 } from "../rules/index.js"
 
 /**
@@ -25,12 +26,15 @@ export const extensionCharterPlugin = {
     "no-zindex-escalation": noZindexEscalation,
     "no-logic-layer-side-effects": noLogicLayerSideEffects,
     "no-raw-storage": noRawStorage,
+    "require-story-title-prefix": requireStoryTitlePrefix,
   },
 }
 
 /**
- * Base Charter config: registers the plugin and enables the two rules that
- * have safe workspace-agnostic defaults (z-index + raw storage).
+ * Base Charter config: registers the plugin and enables the rules that
+ * have safe workspace-agnostic defaults (z-index, raw storage, and the
+ * "Extensions/" story title prefix that .storybook/unocss-decorator.tsx
+ * relies on to scope UnoCSS output to extension stories only).
  *
  * The other two rules require per-workspace configuration:
  *   - no-unprefixed-namespace  → needs `prefix` option
@@ -45,6 +49,18 @@ const extensionsCharterConfig = defineConfig([
     rules: {
       "extension-charter/no-zindex-escalation": "error",
       "extension-charter/no-raw-storage": "error",
+    },
+  },
+  {
+    files: ["**/*.stories.tsx"],
+    plugins: {
+      "extension-charter": extensionCharterPlugin,
+    },
+    rules: {
+      "extension-charter/require-story-title-prefix": [
+        "error",
+        { prefix: "Extensions/" },
+      ],
     },
   },
 ])
