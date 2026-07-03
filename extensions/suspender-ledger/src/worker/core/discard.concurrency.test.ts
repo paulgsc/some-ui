@@ -21,7 +21,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { discard, inprogress } from "./discard"
 import { prefs } from "./prefs"
 
-type DiscardCb = (tab?: chrome.tabs.Tab) => void
 type ExecuteScriptCall = {
   func: (...args: Array<unknown>) => unknown
   args?: Array<unknown>
@@ -100,11 +99,10 @@ describe("discard — marker idempotency under repeated attempts", () => {
           title: "Example",
         })
 
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        vi.mocked(chrome.tabs.discard).mockImplementation(((
-          _id: number,
-          cb: DiscardCb
-        ) => cb(undefined)) as never)
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
+          Promise.resolve(tab({ id, discarded: true }))
+        )
 
         for (let i = 0; i < attempts; i += 1) {
           await discard(t)
@@ -126,14 +124,15 @@ describe("discard — in-flight re-entry", () => {
     vi.useFakeTimers()
     try {
       const t = tab({ id: 960, url: "https://example.com/", title: "Example" })
-      const pending: Array<() => void> = []
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      vi.mocked(chrome.tabs.discard).mockImplementation(((
-        _id: number,
-        cb: DiscardCb
-      ) => {
-        pending.push(() => cb(undefined))
-      }) as never)
+      const pending: Array<(tab: chrome.tabs.Tab) => void> = []
+      /* eslint-disable @typescript-eslint/no-misused-promises -- mockImplementation's typed overloads include a void-returning form; the promise form is the one that's actually cross-browser-correct, see discard-adapter.ts */
+      vi.mocked(chrome.tabs.discard).mockImplementation(
+        () =>
+          new Promise<chrome.tabs.Tab>((resolve) => {
+            pending.push(resolve)
+          })
+      )
+      /* eslint-enable @typescript-eslint/no-misused-promises */
 
       void discard(t)
       // Past the legacy fixed debounce window (2000ms) — the first request's
@@ -145,7 +144,9 @@ describe("discard — in-flight re-entry", () => {
 
       expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
 
-      pending.splice(0).forEach((resolve) => resolve())
+      pending
+        .splice(0)
+        .forEach((resolve) => resolve(tab({ id: 960, discarded: true })))
     } finally {
       vi.useRealTimers()
     }
@@ -160,9 +161,12 @@ describe("discard — queue de-duplication", () => {
       (_keys: unknown, cb: (items: Record<string, unknown>) => void) =>
         cb({ "simultaneous-jobs": 0 })
     )
-    vi.mocked(chrome.tabs.discard).mockImplementation(() => {
-      // never calls back — the occupying tab holds the only slot forever
-    })
+    // never resolves — the occupying tab holds the only slot forever
+    /* eslint-disable @typescript-eslint/no-misused-promises -- see the in-flight re-entry test above for why the promise form (not the callback one) is correct here */
+    vi.mocked(chrome.tabs.discard).mockImplementation(
+      () => new Promise<chrome.tabs.Tab>(() => undefined)
+    )
+    /* eslint-enable @typescript-eslint/no-misused-promises */
 
     vi.useFakeTimers()
     try {

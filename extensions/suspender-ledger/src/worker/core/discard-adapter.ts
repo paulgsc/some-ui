@@ -82,28 +82,37 @@ export async function injectUnmark(
   }
 }
 
-/** One `chrome.tabs.discard` call, normalized to a result instead of a callback. */
+/**
+ * One `chrome.tabs.discard` call, normalized to a result instead of a
+ * callback/promise split.
+ *
+ * Deliberately called with ONLY `tabId` — no callback argument. The
+ * `@types/chrome` bindings advertise a `discard(tabId, callback)` overload
+ * (mirroring Chrome's own API), but Firefox's actual runtime implementation
+ * of `chrome.tabs.discard` only implements the Promise form (its native
+ * schema is `browser.tabs.discard(tabIds)`, no callback parameter at all).
+ * Passing a callback there fails Firefox's argument-shape validation and
+ * throws `"Incorrect argument types for tabs.discard."` SYNCHRONOUSLY, on
+ * every single call, regardless of tab state — not a race, a hard permanent
+ * break. The promise-only call form is genuinely cross-browser: Chrome's MV3
+ * implementation also returns a Promise whenever no callback is supplied.
+ */
 function discardOnce(tabId: number): Promise<DiscardResult> {
   trace("adapter.discardOnce:call", tabId)
-  return new Promise((resolve) => {
-    try {
-      chrome.tabs.discard(tabId, () => {
-        const err = chrome.runtime.lastError
-        const result: DiscardResult = err
-          ? { ok: false, message: err.message ?? String(err) }
-          : { ok: true }
-        trace("adapter.discardOnce:callback", tabId, result)
-        resolve(result)
-      })
-    } catch (e) {
+  return Promise.resolve(chrome.tabs.discard(tabId))
+    .then((): DiscardResult => {
+      const result: DiscardResult = { ok: true }
+      trace("adapter.discardOnce:resolved", tabId, result)
+      return result
+    })
+    .catch((e: unknown): DiscardResult => {
       const result: DiscardResult = {
         ok: false,
         message: e instanceof Error ? e.message : String(e),
       }
-      trace("adapter.discardOnce:threw", tabId, result)
-      resolve(result)
-    }
-  })
+      trace("adapter.discardOnce:rejected", tabId, result)
+      return result
+    })
 }
 
 /**

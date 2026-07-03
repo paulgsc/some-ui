@@ -7,8 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { discard, inprogress, reconcileActivatedTab } from "./discard"
 import { prefs } from "./prefs"
 
-type DiscardCb = (tab?: chrome.tabs.Tab) => void
-
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
@@ -47,14 +45,15 @@ beforeEach(() => {
     () => Promise.resolve([])
   )
 
-  // tabs.discard resolves its callback immediately by default. The chrome
-  // typings surface only the promise overload, so the callback form needs an
-  // assertion (same pattern as chrome.tabs.update elsewhere).
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  vi.mocked(chrome.tabs.discard).mockImplementation(((
-    _id: number,
-    cb: DiscardCb
-  ) => cb(undefined)) as never)
+  // tabs.discard resolves immediately by default. Called with ONLY a tabId —
+  // no callback — because Firefox's actual runtime implementation of
+  // chrome.tabs.discard does not support the callback overload the
+  // @types/chrome bindings advertise; only the promise form works
+  // cross-browser (see discard-adapter.ts's discardOnce docstring).
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
+    Promise.resolve(tab({ id, discarded: true }))
+  )
 
   // tabs.get resolves a live (non-discarded) snapshot by default. The rollback
   // path consults it as ground truth: a marker is only stripped from a tab
@@ -71,7 +70,7 @@ describe("discard", () => {
   it("suspends an eligible tab by calling chrome.tabs.discard", async () => {
     await discard(tab({ id: 1, url: "https://example.com/", title: "Example" }))
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(1, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(1)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 
@@ -100,7 +99,7 @@ describe("discard", () => {
 
     await discard(tab({ id: 1, url: "https://example.com/" }))
 
-    expect(chrome.tabs.discard).toHaveBeenCalledWith(1, expect.any(Function))
+    expect(chrome.tabs.discard).toHaveBeenCalledWith(1)
   })
 
   it("skips an active tab", async () => {
@@ -130,17 +129,9 @@ describe("discard", () => {
     vi.useFakeTimers()
     try {
       prefs.prepends = "💤"
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      vi.mocked(chrome.tabs.discard).mockImplementation(((
-        _id: number,
-        cb: DiscardCb
-      ) => {
-        Object.assign(chrome.runtime, {
-          lastError: { message: "Tabs cannot be discarded." },
-        })
-        cb(undefined)
-        Object.assign(chrome.runtime, { lastError: undefined })
-      }) as never)
+      vi.mocked(chrome.tabs.discard).mockRejectedValue(
+        new Error("Tabs cannot be discarded.")
+      )
 
       const done = discard(
         tab({ id: 8, url: "https://example.com/", title: "Example" })
@@ -176,17 +167,9 @@ describe("discard", () => {
     vi.useFakeTimers()
     try {
       prefs.prepends = "💤"
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      vi.mocked(chrome.tabs.discard).mockImplementation(((
-        _id: number,
-        cb: DiscardCb
-      ) => {
-        Object.assign(chrome.runtime, {
-          lastError: { message: "Tabs cannot be discarded." },
-        })
-        cb(undefined)
-        Object.assign(chrome.runtime, { lastError: undefined })
-      }) as never)
+      vi.mocked(chrome.tabs.discard).mockRejectedValue(
+        new Error("Tabs cannot be discarded.")
+      )
       // ground truth: the tab really is discarded despite the reported error
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       vi.mocked(chrome.tabs.get).mockImplementation(((
@@ -220,22 +203,14 @@ describe("discard", () => {
     try {
       prefs.prepends = "💤"
       let calls = 0
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      vi.mocked(chrome.tabs.discard).mockImplementation(((
-        _id: number,
-        cb: DiscardCb
-      ) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) => {
         calls += 1
         if (calls === 1) {
-          Object.assign(chrome.runtime, {
-            lastError: { message: "Tabs cannot be discarded." },
-          })
-          cb(undefined)
-          Object.assign(chrome.runtime, { lastError: undefined })
-        } else {
-          cb(undefined)
+          return Promise.reject(new Error("Tabs cannot be discarded."))
         }
-      }) as never)
+        return Promise.resolve(tab({ id, discarded: true }))
+      })
 
       const done = discard(
         tab({ id: 12, url: "https://example.com/", title: "Example" })
@@ -276,15 +251,16 @@ describe("discard", () => {
       (_keys: unknown, cb: (items: Record<string, unknown>) => void) =>
         cb({ "simultaneous-jobs": 0 })
     )
-    const cbs: Array<DiscardCb> = []
+    const resolvers: Array<(tab: chrome.tabs.Tab) => void> = []
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.discard).mockImplementation(((
-      _id: number,
-      cb: DiscardCb
-    ) => {
-      cbs.push(cb)
-    }) as never)
+    /* eslint-disable @typescript-eslint/no-misused-promises -- mockImplementation's typed overloads include a void-returning form; the promise form is the one that's actually cross-browser-correct, see discard-adapter.ts */
+    vi.mocked(chrome.tabs.discard).mockImplementation(
+      () =>
+        new Promise<chrome.tabs.Tab>((resolve) => {
+          resolvers.push(resolve)
+        })
+    )
+    /* eslint-enable @typescript-eslint/no-misused-promises */
 
     discard(tab({ id: 10, url: "https://a.example.com/" }))
     discard(tab({ id: 11, url: "https://b.example.com/" }))
@@ -294,36 +270,28 @@ describe("discard", () => {
     expect(chrome.tabs.discard).toHaveBeenCalledTimes(1)
     expect(discard.tabs.length).toBe(1)
 
-    cbs[0]?.() // complete the first suspend
+    resolvers[0]?.(tab({ id: 10, discarded: true })) // complete the first suspend
     await flush()
 
     // queue drained: second tab now suspended
     expect(chrome.tabs.discard).toHaveBeenCalledTimes(2)
     expect(discard.tabs.length).toBe(0)
 
-    cbs[1]?.()
+    resolvers[1]?.(tab({ id: 11, discarded: true }))
     await flush()
 
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
   })
 
-  it("logs chrome.runtime.lastError when the browser rejects discard", async () => {
+  it("logs the failure message when the browser rejects discard", async () => {
     const consoleSpy = vi
       .spyOn(console, "log")
       .mockImplementation(() => undefined)
     prefs.log = true
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    vi.mocked(chrome.tabs.discard).mockImplementation(((
-      _id: number,
-      cb: DiscardCb
-    ) => {
-      Object.assign(chrome.runtime, {
-        lastError: { message: "Cannot discard tab." },
-      })
-      cb(undefined)
-      Object.assign(chrome.runtime, { lastError: undefined })
-    }) as never)
+    vi.mocked(chrome.tabs.discard).mockRejectedValue(
+      new Error("Cannot discard tab.")
+    )
 
     await discard(tab({ id: 50, url: "https://example.com/" }))
 
