@@ -19,6 +19,7 @@ import {
   RESUME_FLAG_KEY,
   unmarkAfterDiscard,
 } from "./title-marker"
+import { trace } from "./trace"
 import { log } from "./utils"
 
 export type MarkOutcome = "applied" | "skipped"
@@ -40,17 +41,20 @@ export async function injectMark(
   tabId: number,
   marker: string
 ): Promise<MarkOutcome> {
+  trace("adapter.injectMark:start", tabId)
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: markBeforeDiscard,
       args: [RESUME_FLAG_KEY, marker],
     })
+    trace("adapter.injectMark:applied", tabId)
     return "applied"
   } catch (e) {
     // No content-injectable document — discard still proceeds; that tab
     // simply won't get the veil or marker.
     log("could not prepare tab for discard", e)
+    trace("adapter.injectMark:skipped", tabId, e)
     return "skipped"
   }
 }
@@ -64,34 +68,40 @@ export async function injectUnmark(
   tabId: number,
   marker: string
 ): Promise<void> {
+  trace("adapter.injectUnmark:start", tabId)
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: unmarkAfterDiscard,
       args: [RESUME_FLAG_KEY, marker],
     })
+    trace("adapter.injectUnmark:done", tabId)
   } catch (e) {
     log("could not roll back discard marker", e)
+    trace("adapter.injectUnmark:error", tabId, e)
   }
 }
 
 /** One `chrome.tabs.discard` call, normalized to a result instead of a callback. */
 function discardOnce(tabId: number): Promise<DiscardResult> {
+  trace("adapter.discardOnce:call", tabId)
   return new Promise((resolve) => {
     try {
       chrome.tabs.discard(tabId, () => {
         const err = chrome.runtime.lastError
-        resolve(
-          err
-            ? { ok: false, message: err.message ?? String(err) }
-            : { ok: true }
-        )
+        const result: DiscardResult = err
+          ? { ok: false, message: err.message ?? String(err) }
+          : { ok: true }
+        trace("adapter.discardOnce:callback", tabId, result)
+        resolve(result)
       })
     } catch (e) {
-      resolve({
+      const result: DiscardResult = {
         ok: false,
         message: e instanceof Error ? e.message : String(e),
-      })
+      }
+      trace("adapter.discardOnce:threw", tabId, result)
+      resolve(result)
     }
   })
 }
@@ -111,9 +121,11 @@ export async function requestDiscard(tabId: number): Promise<DiscardResult> {
   let attempt = await discardOnce(tabId)
   if (!attempt.ok) {
     log("discard failed, retrying once", attempt.message)
+    trace("adapter.requestDiscard:retrying", tabId, attempt.message)
     await wait(RETRY_DELAY_MS)
     attempt = await discardOnce(tabId)
   }
+  trace("adapter.requestDiscard:final", tabId, attempt)
   return attempt
 }
 
@@ -132,9 +144,16 @@ export function getTab(
     // when the id is stale (tab closed between activation and this callback)
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (chrome.runtime.lastError || !tab) {
+      trace("adapter.getTab:miss", tabId, chrome.runtime.lastError?.message)
       callback(undefined)
       return
     }
+    trace("adapter.getTab:hit", tabId, {
+      discarded: tab.discarded,
+      status: tab.status,
+      active: tab.active,
+      title: tab.title,
+    })
     callback(tab)
   })
 }

@@ -9,6 +9,7 @@ import { discard, inprogress } from "./core/discard"
 import { isMoveCommand, navigate } from "./core/navigate"
 import { prefs, storage } from "./core/prefs"
 import { starters } from "./core/startup"
+import { trace } from "./core/trace"
 import { match, notify, query } from "./core/utils"
 import { number } from "./modes/number"
 
@@ -246,7 +247,9 @@ type ClickInfo = {
           .shift()
 
         if (otab?.id !== undefined) {
+          trace("menu:focus-switch-start", tab.id, { switchingTo: otab.id })
           chrome.tabs.update(otab.id, { active: true }, () => {
+            trace("menu:focus-switch-callback", tab.id, { switchedTo: otab.id })
             // `htabs` snapshots predate the focus switch above — optimistically
             // flipping `.active` here would bypass discard()'s own active-tab
             // guard with a value we merely asserted, not one the browser has
@@ -264,6 +267,15 @@ type ClickInfo = {
                     chrome.tabs.get(tId, (tb) => {
                       resolve(chrome.runtime.lastError ? undefined : tb)
                     })
+                  }
+                )
+                trace(
+                  "menu:pre-discard-refetch",
+                  tId,
+                  fresh && {
+                    active: fresh.active,
+                    discarded: fresh.discarded,
+                    audible: fresh.audible,
                   }
                 )
                 if (fresh) void discard(fresh)
