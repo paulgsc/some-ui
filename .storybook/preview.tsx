@@ -1,11 +1,10 @@
 import type { Preview } from "@storybook/react-vite"
 
 import "./index.css"
-// eslint-disable-next-line import/no-unresolved -- virtual module provided by the UnoCSS vite plugin
-import "virtual:uno.css"
 
 import { withProviders } from "./storybook-decorator"
 import { themeGlobalTypes, withTheme } from "./theme-decorator"
+import { withUnoCss } from "./unocss-decorator"
 
 // Import all CSS files from packages' source trees only. Each package also
 // ships a prebuilt `dist/*.css` (its own standalone Tailwind compile, used by
@@ -17,7 +16,7 @@ import.meta.glob(["../packages/ui/**/src/**/*.css"], {
 })
 
 const preview: Preview = {
-  decorators: [withTheme, withProviders],
+  decorators: [withTheme, withProviders, withUnoCss],
 
   globalTypes: themeGlobalTypes,
 
