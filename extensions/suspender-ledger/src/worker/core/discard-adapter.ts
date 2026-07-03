@@ -138,3 +138,16 @@ export function getTab(
     callback(tab)
   })
 }
+
+/**
+ * Promise form of `getTab`, for the async discard flow. `tabs.get` reads the
+ * browser's *cached* tab metadata — crucially it does NOT materialize (reload)
+ * a discarded tab the way `executeScript`/`sendMessage` would — so it is safe
+ * to use as the ground-truth liveness check before deciding to roll a marker
+ * back.
+ */
+export function getTabSnapshot(
+  tabId: number
+): Promise<chrome.tabs.Tab | undefined> {
+  return new Promise((resolve) => getTab(tabId, resolve))
+}

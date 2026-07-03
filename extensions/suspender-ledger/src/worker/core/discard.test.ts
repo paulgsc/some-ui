@@ -55,6 +55,16 @@ beforeEach(() => {
     _id: number,
     cb: DiscardCb
   ) => cb(undefined)) as never)
+
+  // tabs.get resolves a live (non-discarded) snapshot by default. The rollback
+  // path consults it as ground truth: a marker is only stripped from a tab
+  // that is genuinely still live, so we never inject into (and thereby reload)
+  // a tab the browser has already discarded.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  vi.mocked(chrome.tabs.get).mockImplementation(((
+    id: number,
+    cb: (t?: chrome.tabs.Tab) => void
+  ) => cb(tab({ id, discarded: false }))) as never)
 })
 
 describe("discard", () => {
@@ -149,6 +159,51 @@ describe("discard", () => {
           args: ["__sl_resuming", "💤"],
         })
       )
+      expect(chrome.tabs.remove).not.toHaveBeenCalled()
+      prefs.prepends = ""
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not roll back (which would reload the tab) when discard reports failure but the tab is already discarded", async () => {
+    // The Firefox "silent refresh" bug: discard surfaces lastError on both
+    // attempts, yet the tab actually IS discarded (a false-negative error, or
+    // the retry landing on an already-discarded tab). Rolling back here would
+    // executeScript into a tab with no live renderer, forcing Firefox to
+    // reload it in the background and strip the marker. The rollback must be
+    // gated on ground-truth liveness instead of trusting the reported error.
+    vi.useFakeTimers()
+    try {
+      prefs.prepends = "💤"
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      vi.mocked(chrome.tabs.discard).mockImplementation(((
+        _id: number,
+        cb: DiscardCb
+      ) => {
+        Object.assign(chrome.runtime, {
+          lastError: { message: "Tabs cannot be discarded." },
+        })
+        cb(undefined)
+        Object.assign(chrome.runtime, { lastError: undefined })
+      }) as never)
+      // ground truth: the tab really is discarded despite the reported error
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      vi.mocked(chrome.tabs.get).mockImplementation(((
+        id: number,
+        cb: (t?: chrome.tabs.Tab) => void
+      ) => cb(tab({ id, discarded: true }))) as never)
+
+      const done = discard(
+        tab({ id: 13, url: "https://example.com/", title: "Example" })
+      )
+      await vi.advanceTimersByTimeAsync(1000)
+      await done
+
+      // The liveness check ran, and only the mark executeScript fired — NO
+      // rollback/unmark, so the discarded tab is never materialized/reloaded.
+      expect(chrome.tabs.get).toHaveBeenCalledWith(13, expect.any(Function))
+      expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
       expect(chrome.tabs.remove).not.toHaveBeenCalled()
       prefs.prepends = ""
     } finally {

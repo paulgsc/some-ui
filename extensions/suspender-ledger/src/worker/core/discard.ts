@@ -21,6 +21,7 @@
 
 import {
   getTab,
+  getTabSnapshot,
   injectMark,
   injectUnmark,
   requestDiscard,
@@ -126,16 +127,44 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
           : { type: "MARK_SKIPPED" }
       )
 
-      void requestDiscard(tabId).then((attempt) => {
+      void requestDiscard(tabId).then(async (attempt) => {
         if (attempt.ok) {
           transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
           resolve()
           return
         }
 
-        // Still refused after the adapter's own retry — a real block
-        // (audible, policy), not a transient race.
-        log("discard failed", attempt.message)
+        // A reported discard failure is NOT proof the tab is still live. On
+        // Firefox a discard can succeed while still surfacing `lastError`, and
+        // the adapter's retry can land on an already-discarded tab. Trusting
+        // the error alone and rolling back would run `executeScript`
+        // (injectUnmark) against a tab the browser has already discarded —
+        // which has no live renderer, so Firefox can only satisfy the
+        // injection by RELOADING the tab in the background: fresh document,
+        // marker gone, focus unchanged. That is the "suspended tab silently
+        // refreshes" bug. Verify ground truth first; `getTabSnapshot`
+        // (`tabs.get`) reads cached metadata and never materializes the tab.
+        const snapshot = await getTabSnapshot(tabId)
+        if (snapshot?.discarded !== false) {
+          // Gone, or actually discarded despite the error — the marker is now
+          // the browser's cached title, exactly as intended. Never inject into
+          // a non-live tab.
+          log(
+            "discard reported failure but tab is not live; keeping marker",
+            attempt.message
+          )
+          transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
+          resolve()
+          return
+        }
+
+        // Genuinely still live → a real block (audible, policy), not a
+        // transient race. Strip the marker so it is not stranded on a live tab
+        // (the ORPHANED state the FSM forbids).
+        log(
+          "discard refused; tab still live, rolling back marker",
+          attempt.message
+        )
         state = transition(tabId, state, { type: "DISCARD_FAILED" })
 
         if (state.kind !== "ROLLING_BACK") {
@@ -144,8 +173,6 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
           return
         }
 
-        // We already marked the page; strip it before resolving, otherwise it
-        // is stranded on a live tab (the ORPHANED state the FSM forbids).
         void injectUnmark(tabId, prefs.prepends).then(() => {
           transition(tabId, state, { type: "MARKER_CLEARED" })
           resolve()
