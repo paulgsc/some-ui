@@ -234,6 +234,9 @@ jobs:
           INCLUDE="[]"
           for ext_path in extensions/*/; do
             [ -d "$ext_path" ] || continue
+            # Skip directories that aren't real packages (e.g. extensions/docs,
+            # which holds markdown only) — they have no package.json to build.
+            [ -f "${ext_path}package.json" ] || continue
             name=$(basename "$ext_path")
 
             CHANGED="false"

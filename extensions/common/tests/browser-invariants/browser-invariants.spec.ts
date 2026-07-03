@@ -349,6 +349,19 @@ test.describe("Window Globals", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("Storage API", () => {
+  // localStorage throws SecurityError on the default about:blank page (opaque
+  // origin, no storage partition). Route a fake response so page.goto lands on
+  // a real origin without requiring a running server.
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/*", (route) =>
+      route.fulfill({
+        body: "<!DOCTYPE html><html></html>",
+        contentType: "text/html",
+      })
+    )
+    await page.goto("https://localhost/__browser-invariants__")
+  })
+
   test("localStorage.getItem for a missing key returns null, not undefined", async ({
     page,
   }) => {
