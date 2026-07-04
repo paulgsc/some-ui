@@ -1,7 +1,8 @@
 import { buildHexgrid, useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
+import { initializeWasm } from "@honeycomb/utils/wasm-init"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import init, { WasmHexGrid } from "some-hexagon"
+import { WasmHexGrid } from "some-hexagon"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("some-hexagon", () => ({
@@ -11,6 +12,10 @@ vi.mock("some-hexagon", () => ({
 
 vi.mock("@honeycomb/utils/hexagon-math", () => ({
   getHexagonalGridRadiusForCellCount: vi.fn(),
+}))
+
+vi.mock("@honeycomb/utils/wasm-init", () => ({
+  initializeWasm: vi.fn(),
 }))
 
 const validCells = [
@@ -35,7 +40,7 @@ function createMockHexGrid(cells: unknown): WasmHexGrid {
 beforeEach(() => {
   vi.resetAllMocks()
 
-  vi.mocked(init).mockResolvedValue(undefined)
+  vi.mocked(initializeWasm).mockResolvedValue(undefined)
   vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
   vi.mocked(WasmHexGrid).mockImplementation(() => createMockHexGrid(validCells))
 })
@@ -47,7 +52,7 @@ describe("buildHexgrid", () => {
   it("initializes the wasm module", async () => {
     await buildHexgrid(2, 10)
 
-    expect(init).toHaveBeenCalledTimes(1)
+    expect(initializeWasm).toHaveBeenCalledTimes(1)
   })
 
   it("constructs the wasm grid with the supplied radius and hex size", async () => {
@@ -64,7 +69,7 @@ describe("buildHexgrid", () => {
   })
 
   it("propagates wasm initialization failures", async () => {
-    vi.mocked(init).mockRejectedValue(new Error("load failed"))
+    vi.mocked(initializeWasm).mockRejectedValue(new Error("load failed"))
 
     await expect(buildHexgrid(2, 10)).rejects.toThrow("load failed")
   })
@@ -161,7 +166,7 @@ describe("useHexgridWasm", () => {
   })
 
   it("surfaces asynchronous wasm initialization failures", async () => {
-    vi.mocked(init).mockRejectedValue(new Error("wasm failed"))
+    vi.mocked(initializeWasm).mockRejectedValue(new Error("wasm failed"))
 
     const { result } = renderHook(() =>
       useHexgridWasm({

@@ -2,7 +2,8 @@ import type { Dispatch, RefObject, SetStateAction } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
-import init, { WasmHexGrid } from "some-hexagon"
+import { initializeWasm } from "@honeycomb/utils/wasm-init"
+import { WasmHexGrid } from "some-hexagon"
 import { z } from "zod"
 
 const RadiusSchema = z.number().positive()
@@ -65,7 +66,7 @@ export async function buildHexgrid(
   radius: number,
   hexSize: number
 ): Promise<{ hexGrid: WasmHexGrid; cells: Array<HexRenderData> }> {
-  await init()
+  await initializeWasm()
   const hexGrid = new WasmHexGrid(radius, hexSize)
   const result = hexGrid.get_all_cells_render_data()
   const cells = HexGridSchema.parse(result)
