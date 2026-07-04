@@ -20,17 +20,24 @@ const validCells = [
   },
 ]
 
+/**
+ * `WasmHexGrid` is a wasm-bindgen class; a plain mock can only ever
+ * implement the one method (`get_all_cells_render_data`) these tests call,
+ * never its full generated surface. This is the single, documented cast
+ * that lets such a mock stand in for it.
+ */
+function createMockHexGrid(cells: unknown): WasmHexGrid {
+  const mock = { get_all_cells_render_data: (): unknown => cells }
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  return mock as WasmHexGrid
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
 
   vi.mocked(init).mockResolvedValue(undefined)
   vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
-  vi.mocked(WasmHexGrid).mockImplementation(
-    () =>
-      ({
-        get_all_cells_render_data: () => validCells,
-      }) as any
-  )
+  vi.mocked(WasmHexGrid).mockImplementation(() => createMockHexGrid(validCells))
 })
 
 // ============================================================================
@@ -63,11 +70,8 @@ describe("buildHexgrid", () => {
   })
 
   it("rejects invalid wasm output mapping to schema", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(
-      () =>
-        ({
-          get_all_cells_render_data: () => [{ foo: "bar" }],
-        }) as any
+    vi.mocked(WasmHexGrid).mockImplementation(() =>
+      createMockHexGrid([{ foo: "bar" }])
     )
 
     await expect(buildHexgrid(2, 10)).rejects.toThrow()
@@ -139,11 +143,8 @@ describe("useHexgridWasm", () => {
   })
 
   it("surfaces invalid wasm output structures gracefully", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(
-      () =>
-        ({
-          get_all_cells_render_data: () => [{ foo: "bar" }],
-        }) as any
+    vi.mocked(WasmHexGrid).mockImplementation(() =>
+      createMockHexGrid([{ foo: "bar" }])
     )
 
     const { result } = renderHook(() =>

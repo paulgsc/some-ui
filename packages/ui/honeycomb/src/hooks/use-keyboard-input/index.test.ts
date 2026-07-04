@@ -1,9 +1,39 @@
 import { act, renderHook } from "@testing-library/react"
+import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
 import { useKeyboardInput } from "."
 
-function createBaseProps(overrides = {}): any {
+type UseKeyboardInputProps = Parameters<typeof useKeyboardInput>[0]
+
+type MockGameBridge = {
+  processKeyPress: Mock<(key: string) => Array<unknown>>
+  getTimingParams: Mock<() => unknown>
+}
+
+type MockKeyboardManager = {
+  addKey: Mock<(key: string, now: number) => void>
+  clearBuffer: Mock<() => void>
+}
+
+type MockKeyboardInputProps = {
+  gameBridge: MockGameBridge | null
+  isInitialized: boolean
+  isPaused: boolean
+  keyboardManager: MockKeyboardManager
+  setActiveCharacters: Mock
+  setStats: Mock
+  setTimingParams: Mock
+  setKeyBuffer: Mock
+  setShowSuccessFeedback: Mock
+  setLastPoints: Mock
+  setAmbiguousCharacters: Mock
+  playSound: Mock
+}
+
+function createBaseProps(
+  overrides: Partial<MockKeyboardInputProps> = {}
+): MockKeyboardInputProps {
   return {
     gameBridge: {
       processKeyPress: vi.fn(() => []),
@@ -28,11 +58,29 @@ function createBaseProps(overrides = {}): any {
   }
 }
 
+/**
+ * `gameBridge` and `keyboardManager`'s real types (`WasmGameBridge`,
+ * `KeyboardInputManager`) have private fields, so mocks that only implement
+ * the handful of methods `useKeyboardInput` calls can never satisfy them
+ * structurally. This is the single, documented cast that lets a
+ * `MockKeyboardInputProps` stand in for the hook's real props.
+ */
+function asKeyboardInputProps(
+  props: MockKeyboardInputProps
+): UseKeyboardInputProps {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  return props as unknown as UseKeyboardInputProps
+}
+
 describe("listener registration", () => {
   it("does not register when paused", () => {
     const addSpy = vi.spyOn(window, "addEventListener")
 
-    renderHook(() => useKeyboardInput(createBaseProps({ isPaused: true })))
+    renderHook(() =>
+      useKeyboardInput(
+        asKeyboardInputProps(createBaseProps({ isPaused: true }))
+      )
+    )
 
     expect(addSpy).not.toHaveBeenCalledWith("keydown", expect.any(Function))
   })
@@ -41,7 +89,9 @@ describe("listener registration", () => {
     const addSpy = vi.spyOn(window, "addEventListener")
 
     renderHook(() =>
-      useKeyboardInput(createBaseProps({ isInitialized: false }))
+      useKeyboardInput(
+        asKeyboardInputProps(createBaseProps({ isInitialized: false }))
+      )
     )
 
     expect(addSpy).not.toHaveBeenCalled()
@@ -50,7 +100,11 @@ describe("listener registration", () => {
   it("does not register without gameBridge", () => {
     const addSpy = vi.spyOn(window, "addEventListener")
 
-    renderHook(() => useKeyboardInput(createBaseProps({ gameBridge: null })))
+    renderHook(() =>
+      useKeyboardInput(
+        asKeyboardInputProps(createBaseProps({ gameBridge: null }))
+      )
+    )
 
     expect(addSpy).not.toHaveBeenCalled()
   })
@@ -58,7 +112,7 @@ describe("listener registration", () => {
   it("registers when ready", () => {
     const addSpy = vi.spyOn(window, "addEventListener")
 
-    renderHook(() => useKeyboardInput(createBaseProps()))
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(createBaseProps())))
 
     expect(addSpy).toHaveBeenCalledWith("keydown", expect.any(Function))
   })
@@ -67,7 +121,9 @@ describe("listener registration", () => {
 it("removes keydown listener on unmount", () => {
   const removeSpy = vi.spyOn(window, "removeEventListener")
 
-  const { unmount } = renderHook(() => useKeyboardInput(createBaseProps()))
+  const { unmount } = renderHook(() =>
+    useKeyboardInput(asKeyboardInputProps(createBaseProps()))
+  )
 
   unmount()
 
@@ -78,7 +134,7 @@ describe("key filtering", () => {
   it("ignores ctrl-modified keys", () => {
     const props = createBaseProps()
 
-    renderHook(() => useKeyboardInput(props))
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
     act(() => {
       window.dispatchEvent(
@@ -90,13 +146,13 @@ describe("key filtering", () => {
     })
 
     expect(props.keyboardManager.addKey).not.toHaveBeenCalled()
-    expect(props.gameBridge.processKeyPress).not.toHaveBeenCalled()
+    expect(props.gameBridge!.processKeyPress).not.toHaveBeenCalled()
   })
 
   it("ignores special keys (length > 1)", () => {
     const props = createBaseProps()
 
-    renderHook(() => useKeyboardInput(props))
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }))
@@ -108,7 +164,7 @@ describe("key filtering", () => {
   it("ignores space", () => {
     const props = createBaseProps()
 
-    renderHook(() => useKeyboardInput(props))
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }))
@@ -121,7 +177,7 @@ describe("key filtering", () => {
 it("adds key and forwards to wasm", () => {
   const props = createBaseProps()
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
@@ -132,7 +188,7 @@ it("adds key and forwards to wasm", () => {
     expect.any(Number)
   )
 
-  expect(props.gameBridge.processKeyPress).toHaveBeenCalledWith("a")
+  expect(props.gameBridge!.processKeyPress).toHaveBeenCalledWith("a")
 })
 
 it("handles matchFound correctly", () => {
@@ -152,7 +208,7 @@ it("handles matchFound correctly", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
@@ -188,14 +244,14 @@ it("persists a completed character in its cell instead of removing it", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
   })
 
   // Exercise the state updater the handler passed to setActiveCharacters.
-  const updater = props.setActiveCharacters.mock.calls[0][0]
+  const updater = props.setActiveCharacters.mock.calls[0]![0]
   const prev = new Map([
     ["cell-a", { cellId: "cell-a", hangul: "ㄱ", timeRemaining: 0.4 }],
   ])
@@ -222,13 +278,13 @@ it("removes a correct-but-not-completed character from its cell", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
   })
 
-  const updater = props.setActiveCharacters.mock.calls[0][0]
+  const updater = props.setActiveCharacters.mock.calls[0]![0]
   const prev = new Map([
     ["cell-b", { cellId: "cell-b", hangul: "ㄱ", timeRemaining: 0.4 }],
   ])
@@ -252,7 +308,7 @@ it("calculates accuracy and sets stats", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
@@ -279,7 +335,7 @@ it("handles difficultyChanged", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
@@ -301,7 +357,7 @@ it("handles inputMissed", () => {
     },
   })
 
-  renderHook(() => useKeyboardInput(props))
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
 
   act(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
