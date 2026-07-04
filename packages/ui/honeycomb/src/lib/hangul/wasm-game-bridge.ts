@@ -3,8 +3,28 @@ import {
   getHangulColor,
 } from "@honeycomb/utils/hangul-keyboard-mapping"
 import type { HangulMapping } from "@honeycomb/utils/hangul-keyboard-mapping"
+import { getCellCountForHexagonalGridRadius } from "@honeycomb/utils/hexagon-math"
 import type { HangulGameCore } from "hangul-game-core"
 import { z } from "zod"
+
+/**
+ * Radius of the hex board the game plays on.
+ *
+ * The engine reserves a cell permanently for every completed character
+ * (persist-on-completion), so the pool of spawnable cells must be at least as
+ * large as the largest set of characters a mode can require the player to
+ * master, plus headroom for characters that are still in flight. Completion
+ * mode currently tests 40 distinct jamo; a radius-4 board is
+ * `3r² + 3r + 1 = 61` cells, which clears that with room to spare.
+ *
+ * This radius is the single source of truth for board size: `generateCellIds`
+ * enumerates the pool from it, and the rendered `HexGrid` is sized from
+ * `HANGUL_GRID_CELL_COUNT` so the engine's cell ids and the rendered cell ids
+ * are the same set.
+ */
+export const HANGUL_GRID_RADIUS = 4
+export const HANGUL_GRID_CELL_COUNT =
+  getCellCountForHexagonalGridRadius(HANGUL_GRID_RADIUS)
 
 // ============================================================================
 // SCHEMAS
@@ -287,23 +307,29 @@ export class WasmGameBridge {
     return mapping || { qwerty: "", hangul, romanization: "" }
   }
 
+  /**
+   * Enumerate every cell of the radius-`HANGUL_GRID_RADIUS` hex board as exact
+   * cube coordinates (`x + y + z = 0`), formatted to match the ids emitted by
+   * the `some-hexagon` renderer (`hex_{x}_{y}_{z}`).
+   *
+   * The previous implementation approximated ring coordinates with rounded
+   * trigonometry, which (a) collided so it produced only ~33 distinct cells
+   * from a nominal 37, (b) emitted at least one off-grid id that no rendered
+   * cell matched (so a character spawned there was invisible), and (c) was a
+   * smaller, divergent set from the rendered grid. Enumerating the cube
+   * coordinates directly makes the spawn pool exact, fully renderable, and
+   * large enough that persist-on-completion cannot deadlock completion mode.
+   */
   private generateCellIds(): ReadonlyArray<string> {
-    const cells: Array<string> = ["hex_0_0_0"]
-    const rings = 3
+    const radius = HANGUL_GRID_RADIUS
+    const cells: Array<string> = []
 
-    for (let ring = 1; ring <= rings; ring++) {
-      for (let i = 0; i < 6; i++) {
-        for (let j = 0; j < ring; j++) {
-          const angle = (i * 60 - 30) * (Math.PI / 180)
-          const q = Math.round(
-            ring * Math.cos(angle) - j * Math.cos(angle + Math.PI / 3)
-          )
-          const r = Math.round(
-            ring * Math.sin(angle) - j * Math.sin(angle + Math.PI / 3)
-          )
-          const s = -q - r
-          cells.push(`hex_${q}_${r}_${s}`)
-        }
+    for (let x = -radius; x <= radius; x++) {
+      const yMin = Math.max(-radius, -x - radius)
+      const yMax = Math.min(radius, -x + radius)
+      for (let y = yMin; y <= yMax; y++) {
+        const z = -x - y
+        cells.push(`hex_${x}_${y}_${z}`)
       }
     }
 
