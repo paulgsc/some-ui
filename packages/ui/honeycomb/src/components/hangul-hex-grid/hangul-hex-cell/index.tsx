@@ -11,7 +11,10 @@ type HangulHexCellProps = {
   opacity?: number
   timeRemaining: number // 0 to 1
   showRomanization?: boolean // Whether to show hints
+  isSolved?: boolean // Whether the character has been completed and locked in
 }
+
+const SOLVED_COLOR = "#22c55e" // emerald-500
 
 export const HangulHexCell: FC<HangulHexCellProps> = ({
   character,
@@ -22,6 +25,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   opacity = 1,
   timeRemaining,
   showRomanization = true,
+  isSolved = false,
 }): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -32,11 +36,17 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   const ringRadius = cellWidth * 0.42
   const ringStrokeWidth = 3
   const circumference = 2 * Math.PI * ringRadius
-  const progressOffset = circumference * (1 - timeRemaining)
+  // Solved cells show a full ring; active cells reflect remaining time.
+  const progressOffset = isSolved ? 0 : circumference * (1 - timeRemaining)
 
-  // Color intensity based on time remaining
-  const urgencyColor = timeRemaining < 0.3 ? "#ef4444" : character.color
-  const glowIntensity = timeRemaining < 0.3 ? "url(#urgent-glow)" : "none"
+  // Color intensity based on time remaining. Solved cells are always calm/green.
+  const urgencyColor = isSolved
+    ? SOLVED_COLOR
+    : timeRemaining < 0.3
+      ? "#ef4444"
+      : character.color
+  const glowIntensity =
+    !isSolved && timeRemaining < 0.3 ? "url(#urgent-glow)" : "none"
 
   return (
     <g
@@ -59,10 +69,10 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
       {/* Hex background */}
       <path
         d={hexPath}
-        fill={character.color}
-        fillOpacity={0.3}
+        fill={isSolved ? SOLVED_COLOR : character.color}
+        fillOpacity={isSolved ? 0.22 : 0.3}
         stroke={urgencyColor}
-        strokeWidth={2}
+        strokeWidth={isSolved ? 3 : 2}
         filter={glowIntensity}
       />
 
@@ -108,7 +118,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         {character.hangul}
       </text>
 
-      {/* QWERTY key hint - small text below */}
+      {/* QWERTY key hint - small text below (hidden once solved) */}
       <text
         x={centerX}
         y={centerY + cellWidth * 0.28}
@@ -119,8 +129,25 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         fill="rgba(255,255,255,0.5)"
         className="font-mono pointer-events-none"
       >
-        {showRomanization && character.qwertyKey}
+        {!isSolved && showRomanization && character.qwertyKey}
       </text>
+
+      {/* Completion checkmark badge */}
+      {isSolved && (
+        <text
+          x={centerX + cellWidth * 0.28}
+          y={centerY - cellWidth * 0.28}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={qwertyFontSize * 1.1}
+          fontWeight="900"
+          fill={SOLVED_COLOR}
+          className="pointer-events-none"
+          style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+        >
+          ✓
+        </text>
+      )}
 
       {/* Hover popup with romanization */}
       {isHovered && showRomanization && (

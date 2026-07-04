@@ -98,33 +98,29 @@ mod tests {
     #[test]
     fn test_engine_creation() {
         let config = GameConfig::default();
-        let engine = GameEngine::new(config.clone(), "endless".to_string(), None);
+        let engine = GameEngine::new(config.clone(), "endless".to_string());
         assert_eq!(engine.get_active_count(), 0);
     }
 
     #[test]
     fn test_spawn_and_match() {
         let config = GameConfig::default();
-        let mut engine = GameEngine::new(config, "endless".to_string(), None);
+        let mut engine = GameEngine::new(config, "endless".to_string());
         engine.start_timer(1000);
 
         let cells = vec!["hex_0_0_0".to_string()];
-        let events = engine.spawn_character(1000, cells);
+        let _batch = engine.spawn_character(1000, cells);
 
-        assert_eq!(events.len(), 1);
+        // A character occupied the only available cell.
         assert_eq!(engine.get_active_count(), 1);
     }
 
     #[test]
-    fn test_ambiguous_input() {
+    fn test_fresh_engine_uses_full_lifetime() {
+        // Regression: a freshly constructed engine must start with the full
+        // (max) character lifetime, not the tiny time-window step.
         let config = GameConfig::default();
-        let mut engine = GameEngine::new(config, "endless".to_string(), None);
-        engine.start_timer(1000);
-
-        // Spawn 'ㅗ' (h) and 'ㅘ' (hk)
-        let cells = vec!["cell1".to_string(), "cell2".to_string()];
-
-        // In a real scenario, we'd need to manually add these
-        // This test demonstrates the architecture
+        let engine = GameEngine::new(config.clone(), "endless".to_string());
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, config.max_time_window_ms);
     }
 }

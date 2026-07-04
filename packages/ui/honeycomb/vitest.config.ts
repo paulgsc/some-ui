@@ -26,5 +26,11 @@ export default defineConfig({
       },
     },
   },
-  resolve: {},
+  resolve: {
+    alias: {
+      // Mirror the "@honeycomb/*" -> "./src/*" path mapping from tsconfig.json
+      // so tests can import modules that use the alias internally.
+      "@honeycomb": path.resolve(__dirname, "./src"),
+    },
+  },
 })

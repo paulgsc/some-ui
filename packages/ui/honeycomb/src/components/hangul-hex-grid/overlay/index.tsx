@@ -17,10 +17,11 @@ import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
-import type {
-  GameMode,
-  GameStats,
-  TimingParams,
+import {
+  HANGUL_GRID_CELL_COUNT,
+  type GameMode,
+  type GameStats,
+  type TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
@@ -190,7 +191,7 @@ export const HangulHexGrid = ({
         <main className="size-full absolute">
           <div className="size-full relative">
             <HexGrid
-              cellCount={67}
+              cellCount={HANGUL_GRID_CELL_COUNT}
               hexSize={70}
               viewBoxFactor={1.2}
               cellContent={cellContent}
@@ -207,6 +208,7 @@ export const HangulHexGrid = ({
                     romanization,
                     spawnedAt,
                     timeRemaining,
+                    isSolved,
                   },
                   theme: { opacity },
                 } = content
@@ -225,10 +227,11 @@ export const HangulHexGrid = ({
                     centerX={centerX}
                     centerY={centerY}
                     cellWidth={cellWidth}
-                    opacity={opacity}
+                    opacity={isSolved ? 1 : opacity}
                     hexPath={hexPath}
                     timeRemaining={timeRemaining}
                     showRomanization={timingParams.showRomanization}
+                    isSolved={isSolved}
                   />
                 )
               }}

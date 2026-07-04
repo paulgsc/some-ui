@@ -1,5 +1,4 @@
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
-import type { HexCellData } from "@honeycomb/types/hex-grid"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { HexGrid } from "."
@@ -7,13 +6,15 @@ import { HexGrid } from "."
 type Story = StoryObj<typeof HexGrid>
 type Meta = MetaObj<typeof HexGrid>
 
-export default {
+const meta: Meta = {
   title: "UI/Honeycomb/Components/HexGrid",
   component: HexGrid,
   parameters: {
     layout: "centered",
   },
-} as Meta
+}
+
+export default meta
 
 export const ThemedCells: Story = {
   render: () => {
