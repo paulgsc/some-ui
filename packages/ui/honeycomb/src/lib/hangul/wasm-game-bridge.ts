@@ -304,7 +304,7 @@ export class WasmGameBridge {
 
   private getHangulMapping(hangul: string): HangulMapping {
     const mapping = ALL_MAPPINGS.find((m) => m.hangul === hangul)
-    return mapping || { qwerty: "", hangul, romanization: "" }
+    return mapping ?? { qwerty: "", hangul, romanization: "" }
   }
 
   /**

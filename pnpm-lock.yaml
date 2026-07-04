@@ -1153,6 +1153,9 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+      zod:
+        specifier: 4.0.5
+        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

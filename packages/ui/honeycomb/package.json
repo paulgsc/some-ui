@@ -24,7 +24,8 @@
     "some-hexagon": "workspace:*",
     "hangul-game-core": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "workspace:*",
+    "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
