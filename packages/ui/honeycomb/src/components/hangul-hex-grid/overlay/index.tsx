@@ -207,6 +207,7 @@ export const HangulHexGrid = ({
                     romanization,
                     spawnedAt,
                     timeRemaining,
+                    isSolved,
                   },
                   theme: { opacity },
                 } = content
@@ -225,10 +226,11 @@ export const HangulHexGrid = ({
                     centerX={centerX}
                     centerY={centerY}
                     cellWidth={cellWidth}
-                    opacity={opacity}
+                    opacity={isSolved ? 1 : opacity}
                     hexPath={hexPath}
                     timeRemaining={timeRemaining}
                     showRomanization={timingParams.showRomanization}
+                    isSolved={isSolved}
                   />
                 )
               }}

@@ -9,6 +9,9 @@ use super::{EventBatch, GameStatus, TimingParams};
 pub struct GameEngine {
     config: GameConfig,
     active_reveals: Vec<ActiveReveal>,
+    /// Cells holding a completed character. These persist on the board and are
+    /// never reused for new spawns until the game is reset.
+    completed_cells: Vec<String>,
     stats: GameStats,
     key_buffer: Vec<KeyBufferEntry>,
     buffer_timeout_ms: u64,
@@ -26,9 +29,10 @@ impl GameEngine {
         let game_duration_ms = config.game_duration_ms;
 
         Self {
-            current_lifetime_ms: config.time_window_step_ms,
+            current_lifetime_ms: config.max_time_window_ms,
             config,
             active_reveals: Vec::new(),
+            completed_cells: Vec::new(),
             stats: GameStats::new(),
             key_buffer: Vec::new(),
             buffer_timeout_ms,
@@ -164,8 +168,11 @@ impl GameEngine {
 
         let expected_key = spawning::hangul_to_qwerty(&hangul);
 
-        // Find available cell
-        let available: Vec<String> = available_cell_ids.into_iter().filter(|id| !self.active_reveals.iter().any(|r| &r.cell_id == id)).collect();
+        // Find available cell (exclude both active reveals and persisted completed cells)
+        let available: Vec<String> = available_cell_ids
+            .into_iter()
+            .filter(|id| !self.active_reveals.iter().any(|r| &r.cell_id == id) && !self.completed_cells.contains(id))
+            .collect();
 
         if available.is_empty() {
             batch.primary = Some(PrimaryEvent::BoardFull);
@@ -244,6 +251,7 @@ impl GameEngine {
     /// Reset game
     pub fn reset(&mut self) {
         self.active_reveals.clear();
+        self.completed_cells.clear();
         self.current_lifetime_ms = self.config.max_time_window_ms;
         self.stats = GameStats::new();
         self.key_buffer.clear();
@@ -271,6 +279,12 @@ impl GameEngine {
 
         // Check game mode completion
         let counts_toward_completion = self.game_mode.on_match(&reveal.hangul, is_high_quality, show_romanization);
+
+        // When a character is completed it locks into its cell: reserve the cell
+        // so no future character spawns on top of the persisted glyph.
+        if counts_toward_completion {
+            self.completed_cells.push(reveal.cell_id.clone());
+        }
 
         // Primary event
         batch.primary = Some(PrimaryEvent::MatchFound {

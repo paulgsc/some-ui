@@ -182,10 +182,12 @@ export const useGameLoop = ({
       }
     })
 
-    // Update timeRemaining for active characters
+    // Update timeRemaining for active characters. Solved characters are locked
+    // into their cell and no longer count down.
     setActiveCharactersRef.current((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
+        if (char.isSolved) return
         const age = now - char.spawnedAt
         next.set(cellId, {
           ...char,

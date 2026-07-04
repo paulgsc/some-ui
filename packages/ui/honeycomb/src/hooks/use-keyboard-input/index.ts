@@ -133,7 +133,24 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       case "matchFound": {
         setActiveCharacters((prev) => {
           const next = new Map(prev)
-          next.delete(event.cellId)
+
+          if (event.countsTowardCompletion) {
+            // Completed: lock the character into its cell (persist) and stop it
+            // counting down. The engine has already drained it from the test
+            // pool and reserved the cell, so nothing will spawn on top of it.
+            const solved = next.get(event.cellId)
+            if (solved) {
+              next.set(event.cellId, {
+                ...solved,
+                isSolved: true,
+                timeRemaining: 1,
+              })
+            }
+          } else {
+            // Correct but not yet mastered: it will respawn, so clear the cell.
+            next.delete(event.cellId)
+          }
+
           return next
         })
 

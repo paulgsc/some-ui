@@ -172,6 +172,71 @@ it("handles matchFound correctly", () => {
   expect(props.setShowSuccessFeedback).toHaveBeenCalledWith(false)
 })
 
+it("persists a completed character in its cell instead of removing it", () => {
+  const props = createBaseProps({
+    gameBridge: {
+      processKeyPress: vi.fn(() => [
+        {
+          type: "matchFound",
+          cellId: "cell-a",
+          points: 50,
+          isHighQuality: true,
+          countsTowardCompletion: true,
+        },
+      ]),
+      getTimingParams: vi.fn(),
+    },
+  })
+
+  renderHook(() => useKeyboardInput(props))
+
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
+  })
+
+  // Exercise the state updater the handler passed to setActiveCharacters.
+  const updater = props.setActiveCharacters.mock.calls[0][0]
+  const prev = new Map([
+    ["cell-a", { cellId: "cell-a", hangul: "ㄱ", timeRemaining: 0.4 }],
+  ])
+  const next = updater(prev)
+
+  expect(next.has("cell-a")).toBe(true)
+  expect(next.get("cell-a").isSolved).toBe(true)
+  expect(next.get("cell-a").timeRemaining).toBe(1)
+})
+
+it("removes a correct-but-not-completed character from its cell", () => {
+  const props = createBaseProps({
+    gameBridge: {
+      processKeyPress: vi.fn(() => [
+        {
+          type: "matchFound",
+          cellId: "cell-b",
+          points: 10,
+          isHighQuality: false,
+          countsTowardCompletion: false,
+        },
+      ]),
+      getTimingParams: vi.fn(),
+    },
+  })
+
+  renderHook(() => useKeyboardInput(props))
+
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }))
+  })
+
+  const updater = props.setActiveCharacters.mock.calls[0][0]
+  const prev = new Map([
+    ["cell-b", { cellId: "cell-b", hangul: "ㄱ", timeRemaining: 0.4 }],
+  ])
+  const next = updater(prev)
+
+  expect(next.has("cell-b")).toBe(false)
+})
+
 it("calculates accuracy and sets stats", () => {
   const stats = { totalCorrect: 8, totalMissed: 2 }
 

@@ -2,6 +2,8 @@ import type { DisplayCharacter } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 export type CharacterWithLifetime = DisplayCharacter & {
   timeRemaining: number
+  /** True once the character has been completed and is locked into its cell. */
+  isSolved?: boolean
 }
 
 export type HangulCharacter = {
