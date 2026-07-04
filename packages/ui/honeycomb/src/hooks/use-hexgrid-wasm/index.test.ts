@@ -1,8 +1,7 @@
+import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import init, { WasmHexGrid } from "some-hexagon"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-import { useHexgridWasm } from "./use-hexgrid-wasm"
 
 vi.mock("some-hexagon", () => ({
   default: vi.fn().mockResolvedValue(undefined),

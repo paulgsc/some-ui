@@ -1,11 +1,10 @@
+import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import {
   getLastError,
   loadHangulWasm,
 } from "@honeycomb/lib/hangul/hangul-wasm-runtime"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-import { useHangulGameWasm } from "./use-hangul-wasm"
 
 vi.mock("@honeycomb/lib/hangul/hangul-wasm-runtime", () => ({
   loadHangulWasm: vi.fn(),

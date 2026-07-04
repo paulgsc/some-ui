@@ -1,9 +1,8 @@
-import { describe, expect, it } from "vitest"
-
 import {
   getCellCountForHexagonalGridRadius,
   getHexagonalGridRadiusForCellCount,
-} from "./hexagon-math"
+} from "@honeycomb/utils/hexagon-math"
+import { describe, expect, it } from "vitest"
 
 describe("getCellCountForHexagonalGridRadius", () => {
   it.each([

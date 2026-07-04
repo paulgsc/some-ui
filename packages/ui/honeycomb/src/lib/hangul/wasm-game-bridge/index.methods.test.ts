@@ -1,7 +1,9 @@
+import {
+  HANGUL_GRID_CELL_COUNT,
+  WasmGameBridge,
+} from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { HangulGameCore } from "hangul-game-core"
 import { describe, expect, it, vi } from "vitest"
-
-import { HANGUL_GRID_CELL_COUNT, WasmGameBridge } from "./wasm-game-bridge"
 
 function makeStatus(
   overrides: Partial<{

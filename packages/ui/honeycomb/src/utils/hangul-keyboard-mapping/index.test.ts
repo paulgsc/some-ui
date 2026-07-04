@@ -9,7 +9,7 @@ import {
   isCorrectKey,
   QWERTY_TO_HANGUL,
   VOWELS,
-} from "./hangul-keyboard-mapping"
+} from "@honeycomb/utils/hangul-keyboard-mapping"
 
 describe("ALL_MAPPINGS integrity", () => {
   it("combines every consonant and vowel with no overlap", () => {

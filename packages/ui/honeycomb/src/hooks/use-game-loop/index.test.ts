@@ -1,7 +1,6 @@
+import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-import { useGameLoop } from "./use-game-loop"
 
 function createBaseProps(overrides: any = {}): any {
   return {
