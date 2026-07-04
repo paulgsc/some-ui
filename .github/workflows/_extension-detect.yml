@@ -2,7 +2,14 @@ name: Extension Context Detection
 # Detects which extensions need verification/signing based on changed paths.
 #
 # Strategy: scan extensions/ at runtime — no hardcoded enumeration.
-# An extension is included if:
+# A directory under extensions/ is treated as a real extension only if it
+# ships a WebExtension manifest source (manifest*.json outside node_modules/
+# dist) — this excludes shared, non-buildable workspace packages like
+# extensions/common (shared Vite config) or extensions/some-scrobbler (a
+# library package), which have package.json but nothing for `web-ext lint`
+# to check.
+#
+# Given that, an extension is included if:
 #   a) CI config changed (force-all), OR
 #   b) a workspace package that extensions transitively depend on changed (force-all), OR
 #   c) any file under extensions/<name>/ appears in the git diff, OR
@@ -237,6 +244,16 @@ jobs:
             # Skip directories that aren't real packages (e.g. extensions/docs,
             # which holds markdown only) — they have no package.json to build.
             [ -f "${ext_path}package.json" ] || continue
+
+            # Skip workspace packages that don't ship a WebExtension manifest
+            # source (e.g. extensions/common — shared Vite config, or
+            # extensions/some-scrobbler — a library package). They have
+            # package.json but nothing for `web-ext lint` to check, so
+            # including them in the matrix is a guaranteed false failure.
+            MANIFEST_SRC=$(find "$ext_path" -maxdepth 3 -iname 'manifest*.json' \
+              -not -path '*/node_modules/*' -not -path '*/dist/*' | head -1)
+            [ -n "$MANIFEST_SRC" ] || continue
+
             name=$(basename "$ext_path")
 
             CHANGED="false"
