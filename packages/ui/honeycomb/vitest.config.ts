@@ -31,6 +31,13 @@ export default defineConfig({
       // Mirror the "@honeycomb/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
       "@honeycomb": path.resolve(__dirname, "./src"),
+      // "some-hexagon" only resolves after `wasm-pack build` has produced its
+      // dist/ output. Point it at a stub so tests can run without that build
+      // step; tests exercising it override the stub via vi.mock.
+      "some-hexagon": path.resolve(
+        __dirname,
+        "./src/test/mocks/some-hexagon-stub.ts"
+      ),
     },
   },
 })

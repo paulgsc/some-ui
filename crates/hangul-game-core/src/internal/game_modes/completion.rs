@@ -80,3 +80,68 @@ impl GameMode for CompletionMode {
         self.incomplete_characters = self.all_characters.clone();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mode_with(chars: &[&str]) -> CompletionMode {
+        CompletionMode::new(chars.iter().map(|s| (*s).to_string()).collect())
+    }
+
+    #[test]
+    fn match_while_romanization_shown_does_not_count_toward_completion() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+
+        let counted = mode.on_match("ㄱ", true, true);
+
+        assert!(!counted);
+        assert_eq!(mode.get_progress().completed_keys, 0);
+    }
+
+    #[test]
+    fn match_while_romanization_hidden_counts_toward_completion() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+
+        let counted = mode.on_match("ㄱ", true, false);
+
+        assert!(counted);
+        assert_eq!(mode.get_progress().completed_keys, 1);
+    }
+
+    #[test]
+    fn repeated_hidden_match_of_same_character_does_not_double_count() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+        mode.on_match("ㄱ", true, false);
+
+        let counted_again = mode.on_match("ㄱ", true, false);
+
+        assert!(!counted_again);
+        assert_eq!(mode.get_progress().completed_keys, 1);
+    }
+
+    #[test]
+    fn is_complete_tracks_zero_partial_and_full_progress() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+        assert!(!mode.is_complete());
+
+        mode.on_match("ㄱ", true, false);
+        assert!(!mode.is_complete());
+
+        mode.on_match("ㄴ", true, false);
+        assert!(mode.is_complete());
+    }
+
+    #[test]
+    fn reset_clears_completed_and_restores_incomplete_pool() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+        mode.on_match("ㄱ", true, false);
+        assert_eq!(mode.get_progress().completed_keys, 1);
+
+        mode.reset();
+
+        let progress = mode.get_progress();
+        assert_eq!(progress.completed_keys, 0);
+        assert_eq!(progress.remaining_keys, 2);
+    }
+}

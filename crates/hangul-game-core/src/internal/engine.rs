@@ -368,3 +368,229 @@ impl GameEngine {
         *exact_matches.iter().min_by_key(|&&idx| self.active_reveals[idx].revealed_at_ms).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn engine_with_config(config: GameConfig, mode: &str) -> GameEngine {
+        GameEngine::new(config, mode.to_string())
+    }
+
+    fn engine_with(mode: &str) -> GameEngine {
+        engine_with_config(GameConfig::default(), mode)
+    }
+
+    fn push_reveal(engine: &mut GameEngine, cell_id: &str, hangul: &str, expected_key: &str, revealed_at_ms: u64) {
+        engine.active_reveals.push(ActiveReveal {
+            hangul: hangul.to_string(),
+            expected_key: expected_key.to_string(),
+            revealed_at_ms,
+            cell_id: cell_id.to_string(),
+        });
+    }
+
+    #[test]
+    fn process_input_exact_match_removes_reveal_and_emits_match_found() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 1000);
+
+        let batch = engine.process_input("r".to_string(), 1200);
+
+        match batch.primary {
+            Some(PrimaryEvent::MatchFound { cell_id, hangul, .. }) => {
+                assert_eq!(cell_id, "cell-1");
+                assert_eq!(hangul, "ㄱ");
+            }
+            other => panic!("expected MatchFound, got {other:?}"),
+        }
+        assert_eq!(engine.get_active_count(), 0);
+    }
+
+    #[test]
+    fn process_input_ambiguous_when_exact_and_extension_both_exist() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-h", "ㅗ", "h", 1000);
+        push_reveal(&mut engine, "cell-hk", "ㅘ", "hk", 1000);
+
+        let batch = engine.process_input("h".to_string(), 1100);
+
+        match batch.ui_hints.as_slice() {
+            [UiHintEvent::AmbiguousInput {
+                current_buffer,
+                potential_matches,
+            }] => {
+                assert_eq!(current_buffer, "h");
+                assert_eq!(potential_matches.len(), 2);
+            }
+            other => panic!("expected a single AmbiguousInput hint, got {other:?}"),
+        }
+        assert!(batch.primary.is_none());
+        // Ambiguous input doesn't consume any reveal - both stay active.
+        assert_eq!(engine.get_active_count(), 2);
+    }
+
+    #[test]
+    fn process_input_prefix_only_emits_buffer_updated() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-hk", "ㅘ", "hk", 1000);
+
+        let batch = engine.process_input("h".to_string(), 1100);
+
+        match batch.ui_hints.as_slice() {
+            [UiHintEvent::BufferUpdated { current_buffer }] => assert_eq!(current_buffer, "h"),
+            other => panic!("expected a single BufferUpdated hint, got {other:?}"),
+        }
+        assert_eq!(engine.get_active_count(), 1);
+    }
+
+    #[test]
+    fn process_input_miss_when_no_match_or_prefix() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 1000);
+
+        let batch = engine.process_input("z".to_string(), 1100);
+
+        assert!(matches!(batch.primary, Some(PrimaryEvent::InputMissed)));
+        assert_eq!(engine.get_stats().current_streak, 0);
+    }
+
+    #[test]
+    fn tick_expires_stale_reveals_and_applies_miss_penalty() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 0);
+
+        // current_lifetime_ms starts at the default max_time_window_ms (3000).
+        let batch = engine.tick(3001);
+
+        match batch.primary {
+            Some(PrimaryEvent::CharactersExpired { count, .. }) => assert_eq!(count, 1),
+            other => panic!("expected CharactersExpired, got {other:?}"),
+        }
+        assert_eq!(engine.get_active_count(), 0);
+        assert_eq!(engine.get_stats().total_missed, 1);
+        // points_per_miss is negative; score is clamped at zero, not negative.
+        assert_eq!(engine.get_stats().score, 0);
+    }
+
+    #[test]
+    fn tick_resets_streak_built_up_by_prior_matches() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 1000);
+        engine.process_input("r".to_string(), 1000);
+        assert_eq!(engine.get_stats().current_streak, 1);
+
+        push_reveal(&mut engine, "cell-2", "ㄴ", "s", 0);
+        engine.tick(3001);
+
+        assert_eq!(engine.get_stats().current_streak, 0);
+    }
+
+    #[test]
+    fn handle_match_awards_streak_bonus_every_divisor() {
+        let mut engine = engine_with("endless");
+
+        for i in 0..5 {
+            push_reveal(&mut engine, &format!("cell-{i}"), "ㄱ", "r", 0);
+            engine.process_input("r".to_string(), 100);
+        }
+
+        // streak 1-4: bonus 0, 10 pts each. streak 5: bonus 5/5=1, 11 pts.
+        assert_eq!(engine.get_stats().current_streak, 5);
+        assert_eq!(engine.get_stats().score, 51);
+    }
+
+    #[test]
+    fn handle_match_emits_streak_milestone_every_five() {
+        let mut engine = engine_with("endless");
+
+        for i in 0..4 {
+            push_reveal(&mut engine, &format!("cell-{i}"), "ㄱ", "r", 0);
+            let batch = engine.process_input("r".to_string(), 100);
+            assert!(!batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::StreakMilestone { .. })));
+        }
+
+        push_reveal(&mut engine, "cell-4", "ㄱ", "r", 0);
+        let batch = engine.process_input("r".to_string(), 100);
+
+        assert!(batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::StreakMilestone { streak } if *streak == 5)));
+    }
+
+    #[test]
+    fn adjust_difficulty_faster_speeds_up_and_clamps_at_min() {
+        let config = GameConfig {
+            min_time_window_ms: 1000,
+            max_time_window_ms: 1100,
+            time_window_step_ms: 150,
+            speed_increase_every_n_correct: 1,
+            ..GameConfig::default()
+        };
+        let mut engine = engine_with_config(config, "endless");
+
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 0);
+        engine.process_input("r".to_string(), 100);
+        // 1100 - 150 = 950, clamped up to the 1000 floor.
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, 1000);
+
+        push_reveal(&mut engine, "cell-2", "ㄴ", "s", 0);
+        let batch = engine.process_input("s".to_string(), 100);
+        // Already at the floor: no further decrease, no spurious event.
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, 1000);
+        assert!(!batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::DifficultyChanged { .. })));
+    }
+
+    #[test]
+    fn adjust_difficulty_slower_on_miss_clamps_at_max() {
+        let config = GameConfig {
+            min_time_window_ms: 1000,
+            max_time_window_ms: 1100,
+            time_window_step_ms: 150,
+            ..GameConfig::default()
+        };
+        let mut engine = engine_with_config(config, "endless");
+
+        let batch = engine.process_input("z".to_string(), 100);
+
+        assert!(matches!(batch.primary, Some(PrimaryEvent::InputMissed)));
+        // Already at the ceiling (1100): +150 clamps back down to 1100.
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, 1100);
+        assert!(!batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::DifficultyChanged { .. })));
+    }
+
+    #[test]
+    fn find_best_match_picks_oldest_reveal_on_tie() {
+        let mut engine = engine_with("endless");
+        push_reveal(&mut engine, "cell-new", "ㄱ", "r", 2000);
+        push_reveal(&mut engine, "cell-old", "ㄱ", "r", 1000);
+
+        let batch = engine.process_input("r".to_string(), 2500);
+
+        match batch.primary {
+            Some(PrimaryEvent::MatchFound { cell_id, .. }) => assert_eq!(cell_id, "cell-old"),
+            other => panic!("expected MatchFound, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn spawn_character_reports_board_full_when_no_cells_available() {
+        let mut engine = engine_with("completion");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 0);
+
+        let batch = engine.spawn_character(0, vec!["cell-1".to_string()]);
+
+        assert!(matches!(batch.primary, Some(PrimaryEvent::BoardFull)));
+    }
+
+    #[test]
+    fn reset_clears_reveals_stats_and_difficulty() {
+        let mut engine = engine_with("completion");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 0);
+        engine.process_input("r".to_string(), 0);
+
+        engine.reset();
+
+        assert_eq!(engine.get_active_count(), 0);
+        assert_eq!(engine.get_stats().score, 0);
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, GameConfig::default().max_time_window_ms);
+    }
+}

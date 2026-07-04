@@ -48,3 +48,34 @@ pub fn create_game_mode(mode: &str) -> Box<dyn GameMode> {
         _ => Box::new(EndlessMode::new()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completion_string_creates_completion_mode_with_all_forty_characters() {
+        let mode = create_game_mode("completion");
+
+        let progress = mode.get_progress();
+        assert_eq!(progress.total_keys, 40);
+        assert_eq!(progress.completed_keys, 0);
+        assert!(!mode.is_complete());
+    }
+
+    #[test]
+    fn unknown_mode_string_falls_back_to_endless() {
+        let mut mode = create_game_mode("not-a-real-mode");
+
+        assert!(!mode.is_complete());
+        assert_eq!(mode.get_next_character(), Some("random".to_string()));
+        assert_eq!(mode.get_progress().total_keys, 0);
+    }
+
+    #[test]
+    fn empty_string_also_falls_back_to_endless() {
+        let mode = create_game_mode("");
+        assert!(!mode.is_complete());
+        assert_eq!(mode.get_progress().total_keys, 0);
+    }
+}

@@ -23,3 +23,50 @@ pub fn calculate_spawn_interval(current_time_window_ms: u32, config: &GameConfig
 
     interval.round() as u32
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config_with_window(min: u32, max: u32) -> GameConfig {
+        GameConfig {
+            min_time_window_ms: min,
+            max_time_window_ms: max,
+            ..GameConfig::default()
+        }
+    }
+
+    #[test]
+    fn at_max_window_interval_is_slowest() {
+        let config = config_with_window(1000, 3000);
+        assert_eq!(calculate_spawn_interval(3000, &config), 2500);
+    }
+
+    #[test]
+    fn at_min_window_interval_is_fastest() {
+        let config = config_with_window(1000, 3000);
+        assert_eq!(calculate_spawn_interval(1000, &config), 800);
+    }
+
+    #[test]
+    fn interval_shrinks_monotonically_as_window_shrinks() {
+        let config = config_with_window(1000, 3000);
+        let windows = [3000, 2800, 2600, 2400, 2200, 2000, 1800, 1600, 1400, 1200, 1000];
+
+        let mut prev = calculate_spawn_interval(windows[0], &config);
+        for &window in &windows[1..] {
+            let interval = calculate_spawn_interval(window, &config);
+            assert!(interval <= prev, "interval increased from {prev} to {interval} as window shrank to {window}");
+            prev = interval;
+        }
+    }
+
+    #[test]
+    fn clamps_progress_outside_window_bounds() {
+        let config = config_with_window(1000, 3000);
+        // A window wider than max clamps progress to 0 (slowest interval).
+        assert_eq!(calculate_spawn_interval(5000, &config), 2500);
+        // A window narrower than min clamps progress to 1 (fastest interval).
+        assert_eq!(calculate_spawn_interval(0, &config), 800);
+    }
+}
