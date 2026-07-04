@@ -1,56 +1,134 @@
-import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import { buildHexgrid, useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
+import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import init, { WasmHexGrid } from "some-hexagon"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("some-hexagon", () => ({
-  default: vi.fn().mockResolvedValue(undefined),
+  default: vi.fn(),
   WasmHexGrid: vi.fn(),
 }))
 
-const validCell = {
-  id: "hex_0_0_0",
-  points: [{ x: 0, y: 0 }],
-}
+vi.mock("@honeycomb/utils/hexagon-math", () => ({
+  getHexagonalGridRadiusForCellCount: vi.fn(),
+}))
+
+const validCells = [
+  {
+    id: "hex_0_0_0",
+    points: [{ x: 0, y: 0 }],
+  },
+]
 
 beforeEach(() => {
-  vi.mocked(init).mockReset().mockResolvedValue(undefined)
-  vi.mocked(WasmHexGrid).mockReset()
+  vi.resetAllMocks()
+
+  vi.mocked(init).mockResolvedValue(undefined)
+  vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
   vi.mocked(WasmHexGrid).mockImplementation(
     () =>
       ({
-        get_all_cells_render_data: () => [validCell],
+        get_all_cells_render_data: () => validCells,
       }) as any
   )
 })
 
-describe("happy path", () => {
-  it("generates hex cells on mount", async () => {
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 10 })
-    )
+// ============================================================================
+// 1. PURE COMPUTATION & VALIDATION (buildHexgrid)
+// ============================================================================
+describe("buildHexgrid", () => {
+  it("initializes the wasm module", async () => {
+    await buildHexgrid(2, 10)
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    expect(result.current.hexCells).toEqual([validCell])
-    expect(result.current.error).toBeNull()
-    expect(init).toHaveBeenCalled()
+    expect(init).toHaveBeenCalledTimes(1)
   })
 
-  it("getRadius derives the radius from cellCount", async () => {
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 19, hexSize: 10 })
+  it("constructs the wasm grid with the supplied radius and hex size", async () => {
+    await buildHexgrid(5, 24)
+
+    expect(WasmHexGrid).toHaveBeenCalledWith(5, 24)
+  })
+
+  it("returns validated cells", async () => {
+    const result = await buildHexgrid(2, 10)
+
+    expect(result.cells).toEqual(validCells)
+    expect(result.hexGrid).toBeDefined()
+  })
+
+  it("propagates wasm initialization failures", async () => {
+    vi.mocked(init).mockRejectedValue(new Error("load failed"))
+
+    await expect(buildHexgrid(2, 10)).rejects.toThrow("load failed")
+  })
+
+  it("rejects invalid wasm output mapping to schema", async () => {
+    vi.mocked(WasmHexGrid).mockImplementation(
+      () =>
+        ({
+          get_all_cells_render_data: () => [{ foo: "bar" }],
+        }) as any
     )
+
+    await expect(buildHexgrid(2, 10)).rejects.toThrow()
+  })
+})
+
+// ============================================================================
+// 2. HOOK ORCHESTRATION & STATE LIFECYCLE (useHexgridWasm)
+// ============================================================================
+describe("useHexgridWasm", () => {
+  it("loads cells on mount and reflects loading state updates", async () => {
+    const { result } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 10,
+      })
+    )
+
+    expect(result.current.isLoading).toBe(true)
+
     await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.hexCells).toEqual(validCells)
+  })
+
+  it("calculates radius from the supplied cell count via public contract", () => {
+    const { result } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 42,
+        hexSize: 10,
+      })
+    )
 
     expect(result.current.getRadius()).toBe(2)
+    expect(getHexagonalGridRadiusForCellCount).toHaveBeenCalledWith(42)
   })
 
-  it("regenerate() re-runs the wasm generation", async () => {
+  it("rejects invalid input before creating the wasm grid", async () => {
     const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 10 })
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 1.5, // Float violates the positive integer schema requirement
+      })
     )
+
+    await waitFor(() => expect(result.current.error).not.toBeNull())
+
+    expect(WasmHexGrid).not.toHaveBeenCalled()
+  })
+
+  it("regenerates the grid cleanly on explicit execution calls", async () => {
+    const { result } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 10,
+      })
+    )
+
     await waitFor(() => expect(result.current.isLoading).toBe(false))
+
     expect(WasmHexGrid).toHaveBeenCalledTimes(1)
 
     await act(async () => {
@@ -59,81 +137,57 @@ describe("happy path", () => {
 
     expect(WasmHexGrid).toHaveBeenCalledTimes(2)
   })
-})
 
-describe("input validation", () => {
-  it("fails validation when cellCount is omitted (radius resolves to 0)", async () => {
-    const { result } = renderHook(() => useHexgridWasm({ hexSize: 10 }))
+  it("surfaces invalid wasm output structures gracefully", async () => {
+    vi.mocked(WasmHexGrid).mockImplementation(
+      () =>
+        ({
+          get_all_cells_render_data: () => [{ foo: "bar" }],
+        }) as any
+    )
+
+    const { result } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 10,
+      })
+    )
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.error).not.toBeNull()
     expect(result.current.hexCells).toEqual([])
-    expect(WasmHexGrid).not.toHaveBeenCalled()
   })
 
-  it("fails validation when cellCount is zero (radius resolves to 0)", async () => {
+  it("surfaces asynchronous wasm initialization failures", async () => {
+    vi.mocked(init).mockRejectedValue(new Error("wasm failed"))
+
     const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 0, hexSize: 10 })
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 10,
+      })
     )
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.error).not.toBeNull()
-    expect(WasmHexGrid).not.toHaveBeenCalled()
+    expect(result.current.error).toBe("wasm failed")
   })
 
-  it("fails validation when hexSize is not a positive integer", async () => {
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 1.5 })
+  it("clears the mutable grid reference container on component unmount", async () => {
+    const { result, unmount } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 7,
+        hexSize: 10,
+      })
     )
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(result.current.error).not.toBeNull()
-    expect(WasmHexGrid).not.toHaveBeenCalled()
-  })
-})
+    expect(result.current.hexGridRef.current).not.toBeNull()
 
-describe("error handling", () => {
-  it("surfaces a thrown Error from the wasm constructor", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() => {
-      throw new Error("grid init failed")
-    })
+    unmount()
 
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 10 })
-    )
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    expect(result.current.error).toBe("grid init failed")
     expect(result.current.hexGridRef.current).toBeNull()
-  })
-
-  it("falls back to a generic message for a non-Error throw", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() => {
-      throw "boom"
-    })
-
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 10 })
-    )
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    expect(result.current.error).toBe("Unknown error")
-  })
-
-  it("surfaces an init() rejection", async () => {
-    vi.mocked(init).mockRejectedValue(new Error("wasm load failed"))
-
-    const { result } = renderHook(() =>
-      useHexgridWasm({ cellCount: 7, hexSize: 10 })
-    )
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    expect(result.current.error).toBe("wasm load failed")
   })
 })

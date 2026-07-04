@@ -57,6 +57,22 @@ type ReturnOptions = {
   getRadius: () => number
 }
 
+/**
+ * Pure helper function isolated from React state.
+ * Handles WASM inititialization, generation, and validation.
+ */
+export async function buildHexgrid(
+  radius: number,
+  hexSize: number
+): Promise<{ hexGrid: WasmHexGrid; cells: Array<HexRenderData> }> {
+  await init()
+  const hexGrid = new WasmHexGrid(radius, hexSize)
+  const result = hexGrid.get_all_cells_render_data()
+  const cells = HexGridSchema.parse(result)
+
+  return { hexGrid, cells }
+}
+
 export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,12 +87,13 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
     return getHexagonalGridRadiusForCellCount(cellCount ?? 1)
   }, [cellCount])
 
-  const generateHexgrid = useCallback(async () => {
+  const regenerate = useCallback(async () => {
     const radius = getRadius()
 
     const parsed = HexgridInputSchema.safeParse({ radius, hexSize })
     if (!parsed.success) {
-      setError(parsed.error.flatten().formErrors.join(", "))
+      const tree = z.treeifyError(parsed.error)
+      setError(tree.errors.join(", "))
       return
     }
 
@@ -85,12 +102,9 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
     setValidationWarning(null)
 
     try {
-      await init()
-      const hexGrid = new WasmHexGrid(radius, hexSize)
+      const { hexGrid, cells } = await buildHexgrid(radius, hexSize)
       hexGridRef.current = hexGrid
-
-      const result = hexGrid.get_all_cells_render_data()
-      setHexCells(HexGridSchema.parse(result))
+      setHexCells(cells)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
       hexGridRef.current = null
@@ -100,18 +114,27 @@ export function useHexgridWasm({ cellCount, hexSize }: Options): ReturnOptions {
   }, [getRadius, hexSize])
 
   useEffect(() => {
-    generateHexgrid()
+    let active = true
+
+    const initialize = async (): Promise<void> => {
+      if (!active) return
+      await regenerate()
+    }
+
+    void initialize()
+
     return (): void => {
+      active = false
       hexGridRef.current = null
     }
-  }, [generateHexgrid])
+  }, [regenerate])
 
   return {
     isLoading,
     error,
     hexCells,
     validationWarning,
-    regenerate: generateHexgrid,
+    regenerate,
     hexGridRef,
     setHexCells,
     getRadius,
