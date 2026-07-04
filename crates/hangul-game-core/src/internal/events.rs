@@ -222,3 +222,80 @@ impl EventBatch {
         events
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flatten_orders_primary_before_secondary_before_ui_hints() {
+        let mut batch = EventBatch::new();
+        batch.primary = Some(PrimaryEvent::InputMissed);
+        batch.add_secondary(SecondaryEvent::StreakMilestone { streak: 5 });
+        batch.add_ui_hint(UiHintEvent::BufferUpdated { current_buffer: "r".to_string() });
+
+        let events = batch.flatten();
+
+        assert!(matches!(events[0], GameEvent::InputMissed));
+        assert!(matches!(events[1], GameEvent::StreakMilestone { streak: 5 }));
+        assert!(matches!(events[2], GameEvent::BufferUpdated { .. }));
+    }
+
+    #[test]
+    fn flatten_preserves_secondary_event_insertion_order() {
+        let mut batch = EventBatch::new();
+        batch.add_secondary(SecondaryEvent::StreakMilestone { streak: 10 });
+        batch.add_secondary(SecondaryEvent::DifficultyChanged {
+            new_lifetime_ms: 900,
+            new_interval_ms: 1200,
+            reason: DifficultyChangeReason::PerfectMatch,
+        });
+
+        let events = batch.flatten();
+
+        assert!(matches!(events[0], GameEvent::StreakMilestone { streak: 10 }));
+        assert!(matches!(events[1], GameEvent::DifficultyChanged { .. }));
+    }
+
+    #[test]
+    fn flatten_with_no_events_produces_empty_vec() {
+        let batch = EventBatch::new();
+        assert!(batch.flatten().is_empty());
+    }
+
+    #[test]
+    fn match_found_serializes_with_camel_case_wire_format() {
+        let event = GameEvent::MatchFound {
+            cell_id: "cell-1".to_string(),
+            hangul: "ㄱ".to_string(),
+            points: 10,
+            is_high_quality: true,
+            time_gap_ms: 200,
+            counts_toward_completion: false,
+        };
+
+        let json = serde_json::to_value(&event).unwrap();
+
+        assert_eq!(json["type"], "matchFound");
+        assert_eq!(json["cellId"], "cell-1");
+        assert_eq!(json["isHighQuality"], true);
+        assert_eq!(json["timeGapMs"], 200);
+        assert_eq!(json["countsTowardCompletion"], false);
+    }
+
+    #[test]
+    fn difficulty_changed_serializes_with_camel_case_wire_format() {
+        let event = GameEvent::DifficultyChanged {
+            new_lifetime_ms: 900,
+            new_interval_ms: 1200,
+            reason: DifficultyChangeReason::CharacterExpired,
+        };
+
+        let json = serde_json::to_value(&event).unwrap();
+
+        assert_eq!(json["type"], "difficultyChanged");
+        assert_eq!(json["newLifetimeMs"], 900);
+        assert_eq!(json["newIntervalMs"], 1200);
+        assert_eq!(json["reason"], "characterExpired");
+    }
+}

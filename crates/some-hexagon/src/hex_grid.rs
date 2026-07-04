@@ -192,3 +192,45 @@ impl HexGrid {
     //     result
     // }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fill_ring_at_radius_zero_colors_only_the_center() {
+        let mut grid = HexGrid::new(2);
+        let center = CubeCoord::from_axial(0, 0);
+
+        grid.fill_ring(&center, 0, 0xFF_0000);
+
+        assert_eq!(grid.get_cell(&center).unwrap().color, Some(0xFF_0000));
+        let colored_count = grid.all_cells().filter(|c| c.color.is_some()).count();
+        assert_eq!(colored_count, 1);
+    }
+
+    #[test]
+    fn fill_ring_at_positive_radius_colors_exactly_the_ring_and_not_the_center() {
+        let mut grid = HexGrid::new(3);
+        let center = CubeCoord::from_axial(0, 0);
+
+        grid.fill_ring(&center, 2, 0x00_FF00);
+
+        assert_eq!(grid.get_cell(&center).unwrap().color, None);
+        let colored_count = grid.all_cells().filter(|c| c.color.is_some()).count();
+        // A ring at radius r has exactly 6r cells.
+        assert_eq!(colored_count, 12);
+    }
+
+    #[test]
+    fn bounds_on_a_single_cell_grid_collapses_to_the_center() {
+        let grid = HexGrid::new(0);
+        assert_eq!(grid.bounds(), ((0, 0), (0, 0)));
+    }
+
+    #[test]
+    fn bounds_on_a_populated_grid_spans_the_full_radius() {
+        let grid = HexGrid::new(3);
+        assert_eq!(grid.bounds(), ((-3, -3), (3, 3)));
+    }
+}
