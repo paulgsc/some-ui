@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react"
+import { useId, useMemo } from "react"
 import type {
   FeedbackData,
   Message,
@@ -70,28 +70,16 @@ export type KoreanStudyPageVM = {
   }
 }
 
-export function createId(): string {
-  // Check if the modern API exists and is in a secure context
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-
-  // Fallback: A simple manual UUID generator (or use a library like 'nanoid')
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === "x" ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
 export function useKoreanStudyPageVM(): KoreanStudyPageVM {
   const { topikRepository, metadataRepository, audioTTS } = useSessionConfig()
 
-  const componentIdRef = useRef<string | null>(null)
-  if (!componentIdRef.current) {
-    componentIdRef.current = createId()
-  }
-  const componentId = componentIdRef.current
+  // componentId is an opaque, per-instance key threaded through to the
+  // session/TTS pipeline (see use-session.ts, tts-effect-handler.ts) - it's
+  // never parsed or persisted, so React's own useId() (already the pattern
+  // some-ui-utils's use-speech-queue.ts uses for the same purpose) is a
+  // better fit than a hand-rolled UUID: it's stable across re-renders
+  // without touching a ref during render.
+  const componentId = useId()
 
   const session = useSession({
     repository: topikRepository,
@@ -105,25 +93,19 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
 
   // Cleanup audio on unmount
 
-  const topikItems = useMemo(
-    () => getAvailableTopiks(state),
-    [state.dataRef.catalog.data]
-  )
+  // getAvailableTopiks/getCurrentBatch/getCurrentMessage are direct
+  // property/array lookups against `state` - no allocation, so the
+  // returned reference is already stable whenever `state` doesn't change.
+  // useMemo here bought nothing but an exhaustive-deps violation (closing
+  // over the whole `state` object while only listing sub-paths).
+  const topikItems = getAvailableTopiks(state)
+  const currentBatch = getCurrentBatch(state)
+  const currentMessage = getCurrentMessage(state)
 
-  const currentBatch = useMemo(
-    () => getCurrentBatch(state),
-    [state.dataRef.batches, state.active?.cursor.batch]
-  )
-
-  const currentMessage = useMemo(
-    () => getCurrentMessage(state),
-    [state.dataRef.batches, state.active?.cursor.message]
-  )
-
-  const visibleMessages = useMemo(
-    () => getVisibleMessages(state),
-    [state.dataRef.batches, state.active?.cursor.message]
-  )
+  // getVisibleMessages does allocate (Array.slice), so it's kept memoized
+  // to preserve reference stability - keyed on the whole `state` it's
+  // actually called with, which also satisfies exhaustive-deps.
+  const visibleMessages = useMemo(() => getVisibleMessages(state), [state])
 
   return useMemo(
     () => ({
