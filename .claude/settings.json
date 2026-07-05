@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(scripts/bootstrap-wasm-crates.sh*)",
+      "Bash(cargo install wasm-pack*)",
+      "Bash(rustup target add wasm32-unknown-unknown*)",
+      "Bash(wasm-pack build*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
