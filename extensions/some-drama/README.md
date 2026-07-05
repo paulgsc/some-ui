@@ -28,16 +28,32 @@ This extension is built with:
 
 ## 📁 Project Structure
 
+The tree draws an explicit seam between our owned domain and the external
+browser-API domain (Good-Citizen Charter §2, Logic ≠ Presentation ≠
+Effects): `logic/` is pure and may not reference `document.*` / `browser.*`
+/ `chrome.*` (enforced by the `extension-charter/no-logic-layer-side-effects`
+lint rule); `effects/` is the only place those globals are called from;
+`components/` is presentation. See the `README.md` in `src/logic/` and
+`src/effects/` for the per-domain contract.
+
 ```
 drama-sentiment-extension/
 ├── src/
 │   ├── content/
-│   │   ├── content.ts       # Main content script (all logic inlined)
-│   │   └── content.css      # Tailwind input file
+│   │   └── content.ts        # Content-script entrypoint (composition root)
 │   ├── background/
-│   │   └── background.ts    # Background script (storage handling)
-│   └── lib/
-│       └── schema.ts        # Type definitions (reference only)
+│   │   └── background.ts     # Background-script entrypoint
+│   ├── popup/
+│   │   └── popup.ts          # Popup entrypoint
+│   ├── logic/                 # Owned domain — pure, no browser/DOM globals
+│   │   ├── content/           # constants, utils (rnd, stars, clamp, …)
+│   │   └── popup/             # constants
+│   ├── effects/                # Browser-API domain — the only DOM/browser callers
+│   │   ├── content/           # dom.ts (el()), keybindings, particles
+│   │   └── popup/             # messaging, content-scraper, fsm
+│   ├── components/             # Presentation (vanilla DOM + React stories)
+│   ├── types/                  # Shared type definitions
+│   └── styles/                 # Tailwind/UnoCSS input files
 ├── dist/                     # Build output (ignored in git)
 ├── manifest.json            # Firefox extension manifest
 ├── vite.config.ts           # Vite bundler configuration

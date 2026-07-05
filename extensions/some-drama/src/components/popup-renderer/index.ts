@@ -12,8 +12,8 @@
 
 import { buildOpinionatedSection } from "@drama/components/form-opinionated"
 import { buildStructuralSection } from "@drama/components/form-structural"
-import { DEFAULT_ACCENT, MAX_WATCHLIST } from "@drama/lib/popup/constants"
-import type { PopupStateMachine } from "@drama/lib/popup/fsm"
+import type { PopupStateMachine } from "@drama/effects/popup/fsm"
+import { DEFAULT_ACCENT, MAX_WATCHLIST } from "@drama/logic/popup/constants"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 const MOOD_EMOJI: Record<string, string> = {

@@ -13,9 +13,9 @@ import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"
 import { RightPanel } from "@drama/components/right-panel"
 import { Slideshow } from "@drama/components/slideshow"
-import { MOODS, SIZE_CYCLE } from "@drama/lib/content/constants"
-import { spawnBlossoms } from "@drama/lib/content/particles"
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
+import { spawnBlossoms } from "@drama/effects/content/particles"
+import { MOODS, SIZE_CYCLE } from "@drama/logic/content/constants"
 import type { CardEvents, CardSize, CardState, MoodType } from "@drama/types"
 
 export class DramaCard {

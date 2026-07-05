@@ -1,7 +1,7 @@
 import "@drama/styles/popup.css"
 
 import { useEffect, useRef } from "react"
-import { PopupStateMachine } from "@drama/lib/popup/fsm"
+import { PopupStateMachine } from "@drama/effects/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 

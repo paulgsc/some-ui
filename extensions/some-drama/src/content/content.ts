@@ -27,7 +27,7 @@
 //          card exists instead of silently doing nothing.
 
 import { DramaCard } from "@drama/components/drama-card"
-import { installKeybindings } from "@drama/lib/content/keybindings"
+import { installKeybindings } from "@drama/effects/content/keybindings"
 import type {
   CardEvents,
   CardSize,

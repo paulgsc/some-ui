@@ -11,7 +11,7 @@
  * `.pf-structural { display: flex }` — different elements, no conflict.
  */
 
-import { ACCENT_COLORS } from "@drama/lib/popup/constants"
+import { ACCENT_COLORS } from "@drama/logic/popup/constants"
 import type { DramaEntry } from "@drama/types"
 
 type El = <K extends keyof HTMLElementTagNameMap>(

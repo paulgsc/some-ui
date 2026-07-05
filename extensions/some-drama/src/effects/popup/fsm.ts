@@ -1,9 +1,9 @@
-import { VIDEO_HOSTS } from "@drama/lib/popup/constants"
-import { isVideoHost, sendMsg } from "@drama/lib/popup/messaging"
+import { VIDEO_HOSTS } from "@drama/logic/popup/constants"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 // Statically import the scraper function using modern ES module syntax
 import { scrapeActiveTabMedia } from "./content-scraper"
+import { isVideoHost, sendMsg } from "./messaging"
 
 export class PopupStateMachine {
   private currentPhase: PopupPhase = { tag: "LOADING" }

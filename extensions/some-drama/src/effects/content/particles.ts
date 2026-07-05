@@ -18,9 +18,10 @@
 //   Particles use `position: fixed` (not `absolute`) so their left/top resolve
 //   against the viewport directly — no intermediate offset parent confusion.
 
+import { rnd } from "@drama/logic/content/utils"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
-import { el, rnd } from "./utils"
+import { el } from "./dom"
 
 const BLOSSOM_GLYPHS = ["🌸", "🌺", "🌼", "✿", "❀"] as const
 const PARTICLE_COUNT = 7

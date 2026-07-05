@@ -2,7 +2,7 @@
 // Single-open accordion item. Owns: open/close state, height animation.
 // Parent controls exclusivity via the `group` callback.
 
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 
 export type AccordionItem = {
   root: HTMLDivElement

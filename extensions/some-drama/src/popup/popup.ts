@@ -1,5 +1,5 @@
 import { PopupRenderer } from "@drama/components/popup-renderer"
-import { PopupStateMachine } from "@drama/lib/popup/fsm"
+import { PopupStateMachine } from "@drama/effects/popup/fsm"
 
 document.addEventListener("DOMContentLoaded", () => {
   const rootWorkspace = document.getElementById("popup-root")
