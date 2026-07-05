@@ -16,6 +16,8 @@
     "tailwind.config.ts",
     "eslint.config.js",
     "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
     "../../../assets/**/*",
     "src",
     "../../some-content/src/**/*"

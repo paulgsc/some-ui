@@ -4,6 +4,7 @@
  * INVARIANTS ENFORCED:
  * - V2: Pure, deterministic, no side effects
  * - V3: Explicit transitions only
+ * - V8: Out-of-order response safety
  * - V10: Cursor bounds safety
  * - V11: No illegal transitions
  * - V17: Forward progress
@@ -62,7 +63,7 @@ function createInitialCursor(): SessionCursor {
 /**
  * Validate and clamp cursor bounds (V10)
  */
-function validateCursor(
+export function validateCursor(
   cursor: SessionCursor,
   meta: BatchMetadata | null,
   batchCount: number
@@ -79,7 +80,10 @@ function validateCursor(
 /**
  * Check if all batches complete
  */
-function isBatchesComplete(cursor: SessionCursor, batchCount: number): boolean {
+export function isBatchesComplete(
+  cursor: SessionCursor,
+  batchCount: number
+): boolean {
   return cursor.batch >= batchCount - 1
 }
 
@@ -87,7 +91,7 @@ function isBatchesComplete(cursor: SessionCursor, batchCount: number): boolean {
 // ACTIVE STATE FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 
-function createActiveState(
+export function createActiveState(
   cursor: SessionCursor = createInitialCursor()
 ): ActiveSessionState {
   return {
@@ -240,6 +244,10 @@ export function sessionReducer(
   if (state.phase === "hydrating") {
     // Race protection (V8): only accept response for current key
     if (event.type === "HYDRATION_SUCCESS") {
+      if (event.key !== state.dataRef.topikKey) {
+        return unchanged() // Ignore stale response
+      }
+
       return result(
         {
           ...state,
@@ -296,6 +304,7 @@ export function sessionReducer(
           ...state.dataRef,
           catalog: state.dataRef.catalog, // Preserve catalog state
           topikKey: null,
+          batches: null,
           status: "empty",
           error: null,
           batchCount: 0,
@@ -324,6 +333,7 @@ export function sessionReducer(
           dataRef: {
             ...state.dataRef,
             topikKey: null,
+            batches: null,
             status: "empty",
             error: null,
             batchCount: 0,
@@ -623,6 +633,7 @@ export function sessionReducer(
         dataRef: {
           ...state.dataRef,
           topikKey: null,
+          batches: null,
           status: "empty",
           error: null,
           batchCount: 0,

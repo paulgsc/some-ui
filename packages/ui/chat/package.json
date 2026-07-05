@@ -13,11 +13,12 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
   },
   "dependencies": {
-    "@radix-ui/react-avatar": "^1.0.3",
     "@some-ui/styles": "workspace:*",
+    "@tanstack/react-query": "^5.66.11",
     "@types/react": "^19.0.4",
     "lucide-react": "^0.562.0",
     "some-ui-shared": "workspace:*",
