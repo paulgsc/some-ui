@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import type {
   EffectExecutor,
   ISessionMachine,
@@ -82,36 +89,22 @@ export function useSession(
   )
 
   // ══════════════════════════════════════════════════════
-  // MACHINE INSTANCE (stable across remounts)
+  // MACHINE INSTANCE (stable for the component's lifetime)
   // ══════════════════════════════════════════════════════
 
-  const machineRef = useRef<ISessionMachine | null>(null)
+  const [machine] = useState<ISessionMachine>(createSessionMachine)
   const executorRef = useRef<EffectExecutor | null>(null)
 
-  if (!machineRef.current) {
-    machineRef.current = createSessionMachine()
-  }
-
-  const machine = machineRef.current
-
   // ══════════════════════════════════════════════════════
-  // REACT STATE SYNC
+  // REACT STATE SYNC (external store - no render-time ref reads)
   // ══════════════════════════════════════════════════════
 
-  // TODO (future optimization):
-  // Consider switching to `useSyncExternalStore` (React 18+) for machine state
-  // to eliminate the extra render caused by the initial `setState` in useEffect.
-  // This will provide fully synchronous state with minimal re-renders.
-
-  const [state, setState] = useState<SessionState>(() => machine.getState())
-
-  useEffect(() => {
-    // Subscribe to machine changes.
-    // We do NOT setState here initially, because useState already initializes
-    // with the machine's current state. This avoids double render on mount.
-    const unsubscribe = machine.subscribe((newState) => setState(newState))
-    return unsubscribe
-  }, [machine])
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => machine.subscribe(onStoreChange),
+    [machine]
+  )
+  const getSnapshot = useCallback(() => machine.getState(), [machine])
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   // ══════════════════════════════════════════════════════
   // TTS STATE
@@ -199,6 +192,7 @@ export function useSession(
     machine,
     repository,
     queryBridge,
+    audioTTS,
     componentId,
     enableTTS,
     timerInterval,
