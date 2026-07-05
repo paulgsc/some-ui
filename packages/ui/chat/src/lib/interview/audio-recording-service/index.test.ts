@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { AudioRecordingService } from "./audio-recording-service"
+import { AudioRecordingService } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

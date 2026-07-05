@@ -2,7 +2,7 @@ import type { Message } from "@chat/types/chat"
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useChatMessages } from "./use-chat-messages"
+import { useChatMessages } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

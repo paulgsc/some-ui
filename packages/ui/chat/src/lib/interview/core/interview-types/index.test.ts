@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { PersistedSnapshotSchema } from "./interview-types"
+import { PersistedSnapshotSchema } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PersistedSnapshotSchema - session-storage.ts silently swallows parse

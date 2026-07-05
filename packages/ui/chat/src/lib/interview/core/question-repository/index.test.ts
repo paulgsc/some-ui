@@ -1,7 +1,7 @@
 import type { Question } from "@chat/lib/interview/core/interview-types"
 import { describe, expect, it } from "vitest"
 
-import { createStaticQuestionRepository } from "./question-repository"
+import { createStaticQuestionRepository } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

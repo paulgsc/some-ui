@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { createMockTranscriptionAdapter } from "./transcription-adapter"
+import { createMockTranscriptionAdapter } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

@@ -5,7 +5,7 @@ import {
   clearPersistedSession,
   readPersistedSession,
   writePersistedSession,
-} from "./session-storage"
+} from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

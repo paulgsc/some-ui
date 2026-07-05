@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { formatTime } from "./format-time"
+import { formatTime } from "."
 
 describe("formatTime - boundaries", () => {
   it.each([

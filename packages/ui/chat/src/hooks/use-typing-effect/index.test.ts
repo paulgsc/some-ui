@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useTypingEffect } from "./use-typing-effect"
+import { useTypingEffect } from "."
 
 function advance(ms: number): void {
   act(() => {

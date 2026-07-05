@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { averageIntoBars, IDLE_LEVEL } from "./use-audio-level"
+import { averageIntoBars, IDLE_LEVEL } from "."
 
 // Deterministic PRNG (same recipe used by lib/topik/utils/index.test.ts) so
 // the property test below is reproducible across runs.

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { useAudioRecorder } from "./use-audio-recorder"
+import { useAudioRecorder } from "."
 
 const {
   requestPermissionMock,
