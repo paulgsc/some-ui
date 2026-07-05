@@ -79,7 +79,10 @@ export const interviewReducer = (
       return state.phase === "review" && state.transcription
         ? {
             ...state,
-            transcription: { ...state.transcription, transcript: event.transcript },
+            transcription: {
+              ...state.transcription,
+              transcript: event.transcript,
+            },
           }
         : state
 

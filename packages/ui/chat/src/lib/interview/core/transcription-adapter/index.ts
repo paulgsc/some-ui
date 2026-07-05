@@ -37,8 +37,11 @@ type MockTranscriptionAdapterOptions = {
 export const createMockTranscriptionAdapter = (
   options: MockTranscriptionAdapterOptions = {}
 ): TranscriptionAdapter => {
-  const { failureRate = 0.08, minLatencyMs = 900, maxLatencyMs = 2200 } =
-    options
+  const {
+    failureRate = 0.08,
+    minLatencyMs = 900,
+    maxLatencyMs = 2200,
+  } = options
 
   const jobs = new Map<
     string,
@@ -57,7 +60,10 @@ export const createMockTranscriptionAdapter = (
         readyAt,
         category: meta.category,
         result: willFail
-          ? { status: "error", error: "Network error: failed to transcribe recording" }
+          ? {
+              status: "error",
+              error: "Network error: failed to transcribe recording",
+            }
           : { status: "done", transcript: SAMPLE_TRANSCRIPTS[meta.category] },
       })
 
@@ -67,7 +73,10 @@ export const createMockTranscriptionAdapter = (
     poll(jobId): Promise<TranscriptionResult> {
       const job = jobs.get(jobId)
       if (!job) {
-        return Promise.resolve({ status: "error", error: "Unknown transcription job" })
+        return Promise.resolve({
+          status: "error",
+          error: "Unknown transcription job",
+        })
       }
       if (Date.now() < job.readyAt) {
         return Promise.resolve({ status: "processing" })
@@ -119,7 +128,9 @@ export const createHttpTranscriptionAdapter = (
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch transcription status: ${response.status}`)
+        throw new Error(
+          `Failed to fetch transcription status: ${response.status}`
+        )
       }
 
       return TranscriptionResultSchema.parse(await response.json())

@@ -1,6 +1,8 @@
+import type {
+  Question,
+  SessionAnswer,
+} from "@chat/lib/interview/core/interview-types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-
-import type { Question, SessionAnswer } from "@chat/lib/interview/core/interview-types"
 
 import { SessionComplete } from "."
 

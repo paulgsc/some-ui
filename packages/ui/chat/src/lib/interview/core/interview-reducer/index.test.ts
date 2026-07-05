@@ -1,14 +1,11 @@
-import { describe, expect, it } from "vitest"
-
-import {
-  createInitialInterviewState,
-  interviewReducer,
-} from "."
 import type {
   InterviewSessionState,
   Question,
   SessionAnswer,
 } from "@chat/lib/interview/core/interview-types"
+import { describe, expect, it } from "vitest"
+
+import { createInitialInterviewState, interviewReducer } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

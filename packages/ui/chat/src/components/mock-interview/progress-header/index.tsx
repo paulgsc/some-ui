@@ -1,6 +1,5 @@
-import { Progress } from "some-ui-shared"
-
 import type { InterviewPhase } from "@chat/lib/interview/core/interview-types"
+import { Progress } from "some-ui-shared"
 
 const PHASE_LABEL: Partial<Record<InterviewPhase, string>> = {
   question: "Listening",
