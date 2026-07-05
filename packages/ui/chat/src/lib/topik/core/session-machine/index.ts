@@ -10,13 +10,13 @@
  * - V12: Memory boundedness
  */
 
-import { createInitialState, sessionReducer } from "./session-reducer"
+import { createInitialState, sessionReducer } from "@chat/lib/topik/core/session-reducer"
 import type {
   ISessionMachine,
   SessionEffect,
   SessionEvent,
   SessionState,
-} from "./session-types"
+} from "@chat/lib/topik/core/session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SESSION MACHINE

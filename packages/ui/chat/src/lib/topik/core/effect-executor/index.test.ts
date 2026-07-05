@@ -3,15 +3,15 @@ import type {
   ITopikRepository,
   TopikMetadata,
 } from "@chat/lib/topik"
-import type { TTSOptions, UseAudioTTSReturn } from "some-ui-utils"
-import { afterEach, describe, expect, it, vi } from "vitest"
-
-import { createEffectExecutor, type EffectExecutor } from "./effect-executor"
 import type {
   IQueryBridge,
   ISessionMachine,
   SessionState,
-} from "./session-types"
+} from "@chat/lib/topik/core/session-types"
+import type { TTSOptions, UseAudioTTSReturn } from "some-ui-utils"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { createEffectExecutor, type EffectExecutor } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

@@ -2,7 +2,7 @@ import type { TopikManifestFile } from "@chat/lib/topik"
 import { TopikManifestSchema } from "@chat/lib/topik"
 import { describe, expect, it, vi } from "vitest"
 
-import { TopikMetadataRepository } from "./topik-metadata-repository"
+import { TopikMetadataRepository } from "."
 
 describe("TopikMetadataRepository", () => {
   it("returns the validated manifest when the payload matches the schema", async () => {

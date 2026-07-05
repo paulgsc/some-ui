@@ -11,8 +11,8 @@ import { act, renderHook } from "@testing-library/react"
 import type { UseAudioTTSReturn } from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import type { UseEnhancedSessionConfig } from "./use-session"
-import { useSession } from "./use-session"
+import { useSession } from "."
+import type { UseEnhancedSessionConfig } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

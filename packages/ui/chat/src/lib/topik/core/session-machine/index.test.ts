@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { createSessionMachine, SessionMachine } from "./session-machine"
-import { createInitialState } from "./session-reducer"
+import { createSessionMachine, SessionMachine } from "."
+import { createInitialState } from "@chat/lib/topik/core/session-reducer"
 
 describe("SessionMachine", () => {
   it("initializes with createInitialState() by default", () => {

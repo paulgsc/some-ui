@@ -14,7 +14,7 @@
 import type { Message } from "@chat/lib/topik"
 import type { UseAudioTTSReturn } from "some-ui-utils"
 
-import type { ISessionMachine } from "./session-types"
+import type { ISessionMachine } from "@chat/lib/topik/core/session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG

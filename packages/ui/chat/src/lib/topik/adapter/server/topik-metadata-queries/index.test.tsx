@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   useTopikMetadata,
   useTopikMetadataList,
-} from "./topik-metadata-queries"
+} from "."
 
 function createWrapper(): ({
   children,

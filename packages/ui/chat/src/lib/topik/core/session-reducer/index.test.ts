@@ -11,6 +11,11 @@
  * branch (catalog lifecycle, quiz scoring/feedback, batch pass/fail, reset)
  * under plain behavioral `describe` blocks instead of a fabricated label.
  */
+import type { ConversationBatch } from "@chat/lib/topik"
+import type {
+  BatchMetadata,
+  SessionState,
+} from "@chat/lib/topik/core/session-types"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -19,12 +24,7 @@ import {
   isBatchesComplete,
   sessionReducer,
   validateCursor,
-} from "./session-reducer"
-import type {
-  BatchMetadata,
-  ConversationBatch,
-  SessionState,
-} from "./session-types"
+} from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

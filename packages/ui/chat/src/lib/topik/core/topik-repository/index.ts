@@ -17,7 +17,7 @@
 import type { ConversationBatch, TopikFile } from "@chat/lib/topik"
 import { TopikFileSchema } from "@chat/lib/topik"
 
-import type { ITopikRepository } from "./session-types"
+import type { ITopikRepository } from "@chat/lib/topik/core/session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REPOSITORY IMPLEMENTATION

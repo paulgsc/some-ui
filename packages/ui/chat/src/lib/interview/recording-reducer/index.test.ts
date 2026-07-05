@@ -1,7 +1,7 @@
 import type { RecordingState } from "@chat/types/interview"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { recordingReducer } from "./recording-reducer"
+import { recordingReducer } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Deterministic PRNG (mulberry32) - mirrors the pattern used in

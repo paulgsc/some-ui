@@ -1,9 +1,9 @@
 import type { Message } from "@chat/lib/topik"
+import type { ISessionMachine } from "@chat/lib/topik/core/session-types"
 import type { TTSOptions, UseAudioTTSReturn } from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
-import type { ISessionMachine } from "./session-types"
-import { createTTSEffectHandler } from "./tts-effect-handler"
+import { createTTSEffectHandler } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

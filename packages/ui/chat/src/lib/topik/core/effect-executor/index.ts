@@ -7,16 +7,15 @@
 
 import type { Message } from "@chat/lib/topik"
 import { actions, getCurrentMessage } from "@chat/lib/topik"
-import type { UseAudioTTSReturn } from "some-ui-utils"
-
 import type {
   IQueryBridge,
   ISessionMachine,
   ITopikRepository,
   SessionEffect,
-} from "./session-types"
-import type { TTSEffectHandler } from "./tts-effect-handler"
-import { createTTSEffectHandler } from "./tts-effect-handler"
+} from "@chat/lib/topik/core/session-types"
+import type { TTSEffectHandler } from "@chat/lib/topik/core/tts-effect-handler"
+import { createTTSEffectHandler } from "@chat/lib/topik/core/tts-effect-handler"
+import type { UseAudioTTSReturn } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EXECUTOR CONFIGURATION

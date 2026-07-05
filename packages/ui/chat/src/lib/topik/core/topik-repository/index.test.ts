@@ -2,7 +2,7 @@ import type { TopikFile } from "@chat/lib/topik"
 import { TopikFileSchema } from "@chat/lib/topik"
 import { describe, expect, it, vi } from "vitest"
 
-import { TopikRepository } from "./topik-repository"
+import { TopikRepository } from "."
 
 describe("TopikRepository", () => {
   it("returns validated batches when the payload matches the schema", async () => {

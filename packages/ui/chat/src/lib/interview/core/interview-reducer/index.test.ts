@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest"
 import {
   createInitialInterviewState,
   interviewReducer,
-} from "./interview-reducer"
+} from "."
 import type {
   InterviewSessionState,
   Question,
   SessionAnswer,
-} from "./interview-types"
+} from "@chat/lib/interview/core/interview-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES
