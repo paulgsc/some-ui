@@ -102,13 +102,13 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     >
       <div className="absolute inset-0 h-1/4" />
       <div className="absolute bottom-0 end-0 start-0  h-1/4" />
-      {chats.map((msg, i) => {
+      {chats.map((msg) => {
         const { position, id } = msg
         const t = 15 * 1000
         const timestamp = new Date(Date.now() - t).toString()
         return (
           <section
-            key={`${id}_${i}`}
+            key={id}
             className={cn("flex w-full", {
               "justify-start": position === "left",
               "justify-end": position === "right",

@@ -82,7 +82,7 @@ const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
 type Story = StoryObj<typeof KoreanStudyPage>
 type Meta = MetaObj<typeof KoreanStudyPage>
 
-export default {
+const meta: Meta = {
   title: "UI/Chat/Components/Topik/KoreanStudyPage",
   component: KoreanStudyPage,
   decorators: [
@@ -92,6 +92,7 @@ export default {
       </WithSessionConfig>
     ),
   ],
-} as Meta
+}
+export default meta
 
 export const Default: Story = {}

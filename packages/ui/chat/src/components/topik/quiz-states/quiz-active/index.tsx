@@ -130,33 +130,36 @@ export const QuizActive = ({
             {question?.type === "multiple-choice" ? (
               /* Answer Options */
               <div className="grid gap-3">
-                {question.options?.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelected(index)}
-                    className={`group flex items-center gap-4 w-full p-5 text-left border-2 rounded-xl transition-all ${
-                      selected === index
-                        ? "border-primary bg-primary/5 shadow-md"
-                        : "border-border hover:border-primary/50 hover:bg-primary/5"
-                    }`}
-                  >
-                    <div
-                      className={`size-8 rounded-full border-2 flex items-center justify-center font-bold transition-all ${
+                {question.options?.map((option, index) => {
+                  const optionLetter = String.fromCharCode(65 + index)
+                  return (
+                    <button
+                      key={optionLetter}
+                      onClick={() => setSelected(index)}
+                      className={`group flex items-center gap-4 w-full p-5 text-left border-2 rounded-xl transition-all ${
                         selected === index
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border group-hover:border-primary"
+                          ? "border-primary bg-primary/5 shadow-md"
+                          : "border-border hover:border-primary/50 hover:bg-primary/5"
                       }`}
                     >
-                      {String.fromCharCode(65 + index)}
-                    </div>
-                    <span className="font-semibold text-lg flex-1">
-                      {option}
-                    </span>
-                    {selected === index && (
-                      <CheckCircle2 className="size-5 text-primary" />
-                    )}
-                  </button>
-                ))}
+                      <div
+                        className={`size-8 rounded-full border-2 flex items-center justify-center font-bold transition-all ${
+                          selected === index
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border group-hover:border-primary"
+                        }`}
+                      >
+                        {optionLetter}
+                      </div>
+                      <span className="font-semibold text-lg flex-1">
+                        {option}
+                      </span>
+                      {selected === index && (
+                        <CheckCircle2 className="size-5 text-primary" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             ) : (
               /* Text Input */

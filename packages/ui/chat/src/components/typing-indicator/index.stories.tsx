@@ -7,7 +7,8 @@ type Meta = MetaObj<typeof TypingIndicator>
 
 export const Default: Story = {}
 
-export default {
+const meta: Meta = {
   title: "UI/Chat/Components/TypingIndicator",
   component: TypingIndicator,
-} as Meta
+}
+export default meta

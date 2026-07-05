@@ -1,7 +1,7 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { AudioPlayer } from "@chat/components/mock-interview/audio-player"
-import type { UseAudioRecorderReturn } from "@chat/hooks/use-audio-recorder"
 import { useAudioLevel } from "@chat/hooks/use-audio-level"
+import type { UseAudioRecorderReturn } from "@chat/hooks/use-audio-recorder"
 import { formatTime } from "@chat/lib/interview/format-time"
 import { AlertCircle, Loader2, Mic, RotateCcw, Square } from "lucide-react"
 
@@ -27,6 +27,10 @@ export const RecordingPhase = ({
   } = recording
 
   const levels = useAudioLevel(stream)
+  const levelBarKeys = useMemo(
+    () => Array.from({ length: levels.length }, (_, i) => `level-bar-${i}`),
+    [levels.length]
+  )
 
   // Space bar toggles start/stop so practicing doesn't require reaching for the mouse
   useEffect(() => {
@@ -154,7 +158,7 @@ export const RecordingPhase = ({
                   >
                     {levels.map((level, i) => (
                       <div
-                        key={i}
+                        key={levelBarKeys[i]}
                         className="w-1 bg-primary/50 rounded-full transition-[height] duration-75"
                         style={{ height: `${Math.round(level * 100)}%` }}
                       />

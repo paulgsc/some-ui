@@ -127,6 +127,8 @@ export const ChatPanel = ({
                   )}
                 >
                   <div
+                    role="button"
+                    tabIndex={0}
                     className={cn(
                       "inline-block p-3 rounded-2xl text-sm leading-relaxed cursor-pointer transition-all border-2",
                       message.role === "assistant"
@@ -136,6 +138,12 @@ export const ChatPanel = ({
                       "hover:border-primary/50"
                     )}
                     onClick={() => onJumpToMessage(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        onJumpToMessage(index)
+                      }
+                    }}
                   >
                     {message.content}
                     <button
