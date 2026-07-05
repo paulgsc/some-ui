@@ -422,6 +422,7 @@ export class Slideshow {
     this.momValue = el("span", "dc-mom-value")
     this.momValue.textContent = "50"
 
+    // eslint-disable-next-line no-restricted-syntax -- XML namespace identifier, not a fetched URL; the SVG spec fixes it at http://
     const svgNS = "http://www.w3.org/2000/svg"
     const svg = document.createElementNS(svgNS, "svg")
     svg.setAttribute("class", "dc-mom-arc")

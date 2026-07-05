@@ -66,56 +66,47 @@ function uuid(): string {
 // browser.runtime.onMessage hands us `unknown`. These guards are the single
 // validation boundary — no `as` past this point.
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null
+}
+
 function isCapturedMoment(v: unknown): v is CapturedMoment {
-  if (typeof v !== "object" || v === null) return false
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const m = v as Record<string, unknown>
   return (
-    typeof m.id === "string" &&
-    typeof m.timestamp === "number" &&
-    typeof m.mood === "string" &&
-    typeof m.episodeId === "string" &&
-    typeof m.dramaTitle === "string" &&
-    typeof m.capturedAt === "number"
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.timestamp === "number" &&
+    typeof v.mood === "string" &&
+    typeof v.episodeId === "string" &&
+    typeof v.dramaTitle === "string" &&
+    typeof v.capturedAt === "number"
   )
 }
 
 function isBackgroundMessage(v: unknown): v is BackgroundMessage {
-  if (typeof v !== "object" || v === null) return false
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const m = v as Record<string, unknown>
-  if (typeof m.type !== "string") return false
+  if (!isRecord(v)) return false
+  if (typeof v.type !== "string") return false
 
-  switch (m.type) {
+  switch (v.type) {
     case "SAVE_MOMENT":
-      return isCapturedMoment(m.payload)
+      return isCapturedMoment(v.payload)
     case "GET_MOMENTS":
       return (
-        m.payload === undefined ||
-        (typeof m.payload === "object" &&
-          m.payload !== null &&
-          (("dramaTitle" in m.payload &&
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-            typeof (m.payload as Record<string, unknown>).dramaTitle ===
-              "string") ||
-            !("dramaTitle" in m.payload)))
+        v.payload === undefined ||
+        (isRecord(v.payload) &&
+          (!("dramaTitle" in v.payload) ||
+            typeof v.payload.dramaTitle === "string"))
       )
     case "CLEAR_MOMENTS":
     case "GET_STATE":
       return true
     case "UPSERT_ENTRY":
-      return (
-        typeof m.entry === "object" &&
-        m.entry !== null &&
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        typeof (m.entry as Record<string, unknown>).title === "string"
-      )
+      return isRecord(v.entry) && typeof v.entry.title === "string"
     case "REMOVE_ENTRY":
-      return typeof m.id === "string"
+      return typeof v.id === "string"
     case "SET_ACTIVE":
-      return m.id === null || typeof m.id === "string"
+      return v.id === null || typeof v.id === "string"
     case "SCRAPE_TAB":
-      return typeof m.tabId === "number"
+      return typeof v.tabId === "number"
     default:
       return false
   }
@@ -128,14 +119,7 @@ function isBackgroundMessage(v: unknown): v is BackgroundMessage {
 
 function isDramaEntryArray(v: unknown): v is Array<DramaEntry> {
   return (
-    Array.isArray(v) &&
-    v.every(
-      (e) =>
-        typeof e === "object" &&
-        e !== null &&
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        typeof (e as Record<string, unknown>).id === "string"
-    )
+    Array.isArray(v) && v.every((e) => isRecord(e) && typeof e.id === "string")
   )
 }
 
@@ -369,19 +353,17 @@ async function handleSetActive(
 }
 
 function isScrapedMeta(v: unknown): v is ScrapedMeta {
-  if (typeof v !== "object" || v === null) return false
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const m = v as Record<string, unknown>
   return (
-    typeof m.title === "string" &&
-    typeof m.episode === "string" &&
-    typeof m.network === "string" &&
-    typeof m.url === "string" &&
-    (m.posterUrl === null || typeof m.posterUrl === "string") &&
-    typeof m.timestamp === "string" &&
-    typeof m.progress === "number" &&
-    typeof m.isPlaying === "boolean" &&
-    typeof m.videoCount === "number"
+    isRecord(v) &&
+    typeof v.title === "string" &&
+    typeof v.episode === "string" &&
+    typeof v.network === "string" &&
+    typeof v.url === "string" &&
+    (v.posterUrl === null || typeof v.posterUrl === "string") &&
+    typeof v.timestamp === "string" &&
+    typeof v.progress === "number" &&
+    typeof v.isPlaying === "boolean" &&
+    typeof v.videoCount === "number"
   )
 }
 

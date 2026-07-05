@@ -36,8 +36,8 @@ export function buildTransitionEditor(
   const emit = (): void => {
     onChange({
       transition: {
-        before: beforeCard.textContent ?? "",
-        after: afterCard.textContent ?? "",
+        before: beforeCard.textContent,
+        after: afterCard.textContent,
       },
     })
   }

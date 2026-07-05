@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 // Display consumer only. No video detection, no scraping, no watchlist mutations.
 //
 // Responsibilities:
@@ -54,28 +52,43 @@ type ContentTypestate =
   | { phase: "EMPTY" }
   | { phase: "READY"; entry: DramaEntry }
 
+type StateUpdateMessage = {
+  type: "STATE_UPDATE"
+  payload: Partial<WatchlistState>
+}
+
 // ─── Logger ───────────────────────────────────────────────────────────────────
 
 const log = {
-  info: (...args: Array<unknown>): void =>
-    console.info("[Drama Overlay / content]", ...args),
-  error: (...args: Array<unknown>): void =>
-    console.error("[Drama Overlay / content]", ...args),
+  info: (...args: Array<unknown>): void => {
+    // eslint-disable-next-line no-console -- sanctioned console sink for the logger module
+    console.info("[Drama Overlay / content]", ...args)
+  },
+  error: (...args: Array<unknown>): void => {
+    // eslint-disable-next-line no-console -- sanctioned console sink for the logger module
+    console.error("[Drama Overlay / content]", ...args)
+  },
 }
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CARD_META_KEY = "drama_card_position_v3"
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null
+}
+
 function isPersistedCardMeta(v: unknown): v is PersistedCardMeta {
-  if (typeof v !== "object" || v === null) return false
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const o = v as Record<string, unknown>
   return (
-    typeof o.x === "number" &&
-    typeof o.y === "number" &&
-    typeof o.size === "string"
+    isRecord(v) &&
+    typeof v.x === "number" &&
+    typeof v.y === "number" &&
+    typeof v.size === "string"
   )
+}
+
+function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
+  return isRecord(v) && v.type === "STATE_UPDATE" && isRecord(v.payload)
 }
 
 async function loadCardMeta(): Promise<PersistedCardMeta | null> {
@@ -318,12 +331,9 @@ async function init(): Promise<void> {
   // ── Background message listener ───────────────────────────────────────────
 
   browser.runtime.onMessage.addListener((msg: unknown) => {
-    if (typeof msg !== "object" || msg === null) return
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const m = msg as { type?: unknown; payload?: Partial<WatchlistState> }
-    if (m.type !== "STATE_UPDATE" || !m.payload) return
+    if (!isStateUpdateMessage(msg)) return
 
-    const next = resolveTypestate(m.payload)
+    const next = resolveTypestate(msg.payload)
 
     if (next.phase === "EMPTY") {
       typestate = next
