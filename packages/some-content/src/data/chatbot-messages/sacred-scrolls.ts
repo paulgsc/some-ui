@@ -1,4 +1,4 @@
-import type { Message } from "some-ui-chat"
+import type { Message } from "@some-ui/chat"
 
 const YOUNG_SEEKER_ID = "1leW7faxw5d6MWw4Bi0FNb2KYgGCdryPD"
 const WISE_ELDER_ID = "1UoBtHslCCDKg57LnleoBC0etnmMyYypb"

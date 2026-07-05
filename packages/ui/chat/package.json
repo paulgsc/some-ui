@@ -1,5 +1,5 @@
 {
-  "name": "some-ui-chat",
+  "name": "@some-ui/chat",
   "private": true,
   "version": "0.0.4",
   "type": "module",
@@ -45,17 +45,17 @@
     "*.css"
   ],
   "unpkg": "some-ui-chat.umd.js",
-  "main": "./dist/some-ui-chat.cjs.js",
-  "module": "./dist/some-ui-chat.es.js",
-  "types": "./dist/some-ui-chat.d.ts",
+  "main": "./dist/@some-ui/chat.cjs.js",
+  "module": "./dist/@some-ui/chat.es.js",
+  "types": "./dist/@some-ui/chat.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/some-ui-chat.d.ts",
-      "import": "./dist/some-ui-chat.es.js",
-      "require": "./dist/some-ui-chat.cjs.js",
-      "default": "./dist/some-ui-chat.es.js"
+      "types": "./dist/@some-ui/chat.d.ts",
+      "import": "./dist/@some-ui/chat.es.js",
+      "require": "./dist/@some-ui/chat.cjs.js",
+      "default": "./dist/@some-ui/chat.es.js"
     },
-    "./style.css": "./dist/some-ui-chat.css"
+    "./style.css": "./dist/@some-ui/chat.css"
   },
-  "style": "./dist/some-ui-chat.css"
+  "style": "./dist/@some-ui/chat.css"
 }

@@ -5,7 +5,7 @@
     "@some-ui/makjang": "workspace:*",
     "@some-ui/portfolio": "workspace:*",
     "some-types-utils": "workspace:*",
-    "some-ui-chat": "workspace:*",
+    "@some-ui/chat": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "some-ui-input": "workspace:*",
     "some-ui-neon-sign": "workspace:*",

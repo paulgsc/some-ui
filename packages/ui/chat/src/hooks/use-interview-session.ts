@@ -6,16 +6,12 @@ import {
   useRef,
   useState,
 } from "react"
-import { interviewQuestions } from "@chat/data/interview-questions"
 import type { UseAudioRecorderReturn } from "@chat/hooks/use-audio-recorder"
 import { useAudioRecorder } from "@chat/hooks/use-audio-recorder"
 import {
   createInitialInterviewState,
   interviewReducer,
 } from "@chat/lib/interview/core/interview-reducer"
-import { createStaticQuestionRepository } from "@chat/lib/interview/core/question-repository"
-import { createWebSpeechTTSAdapter } from "@chat/lib/interview/core/tts-adapter"
-import { createMockTranscriptionAdapter } from "@chat/lib/interview/core/transcription-adapter"
 import type {
   InterviewSessionState,
   InterviewTTSAdapter,
@@ -24,6 +20,9 @@ import type {
   QuestionRepository,
   TranscriptionAdapter,
 } from "@chat/lib/interview/core/interview-types"
+import { createStaticQuestionRepository } from "@chat/lib/interview/core/question-repository"
+import { createMockTranscriptionAdapter } from "@chat/lib/interview/core/transcription-adapter"
+import { createWebSpeechTTSAdapter } from "@chat/lib/interview/core/tts-adapter"
 import {
   clearPersistedSession,
   readPersistedSession,
@@ -62,12 +61,14 @@ export type UseInterviewSessionReturn = {
 }
 
 export const useInterviewSession = (
-  config: UseInterviewSessionConfig = {}
+  config: UseInterviewSessionConfig = {},
+  interviewQuestions: Array<Question>
 ): UseInterviewSessionReturn => {
   const { persist = true } = config
 
   const questionRepositoryRef = useRef(
-    config.questionRepository ?? createStaticQuestionRepository(interviewQuestions)
+    config.questionRepository ??
+      createStaticQuestionRepository(interviewQuestions)
   )
   const transcriptionAdapterRef = useRef(
     config.transcriptionAdapter ?? createMockTranscriptionAdapter()
@@ -82,9 +83,10 @@ export const useInterviewSession = (
     createInitialInterviewState
   )
 
-  const [resumeSnapshot, setResumeSnapshot] = useState<PersistedSnapshot | null>(
-    () => (persist ? readPersistedSession() : null)
-  )
+  const [resumeSnapshot, setResumeSnapshot] =
+    useState<PersistedSnapshot | null>(() =>
+      persist ? readPersistedSession() : null
+    )
 
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -106,7 +108,10 @@ export const useInterviewSession = (
         dispatch({ type: "TRANSCRIPTION_UPDATED", result })
 
         if (result.status === "pending" || result.status === "processing") {
-          pollTimeoutRef.current = setTimeout(() => void poll(), POLL_INTERVAL_MS)
+          pollTimeoutRef.current = setTimeout(
+            () => void poll(),
+            POLL_INTERVAL_MS
+          )
         }
       } catch (error) {
         dispatch({
@@ -222,7 +227,10 @@ export const useInterviewSession = (
     state,
     currentQuestion,
     isLastQuestion: state.currentIndex === state.questions.length - 1,
-    progress: { current: state.currentIndex + 1, total: state.questions.length },
+    progress: {
+      current: state.currentIndex + 1,
+      total: state.questions.length,
+    },
     recording,
     ttsAdapter,
     resumeAvailable: resumeSnapshot !== null,

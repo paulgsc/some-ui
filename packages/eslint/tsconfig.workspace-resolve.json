@@ -18,7 +18,7 @@
       "maishatu-fetch-kit": ["../ui/maishatu-fetch-kit/src/index.ts"],
       "some-cycle": ["../../extensions/some-cycle/src/index.ts"],
       "some-types-utils": ["../types/src/index.ts"],
-      "some-ui-chat": ["../ui/chat/src/index.ts"],
+      "@some-ui/chat": ["../ui/chat/src/index.ts"],
       "some-ui-emoji-animations": ["../ui/emoji-animations/src/index.ts"],
       "some-ui-input": ["../ui/input/src/index.ts"],
       "some-ui-mdx": ["../mdx-generator/src/index.ts"],

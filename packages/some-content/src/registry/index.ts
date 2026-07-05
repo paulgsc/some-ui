@@ -27,16 +27,28 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
   voice: lazyWithPreload(() => import("umag"), "VoiceAvatar"),
   neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
-  topik: lazyWithPreload(() => import("some-ui-chat"), "KoreanStudyPage"),
+  topik: lazyWithPreload(() => import("@some-ui/chat"), "KoreanStudyPage"),
   assessment: lazyWithPreload(
     () => import("@some-ui/resume"),
     "TechnicalBlockAssessment"
   ),
-  interview: lazyWithPreload(() => import("some-ui-chat"), "InterviewApp"),
-  "cdrama-header": lazyWithPreload(() => import("@some-ui/makjang"), "DramaHeader"),
-  "cdrama-couple": lazyWithPreload(() => import("@some-ui/makjang"), "CoupleRating"),
-  "cdrama-metrics": lazyWithPreload(() => import("@some-ui/makjang"), "MetricsPanel"),
-  "cdrama-emoji": lazyWithPreload(() => import("@some-ui/makjang"), "EmojiTimeline"),
+  interview: lazyWithPreload(() => import("@some-ui/chat"), "InterviewApp"),
+  "cdrama-header": lazyWithPreload(
+    () => import("@some-ui/makjang"),
+    "DramaHeader"
+  ),
+  "cdrama-couple": lazyWithPreload(
+    () => import("@some-ui/makjang"),
+    "CoupleRating"
+  ),
+  "cdrama-metrics": lazyWithPreload(
+    () => import("@some-ui/makjang"),
+    "MetricsPanel"
+  ),
+  "cdrama-emoji": lazyWithPreload(
+    () => import("@some-ui/makjang"),
+    "EmojiTimeline"
+  ),
   "cdrama-ost": lazyWithPreload(() => import("@some-ui/makjang"), "OSTPanel"),
   scheduled: lazyWithPreload(
     () => import("@some-ui/slideshow"),
