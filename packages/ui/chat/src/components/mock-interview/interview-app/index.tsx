@@ -1,8 +1,8 @@
+import type { JSX } from "react"
 import { SlideshowPresenter } from "@chat/components/mock-interview/interview-app/slideshow-presenter"
-import type {
-  UseInterviewSessionConfig,
-} from "@chat/hooks/use-interview-session"
+import type { UseInterviewSessionConfig } from "@chat/hooks/use-interview-session"
 import { useInterviewSession } from "@chat/hooks/use-interview-session"
+import type { Question } from "@chat/lib/interview/core/interview-types"
 
 /**
  * How the session is presented to the user. Only "slideshow" (paginated,
@@ -16,13 +16,15 @@ export type InterviewPresentationMode = "slideshow" | "chat"
 type InterviewAppProps = {
   mode?: InterviewPresentationMode
   sessionConfig?: UseInterviewSessionConfig
+  interviewQuestions: Array<Question>
 }
 
 export const InterviewApp = ({
   mode = "slideshow",
   sessionConfig,
-}: InterviewAppProps): React.JSX.Element | null => {
-  const session = useInterviewSession(sessionConfig)
+  interviewQuestions,
+}: InterviewAppProps): JSX.Element | null => {
+  const session = useInterviewSession(sessionConfig, interviewQuestions)
 
   // The chat/voice presenter doesn't exist yet - fall back to slideshow
   // rather than rendering nothing.

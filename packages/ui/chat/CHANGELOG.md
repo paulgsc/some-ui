@@ -1,4 +1,4 @@
-# some-ui-chat
+# @some-ui/chat
 
 ## 0.0.4
 

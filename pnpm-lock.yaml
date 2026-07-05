@@ -281,6 +281,9 @@ importers:
       '@some-ui/attributions':
         specifier: workspace:*
         version: link:../../packages/ui/attributions
+      '@some-ui/chat':
+        specifier: workspace:*
+        version: link:../../packages/ui/chat
       '@some-ui/content':
         specifier: workspace:*
         version: link:../../packages/some-content
@@ -323,9 +326,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-chat:
-        specifier: workspace:*
-        version: link:../../packages/ui/chat
       some-ui-input:
         specifier: workspace:*
         version: link:../../packages/ui/input
@@ -904,6 +904,9 @@ importers:
       '@some-ui/attributions':
         specifier: workspace:*
         version: link:../ui/attributions
+      '@some-ui/chat':
+        specifier: workspace:*
+        version: link:../ui/chat
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../ui/honeycomb
@@ -925,9 +928,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../types
-      some-ui-chat:
-        specifier: workspace:*
-        version: link:../ui/chat
       some-ui-input:
         specifier: workspace:*
         version: link:../ui/input
@@ -1330,6 +1330,9 @@ importers:
       '@some-ui/calendar':
         specifier: workspace:*
         version: link:../calendar
+      '@some-ui/chat':
+        specifier: workspace:*
+        version: link:../chat
       '@some-ui/makjang':
         specifier: workspace:*
         version: link:../makjang
@@ -1351,9 +1354,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../types
-      some-ui-chat:
-        specifier: workspace:*
-        version: link:../chat
       some-ui-emoji-animations:
         specifier: workspace:*
         version: link:../emoji-animations

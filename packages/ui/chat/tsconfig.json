@@ -15,6 +15,7 @@
   "include": [
     "tailwind.config.ts",
     "eslint.config.js",
+    "vite.config.ts",
     "../../../assets/**/*",
     "src",
     "../../some-content/src/**/*"

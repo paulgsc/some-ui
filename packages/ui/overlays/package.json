@@ -10,7 +10,7 @@
     "react-resizable-panels": "^2.1.0",
     "some-types-utils": "workspace:*",
     "@some-ui/calendar": "workspace:*",
-    "some-ui-chat": "workspace:*",
+    "@some-ui/chat": "workspace:*",
     "some-ui-emoji-animations": "workspace:*",
     "some-ui-input": "workspace:*",
     "some-ui-nfl": "workspace:*",

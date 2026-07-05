@@ -1,4 +1,4 @@
-import type { Message } from "some-ui-chat"
+import type { Message } from "@some-ui/chat"
 
 export const soManyCrates: Array<Message> = [
   {

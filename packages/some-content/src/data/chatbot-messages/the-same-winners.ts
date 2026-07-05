@@ -1,4 +1,4 @@
-import type { Message } from "some-ui-chat"
+import type { Message } from "@some-ui/chat"
 
 const pioneer = "1-Y8MeFBDKMrOpGV4ke2R4ZXVFlRDHzv-"
 const cynic = "1j8bMU1XvGfIW73a99w_mjUKpu4kJCFft"
