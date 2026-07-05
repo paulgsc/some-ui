@@ -3,7 +3,7 @@
 // ReflectionEditor but smaller and styled as a quote.
 
 import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 
 const MAX_CHARS = 120
 

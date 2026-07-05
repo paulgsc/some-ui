@@ -3,7 +3,7 @@
 // completion likelihood, episode progress, and the four emotional axes
 // (so getAxes() in popup-renderer has a UI to back it).
 
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 import type { DramaEntryOpinionated } from "@drama/types"
 
 import type { JournalDraft } from "../use-drama-journal-state"

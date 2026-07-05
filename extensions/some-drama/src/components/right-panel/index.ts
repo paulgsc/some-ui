@@ -3,8 +3,9 @@
 // Does NOT know about drag, size cycling, or slideshow.
 // Parent calls: applyState(), setMoodActive().
 
-import { MOODS } from "@drama/lib/content/constants"
-import { clamp, el, likelihoodLabel } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
+import { MOODS } from "@drama/logic/content/constants"
+import { clamp, likelihoodLabel } from "@drama/logic/content/utils"
 import type { CardState, MoodType } from "@drama/types"
 
 export class RightPanel {

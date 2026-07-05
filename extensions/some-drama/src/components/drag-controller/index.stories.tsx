@@ -67,7 +67,7 @@ const DragControllerBridge = ({
       font-family: inherit;
     `
     ignoredBtn.addEventListener("click", () => {
-      // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
       console.log("[DragController] button click — drag suppressed")
     })
     box.appendChild(ignoredBtn)
@@ -103,7 +103,7 @@ const DragControllerBridge = ({
     }
 
     ctrl.onDragEnd = (x, y) => {
-      // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
       console.log("[DragController] dragEnd:", {
         x: Math.round(x),
         y: Math.round(y),

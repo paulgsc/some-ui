@@ -3,7 +3,7 @@
 // No DOM building — attaches to existing elements.
 // Reports position via onDragEnd; exposes didDrag for click-vs-drag detection.
 
-import { clamp } from "@drama/lib/content/utils"
+import { clamp } from "@drama/logic/content/utils"
 
 export class DragController {
   private dragging = false

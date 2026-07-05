@@ -11,11 +11,12 @@
 //   applyAtmosphereState(), applyRatingState(), applySummaryState(),
 //   setBubbleVisible(), setBubbleQuote().
 
+import { el } from "@drama/effects/content/dom"
 import {
   FALLBACK_QUOTES,
   SLIDE_INTERVAL_MS,
-} from "@drama/lib/content/constants"
-import { el, starsFor } from "@drama/lib/content/utils"
+} from "@drama/logic/content/constants"
+import { starsFor } from "@drama/logic/content/utils"
 import type { CardState, MomentTag } from "@drama/types"
 
 // Display glyphs for tags — cosmetic only, mirrors form-opinionated's TAG_META.
@@ -422,6 +423,7 @@ export class Slideshow {
     this.momValue = el("span", "dc-mom-value")
     this.momValue.textContent = "50"
 
+    // eslint-disable-next-line no-restricted-syntax -- XML namespace identifier, not a fetched URL; the SVG spec fixes it at http://
     const svgNS = "http://www.w3.org/2000/svg"
     const svg = document.createElementNS(svgNS, "svg")
     svg.setAttribute("class", "dc-mom-arc")

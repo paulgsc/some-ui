@@ -3,7 +3,7 @@
 // Parent supplies value + onChange; no internal state.
 
 import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 
 export type EpisodeHeaderRefs = {
   titleInput: HTMLInputElement

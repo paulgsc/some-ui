@@ -1,7 +1,7 @@
 import "@drama/styles/popup.css"
 
 import { useEffect, useRef } from "react"
-import { PopupStateMachine } from "@drama/lib/popup/fsm"
+import { PopupStateMachine } from "@drama/effects/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -16,13 +16,13 @@ import { PopupRenderer } from "."
 class MockFsm extends PopupStateMachine {
   constructor() {
     super((phase) => {
-      // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
       console.log("[MockFSM] transition →", phase.tag)
     })
   }
 
   override boot(): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] boot")
     return Promise.resolve()
   }
@@ -31,7 +31,7 @@ class MockFsm extends PopupStateMachine {
     _state: WatchlistState,
     _tabId: number
   ): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] triggerScrape")
     return Promise.resolve()
   }
@@ -41,19 +41,19 @@ class MockFsm extends PopupStateMachine {
     _state: WatchlistState,
     _tabId: number
   ): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] saveEntry")
     return Promise.resolve()
   }
 
   override setActive(_id: string, _tabId: number): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] setActive")
     return Promise.resolve()
   }
 
   override removeEntry(_id: string, _tabId: number): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] removeEntry")
     return Promise.resolve()
   }
@@ -63,7 +63,7 @@ class MockFsm extends PopupStateMachine {
     _tabId: number,
     _state: WatchlistState
   ): Promise<void> {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
     console.log("[MockFSM] refreshEntry")
     return Promise.resolve()
   }

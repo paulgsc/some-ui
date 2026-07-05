@@ -3,8 +3,8 @@
 // Does NOT know about card size, slideshow, or drag.
 // Parent calls: open(), close(), isOpen.
 
-import { MOODS } from "@drama/lib/content/constants"
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
+import { MOODS } from "@drama/logic/content/constants"
 import type { MoodType } from "@drama/types"
 
 const CLOSE_DELAY_MS = 800

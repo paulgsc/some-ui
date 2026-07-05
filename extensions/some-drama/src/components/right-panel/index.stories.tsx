@@ -52,7 +52,7 @@ const RightPanelBridge = ({
     const panel = new RightPanel()
 
     panel.onMoodSelect = (mood) => {
-      // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
       console.log("Mood selected:", mood)
       panel.setMoodActive(mood)
     }

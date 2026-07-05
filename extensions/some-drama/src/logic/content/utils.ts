@@ -2,18 +2,6 @@
 // Pure functions only. No DOM, no global state.
 // Each function does one thing; test in isolation.
 
-/** Create a typed HTML element with optional class and attribute map. */
-export function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  cls?: string,
-  attrs?: Record<string, string>
-): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag)
-  if (cls) e.className = cls
-  if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v))
-  return e
-}
-
 /** Uniform random float in [min, max). */
 export function rnd(min: number, max: number): number {
   return min + Math.random() * (max - min)

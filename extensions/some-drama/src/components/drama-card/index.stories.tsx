@@ -104,11 +104,11 @@ const DramaCardBridge = ({
         isPlaying,
       },
       {
-        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         onMoodSelect: (mood) => console.log("[DramaCard] mood selected:", mood),
-        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         onSizeChange: (s) => console.log("[DramaCard] size changed:", s),
-        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         onDragEnd: (x, y) => console.log("[DramaCard] dragged to:", { x, y }),
       }
     )
@@ -121,7 +121,7 @@ const DramaCardBridge = ({
       cardRef.current?.destroy()
       cardRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-once effect; see comment below
   }, []) // mount once — subsequent changes handled by sync effects below
 
   // ── Sync state fields (primitive deps — no object churn) ───────────────────

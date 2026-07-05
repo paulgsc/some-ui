@@ -3,7 +3,7 @@
 // (DramaEntryOpinionated.transition is singular — matches popup-renderer's
 // getTransition() contract). No querySelectorAll, no row-array.
 
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 
 import type { JournalDraft } from "../use-drama-journal-state"
 
@@ -36,8 +36,8 @@ export function buildTransitionEditor(
   const emit = (): void => {
     onChange({
       transition: {
-        before: beforeCard.textContent ?? "",
-        after: afterCard.textContent ?? "",
+        before: beforeCard.textContent,
+        after: afterCard.textContent,
       },
     })
   }

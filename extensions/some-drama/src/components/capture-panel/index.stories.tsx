@@ -36,7 +36,7 @@ const CapturePanelBridge = ({
     const panel = new CapturePanel()
 
     panel.onMoodSelect = (mood) => {
-      // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
       console.log("Mood selected:", mood)
       // When inhibitAutoClose is on, bypass the internal 800ms close timer
       // by doing nothing here — the button highlight stays visible for inspection.
@@ -47,7 +47,7 @@ const CapturePanelBridge = ({
     if (inhibitAutoClose) {
       panel.close = () => {
         // no-op: keep panel open so button states are inspectable
-        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         console.log("auto-close suppressed for story inspection")
       }
     }

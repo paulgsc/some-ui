@@ -1,7 +1,7 @@
 // ── ReflectionEditor ──────────────────────────────────────────────────────────
 // Owns: "Why did it matter?" textarea. Auto-grow, char counter, success pulse.
 
-import { el } from "@drama/lib/content/utils"
+import { el } from "@drama/effects/content/dom"
 
 import type { JournalDraft } from "../use-drama-journal-state"
 
