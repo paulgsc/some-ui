@@ -1,4 +1,4 @@
-import type { ChangeEvent, CSSProperties, FC, JSX } from "react"
+import type { ChangeEvent, FC, JSX } from "react"
 import type { AvatarGroupProps } from "some-ui-shared"
 import {
   AvatarGroup,
