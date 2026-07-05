@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "target": "ES2015",
     "noEmit": false,
-    "outDir": "./dist/cjs"
+    "outDir": "./dist/cjs",
+    "rootDir": "./src"
   },
   "include": ["src"]
 }

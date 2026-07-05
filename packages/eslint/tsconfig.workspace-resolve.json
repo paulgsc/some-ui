@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@some-extension/common": ["../../extensions/common/src/index.ts"],
       "@some-ui/attributions": ["../ui/attributions/src/index.ts"],
@@ -14,7 +13,7 @@
       "@some-ui/styles": ["../some-styles/src/index.ts"],
       "@some-ui/vidya": ["../ui/vidya/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
-      "maishatu-eslint-kit": ["src/index.ts"],
+      "maishatu-eslint-kit": ["./src/index.ts"],
       "maishatu-fetch-kit": ["../ui/maishatu-fetch-kit/src/index.ts"],
       "some-cycle": ["../../extensions/some-cycle/src/index.ts"],
       "some-types-utils": ["../types/src/index.ts"],

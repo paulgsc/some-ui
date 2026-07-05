@@ -15,9 +15,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@tab/*": ["src/*"]
+      "@tab/*": ["./src/*"]
     },
     "types": ["firefox-webext-browser"]
   },

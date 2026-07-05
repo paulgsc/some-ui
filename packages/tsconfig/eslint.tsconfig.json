@@ -1,7 +1,6 @@
 {
   "extends": "./base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "outDir": "./dist",
 
     "types": ["@types/node"],

@@ -1,10 +1,10 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "declarationDir": "./",
     "rootDir": "../../../",
     "outDir": "./dist",
+    "types": ["node"],
     "paths": {
       "@slideshow/*": ["./src/*"],
       "@some-ui/*": ["../../../assets/*"],

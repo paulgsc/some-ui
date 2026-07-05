@@ -13,7 +13,6 @@
     "isolatedModules": true,
     "downlevelIteration": true,
     "jsx": "preserve",
-    "baseUrl": ".",
     "incremental": true
   },
   "include": ["**/*.ts", "**/*.tsx"]

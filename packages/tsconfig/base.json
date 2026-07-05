@@ -19,6 +19,7 @@
     "lib": ["DOM", "ESNext"],
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "noUncheckedSideEffectImports": false
   }
 }

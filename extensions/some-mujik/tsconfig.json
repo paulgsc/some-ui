@@ -2,9 +2,8 @@
   "extends": "@some-ui/tsconfig/tsconfig.ui.json",
   "compilerOptions": {
     "isolatedModules": true,
-    "baseUrl": ".",
     "paths": {
-      "@mujik/*": ["src/*"]
+      "@mujik/*": ["./src/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },

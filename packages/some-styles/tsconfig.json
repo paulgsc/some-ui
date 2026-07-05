@@ -1,7 +1,6 @@
 {
   "extends": "@some-ui/tsconfig/base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,

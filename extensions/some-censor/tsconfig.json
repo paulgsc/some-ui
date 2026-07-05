@@ -16,13 +16,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@censor/*": ["src/*"],
-      "@censor/playwright/*": ["tests/e2e/*"],
-      "@censor/platform/api": ["src/lib/platform/api.ts"],
-      "@censor/platform/content": ["src/lib/platform/api.ts"],
-      "@censor/platform/background": ["src/lib/platform/api.ts"]
+      "@censor/*": ["./src/*"],
+      "@censor/playwright/*": ["./tests/e2e/*"],
+      "@censor/platform/api": ["./src/lib/platform/api.ts"],
+      "@censor/platform/content": ["./src/lib/platform/api.ts"],
+      "@censor/platform/background": ["./src/lib/platform/api.ts"]
     },
     "types": ["firefox-webext-browser", "chrome", "vite/client"]
   },

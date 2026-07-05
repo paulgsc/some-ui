@@ -15,9 +15,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@streak/*": ["src/*"]
+      "@streak/*": ["./src/*"]
     },
     "types": ["firefox-webext-browser"]
   },

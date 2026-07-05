@@ -2,9 +2,8 @@
   "extends": "@some-ui/tsconfig/tsconfig.ui.json",
   "compilerOptions": {
     "isolatedModules": true,
-    "baseUrl": ".",
     "paths": {
-      "@schedule/*": ["src/*"]
+      "@schedule/*": ["./src/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
