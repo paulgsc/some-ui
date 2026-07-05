@@ -7,13 +7,6 @@ export default createViteConfig({
   alias: {
     "@wireframes": resolve(__dirname, "src"),
   },
-  dtsOptions: {
-    exclude: [
-      "**/data/**",
-      "**/demo/**",
-      "../../../assets/**/*",
-      "../../some-content/src/**/*",
-    ],
-  },
+  contentPackage: true,
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

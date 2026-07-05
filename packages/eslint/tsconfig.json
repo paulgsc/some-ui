@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig/eslint.tsconfig.json",
+  "extends": "@some-ui/tsconfig/eslint.tsconfig.json",
   "compilerOptions": {
     "paths": {
       "@eslint/*": ["./src/*"]

@@ -9,6 +9,7 @@ export function createPlugins(options: ViteConfigOptions): PluginOption[] {
   const {
     dtsOptions = {},
     additionalPlugins = [],
+    contentPackage = false,
     tsConfigPaths: { projects = ["./tsconfig.json"] } = {},
   } = options
 
@@ -21,8 +22,24 @@ export function createPlugins(options: ViteConfigOptions): PluginOption[] {
     "**/stories/**",
   ]
 
+  // Packages that source-alias into the shared some-content/assets
+  // workspaces (packages/ui/* depth) exclude those cross-package paths,
+  // plus their own demo/data fixtures, from declaration output.
+  const contentPackageExclude = contentPackage
+    ? [
+        "**/demo/**",
+        "**/data/**",
+        "../../../assets/**/*",
+        "../../some-content/src/**/*",
+      ]
+    : []
+
   const mergedExclude = [
-    ...new Set([...(dtsOptions.exclude ?? []), ...defaultExclude]),
+    ...new Set([
+      ...(dtsOptions.exclude ?? []),
+      ...defaultExclude,
+      ...contentPackageExclude,
+    ]),
   ]
 
   const finalDtsOptions = {
