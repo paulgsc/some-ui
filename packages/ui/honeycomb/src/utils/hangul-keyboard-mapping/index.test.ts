@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest"
-
 import {
   ALL_MAPPINGS,
   CONSONANTS,
@@ -10,6 +8,7 @@ import {
   QWERTY_TO_HANGUL,
   VOWELS,
 } from "@honeycomb/utils/hangul-keyboard-mapping"
+import { describe, expect, it } from "vitest"
 
 describe("ALL_MAPPINGS integrity", () => {
   it("combines every consonant and vowel with no overlap", () => {
