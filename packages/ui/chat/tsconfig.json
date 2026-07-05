@@ -1,7 +1,6 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "rootDir": "../../../",
     "outDir": "./dist",
     "declaration": true,

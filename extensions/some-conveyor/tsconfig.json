@@ -16,12 +16,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@conveyor/platform/content": ["src/lib/platform/api.ts"],
-      "@conveyor/platform/background": ["src/lib/platform/api.ts"],
-      "@conveyor/*": ["src/*"],
-      "@conveyor/playwright/*": ["tests/e2e/*"]
+      "@conveyor/platform/content": ["./src/lib/platform/api.ts"],
+      "@conveyor/platform/background": ["./src/lib/platform/api.ts"],
+      "@conveyor/*": ["./src/*"],
+      "@conveyor/playwright/*": ["./tests/e2e/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
