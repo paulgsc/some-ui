@@ -5,6 +5,8 @@
   },
   "include": ["src"],
   "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
     "**/*.stories.tsx",
     "**/*.stories.ts",
     "vite.config*.ts",
