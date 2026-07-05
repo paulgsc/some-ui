@@ -55,6 +55,6 @@
     "rollup-plugin-typescript2": "^0.36.0",
     "@some-ui/tsconfig": "workspace:*",
     "maishatu-eslint-kit": "workspace:*",
-    "typescript": "^5.7.3"
+    "typescript": "^6.0.3"
   }
 }
