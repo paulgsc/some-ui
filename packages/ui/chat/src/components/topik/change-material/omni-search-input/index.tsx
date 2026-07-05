@@ -64,7 +64,9 @@ export const OmniSearchInput = ({
       <Input
         ref={inputRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onChange(e.target.value)
+        }
         onKeyDown={handleKeyDown}
         placeholder="Search materials..."
         disabled={disabled}
