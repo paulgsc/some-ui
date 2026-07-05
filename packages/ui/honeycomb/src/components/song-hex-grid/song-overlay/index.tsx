@@ -83,7 +83,7 @@ export const SongHexGrid = (): JSX.Element => {
     []
   )
 
-  // 1. Simulate songs being played
+  // 1. Simulate songs being played and map them to grid coordinates simultaneously
   useEffect(() => {
     const interval = setInterval(() => {
       const randomIndex = Math.floor(Math.random() * MOCK_SONGS.length)
@@ -97,88 +97,84 @@ export const SongHexGrid = (): JSX.Element => {
         playedAt: Date.now(),
       }
 
+      // Update basic song history
       setSongs((prev) => [...prev, newSong])
+
+      // Compute grid mapping here to eliminate the cascading rendering effect
+      setActiveSongCells((prev) => {
+        const usedCellIds = new Set(prev.map((cell) => cell.cellId))
+        const availableCells: Array<string> = []
+        const rings = 3
+
+        // Coordinate generation logic
+        for (let ring = 0; ring <= rings; ring++) {
+          if (ring === 0) {
+            availableCells.push("hex_0_0_0")
+          } else {
+            for (let i = 0; i < 6; i++) {
+              for (let j = 0; j < ring; j++) {
+                const angle = (i * 60 - 30) * (Math.PI / 180)
+                const q = Math.round(
+                  ring * Math.cos(angle) - j * Math.cos(angle + Math.PI / 3)
+                )
+                const r = Math.round(
+                  ring * Math.sin(angle) - j * Math.sin(angle + Math.PI / 3)
+                )
+                availableCells.push(`hex_${q}_${r}_${-q - r}`)
+              }
+            }
+          }
+        }
+
+        const sortedCells = [...availableCells].sort((a, b) =>
+          newSong.releaseYear < 1985 ? b.localeCompare(a) : a.localeCompare(b)
+        )
+
+        let targetCellId = sortedCells.find((id) => !usedCellIds.has(id))
+        const nextActiveCells = [...prev]
+
+        // Replacement logic if grid is full
+        if (!targetCellId && nextActiveCells.length >= MAX_ACTIVE_CELLS) {
+          let oldestIndex = 0
+          for (let i = 1; i < nextActiveCells.length; i++) {
+            const current = nextActiveCells[i]
+            const oldest = nextActiveCells[oldestIndex]
+            if (
+              current &&
+              oldest &&
+              current.song.playedAt < oldest.song.playedAt
+            ) {
+              oldestIndex = i
+            }
+          }
+
+          const replacedCell = nextActiveCells[oldestIndex]
+          if (replacedCell) {
+            targetCellId = replacedCell.cellId
+            nextActiveCells.splice(oldestIndex, 1)
+          }
+        }
+
+        if (targetCellId) {
+          return [
+            ...nextActiveCells,
+            {
+              song: newSong,
+              fillLevel: 1,
+              isFading: false,
+              cellId: targetCellId,
+            },
+          ]
+        }
+
+        return prev
+      })
     }, 3000)
 
     return (): void => clearInterval(interval)
   }, [])
 
-  // 2. Map new songs to grid coordinates
-  useEffect(() => {
-    const latestSong = songs[songs.length - 1]
-    if (!latestSong) return
-
-    setActiveSongCells((prev) => {
-      const usedCellIds = new Set(prev.map((cell) => cell.cellId))
-      const availableCells: Array<string> = []
-      const rings = 3
-
-      // Coordinate generation logic
-      for (let ring = 0; ring <= rings; ring++) {
-        if (ring === 0) {
-          availableCells.push("hex_0_0_0")
-        } else {
-          for (let i = 0; i < 6; i++) {
-            for (let j = 0; j < ring; j++) {
-              const angle = (i * 60 - 30) * (Math.PI / 180)
-              const q = Math.round(
-                ring * Math.cos(angle) - j * Math.cos(angle + Math.PI / 3)
-              )
-              const r = Math.round(
-                ring * Math.sin(angle) - j * Math.sin(angle + Math.PI / 3)
-              )
-              availableCells.push(`hex_${q}_${r}_${-q - r}`)
-            }
-          }
-        }
-      }
-
-      const sortedCells = [...availableCells].sort((a, b) =>
-        latestSong.releaseYear < 1985 ? b.localeCompare(a) : a.localeCompare(b)
-      )
-
-      let targetCellId = sortedCells.find((id) => !usedCellIds.has(id))
-      const nextActiveCells = [...prev]
-
-      // Replacement logic if grid is full
-      if (!targetCellId && nextActiveCells.length >= MAX_ACTIVE_CELLS) {
-        let oldestIndex = 0
-        for (let i = 1; i < nextActiveCells.length; i++) {
-          const current = nextActiveCells[i]
-          const oldest = nextActiveCells[oldestIndex]
-          if (
-            current &&
-            oldest &&
-            current.song.playedAt < oldest.song.playedAt
-          ) {
-            oldestIndex = i
-          }
-        }
-
-        const replacedCell = nextActiveCells[oldestIndex]
-        if (replacedCell) {
-          targetCellId = replacedCell.cellId
-          nextActiveCells.splice(oldestIndex, 1)
-        }
-      }
-
-      if (targetCellId) {
-        return [
-          ...nextActiveCells,
-          {
-            song: latestSong,
-            fillLevel: 1,
-            isFading: false,
-            cellId: targetCellId,
-          },
-        ]
-      }
-
-      return prev
-    })
-  }, [songs])
-
-  // 3. Animation and Fade logic
+  // 2. Animation and Fade logic
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveSongCells((prev) =>

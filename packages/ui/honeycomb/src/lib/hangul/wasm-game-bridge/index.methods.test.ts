@@ -3,6 +3,7 @@ import {
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { HangulGameCore } from "hangul-game-core"
+import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
 function makeStatus(
@@ -28,7 +29,22 @@ function makeStatus(
   }
 }
 
-function makeCore(overrides: Record<string, unknown> = {}): any {
+type MockHangulGameCore = {
+  getGameStatus: Mock<(now: bigint) => unknown>
+  startTimer: Mock<(now: bigint) => void>
+  reset: Mock<() => void>
+  processKeyPress: Mock<(key: string, now: bigint) => unknown>
+  checkExpired: Mock<(now: bigint) => unknown>
+  spawnCharacter: Mock<(now: bigint, cells: Array<string>) => unknown>
+  getStats: Mock<() => unknown>
+  getTimingParams: Mock<() => unknown>
+  getCurrentTimeWindow: Mock<() => number>
+  getActiveCount: Mock<() => number>
+}
+
+function makeCore(
+  overrides: Partial<MockHangulGameCore> = {}
+): MockHangulGameCore {
   return {
     getGameStatus: vi.fn(() => makeStatus()),
     startTimer: vi.fn(),
@@ -54,6 +70,17 @@ function makeCore(overrides: Record<string, unknown> = {}): any {
   }
 }
 
+/**
+ * `HangulGameCore` is a wasm-bindgen class; a plain mock can only ever
+ * implement the handful of methods these tests call, never its full
+ * generated surface. This is the single, documented cast that lets a
+ * `MockHangulGameCore` stand in for it.
+ */
+function asHangulGameCore(core: MockHangulGameCore): HangulGameCore {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  return core as unknown as HangulGameCore
+}
+
 describe("status subscription dedup", () => {
   it("notifies listeners only when the status actually changes", () => {
     const core = makeCore({
@@ -63,7 +90,7 @@ describe("status subscription dedup", () => {
         .mockReturnValueOnce(makeStatus({ completedKeys: 0 }))
         .mockReturnValueOnce(makeStatus({ completedKeys: 1 })),
     })
-    const bridge = new WasmGameBridge(core as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(core))
     const listener = vi.fn()
     bridge.subscribeToStatus(listener)
 
@@ -76,7 +103,7 @@ describe("status subscription dedup", () => {
 
   it("stops notifying once unsubscribed", () => {
     const core = makeCore()
-    const bridge = new WasmGameBridge(core as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(core))
     const listener = vi.fn()
     const unsubscribe = bridge.subscribeToStatus(listener)
 
@@ -90,11 +117,11 @@ describe("status subscription dedup", () => {
 describe("generateCellIds", () => {
   it("enumerates the full board as distinct, zero-summing cube coordinates", () => {
     const core = makeCore()
-    const bridge = new WasmGameBridge(core as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(core))
 
     bridge.spawnCharacter()
 
-    const cellIds = core.spawnCharacter.mock.calls[0][1] as Array<string>
+    const cellIds = core.spawnCharacter.mock.calls[0]![1]
 
     expect(cellIds).toHaveLength(HANGUL_GRID_CELL_COUNT)
     expect(new Set(cellIds).size).toBe(HANGUL_GRID_CELL_COUNT)
@@ -114,7 +141,7 @@ describe("generateCellIds", () => {
 
 describe("createDisplayCharacter", () => {
   it("maps a known hangul to its qwerty key and romanization", () => {
-    const bridge = new WasmGameBridge(makeCore() as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
 
     const display = bridge.createDisplayCharacter({
       cellId: "hex_0_0_0",
@@ -132,7 +159,7 @@ describe("createDisplayCharacter", () => {
   })
 
   it("falls back to empty romanization for an unmapped hangul", () => {
-    const bridge = new WasmGameBridge(makeCore() as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
 
     const display = bridge.createDisplayCharacter({
       cellId: "hex_0_0_0",
@@ -157,13 +184,13 @@ describe("getStats", () => {
         totalMissed: 2,
       })),
     })
-    const bridge = new WasmGameBridge(core as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(core))
 
     expect(bridge.getStats().accuracy).toBe(80)
   })
 
   it("reports zero accuracy when nothing has been attempted yet", () => {
-    const bridge = new WasmGameBridge(makeCore() as HangulGameCore)
+    const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
 
     expect(bridge.getStats().accuracy).toBe(0)
   })

@@ -7,7 +7,8 @@ type Meta = MetaObj<typeof NeuralNetworkSVG>
 
 export const Default: Story = {}
 
-export default {
+const meta: Meta = {
   title: "UI/Honeycomb/Components/NeuralNetworkSVG",
   component: NeuralNetworkSVG,
-} as Meta
+}
+export default meta

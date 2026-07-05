@@ -8,6 +8,7 @@ import {
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { HangulGameCore } from "hangul-game-core"
+import type * as HangulGameCoreModule from "hangul-game-core"
 
 enum RuntimeState {
   Idle = "idle",
@@ -16,8 +17,10 @@ enum RuntimeState {
   Failed = "failed",
 }
 
+type HangulWasmModule = typeof HangulGameCoreModule
+
 let state: RuntimeState = RuntimeState.Idle
-let wasmModule: any = null
+let wasmModule: HangulWasmModule | null = null
 let coreInstance: HangulGameCore | null
 let bridgeInstance: WasmGameBridge | null = null
 let loadPromise: Promise<WasmGameBridge | null> | null = null
@@ -64,7 +67,6 @@ export async function loadHangulWasm(
       })
 
       coreInstance = new wasmModule.HangulGameCore(finalConfig, mode)
-      if (!coreInstance) throw new Error("coreInstance is undefined")
       bridgeInstance = new WasmGameBridge(coreInstance, mode)
 
       state = RuntimeState.Loaded

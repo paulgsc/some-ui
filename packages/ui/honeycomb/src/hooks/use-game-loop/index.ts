@@ -32,8 +32,8 @@ export const useGameLoop = ({
   playSound,
   onBoardFull,
 }: UseGameLoopProps): void => {
-  const spawnTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ====================================================================
   // Stable refs to callbacks (avoid recreating intervals)
@@ -220,7 +220,7 @@ export const useGameLoop = ({
       if (spawnTimerRef.current) clearInterval(spawnTimerRef.current)
       if (updateTimerRef.current) clearInterval(updateTimerRef.current)
     }
-  }, [isInitialized, gameBridge, spawnCharacter, updateCharacters])
+  }, [isInitialized, gameBridge, spawnCharacter, updateCharacters, isPaused])
 }
 
 // ====================================================================

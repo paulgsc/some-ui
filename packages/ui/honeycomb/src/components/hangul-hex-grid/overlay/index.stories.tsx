@@ -7,7 +7,8 @@ type Meta = MetaObj<typeof HangulHexGrid>
 
 export const Default: Story = {}
 
-export default {
+const meta: Meta = {
   title: "UI/Honeycomb/Components/HangulHexGrid",
   component: HangulHexGrid,
-} as Meta
+}
+export default meta

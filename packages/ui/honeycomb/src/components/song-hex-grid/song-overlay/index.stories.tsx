@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta: Meta = {
   title: "UI/Honeycomb/Components/SongHexGrid",
   component: SongHexGrid,
-} as Meta
+}
+
+export default meta

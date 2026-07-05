@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest"
-
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
+import { describe, expect, it } from "vitest"
 
 describe("addKey / getBuffer", () => {
   it("preserves insertion order across multiple keys", () => {

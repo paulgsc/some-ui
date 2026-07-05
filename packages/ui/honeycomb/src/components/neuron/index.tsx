@@ -318,8 +318,10 @@ export const NeuralNetworkSVG = forwardRef<
           className="size-full rounded-b-lg border-t border-gray-200"
           style={{ background: "#fdfbf6" }}
         >
-          {connections.map((conn, i) => (
-            <g key={`connection-${i}`}>
+          {connections.map((conn) => (
+            <g
+              key={`connection-${conn.from.x}-${conn.from.y}-${conn.to.x}-${conn.to.y}`}
+            >
               <line
                 x1={conn.from.x}
                 y1={conn.from.y}
@@ -329,14 +331,14 @@ export const NeuralNetworkSVG = forwardRef<
                 strokeWidth={1 + conn.from.activity * 2}
                 opacity={0.6}
               />
-              {conn.particles.map((particle, j) => {
+              {conn.particles.map((particle) => {
                 const x =
                   conn.from.x + (conn.to.x - conn.from.x) * particle.progress
                 const y =
                   conn.from.y + (conn.to.y - conn.from.y) * particle.progress
                 return (
                   <circle
-                    key={`particle-${i}-${j}`}
+                    key={`particle-${conn.from.x}-${conn.to.x}-${particle.opacity}`}
                     cx={x}
                     cy={y}
                     r={2 + conn.from.activity * 2}
@@ -348,14 +350,17 @@ export const NeuralNetworkSVG = forwardRef<
             </g>
           ))}
 
-          {neurons.map((neuron, i) => {
+          {neurons.map((neuron) => {
             const pulseEffect = Math.sin(neuron.pulsePhase) * 0.5 + 0.5
             const currentRadius =
               neuron.radius + pulseEffect * 5 * neuron.activity
             const opacity = neuron.activity * 0.8 + 0.2
 
+            // Create a unique key based on the neuron's position
+            const neuronId = `${neuron.x}-${neuron.y}`
+
             return (
-              <g key={`neuron-${i}`}>
+              <g key={`neuron-${neuronId}`}>
                 <circle
                   cx={neuron.x}
                   cy={neuron.y}

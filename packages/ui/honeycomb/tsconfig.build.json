@@ -4,6 +4,7 @@
     "**/*.stories.tsx",
     "**/*.stories.ts",
     "**/hexagon-grid-demo/**",
+    "vite.config.ts",
     "vitest.config.ts",
     "vitest.setup.ts"
   ]

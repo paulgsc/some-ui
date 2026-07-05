@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   getCoreInstance,
   getLastError,
@@ -25,6 +25,23 @@ export type UseHangulGameWasmReturn = {
   initialize: () => Promise<void>
 }
 
+/**
+ * Pure domain orchestrator.
+ * Isolated from React state updates, making it completely deterministic.
+ */
+async function loadGameSystem(
+  mode: GameMode,
+  config?: Partial<GameConfig>
+): Promise<WasmGameBridge> {
+  const instance = await loadHangulWasm(config, mode)
+  if (!instance) {
+    throw new Error(
+      getLastError()?.message ?? "Unknown error loading Hangul WASM"
+    )
+  }
+  return instance
+}
+
 export function useHangulGameWasm({
   config,
   mode,
@@ -37,38 +54,47 @@ export function useHangulGameWasm({
 
   const initializedRef = useRef(false)
 
-  const initialize = async (): Promise<void> => {
+  // Wrap inside useCallback to safely add it to useEffect dependency arrays
+  const initialize = useCallback(async (): Promise<void> => {
     if (initializedRef.current) return
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const instance = await loadHangulWasm(config, mode)
-      if (instance) {
-        setBridge(instance)
-        setIsInitialized(true)
-        initializedRef.current = true
-      } else {
-        setError(getLastError()?.message ?? "Unknown error loading Hangul WASM")
-      }
+      const instance = await loadGameSystem(mode, config)
+      setBridge(instance)
+      setIsInitialized(true)
+      initializedRef.current = true
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [mode, config])
 
-  // autoStart effect
+  // Explicit, safe autoStart initialization effect
   useEffect(() => {
-    if (autoStart) initialize()
-  }, [autoStart, config, mode])
+    let active = true
 
-  // cleanup effect
-  useEffect((): (() => void) => {
-    return () => {
-      // optional: call any WASM destroy methods here
-      // clear local refs
+    const triggerAutoStart = async (): Promise<void> => {
+      if (autoStart && active) {
+        await initialize()
+      }
+    }
+
+    void triggerAutoStart()
+
+    return (): void => {
+      active = false
+    }
+  }, [autoStart, initialize])
+
+  // System cleanup effect
+  useEffect(() => {
+    return (): void => {
       setBridge(null)
+      initializedRef.current = false
     }
   }, [])
 

@@ -21,9 +21,16 @@ pnpm install
 #   bus: No medium found").
 # - `--filter='!./crates/*'` excludes the Rust/wasm-bindgen crates
 #   (leetype-wasm, some-crossword, viewport-rotation, polyhedron,
-#   hangul-game-core, some-hexagon). They're built with wasm-pack, which
-#   requires a Rust + wasm32 toolchain this sandbox doesn't have — trying to
-#   build them here is a structural dead end, not something more retries fix.
+#   hangul-game-core, some-hexagon). They're built with wasm-pack, and
+#   cargo/rustup are actually preinstalled here — but wasm-pack itself, the
+#   wasm32-unknown-unknown target, and wasm-opt's binaryen download all need
+#   workarounds (see scripts/bootstrap-wasm-crates.sh for the full recipe).
+#   That's slow (~4min of cargo compilation) and most sessions never touch
+#   wasm code, so it's skipped by default here. If your task depends on a
+#   package that imports one of these crates (e.g. @some-ui/honeycomb
+#   depends on hangul-game-core, some-hexagon, polyhedron), run
+#   `scripts/bootstrap-wasm-crates.sh` yourself before building/typechecking
+#   that package.
 # - `--continue=always`: packages/ui/input's own build still fails here even
 #   with the wasm crates excluded from the graph, because its source
 #   directly imports them (TS2307 — tracked separately as debt, not fixed by

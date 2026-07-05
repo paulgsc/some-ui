@@ -32,9 +32,9 @@ export const KeyBufferDisplay = ({
               Multiple matches possible:
             </div>
             <div className="flex gap-2 justify-center">
-              {ambiguousCharacters.map((char, i) => (
+              {ambiguousCharacters.map((char) => (
                 <span
-                  key={i}
+                  key={char}
                   className="text-lg font-bold text-yellow-400 px-2 py-1 rounded bg-yellow-400/10"
                 >
                   {char}

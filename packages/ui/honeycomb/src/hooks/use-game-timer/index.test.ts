@@ -1,9 +1,12 @@
+import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
+import type { GameStatus } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import { act, renderHook } from "@testing-library/react"
+import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
-import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
+type UseGameTimerProps = Parameters<typeof useGameTimer>[0]
 
-function makeStatus(overrides: Record<string, unknown> = {}): any {
+function makeStatus(overrides: Partial<GameStatus> = {}): GameStatus {
   return {
     isComplete: false,
     isTimedOut: false,
@@ -19,7 +22,16 @@ function makeStatus(overrides: Record<string, unknown> = {}): any {
   }
 }
 
-function createFakeBridge(initialStatus: any = null): any {
+type MockGameBridge = {
+  startTimer: Mock<() => void>
+  subscribeToStatus: Mock<(cb: () => void) => () => void>
+  getStatusSnapshot: Mock<() => GameStatus | null>
+  setStatus: (newStatus: GameStatus | null) => void
+}
+
+function createFakeBridge(
+  initialStatus: GameStatus | null = null
+): MockGameBridge {
   let status = initialStatus
   const listeners = new Set<() => void>()
   return {
@@ -31,26 +43,51 @@ function createFakeBridge(initialStatus: any = null): any {
       }
     }),
     getStatusSnapshot: vi.fn(() => status),
-    setStatus(newStatus: any): void {
+    setStatus(newStatus): void {
       status = newStatus
       listeners.forEach((l) => l())
     },
   }
 }
 
+type MockGameTimerProps = {
+  gameBridge: MockGameBridge | null
+  isInitialized: boolean
+  onComplete?: (status: GameStatus) => void
+  onTimeout?: (status: GameStatus) => void
+}
+
+/**
+ * `gameBridge`'s real type (`WasmGameBridge`) has private fields, so a mock
+ * that only implements the handful of methods `useGameTimer` calls can
+ * never satisfy it structurally. This is the single, documented cast that
+ * lets a `MockGameBridge` stand in for it.
+ */
+function asGameTimerProps(props: MockGameTimerProps): UseGameTimerProps {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  return props as UseGameTimerProps
+}
+
 describe("start-once guard", () => {
   it("starts the timer once gameBridge and isInitialized are ready", () => {
     const bridge = createFakeBridge()
-    renderHook(() => useGameTimer({ gameBridge: bridge, isInitialized: true }))
+    renderHook(() =>
+      useGameTimer(
+        asGameTimerProps({ gameBridge: bridge, isInitialized: true })
+      )
+    )
 
     expect(bridge.startTimer).toHaveBeenCalledTimes(1)
   })
 
   it("does not start the timer again on re-render", () => {
     const bridge = createFakeBridge()
-    const { rerender } = renderHook((props) => useGameTimer(props), {
-      initialProps: { gameBridge: bridge, isInitialized: true },
-    })
+    const { rerender } = renderHook(
+      (props: MockGameTimerProps) => useGameTimer(asGameTimerProps(props)),
+      {
+        initialProps: { gameBridge: bridge, isInitialized: true },
+      }
+    )
 
     rerender({ gameBridge: bridge, isInitialized: true })
 
@@ -59,13 +96,21 @@ describe("start-once guard", () => {
 
   it("does not start the timer without a gameBridge", () => {
     expect(() =>
-      renderHook(() => useGameTimer({ gameBridge: null, isInitialized: true }))
+      renderHook(() =>
+        useGameTimer(
+          asGameTimerProps({ gameBridge: null, isInitialized: true })
+        )
+      )
     ).not.toThrow()
   })
 
   it("does not start the timer when not initialized", () => {
     const bridge = createFakeBridge()
-    renderHook(() => useGameTimer({ gameBridge: bridge, isInitialized: false }))
+    renderHook(() =>
+      useGameTimer(
+        asGameTimerProps({ gameBridge: bridge, isInitialized: false })
+      )
+    )
 
     expect(bridge.startTimer).not.toHaveBeenCalled()
   })
@@ -76,7 +121,13 @@ describe("terminal callbacks", () => {
     const bridge = createFakeBridge(makeStatus())
     const onComplete = vi.fn()
     renderHook(() =>
-      useGameTimer({ gameBridge: bridge, isInitialized: true, onComplete })
+      useGameTimer(
+        asGameTimerProps({
+          gameBridge: bridge,
+          isInitialized: true,
+          onComplete,
+        })
+      )
     )
 
     act(() => bridge.setStatus(makeStatus({ isComplete: true })))
@@ -89,7 +140,9 @@ describe("terminal callbacks", () => {
     const bridge = createFakeBridge(makeStatus())
     const onTimeout = vi.fn()
     renderHook(() =>
-      useGameTimer({ gameBridge: bridge, isInitialized: true, onTimeout })
+      useGameTimer(
+        asGameTimerProps({ gameBridge: bridge, isInitialized: true, onTimeout })
+      )
     )
 
     act(() => bridge.setStatus(makeStatus({ isTimedOut: true })))
@@ -102,12 +155,14 @@ describe("terminal callbacks", () => {
     const onComplete = vi.fn()
     const onTimeout = vi.fn()
     renderHook(() =>
-      useGameTimer({
-        gameBridge: bridge,
-        isInitialized: true,
-        onComplete,
-        onTimeout,
-      })
+      useGameTimer(
+        asGameTimerProps({
+          gameBridge: bridge,
+          isInitialized: true,
+          onComplete,
+          onTimeout,
+        })
+      )
     )
 
     act(() => bridge.setStatus(makeStatus({ isComplete: true })))
@@ -123,9 +178,12 @@ describe("terminal callbacks", () => {
 describe("reset on re-initialization", () => {
   it("allows the timer to start again after isInitialized cycles false -> true", () => {
     const bridge = createFakeBridge()
-    const { rerender } = renderHook((props) => useGameTimer(props), {
-      initialProps: { gameBridge: bridge, isInitialized: true },
-    })
+    const { rerender } = renderHook(
+      (props: MockGameTimerProps) => useGameTimer(asGameTimerProps(props)),
+      {
+        initialProps: { gameBridge: bridge, isInitialized: true },
+      }
+    )
     expect(bridge.startTimer).toHaveBeenCalledTimes(1)
 
     rerender({ gameBridge: bridge, isInitialized: false })
@@ -137,9 +195,12 @@ describe("reset on re-initialization", () => {
   it("allows terminal callbacks to fire again after a reset", () => {
     const bridge = createFakeBridge(makeStatus())
     const onComplete = vi.fn()
-    const { rerender } = renderHook((props) => useGameTimer(props), {
-      initialProps: { gameBridge: bridge, isInitialized: true, onComplete },
-    })
+    const { rerender } = renderHook(
+      (props: MockGameTimerProps) => useGameTimer(asGameTimerProps(props)),
+      {
+        initialProps: { gameBridge: bridge, isInitialized: true, onComplete },
+      }
+    )
 
     act(() => bridge.setStatus(makeStatus({ isComplete: true })))
     expect(onComplete).toHaveBeenCalledTimes(1)
@@ -158,7 +219,9 @@ describe("derived return values", () => {
   it("isGameOver is false while running and true once complete", () => {
     const bridge = createFakeBridge(makeStatus())
     const { result } = renderHook(() =>
-      useGameTimer({ gameBridge: bridge, isInitialized: true })
+      useGameTimer(
+        asGameTimerProps({ gameBridge: bridge, isInitialized: true })
+      )
     )
 
     expect(result.current.isGameOver).toBe(false)
@@ -171,7 +234,9 @@ describe("derived return values", () => {
   it("defaults timeRemainingMs to 0 and progress to undefined without a status", () => {
     const bridge = createFakeBridge(null)
     const { result } = renderHook(() =>
-      useGameTimer({ gameBridge: bridge, isInitialized: true })
+      useGameTimer(
+        asGameTimerProps({ gameBridge: bridge, isInitialized: true })
+      )
     )
 
     expect(result.current.timeRemainingMs).toBe(0)
