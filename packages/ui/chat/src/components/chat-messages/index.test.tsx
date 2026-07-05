@@ -37,7 +37,6 @@ vi.mock("some-ui-utils", async (importOriginal) => {
   // UseSpeechQueueReturn is irrelevant to what's under test here, and
   // vi.mock's factory return type isn't narrow enough for
   // typescript-eslint to see that as safe.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- see comment above
   return {
     ...actual,
     useSpeechQueue: useSpeechQueueMock,

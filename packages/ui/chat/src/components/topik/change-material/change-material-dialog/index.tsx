@@ -129,11 +129,11 @@ export const ChangeMaterialDialog = ({
     onOpenChange(false)
   }, [currentTopikKey, onOpenChange])
 
-  const handleReload = useCallback(async () => {
+  const handleReload = useCallback(() => {
     if (!onReload) return
     setIsReloading(true)
     try {
-      await onReload()
+      onReload()
     } finally {
       setIsReloading(false)
     }
