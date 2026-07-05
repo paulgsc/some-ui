@@ -21,14 +21,26 @@ export const GameOverModal = ({
   const isComplete = status.isComplete
   const isTimeout = status.isTimedOut
 
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === "Enter" || e.key === " ") {
+      onContinue()
+    }
+  }
+
   return (
     <div
       className="absolute inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50"
       onClick={onContinue}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label="Close modal overlay"
     >
       <div
         className="glass-effect rounded-3xl px-12 py-10 text-white text-center max-w-md"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="presentation"
       >
         {/* Title */}
         <div className="text-5xl mb-4">
@@ -82,15 +94,14 @@ export const GameOverModal = ({
             </div>
           </div>
 
-          {status.progress && (
-            <div className="pt-3 border-t border-white/10">
-              <div className="text-white/50 text-xs mb-1">Completion</div>
-              <div className="text-cyan-400 font-bold">
-                {status.progress.completedKeys} / {status.progress.totalKeys} (
-                {status.progress.completionPercentage.toFixed(0)}%)
-              </div>
+          {/* Fixed unnecessary condition by removing optional chain if type guarantees it */}
+          <div className="pt-3 border-t border-white/10">
+            <div className="text-white/50 text-xs mb-1">Completion</div>
+            <div className="text-cyan-400 font-bold">
+              {status.progress.completedKeys} / {status.progress.totalKeys} (
+              {status.progress.completionPercentage.toFixed(0)}%)
             </div>
-          )}
+          </div>
         </div>
 
         {/* Action Button */}

@@ -34,7 +34,7 @@ export const KeyBufferDisplay = ({
             <div className="flex gap-2 justify-center">
               {ambiguousCharacters.map((char, i) => (
                 <span
-                  key={i}
+                  key={`${char}-${i}`}
                   className="text-lg font-bold text-yellow-400 px-2 py-1 rounded bg-yellow-400/10"
                 >
                   {char}
