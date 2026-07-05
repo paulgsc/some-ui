@@ -41,11 +41,7 @@ export const QuestionSchema = z.object({
 // TRANSCRIPTION
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type TranscriptionStatus =
-  | "pending"
-  | "processing"
-  | "done"
-  | "error"
+export type TranscriptionStatus = "pending" | "processing" | "done" | "error"
 
 export type TranscriptionResult = {
   status: TranscriptionStatus

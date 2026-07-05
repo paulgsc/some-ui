@@ -10,8 +10,7 @@ import type {
  * expose, so swapping in real audio later doesn't touch call sites.
  */
 export const createWebSpeechTTSAdapter = (): InterviewTTSAdapter => {
-  const supported =
-    typeof window !== "undefined" && "speechSynthesis" in window
+  const supported = typeof window !== "undefined" && "speechSynthesis" in window
 
   const speak = (text: string, opts?: SpeakOptions): Promise<void> => {
     if (!supported) {

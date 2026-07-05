@@ -1,5 +1,5 @@
-import { InterviewProgressHeader } from "@chat/components/mock-interview/progress-header"
 import { PreparationPhase } from "@chat/components/mock-interview/preparation-phase"
+import { InterviewProgressHeader } from "@chat/components/mock-interview/progress-header"
 import { QuestionPlayback } from "@chat/components/mock-interview/question-playback"
 import { RecordingPhase } from "@chat/components/mock-interview/recording-phase"
 import { ReviewPhase } from "@chat/components/mock-interview/review-phase"

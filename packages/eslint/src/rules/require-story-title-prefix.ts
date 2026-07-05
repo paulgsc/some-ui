@@ -28,8 +28,7 @@ export const requireStoryTitlePrefix: Rule.RuleModule = {
     messages: {
       missingTitle:
         'Storybook meta is missing a "title" property. It must start with "{{prefix}}" (e.g. "{{prefix}}ComponentName").',
-      wrongPrefix:
-        'Storybook title "{{value}}" must start with "{{prefix}}".',
+      wrongPrefix: 'Storybook title "{{value}}" must start with "{{prefix}}".',
     },
   },
   create(context) {

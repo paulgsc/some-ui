@@ -14,7 +14,7 @@ type Size = {
 }
 
 type Options<T extends Element> = {
-  ref: RefObject<T>
+  ref: RefObject<T | null>
   onResize?: (size: Size) => void
   box?: "border-box" | "content-box" | "device-pixel-content-box"
 }

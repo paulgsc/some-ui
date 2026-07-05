@@ -1,6 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-
 import type { InterviewTTSAdapter } from "@chat/lib/interview/core/interview-types"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { QuestionPlayback } from "."
 

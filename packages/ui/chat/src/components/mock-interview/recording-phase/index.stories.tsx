@@ -1,7 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite"
-
 import type { UseAudioRecorderReturn } from "@chat/hooks/use-audio-recorder"
 import type { RecordingState } from "@chat/types/interview"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { RecordingPhase } from "."
 

@@ -24,7 +24,11 @@ export type UseAudioRecorderReturn = {
  * outside the interview flow.
  */
 export const useAudioRecorder = (
-  onRecordingComplete: (blob: Blob, audioUrl: string, durationSeconds: number) => void
+  onRecordingComplete: (
+    blob: Blob,
+    audioUrl: string,
+    durationSeconds: number
+  ) => void
 ): UseAudioRecorderReturn => {
   const [state, dispatch] = useReducer(recordingReducer, { type: "idle" })
   const serviceRef = useRef<AudioRecordingService | null>(null)

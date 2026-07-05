@@ -1,8 +1,29 @@
 import { useEffect, useRef, useState } from "react"
 
 const BAR_COUNT = 32
-const IDLE_LEVEL = 0.08
+export const IDLE_LEVEL = 0.08
 const IDLE_LEVELS: Array<number> = Array<number>(BAR_COUNT).fill(IDLE_LEVEL)
+
+/**
+ * Reduces a frequency-bin buffer into `barCount` normalized (0..1) bars by
+ * averaging each contiguous `bucketSize`-wide slice, floored at IDLE_LEVEL so
+ * bars never fully flatten to 0 while a stream is live.
+ */
+export const averageIntoBars = (
+  data: ArrayLike<number>,
+  barCount: number,
+  bucketSize: number
+): Array<number> => {
+  const next: Array<number> = []
+  for (let i = 0; i < barCount; i++) {
+    let sum = 0
+    for (let j = 0; j < bucketSize; j++) {
+      sum += data[i * bucketSize + j] ?? 0
+    }
+    next.push(Math.max(IDLE_LEVEL, sum / bucketSize / 255))
+  }
+  return next
+}
 
 /**
  * Samples a live mic stream into a fixed number of normalized (0..1) bars
@@ -30,15 +51,7 @@ export const useAudioLevel = (stream: MediaStream | null): Array<number> => {
 
     const tick = (): void => {
       analyser.getByteFrequencyData(data)
-      const next: Array<number> = []
-      for (let i = 0; i < BAR_COUNT; i++) {
-        let sum = 0
-        for (let j = 0; j < bucketSize; j++) {
-          sum += data[i * bucketSize + j] ?? 0
-        }
-        next.push(Math.max(IDLE_LEVEL, sum / bucketSize / 255))
-      }
-      setLevels(next)
+      setLevels(averageIntoBars(data, BAR_COUNT, bucketSize))
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)

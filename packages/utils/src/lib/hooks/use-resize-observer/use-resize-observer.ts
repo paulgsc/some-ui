@@ -33,8 +33,8 @@ type Size = {
 
 /** The options for the ResizeObserver. */
 type UseResizeObserverOptions<T extends Element = Element> = {
-  /** The ref of the element to observe. */
-  ref: RefObject<T>
+  /** The ref of the element to observe. Nullable to match `useRef<T>(null)`. */
+  ref: RefObject<T | null>
   /**
    * When using `onResize`, the hook doesn't re-render on element size changes; it delegates handling to the provided callback.
    * @default undefined
@@ -78,7 +78,12 @@ export function useResizeObserver<T extends Element = Element>(
   const isMounted = useIsMounted()
   const previousSize = useRef<Size>({ ...initialSize })
   const onResize = useRef<((size: Size) => void) | undefined>(undefined)
-  onResize.current = options.onResize
+  // Keep the latest onResize callback available to the ResizeObserver's
+  // (async) event handler without calling it a dependency of the effect
+  // below - written in an effect, not during render, per react-hooks/refs.
+  useEffect(() => {
+    onResize.current = options.onResize
+  })
 
   useEffect(() => {
     if (typeof window === "undefined" || !("ResizeObserver" in window)) return
@@ -134,15 +139,13 @@ function extractSize(
 ): number | undefined {
   if (!entry) return undefined
 
-  if (!entry[box].length) {
+  const [size] = entry[box]
+  if (!size) {
     if (box === "contentBoxSize") {
       return entry.contentRect[sizeType === "inlineSize" ? "width" : "height"]
     }
     return undefined
   }
 
-  return Array.isArray(entry[box])
-    ? entry[box][0][sizeType]
-    : // @ts-expect-error copy paste !!
-      (entry[box][sizeType] as number)
+  return size[sizeType]
 }

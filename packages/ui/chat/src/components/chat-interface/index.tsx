@@ -1,4 +1,4 @@
-import type { FC, RefObject } from "react"
+import type { FC } from "react"
 import { useCallback, useRef } from "react"
 import { ChatHeader } from "@chat/components/chat-header"
 import { ChatMessages } from "@chat/components/chat-messages"
@@ -27,9 +27,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
 }): React.JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
 
-  const { height } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
+  const { height } = useMeasureRect({ ref })
 
   const getChatHeight = useCallback(() => {
     if (!messagesHeight || messagesHeight < 0 || messagesHeight > 1)

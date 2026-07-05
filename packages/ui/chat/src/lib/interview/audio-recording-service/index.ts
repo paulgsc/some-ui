@@ -11,6 +11,7 @@ export class AudioRecordingService {
       )
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- feature-detection guard: lib.dom types assume getUserMedia always exists, but older/non-secure-context browsers may not have it
     if (!navigator.mediaDevices.getUserMedia) {
       throw new Error("Your browser does not support audio recording.")
     }

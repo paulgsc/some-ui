@@ -167,9 +167,11 @@ export const QuizActive = ({
                 <Textarea
                   placeholder="Type your answer here..."
                   value={textAnswer}
-                  onChange={(e) => setTextAnswer(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setTextAnswer(e.target.value)
+                  }
                   className="min-h-[120px] text-lg resize-none"
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                     if (e.key === "Enter" && !e.shiftKey && canSubmit) {
                       e.preventDefault()
                       handleSubmit()

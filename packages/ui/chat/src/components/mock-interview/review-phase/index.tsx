@@ -1,8 +1,7 @@
-import { AlertCircle, Loader2 } from "lucide-react"
-import { Button, Card, Textarea } from "some-ui-shared"
-
 import { AudioPlayer } from "@chat/components/mock-interview/audio-player"
 import type { TranscriptionResult } from "@chat/lib/interview/core/interview-types"
+import { AlertCircle, Loader2 } from "lucide-react"
+import { Button, Card, Textarea } from "some-ui-shared"
 
 type ReviewPhaseProps = {
   audioUrl: string | null
@@ -52,16 +51,15 @@ export const ReviewPhase = ({
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-medium">Couldn&apos;t transcribe that</h2>
+              <h2 className="text-2xl font-medium">
+                Couldn&apos;t transcribe that
+              </h2>
               <p className="text-muted-foreground">
-                {transcription?.error ?? "Something went wrong. Give it another try."}
+                {transcription?.error ??
+                  "Something went wrong. Give it another try."}
               </p>
             </div>
-            <Button
-              size="lg"
-              onClick={onRetry}
-              className="px-12 rounded-full"
-            >
+            <Button size="lg" onClick={onRetry} className="px-12 rounded-full">
               Record again
             </Button>
           </div>
@@ -94,8 +92,8 @@ export const ReviewPhase = ({
 
             <div className="bg-accent/30 rounded-2xl p-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Remember, there&apos;s no scoring or evaluation here. This space is
-                for you to practice expressing your thoughts and building
+                Remember, there&apos;s no scoring or evaluation here. This space
+                is for you to practice expressing your thoughts and building
                 confidence.
               </p>
             </div>

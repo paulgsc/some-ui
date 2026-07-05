@@ -1,11 +1,10 @@
-import { CheckCircle2, PartyPopper, RotateCcw } from "lucide-react"
-import { Badge, Button, Card, SparkleBurst } from "some-ui-shared"
-
-import { formatTime } from "@chat/lib/interview/format-time"
 import type {
   Question,
   SessionAnswer,
 } from "@chat/lib/interview/core/interview-types"
+import { formatTime } from "@chat/lib/interview/format-time"
+import { CheckCircle2, PartyPopper, RotateCcw } from "lucide-react"
+import { Badge, Button, Card, SparkleBurst } from "some-ui-shared"
 
 type SessionCompleteProps = {
   answers: Array<SessionAnswer>

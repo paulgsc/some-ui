@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { BookshelfGrid } from "@chat/components/topik/change-material/bookshelf-grid"
 import { OmniSearchInput } from "@chat/components/topik/change-material/omni-search-input"
 import { TopikBookCard } from "@chat/components/topik/change-material/topik-book-card"
@@ -89,19 +89,25 @@ export const ChangeMaterialDialog = ({
   const hasFatalError = error && items.length === 0
 
   // ─── Reset page when filter changes ─────────────────────────
-  useEffect(() => {
+  // Adjusted directly during render (rather than in an effect) per
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevSearch, setPrevSearch] = useState(search)
+  if (search !== prevSearch) {
+    setPrevSearch(search)
     setPage(1)
-  }, [search])
+  }
 
   // ─── Reset state on open ────────────────────────────────────
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (open) {
       setSearch("")
       setSelectedKey(currentTopikKey)
       setHighlightedKey(undefined)
       setPage(1)
     }
-  }, [open, currentTopikKey])
+  }
 
   // ─── Handlers ───────────────────────────────────────────────
   const handleSelect = useCallback((key: string) => {
@@ -123,11 +129,11 @@ export const ChangeMaterialDialog = ({
     onOpenChange(false)
   }, [currentTopikKey, onOpenChange])
 
-  const handleReload = useCallback(async () => {
+  const handleReload = useCallback(() => {
     if (!onReload) return
     setIsReloading(true)
     try {
-      await onReload()
+      onReload()
     } finally {
       setIsReloading(false)
     }
