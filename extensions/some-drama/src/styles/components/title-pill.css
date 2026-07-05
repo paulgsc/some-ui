@@ -4,28 +4,26 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-title-pill {
-  /* Solid dark background with warm undertone */
-  background: hsl(25 25% 15% / 0.95);
+  animation: dc-float-gentle 5s ease-in-out infinite;
   backdrop-filter: var(--dc-blur);
-  -webkit-backdrop-filter: var(--dc-blur);
 
-  /* Glowing border */
-  border: 1.5px solid var(--dc-border-strong);
+  /* Cool dark surface (floor) */
+  background: var(--dc-surface-glass);
+
+  /* Hairline border (floor) */
+  border: 1px solid var(--dc-line-strong);
   border-radius: var(--dc-r-pill);
-  padding: 7px 16px 7px 12px;
-  gap: 10px;
 
-  /* Layered shadow + glow */
+  /* Deep, quiet shadow */
   box-shadow:
     0 4px 24px var(--dc-shadow),
-    0 0 40px hsl(340 60% 50% / 0.12),
-    inset 0 1px 0 hsl(340 40% 50% / 0.15);
-
+    inset 0 1px 0 rgb(255 255 255 / 5%);
+  gap: 10px;
   max-width: 280px;
+  padding: 7px 16px 7px 12px;
 
   /* Prevent jitter — use subtle float instead of bob */
   will-change: transform;
-  animation: dc-float-gentle 5s ease-in-out infinite;
 }
 
 @keyframes dc-float-gentle {
@@ -33,6 +31,7 @@
   100% {
     transform: translateY(0) translateZ(0);
   }
+
   50% {
     transform: translateY(-3px) translateZ(0);
   }
@@ -40,50 +39,50 @@
 
 /* Live indicator dot — bright and glowing */
 .dc-title-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dc-peach);
-  flex-shrink: 0;
-
-  /* Strong glow for visibility */
-  box-shadow:
-    0 0 8px var(--dc-peach),
-    0 0 16px hsl(18 95% 65% / 0.5);
-
   animation: dc-dot-pulse 2.5s ease-in-out infinite;
+  background: hsl(var(--dc-mood-hue) 72% 64%);
+  border-radius: 50%;
+
+  /* Mood-tinted glow for a live-indicator feel */
+  box-shadow:
+    0 0 8px hsl(var(--dc-mood-hue) 72% 64%),
+    0 0 16px hsl(var(--dc-mood-hue) 70% 60% / 50%);
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
 }
 
 @keyframes dc-dot-pulse {
   0%,
   100% {
-    transform: scale(1);
+    box-shadow:
+      0 0 8px hsl(var(--dc-mood-hue) 72% 64%),
+      0 0 16px hsl(var(--dc-mood-hue) 70% 60% / 50%);
     opacity: 1;
-    box-shadow:
-      0 0 8px var(--dc-peach),
-      0 0 16px hsl(18 95% 65% / 0.5);
+    transform: scale(1);
   }
+
   50% {
-    transform: scale(1.3);
-    opacity: 0.8;
     box-shadow:
-      0 0 12px var(--dc-peach),
-      0 0 24px hsl(18 95% 65% / 0.6);
+      0 0 12px hsl(var(--dc-mood-hue) 72% 64%),
+      0 0 24px hsl(var(--dc-mood-hue) 70% 60% / 60%);
+    opacity: 0.8;
+    transform: scale(1.3);
   }
 }
 
 /* Drama title text — high contrast with warm glow */
 .dc-title-text {
+  color: var(--dc-text-primary);
   font-family: Georgia, serif;
   font-size: 12px;
   font-style: italic;
   font-weight: bold;
-  color: var(--dc-text-primary);
-  white-space: nowrap;
+  letter-spacing: 0.04em;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.04em;
 
   /* Glow for text to pop */
   text-shadow: var(--dc-text-glow-warm);
+  white-space: nowrap;
 }
