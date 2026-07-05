@@ -12,9 +12,8 @@
  */
 
 import type { Message } from "@chat/lib/topik"
-import type { UseAudioTTSReturn } from "some-ui-utils"
-
 import type { ISessionMachine } from "@chat/lib/topik/core/session-types"
+import type { UseAudioTTSReturn } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG
@@ -73,7 +72,7 @@ export class TTSEffectHandler {
 
     // Start processing if not already running
     if (!this.processing) {
-      this.processQueue()
+      void this.processQueue()
     }
   }
 

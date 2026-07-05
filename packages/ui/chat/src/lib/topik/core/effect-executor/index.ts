@@ -147,47 +147,58 @@ export class EffectExecutor {
   private _executeOne(effect: SessionEffect): void {
     try {
       switch (effect.type) {
-        case "TRIGGER_CATALOG_QUERY":
-          this._triggerCatalogQuery()
+        case "TRIGGER_CATALOG_QUERY": {
+          void this._triggerCatalogQuery()
           break
+        }
 
-        case "TRIGGER_TOPIK_QUERY":
-          this._triggerTopikQuery(effect.key)
+        case "TRIGGER_TOPIK_QUERY": {
+          void this._triggerTopikQuery(effect.key)
           break
+        }
 
-        case "START_TIMER":
+        case "START_TIMER": {
           this._startTimer()
           break
+        }
 
-        case "STOP_TIMER":
+        case "STOP_TIMER": {
           this._stopTimer()
           break
+        }
 
-        case "PLAY_AUDIO":
+        case "PLAY_AUDIO": {
           this._playAudio()
           break
+        }
 
-        case "STOP_AUDIO":
+        case "STOP_AUDIO": {
           this._stopAudio()
           break
+        }
 
-        case "NOTIFY_BATCH_COMPLETE":
+        case "NOTIFY_BATCH_COMPLETE": {
           this._notifyBatchComplete(effect.batchIndex)
           break
+        }
 
-        case "NOTIFY_SESSION_COMPLETE":
+        case "NOTIFY_SESSION_COMPLETE": {
           this._notifySessionComplete()
           break
+        }
 
-        case "NOTIFY_SESSION_RESET":
+        case "NOTIFY_SESSION_RESET": {
           this._notifySessionReset()
           break
+        }
 
-        default:
+        default: {
           // Exhaustiveness check
           const _exhaustive: never = effect
+          effect satisfies never
           // eslint-disable-next-line no-console
           console.warn("[Executor] Unknown effect type:", _exhaustive)
+        }
       }
     } catch (error) {
       // eslint-disable-next-line no-console
