@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react"
-import { Pause, Play, RotateCcw } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
-
 import type {
   InterviewTTSAdapter,
   Question,
 } from "@chat/lib/interview/core/interview-types"
+import { Pause, Play, RotateCcw } from "lucide-react"
+import { Button, Card } from "some-ui-shared"
+
+const WAVEFORM_BAR_KEYS = Array.from(
+  { length: 32 },
+  (_, i) => `waveform-bar-${i}`
+)
 
 type QuestionPlaybackProps = {
   question: Question
@@ -105,13 +109,13 @@ export const QuestionPlayback = ({
                 {/* Waveform visualization */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 h-16 justify-center">
-                    {[...Array(32)].map((_, i) => {
+                    {WAVEFORM_BAR_KEYS.map((barKey, i) => {
                       const height = isPlaying
                         ? Math.sin(progress * 0.1 + i * 0.5) * 20 + 30
                         : 20
                       return (
                         <div
-                          key={i}
+                          key={barKey}
                           className="w-1 bg-primary/30 rounded-full transition-all duration-100"
                           style={{ height: `${height}%` }}
                         />

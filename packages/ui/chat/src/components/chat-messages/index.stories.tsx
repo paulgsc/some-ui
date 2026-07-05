@@ -36,7 +36,8 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta: Meta = {
   title: "UI/Chat/Components/ChatMessages",
   component: ChatMessages,
-} as Meta
+}
+export default meta

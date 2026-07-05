@@ -9,7 +9,8 @@ export const recordingReducer = (
     handler: (state: Extract<RecordingState, { type: T }>) => RecordingState
   ): RecordingState | null => {
     return state.type === type
-      ? handler(state as Extract<RecordingState, { type: T }>)
+      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Safe: state.type was checked immediately above; TS cannot narrow generic discriminants here.
+        handler(state as Extract<RecordingState, { type: T }>)
       : null
   }
 

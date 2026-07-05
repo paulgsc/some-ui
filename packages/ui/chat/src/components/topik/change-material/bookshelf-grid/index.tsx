@@ -44,8 +44,8 @@ export const BookshelfGrid = ({
       {/* Bookshelf area */}
       <div className="rounded-lg bg-shelf/10 p-4">
         <div className="flex flex-col gap-6">
-          {rows.map((row, rowIdx) => (
-            <div key={rowIdx}>
+          {rows.map((row) => (
+            <div key={row.map((item) => item.key).join("-")}>
               <div className="grid grid-cols-4 gap-x-4 gap-y-3">
                 {row.map((item) => (
                   <TopikBookCard

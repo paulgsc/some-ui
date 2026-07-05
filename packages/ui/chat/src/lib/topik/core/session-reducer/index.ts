@@ -20,7 +20,7 @@ import type {
   SessionEffect,
   SessionEvent,
   SessionState,
-} from "./session-types"
+} from "@chat/lib/topik/core/session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INITIAL STATE FACTORY

@@ -14,10 +14,9 @@
  * - Lifecycle coordination
  */
 
-import type { ConversationBatch, TopikFile } from "@chat/lib/topik"
+import type { ConversationBatch } from "@chat/lib/topik"
 import { TopikFileSchema } from "@chat/lib/topik"
-
-import type { ITopikRepository } from "./session-types"
+import type { ITopikRepository } from "@chat/lib/topik/core/session-types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REPOSITORY IMPLEMENTATION
@@ -25,22 +24,20 @@ import type { ITopikRepository } from "./session-types"
 
 export class TopikRepository implements ITopikRepository {
   constructor(
-    private readonly loader: (key: string) => Promise<TopikFile>,
+    private readonly loader: (key: string) => Promise<unknown>,
     private readonly validator: typeof TopikFileSchema
   ) {}
 
   /**
-   * Load and validate topik data
-   * Pure data access - no caching, no deduplication
-   * TanStack Query handles those concerns
+   * Load and validate topik data.
+   * Pure data access - no caching, no deduplication.
+   * TanStack Query handles those concerns.
    */
   async load(key: string): Promise<Array<ConversationBatch>> {
     const raw = await this.loader(key)
 
     // Validate schema - throws on invalid data
-    const validated = this.validator.parse(raw)
-
-    return validated
+    return this.validator.parse(raw)
   }
 }
 
@@ -49,14 +46,11 @@ export class TopikRepository implements ITopikRepository {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Create repository instance with HTTP loader
- *
- * @param baseUrl - Base URL for topik files (e.g., "/data/topiks")
- * @param validator - Zod schema for validation
+ * Create repository instance with HTTP loader.
  */
 export function createTopikRepository(): TopikRepository {
-  const loader = async (key: string): Promise<TopikFile> => {
-    const response = await fetch(`${key}`)
+  const loader = async (key: string): Promise<unknown> => {
+    const response = await fetch(key)
 
     if (!response.ok) {
       throw new Error(
@@ -64,7 +58,9 @@ export function createTopikRepository(): TopikRepository {
       )
     }
 
-    return response.json()
+    const json: unknown = await response.json()
+
+    return json
   }
 
   return new TopikRepository(loader, TopikFileSchema)

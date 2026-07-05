@@ -1,4 +1,4 @@
-import type { ChangeEvent, CSSProperties, FC } from "react"
+import type { ChangeEvent, FC, JSX } from "react"
 import type { AvatarGroupProps } from "some-ui-shared"
 import {
   AvatarGroup,
@@ -19,7 +19,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   characters,
   height,
   title = "Change me...",
-}): React.JSX.Element => {
+}): JSX.Element => {
   const RefreshIcon = SvgIcons.refresh
   const { value: chatbotTitle, setValue: updateTitle } = useLocalStorage(
     "chatbot",
@@ -30,11 +30,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   }
   return (
     <CardHeader
-      style={
-        {
-          "--chat-header-height": `${height ?? 0}px`,
-        } as CSSProperties
-      }
+      style={{
+        "--chat-header-height": `${height ?? 0}px`,
+      }}
       className={cn(
         "flex flex-row items-center justify-between gap-1.5 rounded-t-xl bg-blue-600 p-2.5",
         {

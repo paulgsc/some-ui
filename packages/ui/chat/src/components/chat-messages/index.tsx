@@ -1,4 +1,4 @@
-import type { CSSProperties, FC } from "react"
+import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
@@ -46,7 +46,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
       return
     }
 
-    const speakContent = async (): Promise<void> => {
+    const speakContent = (): void => {
       try {
         lastSpokenRef.current = currentItem
         const options = {
@@ -68,7 +68,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
 
         // increment counter for each speak invocation
         const priority = ++priorityCounter.current
-        await speak(content, options, priority)
+        speak(content, options, priority)
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
@@ -87,11 +87,9 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
 
   return (
     <main
-      style={
-        {
-          "--chat-messages-height": `${height ?? 0}px`,
-        } as CSSProperties
-      }
+      style={{
+        "--chat-messages-height": `${height ?? 0}px`,
+      }}
       className={cn(
         "relative flex size-full flex-col justify-end gap-y-3 overflow-clip rounded-b-xl bg-rose-100 p-3 shadow-md",
         {
@@ -102,19 +100,17 @@ export const ChatMessages: FC<ChatMessagesProps> = ({
     >
       <div className="absolute inset-0 h-1/4" />
       <div className="absolute bottom-0 end-0 start-0  h-1/4" />
-      {chats.map((msg, i) => {
+      {chats.map((msg) => {
         const { position, id } = msg
-        const t = 15 * 1000
-        const timestamp = new Date(Date.now() - t).toString()
         return (
           <section
-            key={`${id}_${i}`}
+            key={id}
             className={cn("flex w-full", {
               "justify-start": position === "left",
               "justify-end": position === "right",
             })}
           >
-            <ChatMessage key={id} {...{ ...msg, timestamp }} />
+            <ChatMessage key={id} {...msg} />
           </section>
         )
       })}
