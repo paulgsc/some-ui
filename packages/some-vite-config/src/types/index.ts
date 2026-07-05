@@ -16,6 +16,12 @@ export type ViteConfigOptions = {
     insertTypesEntry?: boolean
     exclude?: Array<string>
   }
+  /**
+   * Set for packages/ui/* workspaces that source-alias into the shared
+   * some-content/assets workspaces (see each package's tsconfig "include").
+   * Adds the canonical dts exclude globs for those cross-package paths.
+   */
+  contentPackage?: boolean
   tsConfigPaths?: Record<"projects", Array<string>>
   /** Build formats to generate */
   formats?: Array<"es" | "cjs" | "umd" | "iife">

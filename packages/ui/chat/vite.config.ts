@@ -7,14 +7,6 @@ export default createViteConfig({
   alias: {
     "@chat": resolve(__dirname, "src"),
   },
-  dtsOptions: {
-    exclude: [
-      "**/data/**",
-      "**/demo/**",
-      "../../../assets/**/*",
-      "../../some-content/src/**/*",
-      "../../../assets/**/*",
-    ],
-  },
+  contentPackage: true,
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })

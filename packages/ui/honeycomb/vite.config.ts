@@ -8,13 +8,7 @@ export default createViteConfig({
     "@honeycomb": resolve(__dirname, "src"),
   },
   dtsOptions: {
-    exclude: [
-      "**/*.stories.tsx",
-      "**/*.stories.ts",
-      "**/hexagon-grid-demo/**",
-      "vitest.config.ts",
-      "vitest.setup.ts",
-    ],
+    exclude: ["**/hexagon-grid-demo/**", "vitest.config.ts", "vitest.setup.ts"],
   },
   tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
 })
