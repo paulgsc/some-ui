@@ -1168,6 +1168,9 @@ importers:
 
   packages/ui/honeycomb:
     dependencies:
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
       hangul-game-core:
         specifier: workspace:*
         version: link:../../../crates/hangul-game-core
