@@ -51,11 +51,16 @@ function buildEslintCommands(files) {
     for (let i = 0; i < pkgFiles.length; i += ESLINT_CHUNK_SIZE) {
       const chunk = pkgFiles.slice(i, i + ESLINT_CHUNK_SIZE)
       const relative = chunk
-        .map((f) => `"${path.relative(pkgRoot, f)}"`)
+        // Escape $ so the nested `sh -c` invocation doesn't try to expand it
+        // as a shell variable (e.g. TanStack Router's $paramName.tsx files).
+        .map((f) => `"${path.relative(pkgRoot, f).replace(/\$/g, "\\$")}"`)
         .join(" ")
 
       commands.push(
-        ["sh -c", `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`].join(" ")
+        [
+          "sh -c",
+          `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`,
+        ].join(" ")
       )
     }
   }

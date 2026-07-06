@@ -323,6 +323,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: ^1.121.2
         version: 1.168.18(@tanstack/react-router@1.170.16(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(esbuild@0.28.1)(rollup@4.62.2)(vite@7.3.6(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      lucide-react:
+        specifier: ^0.378.0
+        version: 0.378.0(react@19.0.0)
       maishatu-fetch-kit:
         specifier: workspace:*
         version: link:../../packages/ui/maishatu-fetch-kit
