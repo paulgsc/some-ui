@@ -66,6 +66,12 @@ export function useSessions(): UseQueryResult<Array<SessionRecord>> {
   return useQuery({
     queryKey: sessionsKey,
     queryFn: () => sessionsRepository.list(),
+    // Sessions are mutated from routes other than /sessions (composer,
+    // live player), so an invalidated-but-inactive query has no observer
+    // to pick up the refetch. Override the app-wide refetchOnMount:false
+    // default here so navigating back to the list always shows the latest
+    // data instead of requiring a hard refresh.
+    refetchOnMount: true,
   })
 }
 
@@ -74,6 +80,7 @@ export function useSession(id: string): UseQueryResult<SessionRecord | null> {
     queryKey: sessionKey(id),
     queryFn: () => sessionsRepository.get(id),
     enabled: id.length > 0,
+    refetchOnMount: true,
   })
 }
 
