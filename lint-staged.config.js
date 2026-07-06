@@ -41,6 +41,22 @@ function groupByPackage(files) {
 const ESLINT_CHUNK_SIZE = 8
 
 /**
+ * Escapes a value for safe interpolation inside a double-quoted string in
+ * the nested `sh -c '...'` invocations below (e.g. TanStack Router's
+ * $paramName.tsx files need their `$` escaped so the shell doesn't try to
+ * expand it as a variable). Order matters: backslashes must be escaped
+ * first, otherwise the backslashes introduced by the later replacements
+ * would themselves get doubled.
+ */
+function escapeForDoubleQuotedShell(value) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/`/g, "\\`")
+    .replace(/\$/g, "\\$")
+}
+
+/**
  * ESLint per-package execution, chunked to cap per-invocation memory.
  */
 function buildEslintCommands(files) {
@@ -48,18 +64,19 @@ function buildEslintCommands(files) {
   const commands = []
 
   for (const [pkgRoot, pkgFiles] of grouped.entries()) {
+    const safePkgRoot = escapeForDoubleQuotedShell(pkgRoot)
     for (let i = 0; i < pkgFiles.length; i += ESLINT_CHUNK_SIZE) {
       const chunk = pkgFiles.slice(i, i + ESLINT_CHUNK_SIZE)
       const relative = chunk
-        // Escape $ so the nested `sh -c` invocation doesn't try to expand it
-        // as a shell variable (e.g. TanStack Router's $paramName.tsx files).
-        .map((f) => `"${path.relative(pkgRoot, f).replace(/\$/g, "\\$")}"`)
+        .map(
+          (f) => `"${escapeForDoubleQuotedShell(path.relative(pkgRoot, f))}"`
+        )
         .join(" ")
 
       commands.push(
         [
           "sh -c",
-          `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`,
+          `'cd "${safePkgRoot}" && eslint --fix --no-ignore ${relative}'`,
         ].join(" ")
       )
     }
@@ -84,9 +101,11 @@ function buildTscCommands(files) {
     const project = fs.existsSync(path.join(pkgRoot, "tsconfig.build.json"))
       ? "tsconfig.build.json"
       : "tsconfig.json"
-    return ["sh -c", `'cd "${pkgRoot}" && tsc -p ${project} --noEmit'`].join(
-      " "
-    )
+    const safePkgRoot = escapeForDoubleQuotedShell(pkgRoot)
+    return [
+      "sh -c",
+      `'cd "${safePkgRoot}" && tsc -p ${project} --noEmit'`,
+    ].join(" ")
   })
 }
 
