@@ -1,4 +1,27 @@
+import { interviewQuestions } from "@some-ui/chat"
+import type { Question } from "@some-ui/chat"
+
 import type { ActivityDefinition, ActivityId } from "./types"
+
+/**
+ * Falls back to a looser match (category only, then the full bank) so a
+ * level+category combination with no exact matches in the mock question
+ * bank still produces something playable, rather than an empty session.
+ */
+function filterInterviewQuestions(
+  level: unknown,
+  category: unknown
+): Array<Question> {
+  const byLevelAndCategory = interviewQuestions.filter(
+    (q) => q.level === level && q.category === category
+  )
+  if (byLevelAndCategory.length > 0) return byLevelAndCategory
+
+  const byCategory = interviewQuestions.filter((q) => q.category === category)
+  if (byCategory.length > 0) return byCategory
+
+  return interviewQuestions
+}
 
 const honeycomb: ActivityDefinition = {
   id: "honeycomb",
@@ -111,7 +134,7 @@ const interview: ActivityDefinition = {
   ],
   defaultConfig: { level: "mid", category: "technical", durationMinutes: 20 },
   toSceneProps: (config) => ({
-    questionFilter: { level: config.level, category: config.category },
+    interviewQuestions: filterInterviewQuestions(config.level, config.category),
   }),
 }
 
@@ -184,4 +207,17 @@ export const ACTIVITY_IDS: ReadonlyArray<ActivityId> = [
 
 export function getActivity(id: ActivityId): ActivityDefinition {
   return ACTIVITY_CATALOG[id]
+}
+
+/**
+ * Looks up an activity by the registry_key its scenes render - robust
+ * against a scene having been renamed (scene_name is not a reliable way
+ * back to the activity that produced it, but registry_key always is).
+ */
+export function getActivityByRegistryKey(
+  registryKey: string
+): ActivityDefinition | undefined {
+  return Object.values(ACTIVITY_CATALOG).find(
+    (activity) => activity.registryKey === registryKey
+  )
 }

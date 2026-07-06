@@ -44,4 +44,6 @@ export type SessionRecord = {
   updatedAt: string
   startedAt?: string
   completedAt?: string
+  /** How far playback actually got, in ms - set when the session reaches a terminal state. */
+  finalElapsedMs?: number
 }

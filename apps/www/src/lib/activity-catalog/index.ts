@@ -1,4 +1,9 @@
-export { ACTIVITY_CATALOG, ACTIVITY_IDS, getActivity } from "./catalog"
+export {
+  ACTIVITY_CATALOG,
+  ACTIVITY_IDS,
+  getActivity,
+  getActivityByRegistryKey,
+} from "./catalog"
 export type {
   ActivityConfigValues,
   ActivityDefinition,

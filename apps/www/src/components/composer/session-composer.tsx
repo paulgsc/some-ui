@@ -7,13 +7,18 @@ import { cn } from "some-ui-utils"
 
 import { getActivity, sequenceScenes } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import type { SessionRecord } from "@/lib/tenant"
 import { useCreateSession, useUpdateSession } from "@/lib/tenant"
 
 import { ActivityPickerStep } from "./activity-picker-step"
 import { ArrangementStep } from "./arrangement-step"
 import { ConfigureStep } from "./configure-step"
 import { ReviewStep } from "./review-step"
-import { buildSessionActivities, defaultSessionName } from "./utils"
+import {
+  buildSessionActivities,
+  defaultSessionName,
+  totalDurationOfScenes,
+} from "./utils"
 
 type ArrangementMode = "basic" | "advanced"
 type ComposerStep = 1 | 2 | 3 | 4
@@ -29,10 +34,13 @@ const STEP_LABELS: Record<ComposerStep, string> = {
 
 type SessionComposerProps = {
   initialActivity?: ActivityId
+  /** When set, the composer edits this draft in place instead of creating a new session. */
+  existingSession?: SessionRecord
 }
 
 export const SessionComposer = ({
   initialActivity,
+  existingSession,
 }: SessionComposerProps): JSX.Element => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -41,16 +49,32 @@ export const SessionComposer = ({
 
   const [step, setStep] = useState<ComposerStep>(1)
   const [selectedIds, setSelectedIds] = useState<Array<ActivityId>>(() =>
-    initialActivity ? [initialActivity] : []
+    existingSession
+      ? existingSession.activities.map((activity) => activity.activityId)
+      : initialActivity
+        ? [initialActivity]
+        : []
   )
   const [configs, setConfigs] = useState<
     Partial<Record<ActivityId, ActivityConfigValues>>
-  >({})
-  const [arrangementMode, setArrangementMode] =
-    useState<ArrangementMode>("basic")
+  >(() => {
+    if (!existingSession) return {}
+    const seeded: Partial<Record<ActivityId, ActivityConfigValues>> = {}
+    for (const activity of existingSession.activities) {
+      seeded[activity.activityId] = activity.config
+    }
+    return seeded
+  })
+  const [arrangementMode, setArrangementMode] = useState<ArrangementMode>(
+    () => existingSession?.layoutMode ?? "basic"
+  )
   const [advancedScenes, setAdvancedScenes] =
-    useState<Array<SceneConfig> | null>(null)
-  const [sessionName, setSessionName] = useState("")
+    useState<Array<SceneConfig> | null>(() =>
+      existingSession?.layoutMode === "advanced" ? existingSession.scenes : null
+    )
+  const [sessionName, setSessionName] = useState(
+    () => existingSession?.name ?? ""
+  )
 
   const activities = buildSessionActivities(selectedIds, configs)
   const basicScenes = sequenceScenes(activities)
@@ -108,6 +132,28 @@ export const SessionComposer = ({
   const finalName = sessionName.trim() || defaultSessionName(selectedIds)
 
   const handleSaveDraft = (): void => {
+    if (existingSession) {
+      updateSession.mutate(
+        {
+          id: existingSession.id,
+          patch: {
+            name: finalName,
+            activities,
+            scenes,
+            layoutMode: arrangementMode,
+            totalDurationMs: totalDurationOfScenes(scenes),
+          },
+        },
+        {
+          onSuccess: () => {
+            toast({ title: "Draft updated" })
+            void navigate({ to: "/sessions" })
+          },
+        }
+      )
+      return
+    }
+
     createSession.mutate(
       { name: finalName, activities, scenes, layoutMode: arrangementMode },
       {
@@ -120,6 +166,32 @@ export const SessionComposer = ({
   }
 
   const handleSaveAndPlay = (): void => {
+    if (existingSession) {
+      updateSession.mutate(
+        {
+          id: existingSession.id,
+          patch: {
+            name: finalName,
+            activities,
+            scenes,
+            layoutMode: arrangementMode,
+            totalDurationMs: totalDurationOfScenes(scenes),
+            status: "active",
+            startedAt: new Date().toISOString(),
+          },
+        },
+        {
+          onSuccess: (session) => {
+            void navigate({
+              to: "/sessions/$sessionId",
+              params: { sessionId: session.id },
+            })
+          },
+        }
+      )
+      return
+    }
+
     createSession.mutate(
       { name: finalName, activities, scenes, layoutMode: arrangementMode },
       {

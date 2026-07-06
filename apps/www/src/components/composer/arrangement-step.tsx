@@ -35,7 +35,9 @@ import {
 } from "some-ui-shared"
 import { LayoutEditor } from "wireframes"
 
-import { formatTimecode, resequence } from "./utils"
+import { formatTimecode } from "@/lib/format"
+
+import { resequence } from "./utils"
 
 const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
 

@@ -12,9 +12,10 @@ import {
 
 import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import { formatDurationMs } from "@/lib/format"
 import { ActivityIcon } from "@/components/activity-icon"
 
-import { formatDurationMs, summarizeConfig } from "./utils"
+import { summarizeConfig, totalDurationOfScenes } from "./utils"
 
 type ReviewStepProps = {
   selectedIds: ReadonlyArray<ActivityId>
@@ -35,10 +36,7 @@ export const ReviewStep = ({
   onSessionNameChange,
   defaultName,
 }: ReviewStepProps): JSX.Element => {
-  const totalDurationMs = scenes.reduce(
-    (max, scene) => Math.max(max, scene.start_time + scene.duration),
-    0
-  )
+  const totalDurationMs = totalDurationOfScenes(scenes)
 
   return (
     <div className="space-y-4">
