@@ -78,7 +78,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   }
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="flex h-full min-h-0 w-full flex-col gap-4">
       <SessionViewport />
       <NowNextStrip scenes={session.scenes} />
       <TransportControls onPlay={() => void start()} />
