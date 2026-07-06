@@ -20,6 +20,8 @@ import {
   SidebarTrigger,
 } from "some-ui-shared"
 
+import { Toaster } from "@/components/toaster"
+
 type NavItem = {
   to: "/" | "/sessions" | "/profile" | "/settings"
   label: string
@@ -79,6 +81,7 @@ const DashboardLayout = (): JSX.Element => {
           <Outlet />
         </div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   )
 }
