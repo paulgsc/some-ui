@@ -71,13 +71,20 @@ function buildEslintCommands(files) {
 /**
  * TypeScript per-package execution (project-based)
  *
- * Uses tsconfig.json in each package root.
+ * Prefers tsconfig.build.json when a package has one - that's the config
+ * each package's own `build` script type-checks against (excluding
+ * stories/demo/recap sources and other packages' source trees pulled in
+ * only for editor tooling), so it's the meaningful gate for a commit hook.
+ * Falls back to tsconfig.json for packages that don't define a build config.
  */
 function buildTscCommands(files) {
   const grouped = groupByPackage(files)
 
   return [...grouped.keys()].map((pkgRoot) => {
-    return ["sh -c", `'cd "${pkgRoot}" && tsc -p tsconfig.json --noEmit'`].join(
+    const project = fs.existsSync(path.join(pkgRoot, "tsconfig.build.json"))
+      ? "tsconfig.build.json"
+      : "tsconfig.json"
+    return ["sh -c", `'cd "${pkgRoot}" && tsc -p ${project} --noEmit'`].join(
       " "
     )
   })
