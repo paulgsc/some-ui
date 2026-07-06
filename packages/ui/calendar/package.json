@@ -49,10 +49,10 @@
       "require": "./dist/some-ui-calendar.cjs.js",
       "default": "./dist/some-ui-calendar.es.js"
     },
-    "./style.css": "./dist/some-ui-calendar.css"
+    "./style.css": "./dist/calendar.css"
   },
   "dependencies": {
     "lucide-react": "^0.507.0"
   },
-  "style": "./dist/some-ui-calendar.css"
+  "style": "./dist/calendar.css"
 }
