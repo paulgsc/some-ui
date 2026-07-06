@@ -65,7 +65,7 @@
       "require": "./dist/@some-ui/slideshow.cjs.js",
       "default": "./dist/@some-ui/slideshow.es.js"
     },
-    "./style.css": "./dist/@some-ui/slideshow.css"
+    "./style.css": "./dist/slideshow.css"
   },
-  "style": "./dist/@some-ui/slideshow.css"
+  "style": "./dist/slideshow.css"
 }

@@ -1,0 +1,131 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
+
+import { createProfileRepository } from "./profile-repository"
+import type {
+  CreateSessionInput,
+  UpdateSessionInput,
+} from "./sessions-repository"
+import { createSessionsRepository } from "./sessions-repository"
+import { createSettingsRepository } from "./settings-repository"
+import type { SessionRecord, UserProfile, UserSettings } from "./types"
+
+const profileRepository = createProfileRepository()
+const settingsRepository = createSettingsRepository()
+const sessionsRepository = createSessionsRepository()
+
+const profileKey = ["tenant", "profile"] as const
+const settingsKey = ["tenant", "settings"] as const
+const sessionsKey = ["tenant", "sessions"] as const
+const sessionKey = (id: string): readonly [string, string, string] =>
+  ["tenant", "sessions", id] as const
+
+export function useProfile(): UseQueryResult<UserProfile> {
+  return useQuery({
+    queryKey: profileKey,
+    queryFn: () => profileRepository.get(),
+  })
+}
+
+export function useUpdateProfile(): UseMutationResult<
+  UserProfile,
+  Error,
+  UserProfile
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (profile: UserProfile) => profileRepository.save(profile),
+    onSuccess: (profile) => {
+      queryClient.setQueryData(profileKey, profile)
+    },
+  })
+}
+
+export function useSettings(): UseQueryResult<UserSettings> {
+  return useQuery({
+    queryKey: settingsKey,
+    queryFn: () => settingsRepository.get(),
+  })
+}
+
+export function useUpdateSettings(): UseMutationResult<
+  UserSettings,
+  Error,
+  UserSettings
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (settings: UserSettings) => settingsRepository.save(settings),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(settingsKey, settings)
+    },
+  })
+}
+
+export function useSessions(): UseQueryResult<Array<SessionRecord>> {
+  return useQuery({
+    queryKey: sessionsKey,
+    queryFn: () => sessionsRepository.list(),
+  })
+}
+
+export function useSession(id: string): UseQueryResult<SessionRecord | null> {
+  return useQuery({
+    queryKey: sessionKey(id),
+    queryFn: () => sessionsRepository.get(id),
+    enabled: id.length > 0,
+  })
+}
+
+export function useCreateSession(): UseMutationResult<
+  SessionRecord,
+  Error,
+  CreateSessionInput
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSessionInput) => sessionsRepository.create(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+    },
+  })
+}
+
+export function useUpdateSession(): UseMutationResult<
+  SessionRecord,
+  Error,
+  { id: string; patch: UpdateSessionInput }
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }) => sessionsRepository.update(id, patch),
+    onSuccess: (session) => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+      queryClient.setQueryData(sessionKey(session.id), session)
+    },
+  })
+}
+
+export function useDeleteSession(): UseMutationResult<void, Error, string> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => sessionsRepository.remove(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+    },
+  })
+}
+
+export function useDuplicateSession(): UseMutationResult<
+  SessionRecord,
+  Error,
+  string
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => sessionsRepository.duplicate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+    },
+  })
+}

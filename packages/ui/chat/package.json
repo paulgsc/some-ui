@@ -57,7 +57,7 @@
       "require": "./dist/@some-ui/chat.cjs.js",
       "default": "./dist/@some-ui/chat.es.js"
     },
-    "./style.css": "./dist/@some-ui/chat.css"
+    "./style.css": "./dist/chat.css"
   },
-  "style": "./dist/@some-ui/chat.css"
+  "style": "./dist/chat.css"
 }
