@@ -82,7 +82,11 @@ export const OrchestratedYouTubeViewport = <K extends string>({
               componentRegistry,
               panel.registry_key,
               panel.props ?? {},
-              { enhanceComponent: withFocus(region) }
+              {
+                enhanceComponent: withFocus(region),
+                withErrorBoundary: true,
+                withSuspense: true,
+              }
             )
 
           panels[region] ??= []

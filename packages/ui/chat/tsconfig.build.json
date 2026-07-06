@@ -12,7 +12,8 @@
     "vite.config*.ts",
     "vitest.*.ts",
     "../../../assets/**/*",
-    "**/data/**",
+    "**/data/chat-messages.ts",
+    "**/data/index.ts",
     "**/demo/**",
     "../../some-content/src/**/*"
   ]
