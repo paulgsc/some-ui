@@ -1,0 +1,200 @@
+import type { JSX } from "react"
+import { useReducer } from "react"
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import type { DragEndEvent } from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import {
+  editorReducer,
+  EditSceneDialog,
+  OrchestratorTimeline,
+} from "@some-ui/slideshow"
+import type { EditorState } from "@some-ui/slideshow"
+import { ChevronDown } from "lucide-react"
+import type { SceneConfig } from "some-types-utils"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Switch,
+} from "some-ui-shared"
+import { LayoutEditor } from "wireframes"
+
+import { formatTimecode } from "@/lib/format"
+
+import { resequence } from "./utils"
+
+const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
+
+type ArrangementStepProps = {
+  basicScenes: Array<SceneConfig>
+  mode: "basic" | "advanced"
+  advancedScenes: Array<SceneConfig> | null
+  onEnableAdvanced: () => void
+  onDisableAdvanced: () => void
+  onScenesChange: (scenes: Array<SceneConfig>) => void
+}
+
+export const ArrangementStep = ({
+  basicScenes,
+  mode,
+  advancedScenes,
+  onEnableAdvanced,
+  onDisableAdvanced,
+  onScenesChange,
+}: ArrangementStepProps): JSX.Element => {
+  const [editorState, dispatchEditor] = useReducer(
+    editorReducer,
+    CLOSED_EDITOR_STATE
+  )
+  const scenes =
+    mode === "advanced" ? (advancedScenes ?? basicScenes) : basicScenes
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragEnd = (event: DragEndEvent): void => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = scenes.findIndex((_, i) => `scene-${i}` === active.id)
+    const newIndex = scenes.findIndex((_, i) => `scene-${i}` === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    onScenesChange(resequence(arrayMove(scenes, oldIndex, newIndex)))
+  }
+
+  const handleEditScene = (index: number): void => {
+    const scene = scenes[index]
+    dispatchEditor({ type: "OPEN_FOR_EDIT", sceneIndex: index, scene })
+  }
+
+  const handleSaveEdit = (
+    sceneIndex: number,
+    updatedScene: SceneConfig
+  ): void => {
+    const updated = [...scenes]
+    updated[sceneIndex] = updatedScene
+    onScenesChange(resequence(updated))
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="flex items-center justify-between gap-4 pt-6">
+          <div>
+            <p className="font-medium">Advanced arrangement</p>
+            <p className="text-muted-foreground text-sm">
+              {mode === "advanced"
+                ? "You are editing the real scene timeline the orchestrator plays from."
+                : "Activities play back-to-back in the order you chose. Turn this on to fine-tune timing or explore layout."}
+            </p>
+          </div>
+          <Switch
+            checked={mode === "advanced"}
+            onCheckedChange={(checked) =>
+              checked ? onEnableAdvanced() : onDisableAdvanced()
+            }
+          />
+        </CardContent>
+      </Card>
+
+      {mode === "basic" ? (
+        <div className="space-y-2">
+          {basicScenes.map((scene, index) => (
+            <Card key={scene.scene_name}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="flex items-center gap-3">
+                  <span className="bg-muted flex size-6 items-center justify-center rounded-full text-xs font-medium">
+                    {index + 1}
+                  </span>
+                  <p className="font-medium">{scene.scene_name}</p>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  starts at {formatTimecode(scene.start_time)} •{" "}
+                  {Math.round(scene.duration / 60_000)} min
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Scene timeline</CardTitle>
+              <p className="text-muted-foreground text-sm">
+                This is the same timeline the orchestrator uses to drive
+                playback. A &quot;scene&quot; is one activity running for a
+                stretch of time. Drag to reorder, or click a scene to rename it
+                or change its length.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={scenes.map((_, i) => `scene-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <OrchestratorTimeline
+                    scenes={scenes}
+                    onEditScene={handleEditScene}
+                  />
+                </SortableContext>
+              </DndContext>
+            </CardContent>
+          </Card>
+
+          <Collapsible>
+            <Card>
+              <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-6 text-left">
+                <div>
+                  <p className="font-medium">Explore the layout engine</p>
+                  <p className="text-muted-foreground text-sm">
+                    Each scene renders into named regions on screen - a
+                    &quot;layout&quot;. This is the same tool that layout is
+                    built with. Changes here are for exploration only and do not
+                    change your session.
+                  </p>
+                </div>
+                <ChevronDown className="size-5 shrink-0" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="overflow-x-auto border-t">
+                  <div className="min-w-[1280px]">
+                    <LayoutEditor />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
+          <EditSceneDialog
+            state={editorState}
+            dispatch={dispatchEditor}
+            onSaveEdit={handleSaveEdit}
+          />
+        </>
+      )}
+    </div>
+  )
+}

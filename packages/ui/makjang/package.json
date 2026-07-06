@@ -18,7 +18,7 @@
       "require": "./dist/some-ui-makjang.cjs.js",
       "default": "./dist/some-ui-makjang.es.js"
     },
-    "./style.css": "./dist/some-ui-makjang.css"
+    "./style.css": "./dist/makjang.css"
   },
   "files": [
     "dist"
@@ -57,5 +57,5 @@
   "types": "./dist/some-ui-makjang.d.ts",
   "unpkg": "makjang.umd.js",
   "version": "0.0.5",
-  "style": "./dist/some-ui-makjang.css"
+  "style": "./dist/makjang.css"
 }

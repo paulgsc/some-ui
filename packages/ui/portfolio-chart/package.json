@@ -24,7 +24,7 @@
       "require": "./dist/some-ui-portfolio-chart.cjs.js",
       "default": "./dist/some-ui-portfolio-chart.es.js"
     },
-    "./style.css": "./dist/some-ui-portfolio-chart.css"
+    "./style.css": "./dist/portfolio.css"
   },
   "files": [
     "dist"
@@ -63,5 +63,5 @@
   "types": "./dist/some-ui-portfolio-chart.d.ts",
   "unpkg": "portfolio-chart.umd.js",
   "version": "0.0.5",
-  "style": "./dist/some-ui-portfolio-chart.css"
+  "style": "./dist/portfolio.css"
 }

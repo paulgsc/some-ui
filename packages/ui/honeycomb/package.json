@@ -23,6 +23,7 @@
     "maishatu-fetch-kit": "workspace:*",
     "some-hexagon": "workspace:*",
     "hangul-game-core": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5"
@@ -58,7 +59,7 @@
       "require": "./dist/some-ui-honeycomb.cjs.js",
       "default": "./dist/some-ui-honeycomb.es.js"
     },
-    "./style.css": "./dist/some-ui-honeycomb.css"
+    "./style.css": "./dist/honeycomb.css"
   },
-  "style": "./dist/some-ui-honeycomb.css"
+  "style": "./dist/honeycomb.css"
 }

@@ -18,7 +18,9 @@ export {
   useObsStatusWebSocket,
   useNowPlayingWebSocket,
   useOrchestrator,
+  useMockOrchestrator,
 } from "./socket-tenants"
+export type { UseMockOrchestratorConfig } from "./socket-tenants"
 export {
   useSpeechQueueActions,
   useSpeechQueue,

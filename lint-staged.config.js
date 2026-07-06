@@ -41,6 +41,22 @@ function groupByPackage(files) {
 const ESLINT_CHUNK_SIZE = 8
 
 /**
+ * Escapes a value for safe interpolation inside a double-quoted string in
+ * the nested `sh -c '...'` invocations below (e.g. TanStack Router's
+ * $paramName.tsx files need their `$` escaped so the shell doesn't try to
+ * expand it as a variable). Order matters: backslashes must be escaped
+ * first, otherwise the backslashes introduced by the later replacements
+ * would themselves get doubled.
+ */
+function escapeForDoubleQuotedShell(value) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/`/g, "\\`")
+    .replace(/\$/g, "\\$")
+}
+
+/**
  * ESLint per-package execution, chunked to cap per-invocation memory.
  */
 function buildEslintCommands(files) {
@@ -48,14 +64,20 @@ function buildEslintCommands(files) {
   const commands = []
 
   for (const [pkgRoot, pkgFiles] of grouped.entries()) {
+    const safePkgRoot = escapeForDoubleQuotedShell(pkgRoot)
     for (let i = 0; i < pkgFiles.length; i += ESLINT_CHUNK_SIZE) {
       const chunk = pkgFiles.slice(i, i + ESLINT_CHUNK_SIZE)
       const relative = chunk
-        .map((f) => `"${path.relative(pkgRoot, f)}"`)
+        .map(
+          (f) => `"${escapeForDoubleQuotedShell(path.relative(pkgRoot, f))}"`
+        )
         .join(" ")
 
       commands.push(
-        ["sh -c", `'cd "${pkgRoot}" && eslint --fix --no-ignore ${relative}'`].join(" ")
+        [
+          "sh -c",
+          `'cd "${safePkgRoot}" && eslint --fix --no-ignore ${relative}'`,
+        ].join(" ")
       )
     }
   }
@@ -66,15 +88,24 @@ function buildEslintCommands(files) {
 /**
  * TypeScript per-package execution (project-based)
  *
- * Uses tsconfig.json in each package root.
+ * Prefers tsconfig.build.json when a package has one - that's the config
+ * each package's own `build` script type-checks against (excluding
+ * stories/demo/recap sources and other packages' source trees pulled in
+ * only for editor tooling), so it's the meaningful gate for a commit hook.
+ * Falls back to tsconfig.json for packages that don't define a build config.
  */
 function buildTscCommands(files) {
   const grouped = groupByPackage(files)
 
   return [...grouped.keys()].map((pkgRoot) => {
-    return ["sh -c", `'cd "${pkgRoot}" && tsc -p tsconfig.json --noEmit'`].join(
-      " "
-    )
+    const project = fs.existsSync(path.join(pkgRoot, "tsconfig.build.json"))
+      ? "tsconfig.build.json"
+      : "tsconfig.json"
+    const safePkgRoot = escapeForDoubleQuotedShell(pkgRoot)
+    return [
+      "sh -c",
+      `'cd "${safePkgRoot}" && tsc -p ${project} --noEmit'`,
+    ].join(" ")
   })
 }
 
