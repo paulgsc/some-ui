@@ -1,4 +1,4 @@
-import type { UserConfig } from "vite"
+import type { PluginOption, UserConfig } from "vite"
 
 export type ViteConfigOptions = {
   /** Package name for the library build */
@@ -22,11 +22,20 @@ export type ViteConfigOptions = {
    * Adds the canonical dts exclude globs for those cross-package paths.
    */
   contentPackage?: boolean
+  /**
+   * Overrides the default blanket "**\/data/**" dts exclude that
+   * `contentPackage` adds. Some packages' `data/` directories mix genuinely
+   * unbuildable fixtures (e.g. files importing image assets outside the
+   * package's rootDir) with plain, exportable data modules - pass specific
+   * globs here (e.g. ["**\/data/chat-messages.ts"]) to exclude only the
+   * former and let the rest generate real declarations.
+   */
+  contentPackageDataExclude?: Array<string>
   tsConfigPaths?: Record<"projects", Array<string>>
   /** Build formats to generate */
   formats?: Array<"es" | "cjs" | "umd" | "iife">
   /** Additional plugins */
-  additionalPlugins?: Array<any>
+  additionalPlugins?: Array<PluginOption>
   /** Override any part of the config */
   configOverrides?: Partial<UserConfig>
   /** Whether to auto-update package.json with build fields */

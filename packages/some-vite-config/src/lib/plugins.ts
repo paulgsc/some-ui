@@ -5,11 +5,12 @@ import tsConfigPaths from "vite-tsconfig-paths"
 
 import type { ViteConfigOptions } from "../types/index.js"
 
-export function createPlugins(options: ViteConfigOptions): PluginOption[] {
+export function createPlugins(options: ViteConfigOptions): Array<PluginOption> {
   const {
     dtsOptions = {},
     additionalPlugins = [],
     contentPackage = false,
+    contentPackageDataExclude,
     tsConfigPaths: { projects = ["./tsconfig.json"] } = {},
   } = options
 
@@ -28,7 +29,7 @@ export function createPlugins(options: ViteConfigOptions): PluginOption[] {
   const contentPackageExclude = contentPackage
     ? [
         "**/demo/**",
-        "**/data/**",
+        ...(contentPackageDataExclude ?? ["**/data/**"]),
         "../../../assets/**/*",
         "../../some-content/src/**/*",
       ]

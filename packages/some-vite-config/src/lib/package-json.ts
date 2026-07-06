@@ -18,26 +18,32 @@ export type PackageJsonFields = {
 }
 
 /**
- * Vite's JS/d.ts bundling nests output under the full (possibly scoped)
- * packageName, e.g. dist/@some-ui/chat.es.js. Its CSS extraction doesn't -
- * it always flattens to the last path segment, e.g. dist/chat.css. Use this
- * wherever we compute the CSS filename so generated package.json fields
- * point at a file that actually exists.
+ * Vite's JS/d.ts bundling nests output under the `packageName` option
+ * verbatim, e.g. dist/@some-ui/chat.es.js. Its CSS extraction doesn't - it
+ * names the bundle from package.json's actual (possibly scoped) `name`
+ * field and always flattens that to the last path segment, e.g.
+ * dist/chat.css, *regardless* of what `packageName` option a given
+ * package's vite.config.ts happens to pass (several packages pass an
+ * unscoped alias here, e.g. packageName: "some-ui-honeycomb" for a
+ * package.json named "@some-ui/honeycomb"). Always derive this from the
+ * real package.json name, not the packageName option, so generated
+ * package.json fields point at a file that actually exists.
  */
-function cssBaseName(packageName: string): string {
-  const parts = packageName.split("/")
-  return parts[parts.length - 1] ?? packageName
+function cssBaseName(realPackageName: string): string {
+  const parts = realPackageName.split("/")
+  return parts[parts.length - 1] ?? realPackageName
 }
 
 export function generatePackageJsonFields(
-  options: ViteConfigOptions
+  options: ViteConfigOptions,
+  realPackageName: string = options.packageName
 ): PackageJsonFields {
   const { packageName, formats = ["es", "cjs"] } = options
 
   const hasESM = formats.includes("es")
   const hasCJS = formats.includes("cjs")
   const hasUMD = formats.includes("umd")
-  const cssFileName = `dist/${cssBaseName(packageName)}.css`
+  const cssFileName = `dist/${cssBaseName(realPackageName)}.css`
 
   // Generate file paths
   const distFiles: Array<string> = []
@@ -124,9 +130,13 @@ export function updatePackageJson(
     const packageJsonContent = readFileSync(packageJsonPath, "utf-8")
     const existingPackageJson: Record<string, unknown> =
       JSON.parse(packageJsonContent)
+    const realPackageName =
+      typeof existingPackageJson.name === "string"
+        ? existingPackageJson.name
+        : options.packageName
 
     // Generate new fields
-    const newFields = generatePackageJsonFields(options)
+    const newFields = generatePackageJsonFields(options, realPackageName)
 
     // Merge with existing package.json, new fields take precedence - but an
     // undefined newField (e.g. `type` when the package isn't ESM-only) must
