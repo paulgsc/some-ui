@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "concurrently": "10.0.3"
   },
   "exports": {
     ".": {
@@ -53,7 +54,7 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "sideEffects": [

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -28,7 +28,8 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "concurrently": "10.0.3"
   },
   "repository": {
     "type": "git",

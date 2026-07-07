@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -23,18 +23,19 @@
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.7",
+    "@some-ui/styles": "workspace:*",
     "@types/canvas-confetti": "1.9.0",
     "canvas-confetti": "1.9.3",
     "framer-motion": "11.15.0",
     "lucide-react": "^0.503.0",
-    "some-ui-shared": "workspace:*",
     "some-ui-input": "workspace:*",
-    "@some-ui/styles": "workspace:*",
+    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "concurrently": "10.0.3"
   },
   "repository": {
     "type": "git",

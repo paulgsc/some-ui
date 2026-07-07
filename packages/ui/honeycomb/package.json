@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "rollup --bundleConfigAsCjs -c --watch & tsc --watch",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
@@ -20,17 +20,18 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/styles": "workspace:*",
+    "hangul-game-core": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "some-hexagon": "workspace:*",
-    "hangul-game-core": "workspace:*",
-    "@some-ui/styles": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "concurrently": "10.0.3"
   },
   "repository": {
     "type": "git",
