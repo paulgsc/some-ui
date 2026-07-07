@@ -1220,6 +1220,9 @@ importers:
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.0.0)
+      prettier:
+        specifier: 3.4.2
+        version: 3.4.2
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0

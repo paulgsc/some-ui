@@ -13,7 +13,8 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -25,6 +26,7 @@
     "katex": "^0.16.28",
     "leetype-wasm": "workspace:*",
     "lucide-react": "^0.525.0",
+    "prettier": "3.4.2",
     "prismjs": "^1.30.0",
     "some-crossword": "workspace:*",
     "some-ui-shared": "workspace:*",

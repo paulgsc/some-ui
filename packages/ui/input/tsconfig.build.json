@@ -1,4 +1,11 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["**/*.stories.tsx", "**/*.stories.ts", "**/obs-monitor/**"]
+  "exclude": [
+    "**/*.stories.tsx",
+    "**/*.stories.ts",
+    "**/obs-monitor/**",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ]
 }
