@@ -19,14 +19,19 @@ export const Definition = ({
     >
       <p className="text-foreground leading-relaxed">
         {parts.map((part, index) => {
+          const cleanPart = part.replace(/\$/g, "")
+          const contentHash = cleanPart.slice(0, 10)
+          const blockKey = `block-${index}-${contentHash}`
+          const inlineKey = `inline-${index}-${contentHash}`
+          const textKey = `text-${index}-${contentHash}`
           if (part.startsWith("$$") && part.endsWith("$$")) {
             const latex = part.slice(2, -2)
-            return <MathExpression key={index} latex={latex} display />
+            return <MathExpression key={blockKey} latex={latex} display />
           } else if (part.startsWith("$") && part.endsWith("$")) {
             const latex = part.slice(1, -1)
-            return <MathExpression key={index} latex={latex} />
+            return <MathExpression key={inlineKey} latex={latex} />
           }
-          return <span key={index}>{part}</span>
+          return <span key={textKey}>{part}</span>
         })}
       </p>
     </div>

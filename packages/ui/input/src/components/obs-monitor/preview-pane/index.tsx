@@ -134,9 +134,9 @@ export const PreviewPane = ({ currentTime }: PreviewPaneProps): JSX.Element => {
             <CardTitle className="text-sm">Sources</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {currentState.sources.map((source, index) => (
+            {currentState.sources.map((source) => (
               <div
-                key={index}
+                key={`${currentState.scene}-${source.name}`}
                 className="bg-muted/50 flex items-center justify-between rounded p-2"
               >
                 <div className="flex items-center gap-2">
