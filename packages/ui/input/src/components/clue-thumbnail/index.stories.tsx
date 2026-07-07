@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof ClueThumbnail>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Input/Components/ClueThumbnail",
   component: ClueThumbnail,
-} as Meta
+} satisfies Meta
+
+export default meta

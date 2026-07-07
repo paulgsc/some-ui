@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Input/Components/OBSMonitor/ScriptSidebar",
   component: ScriptSidebar,
-} as Meta
+} satisfies Meta
+
+export default meta
