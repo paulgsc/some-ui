@@ -1,10 +1,7 @@
 import type { EventType } from "@input/types/timeline-events"
 import { describe, expect, it } from "vitest"
-import {
-  generateUID,
-  getEventRequirements,
-  validateAndParseJson,
-} from "./event-helpers"
+
+import { generateUID, getEventRequirements, validateAndParseJson } from "."
 
 describe("getEventRequirements", () => {
   const table: Array<

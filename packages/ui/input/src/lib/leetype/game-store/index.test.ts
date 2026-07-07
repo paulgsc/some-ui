@@ -1,7 +1,7 @@
 import type { GameRef, GameStats, TypedTypingGame } from "@input/types/leetype"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { createTypingGameStore } from "./game-store"
+import { createTypingGameStore } from "."
 
 function makeStats(overrides: Partial<GameStats> = {}): GameStats {
   return {

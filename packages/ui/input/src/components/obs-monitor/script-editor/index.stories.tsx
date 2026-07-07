@@ -11,7 +11,8 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta: Meta = {
   title: "UI/Input/Components/OBSMonitor/ScriptEditor",
   component: ScriptEditor,
-} as Meta
+}
+export default meta

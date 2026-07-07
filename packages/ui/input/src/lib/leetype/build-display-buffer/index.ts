@@ -1,4 +1,4 @@
-import { buildDisplayMap } from "./leetype-wasm-loader"
+import { buildDisplayMap } from "@input/lib/leetype/leetype-wasm-loader"
 
 export type DisplayChar = {
   char: string // the rendered character

@@ -11,7 +11,7 @@ import {
   deriveCursorIndex,
   deriveDisplayMap,
   sliceUserUnits,
-} from "./leetype"
+} from "."
 
 function makeStats(overrides: Partial<GameStats> = {}): GameStats {
   return {

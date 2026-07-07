@@ -1,11 +1,11 @@
+import { buildDisplayMap } from "@input/lib/leetype/leetype-wasm-loader"
 import { describe, expect, it, vi } from "vitest"
-import { buildDisplayBuffer } from "./build-display-buffer"
 
-vi.mock("./leetype-wasm-loader", () => ({
+import { buildDisplayBuffer } from "."
+
+vi.mock("@input/lib/leetype/leetype-wasm-loader", () => ({
   buildDisplayMap: vi.fn(),
 }))
-
-import { buildDisplayMap } from "./leetype-wasm-loader"
 
 describe("buildDisplayBuffer", () => {
   it("zips each character with its unit index on the happy path", () => {

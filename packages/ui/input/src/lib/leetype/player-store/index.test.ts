@@ -1,5 +1,6 @@
 import type { PlayerProgress, SolveRecord } from "@input/types/leetype"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
 import {
   ADAPTIVE_WPM_THRESHOLD,
   addSolve,
@@ -9,7 +10,7 @@ import {
   loadProgress,
   saveProgress,
   xpForNextLevel,
-} from "./player-store"
+} from "."
 
 const STORAGE_KEY = "leetyping_progress"
 
@@ -161,11 +162,7 @@ describe("addSolve", () => {
   it("accumulates XP and preserves prior solves across multiple calls", () => {
     const start: PlayerProgress = { xp: 0, level: 1, solves: [] }
     const first = addSolve(start, baseSolve({ challengeId: "a" }), "easy")
-    const second = addSolve(
-      first.next,
-      baseSolve({ challengeId: "b" }),
-      "easy"
-    )
+    const second = addSolve(first.next, baseSolve({ challengeId: "b" }), "easy")
 
     expect(second.next.xp).toBe(first.xpEarned + second.xpEarned)
     expect(second.next.solves).toHaveLength(2)
@@ -232,8 +229,6 @@ describe("loadProgress / saveProgress", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceededError")
     })
-    expect(() =>
-      saveProgress({ xp: 0, level: 1, solves: [] })
-    ).not.toThrow()
+    expect(() => saveProgress({ xp: 0, level: 1, solves: [] })).not.toThrow()
   })
 })
