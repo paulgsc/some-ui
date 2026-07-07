@@ -1,8 +1,19 @@
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
 import someUIEslint from "maishatu-eslint-kit"
+import tseslint from "typescript-eslint"
 
 const inputConfig = [
   ...someUIEslint,
+  // vitest-shims/*.ts re-export real source from sibling packages purely
+  // for Vite's runtime module resolution (see the files themselves) and
+  // are deliberately outside tsconfig.json's `include` so their
+  // cross-package relative imports don't trip tsc's rootDir check. Same
+  // "not found by project service" shape as vitest.config.ts above —
+  // disable type-aware parsing instead of adding them to the tsc project.
+  {
+    files: ["vitest-shims/**/*.ts"],
+    ...tseslint.configs.disableTypeChecked,
+  },
   {
     files: ["**/*.{js,mjs,ts,tsx}"],
     settings: {

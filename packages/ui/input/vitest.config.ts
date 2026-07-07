@@ -51,6 +51,22 @@ export default defineConfig({
         __dirname,
         "./src/test/mocks/viewport-rotation-stub.ts"
       ),
+      // `some-ui-utils` and `@some-ui/slideshow` are real (non-wasm)
+      // workspace packages, but their package.json `exports` only point at
+      // `dist/`, which is never built here — see the shim files for why.
+      // Unlike the wasm stubs above, these re-export the real source so
+      // tests exercise genuine logic, not a fake. They live in
+      // `vitest-shims/` (outside `src/`, outside tsconfig.json's `include`)
+      // because their cross-package relative imports would otherwise trip
+      // tsc's `rootDir` check for this package.
+      "some-ui-utils": path.resolve(
+        __dirname,
+        "./vitest-shims/some-ui-utils-shim.ts"
+      ),
+      "@some-ui/slideshow": path.resolve(
+        __dirname,
+        "./vitest-shims/some-ui-slideshow-shim.ts"
+      ),
     },
   },
 })
