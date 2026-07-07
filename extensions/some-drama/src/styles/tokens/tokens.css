@@ -1,49 +1,73 @@
 /* ── Drama Tracker — Design Tokens ─────────────────────────────────────────
    All CSS custom properties in one place for easy theming.
-   Optimized for dark theme environments while maintaining a bright, colorful mood.
+
+   DRM-VIS S1 (#437): reconciled to the drama-capture-ui wireframe floor — a
+   cinematic cool near-black blue-violet base with a full emotional-spectrum
+   accent range (gold → peach → pink → magenta → violet → indigo → blue),
+   white-alpha hairlines, and deep black shadows. The old warm-rose values are
+   projected onto the floor's palette; every token name is preserved so no
+   component references break while later DRM-VIS stories (S2–S5) refine the
+   pieces that still hardcode warm values.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
   /* ── UnoCSS spacing scale (not emitted when preflights are off) ─────── */
   --spacing: 0.25rem;
 
-  /* ── Core Brand Colors — Vibrant & saturated for dark backgrounds ─────── */
-  --dc-peach: hsl(18 95% 65%);
-  --dc-rose: hsl(340 85% 60%);
-  --dc-gold: hsl(42 100% 55%);
-  --dc-coral: hsl(12 90% 62%);
+  /* ── Floor base — cinematic cool dark (wireframe drama.css) ───────────── */
+  --dc-bg: #0a0a12;
+  --dc-surface: #141420;
+  --dc-surface-2: #1b1b2a;
+  --dc-line: rgb(255 255 255 / 8%);
+  --dc-line-strong: rgb(255 255 255 / 16%);
+  --dc-text: #ece9f5;
+  --dc-text-dim: #9b96b3;
+  --dc-text-faint: #6b6782;
 
-  /* ── Surface Colors — Semi-opaque with solid fallbacks ────────────────── */
-  --dc-surface-solid: hsl(25 30% 18%);
-  --dc-surface-glass: hsl(25 25% 15% / 0.92);
-  --dc-surface-elevated: hsl(25 20% 22% / 0.96);
+  /* ── Emotional spectrum (wireframe floor) ─────────────────────────────── */
+  --dc-gold: #f2b35c;
+  --dc-peach: #f0997a;
+  --dc-pink: #e87aa0;
+  --dc-magenta: #d65794;
+  --dc-violet: #8b6fc4;
+  --dc-indigo: #5f6fc0;
+  --dc-blue: #5aa0d6;
 
-  /* ── Text Colors — High contrast for legibility ───────────────────────── */
-  --dc-text-primary: hsl(30 20% 95%);
-  --dc-text-secondary: hsl(30 15% 75%);
-  --dc-text-muted: hsl(30 10% 55%);
-  --dc-text-dark: hsl(25 50% 12%);
+  /* ── Legacy aliases — mapped onto the spectrum ────────────────────────── */
+  --dc-rose: var(--dc-pink); /* primary accent ≈ floor pink */
+  --dc-coral: #ef8f6e;
 
-  /* ── Border Colors — Visible but subtle ───────────────────────────────── */
-  --dc-border: hsl(340 40% 45% / 0.5);
-  --dc-border-strong: hsl(340 50% 55% / 0.7);
-  --dc-border-glow: hsl(340 60% 65% / 0.4);
+  /* ── Surface Colors — cool dark, semi-opaque with solid fallbacks ─────── */
+  --dc-surface-solid: var(--dc-surface);
+  --dc-surface-glass: rgb(20 20 32 / 92%);
+  --dc-surface-elevated: rgb(27 27 42 / 96%);
 
-  /* ── Shadows — Colored shadows for depth on dark backgrounds ──────────── */
-  --dc-shadow: hsl(340 60% 20% / 0.5);
-  --dc-shadow-strong: hsl(340 70% 15% / 0.7);
-  --dc-shadow-glow: hsl(340 80% 55% / 0.35);
+  /* ── Text Colors — floor scale (aliases kept for existing consumers) ──── */
+  --dc-text-primary: var(--dc-text);
+  --dc-text-secondary: var(--dc-text-dim);
+  --dc-text-muted: var(--dc-text-faint);
+  --dc-text-dark: #0a0a12;
 
-  /* ── Text Shadows — For text to pop on any background ─────────────────── */
-  --dc-text-glow-warm: 0 0 12px hsl(18 90% 60% / 0.5),
-    0 0 4px hsl(0 0% 0% / 0.8), 0 1px 2px hsl(0 0% 0% / 0.6);
-  --dc-text-glow-gold: 0 0 10px hsl(42 100% 55% / 0.6),
-    0 0 4px hsl(0 0% 0% / 0.8);
-  --dc-text-glow-subtle: 0 1px 3px hsl(0 0% 0% / 0.7),
-    0 0 8px hsl(340 60% 50% / 0.3);
+  /* ── Border Colors — white-alpha hairlines (floor) ────────────────────── */
+  --dc-border: var(--dc-line);
+  --dc-border-strong: var(--dc-line-strong);
+  --dc-border-glow: hsl(var(--dc-mood-hue) 65% 62% / 40%);
+
+  /* ── Shadows — deep black for cinematic depth on dark surfaces ────────── */
+  --dc-shadow: rgb(0 0 0 / 50%);
+  --dc-shadow-strong: rgb(0 0 0 / 72%);
+  --dc-shadow-glow: hsl(var(--dc-mood-hue) 70% 55% / 30%);
+
+  /* ── Text Shadows — subtle legibility, not warm glow ──────────────────── */
+  --dc-text-glow-warm: 0 1px 2px hsl(0deg 0% 0% / 70%),
+    0 0 10px hsl(var(--dc-mood-hue) 70% 55% / 25%);
+  --dc-text-glow-gold: 0 0 10px hsl(38deg 85% 60% / 45%),
+    0 1px 2px hsl(0deg 0% 0% / 70%);
+  --dc-text-glow-subtle: 0 1px 3px hsl(0deg 0% 0% / 70%),
+    0 0 8px hsl(var(--dc-mood-hue) 60% 55% / 22%);
 
   /* ── Radii ────────────────────────────────────────────────────────────── */
-  --dc-r-card: 20px;
+  --dc-r-card: 22px;
   --dc-r-pill: 999px;
   --dc-r-sm: 8px;
 
@@ -56,17 +80,16 @@
   --dc-mood-hue: 340;
   --dc-prog-pct: 0%;
 
-  /* ── Emotion vector spectrum (ADR-002) ────────────────────────────────── */
-  --dc-warm: hsl(36 90% 64%);
-  --dc-cool: hsl(250 70% 68%);
-  --dc-tension: hsl(322 78% 62%);
-
+  /* ── Emotion vector spectrum (ADR-002) — aligned to the floor legend ──── */
+  --dc-warm: var(--dc-gold);
+  --dc-cool: var(--dc-indigo);
+  --dc-tension: var(--dc-magenta);
   --dj-bg: #fcfbf9; /* Notebook soft paper background */
   --dj-text: #2c2a29; /* High contrast readability charcoal */
   --dj-border: #e6e3df; /* Organic subtle baseline lines */
   --dj-accent: #634eb8; /* Single warm violet character accent color */
   --dj-muted: #8c8782; /* Auxiliary guidance text color */
-  --dj-surface: #ffffff; /* Foreground pristine element backing */
+  --dj-surface: #fff; /* Foreground pristine element backing */
   --dj-preview-bg: linear-gradient(
     135deg,
     #1e1b24 0%,
