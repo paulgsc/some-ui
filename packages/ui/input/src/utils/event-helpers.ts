@@ -1,7 +1,7 @@
 import type { EventType, ExistingChapter } from "@input/types/timeline-events"
 
 export const generateUID = (): string => {
-  return `chapter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `chapter_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
 
 export const getCurrentTimestamp = (): number => {
@@ -13,7 +13,8 @@ export const validateAndParseJson = (jsonString: string): any => {
     return JSON.parse(jsonString)
   } catch (e) {
     throw new Error(
-      `Invalid JSON: ${e instanceof Error ? e.message : "Unknown error"}`
+      `Invalid JSON: ${e instanceof Error ? e.message : "Unknown error"}`,
+      { cause: e }
     )
   }
 }
