@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Input/Components/DemoDice",
   component: DemoDice,
-} as Meta
+} satisfies Meta
+
+export default meta

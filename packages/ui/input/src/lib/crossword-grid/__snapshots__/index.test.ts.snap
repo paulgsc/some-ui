@@ -1,0 +1,111 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createCrossword: intersection consistency > matches the golden fixture for a fixed random sequence 1`] = `
+{
+  "crosswordGrid": {
+    "size": 6,
+    "words": [
+      {
+        "clueNumber": 1,
+        "direction": "down",
+        "length": 3,
+        "word": "cat",
+        "x": 3,
+        "y": 1,
+      },
+      {
+        "clueNumber": 1,
+        "direction": "across",
+        "length": 3,
+        "word": "car",
+        "x": 3,
+        "y": 1,
+      },
+      {
+        "clueNumber": 2,
+        "direction": "across",
+        "length": 3,
+        "word": "art",
+        "x": 1,
+        "y": 3,
+      },
+    ],
+  },
+  "grid": [
+    {
+      "clueNum": 1,
+      "clueNums": [
+        1,
+      ],
+      "direction": "down",
+      "letter": "c",
+      "solved": false,
+      "word": "cat",
+      "x": 3,
+      "y": 1,
+    },
+    {
+      "clueNum": undefined,
+      "clueNums": [],
+      "direction": "down",
+      "letter": "a",
+      "solved": false,
+      "word": "cat",
+      "x": 3,
+      "y": 2,
+    },
+    {
+      "clueNum": undefined,
+      "clueNums": [],
+      "direction": "down",
+      "letter": "t",
+      "solved": false,
+      "word": "cat",
+      "x": 3,
+      "y": 3,
+    },
+    {
+      "clueNum": undefined,
+      "clueNums": [],
+      "direction": "across",
+      "letter": "a",
+      "solved": false,
+      "word": "car",
+      "x": 4,
+      "y": 1,
+    },
+    {
+      "clueNum": undefined,
+      "clueNums": [],
+      "direction": "across",
+      "letter": "r",
+      "solved": false,
+      "word": "car",
+      "x": 5,
+      "y": 1,
+    },
+    {
+      "clueNum": 2,
+      "clueNums": [
+        2,
+      ],
+      "direction": "across",
+      "letter": "a",
+      "solved": false,
+      "word": "art",
+      "x": 1,
+      "y": 3,
+    },
+    {
+      "clueNum": undefined,
+      "clueNums": [],
+      "direction": "across",
+      "letter": "r",
+      "solved": false,
+      "word": "art",
+      "x": 2,
+      "y": 3,
+    },
+  ],
+}
+`;

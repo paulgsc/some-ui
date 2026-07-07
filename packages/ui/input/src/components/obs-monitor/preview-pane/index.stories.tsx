@@ -11,7 +11,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Input/Components/OBSMonitor/PreviewPane",
   component: PreviewPane,
-} as Meta
+} satisfies Meta
+
+export default meta

@@ -90,76 +90,88 @@ export const ScriptSidebar = ({
       {/* Script List */}
       <ScrollArea className="flex-1">
         <div className="p-2">
-          {filteredScripts.map((script) => (
-            <div
-              key={script.id}
-              className={`mb-2 cursor-pointer rounded-lg p-3 transition-colors ${
-                selectedScript === script.id
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "hover:bg-sidebar-primary"
-              }`}
-              onClick={() => onScriptSelect(script.id)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex items-center gap-2">
-                    <FileText className="text-muted-foreground size-4 flex-shrink-0" />
-                    <h3 className="truncate text-sm font-medium">
-                      {script.name}
-                    </h3>
+          {filteredScripts.map((script) => {
+            const handleKeyDown = (e: React.KeyboardEvent): void => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onScriptSelect(script.id)
+              }
+            }
+
+            return (
+              <div
+                role="button" // 🌟 Tells screen readers this is interactive
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
+                key={script.id}
+                className={`mb-2 cursor-pointer rounded-lg p-3 transition-colors ${
+                  selectedScript === script.id
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "hover:bg-sidebar-primary"
+                }`}
+                onClick={() => onScriptSelect(script.id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <FileText className="text-muted-foreground size-4 flex-shrink-0" />
+                      <h3 className="truncate text-sm font-medium">
+                        {script.name}
+                      </h3>
+                    </div>
+
+                    <div className="text-muted-foreground mb-2 flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {script.duration}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Layers className="size-3" />
+                        {script.events} events
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <Badge
+                        variant={
+                          script.status === "ready" ? "secondary" : "outline"
+                        }
+                        className="text-xs"
+                      >
+                        {script.status}
+                      </Badge>
+                      <span className="text-muted-foreground text-xs">
+                        {script.lastModified}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="text-muted-foreground mb-2 flex items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1">
-                      <Clock className="size-3" />
-                      {script.duration}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Layers className="size-3" />
-                      {script.events} events
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant={
-                        script.status === "ready" ? "secondary" : "outline"
-                      }
-                      className="text-xs"
-                    >
-                      {script.status}
-                    </Badge>
-                    <span className="text-muted-foreground text-xs">
-                      {script.lastModified}
-                    </span>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2 size-6 p-0"
+                      >
+                        <MoreVertical className="size-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Play className="mr-2 size-4" />
+                        Run Script
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                      <DropdownMenuItem>Export</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-2 size-6 p-0"
-                    >
-                      <MoreVertical className="size-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Play className="mr-2 size-4" />
-                      Run Script
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                    <DropdownMenuItem>Export</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </ScrollArea>
 

@@ -12,7 +12,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Input/Components/CrosswordGridSvg",
   component: CrosswordGridSvg,
-} as Meta
+} satisfies Meta
+
+export default meta

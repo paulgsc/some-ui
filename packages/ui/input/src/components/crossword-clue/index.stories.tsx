@@ -16,7 +16,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Input/Components/ClueCard",
   component: ClueCard,
-} as Meta
+} satisfies Meta
+
+export default meta

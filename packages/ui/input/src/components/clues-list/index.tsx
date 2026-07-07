@@ -41,7 +41,7 @@ export const ClueList: FC<ClueListProps> = ({
         }
 
         return (
-          <li key={`clue_${i}`} className={cn("")}>
+          <li key={`{clueNum}_{word}`} className={cn("")}>
             <ClueCard {...args} />
           </li>
         )
