@@ -87,6 +87,10 @@ export async function calculateConfig(
     )
   }
 
+  // calculateConfigForFile()'s rules are typed as Partial<Linter.RulesRecord>
+  // (values possibly undefined) even though ESLint never actually omits a
+  // rule's severity here; narrowing that away requires an assertion.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return calculated.rules as EffectiveRules
 }
 
@@ -128,6 +132,41 @@ export async function lintSnippet(
 
   const [result] = await eslint.lintText(code, { filePath: absPath })
   return result?.messages ?? []
+}
+
+// ── lintSnippetFixed ──────────────────────────────────────────────────────────
+//
+// Like lintSnippet(), but runs with ESLint's `fix: true` and returns the
+// fixed source alongside the messages, for asserting on autofix output.
+// Same relative-filePath requirement as lintSnippet().
+
+export async function lintSnippetFixed(
+  config: Linter.Config | Array<Linter.Config>,
+  code: string,
+  filePath: string
+): Promise<{ messages: Array<LintMessage>; output: string }> {
+  if (path.isAbsolute(filePath)) {
+    throw new Error(
+      `lintSnippetFixed() requires a relative filePath for reliable glob matching.\n` +
+        `  Got: ${filePath}\n` +
+        `  Use a short relative path like "src/foo.ts" or "tools/codegen.ts".`
+    )
+  }
+
+  const eslint = new ESLint({
+    cwd: PACKAGE_ROOT,
+    overrideConfigFile: true,
+    overrideConfig: config,
+    fix: true,
+  })
+
+  const absPath = path.resolve(PACKAGE_ROOT, filePath)
+
+  const [result] = await eslint.lintText(code, { filePath: absPath })
+  return {
+    messages: result?.messages ?? [],
+    output: result?.output ?? code,
+  }
 }
 
 // ── Severity normalisation ────────────────────────────────────────────────────
