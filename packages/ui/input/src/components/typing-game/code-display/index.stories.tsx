@@ -1,4 +1,5 @@
 import { useFormattedCode } from "@input/hooks/leetype/use-formatted-code"
+import { assertNever } from "@input/utils"
 import { codeToUnits, sliceUserUnits } from "@input/utils/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -44,14 +45,16 @@ const StoryFromFile = ({
 
   // --- Handle FSM States ---
 
-  switch (state.status) {
-    case "IDLE":
+  const { status } = state
+  switch (status) {
+    case "IDLE": {
       // Initial render, or when path is empty
       return (
         <div style={{ padding: "20px", color: "#888" }}>Initializing...</div>
       )
+    }
 
-    case "LOADING":
+    case "LOADING": {
       // Show loading state, indicating the current attempt number for retries
       return (
         <div
@@ -65,8 +68,9 @@ const StoryFromFile = ({
           ⏳ **Loading Code...** (Attempt {state.attempt})
         </div>
       )
+    }
 
-    case "ERROR":
+    case "ERROR": {
       // Show the final error state, leveraging the typestate's guaranteed error object
       return (
         <div
@@ -93,6 +97,7 @@ const StoryFromFile = ({
           </details>
         </div>
       )
+    }
 
     case "SUCCESS": {
       // Type-safe: TS guarantees state.code is a string
@@ -111,11 +116,11 @@ const StoryFromFile = ({
       )
     }
 
-    default:
+    default: {
       // Should be unreachable
-      return (
-        <div style={{ padding: "20px", color: "gray" }}>Unknown State...</div>
-      )
+      status satisfies never
+      assertNever(status)
+    }
   }
 }
 

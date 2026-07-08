@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react"
 import { loadTextModel } from "@input/lib/leetype/load-code-file"
 import type { FormattedCodeState } from "@input/types/load-code-file"
+import { assertNever, withTimeout } from "@input/utils"
+
+export type PrettierParser = "typescript" | "babel"
 
 type Options = {
-  prettierParser: "typescript" | "babel" | "rust" | "cpp"
+  prettierParser: PrettierParser | "rust" | "cpp"
 }
 
 const TIMEOUT_MS = 5000
@@ -22,7 +25,7 @@ type PrettierModule = {
 
 let prettierCache: Promise<PrettierModule> | undefined
 
-function getPrettier(parser: "typescript" | "babel"): Promise<PrettierModule> {
+function getPrettier(parser: PrettierParser): Promise<PrettierModule> {
   if (prettierCache) {
     return prettierCache
   }
@@ -65,77 +68,87 @@ async function formatCode(
     }
 
     case "rust":
-    case "cpp":
+    case "cpp": {
       return raw
+    }
 
     default: {
       parser satisfies never
-      return raw
+      assertNever(parser)
     }
   }
 }
 
-const initialState: FormattedCodeState = {
+async function loadFormattedCode(
+  path: string,
+  prettierParser: Options["prettierParser"],
+  signal: AbortSignal
+): Promise<string> {
+  const model = await loadTextModel(path)
+  const fullChunk = model.getChunk(0)
+
+  const raw = fullChunk.hasMore
+    ? await fetch(path, { signal }).then((r) => r.text())
+    : fullChunk.content
+
+  return formatCode(raw, prettierParser)
+}
+
+const idleState: FormattedCodeState = {
   status: "IDLE",
   code: undefined,
   error: undefined,
   attempt: 0,
 }
 
+const loadingState = (): FormattedCodeState => ({
+  status: "LOADING",
+  code: undefined,
+  error: undefined,
+  attempt: 1,
+})
+
+const successState = (code: string): FormattedCodeState => ({
+  status: "SUCCESS",
+  code,
+  error: undefined,
+})
+
+const errorState = (error: Error): FormattedCodeState => ({
+  status: "ERROR",
+  code: undefined,
+  error,
+})
+
 export function useFormattedCode(
   path: string,
   { prettierParser }: Options
 ): FormattedCodeState {
-  const [state, setState] = useState<FormattedCodeState>(initialState)
+  const [state, setState] = useState<FormattedCodeState>(idleState)
 
   useEffect(() => {
-    if (!path) {
-      setState(initialState)
-      return
-    }
-
-    let cancelled = false
+    const controller = new AbortController()
 
     async function run(): Promise<void> {
-      setState({
-        status: "LOADING",
-        code: undefined,
-        error: undefined,
-        attempt: 1,
-      })
+      if (!path) {
+        setState(idleState)
+        return
+      }
+
+      setState(loadingState())
 
       try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          const id = setTimeout(() => {
-            reject(new Error(`Timeout after ${TIMEOUT_MS}ms`))
-          }, TIMEOUT_MS)
+        const formatted = await withTimeout(
+          loadFormattedCode(path, prettierParser, controller.signal),
+          TIMEOUT_MS,
+          controller.signal
+        )
 
-          return (): void => clearTimeout(id)
-        })
-
-        const formatted = await Promise.race([
-          (async () => {
-            const model = await loadTextModel(path)
-            const fullChunk = model.getChunk(0)
-
-            const raw = fullChunk.hasMore
-              ? await fetch(path).then((r) => r.text())
-              : fullChunk.content
-
-            return formatCode(raw, prettierParser)
-          })(),
-          timeoutPromise,
-        ])
-
-        if (!cancelled) {
-          setState({
-            status: "SUCCESS",
-            code: formatted,
-            error: undefined,
-          })
+        if (!controller.signal.aborted) {
+          setState(successState(formatted))
         }
       } catch (err) {
-        if (cancelled) return
+        if (controller.signal.aborted) return
 
         const error =
           err instanceof Error
@@ -145,26 +158,20 @@ export function useFormattedCode(
         // eslint-disable-next-line no-console
         console.error("Failed to format code:", error.message)
 
-        setState({
-          status: "ERROR",
-          code: undefined,
-          error,
-        })
+        setState(errorState(error))
       }
     }
 
     void run()
 
-    return (): void => {
-      cancelled = true
-    }
+    return (): void => controller.abort()
   }, [path, prettierParser])
 
   return state
 }
 
 export async function preloadPrettier(
-  parser: "typescript" | "babel" = "typescript"
+  parser: PrettierParser = "typescript"
 ): Promise<void> {
   await getPrettier(parser)
 }

@@ -17,39 +17,43 @@ export function useGameTimer({
   onTimeout,
 }: UseGameTimerProps): UseGameTimerReturnType {
   const [timeLeft, setTimeLeft] = useState(duration)
+  const [previousDuration, setPreviousDuration] = useState(duration)
 
   const startTimeRef = useRef<number | null>(null)
-  const pausedTimeRef = useRef<number>(0)
+  const pausedElapsedRef = useRef(0)
   const rafRef = useRef<number | null>(null)
   const onTimeoutRef = useRef(onTimeout)
 
-  // Always keep latest callback without re-triggering effects
   useEffect(() => {
     onTimeoutRef.current = onTimeout
   }, [onTimeout])
 
-  // Reset clock when duration changes
+  // Allowed render-phase update.
+  if (duration !== previousDuration) {
+    setPreviousDuration(duration)
+    setTimeLeft(duration)
+  }
+
+  // Reset imperative timer state after commit.
   useEffect(() => {
     startTimeRef.current = null
-    pausedTimeRef.current = 0
-    setTimeLeft(duration)
+    pausedElapsedRef.current = 0
   }, [duration])
 
   useEffect(() => {
     if (gameState !== "playing") {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
       return
     }
 
-    if (startTimeRef.current === null) {
-      startTimeRef.current = performance.now() - pausedTimeRef.current
-    }
+    startTimeRef.current ??= performance.now() - pausedElapsedRef.current
 
     const tick = (now: number): void => {
-      const elapsed = now - startTimeRef.current!
+      const start = startTimeRef.current
+      if (start === null) {
+        return
+      }
+
+      const elapsed = now - start
       const remaining = Math.max(0, Math.ceil(duration - elapsed / 1000))
 
       setTimeLeft(remaining)
@@ -65,11 +69,15 @@ export function useGameTimer({
     rafRef.current = requestAnimationFrame(tick)
 
     return (): void => {
-      if (rafRef.current) {
+      if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
       }
-      pausedTimeRef.current = performance.now() - startTimeRef.current!
+
+      if (startTimeRef.current !== null) {
+        pausedElapsedRef.current = performance.now() - startTimeRef.current
+        startTimeRef.current = null
+      }
     }
   }, [gameState, duration])
 
