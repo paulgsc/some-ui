@@ -7,6 +7,7 @@ import type {
   Direction,
   WordPlacement,
 } from "@input/types/crossword"
+import { assertNever } from "@input/utils"
 import { cubeEvents } from "@some-ui/slideshow"
 import { createEventBus } from "some-ui-utils"
 
@@ -37,13 +38,14 @@ function crosswordReducer(
   action: CrosswordAction
 ): CrosswordState {
   switch (action.type) {
-    case "INITIALIZE_GRID":
+    case "INITIALIZE_GRID": {
       return {
         ...state,
         grid: action.grid,
         viewBox: action.viewBox,
       }
-    case "REVEAL_CELL":
+    }
+    case "REVEAL_CELL": {
       return {
         ...state,
         grid: state.grid.map((cell) =>
@@ -52,31 +54,39 @@ function crosswordReducer(
             : cell
         ),
       }
-    case "RESET_CELLS":
+    }
+    case "RESET_CELLS": {
       return {
         ...state,
         grid: state.grid.map((cell) => ({ ...cell, solved: false })),
         completionPercentage: 0,
       }
-    case "REVEAL_ALL":
+    }
+    case "REVEAL_ALL": {
       return {
         ...state,
         grid: state.grid.map((cell) => ({ ...cell, solved: true })),
         completionPercentage: 100,
       }
-    case "SET_ANIMATION":
+    }
+    case "SET_ANIMATION": {
       return {
         ...state,
         isAnimating: action.isAnimating,
       }
-    case "UPDATE_COMPLETION":
+    }
+    case "UPDATE_COMPLETION": {
       return {
         ...state,
         completionPercentage: action.percentage,
       }
-    default:
+    }
+    default: {
       action satisfies never
-      return state
+      throw new Error(`Unhandled case: expected case to be never`, {
+        cause: action,
+      })
+    }
   }
 }
 
@@ -241,8 +251,10 @@ export function useCrosswordWithAnimation(
         notificationEvents.emit("reveal:cell:down", undefined)
         break
       }
-      default:
+      default: {
         direction satisfies never
+        assertNever(direction)
+      }
     }
   }, [])
 
