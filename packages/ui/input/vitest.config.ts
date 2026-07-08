@@ -35,22 +35,6 @@ export default defineConfig({
       // Mirror the "@input/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
       "@input": path.resolve(__dirname, "./src"),
-      // The real packages only resolve once `wasm-pack build` has produced
-      // their dist/ output. Point them at stubs so tests can run without
-      // that build step; tests exercising a bridge override the relevant
-      // stub via vi.mock.
-      "leetype-wasm": path.resolve(
-        __dirname,
-        "./src/test/mocks/leetype-wasm-stub.ts"
-      ),
-      "some-crossword": path.resolve(
-        __dirname,
-        "./src/test/mocks/some-crossword-stub.ts"
-      ),
-      "viewport-rotation": path.resolve(
-        __dirname,
-        "./src/test/mocks/viewport-rotation-stub.ts"
-      ),
     },
   },
 })
