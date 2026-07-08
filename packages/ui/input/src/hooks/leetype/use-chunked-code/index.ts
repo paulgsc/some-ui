@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { CodeChunk, TextModel } from "@input/lib/leetype/load-code-file"
 import { loadTextModel } from "@input/lib/leetype/load-code-file"
+import { withTimeout } from "@input/utils"
 
 type Options = {
   prettierParser: "typescript" | "babel" | "rust" | "cpp"
@@ -18,6 +19,25 @@ export type ChunkedCodeState = {
 }
 
 const TIMEOUT_MS = 5000
+
+type FirstChunkResult = {
+  model: TextModel
+  chunk: CodeChunk
+  totalLines: number
+}
+
+async function loadFirstChunk(
+  path: string,
+  linesPerChunk: number
+): Promise<FirstChunkResult> {
+  const model = await loadTextModel(path, linesPerChunk)
+
+  return {
+    model,
+    chunk: model.getChunk(0),
+    totalLines: model.getTotalLines(),
+  }
+}
 
 /**
  * Hook for bounded-memory code loading.
@@ -58,62 +78,42 @@ export function useChunkedCode(
   }, [status, hasMore, currentLine])
 
   useEffect(() => {
-    if (!path) {
-      setStatus("IDLE")
-      setCurrentChunk(undefined)
-      setTotatLines(0)
-      setCurrentLine(0)
-      setHasMore(false)
-      setError(null)
-      loaderRef.current = null
-      return
-    }
-
-    let cancelled = false
+    const controller = new AbortController()
 
     async function run(): Promise<void> {
+      if (!path) {
+        setStatus("IDLE")
+        setCurrentChunk(undefined)
+        setTotatLines(0)
+        setCurrentLine(0)
+        setHasMore(false)
+        setError(null)
+        loaderRef.current = null
+        return
+      }
+
       setStatus("LOADING")
       setCurrentChunk(undefined)
       setError(null)
       setCurrentLine(0)
 
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`Timeout after ${TIMEOUT_MS}ms`)),
-            TIMEOUT_MS
-          )
+        const result = await withTimeout(
+          loadFirstChunk(path, linesPerChunk),
+          TIMEOUT_MS,
+          controller.signal
         )
 
-        const result = await Promise.race([
-          (async () => {
-            // Initialize loader (loads full file for chunking)
-            const model = await loadTextModel(path, linesPerChunk)
-            loaderRef.current = model
+        if (controller.signal.aborted) return
 
-            // Get first chunk only
-            const firstChunk = model.getChunk(0)
-            const total = model.getTotalLines()
-
-            return {
-              chunk: firstChunk,
-              totalLines: total,
-              nextLine: firstChunk.endLine,
-              hasMore: firstChunk.hasMore,
-            }
-          })(),
-          timeoutPromise,
-        ])
-
-        if (!cancelled) {
-          setCurrentChunk(result.chunk)
-          setTotatLines(result.totalLines)
-          setCurrentLine(result.nextLine)
-          setHasMore(result.hasMore)
-          setStatus("SUCCESS")
-        }
+        loaderRef.current = result.model
+        setCurrentChunk(result.chunk)
+        setTotatLines(result.totalLines)
+        setCurrentLine(result.chunk.endLine)
+        setHasMore(result.chunk.hasMore)
+        setStatus("SUCCESS")
       } catch (err) {
-        if (cancelled) return
+        if (controller.signal.aborted) return
 
         const errorObj =
           err instanceof Error
@@ -128,11 +128,9 @@ export function useChunkedCode(
       }
     }
 
-    run()
+    void run()
 
-    return (): void => {
-      cancelled = true
-    }
+    return (): void => controller.abort()
   }, [path, linesPerChunk])
 
   return {

@@ -15,8 +15,8 @@ export type Context = {
 }
 
 export type Payload = {
-  data: any
-  metadata?: Record<string, string>
+  data: unknown
+  metadata?: unknown
 }
 
 export type TimelineEvent = {

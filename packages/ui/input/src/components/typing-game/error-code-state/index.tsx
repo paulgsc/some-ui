@@ -39,7 +39,7 @@ export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
             View Error Details
           </summary>
           <pre className="mt-2 text-xs bg-muted/50 p-3 rounded overflow-auto max-h-32 text-destructive border border-destructive/20">
-            {error && error.message}
+            {error?.message}
           </pre>
         </details>
       </div>

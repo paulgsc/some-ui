@@ -8,9 +8,10 @@ export const getCurrentTimestamp = (): number => {
   return Date.now()
 }
 
-export const validateAndParseJson = (jsonString: string): any => {
+export const validateAndParseJson = (jsonString: string): unknown => {
   try {
-    return JSON.parse(jsonString)
+    const parsed: unknown = JSON.parse(jsonString)
+    return parsed
   } catch (e) {
     throw new Error(
       `Invalid JSON: ${e instanceof Error ? e.message : "Unknown error"}`,

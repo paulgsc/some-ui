@@ -56,11 +56,17 @@ export const SettingsCard: FC<SettingsCardProps> = ({
       {expanded && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-card-foreground">
+            <label
+              htmlFor="language-select"
+              className="text-sm font-medium text-card-foreground"
+            >
               Language
             </label>
             <Select value={language} onValueChange={onLanguageChange}>
-              <SelectTrigger className="bg-secondary border-border text-secondary-foreground">
+              <SelectTrigger
+                id="language-select"
+                className="bg-secondary border-border text-secondary-foreground"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -73,11 +79,17 @@ export const SettingsCard: FC<SettingsCardProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-card-foreground">
+            <label
+              htmlFor="display-mode-select"
+              className="text-sm font-medium text-card-foreground"
+            >
               Display Mode
             </label>
             <Select value={displayMode} onValueChange={onDisplayModeChange}>
-              <SelectTrigger className="bg-secondary border-border text-secondary-foreground">
+              <SelectTrigger
+                id="display-mode-select"
+                className="bg-secondary border-border text-secondary-foreground"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -88,11 +100,15 @@ export const SettingsCard: FC<SettingsCardProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-card-foreground">
+            <label
+              htmlFor="duration-input"
+              className="text-sm font-medium text-card-foreground"
+            >
               Duration
             </label>
             <div className="flex items-center gap-2">
               <Input
+                id="duration-input"
                 type="number"
                 min={1}
                 step={1}

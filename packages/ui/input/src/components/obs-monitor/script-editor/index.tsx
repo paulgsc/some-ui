@@ -38,6 +38,16 @@ type ScriptEvent = {
   manual: boolean
 }
 
+const ACTION_ICONS: Record<string, JSX.Element> = {
+  scene: <Monitor className="size-4" />,
+  play: <Play className="size-4" />,
+  unmute: <Volume2 className="size-4" />,
+  mute: <VolumeX className="size-4" />,
+}
+
+const getActionIcon = (action: string): JSX.Element =>
+  ACTION_ICONS[action] ?? <Clock className="size-4" />
+
 export const ScriptEditor = (): JSX.Element => {
   const [events, setEvents] = useState<Array<ScriptEvent>>([
     {
@@ -98,26 +108,6 @@ export const ScriptEditor = (): JSX.Element => {
         event.id === id ? { ...event, [field]: value } : event
       )
     )
-  }
-
-  const getActionIcon = (action: string): JSX.Element => {
-    switch (action) {
-      case "scene": {
-        return <Monitor className="size-4" />
-      }
-      case "play": {
-        return <Play className="size-4" />
-      }
-      case "unmute": {
-        return <Volume2 className="size-4" />
-      }
-      case "mute": {
-        return <VolumeX className="size-4" />
-      }
-      default: {
-        return <Clock className="size-4" />
-      }
-    }
   }
 
   return (

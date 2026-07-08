@@ -98,7 +98,10 @@ describe("pass-through parsers (rust/cpp) — load/error/timeout timing", () => 
     )
 
     await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
-    expect(fetchMock).toHaveBeenCalledWith("big.cpp")
+    expect(fetchMock).toHaveBeenCalledWith(
+      "big.cpp",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
     expect(result.current.code).toBe("full file contents")
   })
 

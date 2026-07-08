@@ -104,7 +104,7 @@ export const TypingInputCard: FC<TypingInputCardProps> = ({
           {gameState === "timeout" && (
             <div className="mt-4 p-4 bg-destructive/10 border border-destructive rounded-lg">
               <p className="text-destructive font-semibold text-center">
-                Time's up! You typed {progress.toFixed(0)}% of the code.
+                Time&apos;s up! You typed {progress.toFixed(0)}% of the code.
               </p>
             </div>
           )}
