@@ -154,5 +154,5 @@ export type TypedTypingGame = {
   getCumulativeStats(): [number, number]
 }
 
-// If you need to update the ref type used in createTypingGameStore:
+// If you need to update the ref type used in useTypingGameStats:
 export type GameRef = { current: TypedTypingGame | null }
