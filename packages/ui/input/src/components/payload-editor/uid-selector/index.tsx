@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useState } from "react"
 import type { ExistingChapter } from "@input/types/timeline-events"
 import {
@@ -33,14 +34,19 @@ type UIDSelectorProps = {
   show: boolean
 }
 
+const MODES = ["search", "manual"] as const
+type Mode = (typeof MODES)[number]
+const isMode = (value: string): value is Mode =>
+  MODES.some((mode) => mode === value)
+
 export const UIDSelector = ({
   value,
   onChange,
   show,
-}: UIDSelectorProps): React.JSX.Element | null => {
+}: UIDSelectorProps): JSX.Element | null => {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [mode, setMode] = useState<"search" | "manual">("search")
+  const [mode, setMode] = useState<Mode>("search")
 
   if (!show) return null
 
@@ -51,6 +57,12 @@ export const UIDSelector = ({
     onChange(chapter.uid)
     setOpen(false)
     setSearchQuery("")
+  }
+
+  const handleModeChange = (value: string): void => {
+    if (isMode(value)) {
+      setMode(value)
+    }
   }
 
   const formatTimestamp = (timestamp: number): string => {
@@ -67,10 +79,7 @@ export const UIDSelector = ({
     <div className="space-y-3">
       <Label htmlFor="uid">Chapter UID</Label>
 
-      <Tabs
-        value={mode}
-        onValueChange={(value) => setMode(value as "search" | "manual")}
-      >
+      <Tabs value={mode} onValueChange={handleModeChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="search" className="gap-2">
             <Search className="size-4" />
@@ -256,8 +265,7 @@ export const UIDSelector = ({
       {value && !selectedChapter && mode === "search" && (
         <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2">
           <p className="text-xs text-yellow-800">
-            UID "{value}" not found in existing chapters. This will create a new
-            chapter.
+            {`UID "${value}" not found in existing chapters. This will create a new chapter.`}
           </p>
         </div>
       )}
