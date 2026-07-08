@@ -32,7 +32,7 @@ export const TimelineEditor = (): React.JSX.Element => {
   const buildEvent = (): TimelineEvent => {
     const baseTimestamp = useCurrentTime
       ? getCurrentTimestamp()
-      : Number.parseInt(timestamp) || 0
+      : Number.parseInt(timestamp, 10) || 0
     const event: TimelineEvent = { type: eventType }
 
     // Add UID for events that need it
@@ -41,7 +41,7 @@ export const TimelineEditor = (): React.JSX.Element => {
     }
 
     switch (eventType) {
-      case "StartChapter":
+      case "StartChapter": {
         event.context = context
         event.start_time = baseTimestamp
         if (payloadJson.trim()) {
@@ -52,8 +52,9 @@ export const TimelineEditor = (): React.JSX.Element => {
           event.payload = { data, metadata }
         }
         break
+      }
 
-      case "EndChapter":
+      case "EndChapter": {
         event.end_time = baseTimestamp
         if (payloadJson.trim()) {
           const data = validateAndParseJson(payloadJson)
@@ -63,24 +64,28 @@ export const TimelineEditor = (): React.JSX.Element => {
           event.final_payload = { data, metadata }
         }
         break
+      }
 
-      case "UpdatePayload":
+      case "UpdatePayload": {
         const data = validateAndParseJson(payloadJson)
         const metadata = metadataJson.trim()
           ? validateAndParseJson(metadataJson)
           : undefined
         event.payload = { data, metadata }
         break
+      }
 
-      case "UpdateContext":
+      case "UpdateContext": {
         event.context = context
         break
+      }
 
-      case "ExtendChapter":
+      case "ExtendChapter": {
         event.extend_to = baseTimestamp
         break
+      }
 
-      case "CompleteChapter":
+      case "CompleteChapter": {
         event.completion_time = baseTimestamp
         const finalData = validateAndParseJson(payloadJson)
         const finalMetadata = metadataJson.trim()
@@ -88,11 +93,18 @@ export const TimelineEditor = (): React.JSX.Element => {
           : undefined
         event.final_payload = { data: finalData, metadata: finalMetadata }
         break
+      }
 
       case "RemoveChapter":
       case "ClearAll":
         // No additional fields needed
         break
+      default: {
+        eventType satisfies never
+        throw new Error(`Unexpected value: where never is expected`, {
+          cause: eventType,
+        })
+      }
     }
 
     return event

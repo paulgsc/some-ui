@@ -28,9 +28,7 @@ export const MathExpression = ({
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("KaTeX rendering error:", error)
-        if (containerRef.current) {
-          containerRef.current.textContent = latex
-        }
+        containerRef.current.textContent = latex
       }
     }
   }, [latex, display])
