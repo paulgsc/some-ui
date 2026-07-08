@@ -1,4 +1,4 @@
-use crate::Package;
+use crate::{find_closest_match, Package};
 use dialoguer::{theme::ColorfulTheme, Input, Select};
 use std::io::{Error, ErrorKind, Result as IoResult};
 
@@ -21,8 +21,15 @@ pub fn select_template_package(packages: &[Package]) -> IoResult<&Package> {
     Ok(&packages[selection])
 }
 
-/// Prompts user to enter a new package name with validation
-pub fn get_new_package_name(existing_names: &[String]) -> IoResult<String> {
+/// Prompts user to enter a new package name with validation.
+///
+/// Beyond rejecting exact duplicates, this flags names that are a near-miss of an
+/// existing package (e.g. a plural/singular slip or a single-character typo) via
+/// Levenshtein similarity, since an exact-match check alone lets those through silently
+/// and produces a confusingly-named sibling package instead of the one the user meant.
+pub fn get_new_package_name(existing_names: &[String], similarity_threshold: f64) -> IoResult<String> {
+    let candidates: Vec<&str> = existing_names.iter().map(String::as_str).collect();
+
     loop {
         let name: String = Input::with_theme(&ColorfulTheme::default())
             .with_prompt("Enter new package name")
@@ -39,6 +46,13 @@ pub fn get_new_package_name(existing_names: &[String]) -> IoResult<String> {
         if existing_names.contains(&name) {
             println!("Package '{}' already exists. Please choose a different name.", name);
             continue;
+        }
+
+        if let Some(closest) = find_closest_match(&name, &candidates, similarity_threshold) {
+            let proceed = confirm_action(&format!("'{name}' is very similar to the existing package '{closest}'. Did you mean to create a new, distinct package?"))?;
+            if !proceed {
+                continue;
+            }
         }
 
         return Ok(name);

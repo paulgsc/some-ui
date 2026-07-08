@@ -16,7 +16,7 @@
       "@chat/*": ["./packages/ui/chat/src/"],
       "@calendar/*": ["./packages/ui/calendar/src/"],
       "@input/*": ["./packages/ui/input/src/"],
-      "@utils/*": ["./packages/ui/utils/src/"],
+      "@utils/*": ["./packages/utils/src/"],
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
       "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
