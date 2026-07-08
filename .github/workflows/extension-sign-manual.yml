@@ -11,6 +11,7 @@ name: Sign Firefox Extension (Manual)
 # all A+B issues in epic #310 are closed.
 permissions:
   contents: read
+  actions: read
 on:
   workflow_dispatch:
     inputs:
@@ -27,10 +28,6 @@ on:
         required: true
         type: boolean
         default: false
-
-permissions:
-  contents: read
-  actions: read
 
 jobs:
   preflight:
@@ -104,7 +101,8 @@ jobs:
       - name: Build workspace packages
         run: |
           nix develop .#ci --command pnpm build \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
         env:
           NODE_ENV: production
 

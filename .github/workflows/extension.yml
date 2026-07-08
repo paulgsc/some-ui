@@ -93,7 +93,8 @@ jobs:
         if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
           nix develop .#ci --command pnpm build \
-            --filter '...{./extensions/*}'
+            --filter '...{./extensions/*}' \
+            --concurrency=100%
         env:
           NODE_ENV: production
 

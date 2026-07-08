@@ -77,31 +77,36 @@ jobs:
         run: |
           nix develop .#ci --command pnpm turbo run build \
             --filter=...[HEAD^1] \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
       - name: Typecheck (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run typecheck \
             --filter=...[HEAD^1] \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
       - name: Lint (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run lint:js \
             --filter=...[HEAD^1] \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
       - name: Prettier (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run prettier \
             --filter=...[HEAD^1] \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
       - name: Test (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run test \
             --filter=...[HEAD^1] \
-            --filter='!./extensions/**'
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
   # ── Dependency license audit ────────────────────────────────────────────
   deny:

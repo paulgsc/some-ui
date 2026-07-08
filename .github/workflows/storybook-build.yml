@@ -3,19 +3,19 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'packages/**'
-      - '.storybook/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/storybook-build.yml'
-      - '.github/workflows/_detect-changes.yml'
+      - "packages/**"
+      - ".storybook/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/storybook-build.yml"
+      - ".github/workflows/_detect-changes.yml"
   push:
     branches: [main]
     paths:
-      - 'packages/**'
-      - '.storybook/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/storybook-build.yml'
-      - '.github/workflows/_detect-changes.yml'
+      - "packages/**"
+      - ".storybook/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/storybook-build.yml"
+      - ".github/workflows/_detect-changes.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -66,7 +66,7 @@ jobs:
         env:
           HUSKY: 0
       - name: Build workspace packages
-        run: nix develop .#ci --command pnpm build
+        run: nix develop .#ci --command pnpm build --concurrency=100%
         env:
           NODE_ENV: production
       - name: Build Storybook

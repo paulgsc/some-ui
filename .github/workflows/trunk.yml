@@ -38,15 +38,15 @@ jobs:
         env:
           HUSKY: 0
       - name: Build all packages
-        run: nix develop .#ci --command pnpm build
+        run: nix develop .#ci --command pnpm build --concurrency=100%
       - name: Typecheck all packages
-        run: nix develop .#ci --command pnpm typecheck
+        run: nix develop .#ci --command pnpm typecheck --concurrency=100%
       - name: Lint all packages
-        run: nix develop .#ci --command pnpm lint:js
+        run: nix develop .#ci --command pnpm lint:js --concurrency=100%
       - name: Prettier all packages
-        run: nix develop .#ci --command pnpm prettier
+        run: nix develop .#ci --command pnpm prettier --concurrency=100%
       - name: Test all packages
-        run: nix develop .#ci --command pnpm test
+        run: nix develop .#ci --command pnpm test --concurrency=100%
   # ── Full dependency audit ───────────────────────────────────────────────
   deny:
     name: Deny Checks (full)
