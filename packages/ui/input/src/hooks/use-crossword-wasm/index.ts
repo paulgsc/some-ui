@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { cluesJson } from "@input/data/clues"
 import type { CrosswordClue, CrosswordResult } from "@input/types/crossword"
 import { CrosswordResultSchema } from "@input/types/crossword"
 import init, { CrosswordGenerator } from "some-crossword"
 import { getRandomSubarray } from "some-ui-utils"
-
-// Define Zod schemas for result validation
 
 export function useCreateCrosswordWasm(): {
   isLoading: boolean
@@ -23,59 +21,70 @@ export function useCreateCrosswordWasm(): {
     null
   )
 
-  const generateCrossword = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    setValidationWarning(null)
+  // Guards the setState calls below against a generate() that resolves
+  // after unmount — checked, not just relied on for cleanup ordering,
+  // because the wasm round-trip can easily outlive the component.
+  const aliveRef = useRef(true)
 
-    try {
-      // Initialize the WASM module
-      await init()
+  // Engine call, parameterized on its word list instead of closing over
+  // `randomClues` state — keeps this useCallback's identity permanently
+  // stable ([]), so effects that call it never need to re-run just because
+  // it was recreated.
+  const generateCrossword = useCallback(
+    async (clues: Array<CrosswordClue>): Promise<void> => {
+      setIsLoading(true)
+      setError(null)
+      setValidationWarning(null)
 
-      // Create a new generator with words and max group size
-      const wordList = randomClues.reduce<Array<string>>(
-        (acc, curr) => [...acc, curr.word],
-        []
-      )
-      const maxGroupSize = Math.max(1, Math.floor(wordList.length * 0.75))
-      const generator = new CrosswordGenerator(wordList, maxGroupSize)
+      try {
+        // Initialize the WASM module
+        await init()
 
-      // Generate the crossword
-      const result = await generator.generate()
+        // Create a new generator with words and max group size
+        const wordList = clues.map((clue) => clue.word)
+        const maxGroupSize = Math.max(1, Math.floor(wordList.length * 0.75))
+        const generator = new CrosswordGenerator(wordList, maxGroupSize)
 
-      // Validate the result structure
-      const validatedResult = CrosswordResultSchema.parse(result)
-      setCrossword(validatedResult)
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Error generating crossword:", err)
-      setError(err instanceof Error ? err.message : "Unknown error")
-      setCrossword(null)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [randomClues])
+        // Generate the crossword
+        const result = await generator.generate()
 
-  const selectWordList = useCallback(() => {
-    if (randomClues.length > 0) return
-
-    const N = 6
-    const randClues = getRandomSubarray(
-      cluesJson,
-      Math.min(N, cluesJson.length)
-    )
-    setRandomClues(randClues)
-  }, [cluesJson])
-
-  useEffect(() => {
-    if (randomClues.length > 0) {
-      generateCrossword()
-    }
-  }, [randomClues, generateCrossword])
+        // Validate the result structure
+        const validatedResult = CrosswordResultSchema.parse(result)
+        if (!aliveRef.current) return
+        setCrossword(validatedResult)
+      } catch (err) {
+        if (!aliveRef.current) return
+        // eslint-disable-next-line no-console
+        console.error("Error generating crossword:", err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+        setCrossword(null)
+      } finally {
+        if (aliveRef.current) setIsLoading(false)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
-    selectWordList()
-  }, [selectWordList])
+    aliveRef.current = true
+
+    void (async (): Promise<void> => {
+      const N = 6
+      const clues = getRandomSubarray(cluesJson, Math.min(N, cluesJson.length))
+      if (!aliveRef.current) return
+      setRandomClues(clues)
+      await generateCrossword(clues)
+    })()
+
+    return (): void => {
+      aliveRef.current = false
+    }
+  }, [generateCrossword])
+
+  const regenerate = useCallback(
+    (): Promise<void> => generateCrossword(randomClues),
+    [generateCrossword, randomClues]
+  )
 
   return {
     isLoading,
@@ -83,6 +92,6 @@ export function useCreateCrosswordWasm(): {
     randomClues,
     crossword,
     validationWarning,
-    regenerate: generateCrossword,
+    regenerate,
   }
 }

@@ -1,7 +1,8 @@
 import type { GameRef, GameStats, TypedTypingGame } from "@input/types/leetype"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { createTypingGameStore } from "."
+
+import { useTypingGameStats } from "."
 
 function makeStats(overrides: Partial<GameStats> = {}): GameStats {
   return {
@@ -21,7 +22,7 @@ function makeStats(overrides: Partial<GameStats> = {}): GameStats {
 // Full TypedTypingGame double built via a return-type-annotated factory
 // (rather than an `as` cast, which this project's lint config forbids
 // outright) so every test double is a real structural match for the
-// interface `createTypingGameStore` depends on.
+// interface `useTypingGameStats` depends on.
 function makeGame(overrides: Partial<TypedTypingGame> = {}): TypedTypingGame {
   // getStats defaults to a fixed reference: useSyncExternalStore requires a
   // referentially stable snapshot (the real TypedTypingGame caches it until
@@ -50,12 +51,11 @@ function makeGame(overrides: Partial<TypedTypingGame> = {}): TypedTypingGame {
   }
 }
 
-describe("createTypingGameStore", () => {
+describe("useTypingGameStats", () => {
   it("returns null when gameRef.current is null", () => {
     const gameRef: GameRef = { current: null }
-    const store = createTypingGameStore(gameRef)
 
-    const { result } = renderHook(() => store.useStats())
+    const { result } = renderHook(() => useTypingGameStats(gameRef))
 
     expect(result.current).toBeNull()
   })
@@ -67,9 +67,8 @@ describe("createTypingGameStore", () => {
     // re-renders in a loop.
     const stats = makeStats({ wpm: 42 })
     const gameRef: GameRef = { current: makeGame({ getStats: () => stats }) }
-    const store = createTypingGameStore(gameRef)
 
-    const { result, unmount } = renderHook(() => store.useStats())
+    const { result, unmount } = renderHook(() => useTypingGameStats(gameRef))
 
     expect(result.current).toEqual(stats)
     expect(() => unmount()).not.toThrow()
@@ -79,9 +78,8 @@ describe("createTypingGameStore", () => {
     const unsubscribe = vi.fn()
     const subscribeStats = vi.fn(() => unsubscribe)
     const gameRef: GameRef = { current: makeGame({ subscribeStats }) }
-    const store = createTypingGameStore(gameRef)
 
-    const { unmount } = renderHook(() => store.useStats())
+    const { unmount } = renderHook(() => useTypingGameStats(gameRef))
     expect(subscribeStats).toHaveBeenCalledTimes(1)
 
     unmount()

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createTypingGameStore } from "@input/lib/leetype/game-store"
+import { useTypingGameStats } from "@input/lib/leetype/game-store"
 import {
   canonicalizeText,
   isWasmLoaded,
@@ -62,12 +62,20 @@ export function useTypingGame({
   const [userUnits, setUserUnits] = useState<Array<CanonicalUnit>>([])
   const [targetUnits, setTargetUnits] = useState<Array<CanonicalUnit>>([])
 
-  const store = useMemo(() => createTypingGameStore(gameRef), [])
+  // Latest-ref: the mount effect below only wants targetCode's value *at
+  // construction time* — it must not re-run (and reload wasm) on every
+  // targetCode change, since the second effect already handles those via
+  // startNextChunk. Reading through a ref keeps it out of that effect's
+  // dependency array without going stale.
+  const targetCodeRef = useRef(targetCode)
+  useEffect(() => {
+    targetCodeRef.current = targetCode
+  })
 
   useEffect(() => {
     const aliveRef = { current: true }
 
-    ;(async (): Promise<void> => {
+    void (async (): Promise<void> => {
       try {
         setIsLoading(true)
         setError(null)
@@ -76,13 +84,13 @@ export function useTypingGame({
         if (!aliveRef.current) return
 
         const game = new TypedTypingGame(
-          targetCode,
+          targetCodeRef.current,
           maxConsecutiveErrors
-        ) as unknown as TypedTypingGameType
+        )
         gameRef.current = game
         completedRef.current = false
 
-        setTargetUnits(canonicalizeText(targetCode))
+        setTargetUnits(canonicalizeText(targetCodeRef.current))
         setIsLoading(false)
       } catch (e) {
         if (!aliveRef.current) return
@@ -104,6 +112,11 @@ export function useTypingGame({
 
     try {
       game.startNextChunk(targetCode)
+      // Reacting to a prop change (targetCode) by resyncing local UI state
+      // to match the engine's new chunk — the imperative startNextChunk
+      // call above can't move to render (it must run exactly once per
+      // change), so this can't be restructured as a render-time adjustment.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetUnits(canonicalizeText(targetCode))
       setRawUserInput("")
       setUserUnits([])
@@ -113,7 +126,7 @@ export function useTypingGame({
     }
   }, [targetCode, isLoading])
 
-  const stats = store.useStats()
+  const stats = useTypingGameStats(gameRef)
 
   const displayMap = useMemo(() => {
     if (!isWasmLoaded()) return []
@@ -167,8 +180,9 @@ export function useTypingGame({
     }
 
     for (let i = 0; i < targetUnits.length; i++) {
-      const u = userUnits[i] as CanonicalUnit
-      const t = targetUnits[i] as CanonicalUnit
+      const u = userUnits[i]
+      const t = targetUnits[i]
+      if (!u || !t) return
       if (
         u.kind !== t.kind ||
         (u.kind === "char" && t.kind === "char" && u.value !== t.value)

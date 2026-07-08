@@ -5,13 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useCreateCrosswordWasm } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
-// S5/S6 — use-crossword-wasm.ts (`useCreateCrosswordWasm`) is both a
-// wasm-bridge init hook (#554: does it load `some-crossword` exactly once,
-// what happens if it resolves after unmount) and a `set-state-in-effect`
-// chain (#555: `selectWordList` -> `generateCrossword`, two effects that
-// depend on each other's output). Unlike use-typing-game-wasm, this hook
-// has **no** aliveRef/cancellation guard today — that absence is itself the
-// behavior worth pinning before any no-floating-promises fix touches it.
+// S5/S6 — use-crossword-wasm.ts (`useCreateCrosswordWasm`) is a wasm-bridge
+// init hook: it loads `some-crossword` and picks a random clue list exactly
+// once on mount (#554), and guards its setState calls with an `aliveRef`
+// against a `generate()` that resolves after unmount (#555). These tests
+// pin both behaviors.
 // ═══════════════════════════════════════════════════════════════════════════
 
 type FakeGenerator = {
@@ -30,10 +28,13 @@ function validResult(): unknown {
 }
 
 /**
- * The real `CrosswordGenerator` (a wasm-bindgen class) has private fields,
- * so a `FakeGenerator` exposing only `generate()` can never satisfy it
- * structurally. This is the single, documented cast that lets it stand in
- * as the constructor mock's return value.
+ * The real `CrosswordGenerator` (a wasm-bindgen class) carries internal
+ * bookkeeping fields (`__wbg_ptr`, `__destroy_into_raw`) that aren't part of
+ * its public `.d.ts`, so a `FakeGenerator` exposing only `generate()` can
+ * never satisfy it structurally. Widening through the return type (rather
+ * than an `as` cast, which this project's lint config forbids outright) is
+ * the documented escape hatch — `generatorCtor` is typed as the untyped
+ * `Mock` above specifically so `.mockImplementation` here accepts it.
  */
 function asCrosswordGenerator(generator: FakeGenerator): unknown {
   return generator
@@ -53,16 +54,14 @@ beforeEach(async () => {
     .mocked(mod.default)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
-  generatorCtor = vi
-    .mocked(mod.CrosswordGenerator)
-    .mockReset()
-    .mockImplementation((wordList: Array<string>) => {
-      const generator: FakeGenerator = {
-        generate: vi.fn(() => Promise.resolve(validResult())),
-      }
-      generatorInstances.push({ wordList, generator })
-      return asCrosswordGenerator(generator)
-    })
+  generatorCtor = vi.mocked(mod.CrosswordGenerator).mockReset()
+  generatorCtor.mockImplementation((wordList: Array<string>) => {
+    const generator: FakeGenerator = {
+      generate: vi.fn(() => Promise.resolve(validResult())),
+    }
+    generatorInstances.push({ wordList, generator })
+    return asCrosswordGenerator(generator)
+  })
 })
 
 describe("wasm-bridge lazy init (S5)", () => {
@@ -131,7 +130,7 @@ describe("wasm-bridge lazy init (S5)", () => {
     errorSpy.mockRestore()
   })
 
-  it("still applies a resolved generate() result after unmount (no cancellation guard exists today)", async () => {
+  it("does not apply a resolved generate() result after unmount (aliveRef guard)", async () => {
     const gate: { resolve: (value: unknown) => void } = { resolve: () => {} }
     generatorCtor.mockImplementation((wordList: Array<string>) => {
       const generator: FakeGenerator = {
@@ -146,20 +145,18 @@ describe("wasm-bridge lazy init (S5)", () => {
       return asCrosswordGenerator(generator)
     })
 
-    const { unmount } = renderHook(() => useCreateCrosswordWasm())
+    const { result, unmount } = renderHook(() => useCreateCrosswordWasm())
     await waitFor(() => expect(generatorInstances).toHaveLength(1))
 
     unmount()
 
-    // Documents the current gap `no-floating-promises` flags: there is no
-    // `cancelled`/aliveRef check before `setCrossword`/`setIsLoading` run,
-    // so resolving after unmount does not throw — React just no-ops the
-    // update on the unmounted fiber instead of the effect guarding it.
-    await expect(
-      act(async () => {
-        gate.resolve(validResult())
-        await Promise.resolve()
-      })
-    ).resolves.not.toThrow()
+    await act(async () => {
+      gate.resolve(validResult())
+      await Promise.resolve()
+    })
+
+    // The `aliveRef` guard short-circuits before `setCrossword` runs — the
+    // crossword frozen at its last pre-unmount render (`null`) stays null.
+    expect(result.current.crossword).toBeNull()
   })
 })
