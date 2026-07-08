@@ -11,3 +11,7 @@ export {
   default as extensionsCharterConfig,
   extensionCharterPlugin,
 } from "./extensions-charter.config.js"
+export {
+  default as switchLintConfig,
+  switchLintPlugin,
+} from "./switch-lint.config.js"

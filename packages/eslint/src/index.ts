@@ -9,6 +9,8 @@ import {
   extensionsCharterConfig,
   extensionsSecurityConfig,
   reactConfig,
+  switchLintConfig,
+  switchLintPlugin,
   testsOverrideConfig,
   toolsOverrideConfig,
   typescriptConfig,
@@ -46,6 +48,12 @@ export {
   extensionsCharterConfig,
   extensionCharterPlugin,
 }
+
+// ── Switch-statement idiom rules ───────────────────────────────────────────
+//
+// Opt-in only — not included in maishatuRecommended/extensionsRecommended.
+// See switch-lint.config.ts for adoption instructions.
+export { switchLintConfig, switchLintPlugin }
 
 /**
  * Recommended preset for browser-extension workspaces.
