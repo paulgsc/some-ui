@@ -9,6 +9,7 @@ import type {
   EventType,
   TimelineEvent,
 } from "@input/types/timeline-events"
+import { assertNever } from "@input/utils"
 import {
   generateUID,
   getCurrentTimestamp,
@@ -95,15 +96,16 @@ export const TimelineEditor = (): React.JSX.Element => {
         break
       }
 
-      case "RemoveChapter":
-      case "ClearAll":
+      case "RemoveChapter": {
+        break
+      }
+      case "ClearAll": {
         // No additional fields needed
         break
+      }
       default: {
         eventType satisfies never
-        throw new Error(`Unexpected value: where never is expected`, {
-          cause: eventType,
-        })
+        assertNever(eventType)
       }
     }
 

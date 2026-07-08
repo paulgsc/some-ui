@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { assertNever } from "@input/utils"
 import { Monitor, Play, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react"
 import { Badge, Button } from "some-ui-shared"
 
@@ -12,7 +13,7 @@ type TimelineEvent = {
   id: string
   time: number
   duration: number
-  action: "scene" | "play" | "unmute" | "mute" | string
+  action: "scene" | "play" | "unmute" | "mute"
   target: string
   label?: string
   color: string
@@ -153,19 +154,27 @@ export const Timeline = ({
     onTimeChange(Math.max(0, Math.min(time, TOTAL_DURATION)))
   }
 
-  const renderActionIcon = (action: string): JSX.Element | null => {
+  const renderActionIcon = (
+    action: TimelineEvent["action"]
+  ): JSX.Element | null => {
     const iconClass = "size-3"
     switch (action) {
-      case "scene":
+      case "scene": {
         return <Monitor className={iconClass} />
-      case "play":
+      }
+      case "play": {
         return <Play className={iconClass} />
-      case "unmute":
+      }
+      case "unmute": {
         return <Volume2 className={iconClass} />
-      case "mute":
+      }
+      case "mute": {
         return <VolumeX className={iconClass} />
-      default:
-        return null
+      }
+      default: {
+        action satisfies never
+        assertNever(action)
+      }
     }
   }
 
