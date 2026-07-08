@@ -102,16 +102,21 @@ export const ScriptEditor = (): JSX.Element => {
 
   const getActionIcon = (action: string): JSX.Element => {
     switch (action) {
-      case "scene":
+      case "scene": {
         return <Monitor className="size-4" />
-      case "play":
+      }
+      case "play": {
         return <Play className="size-4" />
-      case "unmute":
+      }
+      case "unmute": {
         return <Volume2 className="size-4" />
-      case "mute":
+      }
+      case "mute": {
         return <VolumeX className="size-4" />
-      default:
+      }
+      default: {
         return <Clock className="size-4" />
+      }
     }
   }
 

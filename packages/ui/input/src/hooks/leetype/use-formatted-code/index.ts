@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { loadTextModel } from "@input/lib/leetype/load-code-file"
 import type { FormattedCodeState } from "@input/types/load-code-file"
+import { assertNever } from "@input/utils"
 
 type Options = {
   prettierParser: "typescript" | "babel" | "rust" | "cpp"
@@ -65,12 +66,13 @@ async function formatCode(
     }
 
     case "rust":
-    case "cpp":
+    case "cpp": {
       return raw
+    }
 
     default: {
       parser satisfies never
-      return raw
+      assertNever(parser)
     }
   }
 }
