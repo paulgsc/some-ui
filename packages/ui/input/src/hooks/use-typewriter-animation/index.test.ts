@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useTypewriterAnimation } from "./use-typewriter-animation"
+import { useTypewriterAnimation } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S6 — use-typewriter-animation.ts:169-174 is a `set-state-in-effect` +

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { usePlayerProgress } from "./use-player-progress"
+import { usePlayerProgress } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S6 — use-player-progress.ts has no effects of its own; it's a thin

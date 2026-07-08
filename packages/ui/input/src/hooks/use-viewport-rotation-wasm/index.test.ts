@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useViewportManager } from "./use-viewport-rotation-wasm"
+import { useViewportManager } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S5 — use-viewport-rotation-wasm.ts's `hasInitialized`/`managerRef` pair is

@@ -3,7 +3,7 @@ import { loadTextModel } from "@input/lib/leetype/load-code-file"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useChunkedCode } from "./use-chunked-code"
+import { useChunkedCode } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S6 — use-chunked-code.ts's load effect (:60-136) races a 5s timeout

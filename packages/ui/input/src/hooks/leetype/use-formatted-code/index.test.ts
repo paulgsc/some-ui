@@ -3,7 +3,7 @@ import { loadTextModel } from "@input/lib/leetype/load-code-file"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useFormattedCode } from "./use-formatted-code"
+import { useFormattedCode } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S6 — use-formatted-code.ts mirrors use-chunked-code.ts's race/cancellation

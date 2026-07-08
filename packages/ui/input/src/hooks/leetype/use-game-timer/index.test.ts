@@ -2,7 +2,7 @@ import type { GameState } from "@input/types/leetype"
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useGameTimer } from "./use-game-timer"
+import { useGameTimer } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S6 — use-game-timer.ts (leetype) drives its countdown off

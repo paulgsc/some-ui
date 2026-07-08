@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useCreateCrosswordWasm } from "./use-crossword-wasm"
+import { useCreateCrosswordWasm } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
 // S5/S6 — use-crossword-wasm.ts (`useCreateCrosswordWasm`) is both a
