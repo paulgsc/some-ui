@@ -1950,9 +1950,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
 
 packages:
 
