@@ -21,7 +21,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nUsing template: {}", template_package.name);
 
     let existing_names: Vec<String> = packages.iter().map(|p| p.name.clone()).collect();
-    let new_package_name = get_new_package_name(&existing_names)?;
+    let new_package_name = get_new_package_name(&existing_names, cli.similarity_threshold)?;
 
     // Show summary and confirm
     println!("\n=== Package Creation Summary ===");

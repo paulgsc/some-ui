@@ -16,20 +16,24 @@ impl Package {
     }
 }
 
-/// Finds all packages (directories) in the workspaces directory
+/// Finds all packages (directories containing a package.json) in the workspaces directory.
+///
+/// Filters out build/cache directories (e.g. `.turbo`, `dist`, `node_modules`) that are
+/// plain subdirectories but not real packages, so they never show up as template candidates.
 pub fn find_packages(workspaces: &Path) -> IoResult<Vec<Package>> {
     let entries = fs::read_dir(workspaces).map_err(|e| Error::new(e.kind(), format!("Failed to read workspaces directory {}: {}", workspaces.display(), e)))?;
 
     let packages: Vec<Package> = entries
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .filter(|entry| entry.path().join("package.json").is_file())
         .filter_map(|entry| Package::new(entry.path()))
         .collect();
 
     if packages.is_empty() {
         return Err(Error::new(
             ErrorKind::NotFound,
-            format!("No packages found in workspace directory: {}", workspaces.display()),
+            format!("No packages (directories containing a package.json) found in workspace directory: {}", workspaces.display()),
         ));
     }
 
@@ -79,6 +83,24 @@ fn is_valid_package_name(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_find_packages_ignores_dirs_without_package_json() {
+        let workspaces = tempfile::tempdir().unwrap();
+
+        let real_package = workspaces.path().join("some-real-package");
+        fs::create_dir_all(&real_package).unwrap();
+        fs::write(real_package.join("package.json"), "{}").unwrap();
+
+        // A build/cache dir that happens to sit alongside real packages but isn't one.
+        fs::create_dir_all(workspaces.path().join(".turbo")).unwrap();
+
+        let packages = find_packages(workspaces.path()).unwrap();
+
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name, "some-real-package");
+    }
 
     #[test]
     fn test_valid_package_names() {
