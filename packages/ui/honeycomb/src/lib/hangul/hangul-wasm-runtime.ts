@@ -7,37 +7,49 @@ import {
   GameConfigSchema,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import type { WasmLoaderState } from "@some-ui/wasm-loader"
+import { createWasmLoader } from "@some-ui/wasm-loader"
 import type { HangulGameCore } from "hangul-game-core"
-import type * as HangulGameCoreModule from "hangul-game-core"
 
-enum RuntimeState {
-  Idle = "idle",
-  Loading = "loading",
-  Loaded = "loaded",
-  Failed = "failed",
-}
+// Set immediately before load()/preload() so the in-flight importModule()
+// call (if one starts) picks them up. A later loadHangulWasm() call with
+// different args while a load is already in flight or already loaded is a
+// no-op on those args - matches the pre-canon behavior, which only ever
+// consulted config/mode on the attempt that actually constructs the core.
+let pendingConfig: Partial<GameConfig> | undefined
+let pendingMode: GameMode = "completion"
+let coreInstance: HangulGameCore | null = null
 
-type HangulWasmModule = typeof HangulGameCoreModule
+const loader = createWasmLoader<WasmGameBridge>({
+  importModule: async () => {
+    const module = await import("hangul-game-core")
+    await module.default()
 
-let state: RuntimeState = RuntimeState.Idle
-let wasmModule: HangulWasmModule | null = null
-let coreInstance: HangulGameCore | null
-let bridgeInstance: WasmGameBridge | null = null
-let loadPromise: Promise<WasmGameBridge | null> | null = null
-let lastError: Error | null = null
+    // Merge defaults + partial config, validate with Zod
+    const finalConfig = GameConfigSchema.parse({
+      ...DEFAULT_GAME_CONFIG,
+      ...pendingConfig,
+    })
+
+    const core = new module.HangulGameCore(finalConfig, pendingMode)
+    coreInstance = core
+    return new WasmGameBridge(core, pendingMode)
+  },
+  errorPolicy: "resolve-null",
+})
 
 // Runtime getters
-export function getRuntimeState(): RuntimeState {
-  return state
+export function getRuntimeState(): WasmLoaderState {
+  return loader.getState()
 }
 export function getLastError(): Error | null {
-  return lastError
+  return loader.getLastError()
 }
 export function getCoreInstance(): HangulGameCore | null {
   return coreInstance
 }
 export function getBridgeInstance(): WasmGameBridge | null {
-  return bridgeInstance
+  return loader.peek()
 }
 
 /**
@@ -48,52 +60,15 @@ export async function loadHangulWasm(
   config?: Partial<GameConfig>,
   mode: GameMode = "completion"
 ): Promise<WasmGameBridge | null> {
-  if (bridgeInstance && state === RuntimeState.Loaded) return bridgeInstance
-  if (loadPromise) return loadPromise
-
-  state = RuntimeState.Loading
-  lastError = null
-
-  loadPromise = (async () => {
-    try {
-      const module = await import("hangul-game-core")
-      await module.default()
-      wasmModule = module
-
-      // Merge defaults + partial config, validate with Zod
-      const finalConfig = GameConfigSchema.parse({
-        ...DEFAULT_GAME_CONFIG,
-        ...config,
-      })
-
-      coreInstance = new wasmModule.HangulGameCore(finalConfig, mode)
-      bridgeInstance = new WasmGameBridge(coreInstance, mode)
-
-      state = RuntimeState.Loaded
-      return bridgeInstance
-    } catch (err) {
-      state = RuntimeState.Failed
-      lastError = err instanceof Error ? err : new Error(String(err))
-      coreInstance = null
-      bridgeInstance = null
-      loadPromise = null
-      return null
-    } finally {
-      if (state === RuntimeState.Loaded) loadPromise = null
-    }
-  })()
-
-  return loadPromise
+  pendingConfig = config
+  pendingMode = mode
+  return loader.load()
 }
 
 /**
  * Reset runtime (HMR, test cleanup)
  */
 export function resetHangulWasm(): void {
-  state = RuntimeState.Idle
-  wasmModule = null
+  loader.reset()
   coreInstance = null
-  bridgeInstance = null
-  loadPromise = null
-  lastError = null
 }

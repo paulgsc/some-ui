@@ -23,6 +23,7 @@
   "dependencies": {
     "@some-ui/slideshow": "workspace:*",
     "@some-ui/styles": "workspace:*",
+    "@some-ui/wasm-loader": "workspace:*",
     "katex": "^0.16.28",
     "leetype-wasm": "workspace:*",
     "lucide-react": "^0.525.0",

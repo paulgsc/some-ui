@@ -26,6 +26,7 @@
     "zod": "^4.0.5"
   },
   "dependencies": {
+    "@some-ui/wasm-loader": "workspace:*",
     "clsx": "^2.1.1",
     "maishatu-fetch-kit": "workspace:*",
     "nuqs": "1.18.0",

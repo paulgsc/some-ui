@@ -13,6 +13,7 @@
       "@some-ui/styles": ["../some-styles/src/index.ts"],
       "@some-ui/vidya": ["../ui/vidya/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
+      "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
       "maishatu-eslint-kit": ["./src/index.ts"],
       "maishatu-fetch-kit": ["../ui/maishatu-fetch-kit/src/index.ts"],
       "some-cycle": ["../../extensions/some-cycle/src/index.ts"],

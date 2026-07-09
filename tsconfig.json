@@ -35,7 +35,8 @@
       "@filter/*": ["./extensions/some-filter/src/"],
       "@censor/*": ["./extensions/some-censor/src/"],
       "@suspender/*": ["./extensions/suspender-ledger/src/"],
-      "@some-ui/content/*": ["./packages/some-content/src/"]
+      "@some-ui/content/*": ["./packages/some-content/src/"],
+      "@wasm-loader/*": ["./packages/wasm-loader/src/"]
     }
   },
   "include": [

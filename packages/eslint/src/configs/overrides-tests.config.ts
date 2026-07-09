@@ -13,5 +13,9 @@ export default defineConfig({
     "@typescript-eslint/no-deprecated": "off",
     // Floating promises are common in test assertions (fire-and-forget expect)
     "@typescript-eslint/no-floating-promises": "off",
+    // Tests routinely `await import("<wasm-crate>")` to grab the vi.mock()'d
+    // module for assertions (vi.mocked(mod.default)...) - a fixture-access
+    // pattern, not the production singleton the guard exists to catch.
+    "wasm-loader-guard/no-bare-wasm-singleton": "off",
   },
 })

@@ -1,0 +1,17 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "./",
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@wasm-loader/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "build", "dist"]
+}

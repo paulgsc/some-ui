@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@some-ui/styles": "workspace:*",
+    "@some-ui/wasm-loader": "workspace:*",
     "hangul-game-core": "workspace:*",
     "maishatu-fetch-kit": "workspace:*",
     "some-hexagon": "workspace:*",
