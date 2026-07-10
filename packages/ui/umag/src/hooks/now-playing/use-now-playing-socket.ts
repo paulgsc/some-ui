@@ -1,16 +1,17 @@
 import { useCallback } from "react"
-import { pushNowPlaying } from "@utils/lib/context/zustand-store"
-import { useWebSocket } from "@utils/lib/hooks/websocket"
 import type {
   UseWebSocketOptions,
   UseWebSocketReturn,
   WebSocketManager,
-} from "@utils/lib/hooks/websocket"
+} from "@some-ui/ws"
+import { useWebSocket } from "@some-ui/ws"
 import type { IncomingEvent, OutgoingNowPlayingEvent } from "some-types-utils"
 import {
   IncomingEventSchema,
   OutgoingNowPlayingEventSchema,
 } from "some-types-utils"
+
+import { pushNowPlaying } from "./store"
 
 type UseNowPlayingOptions = Omit<
   UseWebSocketOptions<IncomingEvent, OutgoingNowPlayingEvent>,

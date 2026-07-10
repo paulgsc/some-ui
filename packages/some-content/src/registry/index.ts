@@ -24,8 +24,8 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   ),
   hangul: lazyWithPreload(() => import("@some-ui/honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("some-ui-input"), "Leetype"),
-  music: lazyWithPreload(() => import("umag"), "NowPlayingCard"),
-  voice: lazyWithPreload(() => import("umag"), "VoiceAvatar"),
+  music: lazyWithPreload(() => import("@some-ui/umag"), "NowPlayingCard"),
+  voice: lazyWithPreload(() => import("@some-ui/umag"), "VoiceAvatar"),
   neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
   topik: lazyWithPreload(() => import("@some-ui/chat"), "KoreanStudyPage"),
   assessment: lazyWithPreload(

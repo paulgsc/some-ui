@@ -317,6 +317,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
+      '@some-ui/umag':
+        specifier: workspace:*
+        version: link:../../packages/ui/umag
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.3.1(vite@7.3.6(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -365,9 +368,6 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../packages/utils
-      umag:
-        specifier: workspace:*
-        version: link:../../packages/ui/umag
       wireframes:
         specifier: workspace:*
         version: link:../../packages/ui/wireframes
@@ -985,6 +985,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../ui/slideshow
+      '@some-ui/umag':
+        specifier: workspace:*
+        version: link:../ui/umag
       some-types-utils:
         specifier: workspace:*
         version: link:../types
@@ -1003,9 +1006,6 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../utils
-      umag:
-        specifier: workspace:*
-        version: link:../ui/umag
       vite:
         specifier: ^6.0.7
         version: 6.4.3(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -1419,6 +1419,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/umag':
+        specifier: workspace:*
+        version: link:../umag
       react-d3-tree:
         specifier: 3.6.2
         version: 3.6.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1446,9 +1449,6 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
-      umag:
-        specifier: workspace:*
-        version: link:../umag
       wireframes:
         specifier: workspace:*
         version: link:../wireframes
@@ -1706,6 +1706,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/umag':
+        specifier: workspace:*
+        version: link:../umag
       framer-motion:
         specifier: ^12.4.10
         version: 12.42.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1730,9 +1733,6 @@ importers:
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
-      umag:
-        specifier: workspace:*
-        version: link:../umag
       zod:
         specifier: ^4.0.5
         version: 4.0.5
@@ -1792,6 +1792,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/ws':
+        specifier: workspace:*
+        version: link:../../ws
       lucide-react:
         specifier: ^0.522.0
         version: 0.522.0(react@19.0.0)
@@ -1804,12 +1807,18 @@ importers:
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      some-types-utils:
+        specifier: workspace:*
+        version: link:../../types
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
+      zustand:
+        specifier: ^5.0.9
+        version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1912,6 +1921,9 @@ importers:
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
+      '@some-ui/ws':
+        specifier: workspace:*
+        version: link:../ws
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1958,6 +1970,25 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+
+  packages/ws:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      zod:
+        specifier: ^4.0.5
+        version: 4.0.5
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
 
 packages:
 

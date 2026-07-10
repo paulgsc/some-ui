@@ -3,7 +3,7 @@ import { Fragment } from "react"
 import { DiceCard } from "@slideshow/components/dice-card"
 import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
 import { NeonText } from "some-ui-neon-sign"
-import { NowPlayingCard } from "umag"
+import { NowPlayingCard } from "@some-ui/umag"
 
 type RotatingNeonSignProps = {
   perspective?: number

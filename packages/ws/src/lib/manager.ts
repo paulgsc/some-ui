@@ -286,7 +286,9 @@ export class WebSocketManager {
               `Reconnect attempt ${this.reconnectAttempts}/${max} in ${delay.toFixed(0)}ms`
             )
 
-            this.reconnectTimer = setTimeout(() => this.reconnect(), delay)
+            this.reconnectTimer = setTimeout(() => {
+              void this.reconnect()
+            }, delay)
           }
         }
 

@@ -4,6 +4,10 @@ import { BackgroundGlow } from "@umag/components/now-playing/background-glow"
 import { SongInfo } from "@umag/components/now-playing/song-info"
 import { StreamingNotes } from "@umag/components/now-playing/streaming-notes"
 import { VinylRecord } from "@umag/components/now-playing/vinyl-record"
+import {
+  useLatestNowPlaying,
+  useNowPlayingWebSocket,
+} from "@umag/hooks/now-playing"
 import { AlertCircle, Home, Loader2, RefreshCw } from "lucide-react"
 import {
   Button,
@@ -14,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "some-ui-shared"
-import { cn, useLatestNowPlaying, useNowPlayingWebSocket } from "some-ui-utils"
+import { cn } from "some-ui-utils"
 
 type NowPlayingProps = {
   className?: string
@@ -128,7 +132,7 @@ export const ErrorBoundaryFallback = ({
           </div>
           <CardTitle className="text-2xl">Something went wrong</CardTitle>
           <CardDescription>
-            We're sorry, but something unexpected happened. Our team has been
+            We&apos;re sorry, but something unexpected happened. Our team has been
             notified.
           </CardDescription>
         </CardHeader>

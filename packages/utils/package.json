@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@some-ui/wasm-loader": "workspace:*",
+    "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
     "@some-ui/fetch-kit": "workspace:*",
     "nuqs": "1.18.0",
