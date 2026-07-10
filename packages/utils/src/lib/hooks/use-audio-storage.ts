@@ -9,7 +9,7 @@ import type {
   VoiceConfig,
 } from "@utils/types/tts-types"
 import { BUILTIN_VOICES } from "@utils/types/tts-types"
-import { apiHooks } from "maishatu-fetch-kit"
+import { apiHooks } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { useAudioSpeech } from "./use-audio-speech"

@@ -27,7 +27,7 @@
     "@some-ui/styles": "workspace:*",
     "framer-motion": "^12.4.10",
     "lucide-react": "^0.474.0",
-    "maishatu-fetch-kit": "workspace:*",
+    "@some-ui/fetch-kit": "workspace:*",
     "some-types-utils": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
     "some-ui-shared": "workspace:*",

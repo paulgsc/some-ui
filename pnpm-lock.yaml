@@ -296,6 +296,9 @@ importers:
       '@some-ui/content':
         specifier: workspace:*
         version: link:../../packages/some-content
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../packages/fetch-kit
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
@@ -335,9 +338,6 @@ importers:
       lucide-react:
         specifier: ^0.378.0
         version: 0.378.0(react@19.0.0)
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../../packages/ui/maishatu-fetch-kit
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -564,6 +564,9 @@ importers:
         specifier: workspace:*
         version: link:../common
     devDependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../packages/fetch-kit
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -576,9 +579,6 @@ importers:
       '@unocss/cli':
         specifier: ^66.0.0
         version: 66.7.3
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../../packages/ui/maishatu-fetch-kit
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -817,6 +817,27 @@ importers:
         specifier: ^3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@26.0.1)(happy-dom@17.1.8)(jiti@2.7.0)(jsdom@26.0.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/fetch-kit:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+      '@tanstack/react-query':
+        specifier: ^5.66.11
+        version: 5.101.1(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      zod:
+        specifier: ^4.0.5
+        version: 4.0.5
+
   packages/mdx-generator:
     dependencies:
       '@radix-ui/react-dropdown-menu':
@@ -946,6 +967,9 @@ importers:
       '@some-ui/chat':
         specifier: workspace:*
         version: link:../ui/chat
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../fetch-kit
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../ui/honeycomb
@@ -961,9 +985,6 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../ui/slideshow
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../ui/maishatu-fetch-kit
       some-types-utils:
         specifier: workspace:*
         version: link:../types
@@ -1059,12 +1080,12 @@ importers:
 
   packages/ui/attributions:
     dependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../fetch-kit
       lucide-react:
         specifier: ^0.477.0
         version: 0.477.0(react@19.0.0)
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../maishatu-fetch-kit
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1177,6 +1198,9 @@ importers:
 
   packages/ui/honeycomb:
     dependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../fetch-kit
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1186,9 +1210,6 @@ importers:
       hangul-game-core:
         specifier: workspace:*
         version: link:../../../crates/hangul-game-core
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../maishatu-fetch-kit
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1282,19 +1303,6 @@ importers:
         specifier: 4.4.5
         version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.62.0(eslint@10.6.0(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint@10.6.0(jiti@2.7.0)))(eslint-plugin-import@2.32.0)(eslint@10.6.0(jiti@2.7.0))
 
-  packages/ui/maishatu-fetch-kit:
-    dependencies:
-      '@tanstack/react-query':
-        specifier: ^5.66.11
-        version: 5.101.1(react@19.0.0)
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-
   packages/ui/makjang:
     dependencies:
       lucide-react:
@@ -1350,15 +1358,15 @@ importers:
 
   packages/ui/nfl:
     dependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../fetch-kit
       embla-carousel-autoplay:
         specifier: ^8.6.0
         version: 8.6.0(embla-carousel@8.0.0-rc15)
       lucide-react:
         specifier: ^0.536.0
         version: 0.536.0(react@19.0.0)
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../maishatu-fetch-kit
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1692,6 +1700,9 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.1.2
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../fetch-kit
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1701,9 +1712,6 @@ importers:
       lucide-react:
         specifier: ^0.474.0
         version: 0.474.0(react@19.0.0)
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../maishatu-fetch-kit
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1898,15 +1906,15 @@ importers:
 
   packages/utils:
     dependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../fetch-kit
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      maishatu-fetch-kit:
-        specifier: workspace:*
-        version: link:../ui/maishatu-fetch-kit
       nuqs:
         specifier: 1.18.0
         version: 1.18.0(next@14.2.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))

@@ -16,9 +16,6 @@ export type FetchOptions<TBody = unknown> = {
     delay: number
     backoffFactor?: number
   }
-  onData?: (chunk: Uint8Array) => void
-  // New option to specify the expected schema of the chunks.
-  chunkSchema?: z.ZodType // Use `any` or a more specific type if known
 }
 
 // Return type definition for createFetchClient
@@ -174,6 +171,7 @@ export const createFetchClient = (
   async function executeFetch<T>(
     url: URL,
     fetchOptions: FetchOptions,
+    schema?: z.ZodType<T>,
     retryCount = 0
   ): Promise<T> {
     const { timeout, retry, ...restOptions } = fetchOptions
@@ -186,20 +184,35 @@ export const createFetchClient = (
     )
 
     try {
+      // `body` is already fully serialized by `fetchWithSchema` (JSON string
+      // for plain objects, untouched for FormData/Blob/etc.). Serializing again
+      // here would double-encode JSON payloads and mangle multipart bodies.
+      const body = restOptions.body as BodyInit | undefined
+      const headers: Record<string, string> = {
+        ...(options.headers as Record<string, string>),
+        ...(restOptions.headers as Record<string, string>),
+      }
+
+      // Let the platform set Content-Type (and the multipart boundary) for
+      // structured bodies; forcing application/json here would break them.
+      if (
+        body instanceof FormData ||
+        body instanceof URLSearchParams ||
+        body instanceof Blob ||
+        body instanceof ArrayBuffer
+      ) {
+        delete headers["Content-Type"]
+      }
+
       const response = await fetch(url, {
         ...restOptions,
         signal: controller.signal,
-        headers: {
-          ...options.headers,
-          ...restOptions.headers,
-        },
-        body: restOptions.body ? JSON.stringify(restOptions.body) : undefined,
+        headers,
+        body,
       })
 
-      return await processResponse(response)
+      return await processResponse(response, schema)
     } catch (error) {
-      clearTimeout(timeoutId)
-
       // Handle different types of errors
       if (error instanceof ApiError) {
         throw error
@@ -226,7 +239,7 @@ export const createFetchClient = (
         // Wait before retrying
         await new Promise((resolve) => setTimeout(resolve, delay))
 
-        return executeFetch<T>(url, fetchOptions, retryCount + 1)
+        return executeFetch<T>(url, fetchOptions, schema, retryCount + 1)
       }
 
       throw new ApiError(
@@ -268,14 +281,10 @@ export const createFetchClient = (
       mergedOptions.body = JSON.stringify(mergedOptions.body)
     }
 
-    const data = await executeFetch<unknown>(url, mergedOptions)
-
-    // Validate with schema if provided
-    if (schema) {
-      return schema.parse(data)
-    }
-
-    return data as T
+    // Validation happens once, inside `processResponse` via `executeFetch`,
+    // which wraps a Zod failure in an `ApiError`. Re-parsing here would both
+    // duplicate the work and let a raw `ZodError` escape uncaught.
+    return executeFetch<T>(url, mergedOptions, schema)
   }
 
   /**

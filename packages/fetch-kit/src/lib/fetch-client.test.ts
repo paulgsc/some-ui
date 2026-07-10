@@ -98,21 +98,20 @@ describe("zod schema validation", () => {
     expect(result).toEqual({ id: 1 })
   })
 
-  it("currently lets a raw ZodError escape on validation failure, not a wrapped ApiError", async () => {
-    // `processResponse` has an ApiError(400, ...)-wrapping branch for schema
-    // failures, but `executeFetch` never forwards `schema` into it, and
-    // `fetchWithSchema`'s own subsequent `schema.parse(data)` call has no
-    // try/catch. So for every public method (get/post/etc.) a validation
-    // failure throws a raw ZodError instead of the wrapped ApiError the
-    // wrapping branch implies. This pins down the current behavior rather
-    // than the intended one - flagged as a likely bug, not fixed here since
-    // this pass is tests-only.
+  it("wraps a schema validation failure in an ApiError(400) rather than letting a raw ZodError escape", async () => {
+    // `executeFetch` now forwards `schema` into `processResponse`, which is the
+    // single validation point and wraps a Zod failure in an ApiError. A raw
+    // ZodError no longer escapes for any public method (get/post/etc.).
     fetchMock.mockResolvedValue(jsonResponse({ id: "not-a-number" }))
     const client = createFetchClient()
 
     await expect(
       client.get(new URL("https://api.test/data"), {}, schema)
-    ).rejects.toBeInstanceOf(z.ZodError)
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      status: 400,
+      message: "Response validation failed",
+    })
   })
 })
 
