@@ -2,21 +2,21 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {
-    "@tanstack/react-query": "^5.66.11"
-  },
   "devDependencies": {
     "@some-ui/vite-config": "workspace:*",
-    "@some-ui/tsconfig": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*",
+    "@tanstack/react-query": "^5.66.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.5"
   },
   "exports": {
     ".": {
-      "types": "./dist/maishatu-fetch-kit.d.ts",
-      "import": "./dist/maishatu-fetch-kit.es.js",
-      "require": "./dist/maishatu-fetch-kit.cjs.js",
-      "default": "./dist/maishatu-fetch-kit.es.js"
-    },
-    "./style.css": "./dist/maishatu-fetch-kit.css"
+      "types": "./dist/fetch-kit.d.ts",
+      "import": "./dist/fetch-kit.es.js",
+      "require": "./dist/fetch-kit.cjs.js",
+      "default": "./dist/fetch-kit.es.js"
+    }
   },
   "files": [
     "dist"
@@ -24,9 +24,15 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/maishatu-fetch-kit.cjs.js",
-  "module": "./dist/maishatu-fetch-kit.es.js",
-  "name": "maishatu-fetch-kit",
+  "main": "./dist/fetch-kit.cjs.js",
+  "module": "./dist/fetch-kit.es.js",
+  "name": "@some-ui/fetch-kit",
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.66.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.5"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
@@ -44,12 +50,9 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": [
-    "*.css"
-  ],
+  "sideEffects": false,
   "type": "module",
-  "types": "./dist/maishatu-fetch-kit.d.ts",
-  "unpkg": "maishatu-fetch-kit.umd.js",
-  "version": "0.0.5",
-  "style": "./dist/maishatu-fetch-kit.css"
+  "types": "./dist/fetch-kit.d.ts",
+  "unpkg": "fetch-kit.umd.js",
+  "version": "0.0.5"
 }

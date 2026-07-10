@@ -1,6 +1,6 @@
 import { attributionData } from "@attributions/data/attribution-data"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { apiHooks } from "maishatu-fetch-kit"
+import { apiHooks } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { AttributionCard } from "."

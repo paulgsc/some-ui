@@ -35,7 +35,7 @@
     "@tanstack/router-plugin": "^1.121.2",
     "@some-ui/attributions": "workspace:*",
     "lucide-react": "^0.378.0",
-    "maishatu-fetch-kit": "workspace:*",
+    "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/overlays": "workspace:*",
     "@some-ui/portfolio": "workspace:*",

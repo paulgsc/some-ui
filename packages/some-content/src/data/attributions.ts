@@ -1,4 +1,4 @@
-import { apiHooks } from "maishatu-fetch-kit"
+import { apiHooks } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 export const sourceTypeSchema = z.enum([

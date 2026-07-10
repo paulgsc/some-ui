@@ -1,4 +1,4 @@
-import { apiHooks } from "maishatu-fetch-kit" // adjust import path
+import { apiHooks } from "@some-ui/fetch-kit" // adjust import path
 import { z } from "zod"
 
 // Define the MoodEvent schema to match your TypeScript type

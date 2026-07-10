@@ -22,7 +22,7 @@
   "dependencies": {
     "embla-carousel-autoplay": "^8.6.0",
     "lucide-react": "^0.536.0",
-    "maishatu-fetch-kit": "workspace:*",
+    "@some-ui/fetch-kit": "workspace:*",
     "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",

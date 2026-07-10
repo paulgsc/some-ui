@@ -28,7 +28,7 @@
   "dependencies": {
     "@some-ui/wasm-loader": "workspace:*",
     "clsx": "^2.1.1",
-    "maishatu-fetch-kit": "workspace:*",
+    "@some-ui/fetch-kit": "workspace:*",
     "nuqs": "1.18.0",
     "polyhedron": "workspace:*",
     "some-types-utils": "workspace:*",
