@@ -209,7 +209,7 @@ attack the pain of P.0 makes on it. Only the object surviving every attack
 is carried into §1.
 
 #table(
-  columns: (auto, auto, 1fr),
+  columns: (3.6cm, 2.1cm, 1fr),
   stroke: 0.4pt,
   inset: 6pt,
   [*Candidate object*], [*Verdict*], [*Decisive objection*],
