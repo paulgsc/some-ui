@@ -14,13 +14,8 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "some-types-utils": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
-  },
+  "dependencies": {},
   "peerDependencies": {
-    "nuqs": "1.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -28,8 +23,6 @@
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "concurrently": "10.0.3",
-    "next": "14.2.3",
-    "nuqs": "1.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

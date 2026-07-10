@@ -18,7 +18,6 @@
   "peerDependencies": {
     "@tanstack/react-query": "^5.66.11",
     "clsx": "^2.1.1",
-    "nuqs": "1.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.4.0",
@@ -26,11 +25,10 @@
     "zod": "^4.0.5"
   },
   "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
-    "@some-ui/fetch-kit": "workspace:*",
-    "nuqs": "1.18.0",
     "polyhedron": "workspace:*",
     "some-types-utils": "workspace:*",
     "tailwind-merge": "^2.4.0",

@@ -1,7 +1,6 @@
 export { useIsMounted } from "./use-is-mounted"
 export { useMeasureRect } from "./use-measure-rect"
 export { useResizeObserver } from "./use-resize-observer"
-export * from "./use-string-query-state"
 export { useEventListener } from "./use-event-listener"
 export { useIsomorphicLayoutEffect } from "./use-isomorphic"
 export { useIsMobile } from "./use-mobile"
