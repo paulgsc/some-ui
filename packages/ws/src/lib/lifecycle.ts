@@ -22,7 +22,7 @@ export class LifecycleStateMachine {
       disposing: ["idle"],
     }
 
-    return transitions[this.state].includes(target) ?? false
+    return transitions[this.state].includes(target)
   }
 
   transitionTo(target: LifecycleState): void {

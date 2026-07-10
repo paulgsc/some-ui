@@ -22,8 +22,6 @@ export {
   useIsTerminal,
   useRegionRectStore,
   useRegionRect,
-  useLatestNowPlaying,
-  useNowPlayingStore,
   useActiveFps,
   useConnectionInfo,
   useCpuUsage,

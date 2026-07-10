@@ -14,7 +14,7 @@
     "some-ui-stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
     "@some-ui/resume": "workspace:*",
-    "umag": "workspace:*",
+    "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*"
   },
   "description": "Shared Vite configuration for monorepo packages",

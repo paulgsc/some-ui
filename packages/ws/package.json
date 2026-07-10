@@ -2,39 +2,19 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
-  "dependencies": {
-    "@some-ui/attributions": "workspace:*",
-    "@some-ui/makjang": "workspace:*",
-    "@some-ui/portfolio": "workspace:*",
-    "react-d3-tree": "3.6.2",
-    "react-resizable-panels": "^2.1.0",
-    "some-types-utils": "workspace:*",
-    "@some-ui/calendar": "workspace:*",
-    "@some-ui/chat": "workspace:*",
-    "some-ui-emoji-animations": "workspace:*",
-    "some-ui-input": "workspace:*",
-    "some-ui-nfl": "workspace:*",
-    "@some-ui/slideshow": "workspace:*",
-    "some-ui-stepper": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "@some-ui/umag": "workspace:*",
-    "@some-ui/styles": "workspace:*",
-    "wireframes": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
     ".": {
-      "types": "./dist/overlays.d.ts",
-      "import": "./dist/overlays.es.js",
-      "require": "./dist/overlays.cjs.js",
-      "default": "./dist/overlays.es.js"
+      "types": "./dist/ws.d.ts",
+      "import": "./dist/ws.es.js",
+      "require": "./dist/ws.cjs.js",
+      "default": "./dist/ws.es.js"
     },
-    "./style.css": "./dist/overlays.css"
+    "./style.css": "./dist/ws.css"
   },
   "files": [
     "dist"
@@ -42,9 +22,14 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/overlays.cjs.js",
-  "module": "./dist/overlays.es.js",
-  "name": "@some-ui/overlays",
+  "main": "./dist/ws.cjs.js",
+  "module": "./dist/ws.es.js",
+  "name": "@some-ui/ws",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.5"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
@@ -65,8 +50,8 @@
     "*.css"
   ],
   "type": "module",
-  "types": "./dist/overlays.d.ts",
-  "unpkg": "overlays.umd.js",
-  "version": "0.0.5",
-  "style": "./dist/overlays.css"
+  "types": "./dist/ws.d.ts",
+  "unpkg": "ws.umd.js",
+  "version": "0.0.1",
+  "style": "./dist/ws.css"
 }

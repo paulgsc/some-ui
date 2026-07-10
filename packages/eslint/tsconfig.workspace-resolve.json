@@ -15,6 +15,7 @@
       "@some-ui/vidya": ["../ui/vidya/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
+      "@some-ui/ws": ["../ws/src/index.ts"],
       "maishatu-eslint-kit": ["./src/index.ts"],
       "some-cycle": ["../../extensions/some-cycle/src/index.ts"],
       "some-types-utils": ["../types/src/index.ts"],
@@ -30,7 +31,7 @@
       "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
       "some-ui-stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],
-      "umag": ["../ui/umag/src/index.ts"],
+      "@some-ui/umag": ["../ui/umag/src/index.ts"],
       "wireframes": ["../ui/wireframes/src/index.ts"]
     }
   },

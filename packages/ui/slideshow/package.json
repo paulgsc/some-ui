@@ -32,7 +32,7 @@
     "some-ui-neon-sign": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "umag": "workspace:*"
+    "@some-ui/umag": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

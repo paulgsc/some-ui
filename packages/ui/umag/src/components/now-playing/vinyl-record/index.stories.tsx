@@ -8,12 +8,14 @@ type Meta = MetaObj<typeof VinylRecord>
 export const Default: Story = {
   render: () => (
     <main className="size-96 bg-sky-950">
-      <VinylRecord />
+      <VinylRecord onConnect={() => {}} />
     </main>
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/NowPlaying/VinylRecord",
   component: VinylRecord,
-} as Meta
+} satisfies Meta
+
+export default meta

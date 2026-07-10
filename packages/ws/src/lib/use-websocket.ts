@@ -3,9 +3,10 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react"
-import type { z } from "zod"
+import { z } from "zod"
 
 import { WebSocketManager, type InitFunction } from "./manager"
 
@@ -63,18 +64,14 @@ export function useWebSocket<I, O = unknown>({
   onIncomingMessage,
   debugMode = false,
 }: UseWebSocketOptions<I, O>): UseWebSocketReturn<I, O> {
-  // Get singleton manager instance
-  const managerRef = useRef<WebSocketManager | null>(null)
-
-  if (!managerRef.current) {
-    managerRef.current = WebSocketManager.getInstance(url, {
+  // Get singleton manager instance (lazy-initialized once per mount)
+  const [manager] = useState<WebSocketManager>(() =>
+    WebSocketManager.getInstance(url, {
       autoReconnect,
       reconnectInterval,
       debugMode,
     })
-  }
-
-  const manager = managerRef.current
+  )
 
   // Subscribe to external store (no React state!)
   const snapshot = useSyncExternalStore(
@@ -108,7 +105,7 @@ export function useWebSocket<I, O = unknown>({
         // eslint-disable-next-line no-console
         console.warn("WebSocket schema mismatch", {
           data,
-          error: result.error.format(),
+          error: z.treeifyError(result.error),
         })
 
         callbacksRef.current.onError?.(
@@ -153,7 +150,7 @@ export function useWebSocket<I, O = unknown>({
       }
     }
 
-    acquire()
+    void acquire()
 
     return (): void => {
       // Only release if we successfully acquired

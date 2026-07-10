@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from "react"
-import { useWebSocket } from "@utils/lib/hooks/websocket"
+import { useWebSocket } from "@some-ui/ws"
 import type {
   UseWebSocketOptions,
   UseWebSocketReturn,
   WebSocketManager,
-} from "@utils/lib/hooks/websocket"
+} from "@some-ui/ws"
 import type {
   IncomingEvent,
   UtteranceEvents,

@@ -10,13 +10,12 @@ export const Default: Story = {
     width: 600,
     height: 300,
     bars: 50,
-    amplitude: 100,
-    frequency: 2,
-    speed: 5,
   },
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/AudioWaveBarChart",
   component: WaveBarChart,
-} as Meta
+} satisfies Meta
+
+export default meta

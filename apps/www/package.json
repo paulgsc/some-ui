@@ -50,7 +50,7 @@
     "@some-ui/slideshow": "workspace:*",
     "some-ui-stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "umag": "workspace:*",
+    "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*",
     "zod": "4.0.5"
   },

@@ -16,7 +16,6 @@ export { useAudioFromStorage } from "./use-audio-storage"
 export {
   useUtteranceWebSocket,
   useObsStatusWebSocket,
-  useNowPlayingWebSocket,
   useOrchestrator,
   useMockOrchestrator,
 } from "./socket-tenants"

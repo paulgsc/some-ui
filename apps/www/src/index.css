@@ -6,6 +6,6 @@
 @import "@some-ui/slideshow/style.css";
 @import "some-ui-shared/style.css";
 @import "some-ui-neon-sign/style.css";
-@import "umag/style.css";
+@import "@some-ui/umag/style.css";
 @import "@some-ui/overlays/style.css";
 @import "wireframes/style.css";

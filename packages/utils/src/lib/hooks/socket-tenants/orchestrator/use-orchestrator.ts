@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react"
 import { useOrchestratorStore } from "@utils/lib/context/zustand-store"
-import type { WebSocketManager } from "@utils/lib/hooks/websocket"
-import { useWebSocket } from "@utils/lib/hooks/websocket"
+import type { WebSocketManager } from "@some-ui/ws"
+import { useWebSocket } from "@some-ui/ws"
 import type {
   IncomingEvent,
   OrchestratorCommand,

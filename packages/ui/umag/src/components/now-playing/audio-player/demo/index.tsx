@@ -84,8 +84,8 @@ export const AudioStorageExample = (): React.JSX.Element => {
     if (!searchQuery.trim()) return
 
     try {
-      const results = await searchAudio(searchQuery)
-      setSearchResults(results)
+      const { results } = await searchAudio()
+      setSearchResults(results.map((result) => result.text ?? result.id))
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Search failed:", error)
@@ -129,7 +129,7 @@ export const AudioStorageExample = (): React.JSX.Element => {
           Audio Not Supported
         </h2>
         <p className="text-red-600">
-          Your browser doesn't support audio playback.
+          Your browser doesn&apos;t support audio playback.
         </p>
       </div>
     )
