@@ -1,4 +1,4 @@
-import { apiHooks } from "@some-ui/fetch-kit"
+import { apiHooks, apiUrl } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 export const AttributionSchema = z.object({
@@ -23,7 +23,7 @@ export const AttributionSchema = z.object({
 export const AttributionArraySchema = z.array(AttributionSchema)
 
 const fileId = "1CN87_6FFZhSS3jYkJ8KobSaXDuUYzCICPRa79lPdc7E"
-const url = new URL(`http://nixos.local:3000/get_attributions/${fileId}`)
+const url = apiUrl(`/get_attributions/${fileId}`)
 export const useGetCredits = apiHooks.createQueryHook(
   url,
   AttributionArraySchema,

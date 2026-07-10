@@ -1,4 +1,4 @@
-import { apiHooks } from "@some-ui/fetch-kit"
+import { apiHooks, apiUrl } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 const dataItem = z.object({
@@ -24,7 +24,7 @@ const nflTennisResponse = z.object({
 })
 
 const fileId = "1CcNKPheAtAIuLIVn41rsrn6AZ-JkKuNappj-mzMbZqc"
-const url = new URL(`http://nixos.local:3000/get_nfl_tennis/${fileId}`)
+const url = apiUrl(`/get_nfl_tennis/${fileId}`)
 export const useNflTennis = apiHooks.createQueryHook(
   url,
   nflTennisResponse,
