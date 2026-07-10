@@ -15,7 +15,8 @@
     "some-ui-utils": "workspace:*",
     "@some-ui/resume": "workspace:*",
     "@some-ui/umag": "workspace:*",
-    "wireframes": "workspace:*"
+    "wireframes": "workspace:*",
+    "zod": "4.0.5"
   },
   "description": "Shared Vite configuration for monorepo packages",
   "devDependencies": {

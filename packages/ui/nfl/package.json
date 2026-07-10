@@ -26,7 +26,8 @@
     "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*"
+    "some-ui-utils": "workspace:*",
+    "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

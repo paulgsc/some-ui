@@ -1,6 +1,6 @@
 import { attributionData } from "@attributions/data/attribution-data"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { apiHooks } from "@some-ui/fetch-kit"
+import { apiHooks, apiUrl } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { AttributionCard } from "."
@@ -12,7 +12,7 @@ const rowSchema = z.array(z.string()) // Each row is an array of strings
 const tableSchema = z.array(rowSchema) // The whole table is an array of rows
 
 const fileId = "1utpDGonbesfPlJsEo8Y6xBmVKO13W4JhB9Brm8qjc6A"
-const url = new URL(`http://nixos.local:3000/gsheet/${fileId}`)
+const url = apiUrl(`/gsheet/${fileId}`)
 const useGetCredits = apiHooks.createQueryHook(url, tableSchema, "GET")
 
 export const CreditsFetch = () => {

@@ -1,4 +1,4 @@
-import { apiHooks } from "@some-ui/fetch-kit"
+import { apiHooks, apiUrl } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 const dataItem = z.object({
@@ -15,7 +15,7 @@ const dataItem = z.object({
 const nflRosterResponse = z.array(dataItem)
 
 const fileId = "1vWtqEmAklRVr88p4pXtuLIecfYVKDvJUtyWLwoWUV_o"
-const url = new URL(`http://nixos.local:3000/get_nfl_roster/${fileId}`)
+const url = apiUrl(`/get_nfl_roster/${fileId}`)
 export const useNflRoster = apiHooks.createQueryHook(
   url,
   nflRosterResponse,
