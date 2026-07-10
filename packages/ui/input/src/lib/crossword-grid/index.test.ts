@@ -1,5 +1,6 @@
 import type { Word } from "@input/types/crossword"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
 import { createCrossword, shuffleArray } from "."
 
 /** Reconstructs the (x, y) -> letter cells a placed word occupies. */

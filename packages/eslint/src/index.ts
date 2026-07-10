@@ -14,6 +14,7 @@ import {
   testsOverrideConfig,
   toolsOverrideConfig,
   typescriptConfig,
+  wasmLoaderGuardConfig,
 } from "./configs/index.js"
 
 /**
@@ -24,6 +25,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...typescriptConfig,
   ...reactConfig,
   ...eslintPluginStorybook,
+  ...wasmLoaderGuardConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -37,6 +39,7 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...typescriptConfig,
   ...reactConfig,
   ...eslintPluginStorybook,
+  ...wasmLoaderGuardConfig,
   toolsOverrideConfig,
   testsOverrideConfig
 )

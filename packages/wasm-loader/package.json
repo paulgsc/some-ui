@@ -1,0 +1,40 @@
+{
+  "name": "@some-ui/wasm-loader",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Generic, zero-runtime-dependency wasm module load/init/singleton primitive. Ships as plain TypeScript source (no bundler-specific build) so it can be path-imported by packages/* and extensions/* alike - see packages/README.md and extensions/common/GOOD_CITIZEN.md's Class-A shared-import doctrine.",
+  "scripts": {
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "src"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  }
+}

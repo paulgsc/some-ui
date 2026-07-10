@@ -1180,6 +1180,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/wasm-loader':
+        specifier: workspace:*
+        version: link:../../wasm-loader
       hangul-game-core:
         specifier: workspace:*
         version: link:../../../crates/hangul-game-core
@@ -1223,6 +1226,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/wasm-loader':
+        specifier: workspace:*
+        version: link:../../wasm-loader
       katex:
         specifier: ^0.16.28
         version: 0.16.47
@@ -1892,6 +1898,9 @@ importers:
 
   packages/utils:
     dependencies:
+      '@some-ui/wasm-loader':
+        specifier: workspace:*
+        version: link:../wasm-loader
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1935,6 +1944,12 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.0.0)
+
+  packages/wasm-loader:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
 packages:
 

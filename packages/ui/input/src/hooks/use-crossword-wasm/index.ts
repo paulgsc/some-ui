@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { cluesJson } from "@input/data/clues"
 import type { CrosswordClue, CrosswordResult } from "@input/types/crossword"
 import { CrosswordResultSchema } from "@input/types/crossword"
+import { createWasmLoader } from "@some-ui/wasm-loader"
 import init, { CrosswordGenerator } from "some-crossword"
 import { getRandomSubarray } from "some-ui-utils"
 
@@ -26,6 +27,12 @@ export function useCreateCrosswordWasm(): {
   // because the wasm round-trip can easily outlive the component.
   const aliveRef = useRef(true)
 
+  // This site has no cross-call caching - every generate() (including
+  // regenerate()) re-initializes the module, so the loader is reset
+  // immediately before each load() to preserve that contract while still
+  // routing through the canonical substrate.
+  const wasmLoaderRef = useRef(createWasmLoader({ importModule: () => init() }))
+
   // Engine call, parameterized on its word list instead of closing over
   // `randomClues` state — keeps this useCallback's identity permanently
   // stable ([]), so effects that call it never need to re-run just because
@@ -38,7 +45,8 @@ export function useCreateCrosswordWasm(): {
 
       try {
         // Initialize the WASM module
-        await init()
+        wasmLoaderRef.current.reset()
+        await wasmLoaderRef.current.load()
 
         // Create a new generator with words and max group size
         const wordList = clues.map((clue) => clue.word)

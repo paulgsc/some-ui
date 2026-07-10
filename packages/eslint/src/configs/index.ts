@@ -15,3 +15,7 @@ export {
   default as switchLintConfig,
   switchLintPlugin,
 } from "./switch-lint.config.js"
+export {
+  default as wasmLoaderGuardConfig,
+  wasmLoaderGuardPlugin,
+} from "./wasm-loader-guard.config.js"

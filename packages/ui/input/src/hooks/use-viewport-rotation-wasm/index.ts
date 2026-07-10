@@ -6,6 +6,7 @@ import {
 } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
 import { cubeEvents } from "@some-ui/slideshow"
+import { createWasmLoader } from "@some-ui/wasm-loader"
 import { createEventBus } from "some-ui-utils"
 import init, { ViewportManager } from "viewport-rotation"
 import z from "zod"
@@ -80,6 +81,10 @@ export const useViewportManager = ({
   // Use a ref for the manager to ensure it persists across renders
   const managerRef = useRef<ViewportManager | null>(null)
   const hasInitialized = useRef(false)
+  // Per-instance loader, mirroring managerRef's original once-per-mount
+  // memoization (guarded below by `!managerRef.current`) rather than a
+  // module-level singleton shared across hook instances.
+  const wasmLoaderRef = useRef(createWasmLoader({ importModule: () => init() }))
 
   // Keep track of viewport states for each direction
   const [viewportStates, setViewportStates] = useState<
@@ -108,7 +113,7 @@ export const useViewportManager = ({
 
     try {
       if (!managerRef.current) {
-        await init()
+        await wasmLoaderRef.current.load()
         managerRef.current = new ViewportManager()
       } else {
         managerRef.current.reset()

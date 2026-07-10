@@ -12,35 +12,42 @@ import {
   GameStatsSchema,
   InputResultSchema,
 } from "@input/types/leetype"
+import { createWasmLoader } from "@some-ui/wasm-loader"
 import { z } from "zod"
 
-let wasmModule: WasmModule | null = null
-let wasmLoadPromise: Promise<WasmModule> | null = null
+const loader = createWasmLoader<WasmModule>({
+  importModule: async () => {
+    try {
+      const wasm = await import("leetype-wasm")
+      await wasm.default() // Initialize the WASM module
+      // The wasm-bindgen output's generated shape doesn't structurally match
+      // the hand-written WasmModule type, so a cast is unavoidable here -
+      // the single, documented cast for this file.
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+      return wasm as unknown as WasmModule
+    } catch (error) {
+      throw new Error(
+        `Failed to load WASM module: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
+    }
+  },
+  // Preserves this loader's original throw-on-error contract (unlike
+  // polyhedron/hangul's log-and-resolve-null posture).
+  errorPolicy: "throw",
+})
 
 /**
  * Load the WASM module (singleton pattern)
  */
 export async function loadWasm(): Promise<WasmModule> {
-  if (wasmModule) {
-    return wasmModule
+  const mod = await loader.load()
+  if (mod === null) {
+    // Unreachable under the "throw" error policy above (a failed load
+    // rejects instead of resolving null) - satisfies the return type.
+    throw new Error("Failed to load WASM module: unknown error")
   }
-  if (wasmLoadPromise) {
-    return wasmLoadPromise
-  }
-  wasmLoadPromise = (async () => {
-    try {
-      const wasm = await import("leetype-wasm")
-      await wasm.default() // Initialize the WASM module
-      wasmModule = wasm as unknown as WasmModule
-      return wasmModule
-    } catch (error) {
-      wasmLoadPromise = null
-      throw new Error(
-        `Failed to load WASM module: ${error instanceof Error ? error.message : String(error)}`
-      )
-    }
-  })()
-  return wasmLoadPromise
+  return mod
 }
 
 /**
@@ -52,6 +59,7 @@ export class TypedTypingGame {
   private cachedStats: GameStats | null = null
 
   constructor(targetCode: string, maxConsecutiveErrors?: number) {
+    const wasmModule = loader.peek()
     if (!wasmModule) {
       throw new Error("WASM module not loaded. Call loadWasm() first.")
     }
@@ -187,6 +195,7 @@ export class TypedTypingGame {
  * Standalone canonicalize function
  */
 export function canonicalizeText(input: string): Array<CanonicalUnit> {
+  const wasmModule = loader.peek()
   if (!wasmModule) {
     throw new Error("WASM module not loaded. Call loadWasm() first.")
   }
@@ -198,6 +207,7 @@ export function canonicalizeText(input: string): Array<CanonicalUnit> {
  * Build the display map (JS-friendly)
  */
 export function buildDisplayMap(input: string): Uint32Array {
+  const wasmModule = loader.peek()
   if (!wasmModule) {
     throw new Error("WASM module not loaded. Call loadWasm() first.")
   }
@@ -209,13 +219,12 @@ export function buildDisplayMap(input: string): Uint32Array {
  * Check if WASM is loaded
  */
 export function isWasmLoaded(): boolean {
-  return wasmModule !== null
+  return loader.isLoaded()
 }
 
 /**
  * Force reload the WASM module (useful for testing)
  */
 export function resetWasm(): void {
-  wasmModule = null
-  wasmLoadPromise = null
+  loader.reset()
 }

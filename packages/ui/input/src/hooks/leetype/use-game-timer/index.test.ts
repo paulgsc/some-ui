@@ -110,13 +110,7 @@ describe("pause / resume", () => {
     expect(result.current.timeLeft).toBe(pausedAt)
   })
 
-  it("does NOT exclude paused wall-clock time on resume — startTimeRef is only reset when null, and pausing never nulls it", () => {
-    // This pins a real gap, not an intended feature: `pausedTimeRef` is
-    // written on pause but only ever *read* by the `startTimeRef.current
-    // === null` branch, and nothing nulls `startTimeRef` when gameState
-    // leaves "playing". So the tick right after resume recomputes elapsed
-    // against the *original* start time, and the 3s spent paused below
-    // counts against the countdown as if the game had kept running.
+  it("preserves remaining time across pause and resume", () => {
     const { result, rerender } = renderHook(
       (props: { gameState: GameState }) =>
         useGameTimer({ duration: 10, onTimeout: vi.fn(), ...props }),
@@ -134,11 +128,7 @@ describe("pause / resume", () => {
     rerender({ gameState: "playing" })
     advance(50) // a couple of resumed frames
 
-    // A correctly-preserving pause would still read ~beforePause here; the
-    // current implementation instead jumps down because the paused 3s
-    // was folded back into `elapsed` on resume.
-    expect(result.current.timeLeft).toBeLessThan(beforePause)
-    expect(result.current.timeLeft).toBeLessThanOrEqual(5)
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(beforePause - 1)
   })
 })
 

@@ -1,17 +1,17 @@
+import { buildDisplayMap } from "@input/lib/leetype/leetype-wasm-loader"
 import type { GameStats } from "@input/types/leetype"
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("@input/lib/leetype/leetype-wasm-loader", () => ({
-  buildDisplayMap: vi.fn(),
-}))
-
-import { buildDisplayMap } from "@input/lib/leetype/leetype-wasm-loader"
 import {
   codeToUnits,
   deriveCursorIndex,
   deriveDisplayMap,
   sliceUserUnits,
 } from "."
+
+vi.mock("@input/lib/leetype/leetype-wasm-loader", () => ({
+  buildDisplayMap: vi.fn(),
+}))
 
 function makeStats(overrides: Partial<GameStats> = {}): GameStats {
   return {
