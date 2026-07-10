@@ -12,11 +12,12 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/fetch-kit.d.ts",
-      "import": "./dist/fetch-kit.es.js",
-      "require": "./dist/fetch-kit.cjs.js",
-      "default": "./dist/fetch-kit.es.js"
-    }
+      "types": "./dist/@some-ui/fetch-kit.d.ts",
+      "import": "./dist/@some-ui/fetch-kit.es.js",
+      "require": "./dist/@some-ui/fetch-kit.cjs.js",
+      "default": "./dist/@some-ui/fetch-kit.es.js"
+    },
+    "./style.css": "./dist/fetch-kit.css"
   },
   "files": [
     "dist"
@@ -24,8 +25,8 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/fetch-kit.cjs.js",
-  "module": "./dist/fetch-kit.es.js",
+  "main": "./dist/@some-ui/fetch-kit.cjs.js",
+  "module": "./dist/@some-ui/fetch-kit.es.js",
   "name": "@some-ui/fetch-kit",
   "peerDependencies": {
     "@tanstack/react-query": "^5.66.11",
@@ -50,9 +51,12 @@
     "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "type": "module",
-  "types": "./dist/fetch-kit.d.ts",
+  "types": "./dist/@some-ui/fetch-kit.d.ts",
   "unpkg": "fetch-kit.umd.js",
-  "version": "0.0.5"
+  "version": "0.0.5",
+  "style": "./dist/fetch-kit.css"
 }
