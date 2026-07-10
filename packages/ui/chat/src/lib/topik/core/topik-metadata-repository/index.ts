@@ -31,10 +31,24 @@ export class TopikMetadataRepository implements ITopikMetadataRepository {
 // FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Create a repository instance. `source` is either a manifest URL (plain
+ * HTTP loader, the existing default) or a loader function - pass a loader
+ * built on `@some-ui/fetch-kit`'s `createDataSource` to source the manifest
+ * from wherever the host app resolves it from (a bundled static asset, a
+ * local companion server, or otherwise) without this repository knowing
+ * which.
+ */
 export function createTopikMetadataRepository(
-  manifestUrl: string
+  source: string | (() => Promise<unknown>)
 ): TopikMetadataRepository {
-  const loader = async (): Promise<unknown> => {
+  const loader = typeof source === "function" ? source : defaultLoader(source)
+
+  return new TopikMetadataRepository(loader, TopikManifestSchema)
+}
+
+function defaultLoader(manifestUrl: string): () => Promise<unknown> {
+  return async () => {
     const response = await fetch(manifestUrl)
     if (!response.ok) {
       throw new Error(
@@ -45,6 +59,4 @@ export function createTopikMetadataRepository(
 
     return json
   }
-
-  return new TopikMetadataRepository(loader, TopikManifestSchema)
 }

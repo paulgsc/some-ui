@@ -45,23 +45,30 @@ export class TopikRepository implements ITopikRepository {
 // FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Create repository instance with HTTP loader.
- */
-export function createTopikRepository(): TopikRepository {
-  const loader = async (key: string): Promise<unknown> => {
-    const response = await fetch(key)
+async function defaultLoader(key: string): Promise<unknown> {
+  const response = await fetch(key)
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to load topik "${key}": ${response.status} ${response.statusText}`
-      )
-    }
-
-    const json: unknown = await response.json()
-
-    return json
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load topik "${key}": ${response.status} ${response.statusText}`
+    )
   }
 
+  const json: unknown = await response.json()
+
+  return json
+}
+
+/**
+ * Create a repository instance. Defaults to a plain HTTP loader; pass a
+ * loader built on `@some-ui/fetch-kit`'s `createDataSource` (or anything
+ * else shaped `(key) => Promise<unknown>`) to source batches from wherever
+ * the host app resolves them from - a bundled static asset, a local
+ * companion server, or otherwise. The repository itself stays agnostic to
+ * that choice.
+ */
+export function createTopikRepository(
+  loader: (key: string) => Promise<unknown> = defaultLoader
+): TopikRepository {
   return new TopikRepository(loader, TopikFileSchema)
 }
