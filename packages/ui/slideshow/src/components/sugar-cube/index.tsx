@@ -1,7 +1,7 @@
-import type { CSSProperties, FC, RefObject } from "react"
+import type { CSSProperties, FC } from "react"
 import { useRef } from "react"
 import { TVStaticAnimation } from "@slideshow/components/tv-animation"
-import type { AllowedRotationAxis } from "@slideshow/hooks/use-rotating-cube"
+import type { AllowedRotationAxis } from "@some-ui/dice-card"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 type RotatingCubeProps = {
@@ -17,12 +17,11 @@ export const SugarCube: FC<RotatingCubeProps> = ({
 }): React.JSX.Element => {
   const ref = useRef<HTMLDivElement>(null)
 
-  const { height, width } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
+  const { height, width } = useMeasureRect({ ref })
 
   return (
     <div
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       style={{ "--perspective": perspective } as CSSProperties}
       className={cn(
         "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]",
@@ -36,6 +35,7 @@ export const SugarCube: FC<RotatingCubeProps> = ({
           "[transform:rotateX(calc(var(--cube-x-rotation)*1deg))_rotateY(calc(var(--cube-y-rotation)*1deg))]"
         )}
         style={
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           {
             "--cube-x-rotation": -20,
             "--cube-y-rotation": 45,
@@ -46,6 +46,7 @@ export const SugarCube: FC<RotatingCubeProps> = ({
           <div
             key={index}
             style={
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               {
                 "--face-width": (width ?? 0) / 2,
                 "--face-height": (height ?? 0) / 2,

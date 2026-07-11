@@ -1,4 +1,3 @@
-export * from "./use-rotating-cube"
 export * from "./use-animated-steps"
 export * from "./use-aperture"
 export * from "./use-video-time"

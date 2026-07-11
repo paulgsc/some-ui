@@ -204,6 +204,10 @@ export const useRotatingCube = ({
     [rotationAxis]
   )
 
+  /* eslint-disable react-hooks/exhaustive-deps, react-hooks/immutability, react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect --
+     pre-existing autoplay/pause wiring ported as-is from packages/ui/slideshow;
+     tightening these deps changes interval/resubscribe timing and needs its
+     own characterization pass rather than a silent behavior change here. */
   const rotateCube = useCallback(
     ({ reverse, rotateTo }: RotateCubeOptions) => {
       setRotationState((prev) => {
@@ -330,6 +334,7 @@ export const useRotatingCube = ({
       unsubscribers.forEach((unsub) => unsub())
     }
   }, [cubeId, rotationAxis, cubeEvents])
+  /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability, react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect */
 
   // Handle cube events
   useEffect(() => {

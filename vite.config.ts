@@ -1,4 +1,4 @@
-import path, { resolve } from "path"
+import path from "path"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
 import dts from "vite-plugin-dts"
@@ -6,6 +6,8 @@ import topLevelAwait from "vite-plugin-top-level-await"
 import wasm from "vite-plugin-wasm"
 
 export default defineConfig({
+  // @ts-expect-error vite-plugin-wasm/vite-plugin-top-level-await resolve
+  // against a different hoisted vite version than this repo's own vite dep
   plugins: [wasm(), topLevelAwait(), react(), dts({ include: ["src"] })],
   resolve: {
     alias: {
@@ -22,6 +24,7 @@ export default defineConfig({
       "@nfl": path.resolve(__dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(__dirname, "./packages/charts/d3/src"),
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
+      "@dice-card": path.resolve(__dirname, "./packages/ui/dice-card/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
       "@portfolio": path.resolve(

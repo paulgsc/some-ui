@@ -1,10 +1,10 @@
-import type { CSSProperties, FC, ReactNode, RefObject } from "react"
-import { Fragment, useRef } from "react"
+import type { CSSProperties, FC, ReactNode } from "react"
+import { useRef } from "react"
 import type {
   AllowedRotationAxis,
   Mode,
-} from "@slideshow/hooks/use-rotating-cube"
-import { useRotatingCube } from "@slideshow/hooks/use-rotating-cube"
+} from "@dice-card/hooks/use-rotating-cube"
+import { useRotatingCube } from "@dice-card/hooks/use-rotating-cube"
 import { BorderBeam } from "some-ui-shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
@@ -41,12 +41,11 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   })
   const ref = useRef<HTMLDivElement>(null)
 
-  const { height, width } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
-  })
+  const { height, width } = useMeasureRect({ ref })
 
   return (
     <div
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       style={{ "--perspective": perspective } as CSSProperties}
       className={cn(
         "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]",
@@ -62,6 +61,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
           "[transform:rotateX(calc(var(--cube-x-rotation)*1deg))_rotateY(calc(var(--cube-y-rotation)*1deg))]"
         )}
         style={
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           {
             "--cube-x-rotation": rotationState.xRotation,
             "--cube-y-rotation": rotationState.yRotation,
@@ -72,6 +72,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
           <div
             key={index}
             style={
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               {
                 "--face-width": (width ?? 0) / 2,
                 "--face-height": (height ?? 0) / 2,
@@ -119,13 +120,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
                 trailFadeDuration={duration / 2}
               />
             )}
-            {rotationState.face === index ? (
-              face
-            ) : rotationState.face !== index ? (
-              face
-            ) : (
-              <Fragment />
-            )}
+            {face}
           </div>
         ))}
       </div>

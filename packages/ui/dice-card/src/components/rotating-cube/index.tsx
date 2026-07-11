@@ -1,11 +1,11 @@
 import type { FC } from "react"
 import { useMemo } from "react"
-import { DiceCard } from "@slideshow/components/dice-card"
+import { DiceCard } from "@dice-card/components/dice-card"
 import type {
   AllowedRotationAxis,
   Mode,
-} from "@slideshow/hooks/use-rotating-cube"
-import { processArray } from "@slideshow/utils/rotating-cube"
+} from "@dice-card/hooks/use-rotating-cube"
+import { processArray } from "@dice-card/utils/rotating-cube"
 
 export type RotatingCubeProps = {
   perspective?: number

@@ -1,4 +1,4 @@
-import { cubeEvents } from "@slideshow/hooks/use-rotating-cube"
+import { cubeEvents } from "@dice-card/hooks/use-rotating-cube"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { DiceCard } from "."
@@ -27,10 +27,12 @@ export const Default: Story = {
   ),
 }
 
-export default {
-  title: "UI/Slideshow/Components/DiceCard",
+const meta = {
+  title: "UI/DiceCard/Components/DiceCard",
   component: DiceCard,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 export const PausAnimation: Story = {
   args: {
