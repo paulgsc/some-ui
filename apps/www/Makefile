@@ -1,179 +1,113 @@
-# Makefile for Docker operations
-# Variables
-DOCKER_USERNAME ?= your-username
-IMAGE_NAME ?= my-app
-TAG ?= latest
-FULL_IMAGE_NAME = $(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG)
 
-# Docker registry (default to Docker Hub)
-REGISTRY ?= docker.io
+# ------------------------------------------------------------
+# Docker Configuration
+# ------------------------------------------------------------
+IMAGE_NAME       ?= 
+DOCKER_REPO      ?= paulgsc/$(IMAGE_NAME)
+DOCKERFILE_PATH  ?= 
+TAG              := latest
 
-# Platform for multi-arch builds (optional)
-PLATFORM ?= linux/amd64,linux/arm64
+# Get git metadata for dynamic version tagging
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_BRANCH := $(shell git branch --show-current 2>/dev/null || echo "main")
 
-# Colors for output
-RED = \033[0;31m
-GREEN = \033[0;32m
-YELLOW = \033[1;33m
-BLUE = \033[0;34m
-NC = \033[0m # No Color
+# Colors for terminal styling
+CYAN   = \033[36m
+GREEN  = \033[32m
+YELLOW = \033[33m
+RED    = \033[31m
+NC     = \033[0m
 
-.PHONY: help build run stop clean push pull login logout tag dev prod multi-build health logs shell
+.PHONY: help login build build-no-cache push deploy pull run stop clean cleanup build-multi shell logs check
 
-# Default target
+# ------------------------------------------------------------
+# Guard Macros for Variable Validation
+# ------------------------------------------------------------
+define check_vars
+	@if [ -z "$(IMAGE_NAME)" ]; then echo "$(RED)Error: IMAGE_NAME is empty.$(NC)\nUsage: make $(1) IMAGE_NAME=www DOCKERFILE_PATH=apps/www/Dockerfile"; exit 1; fi
+	@if [ -z "$(DOCKERFILE_PATH)" ]; then echo "$(RED)Error: DOCKERFILE_PATH is empty.$(NC)\nUsage: make $(1) IMAGE_NAME=www DOCKERFILE_PATH=apps/www/Dockerfile"; exit 1; fi
+endef
+
+# ------------------------------------------------------------
+# Available Targets
+# ------------------------------------------------------------
 help: ## Show this help message
-	@echo "$(BLUE)Available commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-15s$(NC) %s\n", $$1, $$2}'
+	@echo "$(CYAN)Available targets:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-15s$(NC) %s\n", $$1, $$2}'
 
-# Build the Docker image
-build: ## Build the Docker image
-	@echo "$(BLUE)Building Docker image: $(FULL_IMAGE_NAME)$(NC)"
-	docker build -t $(FULL_IMAGE_NAME) .
-	@echo "$(GREEN)Build completed successfully!$(NC)"
-
-# Build with no cache
-build-no-cache: ## Build the Docker image without cache
-	@echo "$(BLUE)Building Docker image without cache: $(FULL_IMAGE_NAME)$(NC)"
-	docker build --no-cache -t $(FULL_IMAGE_NAME) .
-	@echo "$(GREEN)Build completed successfully!$(NC)"
-
-# Build for multiple platforms
-multi-build: ## Build multi-platform image (requires buildx)
-	@echo "$(BLUE)Building multi-platform image: $(FULL_IMAGE_NAME)$(NC)"
-	docker buildx build --platform $(PLATFORM) -t $(FULL_IMAGE_NAME) --push .
-	@echo "$(GREEN)Multi-platform build completed and pushed!$(NC)"
-
-# Run the container
-run: ## Run the container on port 8080
-	@echo "$(BLUE)Running container: $(FULL_IMAGE_NAME)$(NC)"
-	docker run -d --name $(IMAGE_NAME) -p 8080:80 $(FULL_IMAGE_NAME)
-	@echo "$(GREEN)Container is running at http://localhost:8080$(NC)"
-
-# Run in development mode with volume mounting
-dev: ## Run container with volume mounting for development
-	@echo "$(BLUE)Running container in development mode$(NC)"
-	docker run -d --name $(IMAGE_NAME)-dev -p 8080:80 \
-		-v $(PWD)/dist:/usr/share/nginx/html:ro \
-		$(FULL_IMAGE_NAME)
-	@echo "$(GREEN)Development container is running at http://localhost:8080$(NC)"
-
-# Stop and remove the container
-stop: ## Stop and remove the running container
-	@echo "$(YELLOW)Stopping container: $(IMAGE_NAME)$(NC)"
-	-docker stop $(IMAGE_NAME)
-	-docker rm $(IMAGE_NAME)
-	-docker stop $(IMAGE_NAME)-dev
-	-docker rm $(IMAGE_NAME)-dev
-	@echo "$(GREEN)Container stopped and removed$(NC)"
-
-# Clean up containers and images
-clean: stop ## Clean up containers, images, and build cache
-	@echo "$(YELLOW)Cleaning up Docker resources$(NC)"
-	-docker rmi $(FULL_IMAGE_NAME)
-	-docker system prune -f
-	@echo "$(GREEN)Cleanup completed$(NC)"
-
-# Deep clean (remove all unused resources)
-deep-clean: ## Remove all unused Docker resources
-	@echo "$(RED)Performing deep clean of Docker resources$(NC)"
-	-docker system prune -a -f --volumes
-	@echo "$(GREEN)Deep clean completed$(NC)"
-
-# Tag the image
-tag: ## Tag the image with additional tag
-	@read -p "Enter additional tag: " ADDITIONAL_TAG; \
-	docker tag $(FULL_IMAGE_NAME) $(DOCKER_USERNAME)/$(IMAGE_NAME):$$ADDITIONAL_TAG
-	@echo "$(GREEN)Image tagged successfully$(NC)"
-
-# Login to Docker Hub
 login: ## Login to Docker Hub
-	@echo "$(BLUE)Logging in to Docker Hub$(NC)"
-	docker login $(REGISTRY)
+	@echo "Logging into Docker Hub..."
+	@docker login
 
-# Logout from Docker Hub
-logout: ## Logout from Docker Hub
-	@echo "$(BLUE)Logging out from Docker Hub$(NC)"
-	docker logout $(REGISTRY)
+build: ## Build the Docker image using local layer caching
+	$(call check_vars,$@)
+	@echo "Building Docker image: $(DOCKER_REPO):$(TAG)"
+	docker build -f $(DOCKERFILE_PATH) -t $(DOCKER_REPO):$(TAG) .
+	docker tag $(DOCKER_REPO):$(TAG) $(DOCKER_REPO):dev-$(GIT_COMMIT)
+	@echo "$(GREEN)Built images:$(NC)"
+	@echo "  - $(DOCKER_REPO):$(TAG)"
+	@echo "  - $(DOCKER_REPO):dev-$(GIT_COMMIT)"
 
-# Push image to Docker Hub
-push: ## Push the image to Docker Hub
-	@echo "$(BLUE)Pushing image: $(FULL_IMAGE_NAME)$(NC)"
-	docker push $(FULL_IMAGE_NAME)
-	@echo "$(GREEN)Image pushed successfully!$(NC)"
+build-no-cache: ## Force complete rebuild without layer caching
+	$(call check_vars,$@)
+	@echo "Building Docker image without cache: $(DOCKER_REPO):$(TAG)"
+	docker build --no-cache -f $(DOCKERFILE_PATH) -t $(DOCKER_REPO):$(TAG) .
+	docker tag $(DOCKER_REPO):$(TAG) $(DOCKER_REPO):dev-$(GIT_COMMIT)
+	@echo "$(GREEN)Rebuilt images from scratch!$(NC)"
 
-# Push with build
-push-latest: build push ## Build and push the latest image
+push: ## Push the built images to Docker Hub
+	$(call check_vars,$@)
+	@echo "Pushing Docker images to Docker Hub..."
+	docker push $(DOCKER_REPO):$(TAG)
+	docker push $(DOCKER_REPO):dev-$(GIT_COMMIT)
+	@echo "$(GREEN)Successfully pushed images$(NC)"
 
-# Pull image from Docker Hub
-pull: ## Pull the image from Docker Hub
-	@echo "$(BLUE)Pulling image: $(FULL_IMAGE_NAME)$(NC)"
-	docker pull $(FULL_IMAGE_NAME)
-	@echo "$(GREEN)Image pulled successfully!$(NC)"
+deploy: login build push ## One command workflow: Login, build, and push target image
+	@echo "🚀 $(GREEN)Deploy complete! Your target env can now execute:$(NC)"
+	@echo "   docker pull $(DOCKER_REPO):$(TAG)"
 
-# Health check
-health: ## Check container health status
-	@echo "$(BLUE)Checking container health$(NC)"
-	@docker inspect --format='{{.State.Health.Status}}' $(IMAGE_NAME) 2>/dev/null || echo "Container not found or no health check configured"
+pull: ## Pull the target image from Docker Hub
+	$(call check_vars,$@)
+	@echo "Pulling image from Docker Hub..."
+	docker pull $(DOCKER_REPO):$(TAG)
 
-# Show container logs
-logs: ## Show container logs
-	@echo "$(BLUE)Showing logs for container: $(IMAGE_NAME)$(NC)"
-	docker logs -f $(IMAGE_NAME)
+run: stop ## Run the container locally (stops any active instance first)
+	$(call check_vars,$@)
+	@echo "Running container from $(DOCKER_REPO):$(TAG) on port 8080..."
+	docker run -d --name $(IMAGE_NAME) -p 8080:80 $(DOCKER_REPO):$(TAG)
 
-# Execute shell in running container
-shell: ## Execute shell in the running container
-	@echo "$(BLUE)Opening shell in container: $(IMAGE_NAME)$(NC)"
+stop: ## Stop and remove the active local container container
+	@if [ -n "$(IMAGE_NAME)" ]; then \
+		echo "Stopping container $(IMAGE_NAME)..."; \
+		docker stop $(IMAGE_NAME) 2>/dev/null || true; \
+		docker rm $(IMAGE_NAME) 2>/dev/null || true; \
+	fi
+
+shell: ## Execute an interactive sh session inside the running container
+	@if [ -z "$(IMAGE_NAME)" ]; then echo "$(RED)Error: Specify IMAGE_NAME to enter shell$(NC)"; exit 1; fi
 	docker exec -it $(IMAGE_NAME) /bin/sh
 
-# Show running containers
-ps: ## Show running containers
-	@echo "$(BLUE)Running containers:$(NC)"
-	docker ps --filter name=$(IMAGE_NAME)
+logs: ## Stream log context out of the active container
+	@if [ -z "$(IMAGE_NAME)" ]; then echo "$(RED)Error: Specify IMAGE_NAME to watch logs$(NC)"; exit 1; fi
+	docker logs -f $(IMAGE_NAME)
 
-# Show image info
-info: ## Show image information
-	@echo "$(BLUE)Image information:$(NC)"
-	docker images $(FULL_IMAGE_NAME)
-	@echo "\n$(BLUE)Image layers:$(NC)"
-	docker history $(FULL_IMAGE_NAME)
+clean: ## Remove current target variant tags from local image store
+	$(call check_vars,$@)
+	@echo "Cleaning local target images..."
+	@docker rmi $(DOCKER_REPO):$(TAG) 2>/dev/null || true
+	@docker rmi $(DOCKER_REPO):dev-$(GIT_COMMIT) 2>/dev/null || true
 
-# Release workflow (build, tag, push)
-release: ## Build, tag and push release version
-	@read -p "Enter release version (e.g., v1.0.0): " VERSION; \
-	docker build -t $(DOCKER_USERNAME)/$(IMAGE_NAME):$$VERSION -t $(FULL_IMAGE_NAME) .; \
-	docker push $(DOCKER_USERNAME)/$(IMAGE_NAME):$$VERSION; \
-	docker push $(FULL_IMAGE_NAME)
-	@echo "$(GREEN)Release completed successfully!$(NC)"
+cleanup: ## Force eviction of unused BuildKit caches and dangling images
+	@echo "$(YELLOW)Pruning dangling build contexts and layer environments...$(NC)"
+	docker system prune -f
+	docker image prune -f
+	docker builder prune -f
 
-# Quick development cycle
-dev-cycle: stop build run ## Stop, build, and run for quick development
+build-multi: ## Build and push multi-platform images (linux/amd64, linux/arm64) via buildx
+	$(call check_vars,$@)
+	@echo "Building multi-platform image..."
+	docker buildx build --platform linux/amd64,linux/arm64 -f $(DOCKERFILE_PATH) -t $(DOCKER_REPO):$(TAG) . --push
 
-# Production deployment
-prod: ## Build and run production container
-	@echo "$(BLUE)Deploying production container$(NC)"
-	$(MAKE) stop
-	$(MAKE) build TAG=prod
-	docker run -d --name $(IMAGE_NAME)-prod -p 80:80 --restart unless-stopped $(DOCKER_USERNAME)/$(IMAGE_NAME):prod
-	@echo "$(GREEN)Production container deployed on port 80$(NC)"
-
-# Backup image
-backup: ## Save image to tar file
-	@echo "$(BLUE)Backing up image to tar file$(NC)"
-	docker save $(FULL_IMAGE_NAME) | gzip > $(IMAGE_NAME)-$(TAG)-backup.tar.gz
-	@echo "$(GREEN)Image backed up to $(IMAGE_NAME)-$(TAG)-backup.tar.gz$(NC)"
-
-# Restore image from backup
-restore: ## Load image from tar file
-	@echo "$(BLUE)Restoring image from backup$(NC)"
-	@read -p "Enter backup file path: " BACKUP_FILE; \
-	gunzip -c $$BACKUP_FILE | docker load
-	@echo "$(GREEN)Image restored from backup$(NC)"
-
-# Security scan (requires Docker Scout or similar)
-scan: ## Scan image for vulnerabilities
-	@echo "$(BLUE)Scanning image for vulnerabilities$(NC)"
-	@if command -v docker-scout >/dev/null 2>&1; then \
-		docker scout cves $(FULL_IMAGE_NAME); \
-	else \
-		echo "$(YELLOW)Docker Scout not installed. Install it for vulnerability scanning.$(NC)"; \
-	fi
+check: ## Check local engine image storage for reference matches
+	$(call check_vars,$@)
+	@docker images | grep $(DOCKER_REPO) || echo "$(YELLOW)No local images found for $(DOCKER_REPO)$(NC)"
