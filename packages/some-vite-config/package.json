@@ -25,16 +25,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^6.4.3",
-    "vite-plugin-dts": "^4.5.4",
-    "vite-tsconfig-paths": "^5.1.4"
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.4",
+    "vite-plugin-dts": "^5.0.3",
+    "vite-tsconfig-paths": "^6.1.1"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*"
   },
   "peerDependencies": {
-    "vite": "^6.4.3"
+    "vite": "^8.1.4"
   },
   "exports": {
     ".": {
