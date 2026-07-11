@@ -76,7 +76,7 @@
   #v(0.15em)
   #text(size: 10pt)[Governing `some-censor` · `some-filter` · and all descendants]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.1 --- 2026-07-10]
+  #text(size: 9.5pt)[Version 1.2 --- 2026-07-11]
   #v(2cm)
 ]
 
@@ -1149,6 +1149,242 @@ known key (§5), and failing to separate the two is a common source of the
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
+#heading(level: 1, numbering: none)[The Custody Discipline --- Indiscriminate Detention and Its Exoneration]
+// ═══════════════════════════════════════════════════════════════════════════
+
+This section is deliberately placed here, between Convergence (§7) and the
+Transport Layer (§8), rather than filed as a coda: it is not supplementary
+material, and its position is not a comment on its importance, only an
+artifact of not wanting to renumber every downstream cross-reference (the same
+reason the Prolegomenon uses unnumbered headings). Proposition 7.3 --- the
+*actuation-observation coupling hazard* --- reads, on a first pass, like a
+footnote to loop suppression: a hazard to be excluded so Theorem 7.2 goes
+through. It is not a footnote. For the class of invariant this canon actually
+governs, §7.3 is the precondition that makes the architecture developed below
+*survivable*, and this section exists to say why, precisely, rather than by
+assertion.
+
+#heading(level: 2, numbering: none)[C.0 · The domain of mandate]
+
+Nothing below is a general-purpose design pattern. It is forced only inside a
+specific, checkable region of problem space, and stating that region
+precisely is what makes the discipline falsifiable rather than merely
+tasteful.
+
+#definition("C.0", name: "Zero-leak invariant")[
+  An invariant $Phi$ is *zero-leak* if no duration of its violation, however
+  short, is tolerable at any reliability short of $1$ --- equivalently, the
+  design target is $Pr[Phi "holds at every round"] -> 1$ asymptotically, not
+  a merely high empirical hit rate. A single visible unmasked frame, or a
+  single visible flash of the vendor's true background, is a completed
+  failure, not a rare defect to be budgeted against.
+]
+
+#proposition("C.1", name: "Domain of mandate for indiscriminate custody")[
+  The discipline of this section --- initializing every key as presumptively
+  in violation, at cost, until evidence discharges it --- is mandatory if and
+  only if both hold: (a) $Phi$ is zero-leak (Definition C.0), and (b) the
+  environment's transition function $f$ is exogenous (Definition 2.1). If (a)
+  fails, an optimistic detector is strictly cheaper and admissible instead. If
+  (b) fails --- the observer *is* the vendor, e.g. building the platform
+  itself rather than extending it --- $hat(H)$ can simply equal $G_t$ and no
+  custody, indeed no estimation layer at all, is needed.
+]
+
+#proof[
+  (necessity of (a)) If $Phi$ tolerates a transient violation
+  window, the cost this section derives (Definition C.2) buys a guarantee
+  stronger than required; indiscriminate custody becomes pure overhead, not a
+  forced conclusion. (necessity of (b)) If $f$ is endogenous,
+  the "observer" has direct access to the true state by construction,
+  collapsing $hat(H)$ to $G_t$ trivially; there is no incompleteness
+  (Proposition 2.2 does not apply to an observer that *is* the source of
+  truth) and hence nothing for a hypothesis, provisional or otherwise, to be
+  an estimate *of*. (sufficiency of (a) and (b) jointly) Given
+  (b), Proposition P.1 applies: internal state can only be a hypothesis, never
+  a copy. Given (a) and Proposition 2.2 (no complete observation vocabulary),
+  any policy that treats "no evidence yet" as satisfying $Phi$ admits a
+  reachable execution (Axiom 3.1, lossiness) in which a genuinely-unsafe key
+  is never distinguished from a safe one for an unbounded interval ---
+  precisely the violation Definition C.0 forbids by fiat. The only policy
+  compatible with both (a) and (b) is therefore the pessimistic one derived
+  next (Axiom C.1).
+]
+
+#remark("C.1")[
+  `some-censor`'s invariant --- no un-redacted target video is ever rendered
+  --- and `some-filter`'s --- no page is ever displayed at native vendor
+  luminance when dark is required --- are both zero-leak by inspection (a
+  single visible frame *is* the failure the extension exists to prevent) and
+  both sit over a vendor's exogenous, uncoordinated runtime (Definition 2.1).
+  Both are squarely inside the domain of mandate. A feature that merely
+  wants to *usually* highlight a video, or *usually* apply a cosmetic tweak,
+  is not in this domain, and importing this discipline for it would be a
+  category error --- all cost, no compensating guarantee.
+]
+
+#heading(level: 2, numbering: none)[C.1 · The pessimistic default, derived rather than assumed]
+
+Definition 6.2 (the planner) was, as originally stated, silent on one
+question: what is $phi(k, bot)$ --- does "no evidence yet" count as
+satisfying the invariant? That silence is not a harmless gap. It is the exact
+fork between an optimistic architecture and a pessimistic one, and leaving it
+implicit is precisely how an implementation drifts toward optimism by
+accident, one plausible-looking early return at a time.
+
+#axiom("C.1", name: "Pessimistic default")[
+  For any $Phi$ satisfying Definition C.0 under the domain of Proposition
+  C.1, $phi(k, bot) = 0$ for every $k in KK$: absence of evidence never
+  satisfies the invariant.
+]
+
+#corollary("C.1.1", name: "Guilty until proven innocent, as a forced consequence")[
+  By Definition 6.2, the instant a key $k$ enters the estimator's domain with
+  $hat(H)(k) = bot$, $Delta(k) = "target"(k)$ --- every key is held under the
+  protective repair *before* any evidence about it exists. This is exactly
+  the everything-is-a-video-card / everything-is-a-bright-page idiom, obtained
+  here as a forced consequence of Axiom C.1 and Proposition 2.2, not as an
+  engineering preference for caution.
+]
+
+#remark("C.2", name: "Why the optimistic default is not merely worse, but unsound")[
+  Setting $phi(k,bot) = 1$ instead is not a valid competing design in this
+  domain; it is a falsified value. Under Axiom 3.1 (lossiness), a reachable
+  delivery sequence exists in which the first token evidencing a
+  genuinely-unsafe $k$ is dropped, or arrives after the only round at which
+  $Phi$ happens to be checked; an optimistic default reads that silence as
+  "safe" and never triggers the planner for $k$ at all. Under Definition
+  C.0 this is not a rare failure mode to be weighed against convenience --- it
+  is *the* failure this entire canon exists to rule out. The pessimistic
+  default is not the safer of two options; it is the only one Definition C.0
+  leaves standing.
+]
+
+#heading(level: 2, numbering: none)[C.2 · Custody volume: the honest cost of the guarantee]
+
+#definition("C.2", name: "Suspension domain and custody volume")[
+  A key $k$ is *held* at round $t$ if the actuator's most recently applied
+  action for $k$ is $"target"(k)$ rather than a clearing action. The
+  *suspension domain* $S_t subset.eq "dom"(hat(H)_t)$ is the set of held keys;
+  $E_t = "dom"(hat(H)_t) \\ S_t$ is the *exonerated* complement. The *custody
+  volume* over a horizon $T$ is $ cal(C)(T) = sum_(t=t_0)^T |S_t|, $ the aggregate
+  cost --- CPU cycles spent masking, screen-area darkened, perceptual weight
+  of an over-cautious page --- the zero-leak guarantee actually charges.
+]
+
+#remark("C.3")[
+  Axiom C.1 fixes $cal(C)$'s starting condition, not its trajectory: every
+  key is held at the moment it is first seen, so $S_(t_0)$ is, worst case, the
+  entire freshly-observed domain. The question this canon's estimator,
+  planner, and sensor-driver machinery (§5--§8) actually has room to answer is
+  not *whether* to hold custody --- Proposition C.1 has already settled
+  that --- but how fast $cal(C)$ can be driven down without ever letting
+  $Phi$ fail. That is where sensor-driver quality is genuinely measured, and
+  where the case studies below (§9) find their real edge-case pain.
+]
+
+#heading(level: 2, numbering: none)[C.3 · The contraction bound (falsifiable)]
+
+The custody discipline earns the "defensible" the review asked for only if it
+comes with a stated failure condition, not merely an existence proof. The
+bound below is obtained directly from machinery already proved in §7, not
+from a new convergence argument built to order.
+
+#theorem("C.1", name: "Contraction bound")[
+  Let $Phi$ be local (Definition 6.1) and zero-leak (Definition C.0) under
+  Axiom C.1, and let $K = {k in KK : k "genuinely requires" "target"(k)
+  "given the vendor's true state"}$. Under the hypotheses of Theorem 7.1
+  ($t_0$-quiescence, $R$-bounded delivery, self-exclusion per §7.3--7.4,
+  resolved identity recycling per Corollary 5.2.1), there exists $t_1 <=
+  t_0 + R$ such that $S_t = K$ for every $t >= t_1$.
+]
+
+#proof[
+  By Theorem 7.1, $Phi(hat(H)_t) = 1$ for all $t >= t_1$; by locality
+  (Definition 6.1), $phi(k, hat(H)_t (k)) = 1$ for every $k$ individually. For
+  an invariant of this shape, $phi(k, dot) = 1$ holds under exactly one of two
+  disjoint conditions: $k$ is genuinely safe and currently exonerated ($k in
+  E_t$), or $k$ is genuinely target-requiring and currently held ($k in
+  S_t$) --- there is no third satisfying configuration, because
+  $"target"(k)$ was defined (Definition 6.2) to be precisely the repair that
+  makes $phi$ hold for a key failing it, and a key already satisfying $phi$
+  receives no repair. So for $t >= t_1$: $k in K$ iff $k$ is genuinely
+  target-requiring iff (by the disjointness just argued) $k in S_t$. Hence
+  $S_t = K$.
+]
+
+#remark("C.4", name: "Falsification criterion")[
+  Run a sensor driver on a state where the true positive set is empty ($K =
+  emptyset$: a page with zero target videos; a page already in genuine native
+  dark theme). If, after a local quiescence window of the driver's own
+  claimed $R$, $S_(t_0+R) != emptyset$, Theorem C.1 is falsified *for that
+  driver*, and by exactly one of three causes, each independently checkable:
+  (i) $R$-bounded delivery is not actually being achieved (the driver's §8.3
+  disclosure of its bound is false); (ii) the epoch or identity-continuity
+  precondition of Corollary 5.2.1 is unmet; or (iii) the driver's $xi$ never
+  produces evidence sufficient to exonerate a genuinely-safe key, so nothing
+  in $S_t$ was ever going to leave. This is the same trichotomy §10.1 already
+  triages by, applied to one further symptom: a suspension domain that never
+  contracts, i.e. an extension that is correct but permanently, uselessly
+  paranoid.
+]
+
+#heading(level: 2, numbering: none)[C.4 · Shrinking $cal(C)$ without amending the guarantee]
+
+The bound above is agnostic to *how fast* $t_1$ arrives; the following are
+engineering corollaries that reduce $R$'s realized value, not new claims
+about correctness. Each is falsifiable in the same style as Theorem C.1, and
+each is *sound only in the exonerating direction* --- misfiring toward
+"target" is merely wasteful, misfiring toward "safe" is a zero-leak violation,
+so a corollary below is inadmissible unless proved sound for exoneration
+specifically.
+
+#corollary("C.2", name: "Hierarchical exoneration")[
+  If $xi$ (Definition 4.1) can be extended to certify, from one observation
+  at an ancestor node $n$, that no descendant of $n$ can extract to a target
+  key, every $m$ in the subtree rooted at $n$ may be exonerated in the same
+  round as $n$, without individually re-deriving $xi(m, dot)$. This does not
+  change *whether* Theorem C.1's $t_1$ exists; it can sharply reduce the
+  realized $cal(C)$, since one ancestor-level negative fact retires a whole
+  subtree from $S_t$ instead of waiting on per-descendant evidence. Falsification: a
+  descendant of a certified-negative ancestor that is later shown to be a
+  genuine target key means the ancestor-level certificate was unsound and
+  must be withdrawn under §10, not patched with a per-node exception.
+]
+
+#corollary("C.3", name: "Negative-fingerprint fast exoneration")[
+  A synchronous predicate set $FF$ of *sufficient conditions for genuine
+  safety* (undersized bounding box, a disallowed tag, an exonerating
+  structural role) lets a key exit $S_t$ in $O(1)$ rounds, bypassing the
+  slower positive-identification tiers of Definition 4.1 entirely --- but
+  only because every $f in FF$ is required to be *sound for exoneration*: a
+  proven sufficient condition for safety, never a heuristic correlate of it.
+  Falsification: any node matching some $f in FF$ that is later shown to be a
+  genuine target key falsifies $f$ itself, not the node; $f$ must be removed
+  from $FF$ under §10, exactly as an unsound axiom would be amended.
+]
+
+#heading(level: 2, numbering: none)[C.5 · Why §7.3 is load-bearing, not a footnote]
+
+#remark("C.5")[
+  Axiom C.1 does not merely permit heavy actuation near $t_0$; it *mandates*
+  it --- worst case, every freshly-observed key is held simultaneously. A
+  detector that shares a subtree with the actuator under this regime is not
+  occasionally sampling its own artifact as an edge case (the framing under
+  which Proposition 7.3 first appears); it is doing so *continuously, over
+  most of the observed domain, for as long as custody volume remains high*.
+  Without the structural exclusion §7.3 demands and the self-tag §7.4
+  supplies, the estimator would read every held key's own veil or mask as
+  fresh vendor evidence, and Theorem C.1's contraction could never
+  distinguish a genuine exoneration from an artifact of the extension's own
+  mass detention. Indiscriminate custody is therefore not merely compatible
+  with the actuation-observation coupling hazard; discharging that hazard is
+  the specific precondition that makes indiscriminate custody convergent
+  rather than self-poisoning. The two are not adjacent concerns --- one is the
+  load the other must be strong enough to carry.
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
 = The Transport Layer Architecture
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1241,11 +1477,21 @@ each of the following against Axioms 3.1--3.5:
 = Case Studies
 // ═══════════════════════════════════════════════════════════════════════════
 
-This canon is not offered as an abstract exercise. Both governed extensions
-already implement it, in places by necessity discovered the hard way before
-this document existed. This section is the reconciliation: it shows the
-theorems above are not a new design to migrate toward, but the explanation
-for invariants the source already asserts as comments.
+This canon is not offered as an abstract exercise, and this section is not a
+victory lap. Both governed extensions are, today, the site of the pain named
+in §C.0 (P.0): `some-censor` produces a steady trickle of "why wasn't this
+one censored" reports --- a video in the sidebar, in the small recommendation
+feed, in Shorts, or an ordinary card that silently refuses clicks --- and
+`some-filter` produces a steady trickle of "why did it flash." Neither
+extension is a hallmark of this architecture done well; both are evidence of
+exactly the whack-a-mole this canon exists to end. What follows documents
+both halves honestly: mechanisms already discovered, independently and by
+necessity, that the theorems above explain rather than invent (the epoch,
+identity-continuity, and self-tagging machinery of §4--§8); and, separately,
+concrete points where either extension still violates the custody discipline
+of §C, which is where their recurring edge cases actually come from. The
+second half is not a lesser finding than the first --- naming *where the
+canon is not yet obeyed* is the entire purpose of filing a canon at all.
 
 == `some-censor`
 
@@ -1301,6 +1547,36 @@ jointly self-tag every actuator-owned card (Definition 7.3); `_promote()`’s
 existing-entry repair path (Invariant M2, upsert idempotence) is exactly
 Theorem 7.2’s idempotent-actuation precondition.
 
+*Custody discipline: where it is currently violated.* The recurring "why
+wasn't this one censored" reports --- a video surfaced in the sidebar, in the
+small recommendation feed, in Shorts, or an ordinary card that stops
+responding to clicks --- are not four unrelated bugs. They are the same bug
+observed at four different DOM locations, and the bug is a scope violation
+one level *before* the estimator: Axiom C.1 forces $Delta(k) = "target"(k)$
+the instant $k$ enters $"dom"(hat(H))$, but that guarantee is vacuous for a
+node the observation channel never hands to the estimator in the first
+place. If $SS_"event"$'s subscription and $xi$'s candidacy check are scoped
+to the DOM regions the primary feed and player were observed to occupy at
+authoring time, a card rendered inside a region outside that footprint is
+never a suspect, never held, and never exonerated --- it simply never enters
+$KK$'s observed domain, which is a stronger failure than being wrongly
+exonerated. Each newly reported "container" (sidebar, Shorts shelf, a
+redesigned recommendation rail) is the same missing footprint rediscovered in
+a new place, and will keep recurring for as long as coverage is enumerated
+positively (a list of known containers) rather than negatively (everything
+is a candidate *unless* a sound exoneration predicate, per Corollary C.3,
+says otherwise). The click-blocking report is the mirror failure at
+exoneration time rather than custody time: a card that visually reads as
+revealed but still refuses interaction has had its *masking* cleared without
+its *clearing action* being a complete inverse of `target(k)` (Definition
+C.2's "held" versus "cleared" distinction) --- some artifact of the mask
+(an overlay, a captured pointer-events rule) outlived the exoneration that
+was supposed to remove it, which is Remark 7.2's bidirectional self-tagging
+gap recurring at the level of a single card's own teardown, not just at
+navigation-wide teardown. Both failures are conformance gaps against §8.3's
+checklist (declared $SS_"event"$ coverage; a sound, negative-only exoneration
+predicate set) rather than defects requiring a new theorem.
+
 == `some-filter`
 
 *The measurement disturbance instance.* ADR 0001
@@ -1337,6 +1613,45 @@ already-dark, then remove the veil last --- is a direct instance of Theorem
 then continuously re-observe and re-reconcile, rather than waiting for a
 settlement signal that Proposition 2.1 already proves cannot be relied
 upon.
+
+*Custody discipline: the legacy fallback as the correct idiom, arrived at
+without being named.* `some-filter`'s own history supplies the sharpest
+confirmation of Theorem C.1 available anywhere in either codebase, precisely
+because it was learned the expensive way rather than derived first. Per the
+maintainers' own account, the classifier-based mode --- which attempts a
+genuine positive identification of the vendor's true theme before deciding
+whether to act --- was abandoned in favor of the legacy HTML-invert filter,
+because the legacy filter's whole-page CSS cascade is applied *instantly and
+universally*: it does not wait to be right about which elements are actually
+bright before inverting all of them. This is Axiom C.1 (pessimistic default)
+taken to its degenerate limit at page granularity --- $S_t approx V_t$
+permanently, custody volume $cal(C)$ never contracts, exoneration is never
+attempted --- and it is a *correct* point on the trade-off Theorem C.1
+describes, not a failure to optimize: over-darkening a genuinely-light
+element costs perceptual quality, which $Phi$ (Remark C.1) does not forbid,
+whereas exposing a genuinely-dark page at native luminance for even one
+frame is the exact failure $Phi$ exists to rule out. Between a mode that is
+occasionally too dark and a mode that is occasionally too bright, only the
+first is admissible under a zero-leak invariant, and the legacy filter is
+simply the one that cannot fail in the forbidden direction. The classifier
+mode's defect is now precisely nameable: it substitutes *delayed, positive*
+identification (Definition 4.1's tiered extraction, here at page scale) for
+Axiom C.1's *instantaneous, negative* default, so the vendor's true
+background is exposed for the entire evaluation window
+$Delta t_"eval" > 0$ --- a page-scale instance of the same violation Remark
+C.2 rules out for a single key. The ADR's own "apply-then-detect" flow,
+documented above, is in fact the *fix* for exactly this defect: hold first
+(veil, or invert), classify under the hold, exonerate (restore native
+styling) only on proof of already-dark. That the extension nonetheless still
+falls back to legacy for the harder cases is not a rebuke of that fix; it is
+evidence that the classifier's *exoneration* leg --- the part of the pipeline
+this canon has the least to say about mechanically, and the part Corollary
+C.3 requires to be *sound*, not merely fast --- has not yet been made
+reliable enough to trust, and legacy is the correct, falsifiable-safe
+fallback for exactly the interval during which that remains true. Retiring
+legacy is a claim this canon requires evidence for (a demonstrated,
+sound exoneration predicate satisfying Theorem C.1's bound), not a target
+date.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = The Amendment Protocol --- Canon Law
@@ -1391,6 +1706,19 @@ resurface in a different guise.
   If the race is between a microtask ingestion and an animation-frame write
   (Remark 1.5), reschedule actuation into a phase that does not fight the
   vendor's layout; do not paper over a phase-boundary race with a `setTimeout`.
++ *Coverage gap: was the offending node ever a suspect at all?* If a leak
+  traces to a node in a location the channel never subscribed to (a new
+  container, a new surface), the fault is not in the estimator or planner ---
+  Axiom C.1 was never given the chance to apply. Widen $SS_"event"$'s and
+  $xi$'s declared coverage (§8.3) to the whole document by default; do not
+  add the new container to a list of known containers, which only relocates
+  the next gap.
++ *Incomplete exoneration: is "cleared" actually the inverse of "held"?* If a
+  key that should read as safe still carries a behavioral or visual artifact
+  (blocked interaction, residual style), the actuator's clearing action is
+  not a true inverse of $"target"(k)$ (Definition C.2). Fix the clearing
+  action to fully undo what targeting did; do not add a second, corrective
+  actuation on top of an incomplete one.
 + *None of the above?* The anomaly is evidence of a gap in this canon's own
   axioms, not merely in an implementation of them. File the amendment
   against §2 or §3 first --- extending the channel or environment model ---
@@ -1448,6 +1776,30 @@ solely as a source-code commit message; it must be reflected in this file.
   axioms sharpen the environment the existing theorems already tolerate; they do
   not weaken a precondition any theorem relied on. The conformance checklist
   (§8.3) and triage (§10.1) were extended to exercise the new axes.
+- *v1.1 → v1.2* (2026-07-11). A *major* amendment: it promotes the
+  actuation-observation coupling hazard (Proposition 7.3) from an isolated
+  robustness concern to the discipline's operational center, by filling a gap
+  Definition 6.2 left implicit --- the value of $phi(k,bot)$. New content: the
+  unnumbered section "The Custody Discipline," comprising the domain-of-mandate
+  criterion (Definition C.0, Proposition C.1) that scopes this entire canon to
+  zero-leak invariants over exogenous environments; the pessimistic-default
+  axiom (Axiom C.1) and its unsoundness argument against the optimistic
+  alternative (Remark C.2); the suspension domain and custody volume (Definition
+  C.2); the contraction bound (Theorem C.1), proved directly from Theorem 7.1
+  rather than new convergence machinery, with an explicit falsification
+  criterion (Remark C.4); two engineering corollaries for shrinking custody
+  volume soundly (Corollaries C.2, C.3); and a remark (C.5) making explicit that
+  §7.3/7.4 are the precondition for indiscriminate custody's convergence, not a
+  peripheral concern. No existing axiom or theorem in §1--§8 was weakened;
+  Axiom C.1 and Theorem C.1 are additions layered on Definition 6.1's existing
+  local-decomposition requirement. The Case Studies section (§9) was revised
+  from a validating tone to an honest one: both governed extensions are
+  documented as sites of the pain this canon exists to end, with concrete,
+  named custody-discipline violations (`some-censor`'s coverage-scoped
+  observation channel; `some-filter`'s classifier-mode evaluation-window leak)
+  alongside the mechanisms already independently discovered. Triage (§10.1)
+  gained two custody-specific diagnostics; the glossary and notation index were
+  extended accordingly.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
@@ -1472,6 +1824,9 @@ solely as a source-code commit message; it must be reflected in this file.
   [Manifest / latent (Def. 2.2, Ax. 3.6)], [`data-video-id` attr (manifest); React virtualization / internal state (latent)], [Sampled computed style (manifest); injected CSSOM veil rules (latent)],
   [Endogenous coupling (Rem. 2.6)], [vendor re-render provoked by a `data-boyo-vid` write], [vendor body-replacement reacting to the prepaint veil],
   [Eviction: decay vs disconnect (Rem. 3.3)], [`prune()` is disconnect-based; decay under virtualization is a candidate amendment], [(no long-lived per-key hypothesis to evict yet)],
+  [Pessimistic default (Ax. C.1)], [every card is masked at first sight, before `tryExtract()` resolves it], [legacy HTML-invert cascade applied page-wide before any classification],
+  [Suspension domain $S_t$ (Def. C.2)], [masked cards not yet exonerated by a resolved, un-whitelisted-negative check], [page currently under the invert filter, not yet restored to native],
+  [Custody violation (§9)], [sidebar / Shorts / rec-feed cards outside declared channel coverage; incomplete clearing blocking clicks], [classifier mode's evaluation window exposing native luminance before deciding],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1502,6 +1857,10 @@ solely as a source-code commit message; it must be reflected in this file.
   [$alpha$], [Actuator realization map (§7.3)],
   [$t_0$-quiescent], [No exogenous input from $t_0$ onward (Def. 7.1)],
   [$R$-bounded delivery], [Every mutation at or before $t_0$ delivered by $t_0+R$ (Def. 7.2)],
+  [Zero-leak], [No violation duration tolerable at reliability $< 1$ (Def. C.0)],
+  [$S_t$, $E_t$], [Suspension domain (held), exonerated complement (Def. C.2)],
+  [$cal(C)(T)$], [Custody volume, $= sum_t |S_t|$ over horizon $T$ (Def. C.2)],
+  [$K$], [True positive set: keys genuinely requiring $"target"(k)$ (Thm. C.1)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
