@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { CSSProperties, JSX } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { NodeData, TaskStatus } from "@calendar/types/life-scheduler"
 import { createPortal } from "react-dom"
@@ -84,7 +84,9 @@ export const NodePopup = ({
         x: e.clientX - pos.x,
         y: e.clientY - pos.y,
       }
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      if (e.currentTarget instanceof HTMLElement) {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }
       e.preventDefault()
     },
     [pos, expanded]
@@ -121,9 +123,9 @@ export const NodePopup = ({
     })
   }, [expanded])
 
-  const style = expanded
-    ? { inset: 0, width: "100vw", height: "100vh", position: "fixed" as const }
-    : { left: pos.x, top: pos.y, width: POPUP_W, position: "fixed" as const }
+  const style: CSSProperties = expanded
+    ? { inset: 0, width: "100vw", height: "100vh", position: "fixed" }
+    : { left: pos.x, top: pos.y, width: POPUP_W, position: "fixed" }
 
   return createPortal(
     <div
@@ -190,15 +192,20 @@ export const NodePopup = ({
         </p>
 
         <div className="grid grid-cols-3 gap-2">
-          {(["bucket", "slot", "tasks"] as const).map((key) => (
-            <div key={key} className="rounded-lg bg-ink-800 px-3 py-2">
+          {[
+            {
+              label: "bucket",
+              value: String(Reflect.get(data, "bucket")),
+            },
+            { label: "slot", value: String(Reflect.get(data, "slot")) },
+            { label: "tasks", value: data.tasks.length },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg bg-ink-800 px-3 py-2">
               <div className="text-[11px] text-ink-500 font-mono mb-0.5">
-                {key}
+                {item.label}
               </div>
               <div className="text-[12px] font-mono font-medium text-ink-200 truncate">
-                {key === "tasks"
-                  ? data.tasks.length
-                  : ((data as Record<string, unknown>)[key] as string)}
+                {item.value}
               </div>
             </div>
           ))}
@@ -227,9 +234,9 @@ export const NodePopup = ({
             scheduled tasks
           </div>
           <div className="space-y-1">
-            {data.tasks.map((t, i) => (
+            {data.tasks.map((t) => (
               <div
-                key={i}
+                key={t.name}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-ink-800/60 border border-ink-800"
               >
                 <span

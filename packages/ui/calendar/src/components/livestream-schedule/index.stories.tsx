@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Calendar/Components/LivestreamSchedule",
   component: LivestreamSchedule,
-} as Meta
+} satisfies Meta
+
+export default meta

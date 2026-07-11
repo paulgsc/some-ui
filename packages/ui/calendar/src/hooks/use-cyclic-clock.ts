@@ -29,7 +29,7 @@ export function useCyclicClock(
   // to avoid stale closures without restarting the effect.
   const runningRef = useRef(state.running)
   const speedRef = useRef(state.speed)
-  const lastTickRef = useRef(performance.now())
+  const lastTickRef = useRef(0) // Initialized safely to avoid impure render
   const accRef = useRef(0)
 
   // Sync refs with state
@@ -40,6 +40,10 @@ export function useCyclicClock(
 
   useEffect(() => {
     let frameId: number
+
+    // Set the initial timestamp right before starting the loop
+    // so the first delta (dt) isn't enormous
+    lastTickRef.current = performance.now()
 
     const loop = (now: number): void => {
       const dt = now - lastTickRef.current
