@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof SignPost>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/NeonSign/Components/SignPost",
   component: SignPost,
-} as Meta
+} satisfies Meta
+
+export default meta

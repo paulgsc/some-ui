@@ -1,5 +1,7 @@
 import type { ElementType, FC } from "react"
 import { useState } from "react"
+import type { DiscoveryMode } from "@umag/types/spectrum"
+import { assertNever } from "@umag/utils/error"
 import { Sparkles, Star } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -13,9 +15,10 @@ type CelebrationMode = {
   sparkles: number
 }
 
+// 2. Update props to expect the constrained literal type
 type CelebrationProps = {
   mode: CelebrationMode
-  selectedMode: string
+  selectedMode: DiscoveryMode | "" // Allow empty string for the early-return conditional initial state
   songTitle: string
   artist: string
 }
@@ -35,16 +38,26 @@ type Sparkle = {
   delay: number
 }
 
-function modeColor(mode: string): string {
+// 3. Constrain parameter to fix compile-time exhaustiveness checks
+function modeColor(mode: DiscoveryMode): string {
   switch (mode) {
-    case "new-find":
+    case "new-find": {
       return "#22d3ee"
-    case "rediscovery":
+    }
+    case "rediscovery": {
       return "#fbbf24"
-    case "struck-chord":
+    }
+    case "struck-chord": {
       return "#fb7185"
-    default:
+    }
+    case "current-best": {
       return "#facc15"
+    }
+    default: {
+      // TypeScript compile-time safety check
+      mode satisfies never
+      assertNever(mode)
+    }
   }
 }
 
@@ -71,13 +84,11 @@ export const CelebrationOverlay: FC<CelebrationProps> = ({
   mode,
   selectedMode,
 }) => {
-  // Hooks run unconditionally at the top of the component
   const [particles] = useState(() =>
     createParticles(mode.particles, selectedMode)
   )
   const [sparkles] = useState(() => createSparkles(mode.sparkles, selectedMode))
 
-  // Early return comes safely AFTER all hooks have executed
   if (!selectedMode) {
     return null
   }
@@ -93,6 +104,7 @@ export const CelebrationOverlay: FC<CelebrationProps> = ({
             top: `${particle.top}%`,
             animationDelay: `${particle.delay}s`,
             borderRadius: particle.borderRadius,
+            // selectedMode is safe to pass here because empty check is handled below hooks
             backgroundColor: modeColor(selectedMode),
           }}
         />
@@ -109,8 +121,6 @@ export const CelebrationOverlay: FC<CelebrationProps> = ({
           }}
         />
       ))}
-
-      {/* card unchanged */}
 
       <div className={cn("mt-3 flex items-center gap-1", mode.color)}>
         {Array.from({ length: 5 }, (_, i) => (

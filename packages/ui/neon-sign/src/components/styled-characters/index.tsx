@@ -1,14 +1,40 @@
 import type { FC } from "react"
+import { useState } from "react"
 import { cn } from "some-ui-utils"
 
 type StyledCharactersProps = {
   text: string
 }
 
-const shouldHaveNeonEffect = (): boolean => Math.random() > 0.5
+type FlickerSpeed = "slow" | "normal" | "fast"
+
+type StyledCharacter = {
+  id: string
+  char: string
+  neon: boolean
+  speed: FlickerSpeed
+}
+
+const buildCharacterModel = (text: string): Array<Array<StyledCharacter>> =>
+  text
+    .trim()
+    .split(/\s+/)
+    .map((word) =>
+      [...word].map((char) => {
+        const effect = Math.random()
+
+        return {
+          id: crypto.randomUUID(),
+          char,
+          neon: Math.random() > 0.5,
+          speed: effect < 0.3 ? "slow" : effect < 0.7 ? "normal" : "fast",
+        }
+      })
+    )
 
 export const StyledCharacters: FC<StyledCharactersProps> = ({ text }) => {
-  const words = text.trim().split(" ")
+  const [words] = useState(() => buildCharacterModel(text))
+
   return (
     <span
       className={cn(
@@ -16,41 +42,25 @@ export const StyledCharacters: FC<StyledCharactersProps> = ({ text }) => {
         "capitalize"
       )}
     >
-      {words.map((word, i) => {
-        const characters = word.split("")
-
-        return (
-          <span key={i}>
-            {characters.map((char, index) => {
-              const hasNeonEffect = shouldHaveNeonEffect()
-
-              if (hasNeonEffect) {
-                const effect = Math.random()
-                return (
-                  <span
-                    key={index}
-                    className={cn(
-                      "text-red-500 [text-shadow:0_0_0.5rem_#ef4444,0_0_1.5rem_#ef4444]",
-                      {
-                        "animate-flicker-slow": effect < 0.3,
-                        "animate-flicker": effect >= 0.3 && effect < 0.7,
-                        "animate-flicker-fast": effect >= 0.7,
-                      }
-                    )}
-                  >
-                    {char}
-                  </span>
-                )
-              }
-              return (
-                <span key={index} className="text-gray-500">
-                  {char}
-                </span>
-              )
-            })}
-          </span>
-        )
-      })}
+      {words.map((word) => (
+        <span key={word.map(({ id }) => id).join(":")} className="inline-flex">
+          {word.map(({ id, char, neon, speed }) => (
+            <span
+              key={id}
+              className={cn({
+                "text-gray-500": !neon,
+                "text-red-500 [text-shadow:0_0_0.5rem_#ef4444,0_0_1.5rem_#ef4444]":
+                  neon,
+                "animate-flicker-slow": neon && speed === "slow",
+                "animate-flicker": neon && speed === "normal",
+                "animate-flicker-fast": neon && speed === "fast",
+              })}
+            >
+              {char}
+            </span>
+          ))}
+        </span>
+      ))}
     </span>
   )
 }

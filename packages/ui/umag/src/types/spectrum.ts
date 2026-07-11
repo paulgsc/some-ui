@@ -7,3 +7,9 @@ export type SpectrumBarConfig = {
   animationDelay: number
   frequency: number
 }
+
+export type DiscoveryMode =
+  | "new-find"
+  | "rediscovery"
+  | "struck-chord"
+  | "current-best"

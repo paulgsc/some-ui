@@ -233,7 +233,7 @@ export const CinematicPresence: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/NeonSign/Components/Headline",
   component: Headline,
   parameters: {
@@ -294,4 +294,6 @@ All motion is **perceptual, not visible**.
       description: "Additional CSS classes",
     },
   },
-} as Meta
+} satisfies Meta
+
+export default meta
