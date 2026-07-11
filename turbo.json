@@ -9,16 +9,12 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", ".content/**"],
+      "outputs": ["dist/**", "build/**", ".contentlayer/**"],
       "cache": true
     },
     "build:docs": {
       "cache": true,
-      "outputs": [".content/**"]
-    },
-    "build:wasm": {
-      "outputs": ["packages/wasm/**/*"],
-      "cache": true
+      "outputs": [".contentlayer/**"]
     },
     "watch:build": {
       "dependsOn": ["^build", "^build:docs"],

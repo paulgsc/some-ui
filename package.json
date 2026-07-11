@@ -17,7 +17,6 @@
     "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
     "build": "scripts/with-limits.sh turbo run build",
     "build:unsafe": "turbo run build",
-    "build:wasm": "cargo run --manifest-path crates/ujinga/Cargo.toml",
     "build-storybook": "scripts/with-limits.sh storybook build",
     "build:template": "cargo run --manifest-path crates/pkg_cloner/Cargo.toml",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
