@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, ReactNode } from "react"
+import type { FC, ReactNode } from "react"
 import { useRef } from "react"
 import type {
   AllowedRotationAxis,
@@ -45,8 +45,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
 
   return (
     <div
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      style={{ "--perspective": perspective } as CSSProperties}
+      style={{ "--perspective": perspective }}
       className={cn(
         "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]",
         "bg-transparent",
@@ -60,25 +59,19 @@ export const DiceCard: FC<RotatingCubeProps> = ({
           "transform-3d relative size-full transition-transform duration-500",
           "[transform:rotateX(calc(var(--cube-x-rotation)*1deg))_rotateY(calc(var(--cube-y-rotation)*1deg))]"
         )}
-        style={
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          {
-            "--cube-x-rotation": rotationState.xRotation,
-            "--cube-y-rotation": rotationState.yRotation,
-          } as CSSProperties
-        }
+        style={{
+          "--cube-x-rotation": rotationState.xRotation,
+          "--cube-y-rotation": rotationState.yRotation,
+        }}
       >
         {faces.map((face, index) => (
           <div
             key={index}
-            style={
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              {
-                "--face-width": (width ?? 0) / 2,
-                "--face-height": (height ?? 0) / 2,
-                "--face-depth": Math.min(width ?? 0, height ?? 0) / 2,
-              } as CSSProperties
-            }
+            style={{
+              "--face-width": (width ?? 0) / 2,
+              "--face-height": (height ?? 0) / 2,
+              "--face-depth": Math.min(width ?? 0, height ?? 0) / 2,
+            }}
             className={cn(
               "absolute bg-transparent z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
               faceClassName,
