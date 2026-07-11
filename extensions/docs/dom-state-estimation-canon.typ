@@ -76,7 +76,7 @@
   #v(0.15em)
   #text(size: 10pt)[Governing `some-censor` · `some-filter` · and all descendants]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.2 --- 2026-07-11]
+  #text(size: 9.5pt)[Version 1.3 --- 2026-07-11]
   #v(2cm)
 ]
 
@@ -1472,6 +1472,177 @@ each of the following against Axioms 3.1--3.5:
   argument that virtualization (Proposition 4.1) cannot false-positive it. A
   driver over a virtualized surface must justify decay, gated by epoch and the
   identity-continuity check, rather than hard-deleting on disconnect.
+- The boundary between the document lifetime $L_D$ and the content lifetime
+  $L_C$ (Definition D.1): which browser signal ends $L_C$ alone versus $L_D$
+  itself, and what Bootstrap (Definition D.2) does across each, per Theorem
+  D.1.
+- A declaration that no module outside the adapter's own package imports a
+  concrete adapter implementation (Corollary D.2.1) --- checkable by a build
+  and conformance-suite run against the null adapter alone (Theorem D.2).
+
+// ═══════════════════════════════════════════════════════════════════════════
+#heading(level: 1, numbering: none)[The Deployment Lattice --- Lifecycle Stratification and the Adapter Boundary]
+// ═══════════════════════════════════════════════════════════════════════════
+
+This section is filed here, after the Transport Layer Architecture (§8) and
+before the Case Studies (§9), for the same reason the Custody Discipline was
+filed between §7 and §8: it is not supplementary material, only an artifact of
+not wanting to renumber every downstream cross-reference. It answers two
+questions §1--§8 leave implicit rather than open: *when*, across the browser's
+own lifetime, is each transport stage created and destroyed; and *where*, in a
+system §8 already insists contains no business logic, does a domain decision
+enter at all. Both questions were raised independently, by a practitioner
+working from this canon rather than by a gap the proofs themselves exposed ---
+the granular operational spec that motivated this section observed, correctly,
+that a static pre-content layer installed at the earliest browser hook and
+*persisting regardless of whether the content session has started* is what
+actually discharges Axiom C.1 during the interval before any hypothesis exists
+to be pessimistic about. That observation is formalized below as Definition
+D.2 and Theorem D.1, and its natural dual --- that the four-stage pipeline of
+§8 has exactly one point at which a name like "theme" or "censor" is permitted
+to appear at all --- is formalized as Definition D.3 through Corollary D.2.1.
+
+#heading(level: 2, numbering: none)[D.0 · Lifecycle stratification]
+
+#definition("D.1", name: "Nested lifetimes")[
+  Three nested wall-clock intervals are distinguished: the *browser lifetime*
+  $L_B$, spanning the browser process; the *document lifetime* $L_D subset.eq
+  L_B$, spanning one committed document from navigation to unload or refresh;
+  and the *content lifetime* $L_C subset.eq L_D$, spanning one instantiated
+  Estimator--Planner--Actuator session for that document, itself bounded by an
+  epoch (Definition 5.4). Distinct transport components are scoped to distinct
+  lifetimes; conflating two scopes is the generic form of every flash-on-nav
+  and flash-on-refresh defect this canon has been asked to explain.
+]
+
+#definition("D.2", name: "Bootstrap")[
+  The *Bootstrap* is the transport component installed at the earliest hook
+  the browser exposes (e.g. `document_start`), scoped to $L_D$:
+  $ "Bootstrap" in "DOM" quad forall t in L_D, $
+  independent of whether a content session (Definition D.1's $L_C$) has yet
+  begun. Bootstrap is never removed and never replaced within a single $L_D$;
+  it owns exactly the pessimistic default of Axiom C.1, applied at document
+  rather than content granularity, and nothing else --- installing it is not
+  itself an act of estimation, planning, or actuation, since none of $hat(H)$,
+  $Phi$, or $Delta$ yet exist at the moment it runs.
+]
+
+#theorem("D.1", name: "Bootstrap persistence")[
+  (a) A same-document navigation (an in-app route change) ends the current
+  $L_C$ and begins a new $L_C'$ while $L_D$ persists; Bootstrap is not
+  reinstalled, and exactly one new epoch (Definition 5.4's $bot_epsilon$)
+  begins. (b) A refresh ends $L_D$ (and therefore $L_C$) and begins new
+  $L_D'$, $L_C'$; Bootstrap is reinstalled from Definition D.2's hook, and a
+  fresh epoch begins with it.
+]
+
+#proof[
+  Immediate from Definitions D.1--D.2: Bootstrap's scope is declared to be
+  $L_D$, so it is unaffected by any event that ends $L_C$ without ending
+  $L_D$ (case (a)), and is re-run by construction whenever $L_D$ itself ends
+  and a new one begins (case (b)), since the browser hook Bootstrap installs
+  against is exactly the hook that fires at the start of every $L_D$.
+]
+
+#corollary("D.1.1", name: "Bootstrap is Axiom C.1's day-zero case")[
+  For $t in L_D \\ L_C$ --- after $L_D$ has begun but before any content
+  session exists --- there is no $hat(H)$ for Axiom C.1 to apply to, so §C's
+  guarantee is vacuous exactly where Bootstrap runs. The zero-leak invariant
+  $Phi$ (Definition C.0) is nonetheless maintained over the *union* $L_D union
+  L_C$ only because Bootstrap independently enforces, at document granularity
+  and by static installation rather than by evidence, the same pessimistic
+  policy Theorem C.1 proves is forced once $hat(H)$ exists. Bootstrap is not a
+  separate mechanism from the Custody Discipline; it is Axiom C.1 running
+  before the estimator that axiom was stated in terms of has been constructed.
+]
+
+#remark("D.1")[
+  This is the precise content of the granular heuristic that motivated this
+  section: a static pre-content layer that loads at the browser's earliest
+  hook and persists for the entire document life, so that at no round $t in
+  L_D$ is the environment exposed at its default (vendor) presentation before
+  the pessimistic policy has had a chance to apply. `some-filter`'s
+  `public/prepaint.*` (§9.2) is Bootstrap by another name, discovered before
+  this section named it; `some-censor` has no equivalent yet, which by
+  Corollary D.1.1 is a gap, not a simplification --- the coverage violation of
+  §9.1 is partly a Bootstrap-scoping gap wearing an estimator-scoping costume.
+]
+
+#heading(level: 2, numbering: none)[D.1 · The Adapter boundary]
+
+#definition("D.3", name: "Business Adapter")[
+  Fix a hypothesis space $H$ (an instance of Definition 5.1's $hat(H)$ for
+  some $KK$, $"Attr"$) and an action alphabet $A$ (the vocabulary the Actuator
+  of §7--§8 already knows how to realize). An *adapter* over $(H, A)$ is a
+  pure function
+  $ "decide" : H -> "Fin"(A), $
+  where $"Fin"(A)$ denotes the finite subsets of $A$. Definition 6.2's Planner
+  is the special case in which $Phi$ decomposes per Definition 6.1 and
+  $ "decide"(hat(H)) := union.big_(k in KK) Delta(k) $
+  for the per-key $Delta$ of Definition 6.2; the present definition drops the
+  local-decomposition requirement, since nothing upstream of the adapter needs
+  it. The adapter is the *only* place a domain concept --- a theme, a
+  redaction target, a masked keyword --- is permitted to appear in code
+  governed by this canon.
+]
+
+#axiom("D.1", name: "Adapter purity")[
+  $"decide"$ is total and referentially transparent, and may read but never
+  write $hat(H)$, the token queue, the epoch, or $G_t$. Its return value is a
+  description of desired actions, nothing more; only the Actuator (Definition
+  7.3's self-tagged $alpha$) is permitted to realize an action against $G_t$.
+]
+
+#theorem("D.2", name: "Kernel independence")[
+  Let $"decide"_0 (h) = emptyset$ for every $h$ --- the *null adapter*. Then:
+  (i) the transport package --- Bootstrap, Channel, Estimator, Session,
+  Scheduler, Actuator, Lifecycle --- type-checks and builds with no import of,
+  and no reference to, any concrete business adapter; (ii) every
+  transport-level theorem of §5--§8 and §D holds verbatim when instantiated
+  against $"decide"_0$ (Theorem 6.1 in the degenerate case $Phi equiv 1$ it
+  induces, since $Delta = emptyset$ always trivially satisfies Definition
+  6.2's second case); and (iii) the conformance suite of §8.3/§D.1 passes
+  against $"decide"_0$ alone, exercising every transport guarantee with zero
+  domain-specific code.
+]
+
+#proof[
+  (i) By Axiom D.1 and Definition D.3, every transport module is typed against
+  the function signature $H -> "Fin"(A)$, never against a concrete
+  implementation of it; substituting $"decide"_0$ therefore requires no change
+  to any transport module. (ii) Theorem 5.1 (estimator confluence), Theorem
+  7.2 (loop suppression), and Theorem D.1 (bootstrap persistence) none of them
+  quantify over $Phi$ or the adapter at all --- they are proved from Axioms
+  3.1--3.5 and Definitions 5.2--5.4 alone --- so they hold unconditionally,
+  independent of which adapter, if any, is installed; Theorem 6.1 specializes
+  to the trivial case noted. (iii) is the operational restatement of (i)--(ii)
+  and is falsifiable exactly as Remark C.4 is: a conformance-suite failure
+  under $"decide"_0$ is, by (i)--(ii), necessarily a transport defect, never
+  an adapter defect, since $"decide"_0$ has no behavior to be defective in.
+]
+
+#corollary("D.2.1", name: "The litmus test")[
+  A change to any file under the transport package that requires importing,
+  or otherwise depending on, a concrete adapter merely to keep the package
+  building is --- by Theorem D.2(i) --- evidence that a domain-specific
+  concern has crossed Definition D.3's boundary and must be relocated to an
+  adapter, not a coupling to special-case or suppress. This is the *build
+  test* form of the same discipline §10's triage procedure applies to runtime
+  symptoms: a violated boundary is routed to the boundary, not patched at the
+  call site.
+]
+
+#remark("D.2")[
+  Read against the practitioner note that first proposed this boundary: the
+  transport "shouldn't even know that there *is* business logic" --- from the
+  transport's perspective there is only a source of observations and a sink of
+  effects, and Definition D.3 makes that literal by giving the sink exactly
+  one function. Every extension-specific behavior this canon's descendants
+  will ever need --- theme enforcement, redaction, masking, a future
+  accessibility or typography policy --- is required to be expressible as one
+  $"decide" : H -> "Fin"(A)$, or the canon itself, not the adapter, has been
+  under-specified and must be amended per §10.
+]
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Case Studies
@@ -1800,6 +1971,28 @@ solely as a source-code commit message; it must be reflected in this file.
   alongside the mechanisms already independently discovered. Triage (§10.1)
   gained two custody-specific diagnostics; the glossary and notation index were
   extended accordingly.
+- *v1.2 → v1.3* (2026-07-11). A *major* amendment, following the v1.1 → v1.2
+  precedent of adding a new section without touching §2--§3: it adds "The
+  Deployment Lattice," formalizing two structural properties a practitioner's
+  independent derivation surfaced and this canon had left implicit. New
+  content: nested lifetimes (Definition D.1) --- browser $subset.eq$ document
+  $subset.eq$ content --- and Bootstrap (Definition D.2) as the transport
+  component scoped to the document lifetime, installed before any hypothesis
+  exists; the Bootstrap Persistence theorem (Theorem D.1) distinguishing
+  same-document navigation (content session recreated, Bootstrap untouched)
+  from refresh (both recreated), with Corollary D.1.1 identifying Bootstrap as
+  Axiom C.1's pessimistic default running at document rather than content
+  granularity; and the Business Adapter (Definition D.3), generalizing
+  Definition 6.2's Planner to an injected pure function $H -> "Fin"(A)$,
+  governed by an adapter-purity axiom (Axiom D.1) and a Kernel Independence
+  theorem (Theorem D.2) proving the transport package builds and every
+  transport-level theorem holds against the null adapter alone, with Corollary
+  D.2.1 stating the resulting build-time litmus test. No existing axiom or
+  theorem in §1--§8 or §C was weakened; §D's theorems are proved from
+  machinery already in place (Axioms 3.1--3.5, Definitions 5.2--5.4, Axiom
+  C.1) rather than new environment assumptions. The conformance checklist
+  (§8.3) gained two items (the $L_D$/$L_C$ boundary; the no-concrete-adapter-import
+  declaration); the glossary and notation index were extended accordingly.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
@@ -1827,6 +2020,9 @@ solely as a source-code commit message; it must be reflected in this file.
   [Pessimistic default (Ax. C.1)], [every card is masked at first sight, before `tryExtract()` resolves it], [legacy HTML-invert cascade applied page-wide before any classification],
   [Suspension domain $S_t$ (Def. C.2)], [masked cards not yet exonerated by a resolved, un-whitelisted-negative check], [page currently under the invert filter, not yet restored to native],
   [Custody violation (§9)], [sidebar / Shorts / rec-feed cards outside declared channel coverage; incomplete clearing blocking clicks], [classifier mode's evaluation window exposing native luminance before deciding],
+  [Bootstrap (Def. D.2)], [(not yet separated from the estimator's own startup --- a candidate future amendment)], [`public/prepaint.*`, installed at `document_start`, independent of classification],
+  [Document/content lifetime (Def. D.1)], [`SessionId` epoch is the content-lifetime boundary; no distinct document-lifetime object yet], [prepaint veil is the document-lifetime object; theme session is the content-lifetime object],
+  [Business Adapter (Def. D.3)], [`upsert()`/`_promote()`/`_backfill()` not yet factored out of `VideoManager`], [`theme-apply.ts`/`theme-detector.ts` split (§9.2) is the adapter boundary drawn independently, pre-canon],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1861,6 +2057,10 @@ solely as a source-code commit message; it must be reflected in this file.
   [$S_t$, $E_t$], [Suspension domain (held), exonerated complement (Def. C.2)],
   [$cal(C)(T)$], [Custody volume, $= sum_t |S_t|$ over horizon $T$ (Def. C.2)],
   [$K$], [True positive set: keys genuinely requiring $"target"(k)$ (Thm. C.1)],
+  [$L_B, L_D, L_C$], [Browser, document, content lifetimes, nested (Def. D.1)],
+  [Bootstrap], [Document-scoped, pre-hypothesis pessimistic default (Def. D.2)],
+  [$"decide" : H -> "Fin"(A)$], [Business adapter: pure hypothesis-to-actions map (Def. D.3)],
+  [$"decide"_0$], [The null adapter, $"decide"_0(h) = emptyset$ (Thm. D.2)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
