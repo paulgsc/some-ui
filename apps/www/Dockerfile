@@ -4,7 +4,7 @@
 # ------------------------------------------------------------
 # Stage 0: Base
 # ------------------------------------------------------------
-FROM mirror.gcr.io/library/node:24-alpine AS base
+FROM node:24-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:${PATH}"
@@ -74,8 +74,7 @@ RUN cargo install wasm-pack
 #
 # Restore installed dependencies
 #
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=deps /app .
 
 #
 # Copy the complete pruned workspace
