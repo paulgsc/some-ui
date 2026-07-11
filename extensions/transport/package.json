@@ -1,0 +1,39 @@
+{
+  "name": "@some-extension/transport",
+  "version": "0.0.1",
+  "description": "Property-agnostic transport kernel implementing dom-state-estimation-canon.typ (§5–§8, §D)",
+  "type": "module",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "exports": {
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "@some-ui/tsconfig": "workspace:*",
+    "eslint": "^10.6.0",
+    "maishatu-eslint-kit": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  }
+}
