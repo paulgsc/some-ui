@@ -76,7 +76,7 @@
   #v(0.15em)
   #text(size: 10pt)[Governing `some-censor` · `some-filter` · and all descendants]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.0 --- 2026-07-09]
+  #text(size: 9.5pt)[Version 1.2 --- 2026-07-11]
   #v(2cm)
 ]
 
@@ -85,17 +85,29 @@
   document object model routinely fail in the same structural way: they are
   authored against an implicit assumption that the DOM is, or eventually
   becomes, a deterministic, fully observable data structure. It is neither.
-  This document derives, from first principles, why no finite algorithm can
-  certify that a vendor page has "settled" and why no finite observation
-  vocabulary can certify that a vendor page's state is "fully known." From
-  these two impossibility results it constructs the only architecture
-  compatible with them: a four-stage pipeline in which an unreliable,
-  partial, reorderable *observation channel* feeds a *monotonic estimator*
-  that maintains a provisional *hypothesis*, against which a *planner*
-  computes the minimal repair needed to satisfy a declared *invariant*, which
-  an *actuator* applies without re-entering the channel unfiltered. Every
-  layer is stated as a formal object with explicit axioms, and every
-  non-trivial claim is proved or falsified by exhibited counterexample. The
+  This document does not begin by defining an estimator and proving things
+  about it. It begins one level up, in a *Prolegomenon* that treats the
+  choice of mathematical object as itself the primary result: it names the
+  recurring engineering pain, strips it to a computational class, eliminates
+  six candidate abstractions (tree, event stream, state machine, graph
+  rewriting, temporal-logic model, cooperative replicated store) against that
+  pain, and only then *derives*, rather than posits, that internal state must
+  be an *estimate* and that any invariant-maintaining system over this
+  environment must factor into exactly four transformations. The formal canon
+  then derives, from first principles, why no finite algorithm can certify
+  that a vendor page has "settled" and why no finite observation vocabulary
+  can certify that a vendor page's state is "fully known." From these two
+  impossibility results it obtains the only architecture compatible with
+  them: a four-stage pipeline in which an unreliable, partial, reorderable
+  *observation channel* feeds a *monotonic estimator* that maintains a
+  provisional *hypothesis*, against which a *planner* computes the minimal
+  repair needed to satisfy a declared *invariant*, which an *actuator* applies
+  without re-entering the channel unfiltered. The environment is modeled not
+  as a benign graph but as a *stratified, latent, endogenously-coupled, and
+  optimization-pressured* substrate — every one of those four adjectives is
+  cashed out as an axiom, not left as atmosphere. Every layer is stated as a
+  formal object with explicit axioms, and every non-trivial claim is proved
+  or falsified by exhibited counterexample. The
   model is then grounded against the production source of `some-censor` and
   `some-filter`, showing that the architecture already implicit in their
   session counters, retry loops, and identity guards is not an accumulation
@@ -112,8 +124,256 @@
   this canon is, by definition, a happy-path patch, and will regress.
 ]
 
+#v(0.6em)
+#block(inset: (left: 1.5em, right: 1.5em))[
+  *What kind of object this is.* The artifact maintained here is a *theory*,
+  and its maintenance discipline is *theory revision*, not bug-fixing: the
+  code is disposable and re-derived, while the canon is the durable object a
+  falsifying observation revises. The design objective throughout is not
+  "the true model" — the true state space of a vendor runtime is unboundedly
+  large and useless — but the *minimal sufficient state space*: among all
+  state spaces capable of expressing the invariant $Phi$ and proving the
+  properties of §5--§8, the one of least informational content, i.e. the
+  smallest model from which the implementation is uniquely derivable. Every
+  additional primitive carries proof obligations; every additional state
+  dimension manufactures new transition cases; so the search is explicitly
+  for the *smallest* adequate ontology, not merely a correct one. The
+  Prolegomenon below is where that search is conducted in the open, before
+  any notation is spent.
+]
+
 #pagebreak()
 #outline(title: "Contents", indent: auto)
+#pagebreak()
+
+// ═══════════════════════════════════════════════════════════════════════════
+#heading(level: 1, numbering: none)[Prolegomenon --- Why This Object]
+// ═══════════════════════════════════════════════════════════════════════════
+
+A model earns its notation only after it has eliminated the alternatives. The
+numbered canon (§1 onward) proves propositions about one specific mathematical
+object; this Prolegomenon addresses the prior question the proofs cannot reach
+from inside themselves --- *why is this the right object?* --- because an
+architecture derived here should feel *inevitable* rather than *chosen*. The
+sections below climb the abstraction ladder in the order the ladder is
+actually built: pain, then computational class, then a bake-off of candidate
+mathematics, then the derivation of the primitive objects and operations, and
+only then the axioms of §3 and the theorems of §5--§8. A reader who disagrees
+with the canon should be able to attack it *here*, at the choice of object,
+not merely quarrel with a definition after the object is already fixed.
+
+#heading(level: 2, numbering: none)[P.0 · Phenomenology (the pain, stated without a cure)]
+
+Before any abstraction, the recurring field failures, named without proposing
+a fix and each paired with the tacit assumption it falsifies:
+
+- *Whack-a-mole.* An element is repaired; moments later an
+  indistinguishable element in the same role is unrepaired, or the same one
+  reverts. — _Assumes: repairing the currently-visible set repairs the set._
+- *Flicker / oscillation.* A key rapidly alternates repaired/unrepaired.
+  — _Assumes: the observer's own writes are not themselves observed as new
+  evidence._
+- *Stale state after in-app navigation.* A "reviewed"/"dismissed" decision
+  attaches to the wrong content after an SPA route change that recycled the
+  same physical nodes. — _Assumes: a physical node's meaning is stable while
+  the node persists._
+- *Permanently-stuck "unresolved".* A card never leaves a pending state
+  because the one event that would have advanced it never fired.
+  — _Assumes: if a change happened, some subscribed event announced it._
+- *Self-inflicted misreading.* A detector samples a subtree the extension
+  itself just restyled, and classifies its own artifact as vendor truth.
+  — _Assumes: measurement does not disturb the thing measured._
+
+Each symptom is later shown to be not an exceptional transition to be
+special-cased, but evidence that the problem was embedded in a state space
+too large to be correct — an *ontological* error the way a type error is a
+*syntactic* one.
+
+#heading(level: 2, numbering: none)[P.1 · Computational characterization]
+
+Strip the browser away. What remains is: *maintain a declared invariant over
+an environment that (i) you do not control, (ii) you cannot fully observe,
+and (iii) never certifiably halts.* This is not scheduling (nothing is being
+ordered for throughput), not search or optimization (there is no objective
+functional to extremize), not consensus (there is no peer to agree with).
+It is the conjunction of two classical problems: *state estimation* over a
+partially observable process, followed by *invariant-maintaining control* of
+it. Naming the class is all P.1 claims; that estimation is *forced* rather
+than merely available is argued in P.3, and must not be assumed here.
+
+#heading(level: 2, numbering: none)[P.2 · Candidate models, and why five are rejected]
+
+The falsifiable core of this document. Each row is a mathematical object
+capable, on its face, of modeling "a changing DOM"; the verdict column is the
+attack the pain of P.0 makes on it. Only the object surviving every attack
+is carried into §1.
+
+#table(
+  columns: (3.6cm, 2.1cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Candidate object*], [*Verdict*], [*Decisive objection*],
+  [DOM as a labeled *tree/graph*],
+  [Rejected],
+  [The invariant is stated over logical keys ($KK$), not tree topology; and
+   node identity is not stable (§4), so the graph's own vertices are not
+   durable enough to hang state on.],
+  [DOM as an *event stream* (streaming / process algebra)],
+  [Rejected],
+  [A stream model presumes the stream is the truth; §2.3 proves any finite
+   event vocabulary is incomplete, so the stream is a lossy, reorderable
+   *shadow* of the mutations, never their log (Prop 3.1).],
+  [DOM as an observable *state machine*],
+  [Rejected],
+  [State is not directly observable: the observer cannot read $G_t$, only its
+   partial effects. A state machine you cannot read the state of is exactly a
+   *hidden*-state process, which is a different object.],
+  [DOM as a *graph-rewriting system*],
+  [Rejected],
+  [The rewrite rules are the vendor's unknown, Turing-complete program (§2.1);
+   rewriting is undecidable to analyze (Prop 2.1) and its node identities are
+   recycled without announcement (Prop 4.1). The formalism buys nothing the
+   opacity does not immediately take back.],
+  [DOM as a *temporal-logic / model-checking* target],
+  [Rejected],
+  [Model checking requires a *known, bounded* transition system to check
+   against. Here the transition function is unknown and the state space
+   unbounded, so there is no Kripke structure to hand the checker.],
+  [DOM as a *cooperative replicated store* (pure CRDT)],
+  [Partly adopted],
+  [CRDT convergence — a commutative, idempotent, associative merge — is
+   *exactly* the estimator's fold (Thm 5.1) and is retained. But a CRDT
+   assumes every replica eventually broadcasts all its updates; the vendor is
+   a replica that never cooperates, so the *transport* assumption fails even
+   though the *merge* assumption holds.],
+  [DOM as a *partially observable, non-stationary dynamical system*, estimated
+   then controlled],
+  [*Accepted*],
+  [Survives every objection above: it presumes neither observability of state,
+   nor completeness of events, nor stability of identity, nor a known
+   transition function, nor a cooperative peer — while still borrowing CRDT
+   merge for the estimator and the reconcile-loop pattern for control. It is
+   the *smallest* object retaining what works and discarding every assumption
+   the pain of P.0 falsifies.],
+)
+
+#remark("P.0")[
+  The accepted object is not the *most expressive* one — a full simulation of
+  the vendor runtime would be strictly more expressive. It is the *minimal
+  sufficient* one (see "What kind of object this is," front matter): the least
+  it can be while still expressing $Phi$ and proving §5--§8. Expressiveness
+  beyond that point is pure liability, because every unused degree of freedom
+  is a class of states the implementation would otherwise have to consider.
+]
+
+#heading(level: 2, numbering: none)[P.3 · The necessity of estimation (derived, not defined)]
+
+The estimator of §5 is not a design decision. It is forced, in five steps,
+by the accepted object alone:
+
+#proposition("P.1", name: "Estimation is forced")[
+  Any extension over the environment of Definition 2.1 must maintain internal
+  state that is a *hypothesis* about the environment, never a *copy* of it.
+]
+
+#proof[
+  (1) The extension does not control the environment: its next state is
+  $f(G_t, omega_t)$ with $f$ and $omega_t$ exogenous (Definition 2.1). (2)
+  Hence it cannot issue a command guaranteed to take effect; the most it can
+  do is apply a mutation that re-enters the same unreliable channel it reads
+  from (Axiom 3.5). (3) It receives only *evidence*, never ground truth: no
+  finite observation vocabulary is complete (Proposition 2.2), so silence is
+  never proof of no-change. (4) Therefore no internal structure it maintains
+  can *be* $G_t$ or $iota_t$ — it can only be a claim about them, refutable by
+  the next token. (5) A refutable, evidence-derived claim about a hidden
+  process *is* an estimate, and the discipline maintaining it *is* state
+  estimation. The estimator is thus obtained, not selected.
+]
+
+Read in the reverse of the usual direction: one does not *define* an
+estimator and then justify it; one observes that non-control plus
+incompleteness *leaves no other object available*.
+
+#heading(level: 2, numbering: none)[P.4 · The four transformations (a theorem, not a diagram)]
+
+"Observe, estimate, plan, act" is customarily drawn as a pipeline diagram — a
+design. It is instead a consequence:
+
+#theorem("P.2", name: "Mandatory factorization")[
+  Any system that maintains a declared invariant over an environment it
+  neither controls nor fully observes must contain four *logically distinct*
+  transformations — a *channel* turning environment effects into evidence, an
+  *estimator* folding evidence into a maintained hypothesis, a *planner*
+  mapping (hypothesis, invariant) to a repair, and an *actuator* enacting the
+  repair back onto the environment — and no two may be collapsed into one
+  without forfeiting a property proved in §3--§8.
+]
+
+#proof[
+  The four are pairwise irreducible. *Channel $!=$ estimator:* evidence
+  arrives lossy, duplicated, and reordered (Axioms 3.1--3.3), so raw evidence
+  is not yet a coherent state; recovering order-independence requires a
+  separate convergent fold (Theorem 5.1), which the channel, being unable to
+  certify completeness (Prop 3.1), cannot itself perform. *Estimator $!=$
+  planner:* the hypothesis is provisional and invariant-agnostic (Definition
+  5.1), whereas the repair is a function of an externally declared $Phi$
+  (Definition 6.2); folding the invariant into the estimator would make the
+  merge non-monotonic and void Theorem 5.1's confluence. *Planner $!=$
+  actuator:* the planner is a pure function producing a description $Delta$
+  (Definition 6.2), while actuation re-enters the environment and must be
+  self-tagged to remain sound (Axiom 3.5, Theorem 7.2); merging them would
+  place an impure, channel-perturbing write inside the one stage that must
+  stay referentially transparent for one-round termination (Theorem 6.1) to
+  hold. *Actuator $!=$ channel:* by Remark 8.1 there must be exactly one path
+  from actuation back to the estimator, and it must be the same path vendor
+  mutations take; a shortcut from actuator to estimator is precisely the
+  privileged side channel that would break loop suppression. Four distinct
+  transformations, no fewer.
+]
+
+Only now — with the count of stages and the boundary between them *forced* —
+does §8 give them names and an operational semantics. The architecture is a
+theorem with an implementation, not a diagram with a rationale.
+
+#heading(level: 2, numbering: none)[P.5 · Progressive elimination of impossible worlds]
+
+The minimal-sufficient-state-space objective, made operational, is a descent
+in which each refinement *discards* a class of worlds the implementation
+thereafter need not consider. The chain the canon walks:
+
++ *All DOM mutations are possible.* (The unrefined world; nothing is ruled
+  out.)
++ *Only observations matter* — the estimator never sees mutations, only
+  tokens (§3). Worlds differing solely in unobserved mutations collapse.
++ *Only logical identities matter* — tokens are indexed by $KK$, not by
+  physical node (§4). Worlds differing solely in node identity collapse.
++ *Only hypotheses over logical identities matter* — the state is $hat(H) :
+  KK -> "Attr" union {bot}$ (§5), not a DOM mirror. Worlds agreeing on
+  $hat(H)$ are indistinguishable to the planner.
++ *Only hypothesis transitions respecting the evidentiary order are
+  admissible* — $U = max_(prec.eq)$ (§5.2--5.3). Every non-monotone
+  transition is ruled out by construction.
+
+By the last step the degrees of freedom remaining in a conforming
+implementation are few, which is the real claim behind "the code falls out."
+It also reframes debugging: *an edge case is not an exceptional transition;
+it is evidence that the problem is still embedded in a space larger than this
+descent has yet shrunk it to.* The fix is to eliminate the offending world at
+the earliest step that admits it, not to add a transition at the last.
+
+#heading(level: 2, numbering: none)[P.6 · The canon as a theory-revision system]
+
+Everything above explains why §10 (the Amendment Protocol), not any theorem,
+is the load-bearing section. The workflow this document institutes is not
+`reality → requirements → implementation → bug → patch`, in which the revised
+artifact is the code. It is `reality → observation → current theory →
+counterexample → theory revision → re-derived implementation`, in which the
+revised artifact is *this file*. A field failure is triaged to the *assumption
+it falsified* (§10.1) and repaired at the level of an axiom or a definition;
+the affected downstream theorems are re-derived; and only then is code
+re-emitted from the revised theory. Code is downstream and disposable. The
+canon is the object under revision.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -132,6 +392,23 @@ discourse must be fixed.
   microtask checkpoint, an animation frame, an event-loop tick). No upper
   bound on the number of rounds in a browsing session is assumed, and none
   may be assumed — see Proposition 2.1.
+]
+
+#remark("1.5", name: "Phase stratification within a round")[
+  A round is a unit of *sequence*, not of *phase*. The vendor's event loop is
+  stratified: `MutationObserver` callbacks drain in the microtask phase,
+  layout and paint occur under `requestAnimationFrame`, and slack work runs
+  under `requestIdleCallback`. Two actions the sequence orders as "same round"
+  may in fact straddle a phase boundary — the estimator ingesting a token in
+  a microtask while the actuator writes in the next animation frame. This
+  canon's convergence results (Theorem 5.1) are deliberately *phase-blind*:
+  they hold under any reordering of evidence, and phase-reordering of evidence
+  is a special case. But *actuation scheduling* — which phase $alpha$ writes
+  in — is not phase-blind, because writing during the vendor's layout phase
+  induces jank and can itself provoke mutation (Remark 2.6). Phase is
+  therefore not modeled in the estimator, where it is provably irrelevant, and
+  *is* an explicit obligation of the sensor driver, where it is not (§8.3,
+  §10.1).
 ]
 
 #definition("1.2", name: "Universes")[
@@ -178,11 +455,17 @@ discourse must be fixed.
   together with a labeling $L_t : V_t -> "Attr"$. The trajectory is governed
   by an unknown, non-stationary transition function
   $ G_(t+1) = f(G_t, omega_t), $
-  where $omega_t$ is an exogenous input at round $t$ --- user interaction,
-  a timer firing, a network response arriving, a `requestAnimationFrame`
-  callback, an `IntersectionObserver` crossing a threshold, or any other
-  scheduled continuation of the vendor's own program. Neither $f$ nor the
-  distribution of $omega_t$ is known to, or controllable by, the observer.
+  where the input decomposes as
+  $ omega_t = omega_t^"exo" + g(alpha(Delta_(t-1))) $
+  into an *exogenous* part $omega_t^"exo"$ --- user interaction, a timer
+  firing, a network response arriving, a `requestAnimationFrame` callback, an
+  `IntersectionObserver` crossing a threshold, or any other scheduled
+  continuation of the vendor's own program --- and an *endogenous* part
+  $g(alpha(Delta_(t-1)))$, the vendor's own reaction to the observer's most
+  recent actuation (§7), routed through an unknown coupling $g$. Neither $f$,
+  nor $g$, nor the distribution of $omega_t^"exo"$ is known to, or
+  controllable by, the observer. The endogenous term is small print with
+  large consequences and is developed in Remark 2.6.
 ]
 
 #remark("2.2")[
@@ -193,6 +476,38 @@ discourse must be fixed.
   flaky" framing. Flakiness is not a defect to be engineered around; it is
   the correct behavior of an environment whose next state is a function of
   a program the observer never gets to read.
+]
+
+#remark("2.4", name: "The substrate is optimization-pressured, not merely unknown")[
+  $f$ is not a neutral unknown. The vendor is an economic actor optimizing its
+  own objectives --- Core Web Vitals, bundle size, memory footprint, render
+  latency --- and its build pipeline will de-duplicate, inline, virtualize, or
+  prune exactly the DOM structure an extension keys on when that structure is
+  cheap to eliminate. This upgrades the framing of Remark 2.2 from "flaky" to
+  *adversarial-by-optimization*: the observer should expect its load-bearing
+  selectors and attributes to erode not through malice but through the
+  vendor's relentless pressure to ship less DOM. An architecture must
+  therefore treat the durability of any single observable feature as a
+  depreciating asset, which is a further, independent reason no fixed
+  observation vocabulary can be trusted to remain complete (Proposition 2.2)
+  or even stable.
+]
+
+#remark("2.6", name: "Endogenous coupling (actuation-induced mutation)")[
+  The environment is not a closed box the observer merely watches: the
+  actuator writes to $G_t$, and $f$ *reads* $G_t$, so the observer's own
+  actuation is an input to the vendor's process --- the $g(alpha(Delta_(t-1)))$
+  term of Definition 2.1. Adding a class, inserting a node, or restyling a
+  subtree can trip the vendor's framework into a re-render, which arrives back
+  as fresh evidence. This *topological porosity* between §2 (environment) and
+  §7 (actuator) is the mechanistic root of "whack-a-mole": the loop is not
+  merely observing a moving target, it is partly *driving* the target it
+  observes. The canon confines the damage in two places --- Axiom 3.5 makes
+  re-entrance a first-class channel property, and Theorem 7.2 (loop
+  suppression) proves the loop still terminates *provided* actuation is
+  idempotent and self-tagged, i.e. provided $g compose alpha$ reaches a fixed
+  point rather than a cycle. Where it does not, Corollary 7.2.1(iii) classifies
+  the residual oscillation as genuine environment contention, not a bug.
 ]
 
 == Impossibility of universal settlement
@@ -229,6 +544,20 @@ discourse must be fixed.
 ]
 
 == Impossibility of a truth-authority signal
+
+#definition("2.2", name: "Manifest and latent state")[
+  The vendor's true state at round $t$ partitions, from the observer's
+  standpoint, into a *manifest* subspace and a *latent* subspace. The
+  *manifest* subspace is what any channel $delta$ (§3) can in principle range
+  over: the graph $G_t$ and the observable labels $L_t$ --- attribute values,
+  class membership, computed style, text, structure. The *latent* subspace is
+  everything the vendor's runtime carries that no configuration of $delta$ can
+  observe: attached event-listener sets, live CSSOM rules not yet reflected in
+  any element's computed style at a sampled node, framework-internal component
+  state, and content rendered to `<canvas>` or across a closed Shadow root.
+  The map from true state to manifest state is a *projection*: it forgets the
+  latent coordinates entirely.
+]
 
 #proposition("2.2", name: "No complete observation vocabulary")[
   For any finite observation vocabulary $EE = {E_1, dots, E_n}$ fixed at
@@ -267,6 +596,26 @@ discourse must be fixed.
   precisely why `some-censor`’s observer narrows `attributeFilter` to
   `["data-video-id"]` and *still* cannot be the only channel --- see §9.1,
   which shows the production code already compensates for exactly this gap.
+]
+
+#remark("2.5", name: "Observability asymmetry sharpens 2.2")[
+  Proposition 2.2 as proved says the vendor can change *how* it signals, in a
+  way a fixed vocabulary misses. Definition 2.2 lets a strictly stronger claim
+  be stated: the vendor can move state *out of the manifest subspace
+  altogether*. A visibility decision expressed as a live CSSOM rule injection,
+  a state change carried only in an event-listener rebind, a value held in
+  framework-internal memory, or a frame drawn to `<canvas>` --- none of these
+  is a manifest mutation that $delta$ merely happened not to subscribe to;
+  each is *structurally outside the projection* of Definition 2.2, so no
+  configuration of $delta$, however exhaustive, could subscribe to it. Where
+  Proposition 2.2 defeats *completeness of a vocabulary*, this defeats
+  *completeness of the manifest channel as such*. The architectural
+  consequence is identical and reinforcing: the estimator's silence can never
+  be read as the environment's silence, and the only sound response to
+  suspected latent state is to re-derive it from whatever manifest projection
+  it eventually casts a shadow onto (a repaint, a reflow, a re-observed
+  attribute), never to wait for a signal the latent subspace is not obligated
+  to emit.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -321,12 +670,49 @@ instead is formalized here.
   directly into the invariant-evaluation contract.)
 ]
 
+#remark("3.3", name: "Tombstoning versus decay: absence is not deletion")[
+  Axiom 3.4 must be read carefully, because a naive reading of it is unsound.
+  There are two epistemically distinct grounds for removing a key from the
+  hypothesis, and the DOM affords only the weaker one:
+  - *Tombstoning* --- an active, positive proof that key $k$ is gone. This is
+    the clean signal a log would provide; Axiom 3.4 says the DOM does not
+    provide it.
+  - *Decay* --- a downgrade of $hat(H)(k)$ toward $bot$ driven by *sustained
+    absence of reinforcing evidence*, never by a single observation.
+  The trap is to treat *physical disconnection of the bound node* as a
+  tombstone. Under virtualization (Proposition 4.1) a node scrolling
+  off-screen is disconnected while its logical key remains perfectly alive;
+  reading disconnection as deletion therefore *false-positives* exactly on the
+  vendor's most common optimization. The sound treatment is decay: absence
+  lowers confidence gradually, so a key briefly unobserved is not evicted,
+  while a key absent past a staleness bound is. Decay is a *controlled*
+  departure from the strict monotonicity of §5 --- it is the one sanctioned
+  downward move --- and is admissible only when gated by the epoch (Definition
+  5.4) and the per-ingestion identity-continuity check (Corollary 4.1.1), so
+  that it can never be confused with the *upward* merge of new evidence. An
+  ungated, per-observation decay would reintroduce precisely the flicker
+  Theorem 5.1 exists to forbid.
+]
+
 #axiom("3.5", name: "Actuator re-entrance")[
   The channel does not, by default, distinguish a token caused by the
   vendor's own process from a token caused by the observer's own actuation
   (§6) re-entering the same subtree. Distinguishing the two is the
   responsibility of the actuator, not the channel, and must be achieved by
   an explicit, channel-visible self-tag (§7.4).
+]
+
+#axiom("3.6", name: "Observability asymmetry")[
+  $delta$ ranges only over the manifest subspace (Definition 2.2). The vendor
+  may, at any round and without notice, migrate a state distinction from the
+  manifest subspace into the latent one --- expressing henceforth via an
+  injected stylesheet rule, an event-listener rebind, framework-internal
+  memory, or a `<canvas>` draw what it previously expressed via a watched
+  attribute or class. After such a migration the distinction is *structurally*
+  invisible to $delta$: not merely unsubscribed-to, but outside the projection
+  $delta$ can observe at all. No reconfiguration of $delta$ recovers it; only
+  a manifest shadow the latent state later casts (a repaint, a reflow, a
+  derived attribute) can.
 ]
 
 #proposition("3.1", name: "The channel is not a log")[
@@ -763,6 +1149,242 @@ known key (§5), and failing to separate the two is a common source of the
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
+#heading(level: 1, numbering: none)[The Custody Discipline --- Indiscriminate Detention and Its Exoneration]
+// ═══════════════════════════════════════════════════════════════════════════
+
+This section is deliberately placed here, between Convergence (§7) and the
+Transport Layer (§8), rather than filed as a coda: it is not supplementary
+material, and its position is not a comment on its importance, only an
+artifact of not wanting to renumber every downstream cross-reference (the same
+reason the Prolegomenon uses unnumbered headings). Proposition 7.3 --- the
+*actuation-observation coupling hazard* --- reads, on a first pass, like a
+footnote to loop suppression: a hazard to be excluded so Theorem 7.2 goes
+through. It is not a footnote. For the class of invariant this canon actually
+governs, §7.3 is the precondition that makes the architecture developed below
+*survivable*, and this section exists to say why, precisely, rather than by
+assertion.
+
+#heading(level: 2, numbering: none)[C.0 · The domain of mandate]
+
+Nothing below is a general-purpose design pattern. It is forced only inside a
+specific, checkable region of problem space, and stating that region
+precisely is what makes the discipline falsifiable rather than merely
+tasteful.
+
+#definition("C.0", name: "Zero-leak invariant")[
+  An invariant $Phi$ is *zero-leak* if no duration of its violation, however
+  short, is tolerable at any reliability short of $1$ --- equivalently, the
+  design target is $Pr[Phi "holds at every round"] -> 1$ asymptotically, not
+  a merely high empirical hit rate. A single visible unmasked frame, or a
+  single visible flash of the vendor's true background, is a completed
+  failure, not a rare defect to be budgeted against.
+]
+
+#proposition("C.1", name: "Domain of mandate for indiscriminate custody")[
+  The discipline of this section --- initializing every key as presumptively
+  in violation, at cost, until evidence discharges it --- is mandatory if and
+  only if both hold: (a) $Phi$ is zero-leak (Definition C.0), and (b) the
+  environment's transition function $f$ is exogenous (Definition 2.1). If (a)
+  fails, an optimistic detector is strictly cheaper and admissible instead. If
+  (b) fails --- the observer *is* the vendor, e.g. building the platform
+  itself rather than extending it --- $hat(H)$ can simply equal $G_t$ and no
+  custody, indeed no estimation layer at all, is needed.
+]
+
+#proof[
+  (necessity of (a)) If $Phi$ tolerates a transient violation
+  window, the cost this section derives (Definition C.2) buys a guarantee
+  stronger than required; indiscriminate custody becomes pure overhead, not a
+  forced conclusion. (necessity of (b)) If $f$ is endogenous,
+  the "observer" has direct access to the true state by construction,
+  collapsing $hat(H)$ to $G_t$ trivially; there is no incompleteness
+  (Proposition 2.2 does not apply to an observer that *is* the source of
+  truth) and hence nothing for a hypothesis, provisional or otherwise, to be
+  an estimate *of*. (sufficiency of (a) and (b) jointly) Given
+  (b), Proposition P.1 applies: internal state can only be a hypothesis, never
+  a copy. Given (a) and Proposition 2.2 (no complete observation vocabulary),
+  any policy that treats "no evidence yet" as satisfying $Phi$ admits a
+  reachable execution (Axiom 3.1, lossiness) in which a genuinely-unsafe key
+  is never distinguished from a safe one for an unbounded interval ---
+  precisely the violation Definition C.0 forbids by fiat. The only policy
+  compatible with both (a) and (b) is therefore the pessimistic one derived
+  next (Axiom C.1).
+]
+
+#remark("C.1")[
+  `some-censor`'s invariant --- no un-redacted target video is ever rendered
+  --- and `some-filter`'s --- no page is ever displayed at native vendor
+  luminance when dark is required --- are both zero-leak by inspection (a
+  single visible frame *is* the failure the extension exists to prevent) and
+  both sit over a vendor's exogenous, uncoordinated runtime (Definition 2.1).
+  Both are squarely inside the domain of mandate. A feature that merely
+  wants to *usually* highlight a video, or *usually* apply a cosmetic tweak,
+  is not in this domain, and importing this discipline for it would be a
+  category error --- all cost, no compensating guarantee.
+]
+
+#heading(level: 2, numbering: none)[C.1 · The pessimistic default, derived rather than assumed]
+
+Definition 6.2 (the planner) was, as originally stated, silent on one
+question: what is $phi(k, bot)$ --- does "no evidence yet" count as
+satisfying the invariant? That silence is not a harmless gap. It is the exact
+fork between an optimistic architecture and a pessimistic one, and leaving it
+implicit is precisely how an implementation drifts toward optimism by
+accident, one plausible-looking early return at a time.
+
+#axiom("C.1", name: "Pessimistic default")[
+  For any $Phi$ satisfying Definition C.0 under the domain of Proposition
+  C.1, $phi(k, bot) = 0$ for every $k in KK$: absence of evidence never
+  satisfies the invariant.
+]
+
+#corollary("C.1.1", name: "Guilty until proven innocent, as a forced consequence")[
+  By Definition 6.2, the instant a key $k$ enters the estimator's domain with
+  $hat(H)(k) = bot$, $Delta(k) = "target"(k)$ --- every key is held under the
+  protective repair *before* any evidence about it exists. This is exactly
+  the everything-is-a-video-card / everything-is-a-bright-page idiom, obtained
+  here as a forced consequence of Axiom C.1 and Proposition 2.2, not as an
+  engineering preference for caution.
+]
+
+#remark("C.2", name: "Why the optimistic default is not merely worse, but unsound")[
+  Setting $phi(k,bot) = 1$ instead is not a valid competing design in this
+  domain; it is a falsified value. Under Axiom 3.1 (lossiness), a reachable
+  delivery sequence exists in which the first token evidencing a
+  genuinely-unsafe $k$ is dropped, or arrives after the only round at which
+  $Phi$ happens to be checked; an optimistic default reads that silence as
+  "safe" and never triggers the planner for $k$ at all. Under Definition
+  C.0 this is not a rare failure mode to be weighed against convenience --- it
+  is *the* failure this entire canon exists to rule out. The pessimistic
+  default is not the safer of two options; it is the only one Definition C.0
+  leaves standing.
+]
+
+#heading(level: 2, numbering: none)[C.2 · Custody volume: the honest cost of the guarantee]
+
+#definition("C.2", name: "Suspension domain and custody volume")[
+  A key $k$ is *held* at round $t$ if the actuator's most recently applied
+  action for $k$ is $"target"(k)$ rather than a clearing action. The
+  *suspension domain* $S_t subset.eq "dom"(hat(H)_t)$ is the set of held keys;
+  $E_t = "dom"(hat(H)_t) \\ S_t$ is the *exonerated* complement. The *custody
+  volume* over a horizon $T$ is $ cal(C)(T) = sum_(t=t_0)^T |S_t|, $ the aggregate
+  cost --- CPU cycles spent masking, screen-area darkened, perceptual weight
+  of an over-cautious page --- the zero-leak guarantee actually charges.
+]
+
+#remark("C.3")[
+  Axiom C.1 fixes $cal(C)$'s starting condition, not its trajectory: every
+  key is held at the moment it is first seen, so $S_(t_0)$ is, worst case, the
+  entire freshly-observed domain. The question this canon's estimator,
+  planner, and sensor-driver machinery (§5--§8) actually has room to answer is
+  not *whether* to hold custody --- Proposition C.1 has already settled
+  that --- but how fast $cal(C)$ can be driven down without ever letting
+  $Phi$ fail. That is where sensor-driver quality is genuinely measured, and
+  where the case studies below (§9) find their real edge-case pain.
+]
+
+#heading(level: 2, numbering: none)[C.3 · The contraction bound (falsifiable)]
+
+The custody discipline earns the "defensible" the review asked for only if it
+comes with a stated failure condition, not merely an existence proof. The
+bound below is obtained directly from machinery already proved in §7, not
+from a new convergence argument built to order.
+
+#theorem("C.1", name: "Contraction bound")[
+  Let $Phi$ be local (Definition 6.1) and zero-leak (Definition C.0) under
+  Axiom C.1, and let $K = {k in KK : k "genuinely requires" "target"(k)
+  "given the vendor's true state"}$. Under the hypotheses of Theorem 7.1
+  ($t_0$-quiescence, $R$-bounded delivery, self-exclusion per §7.3--7.4,
+  resolved identity recycling per Corollary 5.2.1), there exists $t_1 <=
+  t_0 + R$ such that $S_t = K$ for every $t >= t_1$.
+]
+
+#proof[
+  By Theorem 7.1, $Phi(hat(H)_t) = 1$ for all $t >= t_1$; by locality
+  (Definition 6.1), $phi(k, hat(H)_t (k)) = 1$ for every $k$ individually. For
+  an invariant of this shape, $phi(k, dot) = 1$ holds under exactly one of two
+  disjoint conditions: $k$ is genuinely safe and currently exonerated ($k in
+  E_t$), or $k$ is genuinely target-requiring and currently held ($k in
+  S_t$) --- there is no third satisfying configuration, because
+  $"target"(k)$ was defined (Definition 6.2) to be precisely the repair that
+  makes $phi$ hold for a key failing it, and a key already satisfying $phi$
+  receives no repair. So for $t >= t_1$: $k in K$ iff $k$ is genuinely
+  target-requiring iff (by the disjointness just argued) $k in S_t$. Hence
+  $S_t = K$.
+]
+
+#remark("C.4", name: "Falsification criterion")[
+  Run a sensor driver on a state where the true positive set is empty ($K =
+  emptyset$: a page with zero target videos; a page already in genuine native
+  dark theme). If, after a local quiescence window of the driver's own
+  claimed $R$, $S_(t_0+R) != emptyset$, Theorem C.1 is falsified *for that
+  driver*, and by exactly one of three causes, each independently checkable:
+  (i) $R$-bounded delivery is not actually being achieved (the driver's §8.3
+  disclosure of its bound is false); (ii) the epoch or identity-continuity
+  precondition of Corollary 5.2.1 is unmet; or (iii) the driver's $xi$ never
+  produces evidence sufficient to exonerate a genuinely-safe key, so nothing
+  in $S_t$ was ever going to leave. This is the same trichotomy §10.1 already
+  triages by, applied to one further symptom: a suspension domain that never
+  contracts, i.e. an extension that is correct but permanently, uselessly
+  paranoid.
+]
+
+#heading(level: 2, numbering: none)[C.4 · Shrinking $cal(C)$ without amending the guarantee]
+
+The bound above is agnostic to *how fast* $t_1$ arrives; the following are
+engineering corollaries that reduce $R$'s realized value, not new claims
+about correctness. Each is falsifiable in the same style as Theorem C.1, and
+each is *sound only in the exonerating direction* --- misfiring toward
+"target" is merely wasteful, misfiring toward "safe" is a zero-leak violation,
+so a corollary below is inadmissible unless proved sound for exoneration
+specifically.
+
+#corollary("C.2", name: "Hierarchical exoneration")[
+  If $xi$ (Definition 4.1) can be extended to certify, from one observation
+  at an ancestor node $n$, that no descendant of $n$ can extract to a target
+  key, every $m$ in the subtree rooted at $n$ may be exonerated in the same
+  round as $n$, without individually re-deriving $xi(m, dot)$. This does not
+  change *whether* Theorem C.1's $t_1$ exists; it can sharply reduce the
+  realized $cal(C)$, since one ancestor-level negative fact retires a whole
+  subtree from $S_t$ instead of waiting on per-descendant evidence. Falsification: a
+  descendant of a certified-negative ancestor that is later shown to be a
+  genuine target key means the ancestor-level certificate was unsound and
+  must be withdrawn under §10, not patched with a per-node exception.
+]
+
+#corollary("C.3", name: "Negative-fingerprint fast exoneration")[
+  A synchronous predicate set $FF$ of *sufficient conditions for genuine
+  safety* (undersized bounding box, a disallowed tag, an exonerating
+  structural role) lets a key exit $S_t$ in $O(1)$ rounds, bypassing the
+  slower positive-identification tiers of Definition 4.1 entirely --- but
+  only because every $f in FF$ is required to be *sound for exoneration*: a
+  proven sufficient condition for safety, never a heuristic correlate of it.
+  Falsification: any node matching some $f in FF$ that is later shown to be a
+  genuine target key falsifies $f$ itself, not the node; $f$ must be removed
+  from $FF$ under §10, exactly as an unsound axiom would be amended.
+]
+
+#heading(level: 2, numbering: none)[C.5 · Why §7.3 is load-bearing, not a footnote]
+
+#remark("C.5")[
+  Axiom C.1 does not merely permit heavy actuation near $t_0$; it *mandates*
+  it --- worst case, every freshly-observed key is held simultaneously. A
+  detector that shares a subtree with the actuator under this regime is not
+  occasionally sampling its own artifact as an edge case (the framing under
+  which Proposition 7.3 first appears); it is doing so *continuously, over
+  most of the observed domain, for as long as custody volume remains high*.
+  Without the structural exclusion §7.3 demands and the self-tag §7.4
+  supplies, the estimator would read every held key's own veil or mask as
+  fresh vendor evidence, and Theorem C.1's contraction could never
+  distinguish a genuine exoneration from an artifact of the extension's own
+  mass detention. Indiscriminate custody is therefore not merely compatible
+  with the actuation-observation coupling hazard; discharging that hazard is
+  the specific precondition that makes indiscriminate custody convergent
+  rather than self-poisoning. The two are not adjacent concerns --- one is the
+  load the other must be strong enough to carry.
+]
+
+// ═══════════════════════════════════════════════════════════════════════════
 = The Transport Layer Architecture
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -837,16 +1459,39 @@ each of the following against Axioms 3.1--3.5:
 - The concrete self-tag (Definition 7.3) and, if any detector reads the
   same subtree the actuator writes, the structural exclusion required by
   Proposition 7.3 --- not a post-hoc filter.
+- Which state distinctions the driver assumes are *manifest* (Definition 2.2),
+  and its plan for a distinction the vendor may migrate to *latent* (Axiom
+  3.6): which manifest shadow (repaint, reflow, derived attribute) it will
+  re-derive the distinction from, since no reconfiguration of $delta$ recovers
+  a latent one directly.
+- The *phase* (Remark 1.5) in which the actuator writes, and the argument that
+  writing there does not fight the vendor's own layout phase or induce the
+  endogenous mutation of Remark 2.6.
+- The eviction policy: whether removal is by physical disconnection or by
+  *decay* (Remark 3.3), and --- if disconnection is used --- the explicit
+  argument that virtualization (Proposition 4.1) cannot false-positive it. A
+  driver over a virtualized surface must justify decay, gated by epoch and the
+  identity-continuity check, rather than hard-deleting on disconnect.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Case Studies
 // ═══════════════════════════════════════════════════════════════════════════
 
-This canon is not offered as an abstract exercise. Both governed extensions
-already implement it, in places by necessity discovered the hard way before
-this document existed. This section is the reconciliation: it shows the
-theorems above are not a new design to migrate toward, but the explanation
-for invariants the source already asserts as comments.
+This canon is not offered as an abstract exercise, and this section is not a
+victory lap. Both governed extensions are, today, the site of the pain named
+in §C.0 (P.0): `some-censor` produces a steady trickle of "why wasn't this
+one censored" reports --- a video in the sidebar, in the small recommendation
+feed, in Shorts, or an ordinary card that silently refuses clicks --- and
+`some-filter` produces a steady trickle of "why did it flash." Neither
+extension is a hallmark of this architecture done well; both are evidence of
+exactly the whack-a-mole this canon exists to end. What follows documents
+both halves honestly: mechanisms already discovered, independently and by
+necessity, that the theorems above explain rather than invent (the epoch,
+identity-continuity, and self-tagging machinery of §4--§8); and, separately,
+concrete points where either extension still violates the custody discipline
+of §C, which is where their recurring edge cases actually come from. The
+second half is not a lesser finding than the first --- naming *where the
+canon is not yet obeyed* is the entire purpose of filing a canon at all.
 
 == `some-censor`
 
@@ -902,6 +1547,36 @@ jointly self-tag every actuator-owned card (Definition 7.3); `_promote()`’s
 existing-entry repair path (Invariant M2, upsert idempotence) is exactly
 Theorem 7.2’s idempotent-actuation precondition.
 
+*Custody discipline: where it is currently violated.* The recurring "why
+wasn't this one censored" reports --- a video surfaced in the sidebar, in the
+small recommendation feed, in Shorts, or an ordinary card that stops
+responding to clicks --- are not four unrelated bugs. They are the same bug
+observed at four different DOM locations, and the bug is a scope violation
+one level *before* the estimator: Axiom C.1 forces $Delta(k) = "target"(k)$
+the instant $k$ enters $"dom"(hat(H))$, but that guarantee is vacuous for a
+node the observation channel never hands to the estimator in the first
+place. If $SS_"event"$'s subscription and $xi$'s candidacy check are scoped
+to the DOM regions the primary feed and player were observed to occupy at
+authoring time, a card rendered inside a region outside that footprint is
+never a suspect, never held, and never exonerated --- it simply never enters
+$KK$'s observed domain, which is a stronger failure than being wrongly
+exonerated. Each newly reported "container" (sidebar, Shorts shelf, a
+redesigned recommendation rail) is the same missing footprint rediscovered in
+a new place, and will keep recurring for as long as coverage is enumerated
+positively (a list of known containers) rather than negatively (everything
+is a candidate *unless* a sound exoneration predicate, per Corollary C.3,
+says otherwise). The click-blocking report is the mirror failure at
+exoneration time rather than custody time: a card that visually reads as
+revealed but still refuses interaction has had its *masking* cleared without
+its *clearing action* being a complete inverse of `target(k)` (Definition
+C.2's "held" versus "cleared" distinction) --- some artifact of the mask
+(an overlay, a captured pointer-events rule) outlived the exoneration that
+was supposed to remove it, which is Remark 7.2's bidirectional self-tagging
+gap recurring at the level of a single card's own teardown, not just at
+navigation-wide teardown. Both failures are conformance gaps against §8.3's
+checklist (declared $SS_"event"$ coverage; a sound, negative-only exoneration
+predicate set) rather than defects requiring a new theorem.
+
 == `some-filter`
 
 *The measurement disturbance instance.* ADR 0001
@@ -939,6 +1614,45 @@ then continuously re-observe and re-reconcile, rather than waiting for a
 settlement signal that Proposition 2.1 already proves cannot be relied
 upon.
 
+*Custody discipline: the legacy fallback as the correct idiom, arrived at
+without being named.* `some-filter`'s own history supplies the sharpest
+confirmation of Theorem C.1 available anywhere in either codebase, precisely
+because it was learned the expensive way rather than derived first. Per the
+maintainers' own account, the classifier-based mode --- which attempts a
+genuine positive identification of the vendor's true theme before deciding
+whether to act --- was abandoned in favor of the legacy HTML-invert filter,
+because the legacy filter's whole-page CSS cascade is applied *instantly and
+universally*: it does not wait to be right about which elements are actually
+bright before inverting all of them. This is Axiom C.1 (pessimistic default)
+taken to its degenerate limit at page granularity --- $S_t approx V_t$
+permanently, custody volume $cal(C)$ never contracts, exoneration is never
+attempted --- and it is a *correct* point on the trade-off Theorem C.1
+describes, not a failure to optimize: over-darkening a genuinely-light
+element costs perceptual quality, which $Phi$ (Remark C.1) does not forbid,
+whereas exposing a genuinely-dark page at native luminance for even one
+frame is the exact failure $Phi$ exists to rule out. Between a mode that is
+occasionally too dark and a mode that is occasionally too bright, only the
+first is admissible under a zero-leak invariant, and the legacy filter is
+simply the one that cannot fail in the forbidden direction. The classifier
+mode's defect is now precisely nameable: it substitutes *delayed, positive*
+identification (Definition 4.1's tiered extraction, here at page scale) for
+Axiom C.1's *instantaneous, negative* default, so the vendor's true
+background is exposed for the entire evaluation window
+$Delta t_"eval" > 0$ --- a page-scale instance of the same violation Remark
+C.2 rules out for a single key. The ADR's own "apply-then-detect" flow,
+documented above, is in fact the *fix* for exactly this defect: hold first
+(veil, or invert), classify under the hold, exonerate (restore native
+styling) only on proof of already-dark. That the extension nonetheless still
+falls back to legacy for the harder cases is not a rebuke of that fix; it is
+evidence that the classifier's *exoneration* leg --- the part of the pipeline
+this canon has the least to say about mechanically, and the part Corollary
+C.3 requires to be *sound*, not merely fast --- has not yet been made
+reliable enough to trust, and legacy is the correct, falsifiable-safe
+fallback for exactly the interval during which that remains true. Retiring
+legacy is a claim this canon requires evidence for (a demonstrated,
+sound exoneration predicate satisfying Theorem C.1's bound), not a target
+date.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Amendment Protocol --- Canon Law
 // ═══════════════════════════════════════════════════════════════════════════
@@ -971,6 +1685,40 @@ resurface in a different guise.
   evidence?* Suspect a non-total or mis-specified per-key order (Definition
   5.2) --- audit the epoch/tier/timestamp construction directly; do not add
   a debounce as a substitute for a correct order.
++ *Ontological obscuring: did the vendor move the distinction out of the
+  manifest subspace?* If the evidence that used to arrive simply stopped, and
+  the state is now carried in injected CSS, a listener rebind, framework
+  memory, or `<canvas>` (Axiom 3.6), do not widen $delta$ to chase a signal
+  that no longer casts a manifest shadow. Re-derive the distinction from the
+  manifest shadow it *does* cast (Remark 2.5), or amend §2 to record the
+  latent migration.
++ *Epistemic ambiguity: are we confusing physical absence with logical
+  deletion?* If a key is being evicted while it is still logically alive
+  (classically, on a virtualized scroll), the eviction rule is treating
+  disconnection as a tombstone. Replace it with gated *decay* (Remark 3.3);
+  do not special-case the scroll container.
++ *Topological coupling: did our own actuation trigger the mutation?* If the
+  contested mutation appears only after, and only because of, an actuator
+  write (the $g compose alpha$ term of Remark 2.6), the fix is idempotent,
+  self-tagged actuation reaching a fixed point (Theorem 7.2), not a longer
+  debounce on the echo.
++ *Temporal stratification: are we observing and acting in different phases?*
+  If the race is between a microtask ingestion and an animation-frame write
+  (Remark 1.5), reschedule actuation into a phase that does not fight the
+  vendor's layout; do not paper over a phase-boundary race with a `setTimeout`.
++ *Coverage gap: was the offending node ever a suspect at all?* If a leak
+  traces to a node in a location the channel never subscribed to (a new
+  container, a new surface), the fault is not in the estimator or planner ---
+  Axiom C.1 was never given the chance to apply. Widen $SS_"event"$'s and
+  $xi$'s declared coverage (§8.3) to the whole document by default; do not
+  add the new container to a list of known containers, which only relocates
+  the next gap.
++ *Incomplete exoneration: is "cleared" actually the inverse of "held"?* If a
+  key that should read as safe still carries a behavioral or visual artifact
+  (blocked interaction, residual style), the actuator's clearing action is
+  not a true inverse of $"target"(k)$ (Definition C.2). Fix the clearing
+  action to fully undo what targeting did; do not add a second, corrective
+  actuation on top of an incomplete one.
 + *None of the above?* The anomaly is evidence of a gap in this canon's own
   axioms, not merely in an implementation of them. File the amendment
   against §2 or §3 first --- extending the channel or environment model ---
@@ -1013,6 +1761,46 @@ study (§9) or sharpens the triage procedure (§10.1) without altering an
 axiom or theorem is a *minor* amendment. No amendment may be recorded
 solely as a source-code commit message; it must be reflected in this file.
 
+*Recorded amendments.*
+- *v1.0 → v1.1* (2026-07-10). A *major* amendment: it adds axioms to the
+  environment and channel model (§2--§3) and a Prolegomenon that derives,
+  rather than posits, the object the rest of the canon reasons about. New
+  environment/channel content: the Prolegomenon (phenomenology, candidate-model
+  elimination, the necessity-of-estimation proof P.1, the mandatory-factorization
+  theorem P.2, the impossible-worlds descent, and the theory-revision framing);
+  Definition 2.2 (manifest vs latent state) and Axiom 3.6 (observability
+  asymmetry); the endogenous decomposition of $omega_t$ (Definition 2.1, Remark
+  2.6); Remark 2.4 (optimization-pressured substrate); Remark 1.5 (phase
+  stratification); and Remark 3.3 (tombstoning vs decay). Downstream theorems in
+  §5--§8 were reviewed against each new axiom and stand unchanged --- the new
+  axioms sharpen the environment the existing theorems already tolerate; they do
+  not weaken a precondition any theorem relied on. The conformance checklist
+  (§8.3) and triage (§10.1) were extended to exercise the new axes.
+- *v1.1 → v1.2* (2026-07-11). A *major* amendment: it promotes the
+  actuation-observation coupling hazard (Proposition 7.3) from an isolated
+  robustness concern to the discipline's operational center, by filling a gap
+  Definition 6.2 left implicit --- the value of $phi(k,bot)$. New content: the
+  unnumbered section "The Custody Discipline," comprising the domain-of-mandate
+  criterion (Definition C.0, Proposition C.1) that scopes this entire canon to
+  zero-leak invariants over exogenous environments; the pessimistic-default
+  axiom (Axiom C.1) and its unsoundness argument against the optimistic
+  alternative (Remark C.2); the suspension domain and custody volume (Definition
+  C.2); the contraction bound (Theorem C.1), proved directly from Theorem 7.1
+  rather than new convergence machinery, with an explicit falsification
+  criterion (Remark C.4); two engineering corollaries for shrinking custody
+  volume soundly (Corollaries C.2, C.3); and a remark (C.5) making explicit that
+  §7.3/7.4 are the precondition for indiscriminate custody's convergence, not a
+  peripheral concern. No existing axiom or theorem in §1--§8 was weakened;
+  Axiom C.1 and Theorem C.1 are additions layered on Definition 6.1's existing
+  local-decomposition requirement. The Case Studies section (§9) was revised
+  from a validating tone to an honest one: both governed extensions are
+  documented as sites of the pain this canon exists to end, with concrete,
+  named custody-discipline violations (`some-censor`'s coverage-scoped
+  observation channel; `some-filter`'s classifier-mode evaluation-window leak)
+  alongside the mechanisms already independently discovered. Triage (§10.1)
+  gained two custody-specific diagnostics; the glossary and notation index were
+  extended accordingly.
+
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1033,6 +1821,12 @@ solely as a source-code commit message; it must be reflected in this file.
   [Self-tag], [`data-boyo-vid`, registry membership], [`[data-my-ext]`],
   [Ownership signal (deletion-direction)], [(not yet separated from self-tag)], [`sw-dirty` class on `<html>`],
   [Hybrid channel poll leg $SS_"poll"$], [`retryUnresolved()`, 500ms interval], [(single-shot; no poll leg yet --- candidate future amendment)],
+  [Manifest / latent (Def. 2.2, Ax. 3.6)], [`data-video-id` attr (manifest); React virtualization / internal state (latent)], [Sampled computed style (manifest); injected CSSOM veil rules (latent)],
+  [Endogenous coupling (Rem. 2.6)], [vendor re-render provoked by a `data-boyo-vid` write], [vendor body-replacement reacting to the prepaint veil],
+  [Eviction: decay vs disconnect (Rem. 3.3)], [`prune()` is disconnect-based; decay under virtualization is a candidate amendment], [(no long-lived per-key hypothesis to evict yet)],
+  [Pessimistic default (Ax. C.1)], [every card is masked at first sight, before `tryExtract()` resolves it], [legacy HTML-invert cascade applied page-wide before any classification],
+  [Suspension domain $S_t$ (Def. C.2)], [masked cards not yet exonerated by a resolved, un-whitelisted-negative check], [page currently under the invert filter, not yet restored to native],
+  [Custody violation (§9)], [sidebar / Shorts / rec-feed cards outside declared channel coverage; incomplete clearing blocking clicks], [classifier mode's evaluation window exposing native luminance before deciding],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1044,7 +1838,9 @@ solely as a source-code commit message; it must be reflected in this file.
   stroke: 0.4pt,
   [*Symbol*], [*Meaning*],
   [$G_t = (V_t, E_t)$], [Hidden vendor DOM graph at round $t$ (Def. 2.1)],
-  [$f, omega_t$], [Vendor transition function, exogenous input (Def. 2.1)],
+  [$f, omega_t$], [Vendor transition function; input (Def. 2.1)],
+  [$omega_t^"exo"$, $g(alpha(Delta_(t-1)))$], [Exogenous vs endogenous (actuation-induced) input (Def. 2.1, Rem. 2.6)],
+  [Manifest / latent], [Observable vs $delta$-invisible state subspaces (Def. 2.2, Ax. 3.6)],
   [$EE$], [Fixed, finite observation vocabulary (§2.2)],
   [$delta$], [Channel delivery relation (Def. 3.2)],
   [$s = (k, a, tau)$], [Token: key, properties, local timestamp (Def. 3.1)],
@@ -1054,12 +1850,17 @@ solely as a source-code commit message; it must be reflected in this file.
   [$hat(H)$], [Estimator's hypothesis (Def. 5.1)],
   [$prec.eq$], [Per-key evidentiary order: epoch $>$ tier $>$ timestamp (Def. 5.2)],
   [$U$], [Monotonic update, $= max_(prec.eq)$ pointwise (Def. 5.3)],
+  [Decay], [Gated downward eviction under sustained absence (Rem. 3.3)],
   [$epsilon$, $bot_epsilon$], [Epoch counter, reset operator (Def. 5.4)],
   [$Phi$, $phi$], [Global invariant, its per-key decomposition (Def. 6.1)],
   [$P$, $Delta$], [Planner, minimal repair set (Def. 6.2)],
   [$alpha$], [Actuator realization map (§7.3)],
   [$t_0$-quiescent], [No exogenous input from $t_0$ onward (Def. 7.1)],
   [$R$-bounded delivery], [Every mutation at or before $t_0$ delivered by $t_0+R$ (Def. 7.2)],
+  [Zero-leak], [No violation duration tolerable at reliability $< 1$ (Def. C.0)],
+  [$S_t$, $E_t$], [Suspension domain (held), exonerated complement (Def. C.2)],
+  [$cal(C)(T)$], [Custody volume, $= sum_t |S_t|$ over horizon $T$ (Def. C.2)],
+  [$K$], [True positive set: keys genuinely requiring $"target"(k)$ (Thm. C.1)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
