@@ -13,12 +13,12 @@
   },
   "exports": {
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js"
+      "types": "./src/*.ts",
+      "import": "./src/*.ts"
     }
   },
   "files": [
-    "dist"
+    "src"
   ],
   "devDependencies": {
     "@playwright/test": "1.60.0",
@@ -27,7 +27,6 @@
     "maishatu-eslint-kit": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
