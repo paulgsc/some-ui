@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "exclude": [
-    "**/data/**",
-    "**/*.stories.tsx",
-    "**/*.stories.ts",
-    "vite.config.ts"
-  ]
-}

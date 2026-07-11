@@ -3,7 +3,6 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "@some-ui/attributions": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/portfolio": "workspace:*",
     "react-d3-tree": "3.6.2",
