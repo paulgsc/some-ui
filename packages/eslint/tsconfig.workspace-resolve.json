@@ -2,7 +2,6 @@
   "compilerOptions": {
     "paths": {
       "@some-extension/common": ["../../extensions/common/src/index.ts"],
-      "@some-ui/attributions": ["../ui/attributions/src/index.ts"],
       "@some-ui/calendar": ["../ui/calendar/src/index.ts"],
       "@some-ui/content": ["../some-content/src/index.ts"],
       "@some-ui/dice-card": ["../ui/dice-card/src/index.ts"],

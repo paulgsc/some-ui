@@ -33,7 +33,6 @@
     "@tanstack/react-router": "^1.130.2",
     "@tanstack/react-router-devtools": "^1.131.5",
     "@tanstack/router-plugin": "^1.121.2",
-    "@some-ui/attributions": "workspace:*",
     "lucide-react": "^0.378.0",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",

@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "@some-ui/attributions": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/portfolio": "workspace:*",
