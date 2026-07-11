@@ -12,6 +12,23 @@ type HeadlineProps = {
   theme?: HeadlineTheme
 }
 
+type Particle = {
+  id: string
+  left: string
+  top: string
+  animationDelay: string
+}
+
+const PARTICLE_COUNT = 25
+
+const createParticles = (): Array<Particle> =>
+  Array.from({ length: PARTICLE_COUNT }, () => ({
+    id: crypto.randomUUID(),
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 90}s`,
+  }))
+
 export const Headline: FC<HeadlineProps> = ({
   initialText = "Your headline here",
   storageKey = "headline",
@@ -22,11 +39,20 @@ export const Headline: FC<HeadlineProps> = ({
     storageKey,
     initialText
   )
+
   const [isMounted, setIsMounted] = useState(false)
 
+  // Generated exactly once for this component instance.
+  const [particles] = useState(createParticles)
+
   useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 50)
-    return (): void => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setIsMounted(true)
+    }, 50)
+
+    return (): void => {
+      clearTimeout(timer)
+    }
   }, [])
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -40,20 +66,19 @@ export const Headline: FC<HeadlineProps> = ({
       className={cn(
         "headline",
         `headline--${theme}`,
-        "relative w-full inline-flex items-center justify-center p-8",
+        "relative inline-flex w-full items-center justify-center p-8",
         className
       )}
     >
-      {/* Depth noise - static atmospheric specks */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 25 }).map((_, i) => (
+        {particles.map((particle) => (
           <div
-            key={i}
+            key={particle.id}
             className="particle absolute size-1 rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 90}s`,
+              left: particle.left,
+              top: particle.top,
+              animationDelay: particle.animationDelay,
             }}
           />
         ))}
@@ -66,34 +91,29 @@ export const Headline: FC<HeadlineProps> = ({
           !isMounted && "opacity-0"
         )}
       >
-        {/* CRT atmosphere */}
         <div className="scan-lines pointer-events-none absolute inset-0" />
 
-        {/* Rare glitch overlays - signal interference */}
         <div className="glitch-top pointer-events-none absolute inset-0 flex items-center justify-center">
-          <h1 className="text-balance text-center text-5xl font-bold leading-tight tracking-wider md:text-6xl lg:text-7xl opacity-30">
+          <h1 className="text-balance text-center text-5xl font-bold leading-tight tracking-wider opacity-30 md:text-6xl lg:text-7xl">
             {displayText}
           </h1>
         </div>
 
         <div className="glitch-bottom pointer-events-none absolute inset-0 flex items-center justify-center">
-          <h1 className="text-balance text-center text-5xl font-bold leading-tight tracking-wider md:text-6xl lg:text-7xl opacity-30">
+          <h1 className="text-balance text-center text-5xl font-bold leading-tight tracking-wider opacity-30 md:text-6xl lg:text-7xl">
             {displayText}
           </h1>
         </div>
 
-        {/* Main text - single mass with optical bloom */}
         <h1
           className={cn(
-            "text-balance text-center text-5xl font-bold leading-tight tracking-wider md:text-6xl lg:text-7xl",
-            "transition-opacity duration-1000",
+            "text-balance text-center text-5xl font-bold leading-tight tracking-wider transition-opacity duration-1000 md:text-6xl lg:text-7xl",
             isMounted ? "opacity-100" : "opacity-0"
           )}
         >
           {displayText}
         </h1>
 
-        {/* Invisible overlay input */}
         <Input
           type="text"
           value={headline}
@@ -109,7 +129,6 @@ export const Headline: FC<HeadlineProps> = ({
           aria-label="Edit headline"
         />
 
-        {/* Edit indicator */}
         <div
           className={cn(
             "pointer-events-none absolute bottom-4 right-4 text-xs opacity-0 transition-opacity",
