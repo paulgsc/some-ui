@@ -74,7 +74,11 @@ beforeEach(async () => {
     .mocked(mod.default)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
-  managerCtor = vi.mocked(mod.ViewportManager).mockReset()
+  // vitest 4 types a mocked class constructor as Mock<typeof ViewportManager>,
+  // which requires satisfying both a call and a construct signature - something
+  // no plain function value (the mockImplementation below) can ever provide.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+  managerCtor = vi.mocked(mod.ViewportManager).mockReset() as unknown as Mock
   managerCtor.mockImplementation(function (this: FakeViewportManagerInstance) {
     this.resetCalls = 0
     this.createdViewports = []

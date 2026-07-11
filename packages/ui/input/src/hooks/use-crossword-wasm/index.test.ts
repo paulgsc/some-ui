@@ -54,7 +54,13 @@ beforeEach(async () => {
     .mocked(mod.default)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
-  generatorCtor = vi.mocked(mod.CrosswordGenerator).mockReset()
+  // vitest 4 types a mocked class constructor as Mock<typeof CrosswordGenerator>,
+  // which requires satisfying both a call and a construct signature - something
+  // no plain function value (the mockImplementation below) can ever provide.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+  generatorCtor = vi
+    .mocked(mod.CrosswordGenerator)
+    .mockReset() as unknown as Mock
   generatorCtor.mockImplementation((wordList: Array<string>) => {
     const generator: FakeGenerator = {
       generate: vi.fn(() => Promise.resolve(validResult())),
