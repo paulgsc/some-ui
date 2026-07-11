@@ -1,0 +1,3 @@
+networks:
+  some-ui-network:
+    driver: bridge
