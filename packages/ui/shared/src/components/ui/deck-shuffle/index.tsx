@@ -90,7 +90,7 @@ export const DeckShuffle: FC<DeckShuffleProps> = ({
   scaleOffset = 0.02,
 }) => {
   return (
-    <Deck className={(cn(containerClassname), "")}>
+    <Deck className={cn(containerClassname, "")}>
       {contents.map((content, i) => {
         const scale =
           i <= Math.floor(count / 2)
