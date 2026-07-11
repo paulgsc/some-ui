@@ -1028,6 +1028,9 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
       '@types/node-fetch':
         specifier: ^2.6.11
         version: 2.6.13
