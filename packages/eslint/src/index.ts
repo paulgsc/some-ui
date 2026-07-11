@@ -26,6 +26,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...reactConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
+  ...switchLintConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -53,9 +54,6 @@ export {
 }
 
 // ── Switch-statement idiom rules ───────────────────────────────────────────
-//
-// Opt-in only — not included in maishatuRecommended/extensionsRecommended.
-// See switch-lint.config.ts for adoption instructions.
 export { switchLintConfig, switchLintPlugin }
 
 /**

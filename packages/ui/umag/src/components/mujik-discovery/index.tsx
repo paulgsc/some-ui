@@ -2,14 +2,10 @@ import "./index.css"
 
 import type { ElementType } from "react"
 import { useState } from "react"
+import type { DiscoveryMode } from "@umag/types/spectrum"
+import { assertNever } from "@umag/utils/error"
 import { Clock, Heart, Sparkles, Star, Trophy, Zap } from "lucide-react"
 import { Button } from "some-ui-shared"
-
-type DiscoveryMode =
-  | "new-find"
-  | "rediscovery"
-  | "struck-chord"
-  | "current-best"
 
 type DiscoveryModeConfig = {
   label: string
@@ -93,14 +89,23 @@ const STAR_KEYS = ["star-1", "star-2", "star-3", "star-4", "star-5"]
 
 function getModeColor(mode: DiscoveryMode): string {
   switch (mode) {
-    case "new-find":
+    case "new-find": {
       return "#22d3ee"
-    case "rediscovery":
+    }
+    case "rediscovery": {
       return "#fbbf24"
-    case "struck-chord":
+    }
+    case "struck-chord": {
       return "#fb7185"
-    default:
+    }
+    case "current-best": {
       return "#facc15"
+    }
+    default: {
+      // TypeScript compile-time safety check
+      mode satisfies never
+      return assertNever(mode)
+    }
   }
 }
 

@@ -4,7 +4,6 @@ import tseslint from "typescript-eslint"
 
 const inputConfig = [
   ...someUIEslint,
-  ...switchLintConfig,
   {
     files: ["**/*.{js,mjs,ts,tsx}"],
     settings: {

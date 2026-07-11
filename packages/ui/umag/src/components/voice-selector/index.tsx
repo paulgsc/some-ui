@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from "react"
 import { useState } from "react"
+import { assertNever } from "@umag/utils/error"
 import { Check, Globe, Mic, User } from "lucide-react"
 import {
   Badge,
@@ -25,46 +26,70 @@ type VoiceSelectorTriggerProps = {
   className?: string
 }
 
+type Gender = "male" | "female" | "neutral"
+
 const getProviderIcon = (provider: TTSProvider): string => {
   switch (provider) {
-    case "elevenlabs":
+    case "elevenlabs": {
       return "🎙️"
-    case "openai":
+    }
+    case "openai": {
       return "🤖"
-    case "google":
+    }
+    case "google": {
       return "🔍"
-    case "azure":
+    }
+    case "custom":
+    case "azure": {
       return "☁️"
-    default:
-      return "🎵"
+    }
+    default: {
+      provider satisfies never
+      assertNever(provider)
+    }
   }
 }
 
 const getProviderColor = (provider: TTSProvider): string => {
   switch (provider) {
-    case "elevenlabs":
+    case "elevenlabs": {
       return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-    case "openai":
+    }
+    case "openai": {
       return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-    case "google":
+    }
+    case "google": {
       return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-    case "azure":
+    }
+    case "azure": {
       return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200"
-    default:
+    }
+    case "custom": {
       return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+    }
+    default: {
+      provider satisfies never
+      assertNever(provider)
+    }
   }
 }
 
-const getGenderIcon = (gender?: string): React.JSX.Element => {
+const getGenderIcon = (gender?: Gender): JSX.Element => {
   switch (gender) {
-    case "male":
+    case "male": {
       return <User className="size-3" />
-    case "female":
+    }
+    case undefined:
+    case "female": {
       return <User className="size-3" />
-    case "neutral":
+    }
+    case "neutral": {
       return <Mic className="size-3" />
-    default:
-      return <Mic className="size-3" />
+    }
+    default: {
+      gender satisfies never
+      assertNever(gender)
+    }
   }
 }
 
