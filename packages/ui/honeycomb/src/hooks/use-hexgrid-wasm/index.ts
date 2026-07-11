@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { HexRenderData } from "@honeycomb/types/hex-grid"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
 import { initializeWasm } from "@honeycomb/utils/wasm-init"
-import { WasmHexGrid } from "some-hexagon"
+import { WasmHexGrid } from "@some-ui/some-hexagon"
 import { z } from "zod"
 
 const RadiusSchema = z.number().positive()

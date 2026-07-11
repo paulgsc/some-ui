@@ -1,11 +1,12 @@
 /**
  * WASM-bridge graceful-failure E2E tests.
  *
- * The `polyhedron` WASM crate is built separately (crates/polyhedron) and is
- * NOT present in the extension dist/ at test time — it is declared `external`
- * in vite.config.chromium.ts. When the extension loads, WasmBridge.initialize()
- * will attempt a dynamic import("polyhedron") that fails with a network/module
- * error. The `.catch()` on that call swallows the error.
+ * The `@some-ui/polyhedron` WASM crate is built separately (crates/polyhedron)
+ * and is NOT present in the extension dist/ at test time — it is declared
+ * `external` in vite.config.chromium.ts. When the extension loads,
+ * WasmBridge.initialize() will attempt a dynamic import("@some-ui/polyhedron")
+ * that fails with a network/module error. The `.catch()` on that call
+ * swallows the error.
  *
  * These tests verify that this graceful-failure path works correctly:
  *   - The conveyor still initialises (shadow host appears)

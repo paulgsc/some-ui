@@ -7,9 +7,9 @@ import {
   GameConfigSchema,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import type { HangulGameCore } from "@some-ui/hangul-game-core"
 import type { WasmLoaderState } from "@some-ui/wasm-loader"
 import { createWasmLoader } from "@some-ui/wasm-loader"
-import type { HangulGameCore } from "hangul-game-core"
 
 // Set immediately before load()/preload() so the in-flight importModule()
 // call (if one starts) picks them up. A later loadHangulWasm() call with
@@ -22,7 +22,7 @@ let coreInstance: HangulGameCore | null = null
 
 const loader = createWasmLoader<WasmGameBridge>({
   importModule: async () => {
-    const module = await import("hangul-game-core")
+    const module = await import("@some-ui/hangul-game-core")
     await module.default()
 
     // Merge defaults + partial config, validate with Zod

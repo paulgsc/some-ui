@@ -4,7 +4,7 @@ import {
 } from "@honeycomb/utils/hangul-keyboard-mapping"
 import type { HangulMapping } from "@honeycomb/utils/hangul-keyboard-mapping"
 import { getCellCountForHexagonalGridRadius } from "@honeycomb/utils/hexagon-math"
-import type { HangulGameCore } from "hangul-game-core"
+import type { HangulGameCore } from "@some-ui/hangul-game-core"
 import { z } from "zod"
 
 /**

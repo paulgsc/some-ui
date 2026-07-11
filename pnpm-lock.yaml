@@ -452,7 +452,7 @@ importers:
 
   extensions/some-conveyor:
     dependencies:
-      polyhedron:
+      '@some-ui/polyhedron':
         specifier: workspace:*
         version: link:../../crates/polyhedron
     devDependencies:
@@ -1090,40 +1090,6 @@ importers:
         specifier: workspace:*
         version: link:../some-vite-config
 
-  packages/ui/attributions:
-    dependencies:
-      '@some-ui/fetch-kit':
-        specifier: workspace:*
-        version: link:../../fetch-kit
-      lucide-react:
-        specifier: ^0.477.0
-        version: 0.477.0(react@19.0.0)
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      react-resizable-panels:
-        specifier: ^2.1.0
-        version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
-      zod:
-        specifier: 4.0.5
-        version: 4.0.5
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-
   packages/ui/calendar:
     dependencies:
       lucide-react:
@@ -1244,24 +1210,24 @@ importers:
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../fetch-kit
+      '@some-ui/hangul-game-core':
+        specifier: workspace:*
+        version: link:../../../crates/hangul-game-core
+      '@some-ui/some-hexagon':
+        specifier: workspace:*
+        version: link:../../../crates/some-hexagon
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
-      hangul-game-core:
-        specifier: workspace:*
-        version: link:../../../crates/hangul-game-core
       react:
         specifier: ^19.0.0
         version: 19.0.0
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-hexagon:
-        specifier: workspace:*
-        version: link:../../../crates/some-hexagon
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1287,18 +1253,24 @@ importers:
       '@some-ui/dice-card':
         specifier: workspace:*
         version: link:../dice-card
+      '@some-ui/leetype-wasm':
+        specifier: workspace:*
+        version: link:../../../crates/leetype_wasm
+      '@some-ui/some-crossword':
+        specifier: workspace:*
+        version: link:../../../crates/some-crossword
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/viewport-rotation':
+        specifier: workspace:*
+        version: link:../../../crates/viewport-rotation
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
       katex:
         specifier: ^0.16.28
         version: 0.16.47
-      leetype-wasm:
-        specifier: workspace:*
-        version: link:../../../crates/leetype_wasm
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.0.0)
@@ -1314,18 +1286,12 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-crossword:
-        specifier: workspace:*
-        version: link:../../../crates/some-crossword
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
-      viewport-rotation:
-        specifier: workspace:*
-        version: link:../../../crates/viewport-rotation
       zod:
         specifier: 4.0.5
         version: 4.0.5
@@ -1951,6 +1917,9 @@ importers:
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../fetch-kit
+      '@some-ui/polyhedron':
+        specifier: workspace:*
+        version: link:../../crates/polyhedron
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
@@ -1960,9 +1929,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      polyhedron:
-        specifier: workspace:*
-        version: link:../../crates/polyhedron
       react:
         specifier: ^19.0.0
         version: 19.0.0

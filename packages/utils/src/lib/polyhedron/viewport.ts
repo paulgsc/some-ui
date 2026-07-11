@@ -1,4 +1,4 @@
-import type { WasmViewportManager } from "polyhedron"
+import type { WasmViewportManager } from "@some-ui/polyhedron"
 import type {
   ViewportConfig,
   WasmCycleName,
@@ -59,6 +59,7 @@ export class Viewport {
   /**
    * Refresh state from WASM
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- async by design: an idempotent, type-safe wrapper API around what is currently a synchronous WASM call
   async refreshState(): Promise<WasmViewportState> {
     try {
       const rawState = this.manager.getState(this.id)
@@ -66,13 +67,17 @@ export class Viewport {
       this._state = state
       return state
     } catch (error) {
-      throw new Error(`Failed to refresh viewport "${this.id}": ${error}`)
+      throw new Error(
+        `Failed to refresh viewport "${this.id}": ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
     }
   }
 
   /**
    * Apply transition and update state
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- async by design: an idempotent, type-safe wrapper API around what is currently a synchronous WASM call
   async transition(transition: WasmTransition): Promise<WasmViewportState> {
     try {
       // Validate transition
@@ -85,7 +90,10 @@ export class Viewport {
       this._state = state
       return state
     } catch (error) {
-      throw new Error(`Transition failed for viewport "${this.id}": ${error}`)
+      throw new Error(
+        `Transition failed for viewport "${this.id}": ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
     }
   }
 
@@ -137,7 +145,10 @@ export class Viewport {
 
       return advanced
     } catch (error) {
-      throw new Error(`Tick failed for viewport "${this.id}": ${error}`)
+      throw new Error(
+        `Tick failed for viewport "${this.id}": ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
     }
   }
 
@@ -146,7 +157,7 @@ export class Viewport {
    */
   getFaceContent(faceIndex: number): Array<number> {
     if (!this._state) return []
-    return this._state.faceLayout[faceIndex] || []
+    return this._state.faceLayout[faceIndex] ?? []
   }
 
   /**
@@ -245,6 +256,7 @@ export class ViewportFactory {
   /**
    * Create a new viewport with full validation
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- async by design: an idempotent, type-safe wrapper API around what is currently a synchronous WASM call
   async create(config: ViewportConfig): Promise<Viewport> {
     // Validate entire config
     const validConfig = validateViewportConfig(config)
@@ -268,20 +280,27 @@ export class ViewportFactory {
       // Return wrapped viewport
       return new Viewport(validConfig.id, this.manager, state)
     } catch (error) {
-      throw new Error(`Failed to create viewport "${validConfig.id}": ${error}`)
+      throw new Error(
+        `Failed to create viewport "${validConfig.id}": ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
     }
   }
 
   /**
    * Create viewport from existing ID (if already exists in manager)
    */
+  // eslint-disable-next-line @typescript-eslint/require-await -- async by design: an idempotent, type-safe wrapper API around what is currently a synchronous WASM call
   async fromExisting(id: string): Promise<Viewport> {
     try {
       const rawState = this.manager.getState(id)
       const state = validateWasmViewportState(rawState)
       return new Viewport(id, this.manager, state)
     } catch (error) {
-      throw new Error(`Failed to load existing viewport "${id}": ${error}`)
+      throw new Error(
+        `Failed to load existing viewport "${id}": ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      )
     }
   }
 }

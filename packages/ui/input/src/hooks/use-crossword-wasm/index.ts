@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { cluesJson } from "@input/data/clues"
 import type { CrosswordClue, CrosswordResult } from "@input/types/crossword"
 import { CrosswordResultSchema } from "@input/types/crossword"
+import init, { CrosswordGenerator } from "@some-ui/some-crossword"
 import { createWasmLoader } from "@some-ui/wasm-loader"
-import init, { CrosswordGenerator } from "some-crossword"
 import { getRandomSubarray } from "some-ui-utils"
 
 export function useCreateCrosswordWasm(): {

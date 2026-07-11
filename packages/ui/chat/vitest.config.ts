@@ -44,7 +44,10 @@ export default defineConfig({
       // The real package only exists once wasm-pack has built the
       // `crates/polyhedron` crate. Nothing under test here ever loads it
       // (see test/polyhedron-stub.ts for why it still must resolve).
-      polyhedron: path.resolve(__dirname, "./test/polyhedron-stub.ts"),
+      "@some-ui/polyhedron": path.resolve(
+        __dirname,
+        "./test/polyhedron-stub.ts"
+      ),
     },
   },
 })

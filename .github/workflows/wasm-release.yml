@@ -3,13 +3,24 @@ on:
   push:
     branches: [main]
     paths:
-      - "wasm-sources/**"
+      - "crates/**"
       - "Cargo.lock"
+      - ".github/workflows/wasm-release.yml"
   workflow_dispatch:
 permissions:
   contents: write
   pull-requests: write
+concurrency:
+  group: wasm-release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  # ── Detect changed crates ────────────────────────────────────────────────
+  # A wasm crate is any crates/*/ dir with both Cargo.toml (buildable) and
+  # package.json (npm-publishable) - discovered at runtime rather than
+  # hardcoded, so a new crate opts in just by having both files. No compiled
+  # detector binary: a plain bash diff is enough, so this doesn't pay for a
+  # cargo build on every push just to decide what to build ("save the
+  # penguins" - a shell script can answer this without spending CI minutes).
   detect:
     name: Detect Changed WASM Crates
     runs-on: ubuntu-latest
@@ -20,44 +31,69 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/cargo-cache
-        with:
-          key-suffix: wasm-detect-bin
-          target-dir: .github/scripts/target
-      - name: Build WASM detector binary
-        run: |
-          nix develop .#ci --command cargo build \
-            --release \
-            --manifest-path .github/scripts/Cargo.toml \
-            --target-dir .github/scripts/target \
-            -p wasm-detect
-      - name: Emit matrix
+      - name: Detect changed wasm crates
         id: detect
         run: |
+          set -euo pipefail
+
+          mapfile -t all_crates < <(
+            for d in crates/*/; do
+              [ -f "${d}Cargo.toml" ] && [ -f "${d}package.json" ] && basename "$d"
+            done
+          )
+
+          force_all=false
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            export FORCE_BUILD=1
-            echo "" | .github/scripts/target/release/wasm-detect > matrix.json
+            force_all=true
           else
             BASE="${{ github.event.before }}"
-            HEAD="${{ github.sha }}"
-            if [ "$BASE" = "0000000000000000000000000000000000000000" ] || [ -z "$BASE" ]; then
-              export FORCE_BUILD=1
-              echo "" | .github/scripts/target/release/wasm-detect > matrix.json
-            else
-              git diff --name-only "$BASE" "$HEAD" \
-                | .github/scripts/target/release/wasm-detect > matrix.json
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              force_all=true
             fi
           fi
 
-          MATRIX=$(jq -c . matrix.json)
-          COUNT=$(jq '.include | length' matrix.json)
-          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
-          if [ "$COUNT" -gt 0 ]; then
+          if [ "$force_all" = "true" ]; then
+            changed_crates=("${all_crates[@]}")
+          else
+            mapfile -t changed_files < <(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+
+            # Cargo.lock touches the whole workspace's dependency graph - rebuild everything.
+            if printf '%s\n' "${changed_files[@]}" | grep -qx 'Cargo.lock'; then
+              changed_crates=("${all_crates[@]}")
+            else
+              changed_crates=()
+              for crate in "${all_crates[@]}"; do
+                if printf '%s\n' "${changed_files[@]}" | grep -q "^crates/${crate}/"; then
+                  changed_crates+=("$crate")
+                fi
+              done
+            fi
+          fi
+
+          include="[]"
+          for crate in "${changed_crates[@]:-}"; do
+            [ -z "$crate" ] && continue
+            # Crates normally inherit their version via
+            # `version.workspace = true` rather than declaring their own -
+            # fall back to the workspace root's version in that case.
+            if grep -qx 'version.workspace = true' "crates/${crate}/Cargo.toml"; then
+              version=$(grep -m1 '^version[[:space:]]*=' Cargo.toml | sed -E 's/version[[:space:]]*=[[:space:]]*"(.*)"/\1/')
+            else
+              version=$(grep -m1 '^version[[:space:]]*=' "crates/${crate}/Cargo.toml" | sed -E 's/version[[:space:]]*=[[:space:]]*"(.*)"/\1/')
+            fi
+            include=$(jq -c --arg name "$crate" --arg version "$version" '. + [{"crate_name": $name, "version": $version}]' <<<"$include")
+          done
+
+          matrix=$(jq -c -n --argjson include "$include" '{include: $include}')
+          count=$(jq '.include | length' <<<"$matrix")
+
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          if [ "$count" -gt 0 ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
+  # ── Build changed crates ─────────────────────────────────────────────────
   build:
     name: Build WASM — ${{ matrix.crate_name }}
     needs: detect
@@ -82,17 +118,20 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
-      # wasm-pack is in the ci nix shell (rust.deps includes wasm-pack).
+      # Each crate's own package.json wraps this same invocation under
+      # different script names (wasm:prod, build, ...) - calling wasm-pack
+      # directly here keeps the matrix build uniform regardless of which
+      # script name a given crate happens to use locally.
       - name: Build WASM package
         run: |
           nix develop .#ci --command wasm-pack build \
-            --scope your-scope \
             --target web \
-            --out-dir "../../dist/wasm/${{ matrix.crate_name }}" \
-            "wasm-sources/${{ matrix.crate_name }}"
+            --release \
+            --out-dir dist \
+            "crates/${{ matrix.crate_name }}"
       - name: Create changeset
         run: |
-          PACKAGE_NAME="@your-scope/wasm-${{ matrix.crate_name }}"
+          PACKAGE_NAME="@some-ui/${{ matrix.crate_name }}"
           VERSION="${{ matrix.version }}"
           CHANGESET_ID="${{ matrix.crate_name }}-$(date +%s)"
 
@@ -107,8 +146,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: wasm-dist-${{ matrix.crate_name }}
-          path: dist/wasm/${{ matrix.crate_name }}
+          path: crates/${{ matrix.crate_name }}/dist
           if-no-files-found: error
+  # ── Publish via changesets ───────────────────────────────────────────────
   release:
     name: Changesets WASM Release
     needs: [detect, build]
@@ -125,7 +165,15 @@ jobs:
         with:
           pattern: wasm-dist-*
           path: dist/wasm
-          merge-multiple: true
+          merge-multiple: false
+      - name: Restore dist artifacts into each crate directory
+        run: |
+          set -euo pipefail
+          for artifact_dir in dist/wasm/wasm-dist-*; do
+            crate_name=$(basename "$artifact_dir" | sed 's/^wasm-dist-//')
+            rm -rf "crates/${crate_name}/dist"
+            mv "$artifact_dir" "crates/${crate_name}/dist"
+          done
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm install \

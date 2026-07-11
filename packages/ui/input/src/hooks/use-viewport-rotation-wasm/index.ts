@@ -6,9 +6,9 @@ import {
 } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
 import { cubeEvents } from "@some-ui/dice-card"
+import init, { ViewportManager } from "@some-ui/viewport-rotation"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 import { createEventBus } from "some-ui-utils"
-import init, { ViewportManager } from "viewport-rotation"
 import z from "zod"
 
 const UsizeSchema = z.number().int().min(0)

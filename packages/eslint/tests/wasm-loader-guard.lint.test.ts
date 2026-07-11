@@ -42,7 +42,7 @@ describe("lint: wasm-loader-guard/no-bare-wasm-singleton", () => {
 let wasmModule: unknown = null
 
 export async function loadWasm() {
-  const mod = await import("polyhedron")
+  const mod = await import("@some-ui/polyhedron")
   await mod.default()
   wasmModule = mod
   return wasmModule
@@ -54,14 +54,14 @@ export async function loadWasm() {
 
   it("fires for each of the 8 known wasm-bindgen crate names", async () => {
     const crates = [
-      "hangul-game-core",
-      "leetype-wasm",
-      "polyhedron",
+      "@some-ui/hangul-game-core",
+      "@some-ui/leetype-wasm",
+      "@some-ui/polyhedron",
       "some-bricks",
       "some-charts",
-      "some-crossword",
-      "some-hexagon",
-      "viewport-rotation",
+      "@some-ui/some-crossword",
+      "@some-ui/some-hexagon",
+      "@some-ui/viewport-rotation",
     ]
 
     for (const crate of crates) {
@@ -83,7 +83,7 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 
 const loader = createWasmLoader({
   importModule: async () => {
-    const mod = await import("polyhedron")
+    const mod = await import("@some-ui/polyhedron")
     await mod.default()
     return mod
   },
@@ -103,7 +103,7 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 
 const loader = createWasmLoader({
   importModule: async () => {
-    const mod = await import("polyhedron")
+    const mod = await import("@some-ui/polyhedron")
     await mod.default()
     return mod
   },
@@ -112,7 +112,7 @@ const loader = createWasmLoader({
 // A second, unrelated bare load of the same crate - not covered by the
 // loader above, so it must still be flagged.
 export async function legacyLoad() {
-  return import("polyhedron")
+  return import("@some-ui/polyhedron")
 }
 `
     const msgs = await lintSnippet(makeConfig(), code, TS_FILE)
@@ -123,7 +123,7 @@ export async function legacyLoad() {
 
   it("does not fire on a static import of a wasm crate (a different, untracked anti-pattern shape)", async () => {
     const code = `
-import init, { CrosswordGenerator } from "some-crossword"
+import init, { CrosswordGenerator } from "@some-ui/some-crossword"
 export const generator = new CrosswordGenerator([], 1)
 void init
 `

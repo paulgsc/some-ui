@@ -9,17 +9,19 @@ import type { Rule } from "eslint"
 /**
  * The 8 wasm-bindgen crates under crates/* (UTL-WASM epic #529). Kept as a
  * literal list rather than a naming convention because these package names
- * don't share a common prefix/suffix to pattern-match on.
+ * don't share a common prefix/suffix to pattern-match on. 6 of the 8 are
+ * published under the @some-ui npm scope; some-bricks/some-charts aren't
+ * pnpm workspace packages yet, so they stay unscoped.
  */
 const WASM_CRATE_NAMES = [
-  "hangul-game-core",
-  "leetype-wasm",
-  "polyhedron",
+  "@some-ui/hangul-game-core",
+  "@some-ui/leetype-wasm",
+  "@some-ui/polyhedron",
   "some-bricks",
   "some-charts",
-  "some-crossword",
-  "some-hexagon",
-  "viewport-rotation",
+  "@some-ui/some-crossword",
+  "@some-ui/some-hexagon",
+  "@some-ui/viewport-rotation",
 ]
 
 function collectImportExpressions(node: any, into: Set<any>): void {

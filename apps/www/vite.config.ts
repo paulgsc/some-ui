@@ -12,6 +12,9 @@ const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 // https://vitejs.dev/config/
 export default defineConfig(
   ({ command }): UserConfig => ({
+    // GitHub Pages serves this app under /<repo>/ instead of domain root;
+    // Docker/nginx and local dev serve it at "/". Unset -> "/" for both.
+    base: process.env.VITE_BASE_PATH || "/",
     server: {
       host: "0.0.0.0",
       allowedHosts: ["nixos.local"],

@@ -3,7 +3,7 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "polyhedron": "workspace:*"
+    "@some-ui/polyhedron": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/styles": "workspace:*",
