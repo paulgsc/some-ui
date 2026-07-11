@@ -60,9 +60,9 @@ export const WaveBarChart: FC<WaveBarChartProps> = ({
         strokeWidth="1"
       />
       <line x1="0" y1="0" x2="0" y2={height} stroke="black" strokeWidth="1" />
-      {waveData.map((point, index) => (
+      {waveData.map((point) => (
         <rect
-          key={index}
+          key={`${point.x}_${point.y}`}
           x={point.x}
           y={point.y < midHeight ? point.y : midHeight}
           width={barWidth - 1}

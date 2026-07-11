@@ -6,9 +6,9 @@ import {
   LoadingCard,
 } from "@umag/components/now-playing/now-playing-card"
 import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
+import { useUtteranceWebSocket } from "@umag/hooks/prompt-utterance"
 import { useSpeechQueue } from "some-ui-utils"
 import type { TTSOptions, VoiceConfig } from "some-ui-utils"
-import { useUtteranceWebSocket } from "@umag/hooks/prompt-utterance"
 
 type DoxPromptProps = {
   className?: string
@@ -40,7 +40,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
 
   // Remove the useCallback entirely and put logic in useEffect
   useEffect(() => {
-    const speakContent = async (): Promise<void> => {
+    const speakContent = (): void => {
       if (!text || !isConnected || !voice) return
 
       try {
@@ -60,7 +60,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
           },
         }
 
-        await speak(text, options, Infinity)
+        speak(text, options, Infinity)
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
@@ -68,7 +68,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
       }
     }
 
-    void speakContent()
+    speakContent()
   }, [isConnected, text, speak, voice])
 
   if (error) {

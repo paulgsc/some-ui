@@ -1,4 +1,4 @@
-import type { MutableRefObject, RefObject } from "react"
+import type { RefObject } from "react"
 import { useEffect, useRef } from "react"
 import { hexToRgb } from "@umag/utils/color-utils"
 
@@ -41,11 +41,11 @@ type ParticleSystem = {
 type UseCanvasAnimationProps = {
   isActive: boolean
   theme?: Theme
-  waveformData: MutableRefObject<Array<number>>
+  waveformData: RefObject<Array<number>>
   getAverageAmplitude: () => number
-  eyeOffset: MutableRefObject<{ x: number; y: number }>
+  eyeOffset: RefObject<{ x: number; y: number }>
   updateEyeOffset: (canvas: HTMLCanvasElement, time: number) => void
-  blinkState: MutableRefObject<BlinkState>
+  blinkState: RefObject<BlinkState>
   updateBlinking: (now: number) => void
   particles: ParticleSystem
   drawIrisWaveform: (
@@ -68,7 +68,7 @@ export const useCanvasAnimation = ({
   particles,
   drawIrisWaveform,
 }: UseCanvasAnimationProps): {
-  canvasRef: MutableRefObject<HTMLCanvasElement | null>
+  canvasRef: RefObject<HTMLCanvasElement | null>
 } => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
@@ -229,6 +229,8 @@ export const useCanvasAnimation = ({
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
   }, [
+    blinkState,
+    eyeOffset,
     isActive,
     theme,
     getAverageAmplitude,

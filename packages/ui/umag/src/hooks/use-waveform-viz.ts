@@ -41,7 +41,7 @@ export function useWaveformVisualization(
     draw()
 
     return (): void => cancelAnimationFrame(animationId)
-  }, [analyser, bars, height])
+  }, [barWidth, midHeight, analyser, bars, height])
 
   return waveformData
 }

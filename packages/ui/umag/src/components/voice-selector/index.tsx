@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
+import { useState } from "react"
 import { Check, Globe, Mic, User } from "lucide-react"
 import {
   Badge,
@@ -73,20 +74,17 @@ export const VoiceSelectorTrigger = ({
   selectedVoice,
   onVoiceSelect,
   className,
-}: VoiceSelectorTriggerProps): React.JSX.Element => {
+}: VoiceSelectorTriggerProps): JSX.Element => {
   const [open, setOpen] = useState(false)
 
-  // Group voices by provider
-  const voicesByProvider = voices.reduce(
-    (acc, voice) => {
-      if (!acc[voice.provider]) {
-        acc[voice.provider] = []
-      }
-      acc[voice.provider].push(voice)
-      return acc
-    },
-    {} as Record<TTSProvider, Array<VoiceConfig>>
-  )
+  // Use a Map to correctly preserve the TTSProvider type for keys
+  // and avoid unsafe empty object type assertions.
+  const voicesByProvider = new Map<TTSProvider, Array<VoiceConfig>>()
+  for (const voice of voices) {
+    const providerList = voicesByProvider.get(voice.provider) ?? []
+    providerList.push(voice)
+    voicesByProvider.set(voice.provider, providerList)
+  }
 
   const handleVoiceSelect = (voice: VoiceConfig): void => {
     onVoiceSelect(voice)
@@ -106,14 +104,14 @@ export const VoiceSelectorTrigger = ({
             <CommandInput placeholder="Search voices..." />
             <CommandList>
               <CommandEmpty>No voices found.</CommandEmpty>
-              {Object.entries(voicesByProvider).map(
+              {Array.from(voicesByProvider.entries()).map(
                 ([provider, providerVoices]) => (
                   <CommandGroup
                     key={provider}
                     heading={
                       <div className="flex items-center gap-2">
                         <span className="text-lg">
-                          {getProviderIcon(provider as TTSProvider)}
+                          {getProviderIcon(provider)}
                         </span>
                         <span className="font-medium capitalize">
                           {provider}
@@ -124,7 +122,7 @@ export const VoiceSelectorTrigger = ({
                     {providerVoices.map((voice) => (
                       <CommandItem
                         key={voice.id}
-                        value={`${voice.name} ${voice.provider} ${voice.language} ${voice.gender}`}
+                        value={`${voice.name} ${voice.provider} ${voice.language ?? ""} ${voice.gender ?? ""}`}
                         onSelect={() => handleVoiceSelect(voice)}
                         className="flex cursor-pointer items-center justify-between p-3"
                       >

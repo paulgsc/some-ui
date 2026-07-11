@@ -1,15 +1,20 @@
+import type { RefObject } from "react"
 import { useRef } from "react"
 
 type UseWaveformReturn = {
-  waveformData: React.MutableRefObject<Array<number>>
-  targetWaveform: React.MutableRefObject<Array<number>>
+  waveformData: RefObject<Array<number>>
+  targetWaveform: RefObject<Array<number>>
   updateWaveform: (isActive: boolean, time: number) => void
   getAverageAmplitude: () => number
 }
 
 export const useWaveform = (): UseWaveformReturn => {
-  const waveformData = useRef<Array<number>>(new Array(48).fill(0))
-  const targetWaveform = useRef<Array<number>>(new Array(48).fill(0))
+  const waveformData = useRef<Array<number>>(
+    Array.from({ length: 48 }, () => 0)
+  )
+  const targetWaveform = useRef<Array<number>>(
+    Array.from({ length: 48 }, () => 0)
+  )
 
   const updateWaveform = (isActive: boolean, time: number): void => {
     const target = targetWaveform.current
@@ -34,7 +39,7 @@ export const useWaveform = (): UseWaveformReturn => {
     // Smooth interpolation
     for (const [i, value] of waveform.entries()) {
       const targetValue = target[i]
-      if (!targetValue) continue
+      if (targetValue === undefined) continue
       waveform[i] = value + (targetValue - value) * 0.15
     }
   }

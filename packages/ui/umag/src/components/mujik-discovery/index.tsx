@@ -1,6 +1,6 @@
 import "./index.css"
 
-import type { ComponentType } from "react"
+import type { ElementType } from "react"
 import { useState } from "react"
 import { Clock, Heart, Sparkles, Star, Trophy, Zap } from "lucide-react"
 import { Button } from "some-ui-shared"
@@ -13,7 +13,7 @@ type DiscoveryMode =
 
 type DiscoveryModeConfig = {
   label: string
-  icon: ComponentType<any>
+  icon: ElementType
   color: string
   bgColor: string
   message: string
@@ -21,6 +21,13 @@ type DiscoveryModeConfig = {
   particles: number
   sparkles: number
 }
+
+const DISCOVERY_MODES: Array<DiscoveryMode> = [
+  "new-find",
+  "rediscovery",
+  "struck-chord",
+  "current-best",
+]
 
 const discoveryModes: Record<DiscoveryMode, DiscoveryModeConfig> = {
   "new-find": {
@@ -71,15 +78,66 @@ type MusicDiscoveryButtonProps = {
   onSave?: (mode: DiscoveryMode) => void
 }
 
+// Effect models
+type Particle = {
+  id: string
+  left: number
+  top: number
+  borderRadius: string
+  delay: number
+  bgColor: string
+}
+type Sparkle = { id: string; left: number; top: number; delay: number }
+
+const STAR_KEYS = ["star-1", "star-2", "star-3", "star-4", "star-5"]
+
+function getModeColor(mode: DiscoveryMode): string {
+  switch (mode) {
+    case "new-find":
+      return "#22d3ee"
+    case "rediscovery":
+      return "#fbbf24"
+    case "struck-chord":
+      return "#fb7185"
+    default:
+      return "#facc15"
+  }
+}
+
+// Pure generators that run outside of render
+function createParticles(count: number, mode: DiscoveryMode): Array<Particle> {
+  const bgColor = getModeColor(mode)
+  return Array.from({ length: count }, (_, i) => ({
+    id: `particle-${mode}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+    left: 50 + (Math.random() - 0.5) * 70,
+    top: 50 + (Math.random() - 0.5) * 70,
+    borderRadius: Math.random() > 0.5 ? "50%" : "0%",
+    delay: i * 0.08,
+    bgColor,
+  }))
+}
+
+function createSparkles(count: number, modeKey: string): Array<Sparkle> {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `sparkle-${modeKey}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+    left: 45 + (Math.random() - 0.5) * 60,
+    top: 45 + (Math.random() - 0.5) * 60,
+    delay: i * 0.12,
+  }))
+}
+
 export const MusicDiscoveryButton = ({
   songTitle = "Amazing Song",
   artist = "Great Artist",
   onSave,
 }: MusicDiscoveryButtonProps): React.JSX.Element => {
   const [isAnimating, setIsAnimating] = useState(false)
-  const [showCelebration, setShowCelebration] = useState(false)
   const [selectedMode, setSelectedMode] = useState<DiscoveryMode>("new-find")
   const [showModeSelector, setShowModeSelector] = useState(false)
+  const [celebrationEffects, setCelebrationEffects] = useState<{
+    particles: Array<Particle>
+    sparkles: Array<Sparkle>
+  } | null>(null)
 
   const currentMode = discoveryModes[selectedMode]
 
@@ -87,15 +145,20 @@ export const MusicDiscoveryButton = ({
     if (isAnimating) return
 
     setIsAnimating(true)
-    setShowCelebration(true)
     setShowModeSelector(false)
+
+    // Generate random layout values entirely within the event handler
+    setCelebrationEffects({
+      particles: createParticles(currentMode.particles, selectedMode),
+      sparkles: createSparkles(currentMode.sparkles, selectedMode),
+    })
 
     // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 100))
 
-    // Trigger celebration animation
+    // Trigger celebration animation cleanup
     setTimeout(() => {
-      setShowCelebration(false)
+      setCelebrationEffects(null)
       setIsAnimating(false)
     }, 2500)
 
@@ -109,13 +172,14 @@ export const MusicDiscoveryButton = ({
           <div className="text-muted-foreground mb-2 px-2 text-xs font-medium">
             Choose discovery type:
           </div>
-          {Object.entries(discoveryModes).map(([mode, config]) => {
+          {DISCOVERY_MODES.map((mode) => {
+            const config = discoveryModes[mode]
             const IconComponent = config.icon
             return (
               <button
                 key={mode}
                 onClick={() => {
-                  setSelectedMode(mode as DiscoveryMode)
+                  setSelectedMode(mode)
                   setShowModeSelector(false)
                 }}
                 className={`hover:bg-muted flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors ${
@@ -151,14 +215,14 @@ export const MusicDiscoveryButton = ({
           onClick={handleSave}
           disabled={isAnimating}
           className={`
-                            bg-primary hover:bg-primary/90
-                            text-primary-foreground border-border/20 
-                            relative
-                            overflow-hidden border
-                            shadow-lg transition-all
-                            duration-300 hover:shadow-xl
-                            ${isAnimating ? "pulse-glow" : ""}
-                            `}
+            bg-primary hover:bg-primary/90
+            text-primary-foreground border-border/20 
+            relative
+            overflow-hidden border
+            shadow-lg transition-all
+            duration-300 hover:shadow-xl
+            ${isAnimating ? "pulse-glow" : ""}
+          `}
           size="sm"
         >
           <div className="flex items-center gap-2">
@@ -179,39 +243,32 @@ export const MusicDiscoveryButton = ({
         </Button>
       </div>
 
-      {showCelebration && (
+      {celebrationEffects && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
           {/* Mode-specific confetti particles */}
-          {Array.from({ length: currentMode.particles }).map((_, i) => (
+          {celebrationEffects.particles.map((particle) => (
             <div
-              key={i}
+              key={particle.id}
               className={`confetti-burst absolute size-3`}
               style={{
-                left: `${50 + (Math.random() - 0.5) * 70}%`,
-                top: `${50 + (Math.random() - 0.5) * 70}%`,
-                animationDelay: `${i * 0.08}s`,
-                borderRadius: Math.random() > 0.5 ? "50%" : "0%",
-                backgroundColor:
-                  selectedMode === "new-find"
-                    ? "#22d3ee"
-                    : selectedMode === "rediscovery"
-                      ? "#fbbf24"
-                      : selectedMode === "struck-chord"
-                        ? "#fb7185"
-                        : "#facc15",
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
+                animationDelay: `${particle.delay}s`,
+                borderRadius: particle.borderRadius,
+                backgroundColor: particle.bgColor,
               }}
             />
           ))}
 
           {/* Mode-specific sparkle effects */}
-          {Array.from({ length: currentMode.sparkles }).map((_, i) => (
+          {celebrationEffects.sparkles.map((sparkle) => (
             <Sparkles
-              key={`sparkle-${i}`}
+              key={sparkle.id}
               className={`sparkle absolute size-6 ${currentMode.color}`}
               style={{
-                left: `${45 + (Math.random() - 0.5) * 60}%`,
-                top: `${45 + (Math.random() - 0.5) * 60}%`,
-                animationDelay: `${i * 0.12}s`,
+                left: `${sparkle.left}%`,
+                top: `${sparkle.top}%`,
+                animationDelay: `${sparkle.delay}s`,
               }}
             />
           ))}
@@ -243,9 +300,9 @@ export const MusicDiscoveryButton = ({
             <div
               className={`mt-3 flex items-center gap-1 ${currentMode.color}`}
             >
-              {Array.from({ length: 5 }).map((_, i) => (
+              {STAR_KEYS.map((key, i) => (
                 <Star
-                  key={i}
+                  key={key}
                   className="size-3 animate-pulse fill-current"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 />

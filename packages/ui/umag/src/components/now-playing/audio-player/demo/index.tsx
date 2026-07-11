@@ -1,4 +1,6 @@
+import type { JSX } from "react"
 import { useCallback, useState } from "react"
+import { isError } from "@umag/utils/error"
 import type { UseAudioStorageOptions, UseAudioTTSOptions } from "some-ui-utils"
 import { useAudioFromStorage } from "some-ui-utils"
 
@@ -8,7 +10,7 @@ type StorageOptions = {
 }
 
 // Example component demonstrating the refactored hook
-export const AudioStorageExample = (): React.JSX.Element => {
+export const AudioStorageExample = (): JSX.Element => {
   const [inputText, setInputText] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Array<string>>([])
@@ -299,10 +301,10 @@ export const AudioStorageExample = (): React.JSX.Element => {
             </div>
           </div>
 
-          {(error as Error | undefined) && (
+          {isError(error) && (
             <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
               <p className="text-sm font-medium text-red-800">Error:</p>
-              <p className="text-sm text-red-600">{(error as Error).message}</p>
+              <p className="text-sm text-red-600">{error.message}</p>
             </div>
           )}
         </div>
@@ -337,7 +339,10 @@ export const AudioStorageExample = (): React.JSX.Element => {
               </h4>
               <ul className="space-y-1">
                 {searchResults.map((result, index) => (
-                  <li key={index} className="font-mono text-sm text-gray-600">
+                  <li
+                    key={`result-idx-${index}`}
+                    className="font-mono text-sm text-gray-600"
+                  >
                     {result}
                   </li>
                 ))}
