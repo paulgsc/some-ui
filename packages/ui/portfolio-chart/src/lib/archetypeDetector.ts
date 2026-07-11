@@ -69,8 +69,8 @@ export function detectArchetype(legs: Array<Leg>): SpreadArchetype {
     if (p.length === 2 && sameExp) {
       const [lo, hi] = [...p].sort((a, b) => a.strike - b.strike)
       if (lo && hi) {
-        if (lo.side === "long" && hi.side === "short") return "bear put spread"
-        if (lo.side === "short" && hi.side === "long") return "bull put spread"
+        if (lo.side === "long" && hi.side === "short") return "bull put spread"
+        if (lo.side === "short" && hi.side === "long") return "bear put spread"
       }
     }
   }
