@@ -15,11 +15,11 @@ export function useAudioPlayback(
     if (!audioElement) return
 
     if (audioContext?.state === "suspended") {
-      audioContext.resume()
+      void audioContext.resume()
     }
 
     if (!isPlaying) {
-      audioElement.play()
+      void audioElement.play()
     } else {
       audioElement.pause()
     }
