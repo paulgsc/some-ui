@@ -33,6 +33,35 @@ const transportConfig = [
       ],
     },
   },
+  {
+    // Bootstrap runs before Session, Sensor, Estimator, Adapter, Scheduler,
+    // Actuator, or Lifecycle exist (Definition D.2) — none of hat(H), Phi,
+    // or Delta have been constructed yet, so none of those stages can be a
+    // dependency of bootstrap/ without contradicting the definition itself.
+    files: ["src/bootstrap/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/session/*",
+                "**/sensor/*",
+                "**/estimator/*",
+                "**/adapter/*",
+                "**/scheduler/*",
+                "**/actuator/*",
+                "**/lifecycle/*",
+              ],
+              message:
+                "bootstrap/ runs before any other transport stage exists and must not import one (canon Definition D.2).",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]
 
 export default transportConfig
