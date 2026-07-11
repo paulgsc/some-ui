@@ -14,7 +14,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/DropdownMenuDemo",
   component: DropdownMenuDemo,
-} as Meta
+} satisfies Meta
+
+export default meta

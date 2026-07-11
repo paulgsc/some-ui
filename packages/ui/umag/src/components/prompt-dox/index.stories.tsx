@@ -12,7 +12,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/DoxPrompt",
   component: DoxPrompt,
-} as Meta
+} satisfies Meta
+
+export default meta

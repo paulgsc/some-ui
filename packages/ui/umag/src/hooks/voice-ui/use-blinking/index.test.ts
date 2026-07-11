@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useBlinking } from "./use-blinking"
+import { useBlinking } from "."
 
 describe("useBlinking", () => {
   beforeEach(() => {

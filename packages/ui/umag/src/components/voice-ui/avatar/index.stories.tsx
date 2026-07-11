@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof VoiceAvatar>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Umag/Components/VoiceUI/Avatar",
   component: VoiceAvatar,
-} as Meta
+} satisfies Meta
+
+export default meta
