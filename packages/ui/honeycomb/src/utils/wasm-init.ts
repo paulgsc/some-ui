@@ -1,5 +1,5 @@
+import init from "@some-ui/some-hexagon"
 import { createWasmLoader } from "@some-ui/wasm-loader"
-import init from "some-hexagon"
 
 // This site has no cross-call caching - every buildHexgrid() call (including
 // regenerate()) re-initializes the module, so the loader is reset

@@ -1,6 +1,6 @@
 {
-  "name": "polyhedron",
-  "private": true,
+  "name": "@some-ui/polyhedron",
+  "private": false,
   "version": "0.0.0",
   "main": "dist/polyhedron.js",
   "module": "dist/polyhedron.js",

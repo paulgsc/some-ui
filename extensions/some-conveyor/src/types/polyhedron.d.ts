@@ -5,7 +5,7 @@
  * which does not exist during `tsc --noEmit`. We also deliberately avoid pulling
  * in the generated glue. This mirrors only the surface WasmBridge consumes.
  */
-declare module "polyhedron" {
+declare module "@some-ui/polyhedron" {
   export class WasmViewportManager {
     constructor()
     createViewport(

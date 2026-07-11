@@ -47,7 +47,7 @@ function viewportState(viewId: string): unknown {
   }
 }
 
-vi.mock("viewport-rotation", () => {
+vi.mock("@some-ui/viewport-rotation", () => {
   return {
     default: vi.fn(),
     ViewportManager: vi.fn(),
@@ -69,7 +69,7 @@ beforeEach(async () => {
   instances = []
   clueEvents.setState(() => ({ ...defaultClueState }))
 
-  const mod = await import("viewport-rotation")
+  const mod = await import("@some-ui/viewport-rotation")
   initMock = vi
     .mocked(mod.default)
     .mockReset()

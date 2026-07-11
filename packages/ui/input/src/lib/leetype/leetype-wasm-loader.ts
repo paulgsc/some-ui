@@ -18,7 +18,7 @@ import { z } from "zod"
 const loader = createWasmLoader<WasmModule>({
   importModule: async () => {
     try {
-      const wasm = await import("leetype-wasm")
+      const wasm = await import("@some-ui/leetype-wasm")
       await wasm.default() // Initialize the WASM module
       // The wasm-bindgen output's generated shape doesn't structurally match
       // the hand-written WasmModule type, so a cast is unavoidable here -

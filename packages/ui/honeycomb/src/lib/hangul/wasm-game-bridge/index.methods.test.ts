@@ -2,7 +2,7 @@ import {
   HANGUL_GRID_CELL_COUNT,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { HangulGameCore } from "hangul-game-core"
+import type { HangulGameCore } from "@some-ui/hangul-game-core"
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 

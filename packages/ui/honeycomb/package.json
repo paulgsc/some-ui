@@ -22,9 +22,9 @@
   "dependencies": {
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
-    "hangul-game-core": "workspace:*",
+    "@some-ui/hangul-game-core": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
-    "some-hexagon": "workspace:*",
+    "@some-ui/some-hexagon": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5"

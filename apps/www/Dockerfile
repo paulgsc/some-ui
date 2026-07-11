@@ -137,10 +137,16 @@ COPY --from=builder /app/apps/www/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+#
+# BusyBox wget doesn't fall back across resolved addresses: since "localhost"
+# resolves to ::1 before 127.0.0.1 in this image and nginx below only binds
+# IPv4, `http://localhost/` fails every single check ("Connection refused")
+# even though the server is up. Target 127.0.0.1 explicitly.
+#
 HEALTHCHECK --interval=30s \
     --timeout=3s \
     --start-period=5s \
     --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

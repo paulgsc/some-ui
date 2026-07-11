@@ -1,6 +1,6 @@
 {
-  "name": "viewport-rotation",
-  "private": true,
+  "name": "@some-ui/viewport-rotation",
+  "private": false,
   "version": "0.0.0",
   "main": "dist/viewport_rotation.js",
   "module": "dist/viewport_rotation.js",

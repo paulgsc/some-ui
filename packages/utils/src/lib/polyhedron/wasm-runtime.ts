@@ -1,9 +1,9 @@
+import type { WasmViewportManager } from "@some-ui/polyhedron"
 import { createWasmLoader } from "@some-ui/wasm-loader"
-import type { WasmViewportManager } from "polyhedron"
 
 const loader = createWasmLoader<WasmViewportManager>({
   importModule: async () => {
-    const module = await import("polyhedron")
+    const module = await import("@some-ui/polyhedron")
     if (typeof module.default === "function") {
       await module.default()
     }

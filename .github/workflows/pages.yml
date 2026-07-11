@@ -1,0 +1,167 @@
+name: Pages
+# Builds and deploys the GitHub Pages site: the tanstack `www` app at the
+# site root, Storybook nested under /storybook/.
+#
+# GitHub Pages serves exactly one live deployment per repo, and
+# actions/deploy-pages replaces the *entire* artifact on every run - it
+# can't merge with whatever a separate workflow deployed earlier. So this
+# is one workflow, not two: build-www and build-storybook each produce a
+# plain (non-Pages) artifact, a single assemble job merges both into one
+# directory tree, and only that merged tree is ever uploaded as the Pages
+# artifact / deployed. Splitting this into per-app workflows would silently
+# make each deploy wipe out the other app's last-deployed content.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/www/**"
+      - "packages/**"
+      - ".storybook/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/pages.yml"
+      - ".github/actions/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/www/**"
+      - "packages/**"
+      - ".storybook/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/pages.yml"
+      - ".github/actions/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  # ── Build the tanstack app ───────────────────────────────────────────────
+  build-www:
+    name: Build www (TanStack app)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Cache workspace build outputs
+        uses: actions/cache@v5
+        with:
+          path: |
+            packages/*/dist
+            crates/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**', 'crates/**/src/**') }}
+          restore-keys: workspace-dist-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Build www and its workspace dependencies
+        run: nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+        env:
+          NODE_ENV: production
+          # GitHub Pages serves this repo under /<repo>/ - www's own
+          # Dockerfile/nginx build leaves this unset (defaults to "/").
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+      - name: Add SPA fallback for client-side routing
+        # GitHub Pages has no server-side rewrite; a hard refresh or deep
+        # link on a client-side route 404s without this. Serving the same
+        # shell from 404.html lets the router take over from the URL.
+        run: cp apps/www/dist/index.html apps/www/dist/404.html
+      - name: Upload www build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: www-dist
+          path: apps/www/dist
+          if-no-files-found: error
+          retention-days: 1
+  # ── Build Storybook ──────────────────────────────────────────────────────
+  build-storybook:
+    name: Build Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+        with:
+          shell: ci
+      - name: Cache workspace build outputs
+        uses: actions/cache@v5
+        with:
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
+          restore-keys: workspace-dist-${{ runner.os }}-
+      - name: Cache Storybook intermediates
+        uses: actions/cache@v5
+        with:
+          path: |
+            node_modules/.cache/storybook
+            node_modules/.cache/sb-vite-plugin-externals
+          key: storybook-cache-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', '.storybook/**', 'packages/**/*.stories.*') }}
+          restore-keys: storybook-cache-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Build workspace packages
+        run: nix develop .#ci --command pnpm build --concurrency=100%
+        env:
+          NODE_ENV: production
+      - name: Build Storybook
+        run: nix develop .#ci --command pnpm build-storybook
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=4096
+          STORYBOOK_DISABLE_TELEMETRY: 1
+          STORYBOOK_BASE_PATH: /${{ github.event.repository.name }}/storybook/
+      - name: Upload Storybook build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: storybook-dist
+          path: ./storybook-static
+          if-no-files-found: error
+          retention-days: 1
+  # ── Assemble the combined site and upload the single Pages artifact ─────
+  assemble:
+    name: Assemble Pages site
+    needs: [build-www, build-storybook]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download www build
+        uses: actions/download-artifact@v8
+        with:
+          name: www-dist
+          path: site
+      - name: Download Storybook build
+        uses: actions/download-artifact@v8
+        with:
+          name: storybook-dist
+          path: site/storybook
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./site
+  # ── Deploy ────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: assemble
+    # Only deploy on pushes to main - not PRs, not workflow_dispatch previews.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

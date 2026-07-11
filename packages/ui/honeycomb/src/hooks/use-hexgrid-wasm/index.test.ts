@@ -1,11 +1,11 @@
 import { buildHexgrid, useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { getHexagonalGridRadiusForCellCount } from "@honeycomb/utils/hexagon-math"
 import { initializeWasm } from "@honeycomb/utils/wasm-init"
+import { WasmHexGrid } from "@some-ui/some-hexagon"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { WasmHexGrid } from "some-hexagon"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("some-hexagon", () => ({
+vi.mock("@some-ui/some-hexagon", () => ({
   default: vi.fn(),
   WasmHexGrid: vi.fn(),
 }))

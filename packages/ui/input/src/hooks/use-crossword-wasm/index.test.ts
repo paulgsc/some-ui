@@ -40,7 +40,7 @@ function asCrosswordGenerator(generator: FakeGenerator): unknown {
   return generator
 }
 
-vi.mock("some-crossword", () => {
+vi.mock("@some-ui/some-crossword", () => {
   return {
     default: vi.fn(),
     CrosswordGenerator: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock("some-crossword", () => {
 
 beforeEach(async () => {
   generatorInstances = []
-  const mod = await import("some-crossword")
+  const mod = await import("@some-ui/some-crossword")
   initMock = vi
     .mocked(mod.default)
     .mockReset()

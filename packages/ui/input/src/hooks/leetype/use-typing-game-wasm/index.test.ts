@@ -31,7 +31,7 @@ type FakeTypingGameInstance = {
 
 let instances: Array<FakeTypingGameInstance>
 
-vi.mock("leetype-wasm", () => {
+vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
     targetCode: string
     maxConsecutiveErrors: number | undefined
@@ -138,7 +138,7 @@ function deferred<T>(): {
 beforeEach(async () => {
   instances = []
   resetWasm()
-  const wasmStub = await import("leetype-wasm")
+  const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
@@ -209,7 +209,7 @@ describe("teardown", () => {
 
 describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not construct a game instance if loadWasm resolves after unmount", async () => {
-    const wasmStub = await import("leetype-wasm")
+    const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
     vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 
@@ -232,7 +232,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
   })
 
   it("does not surface an error state if loadWasm rejects after unmount", async () => {
-    const wasmStub = await import("leetype-wasm")
+    const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
     vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 

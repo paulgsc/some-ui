@@ -6,9 +6,9 @@ name: Trunk
 # and should be treated as a production incident — investigate and fix
 # or revert before the next merge.
 #
-# Expensive artifact builds (Storybook deploy, AMO signing, WASM publish)
-# are NOT triggered from here — they live in their own path-filtered
-# workflows (storybook-build.yml, extension.yml, wasm-release.yml) and
+# Expensive artifact builds (Pages/Storybook deploy, AMO signing, WASM
+# publish) are NOT triggered from here — they live in their own
+# path-filtered workflows (pages.yml, extension.yml, wasm-release.yml) and
 # run on push to main independently.
 #
 on:

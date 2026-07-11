@@ -24,10 +24,11 @@ export default defineConfig({
         content: resolve(__dirname, "src/content/content.ts"),
         background: resolve(__dirname, "src/background/background.ts"),
       },
-      // polyhedron is a wasm-bindgen crate built separately (crates/polyhedron).
-      // Its dist/ doesn't exist at tsc/vite time; the runtime import is already
-      // guarded with a .catch in WasmBridge, so externalizing here is safe.
-      external: ["polyhedron"],
+      // @some-ui/polyhedron is a wasm-bindgen crate built separately
+      // (crates/polyhedron). Its dist/ doesn't exist at tsc/vite time; the
+      // runtime import is already guarded with a .catch in WasmBridge, so
+      // externalizing here is safe.
+      external: ["@some-ui/polyhedron"],
       output: {
         manualChunks: () => {}, // single IIFE per entry — no shared runtime chunk
         entryFileNames: (chunkInfo) => {

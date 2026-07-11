@@ -20,7 +20,7 @@ import type {
  * returned ViewportHandle.
  *
  * WASM loading strategy:
- *   Dynamic import("polyhedron") through Vite's WASM plugin.
+ *   Dynamic import("@some-ui/polyhedron") through Vite's WASM plugin.
  *   The bundler owns the WASM binary path — no manual fetch() or
  *   WebAssembly.instantiate() calls.
  */
