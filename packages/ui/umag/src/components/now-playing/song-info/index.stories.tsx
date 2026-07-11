@@ -13,7 +13,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/NowPlaying/SongInfo",
   component: SongInfo,
-} as Meta
+} satisfies Meta
+
+export default meta

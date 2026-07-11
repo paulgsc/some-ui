@@ -13,7 +13,6 @@ export { useTTSFetch } from "./use-tts-fetch"
 export { useAudioSpeech } from "./use-audio-speech"
 export { useAudioFromStorage } from "./use-audio-storage"
 export {
-  useUtteranceWebSocket,
   useObsStatusWebSocket,
   useOrchestrator,
   useMockOrchestrator,

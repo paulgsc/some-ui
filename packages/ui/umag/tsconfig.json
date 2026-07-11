@@ -3,12 +3,12 @@
   "compilerOptions": {
     "declarationDir": "./",
     "composite": true,
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "paths": {
       "@umag/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
   "exclude": ["node_modules", "build", "dist"]
 }

@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof AudioStorageExample>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Umag/Components/AudioStorage/AudioStorageExample",
   component: AudioStorageExample,
-} as Meta
+} satisfies Meta
+
+export default meta

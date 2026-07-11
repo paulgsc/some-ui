@@ -1,5 +1,4 @@
 export { useObsStatus as useObsStatusWebSocket } from "./use-obs-socket"
-export { useUtterance as useUtteranceWebSocket } from "./use-prompt-utterance"
 export { useOrchestrator } from "./orchestrator"
 export { useMockOrchestrator } from "./orchestrator/use-mock-orchestrator"
 export type { UseMockOrchestratorConfig } from "./orchestrator/use-mock-orchestrator"

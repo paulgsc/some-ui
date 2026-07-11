@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/CelebrationOverlay",
   component: CelebrationOverlay,
-} as Meta
+} satisfies Meta
+
+export default meta

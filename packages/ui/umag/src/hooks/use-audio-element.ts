@@ -31,7 +31,7 @@ export function useAudioElement(): UseAudioElementReturn {
     newAudioElement.addEventListener(
       "canplaythrough",
       () => {
-        if (audioContext && !mediaSourceRef.current) {
+        if (!mediaSourceRef.current) {
           mediaSourceRef.current =
             audioContext.createMediaElementSource(newAudioElement)
           mediaSourceRef.current.connect(gainNode)

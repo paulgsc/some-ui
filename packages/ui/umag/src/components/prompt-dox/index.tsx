@@ -1,13 +1,14 @@
 import type { FC } from "react"
-import { Fragment, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { MegaphoneSpectrum } from "@umag/components/megaphone-spectrum"
 import {
   ErrorBoundaryFallback,
   LoadingCard,
 } from "@umag/components/now-playing/now-playing-card"
 import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
-import { useSpeechQueue, useUtteranceWebSocket } from "some-ui-utils"
+import { useSpeechQueue } from "some-ui-utils"
 import type { TTSOptions, VoiceConfig } from "some-ui-utils"
+import { useUtteranceWebSocket } from "@umag/hooks/prompt-utterance"
 
 type DoxPromptProps = {
   className?: string
@@ -67,15 +68,11 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
       }
     }
 
-    speakContent()
+    void speakContent()
   }, [isConnected, text, speak, voice])
 
   if (error) {
-    return showErrorFallback ? (
-      <ErrorBoundaryFallback error={error} />
-    ) : (
-      <Fragment />
-    )
+    return showErrorFallback ? <ErrorBoundaryFallback error={error} /> : null
   }
 
   if (isInitializing) {

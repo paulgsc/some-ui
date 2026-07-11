@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof AnimatedWaveBarChart>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Umag/Components/AnimatedWaveBarChart",
   component: AnimatedWaveBarChart,
-} as Meta
+} satisfies Meta
+
+export default meta

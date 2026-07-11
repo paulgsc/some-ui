@@ -16,7 +16,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Umag/Components/WaveBarChart",
   component: WaveBarChart,
-} as Meta
+} satisfies Meta
+
+export default meta

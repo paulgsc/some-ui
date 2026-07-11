@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof BackgroundGlow>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Umag/Components/NowPlaying/BackgroundGlow",
   component: BackgroundGlow,
-} as Meta
+} satisfies Meta
+
+export default meta
