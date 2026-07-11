@@ -50,14 +50,22 @@ export default defineConfig(
       // Enable rollup bundle analysis
       rollupOptions: {
         output: {
-          // Manual chunk splitting for better analysis
-          manualChunks: {
-            // Separate your authored dependencies
-            "authored-deps": ["some-ui-input"], // Add your package names here, e.g., ['@myorg/package1', '@myorg/package2']
-            // Common vendor chunks
-            "react-vendor": ["react", "react-dom"],
-            "router-vendor": ["@tanstack/react-router"],
-            "utils-vendor": ["lodash", "date-fns"], // Add your utility deps
+          // Manual chunk splitting for better analysis.
+          // Vite 8's bundler (Rolldown) only supports the function form of
+          // manualChunks, not the plain object map Rollup accepted.
+          manualChunks: (id): string | undefined => {
+            const chunks: Record<string, Array<string>> = {
+              // Separate your authored dependencies
+              "authored-deps": ["some-ui-input"], // Add your package names here, e.g., ['@myorg/package1', '@myorg/package2']
+              // Common vendor chunks
+              "react-vendor": ["react", "react-dom"],
+              "router-vendor": ["@tanstack/react-router"],
+              "utils-vendor": ["lodash", "date-fns"], // Add your utility deps
+            }
+            for (const [chunkName, packageNames] of Object.entries(chunks)) {
+              if (packageNames.some((pkg) => id.includes(pkg))) return chunkName
+            }
+            return undefined
           },
         },
         // Tree shaking options
@@ -66,7 +74,6 @@ export default defineConfig(
           moduleSideEffects: false,
           // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
-          tryCatchDeoptimization: false,
           // Enable pure annotation checking
           annotations: true,
         },

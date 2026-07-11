@@ -1,13 +1,11 @@
 import { vi } from "vitest"
 
 // Mock browser API globally
-/* eslint-disable @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any */
-global.browser = {
+vi.stubGlobal("browser", {
   runtime: {
     sendMessage: vi.fn(),
   },
-} as any
-/* eslint-enable @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any */
+})
 
 // Ensure DOM is available
 if (typeof document === "undefined") {

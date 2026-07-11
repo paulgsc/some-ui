@@ -137,34 +137,3 @@ export const useSceneLibrary = (): UseSceneLibraryReturn => {
     reload: result.reload,
   }
 }
-
-// -----------------------------
-// Alternative: Vite-based Scene Library
-// -----------------------------
-
-/**
- * If you prefer compile-time discovery with Vite import.meta.glob
- *
- * Usage in your app:
- * ```ts
- * const sceneModules = import.meta.glob("/scenes/*.json")
- * const library = useSceneLibraryVite(sceneModules)
- * ```
- */
-export const useSceneLibraryVite = (
-  modules: Record<string, () => Promise<unknown>>
-): ReturnType<typeof useRecursiveLibrary<SceneUIFile, SceneConfig>> => {
-  const { ViteGlobDiscovery } = require("./file-discovery")
-  const { ViteModuleLoader } = require("./resource-loader")
-
-  return useRecursiveLibrary<SceneUIFile, SceneConfig>({
-    rootPath: "/scenes",
-    extension: ".json",
-    discovery: new ViteGlobDiscovery("/scenes/*.json", modules),
-    loader: new ViteModuleLoader(modules),
-    rawSchema: SceneUIFileSchema,
-    normalize: normalizeScene,
-    fallback: createFallbackScene,
-    deriveKey: deriveSceneKey,
-  })
-}
