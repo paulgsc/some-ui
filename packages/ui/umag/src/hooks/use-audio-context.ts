@@ -1,38 +1,57 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 type UseAudioContextReturn = {
   audioContext: AudioContext | null
   analyser: AnalyserNode | null
   gainNode: GainNode | null
+  initialize: () => void
+}
+
+type AudioNodes = {
+  audioContext: AudioContext
+  analyser: AnalyserNode
+  gainNode: GainNode
 }
 
 export function useAudioContext(): UseAudioContextReturn {
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const gainNodeRef = useRef<GainNode | null>(null)
+  const [nodes, setNodes] = useState<AudioNodes | null>(null)
 
-  useEffect(() => {
-    const ctx = new (window.AudioContext ||
-      (window as any).webkitAudioContext)()
-    const analyser = ctx.createAnalyser()
-    analyser.fftSize = 2048
-    const gainNode = ctx.createGain()
+  const initialize = useCallback((): void => {
+    setNodes((current) => {
+      if (current !== null) {
+        return current
+      }
 
-    gainNode.connect(analyser)
-    analyser.connect(ctx.destination)
+      const audioContext = new AudioContext()
 
-    setAudioContext(ctx)
-    analyserRef.current = analyser
-    gainNodeRef.current = gainNode
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
 
-    return (): void => {
-      ctx.close()
-    }
+      const gainNode = audioContext.createGain()
+
+      gainNode.connect(analyser)
+      analyser.connect(audioContext.destination)
+
+      return {
+        audioContext,
+        analyser,
+        gainNode,
+      }
+    })
   }, [])
 
+  useEffect(() => {
+    return (): void => {
+      if (nodes !== null) {
+        void nodes.audioContext.close()
+      }
+    }
+  }, [nodes])
+
   return {
-    audioContext,
-    analyser: analyserRef.current,
-    gainNode: gainNodeRef.current,
+    audioContext: nodes?.audioContext ?? null,
+    analyser: nodes?.analyser ?? null,
+    gainNode: nodes?.gainNode ?? null,
+    initialize,
   }
 }

@@ -48,9 +48,8 @@ export const VinylRecord = forwardRef<HTMLDivElement, VinylRecordProps>(
               alt={`${title} album art`}
               className="pointer-events-none z-0 size-full object-cover"
               onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.onerror = null // stop future retries
-                target.src = ""
+                e.currentTarget.onerror = null // stop future retries
+                e.currentTarget.src = ""
               }}
             />
             {/* Play icon overlay */}

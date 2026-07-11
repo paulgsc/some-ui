@@ -211,15 +211,13 @@ export const MegaphoneSpectrum: FC<MegaphoneSpectrumProps> = memo(
           className,
           { heartbeat: isActive && enableHeartbeat }
         )}
-        style={
-          {
-            width: normalizedProps.size,
-            height: normalizedProps.size,
-            "--heartbeat-scale1": `${1 + heartbeatIntensity * 0.08}`,
-            "--heartbeat-scale2": `${1 + heartbeatIntensity * 0.12}`,
-            "--heartbeat-duration": `${2.4 / speed}s`,
-          } as React.CSSProperties
-        }
+        style={{
+          width: normalizedProps.size,
+          height: normalizedProps.size,
+          "--heartbeat-scale1": `${1 + heartbeatIntensity * 0.08}`,
+          "--heartbeat-scale2": `${1 + heartbeatIntensity * 0.12}`,
+          "--heartbeat-duration": `${2.4 / speed}s`,
+        }}
         role="img"
         aria-label={ariaLabel}
       >

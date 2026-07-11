@@ -10,3 +10,5 @@ export const VoiceAvatarCanvas = forwardRef<HTMLCanvasElement>((_, ref) => {
     />
   )
 })
+
+VoiceAvatarCanvas.displayName = "VoiceAvatarCanvas"
