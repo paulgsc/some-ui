@@ -1,7 +1,5 @@
-export * from "./rotating-cube"
 export * from "./sidebar-carousel"
 export * from "./slideshow-sidebar"
-export * from "./dice-card"
 export * from "./rotating-neon-sign"
 export * from "./lens-shutter"
 export * from "./video-gantt-chart"

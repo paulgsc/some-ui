@@ -1171,6 +1171,37 @@ importers:
         specifier: 10.0.3
         version: 10.0.3
 
+  packages/ui/dice-card:
+    dependencies:
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      some-types-utils:
+        specifier: workspace:*
+        version: link:../../types
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
+
   packages/ui/emoji-animations:
     dependencies:
       framer-motion:
@@ -1244,9 +1275,9 @@ importers:
 
   packages/ui/input:
     dependencies:
-      '@some-ui/slideshow':
+      '@some-ui/dice-card':
         specifier: workspace:*
-        version: link:../slideshow
+        version: link:../dice-card
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1690,6 +1721,9 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.1.2
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/dice-card':
+        specifier: workspace:*
+        version: link:../dice-card
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../fetch-kit

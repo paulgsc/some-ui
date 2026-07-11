@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 import { getRandomSubarray } from "some-ui-utils"
 
-export function processArray<T extends ReactNode>(
-  arr: Array<T>,
+export function processArray(
+  arr: Array<ReactNode>,
   k: number
 ): Array<ReactNode> {
   const placeholder = "placeholder string"
@@ -13,5 +13,5 @@ export function processArray<T extends ReactNode>(
   } else if (arr.length === k) {
     return arr
   }
-  return getRandomSubarray<T>(arr, k)
+  return getRandomSubarray(arr, k)
 }

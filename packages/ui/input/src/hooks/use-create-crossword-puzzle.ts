@@ -8,7 +8,7 @@ import type {
   WordPlacement,
 } from "@input/types/crossword"
 import { assertNever } from "@input/utils"
-import { cubeEvents } from "@some-ui/slideshow"
+import { cubeEvents } from "@some-ui/dice-card"
 import { createEventBus } from "some-ui-utils"
 
 type ViewBoxTuple = [minX: number, minY: number, width: number, height: number]

@@ -5,7 +5,7 @@ import {
   notificationEvents,
 } from "@input/hooks/use-create-crossword-puzzle"
 import type { Direction } from "@input/types/crossword"
-import { cubeEvents } from "@some-ui/slideshow"
+import { cubeEvents } from "@some-ui/dice-card"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 import { createEventBus } from "some-ui-utils"
 import init, { ViewportManager } from "viewport-rotation"

@@ -7,6 +7,8 @@ import { defineConfig } from "vitest/config"
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // @ts-expect-error vite-plugin-wasm/vite-plugin-top-level-await resolve
+  // against a different hoisted vite version than this repo's own vite dep
   plugins: [wasm(), topLevelAwait(), react(), tsconfigPaths()],
   test: {
     environment: "node",

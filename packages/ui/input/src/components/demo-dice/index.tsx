@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
-import { cubeEvents, DiceCard } from "@some-ui/slideshow"
+import { cubeEvents, DiceCard } from "@some-ui/dice-card"
 import { cn } from "some-ui-utils"
 
 export const DemoDice = (): JSX.Element => {
