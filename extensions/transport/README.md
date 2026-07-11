@@ -25,8 +25,9 @@ conformance suite with **no business logic** — only a null adapter.
 ```
 src/
   contracts/    Token, Hypothesis, Invariant, Adapter, Action — types only
+  bootstrap/    document-lifetime static install + sentinel (Def D.2, Thm D.1)
 ```
 
-Everything else (`bootstrap/`, `session/`, `sensor/`, `estimator/`,
-`adapter/`, `scheduler/`, `actuator/`, `lifecycle/`) lands story-by-story;
-see the epic for sequencing.
+Everything else (`session/`, `sensor/`, `estimator/`, `adapter/`,
+`scheduler/`, `actuator/`, `lifecycle/`) lands story-by-story; see the epic
+for sequencing.
