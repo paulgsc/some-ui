@@ -1,122 +1,146 @@
-# -------------------------
+
+# syntax=docker/dockerfile:1.7
+
+# ------------------------------------------------------------
 # Stage 0: Base
-# -------------------------
-FROM node:20-alpine AS base
+# ------------------------------------------------------------
+FROM node:24-alpine AS base
 
-# Enable corepack and PNPM
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Set PNPM_HOME environment variable
 ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+ENV PATH="${PNPM_HOME}:${PATH}"
 
-# Install Turbo globally
-RUN pnpm add -g turbo
+RUN npm install -g pnpm turbo
 
 WORKDIR /app
 
-# -------------------------
-# Stage 1: Install dependencies (The Caching Stage)
-# -------------------------
-FROM base AS deps
+# ------------------------------------------------------------
+# Stage 1: Prune workspace
+#
+# Generates a minimal workspace containing only the dependency
+# graph required to build apps/www.
+# ------------------------------------------------------------
+FROM base AS pruner
 
-# 1. Copy core workspace files first
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# 2. 🔑 CRUCIAL FIX: Copy the entire folders for workspace packages.
-# This ensures the directory structure exists for PNPM to validate the workspace,
-# while the file content hash only changes when the package.json itself changes, 
-# preserving layer caching.
-
-# Copy all top-level workspace folders containing the package.json
-# Note: Using wildcards for COPY can be tricky; explicit paths are safer for caching, 
-# but for brevity, we'll rely on the folder structure being present.
-
-# Apps
-COPY apps/www ./apps/www
-
-# Packages (Includes some-styles, some-vite-config, etc.)
-COPY packages/eslint ./packages/eslint
-COPY packages/mdx-generator ./packages/mdx-generator
-COPY packages/rollup-config ./packages/rollup-config
-COPY packages/some-content ./packages/some-content
-COPY packages/some-styles ./packages/some-styles
-COPY packages/some-vite-config ./packages/some-vite-config
-COPY packages/tsconfig ./packages/tsconfig
-COPY packages/types ./packages/types
-COPY packages/utils ./packages/utils
-
-# Nested Packages (e.g., packages/ui/*) - Adjust based on your actual structure
-COPY packages/ui ./packages/ui
-
-# Extensions
-COPY extensions ./extensions
-
-# Crates (Copy the folders containing package.json)
-COPY crates/hangul-game-core ./crates/hangul-game-core
-COPY crates/leetype_wasm ./crates/leetype_wasm
-COPY crates/some-crossword ./crates/some-crossword
-COPY crates/some-hexagon ./crates/some-hexagon
-COPY crates/viewport-rotation ./crates/viewport-rotation
-
-# 3. Install all dependencies (now PNPM finds all necessary folders)
-RUN pnpm install --no-frozen-lockfile
-
-# -------------------------
-# Stage 2: Builder
-# -------------------------
-FROM base AS builder
-
-# Install Rust and wasm-pack for building WASM crates
-# Rust install is moved here to avoid polluting the smaller deps stage
-RUN apk add --no-cache \
-    curl \
-    build-base \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && . $HOME/.cargo/env \
-    && cargo install wasm-pack
-
-# Add Rust to PATH
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Copy the entire workspace context for building
 COPY . .
 
-# Copy node_modules from deps stage
-# Note: You only need to copy the *root* node_modules. PNPM symlinks packages 
-# into the correct locations from the content-addressed store.
-COPY --from=deps /app/node_modules ./node_modules
+RUN turbo prune www --docker
 
-# Build www using turbo (this will build dependencies including crates)
-RUN pnpm turbo build --filter=www...
+# ------------------------------------------------------------
+# Stage 2: Install dependencies
+#
+# Only package.json files and lockfiles are copied here.
+# Docker cache survives normal source edits.
+# ------------------------------------------------------------
+FROM base AS deps
 
-# -------------------------
-# Stage 3: Production runtime
-# -------------------------
-FROM nginx:alpine AS runtime
+COPY --from=pruner /app/out/json/ .
 
-# Copy custom Nginx config
-RUN echo 'server { \
-    listen 80; \
-    server_name localhost; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { try_files $uri $uri/ /index.html; } \
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ { \
-        expires 1y; add_header Cache-Control "public, no-transform"; } \
-    add_header X-Frame-Options "SAMEORIGIN" always; \
-    add_header X-XSS-Protection "1; mode=block" always; \
-    add_header X-Content-Type-Options "nosniff" always; \
-    add_header Referrer-Policy "no-referrer-when-downgrade" always; \
-    add_header Content-Security-Policy "default-src '\''self'\'' http: https: data: blob: '\''unsafe-inline'\''" always; \
-}' > /etc/nginx/conf.d/default.conf
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
 
-# Copy built www
+# ------------------------------------------------------------
+# Stage 3: Build
+# ------------------------------------------------------------
+FROM base AS builder
+
+#
+# Rust toolchain
+#
+RUN apk add --no-cache \
+        curl \
+        build-base \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain stable
+
+#
+# Turborepo's default (strict) env mode strips RUSTUP_HOME/CARGO_HOME from
+# task subprocesses, which breaks rustup's cargo/rustc proxy shims ("rustup
+# could not choose a version of cargo to run"). Point PATH at the real
+# toolchain bin directory instead of the proxies so the build doesn't
+# depend on those env vars surviving into turbo's task processes.
+#
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/root/.rustup/toolchains/stable-x86_64-unknown-linux-musl/bin:${PATH}"
+
+#
+# Pre-install the wasm target so turbo's parallel per-crate wasm-pack
+# tasks don't race each other downloading it into the same rustup cache
+# (concurrent downloads corrupt the partial-file rename).
+#
+RUN rustup target add wasm32-unknown-unknown
+
+RUN cargo install wasm-pack
+
+#
+# Restore installed dependencies
+#
+COPY --from=deps /app .
+
+#
+# Copy the complete pruned workspace
+#
+COPY --from=pruner /app/out/full/ .
+
+#
+# turbo prune only tracks the JS workspace, so it drops the Rust workspace
+# root manifest and any crates not reachable from www's JS dependency
+# graph. cargo needs every member listed in Cargo.toml's [workspace] to
+# exist on disk, so restore the whole crates/ tree from the original
+# build context alongside the root manifest.
+#
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+
+#
+# Build only the www application (and everything it depends on).
+#
+# --concurrency=1: the wasm crates' `wasm-pack build` steps race each
+# other over shared cargo/rustup state (the rust-std target download,
+# wasm-pack's shared wasm-bindgen-cli cache install dir) when turbo runs
+# them in parallel, corrupting partial downloads/installs. Building
+# serially avoids that whole class of races.
+#
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm turbo build --filter=www... --concurrency=1
+
+# ------------------------------------------------------------
+# Stage 4: Runtime
+# ------------------------------------------------------------
+FROM mirror.gcr.io/library/nginx:alpine AS runtime
+
+RUN <<'EOF' > /etc/nginx/conf.d/default.conf
+server {
+    listen 80;
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+}
+EOF
+
 COPY --from=builder /app/apps/www/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s \
+    --timeout=3s \
+    --start-period=5s \
+    --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
