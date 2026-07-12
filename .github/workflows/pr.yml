@@ -94,6 +94,20 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # Scoped to CSS files actually touched by this PR, not a full-repo
+      # sweep — the repo carries pre-existing stylelint debt outside this
+      # diff, and a blanket scan would fail PRs on files they never touched.
+      # Extensions are excluded (own CI in extension.yml), matching the
+      # other steps in this job.
+      - name: Lint styles (changed files)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- '*.css' | grep -v '^extensions/' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm exec stylelint --allow-empty-input --ignore-path .prettierignore $files
+          else
+            echo "No package/app CSS files changed."
+          fi
+
       - name: Prettier (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run prettier \

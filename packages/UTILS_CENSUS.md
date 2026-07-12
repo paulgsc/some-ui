@@ -213,7 +213,6 @@ package.json noise, independent of any hoist/de-hoist decision:
 | Workspace                     | Declares `some-ui-utils` | Declares `some-ui-shared` | Actual imports                                                                |
 | ----------------------------- | ------------------------ | ------------------------- | ----------------------------------------------------------------------------- |
 | `packages/ui/portfolio-chart` | yes                      | yes                       | none                                                                          |
-| `packages/ui/vidya`           | yes                      | yes                       | none                                                                          |
 | `packages/mdx-generator`      | yes                      | no                        | none                                                                          |
 | `packages/ui/honeycomb`       | yes                      | yes                       | `some-ui-shared` only (real component consumer); zero `some-ui-utils` imports |
 

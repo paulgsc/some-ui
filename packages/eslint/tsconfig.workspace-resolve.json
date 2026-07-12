@@ -12,7 +12,6 @@
       "@some-ui/portfolio": ["../ui/portfolio-chart/src/index.ts"],
       "@some-ui/resume": ["../ui/resume/src/index.ts"],
       "@some-ui/styles": ["../some-styles/src/index.ts"],
-      "@some-ui/vidya": ["../ui/vidya/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
       "@some-ui/ws": ["../ws/src/index.ts"],
