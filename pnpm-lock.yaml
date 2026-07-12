@@ -452,6 +452,9 @@ importers:
 
   extensions/some-conveyor:
     dependencies:
+      '@some-extension/common':
+        specifier: workspace:*
+        version: link:../common
       '@some-ui/polyhedron':
         specifier: workspace:*
         version: link:../../crates/polyhedron
