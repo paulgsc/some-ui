@@ -35,13 +35,24 @@ export const useAccordionStepper = ({
   steps,
 }: Options): ReturnOptions => {
   const [currStepId, setCurrStepId] = useState<StepKey>("step_0")
-  const [isPlaying, setIsPlaying] = useState<boolean>(false)
+  const [isPlaying, setIsPlaying] = useState<boolean>(autoplay)
+  const [prevAutoplay, setPrevAutoplay] = useState(autoplay)
   const [visibleSteps, setVisibleSteps] = useState<AccordionSteps["data"]>([])
 
   const animationRef = useRef<number | null>(null)
   const lastTimeRef = useRef<number>(0)
   const elapsedTimeRef = useRef<number>(0)
   const cyclerRef = useRef<() => AccordionSteps["data"] | null>(null)
+
+  // Keep isPlaying in sync when the autoplay prop changes, without an effect
+  if (autoplay !== prevAutoplay) {
+    setPrevAutoplay(autoplay)
+    setIsPlaying(autoplay)
+  }
+
+  const getNextBatchOfSteps = useCallback(() => {
+    if (cyclerRef.current) setVisibleSteps(cyclerRef.current() ?? [])
+  }, [])
 
   const onNext = useCallback((): void => {
     if (stepsToShow <= 0) return
@@ -64,7 +75,7 @@ export const useAccordionStepper = ({
 
       return `step_${wrapped}`
     })
-  }, [stepsToShow])
+  }, [stepsToShow, getNextBatchOfSteps])
 
   const onPrev = useCallback((): void => {
     if (stepsToShow <= 0) return
@@ -88,7 +99,7 @@ export const useAccordionStepper = ({
 
       return `step_${wrapped}`
     })
-  }, [stepsToShow])
+  }, [stepsToShow, getNextBatchOfSteps])
 
   const onJumpTo = useCallback(
     (target: number) => {
@@ -97,19 +108,10 @@ export const useAccordionStepper = ({
     [stepsToShow]
   )
 
-  const onAutoplay = useCallback(() => {
-    if (animationRef.current) cancelAnimationFrame(animationRef.current)
-    animationRef.current = requestAnimationFrame(animate)
-    setIsPlaying(true)
-  }, [])
-
-  const onStopAutoplay = useCallback(() => {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = null
-    }
-    setIsPlaying(false)
-  }, [])
+  // Self-recursive rAF loop: schedule through a ref rather than referencing
+  // `animate` from within its own body, so each frame calls the latest
+  // closure without a forward reference to the not-yet-declared `animate`.
+  const animateRef = useRef<((timestamp: number) => void) | null>(null)
 
   const animate = useCallback(
     (timestamp: number) => {
@@ -124,10 +126,24 @@ export const useAccordionStepper = ({
         elapsedTimeRef.current = 0
       }
 
-      animationRef.current = requestAnimationFrame(animate)
+      if (animateRef.current) {
+        animationRef.current = requestAnimationFrame(animateRef.current)
+      }
     },
     [interval, onNext]
   )
+
+  useEffect(() => {
+    animateRef.current = animate
+  })
+
+  const onAutoplay = useCallback(() => {
+    setIsPlaying(true)
+  }, [])
+
+  const onStopAutoplay = useCallback(() => {
+    setIsPlaying(false)
+  }, [])
 
   const getStepIcon = useCallback(
     (index: number) => {
@@ -140,31 +156,27 @@ export const useAccordionStepper = ({
 
   const initializeCycler = useCallback(() => {
     const cycler = createSequentialCycler(steps.data, stepsToShow)
-    if (!cyclerRef.current) cyclerRef.current = cycler
+    cyclerRef.current ??= cycler
   }, [steps, stepsToShow])
-
-  const getNextBatchOfSteps = useCallback(() => {
-    if (cyclerRef.current) setVisibleSteps(cyclerRef.current() ?? [])
-  }, [])
 
   useEffect(() => {
     initializeCycler()
     getNextBatchOfSteps()
   }, [initializeCycler, getNextBatchOfSteps])
 
+  // Synchronize the rAF loop (external system) with isPlaying
   useEffect(() => {
-    if (autoplay) {
-      onAutoplay()
-    } else {
-      onStopAutoplay()
-    }
+    if (!isPlaying) return
+
+    animationRef.current = requestAnimationFrame(animate)
 
     return (): void => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
+        animationRef.current = null
       }
     }
-  }, [autoplay])
+  }, [isPlaying, animate])
 
   return {
     currStepId,
