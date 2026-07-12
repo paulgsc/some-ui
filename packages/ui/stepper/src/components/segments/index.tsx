@@ -1,9 +1,7 @@
-import type { CSSProperties, HTMLAttributes, LiHTMLAttributes } from "react"
+import type { HTMLAttributes, LiHTMLAttributes } from "react"
 import { forwardRef } from "react"
 import { Button } from "some-ui-shared"
 import { cn } from "some-ui-utils"
-
-type CSSVarStyle = CSSProperties & Record<`--${string}`, string | number>
 
 type SegmentProps = {
   segmentWidth?: number
@@ -11,11 +9,10 @@ type SegmentProps = {
 
 export const Segment = forwardRef<HTMLLIElement, SegmentProps>(
   ({ children, className, segmentWidth = 100, ...props }, ref) => {
-    const style: CSSVarStyle = { "--segment-width": `${segmentWidth}%` }
     return (
       <li
         ref={ref}
-        style={style}
+        style={{ "--segment-width": `${segmentWidth}%` }}
         className={cn(
           "relative h-full list-none first:rounded-l-md last:rounded-r-md",
           "after:absolute after:end-0 after:h-full after:w-[2%]",
@@ -47,13 +44,10 @@ type SegementsProps = {
 
 export const Segments = forwardRef<HTMLUListElement, SegementsProps>(
   ({ className, segmentMarkerPosition = 0, ...props }, ref) => {
-    const style: CSSVarStyle = {
-      "--segment-marker-left": `${segmentMarkerPosition}%`,
-    }
     return (
       <ul
         ref={ref}
-        style={style}
+        style={{ "--segment-marker-left": `${segmentMarkerPosition}%` }}
         className={cn(
           "relative flex h-2 w-full bg-slate-950",
           "after:ms-1/2 after:absolute after:bottom-1/2 after:size-4 after:translate-y-1/2",

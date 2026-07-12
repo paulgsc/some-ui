@@ -1757,6 +1757,9 @@ importers:
       '@types/canvas-confetti':
         specifier: 1.9.0
         version: 1.9.0
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       canvas-confetti:
         specifier: 1.9.3
         version: 1.9.3
@@ -1766,6 +1769,12 @@ importers:
       lucide-react:
         specifier: ^0.503.0
         version: 0.503.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-ui-input:
         specifier: workspace:*
         version: link:../input
