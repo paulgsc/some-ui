@@ -3,6 +3,7 @@ import "@drama/styles/popup.css"
 import { useEffect, useRef } from "react"
 import { PopupStateMachine } from "@drama/effects/popup/fsm"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
+import { assertNever } from "@some-extension/common"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { PopupRenderer } from "."
@@ -183,13 +184,16 @@ function buildPhase(
         : FULL_STATE
 
   switch (phaseTag) {
-    case "LOADING":
+    case "LOADING": {
       return { tag: "LOADING" }
-    case "IDLE":
+    }
+    case "IDLE": {
       return { tag: "IDLE", state, tabId: 1, isVideoTab, videoCount }
-    case "SCRAPING":
+    }
+    case "SCRAPING": {
       return { tag: "SCRAPING", state, tabId: 1 }
-    case "FORM":
+    }
+    case "FORM": {
       return {
         tag: "FORM",
         state,
@@ -197,10 +201,17 @@ function buildPhase(
         prefill: showEditForm ? { ...MOCK_ENTRY_1 } : {},
         editId: showEditForm ? MOCK_ENTRY_1.id : undefined,
       }
-    case "SAVING":
+    }
+    case "SAVING": {
       return { tag: "SAVING", state, tabId: 1 }
-    case "ERROR":
+    }
+    case "ERROR": {
       return { tag: "ERROR", message: errorMessage, prev: { tag: "LOADING" } }
+    }
+    default: {
+      phaseTag satisfies never
+      assertNever(phaseTag)
+    }
   }
 }
 
