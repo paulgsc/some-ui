@@ -85,7 +85,7 @@ export const LivestreamTopicNotification: FC<
       sampleTopics.find(
         (topic) =>
           time >= topic.timestamp && time < topic.timestamp + topic.duration
-      ) || null
+      ) ?? null
     )
   }, [])
 
@@ -112,7 +112,7 @@ export const LivestreamTopicNotification: FC<
 
   // Announce topic with speech
   const announceTopicWithSpeech = useCallback(
-    async (topic: Topic) => {
+    (topic: Topic) => {
       if (isSpeaking) return // Don't interrupt current speech
 
       try {
@@ -144,7 +144,7 @@ export const LivestreamTopicNotification: FC<
             setActiveToast(null)
           },
         }
-        await speak(topic.description, options, Infinity)
+        speak(topic.description, options, Infinity)
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error("Failed to announce topic:", error)
@@ -207,7 +207,7 @@ export const LivestreamTopicNotification: FC<
             // Show toast without speech
             setTimeout(() => showToastNotification(currentTopic), 0)
           }
-        } else if (!currentTopic && activeToast) {
+        } else if (activeToast) {
           // We've moved out of any topic segment, hide toast
           setTimeout(() => {
             setToastVisible(false)

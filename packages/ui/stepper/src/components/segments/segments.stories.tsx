@@ -18,7 +18,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Stepper/Components/Segments",
   component: Segments,
-} as Meta
+} satisfies Meta
+
+export default meta

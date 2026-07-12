@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Stepper/Components/StepperDialog",
   component: StepperDialog,
-} as Meta
+} satisfies Meta
+
+export default meta
