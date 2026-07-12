@@ -46,3 +46,13 @@ export function installedAt(
   const value = root.getAttribute(SENTINEL_ATTR)
   return value === null ? undefined : Number(value)
 }
+
+/**
+ * Removes the sentinel so a subsequent `install()` call reinstalls fresh.
+ * Only Lifecycle's `teardownDocument()` (S10) calls this — it is Theorem
+ * D.1(b)'s "Bootstrap is reinstalled" half, made callable without waiting
+ * for an actual page refresh to supply a new `root`.
+ */
+export function uninstall(root: Element = document.documentElement): void {
+  root.removeAttribute(SENTINEL_ATTR)
+}
