@@ -18,6 +18,7 @@ import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
+import { assertNever } from "@some-extension/common"
 
 const DEFAULT_FILTER: FilterConfig = {
   invert: 1,
@@ -209,7 +210,8 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
     return
   }
 
-  switch (msg.type) {
+  const { type: t } = msg
+  switch (t) {
     case "CYCLE_TAB_STATE": {
       cycleState()
       return
@@ -240,7 +242,8 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
       return
     }
     default: {
-      msg satisfies never
+      t satisfies never
+      assertNever(t)
     }
   }
 })
