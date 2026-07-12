@@ -63,6 +63,9 @@ export const LivestreamTopicNotification: FC<
   const [activeToast, setActiveToast] = useState<Topic | null>(null)
   const [toastVisible, setToastVisible] = useState<boolean>(false)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
+  // Mirrors loopCountRef for display; the ref stays the source of truth for
+  // the synchronous loop-tracking logic below.
+  const [loopCount, setLoopCount] = useState(0)
 
   // Track loops and segments separately
   const loopCountRef = useRef(0)
@@ -171,6 +174,7 @@ export const LivestreamTopicNotification: FC<
         if (newTime >= totalDuration) {
           newTime = 0
           loopCountRef.current += 1
+          setLoopCount(loopCountRef.current)
 
           // Reset visual tracking when looping
           lastShownSegmentRef.current = null
@@ -245,17 +249,6 @@ export const LivestreamTopicNotification: FC<
     }
   }, [])
 
-  // Reset state on component mount/remount
-  useEffect(() => {
-    loopCountRef.current = 0
-    lastAnnouncedSegmentRef.current = null
-    lastShownSegmentRef.current = null
-    currentSpeechLoopRef.current = -1
-    setCurrentTime(0)
-    setActiveToast(null)
-    setToastVisible(false)
-  }, [])
-
   return (
     <div className="absolute inset-0 opacity-95">
       <div className="relative size-full overflow-hidden bg-none">
@@ -288,10 +281,10 @@ export const LivestreamTopicNotification: FC<
 
           {/* Loop and speech indicators */}
           <div className="absolute left-4 top-1 flex items-center space-x-4 text-xs text-white">
-            <span>Loop: {loopCountRef.current}</span>
+            <span>Loop: {loopCount}</span>
             <span>
               Next speech: Loop{" "}
-              {Math.ceil((loopCountRef.current + 1) / speechIntervalLoops) *
+              {Math.ceil((loopCount + 1) / speechIntervalLoops) *
                 speechIntervalLoops}
             </span>
           </div>

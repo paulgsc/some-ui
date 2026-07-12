@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ElementRef, ReactNode } from "react"
+import type { ComponentPropsWithoutRef, ComponentRef, ReactNode } from "react"
 import { forwardRef } from "react"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import {
@@ -25,7 +25,7 @@ const Icons: Record<string, ReactNode> = {
 }
 
 const AccordionItem = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Item>,
+  ComponentRef<typeof AccordionPrimitive.Item>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Item> & AccordionItemProps
 >(({ className, icon, children, ...props }, ref) => (
   <AccordionPrimitive.Item
@@ -51,7 +51,7 @@ const AccordionItem = forwardRef<
 AccordionItem.displayName = "AccordionItem"
 
 const AccordionTrigger = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Trigger>,
+  ComponentRef<typeof AccordionPrimitive.Trigger>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Header className="flex">
@@ -71,7 +71,7 @@ const AccordionTrigger = forwardRef<
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
 const AccordionContent = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Content>,
+  ComponentRef<typeof AccordionPrimitive.Content>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <AccordionPrimitive.Content
