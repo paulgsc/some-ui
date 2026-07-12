@@ -29,7 +29,7 @@ export const BrickWallChart: FC<BrickWallChartProps> = ({
 }): JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const { height, width } = useMeasureRect({
-    ref: containerRef as RefObject<HTMLElement>,
+    ref: containerRef,
   })
 
   const canvasWidth = width ?? 0

@@ -1,5 +1,4 @@
-import type { ReactSVGElement, SVGAttributes } from "react"
-import { forwardRef, Fragment, type ComponentPropsWithoutRef } from "react"
+import type { ReactSVGElement, SVGAttributes, forwardRef, Fragment, type ComponentPropsWithoutRef  } from "react"
 import { cn } from "some-ui-utils"
 
 type FootballFieldProps = {

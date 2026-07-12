@@ -25,7 +25,7 @@ export const PlayerCardDialog: FC<PlayerCardDialogPrps> = ({
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const buttonRect = useMeasureRect({
-    ref: buttonRef as RefObject<HTMLElement>,
+    ref: buttonRef,
   })
   const contentRef = useRef<HTMLDivElement>(null)
   const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

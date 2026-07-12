@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof NflPlayerCardShuffle>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/NFL/Components/NflPlayerCardShuffle",
   component: NflPlayerCardShuffle,
-} as Meta
+} satisfies Meta
+
+export default meta

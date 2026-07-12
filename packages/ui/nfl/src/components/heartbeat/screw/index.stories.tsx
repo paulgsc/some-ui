@@ -64,7 +64,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Cardiogram/Screw",
   component: Screw,
-} as Meta
+} satisfies Meta
+
+export default meta

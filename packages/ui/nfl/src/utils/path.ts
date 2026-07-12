@@ -7,24 +7,17 @@ export function smoothPath(
   points: Array<Point>,
   tension: number = 0.5
 ): string {
-  if (points.length < 2) return ""
-
-  const d: Array<string> = []
-
-  // Guard against undefined, though length check handles this,
-  // TS sometimes needs help in strict mode.
   const firstPoint = points[0]
-  if (!firstPoint) return ""
+  if (!firstPoint || points.length < 2) return ""
 
-  d.push(`M ${firstPoint.x} ${firstPoint.y}`)
+  const d: Array<string> = [`M ${firstPoint.x} ${firstPoint.y}`]
 
   for (let i = 0; i < points.length - 1; i++) {
-    // Use nullish coalescing (??) instead of OR (||)
-    // and explicitly define types to satisfy the compiler
-    const p0: Point = points[i - 1] ?? (points[i] as Point)
-    const p1: Point = points[i] as Point
-    const p2: Point = points[i + 1] as Point
-    const p3: Point = points[i + 2] ?? p2
+    // Safely capture the points, handling boundaries cleanly
+    const p0 = points[i - 1] ?? points[i] ?? firstPoint
+    const p1 = points[i] ?? firstPoint
+    const p2 = points[i + 1] ?? firstPoint
+    const p3 = points[i + 2] ?? p2
 
     const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension
     const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension

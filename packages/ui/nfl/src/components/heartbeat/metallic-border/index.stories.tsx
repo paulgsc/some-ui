@@ -13,7 +13,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Cardiogram/MetallicBorder",
   component: MetallicBorder,
-} as Meta
+} satisfies Meta
+
+export default meta

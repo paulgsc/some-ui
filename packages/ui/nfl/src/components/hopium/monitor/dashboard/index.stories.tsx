@@ -16,7 +16,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Hopium/Monitor/SatelliteDashboard",
   component: SatelliteDashboard,
-} as Meta
+} satisfies Meta
+
+export default meta

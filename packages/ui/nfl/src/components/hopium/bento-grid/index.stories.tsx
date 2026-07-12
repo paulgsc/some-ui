@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof BentoWireframe>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Hopium/BentoWireframe",
   component: BentoWireframe,
-} as Meta
+} satisfies Meta
+
+export default meta

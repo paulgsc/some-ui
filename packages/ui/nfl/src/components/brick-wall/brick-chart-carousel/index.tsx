@@ -1,5 +1,5 @@
-import type { ComponentProps, FC, ReactNode } from "react"
-import { useRef } from "react"
+import type { ComponentProps, FC, JSX, ReactNode } from "react"
+import { useCallback, useMemo } from "react"
 import { BrickWallChart } from "@nfl/components/brick-wall/brick-ladder-chart"
 import Autoplay from "embla-carousel-autoplay"
 import { Carousel, CarouselContent, CarouselItem } from "some-ui-shared"
@@ -14,37 +14,20 @@ type Standing = {
 export type BrickChartData = {
   standings: Array<Standing>
   weekLabel?: string
-  [key: string]: unknown // Allow extra metadata
+  id?: string
+  [key: string]: unknown
 }
 
 export type BrickChartCarouselProps = {
   data: Array<BrickChartData>
   title?: string
   isLoading?: boolean
-  /**
-   * Optional autoplay delay in ms
-   * @default 2000
-   */
   autoplayDelay?: number
-  /**
-   * Whether to stop autoplay on user interaction
-   * @default true
-   */
   stopOnInteraction?: boolean
-  /**
-   * Custom loader component while loading
-   */
   loader?: ReactNode
-  /**
-   * Additional props to pass to BrickWallChart
-   */
   chartProps?: Omit<ComponentProps<typeof BrickWallChart>, "data" | "title">
 }
 
-/**
- * A reusable carousel component for displaying brick wall charts (e.g., ladder/standings).
- * Designed for dynamic data input — ideal for integration in NPM packages.
- */
 export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
   data,
   title,
@@ -53,26 +36,45 @@ export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
   stopOnInteraction = true,
   loader = <div>Loading...</div>,
   chartProps,
-}): React.JSX.Element => {
-  const plugin = useRef(Autoplay({ delay: autoplayDelay, stopOnInteraction }))
+}): JSX.Element | null => {
+  const autoplay = useMemo(
+    () =>
+      Autoplay({
+        delay: autoplayDelay,
+        stopOnInteraction,
+      }),
+    [autoplayDelay, stopOnInteraction]
+  )
 
-  if (isLoading) return <>{loader}</>
+  const handleMouseEnter = useCallback(() => {
+    if (stopOnInteraction) {
+      autoplay.stop()
+    }
+  }, [autoplay, stopOnInteraction])
 
-  if (!data || data.length === 0) {
-    return <></> // or a fallback UI
+  const handleMouseLeave = useCallback(() => {
+    autoplay.reset()
+  }, [autoplay])
+
+  if (isLoading) {
+    return <>{loader}</>
+  }
+
+  if (data.length === 0) {
+    return null
   }
 
   return (
     <Carousel
-      plugins={[plugin.current]}
+      plugins={[autoplay]}
       className="size-full"
-      onMouseEnter={stopOnInteraction ? plugin.current.stop : undefined}
-      onMouseLeave={plugin.current.reset}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <CarouselContent>
-        {data.map((item, index) => (
+        {data.map((item) => (
           <CarouselItem
-            key={index}
+            key={item.id ?? item.weekLabel ?? JSON.stringify(item.standings)}
             className="size-full bg-[oklch(75%_0.01_120)] bg-gradient-to-b from-[oklch(75%_0.01_120)] to-[oklch(95%_0.02_180)]"
           >
             <BrickWallChart

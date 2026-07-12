@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Cardiogram/EKGGraph",
   component: EKGGraph,
-} as Meta
+} satisfies Meta
+
+export default meta
