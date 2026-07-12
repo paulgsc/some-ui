@@ -1,5 +1,6 @@
 import { ext } from "@censor/platform/background"
 import type { BgBroadcast, BgRequest, BgResponse } from "@censor/types/messages"
+import { assertNever } from "@some-extension/common"
 
 import type { ApiClient } from "./api-client"
 
@@ -19,7 +20,8 @@ export function createMessageHandler(api: ApiClient) {
     _sender: browser.runtime.MessageSender
   ): Promise<BgResponse> => {
     try {
-      switch (msg.type) {
+      const { type: t } = msg
+      switch (t) {
         case "IS_WHITELISTED": {
           const whitelisted = await api.isWhitelisted(msg.channelId)
           return { ok: true, whitelisted }
@@ -57,15 +59,9 @@ export function createMessageHandler(api: ApiClient) {
           })
           return { ok: true, enabled: settings.enabled }
         }
-
         default: {
-          // Exhaustiveness guard — TypeScript will flag unhandled cases
-          const _: never = msg
-          return {
-            ok: false,
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-            error: `Unknown message type: ${(_ as BgRequest).type}`,
-          }
+          t satisfies never
+          assertNever(t)
         }
       }
     } catch (err) {

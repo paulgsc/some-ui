@@ -27,6 +27,8 @@
  * the card, not the viewport — fixing the "beats dialogs" issue.
  */
 
+import { assertNever } from "@some-extension/common"
+
 import type { RenderModel, VeilContent } from "./fsm"
 
 export class DomHandle {
@@ -98,9 +100,11 @@ export class DomHandle {
     if (!this._veil) return
     this._veil.innerHTML = ""
 
-    switch (content.kind) {
-      case "empty":
+    const { kind } = content
+    switch (kind) {
+      case "empty": {
         break
+      }
 
       case "meta": {
         const { channelName, duration, uploadDate } = content.meta
@@ -132,6 +136,10 @@ export class DomHandle {
           this._veil.appendChild(chip)
         }
         break
+      }
+      default: {
+        kind satisfies never
+        assertNever(kind)
       }
     }
   }

@@ -1,4 +1,5 @@
 import type { ViewState } from "@censor/types/states"
+import { assertNever } from "@some-extension/common"
 
 /**
  * Pure DOM projection.
@@ -31,10 +32,12 @@ export function renderView(
   rendererEl.dataset["boyo"] = DATA_BOYO[state.kind]
   veil.innerHTML = ""
 
-  switch (state.kind) {
-    case "masked":
+  const { kind } = state
+  switch (kind) {
+    case "masked": {
       // CSS ::before handles the hint text — no children needed
       break
+    }
 
     case "meta": {
       const { channelName, duration, uploadDate } = state.meta
@@ -72,10 +75,15 @@ export function renderView(
     }
 
     case "revealed":
-    case "whitelisted":
+    case "whitelisted": {
       // Caller handles veil removal for revealed.
       // Whitelisted: CSS ::before badge — no children needed.
       break
+    }
+    default: {
+      kind satisfies never
+      assertNever(kind)
+    }
   }
 }
 

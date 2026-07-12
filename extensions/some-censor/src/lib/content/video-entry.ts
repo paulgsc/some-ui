@@ -29,6 +29,8 @@
  *             it is monotonic: empty → concrete, never concrete → other.
  */
 
+import { assertNever } from "@some-extension/common"
+
 import { ClickGate } from "./click-gate"
 import { DomHandle } from "./dom-handle"
 import { extractMeta, extractTitle } from "./extract/index"
@@ -123,8 +125,9 @@ export class VideoEntry {
     switch (this._view.kind) {
       case "title":
       case "revealed":
-      case "whitelisted":
+      case "whitelisted": {
         return
+      }
       case "masked":
       case "meta": {
         const el = this._handle.element
@@ -137,9 +140,10 @@ export class VideoEntry {
         return
       }
 
-      default:
+      default: {
         this._view satisfies never
         throw new Error(`Unhandled shape`, { cause: this._view })
+      }
     }
   }
 
@@ -161,15 +165,22 @@ export class VideoEntry {
     let next: ViewState
 
     switch (event) {
-      case "CLICK":
+      case "CLICK": {
         next = this._applyClickTransition()
         break
-      case "DBLCLICK":
+      }
+      case "DBLCLICK": {
         next = applyDblClick(this._view)
         break
-      case "WHITELIST":
+      }
+      case "WHITELIST": {
         next = applyWhitelist(this._view)
         break
+      }
+      default: {
+        event satisfies never
+        assertNever(event)
+      }
     }
 
     if (next === this._view) return
@@ -178,13 +189,23 @@ export class VideoEntry {
 
   private _applyClickTransition(): ViewState {
     const el = this._handle.element
-    switch (this._view.kind) {
-      case "masked":
+    const { kind } = this._view
+    switch (kind) {
+      case "masked": {
         return applyClick(this._view, extractMeta(el))
-      case "meta":
+      }
+      case "meta": {
         return applyClick(this._view, extractTitle(el) ?? "")
-      default:
+      }
+      case "title":
+      case "revealed":
+      case "whitelisted": {
         return this._view
+      }
+      default: {
+        kind satisfies never
+        assertNever(kind)
+      }
     }
   }
 
