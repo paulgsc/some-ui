@@ -99,13 +99,16 @@ jobs:
       - name: Test
         run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source
-      # tree and the pnpm lockfile so a workspace-only change still rebuilds.
+      # tree, extensions/common (shared runtime util several extensions import
+      # — a source-only change there doesn't touch extension_path/** or bump
+      # pnpm-lock.yaml, so it must be hashed explicitly or a stale dist gets
+      # restored and skips Build below), and the pnpm lockfile.
       - name: Restore extension build cache
         id: ext-cache
         uses: actions/cache@v4
         with:
           path: ${{ matrix.extension_path }}/dist
-          key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'pnpm-lock.yaml') }}
+          key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'extensions/common/**', 'pnpm-lock.yaml') }}
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build
         if: steps.ext-cache.outputs.cache-hit != 'true'

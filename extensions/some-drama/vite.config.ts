@@ -1,35 +1,11 @@
 import { resolve } from "path"
 import { defineConfig } from "vite"
 
+// Production output is built by scripts/build.mjs, which runs content.ts,
+// background.ts, and popup.html as independent single-entry builds so
+// classic-context entries (content/background) can't end up importing a
+// shared Rollup chunk. This config is only used by `pnpm dev`.
 export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        content: resolve(__dirname, "src/content/content.ts"),
-        background: resolve(__dirname, "src/background/background.ts"),
-        popup: resolve(__dirname, "popup.html"),
-      },
-      output: {
-        manualChunks: () => {}, // prevents shared chunks
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === "content") return "content.js"
-          if (chunkInfo.name === "background") return "background.js"
-          if (chunkInfo.name === "popup") return "popup.js"
-          return "[name].js"
-        },
-        chunkFileNames: "[name].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.names.includes("popup.html")) return "popup.html"
-          if (assetInfo.names.includes("popup.css")) return "popup.css"
-          if (assetInfo.names.some((n) => n.endsWith(".css")))
-            return "styles/[name][extname]"
-          return "assets/[name][extname]"
-        },
-      },
-    },
-    outDir: "dist",
-    emptyOutDir: true,
-  },
   resolve: {
     alias: {
       "@drama": resolve(__dirname, "src"),

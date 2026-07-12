@@ -1,4 +1,3 @@
 {
-  "_comment": "Classic-context entry points (content scripts, MV2 background, non-module MV3 workers) that currently ship ESM imports of shared Rollup chunks and would throw 'Cannot use import statement outside a module' at load. Keyed by extensions/<slug>. This baseline ratchets DOWN only: assert-self-contained.mjs fails on any NEW violation, and also fails if a listed entry has been fixed but not removed here. Burn entries down to {} by giving each extension per-entry self-contained (IIFE) builds.",
-  "some-drama": ["background.js", "content.js"]
+  "_comment": "Classic-context entry points (content scripts, MV2 background, non-module MV3 workers) that currently ship ESM imports of shared Rollup chunks and would throw 'Cannot use import statement outside a module' at load. Keyed by extensions/<slug>. This baseline ratchets DOWN only: assert-self-contained.mjs fails on any NEW violation, and also fails if a listed entry has been fixed but not removed here. Burn entries down to {} by giving each extension per-entry self-contained (IIFE) builds."
 }
