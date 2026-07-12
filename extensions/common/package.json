@@ -11,12 +11,16 @@
       "import": "./src/index.ts",
       "types": "./src/index.ts"
     },
+    "./build": {
+      "import": "./build.mjs"
+    },
     "./*": {
       "import": "./src/*.ts",
       "types": "./src/*.ts"
     }
   },
   "files": [
+    "build.mjs",
     "src"
   ],
   "keywords": [

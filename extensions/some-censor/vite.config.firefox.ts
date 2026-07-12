@@ -46,7 +46,6 @@ export default defineConfig({
         background: resolve(__dirname, "src/background/background.ts"),
       },
       output: {
-        manualChunks: () => {}, // single IIFE per entry — no shared runtime chunk
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "content") return "content.js"
           if (chunkInfo.name === "background") return "background.js"
