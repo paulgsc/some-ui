@@ -19,7 +19,7 @@ services:
     image: paulgsc/www:${TAG:-latest}
     container_name: some-ui-www
     ports:
-      - "${WWW_HTTP_PORT:-5174}:80"
+      - "${WWW_HTTP_PORT:-5172}:80"
       - "${WWW_HTTPS_PORT:-5173}:443"
     volumes:
       - ${REPO_ROOT:-.}/apps/www/nginx.https.conf:/etc/nginx/conf.d/default.conf:ro
