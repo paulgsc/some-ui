@@ -110,6 +110,16 @@ jobs:
       - name: Build
         if: steps.ext-cache.outputs.cache-hit != 'true'
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
+      # ── Self-contained entry check ─────────────────────────────────────
+      # Content scripts, MV2 background scripts, and non-module MV3 service
+      # workers run as classic scripts and cannot use ESM import/export. Rollup
+      # emits a shared chunk whenever a module is imported by 2+ entries (e.g. a
+      # util hoisted into a shared package), which silently breaks those entries
+      # at load with "Cannot use import statement outside a module". This check
+      # fails on any NEW such violation; known debt is tracked in
+      # extensions/scripts/self-contained-baseline.json and ratchets down only.
+      - name: Assert classic entries are self-contained
+        run: nix develop .#ci --command node extensions/scripts/assert-self-contained.mjs "${{ matrix.extension_path }}/dist"
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \
