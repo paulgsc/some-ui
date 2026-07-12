@@ -15,7 +15,7 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit"
   },
-  "peerDependecies": {
+  "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "framer-motion": "11.15.0",
@@ -25,6 +25,7 @@
     "@radix-ui/react-accordion": "^1.2.7",
     "@some-ui/styles": "workspace:*",
     "@types/canvas-confetti": "1.9.0",
+    "@types/react": "^19.0.4",
     "canvas-confetti": "1.9.3",
     "framer-motion": "11.15.0",
     "lucide-react": "^0.503.0",
