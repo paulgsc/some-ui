@@ -14,7 +14,7 @@
     "some-ui-input": "workspace:*",
     "some-ui-nfl": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
-    "some-ui-stepper": "workspace:*",
+    "@some-ui/stepper": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "@some-ui/umag": "workspace:*",

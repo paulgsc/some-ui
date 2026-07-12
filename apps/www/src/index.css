@@ -1,7 +1,7 @@
 @import "@some-ui/styles/tailwind.css";
 @import "@some-ui/honeycomb/style.css";
 @import "some-ui-input/style.css";
-@import "some-ui-stepper/style.css";
+@import "@some-ui/stepper/style.css";
 @import "@some-ui/chat/style.css";
 @import "@some-ui/slideshow/style.css";
 @import "some-ui-shared/style.css";

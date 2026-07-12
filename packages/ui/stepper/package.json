@@ -1,5 +1,5 @@
 {
-  "name": "some-ui-stepper",
+  "name": "@some-ui/stepper",
   "private": true,
   "version": "0.0.5",
   "type": "module",

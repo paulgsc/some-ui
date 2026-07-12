@@ -1,4 +1,4 @@
-# some-ui-stepper
+# @some-ui/stepper
 
 ## 0.0.5
 
