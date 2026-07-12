@@ -11,7 +11,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Stepper/Components/LivestreamTopicNotification",
   component: LivestreamTopicNotification,
-} as Meta
+} satisfies Meta
+
+export default meta

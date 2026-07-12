@@ -311,6 +311,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
+      '@some-ui/stepper':
+        specifier: workspace:*
+        version: link:../../packages/ui/stepper
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -359,9 +362,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../../packages/ui/shared
-      some-ui-stepper:
-        specifier: workspace:*
-        version: link:../../packages/ui/stepper
       some-ui-utils:
         specifier: workspace:*
         version: link:../../packages/utils
@@ -994,6 +994,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../ui/slideshow
+      '@some-ui/stepper':
+        specifier: workspace:*
+        version: link:../ui/stepper
       '@some-ui/umag':
         specifier: workspace:*
         version: link:../ui/umag
@@ -1009,9 +1012,6 @@ importers:
       some-ui-nfl:
         specifier: workspace:*
         version: link:../ui/nfl
-      some-ui-stepper:
-        specifier: workspace:*
-        version: link:../ui/stepper
       some-ui-utils:
         specifier: workspace:*
         version: link:../utils
@@ -1428,6 +1428,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../slideshow
+      '@some-ui/stepper':
+        specifier: workspace:*
+        version: link:../stepper
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1455,9 +1458,6 @@ importers:
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
-      some-ui-stepper:
-        specifier: workspace:*
-        version: link:../stepper
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1757,6 +1757,9 @@ importers:
       '@types/canvas-confetti':
         specifier: 1.9.0
         version: 1.9.0
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       canvas-confetti:
         specifier: 1.9.3
         version: 1.9.3
@@ -1766,6 +1769,12 @@ importers:
       lucide-react:
         specifier: ^0.503.0
         version: 0.503.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-ui-input:
         specifier: workspace:*
         version: link:../input

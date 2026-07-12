@@ -24,13 +24,20 @@ export const AngledEnergyBar = ({
   isLow = false,
 }: AngledEnergyBarProps): JSX.Element => {
   const [pulse, setPulse] = useState(false)
+  const [prevProgress, setPrevProgress] = useState(progress)
 
-  // Wave pulse on progress change
-  useEffect(() => {
+  // Wave pulse on progress change (adjusted during render, not in an effect)
+  if (progress !== prevProgress) {
+    setPrevProgress(progress)
     setPulse(true)
+  }
+
+  // Auto-clear the pulse after the wave animation finishes
+  useEffect(() => {
+    if (!pulse) return
     const timeout = setTimeout(() => setPulse(false), 600)
     return (): void => clearTimeout(timeout)
-  }, [progress])
+  }, [pulse])
 
   const { bar, glow } = THEMES[color]
   const clipPath = "polygon(0 0, 98% 0, 100% 100%, 0 100%)"

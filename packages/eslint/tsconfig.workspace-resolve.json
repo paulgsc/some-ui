@@ -29,7 +29,7 @@
       "some-ui-searchbar": ["../ui/searchbar/src/index.ts"],
       "some-ui-shared": ["../ui/shared/src/index.ts"],
       "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
-      "some-ui-stepper": ["../ui/stepper/src/index.ts"],
+      "@some-ui/stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],
       "@some-ui/umag": ["../ui/umag/src/index.ts"],
       "wireframes": ["../ui/wireframes/src/index.ts"]

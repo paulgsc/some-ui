@@ -1,4 +1,4 @@
-import type { AccordionSteps } from "some-ui-stepper"
+import type { AccordionSteps } from "@some-ui/stepper"
 
 export const accordionData: AccordionSteps = {
   meta: {

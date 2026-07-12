@@ -19,6 +19,8 @@ type GeminiStepperProps = {
   duration?: number
 }
 
+const isStepKey = (value: string): value is StepKey => /^step_\d+$/.test(value)
+
 export const GeminiStepper: FC<GeminiStepperProps> = ({
   steps,
   autoplay = false,
@@ -48,16 +50,15 @@ export const GeminiStepper: FC<GeminiStepperProps> = ({
         className="size-full flex-1 shrink-0 overflow-hidden pb-3"
         value={currStepId}
         onValueChange={(val) => {
-          const step = (/^step_\d+$/.test(val) ? val : "step_0") as StepKey
-          setCurrStepId(step)
+          setCurrStepId(isStepKey(val) ? val : "step_0")
         }}
       >
         {visibleSteps.map((step, i) => {
-          const curr = parseInt(currStepId.split("_")[1] ?? "", 0)
+          const curr = parseInt(currStepId.split("_")[1] ?? "", 10)
           const icon = curr === i ? "progress" : step.progress
           return (
             <AccordionItem
-              key={`stepper_item_${i}`}
+              key={step.stepId}
               value={`step_${i}`}
               className="h-fit w-full"
               icon={icon}
