@@ -15,10 +15,12 @@ should land first.
 
 ## Status
 
-Tracking [Epic #607](https://github.com/paulgsc/some-ui/issues/607). See that
-issue for the module tree, story sequencing, and the Kernel Independence
-acceptance bar (Theorem D.2): this package must build and pass its full
-conformance suite with **no business logic** — only a null adapter.
+All stories of [Epic #607](https://github.com/paulgsc/some-ui/issues/607)
+(S1–S11) have landed. The package builds (typechecks + lints) and its full
+unit (`pnpm test`) and conformance (`pnpm test:e2e`) suites pass against
+`adapter/null-adapter.ts` alone — the Kernel Independence acceptance bar
+(Theorem D.2). No business logic (theme/censor/redaction or any other
+domain concept) exists anywhere in this tree.
 
 ## Layout
 
@@ -26,8 +28,16 @@ conformance suite with **no business logic** — only a null adapter.
 src/
   contracts/    Token, Hypothesis, Invariant, Adapter, Action — types only
   bootstrap/    document-lifetime static install + sentinel (Def D.2, Thm D.1)
+  session/      epoch counter + reset operator (Def 5.4, D.1)
+  sensor/       hybrid event+poll channel (Def 3.1–3.3) + identity reconciliation (Def 4.1, Cor 4.1.1)
+  estimator/    hypothesis, per-key evidentiary order, monotonic update (Def 5.1–5.3, Thm 5.1), decay (Remark 3.3)
+  adapter/      the Adapter contract + null adapter (Def D.3, Thm D.2)
+  scheduler/    invariant re-evaluation cadence, R-bounded delivery bookkeeping (Def 7.2)
+  actuator/     self-tagged idempotent actuation, structural exclusion (Def 7.3, Thm 7.2, Cor 7.3.1)
+  lifecycle/    refresh-vs-navigation reset semantics, full teardown (Thm D.1)
+tests/e2e/      Playwright conformance suite (S11) — protocol guarantees only, against the null adapter
 ```
 
-Everything else (`session/`, `sensor/`, `estimator/`, `adapter/`,
-`scheduler/`, `actuator/`, `lifecycle/`) lands story-by-story; see the epic
-for sequencing.
+No migration of `some-censor` or `some-filter` onto this package has
+happened yet — that is tracked as follow-on work once a real Adapter
+implementation exists (see the epic's non-goals).

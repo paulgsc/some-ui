@@ -23,7 +23,9 @@
   "devDependencies": {
     "@playwright/test": "1.60.0",
     "@some-ui/tsconfig": "workspace:*",
+    "esbuild": "^0.25.0",
     "eslint": "^10.6.0",
+    "fast-check": "^3.23.1",
     "maishatu-eslint-kit": "workspace:*"
   },
   "scripts": {
@@ -33,6 +35,7 @@
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "typecheck": "tsc --noEmit"
   }
 }

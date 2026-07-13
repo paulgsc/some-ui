@@ -5,6 +5,9 @@
  * transport *protocol* guarantees (bootstrap persistence, epoch transitions,
  * hypothesis convergence, actuation idempotence) against the null adapter,
  * never a domain-specific property. See canon §8.3 and §D.
+ *
+ * Runtime: 18 specs, ~5s wall clock on a single worker (measured locally
+ * against a pre-provisioned Chromium) — viable per-PR, not just nightly.
  */
 
 import { defineConfig, devices } from "@playwright/test"
@@ -12,6 +15,7 @@ import { defineConfig, devices } from "@playwright/test"
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "**/*.spec.ts",
+  globalSetup: "./tests/e2e/global-setup.ts",
 
   timeout: 15_000,
   retries: 0,

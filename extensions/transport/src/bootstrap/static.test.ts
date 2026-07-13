@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { install, installedAt, isInstalled } from "./static"
+import { install, installedAt, isInstalled, uninstall } from "./static"
 
 function freshRoot(): Element {
   return document.implementation.createHTMLDocument("").documentElement
@@ -63,6 +63,21 @@ describe("bootstrap/static", () => {
 
     expect(isInstalled(newDocumentRoot)).toBe(false)
     expect(installedAt(newDocumentRoot)).toBeUndefined()
+  })
+
+  it("uninstall() removes the sentinel so a later install() reinstalls fresh (Theorem D.1(b))", () => {
+    const root = freshRoot()
+    vi.spyOn(Date, "now").mockReturnValueOnce(1).mockReturnValueOnce(2)
+
+    const first = install(root)
+    uninstall(root)
+
+    expect(isInstalled(root)).toBe(false)
+
+    const second = install(root)
+    expect(second.installedAt).not.toBe(first.installedAt)
+
+    vi.restoreAllMocks()
   })
 
   it("defaults to document.documentElement when no root is given", () => {
