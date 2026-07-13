@@ -1,5 +1,6 @@
 {
   "name": "@some-ui/dice-card",
+  "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {

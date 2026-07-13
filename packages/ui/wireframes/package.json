@@ -35,6 +35,7 @@
   "main": "./dist/wireframes.cjs.js",
   "module": "./dist/wireframes.es.js",
   "name": "wireframes",
+  "private": true,
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -5,6 +5,7 @@
     "@types/firefox-webext-browser": "^120.0.4"
   },
   "name": "@some-extensions/schedule",
+  "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

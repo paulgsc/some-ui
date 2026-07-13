@@ -25,6 +25,7 @@
   "main": "./dist/ws.cjs.js",
   "module": "./dist/ws.es.js",
   "name": "@some-ui/ws",
+  "private": true,
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

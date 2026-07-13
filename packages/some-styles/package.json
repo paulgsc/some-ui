@@ -1,5 +1,6 @@
 {
   "name": "@some-ui/styles",
+  "private": true,
   "version": "1.0.0",
   "description": "Shared design system (UnoCSS preset + shadcn tokens/themes) for the some-ui monorepo",
   "type": "module",

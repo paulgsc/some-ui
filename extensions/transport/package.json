@@ -1,5 +1,6 @@
 {
   "name": "@some-extension/transport",
+  "private": true,
   "version": "0.0.1",
   "description": "Property-agnostic transport kernel implementing dom-state-estimation-canon.typ (§5–§8, §D)",
   "type": "module",

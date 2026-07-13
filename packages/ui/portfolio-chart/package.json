@@ -36,6 +36,7 @@
   "main": "./dist/some-ui-portfolio-chart.cjs.js",
   "module": "./dist/some-ui-portfolio-chart.es.js",
   "name": "@some-ui/portfolio",
+  "private": true,
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

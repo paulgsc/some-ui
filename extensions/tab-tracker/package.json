@@ -35,6 +35,7 @@
   "main": "./dist/some-ui-utils.umd.js",
   "module": "./dist/esm/some-ui-utils.esm.js",
   "name": "@some-extension/tab-tracker",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

@@ -28,6 +28,7 @@
   "main": "./dist/@some-ui/core-utils.cjs.js",
   "module": "./dist/@some-ui/core-utils.es.js",
   "name": "@some-ui/core-utils",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

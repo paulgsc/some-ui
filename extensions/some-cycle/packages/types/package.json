@@ -20,6 +20,7 @@
   "license": "MIT",
   "main": "./dist/esm/src/index.js",
   "name": "@some-cycle/types",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

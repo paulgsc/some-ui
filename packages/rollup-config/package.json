@@ -1,5 +1,6 @@
 {
   "name": "some-ui-rollup-config",
+  "private": true,
   "version": "1.0.0",
   "description": "rollup-sconfig for some-ui",
   "files": [

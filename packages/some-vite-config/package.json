@@ -1,5 +1,6 @@
 {
   "name": "@some-ui/vite-config",
+  "private": true,
   "version": "1.0.0",
   "description": "Shared Vite configuration for monorepo packages",
   "type": "module",
