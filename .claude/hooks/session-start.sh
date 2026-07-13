@@ -37,3 +37,10 @@ pnpm install
 #   this hook). Without --continue, that one failure aborts the whole turbo
 #   run and leaves every other, unrelated package unbuilt too.
 pnpm build:unsafe --filter='!./crates/*' --continue=always || true
+
+# apps/www's build regenerates src/routeTree.gen.ts via
+# @tanstack/router-plugin's codegen, whose output format (quote style,
+# import order) has drifted from what's committed as the plugin version
+# floats on its ^ range. It's fully derived from src/routes/** - discard
+# any diff so the build doesn't leave every session starting dirty.
+git -C "$CLAUDE_PROJECT_DIR" checkout -- apps/www/src/routeTree.gen.ts 2>/dev/null || true
