@@ -132,7 +132,7 @@ jobs:
       - name: Create changeset
         id: changeset
         run: |
-          PACKAGE_NAME="@some-ui/${{ matrix.crate_name }}"
+          PACKAGE_NAME=$(jq -r .name "crates/${{ matrix.crate_name }}/package.json")
           VERSION="${{ matrix.version }}"
           CHANGESET_ID="${{ matrix.crate_name }}-$(date +%s)"
           CHANGESET_FILE=".changeset/${CHANGESET_ID}.md"
