@@ -1,5 +1,6 @@
 {
   "name": "@some-extension/mujik",
+  "private": true,
   "version": "1.0.0",
   "description": "Ambient music visualizer overlay for YouTube/YouTube Music browser extension",
   "type": "module",

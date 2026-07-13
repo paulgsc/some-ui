@@ -1,5 +1,6 @@
 {
   "name": "some-ui-nfl",
+  "private": true,
   "version": "0.0.5",
   "type": "module",
   "scripts": {

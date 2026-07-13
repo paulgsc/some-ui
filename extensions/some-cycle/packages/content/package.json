@@ -33,6 +33,7 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "name": "@some-cycle/content",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"

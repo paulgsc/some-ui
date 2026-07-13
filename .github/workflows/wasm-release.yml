@@ -130,23 +130,36 @@ jobs:
             --out-dir dist \
             "crates/${{ matrix.crate_name }}"
       - name: Create changeset
+        id: changeset
         run: |
           PACKAGE_NAME="@some-ui/${{ matrix.crate_name }}"
           VERSION="${{ matrix.version }}"
           CHANGESET_ID="${{ matrix.crate_name }}-$(date +%s)"
+          CHANGESET_FILE=".changeset/${CHANGESET_ID}.md"
 
-          cat > ".changeset/${CHANGESET_ID}.md" << EOF
+          cat > "$CHANGESET_FILE" << EOF
           ---
           "${PACKAGE_NAME}": patch
           ---
 
           Update WASM package for ${{ matrix.crate_name }} to version ${VERSION}
           EOF
+
+          echo "file=${CHANGESET_FILE}" >> "$GITHUB_OUTPUT"
       - name: Upload dist artifact
         uses: actions/upload-artifact@v7
         with:
           name: wasm-dist-${{ matrix.crate_name }}
           path: crates/${{ matrix.crate_name }}/dist
+          if-no-files-found: error
+      # The build job's checkout is a separate, ephemeral working tree from
+      # the release job's - a changeset file written here never reaches
+      # `release` unless it travels as an artifact like the dist output does.
+      - name: Upload changeset
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-changeset-${{ matrix.crate_name }}
+          path: ${{ steps.changeset.outputs.file }}
           if-no-files-found: error
   # ── Publish via changesets ───────────────────────────────────────────────
   release:
@@ -166,6 +179,12 @@ jobs:
           pattern: wasm-dist-*
           path: dist/wasm
           merge-multiple: false
+      - name: Download all WASM changesets
+        uses: actions/download-artifact@v8
+        with:
+          pattern: wasm-changeset-*
+          path: .changeset
+          merge-multiple: true
       - name: Restore dist artifacts into each crate directory
         run: |
           set -euo pipefail

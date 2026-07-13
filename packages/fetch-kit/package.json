@@ -28,6 +28,7 @@
   "main": "./dist/@some-ui/fetch-kit.cjs.js",
   "module": "./dist/@some-ui/fetch-kit.es.js",
   "name": "@some-ui/fetch-kit",
+  "private": true,
   "peerDependencies": {
     "@tanstack/react-query": "^5.66.11",
     "react": "^19.0.0",
