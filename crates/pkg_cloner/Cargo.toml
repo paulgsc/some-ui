@@ -13,7 +13,7 @@ dialoguer = { version = "0.12" }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.8"
 tempfile = "3.6"
 
 [lints]
