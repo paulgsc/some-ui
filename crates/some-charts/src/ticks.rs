@@ -35,8 +35,13 @@ pub fn ticks(start: f64, stop: f64, count: f64) -> Box<[f64]> {
 #[wasm_bindgen]
 #[must_use]
 pub fn tick_increment(start: f64, stop: f64, count: f64) -> f64 {
-    let (_, _, inc) = tick_spec(start, stop, count);
-    inc
+    let reverse = start > stop;
+    let (_, _, inc) = if reverse { tick_spec(stop, start, count) } else { tick_spec(start, stop, count) };
+    if reverse {
+        -inc
+    } else {
+        inc
+    }
 }
 
 #[wasm_bindgen]

@@ -667,7 +667,7 @@ mod tests {
     #[test]
     fn test_categorize_words() {
         let words = vec!["cat".to_string(), "dog".to_string(), "bat".to_string(), "xyz".to_string()];
-        let generator = CrosswordGenerator::new(words, 5);
+        let generator = CrosswordGenerator::new(words, 5).unwrap();
 
         let (shared_words, isolated_words) = generator.categorize_words();
 
@@ -688,8 +688,9 @@ mod tests {
 
     #[test]
     fn test_empty_input() {
-        let mut generator = CrosswordGenerator::new(vec![], 5).unwrap();
-        let result = generator.generate_internal();
+        // `new` now validates eagerly and rejects an empty word list before
+        // a generator is even constructed.
+        let result = CrosswordGenerator::new(vec![], 5);
         assert!(result.is_err());
     }
 
@@ -701,7 +702,7 @@ mod tests {
         let result = generator.generate_internal();
         assert!(result.is_ok());
 
-        let placements = generator.get_word_placements();
+        let placements = &generator.word_positions;
         assert_eq!(placements.len(), 1);
         assert_eq!(placements[0].word, "hello");
     }
@@ -714,7 +715,7 @@ mod tests {
         let result = generator.generate_internal();
         assert!(result.is_ok());
 
-        let placements = generator.get_word_placements();
+        let placements = &generator.word_positions;
         assert_eq!(placements.len(), 1); // Should deduplicate
     }
 
@@ -727,7 +728,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Both words should be placed
-        let placements = generator.get_word_placements();
+        let placements = &generator.word_positions;
         assert_eq!(placements.len(), 2);
 
         // Words should have different orientations
@@ -746,7 +747,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Check that no group exceeds max size
-        let placements = generator.get_word_placements();
+        let placements = &generator.word_positions;
         let mut group_sizes: HashMap<usize, usize> = HashMap::new();
 
         for placement in placements {
@@ -768,8 +769,8 @@ mod tests {
         let result = generator.generate_internal();
         assert!(result.is_ok());
 
-        let grid = generator.get_grid();
-        let placements = generator.get_word_placements();
+        let grid = &generator.grid;
+        let placements = &generator.word_positions;
 
         // Create a set of positions that are part of words
         let mut word_positions = HashSet::new();
@@ -830,12 +831,16 @@ mod tests {
 
     #[test]
     fn test_isolated_word_placement() {
-        // Create words where some share letters and some don't
+        // Create words where some share letters and some don't. "sky" and
+        // "quiz" share no letters with "apple"/"orange" or with each other
+        // (categorize_words considers a word "shared" if it has any letter
+        // in common with *any* other word in the list, so e.g. "xyz" and
+        // "qwerty" would both count as shared via their common 'y').
         let words = vec![
             "apple".to_string(),  // shares letters
             "orange".to_string(), // shares letters
-            "xyz".to_string(),    // isolated
-            "qwerty".to_string(), // isolated
+            "sky".to_string(),    // isolated
+            "quiz".to_string(),   // isolated
         ];
 
         let mut generator = CrosswordGenerator::new(words, 5).unwrap();
@@ -843,13 +848,13 @@ mod tests {
         assert!(result.is_ok());
 
         // Check that all words are placed
-        let placements = generator.get_word_placements();
+        let placements = &generator.word_positions;
         assert_eq!(placements.len(), 4);
 
         // Verify that isolated words have their own group IDs
         let mut isolated_word_groups = HashSet::new();
         for placement in placements {
-            if placement.word == "xyz" || placement.word == "qwerty" {
+            if placement.word == "sky" || placement.word == "quiz" {
                 isolated_word_groups.insert(placement.group_id);
             }
         }

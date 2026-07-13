@@ -20,3 +20,9 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [lints]
 workspace = true
+
+# getrandom is never called directly, but must be a direct dependency for
+# its "js" feature to activate on the wasm32 target (rand's getrandom
+# backend otherwise panics at runtime under wasm-pack).
+[package.metadata.cargo-machete]
+ignored = ["getrandom"]

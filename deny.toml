@@ -14,6 +14,10 @@ allow = [
 ]
 
 [bans]
+# Diverging-deps tracking: warns (does not fail CI) when two crates in the
+# resolved graph depend on different major/minor versions of the same
+# dependency, e.g. rand 0.8 vs 0.9 across wasm crates. Checked by the
+# rust-deny "bans" job in _deny-checks.yml.
 multiple-versions = "warn"
 wildcards = "allow"
 
