@@ -1,5 +1,5 @@
+import type { FC } from "react"
 import { BrickTexture } from "@nfl/components/brick-wall/brick-texture"
-import type { NFLTeam } from "@nfl/components/nfl-team-icon"
 import { NFLTeamIcon } from "@nfl/components/nfl-team-icon"
 import type { BrickData } from "@nfl/types/brick-wall"
 import { getTextColor, interpolateOklch } from "@nfl/utils/color-intensity"
@@ -8,7 +8,7 @@ type BrickProps = {
   brick: BrickData
 }
 
-export const Brick: React.FC<BrickProps> = ({ brick }) => {
+export const Brick: FC<BrickProps> = ({ brick }) => {
   const {
     position: { x, y, width, height },
     item,
@@ -35,7 +35,7 @@ export const Brick: React.FC<BrickProps> = ({ brick }) => {
     )
   }
 
-  if (!item) return <></>
+  if (!item) return null
   const startColor: [number, number, number] = [80, 0.2, 270] // Light Purple
   const endColor: [number, number, number] = [40, 0.3, 150] // Dark Greenish Blue
   const { color, lightness } = interpolateOklch(
@@ -68,7 +68,7 @@ export const Brick: React.FC<BrickProps> = ({ brick }) => {
         width={iconSize}
         height={iconSize}
       >
-        <NFLTeamIcon team={item.name as NFLTeam} size={iconSize} />
+        <NFLTeamIcon team={item.name} size={iconSize} />
       </foreignObject>
       <text
         x={x + width / 2}

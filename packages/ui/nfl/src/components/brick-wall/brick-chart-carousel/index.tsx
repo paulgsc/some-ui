@@ -1,11 +1,12 @@
 import type { ComponentProps, FC, JSX, ReactNode } from "react"
 import { useCallback, useMemo } from "react"
 import { BrickWallChart } from "@nfl/components/brick-wall/brick-ladder-chart"
+import type { NFLTeam } from "@nfl/components/nfl-team-icon"
 import Autoplay from "embla-carousel-autoplay"
 import { Carousel, CarouselContent, CarouselItem } from "some-ui-shared"
 
 type Standing = {
-  name: string
+  name: NFLTeam
   value: number
   imageUrl: string
   properties?: Record<string, string | number | object>
@@ -39,6 +40,7 @@ export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
 }): JSX.Element | null => {
   const autoplay = useMemo(
     () =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       Autoplay({
         delay: autoplayDelay,
         stopOnInteraction,

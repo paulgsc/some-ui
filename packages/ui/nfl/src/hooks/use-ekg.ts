@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { EKGWaveParams } from "@nfl/types/ekg"
 import { calculateEKGValue } from "@nfl/utils/ekg"
 
@@ -7,46 +7,41 @@ export const useEKGData = (
   maxPoints: number,
   pointSpacing: number
 ): Array<{ x: number; y: number }> => {
-  const [time, setTime] = useState<number>(0)
-  const [points, setPoints] = useState<Array<{ x: number; y: number }>>([])
-  const animationFrameRef = useRef<number | null>(null)
+  const [time, setTime] = useState(0)
   const lastTimestampRef = useRef<number | null>(null)
 
-  const updateEKG = (timestamp: number): void => {
-    if (!lastTimestampRef.current) {
+  useEffect(() => {
+    let frame = 0
+
+    const tick = (timestamp: number): void => {
+      const last = lastTimestampRef.current
+
+      if (last !== null) {
+        setTime((time) => time + (timestamp - last) / 1000)
+      }
+
       lastTimestampRef.current = timestamp
+      frame = requestAnimationFrame(tick)
     }
 
-    // Calculate time elapsed in seconds
-    const elapsed = (timestamp - lastTimestampRef.current) / 1000
-    lastTimestampRef.current = timestamp
+    frame = requestAnimationFrame(tick)
 
-    setTime((prevTime) => prevTime + elapsed)
-    animationFrameRef.current = requestAnimationFrame(updateEKG)
-  }
-
-  useEffect((): (() => void) => {
-    animationFrameRef.current = requestAnimationFrame(updateEKG)
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
+    return (): void => {
+      cancelAnimationFrame(frame)
+      lastTimestampRef.current = null
     }
   }, [])
 
-  useEffect((): void => {
-    const newPoints = []
-    for (let i = 0; i < maxPoints; i++) {
+  return useMemo(() => {
+    return Array.from({ length: maxPoints }, (_, i) => {
       const x = i * pointSpacing
       const pointTime =
-        time -
-        ((maxPoints - i) * pointSpacing * (60.0 / params.heartRate)) / 1000
-      const ekgValue = calculateEKGValue(pointTime, params)
-      const y = -ekgValue // Inverted for SVG coordinate system
-      newPoints.push({ x, y })
-    }
-    setPoints(newPoints)
-  }, [time, params, maxPoints, pointSpacing])
+        time - ((maxPoints - i) * pointSpacing * (60 / params.heartRate)) / 1000
 
-  return points
+      return {
+        x,
+        y: -calculateEKGValue(pointTime, params),
+      }
+    })
+  }, [time, params, maxPoints, pointSpacing])
 }

@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { moodEmoji, moodLabel } from "@nfl/utils/hopium/mood"
 import { TrendingDown, TrendingUp } from "lucide-react"
@@ -12,14 +11,6 @@ type Props = {
 }
 
 export const EventCard = ({ event, keySeed }: Props): JSX.Element | null => {
-  const [show, setShow] = useState(false)
-
-  useEffect((): (() => void) => {
-    setShow(false)
-    const t = setTimeout(() => setShow(true), 10)
-    return () => clearTimeout(t)
-  }, [event?.id, keySeed])
-
   if (!event) return null
   const positive = event.delta >= 0
 
@@ -29,7 +20,7 @@ export const EventCard = ({ event, keySeed }: Props): JSX.Element | null => {
       className={cn(
         "absolute inset-0 border-white/10 bg-slate-900/80",
         "transition-all duration-500",
-        show ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+        "translate-y-0 opacity-100"
       )}
     >
       <CardContent className="flex flex-1 justify-around p-4">

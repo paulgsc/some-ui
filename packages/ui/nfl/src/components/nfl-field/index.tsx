@@ -1,4 +1,10 @@
-import type { ReactSVGElement, SVGAttributes, forwardRef, Fragment, type ComponentPropsWithoutRef  } from "react"
+import {
+  forwardRef,
+  Fragment,
+  type ComponentPropsWithoutRef,
+  type ReactSVGElement,
+  type SVGAttributes,
+} from "react"
 import { cn } from "some-ui-utils"
 
 type FootballFieldProps = {
@@ -56,13 +62,13 @@ const FootballFieldRoot = forwardRef<SVGSVGElement, FootballFieldProps>(
   (
     {
       className,
-      teamName = "NORTON",
-      primaryColor = "#C8102E",
-      secondaryColor = "#FFB612",
-      accentColor = "white",
       fieldColor = "#2E5A27",
       width = 100,
       height = 53.3,
+      teamName: _teamName,
+      primaryColor: _primaryColor,
+      secondaryColor: _secondaryColor,
+      accentColor: _accentColor,
       ...props
     },
     ref
@@ -134,52 +140,59 @@ const FieldLines = forwardRef<SVGGElement, FieldLineProps>(
   ({ count = 21, startX = 10, spacing = 4, dashArray, ...props }, ref) => {
     return (
       <g ref={ref} {...props}>
-        {Array.from({ length: count }).map((_, i) => (
-          <line
-            key={`line-${i}`}
-            x1={startX + i * spacing}
-            y1={0}
-            x2={startX + i * spacing}
-            y2={53.3}
-            stroke="white"
-            strokeWidth={i % 2 === 0 ? "0.15" : "0.1"}
-            strokeDasharray={i % 2 === 0 ? "" : dashArray || "0.2,0.2"}
-          />
-        ))}
+        {Array.from({ length: count }).map((_, i) => {
+          const lineX = startX + i * spacing
+          return (
+            <line
+              key={`line-${lineX}`}
+              x1={lineX}
+              y1={0}
+              x2={lineX}
+              y2={53.3}
+              stroke="white"
+              strokeWidth={i % 2 === 0 ? "0.15" : "0.1"}
+              strokeDasharray={i % 2 === 0 ? "" : dashArray || "0.2,0.2"}
+            />
+          )
+        })}
       </g>
     )
   }
 )
 FieldLines.displayName = "FieldLines"
 
-const HashMarks = forwardRef<SVGGElement, ComponentPropsWithoutRef<"g">>(
-  ({ ...props }, ref) => {
-    return (
-      <g ref={ref} {...props}>
-        {Array.from({ length: 100 }).map((_, i) => (
-          <Fragment key={`hash-${i}`}>
+const HashMarks = forwardRef<
+  SVGGElement,
+  ComponentPropsWithoutRef<"g" | "svg">
+>(({ ...props }, ref) => {
+  return (
+    <g ref={ref} {...props}>
+      {Array.from({ length: 100 }).map((_, i) => {
+        const markX = 10 + i * 0.8
+        return (
+          <Fragment key={`hash-${markX.toFixed(1)}`}>
             <line
-              x1={10 + i * 0.8}
+              x1={markX}
               y1={15.3}
-              x2={10 + i * 0.8}
+              x2={markX}
               y2={16.3}
               stroke="white"
               strokeWidth="0.1"
             />
             <line
-              x1={10 + i * 0.8}
+              x1={markX}
               y1={37}
-              x2={10 + i * 0.8}
+              x2={markX}
               y2={38}
               stroke="white"
               strokeWidth="0.1"
             />
           </Fragment>
-        ))}
-      </g>
-    )
-  }
-)
+        )
+      })}
+    </g>
+  )
+})
 HashMarks.displayName = "HashMarks"
 
 const YardNumbers = forwardRef<SVGGElement, YardNumberProps>(
@@ -194,7 +207,7 @@ const YardNumbers = forwardRef<SVGGElement, YardNumberProps>(
 
           return (
             <text
-              key={`${orientation}-${i}`}
+              key={`${orientation}-${x}`}
               x={x}
               y={y}
               fill="white"
@@ -261,7 +274,6 @@ const FieldBorder = forwardRef<SVGRectElement, FieldBorderProps>(
 )
 FieldBorder.displayName = "FieldBorder"
 
-// Export the compound component
 const FootballField = Object.assign(FootballFieldRoot, {
   EndZone,
   FieldLines,

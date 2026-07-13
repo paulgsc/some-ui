@@ -79,7 +79,7 @@ export function calculateBrickPositions(
  * Calculate the maximum number of elements across all layers
  */
 export function calculateMaxLayerWidth(
-  groupedData: Record<number, Array<any>>
+  groupedData: Record<number, Array<unknown>>
 ): number {
   return Math.max(...Object.values(groupedData).map((items) => items.length))
 }

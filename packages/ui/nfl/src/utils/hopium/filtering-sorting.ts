@@ -3,6 +3,7 @@ import type {
   SatelliteDataItem,
   SortType,
 } from "@nfl/types/hopium/hopium-tracker"
+import { assertNever } from "@nfl/utils/error"
 
 export const applyFilter = <T>(
   items: Array<SatelliteDataItem<T>>,
@@ -18,9 +19,12 @@ export const applyFilter = <T>(
     case "hidden": {
       return [...items].sort((a, b) => a.freshness - b.freshness)
     }
-    case "all":
-    default: {
+    case "all": {
       return items
+    }
+    default: {
+      filter satisfies never
+      assertNever(filter)
     }
   }
 }
@@ -47,7 +51,8 @@ export const applySorting = <T>(
         )
       }
       default: {
-        return a.freshness - b.freshness
+        sortBy satisfies never
+        assertNever(sortBy)
       }
     }
   })

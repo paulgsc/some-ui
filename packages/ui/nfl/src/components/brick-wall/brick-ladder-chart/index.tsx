@@ -1,4 +1,4 @@
-import type { FC, JSX, ReactNode, RefObject } from "react"
+import type { FC, JSX, ReactNode } from "react"
 import { useRef } from "react"
 import { Brick } from "@nfl/components/brick-wall/brick"
 import { Crown } from "@nfl/components/brick-wall/crown"
@@ -49,9 +49,7 @@ export const BrickWallChart: FC<BrickWallChartProps> = ({
 
   const groupedData: Record<number, Array<DataItem>> = {}
   processedData.forEach((item) => {
-    if (!groupedData[item.value]) {
-      groupedData[item.value] = []
-    }
+    groupedData[item.value] ??= []
     groupedData[item.value]?.push(item) // Added optional chain
   })
 

@@ -1,4 +1,4 @@
-import type { FC, RefObject } from "react"
+import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
 import { NflPlayerCard } from "@nfl/components/player-card"
 import { Button, Dialog, DialogContent, DialogTrigger } from "some-ui-shared"

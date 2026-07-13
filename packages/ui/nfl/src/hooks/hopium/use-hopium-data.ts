@@ -4,6 +4,7 @@ import type {
   RefreshCallbacks,
   SatelliteDataItem,
 } from "@nfl/types/hopium/hopium-tracker"
+import { isError } from "@nfl/utils/error"
 
 // Defined a return type for the hook to satisfy the linter
 export type UseSatelliteDataReturn<T> = {
@@ -55,7 +56,9 @@ export function useSatelliteData<T>(
           callbacks?.onSuccess?.(newData[0])
         }
       } catch (error) {
-        callbacks?.onFailure?.(error as Error, "all")
+        if (isError(error)) {
+          callbacks?.onFailure?.(error, "all")
+        }
       } finally {
         setIsRefreshing(false)
       }
@@ -73,7 +76,9 @@ export function useSatelliteData<T>(
         )
         callbacks?.onSuccess?.(updatedItem)
       } catch (error) {
-        callbacks?.onFailure?.(error as Error, id)
+        if (isError(error)) {
+          callbacks?.onFailure?.(error, id)
+        }
       }
     },
     [adapter]
