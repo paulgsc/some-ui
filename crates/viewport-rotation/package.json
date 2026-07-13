@@ -1,10 +1,10 @@
 {
   "name": "@some-ui/viewport-rotation",
   "private": false,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "dist/viewport_rotation.js",
   "module": "dist/viewport_rotation.js",
-  "types": "dist/viewport_rotation.d.ts",
+  "types": "index.d.ts",
   "type": "module",
   "scripts": {
     "build": "wasm-pack build --target web --release --out-dir dist",
@@ -27,6 +27,5 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "license": "MIT",
   "keywords": [],
-  "sideEffects": false,
-  "types": "index.d.ts"
+  "sideEffects": false
 }

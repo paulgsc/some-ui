@@ -62,6 +62,6 @@
   "type": "module",
   "types": "./dist/wireframes.d.ts",
   "unpkg": "wireframes.umd.js",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "style": "./dist/wireframes.css"
 }
