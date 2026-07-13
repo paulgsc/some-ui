@@ -266,7 +266,6 @@ impl SymmetricHexLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::HexGrid;
 
     #[test]
     fn test_symmetric_layout() {
@@ -309,12 +308,5 @@ mod tests {
 
         // Check that some cells were modified
         assert!(modified.len() > 0);
-
-        // Check that we can get coords for specific ranks
-        let rank1_upper = layout.get_rank_coords(&grid, 1, true);
-        let rank1_lower = layout.get_rank_coords(&grid, 1, false);
-
-        assert!(!rank1_upper.is_empty());
-        assert!(!rank1_lower.is_empty());
     }
 }

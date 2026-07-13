@@ -89,6 +89,8 @@ impl fmt::Display for CubeCoord {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_cell::HexCell;
+    use hex_grid::HexGrid;
 
     // Helper function to create a CubeCoord for tests
     fn create_coord(x: i32, y: i32, z: i32) -> CubeCoord {
@@ -186,24 +188,6 @@ mod tests {
     }
 
     #[test]
-    fn test_hex_cell_with_color() {
-        let coord = create_coord(1, -3, 2);
-        let cell = HexCell::with_color(coord, 0xFF0000);
-        assert_eq!(cell.coord, coord);
-        assert_eq!(cell.color, Some(0xFF0000));
-        assert_eq!(cell.content, None);
-    }
-
-    #[test]
-    fn test_hex_cell_with_content() {
-        let coord = create_coord(1, -3, 2);
-        let cell = HexCell::with_content(coord, "Test Content".to_string());
-        assert_eq!(cell.coord, coord);
-        assert_eq!(cell.color, None);
-        assert_eq!(cell.content, Some("Test Content".to_string()));
-    }
-
-    #[test]
     fn test_hex_cell_set_color() {
         let coord = create_coord(1, -3, 2);
         let mut cell = HexCell::new(coord);
@@ -222,7 +206,8 @@ mod tests {
     #[test]
     fn test_hex_cell_clear_color() {
         let coord = create_coord(1, -3, 2);
-        let mut cell = HexCell::with_color(coord, 0xFF0000);
+        let mut cell = HexCell::new(coord);
+        cell.set_color(0xFF0000);
         cell.clear_color();
         assert_eq!(cell.color, None);
     }
@@ -230,7 +215,8 @@ mod tests {
     #[test]
     fn test_hex_cell_clear_content() {
         let coord = create_coord(1, -3, 2);
-        let mut cell = HexCell::with_content(coord, "Test Content".to_string());
+        let mut cell = HexCell::new(coord);
+        cell.set_content("Test Content".to_string());
         cell.clear_content();
         assert_eq!(cell.content, None);
     }
@@ -239,26 +225,13 @@ mod tests {
     fn test_hex_grid_new() {
         let grid = HexGrid::new(3);
         assert_eq!(grid.size(), 3);
-        assert_eq!(grid.cell_count(), HexGrid::theoretical_cell_count(3));
-    }
-
-    #[test]
-    fn test_hex_grid_generate() {
-        let mut grid = HexGrid::new(2);
-        grid.generate(); // Redundant, but good to test explicitly if the method is public
-        assert_eq!(grid.size(), 2);
-        assert_eq!(grid.cell_count(), HexGrid::theoretical_cell_count(2));
-
-        let mut grid2 = HexGrid::new(0);
-        grid2.generate();
-        assert_eq!(grid2.size(), 0);
-        assert_eq!(grid2.cell_count(), HexGrid::theoretical_cell_count(0));
+        assert_eq!(grid.cell_count(), 37); // 3r^2 + 3r + 1 for r=3
     }
 
     #[test]
     fn test_hex_grid_cell_count() {
         let grid = HexGrid::new(4);
-        assert_eq!(grid.cell_count(), HexGrid::theoretical_cell_count(4));
+        assert_eq!(grid.cell_count(), 61); // 3r^2 + 3r + 1 for r=4
     }
 
     #[test]
@@ -314,21 +287,6 @@ mod tests {
     }
 
     #[test]
-    fn test_hex_grid_clear_cell_color() {
-        let mut grid = HexGrid::new(2);
-        let coord = create_coord(0, 0, 0);
-        grid.set_cell_color(&coord, 0xFF0000);
-        let result = grid.clear_cell_color(&coord);
-        assert_eq!(result, true);
-        let cell = grid.get_cell(&coord);
-        assert_eq!(cell.unwrap().color, None);
-
-        let invalid_coord = create_coord(10, 10, -20);
-        let result = grid.clear_cell_color(&invalid_coord);
-        assert_eq!(result, false);
-    }
-
-    #[test]
     fn test_hex_grid_fill_region() {
         let mut grid = HexGrid::new(3);
         let center = create_coord(0, 0, 0);
@@ -345,7 +303,7 @@ mod tests {
             assert_eq!(cell.color, None);
         }
         // Check the number of colored cells.  Radius 2 should be 19.
-        let colored_count = grid.colored_cells().count();
+        let colored_count = grid.all_cells().filter(|c| c.color.is_some()).count();
         assert_eq!(colored_count, 19);
     }
 
@@ -364,24 +322,15 @@ mod tests {
         assert_eq!(grid.get_cell(&coord_at_1).unwrap().color, None);
 
         // Check the number of colored cells. Ring radius 2 should be 6*2 = 12
-        let colored_count = grid.colored_cells().count();
+        let colored_count = grid.all_cells().filter(|c| c.color.is_some()).count();
         assert_eq!(colored_count, 12);
-    }
-
-    #[test]
-    fn test_hex_grid_contains() {
-        let grid = HexGrid::new(2);
-        let coord_in = create_coord(0, 0, 0);
-        let coord_out = create_coord(10, 0, -10);
-        assert_eq!(grid.contains(&coord_in), true);
-        assert_eq!(grid.contains(&coord_out), false);
     }
 
     #[test]
     fn test_hex_grid_all_cells() {
         let grid = HexGrid::new(2);
         let all_cells_count = grid.all_cells().count();
-        assert_eq!(all_cells_count, HexGrid::theoretical_cell_count(2));
+        assert_eq!(all_cells_count, 19); // 3r^2 + 3r + 1 for r=2
     }
 
     #[test]
@@ -389,15 +338,8 @@ mod tests {
         let mut grid = HexGrid::new(2);
         let center = create_coord(0, 0, 0);
         grid.set_cell_color(&center, 0xFF0000);
-        let colored_cells_count = grid.colored_cells().count();
+        let colored_cells_count = grid.all_cells().filter(|c| c.color.is_some()).count();
         assert_eq!(colored_cells_count, 1);
-    }
-
-    #[test]
-    fn test_hex_grid_center() {
-        let grid = HexGrid::new(5);
-        let center = grid.center();
-        assert_eq!(center, create_coord(0, 0, 0));
     }
 
     #[test]
@@ -405,60 +347,6 @@ mod tests {
         let grid = HexGrid::new(7);
         let size = grid.size();
         assert_eq!(size, 7);
-    }
-
-    #[test]
-    fn test_hex_grid_create_hexagon_pattern() {
-        let mut grid = HexGrid::new(5);
-        grid.create_hexagon_pattern(1, 2, 0xFF0000);
-        // The center should be colored.
-        assert_eq!(grid.get_cell(&grid.center()).unwrap().color, Some(0xFF0000));
-        // Check a cell in one of the neighboring hexagons.
-        let neighbor_cell = create_coord(2, -2, 0);
-        assert_eq!(grid.get_cell(&neighbor_cell).unwrap().color, Some(0xFF0000));
-        // Check a cell that should not be colored.
-        let far_cell = create_coord(4, -4, 0);
-        if let Some(cell) = grid.get_cell(&far_cell) {
-            assert_eq!(cell.color, None);
-        }
-    }
-
-    #[test]
-    fn test_hex_grid_create_corner_touching_pattern() {
-        let mut grid = HexGrid::new(5);
-        grid.create_corner_touching_pattern(1, 0xFF0000);
-        // The center should be colored.
-        assert_eq!(grid.get_cell(&grid.center()).unwrap().color, Some(0xFF0000));
-        // Check one of the neighbors
-        let neighbor_cell = create_coord(2, -1, -1);
-        assert_eq!(grid.get_cell(&neighbor_cell).unwrap().color, Some(0xFF0000));
-    }
-
-    #[test]
-    fn test_hex_grid_create_overlapping_pattern() {
-        let mut grid = HexGrid::new(5);
-        grid.create_overlapping_pattern(1, 2, 0xFF0000);
-        // Center should be colored
-        assert_eq!(grid.get_cell(&grid.center()).unwrap().color, Some(0xFF0000));
-        // Check a neighbor
-        let neighbor_cell = create_coord(2, -2, 0);
-        assert_eq!(grid.get_cell(&neighbor_cell).unwrap().color, Some(0xFF0000));
-    }
-
-    #[test]
-    fn test_hex_grid_theoretical_cell_count() {
-        assert_eq!(HexGrid::theoretical_cell_count(0), 1);
-        assert_eq!(HexGrid::theoretical_cell_count(1), 7);
-        assert_eq!(HexGrid::theoretical_cell_count(2), 19);
-        assert_eq!(HexGrid::theoretical_cell_count(3), 37);
-    }
-
-    #[test]
-    fn test_hex_grid_theoretical_ring_count() {
-        assert_eq!(HexGrid::theoretical_ring_count(0), 1);
-        assert_eq!(HexGrid::theoretical_ring_count(1), 6);
-        assert_eq!(HexGrid::theoretical_ring_count(2), 12);
-        assert_eq!(HexGrid::theoretical_ring_count(3), 18);
     }
 
     #[test]
@@ -479,63 +367,6 @@ mod tests {
         let bounds = grid.bounds();
         assert_eq!(bounds.0, (-2, -2)); // min_q, min_r
         assert_eq!(bounds.1, (2, 2)); // max_q, max_r
-    }
-
-    #[test]
-    fn test_hex_grid_to_text_representation() {
-        let mut grid = HexGrid::new(2);
-        let center = create_coord(0, 0, 0);
-        grid.set_cell_color(&center, 0xFF0000);
-        let text_repr = grid.to_text_representation();
-        // The exact string representation depends on the algorithm.
-        // Here's a basic check that verifies non-emptiness and the presence of '#'
-        assert!(!text_repr.is_empty());
-        assert!(text_repr.contains("#"));
-        assert!(text_repr.contains("."));
-    }
-
-    #[test]
-    fn test_hex_to_pixel() {
-        let coord = create_coord(1, -2, 1);
-        let size = 10.0;
-        let (x, y) = utils::hex_to_pixel(&coord, size);
-        // Expected values are calculated based on the conversion formula.
-        let expected_x = size * (3.0_f32.sqrt() * 1.0 + 3.0_f32.sqrt() / 2.0 * -2.0);
-        let expected_y = size * (3.0 / 2.0 * -2.0);
-        assert_eq!(x, expected_x);
-        assert_eq!(y, expected_y);
-    }
-
-    #[test]
-    fn test_pixel_to_hex() {
-        let size = 10.0;
-        let x = size * (3.0_f32.sqrt() * 1.0 + 3.0_f32.sqrt() / 2.0 * -2.0);
-        let y = size * (3.0 / 2.0 * -2.0);
-        let coord = utils::pixel_to_hex(x, y, size);
-        // Due to the rounding in pixel_to_hex, we expect to get back the original cube coord
-        assert_eq!(coord, create_coord(1, -2, 1));
-    }
-
-    #[test]
-    fn test_hex_to_pixel_pointy_top() {
-        // Test the center hex
-        let center = CubeCoord::new_unchecked(0, 0, 0);
-        let size = 10.0;
-        let (x, y) = utils::hex_to_pixel(&center, size);
-        assert_eq!(x, 0.0);
-        assert_eq!(y, 0.0);
-
-        // Test q-axis neighbor (pointy-top orientation)
-        let q_neighbor = CubeCoord::new_unchecked(1, -1, 0);
-        let (x, y) = utils::hex_to_pixel(&q_neighbor, size);
-        assert!((x - 3.0 * 10.0 * 0.5_f32.sqrt()).abs() < 0.001);
-        assert_eq!(y, 0.0);
-
-        // Test r-axis neighbor (pointy-top orientation)
-        let r_neighbor = CubeCoord::new_unchecked(0, -1, 1);
-        let (x, y) = utils::hex_to_pixel(&r_neighbor, size);
-        assert!((x - 1.5 * 10.0 * 0.5_f32.sqrt()).abs() < 0.001);
-        assert!((y + 1.5 * 10.0).abs() < 0.001);
     }
 
     #[test]

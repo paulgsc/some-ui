@@ -7,5 +7,6 @@
   deps = with pkgs; [
     cargo-deny
     cargo-audit
+    cargo-machete
   ];
 }

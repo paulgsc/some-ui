@@ -33,6 +33,33 @@ jobs:
           cache-target: "false"
       - name: cargo deny check ${{ matrix.checks }}
         run: nix develop .#deny --command cargo deny check ${{ matrix.checks }}
+  # Orphan dependency tracking: cargo-machete flags declared-but-unused
+  # dependencies in Cargo.toml (e.g. leftovers from a deleted crate). Runs
+  # from the same .#deny nix shell as cargo-deny to keep the audit toolchain
+  # in one place.
+  #
+  # Diverging (duplicate-version) dependency tracking already lives in the
+  # rust-deny "bans" check above — deny.toml sets `multiple-versions = "warn"`,
+  # which surfaces duplicate crate versions across the workspace without
+  # failing the build.
+  #
+  # A dependency that's a false positive (e.g. only used to activate a
+  # feature, never referenced by name — like getrandom's wasm feature for
+  # rand's wasm backend) should be added to that crate's own
+  # `[package.metadata.cargo-machete] ignored = [...]`, not silenced here.
+  rust-machete:
+    name: Rust Orphan Deps (cargo-machete)
+    if: inputs.rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/cargo-cache
+        with:
+          key-suffix: machete
+          cache-target: "false"
+      - name: cargo machete
+        run: nix develop .#deny --command cargo machete
   # Node: license audit via pnpm licenses list.
   # We write the JSON to a temp file so we can run the audit script in the
   # same nix shell invocation as pnpm — avoids the stdin-across-subshells problem.

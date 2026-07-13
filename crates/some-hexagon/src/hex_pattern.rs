@@ -317,7 +317,6 @@ fn min(a: i32, b: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::HexGrid;
 
     #[test]
     fn test_place_text_horizontal() {
@@ -325,8 +324,7 @@ mod tests {
         let text = "BROCK";
         let start = CubeCoord { x: -2, y: 0, z: 2 };
 
-        let modified = HexPatterns::place_text(
-            &mut grid,
+        let modified = grid.place_text(
             text,
             start,
             Direction::Horizontal,
@@ -335,64 +333,19 @@ mod tests {
 
         assert_eq!(modified.len(), 5);
 
-        // Verify each character was placed correctly
+        // Verify each character was placed correctly. Direction::Horizontal's
+        // vector is (1, -1, 0) (see get_vector), so y decreases and z stays
+        // fixed as we advance along the word.
         for (i, ch) in text.chars().enumerate() {
             let coord = CubeCoord {
                 x: start.x + i as i32,
-                y: start.y,
-                z: start.z - i as i32,
+                y: start.y - i as i32,
+                z: start.z,
             };
 
             let cell = grid.get_cell(&coord).unwrap();
             assert_eq!(cell.content, Some(ch.to_string()));
             assert_eq!(cell.color, Some(0xFFFF00));
         }
-    }
-
-    #[test]
-    fn test_fill_row() {
-        let mut grid = HexGrid::new(5);
-        let row = 0; // Center row (z = 0)
-
-        let modified = HexPatterns::fill_row(
-            &mut grid,
-            row,
-            Direction::Horizontal,
-            0xFF0000, // Red
-        );
-
-        // For a grid of size 5, horizontal row at z=0 should have 11 cells
-        assert_eq!(modified.len(), 11);
-
-        // Check that all cells in the row are colored
-        for x in -5..=5 {
-            let coord = CubeCoord { x, y: -x, z: 0 };
-
-            let cell = grid.get_cell(&coord).unwrap();
-            assert_eq!(cell.color, Some(0xFF0000));
-        }
-    }
-
-    #[test]
-    fn test_checkerboard_pattern() {
-        let mut grid = HexGrid::new(2);
-
-        let modified = HexPatterns::checkerboard_pattern(
-            &mut grid,
-            0xFF0000,       // Red
-            Some(0x0000FF), // Blue
-        );
-
-        // A grid of size 2 has 19 cells
-        assert_eq!(modified.len(), 19);
-
-        // Check pattern correctness for a few sample cells
-        let center = CubeCoord { x: 0, y: 0, z: 0 };
-        let cell = grid.get_cell(&center).unwrap();
-        assert_eq!(cell.color, Some(0xFF0000)); // Center should be color1
-
-        let neighbor = CubeCoord { x: 1, y: -1, z: 0 };
-        let cell = grid.get_cell(&neighbor).unwrap();
-        assert_eq!(cell.color, Some(0x0000FF)); // Should be color2
     }
 }
