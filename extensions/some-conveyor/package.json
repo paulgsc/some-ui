@@ -48,9 +48,9 @@
   },
   "scripts": {
     "build": "pnpm build:firefox",
-    "build:chromium": "tsc -p tsconfig.build.json && vite build --config vite.config.chromium.ts && pnpm build:css",
+    "build:chromium": "tsc -p tsconfig.build.json && some-ext-build chromium && pnpm build:css",
     "build:css": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/conveyor.css\" --config uno.config.ts --no-preflights -o dist/styles/conveyor.css",
-    "build:firefox": "tsc -p tsconfig.build.json && vite build && pnpm build:css",
+    "build:firefox": "tsc -p tsconfig.build.json && some-ext-build firefox && pnpm build:css",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite",

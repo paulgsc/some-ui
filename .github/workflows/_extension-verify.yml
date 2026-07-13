@@ -99,17 +99,30 @@ jobs:
       - name: Test
         run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source
-      # tree and the pnpm lockfile so a workspace-only change still rebuilds.
+      # tree, extensions/common (shared runtime util several extensions import
+      # — a source-only change there doesn't touch extension_path/** or bump
+      # pnpm-lock.yaml, so it must be hashed explicitly or a stale dist gets
+      # restored and skips Build below), and the pnpm lockfile.
       - name: Restore extension build cache
         id: ext-cache
         uses: actions/cache@v4
         with:
           path: ${{ matrix.extension_path }}/dist
-          key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'pnpm-lock.yaml') }}
+          key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'extensions/common/**', 'pnpm-lock.yaml') }}
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build
         if: steps.ext-cache.outputs.cache-hit != 'true'
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
+      # ── Self-contained entry check ─────────────────────────────────────
+      # Content scripts, MV2 background scripts, and non-module MV3 service
+      # workers run as classic scripts and cannot use ESM import/export. Rollup
+      # emits a shared chunk whenever a module is imported by 2+ entries (e.g. a
+      # util hoisted into a shared package), which silently breaks those entries
+      # at load with "Cannot use import statement outside a module". This check
+      # fails on any NEW such violation; known debt is tracked in
+      # extensions/scripts/self-contained-baseline.json and ratchets down only.
+      - name: Assert classic entries are self-contained
+        run: nix develop .#ci --command node extensions/scripts/assert-self-contained.mjs "${{ matrix.extension_path }}/dist"
       - name: web-ext lint
         run: |
           nix develop .#ci --command web-ext lint \

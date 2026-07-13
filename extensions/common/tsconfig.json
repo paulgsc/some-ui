@@ -9,6 +9,12 @@
       "@common/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "scripts", "tests/**/*.ts", "playwright.config.ts"],
-  "exclude": ["node_modules", "build", "dist"]
+  "include": [
+    "src/**/*",
+    "ext-build/**/*.ts",
+    "scripts",
+    "tests/**/*.ts",
+    "playwright.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }
