@@ -2,7 +2,6 @@ import { resolve } from "path"
 import preact from "@preact/preset-vite"
 import { defineConfig } from "vite"
 import dts from "vite-plugin-dts"
-import tsconfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
   plugins: [
@@ -11,9 +10,6 @@ export default defineConfig({
       outDir: "dist",
       entryRoot: "src",
       exclude: ["**/*.stories.*", "**/*.test.*"],
-    }),
-    tsconfigPaths({
-      projects: ["./tsconfig.build.json"],
     }),
   ],
   build: {
@@ -38,6 +34,7 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "src"),
     },
+    tsconfigPaths: true,
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

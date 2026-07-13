@@ -31,6 +31,12 @@ export type ViteConfigOptions = {
    * former and let the rest generate real declarations.
    */
   contentPackageDataExclude?: Array<string>
+  /**
+   * @deprecated No longer used - tsconfig paths are now resolved natively
+   * via Vite's `resolve.tsconfigPaths` (see createResolveConfig), which
+   * replaced the vite-tsconfig-paths plugin. Kept as an accepted (ignored)
+   * field so existing call sites don't need to update in this pass.
+   */
   tsConfigPaths?: Record<"projects", Array<string>>
   /** Build formats to generate */
   formats?: Array<"es" | "cjs" | "umd" | "iife">

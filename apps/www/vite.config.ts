@@ -4,7 +4,6 @@ import tailwindcss from "@tailwindcss/vite"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig, type UserConfig } from "vite"
-import tsconfigPaths from "vite-tsconfig-paths"
 
 const certPath = resolve(__dirname, "../../certs/nixos.local+3.pem")
 const keyPath = resolve(__dirname, "../../certs/nixos.local+3-key.pem")
@@ -38,18 +37,13 @@ export default defineConfig(
       tailwindcss(),
       TanStackRouterVite({ autoCodeSplitting: true }),
       viteReact(),
-      tsconfigPaths({
-        projects: [
-          "./tsconfig.json",
-          "../../packages/some-content/tsconfig.json",
-        ],
-      }),
     ],
     resolve: {
       alias: {
         "@": resolve(__dirname, "./src"),
         "@content": resolve(__dirname, "../../packages/some-content/src"),
       },
+      tsconfigPaths: true,
     },
     build: {
       // Enable rollup bundle analysis

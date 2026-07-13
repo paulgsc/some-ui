@@ -1,14 +1,7 @@
-import tsconfigPaths from "vite-tsconfig-paths"
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
-  plugins: [
-    tsconfigPaths({
-      // Scope to this package only — prevents monorepo-wide scan from
-      // hitting broken tsconfig.json files in other workspaces (e.g. delme/).
-      projects: ["./tsconfig.json"],
-    }),
-  ],
+  resolve: { tsconfigPaths: true },
   test: {
     name: "maishatu-eslint-kit",
     environment: "node",

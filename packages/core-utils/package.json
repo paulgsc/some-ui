@@ -1,0 +1,54 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.4.0"
+  },
+  "devDependencies": {
+    "@some-ui/vite-config": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/core-utils.d.ts",
+      "import": "./dist/@some-ui/core-utils.es.js",
+      "require": "./dist/@some-ui/core-utils.cjs.js",
+      "default": "./dist/@some-ui/core-utils.es.js"
+    },
+    "./style.css": "./dist/core-utils.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/@some-ui/core-utils.cjs.js",
+  "module": "./dist/@some-ui/core-utils.es.js",
+  "name": "@some-ui/core-utils",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "type": "module",
+  "types": "./dist/@some-ui/core-utils.d.ts",
+  "unpkg": "core-utils.umd.js",
+  "version": "0.0.1",
+  "style": "./dist/core-utils.css",
+  "sideEffects": [
+    "*.css"
+  ]
+}

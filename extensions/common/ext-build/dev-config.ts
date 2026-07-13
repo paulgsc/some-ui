@@ -22,6 +22,9 @@ export function createDevConfig(
     ])
   )
   return defineConfig({
+    // extensions/common pins vite@^6.0.7 (older than the rest of the
+    // monorepo's vite@8), which predates native resolve.tsconfigPaths -
+    // this subtree still needs the plugin.
     plugins: [tsconfigPaths()],
     resolve: { alias },
   })
