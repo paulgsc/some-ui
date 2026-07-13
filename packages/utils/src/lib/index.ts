@@ -1,9 +1,9 @@
-export { default as cn } from "./cn"
+// Temporary re-export shim (UTL-HOIST S1, #530) - cn/string/date/array
+// utils moved to @some-ui/core-utils. Removed in UTL-CUTOVER once consumers
+// repoint directly at the new package.
+export * from "@some-ui/core-utils"
 export * from "./hooks"
-export * from "./string-utils"
-export * from "./date-utils"
 export { useCycleRotationAdapter, useViewport } from "./polyhedron"
-export * from "./array-utils"
 export {
   createEventBus,
   initializeSpeechQueue,

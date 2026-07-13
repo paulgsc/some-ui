@@ -25,6 +25,7 @@
     "zod": "^4.0.5"
   },
   "dependencies": {
+    "@some-ui/core-utils": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
