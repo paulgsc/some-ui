@@ -4,8 +4,14 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
+    "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["src", "uno.config.ts"],
+  "include": [
+    "src",
+    "uno.config.ts",
+    "vitest.config.ts",
+    "styles-build/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
