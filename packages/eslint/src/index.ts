@@ -11,6 +11,8 @@ import {
   reactConfig,
   switchLintConfig,
   switchLintPlugin,
+  tailwindIdiomConfig,
+  tailwindIdiomPlugin,
   testsOverrideConfig,
   toolsOverrideConfig,
   typescriptConfig,
@@ -27,6 +29,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
   ...switchLintConfig,
+  ...tailwindIdiomConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -41,6 +44,7 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...reactConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
+  ...tailwindIdiomConfig,
   toolsOverrideConfig,
   testsOverrideConfig
 )
@@ -55,6 +59,9 @@ export {
 
 // ── Switch-statement idiom rules ───────────────────────────────────────────
 export { switchLintConfig, switchLintPlugin }
+
+// ── Tailwind static-classname idiom rules ──────────────────────────────────
+export { tailwindIdiomConfig, tailwindIdiomPlugin }
 
 /**
  * Recommended preset for browser-extension workspaces.

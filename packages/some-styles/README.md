@@ -21,15 +21,19 @@ runtime, no engine, no scanning in the browser.
 
 ## What's in here
 
-| Export                         | What it is                                              |
-| ------------------------------ | ------------------------------------------------------- |
-| `@some-ui/styles`              | JS API — `presetSomeUi`, `defineSomeUiConfig`, `themes` |
-| `@some-ui/styles/preset`       | The UnoCSS preset                                       |
-| `@some-ui/styles/config`       | `defineSomeUiConfig()` factory                          |
-| `@some-ui/styles/tokens.css`   | Framework-agnostic design tokens (`:root` + `.dark`)    |
-| `@some-ui/styles/themes.css`   | Color themes (`.theme-blue`, …)                         |
-| `@some-ui/styles/themes/*`     | App themes (`scheduler`, `code`, …)                     |
-| `@some-ui/styles/tailwind.css` | Tailwind v4 entry (existing surface / Storybook)        |
+| Export                                    | What it is                                              |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `@some-ui/styles`                         | JS API — `presetSomeUi`, `defineSomeUiConfig`, `themes` |
+| `@some-ui/styles/preset`                  | The UnoCSS preset                                       |
+| `@some-ui/styles/config`                  | `defineSomeUiConfig()` factory                          |
+| `@some-ui/styles/tokens.css`              | Framework-agnostic design tokens (`:root` + `.dark`)    |
+| `@some-ui/styles/themes.css`              | Color themes (`.theme-blue`, …)                         |
+| `@some-ui/styles/themes/*`                | App themes (`scheduler`, `code`, …)                     |
+| `@some-ui/styles/tailwind.css`            | Tailwind v4 entry (existing surface / Storybook)        |
+| `@some-ui/styles/styles-build`            | `StyleContext` type — the per-workspace declaration     |
+| `@some-ui/styles/styles-build/compile`    | `compileStyles()` — the single-pass compiler core       |
+| `@some-ui/styles/styles-build/dev-config` | `createStyleConfig()` — dev/build-server vite helper    |
+| `some-styles-build` (bin)                 | Runs a workspace's `style.context.ts` in one pass       |
 
 ### Tokens
 
@@ -78,6 +82,68 @@ export default defineSomeUiConfig(
 ```tsx
 <button className="btn-primary">Save</button>
 ```
+
+## Single-pass Tailwind builds (`styles-build/`)
+
+The ui packages and their consumers (apps/www) share **one** Tailwind layer:
+`tailwind.css` — the Tailwind import, shadcn tokens, themes, and plugins. The
+`styles-build/` engine compiles that layer **exactly once** over the explicit
+union of a dependency graph's source, producing one deterministic stylesheet.
+
+This is the styles analogue of `extensions/common/ext-build/`: the abstract
+engine lives in one canonical place, and each consuming workspace only declares
+its **granular context** — no CSS-engine wiring scattered across the graph.
+
+### Why one pass
+
+Compiling the shared layer once _per package_ (each package's own `vite build`
+running an independent Tailwind pass, then a consumer concatenating N
+pre-compiled sheets and running an N+1th) makes the final CSS depend on
+module-graph merge order. A cold `pnpm install` in Docker can resolve that order
+differently than a warm local checkout, so styles that render in dev silently
+drop or reorder in the static build. One pass over an explicit `@source` set —
+with scan `base` pinned to an empty dir so nothing leaks in from cwd
+auto-detection — makes the output a pure function of the declared graph.
+
+### A workspace declares its context
+
+```ts
+// <workspace>/style.context.ts
+import type { StyleContext } from "@some-ui/styles/styles-build"
+
+const context: StyleContext = {
+  default: {
+    // Every source whose class candidates belong in this stylesheet. An
+    // aggregating consumer (apps/www) lists its own src plus each in-graph
+    // package's src, so the whole graph is scanned in one pass.
+    content: ["src/**/*.{ts,tsx}"],
+    outFile: "dist/styles.css",
+  },
+}
+
+export default context
+```
+
+```jsonc
+// <workspace>/package.json — the abstract engine, driven by the declaration
+"scripts": { "build:css": "some-styles-build" }
+```
+
+```ts
+// <workspace>/vite.config.ts — dev server scans the same set as the build
+import { createStyleConfig } from "@some-ui/styles/styles-build/dev-config"
+
+import context from "./style.context"
+
+export default createStyleConfig(context)
+```
+
+A runnable example lives in `styles-build/examples/`; `styles-build/tests/`
+exercises the compiler (single pass, determinism, tree-shaking) against it.
+
+> Note: the consuming ui/apps workspaces are **not** migrated yet — this sets up
+> the canonical engine only. Cutting each workspace over to `style.context.ts`
+> (and dropping its per-package Tailwind pass) is the follow-up.
 
 ## Build the showcase
 

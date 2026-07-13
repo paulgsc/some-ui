@@ -5,6 +5,16 @@ import { cn, useLocalStorage } from "some-ui-utils"
 
 type HeadlineTheme = "peach-blossom" | "strawberry-moon" | "dark-gold"
 
+// Complete literal class strings per theme. Keeping each variant as a whole
+// string (rather than `headline--${theme}`) keeps every class name that can
+// reach the DOM statically discoverable by a single-pass content scan —
+// see tailwind-idiom/no-interpolated-classname.
+const THEME_CLASS: Record<HeadlineTheme, string> = {
+  "peach-blossom": "headline--peach-blossom",
+  "strawberry-moon": "headline--strawberry-moon",
+  "dark-gold": "headline--dark-gold",
+}
+
 type HeadlineProps = {
   initialText?: string
   className?: string
@@ -65,7 +75,7 @@ export const Headline: FC<HeadlineProps> = ({
     <div
       className={cn(
         "headline",
-        `headline--${theme}`,
+        THEME_CLASS[theme],
         "relative inline-flex w-full items-center justify-center p-8",
         className
       )}
