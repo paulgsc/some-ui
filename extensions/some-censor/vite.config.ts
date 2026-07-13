@@ -1,15 +1,9 @@
-/**
- * vite.config.ts — default config (Firefox).
- *
- * This re-exports the Chromium config so that bare `vite build` and `vite dev`
- * continue to work without specifying --config. The canonical production builds
- * should use the explicit configs:
- 
- *   pnpm build:firefox   → vite build --config vite.config.firefox.ts
- *   pnpm build:chromium  → vite build --config vite.config.chromium.ts
- *
- * The Chromium config is chosen as the default because it is what Playwright
- * uses, making local dev (pnpm dev + manual Chromium extension loading) the
- * lower-friction path.
- */
-export { default } from "./vite.config.firefox"
+import { createDevConfig } from "@some-extension/common/build/dev-config"
+
+import context from "./build.context"
+
+// Production output is built by `some-ext-build` (extensions/common/build),
+// driven by build.context.ts. This file only wires the `pnpm dev` server to
+// the same alias context. Firefox is the default target, matching the prior
+// vite.config.ts re-export of vite.config.firefox.ts.
+export default createDevConfig(context, "firefox")

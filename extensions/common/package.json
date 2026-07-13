@@ -1,5 +1,7 @@
 {
-  "dependencies": {},
+  "dependencies": {
+    "vite-tsconfig-paths": "6.1.1"
+  },
   "description": "Shared Vite configuration for monorepo packages",
   "devDependencies": {
     "@playwright/test": "1.60.0",
@@ -12,15 +14,23 @@
       "types": "./src/index.ts"
     },
     "./build": {
-      "import": "./build.mjs"
+      "import": "./ext-build/types.ts",
+      "types": "./ext-build/types.ts"
+    },
+    "./build/dev-config": {
+      "import": "./ext-build/dev-config.ts",
+      "types": "./ext-build/dev-config.ts"
     },
     "./*": {
       "import": "./src/*.ts",
       "types": "./src/*.ts"
     }
   },
+  "bin": {
+    "some-ext-build": "./ext-build/run.mjs"
+  },
   "files": [
-    "build.mjs",
+    "ext-build",
     "src"
   ],
   "keywords": [
