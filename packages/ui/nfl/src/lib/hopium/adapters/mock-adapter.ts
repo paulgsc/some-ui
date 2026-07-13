@@ -36,7 +36,9 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
     const itemId = id ?? `sat-${Math.floor(Math.random() * 1000)}`
 
     const idSuffix = itemId.split("-")[1] ?? "0"
-    const nameChar = String.fromCharCode(65 + (Number.parseInt(idSuffix) % 26))
+    const nameChar = String.fromCharCode(
+      65 + (Number.parseInt(idSuffix, 10) % 26)
+    )
 
     const priority =
       priorities[Math.floor(Math.random() * priorities.length)] ?? "medium"

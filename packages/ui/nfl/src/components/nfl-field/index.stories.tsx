@@ -5,10 +5,12 @@ import FootballField from "."
 type Meta = MetaObj<typeof FootballField>
 type Story = StoryObj<typeof FootballField>
 
-export default {
+const meta = {
   title: "NFL Field",
   component: FootballField,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 export const Complete: Story = {
   args: {

@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useCallback } from "react"
+import { useMemo } from "react"
 import { cn } from "some-ui-utils"
 
 type NflPlayerCardProps = {
@@ -19,7 +19,8 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
   description = "Some description",
   className,
 }) => {
-  const getDimensions = useCallback(() => {
+  // Use useMemo instead of useCallback to calculate layout details once per prop change
+  const layout = useMemo(() => {
     const padding = Math.min(height, width) * 0.01
     const borderRadius = Math.min(height, width) * 0.02
     const titleHeight = height * 0.1
@@ -33,6 +34,13 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
         height - titleHeight - imageHeight - typeHeight - descriptionHeight
       ) * 0.65
 
+    // Calculate static Y positions cleanly without inline mutation during render
+    const titleY = padding
+    const imageY = titleY + titleHeight * 1.05
+    const typeY = imageY + imageHeight
+    const descriptionY = typeY + typeHeight
+    const footerY = height * 0.85
+
     return {
       padding,
       borderRadius,
@@ -41,6 +49,11 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
       typeHeight,
       descriptionHeight,
       footerHeight,
+      titleY,
+      imageY,
+      typeY,
+      descriptionY,
+      footerY,
     }
   }, [width, height])
 
@@ -52,8 +65,12 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
     typeHeight,
     descriptionHeight,
     footerHeight,
-  } = getDimensions()
-  let y = 0
+    titleY,
+    imageY,
+    typeY,
+    descriptionY,
+    footerY,
+  } = layout
 
   return (
     <svg
@@ -73,21 +90,21 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
         width={width - padding * 2}
         height={titleHeight}
         x={padding}
-        y={(y = padding)}
+        y={titleY}
       />
       <CardImage
         width={width - padding * 2}
         height={imageHeight}
         href={href}
         x={padding}
-        y={(y += titleHeight * 1.05)}
+        y={imageY}
       />
       <CardType
         type="Spellcaster"
         width={width - padding * 2}
         height={typeHeight}
         x={padding}
-        y={(y += imageHeight)}
+        y={typeY}
       />
 
       <CardDescription
@@ -95,7 +112,7 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
         width={width - padding * 2}
         height={descriptionHeight}
         x={padding}
-        y={(y += typeHeight)}
+        y={descriptionY}
       />
       <CardFooter
         attack={1000}
@@ -104,7 +121,7 @@ export const NflPlayerCard: FC<NflPlayerCardProps> = ({
         width={width - padding * 2}
         height={footerHeight}
         x={padding}
-        y={0.85 * height}
+        y={footerY}
       />
     </svg>
   )

@@ -30,7 +30,7 @@ export const Default: Story = {
   render: () => <MockedBrickChartWithProvider />,
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/BrickChartCarousel",
   component: BrickChartCarousel,
   argTypes: {
@@ -51,4 +51,6 @@ export default {
     autoplayDelay: 2000,
     stopOnInteraction: true,
   },
-} as Meta
+} satisfies Meta
+
+export default meta

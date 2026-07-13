@@ -13,17 +13,26 @@ import {
   Progress,
 } from "some-ui-shared"
 
+type SatelliteData = {
+  dataType?: string
+}
+
 type SatelliteCardProps<T> = {
   item: SatelliteDataItem<T>
   onClick: (item: SatelliteDataItem<T>) => void
 }
 
-export function SatelliteCard<T>({
+const isSatelliteData = (data: unknown): data is SatelliteData => {
+  return typeof data === "object" && data !== null
+}
+
+export const SatelliteCard = <T,>({
   item,
   onClick,
-}: SatelliteCardProps<T>): JSX.Element {
+}: SatelliteCardProps<T>): JSX.Element => {
   const status = getFreshnessStatus(item.freshness)
   const urgencyClass = getUrgencyClass(item.freshness, item.priority)
+  const mockData = isSatelliteData(item.data) ? item.data : null
 
   return (
     <Card
@@ -44,7 +53,7 @@ export function SatelliteCard<T>({
       <CardContent className="flex flex-1 flex-col justify-between space-y-2">
         <div className="space-y-2">
           <p className="text-muted-foreground truncate text-xs">
-            {(item.data as any)?.dataType || "Unknown"}
+            {mockData?.dataType || "Unknown"}
           </p>
 
           {/* Freshness Progress */}

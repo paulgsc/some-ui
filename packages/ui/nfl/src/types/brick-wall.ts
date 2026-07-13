@@ -1,5 +1,7 @@
+import type { NFLTeam } from "@nfl/components/nfl-team-icon"
+
 export type DataItem = {
-  name: string
+  name: NFLTeam
   value: number
   imageUrl?: string
 }

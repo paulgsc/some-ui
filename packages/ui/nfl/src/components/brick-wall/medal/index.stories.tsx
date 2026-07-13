@@ -23,7 +23,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/NFL/Components/Medal",
   component: Medal,
-} as Meta
+} satisfies Meta
+
+export default meta

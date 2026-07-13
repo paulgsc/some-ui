@@ -13,6 +13,14 @@ import {
   Progress,
 } from "some-ui-shared"
 
+type SatelliteDetails = {
+  dataType?: string
+  orbitAltitude?: number
+  signalStrength?: number
+  batteryLevel?: number
+  nextPass?: number
+}
+
 type DetailModalProps<T> = {
   item: SatelliteDataItem<T> | null
   isOpen: boolean
@@ -20,15 +28,19 @@ type DetailModalProps<T> = {
   onRefresh: (id: string) => void
 }
 
-export function DetailModal<T>({
+const isSatelliteDetails = (data: unknown): data is SatelliteDetails => {
+  return typeof data === "object" && data !== null
+}
+
+export const DetailModal = <T,>({
   item,
   isOpen,
   onClose,
   onRefresh,
-}: DetailModalProps<T>): JSX.Element | null {
+}: DetailModalProps<T>): JSX.Element | null => {
   if (!item) return null
 
-  const mockData = item.data as any // Type assertion for mock data structure
+  const mockData = isSatelliteDetails(item.data) ? item.data : null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -74,7 +86,7 @@ export function DetailModal<T>({
             </Card>
           </div>
 
-          {/* Satellite Details - Only show if mock data structure exists */}
+          {/* Satellite Details */}
           {mockData?.orbitAltitude && (
             <Card className="p-4">
               <h3 className="mb-3 font-semibold">Satellite Details</h3>

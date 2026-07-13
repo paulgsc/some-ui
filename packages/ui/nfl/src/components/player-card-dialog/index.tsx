@@ -1,4 +1,4 @@
-import type { FC, RefObject } from "react"
+import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
 import { NflPlayerCard } from "@nfl/components/player-card"
 import { Button, Dialog, DialogContent, DialogTrigger } from "some-ui-shared"
@@ -25,7 +25,7 @@ export const PlayerCardDialog: FC<PlayerCardDialogPrps> = ({
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const buttonRect = useMeasureRect({
-    ref: buttonRef as RefObject<HTMLElement>,
+    ref: buttonRef,
   })
   const contentRef = useRef<HTMLDivElement>(null)
   const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

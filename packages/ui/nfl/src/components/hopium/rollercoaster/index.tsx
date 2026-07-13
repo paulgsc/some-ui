@@ -33,7 +33,6 @@ export const RollercoasterChart = ({
   const innerW = Math.max(0, size.width - PADDING.left - PADDING.right)
   const innerH = Math.max(0, size.height - PADDING.top - PADDING.bottom)
 
-  // Memoize scale functions to be used inside other useMemos without lint warnings
   const scales = useMemo(() => {
     const xFor = (i: number): number => {
       if (events.length <= 1) return PADDING.left
@@ -52,7 +51,6 @@ export const RollercoasterChart = ({
     [events, currentIndex]
   )
 
-  // Safety check for empty events
   const lastEvent = progressed[progressed.length - 1]
   const aboveBaseline = (lastEvent?.mood ?? 0) >= BASELINE
   const isLastUp = (lastEvent?.delta ?? 0) >= 0
@@ -68,6 +66,7 @@ export const RollercoasterChart = ({
       progressed.map((e) => ({
         x: scales.xFor(e.index),
         y: scales.yFor(e.mood),
+        id: e.id,
       })),
     [progressed, scales]
   )
@@ -75,7 +74,6 @@ export const RollercoasterChart = ({
   const dAll = useMemo(() => smoothPath(pointsAll, 0.6), [pointsAll])
   const dProg = useMemo(() => smoothPath(pointsProg, 0.6), [pointsProg])
 
-  // Precise Path Animation Logic
   useLayoutEffect(() => {
     if (!pathRef.current) return
     const length = pathRef.current.getTotalLength()
@@ -91,7 +89,7 @@ export const RollercoasterChart = ({
   const lastSegmentPath = useMemo(() => {
     const b = pointsProg[pointsProg.length - 1]
     const a = pointsProg[pointsProg.length - 2]
-    if (!a || !b) return null // Fixes 18048
+    if (!a || !b) return null
     return `M ${a.x} ${a.y} L ${b.x} ${b.y}`
   }, [pointsProg])
 
@@ -128,9 +126,9 @@ export const RollercoasterChart = ({
           >
             {/* Grid Lines */}
             <g stroke="currentColor" strokeDasharray="3 3">
-              {yTicks.map((t, i) => (
+              {yTicks.map((t) => (
                 <line
-                  key={i}
+                  key={`grid-line-${t.label}`}
                   x1={PADDING.left}
                   y1={t.y}
                   x2={size.width - PADDING.right}
@@ -190,7 +188,7 @@ export const RollercoasterChart = ({
               const isLast = i === pointsProg.length - 1
               return (
                 <circle
-                  key={i}
+                  key={`dot-${p.id}`}
                   cx={p.x}
                   cy={p.y}
                   r={isLast ? 5 : 3}
@@ -203,9 +201,9 @@ export const RollercoasterChart = ({
 
             {/* Axes Labels */}
             <g fontSize={11} fill="currentColor" className="text-zinc-100">
-              {yTicks.map((t, i) => (
+              {yTicks.map((t) => (
                 <text
-                  key={i}
+                  key={`y-label-${t.label}`}
                   x={PADDING.left - 8}
                   y={t.y}
                   textAnchor="end"
@@ -214,9 +212,9 @@ export const RollercoasterChart = ({
                   {t.label}
                 </text>
               ))}
-              {events.map((e, i) => (
+              {events.map((e) => (
                 <text
-                  key={i}
+                  key={`x-label-${e.id}`}
                   x={scales.xFor(e.index)}
                   y={size.height - PADDING.bottom + 16}
                   textAnchor="middle"

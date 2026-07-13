@@ -3,21 +3,29 @@ import type {
   SatelliteDataItem,
   SortType,
 } from "@nfl/types/hopium/hopium-tracker"
+import { assertNever } from "@nfl/utils/error"
 
 export const applyFilter = <T>(
   items: Array<SatelliteDataItem<T>>,
   filter: FilterType
 ): Array<SatelliteDataItem<T>> => {
   switch (filter) {
-    case "critical":
+    case "critical": {
       return items.filter((item) => item.freshness < 30)
-    case "fresh":
+    }
+    case "fresh": {
       return items.filter((item) => item.freshness >= 80)
-    case "hidden":
+    }
+    case "hidden": {
       return [...items].sort((a, b) => a.freshness - b.freshness)
-    case "all":
-    default:
+    }
+    case "all": {
       return items
+    }
+    default: {
+      filter satisfies never
+      assertNever(filter)
+    }
   }
 }
 
@@ -27,19 +35,25 @@ export const applySorting = <T>(
 ): Array<SatelliteDataItem<T>> => {
   return [...items].sort((a, b) => {
     switch (sortBy) {
-      case "freshness":
+      case "freshness": {
         return a.freshness - b.freshness
-      case "priority":
+      }
+      case "priority": {
         const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
         return priorityOrder[a.priority] - priorityOrder[b.priority]
-      case "name":
+      }
+      case "name": {
         return a.name.localeCompare(b.name)
-      case "lastUpdated":
+      }
+      case "lastUpdated": {
         return (
           new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()
         )
-      default:
-        return a.freshness - b.freshness
+      }
+      default: {
+        sortBy satisfies never
+        assertNever(sortBy)
+      }
     }
   })
 }

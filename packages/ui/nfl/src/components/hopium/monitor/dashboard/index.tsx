@@ -6,6 +6,7 @@ import { StatsCard } from "@nfl/components/hopium/monitor/stats-card"
 import { useSatelliteData } from "@nfl/hooks/hopium/use-hopium-data"
 import { useViewport } from "@nfl/hooks/hopium/use-viewport"
 import type {
+  ApiAdapter,
   FilterType,
   SatelliteDataItem,
   SortType,
@@ -21,9 +22,13 @@ import {
 import { Badge, Button } from "some-ui-shared"
 
 type SatelliteDashboardProps = {
-  adapter: any // Generic adapter interface
+  adapter: ApiAdapter<SatelliteDataItem> // Generic adapter interface
   title?: string
   autoRefreshInterval?: number
+}
+
+function isSortType(value: string): value is SortType {
+  return ["freshness", "priority", "name", "lastUpdated"].includes(value)
 }
 
 export const SatelliteDashboard = ({
@@ -46,7 +51,7 @@ export const SatelliteDashboard = ({
 
   // Initialize data on first load
   useState(() => {
-    refreshAll({
+    void refreshAll({
       onFailure: (error: Error) => {
         // eslint-disable-next-line no-console
         console.error("[v0] Failed to load initial data:", error)
@@ -64,7 +69,7 @@ export const SatelliteDashboard = ({
   const hiddenItemsCount = dataItems.length - visibleItems.length
 
   const handleRefreshAll = (): void => {
-    refreshAll({
+    void refreshAll({
       onFailure: (error) => {
         // eslint-disable-next-line no-console
         console.error("[v0] Refresh all failed:", error)
@@ -73,7 +78,7 @@ export const SatelliteDashboard = ({
   }
 
   const handleRefreshItem = (id: string): void => {
-    refreshItem(id, {
+    void refreshItem(id, {
       onFailure: (error, itemId) => {
         // eslint-disable-next-line no-console
         console.error(`[v0] Failed to refresh ${itemId}:`, error)
@@ -111,7 +116,12 @@ export const SatelliteDashboard = ({
           <div className="flex gap-2">
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortType)}
+              onChange={(e) => {
+                const value = e.target.value
+                if (isSortType(value)) {
+                  setSortBy(value)
+                }
+              }}
               className="bg-background rounded-md border px-3 py-2 text-sm"
             >
               <option value="freshness">Sort by Urgency</option>

@@ -7,4 +7,6 @@ type Story = StoryObj<typeof FootballFieldDraggable>
 
 export const Default: Story = {}
 
-export default { component: FootballFieldDraggable } as Meta
+const meta = { component: FootballFieldDraggable } satisfies Meta
+
+export default meta
