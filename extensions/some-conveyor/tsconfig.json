@@ -28,6 +28,7 @@
     "src",
     "tests/**/*.ts",
     "tests/**/*.tsx",
+    "build.context.ts",
     "vite.config*.ts",
     "uno.config.ts",
     "playwright.config.ts",

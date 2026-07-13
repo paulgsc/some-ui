@@ -21,6 +21,8 @@
  *        `Masked` (not `ViewState`), so the old session is structurally gone.
  */
 
+import { assertNever } from "@some-extension/common"
+
 import type { SessionId } from "./session"
 
 // ── State variants ────────────────────────────────────────────────────────────
@@ -82,12 +84,14 @@ export function applyClick(
   s: ViewState,
   payload?: MetaData | string
 ): ViewState {
-  switch (s.kind) {
-    case "masked":
+  const { kind } = s
+  switch (kind) {
+    case "masked": {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       return { kind: "meta", session: s.session, meta: payload as MetaData }
+    }
 
-    case "meta":
+    case "meta": {
       return {
         kind: "title",
         session: s.session,
@@ -97,9 +101,16 @@ export function applyClick(
           translated: false,
         },
       }
-
-    default:
+    }
+    case "title":
+    case "revealed":
+    case "whitelisted": {
       return s
+    }
+    default: {
+      kind satisfies never
+      assertNever(kind)
+    }
   }
 }
 
@@ -167,43 +178,50 @@ export type RenderModel = {
  * living documentation of intent.
  */
 export function project(state: ViewState): RenderModel {
-  switch (state.kind) {
-    case "masked":
+  const { kind } = state
+  switch (kind) {
+    case "masked": {
       return {
         dataBoyo: "0",
         veilContent: { kind: "empty" },
         removeVeil: false,
       }
+    }
 
-    case "meta":
+    case "meta": {
       return {
         dataBoyo: "1",
         veilContent: { kind: "meta", meta: state.meta },
         removeVeil: false,
       }
+    }
 
-    case "title":
+    case "title": {
       return {
         dataBoyo: "2",
         veilContent: { kind: "title", meta: state.meta, title: state.title },
         removeVeil: false,
       }
+    }
 
-    case "revealed":
+    case "revealed": {
       return {
         dataBoyo: "3",
         veilContent: { kind: "empty" },
         removeVeil: true,
       }
+    }
 
-    case "whitelisted":
+    case "whitelisted": {
       return {
         dataBoyo: "wl",
         veilContent: { kind: "empty" },
         removeVeil: false,
       }
-
-    // TypeScript will error here if a new variant is added to ViewState
-    // without a corresponding branch (with noImplicitReturns: true).
+    }
+    default: {
+      kind satisfies never
+      assertNever(kind)
+    }
   }
 }

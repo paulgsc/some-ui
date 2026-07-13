@@ -152,20 +152,24 @@ export class Controller {
     ext.runtime.onMessage.addListener((msg: unknown) => {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const m = msg as { type?: string; enabled?: boolean; channelId?: string }
-      switch (m.type) {
-        case "ENABLED_CHANGED":
+      const { type: t } = m
+      // eslint-disable-next-line switch-lint/require-fail-fast-default
+      switch (t) {
+        case "ENABLED_CHANGED": {
           if (m.enabled) {
             this._setupRuntime()
           } else {
             this._teardownRuntime()
           }
           break
+        }
 
-        case "CHANNEL_WHITELISTED":
+        case "CHANNEL_WHITELISTED": {
           if (m.channelId !== undefined) {
             this._mgr.applyWhitelistBroadcast(m.channelId)
           }
           break
+        }
       }
     })
   }

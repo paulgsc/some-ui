@@ -87,6 +87,7 @@
     "eslint-plugin-tailwindcss": "4.0.4",
     "eslint-plugin-unicorn": "^69.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "es-module-lexer": "2.3.0",
     "glob": "^13.0.6",
     "globals": "^15.14.0",
     "happy-dom": "17.1.8",

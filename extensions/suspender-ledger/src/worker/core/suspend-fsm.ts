@@ -162,102 +162,138 @@ const s = (kind: SuspendStateKind): SuspendState => ({ kind })
  *     than stranding it in `ORPHANED` (#345 bug 2). `ORPHANED` is consequently
  *     unreachable — kept in the type as the named state the contract forbids.
  */
+
+/* eslint-disable switch-lint/require-fail-fast-default */
 export function reduce(state: SuspendState, event: SuspendEvent): SuspendState {
   switch (state.kind) {
-    case "ACTIVE":
+    case "ACTIVE": {
       switch (event.type) {
-        case "SUSPEND_REQUESTED":
+        case "SUSPEND_REQUESTED": {
           return s("PREPARING")
-        case "MEDIA_PLAYING":
+        }
+        case "MEDIA_PLAYING": {
           return s("BLOCKED")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "PREPARING":
+    case "PREPARING": {
       switch (event.type) {
         // Media detected before the marker landed → abort cleanly, unmarked.
-        case "MEDIA_PLAYING":
+        case "MEDIA_PLAYING": {
           return s("BLOCKED")
-        case "MARK_APPLIED":
+        }
+        case "MARK_APPLIED": {
           return s("SUSPENDING")
-        case "MARK_SKIPPED":
+        }
+        case "MARK_SKIPPED": {
           return s("SUSPENDING_BARE")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "SUSPENDING":
+    case "SUSPENDING": {
       switch (event.type) {
-        case "DISCARD_SUCCEEDED":
+        case "DISCARD_SUCCEEDED": {
           return s("DISCARDED")
+        }
         // Discard refused (audible tab, non-discardable) → strip the marker.
-        case "DISCARD_FAILED":
+        case "DISCARD_FAILED": {
           return s("ROLLING_BACK")
+        }
         // User refocused before discard confirmed → strip the marker.
-        case "TAB_ACTIVATED":
+        case "TAB_ACTIVATED": {
           return s("ROLLING_BACK")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "SUSPENDING_BARE":
+    case "SUSPENDING_BARE": {
       switch (event.type) {
-        case "DISCARD_SUCCEEDED":
+        case "DISCARD_SUCCEEDED": {
           return s("DISCARDED_BARE")
+        }
         case "DISCARD_FAILED":
-        case "TAB_ACTIVATED":
+        case "TAB_ACTIVATED": {
           return s("ACTIVE")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "DISCARDED":
+    case "DISCARDED": {
       switch (event.type) {
-        case "TAB_ACTIVATED":
+        case "TAB_ACTIVATED": {
           return s("RESUMING")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "DISCARDED_BARE":
+    case "DISCARDED_BARE": {
       switch (event.type) {
-        case "TAB_ACTIVATED":
+        case "TAB_ACTIVATED": {
           return s("ACTIVE")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "RESUMING":
+    case "RESUMING": {
       switch (event.type) {
-        case "TAB_RELOADED":
+        case "TAB_RELOADED": {
           return s("ACTIVE")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "ROLLING_BACK":
+    case "ROLLING_BACK": {
       switch (event.type) {
-        case "MARKER_CLEARED":
+        case "MARKER_CLEARED": {
           return s("ACTIVE")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
-    case "BLOCKED":
+    case "BLOCKED": {
       switch (event.type) {
         // An explicit user re-request can force another attempt (e.g. media
         // stopped since). Auto paths simply never emit SUSPEND_REQUESTED here.
-        case "SUSPEND_REQUESTED":
+        case "SUSPEND_REQUESTED": {
           return s("PREPARING")
-        default:
+        }
+        default: {
           return state
+        }
       }
+    }
 
     // Unreachable in this transition table — retained as the named illegal
     // state the invariant forbids. A self-loop keeps `reduce` total.
-    case "ORPHANED":
+    case "ORPHANED": {
       return state
+    }
   }
 }
 

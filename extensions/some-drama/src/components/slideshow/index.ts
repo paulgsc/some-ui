@@ -480,13 +480,17 @@ function cap(s: string): string {
 // Simple sparkline arc in a 60×24 viewBox: rising curves up, falling curves
 // down, steady is flat. Quadratic Bézier control point carries the shape.
 function arcPath(direction: CardState["momentum"]["direction"]): string {
+  /* eslint-disable switch-lint/require-fail-fast-default */
   switch (direction) {
-    case "rising":
+    case "rising": {
       return "M4 20 Q30 2 56 6"
-    case "falling":
+    }
+    case "falling": {
       return "M4 6 Q30 22 56 20"
+    }
     case "steady":
-    default:
+    default: {
       return "M4 12 Q30 11 56 12"
+    }
   }
 }

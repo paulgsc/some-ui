@@ -31,6 +31,7 @@ import type {
   ViewportItemSpec,
 } from "@conveyor/types"
 import { DEFAULT_CONVEYOR_CONFIG } from "@conveyor/types"
+import { assertNever } from "@some-extension/common"
 
 // ── Stylesheet URL ────────────────────────────────────────────────────────────
 // The shadow root loads the compiled stylesheet as a web_accessible_resource.
@@ -193,32 +194,50 @@ window.addEventListener("popstate", handleSpaNav)
 window.addEventListener("hashchange", handleSpaNav)
 
 // ── Message handler (from background service worker) ─────────────────────────
-
-type ConveyorMsg = { type: string }
+type ConveyorMsg =
+  | { type: "CONVEYOR_SUSPEND" }
+  | { type: "CONVEYOR_RESUME" }
+  | { type: "CONVEYOR_THEME" }
 
 function isConveyorMsg(v: unknown): v is ConveyorMsg {
+  // 1. Narrow to a non-null object that contains the key "type".
+  if (typeof v !== "object" || v === null || !("type" in v)) {
+    return false
+  }
+
+  // 2. In TS 4.9+, `in` safely narrows `v` so `v.type` is typed as `unknown`.
+  const msgType = v.type
+
+  // 3. Direct comparison avoids array typing issues and narrows correctly.
   return (
-    typeof v === "object" &&
-    v !== null &&
-    "type" in v &&
-    typeof v.type === "string"
+    msgType === "CONVEYOR_SUSPEND" ||
+    msgType === "CONVEYOR_RESUME" ||
+    msgType === "CONVEYOR_THEME"
   )
 }
 
 ext.runtime.onMessage.addListener((message: unknown): void => {
   if (!isConveyorMsg(message)) return
 
-  switch (message.type) {
-    case "CONVEYOR_SUSPEND":
+  const { type: t } = message
+  switch (t) {
+    case "CONVEYOR_SUSPEND": {
       // PageMonitor re-evaluates attention state automatically.
       conveyor?.suspend()
       break
-    case "CONVEYOR_RESUME":
+    }
+    case "CONVEYOR_RESUME": {
       conveyor?.resume()
       break
-    case "CONVEYOR_THEME":
+    }
+    case "CONVEYOR_THEME": {
       // Future: receive theme name from popup and apply.
       break
+    }
+    default: {
+      t satisfies never
+      assertNever(t)
+    }
   }
 })
 

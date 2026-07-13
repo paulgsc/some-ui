@@ -15,6 +15,7 @@ import { buildStructuralSection } from "@drama/components/form-structural"
 import type { PopupStateMachine } from "@drama/effects/popup/fsm"
 import { DEFAULT_ACCENT, MAX_WATCHLIST } from "@drama/logic/popup/constants"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
+import { assertNever } from "@some-extension/common"
 
 const MOOD_EMOJI: Record<string, string> = {
   joy: "✨",
@@ -49,25 +50,36 @@ export class PopupRenderer {
     const body = this.el("div", "p-body")
     this.root.appendChild(body)
 
-    switch (phase.tag) {
-      case "LOADING":
+    const { tag } = phase
+    switch (tag) {
+      case "LOADING": {
         body.appendChild(this.spinnerScreen("Syncing…"))
         break
-      case "IDLE":
+      }
+      case "IDLE": {
         body.appendChild(this.renderIdle(phase))
         break
-      case "SCRAPING":
+      }
+      case "SCRAPING": {
         body.appendChild(this.spinnerScreen("Reading tab…"))
         break
-      case "FORM":
+      }
+      case "FORM": {
         body.appendChild(this.renderForm(phase))
         break
-      case "SAVING":
+      }
+      case "SAVING": {
         body.appendChild(this.spinnerScreen("Saving…"))
         break
-      case "ERROR":
+      }
+      case "ERROR": {
         body.appendChild(this.renderError(phase))
         break
+      }
+      default: {
+        tag satisfies never
+        assertNever(tag)
+      }
     }
   }
 

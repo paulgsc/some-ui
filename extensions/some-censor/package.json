@@ -44,8 +44,8 @@
   },
   "scripts": {
     "build": "pnpm build:firefox",
-    "build:chromium": "tsc -p tsconfig.build.json && vite build --config vite.config.chromium.ts",
-    "build:firefox": "tsc -p tsconfig.build.json && vite build",
+    "build:chromium": "tsc -p tsconfig.build.json && some-ext-build chromium",
+    "build:firefox": "tsc -p tsconfig.build.json && some-ext-build firefox",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite",

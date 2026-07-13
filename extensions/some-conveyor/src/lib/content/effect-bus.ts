@@ -1,5 +1,6 @@
 import { ext } from "@conveyor/platform/content"
 import type { Disposable, FaceAction } from "@conveyor/types"
+import { assertNever } from "@some-extension/common"
 
 /**
  * EffectBus
@@ -39,13 +40,16 @@ export class EffectBus implements Disposable {
   }
 
   private async execute(action: FaceAction): Promise<void> {
-    switch (action.type) {
-      case "Noop":
+    const { type: t } = action
+    switch (t) {
+      case "Noop": {
         return
+      }
 
-      case "OpenTab":
+      case "OpenTab": {
         await ext.tabs.create({ url: action.url })
         return
+      }
 
       case "FocusTab": {
         const tabs = await ext.tabs.query({ url: action.url })
@@ -87,7 +91,7 @@ export class EffectBus implements Disposable {
         return
       }
 
-      case "ShowPopup":
+      case "ShowPopup": {
         {
           // ext.action.openPopup() is MV3 Firefox 109+ / Chrome 99+; not in the
           // webextension-polyfill types yet so we widen through unknown first.
@@ -98,10 +102,12 @@ export class EffectBus implements Disposable {
           await actionApi.openPopup?.()
         }
         return
+      }
 
-      case "SendMessage":
+      case "SendMessage": {
         await ext.runtime.sendMessage(action.payload)
         return
+      }
 
       case "LocalhostFetch": {
         const method = action.method ?? "POST"
@@ -120,8 +126,10 @@ export class EffectBus implements Disposable {
         return
       }
 
-      default:
-        action satisfies never
+      default: {
+        t satisfies never
+        assertNever(t)
+      }
     }
   }
 

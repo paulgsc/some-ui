@@ -19,6 +19,7 @@ import type {
   ScrapedMeta,
   WatchlistState,
 } from "@drama/types"
+import { assertNever } from "@some-extension/common"
 
 type CapturedMoment = {
   id: string
@@ -87,28 +88,37 @@ function isBackgroundMessage(v: unknown): v is BackgroundMessage {
   if (typeof v.type !== "string") return false
 
   switch (v.type) {
-    case "SAVE_MOMENT":
+    case "SAVE_MOMENT": {
       return isCapturedMoment(v.payload)
-    case "GET_MOMENTS":
+    }
+    case "GET_MOMENTS": {
       return (
         v.payload === undefined ||
         (isRecord(v.payload) &&
           (!("dramaTitle" in v.payload) ||
             typeof v.payload.dramaTitle === "string"))
       )
+    }
     case "CLEAR_MOMENTS":
-    case "GET_STATE":
+    case "GET_STATE": {
       return true
-    case "UPSERT_ENTRY":
+    }
+    case "UPSERT_ENTRY": {
       return isRecord(v.entry) && typeof v.entry.title === "string"
-    case "REMOVE_ENTRY":
+    }
+    case "REMOVE_ENTRY": {
       return typeof v.id === "string"
-    case "SET_ACTIVE":
+    }
+    case "SET_ACTIVE": {
       return v.id === null || typeof v.id === "string"
-    case "SCRAPE_TAB":
+    }
+    case "SCRAPE_TAB": {
       return typeof v.tabId === "number"
-    default:
+    }
+    // eslint-disable-next-line switch-lint/require-fail-fast-default
+    default: {
       return false
+    }
   }
 }
 
@@ -443,23 +453,36 @@ async function dispatch(
   message: BackgroundMessage,
   sendResponse: (resp: BackgroundResponse) => void
 ): Promise<void> {
-  switch (message.type) {
-    case "SAVE_MOMENT":
+  const { type: t } = message
+  switch (t) {
+    case "SAVE_MOMENT": {
       return handleSaveMoment(message.payload, sendResponse)
-    case "GET_MOMENTS":
+    }
+    case "GET_MOMENTS": {
       return handleGetMoments(message.payload, sendResponse)
-    case "CLEAR_MOMENTS":
+    }
+    case "CLEAR_MOMENTS": {
       return handleClearMoments(sendResponse)
-    case "GET_STATE":
+    }
+    case "GET_STATE": {
       return handleGetState(sendResponse)
-    case "UPSERT_ENTRY":
+    }
+    case "UPSERT_ENTRY": {
       return handleUpsertEntry(message.entry, sendResponse)
-    case "REMOVE_ENTRY":
+    }
+    case "REMOVE_ENTRY": {
       return handleRemoveEntry(message.id, sendResponse)
-    case "SET_ACTIVE":
+    }
+    case "SET_ACTIVE": {
       return handleSetActive(message.id, sendResponse)
-    case "SCRAPE_TAB":
+    }
+    case "SCRAPE_TAB": {
       return handleScrapeTab(message.tabId, sendResponse)
+    }
+    default: {
+      t satisfies never
+      assertNever(t)
+    }
   }
 }
 

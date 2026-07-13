@@ -38,18 +38,22 @@ function isTask(value: unknown): value is Task {
   const taskKeys: Array<keyof Task> = ["id", "label", "done"]
   for (const key of taskKeys) {
     switch (key) {
-      case "id":
+      case "id": {
         if (!isStringField(value, key)) return false
         break
-      case "label":
+      }
+      case "label": {
         if (!isStringField(value, key)) return false
         break
-      case "done":
+      }
+      case "done": {
         if (!isBooleanField(value, key)) return false
         break
-      default:
+      }
+      default: {
         key satisfies never
         assertUnreachable(key)
+      }
     }
   }
   return true
@@ -66,24 +70,30 @@ function isCategory(value: unknown): value is Category {
   ]
   for (const key of categoryKeys) {
     switch (key) {
-      case "id":
+      case "id": {
         if (!isStringField(value, key)) return false
         break
-      case "name":
+      }
+      case "name": {
         if (!isStringField(value, key)) return false
         break
-      case "icon":
+      }
+      case "icon": {
         if (!isStringField(value, key)) return false
         break
-      case "color":
+      }
+      case "color": {
         if (!isStringField(value, key)) return false
         break
-      case "tasks":
+      }
+      case "tasks": {
         if (!isArrayField(value, key, isTask)) return false
         break
-      default:
+      }
+      default: {
         key satisfies never
         assertUnreachable(key)
+      }
     }
   }
   return true
@@ -98,13 +108,15 @@ function isStreakData(value: unknown): value is StreakData {
   ]
   for (const key of streakDataKeys) {
     switch (key) {
-      case "currentCategoryIndex":
+      case "currentCategoryIndex": {
         if (!isNumberField(value, key)) return false
         break
-      case "categories":
+      }
+      case "categories": {
         if (!isArrayField(value, key, isCategory)) return false
         break
-      case "lastActivity":
+      }
+      case "lastActivity": {
         if (!hasKey(value, key)) return false
         if (
           value.lastActivity !== null &&
@@ -112,9 +124,11 @@ function isStreakData(value: unknown): value is StreakData {
         )
           return false
         break
-      default:
+      }
+      default: {
         key satisfies never
         assertUnreachable(key)
+      }
     }
   }
   return true
