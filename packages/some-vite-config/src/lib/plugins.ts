@@ -1,7 +1,6 @@
 import react from "@vitejs/plugin-react"
 import type { PluginOption } from "vite"
 import dts from "vite-plugin-dts"
-import tsConfigPaths from "vite-tsconfig-paths"
 
 import type { ViteConfigOptions } from "../types/index.js"
 
@@ -11,7 +10,6 @@ export function createPlugins(options: ViteConfigOptions): Array<PluginOption> {
     additionalPlugins = [],
     contentPackage = false,
     contentPackageDataExclude,
-    tsConfigPaths: { projects = ["./tsconfig.json"] } = {},
   } = options
 
   const defaultExclude = [
@@ -49,10 +47,5 @@ export function createPlugins(options: ViteConfigOptions): Array<PluginOption> {
     exclude: mergedExclude,
   }
 
-  return [
-    react(),
-    dts(finalDtsOptions),
-    tsConfigPaths({ projects }),
-    ...additionalPlugins,
-  ]
+  return [react(), dts(finalDtsOptions), ...additionalPlugins]
 }

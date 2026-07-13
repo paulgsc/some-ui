@@ -2,14 +2,13 @@ import { resolve } from "path"
 import react from "@vitejs/plugin-react"
 import topLevelAwait from "vite-plugin-top-level-await"
 import wasm from "vite-plugin-wasm"
-import tsconfigPaths from "vite-tsconfig-paths"
 import { defineConfig } from "vitest/config"
 
 // https://vitejs.dev/config/
 export default defineConfig({
   // @ts-expect-error vite-plugin-wasm/vite-plugin-top-level-await resolve
   // against a different hoisted vite version than this repo's own vite dep
-  plugins: [wasm(), topLevelAwait(), react(), tsconfigPaths()],
+  plugins: [wasm(), topLevelAwait(), react()],
   test: {
     environment: "node",
     globals: true,
@@ -39,5 +38,6 @@ export default defineConfig({
         "./crates/some-charts/dist/some_charts.js"
       ),
     },
+    tsconfigPaths: true,
   },
 })
