@@ -19,6 +19,8 @@
     "build:unsafe": "turbo run build",
     "build-storybook": "scripts/with-limits.sh storybook build",
     "build:template": "cargo run --manifest-path crates/pkg_cloner/Cargo.toml",
+    "wasm:link": "scripts/wasm-link.sh",
+    "wasm:unlink": "scripts/wasm-unlink.sh",
     "dev": "turbo ready && turbo watch dev --concurrency 20",
     "docs:build": "scripts/with-limits.sh turbo run build:docs",
     "watch:build": "turbo run watch:build --parallel",

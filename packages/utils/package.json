@@ -31,7 +31,7 @@
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
-    "@some-ui/polyhedron": "workspace:*",
+    "@some-ui/polyhedron": "0.0.3",
     "some-types-utils": "workspace:*",
     "tailwind-merge": "^2.4.0",
     "usehooks-ts": "3.1.0",

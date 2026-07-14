@@ -4,7 +4,7 @@
   },
   "dependencies": {
     "@some-extension/common": "workspace:*",
-    "@some-ui/polyhedron": "workspace:*"
+    "@some-ui/polyhedron": "0.0.3"
   },
   "devDependencies": {
     "@some-ui/styles": "workspace:*",

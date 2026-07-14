@@ -214,6 +214,14 @@ jobs:
     needs: [detect, build]
     if: needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    # Job-level permissions replace the workflow-level block entirely for
+    # this job, so contents/pull-requests are repeated here alongside
+    # id-token - needed to mint the OIDC token npm's trusted publishing
+    # exchanges for a short-lived registry credential (no NPM_TOKEN).
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
@@ -247,13 +255,29 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # v1.9.0, not the previously-pinned v1.4.9: v1.4.9 unconditionally
+      # writes `_authToken=${NPM_TOKEN}` to .npmrc even when NPM_TOKEN is
+      # unset (producing a literal, broken `_authToken=undefined` line);
+      # v1.9.0 checks for it first and leaves .npmrc alone when absent, so
+      # npm's own OIDC trusted-publishing detection can take over instead.
       - name: Create Release PR or Publish
-        uses: changesets/action@v1.4.9
+        id: changesets
+        uses: changesets/action@v1.9.0
         with:
           commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
           publish: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NODE_ENV: production
+      # Consumers pin an exact npm version instead of `workspace:*` (see
+      # scripts/wasm-link.sh) precisely so a wasm-pack build never rides
+      # along with an unrelated JS change - so nothing else updates them
+      # when a crate publishes. This opens the PR that does.
+      - name: Bump published wasm versions in consumers
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo '${{ steps.changesets.outputs.publishedPackages }}' > /tmp/published-packages.json
+          nix develop .#ci --command bash scripts/bump-wasm-consumers.sh /tmp/published-packages.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

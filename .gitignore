@@ -88,3 +88,6 @@ extensions/**/artifacts/
 # Misc
 .fix
 certs/*
+
+# scripts/wasm-link.sh state (which package.json files it temporarily relinked)
+.wasm-link-state
