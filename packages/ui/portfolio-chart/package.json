@@ -64,6 +64,6 @@
   "type": "module",
   "types": "./dist/some-ui-portfolio-chart.d.ts",
   "unpkg": "portfolio-chart.umd.js",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "style": "./dist/portfolio.css"
 }

@@ -1,7 +1,7 @@
 {
   "name": "some-ui-utils",
   "private": true,
-  "version": "1.1.3",
+  "version": "1.1.4",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
@@ -31,7 +31,7 @@
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
-    "@some-ui/polyhedron": "0.0.3",
+    "@some-ui/polyhedron": "0.0.4",
     "some-types-utils": "workspace:*",
     "tailwind-merge": "^2.4.0",
     "usehooks-ts": "3.1.0",

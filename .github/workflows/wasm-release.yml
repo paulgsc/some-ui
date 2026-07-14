@@ -149,16 +149,13 @@ jobs:
       - uses: ./.github/actions/cargo-cache
         with:
           key-suffix: wasm-${{ matrix.crate_name }}
-      - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
-      - name: Install dependencies
-        run: |
-          nix develop .#ci --command pnpm install \
-            --frozen-lockfile \
-            --prefer-offline
-        env:
-          HUSKY: 0
+      # No pnpm install here on purpose: wasm-pack build below only needs
+      # the Rust/cargo toolchain from the nix devshell, and nothing later in
+      # this job touches node_modules. A workspace-wide pnpm install would
+      # also be broken on the release commit itself - changesets has just
+      # bumped consumer package.json files (e.g. packages/ui/input) to pin
+      # the crate version this job is about to build, and pnpm-lock.yaml
+      # can't reflect that until it's regenerated.
       # Each crate's own package.json wraps this same invocation under
       # different script names (wasm:prod, build, ...) - calling wasm-pack
       # directly here keeps the matrix build uniform regardless of which
@@ -240,10 +237,17 @@ jobs:
             rm -rf "crates/${crate_name}/dist"
             mv "$artifact_dir" "crates/${crate_name}/dist"
           done
+      # --frozen-lockfile is intentionally not used here: on the release
+      # commit, changesets has already bumped consumer package.json files to
+      # pin the crate versions this job publishes, so pnpm-lock.yaml can't be
+      # in sync yet. pnpm resolves those pins against the local crates/*
+      # workspace packages (link-workspace-packages, pnpm's default) rather
+      # than the registry, so this doesn't need the not-yet-published npm
+      # versions to already exist.
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm install \
-            --frozen-lockfile \
+            --no-frozen-lockfile \
             --prefer-offline
         env:
           HUSKY: 0

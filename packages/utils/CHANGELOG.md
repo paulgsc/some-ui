@@ -1,5 +1,12 @@
 # some-ui-utils
 
+## 1.1.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/polyhedron@0.0.4
+
 ## 1.1.3
 
 ### Patch Changes
