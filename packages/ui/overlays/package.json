@@ -67,6 +67,6 @@
   "type": "module",
   "types": "./dist/overlays.d.ts",
   "unpkg": "overlays.umd.js",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "style": "./dist/overlays.css"
 }

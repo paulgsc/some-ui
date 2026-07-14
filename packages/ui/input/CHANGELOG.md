@@ -1,5 +1,17 @@
 # some-ui-input
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/leetype-wasm@0.0.2
+  - @some-ui/some-crossword@0.0.2
+  - @some-ui/viewport-rotation@0.0.2
+  - some-ui-utils@1.1.2
+  - @some-ui/dice-card@0.0.3
+  - some-ui-shared@0.0.7
+
 ## 0.0.6
 
 ### Patch Changes
