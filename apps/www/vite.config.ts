@@ -1,9 +1,11 @@
 import fs from "node:fs"
 import { resolve } from "node:path"
-import tailwindcss from "@tailwindcss/vite"
+import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import { defineConfig, type UserConfig } from "vite"
+
+import styleContext from "./style.context"
 
 const certPath = resolve(__dirname, "../../certs/nixos.local+3.pem")
 const keyPath = resolve(__dirname, "../../certs/nixos.local+3-key.pem")
@@ -34,7 +36,10 @@ export default defineConfig(
         : {}),
     },
     plugins: [
-      tailwindcss(),
+      // Single Tailwind pass over www's declared graph (style.context.ts):
+      // utilities + the shared design layer are generated exactly once, from an
+      // explicit @source set, instead of once per package. See #636.
+      ...createStylePlugins(styleContext),
       TanStackRouterVite({ autoCodeSplitting: true }),
       viteReact(),
     ],

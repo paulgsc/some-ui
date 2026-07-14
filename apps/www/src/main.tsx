@@ -10,6 +10,21 @@ import "./index.css"
 
 import reportWebVitals from "./reportWebVitals.ts"
 
+// Authored component CSS (plain keyframes/selectors — not Tailwind utilities)
+// lives in each package's source next to its component. The single Tailwind
+// pass (index.css) regenerates every utility from scanned source but does not
+// carry this authored CSS, so pull it straight from package source here, the
+// way .storybook/preview.tsx already does. The root `<pkg>/src/index.css`
+// entries are excluded: they only `@import` the shared layer that index.css
+// already provides.
+import.meta.glob(
+  [
+    "../../../packages/ui/**/src/**/*.css",
+    "!../../../packages/ui/**/src/index.css",
+  ],
+  { eager: true }
+)
+
 // Create a new router instance
 const router = createRouter({
   routeTree,

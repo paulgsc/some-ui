@@ -1,11 +1,11 @@
+/* The shared design layer, compiled in a single pass over www's declared graph
+ * (style.context.ts + createStylePlugins in vite.config.ts): utilities + the
+ * shared layer are generated exactly once, from an explicit @source set.
+ *
+ * The per-package `@import "<pkg>/style.css"` lines were removed — each pulled a
+ * package's pre-compiled dist CSS, which carried its OWN copy of the shared
+ * Tailwind layer, and concatenating N of them let module-graph merge order
+ * decide the cascade (the non-determinism behind #636). Authored component CSS
+ * (plain keyframes/selectors, not utilities) is now loaded from package source
+ * in main.tsx. */
 @import "@some-ui/styles/tailwind.css";
-@import "@some-ui/honeycomb/style.css";
-@import "some-ui-input/style.css";
-@import "@some-ui/stepper/style.css";
-@import "@some-ui/chat/style.css";
-@import "@some-ui/slideshow/style.css";
-@import "some-ui-shared/style.css";
-@import "some-ui-neon-sign/style.css";
-@import "@some-ui/umag/style.css";
-@import "@some-ui/overlays/style.css";
-@import "wireframes/style.css";
