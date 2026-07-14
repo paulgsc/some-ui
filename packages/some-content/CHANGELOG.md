@@ -1,5 +1,13 @@
 # @some-ui/content
 
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-input@0.0.9
+  - @some-ui/stepper@0.0.9
+
 ## 1.0.3
 
 ### Patch Changes
