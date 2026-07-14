@@ -1,5 +1,3 @@
-import "./index.css"
-
 export * from "./components"
 export * from "./types"
 export { interviewQuestions } from "./data/interview-questions"
