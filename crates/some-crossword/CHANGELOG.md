@@ -1,11 +1,5 @@
 # @some-ui/some-crossword
 
-## 0.0.4
-
-### Patch Changes
-
-- Update WASM package for some-crossword to version 0.0.0
-
 ## 0.0.3
 
 ### Patch Changes
