@@ -248,7 +248,6 @@ jobs:
         env:
           HUSKY: 0
       - name: Create Release PR or Publish
-        id: changesets
         uses: changesets/action@v1.4.9
         with:
           commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
@@ -258,14 +257,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NODE_ENV: production
-      # Consumers pin an exact npm version instead of `workspace:*` (see
-      # scripts/wasm-link.sh) precisely so a wasm-pack build never rides
-      # along with an unrelated JS change - so nothing else updates them
-      # when a crate publishes. This opens the PR that does.
-      - name: Bump published wasm versions in consumers
-        if: steps.changesets.outputs.published == 'true'
-        run: |
-          echo '${{ steps.changesets.outputs.publishedPackages }}' > /tmp/published-packages.json
-          nix develop .#ci --command bash scripts/bump-wasm-consumers.sh /tmp/published-packages.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
