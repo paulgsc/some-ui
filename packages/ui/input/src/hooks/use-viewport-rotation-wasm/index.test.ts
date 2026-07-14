@@ -71,7 +71,8 @@ beforeEach(async () => {
 
   const mod = await import("@some-ui/viewport-rotation")
   initMock = vi
-    .mocked(mod.default)
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
+    .mocked(mod.default as unknown as () => Promise<void>)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
   // vitest 4 types a mocked class constructor as Mock<typeof ViewportManager>,

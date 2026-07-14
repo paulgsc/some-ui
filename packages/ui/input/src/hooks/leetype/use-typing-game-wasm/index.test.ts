@@ -139,7 +139,9 @@ beforeEach(async () => {
   instances = []
   resetWasm()
   const wasmStub = await import("@some-ui/leetype-wasm")
-  vi.mocked(wasmStub.default)
+  vi
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
+    .mocked(wasmStub.default as unknown as () => Promise<void>)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
 })
@@ -211,7 +213,10 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not construct a game instance if loadWasm resolves after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
-    vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
+    vi
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
+      .mocked(wasmStub.default as unknown as () => Promise<void>)
+      .mockImplementation(() => gate.promise)
 
     const { unmount } = renderHook(() => useTypingGame(baseProps()))
 
@@ -234,7 +239,10 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not surface an error state if loadWasm rejects after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
-    vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
+    vi
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
+      .mocked(wasmStub.default as unknown as () => Promise<void>)
+      .mockImplementation(() => gate.promise)
 
     const { result, unmount } = renderHook(() => useTypingGame(baseProps()))
     unmount()
