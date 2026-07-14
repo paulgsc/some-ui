@@ -81,3 +81,19 @@ export function buildSourceInjection(code, contentAbs) {
   if (!ENTRY_MARKERS.some((marker) => code.includes(marker))) return null
   return `${code}\n${SOURCE_SENTINEL}\n${toSourceDirectives(contentAbs)}\n`
 }
+
+/**
+ * The dev source-injector's per-module decision (see dev-config.ts): inject the
+ * `@source` block only into CSS modules. Vite tags CSS ids with query suffixes
+ * (e.g. `index.css?used`), so match on the path before the query.
+ *
+ * @param {string} code           Module source.
+ * @param {string} id             Vite module id (may carry a `?query`).
+ * @param {string[]} contentAbs   Absolute content globs.
+ * @returns {string | null}
+ */
+export function injectSourcesForCssId(code, id, contentAbs) {
+  const path = id.split("?")[0] ?? id
+  if (!path.endsWith(".css")) return null
+  return buildSourceInjection(code, contentAbs)
+}

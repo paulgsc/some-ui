@@ -4,7 +4,7 @@
   "version": "0.0.3",
   "main": "dist/viewport_rotation.js",
   "module": "dist/viewport_rotation.js",
-  "types": "index.d.ts",
+  "types": "dist/viewport_rotation.d.ts",
   "type": "module",
   "scripts": {
     "build": "wasm-pack build --target web --release --out-dir dist",
