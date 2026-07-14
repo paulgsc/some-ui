@@ -1,7 +1,7 @@
 {
   "name": "@some-ui/honeycomb",
   "private": true,
-  "version": "0.0.8",
+  "version": "0.0.9",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
@@ -22,9 +22,9 @@
   "dependencies": {
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
-    "@some-ui/hangul-game-core": "0.0.3",
+    "@some-ui/hangul-game-core": "0.0.4",
     "@some-ui/fetch-kit": "workspace:*",
-    "@some-ui/some-hexagon": "0.0.3",
+    "@some-ui/some-hexagon": "0.0.4",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5"

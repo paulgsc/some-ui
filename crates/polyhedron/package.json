@@ -1,7 +1,7 @@
 {
   "name": "@some-ui/polyhedron",
   "private": false,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "dist/polyhedron.js",
   "module": "dist/polyhedron.js",
   "types": "dist/polyhedron.d.ts",

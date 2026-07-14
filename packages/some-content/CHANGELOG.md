@@ -1,5 +1,24 @@
 # @some-ui/content
 
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/honeycomb@0.0.9
+  - some-ui-input@0.0.9
+  - some-ui-utils@1.1.4
+  - wireframes@0.0.9
+  - @some-ui/stepper@0.0.9
+  - @some-ui/chat@0.0.8
+  - @some-ui/makjang@0.0.9
+  - some-ui-neon-sign@0.0.9
+  - some-ui-nfl@0.0.9
+  - @some-ui/portfolio@0.0.9
+  - @some-ui/resume@0.0.4
+  - @some-ui/slideshow@0.0.9
+  - @some-ui/umag@0.0.9
+
 ## 1.0.3
 
 ### Patch Changes
