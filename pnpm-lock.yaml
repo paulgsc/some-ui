@@ -456,8 +456,8 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@some-ui/polyhedron':
-        specifier: workspace:*
-        version: link:../../crates/polyhedron
+        specifier: 0.0.3
+        version: 0.0.3
     devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
@@ -1258,11 +1258,11 @@ importers:
         specifier: workspace:*
         version: link:../../fetch-kit
       '@some-ui/hangul-game-core':
-        specifier: workspace:*
-        version: link:../../../crates/hangul-game-core
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/some-hexagon':
-        specifier: workspace:*
-        version: link:../../../crates/some-hexagon
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1301,17 +1301,17 @@ importers:
         specifier: workspace:*
         version: link:../dice-card
       '@some-ui/leetype-wasm':
-        specifier: workspace:*
-        version: link:../../../crates/leetype_wasm
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/some-crossword':
-        specifier: workspace:*
-        version: link:../../../crates/some-crossword
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
       '@some-ui/viewport-rotation':
-        specifier: workspace:*
-        version: link:../../../crates/viewport-rotation
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
@@ -1937,8 +1937,8 @@ importers:
         specifier: workspace:*
         version: link:../fetch-kit
       '@some-ui/polyhedron':
-        specifier: workspace:*
-        version: link:../../crates/polyhedron
+        specifier: 0.0.3
+        version: 0.0.3
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
@@ -4706,6 +4706,24 @@ packages:
     resolution: {integrity: sha512-AeGTBg8Wtkh/0s+evyLtP8piQoS4wyqqQaAFs2HJcFMMjYAtUgo+ZPduRXLjPlqKVc2ejeR544oeqpbn8Egn8A==}
     peerDependencies:
       solid-js: ^1.6.12
+
+  '@some-ui/hangul-game-core@0.0.3':
+    resolution: {integrity: sha512-YlTKWmhee82DfaI81OAq6xf9v2MSPZM9U5K7Bv/G9pHBZj4B7HAMhdShzrgIS550zliDfqgc9JBrlYuwFz5kMw==}
+
+  '@some-ui/leetype-wasm@0.0.3':
+    resolution: {integrity: sha512-Oqj1brYa+xF+N5qFzj8xkYclY4xGXgMMNogMx4OR9UAKKKogJFzTNVwQs4D0TodMv3DnWcFqaZlGrnZ8K7+8AQ==}
+
+  '@some-ui/polyhedron@0.0.3':
+    resolution: {integrity: sha512-pDx97VrTGGdvKygyBI1vPEIQNzQ4VRXfxbtlyikw5pz4aK+Te9irrhNHXIeScSfgih8xl2KdaRHAcSD5GO+yEQ==}
+
+  '@some-ui/some-crossword@0.0.3':
+    resolution: {integrity: sha512-MWINSb1jdq36J2ueGGDiLGuVRXwEOFD/eRw+/i63XK5mM9Wj60doIP92PktLGgVQFkgzzIQU6sc2Tsxtb5099Q==}
+
+  '@some-ui/some-hexagon@0.0.3':
+    resolution: {integrity: sha512-g0HsS+u/LL6xAvDeG4hW2TdE70W14YYUzt6wfvOmQC2jtMEMajK9zYRXVuIQ424voOf3PYOFJN400lN3qSw8zw==}
+
+  '@some-ui/viewport-rotation@0.0.3':
+    resolution: {integrity: sha512-uhA4JrdWmIl0O8pEkkqk1bf7io2H+W+mPrg8MjlBwdDaXs2+oSsZnOL1spx1WT33RNVnWWwSzZRuN76R2kC5TA==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -15353,6 +15371,18 @@ snapshots:
   '@solid-primitives/utils@6.4.0(solid-js@1.9.13)':
     dependencies:
       solid-js: 1.9.13
+
+  '@some-ui/hangul-game-core@0.0.3': {}
+
+  '@some-ui/leetype-wasm@0.0.3': {}
+
+  '@some-ui/polyhedron@0.0.3': {}
+
+  '@some-ui/some-crossword@0.0.3': {}
+
+  '@some-ui/some-hexagon@0.0.3': {}
+
+  '@some-ui/viewport-rotation@0.0.3': {}
 
   '@standard-schema/spec@1.1.0': {}
 
