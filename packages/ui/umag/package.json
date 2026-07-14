@@ -64,5 +64,5 @@
   "types": "./dist/umag.d.ts",
   "style": "./dist/umag.css",
   "unpkg": "umag.umd.js",
-  "version": "0.0.6"
+  "version": "0.0.7"
 }

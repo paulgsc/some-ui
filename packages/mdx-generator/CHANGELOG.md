@@ -1,5 +1,12 @@
 # some-ui-mdx
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-utils@1.1.2
+
 ## 0.0.6
 
 ### Patch Changes
