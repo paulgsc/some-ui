@@ -24,6 +24,14 @@ jobs:
   detect:
     name: Detect Changed WASM Crates
     runs-on: ubuntu-latest
+    # The release job's own version-bump commits land under crates/**
+    # (package.json, CHANGELOG.md) and would otherwise re-trigger this
+    # workflow, rebuild every bumped crate, mint fresh changesets, and
+    # spawn another release PR forever. Skip runs whose triggering commit
+    # is that release commit to break the cycle.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'chore(release): update WASM packages')
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
