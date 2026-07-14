@@ -33,3 +33,13 @@ export declare function buildSourceInjection(
   code: string,
   contentAbs: Array<string>
 ): string | null
+
+/**
+ * The dev source-injector's per-module decision: inject the `@source` block
+ * only into CSS modules, matching on the path before any `?query` suffix.
+ */
+export declare function injectSourcesForCssId(
+  code: string,
+  id: string,
+  contentAbs: Array<string>
+): string | null

@@ -8,6 +8,7 @@ import exampleContext from "../examples/style.context.js"
 import {
   buildSourceInjection,
   CANONICAL_ENTRY,
+  injectSourcesForCssId,
   resolveContext,
   SOURCE_SENTINEL,
   toSourceDirectives,
@@ -137,6 +138,28 @@ describe("toSourceDirectives / buildSourceInjection", () => {
 
   it("no-ops when there is no declared content", () => {
     expect(buildSourceInjection('@import "tailwindcss";', [])).toBeNull()
+  })
+})
+
+describe("injectSourcesForCssId", () => {
+  const entry = '@import "tailwindcss";'
+
+  it("injects into a .css module id", () => {
+    const out = injectSourcesForCssId(entry, "/app/src/index.css", ["/x/**"])
+    expect(out).toContain('@source "/x/**";')
+  })
+
+  it("injects even when the id carries a ?query suffix (vite tags CSS ids)", () => {
+    const out = injectSourcesForCssId(entry, "/app/src/index.css?used", [
+      "/x/**",
+    ])
+    expect(out).toContain('@source "/x/**";')
+  })
+
+  it("ignores non-CSS module ids", () => {
+    expect(
+      injectSourcesForCssId(entry, "/app/src/main.tsx", ["/x/**"])
+    ).toBeNull()
   })
 })
 
