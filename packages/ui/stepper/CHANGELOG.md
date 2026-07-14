@@ -1,5 +1,14 @@
 # @some-ui/stepper
 
+## 0.0.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-input@0.0.8
+  - some-ui-utils@1.1.3
+  - some-ui-shared@0.0.8
+
 ## 0.0.7
 
 ### Patch Changes

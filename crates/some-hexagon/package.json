@@ -1,7 +1,7 @@
 {
   "name": "@some-ui/some-hexagon",
   "private": false,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "dist/some_hexagon.js",
   "module": "dist/some_hexagon.js",
   "types": "dist/some_hexagon.d.ts",

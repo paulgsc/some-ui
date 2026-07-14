@@ -1,5 +1,13 @@
 # @some-ui/dice-card
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-utils@1.1.3
+  - some-ui-shared@0.0.8
+
 ## 0.0.3
 
 ### Patch Changes

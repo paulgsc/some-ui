@@ -1,5 +1,15 @@
 # some-ui-honeycomb
 
+## 0.0.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/hangul-game-core@0.0.3
+  - @some-ui/some-hexagon@0.0.3
+  - some-ui-utils@1.1.3
+  - some-ui-shared@0.0.8
+
 ## 0.0.7
 
 ### Patch Changes
