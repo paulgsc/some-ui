@@ -58,6 +58,6 @@
   "type": "module",
   "types": "./dist/@some-ui/fetch-kit.d.ts",
   "unpkg": "fetch-kit.umd.js",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "style": "./dist/fetch-kit.css"
 }

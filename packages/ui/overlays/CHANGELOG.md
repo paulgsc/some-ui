@@ -1,5 +1,23 @@
 # overlays
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-nfl@0.0.6
+  - @some-ui/slideshow@0.0.6
+  - some-ui-utils@1.1.1
+  - some-ui-input@0.0.6
+  - wireframes@0.0.6
+  - @some-ui/chat@0.0.5
+  - some-ui-emoji-animations@0.0.6
+  - @some-ui/makjang@0.0.6
+  - @some-ui/portfolio@0.0.6
+  - some-ui-shared@0.0.6
+  - @some-ui/stepper@0.0.6
+  - @some-ui/umag@0.0.6
+
 ## 0.0.5
 
 ### Patch Changes

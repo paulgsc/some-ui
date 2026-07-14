@@ -1,5 +1,17 @@
 # @some-ui/slideshow
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies [[`90a1f6a`](https://github.com/paulgsc/some-ui/commit/90a1f6adf2b8a44eaff141046d2bb73c02e7458d)]:
+  - @some-ui/fetch-kit@0.1.0
+  - some-ui-utils@1.1.1
+  - @some-ui/dice-card@0.0.2
+  - some-ui-neon-sign@0.0.6
+  - some-ui-shared@0.0.6
+  - @some-ui/umag@0.0.6
+
 ## 0.0.5
 
 ### Patch Changes

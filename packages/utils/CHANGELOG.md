@@ -1,5 +1,13 @@
 # some-ui-utils
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [[`90a1f6a`](https://github.com/paulgsc/some-ui/commit/90a1f6adf2b8a44eaff141046d2bb73c02e7458d)]:
+  - @some-ui/fetch-kit@0.1.0
+  - @some-ui/polyhedron@0.0.1
+
 ## 1.1.0
 
 ### Minor Changes
