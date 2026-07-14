@@ -237,17 +237,24 @@ jobs:
             rm -rf "crates/${crate_name}/dist"
             mv "$artifact_dir" "crates/${crate_name}/dist"
           done
-      # --frozen-lockfile is intentionally not used here: on the release
-      # commit, changesets has already bumped consumer package.json files to
-      # pin the crate versions this job publishes, so pnpm-lock.yaml can't be
-      # in sync yet. pnpm resolves those pins against the local crates/*
-      # workspace packages (link-workspace-packages, pnpm's default) rather
-      # than the registry, so this doesn't need the not-yet-published npm
-      # versions to already exist.
+      # This only needs the root project's own devDependencies (changesets
+      # and friends) to run `npx changeset publish` below - nothing here
+      # needs the rest of the workspace installed. That's not just an
+      # optimization: a full install is actually broken at this point in the
+      # pipeline. On the release commit, changesets has already bumped
+      # consumer package.json files (e.g. extensions/some-conveyor pinning
+      # "@some-ui/polyhedron": "0.0.4") to a version that doesn't exist on
+      # npm yet - this job is what's about to publish it. Those are plain
+      # semver pins, not `workspace:`, so pnpm won't link them locally; any
+      # whole-workspace resolution (even with --no-frozen-lockfile, even
+      # just to compute a fresh lockfile) fails with ERR_PNPM_NO_MATCHING_VERSION
+      # before ever reaching the publish step. `--filter .` scopes
+      # resolution to the root package, and `--no-lockfile` skips the
+      # workspace-wide lockfile pnpm would otherwise insist on computing.
       - name: Install dependencies
         run: |
-          nix develop .#ci --command pnpm install \
-            --no-frozen-lockfile \
+          nix develop .#ci --command pnpm --filter . install \
+            --no-lockfile \
             --prefer-offline
         env:
           HUSKY: 0
