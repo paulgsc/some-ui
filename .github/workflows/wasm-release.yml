@@ -7,6 +7,10 @@ on:
       - "Cargo.lock"
       - ".github/workflows/wasm-release.yml"
   workflow_dispatch:
+env:
+  # Also referenced (as a literal, see the `detect` job's `if:` comment)
+  # by the release-commit guard below - keep both in sync if this changes.
+  RELEASE_COMMIT_MESSAGE: "chore(release): update WASM packages"
 permissions:
   contents: write
   pull-requests: write
@@ -24,11 +28,15 @@ jobs:
   detect:
     name: Detect Changed WASM Crates
     runs-on: ubuntu-latest
-    # The release job's own version-bump commits land under crates/**
-    # (package.json, CHANGELOG.md) and would otherwise re-trigger this
-    # workflow, rebuild every bumped crate, mint fresh changesets, and
-    # spawn another release PR forever. Skip runs whose triggering commit
-    # is that release commit to break the cycle.
+    # Prevent release automation from triggering itself. The release job
+    # commits version bumps under crates/** (package.json, CHANGELOG.md),
+    # which match this workflow's own trigger paths. Without this guard,
+    # that commit would rerun detection, regenerate changesets, and create
+    # an endless release loop. Manual dispatches are always permitted.
+    #
+    # This must be a literal string, not `env.RELEASE_COMMIT_MESSAGE`: the
+    # `env` context isn't available in job-level `if:` conditions (only in
+    # steps). Keep this in sync with that env var by hand.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       !startsWith(github.event.head_commit.message, 'chore(release): update WASM packages')
@@ -211,8 +219,8 @@ jobs:
       - name: Create Release PR or Publish
         uses: changesets/action@v1.4.9
         with:
-          commit: "chore(release): update WASM packages"
-          title: "chore(release): update WASM packages"
+          commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
           publish: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
