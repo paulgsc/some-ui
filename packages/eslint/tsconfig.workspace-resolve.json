@@ -7,6 +7,7 @@
       "@some-ui/dice-card": ["../ui/dice-card/src/index.ts"],
       "@some-ui/fetch-kit": ["../fetch-kit/src/index.ts"],
       "@some-ui/honeycomb": ["../ui/honeycomb/src/index.ts"],
+      "@some-ui/leetype": ["../ui/leetype/src/index.ts"],
       "@some-ui/makjang": ["../ui/makjang/src/index.ts"],
       "@some-ui/overlays": ["../ui/overlays/src/index.ts"],
       "@some-ui/portfolio": ["../ui/portfolio-chart/src/index.ts"],

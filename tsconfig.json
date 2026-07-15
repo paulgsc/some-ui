@@ -20,6 +20,7 @@
       "@searchbar/*": ["./packages/ui/searchbar/src/"],
       "@slideshow/*": ["./packages/ui/slideshow/src/"],
       "@dice-card/*": ["./packages/ui/dice-card/src/*"],
+      "@leetype/*": ["./packages/ui/leetype/src/*"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
       "@honeycomb/*": ["./packages/ui/honeycomb/src/"],
       "@umag/*": ["./packages/ui/umag/src/"],

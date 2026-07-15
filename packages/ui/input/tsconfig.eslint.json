@@ -7,8 +7,7 @@
       "some-ui-utils": ["../../utils/src/index.ts"],
       "@some-ui/dice-card": ["../dice-card/src/index.ts"],
       "@some-ui/some-crossword": ["./src/types/wasm/some-crossword.d.ts"],
-      "@some-ui/viewport-rotation": ["./src/types/wasm/viewport-rotation.d.ts"],
-      "@some-ui/leetype-wasm": ["./src/types/wasm/leetype-wasm.d.ts"]
+      "@some-ui/viewport-rotation": ["./src/types/wasm/viewport-rotation.d.ts"]
     }
   }
 }

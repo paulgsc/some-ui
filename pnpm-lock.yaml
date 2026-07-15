@@ -299,6 +299,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../../packages/ui/leetype
       '@some-ui/makjang':
         specifier: workspace:*
         version: link:../../packages/ui/makjang
@@ -350,9 +353,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../packages/types
-      some-ui-input:
-        specifier: workspace:*
-        version: link:../../packages/ui/input
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../../packages/ui/neon-sign
@@ -1007,6 +1007,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../ui/honeycomb
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../ui/leetype
       '@some-ui/makjang':
         specifier: workspace:*
         version: link:../ui/makjang
@@ -1028,9 +1031,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../types
-      some-ui-input:
-        specifier: workspace:*
-        version: link:../ui/input
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../ui/neon-sign
@@ -1303,9 +1303,6 @@ importers:
       '@some-ui/dice-card':
         specifier: workspace:*
         version: link:../dice-card
-      '@some-ui/leetype-wasm':
-        specifier: 0.0.4
-        version: 0.0.4
       '@some-ui/some-crossword':
         specifier: 0.0.4
         version: 0.0.4
@@ -1321,6 +1318,58 @@ importers:
       katex:
         specifier: ^0.16.28
         version: 0.16.47
+      lucide-react:
+        specifier: ^0.525.0
+        version: 0.525.0(react@19.0.0)
+      prettier:
+        specifier: 3.4.2
+        version: 3.4.2
+      prismjs:
+        specifier: ^1.30.0
+        version: 1.30.0
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+      zod:
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      '@types/prismjs':
+        specifier: ^1.26.5
+        version: 1.26.6
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
+      eslint-import-resolver-typescript:
+        specifier: 4.4.5
+        version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.62.0(eslint@10.6.0(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint@10.6.0(jiti@2.7.0)))(eslint-plugin-import@2.32.0)(eslint@10.6.0(jiti@2.7.0))
+
+  packages/ui/leetype:
+    dependencies:
+      '@some-ui/leetype-wasm':
+        specifier: 0.0.4
+        version: 0.0.4
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
+      '@some-ui/wasm-loader':
+        specifier: workspace:*
+        version: link:../../wasm-loader
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.0.0)
