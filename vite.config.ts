@@ -26,6 +26,7 @@ export default defineConfig({
       "@slideshow": path.resolve(__dirname, "./packages/ui/slideshow/src"),
       "@dice-card": path.resolve(__dirname, "./packages/ui/dice-card/src"),
       "@leetype": path.resolve(__dirname, "./packages/ui/leetype/src"),
+      "@topik": path.resolve(__dirname, "./packages/ui/topik/src"),
       "@emoji": path.resolve(__dirname, "./packages/ui/emoji-animations/src"),
       "@wireframes": path.resolve(__dirname, "./packages/ui/wireframes/src"),
       "@portfolio": path.resolve(

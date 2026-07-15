@@ -27,7 +27,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   music: lazyWithPreload(() => import("@some-ui/umag"), "NowPlayingCard"),
   voice: lazyWithPreload(() => import("@some-ui/umag"), "VoiceAvatar"),
   neon: lazyWithPreload(() => import("some-ui-neon-sign"), "Headline"),
-  topik: lazyWithPreload(() => import("@some-ui/chat"), "KoreanStudyPage"),
+  topik: lazyWithPreload(() => import("@some-ui/topik"), "KoreanStudyPage"),
   assessment: lazyWithPreload(
     () => import("@some-ui/resume"),
     "TechnicalBlockAssessment"

@@ -43,6 +43,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@some-ui/chat": "workspace:*",
+    "@some-ui/topik": "workspace:*",
     "some-types-utils": "workspace:*",
     "@some-ui/leetype": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
