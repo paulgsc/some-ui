@@ -122,6 +122,24 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # Scoped to the CSP/nginx config surface actually touched by this PR -
+      # this is a config invariant (apps/www/nginx.security-headers.conf),
+      # not a per-package build/test, so turbo's dep-graph filter doesn't
+      # apply the way it does to the steps above. Regression coverage for
+      # #660 (www's CSP header blocked WebAssembly instantiation).
+      - name: E2E — CSP regression (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/Dockerfile' \
+            'apps/www/nginx*.conf' \
+            'apps/www/tests/csp/**' \
+            'apps/www/playwright.config.ts' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci-playwright --command pnpm --filter www test:e2e
+          else
+            echo "No CSP-relevant www files changed."
+          fi
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks
