@@ -22,6 +22,7 @@
       "@dice-card/*": ["./packages/ui/dice-card/src/*"],
       "@leetype/*": ["./packages/ui/leetype/src/*"],
       "@topik/*": ["./packages/ui/topik/src/*"],
+      "@interview/*": ["./packages/ui/interview/src/*"],
       "@makjang/*": ["./packages/ui/makjang/src/"],
       "@honeycomb/*": ["./packages/ui/honeycomb/src/"],
       "@umag/*": ["./packages/ui/umag/src/"],

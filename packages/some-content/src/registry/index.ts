@@ -32,7 +32,7 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
     () => import("@some-ui/resume"),
     "TechnicalBlockAssessment"
   ),
-  interview: lazyWithPreload(() => import("@some-ui/chat"), "InterviewApp"),
+  interview: lazyWithPreload(() => import("@some-ui/interview"), "InterviewApp"),
   "cdrama-header": lazyWithPreload(
     () => import("@some-ui/makjang"),
     "DramaHeader"

@@ -287,9 +287,6 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@some-ui/chat':
-        specifier: workspace:*
-        version: link:../../packages/ui/chat
       '@some-ui/content':
         specifier: workspace:*
         version: link:../../packages/some-content
@@ -299,6 +296,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
+      '@some-ui/interview':
+        specifier: workspace:*
+        version: link:../../packages/ui/interview
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../../packages/ui/leetype
@@ -1010,6 +1010,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../ui/honeycomb
+      '@some-ui/interview':
+        specifier: workspace:*
+        version: link:../ui/interview
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../ui/leetype
@@ -1173,24 +1176,15 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
-      '@tanstack/react-query':
-        specifier: ^5.66.11
-        version: 5.101.1(react@19.0.0)
       '@types/react':
         specifier: ^19.0.4
         version: 19.2.17
-      lucide-react:
-        specifier: ^0.562.0
-        version: 0.562.0(react@19.0.0)
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
-      zod:
-        specifier: 4.0.5
-        version: 4.0.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1327,12 +1321,6 @@ importers:
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.0.0)
-      prettier:
-        specifier: 3.4.2
-        version: 3.4.2
-      prismjs:
-        specifier: ^1.30.0
-        version: 1.30.0
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1355,15 +1343,40 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-      '@types/prismjs':
-        specifier: ^1.26.5
-        version: 1.26.6
       concurrently:
         specifier: 10.0.3
         version: 10.0.3
       eslint-import-resolver-typescript:
         specifier: 4.4.5
         version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.62.0(eslint@10.6.0(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint@10.6.0(jiti@2.7.0)))(eslint-plugin-import@2.32.0)(eslint@10.6.0(jiti@2.7.0))
+
+  packages/ui/interview:
+    dependencies:
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.0.0)
+      some-ui-shared:
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: 4.0.5
+        version: 4.0.5
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
 
   packages/ui/leetype:
     dependencies:

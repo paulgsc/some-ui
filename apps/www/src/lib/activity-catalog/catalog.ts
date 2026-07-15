@@ -1,5 +1,5 @@
-import { interviewQuestions } from "@some-ui/chat"
-import type { Question } from "@some-ui/chat"
+import { interviewQuestions } from "@some-ui/interview"
+import type { Question } from "@some-ui/interview"
 
 import type { ActivityDefinition, ActivityId } from "./types"
 

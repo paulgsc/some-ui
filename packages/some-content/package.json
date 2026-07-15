@@ -5,6 +5,7 @@
     "@some-ui/portfolio": "workspace:*",
     "some-types-utils": "workspace:*",
     "@some-ui/chat": "workspace:*",
+    "@some-ui/interview": "workspace:*",
     "@some-ui/topik": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/leetype": "workspace:*",

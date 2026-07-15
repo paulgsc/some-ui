@@ -1,7 +1,7 @@
 {
-  "name": "some-ui-input",
+  "name": "@some-ui/interview",
   "private": true,
-  "version": "0.0.9",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
@@ -16,27 +16,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest"
   },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
   "dependencies": {
-    "@some-ui/dice-card": "workspace:*",
     "@some-ui/styles": "workspace:*",
-    "@some-ui/wasm-loader": "workspace:*",
-    "katex": "^0.16.28",
-    "lucide-react": "^0.525.0",
-    "@some-ui/some-crossword": "0.0.4",
+    "@types/react": "^19.0.4",
+    "lucide-react": "^0.562.0",
     "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "@some-ui/viewport-rotation": "0.0.4",
     "zod": "4.0.5"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "concurrently": "10.0.3",
-    "eslint-import-resolver-typescript": "4.4.5"
+    "concurrently": "10.0.3"
   },
   "repository": {
     "type": "git",
@@ -54,18 +44,18 @@
   "sideEffects": [
     "*.css"
   ],
-  "unpkg": "some-ui-input.umd.js",
-  "main": "./dist/some-ui-input.cjs.js",
-  "module": "./dist/some-ui-input.es.js",
-  "types": "./dist/some-ui-input.d.ts",
-  "style": "./dist/some-ui-input.css",
+  "unpkg": "@some-ui/interview.umd.js",
+  "main": "./dist/@some-ui/interview.cjs.js",
+  "module": "./dist/@some-ui/interview.es.js",
+  "types": "./dist/@some-ui/interview.d.ts",
+  "style": "./dist/interview.css",
   "exports": {
     ".": {
-      "types": "./dist/some-ui-input.d.ts",
-      "import": "./dist/some-ui-input.es.js",
-      "require": "./dist/some-ui-input.cjs.js",
-      "default": "./dist/some-ui-input.es.js"
+      "types": "./dist/@some-ui/interview.d.ts",
+      "import": "./dist/@some-ui/interview.es.js",
+      "require": "./dist/@some-ui/interview.cjs.js",
+      "default": "./dist/@some-ui/interview.es.js"
     },
-    "./style.css": "./dist/some-ui-input.css"
+    "./style.css": "./dist/interview.css"
   }
 }
