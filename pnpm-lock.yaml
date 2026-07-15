@@ -456,8 +456,8 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@some-ui/polyhedron':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
     devDependencies:
       '@some-ui/styles':
         specifier: workspace:*
@@ -1258,11 +1258,11 @@ importers:
         specifier: workspace:*
         version: link:../../fetch-kit
       '@some-ui/hangul-game-core':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/some-hexagon':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1301,17 +1301,17 @@ importers:
         specifier: workspace:*
         version: link:../dice-card
       '@some-ui/leetype-wasm':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/some-crossword':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
       '@some-ui/viewport-rotation':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
@@ -1937,8 +1937,8 @@ importers:
         specifier: workspace:*
         version: link:../fetch-kit
       '@some-ui/polyhedron':
-        specifier: 0.0.3
-        version: 0.0.3
+        specifier: 0.0.4
+        version: 0.0.4
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
@@ -4707,23 +4707,23 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
 
-  '@some-ui/hangul-game-core@0.0.3':
-    resolution: {integrity: sha512-YlTKWmhee82DfaI81OAq6xf9v2MSPZM9U5K7Bv/G9pHBZj4B7HAMhdShzrgIS550zliDfqgc9JBrlYuwFz5kMw==}
+  '@some-ui/hangul-game-core@0.0.4':
+    resolution: {integrity: sha512-x8Z+BA9l0IaJOmlNzKOcbvj3C1hX1+3Y5yb9eqPTpmEOESxwnE8Fz7uFh4BfNHrCsnMaliVEuFpO+bJZi2Tg9w==}
 
-  '@some-ui/leetype-wasm@0.0.3':
-    resolution: {integrity: sha512-Oqj1brYa+xF+N5qFzj8xkYclY4xGXgMMNogMx4OR9UAKKKogJFzTNVwQs4D0TodMv3DnWcFqaZlGrnZ8K7+8AQ==}
+  '@some-ui/leetype-wasm@0.0.4':
+    resolution: {integrity: sha512-V4FOv4uF22Lc4Y7rgEsDa6Z2wXscJhisw3nO+DW+nLT3ROwYv+UGahLR7DQrfvd28pCj/T1ypargMBoMzrQbmA==}
 
-  '@some-ui/polyhedron@0.0.3':
-    resolution: {integrity: sha512-pDx97VrTGGdvKygyBI1vPEIQNzQ4VRXfxbtlyikw5pz4aK+Te9irrhNHXIeScSfgih8xl2KdaRHAcSD5GO+yEQ==}
+  '@some-ui/polyhedron@0.0.4':
+    resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
 
-  '@some-ui/some-crossword@0.0.3':
-    resolution: {integrity: sha512-MWINSb1jdq36J2ueGGDiLGuVRXwEOFD/eRw+/i63XK5mM9Wj60doIP92PktLGgVQFkgzzIQU6sc2Tsxtb5099Q==}
+  '@some-ui/some-crossword@0.0.4':
+    resolution: {integrity: sha512-OIn/Bf6y5ZF9ADuTjdvTsPDN8hdR1BWyzG9upewJbNLJlsnZ72kBzka2teLMY7J4O/Vy/uhRP5PnP5JHm4U3Mw==}
 
-  '@some-ui/some-hexagon@0.0.3':
-    resolution: {integrity: sha512-g0HsS+u/LL6xAvDeG4hW2TdE70W14YYUzt6wfvOmQC2jtMEMajK9zYRXVuIQ424voOf3PYOFJN400lN3qSw8zw==}
+  '@some-ui/some-hexagon@0.0.4':
+    resolution: {integrity: sha512-sQ3e79ru1/c9XI3eSjP8d8ChU4gOyoTKCi94We22esHLc5rzilWF9O+BJkI3MqW1hgr132OsPn7w5BdzKU6p/g==}
 
-  '@some-ui/viewport-rotation@0.0.3':
-    resolution: {integrity: sha512-uhA4JrdWmIl0O8pEkkqk1bf7io2H+W+mPrg8MjlBwdDaXs2+oSsZnOL1spx1WT33RNVnWWwSzZRuN76R2kC5TA==}
+  '@some-ui/viewport-rotation@0.0.4':
+    resolution: {integrity: sha512-qFYwIsWJifkaJ2CbzxGU6cHvc90/z624QAo1zOSv4vTpNgAYgqv0br5F6+HB1SNHZYqdqbZZLWnhM4cCrkR65g==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -15372,17 +15372,17 @@ snapshots:
     dependencies:
       solid-js: 1.9.13
 
-  '@some-ui/hangul-game-core@0.0.3': {}
+  '@some-ui/hangul-game-core@0.0.4': {}
 
-  '@some-ui/leetype-wasm@0.0.3': {}
+  '@some-ui/leetype-wasm@0.0.4': {}
 
-  '@some-ui/polyhedron@0.0.3': {}
+  '@some-ui/polyhedron@0.0.4': {}
 
-  '@some-ui/some-crossword@0.0.3': {}
+  '@some-ui/some-crossword@0.0.4': {}
 
-  '@some-ui/some-hexagon@0.0.3': {}
+  '@some-ui/some-hexagon@0.0.4': {}
 
-  '@some-ui/viewport-rotation@0.0.3': {}
+  '@some-ui/viewport-rotation@0.0.4': {}
 
   '@standard-schema/spec@1.1.0': {}
 

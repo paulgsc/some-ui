@@ -263,6 +263,7 @@ jobs:
         with:
           commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          version: nix develop .#ci --command scripts/wasm-changeset-version.sh
           publish: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
