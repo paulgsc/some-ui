@@ -90,14 +90,14 @@ export const requireReactPeerDependency: Rule.RuleModule = {
     type: "problem",
     docs: {
       description:
-        'Require react/react-dom in peerDependencies for packages that build with the shared @some-ui/vite-config, which force-externalizes them. Missing the peer entry lets the bundler emit a runtime require("react") into the ESM output that only fails when a consuming app loads it.',
+        "Require react/react-dom in peerDependencies for packages that build with the shared @some-ui/vite-config, which externalizes them. A React library must declare the peer contract so the consuming app supplies a single react instance (and pnpm can flag version drift) rather than leaving the requirement implicit.",
     },
     schema: [],
     messages: {
       missingReactPeer:
-        '{{name}} uses React but does not list "react" in peerDependencies. The shared @some-ui/vite-config externalizes react, so without the peer entry the emitted bundle can call require("react") and fail at runtime in a consumer. Add "react" to peerDependencies.',
+        '{{name}} uses React but does not list "react" in peerDependencies. Libraries built with the shared @some-ui/vite-config externalize react — declare it as a peer so the consuming app provides a single react instance. Add "react" to peerDependencies.',
       missingReactDomPeer:
-        '{{name}} imports react-dom but does not list "react-dom" in peerDependencies. The shared @some-ui/vite-config externalizes react-dom; add "react-dom" to peerDependencies so the emitted bundle references it as a consumer-provided peer.',
+        '{{name}} imports react-dom but does not list "react-dom" in peerDependencies. Libraries built with the shared @some-ui/vite-config externalize react-dom — declare it as a peer so the consuming app provides it. Add "react-dom" to peerDependencies.',
     },
   },
   create(context) {
