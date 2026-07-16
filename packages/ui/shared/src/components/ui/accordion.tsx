@@ -1,8 +1,9 @@
 import type { ComponentPropsWithoutRef, ElementRef } from "react"
 import { forwardRef } from "react"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { cn } from "@shared/lib/utils"
 import { ChevronDown } from "lucide-react"
+
+import { cn } from "../../lib/utils"
 
 const Accordion = AccordionPrimitive.Root
 

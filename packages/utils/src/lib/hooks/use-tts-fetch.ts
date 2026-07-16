@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query"
+
 import type {
   TTSAPIConfig,
   TTSServiceConfig,
   VoiceConfig,
-} from "@utils/types/tts-types"
+} from "../../types/tts-types"
 
 // API configurations for different providers
 const TTS_API_CONFIGS: Record<string, TTSAPIConfig> = {

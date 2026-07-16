@@ -5,8 +5,9 @@ import type {
   HTMLAttributes,
 } from "react"
 import { forwardRef } from "react"
-import { cn } from "@shared/lib/utils"
 import { Drawer as DrawerPrimitive } from "vaul"
+
+import { cn } from "../../lib/utils"
 
 const Drawer = ({
   shouldScaleBackground = true,

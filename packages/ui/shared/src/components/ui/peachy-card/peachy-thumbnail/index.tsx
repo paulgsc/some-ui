@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from "react"
 import { forwardRef } from "react"
-import { cn } from "@shared/lib/utils"
+
+import { cn } from "../../../../lib/utils"
 
 export const PeachyThumbnail = forwardRef<
   HTMLDivElement,

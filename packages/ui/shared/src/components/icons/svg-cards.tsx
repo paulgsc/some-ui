@@ -1,5 +1,6 @@
 import { forwardRef } from "react"
-import type { SVGIconProps } from "@shared/types"
+
+import type { SVGIconProps } from "../../types"
 
 export const SvgIcons = {
   gripVertical: forwardRef<SVGSVGElement, SVGIconProps>(

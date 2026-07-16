@@ -1,6 +1,7 @@
-import type { Rect } from "@utils/types/resizable"
 import type { YouTubeRegion } from "some-types-utils"
 import { create } from "zustand"
+
+import type { Rect } from "../../../types/resizable"
 
 type RegionRectState = {
   /** Map of region/split IDs to their current bounding rects */

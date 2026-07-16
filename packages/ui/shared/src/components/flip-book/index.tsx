@@ -3,7 +3,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@shared/components/ui/accordion"
+} from "../ui/accordion"
 
 const AccordionDemo = (): React.JSX.Element => {
   return (

@@ -1,5 +1,4 @@
-import type { UseAudioTTSReturn } from "@utils/types/tts-types"
-
+import type { UseAudioTTSReturn } from "../../../types/tts-types"
 import { SpeechQueueManager } from "./manager"
 
 let globalSpeechManager: SpeechQueueManager | null = null

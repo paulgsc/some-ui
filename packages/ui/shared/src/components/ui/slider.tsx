@@ -1,7 +1,8 @@
 import type { ComponentPropsWithoutRef, ElementRef } from "react"
 import { forwardRef } from "react"
 import * as SliderPrimitive from "@radix-ui/react-slider"
-import { cn } from "@shared/lib/utils"
+
+import { cn } from "../../lib/utils"
 
 const Slider = forwardRef<
   ElementRef<typeof SliderPrimitive.Root>,

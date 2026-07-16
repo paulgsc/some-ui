@@ -1037,6 +1037,12 @@ importers:
       '@some-ui/umag':
         specifier: workspace:*
         version: link:../ui/umag
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-types-utils:
         specifier: workspace:*
         version: link:../types
@@ -1145,9 +1151,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
 
   packages/ui/calendar:
     dependencies:
@@ -1176,9 +1179,12 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1192,6 +1198,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       concurrently:
         specifier: 10.0.3
         version: 10.0.3
@@ -1355,12 +1364,15 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1374,6 +1386,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       concurrently:
         specifier: 10.0.3
         version: 10.0.3
@@ -1552,9 +1567,15 @@ importers:
       '@some-ui/umag':
         specifier: workspace:*
         version: link:../umag
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
       react-d3-tree:
         specifier: 3.6.2
         version: 3.6.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1784,9 +1805,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
       eslint-import-resolver-alias:
         specifier: ^1.1.2
         version: 1.1.2(eslint-plugin-import@2.32.0)
@@ -1921,12 +1939,15 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.0.0)
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1943,6 +1964,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       concurrently:
         specifier: 10.0.3
         version: 10.0.3
@@ -2078,9 +2102,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.0.0)

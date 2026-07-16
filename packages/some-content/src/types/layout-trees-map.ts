@@ -1,11 +1,7 @@
-import {
-  dramaTree,
-  studyTree,
-  topikTree,
-  voiceTree,
-} from "@content/data/layout-tree"
 import type { YouTubeRegion } from "some-types-utils"
 import type { LayoutNode } from "wireframes"
+
+import { dramaTree, studyTree, topikTree, voiceTree } from "../data/layout-tree"
 
 export type SceneName =
   | "cdrama"

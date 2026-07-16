@@ -44,6 +44,10 @@
   "main": "./dist/overlays.cjs.js",
   "module": "./dist/overlays.es.js",
   "name": "@some-ui/overlays",
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "private": true,
   "repository": {
     "type": "git",

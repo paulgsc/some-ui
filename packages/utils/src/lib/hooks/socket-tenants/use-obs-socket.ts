@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react"
-import { useObsStore } from "@utils/lib/context/zustand-store/obs-store"
 import { useWebSocket } from "@some-ui/ws"
 import type { UseWebSocketOptions, WebSocketManager } from "@some-ui/ws"
 import type {
@@ -8,6 +7,8 @@ import type {
   OutgoingObsEvent,
 } from "some-types-utils"
 import { IncomingEventSchema, OutgoingObsEventSchema } from "some-types-utils"
+
+import { useObsStore } from "../../context/zustand-store/obs-store"
 
 type UseObsStatusOptions = Omit<
   UseWebSocketOptions<IncomingEvent, OutgoingObsEvent>,

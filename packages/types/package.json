@@ -4,10 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
-    "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:fix": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint --fix",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
@@ -21,8 +19,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*"
   },
   "repository": {
     "type": "git",
@@ -35,22 +32,16 @@
   "license": "MIT",
   "keywords": [],
   "files": [
-    "dist"
+    "src"
   ],
-  "sideEffects": [
-    "*.css"
-  ],
-  "main": "./dist/some-types-utils.cjs.js",
-  "module": "./dist/some-types-utils.es.js",
-  "types": "./dist/some-types-utils.d.ts",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/some-types-utils.d.ts",
-      "import": "./dist/some-types-utils.es.js",
-      "require": "./dist/some-types-utils.cjs.js",
-      "default": "./dist/some-types-utils.es.js"
-    },
-    "./style.css": "./dist/some-types-utils.css"
-  },
-  "style": "./dist/some-types-utils.css"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
 }

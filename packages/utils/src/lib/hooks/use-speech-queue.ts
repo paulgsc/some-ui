@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useMemo } from "react"
-import { useStore } from "@utils/lib/context"
-import type { Store } from "@utils/lib/context/ochestra/ochestrated-store"
-import { getSpeechQueue } from "@utils/lib/context/speech-queue"
-import type { SpeechAction } from "@utils/lib/context/speech-queue/actions"
-import type { SpeechQueueState } from "@utils/lib/context/speech-queue/types"
-import type { TTSOptions, UseAudioTTSReturn } from "@utils/types/tts-types"
+
+import type { TTSOptions, UseAudioTTSReturn } from "../../types/tts-types"
+import { useStore } from "../context"
+import type { Store } from "../context/ochestra/ochestrated-store"
+import { getSpeechQueue } from "../context/speech-queue"
+import type { SpeechAction } from "../context/speech-queue/actions"
+import type { SpeechQueueState } from "../context/speech-queue/types"
 
 type UseSpeechQueueReturn = {
   // Actions

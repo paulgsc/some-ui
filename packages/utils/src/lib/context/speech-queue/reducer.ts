@@ -1,5 +1,4 @@
-import type { Reducer } from "@utils/lib/context/ochestra/ochestrated-store"
-
+import type { Reducer } from "../ochestra/ochestrated-store"
 import { createSpeechItem } from "./actions"
 import type { SpeechAction } from "./actions"
 import type { SpeechQueueState } from "./types"

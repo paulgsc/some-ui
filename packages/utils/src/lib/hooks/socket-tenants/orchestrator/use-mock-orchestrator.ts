@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
-import { useOrchestratorStore } from "@utils/lib/context/zustand-store"
 import type { OrchestratorCommand } from "some-types-utils"
 
+import { useOrchestratorStore } from "../../../context/zustand-store"
 import type { EngineState } from "./mock-orchestrator-engine"
 import {
   advanceClock,

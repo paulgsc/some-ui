@@ -9,22 +9,23 @@ import {
 } from "react"
 import type { ComponentProps, ComponentRef, CSSProperties } from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { Button } from "@shared/components/ui/button"
-import { Input } from "@shared/components/ui/input"
-import { Separator } from "@shared/components/ui/separator"
-import { Sheet, SheetContent } from "@shared/components/ui/sheet"
-import { Skeleton } from "@shared/components/ui/skeleton"
+import type { VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
+import { PanelLeft } from "lucide-react"
+import { useIsMobile } from "some-ui-utils"
+
+import { cn } from "../../lib/utils"
+import { Button } from "./button"
+import { Input } from "./input"
+import { Separator } from "./separator"
+import { Sheet, SheetContent } from "./sheet"
+import { Skeleton } from "./skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@shared/components/ui/tooltip"
-import { cn } from "@shared/lib/utils"
-import type { VariantProps } from "class-variance-authority"
-import { cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
-import { useIsMobile } from "some-ui-utils"
+} from "./tooltip"
 
 /** Lets a `style` object carry CSS custom properties without an `as` cast. */
 type CSSVarProperties = CSSProperties & Record<`--${string}`, string>

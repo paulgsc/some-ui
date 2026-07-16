@@ -1,14 +1,15 @@
 import type { ComponentProps, FC } from "react"
+import { Command as CommandPrimitive } from "cmdk"
+import { SearchIcon } from "lucide-react"
+
+import { cn } from "../../lib/utils"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@shared/components/ui/dialog"
-import { cn } from "@shared/lib/utils"
-import { Command as CommandPrimitive } from "cmdk"
-import { SearchIcon } from "lucide-react"
+} from "./dialog"
 
 const Command = ({
   className,

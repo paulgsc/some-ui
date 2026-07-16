@@ -23,3 +23,7 @@ export {
   default as wasmLoaderGuardConfig,
   wasmLoaderGuardPlugin,
 } from "./wasm-loader-guard.config.js"
+export {
+  default as reactPeerDependencyConfig,
+  reactPeerDependencyPlugin,
+} from "./react-peer-dependency.config.js"
