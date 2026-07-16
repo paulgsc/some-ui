@@ -1,6 +1,7 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "short_name": "Some UI",
+  "name": "Some UI — Focused study sessions",
+  "description": "Compose and run focused study sessions with activities, layouts, and text-to-speech.",
   "icons": [
     {
       "src": "favicon.ico",
