@@ -60,7 +60,7 @@ export default defineConfig(
           manualChunks: (id): string | undefined => {
             const chunks: Record<string, Array<string>> = {
               // Separate your authored dependencies
-              "authored-deps": ["some-ui-input"], // Add your package names here, e.g., ['@myorg/package1', '@myorg/package2']
+              "authored-deps": ["@some-ui/leetype"], // Add your package names here, e.g., ['@myorg/package1', '@myorg/package2']
               // Common vendor chunks
               "react-vendor": ["react", "react-dom"],
               "router-vendor": ["@tanstack/react-router"],
