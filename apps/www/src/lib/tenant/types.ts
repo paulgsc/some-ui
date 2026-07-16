@@ -12,15 +12,12 @@ export type UserProfile = {
   targetTopikLevel: TopikLevel
 }
 
-export type ThemePreference = "light" | "dark" | "system"
-
 export type UserSettings = {
   ttsProvider: TTSProvider
   /** Empty string means "use the provider's default voice". */
   ttsVoiceId: string
   defaultSessionDurationMinutes: number
   defaultLayoutTree: LayoutTreeId
-  theme: ThemePreference
 }
 
 export type SessionStatus =

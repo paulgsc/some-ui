@@ -23,7 +23,6 @@ describe("SettingsRepository", () => {
     const repo = createSettingsRepository(storage, 0)
     const updated = {
       ...DEFAULT_SETTINGS,
-      theme: "dark" as const,
       ttsProvider: "google" as const,
     }
 

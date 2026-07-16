@@ -52,6 +52,18 @@ export const appThemes: ReadonlyArray<ThemeMeta> = [
   { id: "topik", label: "Topik", className: "topik", kind: "app" },
   { id: "headline", label: "Headline", className: "headline", kind: "app" },
   { id: "conveyor", label: "Conveyor", className: "conveyor", kind: "app" },
+  {
+    id: "strawberry-moon",
+    label: "Strawberry Moon",
+    className: "strawberry-moon",
+    kind: "app",
+  },
+  {
+    id: "peachy-blossom",
+    label: "Peachy Blossom",
+    className: "peachy-blossom",
+    kind: "app",
+  },
 ]
 
 export const themes: ReadonlyArray<ThemeMeta> = [...colorThemes, ...appThemes]

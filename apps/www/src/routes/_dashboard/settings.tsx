@@ -1,5 +1,11 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { useTheme } from "@/providers/theme"
+import {
+  APP_THEMES,
+  isThemePreference,
+  SYSTEM_PREFERENCE,
+} from "@some-ui/styles/theme"
 import { createFileRoute } from "@tanstack/react-router"
 import {
   Button,
@@ -22,7 +28,7 @@ import { BUILTIN_VOICES } from "some-ui-utils"
 import type { TTSProvider } from "some-ui-utils"
 
 import type { LayoutTreeId } from "@/lib/activity-catalog"
-import type { ThemePreference, UserSettings } from "@/lib/tenant"
+import type { UserSettings } from "@/lib/tenant"
 import { useSettings, useUpdateSettings } from "@/lib/tenant"
 
 const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
@@ -46,12 +52,11 @@ const LAYOUT_TREE_OPTIONS: ReadonlyArray<{
   { value: "voice", label: "Voice" },
 ]
 
-const THEME_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string }> =
-  [
-    { value: "system", label: "Match system" },
-    { value: "light", label: "Light" },
-    { value: "dark", label: "Dark" },
-  ]
+/** "System" plus every selectable palette from the shared design system. */
+const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: SYSTEM_PREFERENCE, label: "Match system" },
+  ...APP_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
+]
 
 function isTTSProvider(value: string): value is TTSProvider {
   return TTS_PROVIDER_OPTIONS.some((option) => option.value === value)
@@ -59,10 +64,6 @@ function isTTSProvider(value: string): value is TTSProvider {
 
 function isLayoutTreeId(value: string): value is LayoutTreeId {
   return LAYOUT_TREE_OPTIONS.some((option) => option.value === value)
-}
-
-function isThemePreference(value: string): value is ThemePreference {
-  return THEME_OPTIONS.some((option) => option.value === value)
 }
 
 const SettingsSkeleton = (): JSX.Element => (
@@ -83,6 +84,7 @@ const SettingsForm = ({
   const [draft, setDraft] = useState<UserSettings>(settings)
   const updateSettings = useUpdateSettings()
   const { toast } = useToast()
+  const { preference, setPreference } = useTheme()
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
   const voicesForProvider = BUILTIN_VOICES[draft.ttsProvider]
@@ -203,9 +205,11 @@ const SettingsForm = ({
         <div className="space-y-2">
           <Label>Theme</Label>
           <Select
-            value={draft.theme}
+            value={preference}
             onValueChange={(value: string) => {
-              if (isThemePreference(value)) setDraft({ ...draft, theme: value })
+              // Themes apply live and persist independently of the settings
+              // form, so no Save is needed for this control.
+              if (isThemePreference(value)) setPreference(value)
             }}
           >
             <SelectTrigger>

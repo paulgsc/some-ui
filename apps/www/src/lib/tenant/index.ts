@@ -22,7 +22,6 @@ export type { StorageAdapter } from "./storage"
 export type {
   SessionRecord,
   SessionStatus,
-  ThemePreference,
   TopikLevel,
   UserProfile,
   UserSettings,

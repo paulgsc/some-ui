@@ -1,0 +1,128 @@
+/* ============================================================
+   PEACHY BLOSSOM THEME — light, soft peach spring
+   ------------------------------------------------------------
+   A bright-but-gentle light palette: warm peach cream substrate,
+   a cocoa-brown foreground (never harsh black-on-white), coral
+   blossom primary and a soft peach accent. The foreground/heading
+   gradients keep large text off flat maximum contrast to ease
+   sustained reading.
+
+   Distinct from `.cdrama` (that one leans cream/romantic); this one
+   is warmer, more saturated peach with a coral pop. Ships a dark
+   variant for the `.dark` pairing.
+   ============================================================ */
+
+.peachy-blossom {
+  --background: oklch(0.98 0.02 60);
+  --foreground: oklch(0.34 0.04 40);
+
+  --card: oklch(0.99 0.015 60);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(0.99 0.015 60);
+  --popover-foreground: var(--foreground);
+
+  /* Coral blossom */
+  --primary: oklch(0.74 0.16 25);
+  --primary-foreground: oklch(0.99 0.01 25);
+
+  --secondary: oklch(0.92 0.04 55);
+  --secondary-foreground: oklch(0.38 0.05 40);
+
+  --muted: oklch(0.94 0.025 60);
+  --muted-foreground: oklch(0.54 0.04 40);
+
+  /* Ripe peach */
+  --accent: oklch(0.82 0.13 65);
+  --accent-foreground: oklch(0.34 0.06 45);
+
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.99 0.01 25);
+
+  --border: oklch(0.89 0.03 55);
+  --input: oklch(0.89 0.03 55);
+  --ring: var(--primary);
+
+  --chart-1: oklch(0.78 0.15 25);
+  --chart-2: oklch(0.82 0.13 65);
+  --chart-3: oklch(0.75 0.12 40);
+  --chart-4: oklch(0.8 0.11 340);
+  --chart-5: oklch(0.72 0.14 15);
+
+  --sidebar: oklch(0.96 0.025 60);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.92 0.04 55);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --surface: oklch(0.96 0.025 60);
+  --surface-foreground: var(--foreground);
+
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.93 0.03 55);
+  --code-number: oklch(0.6 0.04 40);
+
+  --selection: oklch(0.74 0.16 25);
+  --selection-foreground: oklch(0.99 0.01 25);
+
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(0.5 0.08 35),
+    oklch(0.36 0.05 40)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    oklch(0.74 0.16 25),
+    oklch(0.82 0.13 65)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(0.58 0.04 40),
+    oklch(0.5 0.04 40)
+  );
+
+  --radius: 1rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* DARK VARIANT — dusk over the orchard */
+.peachy-blossom.dark,
+.dark .peachy-blossom {
+  --background: oklch(0.2 0.03 35);
+  --foreground: oklch(0.9 0.025 60);
+
+  --card: oklch(0.24 0.03 35);
+  --popover: oklch(0.24 0.03 35);
+
+  --secondary: oklch(0.3 0.04 40);
+  --secondary-foreground: oklch(0.9 0.025 60);
+  --muted: oklch(0.28 0.03 40);
+  --muted-foreground: oklch(0.74 0.035 55);
+
+  --primary: oklch(0.76 0.17 28);
+  --accent: oklch(0.78 0.14 65);
+  --accent-foreground: oklch(0.22 0.05 40);
+
+  --border: oklch(0.32 0.03 40);
+  --input: oklch(0.32 0.04 40 / 60%);
+
+  --surface: oklch(0.23 0.03 35);
+  --surface-foreground: oklch(0.8 0.03 55);
+
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(0.92 0.04 60),
+    oklch(0.8 0.05 55)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(0.76 0.035 55),
+    oklch(0.66 0.035 55)
+  );
+}

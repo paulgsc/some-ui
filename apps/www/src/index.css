@@ -9,3 +9,13 @@
  * (plain keyframes/selectors, not utilities) is now loaded from package source
  * in main.tsx. */
 @import "@some-ui/styles/tailwind.css";
+
+/* Make the themed tokens the genuine app-wide defaults: body inherits the
+   active theme's background and the (eye-strain-softened, never pure-white)
+   foreground, so even unstyled text picks up the theme instead of the UA
+   default. Theme classes on <html> flip these tokens; body just follows. */
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}

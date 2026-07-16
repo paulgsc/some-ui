@@ -15,7 +15,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   ttsVoiceId: "",
   defaultSessionDurationMinutes: 10,
   defaultLayoutTree: "study",
-  theme: "system",
 }
 
 export class SettingsRepository {

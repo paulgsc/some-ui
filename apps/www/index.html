@@ -3,7 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.ico" />
+    <!-- Apply the persisted theme before first paint to avoid a light/dark
+         flash (FART). Mirrors the class mapping in
+         @some-ui/styles/src/theme (registry.ts + controller.ts) — keep in sync
+         if the selectable themes change. -->
+    <script>
+      ;(function () {
+        try {
+          var key = "some-ui.theme"
+          var pref = localStorage.getItem(key) || "system"
+          var map = {
+            light: { classes: [], mode: "light" },
+            dark: { classes: ["dark"], mode: "dark" },
+            "strawberry-moon": {
+              classes: ["dark", "strawberry-moon"],
+              mode: "dark",
+            },
+            "peachy-blossom": { classes: ["peachy-blossom"], mode: "light" },
+          }
+          if (pref === "system" || !map[pref]) {
+            var dark =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+            pref = dark ? "dark" : "light"
+          }
+          var theme = map[pref]
+          var root = document.documentElement
+          if (theme.classes.length)
+            root.classList.add.apply(root.classList, theme.classes)
+          root.dataset.theme = pref
+          root.style.colorScheme = theme.mode
+        } catch (e) {}
+      })()
+    </script>
     <link href="/src/index.css" rel="stylesheet" />
     <meta name="theme-color" content="#000000" />
     <meta
