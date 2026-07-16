@@ -19,9 +19,7 @@ type RegistryKey =
   | "cdrama-ost"
 
 export const componentRegistry: ComponentRegistry<RegistryKey> = {
-  cube: lazyWithPreload(
-    () => import("@content/components/overlay/cube-content")
-  ),
+  cube: lazyWithPreload(() => import("../components/overlay/cube-content")),
   hangul: lazyWithPreload(() => import("@some-ui/honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("@some-ui/leetype"), "Leetype"),
   music: lazyWithPreload(() => import("@some-ui/umag"), "NowPlayingCard"),
@@ -32,7 +30,10 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
     () => import("@some-ui/resume"),
     "TechnicalBlockAssessment"
   ),
-  interview: lazyWithPreload(() => import("@some-ui/interview"), "InterviewApp"),
+  interview: lazyWithPreload(
+    () => import("@some-ui/interview"),
+    "InterviewApp"
+  ),
   "cdrama-header": lazyWithPreload(
     () => import("@some-ui/makjang"),
     "DramaHeader"

@@ -130,21 +130,21 @@ export function getNodeData(
     const ii = hash(seed, i * 17) % INTERVALS.length
     const li = hash(seed, i * 23) % LAST_RUNS.length
     tasks.push({
-      name: TASK_POOL[ti].name,
-      status: STATUSES[si],
-      interval: INTERVALS[ii],
-      lastRun: LAST_RUNS[li],
+      name: TASK_POOL[ti]!.name,
+      status: STATUSES[si]!,
+      interval: INTERVALS[ii]!,
+      lastRun: LAST_RUNS[li]!,
     })
   }
   const load = 15 + (hash(seed, 999) % 75)
   if (type === "outer") {
     return {
-      label: OUTER_LABELS[outer % OUTER_LABELS.length],
+      label: OUTER_LABELS[outer % OUTER_LABELS.length]!,
       bucket: `b24·${String(outer).padStart(2, "0")}`,
       slot: `${outer} / 24`,
       load,
       tasks,
-      description: OUTER_DESCS[outer % OUTER_DESCS.length],
+      description: OUTER_DESCS[outer % OUTER_DESCS.length]!,
     }
   }
   return {

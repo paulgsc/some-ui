@@ -1,5 +1,4 @@
 import { Fragment, useMemo } from "react"
-import { buildViewportConfigForRegion } from "@content/utils/orchestrator-to-viewport"
 import { componentRegistry } from "@some-ui/content"
 import { ViewportDiceCard } from "@some-ui/slideshow"
 import type {
@@ -8,6 +7,8 @@ import type {
   YouTubeRegion,
 } from "some-types-utils"
 import { cn, useSceneLifetimes } from "some-ui-utils"
+
+import { buildViewportConfigForRegion } from "../../../utils/orchestrator-to-viewport"
 
 type CubeContentProps = {
   region: YouTubeRegion
