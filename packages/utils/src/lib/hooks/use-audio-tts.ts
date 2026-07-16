@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+
 import type {
   TTSOptions,
   UseAudioTTSOptions,
   UseAudioTTSReturn,
   VoiceConfig,
-} from "@utils/types/tts-types"
-import { BUILTIN_VOICES } from "@utils/types/tts-types"
-
+} from "../../types/tts-types"
+import { BUILTIN_VOICES } from "../../types/tts-types"
 import { useAudioSpeech } from "./use-audio-speech"
 import { useTTSFetch } from "./use-tts-fetch"
 

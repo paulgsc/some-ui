@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react"
-import { useOrchestratorStore } from "@utils/lib/context/zustand-store"
 import type { WebSocketManager } from "@some-ui/ws"
 import { useWebSocket } from "@some-ui/ws"
 import type {
@@ -9,6 +8,8 @@ import type {
   SceneConfig,
 } from "some-types-utils"
 import { IncomingEventSchema, OutgoingMessageSchema } from "some-types-utils"
+
+import { useOrchestratorStore } from "../../../context/zustand-store"
 
 export type UseOrchestratorConfig = {
   stream_id: string

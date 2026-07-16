@@ -1,8 +1,9 @@
-import { NowPlayingSchema } from "@types-utils/components/now-playing"
-import { ObsEventSchema } from "@types-utils/components/obs-websocket"
-import { OrchestratorStateSchema } from "@types-utils/components/orchestrator-types"
-import { UtteranceMetadataSchema } from "@types-utils/components/utterance"
 import { z } from "zod"
+
+import { NowPlayingSchema } from "../now-playing"
+import { ObsEventSchema } from "../obs-websocket"
+import { OrchestratorStateSchema } from "../orchestrator-types"
+import { UtteranceMetadataSchema } from "../utterance"
 
 export const IncomingEventSchema = z.discriminatedUnion("type", [
   z.object({

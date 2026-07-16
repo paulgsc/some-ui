@@ -2,8 +2,9 @@ import "./index.css"
 
 import { useEffect, useRef, useState } from "react"
 import type { CSSProperties } from "react"
-import { AntSvg } from "@shared/components/icons/ant-svg"
-import { cn } from "@shared/lib/utils"
+
+import { cn } from "../../../lib/utils"
+import { AntSvg } from "../../icons/ant-svg"
 
 type BorderBeamProps = {
   size?: number

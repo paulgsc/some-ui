@@ -14,8 +14,9 @@
  */
 
 import { useEffect, useState } from "react"
-import type { FileDiscovery, ResourceLoader } from "@utils/lib/discovery"
 import type { ZodSchema } from "zod"
+
+import type { FileDiscovery, ResourceLoader } from ".."
 
 /**
  * Error stage taxonomy - every error is tagged with its origin

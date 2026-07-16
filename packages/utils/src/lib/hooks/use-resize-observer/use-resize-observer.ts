@@ -21,7 +21,8 @@
 // SOFTWARE.
 
 import { useEffect, useRef, useState, type RefObject } from "react"
-import { useIsMounted } from "@utils/lib/hooks/use-is-mounted"
+
+import { useIsMounted } from "../use-is-mounted"
 
 /** The size of the observed element. */
 type Size = {

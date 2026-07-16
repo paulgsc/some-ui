@@ -1,5 +1,4 @@
-import type { TTSOptions } from "@utils/types/tts-types"
-
+import type { TTSOptions } from "../../../types/tts-types"
 import type { SpeechItem } from "./types"
 
 export type SpeechAction =

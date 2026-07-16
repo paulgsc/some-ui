@@ -1,8 +1,9 @@
 import type { ComponentProps, ComponentPropsWithoutRef, ReactNode } from "react"
 import { forwardRef } from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { cn } from "@shared/lib/utils"
 import { ChevronRight, MoreHorizontal } from "lucide-react"
+
+import { cn } from "../../lib/utils"
 
 const Breadcrumb = forwardRef<
   HTMLElement,

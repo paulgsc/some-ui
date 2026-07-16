@@ -1,5 +1,6 @@
 import type { RefObject } from "react"
-import { useResizeObserver } from "@utils/lib/hooks/use-resize-observer"
+
+import { useResizeObserver } from "../use-resize-observer"
 
 // Define the Rect type
 export type Rect<T extends Element> = {

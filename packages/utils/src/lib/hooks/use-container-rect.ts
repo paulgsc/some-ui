@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import type { RefObject } from "react"
-import type { Rect } from "@utils/types/resizable"
+
+import type { Rect } from "../../types/resizable"
 
 export function useContainerRect(): {
   ref: RefObject<HTMLDivElement | null>

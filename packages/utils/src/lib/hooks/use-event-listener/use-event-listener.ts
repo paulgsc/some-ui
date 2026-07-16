@@ -7,7 +7,8 @@
 /*global WindowEventMap, AddEventListenerOptions*/
 
 import { useEffect, useRef, type RefObject } from "react"
-import { useIsomorphicLayoutEffect } from "@utils/lib/hooks/use-isomorphic"
+
+import { useIsomorphicLayoutEffect } from "../use-isomorphic"
 
 function useEventListener<K extends keyof WindowEventMap>(
   eventName: K,

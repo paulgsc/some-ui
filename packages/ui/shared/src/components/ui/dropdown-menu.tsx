@@ -5,8 +5,9 @@ import type {
 } from "react"
 import { forwardRef } from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { cn } from "@shared/lib/utils"
 import { Check, ChevronRight, Circle } from "lucide-react"
+
+import { cn } from "../../lib/utils"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 

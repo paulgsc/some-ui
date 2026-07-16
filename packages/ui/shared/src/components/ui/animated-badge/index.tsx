@@ -1,8 +1,9 @@
 import type { FC } from "react"
-import { Badge } from "@shared/components/ui/badge"
-import type { badgeVariants } from "@shared/components/ui/badge"
-import { cn } from "@shared/lib/utils"
 import type { VariantProps } from "class-variance-authority"
+
+import { cn } from "../../../lib/utils"
+import { Badge } from "../badge"
+import type { badgeVariants } from "../badge"
 
 type AnimatedBadgeProps = {
   text?: string

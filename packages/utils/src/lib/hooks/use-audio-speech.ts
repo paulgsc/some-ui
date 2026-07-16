@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { UseAudioTTSOptions } from "@utils/types/tts-types"
+
+import type { UseAudioTTSOptions } from "../../types/tts-types"
 
 type AudioSpeechReturn = {
   play: (audioBuffer: ArrayBuffer) => Promise<void>

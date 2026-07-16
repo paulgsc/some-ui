@@ -1,7 +1,6 @@
-import { createStore } from "@utils/lib/context"
-import type { Store } from "@utils/lib/context/ochestra/ochestrated-store"
-import type { TTSOptions, UseAudioTTSReturn } from "@utils/types/tts-types"
-
+import { createStore } from ".."
+import type { TTSOptions, UseAudioTTSReturn } from "../../../types/tts-types"
+import type { Store } from "../ochestra/ochestrated-store"
 import type { SpeechAction } from "./actions"
 import { speechReducer } from "./reducer"
 import type { SpeechQueueState } from "./types"

@@ -1145,9 +1145,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
 
   packages/ui/calendar:
     dependencies:
@@ -1784,9 +1781,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
       eslint-import-resolver-alias:
         specifier: ^1.1.2
         version: 1.1.2(eslint-plugin-import@2.32.0)
@@ -2078,9 +2072,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../some-vite-config
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.0.0)

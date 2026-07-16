@@ -1,7 +1,8 @@
 import type { ComponentProps, FC } from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { cn } from "@shared/lib/utils"
 import { XIcon } from "lucide-react"
+
+import { cn } from "../../lib/utils"
 
 const Dialog = ({
   ...props

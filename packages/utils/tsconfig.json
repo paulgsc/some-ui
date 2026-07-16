@@ -1,17 +1,10 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
-    "composite": true,
     "rootDir": "./src",
-    "outDir": "./dist",
-    "declaration": true,
-    "declarationDir": "./",
     "noEmit": true,
-    "types": ["node"],
-    "paths": {
-      "@utils/*": ["./src/*"]
-    }
+    "types": ["node"]
   },
   "include": ["src"],
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": ["node_modules", "build"]
 }

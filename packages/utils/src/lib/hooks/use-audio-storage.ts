@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { apiHooks } from "@some-ui/fetch-kit"
+import { z } from "zod"
+
 import type {
   UseAudioStorageOptions,
   UseAudioStorageReturn,
-} from "@utils/types/audio-storage-types"
+} from "../../types/audio-storage-types"
 import type {
   TTSOptions,
   UseAudioTTSOptions,
   VoiceConfig,
-} from "@utils/types/tts-types"
-import { BUILTIN_VOICES } from "@utils/types/tts-types"
-import { apiHooks } from "@some-ui/fetch-kit"
-import { z } from "zod"
-
+} from "../../types/tts-types"
+import { BUILTIN_VOICES } from "../../types/tts-types"
 import { useAudioSpeech } from "./use-audio-speech"
 
 const DEFAULT_TTS_OPTIONS: Partial<UseAudioTTSOptions> = {

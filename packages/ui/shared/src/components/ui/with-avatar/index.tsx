@@ -1,11 +1,8 @@
 import type { ComponentProps, CSSProperties, FC } from "react"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@shared/components/ui/avatar"
-import { cn } from "@shared/lib/utils"
 import { getAcronymFromString } from "some-ui-utils"
+
+import { cn } from "../../../lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "../avatar"
 
 export type AvatarOptions = ComponentProps<typeof AvatarImage>
 
