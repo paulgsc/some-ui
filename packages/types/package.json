@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:fix": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint --fix",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
