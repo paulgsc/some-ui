@@ -417,6 +417,9 @@ importers:
 
   extensions/common:
     dependencies:
+      rollup:
+        specifier: ^4.34.9
+        version: 4.62.2
       vite:
         specifier: ^6.0.7
         version: 6.4.3(@types/node@26.0.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -452,6 +455,9 @@ importers:
       maishatu-eslint-kit:
         specifier: workspace:*
         version: link:../../packages/eslint
+      vite:
+        specifier: ^8.1.4
+        version: 8.1.4(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
       web-ext:
         specifier: 8.3.0
         version: 8.3.0
@@ -486,6 +492,9 @@ importers:
       unocss:
         specifier: ^66.0.0
         version: 66.7.3(vite@8.1.4(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      vite:
+        specifier: ^8.1.4
+        version: 8.1.4(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
       web-ext:
         specifier: 8.3.0
         version: 8.3.0

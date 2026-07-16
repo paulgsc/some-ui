@@ -1,8 +1,9 @@
 {
   "dependencies": {
+    "rollup": "^4.34.9",
     "vite-tsconfig-paths": "6.1.1"
   },
-  "description": "Shared Vite configuration for monorepo packages",
+  "description": "Shared Vite build and runtime commons for the extension workspaces",
   "devDependencies": {
     "@playwright/test": "1.60.0",
     "@some-ui/tsconfig": "workspace:*",
@@ -13,24 +14,17 @@
       "import": "./src/index.ts",
       "types": "./src/index.ts"
     },
-    "./build": {
-      "import": "./ext-build/types.ts",
-      "types": "./ext-build/types.ts"
-    },
-    "./build/dev-config": {
-      "import": "./ext-build/dev-config.ts",
-      "types": "./ext-build/dev-config.ts"
+    "./vite": {
+      "import": "./vite/index.ts",
+      "types": "./vite/index.ts"
     },
     "./*": {
       "import": "./src/*.ts",
       "types": "./src/*.ts"
     }
   },
-  "bin": {
-    "some-ext-build": "./ext-build/run.mjs"
-  },
   "files": [
-    "ext-build",
+    "vite",
     "src"
   ],
   "keywords": [
