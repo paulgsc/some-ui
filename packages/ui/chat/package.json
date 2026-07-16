@@ -17,15 +17,19 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest"
   },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "dependencies": {
     "@some-ui/styles": "workspace:*",
-    "@types/react": "^19.0.4",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
+    "@types/react": "^19.0.4",
     "concurrently": "10.0.3"
   },
   "repository": {
