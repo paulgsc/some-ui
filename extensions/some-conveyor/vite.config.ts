@@ -16,13 +16,15 @@ const entries = [
   { name: "background", input: "src/background/background.ts" },
 ]
 
-// @some-ui/polyhedron is a wasm-bindgen crate built separately
-// (crates/polyhedron). Its dist/ doesn't exist at tsc/vite time; the runtime
-// import is a `@vite-ignore`d chrome.runtime.getURL(...), so externalizing the
-// bare specifier is safe. Its build output is copied into dist/polyhedron.
+// @some-ui/polyhedron is a wasm-bindgen crate (crates/polyhedron), published to
+// npm and consumed here as a normal pinned dependency — pnpm install already
+// resolves its built dist/ into node_modules, so no separate crate build is
+// needed for this extension. The runtime import is a `@vite-ignore`d
+// chrome.runtime.getURL(...), so externalizing the bare specifier is safe;
+// its dist/ is copied from node_modules into dist/polyhedron.
 const external = ["@some-ui/polyhedron"]
 const polyhedronCopy = {
-  from: "../../crates/polyhedron/dist",
+  from: "node_modules/@some-ui/polyhedron/dist",
   to: "polyhedron",
 }
 
