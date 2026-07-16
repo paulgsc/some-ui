@@ -4,8 +4,17 @@ import {
   normalize as normalizePosix,
 } from "node:path/posix"
 import { rollup } from "rollup"
-import type { OutputBundle, Plugin as RollupPlugin } from "rollup"
-import type { Plugin } from "vite"
+import type { Plugin as RollupPlugin } from "rollup"
+import type { Plugin, Rollup } from "vite"
+
+// This vite is rolldown-vite: its Plugin/generateBundle hooks are typed
+// against rolldown's own OutputBundle (re-exported here as Rollup.*), which
+// is structurally its own thing — not the real `rollup` package's types, even
+// though the shapes mostly line up at runtime. The plugin-facing surface below
+// types against vite's Rollup.* so it matches what generateBundle actually
+// delivers; only the inner re-bundle step below uses the real `rollup`
+// package (imported directly), which is a separate, self-contained build.
+type OutputBundle = Rollup.OutputBundle
 
 // One `vite build` emits every entry as ESM and lets Rollup hoist any module
 // imported by 2+ entries into a shared chunk (its normal, tree-shaken,
@@ -131,7 +140,6 @@ export function flattenEntries(targets: Array<FlattenTarget>): Plugin {
         chunk.code = await inlineEntry(bundle, fileName, format)
         chunk.imports = []
         chunk.dynamicImports = []
-        chunk.importedBindings = {}
       }
       pruneOrphanChunks(bundle)
     },

@@ -1,7 +1,6 @@
 {
   "dependencies": {
-    "rollup": "^4.34.9",
-    "vite-tsconfig-paths": "6.1.1"
+    "rollup": "^4.34.9"
   },
   "description": "Shared Vite build and runtime commons for the extension workspaces",
   "devDependencies": {
@@ -36,7 +35,7 @@
   "name": "@some-extension/common",
   "private": true,
   "peerDependencies": {
-    "vite": "^6.0.7"
+    "vite": "^8.1.4"
   },
   "scripts": {
     "build:manifest": "tsx scripts/generate-manifest.ts",

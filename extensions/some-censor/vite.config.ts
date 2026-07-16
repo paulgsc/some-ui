@@ -1,9 +1,5 @@
 import { extensionConfig } from "@some-extension/common/vite"
-
-// ReturnType keeps the annotation on extensionConfig's own UserConfig, avoiding
-// a deep structural comparison against this workspace's separately-versioned
-// `vite` types (see the same guard in vitest tooling).
-type ExtConfig = ReturnType<typeof extensionConfig>
+import type { UserConfig } from "vite"
 
 // Platform split: content/background import `@censor/platform/*`, aliased to the
 // Firefox or Chrome implementation per build target.
@@ -24,7 +20,7 @@ const entries = [
 // (production) target is Firefox, matching the prior `build = build:firefox`.
 // public/manifest.json is the chromium manifest (Vite's public-dir copy lands
 // it at dist/manifest.json); the Firefox build overwrites it afterwards.
-const config = ({ mode }: { mode: string }): ExtConfig => {
+const config = ({ mode }: { mode: string }): UserConfig => {
   const chromium = mode === "chromium"
   return extensionConfig({
     alias: platformAlias(chromium ? "chrome" : "firefox"),

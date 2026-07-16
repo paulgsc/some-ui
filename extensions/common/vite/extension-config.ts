@@ -1,7 +1,6 @@
 import { resolve } from "node:path"
 import { defineConfig } from "vite"
 import type { PluginOption, UserConfig } from "vite"
-import tsconfigPaths from "vite-tsconfig-paths"
 
 import { copyFiles } from "./copy-files"
 import type { CopyStep } from "./copy-files"
@@ -75,15 +74,12 @@ export function extensionConfig(options: ExtensionConfigOptions): UserConfig {
 
   return defineConfig({
     plugins: [
-      // extensions/common pins vite@^6 (older than the rest of the monorepo);
-      // this subtree still needs the plugin for tsconfig path resolution.
-      tsconfigPaths(),
       ...plugins,
       flattenEntries(flattenTargets),
       ...(copy.length ? [copyFiles(copy)] : []),
       ...(unocss.length ? [emitUnocss(unocss)] : []),
     ],
-    resolve: { alias: resolvedAlias },
+    resolve: { tsconfigPaths: true, alias: resolvedAlias },
     build: {
       outDir: "dist",
       emptyOutDir: true,
