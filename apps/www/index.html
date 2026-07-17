@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.ico" />
+    <!-- Pre-paint safety net, ahead of the theme script below: inline CSS
+         parses synchronously with zero network/script latency, so even if
+         the script is slow, blocked, or JS is disabled, the very first
+         paint is a dark canvas (the --background value .dark already uses,
+         so there's no visible jump once the real theme lands) instead of a
+         stark white flashbang. Scoped to :not([data-theme]) so it
+         self-destructs the instant the script below sets data-theme — it
+         never fights the resolved theme (including a genuine light
+         preference) after that point. No !important: the selector simply
+         stops matching, so there's nothing to override. -->
+    <style>
+      html:not([data-theme]) {
+        color-scheme: dark;
+      }
+      html:not([data-theme]) body {
+        background-color: oklch(0.145 0 0);
+      }
+    </style>
     <!-- Apply the persisted theme before first paint to avoid a light/dark
          flash (FART). Mirrors the class mapping in
          @some-ui/styles/src/theme (registry.ts + controller.ts) — keep in sync
