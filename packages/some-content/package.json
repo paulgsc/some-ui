@@ -1,7 +1,14 @@
 {
   "description": "Pure assets/data for the monorepo's activities: scene JSON configs, prompt templates, and (locally, gitignored) media/sample assets. No source code, no dependencies - see @some-ui/content-registry for the registry/orchestration logic that consumes this.",
   "exports": {
-    "./*": "./src/*"
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./*": {
+      "import": "./src/*.ts",
+      "types": "./src/*.ts"
+    }
   },
   "files": [
     "src",
@@ -11,5 +18,16 @@
   "name": "@some-ui/content",
   "private": true,
   "type": "module",
-  "version": "1.0.4"
+  "version": "1.0.4",
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "scripts": {
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  }
 }

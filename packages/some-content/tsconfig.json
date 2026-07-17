@@ -2,10 +2,11 @@
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
     "declarationDir": "./",
-    "rootDir": "../../../",
+    "composite": true,
+    "rootDir": ".",
     "outDir": "./dist",
     "paths": {
-      "@calendar/*": ["./src/*"]
+      "@content/*": ["./src/*"]
     }
   },
   "include": ["src"],

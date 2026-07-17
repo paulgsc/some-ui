@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { RingHit } from "@calendar/components/life-scheduler/ring"
 import { useCyclicClock } from "@calendar/hooks/use-cyclic-clock"
-import { getNodeData } from "@some-ui/content-registry/data/life-scheduler"
+import { getNodeData } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import type { PopupState } from "."

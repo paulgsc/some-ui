@@ -78,9 +78,9 @@ packages/**/public
 # GitHub Pages build (see packages/some-content-registry) - everything
 # else under packages/**/public (honeycomb sfx, the full leetype code
 # corpus) stays locally-populated/volume-mounted, never committed.
-!packages/some-content/public/
-!packages/some-content/public/code-samples/
-!packages/some-content/public/code-samples/**
+# !packages/some-content/public/
+# !packages/some-content/public/code-samples/
+# !packages/some-content/public/code-samples/**
 
 # Generated UI build outputs
 packages/ui/**/public/

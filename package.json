@@ -143,5 +143,24 @@
   },
   "dependencies": {
     "turbo": "^2.5.6"
-  }
+  },
+  "main": "./dist/some-ui-calendar.cjs.js",
+  "module": "./dist/some-ui-calendar.es.js",
+  "types": "./dist/some-ui-calendar.d.ts",
+  "style": "./dist/some-ui.css",
+  "exports": {
+    ".": {
+      "types": "./dist/some-ui-calendar.d.ts",
+      "import": "./dist/some-ui-calendar.es.js",
+      "require": "./dist/some-ui-calendar.cjs.js",
+      "default": "./dist/some-ui-calendar.es.js"
+    },
+    "./style.css": "./dist/some-ui.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ]
 }
