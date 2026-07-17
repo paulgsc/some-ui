@@ -38,9 +38,59 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  # ── Detect which of the two builds this change actually needs ───────────
+  # The paths above decide whether this workflow runs at all, but they're
+  # a union — a PR touching only apps/www/** still matches, and would build
+  # Storybook too without this. On pull_request, split www vs storybook so
+  # each build only runs when its own inputs changed.
+  #
+  # On push (and workflow_dispatch), always build both regardless: Pages
+  # serves one deployment per repo and assemble/deploy replace the *entire*
+  # artifact each run (see header) — skipping one build here would deploy a
+  # site missing whichever app wasn't rebuilt. Push already only reaches this
+  # workflow when the outer paths filter matched, so "build both" here is
+  # not the eager case this split is fixing.
+  detect:
+    name: Detect Pages Changes
+    runs-on: ubuntu-latest
+    outputs:
+      www: ${{ steps.gate.outputs.www }}
+      storybook: ${{ steps.gate.outputs.storybook }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            www:
+              - 'apps/www/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/pages.yml'
+              - '.github/actions/**'
+            storybook:
+              - 'packages/**'
+              - '.storybook/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/pages.yml'
+              - '.github/actions/**'
+      - name: Gate on event type
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "www=${{ steps.filter.outputs.www }}" >> "$GITHUB_OUTPUT"
+            echo "storybook=${{ steps.filter.outputs.storybook }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "www=true" >> "$GITHUB_OUTPUT"
+            echo "storybook=true" >> "$GITHUB_OUTPUT"
+          fi
+
   # ── Build the tanstack app ───────────────────────────────────────────────
   build-www:
     name: Build www (TanStack app)
+    needs: detect
+    if: needs.detect.outputs.www == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -102,6 +152,8 @@ jobs:
   # ── Build Storybook ──────────────────────────────────────────────────────
   build-storybook:
     name: Build Storybook
+    needs: detect
+    if: needs.detect.outputs.storybook == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

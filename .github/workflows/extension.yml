@@ -27,7 +27,8 @@ on:
       - "packages/**"
       - "crates/**"
       - "pnpm-lock.yaml"
-      - ".github/workflows/**"
+      - ".github/workflows/extension.yml"
+      - ".github/workflows/_extension-*.yml"
       - ".github/actions/**"
   push:
     branches:
@@ -37,7 +38,8 @@ on:
       - "packages/**"
       - "crates/**"
       - "pnpm-lock.yaml"
-      - ".github/workflows/**"
+      - ".github/workflows/extension.yml"
+      - ".github/workflows/_extension-*.yml"
       - ".github/actions/**"
 concurrency:
   group: extension-${{ github.workflow }}-${{ github.ref }}
