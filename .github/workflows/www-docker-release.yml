@@ -48,18 +48,25 @@ concurrency:
   cancel-in-progress: false
 jobs:
   # ── Detect whether www's build graph actually changed ───────────────────
-  # Patterned after wasm-release.yml's detect job (bash + explicit outputs)
-  # rather than dorny/paths-filter: paths-filter isn't dependency-graph-aware
-  # (see pr.yml), and a plain `apps/www/**` filter would miss the transitive
+  # Patterned after wasm-release.yml's detect job (explicit outputs) rather
+  # than dorny/paths-filter: paths-filter isn't dependency-graph-aware (see
+  # pr.yml), and a plain `apps/www/**` filter would miss the transitive
   # workspace-dependency bumps that are the whole reason this workflow opens
   # a PR instead of publishing directly. No strategy.matrix here, unlike
   # wasm-release.yml's per-crate matrix — there's exactly one image to build.
+  #
+  # The decision itself lives in ./.github/actions/www-detect, not inline
+  # bash: GitHub's `${{ }}` templating splices context values (like a raw
+  # commit message) into the shell script as unquoted text before bash ever
+  # sees it, which is exactly what broke this job (see #674) — a multi-line
+  # commit message closed out of the `[[ ]]` early. Passing those values
+  # through `with:`/`env:` into the action keeps them as real shell
+  # variables that can be quoted correctly.
   detect:
     name: Detect www Changes
     runs-on: ubuntu-latest
     outputs:
-      has_changes: ${{ steps.detect.outputs.has_changes }}
-      is_release_commit: ${{ steps.detect.outputs.is_release_commit }}
+      release_mode: ${{ steps.detect.outputs.release_mode }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -72,49 +79,15 @@ jobs:
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
-      - name: Detect changes reachable from www
-        id: detect
-        run: |
-          set -euo pipefail
-
-          # Is this push *the* release commit (the PR above just got
-          # merged), rather than an ordinary source change? That commit only
-          # touches apps/www/package.json + CHANGELOG.md, which still match
-          # this workflow's trigger paths — it must still run, but skip
-          # re-opening/updating the PR (see release-pr job) or it would loop
-          # forever re-detecting its own version bump as "www changed".
-          is_release_commit=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publish_only }}" = "true" ]; then
-            is_release_commit=true
-          elif [ "${{ github.event_name }}" = "push" ] && [[ "${{ github.event.head_commit.message }}" == "${{ env.RELEASE_COMMIT_MESSAGE }}"* ]]; then
-            is_release_commit=true
-          fi
-          echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
-
-          if [ "$is_release_commit" = "true" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            has_changes=true
-          else
-            BASE="${{ github.event.before }}"
-            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-              # First push to main we've seen (or history was rewritten) -
-              # no prior state to diff against, so treat as changed.
-              has_changes=true
-            else
-              # `www...[from...to]` = www and everything it depends on,
-              # scoped to what actually changed in that range. An empty
-              # task list means nothing reachable from www moved.
-              nix develop .#ci --command pnpm turbo run build \
-                --filter="www...[${BASE}...${{ github.sha }}]" \
-                --dry=json > /tmp/www-detect.json
-              task_count=$(sed -n '/^{/,$p' /tmp/www-detect.json | jq '.tasks | length')
-              if [ "$task_count" -gt 0 ]; then
-                has_changes=true
-              else
-                has_changes=false
-              fi
-            fi
-          fi
-          echo "has_changes=${has_changes}" >> "$GITHUB_OUTPUT"
+      - id: detect
+        uses: ./.github/actions/www-detect
+        with:
+          event-name: ${{ github.event_name }}
+          publish-only: ${{ inputs.publish_only }}
+          commit-message: ${{ github.event.head_commit.message }}
+          release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          base-sha: ${{ github.event.before }}
+          head-sha: ${{ github.sha }}
   # ── Open/update the release PR ──────────────────────────────────────────
   # Runs `@changesets/cli` directly (not changesets/action - see header) to
   # bump apps/www's version + CHANGELOG, then opens a PR on a dedicated
@@ -124,7 +97,7 @@ jobs:
   release-pr:
     name: Open/Update www Release PR
     needs: detect
-    if: needs.detect.outputs.has_changes == 'true' && needs.detect.outputs.is_release_commit != 'true'
+    if: needs.detect.outputs.release_mode == 'release-pr'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -155,27 +128,8 @@ jobs:
           and push an updated `paulgsc/www` image to Docker Hub, or close it
           if the change doesn't warrant a new image.
           EOF
-      # `changeset version` consumes every pending changeset in .changeset/,
-      # not just the one written above - left alone, it would also sweep up
-      # (and delete) any changeset still awaiting release.yml or
-      # wasm-release.yml's own runs, silently absorbing an unrelated npm
-      # package or wasm crate bump into this Docker-only PR. Move everything
-      # else aside first and restore it after, so this release track only
-      # ever touches www's own changeset.
       - name: Apply version bump and changelog
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/other-changesets
-          find .changeset -maxdepth 1 -name '*.md' ! -name 'www-docker-*.md' \
-            -exec mv {} /tmp/other-changesets/ \;
-
-          nix develop .#ci --command npx changeset version
-
-          shopt -s nullglob
-          other_changesets=(/tmp/other-changesets/*.md)
-          if [ "${#other_changesets[@]}" -gt 0 ]; then
-            mv "${other_changesets[@]}" .changeset/
-          fi
+        uses: ./.github/actions/www-version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Open release PR
@@ -196,7 +150,7 @@ jobs:
   publish:
     name: Build & Push Docker Image
     needs: detect
-    if: needs.detect.outputs.is_release_commit == 'true'
+    if: needs.detect.outputs.release_mode == 'publish'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

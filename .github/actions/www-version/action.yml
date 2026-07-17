@@ -1,0 +1,7 @@
+name: "WWW Version"
+description: "Apply the pending www changeset (bump version + changelog) without disturbing changesets awaiting other release tracks."
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: bash "${{ github.action_path }}/version.sh"
