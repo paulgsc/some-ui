@@ -40,7 +40,7 @@ on:
 env:
   RELEASE_COMMIT_MESSAGE: "chore(release): publish www docker image"
   RELEASE_BRANCH: "changeset-release/www-docker"
-  DOCKERHUB_IMAGE: "paulgsc/www"
+  DOCKERHUB_IMAGE: "pgathondu/www"
 permissions:
   contents: read
 concurrency:
@@ -115,7 +115,6 @@ jobs:
             fi
           fi
           echo "has_changes=${has_changes}" >> "$GITHUB_OUTPUT"
-
   # ── Open/update the release PR ──────────────────────────────────────────
   # Runs `@changesets/cli` directly (not changesets/action - see header) to
   # bump apps/www's version + CHANGELOG, then opens a PR on a dedicated
@@ -188,11 +187,7 @@ jobs:
           commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
           body: >
-            Opened automatically because a change reachable from `apps/www`
-            landed on `main`. Review the diff — most workspace dependency
-            bumps don't change www's actual behaviour — and merge via
-            **squash** (the merge commit message drives the publish step
-            below) to build and push `${{ env.DOCKERHUB_IMAGE }}`.
+            Opened automatically because a change reachable from `apps/www` landed on `main`. Review the diff — most workspace dependency bumps don't change www's actual behaviour — and merge via **squash** (the merge commit message drives the publish step below) to build and push `${{ env.DOCKERHUB_IMAGE }}`.
 
   # ── Build + push the image ──────────────────────────────────────────────
   # Only runs once the release PR above has actually been merged (or a
