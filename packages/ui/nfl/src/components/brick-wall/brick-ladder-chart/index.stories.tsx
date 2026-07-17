@@ -1,4 +1,4 @@
-import { useNflTennis } from "@some-ui/content-registry/data/nfl/brick-data"
+import { useNflTennis } from "@nfl/hooks/use-nfl-tennis"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { BrickWallChart } from "."
