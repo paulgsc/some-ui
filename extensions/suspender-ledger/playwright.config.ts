@@ -61,9 +61,9 @@ export default defineConfig({
   ],
 
   // Build the Firefox bundle, then serve dist/ as a static site so the
-  // page's absolute asset paths (`/suspend.js`, `/safe-url.js`) resolve.
+  // page's absolute asset paths (`/suspend.js`) resolve.
   webServer: {
-    command: `pnpm build:firefox && pnpm exec vite preview --config vite.config.firefox.ts --port ${PORT} --strictPort`,
+    command: `pnpm build:firefox && pnpm exec vite preview --configLoader runner --port ${PORT} --strictPort`,
     url: `${BASE_URL}/suspend.html`,
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,
