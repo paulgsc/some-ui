@@ -1,10 +1,12 @@
 import { MockSatelliteAdapter } from "@nfl/lib/hopium/adapters/mock-adapter"
+import type { MockSatelliteData } from "@nfl/types/hopium/hopium-tracker"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { SatelliteDashboard } from "."
 
-type Story = StoryObj<typeof SatelliteDashboard>
-type Meta = MetaObj<typeof SatelliteDashboard>
+// Supply the generic parameter to Storybook's type utilities
+type Story = StoryObj<typeof SatelliteDashboard<MockSatelliteData>>
+type Meta = MetaObj<typeof SatelliteDashboard<MockSatelliteData>>
 
 const adapter = new MockSatelliteAdapter()
 

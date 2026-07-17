@@ -88,7 +88,9 @@ const ContinueSessionCard = ({
 const ActivityQuickLaunch = (): JSX.Element => {
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Start something new</h2>
+      <h2 className="text-gradient-heading text-lg font-semibold">
+        Start something new
+      </h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {ACTIVITY_IDS.map((id: ActivityId) => {
           const activity = ACTIVITY_CATALOG[id]
@@ -131,7 +133,9 @@ const RecentSessions = ({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Recent sessions</h2>
+        <h2 className="text-gradient-heading text-lg font-semibold">
+          Recent sessions
+        </h2>
         <Button asChild variant="ghost" size="sm">
           <Link to="/sessions">
             View all <ArrowRight className="ml-1 size-4" />

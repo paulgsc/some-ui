@@ -1,26 +1,14 @@
 import type { ComponentProps, FC, JSX, ReactNode } from "react"
 import { useCallback, useMemo } from "react"
 import { BrickWallChart } from "@nfl/components/brick-wall/brick-ladder-chart"
-import type { NFLTeam } from "@nfl/components/nfl-team-icon"
+// Import the inferred type from your API/Schema file
+import type { SheetDataItem } from "@nfl/hooks/use-nfl-tennis"
 import Autoplay from "embla-carousel-autoplay"
 import { Carousel, CarouselContent, CarouselItem } from "some-ui-shared"
 
-type Standing = {
-  name: NFLTeam
-  value: number
-  imageUrl: string
-  properties?: Record<string, string | number | object>
-}
-
-export type BrickChartData = {
-  standings: Array<Standing>
-  weekLabel?: string
-  id?: string
-  [key: string]: unknown
-}
-
 export type BrickChartCarouselProps = {
-  data: Array<BrickChartData>
+  // Use the exact shape parsed by Zod
+  data: Array<SheetDataItem & { id?: string; weekLabel?: string }>
   title?: string
   isLoading?: boolean
   autoplayDelay?: number
@@ -40,7 +28,6 @@ export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
 }): JSX.Element | null => {
   const autoplay = useMemo(
     () =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       Autoplay({
         delay: autoplayDelay,
         stopOnInteraction,
@@ -76,7 +63,12 @@ export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
       <CarouselContent>
         {data.map((item) => (
           <CarouselItem
-            key={item.id ?? item.weekLabel ?? JSON.stringify(item.standings)}
+            key={
+              item.id ??
+              item.weekLabel ??
+              item.name ??
+              JSON.stringify(item.standings)
+            }
             className="size-full bg-[oklch(75%_0.01_120)] bg-gradient-to-b from-[oklch(75%_0.01_120)] to-[oklch(95%_0.02_180)]"
           >
             <BrickWallChart

@@ -20,6 +20,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@some-ui/content": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "concurrently": "10.0.3"
@@ -51,9 +52,6 @@
       "default": "./dist/some-ui-calendar.es.js"
     },
     "./style.css": "./dist/calendar.css"
-  },
-  "dependencies": {
-    "lucide-react": "^0.507.0"
   },
   "style": "./dist/calendar.css"
 }

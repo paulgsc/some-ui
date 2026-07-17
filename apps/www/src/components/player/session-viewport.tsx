@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { componentRegistry } from "@some-ui/content"
+import { componentRegistry } from "@some-ui/content-registry"
 import { useSceneLifetimes } from "some-ui-utils"
 import { OrchestratedYouTubeViewport } from "wireframes"
 

@@ -1,5 +1,5 @@
-import { Fragment, useMemo } from "react"
-import { componentRegistry } from "@some-ui/content"
+import { useMemo } from "react"
+import { componentRegistry } from "@some-ui/content-registry"
 import { ViewportDiceCard } from "@some-ui/slideshow"
 import type {
   ViewportConfig,
@@ -22,7 +22,7 @@ const CubeContent = ({
   faceCapacity = 1,
   rotationAxis = "cube:y",
   className,
-}: CubeContentProps): React.JSX.Element => {
+}: CubeContentProps): React.JSX.Element | null => {
   // Use shallow comparison to prevent unnecessary re-renders
   const activeLifetimes = useSceneLifetimes()
 
@@ -35,7 +35,7 @@ const CubeContent = ({
     )
   }, [activeLifetimes, region, faceCapacity, rotationAxis])
 
-  if (activeLifetimes.length <= 0) return <Fragment />
+  if (activeLifetimes.length <= 0) return null
 
   return (
     <div className={cn(className, "relative")}>

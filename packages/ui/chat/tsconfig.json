@@ -6,9 +6,7 @@
     "declaration": true,
     "paths": {
       "@chat/*": ["./src/*"],
-      "@some-ui/*": ["../../../assets/*"],
-      "@some-ui/content/*": ["../../some-content/src/*"],
-      "@some-ui/content": ["../../../some-content/src"]
+      "@some-ui/*": ["../../../assets/*"]
     }
   },
   "include": [
@@ -19,8 +17,7 @@
     "vitest.setup.ts",
     "test",
     "../../../assets/**/*",
-    "src",
-    "../../some-content/src/**/*"
+    "src"
   ],
   "exclude": ["node_modules", "build", "dist"]
 }

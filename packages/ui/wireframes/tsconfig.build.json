@@ -3,9 +3,16 @@
   "exclude": [
     "**/*.stories.tsx",
     "**/*.stories.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.property.test.ts",
+    "**/__tests__/**",
     "../../../assets/**/*",
     "**/data/**",
     "**/demo/**",
-    "../../some-content/src/**/*"
+    "../../some-content/src/**/*",
+    "../../some-content-registry/src/**/*",
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ]
 }

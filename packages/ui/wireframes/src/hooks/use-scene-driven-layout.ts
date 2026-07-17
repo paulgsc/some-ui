@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
+import type { LayoutNode } from "@wireframes/lib"
 import type { YouTubeRegion } from "some-types-utils"
 import { usePrimaryScene } from "some-ui-utils"
-import type { LayoutNode } from "wireframes"
 
 import { SCENE_LAYOUT_MAP } from "../types/layout-trees-map"
 
@@ -9,22 +9,24 @@ type ReturnType = {
   currentLayout: LayoutNode<YouTubeRegion> | null
 }
 
+function isSceneLayoutKey(
+  value: string
+): value is keyof typeof SCENE_LAYOUT_MAP {
+  return value in SCENE_LAYOUT_MAP
+}
+
 export function useSceneDrivenLayout(): ReturnType {
   const primaryScene = usePrimaryScene()
-  const [currentLayout, setCurrentLayout] =
-    useState<LayoutNode<YouTubeRegion> | null>(null)
 
-  useEffect(() => {
+  const currentLayout = useMemo<LayoutNode<YouTubeRegion> | null>(() => {
     // No active scene → clear layout
     if (!primaryScene || !("Scene" in primaryScene.kind)) {
-      return
+      return null
     }
 
     const sceneName = primaryScene.kind.Scene.scene_name
 
-    const layout = SCENE_LAYOUT_MAP[sceneName as keyof typeof SCENE_LAYOUT_MAP]
-
-    setCurrentLayout(layout)
+    return isSceneLayoutKey(sceneName) ? SCENE_LAYOUT_MAP[sceneName] : null
   }, [primaryScene])
 
   return {

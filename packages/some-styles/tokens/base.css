@@ -81,11 +81,32 @@
 
   --selection: oklch(0.145 0 0);
   --selection-foreground: oklch(1 0 0);
+
+  /* Text gradient stops — consumed by the `text-gradient-*` utilities
+     (tailwind.css). Kept as full `linear-gradient()` values so a theme can
+     restyle direction and stops in one place. The idiom: large / heading text
+     runs across a small tonal range instead of sitting at one flat maximum
+     contrast, which reads softer (a "vi font skin" — role-colored text) and
+     eases sustained reading. Defaults below are the light-mode ramps. */
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(0.28 0 0),
+    oklch(0.145 0 0)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    var(--primary),
+    var(--accent-foreground)
+  );
+  --gradient-muted: linear-gradient(180deg, oklch(0.5 0 0), oklch(0.42 0 0));
 }
 
 .dark {
   --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  /* Softened off-white instead of oklch(0.985) near-pure-white: on a dark
+     ground max-brightness text glares ("looking at the sun"). ~0.9 keeps
+     comfortable AAA contrast without the harsh halation. */
+  --foreground: oklch(0.9 0.004 260);
 
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -131,4 +152,17 @@
 
   --selection: oklch(0.922 0 0);
   --selection-foreground: oklch(0.205 0 0);
+
+  /* Dark ramps: dim tops so headings never hit the glare point. */
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(0.92 0.004 260),
+    oklch(0.8 0.006 260)
+  );
+  --gradient-accent: linear-gradient(100deg, var(--primary), var(--accent));
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(0.74 0.006 260),
+    oklch(0.64 0.006 260)
+  );
 }

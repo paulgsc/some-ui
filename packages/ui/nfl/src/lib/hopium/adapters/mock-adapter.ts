@@ -1,5 +1,6 @@
 import type {
   ApiAdapter,
+  RefreshCallbacks, // Import the missing callback type
   SatelliteDataItem,
 } from "@nfl/types/hopium/hopium-tracker"
 
@@ -50,9 +51,9 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
       name: `Satellite ${nameChar}`,
       freshness: Math.floor(Math.random() * 100),
       lastUpdated: new Date(),
-      priority: priority, // Now guaranteed to be a valid Priority
+      priority: priority,
       data: {
-        dataType: dataType, // Now guaranteed to be a string
+        dataType: dataType,
         orbitAltitude: Math.floor(Math.random() * 500 + 400),
         signalStrength: Math.floor(Math.random() * 40 + 60),
         batteryLevel: Math.floor(Math.random() * 30 + 70),
@@ -61,23 +62,39 @@ export class MockSatelliteAdapter implements ApiAdapter<MockSatelliteData> {
     }
   }
 
-  async refreshItem(id: string): Promise<SatelliteDataItem<MockSatelliteData>> {
+  async refreshItem(
+    id: string,
+    callbacks?: RefreshCallbacks // Added to match the interface
+  ): Promise<SatelliteDataItem<MockSatelliteData>> {
+    callbacks?.onStart?.(id)
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     if (Math.random() < 0.1) {
-      throw new Error(`Failed to refresh satellite ${id}`)
+      const error = new Error(`Failed to refresh satellite ${id}`)
+      callbacks?.onFailure?.(error, id)
+      throw error
     }
 
     const item = this.generateMockItem(id)
     item.freshness = 100
+    callbacks?.onSuccess?.(item)
     return item
   }
 
-  async refreshAll(): Promise<Array<SatelliteDataItem<MockSatelliteData>>> {
+  async refreshAll(
+    callbacks?: RefreshCallbacks // Added to match the interface
+  ): Promise<Array<SatelliteDataItem<MockSatelliteData>>> {
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    return Array.from({ length: 50 }, (_, i) =>
+    const items = Array.from({ length: 50 }, (_, i) =>
       this.generateMockItem(`sat-${i + 1}`)
     )
+
+    // Optional: notify success callbacks for each generated item
+    if (callbacks?.onSuccess) {
+      items.forEach((item) => callbacks.onSuccess?.(item))
+    }
+
+    return items
   }
 }

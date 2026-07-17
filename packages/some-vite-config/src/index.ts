@@ -14,6 +14,12 @@ import type { ViteConfigOptions } from "./types/index.js"
 
 export * from "./types/index.js"
 
+// Keys of a package.json dependency map, read defensively off an untyped parse.
+function depKeys(pkg: Record<string, unknown>, field: string): Array<string> {
+  const value = pkg[field]
+  return typeof value === "object" && value !== null ? Object.keys(value) : []
+}
+
 export function createViteConfig(
   options: ViteConfigOptions,
   packageRoot: string = process.cwd()
@@ -21,12 +27,13 @@ export function createViteConfig(
   const { updatePackageJson: shouldUpdatePackageJson = true } = options
 
   // Read package.json to get dependencies
-  let pkg: any = {}
+  let pkg: Record<string, unknown> = {}
   try {
     const packageJsonPath = resolve(packageRoot, "package.json")
     const packageJsonContent = readFileSync(packageJsonPath, "utf-8")
-    pkg = JSON.parse(packageJsonContent)
-  } catch (error) {
+    const parsed: Record<string, unknown> = JSON.parse(packageJsonContent)
+    pkg = parsed
+  } catch {
     // eslint-disable-next-line no-console
     console.warn(
       "Could not read package.json, external dependencies will not be automatically detected"
@@ -34,9 +41,9 @@ export function createViteConfig(
   }
 
   const externalDeps = [
-    ...Object.keys(pkg.dependencies ?? {}),
-    ...Object.keys(pkg.peerDependencies ?? {}),
-    ...Object.keys(pkg.devDependencies ?? {}),
+    ...depKeys(pkg, "dependencies"),
+    ...depKeys(pkg, "peerDependencies"),
+    ...depKeys(pkg, "devDependencies"),
   ]
 
   // Update package.json with build configuration
@@ -50,7 +57,7 @@ export function createViteConfig(
   }
 
   const config: UserConfig = {
-    plugins: createPlugins(options),
+    plugins: createPlugins(options, packageRoot),
     resolve: createResolveConfig(options, packageRoot),
     // esbuild: {
     //   // This removes console.log and debugger statements
@@ -90,6 +97,6 @@ export function createReactLibConfig(
 export function syncPackageJson(
   options: ViteConfigOptions,
   packageRoot: string = process.cwd()
-): Record<string, any> {
+): Record<string, unknown> {
   return updatePackageJson(options, packageRoot)
 }

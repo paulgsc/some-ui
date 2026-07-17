@@ -21,8 +21,9 @@ import {
 } from "lucide-react"
 import { Badge, Button } from "some-ui-shared"
 
-type SatelliteDashboardProps = {
-  adapter: ApiAdapter<SatelliteDataItem> // Generic adapter interface
+// Accept a generic T for the underlying satellite data payload, defaulting to unknown
+type SatelliteDashboardProps<T = unknown> = {
+  adapter: ApiAdapter<T>
   title?: string
   autoRefreshInterval?: number
 }
@@ -31,12 +32,14 @@ function isSortType(value: string): value is SortType {
   return ["freshness", "priority", "name", "lastUpdated"].includes(value)
 }
 
-export const SatelliteDashboard = ({
+// Declare the component as generic over T
+export const SatelliteDashboard = <T,>({
   adapter,
   title = "Satellite Data Monitor",
   autoRefreshInterval = 3000,
-}: SatelliteDashboardProps): JSX.Element => {
-  const [selectedItem, setSelectedItem] = useState<SatelliteDataItem | null>(
+}: SatelliteDashboardProps<T>): JSX.Element => {
+  // Bind the state item to the same inner payload type T
+  const [selectedItem, setSelectedItem] = useState<SatelliteDataItem<T> | null>(
     null
   )
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")

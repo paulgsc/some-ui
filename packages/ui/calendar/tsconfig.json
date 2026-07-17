@@ -5,11 +5,9 @@
     "rootDir": "../../../",
     "outDir": "./dist",
     "paths": {
-      "@calendar/*": ["./src/*"],
-      "@some-ui/content/*": ["../../some-content/src/*"],
-      "@some-ui/content": ["../../some-content/src"]
+      "@calendar/*": ["./src/*"]
     }
   },
-  "include": ["src", "../../some-content/src/**/*"],
+  "include": ["src"],
   "exclude": ["node_modules", "build", "dist"]
 }

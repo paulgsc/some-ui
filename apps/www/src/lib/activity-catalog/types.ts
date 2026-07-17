@@ -6,10 +6,10 @@
  */
 export type ActivityId = "honeycomb" | "topik" | "interview" | "leetype"
 
-/** Which pre-built layout tree (from @some-ui/content) an activity defaults to. */
+/** Which pre-built layout tree (from @some-ui/content-registry) an activity defaults to. */
 export type LayoutTreeId = "study" | "topik" | "drama" | "voice"
 
-export type SelectField = {
+type SelectField = {
   kind: "select"
   key: string
   label: string
@@ -17,7 +17,7 @@ export type SelectField = {
   defaultValue: string
 }
 
-export type DurationField = {
+type DurationField = {
   kind: "duration"
   key: "durationMinutes"
   label: string
@@ -28,7 +28,7 @@ export type DurationField = {
 }
 
 /** A single friendly, point-and-click configurable field for an activity. */
-export type ActivityField = SelectField | DurationField
+type ActivityField = SelectField | DurationField
 
 /** Icon is a lookup key, not a component - keeps this module React-free. */
 export type ActivityIconKey = "hexagon" | "book-open" | "mic" | "keyboard"
@@ -40,7 +40,7 @@ export type ActivityDefinition = {
   name: string
   description: string
   icon: ActivityIconKey
-  /** Matches a key in @some-ui/content's componentRegistry. */
+  /** Matches a key in @some-ui/content-registry's componentRegistry. */
   registryKey: string
   layoutTree: LayoutTreeId
   fields: ReadonlyArray<ActivityField>

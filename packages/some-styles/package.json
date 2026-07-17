@@ -16,6 +16,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./theme": "./src/theme/index.ts",
     "./preset": "./src/preset/index.ts",
     "./config": "./src/config.ts",
     "./uno.config": "./uno.config.ts",

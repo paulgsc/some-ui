@@ -9,6 +9,6 @@
       "@content/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "scripts"],
+  "include": ["src"],
   "exclude": ["node_modules", "build", "dist"]
 }

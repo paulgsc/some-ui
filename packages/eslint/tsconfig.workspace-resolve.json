@@ -3,7 +3,7 @@
     "paths": {
       "@some-extension/common": ["../../extensions/common/src/index.ts"],
       "@some-ui/calendar": ["../ui/calendar/src/index.ts"],
-      "@some-ui/content": ["../some-content/src/index.ts"],
+      "@some-ui/content-registry": ["../some-content-registry/src/index.ts"],
       "@some-ui/dice-card": ["../ui/dice-card/src/index.ts"],
       "@some-ui/fetch-kit": ["../fetch-kit/src/index.ts"],
       "@some-ui/honeycomb": ["../ui/honeycomb/src/index.ts"],

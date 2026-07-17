@@ -21,15 +21,16 @@
     "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@some-ui/content/*": ["../../packages/some-content/src/*"],
-      "@some-ui/content": ["../../packages/some-content/src"],
-      "@content/*": ["../../packages/some-content/src/*"]
+      "@some-ui/content-registry/*": [
+        "../../packages/some-content-registry/src/*"
+      ],
+      "@some-ui/content-registry": ["../../packages/some-content-registry/src"]
     }
   },
   "include": [
     "eslint.config.js",
     "**/*.ts",
     "**/*.tsx",
-    "../../packages/some-content/src/**/*"
+    "../../packages/some-content-registry/src/**/*"
   ]
 }

@@ -1,0 +1,97 @@
+/* ============================================================
+   STRAWBERRY MOON THEME — dark, berry-lit night
+   ------------------------------------------------------------
+   A dark palette tuned for low eye strain: the substrate is a
+   deep plum-black rather than neutral black, and the foreground
+   is a soft moonlit rose-white — deliberately NOT pure white, so
+   text never "burns" against the dark ground (the sun-glare the
+   default `.dark` foreground produces). Berry-red is the primary,
+   with a moonlit violet accent.
+
+   Standalone app theme: applied as a root class. Pairs with `.dark`
+   (the controller adds both) but sets its own background/foreground
+   so it reads correctly on its own too.
+   ============================================================ */
+
+.strawberry-moon {
+  --background: oklch(0.16 0.03 350);
+  --foreground: oklch(0.88 0.02 350);
+
+  --card: oklch(0.2 0.035 350);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(0.22 0.04 350);
+  --popover-foreground: var(--foreground);
+
+  /* Strawberry — the berry itself */
+  --primary: oklch(0.68 0.19 15);
+  --primary-foreground: oklch(0.99 0.01 15);
+
+  /* Muted berry flesh */
+  --secondary: oklch(0.3 0.05 350);
+  --secondary-foreground: oklch(0.9 0.02 350);
+
+  --muted: oklch(0.28 0.03 350);
+  --muted-foreground: oklch(0.72 0.04 350);
+
+  /* Moonlit violet */
+  --accent: oklch(0.62 0.14 300);
+  --accent-foreground: oklch(0.98 0.01 300);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.32 0.03 350);
+  --input: oklch(0.32 0.04 350 / 60%);
+  --ring: var(--primary);
+
+  --chart-1: oklch(0.7 0.18 15);
+  --chart-2: oklch(0.66 0.15 350);
+  --chart-3: oklch(0.62 0.14 300);
+  --chart-4: oklch(0.74 0.13 30);
+  --chart-5: oklch(0.58 0.16 340);
+
+  --sidebar: oklch(0.18 0.03 350);
+  --sidebar-foreground: oklch(0.82 0.03 350);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.26 0.04 350);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --surface: oklch(0.19 0.03 350);
+  --surface-foreground: oklch(0.78 0.03 350);
+
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.26 0.04 350);
+  --code-number: oklch(0.6 0.05 350);
+
+  --selection: oklch(0.68 0.19 15);
+  --selection-foreground: oklch(0.99 0.01 15);
+
+  /* Eye-strain-aware text gradients: heading text runs from a gentle
+     moonlit rose down to a dimmer tone so it never sits at flat max
+     brightness. Accent gradient sweeps berry -> violet (vi-skin idiom). */
+  --gradient-heading: linear-gradient(
+    180deg,
+    oklch(0.9 0.03 350),
+    oklch(0.76 0.05 350)
+  );
+  --gradient-accent: linear-gradient(
+    100deg,
+    oklch(0.72 0.19 15),
+    oklch(0.64 0.14 300)
+  );
+  --gradient-muted: linear-gradient(
+    180deg,
+    oklch(0.74 0.04 350),
+    oklch(0.62 0.04 350)
+  );
+
+  --radius: 0.75rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}

@@ -1,15 +1,29 @@
-import { dramaTree } from "@content/data/layout-tree"
-import { componentRegistry } from "@some-ui/content"
-import { useSceneDrivenLayout } from "@some-ui/content/hooks/use-scene-driven-layout"
+import { componentRegistry } from "@some-ui/content-registry"
 import { createFileRoute } from "@tanstack/react-router"
 import { useSceneLifetimes } from "some-ui-utils"
-import { OrchestratedYouTubeViewport } from "wireframes"
+import {
+  dramaTree,
+  OrchestratedYouTubeViewport,
+  useSceneDrivenLayout,
+} from "wireframes"
 
 // Search params validation
 type YouTubeWireframeSearch = {
   transitionMs?: number
   enableFocus?: boolean
   layoutMode?: "study" | "drama" | "voice" | "topik" | "children-only"
+}
+
+function isLayoutMode(
+  value: unknown
+): value is NonNullable<YouTubeWireframeSearch["layoutMode"]> {
+  return (
+    value === "study" ||
+    value === "drama" ||
+    value === "voice" ||
+    value === "topik" ||
+    value === "children-only"
+  )
 }
 
 const YouTubeWireframeRoute = (): React.JSX.Element => {
@@ -41,14 +55,8 @@ export const Route = createFileRoute("/overlays/youtube")({
         ? Number(search.transitionMs)
         : undefined,
       enableFocus: search.enableFocus !== "false",
-      layoutMode: [
-        "study",
-        "drama",
-        "voice",
-        "topik",
-        "children-only",
-      ].includes(search.layoutMode as string)
-        ? (search.layoutMode as YouTubeWireframeSearch["layoutMode"])
+      layoutMode: isLayoutMode(search.layoutMode)
+        ? search.layoutMode
         : undefined,
     }
   },

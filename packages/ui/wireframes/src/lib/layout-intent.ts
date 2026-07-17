@@ -38,10 +38,26 @@ export function applyIntent<R>(
   intent: LayoutIntent<R>
 ): LayoutNode<R> | null {
   switch (intent.kind) {
-    case "place":
-      return placeRegion(tree, intent.region, intent.relativeTo, intent.edge)
+    case "place": {
+      // A region can't be placed relative to itself - there's nothing to
+      // anchor to once it's removed, so treat it as a no-op rather than
+      // silently dropping the region (see the "move" case below).
+      if (intent.relativeTo === intent.region) return tree
+
+      // Re-placing a region that already exists elsewhere relocates it
+      // instead of inserting a second leaf with the same id.
+      const alreadyPresent = extractLeafIds(tree).has(intent.region)
+      const base = alreadyPresent ? removeRegion(tree, intent.region) : tree
+
+      return placeRegion(base, intent.region, intent.relativeTo, intent.edge)
+    }
 
     case "move": {
+      // A region can't be moved relative to itself: removing it first would
+      // make the anchor disappear, so `placeRegion` would never find it to
+      // reinsert against - silently deleting the region instead of moving it.
+      if (intent.region === intent.relativeTo) return tree
+
       // Remove first, then place
       const withoutRegion = removeRegion(tree, intent.region)
       return placeRegion(
@@ -52,13 +68,19 @@ export function applyIntent<R>(
       )
     }
 
-    case "remove":
+    case "remove": {
       return removeRegion(tree, intent.region)
+    }
 
-    case "reorder":
+    case "reorder": {
+      // Same self-reference hazard as "move": reordering removes the region
+      // before re-inserting it relative to the anchor.
+      if (intent.region === intent.relativeTo) return tree
+
       return reorderRegion(tree, intent.region, intent.relativeTo, intent.edge)
+    }
 
-    case "resize":
+    case "resize": {
       return resizeRegion(
         tree,
         intent.region,
@@ -66,9 +88,14 @@ export function applyIntent<R>(
         intent.deltaPx,
         intent.containerSizePx
       )
+    }
 
-    default:
-      return tree
+    default: {
+      // `intent` is exhaustively narrowed to `never` here - a bare `throw`
+      // (rather than a helper call) sidesteps accessing `.kind` on `never`.
+      intent satisfies never
+      throw new Error(`Unhandled layout intent: ${JSON.stringify(intent)}`)
+    }
   }
 }
 
@@ -89,38 +116,18 @@ function placeRegion<R>(
     return { type: "leaf", id: region }
   }
 
-  if (relativeTo === "root") {
+  // No anchor given (or an explicit "root" anchor): attach the new region as
+  // a top-level sibling of the whole tree. This has to hold regardless of
+  // whether `tree` is a lone leaf or an already-nested split - falling
+  // through to `return tree` below for the split case would silently drop
+  // the region instead of placing it.
+  if (relativeTo === "root" || relativeTo === undefined) {
     return placeRelativeToRoot(tree, region, edge)
   }
 
-  if (tree.type === "leaf" && !relativeTo) {
-    const newAxis = edge === "left" || edge === "right" ? "row" : "col"
-    const before = edge === "left" || edge === "top"
-
-    // KEY: Use weight = 1 for equal proportional distribution
-    return {
-      type: "split",
-      axis: newAxis,
-      splitId: generateSplitId(),
-      children: before
-        ? [
-            { node: { type: "leaf", id: region }, weight: 1 },
-            { node: tree, weight: 1 },
-          ]
-        : [
-            { node: tree, weight: 1 },
-            { node: { type: "leaf", id: region }, weight: 1 },
-          ],
-    }
-  }
-
-  if (relativeTo !== undefined) {
-    const cloned = cloneTree(tree)
-    const inserted = insertRelativeTo(cloned, region, relativeTo, edge)
-    return normalizeTree(inserted)
-  }
-
-  return tree
+  const cloned = cloneTree(tree)
+  const inserted = insertRelativeTo(cloned, region, relativeTo, edge)
+  return normalizeTree(inserted)
 }
 
 function placeRelativeToRoot<R>(

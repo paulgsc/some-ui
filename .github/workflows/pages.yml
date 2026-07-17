@@ -63,6 +63,23 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # honeycomb's sfx and leetype's demo code samples live in
+      # packages/some-content (pure assets, no build step of its own) and
+      # aren't part of www's own public/ dir. They're tiny/curated enough to
+      # bake into the static GitHub Pages build (unlike the Docker image,
+      # which volume-mounts them at runtime instead - see infra/compose).
+      # No-op for any subdir that doesn't exist (e.g. sfx/ is gitignored
+      # and only populated locally).
+      - name: Copy content assets into www's public dir
+        run: |
+          for dir in sfx code-samples; do
+            src="packages/some-content/public/$dir"
+            if [ -d "$src" ]; then
+              mkdir -p "apps/www/public/$dir"
+              cp -r "$src"/. "apps/www/public/$dir"/
+            fi
+          done
+
       - name: Build www and its workspace dependencies
         run: nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
         env:

@@ -20,6 +20,7 @@ import {
   SidebarTrigger,
 } from "some-ui-shared"
 
+import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Toaster } from "@/components/toaster"
 
 type NavItem = {
@@ -49,7 +50,9 @@ const DashboardLayout = (): JSX.Element => {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="px-2 py-1.5 text-sm font-semibold">Some UI</div>
+          <div className="text-gradient-accent px-2 py-1.5 text-sm font-semibold">
+            Some UI
+          </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
@@ -76,6 +79,7 @@ const DashboardLayout = (): JSX.Element => {
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
+          <ThemeSwitcher />
         </header>
         <div className="flex-1 overflow-auto p-6">
           <Outlet />
