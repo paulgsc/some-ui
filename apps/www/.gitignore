@@ -7,3 +7,6 @@ count.txt
 .env
 .nitro
 .tanstack
+
+# mp3 static assets for honeycomb
+/public/sfx

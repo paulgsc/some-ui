@@ -73,6 +73,8 @@ bin
 
 # Static files
 packages/**/public
+# mp3 static assets for honeycomb
+/apps/www/public/sfx
 
 # ...except the small, curated leetype demo samples used by the static
 # GitHub Pages build (see packages/some-content-registry) - everything
