@@ -46,7 +46,6 @@ export default defineConfig(
     resolve: {
       alias: {
         "@": resolve(__dirname, "./src"),
-        "@content": resolve(__dirname, "../../packages/some-content/src"),
       },
       tsconfigPaths: true,
     },

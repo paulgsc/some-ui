@@ -18,6 +18,16 @@ type BatchCreateRequest = {
   events: Array<CreateMoodEvent>
 }
 
+function isCreateMoodEvent(value: unknown): value is CreateMoodEvent {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "week" in value &&
+    "label" in value &&
+    "delta" in value
+  )
+}
+
 // Equivalent of __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -76,7 +86,8 @@ async function seedMoodEvents(): Promise<void> {
     // Log sample events
     // eslint-disable-next-line no-console
     console.log("\n🎯 Sample events created:")
-    result.slice(0, 3).forEach((event: any) => {
+    result.slice(0, 3).forEach((event) => {
+      if (!isCreateMoodEvent(event)) return
       // eslint-disable-next-line no-console
       console.log(
         `  Week ${event.week}: ${event.label} (${event.delta > 0 ? "+" : ""}${event.delta})`
@@ -91,13 +102,13 @@ async function seedMoodEvents(): Promise<void> {
       "❌ Failed to seed mood events:",
       error instanceof Error ? error.message : error
     )
-    process.exit(1)
+    process.exitCode = 1
   }
 }
 
 // Run only if this file is executed directly (not imported)
 if (process.argv[1] === __filename || import.meta.url.startsWith("file:")) {
-  seedMoodEvents()
+  void seedMoodEvents()
 }
 
 export { seedMoodEvents }

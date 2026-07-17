@@ -4,10 +4,7 @@
     "declarationDir": "./",
     "composite": true,
     "rootDir": ".",
-    "outDir": "./dist",
-    "paths": {
-      "@content/*": ["./src/*"]
-    }
+    "outDir": "./dist"
   },
   "include": ["src/**/*", "scripts"],
   "exclude": ["node_modules", "build", "dist"]

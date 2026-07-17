@@ -153,6 +153,6 @@ export function getNodeData(
     slot: `${inner} / 60  (outer ${outer})`,
     load,
     tasks,
-    description: `Fine-grained execution slot ${inner} within outer bucket ${outer} (${OUTER_LABELS[outer % OUTER_LABELS.length]})`,
+    description: `Fine-grained execution slot ${inner} within outer bucket ${outer} (${OUTER_LABELS[outer % OUTER_LABELS.length]!})`,
   }
 }

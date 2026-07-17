@@ -6,7 +6,7 @@
  */
 export type ActivityId = "honeycomb" | "topik" | "interview" | "leetype"
 
-/** Which pre-built layout tree (from @some-ui/content) an activity defaults to. */
+/** Which pre-built layout tree (from @some-ui/content-registry) an activity defaults to. */
 export type LayoutTreeId = "study" | "topik" | "drama" | "voice"
 
 type SelectField = {
@@ -40,7 +40,7 @@ export type ActivityDefinition = {
   name: string
   description: string
   icon: ActivityIconKey
-  /** Matches a key in @some-ui/content's componentRegistry. */
+  /** Matches a key in @some-ui/content-registry's componentRegistry. */
   registryKey: string
   layoutTree: LayoutTreeId
   fields: ReadonlyArray<ActivityField>

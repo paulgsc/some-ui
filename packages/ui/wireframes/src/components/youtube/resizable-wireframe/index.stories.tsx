@@ -1,6 +1,6 @@
-import { dramaTree } from "@content/data/layout-tree"
-import { componentRegistry } from "@some-ui/content"
-import { useSceneDrivenLayout } from "@some-ui/content/hooks/use-scene-driven-layout"
+import { componentRegistry } from "@some-ui/content-registry"
+import { dramaTree } from "@some-ui/content-registry/data/layout-tree"
+import { useSceneDrivenLayout } from "@some-ui/content-registry/hooks/use-scene-driven-layout"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useSceneLifetimes } from "some-ui-utils"
 

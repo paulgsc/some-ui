@@ -7,8 +7,8 @@
     "paths": {
       "@chat/*": ["./src/*"],
       "@some-ui/*": ["../../../assets/*"],
-      "@some-ui/content/*": ["../../some-content/src/*"],
-      "@some-ui/content": ["../../../some-content/src"]
+      "@some-ui/content-registry/*": ["../../some-content-registry/src/*"],
+      "@some-ui/content-registry": ["../../some-content-registry/src"]
     }
   },
   "include": [
@@ -20,7 +20,7 @@
     "test",
     "../../../assets/**/*",
     "src",
-    "../../some-content/src/**/*"
+    "../../some-content-registry/src/**/*"
   ],
   "exclude": ["node_modules", "build", "dist"]
 }

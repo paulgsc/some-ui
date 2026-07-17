@@ -94,6 +94,13 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # Unused-export/dependency graph check for apps/www specifically -
+      # not turbo-filtered like the steps above since knip needs to see
+      # www's whole workspace to reason about its import graph, not just
+      # what changed since HEAD^1.
+      - name: Knip (www)
+        run: nix develop .#ci --command pnpm run knip --workspace apps/www
+
       # Scoped to CSS files actually touched by this PR, not a full-repo
       # sweep — the repo carries pre-existing stylelint debt outside this
       # diff, and a blanket scan would fail PRs on files they never touched.
