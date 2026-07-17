@@ -9,13 +9,8 @@
  * subset here (storage key + class mapping); keep them in sync.
  */
 
-import {
-  ALL_THEME_CLASSES,
-  APP_THEMES,
-  getAppTheme,
-  type AppTheme,
-  type AppThemeId,
-} from "./registry"
+import type { AppTheme, AppThemeId } from "./registry"
+import { ALL_THEME_CLASSES, APP_THEMES, getAppTheme } from "./registry"
 
 export const THEME_STORAGE_KEY = "some-ui.theme"
 
@@ -27,7 +22,7 @@ export type ThemePreference = AppThemeId | typeof SYSTEM_PREFERENCE
 const SYSTEM_LIGHT: AppThemeId = "light"
 const SYSTEM_DARK: AppThemeId = "dark"
 
-export const DEFAULT_PREFERENCE: ThemePreference = SYSTEM_PREFERENCE
+export const DEFAULT_PREFERENCE: ThemePreference = SYSTEM_DARK
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">
 

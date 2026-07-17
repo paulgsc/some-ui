@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react"
+import type { AppTheme, ThemePreference } from "@some-ui/styles/theme"
 import {
   applyPreference,
   DEFAULT_PREFERENCE,
@@ -15,8 +16,6 @@ import {
   SYSTEM_PREFERENCE,
   watchSystem,
   writeStoredPreference,
-  type AppTheme,
-  type ThemePreference,
 } from "@some-ui/styles/theme"
 
 type ThemeContextValue = {

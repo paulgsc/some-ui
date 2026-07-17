@@ -58,7 +58,7 @@
   "main": "./dist/some-ui-stepper.cjs.js",
   "module": "./dist/some-ui-stepper.es.js",
   "types": "./dist/some-ui-stepper.d.ts",
-  "style": "./dist/some-ui-stepper.css",
+  "style": "./dist/stepper.css",
   "exports": {
     ".": {
       "types": "./dist/some-ui-stepper.d.ts",
@@ -66,6 +66,6 @@
       "require": "./dist/some-ui-stepper.cjs.js",
       "default": "./dist/some-ui-stepper.es.js"
     },
-    "./style.css": "./dist/some-ui-stepper.css"
+    "./style.css": "./dist/stepper.css"
   }
 }

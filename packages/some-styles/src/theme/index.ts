@@ -3,11 +3,11 @@ export {
   APP_THEMES,
   APP_THEME_IDS,
   getAppTheme,
-  type AppTheme,
-  type AppThemeId,
-  type ThemeMode,
-  type ThemeSwatch,
 } from "./registry"
+
+export type { AppTheme, AppThemeId, ThemeMode, ThemeSwatch } from "./registry"
+
+export type { ThemePreference } from "./controller"
 
 export {
   applyPreference,
@@ -21,5 +21,4 @@ export {
   THEME_STORAGE_KEY,
   watchSystem,
   writeStoredPreference,
-  type ThemePreference,
 } from "./controller"
