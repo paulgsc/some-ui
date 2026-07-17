@@ -1179,6 +1179,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../eslint
       react:
         specifier: ^19.0.0
         version: 19.0.0
