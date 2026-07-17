@@ -32,10 +32,7 @@
 # ("Content-Type text/html" in the browser, not a 404).
 services:
   www:
-    build:
-      context: ${REPO_ROOT:-.}
-      dockerfile: apps/www/Dockerfile
-    image: paulgsc/www:${TAG:-latest}
+    image: pgathondu/www:${TAG:-latest}
     container_name: some-ui-www
     ports:
       - "${WWW_HTTP_PORT:-5172}:80"
