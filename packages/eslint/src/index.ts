@@ -3,6 +3,8 @@ import type { Config } from "typescript-eslint"
 
 import {
   baseConfig,
+  buildHygieneConfig,
+  buildHygienePlugin,
   depsOverrideConfig,
   eslintPluginStorybook,
   extensionCharterPlugin,
@@ -30,6 +32,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
+  ...buildHygieneConfig,
   ...switchLintConfig,
   ...tailwindIdiomConfig,
   toolsOverrideConfig,
@@ -47,6 +50,7 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
+  ...buildHygieneConfig,
   ...tailwindIdiomConfig,
   toolsOverrideConfig,
   testsOverrideConfig
@@ -65,6 +69,9 @@ export { switchLintConfig, switchLintPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
+
+// ── Library-build hygiene (centralized dts excludes) ───────────────────────
+export { buildHygieneConfig, buildHygienePlugin }
 
 /**
  * Recommended preset for browser-extension workspaces.
