@@ -281,51 +281,21 @@ importers:
       '@dnd-kit/sortable':
         specifier: ^8.0.0
         version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.0.0)
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@some-ui/content':
         specifier: workspace:*
         version: link:../../packages/some-content
-      '@some-ui/fetch-kit':
-        specifier: workspace:*
-        version: link:../../packages/fetch-kit
-      '@some-ui/honeycomb':
-        specifier: workspace:*
-        version: link:../../packages/ui/honeycomb
       '@some-ui/interview':
         specifier: workspace:*
         version: link:../../packages/ui/interview
-      '@some-ui/leetype':
-        specifier: workspace:*
-        version: link:../../packages/ui/leetype
-      '@some-ui/makjang':
-        specifier: workspace:*
-        version: link:../../packages/ui/makjang
-      '@some-ui/overlays':
-        specifier: workspace:*
-        version: link:../../packages/ui/overlays
-      '@some-ui/portfolio':
-        specifier: workspace:*
-        version: link:../../packages/ui/portfolio-chart
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
-      '@some-ui/stepper':
-        specifier: workspace:*
-        version: link:../../packages/ui/stepper
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
-      '@some-ui/topik':
-        specifier: workspace:*
-        version: link:../../packages/ui/topik
-      '@some-ui/umag':
-        specifier: workspace:*
-        version: link:../../packages/ui/umag
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.3.1(vite@8.1.4(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -356,12 +326,6 @@ importers:
       some-types-utils:
         specifier: workspace:*
         version: link:../../packages/types
-      some-ui-neon-sign:
-        specifier: workspace:*
-        version: link:../../packages/ui/neon-sign
-      some-ui-nfl:
-        specifier: workspace:*
-        version: link:../../packages/ui/nfl
       some-ui-shared:
         specifier: workspace:*
         version: link:../../packages/ui/shared
@@ -378,21 +342,9 @@ importers:
       '@playwright/test':
         specifier: 1.60.0
         version: 1.60.0
-      '@testing-library/dom':
-        specifier: ^10.4.0
-        version: 10.4.1
-      '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@vitejs/plugin-react':
         specifier: ^6.0.3
         version: 6.0.3(vite@8.1.4(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      date-fns:
-        specifier: ^4.1.0
-        version: 4.4.0
-      lodash:
-        specifier: ^4.17.21
-        version: 4.18.1
       rollup-plugin-visualizer:
         specifier: ^5.12.0
         version: 5.14.0(rolldown@1.1.5)(rollup@4.62.2)
@@ -7120,9 +7072,6 @@ packages:
 
   dataloader@1.4.0:
     resolution: {integrity: sha512-68s5jYdlvasItOJnCuI2Q9s4q98g0pCyL3HrcKJu8KNugUl8ahgmZYg38ysLTgQjjXX3H8CJLkAvWrclWfcalw==}
-
-  date-fns@4.4.0:
-    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
   debounce@1.2.1:
     resolution: {integrity: sha512-XRRe6Glud4rd/ZGQfiV1ruXSfbvfJedlV9Y6zOlP+2K04vBYiJEte6stfFkCP03aMnY5tsipamumUjL14fofug==}
@@ -16066,16 +16015,6 @@ snapshots:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
-    dependencies:
-      '@babel/runtime': 7.29.7
-      '@testing-library/dom': 10.4.1
-      react: 19.0.0
-      react-dom: 19.0.0(react@19.0.0)
-    optionalDependencies:
-      '@types/react': 19.2.17
-      '@types/react-dom': 19.2.3(@types/react@19.2.17)
-
   '@testing-library/user-event@14.5.2(@testing-library/dom@10.4.0)':
     dependencies:
       '@testing-library/dom': 10.4.0
@@ -18078,8 +18017,6 @@ snapshots:
       is-data-view: 1.0.2
 
   dataloader@1.4.0: {}
-
-  date-fns@4.4.0: {}
 
   debounce@1.2.1: {}
 
