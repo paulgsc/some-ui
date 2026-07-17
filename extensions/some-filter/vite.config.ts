@@ -1,11 +1,37 @@
-/**
- * vite.config.ts — default config (re-exports Firefox build).
- *
- * Canonical production builds use the explicit configs:
- *   pnpm build:firefox   → vite build --config vite.config.firefox.ts
- *   pnpm build:chromium  → vite build --config vite.config.chromium.ts
- *
- * The default re-exports Firefox because that is the primary distribution
- * target. Playwright E2E uses build:chromium explicitly.
- */
-export { default } from "./vite.config.firefox"
+import { extensionConfig } from "@some-extension/common/vite"
+import type { UserConfig } from "vite"
+
+// Platform split: content/background import `@filter/platform/*`, aliased to the
+// Firefox or Chrome implementation per build target.
+const platformAlias = (
+  variant: "firefox" | "chrome"
+): Record<string, string> => ({
+  "@filter/platform/content": `src/lib/platform/content/api.${variant}.ts`,
+  "@filter/platform/background": `src/lib/platform/background/api.${variant}.ts`,
+  "@filter": "src",
+})
+
+const entries = [
+  { name: "content", input: "src/content/content.ts" },
+  { name: "background", input: "src/background/background.ts" },
+  { name: "popup", input: "popup.html", classic: false },
+]
+
+// One `vite build` per target. `--mode chromium` builds Chrome; the default
+// (production) target is Firefox, matching the prior `build = build:firefox`.
+// public/manifest.json is the chromium manifest (Vite's public-dir copy lands
+// it at dist/manifest.json); the Firefox build overwrites it afterwards.
+// public/prepaint.css and public/prepaint-start.js (the document_start
+// prepaint content script) ride along via the same public-dir copy.
+const config = ({ mode }: { mode: string }): UserConfig => {
+  const chromium = mode === "chromium"
+  return extensionConfig({
+    alias: platformAlias(chromium ? "chrome" : "firefox"),
+    entries,
+    copy: chromium
+      ? []
+      : [{ from: "public/manifest.firefox.json", to: "manifest.json" }],
+  })
+}
+
+export default config

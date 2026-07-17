@@ -8,7 +8,8 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "maishatu-eslint-kit": "workspace:*",
-    "@types/firefox-webext-browser": "^120.0.4"
+    "@types/firefox-webext-browser": "^120.0.4",
+    "vite": "^8.1.4"
   },
   "exports": {
     ".": {
@@ -42,15 +43,12 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "pnpm build:firefox",
-    "build:background": "BUILD_TARGET=background vite build",
-    "build:chromium": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.chromium.ts && BUILD_TARGET=background vite build --config vite.config.chromium.ts",
-    "build:content": "BUILD_TARGET=content vite build",
-    "build:firefox": "BUILD_CLEAN=1 BUILD_TARGET=content vite build --config vite.config.firefox.ts && BUILD_TARGET=background vite build --config vite.config.firefox.ts && BUILD_TARGET=popup vite build --config vite.config.firefox.ts",
-    "build:popup": "BUILD_TARGET=popup vite build",
+    "build": "vite build --configLoader runner",
+    "build:chromium": "vite build --mode chromium --configLoader runner",
+    "build:firefox": "vite build --mode firefox --configLoader runner",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
-    "dev": "vite",
+    "dev": "vite --configLoader runner",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "package:source": "bash ../scripts/package-source.sh",

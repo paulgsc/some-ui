@@ -36,7 +36,7 @@
  *     - public/manifest.json (content_scripts entries, run_at, matches)
  *     - public/prepaint.css (especially the --sw-prepaint-sheet sentinel
  *       or anything the html[data-sw-prepaint] selector gates)
- *     - vite.config.chromium.ts (build input/output, copyPublicDir behavior)
+ *     - vite.config.ts (build input/output, public-dir copy behavior)
  *   Not meant to run on every commit. Not meant to be the only safety net —
  *   classify.test.ts, dark-theme.test.ts, and prepaint.test.ts (all plain
  *   vitest, no browser, fully CI-portable) remain the primary regression
