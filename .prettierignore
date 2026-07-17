@@ -28,6 +28,11 @@ out/
 .svelte-kit/
 .env.generated
 
+# TanStack Router codegen — its own header says to exclude it from
+# lint/format tooling; it's regenerated in its own (non-Prettier) style on
+# every route change, so formatting it here wouldn't survive the next run.
+**/routeTree.gen.ts
+
 # Contentlayer & MDX
 .contentlayer
 .contentlayer.cache

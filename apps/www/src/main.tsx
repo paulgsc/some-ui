@@ -3,6 +3,8 @@ import { AppProviders } from "@/providers"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
+import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
+
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen"
 
@@ -34,6 +36,11 @@ const router = createRouter({
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
+  // Housekeeping fallbacks applied to every route: 404, error boundary, and a
+  // loading skeleton. Individual routes can still override these.
+  defaultNotFoundComponent: NotFound,
+  defaultErrorComponent: ErrorState,
+  defaultPendingComponent: RoutePending,
 })
 
 // Render the app

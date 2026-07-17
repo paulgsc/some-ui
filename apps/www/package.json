@@ -41,6 +41,7 @@
     "some-ui-shared": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "web-vitals": "^4.2.4",
     "wireframes": "workspace:*",
     "zod": "4.0.5"
   },
@@ -48,7 +49,6 @@
     "@playwright/test": "1.60.0",
     "@vitejs/plugin-react": "^6.0.3",
     "rollup-plugin-visualizer": "^5.12.0",
-    "vite": "^8.1.4",
-    "web-vitals": "^4.2.4"
+    "vite": "^8.1.4"
   }
 }
