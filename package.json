@@ -34,6 +34,7 @@
     "typecheck": "scripts/with-limits.sh turbo run typecheck",
     "prettier": "turbo prettier",
     "check-file": "turbo run check-file",
+    "knip": "knip --no-progress --reporter compact",
     "prepare": "husky",
     "test": "turbo test",
     "storybook": "storybook dev -p 6006 --no-open"
@@ -95,6 +96,7 @@
     "happy-dom": "17.1.8",
     "husky": "9.1.7",
     "jsdom": "26.0.0",
+    "knip": "6.27.0",
     "lint-staged": "15.4.3",
     "maishatu-eslint-kit": "workspace:*",
     "postcss": "8.5.6",

@@ -22,7 +22,7 @@
     "wireframes": "workspace:*"
   },
   "devDependencies": {
-    "@some-ui/content": "workspace:*",
+    "@some-ui/content-registry": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },

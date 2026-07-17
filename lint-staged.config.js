@@ -41,6 +41,18 @@ function groupByPackage(files) {
 const ESLINT_CHUNK_SIZE = 8
 
 /**
+ * `public/` directories (packages/some-content/public, packages/ui/*\/public)
+ * hold static assets/data, not project source - some of them (e.g. leetype's
+ * demo code samples) happen to use source-like extensions like `.ts` so
+ * they're syntax-highlighted correctly at runtime, but they don't belong to
+ * any package's tsconfig and shouldn't be run through project-aware
+ * ESLint/tsc, which require one.
+ */
+function isProjectSource(file) {
+  return !path.resolve(file).split(path.sep).includes("public")
+}
+
+/**
  * Escapes a value for safe interpolation inside a double-quoted string in
  * the nested `sh -c '...'` invocations below (e.g. TanStack Router's
  * $paramName.tsx files need their `$` escaped so the shell doesn't try to
@@ -60,7 +72,7 @@ function escapeForDoubleQuotedShell(value) {
  * ESLint per-package execution, chunked to cap per-invocation memory.
  */
 function buildEslintCommands(files) {
-  const grouped = groupByPackage(files)
+  const grouped = groupByPackage(files.filter(isProjectSource))
   const commands = []
 
   for (const [pkgRoot, pkgFiles] of grouped.entries()) {
@@ -95,7 +107,7 @@ function buildEslintCommands(files) {
  * Falls back to tsconfig.json for packages that don't define a build config.
  */
 function buildTscCommands(files) {
-  const grouped = groupByPackage(files)
+  const grouped = groupByPackage(files.filter(isProjectSource))
 
   return [...grouped.keys()].map((pkgRoot) => {
     const project = fs.existsSync(path.join(pkgRoot, "tsconfig.build.json"))

@@ -1,0 +1,67 @@
+{
+  "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*",
+    "@some-ui/makjang": "workspace:*",
+    "@some-ui/portfolio": "workspace:*",
+    "some-types-utils": "workspace:*",
+    "@some-ui/chat": "workspace:*",
+    "@some-ui/interview": "workspace:*",
+    "@some-ui/topik": "workspace:*",
+    "@some-ui/honeycomb": "workspace:*",
+    "@some-ui/leetype": "workspace:*",
+    "some-ui-neon-sign": "workspace:*",
+    "some-ui-nfl": "workspace:*",
+    "@some-ui/slideshow": "workspace:*",
+    "@some-ui/stepper": "workspace:*",
+    "some-ui-utils": "workspace:*",
+    "@some-ui/resume": "workspace:*",
+    "@some-ui/umag": "workspace:*",
+    "wireframes": "workspace:*",
+    "zod": "4.0.5",
+    "node-fetch": "^3.3.2"
+  },
+  "description": "Scene registry, layout orchestration, and other content-driven logic for the monorepo's activities. Pairs with @some-ui/content, which holds the actual assets/data this package registers and orchestrates.",
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "@types/node-fetch": "^2.6.11"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "vite",
+    "config",
+    "monorepo",
+    "shared"
+  ],
+  "name": "@some-ui/content-registry",
+  "private": true,
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^6.0.7"
+  },
+  "scripts": {
+    "seed": "tsx src/scripts/mood-events/seed.ts",
+    "build:manifest": "tsx scripts/generate-manifest.ts",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

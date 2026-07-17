@@ -1,5 +1,5 @@
 // Import dummy/demo data only for Storybook
-import { useNflTennis } from "@some-ui/content/data/nfl/brick-data"
+import { useNflTennis } from "@some-ui/content-registry/data/nfl/brick-data"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 // Import the actual component

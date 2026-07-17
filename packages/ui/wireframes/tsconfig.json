@@ -7,11 +7,10 @@
     "outDir": "./dist",
     "paths": {
       "@wireframes/*": ["./src/*"],
-      "@content/*": ["../../some-content/src/*"],
-      "@some-ui/content/*": ["../../some-content/src/*"],
-      "@some-ui/content": ["../../some-content/src"]
+      "@some-ui/content-registry/*": ["../../some-content-registry/src/*"],
+      "@some-ui/content-registry": ["../../some-content-registry/src"]
     }
   },
-  "include": ["src", "../../some-content/src/**/*"],
+  "include": ["src", "../../some-content-registry/src/**/*"],
   "exclude": ["node_modules", "build", "dist"]
 }
