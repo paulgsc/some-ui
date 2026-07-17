@@ -1,5 +1,5 @@
+import type { LayoutNode } from "@wireframes/lib"
 import type { YouTubeRegion } from "some-types-utils"
-import type { LayoutNode } from "wireframes"
 
 export const dramaTree: LayoutNode<YouTubeRegion> = {
   type: "split",
