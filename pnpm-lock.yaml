@@ -2026,6 +2026,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
 
   packages/utils:
     dependencies:

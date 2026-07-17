@@ -11,6 +11,11 @@
       "@some-ui/content-registry": ["../../some-content-registry/src"]
     }
   },
-  "include": ["src", "../../some-content-registry/src/**/*"],
+  "include": [
+    "src",
+    "../../some-content-registry/src/**/*",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

@@ -1,9 +1,11 @@
 import { componentRegistry } from "@some-ui/content-registry"
-import { dramaTree } from "@some-ui/content-registry/data/layout-tree"
-import { useSceneDrivenLayout } from "@some-ui/content-registry/hooks/use-scene-driven-layout"
 import { createFileRoute } from "@tanstack/react-router"
 import { useSceneLifetimes } from "some-ui-utils"
-import { OrchestratedYouTubeViewport } from "wireframes"
+import {
+  dramaTree,
+  OrchestratedYouTubeViewport,
+  useSceneDrivenLayout,
+} from "wireframes"
 
 // Search params validation
 type YouTubeWireframeSearch = {

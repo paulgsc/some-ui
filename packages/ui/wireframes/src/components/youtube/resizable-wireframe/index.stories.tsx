@@ -1,40 +1,10 @@
 import { componentRegistry } from "@some-ui/content-registry"
-import { useSceneDrivenLayout } from "@some-ui/content-registry/hooks/use-scene-driven-layout"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { useSceneDrivenLayout } from "@wireframes/hooks/use-scene-driven-layout"
 import { dramaTree } from "@wireframes/lib/layout-tree"
 import { useSceneLifetimes } from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."
-
-// ============================================================================
-// Meta Configuration
-// ============================================================================
-
-const meta = {
-  title: "UI/Wireframes/OrchestratedYouTubeViewport",
-  component: OrchestratedYouTubeViewport,
-  parameters: {
-    layout: "fullscreen",
-    docs: {
-      description: {
-        component: `
-# Orchestrated YouTube Viewport
-
-Each panel is a parent component that can contain multiple time-limited children.
-        `,
-      },
-    },
-  },
-  argTypes: {
-    transitionMs: {
-      control: { type: "range", min: 0, max: 1000, step: 50 },
-    },
-  },
-  tags: ["autodocs"],
-} satisfies Meta<typeof OrchestratedYouTubeViewport>
-
-export default meta
-type Story = StoryObj<typeof meta>
 
 // ============================================================================
 // Helper: AnimatedStory Wrapper
@@ -67,6 +37,36 @@ const AnimatedStory = ({
     </div>
   )
 }
+
+// ============================================================================
+// Meta Configuration
+// ============================================================================
+
+const meta = {
+  title: "UI/Wireframes/OrchestratedYouTubeViewport",
+  component: AnimatedStory,
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component: `
+# Orchestrated YouTube Viewport
+
+Each panel is a parent component that can contain multiple time-limited children.
+        `,
+      },
+    },
+  },
+  argTypes: {
+    transitionMs: {
+      control: { type: "range", min: 0, max: 1000, step: 50 },
+    },
+  },
+  tags: ["autodocs"],
+} satisfies Meta<typeof AnimatedStory>
+
+export default meta
+type Story = StoryObj<typeof meta>
 
 // ============================================================================
 // Stories
