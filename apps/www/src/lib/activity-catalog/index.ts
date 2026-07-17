@@ -7,12 +7,9 @@ export {
 export type {
   ActivityConfigValues,
   ActivityDefinition,
-  ActivityField,
   ActivityIconKey,
   ActivityId,
-  DurationField,
   LayoutTreeId,
-  SelectField,
 } from "./types"
-export { layoutTreeFor, sequenceScenes, toSceneConfig } from "./to-scene-config"
-export type { SceneBuildOptions, SessionActivity } from "./to-scene-config"
+export { sequenceScenes } from "./to-scene-config"
+export type { SessionActivity } from "./to-scene-config"
