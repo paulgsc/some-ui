@@ -9,7 +9,9 @@ name: Extension Context Detection
 # `web-ext lint` to validate.
 #
 # Given that, an extension is included if:
-#   a) CI config changed (force-all), OR
+#   a) extension-relevant CI config changed (force-all) — scoped to
+#      extension.yml/_extension-*.yml + shared actions, not every workflow
+#      file, so e.g. editing pedagogy.yml doesn't force a full re-verify, OR
 #   b) a workspace package that extensions transitively depend on changed (force-all), OR
 #   c) any file under extensions/<name>/ appears in the git diff, OR
 #   d) a crate in crates/ that the extension lists as a workspace dependency changed.
@@ -59,7 +61,8 @@ jobs:
             crates:
               - 'crates/**'
             ci:
-              - '.github/workflows/**'
+              - '.github/workflows/extension.yml'
+              - '.github/workflows/_extension-*.yml'
               - '.github/actions/**'
 
       - name: Resolve changed shared extension deps

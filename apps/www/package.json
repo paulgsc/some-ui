@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite --port 5173",
+    "content:link": "node scripts/link-content-assets.js",
     "build": "vite build && tsc",
     "build:analyze": "node scripts/analyze-bundle.js",
     "analyze": "pnpm run build:analyze && open dist/bundle-analysis.html",

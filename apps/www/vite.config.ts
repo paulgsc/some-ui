@@ -3,13 +3,43 @@ import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
-import { defineConfig, type UserConfig } from "vite"
+import type { Plugin, UserConfig } from "vite"
+import { defineConfig } from "vite"
 
 import styleContext from "./style.context"
 
 const certPath = resolve(__dirname, "../../certs/nixos.local+3.pem")
 const keyPath = resolve(__dirname, "../../certs/nixos.local+3-key.pem")
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
+
+// honeycomb's sfx / leetype's code samples (see scripts/link-content-assets.js)
+// are curated, gitignored, and only ever present if a developer symlinked
+// them in on purpose - never auto-run on dev startup (see that script's
+// header for why). Without them, requests like /sfx/correct.mp3 fall through
+// vite's SPA history fallback and come back as index.html, which the browser
+// reports as an opaque "Content-Type text/html is not supported" media
+// error. Surface the actual cause loudly instead of leaving that to guess.
+function warnMissingContentAssets(): Plugin {
+  return {
+    name: "warn-missing-content-assets",
+    configureServer(): void {
+      const missing = ["sfx", "code-samples"].filter(
+        (name) => !fs.existsSync(resolve(__dirname, "public", name))
+      )
+      if (missing.length === 0) return
+      // eslint-disable-next-line no-console
+      console.warn(
+        `\n[www] public/${missing.join(", public/")} not found - honeycomb sound` +
+          ` and/or leetype code samples won't load. The browser will show a` +
+          ` confusing "Content-Type text/html" media error instead of a 404.\n` +
+          `  If you have the real files under packages/some-content/public/, run:\n` +
+          `    pnpm run content:link\n` +
+          `  Otherwise this is expected on a fresh checkout - those assets are` +
+          ` curated and gitignored.\n`
+      )
+    },
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(
@@ -42,6 +72,7 @@ export default defineConfig(
       ...createStylePlugins(styleContext),
       TanStackRouterVite({ autoCodeSplitting: true }),
       viteReact(),
+      ...(command === "serve" ? [warnMissingContentAssets()] : []),
     ],
     resolve: {
       alias: {

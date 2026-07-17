@@ -43,7 +43,6 @@ jobs:
           filters: |
             rust:
               - 'crates/**'
-              - 'apps/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - '.cargo/**'
