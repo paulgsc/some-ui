@@ -2,9 +2,9 @@ import "@tab/styles/hud.css"
 
 import { useEffect, useRef } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { expect, userEvent, waitFor } from "@storybook/test"
 import type { NodeState, Outcome, Segment } from "@tab/types"
 import { FloatingHUD } from "@tab/ui/floating-hud"
+import { expect, userEvent, waitFor } from "storybook/test"
 
 // ── Mock factory ─────────────────────────────────────────────────────────────
 

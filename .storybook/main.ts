@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { dirname, join, resolve } from "path"
 import type { StorybookConfig } from "@storybook/react-vite"
+// eslint-disable-next-line import/no-extraneous-dependencies
 import UnoCSS from "unocss/vite"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -67,6 +68,7 @@ const config: StorybookConfig = {
   core: {
     disableTelemetry: true,
     disableWhatsNewNotifications: true,
+    allowedHosts: ["nixos.local"],
   },
 
   addons: [

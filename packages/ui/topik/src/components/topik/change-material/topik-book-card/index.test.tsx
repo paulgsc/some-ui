@@ -1,5 +1,5 @@
-import type { TopikMetadata } from "@topik/lib/topik"
 import { fireEvent, render, screen } from "@testing-library/react"
+import type { TopikMetadata } from "@topik/lib/topik"
 import { describe, expect, it, vi } from "vitest"
 
 import { TopikBookCard } from "."

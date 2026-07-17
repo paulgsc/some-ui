@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from "react"
-import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
+import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 import { describe, expect, it, vi } from "vitest"
 
 import { useTopikBatchMetadata, useTopikCurrentBatch } from "."

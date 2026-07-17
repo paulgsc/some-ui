@@ -1,5 +1,5 @@
-import type { TopikMetadata } from "@topik/lib/topik"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import type { TopikMetadata } from "@topik/lib/topik"
 
 import { SessionHeader } from "."
 

@@ -3,13 +3,13 @@
  *
  */
 
-import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 import type {
   QueryClient,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES

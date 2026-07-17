@@ -6,13 +6,13 @@
  * The FSM accesses data via QueryClient directly (see session-selectors.ts).
  */
 
+import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import type {
   ITopikMetadataRepository,
   TopikManifest,
   TopikMetadata,
 } from "@topik/lib/topik"
-import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
-import { useQuery } from "@tanstack/react-query"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
