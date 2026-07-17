@@ -3,7 +3,8 @@ import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
-import { defineConfig, type Plugin, type UserConfig } from "vite"
+import type { Plugin, UserConfig } from "vite"
+import { defineConfig } from "vite"
 
 import styleContext from "./style.context"
 
