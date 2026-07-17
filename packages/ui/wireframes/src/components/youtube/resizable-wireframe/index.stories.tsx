@@ -1,7 +1,7 @@
 import { componentRegistry } from "@some-ui/content-registry"
-import { dramaTree } from "@some-ui/content-registry/data/layout-tree"
 import { useSceneDrivenLayout } from "@some-ui/content-registry/hooks/use-scene-driven-layout"
 import type { Meta, StoryObj } from "@storybook/react-vite"
+import { dramaTree } from "@wireframes/lib/layout-tree"
 import { useSceneLifetimes } from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."

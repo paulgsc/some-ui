@@ -1,7 +1,7 @@
 import { useMemo } from "react"
+import type { LayoutNode } from "@wireframes/lib"
 import type { YouTubeRegion } from "some-types-utils"
 import { usePrimaryScene } from "some-ui-utils"
-import type { LayoutNode } from "wireframes"
 
 import { SCENE_LAYOUT_MAP } from "../types/layout-trees-map"
 
