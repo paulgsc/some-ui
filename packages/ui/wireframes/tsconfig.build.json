@@ -11,6 +11,7 @@
     "**/data/**",
     "**/demo/**",
     "../../some-content/src/**/*",
+    "../../some-content-registry/src/**/*",
     "vitest.config.ts",
     "vitest.setup.ts"
   ]
