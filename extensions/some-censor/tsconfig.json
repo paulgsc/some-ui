@@ -30,7 +30,6 @@
     "src/**/*.tsx",
     "tests/**/*.ts",
     "tests/**/*.tsx",
-    "build.context.ts",
     "vite.config*.ts",
     "playwright.config.ts",
     "vitest.setup.ts"

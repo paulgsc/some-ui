@@ -44,11 +44,13 @@ export function buildStructuralSection(
   // ── Telemetry badge bar (when scraped data is present) ────────────────────
   if (prefill.timestamp || prefill.progress != null) {
     const bar = el("div", "p-telemetry-badge-bar flex flex-wrap gap-1")
-    bar.innerHTML = `
-      <span class="p-tbadge">⏱️ ${prefill.timestamp || "00:00"}</span>
-      <span class="p-tbadge">📈 ${Math.round((prefill.progress || 0) * 100)}%</span>
-      <span class="p-tbadge">${prefill.isPlaying ? "🟢 Live" : "⏸ Paused"}</span>
-    `
+    const timeBadge = el("span", "p-tbadge")
+    timeBadge.textContent = `⏱️ ${prefill.timestamp || "00:00"}`
+    const progressBadge = el("span", "p-tbadge")
+    progressBadge.textContent = `📈 ${Math.round((prefill.progress || 0) * 100)}%`
+    const playingBadge = el("span", "p-tbadge")
+    playingBadge.textContent = prefill.isPlaying ? "🟢 Live" : "⏸ Paused"
+    bar.append(timeBadge, progressBadge, playingBadge)
     inner.appendChild(bar)
   }
 

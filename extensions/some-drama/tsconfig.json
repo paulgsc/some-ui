@@ -25,7 +25,6 @@
   },
   "include": [
     "src",
-    "build.context.ts",
     "vite.config.ts",
     "uno.config.ts",
     "uno.config.popup.ts",

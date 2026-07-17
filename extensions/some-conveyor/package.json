@@ -14,6 +14,7 @@
     "eslint": "^10.6.0",
     "maishatu-eslint-kit": "workspace:*",
     "unocss": "^66.0.0",
+    "vite": "^8.1.4",
     "web-ext": "8.3.0"
   },
   "exports": {
@@ -48,13 +49,11 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "pnpm build:firefox",
-    "build:chromium": "tsc -p tsconfig.build.json && some-ext-build chromium && pnpm build:css",
-    "build:css": "unocss \"src/**/*.{ts,tsx}\" \"src/styles/conveyor.css\" --config uno.config.ts --no-preflights -o dist/styles/conveyor.css",
-    "build:firefox": "tsc -p tsconfig.build.json && some-ext-build firefox && pnpm build:css",
+    "build": "vite build --configLoader runner",
+    "build:chromium": "vite build --mode chromium --configLoader runner",
+    "build:firefox": "vite build --mode firefox --configLoader runner",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
-    "dev": "vite",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "package:source": "bash ../scripts/package-source.sh",
