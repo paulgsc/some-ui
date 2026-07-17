@@ -1,5 +1,10 @@
 import { resolve } from "path"
+// This is a standalone dev-tooling script (run via `pnpm run analyze`),
+// never shipped in the app bundle, so these really are devDependencies —
+// eslint's extraneous-dependencies check doesn't have a scripts/ carve-out.
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { visualizer } from "rollup-plugin-visualizer"
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { build } from "vite"
 
 async function analyzeBundles() {
@@ -180,6 +185,10 @@ async function analyzeBundles() {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("❌ Bundle analysis failed:", error)
+    // CLI entry point: exiting non-zero is how this script reports failure
+    // to the invoking shell (pnpm run analyze:ci) — throwing here would just
+    // become an unhandled rejection with exit code 1 anyway, but less clearly.
+    // eslint-disable-next-line no-process-exit
     process.exit(1)
   }
 }
