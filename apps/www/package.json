@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/link-content-assets.js",
     "dev": "vite",
+    "prestart": "node scripts/link-content-assets.js",
     "start": "vite --port 5173",
     "build": "vite build && tsc",
     "build:analyze": "node scripts/analyze-bundle.js",
