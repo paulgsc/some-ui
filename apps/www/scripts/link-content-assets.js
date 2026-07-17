@@ -1,14 +1,19 @@
 // honeycomb's sfx and leetype's code samples live in packages/some-content
 // (see apps/www/.gitignore) and aren't checked into this app's public/ dir.
 // CI's Pages build (pages.yml) copies them into public/ at build time; for
-// `pnpm dev`/`pnpm start` there's no build step to hook that copy into, so
-// this symlinks them instead - vite's dev server then serves the real files
-// straight out of packages/some-content, live, with no rebuild needed.
+// local `vite dev` this symlinks them instead, so the dev server serves the
+// real files straight out of packages/some-content, live, with no rebuild
+// needed. Run manually via `pnpm run content:link` when you have the actual
+// asset files locally - deliberately NOT wired into a pre/postinstall or
+// pre<script> hook, since auto-executing Node on install/dev is a footgun
+// (surprise side effects, supply-chain scanner flags on the lifecycle
+// script itself). vite.config.ts warns at dev-server startup instead if
+// these are missing, pointing back at this command.
 //
 // No-op for any subdir that doesn't exist locally: these assets are
 // curated/gitignored, not part of a fresh checkout, so a machine without
 // them just runs without honeycomb sound / leetype samples rather than
-// failing dev startup.
+// failing.
 import {
   existsSync,
   lstatSync,
