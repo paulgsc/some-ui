@@ -1,0 +1,41 @@
+name: "WWW Detect"
+description: "Decide www-docker-release.yml's release_mode: publish, release-pr, or skip."
+inputs:
+  event-name:
+    description: "github.event_name"
+    required: true
+  publish-only:
+    description: "workflow_dispatch inputs.publish_only (empty when not dispatched)"
+    required: false
+    default: ""
+  commit-message:
+    description: "github.event.head_commit.message (empty outside push events)"
+    required: false
+    default: ""
+  release-commit-message:
+    description: "The commit message www-docker-release.yml's own release PR is opened/merged with"
+    required: true
+  base-sha:
+    description: "github.event.before"
+    required: false
+    default: ""
+  head-sha:
+    description: "github.sha"
+    required: true
+outputs:
+  release_mode:
+    description: "One of: publish, release-pr, skip"
+    value: ${{ steps.run.outputs.release_mode }}
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      env:
+        EVENT_NAME: ${{ inputs.event-name }}
+        PUBLISH_ONLY: ${{ inputs.publish-only }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        RELEASE_COMMIT_MESSAGE: ${{ inputs.release-commit-message }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: bash "${{ github.action_path }}/detect.sh"
