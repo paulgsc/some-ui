@@ -132,7 +132,8 @@
     "overrides": {
       "@types/react": "^19.0.4",
       "@eslint/core": "0.17.0",
-      "@eslint/config-helpers": "0.4.2"
+      "@eslint/config-helpers": "0.4.2",
+      "ws": "^8.21.1"
     }
   },
   "eslintConfig": {
