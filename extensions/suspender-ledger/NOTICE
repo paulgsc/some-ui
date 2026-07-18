@@ -23,9 +23,9 @@ and is reproduced in COPYING.MPL-2.0.
 
 MIT License
 -----------
-All other files in this workspace (src/popup/, src/suspend/, new business
-logic, build configuration) are Copyright (c) 2024 paulgsc and licensed
-under the MIT License.
+All other files in this workspace (src/popup/, new business logic, build
+configuration) are Copyright (c) 2024 paulgsc and licensed under the MIT
+License.
 
 The package.json declares "license": "MPL-2.0 AND MIT" to reflect this
 dual-license structure. License scope is file-level per MPL-2.0 § 3.3.
