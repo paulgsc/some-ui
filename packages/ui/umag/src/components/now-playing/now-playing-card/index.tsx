@@ -132,8 +132,8 @@ export const ErrorBoundaryFallback = ({
           </div>
           <CardTitle className="text-2xl">Something went wrong</CardTitle>
           <CardDescription>
-            We&apos;re sorry, but something unexpected happened. Our team has been
-            notified.
+            We&apos;re sorry, but something unexpected happened. Our team has
+            been notified.
           </CardDescription>
         </CardHeader>
         <CardContent>

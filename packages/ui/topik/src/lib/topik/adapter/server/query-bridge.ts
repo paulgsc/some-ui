@@ -5,12 +5,12 @@
  * Bridge executes fetches and returns promises - no state inspection
  */
 
+import type { QueryClient } from "@tanstack/react-query"
 import type {
   ConversationBatch,
   IQueryBridge,
   TopikManifestFile,
 } from "@topik/lib/topik"
-import type { QueryClient } from "@tanstack/react-query"
 
 import { metadataKeys } from "./topik-metadata-queries"
 import { topikKeys } from "./topik-queries"

@@ -1,4 +1,8 @@
-import type { GameRef, GameStats, TypedTypingGame } from "@leetype/types/leetype"
+import type {
+  GameRef,
+  GameStats,
+  TypedTypingGame,
+} from "@leetype/types/leetype"
 import { renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 

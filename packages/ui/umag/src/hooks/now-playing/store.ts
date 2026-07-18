@@ -1,5 +1,5 @@
-import { create } from "zustand"
 import type { NowPlayingType } from "@umag/types/now-playing"
+import { create } from "zustand"
 
 const defaultNowPlaying: NowPlayingType = {
   title: "No video",

@@ -1,4 +1,7 @@
-import type { RecordingAction, RecordingState } from "@interview/types/interview"
+import type {
+  RecordingAction,
+  RecordingState,
+} from "@interview/types/interview"
 
 export const recordingReducer = (
   state: RecordingState,
