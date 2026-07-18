@@ -1,9 +1,9 @@
 # Suspender Ledger — Design Notes
 
-> **Beta.** The core auto-suspension path (time-based → `suspend.html`) is
-> functional. The gaps and footguns below are things to be aware of before
-> signing for public AMO listing. See the paired acceptance-checklist issue
-> for the gate criteria.
+> **Beta.** The core auto-suspension path (time-based → native
+> `chrome.tabs.discard()`) is functional. The gaps and footguns below are
+> things to be aware of before signing for public AMO listing. See the
+> paired acceptance-checklist issue for the gate criteria.
 
 ---
 
@@ -132,30 +132,6 @@ world (default `world: "ISOLATED"`). Changing either to `world: "MAIN"` breaks
 the link — the properties become invisible across the world boundary and the
 collector falls back to `undefined`/`Date.now()`.
 
-### `isSuspendTab` and the ephemeral dev extension ID
-
-`isSuspendTab(tab)` checks whether `tab.url` starts with
-`chrome.runtime.getURL("suspend.html")`. In production this URL is stable
-(Firefox derives the extension ID from `gecko.id`). In development (temporary
-add-on), the ID is randomised on each reload, so `isSuspendTab` may miss
-suspend pages from a previous load session. Stale suspend tabs accumulate in
-the strip during dev. This is cosmetic and harmless in production.
-
-### `location.replace()` is required for some-filter interop
-
-The suspend-page restore calls `location.replace(params.url)`. This is a full
-top-level navigation, which fires `document_start` in content scripts and lets
-`some-filter` apply its prepaint veil before the page paints. `history.pushState()`
-or in-place DOM swaps bypass `document_start` entirely — do not use them as
-an alternative restore mechanism.
-
-### Suspend URL embeds the `prepends` marker at suspend time
-
-The `💤` prefix is baked into the `title` query parameter of the suspend URL
-(`?title=%F0%9F%92%A4+My+Tab`). Changing `prefs.prepends` after tabs are
-already suspended does not update their displayed titles — the marker only
-refreshes when a tab is next suspended.
-
 ### "No tab to switch to" is not an audio/video bug
 
 When the user suspends the active tab via the popup and there are no other
@@ -164,14 +140,6 @@ notification and does nothing. This is intentional — the browser cannot be
 left with no focused tab. It appears as a silent failure when the user has only
 one non-suspended tab open. It is **not** related to audio or video guards; the
 `discard-tab` path never checks audibility.
-
-### `web_accessible_resources` exposes `suspend.html`
-
-`suspend.html` is declared in `web_accessible_resources` with
-`matches: ["*://*/*"]`, so any web page can iframe it. The suspend page
-validates its `url` parameter through `isRestorableUrl()` (http/https only)
-before calling `location.replace`. Do not weaken that validation — it is the
-only defence against open-redirect misuse.
 
 ---
 

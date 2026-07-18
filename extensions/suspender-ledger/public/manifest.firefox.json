@@ -56,12 +56,9 @@
       "description": "Suspend the active tab"
     }
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["suspend.html"],
-      "matches": ["*://*/*"]
-    }
-  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "suspender-ledger@paulgsc.com",
