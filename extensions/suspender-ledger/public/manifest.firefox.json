@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Suspender Ledger (Beta)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Beta — Tab suspender: pause background tabs to reclaim RAM without losing history or tab identity.",
   "permissions": [
     "idle",

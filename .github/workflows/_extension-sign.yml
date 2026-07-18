@@ -48,68 +48,48 @@ jobs:
         run: |
           nix develop .#ci --command bash extensions/scripts/package-source.sh \
             "${{ matrix.extension_path }}"
+      # Submits the xpi and, in the same request, PATCHes the source archive onto
+      # the version web-ext just created (A1 fix). The previous approach signed
+      # first and then PATCHed a hand-rolled `.../versions/upload/` URL as a
+      # separate step — that endpoint doesn't exist on the AMO API (404s
+      # unconditionally), so source was never actually attached. web-ext's
+      # own --upload-source-code does the PATCH against the real
+      # `.../versions/{id}/` endpoint before it starts polling for approval.
+      # --approval-timeout 0 skips that poll: manual review (required whenever
+      # AMO can't auto-verify a bundled/minified build) routinely takes far
+      # longer than any CI job should block for, and the source patch has
+      # already landed by the time this flag is checked.
       - name: Submit to AMO
         id: sign
         run: |
-          nix develop .#ci --command web-ext sign \
-            --source-dir "${{ matrix.extension_path }}/dist" \
-            --channel unlisted \
-            --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
-            --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
-            --artifacts-dir artifacts 2>&1 | tee sign-output.log
-          # Extract the version ID emitted by web-ext for the source upload step.
-          VERSION_ID=$(grep -oP '(?<=version_id: )\S+' sign-output.log || true)
-          ADDON_ID=$(grep -oP '(?<=Your add-on has been submitted.*id: )\S+' sign-output.log || \
-                     grep -oP '(?<="id":)\s*\d+' sign-output.log | head -1 | tr -d ' ' || true)
-          echo "VERSION_ID=$VERSION_ID" >> "$GITHUB_OUTPUT"
-          echo "ADDON_ID=$ADDON_ID" >> "$GITHUB_OUTPUT"
-      # Upload source archive to AMO so reviewers can reproduce the build (A1 fix).
-      - name: Upload source archive to AMO
-        run: |
+          set -o pipefail
           ARCHIVE="${{ steps.source.outputs.SOURCE_ARCHIVE }}"
           if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
             # Fallback: find the archive by glob
             ARCHIVE=$(ls "${{ matrix.extension_path }}"/artifacts/source-*.zip 2>/dev/null | head -1)
           fi
           if [ -z "$ARCHIVE" ]; then
-            echo "::error::Source archive not found — upload skipped"
+            echo "::error::Source archive not found — sign aborted"
             exit 1
           fi
 
-          VERSION="${{ steps.source.outputs.SOURCE_VERSION }}"
-          GIT_SHA="${{ steps.source.outputs.GIT_SHA }}"
-
-          # Upload via AMO Versions API.
-          # JWT auth uses the same issuer/secret pair as web-ext sign.
-          HTTP_STATUS=$(curl -s -o upload-response.json -w "%{http_code}" \
-            -X PATCH \
-            "https://addons.mozilla.org/api/v5/addons/addon/${{ matrix.extension_name }}/versions/upload/" \
-            -H "Authorization: JWT $(node -e "
-              const crypto = require('crypto');
-              const iss = '${{ secrets.AMO_JWT_ISSUER }}';
-              const sec = '${{ secrets.AMO_JWT_SECRET }}';
-              const now = Math.floor(Date.now()/1000);
-              const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
-              const payload = Buffer.from(JSON.stringify({iss,jti:crypto.randomUUID(),iat:now,exp:now+300})).toString('base64url');
-              const sig = crypto.createHmac('sha256',sec).update(header+'.'+payload).digest('base64url');
-              process.stdout.write(header+'.'+payload+'.'+sig);
-            ")" \
-            -F "source=@${ARCHIVE};type=application/zip" \
-            -F "approval_notes=Built from git SHA ${GIT_SHA} using pnpm install --frozen-lockfile && pnpm --filter ${{ matrix.package_name }} build. See README.build.md inside the archive for full instructions.")
-
-          cat upload-response.json
-          echo ""
-          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ] || [ "$HTTP_STATUS" = "202" ]; then
-            echo "::notice::AMO source upload succeeded (HTTP $HTTP_STATUS) for ${{ matrix.extension_name }} v${VERSION} @ ${GIT_SHA}"
-          else
-            echo "::error::AMO source upload returned HTTP $HTTP_STATUS for ${{ matrix.extension_name }} v${VERSION}"
-            exit 1
-          fi
+          nix develop .#ci --command web-ext sign \
+            --source-dir "${{ matrix.extension_path }}/dist" \
+            --channel unlisted \
+            --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
+            --upload-source-code "$ARCHIVE" \
+            --approval-timeout 0 \
+            --artifacts-dir artifacts 2>&1 | tee sign-output.log
+      # --approval-timeout 0 above means web-ext returns as soon as the version
+      # is submitted, without waiting on manual review — so no signed .xpi is
+      # downloaded in this job run. It becomes available on the AMO version
+      # page once a reviewer approves it.
       - uses: actions/upload-artifact@v7
         with:
           name: signed-${{ matrix.extension_name }}
           path: artifacts/*.xpi
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
       - uses: actions/upload-artifact@v7
         if: always()
