@@ -21,6 +21,11 @@
  *   shouldSkip(). Vendor DOM is left in place; extension nodes self-exclude.
  */
 
+import {
+  DEFAULT_SWATCH_ID,
+  SWATCHES,
+  type Swatch,
+} from "@filter/adapter/swatches"
 import type { FilterConfig } from "@filter/types/config"
 
 import { parseColor, relativeLuminance } from "./color"
@@ -31,27 +36,33 @@ export const DARK_THEME_ATTR = "data-sw-dark"
 export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
+// Values come from the active swatch (default: SWATCHES.default, byte-for-byte
+// today's palette) rather than a hardcoded literal — see src/adapter/swatches.ts.
 
-const TOKENS = `
-  --sw-bg-0: #0d1117;
-  --sw-bg-1: #13161d;
-  --sw-bg-2: #1a1e27;
-  --sw-bg-3: #21252f;
-  --sw-surface: #1e222b;
-  --sw-border: rgba(255, 255, 255, 0.08);
+function swatchTokens(swatch: Swatch): string {
+  return `
+  --sw-bg-0: ${swatch.bg0};
+  --sw-bg-1: ${swatch.bg1};
+  --sw-bg-2: ${swatch.bg2};
+  --sw-bg-3: ${swatch.bg3};
+  --sw-surface: ${swatch.surface};
+  --sw-border: ${swatch.border};
 
-  --sw-text-0: #e2e8f0;
-  --sw-text-1: #94a3b8;
-  --sw-text-2: #475569;
+  --sw-text-0: ${swatch.text0};
+  --sw-text-1: ${swatch.text1};
+  --sw-text-2: ${swatch.text2};
 
-  --sw-link: #7aa2f7;
-  --sw-link-visited: #9d8cf7;
+  --sw-link: ${swatch.link};
+  --sw-link-visited: ${swatch.linkVisited};
 
-  --sw-input-bg: #1a1e27;
-  --sw-input-border: rgba(255, 255, 255, 0.15);
+  --sw-input-bg: ${swatch.inputBg};
+  --sw-input-border: ${swatch.inputBorder};
 
-  --sw-selection-bg: rgba(122, 162, 247, 0.25);
+  --sw-selection-bg: ${swatch.selectionBg};
+
+  --sw-code: ${swatch.codeFg};
 `
+}
 
 // ── CSS layer ─────────────────────────────────────────────────────────────────
 
@@ -60,13 +71,15 @@ const TOKENS = `
 // :not([data-my-ext])    — excludes the marked node itself
 const EXT_GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
 
-export function buildDarkThemeCSS(): string {
+export function buildDarkThemeCSS(
+  swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
+): string {
   return `
 /* ── SW Dark Theme ──────────────────────────────────────────────────────── */
 
 /* Tokens on :root */
 :root {
-  ${TOKENS}
+  ${swatchTokens(swatch)}
 }
 
 /* Dark canvas on html and body — but not if they are somehow extension-owned
@@ -118,7 +131,7 @@ body${EXT_GUARD} {
 
 :where(code, kbd, samp)${EXT_GUARD} {
   background-color: var(--sw-bg-3) !important;
-  color: #e879f9 !important;
+  color: var(--sw-code) !important;
 }
 
 :where(pre)${EXT_GUARD} {
