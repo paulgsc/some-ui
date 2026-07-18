@@ -44,14 +44,18 @@ export const GanttToast = ({
 }
 function getPosition(position: ToastPosition): string {
   switch (position) {
-    case "top-left":
+    case "top-left": {
       return "top-4 left-4"
-    case "top-right":
+    }
+    case "top-right": {
       return "top-4 right-4"
-    case "bottom-left":
+    }
+    case "bottom-left": {
       return "bottom-4 left-4"
-    case "bottom-right":
+    }
+    case "bottom-right": {
       return "bottom-4 right-4"
+    }
     default: {
       position satisfies never
       return "top-4 right-4"

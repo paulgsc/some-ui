@@ -208,7 +208,7 @@ export const ReverseTimeline: Story = {
 /* -----------------------------------------------------
     Meta Configuration
 ----------------------------------------------------- */
-export default {
+const meta = {
   title: "UI/Slideshow/Orchestrator/OrchestratorDemo",
   component: OrchestratorDemo,
   parameters: {
@@ -217,4 +217,6 @@ export default {
   argTypes: {
     initialScenes: { control: "object" },
   },
-} as Meta
+} satisfies Meta
+
+export default meta

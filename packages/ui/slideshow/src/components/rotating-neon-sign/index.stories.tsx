@@ -19,7 +19,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Slideshow/Components/RotatingNeonSign",
   component: RotatingNeonSign,
-} as Meta
+} satisfies Meta
+
+export default meta

@@ -17,7 +17,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/SlideShow/Components/GanttTimeline",
   component: GanttTimeline,
-} as Meta
+} satisfies Meta
+
+export default meta

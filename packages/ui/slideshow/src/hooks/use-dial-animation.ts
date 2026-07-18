@@ -68,13 +68,15 @@ export const useDialAnimation = ({
   // Apply animation pattern
   const applyAnimationPattern = (progress: number): number => {
     switch (animationPattern) {
-      case "linear":
+      case "linear": {
         return progress
-      case "bounce":
+      }
+      case "bounce": {
         // Bounce effect: slow down and bounce at end
         return 1 - Math.pow(1 - progress, 4) * Math.cos(progress * Math.PI * 4)
+      }
       case "elastic":
-      default:
+      default: {
         // Damped oscillation: exponentially decreasing oscillation
         const decay = 5 // Controls damping rate
         const oscillation = 3 // Controls number of oscillations
@@ -83,6 +85,7 @@ export const useDialAnimation = ({
           Math.exp(-decay * progress) *
             Math.cos(oscillation * Math.PI * progress)
         )
+      }
     }
   }
 

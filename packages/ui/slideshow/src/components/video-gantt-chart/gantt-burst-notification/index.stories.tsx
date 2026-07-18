@@ -40,7 +40,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/SlideShow/Components/GanttBurstNotification",
   component: GanttToast,
-} as Meta
+} satisfies Meta
+
+export default meta
