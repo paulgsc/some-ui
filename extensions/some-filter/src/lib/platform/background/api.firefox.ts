@@ -5,7 +5,7 @@
  * Re-exported so consumers get the canonical WebExtension type without
  * importing the global directly (which would break the Chromium build).
  *
- * Aliased in by vite.config.firefox.ts:
- *   resolve.alias["@filter/lib/platform/api"] = ".../api.firefox.ts"
+ * Aliased in by vite.config.ts (firefox mode):
+ *   resolve.alias["@filter/platform/background"] = ".../api.firefox.ts"
  */
 export const ext: typeof browser = globalThis.browser

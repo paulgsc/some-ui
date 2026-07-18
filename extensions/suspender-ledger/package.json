@@ -2,6 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "@some-extension/common": "workspace:*"
+  },
   "devDependencies": {
     "@playwright/test": "1.60.0",
     "@some-ui/tsconfig": "workspace:*",
@@ -10,6 +13,7 @@
     "eslint": "^10.6.0",
     "fast-check": "^3.23.1",
     "maishatu-eslint-kit": "workspace:*",
+    "vite": "^8.1.4",
     "web-ext": "^8.4.0"
   },
   "homepage": "https://pgdev.maishatu.com/?tab=github",
@@ -22,8 +26,8 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "vite build --config vite.config.firefox.ts",
-    "build:firefox": "vite build --config vite.config.firefox.ts",
+    "build": "vite build --configLoader runner",
+    "build:firefox": "vite build --configLoader runner",
     "check:headers": "node scripts/check-mpl-headers.js",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",

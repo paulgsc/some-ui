@@ -24,7 +24,7 @@ restores by replaying the saved URL.
 ## Architecture
 
 The extension is split into four runtime surfaces, each built as a flat
-entry point by `vite.config.firefox.ts`:
+entry point by `vite.config.ts` (the shared `extensionConfig` build):
 
 | Surface        | Entry                                   | Output       | Role                                                                            |
 | -------------- | --------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
