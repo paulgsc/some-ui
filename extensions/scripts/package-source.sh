@@ -54,6 +54,18 @@ node -e "
 (cd "$(dirname "$PRUNED_PKG_JSON")" && cp "$PRUNED_PKG_JSON" package.json && zip -q "$ARCHIVE" package.json && rm -f package.json)
 rm -f "$PRUNED_PKG_JSON"
 
+# pnpm-lock.yaml was archived verbatim by the git archive above, so its root
+# importer still lists the deps just pruned from package.json (each pointing
+# at a `link:` path this archive doesn't include). Left as-is, that mismatch
+# makes `pnpm install --frozen-lockfile` — the first command in
+# README.build.md — fail for anyone extracting this archive. Prune the same
+# entries from a copy of the lockfile and splice it in over the archived one.
+PRUNED_LOCKFILE="$(mktemp)"
+cp "$REPO_ROOT/pnpm-lock.yaml" "$PRUNED_LOCKFILE"
+node "$REPO_ROOT/extensions/scripts/prune-lockfile-root-deps.mjs" "$PRUNED_LOCKFILE" "$ARCHIVE_ONLY_DEPS"
+(cd "$(dirname "$PRUNED_LOCKFILE")" && cp "$PRUNED_LOCKFILE" pnpm-lock.yaml && zip -q "$ARCHIVE" pnpm-lock.yaml && rm -f pnpm-lock.yaml)
+rm -f "$PRUNED_LOCKFILE"
+
 echo "::notice::Source archive created: $ARCHIVE (git SHA: $GIT_SHA)"
 echo "SOURCE_ARCHIVE=$ARCHIVE" >> "${GITHUB_OUTPUT:-/dev/null}"
 echo "SOURCE_VERSION=$VERSION" >> "${GITHUB_OUTPUT:-/dev/null}"
