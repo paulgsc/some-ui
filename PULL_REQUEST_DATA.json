@@ -1,6 +1,0 @@
-{
-  "title": "chore: bump suspender-ledger to v0.2.0",
-  "body": "## Description\n\nBumps the Suspender Ledger Firefox extension manifest from v0.1.0 to v0.2.0.\n\nThis update reflects the incremental feature and stability improvements made to the tab suspension functionality.\n\n## Type of Change\n\n- [x] This change requires a documentation update\n\n## Checklist\n\n- [x] My code follows the style guidelines of this project\n- [x] I have performed a self-review of my own code\n- [x] I have commented my code, particularly in hard-to-understand areas\n- [x] I have made corresponding changes to the documentation\n- [x] My changes generate no new warnings\n- [x] New and existing unit tests pass locally with my changes\n\n## Screenshots\n\nN/A - Version bump only",
-  "head": "chore/bump_suspender",
-  "base": "main"
-}
