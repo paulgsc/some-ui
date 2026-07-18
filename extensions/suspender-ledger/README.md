@@ -118,9 +118,9 @@ cryptographically signed `.xpi` returned within minutes.
 > **Never commit `.env.local` or signed `.xpi` files.** Both are
 > gitignored. AMO API credentials must never enter the repository.
 >
-> The extension ID (`browser_specific_settings.gecko.id`) must stay stable
-> across signs — changing it makes AMO treat the upload as a brand-new
-> extension.
+> The extension ID (`browser_specific_settings.gecko.id`) is
+> **`suspender-ledger@paulgsc.com`** and must stay stable across signs —
+> changing it makes AMO treat the upload as a brand-new extension.
 
 `sign:firefox` is intentionally **not** wired into `turbo.json` or CI: it
 requires credentials and is a manual, local-only step.
