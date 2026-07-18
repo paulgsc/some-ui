@@ -658,9 +658,6 @@ importers:
         specifier: workspace:*
         version: link:../common
     devDependencies:
-      '@playwright/test':
-        specifier: 1.60.0
-        version: 1.60.0
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
