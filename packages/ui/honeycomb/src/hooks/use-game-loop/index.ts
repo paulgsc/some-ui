@@ -6,6 +6,7 @@ import type {
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import { assertNever } from "@honeycomb/utils/error"
 
 type UseGameLoopProps = {
   gameBridge: WasmGameBridge | null
@@ -79,7 +80,8 @@ export const useGameLoop = ({
     const events = bridge.spawnCharacter()
 
     events.forEach((event) => {
-      switch (event.type) {
+      const { type: t } = event
+      switch (t) {
         case "characterSpawned": {
           const char = bridge.createDisplayCharacter(event.spawnResult)
 
@@ -125,7 +127,8 @@ export const useGameLoop = ({
         }
 
         default: {
-          event satisfies never
+          t satisfies never
+          assertNever(t)
         }
       }
     })
@@ -144,8 +147,9 @@ export const useGameLoop = ({
     const currentWindow = bridge.getCurrentTimeWindow()
 
     events.forEach((event) => {
-      switch (event.type) {
-        case "charactersExpired":
+      const { type: t } = event
+      switch (t) {
+        case "charactersExpired": {
           if (event.count > 0) playSoundRef.current("character_expire")
           setActiveCharactersRef.current((prev) => {
             const next = new Map(prev)
@@ -153,12 +157,14 @@ export const useGameLoop = ({
             return next
           })
           break
-        case "statsUpdated":
+        }
+        case "statsUpdated": {
           setStatsRef.current({
             ...event.stats,
             accuracy: calculateAccuracy(event.stats),
           })
           break
+        }
         case "difficultyChanged": {
           setTimingParamsRef.current(bridge.getTimingParams())
           break
@@ -177,7 +183,8 @@ export const useGameLoop = ({
           break
         }
         default: {
-          event satisfies never
+          t satisfies never
+          assertNever(t)
         }
       }
     })

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { assertNever } from "@honeycomb/utils/error"
 import {
   Card,
   CardContent,
@@ -63,46 +64,64 @@ const CONNECTION_COLORS: Record<ProjectState, string> = {
 
 const getTargetActivity = (state: ProjectState): number => {
   switch (state) {
-    case "active":
+    case "active": {
       return 0.9
-    case "growing":
+    }
+    case "growing": {
       return 0.7
-    case "dying":
+    }
+    case "dying": {
       return 0.3
-    case "dead":
+    }
+    case "dead": {
       return 0.1
-    default:
-      return 0.5
+    }
+    default: {
+      state satisfies never
+      assertNever(state)
+    }
   }
 }
 
 const getPulseSpeed = (state: ProjectState): number => {
   switch (state) {
-    case "active":
+    case "active": {
       return 0.05
-    case "growing":
+    }
+    case "growing": {
       return 0.03
-    case "dying":
+    }
+    case "dying": {
       return 0.01
-    case "dead":
+    }
+    case "dead": {
       return 0
-    default:
-      return 0.02
+    }
+    default: {
+      state satisfies never
+      assertNever(state)
+    }
   }
 }
 
 const getFlowSpeed = (state: ProjectState): number => {
   switch (state) {
-    case "active":
+    case "active": {
       return 0.02
-    case "growing":
+    }
+    case "growing": {
       return 0.015
-    case "dying":
+    }
+    case "dying": {
       return 0.005
-    case "dead":
+    }
+    case "dead": {
       return 0
-    default:
-      return 0.01
+    }
+    default: {
+      state satisfies never
+      assertNever(state)
+    }
   }
 }
 

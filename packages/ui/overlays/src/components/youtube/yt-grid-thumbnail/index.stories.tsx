@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof YTGridThumbnail>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Overlays/grid-thumbnail",
   component: YTGridThumbnail,
-} as Meta
+} satisfies Meta
+
+export default meta

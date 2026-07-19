@@ -6,6 +6,14 @@ mod endless;
 pub use completion::CompletionMode;
 pub use endless::EndlessMode;
 
+/// All Korean jamo the engine knows how to spawn and match. This is the
+/// single pool backing both `CompletionMode`'s mastery set and
+/// `EndlessMode`'s random draws (Cor. 2.2.1 in the progression canon).
+const ALL_JAMO: &[&str] = &[
+    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ", "ㅏ", "ㅐ", "ㅑ", "ㅒ", "ㅓ", "ㅔ", "ㅕ", "ㅖ", "ㅗ",
+    "ㅘ", "ㅙ", "ㅚ", "ㅛ", "ㅜ", "ㅝ", "ㅞ", "ㅟ", "ㅠ", "ㅡ", "ㅢ", "ㅣ",
+];
+
 /// Trait defining how a game mode behaves
 pub trait GameMode {
     /// Called when initializing the game
@@ -34,14 +42,7 @@ pub trait GameMode {
 pub fn create_game_mode(mode: &str) -> Box<dyn GameMode> {
     match mode {
         "completion" => {
-            // All Korean characters from the keyboard mapping
-            let all_chars = vec![
-                "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ", "ㅏ", "ㅐ", "ㅑ", "ㅒ", "ㅓ", "ㅔ", "ㅕ",
-                "ㅖ", "ㅗ", "ㅘ", "ㅙ", "ㅚ", "ㅛ", "ㅜ", "ㅝ", "ㅞ", "ㅟ", "ㅠ", "ㅡ", "ㅢ", "ㅣ",
-            ]
-            .into_iter()
-            .map(String::from)
-            .collect();
+            let all_chars = ALL_JAMO.iter().copied().map(String::from).collect();
 
             Box::new(CompletionMode::new(all_chars))
         }
@@ -68,7 +69,10 @@ mod tests {
         let mut mode = create_game_mode("not-a-real-mode");
 
         assert!(!mode.is_complete());
-        assert_eq!(mode.get_next_character(), Some("random".to_string()));
+        let Some(next) = mode.get_next_character() else {
+            panic!("endless mode always has a next character");
+        };
+        assert!(ALL_JAMO.contains(&next.as_str()));
         assert_eq!(mode.get_progress().total_keys, 0);
     }
 

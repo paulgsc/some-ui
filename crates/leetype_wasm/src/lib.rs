@@ -6,6 +6,10 @@ mod leetype;
 pub use game_core::TypingGameCore;
 pub use leetype::{canonicalize, CanonicalUnit};
 
+// Axiom 11.1 (crates/hangul-game-core/docs/hangul-progression-canon.typ,
+// §11.2): this is the crate's only file allowed to reference wasm_bindgen -
+// enforced by scripts/check-wasm-bindgen-boundary.sh in CI.
+
 // WASM wrapper that delegates to the core
 #[wasm_bindgen]
 pub struct TypingGame {
