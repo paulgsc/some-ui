@@ -202,6 +202,36 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
   },
 
   {
+    id: "neon-text-moderate-surface",
+    grammar: "bright-text-on-moderate-dark-surface",
+    label: "hostile",
+    note:
+      "#735's counterpoint to a merely-bright-background case ('a bright bg " +
+      "is trivial to target'): an ordinary moderate-dark surface (bgLuminance " +
+      "0.012 — comfortably clear of the black floor, and itself chromatically " +
+      "biased) carrying saturated near-yellow body copy, not badges. Verified: " +
+      "contrast 15.97 (inside the [7.5, 16] band, nowhere near the ceiling) " +
+      "and the background is unmistakably not a void — a contrast-or-" +
+      "blackness-only check waves this straight through. Only textLuminance " +
+      "0.937 (just over the 0.92 ceiling) fails. This is the fixture #722's " +
+      "'sun' framing was always about but sun-glare-badges (max-contrast, " +
+      "black void) can't isolate on its own: bright text is the hostile " +
+      "signal, independent of how dark or void the background is.",
+    expectAlreadyDark: true,
+    expectComfortable: false,
+    html: () => `<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>Neon Text Moderate Surface</title></head>
+  <body style="background-color: rgb(28, 28, 32); color: rgb(255, 255, 102); margin: 0">
+    <main style="background-color: rgb(28, 28, 32); padding: 16px">
+      <h1>Changelog</h1>
+      <p>Every line of body copy here is set in the same searing near-yellow — no badges, no accents, just paragraph after paragraph bright enough to read like a screen left on max brightness in the dark.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
     id: "transparent-ambiguous",
     grammar: "transparent-unknown-fallback",
     label: "ambiguous",

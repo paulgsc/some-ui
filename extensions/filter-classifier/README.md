@@ -57,20 +57,30 @@ checked, falsifiable property of the repo instead of an anecdote.
 
 ## The corpus (`tests/e2e/fixtures/corpus.ts`)
 
-Seven fixtures span the grammar the classifier needs to bucket correctly.
+Eight fixtures span the grammar the classifier needs to bucket correctly.
 Every color in every fixture was checked against the actual comfort math
 (relative luminance, WCAG contrast ratio, HSL saturation) before being
 labeled — see the file's own `note` field per fixture for the numbers.
 
-| id                        | grammar                         | label         | alreadyDark | comfortable |
-| ------------------------- | ------------------------------- | ------------- | ----------- | ----------- |
-| `plain-light-card`        | unthemed-light-canvas           | needs-theming | false       | n/a         |
-| `default-swatch-rendered` | comfortable-dark-default        | comfortable   | true        | true        |
-| `muted-warm-dark`         | comfortable-dark-muted          | comfortable   | true        | true        |
-| `sun-glare-badges`        | harsh-saturated-badges-on-void  | **hostile**   | true        | **false**   |
-| `cool-blue-preserve-band` | comfortable-dark-alt-swatch     | comfortable   | true        | true        |
-| `borderline-mid-gray`     | achromatic-borderline-threshold | borderline    | true        | false       |
-| `transparent-ambiguous`   | transparent-unknown-fallback    | ambiguous     | false       | n/a         |
+| id                           | grammar                              | label         | alreadyDark | comfortable |
+| ---------------------------- | ------------------------------------ | ------------- | ----------- | ----------- |
+| `plain-light-card`           | unthemed-light-canvas                | needs-theming | false       | n/a         |
+| `default-swatch-rendered`    | comfortable-dark-default             | comfortable   | true        | true        |
+| `muted-warm-dark`            | comfortable-dark-muted               | comfortable   | true        | true        |
+| `sun-glare-badges`           | harsh-saturated-badges-on-void       | **hostile**   | true        | **false**   |
+| `cool-blue-preserve-band`    | comfortable-dark-alt-swatch          | comfortable   | true        | true        |
+| `borderline-mid-gray`        | achromatic-borderline-threshold      | borderline    | true        | false       |
+| `neon-text-moderate-surface` | bright-text-on-moderate-dark-surface | **hostile**   | true        | **false**   |
+| `transparent-ambiguous`      | transparent-unknown-fallback         | ambiguous     | false       | n/a         |
+
+`neon-text-moderate-surface` (#735) is the counterpoint `sun-glare-badges`
+can't isolate on its own: its background is an ordinary moderate-dark
+surface, not a black void, and its contrast (15.97) sits comfortably inside
+the comfort band — a contrast-or-blackness-only check would pass it through.
+Only saturated near-yellow body copy (textLuminance 0.937, just over the
+0.92 ceiling) fails. The point: bright _text_ is the hostile signal, not a
+bright _background_ — a bright background is trivial to catch on luminance
+alone.
 
 `sun-glare-badges` is the corpus's centerpiece: it is the direct fixture form
 of #722's annotated screenshot (a dark dashboard carrying fully-saturated
@@ -162,6 +172,16 @@ Playwright sees them, with no Storybook theme/CSS bleeding in) alongside
 reviewer field. **Blind mode**: the fixture's recorded label stays hidden
 until "Reveal recorded label" is clicked, so you score what you actually
 see, not what the corpus file already claims.
+
+The canvas around the iframe is also fixed regardless of Storybook's own
+Mode/Theme toolbar globals (`parameters.neutralCanvas`, checked by
+`.storybook/theme-decorator.tsx`'s `withTheme`) — those globals persist
+across sessions, so leaving the toolbar on "Dark" after reviewing some other
+story used to wrap every Comfort Lab fixture, including explicitly
+white-background ones, in a near-black surround (#735). No fixture's own
+colors changed, but a dark frame around a light fixture biases a human's
+brightness judgment (simultaneous contrast) before they've even looked at
+it — exactly the kind of thing this blind-scoring exercise exists to avoid.
 
 ### The schema (`tests/e2e/fixtures/eye-score.ts`, #728)
 
