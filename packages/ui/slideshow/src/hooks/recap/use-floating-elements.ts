@@ -93,13 +93,19 @@ export function useFloatingElements(config: FloatingElementsConfig): void {
 
     const interval = setInterval(createFloatingElement, spawnInterval)
     return (): void => clearInterval(interval)
-  }, [createFloatingElement, spawnInterval])
+  }, [createFloatingElement, spawnInterval, content])
 }
 
 /**
  * Preset configurations for common use cases
  */
-export const FloatingElementsPresets = {
+export const FloatingElementsPresets: {
+  codeSnippets: FloatingElementsConfig
+  mathematics: FloatingElementsConfig
+  design: FloatingElementsConfig
+  minimal: FloatingElementsConfig
+  binary: FloatingElementsConfig
+} = {
   /** Code snippets for developer-themed backgrounds */
   codeSnippets: {
     content: [
@@ -129,7 +135,7 @@ export const FloatingElementsPresets = {
       "null",
       "undefined",
     ],
-  } as FloatingElementsConfig,
+  },
 
   /** Mathematical symbols and equations */
   mathematics: {
@@ -161,7 +167,7 @@ export const FloatingElementsPresets = {
     ],
     className:
       "absolute font-mono text-sm text-blue-400/10 animate-float pointer-events-none",
-  } as FloatingElementsConfig,
+  },
 
   /** Design and UI elements */
   design: {
@@ -186,7 +192,7 @@ export const FloatingElementsPresets = {
     className:
       "absolute text-lg text-purple-400/10 animate-float pointer-events-none",
     spawnInterval: 3000,
-  } as FloatingElementsConfig,
+  },
 
   /** Minimal dots and shapes */
   minimal: {
@@ -209,7 +215,7 @@ export const FloatingElementsPresets = {
       "absolute text-xs text-gray-400/5 animate-float pointer-events-none",
     maxElements: 25,
     spawnInterval: 1500,
-  } as FloatingElementsConfig,
+  },
 
   /** Binary/tech themed */
   binary: {
@@ -230,5 +236,5 @@ export const FloatingElementsPresets = {
       "absolute font-mono text-xs text-green-400/8 animate-float pointer-events-none",
     spawnInterval: 1000,
     maxElements: 20,
-  } as FloatingElementsConfig,
+  },
 }

@@ -17,50 +17,44 @@ export function useAudioFeedback({
   setIsMuted: Dispatch<SetStateAction<boolean>>
   audioRef: RefObject<HTMLAudioElement | null>
 } {
-  const [previousSection, setPreviousSection] = useState<DialSection | null>(
-    null
-  )
   const [volume, setVolume] = useState(0.5)
   const [isMuted, setIsMuted] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
+  // Use a ref to track the previous section to avoid setState inside the effect
+  const previousSectionRef = useRef<DialSection | null>(null)
+
   // Play sound effect when transitioning between sections
   useEffect(() => {
-    if (
-      previousSection &&
-      currentSection.id !== previousSection.id &&
-      audioRef.current
-    ) {
-      // Different sound pitch based on section
+    const prev = previousSectionRef.current
+
+    if (prev && currentSection.id !== prev.id && audioRef.current) {
       const baseFrequency = 300
       const sectionIndex = sections.findIndex((s) => s.id === currentSection.id)
       const frequency = baseFrequency + sectionIndex * 100
 
-      // Create audio context
-      const AudioContext =
-        window.AudioContext || (window as any).webkitAudioContext
-      const audioContext = new AudioContext()
+      // Modern browsers universally support the unprefixed AudioContext
+      const AudioContextClass = window.AudioContext
 
-      // Create oscillator
+      const audioContext = new AudioContextClass()
+
       const oscillator = audioContext.createOscillator()
       oscillator.type = "sine"
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime)
 
-      // Create gain node for volume control
       const gainNode = audioContext.createGain()
       gainNode.gain.value = isMuted ? 0 : volume
 
-      // Connect nodes
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
 
-      // Play sound
       oscillator.start()
       oscillator.stop(audioContext.currentTime + 0.1)
     }
 
-    setPreviousSection(currentSection)
-  }, [currentSection, previousSection, sections, volume, isMuted])
+    // Update the ref for the next render cycle
+    previousSectionRef.current = currentSection
+  }, [currentSection, sections, volume, isMuted])
 
   return {
     volume,

@@ -1,28 +1,24 @@
-import { useEffect, useLayoutEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 
 type Options = {
   callback: () => void
   duration: number
 }
+
 export const useApertureTimeout = ({ callback, duration }: Options): void => {
   const callbackRef = useRef(callback)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
-  const useOverlayEffect =
-    typeof window !== "undefined" ? useLayoutEffect : useEffect
-  useOverlayEffect(() => {
+  useEffect(() => {
     callbackRef.current = callback
   }, [callback])
 
   useEffect(() => {
-    timeoutRef.current = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       callbackRef.current()
     }, duration)
+
     return (): void => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-        timeoutRef.current = null
-      }
+      clearTimeout(timeoutId)
     }
   }, [duration])
 }
