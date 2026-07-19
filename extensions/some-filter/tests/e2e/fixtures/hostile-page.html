@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  Hostile-page fixture (S6, #691) — a genuinely light page (unambiguous,
+  matching light-page.html's own convention) carrying several distinct
+  background surfaces so churn has something worth re-classifying: a plain
+  white card, a light-blue panel (hue-preservation target), and a
+  near-black strip (preserve-band target). #content-root is the churn
+  script's mutation target (hostile-page.ts's sustainedMutation/
+  virtualizedRecycle).
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hostile Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Hostile Page Fixture</h1>
+      <div id="content-root">
+        <div
+          id="card"
+          style="background-color: rgb(255, 255, 255); padding: 8px"
+        >
+          white card
+        </div>
+        <div
+          id="panel"
+          style="background-color: rgb(200, 220, 255); padding: 8px"
+        >
+          light blue panel
+        </div>
+        <div
+          id="strip"
+          style="background-color: rgb(13, 17, 23); padding: 8px"
+        >
+          near-black strip
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

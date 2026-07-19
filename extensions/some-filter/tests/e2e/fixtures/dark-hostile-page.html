@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  Genuinely-dark hostile-page fixture (S6, #691, Leg A — exoneration
+  soundness). Matching dark-page.html's own convention: uniform, unambiguous
+  dark backgrounds throughout, so the classifier's already-dark verdict is
+  never in doubt — the point of this fixture is to churn a page that must
+  be exonerated (restored to native styling, never held) and never falsely
+  themed, not to probe the light/dark boundary itself.
+-->
+<html style="background-color: rgb(30, 30, 30)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dark Hostile Page Fixture</title>
+  </head>
+  <body
+    style="
+      background-color: rgb(30, 30, 30);
+      margin: 0;
+      color: rgb(220, 220, 220);
+    "
+  >
+    <main style="background-color: rgb(30, 30, 30)">
+      <h1>Dark Hostile Page Fixture</h1>
+      <div id="content-root">
+        <div
+          id="card"
+          style="background-color: rgb(30, 30, 30); padding: 8px"
+        >
+          dark card
+        </div>
+        <div
+          id="panel"
+          style="background-color: rgb(20, 25, 35); padding: 8px"
+        >
+          dark blue panel
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
