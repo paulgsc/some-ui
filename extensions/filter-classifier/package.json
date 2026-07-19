@@ -12,10 +12,17 @@
     "type": "git",
     "url": "https://github.com/paulgsc/some-ui"
   },
+  "dependencies": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
   "devDependencies": {
     "@playwright/test": "1.60.0",
     "@some-extension/filter": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
+    "@storybook/react-vite": "10.5.2",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
     "esbuild": "^0.25.0",
     "maishatu-eslint-kit": "workspace:*"
   },

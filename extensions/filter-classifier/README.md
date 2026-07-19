@@ -104,3 +104,99 @@ scoring engine (#721 Stories 2–3), a calibration loop (Story 6), a CI gate
 stories need: a small, falsifiable, human-verified ground truth, and a
 standalone harness to check the shipped classifier against it without
 needing to build or load an extension.
+
+## Comfort Lab — an independent human "eye score" oracle (#726)
+
+`corpus.ts`'s `expectAlreadyDark`/`expectComfortable` fields are still,
+structurally, "a human typed a boolean into a TS file." **Comfort Lab** is a
+second, independent oracle: a Storybook review surface where a human looks
+at the _exact same rendered fixture_ Playwright renders and records a
+richer subjective score — not a replacement for `satisfiesComfort` or the
+corpus's own labels, a second check against them.
+
+```
+DOM fixture → Playwright renders it → classifier regression test   (above)
+DOM fixture → Storybook renders it  → human eye-score              (this section, #726)
+```
+
+### Running it
+
+```sh
+STORYBOOK_WORKSPACE=filter-classifier pnpm storybook
+```
+
+from the repo root (there is exactly one Storybook instance for the whole
+monorepo — `.storybook/main.ts` — scoped here via its `STORYBOOK_WORKSPACE`
+env var so only this package's stories load). Open **Extensions › Filter
+Classifier › Comfort Lab** — one story per `CORPUS` fixture
+(`src/comfort-lab/ComfortFixture.stories.tsx`).
+
+Each story renders the fixture in an isolated `<iframe srcDoc>` (not a
+bridged component — there's no component here, only a raw HTML string, and
+the iframe means the fixture's own explicit backgrounds render exactly as
+Playwright sees them, with no Storybook theme/CSS bleeding in) alongside
+`EyeScorePanel` (`src/comfort-lab/EyeScorePanel.tsx`): four sliders
+(luminance / contrast / color tone / eye strain, each 0–100), notes, and a
+reviewer field. **Blind mode**: the fixture's recorded label stays hidden
+until "Reveal recorded label" is clicked, so you score what you actually
+see, not what the corpus file already claims.
+
+### The schema (`tests/e2e/fixtures/eye-score.ts`, #728)
+
+```ts
+type EyeScore = {
+  luminanceComfort: number // 0-100
+  contrastComfort: number // 0-100
+  colorComfort: number // 0-100
+  emotionalComfort: number // 0-100
+  overall: number // derived: the rounded mean of the four sub-scores
+  reviewer: string
+  notes: string
+  scoredAt: string // ISO timestamp
+}
+```
+
+Worked example — `sun-glare-badges` (#722's own motivating fixture), scored
+low across the board:
+
+```ts
+{
+  luminanceComfort: 10,
+  contrastComfort: 5,
+  colorComfort: 20,
+  emotionalComfort: 0,
+  overall: 9, // computeOverall({...}) — mean of the four, rounded
+}
+```
+
+`overall >= 60` reads as **comfortable**, `<= 40` as **hostile**, `41–59` is
+a declared **borderline** band (see `eyeScoreVerdict`) — not a compromise
+number to hit, but the boundary #730's Playwright oracle regression will
+enforce the classifier against. A score that disagrees with the fixture's
+own `expectComfortable` requires non-empty `notes` explaining why
+(`requiresExplanation`/`validateEyeScore`) — forces the reviewer to justify
+a disagreement rather than silently record one; a borderline verdict is
+exempt (it's the acknowledged gray zone, not a disagreement).
+
+### Persistence (#729 — not yet built)
+
+"Download annotation" produces a standalone `<fixture-id>.eyescore.json` via
+a plain browser download (`Blob` + `URL.createObjectURL`) — no server, no
+change to the shared root `.storybook/main.ts`. Merging downloaded scores
+into a single committed `eye-scores.json` (and the Playwright regression
+that reads it) is #730; the CLI/workflow that makes merging painless is
+#729. Until those land, a downloaded score is not yet enforced anywhere —
+Comfort Lab today is the review surface, not yet the gate.
+
+### Why explicit story exports, not one generated from `CORPUS`
+
+Storybook's CSF3 indexer enumerates stories via static analysis of this
+file's _named exports_ — every existing `*.stories.tsx` in this repo (e.g.
+`extensions/some-filter/src/popup/components/action-bar/index.stories.tsx`)
+uses explicit named exports for exactly this reason. A runtime-generated
+`export const stories = Object.fromEntries(...)` was tried and confirmed
+(via a real `storybook build`/`storybook dev` run) not to produce separate
+sidebar entries. The practical consequence: adding a fixture to `CORPUS`
+means adding its story export here too — not yet fully automatic. A
+coverage check that fails loudly on a missing story, rather than this
+silently drifting, is deferred to #731 (corpus expansion workflow).
