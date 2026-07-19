@@ -252,7 +252,7 @@ const SceneManagement: FC = () => {
               onClick={() => {
                 // eslint-disable-next-line no-console
                 console.log("mock switch scene: ", scene.name)
-                switchScene(scene.name)
+                void switchScene(scene.name)
               }}
               disabled={scene.name === currentScene}
               className={`p-2 rounded text-sm font-medium transition-colors ${

@@ -5,14 +5,16 @@ import { ObsStatusPanel } from "."
 type Story = StoryObj<typeof ObsStatusPanel>
 type Meta = MetaObj<typeof ObsStatusPanel>
 
-export default {
+const meta = {
   title: "UI/Overlays/Components/ObsStatusPanel",
   component: ObsStatusPanel,
   parameters: {
     layout: "centered",
   },
   tags: ["autodocs"],
-} as Meta
+} satisfies Meta
+
+export default meta
 
 // Default story - standard configuration
 export const Default: Story = {

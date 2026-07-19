@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof YoutubeMarquee>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "Overlays/Youtube/Marquee",
   component: YoutubeMarquee,
-} as Meta
+} satisfies Meta
+
+export default meta

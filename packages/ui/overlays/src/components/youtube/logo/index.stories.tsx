@@ -6,4 +6,6 @@ type Meta = MetaObj<typeof Logo>
 
 export const Default: Story = {}
 
-export default { title: "Overlays/Youtube/Logo", component: Logo } as Meta
+const meta = { title: "Overlays/Youtube/Logo", component: Logo } satisfies Meta
+
+export default meta
