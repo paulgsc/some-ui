@@ -15,6 +15,18 @@
  * the label against the actual predicate, then add an entry — this file
  * *is* the review record #721 Story 5 asks for, in-repo and diffable
  * instead of behind a live UI.
+ *
+ * `<meta name="color-scheme" content="light dark">` on every fixture that
+ * carries an explicit `background-color`/`color` (#735): without it,
+ * Chromium's own forced/auto-dark rendering repaints those literal,
+ * ground-truth colors toward a "smarter" dark-mode-appropriate palette on
+ * any machine with system dark mode active — a paint-time transform
+ * `getComputedStyle` (and so the classifier and Playwright) never sees, but
+ * a Comfort Lab reviewer's eyes do. The tell: `transparent-ambiguous` below
+ * has no explicit colors and was never affected — only fixtures with
+ * authored colors were. Declaring `color-scheme` tells the browser this
+ * page's colors are intentional, not the "unprepared light page" forced-dark
+ * exists to correct.
  */
 
 export type HumanLabel =
@@ -59,7 +71,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: null,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Plain Light Card</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Plain Light Card</title></head>
   <body style="background-color: rgb(255, 255, 255); color: rgb(17, 24, 39); margin: 0">
     <main style="background-color: rgb(255, 255, 255); padding: 16px">
       <h1>Ordinary article</h1>
@@ -82,7 +94,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Default Swatch Rendered</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Rendered</title></head>
   <body style="background-color: rgb(13, 17, 23); color: rgb(226, 232, 240); margin: 0">
     <main style="background-color: rgb(13, 17, 23); padding: 16px">
       <h1>Already themed</h1>
@@ -107,7 +119,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Muted Warm Dark</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Muted Warm Dark</title></head>
   <body style="background-color: rgb(30, 26, 22); color: rgb(190, 170, 150); margin: 0">
     <main style="background-color: rgb(30, 26, 22); padding: 16px">
       <h1>Warm, muted, comfortable</h1>
@@ -136,7 +148,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: false,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Sun Glare Badges</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Sun Glare Badges</title></head>
   <body style="background-color: rgb(0, 0, 0); color: rgb(255, 255, 255); margin: 0">
     <main style="background-color: rgb(0, 0, 0); padding: 16px">
       <h1>Dashboard</h1>
@@ -164,7 +176,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Cool Blue Preserve Band</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Cool Blue Preserve Band</title></head>
   <body style="background-color: rgb(18, 22, 32); color: rgb(203, 213, 225); margin: 0">
     <main style="background-color: rgb(18, 22, 32); padding: 16px">
       <h1>Cool blue-gray</h1>
@@ -191,7 +203,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: false,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Borderline Mid Gray</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Borderline Mid Gray</title></head>
   <body style="background-color: rgb(161, 161, 161); color: rgb(0, 0, 0); margin: 0">
     <main style="background-color: rgb(161, 161, 161); padding: 16px">
       <h1>Neither clearly light nor clearly dark</h1>
@@ -221,7 +233,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: false,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Neon Text Moderate Surface</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Neon Text Moderate Surface</title></head>
   <body style="background-color: rgb(28, 28, 32); color: rgb(255, 255, 102); margin: 0">
     <main style="background-color: rgb(28, 28, 32); padding: 16px">
       <h1>Changelog</h1>

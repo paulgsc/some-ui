@@ -173,15 +173,34 @@ reviewer field. **Blind mode**: the fixture's recorded label stays hidden
 until "Reveal recorded label" is clicked, so you score what you actually
 see, not what the corpus file already claims.
 
-The canvas around the iframe is also fixed regardless of Storybook's own
-Mode/Theme toolbar globals (`parameters.neutralCanvas`, checked by
-`.storybook/theme-decorator.tsx`'s `withTheme`) — those globals persist
-across sessions, so leaving the toolbar on "Dark" after reviewing some other
-story used to wrap every Comfort Lab fixture, including explicitly
-white-background ones, in a near-black surround (#735). No fixture's own
-colors changed, but a dark frame around a light fixture biases a human's
-brightness judgment (simultaneous contrast) before they've even looked at
-it — exactly the kind of thing this blind-scoring exercise exists to avoid.
+Two independent sources of "a fixture doesn't look like its own literal
+colors" were found and fixed here (#735):
+
+- **The canvas around the iframe** is fixed regardless of Storybook's own
+  Mode/Theme toolbar globals (`parameters.neutralCanvas`, checked by
+  `.storybook/theme-decorator.tsx`'s `withTheme`) — those globals persist
+  across sessions, so leaving the toolbar on "Dark" after reviewing some
+  other story used to wrap every Comfort Lab fixture, including explicitly
+  white-background ones, in a near-black surround. No fixture's own colors
+  changed, but a dark frame around a light fixture biases a human's
+  brightness judgment (simultaneous contrast) before they've even looked at
+  it.
+- **The fixture's own colors**, inside the iframe, can be repainted by the
+  _browser itself_: Chromium's forced/auto-dark rendering detects an
+  "unprepared" page (one with authored `background-color`/`color` and no
+  `color-scheme` declaration) and repaints it toward a dark-mode-appropriate
+  palette when the OS/browser prefers dark — a pure paint-time transform, so
+  `getComputedStyle` (and therefore the classifier and Playwright) never see
+  it, but a reviewer's eyes do. Every fixture with explicit colors now
+  declares `<meta name="color-scheme" content="light dark">` to opt out.
+  `transparent-ambiguous` — the one fixture with no explicit colors — was
+  never affected, which is what pointed at this rather than an extension or
+  a whole-page filter.
+
+Neither fix is visible in the fixture's own colors — both are about making
+sure the surrounding environment (Storybook chrome, browser rendering) never
+substitutes its own judgment for the literal, ground-truth pixels a Comfort
+Lab reviewer is supposed to be scoring.
 
 ### The schema (`tests/e2e/fixtures/eye-score.ts`, #728)
 
