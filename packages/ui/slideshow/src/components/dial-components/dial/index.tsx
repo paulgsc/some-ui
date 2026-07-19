@@ -116,7 +116,7 @@ export const Dial = ({
 
         return (
           <line
-            key={index}
+            key={boundary.startAngle}
             x1={x1}
             y1={y1}
             x2={x2}

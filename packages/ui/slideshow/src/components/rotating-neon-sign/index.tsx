@@ -34,21 +34,27 @@ export const RotatingNeonSign: FC<RotatingNeonSignProps> = ({
 
 const sections = [
   {
+    id: "front",
     className: "absolute inset-0 size-full",
   },
   {
+    id: "back",
     className: "  size-full",
   },
   {
+    id: "right",
     className: "  size-full",
   },
   {
+    id: "left",
     className: "  size-full",
   },
   {
+    id: "top",
     className: "  size-full",
   },
   {
+    id: "bottom",
     className: "  size-full",
   },
 ] as const
@@ -56,7 +62,7 @@ const sections = [
 const cubeFaces = (): Array<React.JSX.Element> =>
   sections.map((section, index) => {
     return (
-      <Fragment key={index}>
+      <Fragment key={section.id}>
         {index === -1 ? (
           <NowPlayingCard className={section.className} showError={false} />
         ) : (

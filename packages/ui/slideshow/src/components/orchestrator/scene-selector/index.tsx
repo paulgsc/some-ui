@@ -92,8 +92,8 @@ export const SceneSelectorTab = ({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <ul className="list-disc list-inside space-y-1">
-              {validation.errors.map((err, i) => (
-                <li key={i} className="text-xs">
+              {validation.errors.map((err) => (
+                <li key={err} className="text-xs">
                   {err}
                 </li>
               ))}

@@ -52,13 +52,13 @@ export const ProductionWorkflow: Story = {
         duration: 60_000,
         ui: [
           {
-            content: {
+            panels: {
               background: {
-                registryKey: "MotionGraphics",
+                registry_key: "MotionGraphics",
                 props: { pattern: "dots", speed: "slow", color: "#3b82f6" },
               },
               overlay: {
-                registryKey: "CountdownTimer",
+                registry_key: "CountdownTimer",
                 props: {
                   targetDate: "2025-12-31T23:59:59",
                   label: "Starting Soon",
@@ -73,21 +73,21 @@ export const ProductionWorkflow: Story = {
         duration: 120_000,
         ui: [
           {
-            content: {
+            panels: {
               main: {
-                registryKey: "CameraFeed",
+                registry_key: "CameraFeed",
                 props: { source: "Cam-01", filter: "none" },
               },
               lower_third: {
-                registryKey: "SocialCard",
+                registry_key: "SocialCard",
                 props: {
                   name: "Alex Rivera",
                   handle: "@arivera_dev",
                   platform: "twitter",
                 },
+                focus: { region: "bottom-left", intensity: 0.8 },
               },
             },
-            focus: { region: "bottom-left", intensity: 0.8 },
           },
         ],
       },
@@ -96,17 +96,17 @@ export const ProductionWorkflow: Story = {
         duration: 300_000,
         ui: [
           {
-            content: {
+            panels: {
               main: {
-                registryKey: "ScreenShare",
+                registry_key: "ScreenShare",
                 props: { window: "VS Code", zoom: 1.2 },
+                focus: { region: "center", intensity: 1.0 },
               },
               pip: {
-                registryKey: "CameraFeed",
+                registry_key: "CameraFeed",
                 props: { source: "Cam-01", size: "small" },
               },
             },
-            focus: { region: "center", intensity: 1.0 },
           },
         ],
       },
@@ -127,10 +127,13 @@ export const SpatialFocusTesting: Story = {
         duration: 30_000,
         ui: [
           {
-            content: {
-              sidebar: { registryKey: "ChatStream", props: { theme: "glass" } },
+            panels: {
+              sidebar: {
+                registry_key: "ChatStream",
+                props: { theme: "glass" },
+                focus: { region: "left", intensity: 0.95 },
+              },
             },
-            focus: { region: "left", intensity: 0.95 },
           },
         ],
       },
@@ -139,10 +142,13 @@ export const SpatialFocusTesting: Story = {
         duration: 30_000,
         ui: [
           {
-            content: {
-              bg: { registryKey: "Ambience", props: { type: "ocean" } },
+            panels: {
+              bg: {
+                registry_key: "Ambience",
+                props: { type: "ocean" },
+                focus: { region: "center", intensity: 0.1 },
+              },
             },
-            focus: { region: "center", intensity: 0.1 },
           },
         ],
       },
@@ -164,26 +170,26 @@ export const MultiIntentScene: Story = {
         ui: [
           {
             // First Layout Intent: Split Screen
-            content: {
+            panels: {
               left: {
-                registryKey: "CameraFeed",
+                registry_key: "CameraFeed",
                 props: { source: "Cam-Host" },
               },
               right: {
-                registryKey: "CameraFeed",
+                registry_key: "CameraFeed",
                 props: { source: "Cam-Guest" },
               },
             },
           },
           {
             // Second Layout Intent: Add shared ticker
-            content: {
+            panels: {
               footer: {
-                registryKey: "NewsTicker",
+                registry_key: "NewsTicker",
                 props: { items: ["Breaking news...", "Stock market up"] },
+                focus: { region: "bottom", intensity: 0.6 },
               },
             },
-            focus: { region: "bottom", intensity: 0.6 },
           },
         ],
       },
@@ -208,7 +214,7 @@ export const ReverseTimeline: Story = {
 /* -----------------------------------------------------
     Meta Configuration
 ----------------------------------------------------- */
-export default {
+const meta = {
   title: "UI/Slideshow/Orchestrator/OrchestratorDemo",
   component: OrchestratorDemo,
   parameters: {
@@ -217,4 +223,6 @@ export default {
   argTypes: {
     initialScenes: { control: "object" },
   },
-} as Meta
+} satisfies Meta
+
+export default meta

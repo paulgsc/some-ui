@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { SlideData, Status } from "."
 import { createCodeSlide, createStatusCardSlide, Slideshow } from "."
 
-export const statusCards: Array<Status> = [
+export const StatusCards: Array<Status> = [
   {
     id: "auth",
     icon: "✅",
@@ -65,7 +65,7 @@ export const statusCards: Array<Status> = [
   },
 ]
 
-export const codeSnippets = [
+export const CodeSnippets = [
   "const",
   "function",
   "{}",
@@ -93,7 +93,7 @@ export const codeSnippets = [
   "undefined",
 ]
 
-const createDefaultSlides = (statusCards: Array<Status>): Array<SlideData> => [
+const createDefaultSlides = (StatusCards: Array<Status>): Array<SlideData> => [
   // Welcome slide
   createCodeSlide(
     "welcome",
@@ -114,7 +114,7 @@ $ code --new-session "Today's Mission"
     "victories",
     "🎯 Recent Victories",
     "project-recap --completed",
-    statusCards,
+    StatusCards,
     "completed"
   ),
 
@@ -129,11 +129,11 @@ $ code --new-session "Today's Mission"
           🔥 Currently Cooking
         </h2>
         <div className="mb-8 grid grid-cols-1 gap-8">
-          {statusCards
-            .filter((card) => card.status === "current")
-            .map((card) => (
+          {StatusCards.filter((card) => card.status === "current").map(
+            (card) => (
               <StatusCard key={card.id} card={card} />
-            ))}
+            )
+          )}
         </div>
         <CodeSnippet language="javascript">
           {`// Last session's progress
@@ -159,18 +159,18 @@ socket.on('message', (data) => {
     content: (
       <>
         <h2 className="mb-8 text-4xl font-semibold text-white">
-          🚀 Today's Mission
+          🚀 Today&apos;s Mission
         </h2>
         <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
-          {statusCards
-            .filter((card) => card.status === "planned")
-            .map((card) => (
+          {StatusCards.filter((card) => card.status === "planned").map(
+            (card) => (
               <StatusCard key={card.id} card={card} />
-            ))}
+            )
+          )}
         </div>
         <p className="text-lg font-medium text-green-400">
           <strong>Stretch Goal:</strong> Start working on file sharing in chat
-          if we're making good progress! 📎
+          if we&apos;re making good progress! 📎
         </p>
       </>
     ),
@@ -184,7 +184,7 @@ socket.on('message', (data) => {
     content: (
       <>
         <h1 className="mb-8 bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-5xl font-bold text-transparent">
-          Let's Build Something Awesome
+          Let&apos;s Build Something Awesome
         </h1>
         <p className="mb-10 text-xl text-gray-400">
           Time to turn coffee into code. Ready when you are! ☕ → 💻
@@ -200,7 +200,7 @@ while (motivated && caffeinated) {
 // Let's make it happen! 🚀`}
         </CodeSnippet>
         <p className="text-lg text-blue-400">
-          Drop any questions in chat - let's code together!
+          Drop any questions in chat - let&apos;s code together!
         </p>
       </>
     ),
@@ -231,8 +231,8 @@ type Story = StoryObj<typeof Slideshow>
 
 export const Default: Story = {
   args: {
-    slides: createDefaultSlides(statusCards),
-    statusCards,
+    slides: createDefaultSlides(StatusCards),
+    StatusCards,
     sessionNumber: 47,
     floatingElements: "codeSnippets",
   },
@@ -287,7 +287,7 @@ const estimatePi = (samples) => {
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 42,
     floatingElements: "mathematics",
   },
@@ -330,7 +330,7 @@ export const DesignStudio: Story = {
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 88,
     floatingElements: "design",
   },
@@ -355,7 +355,7 @@ export const MinimalPresentation: Story = {
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 1,
     floatingElements: "minimal",
   },
@@ -422,7 +422,7 @@ console.log(toBinary(13)); // 00001101`,
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 404,
     floatingElements: "binary",
   },
@@ -453,7 +453,7 @@ export const CustomFloatingElements: Story = {
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 2024,
     floatingElements: {
       content: [
@@ -495,7 +495,7 @@ export const EmptySlideshow: Story = {
         ),
       },
     ],
-    statusCards: [],
+    StatusCards: [],
     sessionNumber: 0,
     floatingElements: "minimal",
   },

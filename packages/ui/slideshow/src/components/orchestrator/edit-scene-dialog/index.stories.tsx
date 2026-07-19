@@ -46,7 +46,7 @@ const mockLibraryState: EditorState = {
   selections: [
     {
       id: "template-1",
-      fileName: "TemplateA.json",
+      sceneKey: "TemplateA",
       instanceIndex: 0,
       sourceConfig: mockScene,
     },

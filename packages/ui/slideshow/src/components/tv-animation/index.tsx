@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Channel = {
   id: number
@@ -67,101 +67,72 @@ function shuffle<T>(array: ReadonlyArray<T>): Array<T> {
 
 export const TVStaticAnimation = (): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const animationRef = useRef<number | null>(null)
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const displayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const [isStatic, setIsStatic] = useState<boolean>(true)
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
 
-  const drawStatic = useCallback((): void => {
+  // Manage the timing loop as a state machine driven by effects
+  useEffect(() => {
+    if (isStatic) {
+      const timer = setTimeout(() => {
+        const shuffled = shuffle(CHANNELS)
+        setCurrentChannel(shuffled[0] ?? null)
+        setIsStatic(false)
+      }, 3000)
+
+      return (): void => clearTimeout(timer)
+    }
+    const timer = setTimeout(() => {
+      setCurrentChannel(null)
+      setIsStatic(true)
+    }, 4000)
+
+    return (): void => clearTimeout(timer)
+  }, [isStatic])
+
+  // Manage the animation lifecycle directly within the effect scope
+  useEffect(() => {
+    if (!isStatic) return
+
     const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const rect = canvas.getBoundingClientRect()
-    const width = Math.floor(rect.width)
-    const height = Math.floor(rect.height)
+    let animationFrameId: number
 
-    if (width === 0 || height === 0) return
+    const draw = (): void => {
+      const rect = canvas.getBoundingClientRect()
+      const width = Math.floor(rect.width)
+      const height = Math.floor(rect.height)
 
-    canvas.width = width
-    canvas.height = height
+      if (width > 0 && height > 0) {
+        canvas.width = width
+        canvas.height = height
 
-    const imageData = ctx.createImageData(width, height)
-    const { data } = imageData
+        const imageData = ctx.createImageData(width, height)
+        const { data } = imageData
 
-    for (let i = 0; i < data.length; i += 4) {
-      const intensity = Math.floor(Math.random() * 255)
-      data[i] = intensity
-      data[i + 1] = intensity
-      data[i + 2] = intensity
-      data[i + 3] = 255
+        for (let i = 0; i < data.length; i += 4) {
+          const intensity = Math.floor(Math.random() * 255)
+          data[i] = intensity
+          data[i + 1] = intensity
+          data[i + 2] = intensity
+          data[i + 3] = 255
+        }
+
+        ctx.putImageData(imageData, 0, 0)
+      }
+
+      animationFrameId = requestAnimationFrame(draw)
     }
 
-    ctx.putImageData(imageData, 0, 0)
-
-    animationRef.current = requestAnimationFrame(drawStatic)
-  }, [])
-
-  const stopAnimation = useCallback((): void => {
-    if (animationRef.current !== null) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = null
-    }
-  }, [])
-
-  const clearTimers = useCallback((): void => {
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current)
-      searchTimerRef.current = null
-    }
-    if (displayTimerRef.current) {
-      clearTimeout(displayTimerRef.current)
-      displayTimerRef.current = null
-    }
-  }, [])
-
-  const startLoop = useCallback((): void => {
-    setIsStatic(true)
-    setCurrentChannel(null)
-
-    searchTimerRef.current = setTimeout((): void => {
-      setIsStatic(false)
-      stopAnimation()
-
-      const shuffled = shuffle(CHANNELS)
-      const next = shuffled[0] ?? null
-      setCurrentChannel(next)
-
-      displayTimerRef.current = setTimeout((): void => {
-        startLoop()
-      }, 4000)
-    }, 3000)
-  }, [stopAnimation])
-
-  useEffect((): (() => void) => {
-    startLoop()
+    draw()
 
     return (): void => {
-      clearTimers()
-      stopAnimation()
+      cancelAnimationFrame(animationFrameId)
     }
-  }, [startLoop, clearTimers, stopAnimation])
-
-  useEffect((): (() => void) => {
-    if (isStatic) {
-      drawStatic()
-    } else {
-      stopAnimation()
-    }
-
-    return (): void => {
-      stopAnimation()
-    }
-  }, [isStatic, drawStatic, stopAnimation])
+  }, [isStatic])
 
   return (
     <div className="mx-auto size-full">

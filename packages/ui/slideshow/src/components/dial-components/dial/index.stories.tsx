@@ -35,7 +35,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Slideshow/Components/Dial/DialSVG",
   component: Dial,
-} as Meta
+} satisfies Meta
+
+export default meta

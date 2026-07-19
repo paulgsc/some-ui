@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useReducer } from "react"
+import type { SceneLibraryItem } from "@slideshow/hooks/use-scene-library"
 import type { SceneSelection } from "@slideshow/utils/scene-selector"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -8,35 +9,57 @@ import { SceneSelectorTab } from "."
 // --------------------------------------------------
 // Mock Data
 // --------------------------------------------------
-const mockLibraryItems = [
-  {
-    fileName: "constant" as const,
-    displayName: "Constant",
-    config: {
-      scene_name: "Constant",
-      duration: 60,
-      ui: [{ intent: "showText", content: "A" }],
+const mockLibraryItems: [SceneLibraryItem, SceneLibraryItem, SceneLibraryItem] =
+  [
+    {
+      key: "constant",
+      displayName: "Constant",
+      config: {
+        scene_name: "Constant",
+        duration: 60_000,
+        start_time: 0,
+        ui: [
+          {
+            panels: {
+              main: { registry_key: "TextOverlay", props: { content: "A" } },
+            },
+          },
+        ],
+      },
     },
-  },
-  {
-    fileName: "assessment" as const,
-    displayName: "Assessment",
-    config: {
-      scene_name: "Assessment",
-      duration: 45,
-      ui: [{ intent: "showText", content: "B" }],
+    {
+      key: "assessment",
+      displayName: "Assessment",
+      config: {
+        scene_name: "Assessment",
+        duration: 45_000,
+        start_time: 0,
+        ui: [
+          {
+            panels: {
+              main: { registry_key: "TextOverlay", props: { content: "B" } },
+            },
+          },
+        ],
+      },
     },
-  },
-  {
-    fileName: "cdrama" as const,
-    displayName: "CDrama",
-    config: {
-      scene_name: "CDrama",
-      duration: 30,
-      ui: [{ intent: "showText", content: "C" }],
+    {
+      key: "cdrama",
+      displayName: "CDrama",
+      config: {
+        scene_name: "CDrama",
+        duration: 30_000,
+        start_time: 0,
+        ui: [
+          {
+            panels: {
+              main: { registry_key: "TextOverlay", props: { content: "C" } },
+            },
+          },
+        ],
+      },
     },
-  },
-]
+  ]
 
 // --------------------------------------------------
 // Helper reducer to handle selections
@@ -44,12 +67,7 @@ const mockLibraryItems = [
 type State = Array<SceneSelection>
 type Action = { type: "set"; selections: Array<SceneSelection> }
 
-const reducer = (state: State, action: Action): State => {
-  if (action.type === "set") {
-    return action.selections
-  }
-  return state
-}
+const reducer = (_state: State, action: Action): State => action.selections
 
 // --------------------------------------------------
 // Storybook Meta
@@ -86,22 +104,19 @@ export const Empty: Story = {
 
 export const SomeSelections: Story = {
   render: (): JSX.Element => {
-    const [el] = mockLibraryItems
-    const fileName = el?.fileName ?? ""
+    const [firstItem, secondItem] = mockLibraryItems
     const [selections, dispatch] = useReducer(reducer, [
       {
         id: "cdrama",
-        fileName,
+        sceneKey: firstItem.key,
         instanceIndex: 0,
-        sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+        sourceConfig: firstItem.config,
       },
       {
         id: "constant",
-        fileName,
+        sceneKey: secondItem.key,
         instanceIndex: 0,
-        sourceConfig: mockLibraryItems[1]
-          .config as SceneSelection["sourceConfig"],
+        sourceConfig: secondItem.config,
       },
     ])
 
@@ -120,22 +135,19 @@ export const SomeSelections: Story = {
 
 export const MaxPerScene: Story = {
   render: (): JSX.Element => {
-    const [el] = mockLibraryItems
-    const fileName = el?.fileName ?? ""
+    const [firstItem] = mockLibraryItems
     const [selections, dispatch] = useReducer(reducer, [
       {
         id: "assessment",
-        fileName,
+        sceneKey: firstItem.key,
         instanceIndex: 0,
-        sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+        sourceConfig: firstItem.config,
       },
       {
         id: "leetype",
-        fileName,
+        sceneKey: firstItem.key,
         instanceIndex: 1,
-        sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+        sourceConfig: firstItem.config,
       },
     ])
 

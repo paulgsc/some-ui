@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof CodeSnippet>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Slideshow/Components/Recap/CodeSnippet",
   component: CodeSnippet,
-} as Meta
+} satisfies Meta
+
+export default meta

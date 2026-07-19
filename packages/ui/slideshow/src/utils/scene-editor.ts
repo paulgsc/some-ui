@@ -1,6 +1,10 @@
+/* eslint-disable switch-lint/require-fail-fast-default */
 import type { SceneConfig } from "some-types-utils"
 
+import { assertNever } from "./error"
 import type { SceneSelection } from "./scene-selector"
+
+// --- Types ---
 
 export type EditorState =
   | { type: "Closed" }
@@ -20,6 +24,12 @@ export type EditorState =
       type: "SelectingFromLibrary"
       selections: Array<SceneSelection>
     }
+
+export type EditingState = Extract<EditorState, { type: "EditingExisting" }>
+export type LibraryState = Extract<
+  EditorState,
+  { type: "SelectingFromLibrary" }
+>
 
 export type EditorAction =
   | { type: "OPEN_FOR_EDIT"; sceneIndex: number; scene: SceneConfig }
@@ -45,129 +55,197 @@ export type EditorView = {
   mode: "edit" | "library" | "none"
   canSave: boolean
   selections: Array<SceneSelection>
-  draft: Extract<EditorState, { type: "EditingExisting" }>["draft"] | null
+  draft: EditingState["draft"] | null
 }
+
+// --- State Constructors & Business Logic Helpers ---
+
+function createEditingState(
+  sceneIndex: number,
+  scene: SceneConfig
+): EditingState {
+  return {
+    type: "EditingExisting",
+    sceneIndex,
+    snapshot: scene,
+    draft: {
+      sceneName: scene.scene_name,
+      durationSec: Math.floor(scene.duration / 1000),
+      startTimeSec: Math.floor(scene.start_time / 1000),
+      uiJson: JSON.stringify(scene.ui, null, 2),
+      jsonError: null,
+    },
+  }
+}
+
+function updateDraft(
+  state: EditingState,
+  patch: Partial<EditingState["draft"]>
+): EditingState {
+  return {
+    ...state,
+    draft: {
+      ...state.draft,
+      ...patch,
+    },
+  }
+}
+
+function removeSelection(
+  selections: Array<SceneSelection>,
+  selectionId: string
+): Array<SceneSelection> {
+  const filtered = selections.filter((s) => s.id !== selectionId)
+  const removed = selections.find((s) => s.id === selectionId)
+
+  if (!removed) {
+    return filtered
+  }
+
+  return filtered.map((sel) => {
+    return sel.id === removed.id && sel.instanceIndex > removed.instanceIndex
+      ? { ...sel, instanceIndex: sel.instanceIndex - 1 }
+      : sel
+  })
+}
+
+// --- Delegate Sub-Reducers ---
+
+// ✅ Removed unused 'state' parameter
+function reduceClosed(_state: EditorState, action: EditorAction): EditorState {
+  switch (action.type) {
+    case "OPEN_FOR_EDIT": {
+      return createEditingState(action.sceneIndex, action.scene)
+    }
+
+    case "OPEN_FOR_LIBRARY_ADD": {
+      return { type: "SelectingFromLibrary", selections: [] }
+    }
+
+    default: {
+      return { type: "Closed" }
+    }
+  }
+}
+
+function reduceEditing(state: EditingState, action: EditorAction): EditorState {
+  switch (action.type) {
+    case "UPDATE_DRAFT_NAME": {
+      return updateDraft(state, { sceneName: action.value })
+    }
+
+    case "UPDATE_DRAFT_DURATION": {
+      return updateDraft(state, { durationSec: action.value })
+    }
+
+    case "UPDATE_DRAFT_START_TIME": {
+      return updateDraft(state, { startTimeSec: action.value })
+    }
+
+    case "UPDATE_DRAFT_JSON": {
+      return updateDraft(state, { uiJson: action.value, jsonError: null })
+    }
+
+    case "SET_JSON_ERROR": {
+      return updateDraft(state, { jsonError: action.error })
+    }
+
+    case "REPLACE_DRAFT_UI_FROM_LIBRARY": {
+      return updateDraft(state, {
+        uiJson: JSON.stringify(action.ui, null, 2),
+        jsonError: null,
+      })
+    }
+
+    case "CLOSE": {
+      return { type: "Closed" }
+    }
+
+    // All other actions are ignored in editing mode
+    default: {
+      return state
+    }
+  }
+}
+
+function reduceLibrary(state: LibraryState, action: EditorAction): EditorState {
+  switch (action.type) {
+    case "ADD_LIBRARY_SELECTION": {
+      return {
+        ...state,
+        selections: [...state.selections, action.selection],
+      }
+    }
+
+    case "REMOVE_LIBRARY_SELECTION": {
+      return {
+        ...state,
+        selections: removeSelection(state.selections, action.selectionId),
+      }
+    }
+
+    case "SET_LIBRARY_SELECTIONS": {
+      return { ...state, selections: action.selections }
+    }
+
+    case "CLEAR_LIBRARY_SELECTIONS": {
+      return { ...state, selections: [] }
+    }
+
+    case "CLOSE": {
+      return { type: "Closed" }
+    }
+
+    // All other actions are ignored in library mode
+    default: {
+      return state
+    }
+  }
+}
+
+// --- Main Exports ---
 
 export const editorReducer = (
   state: EditorState,
   action: EditorAction
 ): EditorState => {
   switch (state.type) {
-    case "Closed":
-      if (action.type === "OPEN_FOR_EDIT") {
-        return {
-          type: "EditingExisting",
-          sceneIndex: action.sceneIndex,
-          snapshot: action.scene,
-          draft: {
-            sceneName: action.scene.scene_name,
-            durationSec: Math.floor(action.scene.duration / 1000),
-            startTimeSec: Math.floor(action.scene.start_time / 1000),
-            uiJson: JSON.stringify(action.scene.ui, null, 2),
-            jsonError: null,
-          },
-        }
-      }
-      if (action.type === "OPEN_FOR_LIBRARY_ADD") {
-        return { type: "SelectingFromLibrary", selections: [] }
-      }
-      return state
+    case "Closed": {
+      return reduceClosed(state, action)
+    }
 
-    case "EditingExisting":
-      switch (action.type) {
-        case "UPDATE_DRAFT_NAME":
-          return {
-            ...state,
-            draft: { ...state.draft, sceneName: action.value },
-          }
-        case "UPDATE_DRAFT_DURATION":
-          return {
-            ...state,
-            draft: { ...state.draft, durationSec: action.value },
-          }
-        case "UPDATE_DRAFT_START_TIME":
-          return {
-            ...state,
-            draft: { ...state.draft, startTimeSec: action.value },
-          }
-        case "UPDATE_DRAFT_JSON":
-          return {
-            ...state,
-            draft: { ...state.draft, uiJson: action.value, jsonError: null },
-          }
-        case "SET_JSON_ERROR":
-          return {
-            ...state,
-            draft: { ...state.draft, jsonError: action.error },
-          }
-        case "REPLACE_DRAFT_UI_FROM_LIBRARY":
-          return {
-            ...state,
-            draft: {
-              ...state.draft,
-              uiJson: JSON.stringify(action.ui, null, 2),
-              jsonError: null,
-            },
-          }
-        case "CLOSE":
-          return { type: "Closed" }
-        default:
-          return state
-      }
+    case "EditingExisting": {
+      return reduceEditing(state, action)
+    }
 
-    case "SelectingFromLibrary":
-      switch (action.type) {
-        case "ADD_LIBRARY_SELECTION":
-          return {
-            ...state,
-            selections: [...state.selections, action.selection],
-          }
-        case "REMOVE_LIBRARY_SELECTION": {
-          const filtered = state.selections.filter(
-            (s) => s.id !== action.selectionId
-          )
-          const removed = state.selections.find(
-            (s) => s.id === action.selectionId
-          )
-          if (!removed) return { ...state, selections: filtered }
-          const renumbered = filtered.map((sel) =>
-            sel.id === removed.id && sel.instanceIndex > removed.instanceIndex
-              ? { ...sel, instanceIndex: sel.instanceIndex - 1 }
-              : sel
-          )
-          return { ...state, selections: renumbered }
-        }
-        case "SET_LIBRARY_SELECTIONS":
-          return { ...state, selections: action.selections }
-        case "CLEAR_LIBRARY_SELECTIONS":
-          return { ...state, selections: [] }
-        case "CLOSE":
-          return { type: "Closed" }
-        default:
-          return state
-      }
+    case "SelectingFromLibrary": {
+      return reduceLibrary(state, action)
+    }
 
     default: {
-      const _exhaustive: never = state
-      return _exhaustive
+      // ✅ This is correct: state.type should be exhaustive
+      return assertNever(state)
     }
   }
 }
 
 export function buildSceneFromDraft(
-  state: Extract<EditorState, { type: "EditingExisting" }>
+  state: EditingState
 ): SceneConfig | { error: string } {
   try {
-    const parsedUi = JSON.parse(state.draft.uiJson) as Array<unknown>
-    if (!Array.isArray(parsedUi))
+    const parsedUi: unknown = JSON.parse(state.draft.uiJson)
+    if (!Array.isArray(parsedUi)) {
       return { error: "UI Intents must be an array" }
+    }
+
+    const ui: SceneConfig["ui"] = parsedUi
 
     return {
       ...state.snapshot,
       scene_name: state.draft.sceneName,
       duration: state.draft.durationSec * 1000,
       start_time: (state.draft.startTimeSec ?? 0) * 1000,
-      ui: parsedUi as SceneConfig["ui"],
+      ui,
     }
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : "Invalid JSON format" }

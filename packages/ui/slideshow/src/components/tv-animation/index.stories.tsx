@@ -9,7 +9,9 @@ export const Default: Story = {
   args: {},
 }
 
-export default {
+const meta = {
   title: "UI/Slideshow/Components/TVStaticAnimation",
   component: TVStaticAnimation,
-} as Meta
+} satisfies Meta
+
+export default meta

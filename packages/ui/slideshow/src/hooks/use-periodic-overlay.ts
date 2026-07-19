@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 /**
  * Options for the usePeriodicOverlay hook
@@ -35,33 +35,57 @@ export function usePeriodicOverlay({
   const [showOverlay, setShowOverlay] = useState(initialState)
   const [isHovering, setIsHovering] = useState(false)
 
-  // Initial show and periodic show
+  // Track operational variables dynamically without forcing interval recreation loops
+  const stateRef = useRef({ isHovering, autoHide, showDuration })
   useEffect(() => {
-    // Show overlay periodically
-    const overlayInterval = setInterval(() => {
-      setShowOverlay(true)
-      if (autoHide) {
-        setTimeout(() => {
-          if (!isHovering) setShowOverlay(false)
-        }, showDuration)
-      }
-    }, showInterval)
+    stateRef.current = { isHovering, autoHide, showDuration }
+  }, [isHovering, autoHide, showDuration])
 
-    // Initial overlay
-    setShowOverlay(true)
-    if (autoHide) {
-      setTimeout(() => {
-        if (!isHovering) setShowOverlay(false)
-      }, showDuration)
+  // Manage all micro-tasks and timers explicitly inside the synchronization layer
+  useEffect(() => {
+    let hideTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const triggerHideTimer = (): void => {
+      if (!stateRef.current.autoHide) {
+        return
+      }
+
+      if (hideTimeoutId !== null) {
+        clearTimeout(hideTimeoutId)
+      }
+
+      hideTimeoutId = setTimeout(() => {
+        if (!stateRef.current.isHovering) {
+          setShowOverlay(false)
+        }
+      }, stateRef.current.showDuration)
     }
 
-    return (): void => clearInterval(overlayInterval)
-  }, [isHovering, autoHide, showDuration, showInterval])
+    // Schedule the initial hiding timeline cleanly post-mount
+    triggerHideTimer()
 
-  const mouseHandlers = {
-    onMouseEnter: (): void => setIsHovering(true),
-    onMouseLeave: (): void => setIsHovering(false),
-  }
+    // Setup periodic synchronization with the browser timer system
+    const overlayInterval = setInterval(() => {
+      setShowOverlay(true)
+      triggerHideTimer()
+    }, showInterval)
+
+    return (): void => {
+      clearInterval(overlayInterval)
+      if (hideTimeoutId !== null) {
+        clearTimeout(hideTimeoutId)
+      }
+    }
+  }, [showInterval])
+
+  // Stabilize structural identity to eliminate downstream render thrashing
+  const mouseHandlers = useMemo(
+    () => ({
+      onMouseEnter: (): void => setIsHovering(true),
+      onMouseLeave: (): void => setIsHovering(false),
+    }),
+    []
+  )
 
   return {
     showOverlay,

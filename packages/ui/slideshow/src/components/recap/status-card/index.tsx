@@ -1,20 +1,32 @@
 import type { FC, JSX } from "react"
 import { cn } from "some-ui-utils"
 
-import type { StatusCard as StatusCardType } from "@/lib/slideshow-data"
+// Defined locally to fix the missing module alias error
+type Tag = {
+  text: string
+  variant: "tech" | "status" | "default"
+}
+
+type StatusCardType = {
+  icon: string
+  title: string
+  description: string
+  status: "completed" | "current" | "planned"
+  tags: Array<Tag>
+}
 
 type StatusCardProps = {
   card: StatusCardType
 }
 
-export const StatusCard: FC<StatusCardProps> = ({ card }): JSX.Elmeent => {
-  const statusColors = {
+export const StatusCard: FC<StatusCardProps> = ({ card }): JSX.Element => {
+  const statusColors: Record<StatusCardType["status"], string> = {
     completed: "border-l-green-600",
     current: "border-l-yellow-600",
     planned: "border-l-gray-500",
   }
 
-  const tagColors = {
+  const tagColors: Record<Tag["variant"], string> = {
     tech: "bg-red-500/15 text-red-400 border-red-500/30",
     status: "bg-green-500/15 text-green-400 border-green-500/30",
     default: "bg-blue-500/15 text-blue-400 border-blue-500/30",
@@ -33,9 +45,9 @@ export const StatusCard: FC<StatusCardProps> = ({ card }): JSX.Elmeent => {
       </div>
       <p className="mb-4 text-gray-300">{card.description}</p>
       <div className="flex flex-wrap gap-1">
-        {card.tags.map((tag, index) => (
+        {card.tags.map((tag: Tag) => (
           <span
-            key={index}
+            key={tag.text}
             className={cn(
               "inline-block rounded border px-2 py-1 text-xs font-medium",
               tagColors[tag.variant]

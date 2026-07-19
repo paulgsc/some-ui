@@ -19,7 +19,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/SlideShow/Components/SidebarCarousel",
   component: SidebarCarousel,
-} as Meta
+} satisfies Meta
+
+export default meta

@@ -1,4 +1,4 @@
-import type { CSSProperties, FC } from "react"
+import type { FC } from "react"
 import { useRef } from "react"
 import { TVStaticAnimation } from "@slideshow/components/tv-animation"
 import type { AllowedRotationAxis } from "@some-ui/dice-card"
@@ -21,8 +21,7 @@ export const SugarCube: FC<RotatingCubeProps> = ({
 
   return (
     <div
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      style={{ "--perspective": perspective } as CSSProperties}
+      style={{ "--perspective": perspective }}
       className={cn(
         "flex size-10/12 items-center justify-center [perspective:calc(var(--perspective)*1px)]",
         className
@@ -34,25 +33,19 @@ export const SugarCube: FC<RotatingCubeProps> = ({
           "transform-3d relative size-full transition-transform duration-500",
           "[transform:rotateX(calc(var(--cube-x-rotation)*1deg))_rotateY(calc(var(--cube-y-rotation)*1deg))]"
         )}
-        style={
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          {
-            "--cube-x-rotation": -20,
-            "--cube-y-rotation": 45,
-          } as CSSProperties
-        }
+        style={{
+          "--cube-x-rotation": -20,
+          "--cube-y-rotation": 45,
+        }}
       >
         {Array.from({ length: 6 }, (_, index) => (
           <div
             key={index}
-            style={
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              {
-                "--face-width": (width ?? 0) / 2,
-                "--face-height": (height ?? 0) / 2,
-                "--face-depth": Math.min(width ?? 0, height ?? 0) / 2,
-              } as CSSProperties
-            }
+            style={{
+              "--face-width": (width ?? 0) / 2,
+              "--face-height": (height ?? 0) / 2,
+              "--face-depth": Math.min(width ?? 0, height ?? 0) / 2,
+            }}
             className={cn(
               "absolute z-10 flex size-full items-center justify-center rounded-lg shadow-inner transition-colors",
               "backface-visible",

@@ -1,4 +1,4 @@
-import type { CSSProperties, FC, JSX, ReactNode } from "react"
+import type { FC, JSX, ReactNode } from "react"
 import { cn, useContainerRect } from "some-ui-utils"
 
 export type CubeGeometryProps = {
@@ -31,7 +31,7 @@ export const CubeGeometry: FC<CubeGeometryProps> = ({
   return (
     <div
       ref={ref}
-      style={{ "--perspective": perspective } as CSSProperties}
+      style={{ "--perspective": perspective }}
       className={cn(
         "flex size-full items-center justify-center",
         "[perspective:calc(var(--perspective)*1px)]",
@@ -42,27 +42,23 @@ export const CubeGeometry: FC<CubeGeometryProps> = ({
         className={cn(
           "relative size-full transform-3d transition-transform duration-500"
         )}
-        style={
-          {
-            "--cube-x-rotation": xRotation,
-            "--cube-y-rotation": yRotation,
-            transform: `
+        style={{
+          "--cube-x-rotation": xRotation,
+          "--cube-y-rotation": yRotation,
+          transform: `
               rotateX(calc(var(--cube-x-rotation) * 1deg))
               rotateY(calc(var(--cube-y-rotation) * 1deg))
             `,
-          } as CSSProperties
-        }
+        }}
       >
         {faces.map((face, index) => (
           <div
             key={face.key}
-            style={
-              {
-                "--face-width": width / 2,
-                "--face-height": height / 2,
-                "--face-depth": Math.min(width, height) / 2,
-              } as CSSProperties
-            }
+            style={{
+              "--face-width": width / 2,
+              "--face-height": height / 2,
+              "--face-depth": Math.min(width, height) / 2,
+            }}
             className={cn(
               "absolute size-full flex items-center justify-center rounded-lg",
               faceClassName,

@@ -21,20 +21,24 @@ export const GanttTimeMarkers = ({
 
   return (
     <div className="absolute inset-x-0 top-0 flex text-xs text-gray-500">
-      {Array.from({ length: markerCount }).map((_, i) => (
-        <div
-          key={i}
-          className="flex flex-col items-center"
-          style={{
-            position: "absolute",
-            left: `${((i * markerInterval) / totalDuration) * 100}%`,
-            transform: "translateX(-50%)",
-          }}
-        >
-          <div className="h-3 w-px bg-gray-700" />
-          <div className="mt-1">{formatTime(i * markerInterval)}</div>
-        </div>
-      ))}
+      {Array.from({ length: markerCount }).map((_, i) => {
+        const timeInSeconds = i * markerInterval // Unique, stable value for each marker
+
+        return (
+          <div
+            key={timeInSeconds}
+            className="flex flex-col items-center"
+            style={{
+              position: "absolute",
+              left: `${(timeInSeconds / totalDuration) * 100}%`,
+              transform: "translateX(-50%)",
+            }}
+          >
+            <div className="h-3 w-px bg-gray-700" />
+            <div className="mt-1">{formatTime(timeInSeconds)}</div>
+          </div>
+        )
+      })}
     </div>
   )
 }

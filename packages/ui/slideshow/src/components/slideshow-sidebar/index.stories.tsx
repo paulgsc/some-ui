@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof SlideshowSidebar>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/SlideShow/Components/Sidebar",
   component: SlideshowSidebar,
-} as Meta
+} satisfies Meta
+
+export default meta

@@ -25,18 +25,18 @@ type UseViewportPreloadHintsArgs<K extends string> = {
  * - This hook: Viewport-aware lookahead calculation
  * - preloadRegistryComponents: Generic batch preloading
  */
-export function useViewportPreloadHints<K extends string>({
+export function useViewportPreloadHints({
   viewportConfig,
   cursor,
   facesAhead,
   registry,
-}: UseViewportPreloadHintsArgs<K>): void {
+}: UseViewportPreloadHintsArgs<string>): void {
   // Create a stable key that changes only when the actual kinds change
   const preloadKey = useMemo(() => {
     const { items, faceCapacity } = viewportConfig
     const currentFace = Math.floor(cursor / faceCapacity)
 
-    const kinds = new Set<K>()
+    const kinds = new Set<string>()
 
     for (let i = 1; i <= facesAhead; i++) {
       const faceIndex = currentFace + i
@@ -44,7 +44,7 @@ export function useViewportPreloadHints<K extends string>({
       const end = Math.min(start + faceCapacity, items.length)
 
       for (let j = start; j < end; j++) {
-        const kind = items[j]?.kind as K | undefined
+        const kind = items[j]?.kind
         if (kind) {
           kinds.add(kind)
         }
@@ -53,12 +53,12 @@ export function useViewportPreloadHints<K extends string>({
 
     // Return sorted string key for stable comparison
     return Array.from(kinds).sort().join(",")
-  }, [cursor, facesAhead, viewportConfig.items, viewportConfig.faceCapacity])
+  }, [cursor, facesAhead, viewportConfig])
 
   useEffect(() => {
     if (!preloadKey) return
 
-    const kinds = preloadKey.split(",") as Array<K>
-    preloadRegistryComponents(registry, kinds)
+    const kinds = preloadKey.split(",")
+    void preloadRegistryComponents(registry, kinds)
   }, [preloadKey, registry])
 }

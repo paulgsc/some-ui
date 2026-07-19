@@ -14,25 +14,32 @@ export function useAnimatedSteps(steps: Array<Options>): {
   const beamRef = useRef<SVGPathElement>(null)
 
   useEffect(() => {
-    const animate = async (): Promise<void> => {
+    const animate = (): void => {
       if (!containerRef.current || !beamRef.current) return
 
       const startAnimation = async (index: number): Promise<void> => {
-        const step = containerRef.current?.querySelector(
+        if (!containerRef.current) return
+        const stepEl = containerRef.current.querySelector(
           `[data-step="${index}"]`
-        ) as HTMLElement
-        const badge = containerRef.current?.querySelector(
+        )
+        const badgeEl = containerRef.current.querySelector(
           `[data-badge="${index}"]`
-        ) as HTMLElement
+        )
 
-        if (!step || !badge || !beamRef.current) return
+        if (
+          !(stepEl instanceof HTMLElement) ||
+          !(badgeEl instanceof HTMLElement) ||
+          !beamRef.current
+        ) {
+          return
+        }
 
-        step.classList.add(
+        stepEl.classList.add(
           index % 2 === 0 ? "animate-slide-in-left" : "animate-slide-in-right"
         )
 
         await new Promise((resolve) => setTimeout(resolve, 800))
-        badge.classList.add("animate-bounce-in")
+        badgeEl.classList.add("animate-bounce-in")
 
         await new Promise((resolve) => setTimeout(resolve, 400))
 
@@ -47,19 +54,25 @@ export function useAnimatedSteps(steps: Array<Options>): {
           const elapsed = currentTime - startTime
           const progress = Math.min(elapsed / duration, 1)
 
-          beamRef.current!.style.strokeDashoffset = `${beamLength - beamLength * progress}`
+          if (beamRef.current) {
+            beamRef.current.style.strokeDashoffset = `${beamLength - beamLength * progress}`
+          }
 
           if (progress < 1) {
             requestAnimationFrame(animateBeam)
           } else if (index < steps.length - 1) {
-            setTimeout(() => startAnimation(index + 1), 200)
+            setTimeout(() => {
+              void startAnimation(index + 1)
+            }, 200)
           }
         }
 
         requestAnimationFrame(animateBeam)
       }
 
-      setTimeout(() => startAnimation(0), 1000)
+      setTimeout(() => {
+        void startAnimation(0)
+      }, 1000)
     }
 
     animate()
