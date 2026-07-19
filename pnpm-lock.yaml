@@ -559,6 +559,9 @@ importers:
       '@some-extension/common':
         specifier: workspace:*
         version: link:../common
+      '@some-extension/transport':
+        specifier: workspace:*
+        version: link:../transport
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -11718,6 +11721,7 @@ packages:
   stream-to-promise@3.0.0:
     resolution: {integrity: sha512-h+7wLeFiYegOdgTfTxjRsrT7/Op7grnKEIHWgaO1RTHwcwk7xRreMr3S8XpDfDMesSxzgM2V4CxNCFAGo6ssnA==}
     engines: {node: '>= 10'}
+    deprecated: Deprecated. Use node:stream/promises and node:stream/consumers instead.
 
   streamsearch@1.1.0:
     resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}

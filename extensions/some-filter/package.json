@@ -3,7 +3,8 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "@some-extension/common": "workspace:*"
+    "@some-extension/common": "workspace:*",
+    "@some-extension/transport": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

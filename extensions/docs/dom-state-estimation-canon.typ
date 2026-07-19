@@ -1384,6 +1384,69 @@ specifically.
   load the other must be strong enough to carry.
 ]
 
+#heading(level: 2, numbering: none)[C.6 · Comfort as a distinct, non-zero-leak invariant (proposed, issue 687)]
+
+Definition C.0 and Axiom C.1 govern a *zero-leak* $Phi$: a page displayed at
+native vendor luminance for even one frame is a completed failure, and
+$Phi$'s job stops at excluding that failure. Remark C.1 states
+`some-filter`'s $Phi$ in exactly those terms --- "no page is ever displayed
+at native vendor luminance when dark is required" --- and the `some-filter`
+case study (§9.2) notes explicitly that over-darkening a genuinely-light
+element "costs perceptual quality, which $Phi$ (Remark C.1) does not
+forbid." That gap is not an oversight: a zero-leak $Phi$ is deliberately
+silent on quality, because Proposition C.1's necessity-of-(a) argument only
+licenses paying custody's cost to exclude a completed, binary failure, never
+to optimize a continuous one. Making "the theme is comfortable" checkable at
+all requires a second, independent predicate, and it must not be confused
+with $Phi$ itself: violating it briefly is a quality regression, not a leak,
+and Axiom C.1's pessimistic default does not apply to it.
+
+#definition("C.3", name: [Comfort invariant $Phi_"comfort"$])[
+  Let a *swatch* $sigma$ fix, at minimum, a background color $"bg"(sigma)$
+  and a primary text color $"text"_0 (sigma)$. Write $L(c) in [0,1]$ for a
+  color's WCAG relative luminance, $"sat"(c) in [0,1]$ for its HSL
+  saturation, and
+  $ "contrast"(c_1, c_2) = ("max"(L(c_1),L(c_2)) + 0.05) / ("min"(L(c_1),L(c_2)) + 0.05) $
+  for the standard contrast ratio. $sigma$ satisfies $Phi_"comfort"$ iff all
+  four hold:
+  + *Text is never the brightest thing on screen:* $L("text"_0 (sigma)) <=
+    kappa_"text"$, for a fixed ceiling $kappa_"text" < 1$ strictly below
+    white's luminance.
+  + *Contrast lives in a comfort band:* $kappa_"lo" <=
+    "contrast"("bg"(sigma), "text"_0 (sigma)) <= kappa_"hi"$, for fixed
+    $kappa_"lo" < kappa_"hi" < 21$ (21 is the `#fff`-on-`#000` maximum).
+  + *The neutral carries a chromatic bias:* $"sat"("bg"(sigma)) >=
+    kappa_"sat"$ and $"sat"("text"_0 (sigma)) >= kappa_"sat"$, for a fixed
+    floor $kappa_"sat" > 0$ --- an achromatic gray ($"sat" = 0$) fails.
+  + *The background is a reference, not a void:* $L("bg"(sigma)) >
+    kappa_"blk"$, for a fixed floor $kappa_"blk" > 0$ --- literal black
+    fails.
+]
+
+#remark("C.6")[
+  $Phi_"comfort"$ is deliberately *not* zero-leak (Definition C.0): a swatch
+  that transiently fails it is a worse-looking page, not the frame-of-native-
+  luminance failure Axiom C.1 exists to exclude at any cost. It is therefore
+  checked once, statically, over the finite swatch registry
+  (`some-filter`'s `src/adapter/swatches.ts`, landed with issue 687) rather than
+  continuously re-evaluated by the estimator/planner machinery of §5--§8 the
+  way $Phi$ is. Where $Phi_"comfort"$ *is* expected to inherit this canon's
+  discipline is a later story in the `some-filter`-on-transport epic (issue 685):
+  once the pipeline can assert *rendered* colors converge to a chosen
+  swatch at all (the positive form of Theorem C.1's contraction bound
+  applied to a concrete target), the same predicate is re-run against the
+  DOM's computed styles, turning "the theme is comfortable" from a
+  registry-time guarantee into a page-time one. Whether $Phi_"comfort"$ is
+  eventually promoted into $Phi$ itself (making comfort zero-leak too) or
+  remains a permanently separate, non-zero-leak sibling is left open here;
+  nothing in Definition C.3 forces either resolution, and doing so
+  prematurely would be exactly the kind of un-evidenced amendment §10's
+  triage procedure warns against. The concrete constants $kappa_"text"$,
+  $kappa_"lo"$, $kappa_"hi"$, $kappa_"sat"$, $kappa_"blk"$ are an
+  implementation choice, not part of this amendment; `some-filter`'s
+  `comfortReport`/`satisfiesComfort` record the values currently in force.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Transport Layer Architecture
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1993,6 +2056,26 @@ solely as a source-code commit message; it must be reflected in this file.
   C.1) rather than new environment assumptions. The conformance checklist
   (§8.3) gained two items (the $L_D$/$L_C$ boundary; the no-concrete-adapter-import
   declaration); the glossary and notation index were extended accordingly.
+- *v1.3 → v1.4* (2026-07-18, proposed with issue 687). A *minor* amendment (§10's
+  own criterion: it adds a new predicate without altering an existing axiom
+  or theorem, the same class as a §9 case study or a §10.1 triage addition):
+  it adds "C.6 · Comfort as a distinct, non-zero-leak invariant,"
+  defining the *comfort invariant* $Phi_"comfort"$ (Definition C.3) and
+  Remark C.6 distinguishing it from the zero-leak $Phi$ that Definition C.0
+  and Axiom C.1 govern. Motivation: the `some-filter`-on-transport epic
+  (issue 685) needed a checkable form of the claim, raised in review, that "the
+  bg is dark" is not the same property as "the theme reduces eye strain" ---
+  §9.2 already notes over-darkening "costs perceptual quality, which $Phi$
+  does not forbid," and $Phi_"comfort"$ names the predicate that gap was
+  missing. $Phi_"comfort"$ is intentionally *not* folded into $Phi$: it is
+  not zero-leak, Axiom C.1's pessimistic default does not apply to it, and
+  it is checked statically over a finite swatch registry
+  (`some-filter/src/adapter/swatches.ts`) rather than continuously by the
+  estimator/planner machinery §5--§8 governs. No existing axiom, definition,
+  or theorem in §1--§8, §C, or §D was weakened or renumbered. Whether
+  $Phi_"comfort"$ is later promoted into $Phi$ itself, once a rendered-page
+  assertion exists to justify it, is explicitly left open rather than
+  decided here.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
