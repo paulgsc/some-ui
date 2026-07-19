@@ -108,11 +108,9 @@ export const createStatusCardSlide = (
     <>
       <h2 className="mb-8 text-4xl font-semibold text-white">{title}</h2>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {StatusCards
-          .filter((card) => card.status === status)
-          .map((card) => (
-            <StatusCard key={card.id} card={card} />
-          ))}
+        {StatusCards.filter((card) => card.status === status).map((card) => (
+          <StatusCard key={card.id} card={card} />
+        ))}
       </div>
       {additionalContent}
     </>

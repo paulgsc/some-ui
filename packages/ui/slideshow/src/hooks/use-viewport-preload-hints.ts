@@ -53,7 +53,7 @@ export function useViewportPreloadHints({
 
     // Return sorted string key for stable comparison
     return Array.from(kinds).sort().join(",")
-  }, [cursor, facesAhead, viewportConfig.items, viewportConfig.faceCapacity])
+  }, [cursor, facesAhead, viewportConfig])
 
   useEffect(() => {
     if (!preloadKey) return

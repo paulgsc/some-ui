@@ -1,5 +1,6 @@
 import { FramerToast } from "@slideshow/components/video-gantt-chart/framer-toast"
 import { useToastBurst } from "@slideshow/hooks/use-toast-burst"
+import { assertNever } from "@slideshow/utils/error"
 import { AnimatePresence } from "framer-motion"
 import { cn } from "some-ui-utils"
 
@@ -57,8 +58,7 @@ function getPosition(position: ToastPosition): string {
       return "bottom-4 right-4"
     }
     default: {
-      position satisfies never
-      return "top-4 right-4"
+      return assertNever(position)
     }
   }
 }

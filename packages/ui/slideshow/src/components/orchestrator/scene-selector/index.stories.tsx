@@ -44,12 +44,7 @@ const mockLibraryItems = [
 type State = Array<SceneSelection>
 type Action = { type: "set"; selections: Array<SceneSelection> }
 
-const reducer = (state: State, action: Action): State => {
-  if (action.type === "set") {
-    return action.selections
-  }
-  return state
-}
+const reducer = (_state: State, action: Action): State => action.selections
 
 // --------------------------------------------------
 // Storybook Meta
@@ -94,14 +89,14 @@ export const SomeSelections: Story = {
         fileName,
         instanceIndex: 0,
         sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+          .config satisfies SceneSelection["sourceConfig"],
       },
       {
         id: "constant",
         fileName,
         instanceIndex: 0,
         sourceConfig: mockLibraryItems[1]
-          .config as SceneSelection["sourceConfig"],
+          .config satisfies SceneSelection["sourceConfig"],
       },
     ])
 
@@ -128,14 +123,14 @@ export const MaxPerScene: Story = {
         fileName,
         instanceIndex: 0,
         sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+          .config satisfies SceneSelection["sourceConfig"],
       },
       {
         id: "leetype",
         fileName,
         instanceIndex: 1,
         sourceConfig: mockLibraryItems[0]
-          .config as SceneSelection["sourceConfig"],
+          .config satisfies SceneSelection["sourceConfig"],
       },
     ])
 
