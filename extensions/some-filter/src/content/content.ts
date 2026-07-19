@@ -116,8 +116,10 @@ function runAutoTheme(): void {
   // not poison computed styles, so the Sensor's scan reads true vendor
   // colors with the veil still up. withPrepaintSuppressed freezes
   // transitions/animations around the *scan* only, so getComputedStyle
-  // reads settled values — the coalesced decide/realize cycle that follows
-  // does no further DOM reads.
+  // reads settled values. rescan() (below) settles decide/realize
+  // synchronously within this same call — no timer in the way of the
+  // initial verdict; only the MutationObserver's own burst-coalescing
+  // (pipeline.ts's observe()) is debounced.
   //
   // commitVisualState()/disablePrepaint() run on *every* fire, not just the
   // first: both are idempotent no-ops once the veil is already down, and
