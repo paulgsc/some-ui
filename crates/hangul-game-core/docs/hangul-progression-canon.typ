@@ -75,7 +75,7 @@
   #v(0.15em)
   #text(size: 10pt)[Governing `hangul-game-core` · `@some-ui/honeycomb` · and all descendant curricula]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.0 --- 2026-07-18]
+  #text(size: 9.5pt)[Version 1.1 --- 2026-07-19]
   #v(0.3em)
   #text(size: 9pt)[Filed against `paulgsc/some-ui`\#705; formalizes and extends ADR 0001]
   #v(2cm)
@@ -111,9 +111,19 @@
   the generalization below must close over *typed* objects, not wider
   strings. The formal canon is then grounded, definition by definition,
   against the present source of `crates/hangul-game-core` and
-  `packages/ui/honeycomb`, and closes with an Amendment Protocol that
-  sequences the fix against ADR 0001's existing story breakdown (\#421--\#426)
-  rather than duplicating it.
+  `packages/ui/honeycomb`. A v1.1 addition generalizes the diagnosis one
+  step further, ahead of implementation rather than after a second content
+  domain forces it: the content pool itself (`Jamo`, `hangul_to_qwerty`,
+  the 40-entry completion alphabet) is shown to be a *fifth* closed
+  commitment, hidden behind the other four, and is factored behind an
+  explicit content-domain abstraction so that a future non-Korean curriculum
+  is a new implementation, not a rewrite. That addition also settles, by
+  comparison against the structurally analogous `leetype_wasm` crate, a
+  standing question about crate topology: whether pure game logic shared
+  across content-typing games belongs in its own composable crate or stays
+  private to each wasm crate. The canon closes with an Amendment Protocol
+  that sequences the fix against ADR 0001's existing story breakdown
+  (\#421--\#426) rather than duplicating it.
 ]
 
 #v(0.6em)
@@ -129,7 +139,10 @@
   must keep working" in the ADR's constraints is a theorem here, not an
   assertion to be regression-tested for), and a difficulty-invariance
   argument the ADR's story \#423 (`VocabularyMode`) will need before its
-  curriculum stages can be tuned coherently against each other.
+  curriculum stages can be tuned coherently against each other. Neither ADR
+  0001 nor \#705 asks whether the engine should keep assuming its content
+  domain is Korean; §11 states that requirement explicitly and derives what
+  it costs.
 ]
 
 #v(0.6em)
@@ -1105,7 +1118,210 @@ that it is checkable, today, against a specific file and identifier.
   [Difficulty scalar, spawn-interval floor (§7)], [`current_lifetime_ms`, `adjust_difficulty_faster`/`_slower`, `src/internal/engine.rs`; `min_spawn = 800.0`, `src/internal/difficulty.rs`],
   [Event algebra (§8)], [`PrimaryEvent`, `SecondaryEvent`, `UiHintEvent`, `GameEvent`, `EventBatch`, `src/internal/events.rs`],
   [Serde⇄zod parity (§9)], [`GameEventSchema`, `GameConfigSchema`, `wasm-game-bridge/index.ts`],
+  [`ContentDomain` (Def. 11.1)], [Generalizes `hangul_to_qwerty`, `src/internal/spawning.rs`, and `create_game_mode`'s 40-entry list, `src/internal/game_modes.rs`; `Korean` is the sole present implementation],
+  [API-authority axiom (Ax. 11.1)], [`hangul-game-core`'s `internal::GameEngine`/`HangulGameCore` split, `src/lib.rs`; independently attested by `leetype_wasm`'s `TypingGameCore`/`TypingGame` split, `crates/leetype_wasm/src/{game_core,lib}.rs`],
+  [Crate-boundary judgment (Prop. 11.3--11.4)], [Compares `leetype_wasm/src/leetype/validation.rs`'s single-target validator against `hangul-game-core`'s multi-target matcher (Def. 4.3); to be ratified as `crates/hangul-game-core/docs/adr/0002-content-domain-genericity-and-crate-boundary.md`],
 )
+
+#pagebreak()
+
+// ═══════════════════════════════════════════════════════════════════════════
+= Content-Domain Genericity and the Crate-Boundary Question
+// ═══════════════════════════════════════════════════════════════════════════
+
+Everything in §1--§10 was stated over a fixed content domain: Korean jamo,
+QWERTY keys, and the specific 40-entry alphabet `create_game_mode` and
+`hangul_to_qwerty` close over. Nothing in \#705 or ADR 0001 asks whether that
+domain itself should stay fixed. This section states that requirement
+explicitly --- "today Korean, tomorrow perhaps HSK Chinese, who knows" is a
+paraphrase of an actual constraint, not a hypothetical --- derives what it
+costs, and, because generalizing a crate's content domain immediately raises
+the question of where its logic should physically live, settles that
+question too by comparison against a second, structurally analogous crate
+already in this repository.
+
+== A fifth closed commitment, hidden behind the other four
+
+#definition("11.1", name: "Content domain")[
+  A *content domain* $D$ is the tuple $ D = ("Token"_D, "Key"_D, kappa_D, A_D), $
+  generalizing Definition 1.1--1.2: $"Token"_D$ is $D$'s atomic unit (a
+  jamo, a Hanzi, a digit --- whatever the smallest thing a challenge can ask
+  the player to produce is), $"Key"_D$ is $D$'s input-key alphabet,
+  $kappa_D : "Token"_D -> "Key"_D$ is $D$'s key-mapping, and $A_D subset.eq
+  "Token"_D$ is a finite, enumerable subset used by completion-style pools
+  ("master every element of $A_D$ once"). The present engine hard-wires
+  exactly one domain, $D = "Korean"$, with $"Token"_"Korean" = "Jamo"$,
+  $"Key"_"Korean" = "Key"$, $kappa_"Korean" = kappa$ (Def. 1.2), and $A_"Korean"$
+  the 40-entry set enumerated in `create_game_mode`'s `"completion"` arm.
+]
+
+#proposition("11.1", name: "The content pool is a closed commitment Proposition 2.1 did not count")[
+  `hangul_to_qwerty` and `create_game_mode`'s 40-entry list satisfy Definition
+  2.1's closure criterion exactly as the four rows of §2.1's table do: their
+  type signatures (`fn(&str) -> String` over a fixed `match`; a hard-coded
+  `Vec<String>` literal) admit no second domain without a change to their own
+  source, independent of §3--§8's generalization. Unlike the other four rows,
+  this one is not implicated by \#705's stated symptom (single-jamo vs. word),
+  which is why it was left out of Definition 2.1's table --- it is a
+  *second, independent* axis of overfitting, orthogonal to answer length.
+]
+
+#proof[
+  By inspection: neither function's signature mentions `Stimulus`, `Answer`,
+  `Challenge`, or any type introduced by §3--§8. Generalizing every one of
+  those types to admit multi-token words (as §3--§8 do) leaves both functions
+  unchanged and still closed over exactly the same 40 Korean entries;
+  therefore the content-domain closure is not discharged by, and does not
+  discharge, the answer-length closure P.2--P.4 already fixed. The two are
+  independent commitments that happen to share one crate.
+]
+
+#theorem("11.1", name: "Content-domain genericity requires no change to §3--§8")[
+  Parametrizing the engine over an abstract content domain $D$ (Definition
+  11.1) in place of the hard-coded `Korean` instance requires changing only
+  `hangul_to_qwerty` and `create_game_mode`'s content-source functions into
+  trait methods on $D$; every type and theorem of §3--§8 (`Stimulus`,
+  `Answer`, `Challenge`, the token-cursor matcher, `GameMode`, the difficulty
+  model) already quantifies over "whatever key-token sequence a challenge
+  carries" and never inspects which domain produced it.
+]
+
+#proof[
+  By re-reading each definition in §3--§8: Definition 3.1's `Glyph(String)`
+  variant holds a display string, not a `Jamo` specifically; Definition
+  4.1's answer sequence is over $"Key"$, not $"Key"_"Korean"$ by name;
+  Definition 4.3's matcher compares buffer contents to $t(C)$ structurally,
+  never against a Korean-specific table; and Theorem 7.2's per-token budget
+  is a function of $n = |w|$ alone. None of §3--§8's proofs cite `Jamo`,
+  `Key`, or $kappa$ except through Definition 1.1--1.2's now-generalizable
+  aliases. Substituting $D$ for the fixed `Korean` instance throughout
+  changes no proof's hypotheses.
+]
+
+#remark("11.1", name: "On renaming the crate")[
+  Theorem 11.1 makes content-domain genericity a small, type-level change;
+  it does not, by itself, argue for renaming `hangul-game-core`. A rename
+  touches `Cargo.toml`, `package.json`, every import in
+  `packages/ui/honeycomb`, and `apps/www`'s bundling, for a benefit that is
+  purely nominal until a second domain is actually wired in. The judgment
+  recorded here is to *keep the crate's name* until a second, real content
+  domain exists as a concrete implementation of Definition 11.1 --- at that
+  point the rename is a one-line decision with an obvious new name, rather
+  than a guess made now about what a not-yet-written domain should be called.
+]
+
+== The `leetype_wasm` comparison and the API-authority axiom
+
+`crates/leetype_wasm` is a second, independently authored WASM game crate in
+this repository, testing typed source code against a target string rather
+than Hangul against a QWERTY buffer. It is relevant here for two reasons: it
+already follows, unprompted, the same private-core/thin-wrapper discipline
+this canon has assumed throughout, and it shares just enough algorithmic
+surface with `hangul-game-core` to make "should these share a crate"
+a fair question to ask --- and, on inspection, to answer.
+
+#axiom("11.1", name: "API authority")[
+  In any crate governed by this canon, all business logic --- state,
+  matching, scoring, difficulty --- is pure Rust, contained in a module the
+  wasm-bindgen boundary does not itself define, and is `pub(crate)` or
+  private beyond that module's own public Rust API. Exactly one thin
+  `#[wasm_bindgen]`-annotated type per crate (`HangulGameCore`'s wrapper in
+  `hangul-game-core`, `TypingGame` in `leetype_wasm`) is permitted to depend
+  on `wasm_bindgen`/`serde_wasm_bindgen` at all, and its methods do no more
+  than translate arguments in, delegate to the pure core, and translate
+  results out.
+]
+
+#proposition("11.2", name: "Axiom 11.1 is independently attested, not invented for this canon")[
+  `leetype_wasm/src/lib.rs`'s `TypingGame` wraps a private `TypingGameCore`
+  (`src/game_core.rs`) exactly as `hangul-game-core/src/lib.rs`'s
+  `HangulGameCore` wraps `internal::GameEngine`: every `#[wasm_bindgen]`
+  method is a one-line delegation plus a `serde_wasm_bindgen` conversion, and
+  `TypingGameCore`'s own methods (`handle_input`, `get_stats`, ...) reference
+  neither `wasm_bindgen` nor `JsValue`. Two crates, authored for unrelated
+  games, converged on the same boundary discipline without either being
+  derived from the other. This is the same species of evidence the
+  extensions canon cites Kubernetes' reconciliation loop and DarkReader's
+  apply-first ordering as: independently-arrived-at convergence toward the
+  same architecture is stronger evidence for an axiom than a single
+  hand-designed instance of it.
+]
+
+#remark("11.2")[
+  Axiom 11.1 is therefore not a new constraint this canon imposes on
+  `hangul-game-core`; it names a discipline the crate (and its sibling)
+  already follow, so that every story generalizing §3--§11's types can be
+  held to it explicitly rather than trusting that the existing shape survives
+  refactoring by habit alone.
+]
+
+== Why the shared surface does not yet warrant a shared crate
+
+#proposition("11.3", name: "The shared surface is a problem statement, not a shared algorithm")[
+  `leetype_wasm`'s `validation::calculate_consecutive_errors`/`validate_input`
+  (`src/leetype/validation.rs`) and `hangul-game-core`'s token-cursor matcher
+  (Definition 4.3) both answer "does typed input still match a target," but
+  are not instances of one algorithm: `leetype`'s validator compares one
+  linear sequence of canonical units against one fixed target, supports
+  backspace as first-class (`handle_backspace`), and defines "consecutive
+  errors" as the suffix from the first divergence to the end of a single
+  answer; `hangul-game-core`'s matcher resolves one shared keystroke buffer
+  against the *current token of every simultaneously active challenge*, has
+  no backspace concept, and its entire exact/prefix/ambiguous trichotomy
+  (Definition 4.3) exists only because several distinct targets can be live
+  at once and share a textual prefix --- a situation `leetype`'s single-target
+  model cannot express and does not need to.
+]
+
+#proof[
+  Exhibited by direct comparison of the two functions' signatures and
+  invariants: `validate_input` takes one `target_units: &[CanonicalUnit]`;
+  `process_input` (`hangul-game-core/src/internal/engine.rs`) ranges over
+  `self.active_reveals`, plural, and its `potential_extensions` check has no
+  counterpart in `leetype_wasm` at all, because it is asking a question
+  (`is there another active target this buffer could still be building
+  toward?`) that only arises when more than one target can be live
+  simultaneously.
+]
+
+#corollary("11.3.1", name: "Extraction now would force one of two bad shapes")[
+  A shared crate today would have to be either (a) a single-target,
+  no-ambiguity validator generalized just enough to be named after both
+  crates while `hangul-game-core` continues to need its own multi-target
+  matcher on top of it --- buying a shared name, not shared logic --- or (b) a
+  genuinely unified abstraction covering both single- and multi-target
+  matching, invented from exactly two data points and with no third instance
+  to check it against. Either is the "wrong abstraction" the extensions
+  canon's own minimal-sufficient-state-space objective (front matter, "What
+  kind of object this is") warns against paying for before it is forced.
+]
+
+#proposition("11.4", name: "The crate-boundary judgment")[
+  Pure game logic stays private within each wasm crate (`hangul-game-core`'s
+  `src/internal/`, `leetype_wasm`'s `src/{game_core,leetype}.rs`), governed
+  by Axiom 11.1, rather than being extracted into a shared library crate at
+  this time. This is not a default arrived at by inertia; it is the outcome
+  of Proposition 11.3 finding no reusable algorithm beneath the shared
+  problem statement, and Corollary 11.3.1 finding no way to force one without
+  either producing a hollow abstraction or generalizing from too small a
+  sample.
+]
+
+#remark("11.3", name: "The falsifiable trigger for revisiting this")[
+  This judgment is not permanent, and Proposition 11.4 is falsified --- not
+  merely reconsidered --- the moment either of two concrete conditions is
+  observed: (i) a *third* content-typing crate is added to this workspace
+  and its matching requirements turn out to coincide, at the algorithm level
+  (not just the problem-statement level), with one already implemented here,
+  or (ii) `hangul-game-core` and `leetype_wasm`'s own matchers are found to
+  need the same change made twice --- e.g. `leetype_wasm` growing a notion of
+  simultaneously-live targets, or `hangul-game-core` growing a backspace/undo
+  concept --- at which point the duplicated change *is* the reusable
+  algorithm Proposition 11.3 did not yet find. Until one of these is
+  observed, extracting a shared crate is optimizing for a reuse event that
+  has not happened, at the cost of a new workspace member, a new versioning
+  surface, and a new place Axiom 11.1 must be independently upheld.
+]
 
 #pagebreak()
 
@@ -1144,6 +1360,13 @@ stories, and adds exactly one prerequisite the ADR does not yet name:
 + *\#425 (stimulus-aware cells) and \#426 (word-answer input/progress UI)*
   follow \#421+\#424 and \#422+\#425 respectively, unchanged from ADR 0001's
   own sequencing.
++ *The content-domain genericity of §11 (Theorem 11.1) lands before or
+  together with \#421*, not after. \#421 introduces `Stimulus`/`Answer` as
+  concrete types; if it is implemented directly against `Jamo`/`hangul_to_qwerty`
+  rather than against Definition 11.1's `ContentDomain` abstraction, it
+  reproduces Proposition 11.1's fifth closed commitment inside the very
+  types meant to fix the other four, and must be redone once a second
+  domain is actually requested.
 
 == Non-negotiables
 
@@ -1161,6 +1384,15 @@ stories, and adds exactly one prerequisite the ADR does not yet name:
   green by discipline.* A change that requires editing the existing
   single-jamo tests to keep them passing has broken the degenerate-case
   proof and must be reviewed as such, not merged with "tests updated."
+- *No content domain is hard-coded outside a `ContentDomain` implementation
+  (Def. 11.1).* A new `match` arm added directly to `hangul_to_qwerty`, or a
+  literal appended to `create_game_mode`'s alphabet, for anything other than
+  Korean jamo reintroduces Proposition 11.1's fifth closed commitment in the
+  same place it was just closed.
+- *No pure game logic is extracted into a shared cross-crate library without
+  meeting Remark 11.3's trigger.* Proposition 11.4's judgment is the default;
+  departing from it requires exhibiting condition (i) or (ii) of Remark 11.3,
+  not general tidiness or DRY sentiment.
 
 == Versioning
 
@@ -1173,7 +1405,31 @@ generalization already decided in ADR 0001 §2 from first principles (P.1--P.4)
 rather than restating it as given; proves single-jamo matching is the exact
 $n=1$ case of a generalized token-cursor matcher (Theorem 4.1); and supplies
 the difficulty per-token normalization (Theorem 7.2) that ADR 0001 leaves as
-an implicit prerequisite of its own \#423. No prior version exists to amend.
+an implicit prerequisite of its own \#423.
+
+*v1.0 → v1.1* (2026-07-19). A *major* amendment: it adds §11, "Content-Domain
+Genericity and the Crate-Boundary Question," in response to two requirements
+named directly rather than derived from \#705's text --- that the engine must
+not assume its content domain stays Korean, and that pure/wasm-boundary
+separation (already followed in practice) be stated as an explicit, checkable
+axiom. New content: the `ContentDomain` abstraction (Definition 11.1) and the
+proof that it is a fifth, independent closed commitment (Proposition 11.1,
+orthogonal to the answer-length axis of §2); the theorem that §3--§8 already
+generalize over it for free (Theorem 11.1) and the accompanying judgment to
+defer any crate rename until a second domain is concretely wired (Remark
+11.1); the API-authority axiom (Axiom 11.1), attested by the independently-
+authored `leetype_wasm` crate following the identical private-core/thin-
+wrapper discipline (Proposition 11.2); and the crate-boundary judgment
+itself (Propositions 11.3--11.4) --- a direct comparison of
+`leetype_wasm`'s single-target validator against `hangul-game-core`'s
+multi-target token-cursor matcher showing the shared surface is a problem
+statement, not a reusable algorithm, so no shared crate is extracted at this
+time, with a falsifiable trigger (Remark 11.3) for revisiting the decision.
+No axiom or theorem in §1--§10 was weakened; §11's theorem is proved from the
+existing type definitions of §3--§8 without amending any of them. The
+Amendment Protocol's sequencing and non-negotiables were extended
+accordingly, and the Grounding table, Notation Index, and References gained
+the corresponding rows.
 
 #pagebreak()
 
@@ -1194,6 +1450,8 @@ an implicit prerequisite of its own \#423. No prior version exists to amend.
   [$t(C) = w_c$], [Current expected token for challenge $C$ (Def. 4.3)],
   [$ell$], [Per-token difficulty budget, $= "current_lifetime_ms"$ reinterpreted (Def. 7.1, Thm. 7.2)],
   [$n = |w|$], [Answer length in tokens],
+  [$D = ("Token"_D, "Key"_D, kappa_D, A_D)$], [Content domain: token type, key alphabet, key-map, canonical finite alphabet (Def. 11.1)],
+  [$"Korean"$], [The present, sole `ContentDomain` implementation: $"Token"_"Korean" = "Jamo"$, $kappa_"Korean" = kappa$ (Def. 11.1)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1208,6 +1466,9 @@ an implicit prerequisite of its own \#423. No prior version exists to amend.
 - Engine source: `crates/hangul-game-core/src/internal/{engine,types,events,spawning,game_modes,difficulty}.rs`,
   `src/internal/game_modes/{completion,endless}.rs`, `src/lib.rs`.
 - Host source: `packages/ui/honeycomb/src/{lib/hangul,hooks,components/hangul-hex-grid,types,utils}`.
+- `crates/leetype_wasm/src/{lib,game_core,leetype,leetype/{canonical,state,stats,validation}}.rs`
+  --- the independently-authored sibling crate compared against in §11 for
+  the API-authority axiom and the crate-boundary judgment.
 - Extensions canon, "The Unsettled Surface," `extensions/docs/dom-state-estimation-canon.typ`
   --- the format, minimal-sufficient-state-space objective, and Amendment
   Protocol discipline this document deliberately mirrors.
