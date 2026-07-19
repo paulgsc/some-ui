@@ -76,12 +76,12 @@ labeled — see the file's own `note` field per fixture for the numbers.
 of #722's annotated screenshot (a dark dashboard carrying fully-saturated
 accent badges — literally captioned "the sun" by a human looking at it).
 
-## Adding a fixture
+## Adding a fixture (#731 — the full loop)
 
-This file _is_ the human-verification record #721 Story 5 asks for — kept
-in-repo and diffable rather than behind a live review UI, which is out of
-scope for this first pass. Found a real page (or a false positive/negative)
-worth adding?
+This file, `eye-scores.json`, and Comfort Lab together _are_ the
+human-verification record #721 Story 5 / #726 Story 5 ask for — kept in-repo
+and diffable rather than behind a live review UI. Found a real page (or a
+false positive/negative) worth adding? The full loop, in order:
 
 1. Add an entry to `CORPUS` in `tests/e2e/fixtures/corpus.ts` with the
    rendered `(bg, text)` pair you observed.
@@ -92,9 +92,31 @@ worth adding?
    test in `some-filter`.
 3. Write the `note` as the reasoning a reviewer would need to agree or
    disagree with the label — cite the actual numbers, not just "looks dark."
-4. Run `pnpm test:e2e` and confirm the new fixture's spec passes. If it
-   doesn't, that's either a wrong label or a real classifier gap — figure out
-   which before changing either side to force a pass.
+4. Add its Comfort Lab story export to `src/comfort-lab/ComfortFixture.stories.tsx`
+   (`storyExportName` in `corpus.spec.ts`'s coverage check shows the exact
+   naming — `"my-new-fixture"` → `MyNewFixture`). Skipping this step is a
+   hard test failure, not a warning (see below) — it's a mechanical
+   omission, nothing about it needs a human.
+5. Score it yourself in Comfort Lab, blind, **before** looking at what you
+   wrote in step 2 — `STORYBOOK_WORKSPACE=filter-classifier pnpm storybook`,
+   find your new story, score it, then click "Reveal recorded label" and see
+   whether you agree with yourself.
+6. `pnpm eye-score:merge <downloaded-file>` to commit the score.
+7. Run `pnpm test:e2e`. A mismatch anywhere — the classifier's own verdict,
+   the story-coverage check, or the oracle regression — is a finding about
+   the classifier or your label, not license to change either side just to
+   force a pass.
+
+**Worked example**, done for real during development for `plain-light-card`
+(then reverted before committing — see the oracle regression section below):
+scored it `overall: 60` without re-deriving what the classifier would
+actually say for a plain white card with dark text, merged it, ran the
+suite — it failed, because `satisfiesComfort` correctly rejects the pair's
+~17.7:1 contrast (above the 16 ceiling) regardless of luminance, and a `60`
+(reads as "comfortable") doesn't survive contact with that. The failure
+message named the fixture, the score, and the classifier's real verdict.
+That is Comfort Lab working as designed, not a bug in the fixture or the
+classifier — it's why step 5 says score _before_ checking step 2's numbers.
 
 ## Non-goals (this PR)
 
@@ -232,6 +254,23 @@ uses explicit named exports for exactly this reason. A runtime-generated
 `export const stories = Object.fromEntries(...)` was tried and confirmed
 (via a real `storybook build`/`storybook dev` run) not to produce separate
 sidebar entries. The practical consequence: adding a fixture to `CORPUS`
-means adding its story export here too — not yet fully automatic. A
-coverage check that fails loudly on a missing story, rather than this
-silently drifting, is deferred to #731 (corpus expansion workflow).
+means adding its story export here too — not fully automatic. `corpus.spec.ts`'s
+`"every CORPUS fixture has a matching Comfort Lab story export"` test (#731)
+is the safety net: it imports `ComfortFixture.stories.tsx` directly and
+checks every fixture id resolves to an export, failing loudly (not silently
+drifting) with the exact missing export name if one is skipped — proven by
+temporarily renaming a real export during development and confirming the
+test caught it with a clear message, then reverting.
+
+### Two kinds of "missing," two different enforcement levels (#731)
+
+`corpus.spec.ts`'s `corpus coverage` block draws a real distinction:
+
+- **Missing story export** — a mechanical authoring omission with no
+  external dependency. **Hard failure.**
+- **Missing `eye-scores.json` entry** — requires an actual human to look at
+  the fixture (#726's whole point); it can't be forced or faked. **One
+  `test.skip` per unscored fixture**, each naming exactly which fixture,
+  so the gap stays visible in the report (matching #730's own empty-file
+  placeholder) without turning the suite red for something only a human
+  can supply.

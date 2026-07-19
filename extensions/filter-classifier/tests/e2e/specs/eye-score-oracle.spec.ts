@@ -19,23 +19,13 @@
  * suite's state.
  */
 
-import { readFileSync } from "node:fs"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
 import { expect, test } from "@playwright/test"
 
 import { CORPUS } from "../fixtures/corpus"
-import { checkOracleAgreement, type EyeScoreMap } from "../fixtures/eye-score"
+import { checkOracleAgreement } from "../fixtures/eye-score"
+import { loadEyeScores } from "../fixtures/eye-scores-store"
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const EYE_SCORES_PATH = path.resolve(__dirname, "../fixtures/eye-scores.json")
 const HARNESS_BUNDLE = "tests/e2e/harness/dist/entry.js"
-
-function loadEyeScores(): EyeScoreMap {
-  const raw = readFileSync(EYE_SCORES_PATH, "utf8")
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  return JSON.parse(raw) as EyeScoreMap
-}
 
 const eyeScores = loadEyeScores()
 const scoredFixtureIds = Object.keys(eyeScores)
