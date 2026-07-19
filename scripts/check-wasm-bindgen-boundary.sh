@@ -29,7 +29,7 @@ for crate_dir in "${!GUARDED_CRATES[@]}"; do
     continue
   fi
 
-  offenders=$(grep -rl --include='*.rs' "wasm_bindgen" "$crate_dir/src" | grep -v -F "$wrapper" || true)
+  offenders=$(git grep -l --untracked "wasm_bindgen" -- "$crate_dir/src/*.rs" ":(exclude)$wrapper" || true)
 
   if [ -n "$offenders" ]; then
     echo "::error::wasm_bindgen must only appear in $wrapper, but was found in:"
