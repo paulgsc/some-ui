@@ -141,22 +141,46 @@ export function createContentSession(
   let observer: MutationObserver | null = null
 
   function ingest(root: Element): void {
-    lastScan = scan(root)
-    const timestamp = Date.now()
-    for (const [key, attrs] of lastScan.attrsByKey) {
-      update(hypothesis, provenance, {
-        key,
-        attrs,
-        epoch: session.epoch,
-        tier: "full",
-        timestamp,
-      })
+    try {
+      lastScan = scan(root)
+      const timestamp = Date.now()
+      for (const [key, attrs] of lastScan.attrsByKey) {
+        update(hypothesis, provenance, {
+          key,
+          attrs,
+          epoch: session.epoch,
+          tier: "full",
+          timestamp,
+        })
+      }
+    } catch (error) {
+      // Both call sites (rescan(), the MutationObserver callback) are
+      // synchronous and neither is itself wrapped by the caller — an
+      // uncaught throw here would abort whatever synchronous call chain
+      // invoked it (withPrepaintSuppressed() in content.ts included) before
+      // coalescer.trigger() below ever runs, silently holding the page
+      // under the veil forever with the failure visible nowhere. Still call
+      // trigger() on the partial/stale hypothesis so fire()'s own try/catch
+      // gets a chance to settle *something* rather than nothing at all.
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] pipeline ingest() failed:", error)
     }
   }
 
   function fire(): void {
-    const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
-    realize(actions, lastScan.elementsByKey)
+    let actions: ReadonlyArray<FilterAction> = []
+    try {
+      actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
+      realize(actions, lastScan.elementsByKey)
+    } catch (error) {
+      // onFire must run regardless — content.ts uses it to set the debug
+      // attrs a live-browser wait (or a e2e test) polls for and to resolve
+      // the veil (commitVisualState/disablePrepaint). A thrown decide/
+      // realize left this callback un-run entirely, holding the page under
+      // the veil forever with the failure visible nowhere but here.
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] pipeline fire() failed:", error)
+    }
     onFire?.(actions)
   }
 
