@@ -6,13 +6,14 @@ import {
   getSwatch,
   satisfiesComfort,
   SWATCHES,
+  swatchSample,
   type Swatch,
 } from "../swatches"
 
 describe("SWATCHES", () => {
   it("every registry entry satisfies Φ_comfort", () => {
     for (const swatch of Object.values(SWATCHES)) {
-      expect(satisfiesComfort(swatch), swatch.id).toBe(true)
+      expect(satisfiesComfort(swatchSample(swatch)), swatch.id).toBe(true)
     }
   })
 
@@ -42,12 +43,12 @@ describe("Φ_comfort", () => {
       text0: "#ffffff",
     }
 
-    const report = comfortReport(hostile)
+    const report = comfortReport(swatchSample(hostile))
     expect(report.bgNotBlack).toBe(false)
     expect(report.textNotBrightest).toBe(false)
     expect(report.chromaticBias).toBe(false)
     expect(report.contrastInBand).toBe(false)
-    expect(satisfiesComfort(hostile)).toBe(false)
+    expect(satisfiesComfort(swatchSample(hostile))).toBe(false)
   })
 
   it("rejects an achromatic gray (no chromatic bias)", () => {
@@ -59,7 +60,7 @@ describe("Φ_comfort", () => {
       text0: "#e0e0e0",
     }
 
-    expect(comfortReport(achromatic).chromaticBias).toBe(false)
-    expect(satisfiesComfort(achromatic)).toBe(false)
+    expect(comfortReport(swatchSample(achromatic)).chromaticBias).toBe(false)
+    expect(satisfiesComfort(swatchSample(achromatic))).toBe(false)
   })
 })

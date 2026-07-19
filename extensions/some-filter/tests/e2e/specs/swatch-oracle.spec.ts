@@ -24,6 +24,7 @@ import {
   DEFAULT_SWATCH_ID,
   satisfiesComfort,
   SWATCHES,
+  swatchSample,
 } from "@filter/adapter/swatches"
 import { parseColor } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
@@ -298,6 +299,6 @@ test.describe("swatch-oracle: comfort (Leg B — Φ_comfort on rendered output)"
     // as the anchor this comparison depends on (already covered
     // exhaustively for every registry entry by `swatches.test.ts`, S2).
     expect(colorsClose(rendered.bg, swatch.bg0)).toBe(true)
-    expect(satisfiesComfort(swatch)).toBe(true)
+    expect(satisfiesComfort(swatchSample(swatch))).toBe(true)
   })
 })

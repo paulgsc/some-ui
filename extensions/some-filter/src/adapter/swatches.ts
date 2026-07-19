@@ -24,8 +24,15 @@
  * this story per §10 — see `extensions/docs/dom-state-estimation-canon.typ`.
  */
 
-import { relativeLuminance, type RGBA } from "@filter/lib/content/color"
-import { rgbToHSL } from "@filter/lib/content/modify-colors"
+// Relative, not `@filter/*`-aliased: that alias only resolves inside this
+// package's own tsconfig. `filter-classifier` (extensions/filter-classifier)
+// imports this file directly via `@some-extension/filter`'s `./*` source
+// export to test Φ_comfort against live-rendered fixtures (#722), and both
+// its typecheck and its esbuild bundling need a path Node/esbuild can
+// resolve on their own — the same reason transport's own cross-package-safe
+// leaf (`contracts/adapter.ts`) uses only relative imports.
+import { relativeLuminance, type RGBA } from "../lib/content/color"
+import { rgbToHSL } from "../lib/content/modify-colors"
 
 /**
  * Generalizes `theme-apply.ts`'s `TOKENS` fields. Every CSS custom property
@@ -216,10 +223,18 @@ export function getSwatch(id: string): Swatch {
 // "Dark" is not the property; "comfortable" is. Today's zero-leak Φ only
 // forbids bright leaks (Remark C.1) — a swatch can pass it while frying the
 // eyes (`#fff` on `#000`, contrast 21:1). Φ_comfort is the additional,
-// checkable predicate the ergonomics note actually argues for. It is
-// defined here over a `Swatch`'s primary (bg0, text0) pair, the pairing the
-// note's own claims are about; S6 re-runs it on rendered output.
-
+// checkable predicate the ergonomics note actually argues for.
+//
+// Generalized (#722) from "a `Swatch`'s (bg0, text0) pair" to any observed
+// `ComfortSample`: the predicate itself was never actually about the
+// registry — `comfortReport`'s body only ever read two RGBA colors — the
+// registry-only signature just meant nothing outside `SWATCHES` could be
+// checked against it. #722 asks for exactly that: classifying a small,
+// human-verified corpus of *rendered* fixtures (hostile → comfortable),
+// which arrive as `getComputedStyle` `rgb()` strings via `color.ts`'s
+// `parseColor`, not as this file's hex literals. `swatchSample` below is the
+// only thing that still knows about hex; every registry call site converts
+// through it, so this generalization changes no existing behavior.
 const TEXT_LUMINANCE_CEILING = 0.92
 const CONTRAST_BAND_MIN = 7.5
 const CONTRAST_BAND_MAX = 16
@@ -242,6 +257,17 @@ function contrastRatio(luminanceA: number, luminanceB: number): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
+/** The (background, text) pair Φ_comfort is evaluated over — from a swatch's own tokens (`swatchSample`) or from a live `getComputedStyle` sample via `color.ts`'s `parseColor`. */
+export type ComfortSample = {
+  readonly bg: RGBA
+  readonly text: RGBA
+}
+
+/** Extracts the (bg0, text0) pair a `Swatch` has always been checked against. */
+export function swatchSample(swatch: Swatch): ComfortSample {
+  return { bg: hexToRGBA(swatch.bg0), text: hexToRGBA(swatch.text0) }
+}
+
 export type ComfortReport = {
   /** Primary text is never the brightest thing on screen (no `#fff` text). */
   readonly textNotBrightest: boolean
@@ -253,10 +279,9 @@ export type ComfortReport = {
   readonly bgNotBlack: boolean
 }
 
-/** Pure predicate over a `Swatch`'s (bg0, text0) pair. No DOM access. */
-export function comfortReport(swatch: Swatch): ComfortReport {
-  const bg = hexToRGBA(swatch.bg0)
-  const text = hexToRGBA(swatch.text0)
+/** Pure predicate over a `(bg, text)` sample. No DOM access. */
+export function comfortReport(sample: ComfortSample): ComfortReport {
+  const { bg, text } = sample
 
   const bgLuminance = relativeLuminance(bg[0], bg[1], bg[2])
   const textLuminance = relativeLuminance(text[0], text[1], text[2])
@@ -275,9 +300,9 @@ export function comfortReport(swatch: Swatch): ComfortReport {
   }
 }
 
-/** `Φ_comfort(swatch)` — every clause of `comfortReport` holds. */
-export function satisfiesComfort(swatch: Swatch): boolean {
-  const report = comfortReport(swatch)
+/** `Φ_comfort(sample)` — every clause of `comfortReport` holds. */
+export function satisfiesComfort(sample: ComfortSample): boolean {
+  const report = comfortReport(sample)
   return (
     report.textNotBrightest &&
     report.contrastInBand &&

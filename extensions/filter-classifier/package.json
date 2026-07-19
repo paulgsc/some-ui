@@ -1,0 +1,41 @@
+{
+  "name": "@some-extension/filter-classifier",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Standalone Playwright corpus + harness for training and verifying some-filter's DOM comfort/theme classifier (#721, #722) against human-labeled fixtures — no extension build or --load-extension required.",
+  "type": "module",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "dependencies": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "@some-extension/filter": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "@storybook/react-vite": "10.5.2",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "esbuild": "^0.25.0",
+    "maishatu-eslint-kit": "workspace:*"
+  },
+  "scripts": {
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf tests/e2e/harness/dist && rimraf tsconfig.tsbuildinfo",
+    "eye-score:merge": "node scripts/merge-eye-score.mjs",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:headed": "playwright test --config playwright.config.ts --headed",
+    "test:e2e:ui": "playwright test --config playwright.config.ts --ui",
+    "typecheck": "tsc --noEmit"
+  }
+}

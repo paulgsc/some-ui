@@ -23,6 +23,10 @@
         "types": "./dist/cjs/index.d.ts"
       }
     },
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
