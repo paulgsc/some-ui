@@ -29,7 +29,7 @@ export type Status = {
 
 type SlideshowProps = {
   slides: Array<SlideData>
-  statusCards?: Array<Status>
+  StatusCards?: Array<Status>
   sessionNumber?: number
   /** Configuration for floating background elements */
   floatingElements?:
@@ -97,7 +97,7 @@ export const createStatusCardSlide = (
   id: string,
   title: string,
   terminalTitle: string,
-  statusCards: Array<Status>,
+  StatusCards: Array<Status>,
   status: "completed" | "current" | "planned",
   additionalContent?: ReactNode
 ): SlideData => ({
@@ -108,7 +108,7 @@ export const createStatusCardSlide = (
     <>
       <h2 className="mb-8 text-4xl font-semibold text-white">{title}</h2>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {statusCards
+        {StatusCards
           .filter((card) => card.status === status)
           .map((card) => (
             <StatusCard key={card.id} card={card} />

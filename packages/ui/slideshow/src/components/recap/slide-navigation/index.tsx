@@ -17,10 +17,13 @@ export const SlideNavigation: FC<SlideNavigationProps> = ({
   return (
     <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 transform items-center gap-4">
       {Array.from({ length: totalSlides }, (_, i) => (
-        <div
-          key={i}
+        <button
+          key={`slide-dot-${i}`}
+          type="button"
+          aria-label={`Go to slide ${i + 1}`}
+          aria-current={i === currentSlide ? "true" : "false"}
           className={cn(
-            "size-3 cursor-pointer rounded-full transition-all duration-300",
+            "size-3 cursor-pointer rounded-full transition-all duration-300 border-none outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900",
             i === currentSlide
               ? "scale-110 transform bg-teal-400"
               : "bg-gray-500/40 hover:bg-gray-400"
@@ -31,6 +34,7 @@ export const SlideNavigation: FC<SlideNavigationProps> = ({
 
       <div className="relative mx-5 h-1 w-48 overflow-hidden rounded-full bg-gray-500/20">
         <div
+          // Retained: progressKey accurately forces an animation reset when it increments
           key={progressKey}
           className="animate-progress h-full rounded-full bg-gradient-to-r from-teal-400 to-blue-500"
         />

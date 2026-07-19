@@ -61,7 +61,7 @@ export function useSlideshow({
         goToSlide((currentSlide - 1 + totalSlides) % totalSlides)
       } else if (e.key >= "1" && e.key <= "5") {
         e.preventDefault()
-        goToSlide(Number.parseInt(e.key) - 1)
+        goToSlide(Number.parseInt(e.key, 10) - 1)
       }
     }
 

@@ -1,4 +1,3 @@
-import { Fragment } from "react"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { LensShutter } from "."
@@ -8,7 +7,7 @@ type Meta = MetaObj<typeof LensShutter>
 
 export const Default: Story = {
   args: {
-    children: <Fragment />,
+    children: null,
   },
   render: (args) => (
     <main className="absolute inset-0 flex items-center justify-center border border-red-500">

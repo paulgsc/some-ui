@@ -13,13 +13,17 @@ export function formatTime(seconds: number): string {
 
 export function findCurrentChapter(
   time: number,
-  chapters: Array<any>
+  chapters: Array<Chapter>
 ): Chapter | SubChapter {
-  // First check main chapters
+  const firstChapter = chapters[0]
+  if (!firstChapter) {
+    throw new Error("Chapters array must not be empty")
+  }
+
   for (const chapter of chapters) {
     if (time >= chapter.startTime && time < chapter.endTime) {
-      // Then check subchapters if any
-      if (chapter.subChapters) {
+      // Check subchapters if they exist
+      if (chapter.subChapters.length > 0) {
         for (const subChapter of chapter.subChapters) {
           if (time >= subChapter.startTime && time < subChapter.endTime) {
             return subChapter
@@ -29,5 +33,7 @@ export function findCurrentChapter(
       return chapter
     }
   }
-  return chapters[0] // Default to first chapter
+
+  // Default to first chapter if time is before the first chapter or after the last
+  return firstChapter
 }

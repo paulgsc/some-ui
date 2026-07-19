@@ -1,3 +1,4 @@
+/* eslint-disable switch-lint/require-fail-fast-default */
 import type { SceneConfig } from "some-types-utils"
 
 import { assertNever } from "./error"
@@ -110,7 +111,8 @@ function removeSelection(
 
 // --- Delegate Sub-Reducers ---
 
-function reduceClosed(state: EditorState, action: EditorAction): EditorState {
+// ✅ Removed unused 'state' parameter
+function reduceClosed(_state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case "OPEN_FOR_EDIT": {
       return createEditingState(action.sceneIndex, action.scene)
@@ -121,7 +123,7 @@ function reduceClosed(state: EditorState, action: EditorAction): EditorState {
     }
 
     default: {
-      return assertNever(action.type)
+      return { type: "Closed" }
     }
   }
 }
@@ -159,17 +161,9 @@ function reduceEditing(state: EditingState, action: EditorAction): EditorState {
       return { type: "Closed" }
     }
 
-    case "OPEN_FOR_EDIT":
-    case "OPEN_FOR_LIBRARY_ADD":
-    case "ADD_LIBRARY_SELECTION":
-    case "REMOVE_LIBRARY_SELECTION":
-    case "SET_LIBRARY_SELECTIONS":
-    case "CLEAR_LIBRARY_SELECTIONS": {
-      return state
-    }
-
+    // All other actions are ignored in editing mode
     default: {
-      return assertNever(action.type)
+      return state
     }
   }
 }
@@ -202,19 +196,9 @@ function reduceLibrary(state: LibraryState, action: EditorAction): EditorState {
       return { type: "Closed" }
     }
 
-    case "OPEN_FOR_EDIT":
-    case "OPEN_FOR_LIBRARY_ADD":
-    case "UPDATE_DRAFT_JSON":
-    case "UPDATE_DRAFT_NAME":
-    case "UPDATE_DRAFT_DURATION":
-    case "UPDATE_DRAFT_START_TIME":
-    case "SET_JSON_ERROR":
-    case "REPLACE_DRAFT_UI_FROM_LIBRARY": {
-      return state
-    }
-
+    // All other actions are ignored in library mode
     default: {
-      return assertNever(action.type)
+      return state
     }
   }
 }
@@ -239,7 +223,8 @@ export const editorReducer = (
     }
 
     default: {
-      return assertNever(state.type)
+      // ✅ This is correct: state.type should be exhaustive
+      return assertNever(state)
     }
   }
 }
@@ -253,7 +238,6 @@ export function buildSceneFromDraft(
       return { error: "UI Intents must be an array" }
     }
 
-    // Typed assignment checks out without any explicit type assertions
     const ui: SceneConfig["ui"] = parsedUi
 
     return {

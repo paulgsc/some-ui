@@ -1,6 +1,6 @@
 import "./index.css"
 
-import type { CSSProperties, ReactNode } from "react"
+import type { ReactNode } from "react"
 import { useCallback, useState } from "react"
 import { useAperture } from "@slideshow/hooks/use-aperture"
 import { useApertureTimeout } from "@slideshow/hooks/use-aperture-timeout"
@@ -60,7 +60,7 @@ export const LensShutter = ({
             style={
               {
                 "--aperture-opacity": apertureOpacity,
-              } as CSSProperties
+              } 
             }
           >
             <div className="-translate-z-10 absolute inset-0 z-0 rounded-full border-4 border-white bg-gray-950" />
@@ -75,7 +75,7 @@ export const LensShutter = ({
                   "--left-y": leftY,
                   "--aperture-rotation": apertureRotation,
                   clipPath,
-                } as CSSProperties
+                } 
               }
               className={cn(
                 "z-10 size-[calc(var(--aperture-size)*1%)] rounded-full border-4 border-white bg-gray-600",

@@ -1,5 +1,4 @@
 import type { FC } from "react"
-import { Fragment } from "react"
 import { GanttToast } from "@slideshow/components/video-gantt-chart/gantt-burst-notification"
 import { GanttFooter } from "@slideshow/components/video-gantt-chart/gantt-footer"
 import { GanttHeader } from "@slideshow/components/video-gantt-chart/gantt-header"
@@ -67,7 +66,7 @@ export const GanttDrawer: FC<GanttDrawerProps> = ({
     formatTime,
   } = useGanttDrawer({ chapters, totalDuration })
 
-  if (chapters.length <= 0 || currentChapter === undefined) return <Fragment />
+  if (chapters.length <= 0 || currentChapter === undefined) return null
 
   return (
     <Drawer open={showOverlay} onOpenChange={() => {}} {...mouseHandlers}>

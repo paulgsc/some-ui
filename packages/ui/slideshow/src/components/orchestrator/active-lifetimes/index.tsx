@@ -192,7 +192,10 @@ const LifetimeCard = ({
               <LayoutGrid size={12} /> UI Composition
             </div>
             {uiIntents?.map((ui, i) => (
-              <div key={i} className="bg-muted/50 rounded p-2">
+              <div
+                key={ui.panels ? Object.keys(ui.panels).join("-") : i}
+                className="bg-muted/50 rounded p-2"
+              >
                 {ui.panels &&
                   Object.entries(ui.panels).map(([key, placement]) => (
                     <>

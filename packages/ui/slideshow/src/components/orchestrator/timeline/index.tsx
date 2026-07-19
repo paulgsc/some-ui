@@ -101,9 +101,9 @@ export const OrchestratorTimeline = ({
             className="absolute top-0 bottom-0 w-px bg-primary z-10 shadow-[0_0_8px_rgba(var(--primary),0.8)]"
             style={{ left: `${(currentTime / maxTimelineEnd) * 100}%` }}
           />
-          {sceneLayouts.map((s, i) => (
+          {sceneLayouts.map((s) => (
             <div
-              key={i}
+              key={s.scene.scene_name}
               className={cn(
                 "absolute h-3 top-2.5 rounded-sm transition-colors",
                 activeSceneIds.has(s.scene.scene_name)
@@ -125,7 +125,7 @@ export const OrchestratorTimeline = ({
           const isActive = activeSceneIds.has(layout.scene.scene_name)
           return (
             <GanttTimelineScene
-              key={`scene-${index}`}
+              key={`scene-${layout.scene.scene_name}`}
               scene={layout.scene}
               index={index}
               isActive={isActive}
