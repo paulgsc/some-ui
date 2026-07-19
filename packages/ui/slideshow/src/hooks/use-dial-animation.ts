@@ -8,6 +8,18 @@ type UseCircularMotionProps = {
   initialAngle?: number
 }
 
+// Exhaustive validation utility for compile-time variant mapping
+function assertNever(value: never): never {
+  throw new Error(
+    `Unhandled variant execution pathway: ${JSON.stringify(value)}`
+  )
+}
+
+// Normalize angles cleanly between 0 and 2π boundaries
+const normalizeAngle = (angle: number): number => {
+  return ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
+}
+
 export const useDialAnimation = ({
   sectionBounds,
   animationDuration = 2000,
@@ -21,152 +33,167 @@ export const useDialAnimation = ({
   isWithinSection: boolean
   midpointAngle: number
 } => {
+  // Pure Rendering: Random seeding handles lazily exactly once during tracking setup
   const [currentAngle, setCurrentAngle] = useState<number>(
-    initialAngle !== undefined ? initialAngle : Math.random() * Math.PI * 2
+    () => initialAngle ?? Math.random() * Math.PI * 2
   )
-
   const [isAnimating, setIsAnimating] = useState(false)
+
   const animationRef = useRef<number | null>(null)
   const startTimeRef = useRef<number | null>(null)
 
-  // Normalize angles to be between 0 and 2π
-  const normalizeAngle = (angle: number): number => {
-    return ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)
-  }
+  // Anchor volatile contextual arguments inside mutable state registers
+  const mutableStateRef = useRef({
+    currentAngle,
+    isAnimating,
+    sectionBounds,
+    animationDuration,
+    animationPattern,
+  })
 
-  // Calculate midpoint of the section
-  const getMidpointAngle = (): number => {
-    const { startAngle, endAngle } = sectionBounds
+  useEffect(() => {
+    mutableStateRef.current = {
+      currentAngle,
+      isAnimating,
+      sectionBounds,
+      animationDuration,
+      animationPattern,
+    }
+  }, [
+    currentAngle,
+    isAnimating,
+    sectionBounds,
+    animationDuration,
+    animationPattern,
+  ])
 
-    return (startAngle + endAngle) / 2
-  }
+  // Derive target section calculations directly inside the evaluation frame
+  const midpointAngle = (sectionBounds.startAngle + sectionBounds.endAngle) / 2
+  const isWithinSection =
+    currentAngle >= sectionBounds.startAngle &&
+    currentAngle <= sectionBounds.endAngle
 
-  // Check if current angle is within the section
-  const isWithinSection = useCallback(
-    (angle: number): boolean => {
-      const { startAngle, endAngle } = sectionBounds
-
-      return angle >= startAngle && angle <= endAngle
-    },
-    [sectionBounds]
-  )
-
-  // Calculate the shortest path direction (clockwise or counterclockwise)
+  // Pure mathematical algorithm pipeline for path interpolation
   const getShortestPathDirection = (from: number, to: number): 1 | -1 => {
-    const normFrom = from
-    const normTo = to
-
-    let clockwiseDist =
-      normTo >= normFrom ? normTo - normFrom : 2 * Math.PI - normFrom + normTo
-
-    let counterclockwiseDist =
-      normFrom >= normTo ? normFrom - normTo : 2 * Math.PI - normTo + normFrom
-
+    const clockwiseDist = to >= from ? to - from : 2 * Math.PI - from + to
+    const counterclockwiseDist =
+      from >= to ? from - to : 2 * Math.PI - to + from
     return clockwiseDist <= counterclockwiseDist ? 1 : -1
   }
 
-  // Apply animation pattern
-  const applyAnimationPattern = (progress: number): number => {
-    switch (animationPattern) {
+  const applyAnimationPattern = (
+    progress: number,
+    pattern: AnimationPattern
+  ): number => {
+    switch (pattern) {
       case "linear": {
         return progress
       }
       case "bounce": {
-        // Bounce effect: slow down and bounce at end
         return 1 - Math.pow(1 - progress, 4) * Math.cos(progress * Math.PI * 4)
       }
-      case "elastic":
-      default: {
-        // Damped oscillation: exponentially decreasing oscillation
-        const decay = 5 // Controls damping rate
-        const oscillation = 3 // Controls number of oscillations
+      case "elastic": {
+        const decay = 5
+        const oscillation = 3
         return (
           1 -
           Math.exp(-decay * progress) *
             Math.cos(oscillation * Math.PI * progress)
         )
       }
+      default: {
+        return assertNever(pattern)
+      }
     }
   }
 
-  // Start animation
-  const animateToMidpoint = useCallback(() => {
-    if (isAnimating) return
+  // Interaction entry point execution layer for running layout loops
+  const animateToMidpoint = useCallback((): void => {
+    if (mutableStateRef.current.isAnimating) {
+      return
+    }
 
     setIsAnimating(true)
     startTimeRef.current = null
 
     const animate = (timestamp: number): void => {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = timestamp
-      }
+      startTimeRef.current ??= timestamp
 
+      const currentContext = mutableStateRef.current
       const elapsed = timestamp - startTimeRef.current
-      const progress = Math.min(elapsed / animationDuration, 1)
-      const easedProgress = applyAnimationPattern(progress)
+      const progress = Math.min(elapsed / currentContext.animationDuration, 1)
+      const easedProgress = applyAnimationPattern(
+        progress,
+        currentContext.animationPattern
+      )
 
-      const midpoint = getMidpointAngle()
-      let newAngle: number
+      const bounds = currentContext.sectionBounds
+      const mid = (bounds.startAngle + bounds.endAngle) / 2
+      let nextAngle: number
 
-      if (!isWithinSection(currentAngle) && progress < 0.5) {
-        // First phase: move to enter the section
+      const currentAngleAtFrame = currentContext.currentAngle
+      const baseWithinFrame =
+        currentAngleAtFrame >= bounds.startAngle &&
+        currentAngleAtFrame <= bounds.endAngle
+
+      if (!baseWithinFrame && progress < 0.5) {
         const targetEntryPoint =
-          getShortestPathDirection(currentAngle, midpoint) === 1
-            ? sectionBounds.startAngle
-            : sectionBounds.endAngle
+          getShortestPathDirection(currentAngleAtFrame, mid) === 1
+            ? bounds.startAngle
+            : bounds.endAngle
 
-        // Normalize for shortest path
         const normalizedTarget = targetEntryPoint
-        const normalizedCurrent = normalizeAngle(currentAngle)
+        const normalizedCurrent = normalizeAngle(currentAngleAtFrame)
         const initialDiff = Math.abs(normalizedTarget - normalizedCurrent)
 
-        // Apply easing with an accelerated first half
-        const firstPhaseProgress = easedProgress * 2 // Accelerate to finish in half the time
-        newAngle =
+        const firstPhaseProgress = easedProgress * 2
+        nextAngle =
           normalizedCurrent +
           getShortestPathDirection(normalizedCurrent, normalizedTarget) *
             initialDiff *
             firstPhaseProgress
       } else {
-        // Second phase: oscillate within section and settle at midpoint
-        const oscillationFrequency = 3 // Controls number of oscillations
+        const oscillationFrequency = 3
         const oscillationAmplitude =
-          Math.abs(sectionBounds.endAngle - sectionBounds.startAngle) / 4
-        const damping = 1 - easedProgress // Dampening factor
+          Math.abs(bounds.endAngle - bounds.startAngle) / 4
+        const damping = 1 - easedProgress
 
-        // Apply damped oscillation around midpoint
-        newAngle =
-          midpoint +
+        nextAngle =
+          mid +
           oscillationAmplitude *
             damping *
             Math.sin(oscillationFrequency * Math.PI * easedProgress)
       }
 
-      setCurrentAngle(newAngle)
+      setCurrentAngle(nextAngle)
 
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate)
       } else {
-        // Ensure final position is exactly at midpoint
-        setCurrentAngle(midpoint)
+        setCurrentAngle(mid)
         setIsAnimating(false)
       }
     }
 
     animationRef.current = requestAnimationFrame(animate)
-  }, [sectionBounds])
+  }, [])
 
-  // Cancel animation on unmount
+  // Safely trigger sync processing via an explicit effect setup flag
+  const initialTriggerRef = useRef(false)
   useEffect(() => {
-    animateToMidpoint()
+    if (!initialTriggerRef.current) {
+      initialTriggerRef.current = true
+      animateToMidpoint()
+    }
+
     return (): void => {
       if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [])
+  }, [animateToMidpoint])
 
-  // Helper to manually set angle
+  // Context callback mapping to decouple execution cycles cleanly
   const setAngle = useCallback((angle: number): void => {
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current)
@@ -181,7 +208,7 @@ export const useDialAnimation = ({
     setAngle,
     animateToMidpoint,
     isAnimating,
-    isWithinSection: isWithinSection(currentAngle),
-    midpointAngle: getMidpointAngle(),
+    isWithinSection,
+    midpointAngle,
   }
 }

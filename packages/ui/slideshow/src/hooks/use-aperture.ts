@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type ApertureProperties = {
   topX: number
@@ -37,47 +37,65 @@ const finalProperties: ApertureProperties = {
   apertureOpacity: 0,
 }
 
+const lerp = (start: number, end: number, progress: number): number =>
+  start + (end - start) * progress
+
+const interpolateProperties = (progress: number): ApertureProperties => ({
+  topX: lerp(initialProperties.topX, finalProperties.topX, progress),
+  rightX: lerp(initialProperties.rightX, finalProperties.rightX, progress),
+  leftX: lerp(initialProperties.leftX, finalProperties.leftX, progress),
+  rightY: lerp(initialProperties.rightY, finalProperties.rightY, progress),
+  leftY: lerp(initialProperties.leftY, finalProperties.leftY, progress),
+  apertureSize: lerp(
+    initialProperties.apertureSize,
+    finalProperties.apertureSize,
+    progress
+  ),
+  apertureRotation: lerp(
+    initialProperties.apertureRotation,
+    finalProperties.apertureRotation,
+    progress
+  ),
+  apertureOpacity: lerp(
+    initialProperties.apertureOpacity,
+    finalProperties.apertureOpacity,
+    progress
+  ),
+})
+
 export const useAperture = (duration = 500): AperturePropertiesWithState => {
   const [properties, setProperties] =
     useState<AperturePropertiesWithState>(initialProperties)
-  const startTimeRef = useRef<number | null>(null)
+
   const frameRef = useRef<number | null>(null)
 
-  const animateProperties = useCallback(
-    (timestamp: number) => {
-      if (!startTimeRef.current) {
-        startTimeRef.current = timestamp
-      }
+  useEffect(() => {
+    let startTime: number | null = null
 
-      const elapsedTime = timestamp - startTimeRef.current
-      const progress = Math.min(elapsedTime / duration, 1)
+    const animate = (timestamp: number): void => {
+      startTime ??= timestamp
 
-      const newProperties = Object.fromEntries(
-        Object.entries(initialProperties).map(([key, initialValue]) => {
-          const finalValue = finalProperties[key as keyof ApertureProperties]
-          return [key, initialValue + (finalValue - initialValue) * progress]
-        })
-      ) as ApertureProperties
+      const elapsed = timestamp - startTime
+      const progress = Math.min(elapsed / duration, 1)
 
-      const state = progress < 1 ? "progress" : "done"
-      setProperties({ ...newProperties, state })
+      setProperties({
+        ...interpolateProperties(progress),
+        state: progress < 1 ? "progress" : "done",
+      })
 
       if (progress < 1) {
-        frameRef.current = requestAnimationFrame(animateProperties)
+        frameRef.current = requestAnimationFrame(animate)
       }
-    },
-    [duration]
-  )
+    }
 
-  useEffect(() => {
-    frameRef.current = requestAnimationFrame(animateProperties)
+    frameRef.current = requestAnimationFrame(animate)
 
     return (): void => {
-      if (frameRef.current) {
+      if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current)
       }
     }
-  }, [animateProperties])
+  }, [duration])
 
   return properties
 }
