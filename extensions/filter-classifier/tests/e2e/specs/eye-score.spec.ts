@@ -10,6 +10,7 @@ import { expect, test } from "@playwright/test"
 
 import { CORPUS, type CorpusFixture } from "../fixtures/corpus"
 import {
+  checkOracleAgreement,
   computeOverall,
   EYE_SCORE_COMFORTABLE_THRESHOLD,
   EYE_SCORE_HOSTILE_THRESHOLD,
@@ -151,5 +152,44 @@ test.describe("requiresExplanation / validateEyeScore", () => {
       score({ reviewer: "" })
     )
     expect(issues.some((issue) => issue.includes("reviewer"))).toBe(true)
+  })
+})
+
+// Synthetic values only — #730's actual oracle regression
+// (eye-score-oracle.spec.ts) is what asserts against real corpus fixtures
+// and eye-scores.json entries; these cases exist to prove the boundary
+// logic itself is correct before it has real data to enforce.
+test.describe("checkOracleAgreement", () => {
+  test("agrees when a comfortable score pairs with a comfortable classifier verdict", () => {
+    expect(checkOracleAgreement(80, true).agrees).toBe(true)
+  })
+
+  test("agrees when a hostile score pairs with a not-comfortable classifier verdict", () => {
+    expect(checkOracleAgreement(10, false).agrees).toBe(true)
+  })
+
+  test("disagrees when a comfortable score pairs with a not-comfortable classifier verdict", () => {
+    expect(checkOracleAgreement(80, false).agrees).toBe(false)
+  })
+
+  test("disagrees when a hostile score pairs with a comfortable classifier verdict", () => {
+    expect(checkOracleAgreement(10, true).agrees).toBe(false)
+  })
+
+  test("a borderline score always agrees, regardless of the classifier's verdict", () => {
+    expect(checkOracleAgreement(50, true).agrees).toBe(true)
+    expect(checkOracleAgreement(50, false).agrees).toBe(true)
+  })
+
+  test("boundary values match eyeScoreVerdict's own comfortable/hostile thresholds", () => {
+    expect(
+      checkOracleAgreement(EYE_SCORE_COMFORTABLE_THRESHOLD, true).agrees
+    ).toBe(true)
+    expect(
+      checkOracleAgreement(EYE_SCORE_COMFORTABLE_THRESHOLD - 1, true).agrees
+    ).toBe(true) // borderline — exempt even though it "disagrees" numerically
+    expect(
+      checkOracleAgreement(EYE_SCORE_HOSTILE_THRESHOLD, false).agrees
+    ).toBe(true)
   })
 })

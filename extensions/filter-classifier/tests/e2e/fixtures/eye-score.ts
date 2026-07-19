@@ -120,3 +120,40 @@ export function validateEyeScore(
 
 /** Keyed by fixture id — the shape `eye-scores.json` (#729) will commit. */
 export type EyeScoreMap = Readonly<Record<string, EyeScore>>
+
+export type OracleAgreement = {
+  readonly agrees: boolean
+  readonly reason: string
+}
+
+/**
+ * The predicate #730's Playwright oracle regression gates on: does the
+ * classifier's real (boolean) comfort verdict land on the same side of the
+ * human's score as `eyeScoreVerdict` says it should? Reuses the same
+ * threshold constants `requiresExplanation` checks against, so "disagrees"
+ * means the same thing in both places. A borderline eye score never
+ * disagrees — see `eyeScoreVerdict`'s own comfortable/hostile boundary.
+ */
+export function checkOracleAgreement(
+  eyeScoreOverall: number,
+  classifierComfortable: boolean
+): OracleAgreement {
+  const verdict = eyeScoreVerdict(eyeScoreOverall)
+
+  if (verdict === "borderline") {
+    return {
+      agrees: true,
+      reason: `eye score ${eyeScoreOverall} is borderline — exempt from enforcement`,
+    }
+  }
+
+  const humanSaysComfortable = verdict === "comfortable"
+  const agrees = humanSaysComfortable === classifierComfortable
+
+  return {
+    agrees,
+    reason: agrees
+      ? `eye score ${eyeScoreOverall} (${verdict}) agrees with classifier comfortable=${String(classifierComfortable)}`
+      : `eye score ${eyeScoreOverall} (${verdict}) disagrees with classifier comfortable=${String(classifierComfortable)}`,
+  }
+}

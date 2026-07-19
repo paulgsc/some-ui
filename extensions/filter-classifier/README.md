@@ -178,15 +178,50 @@ own `expectComfortable` requires non-empty `notes` explaining why
 a disagreement rather than silently record one; a borderline verdict is
 exempt (it's the acknowledged gray zone, not a disagreement).
 
-### Persistence (#729 — not yet built)
+### Persistence (`tests/e2e/fixtures/eye-scores.json`, #729)
 
 "Download annotation" produces a standalone `<fixture-id>.eyescore.json` via
 a plain browser download (`Blob` + `URL.createObjectURL`) — no server, no
-change to the shared root `.storybook/main.ts`. Merging downloaded scores
-into a single committed `eye-scores.json` (and the Playwright regression
-that reads it) is #730; the CLI/workflow that makes merging painless is
-#729. Until those land, a downloaded score is not yet enforced anywhere —
-Comfort Lab today is the review surface, not yet the gate.
+change to the shared root `.storybook/main.ts`. Fold it into the committed
+map with:
+
+```sh
+pnpm eye-score:merge ~/Downloads/sun-glare-badges.eyescore.json
+```
+
+`scripts/merge-eye-score.mjs` overwrites just that one fixture's entry and
+re-sorts keys, so a re-score produces a one-entry diff, never a full-file
+rewrite or a duplicate/orphaned key. It's deliberately dependency-free
+(plain Node `fs`/`path`, no TypeScript import): validation already happened
+client-side (`EyeScorePanel` disables "Download annotation" until
+`validateEyeScore` reports zero issues), so the merge step has nothing left
+to check.
+
+`eye-scores.json` starts **empty** (`{}`) — no fixture has actually been
+scored by a human yet. Populating it is the point of running Comfort Lab
+yourself, not something to fake to make the file look populated.
+
+### The oracle regression (`tests/e2e/specs/eye-score-oracle.spec.ts`, #730)
+
+For every fixture id present in `eye-scores.json`, this spec renders the
+fixture (no extension, same as every other spec here), runs the real
+`sampleBodyComfort()` through the harness, and asserts the classifier's
+`comfortable` boolean agrees with the human's `eyeScoreVerdict` —
+`checkOracleAgreement` (`eye-score.ts`) exempts the declared borderline band
+(41–59) rather than treating it as a forced tie-break. A disagreement fails
+with the fixture id, the recorded score, and the classifier's actual verdict
+in the message — not a bare `toBe` mismatch.
+
+Because `eye-scores.json` is empty today, this suite currently reports one
+skipped placeholder test rather than silence — it activates automatically,
+with zero code changes, the moment a real score is merged in. The mechanism
+itself is proven correct independent of real data:
+`eye-score.spec.ts`'s `checkOracleAgreement` cases exercise the boundary
+with synthetic values (including a smoke test run manually against a real,
+then-reverted, fake entry during development — a disagreement was
+correctly caught and failed the suite, then the fixture was reverted to
+`{}` before committing, since fabricated scores must never be presented as
+real human judgment).
 
 ### Why explicit story exports, not one generated from `CORPUS`
 
