@@ -65,6 +65,23 @@ describe("scan", () => {
     expect(elementsByKey.size).toBe(0)
     expect(attrsByKey.size).toBe(0)
   })
+
+  it("skips already-patched elements — their live color is the actuator's own output, not vendor evidence", () => {
+    // Once actuator.ts tags an element data-sw-patched and injects its
+    // !important hue-preserving rule, getComputedStyle on that element
+    // returns *our* darkened color forever after, never the vendor's
+    // original. Re-including it in the next scan feeds that self-inflicted
+    // color back into the (append-only, never-forgetting) hypothesis as if
+    // it were new evidence — the exact mechanism that let pageAlreadyDark()
+    // drift downward across repeated reactive rescans until it incorrectly
+    // concluded the page was already dark and restore-native undid the
+    // theme with no vendor change involved at all.
+    document.body.innerHTML =
+      '<div id="a" data-sw-patched="rgb(255, 255, 255)" style="background-color: rgb(13, 17, 23)"></div>'
+    const { elementsByKey, attrsByKey } = scan(document.body)
+    expect(elementsByKey.size).toBe(0)
+    expect(attrsByKey.size).toBe(0)
+  })
 })
 
 describe("createContentSession — rescan() is immediate, not coalesced", () => {
@@ -199,6 +216,53 @@ describe("createContentSession — observer coalescing (Definition 7.2)", () => 
       await Promise.resolve()
       vi.advanceTimersByTime(100)
       expect(fireCount).toBe(2)
+
+      contentSession.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe("createContentSession — observer survives body replacement", () => {
+  it("keeps reacting to mutations after document.body is wholesale-replaced", async () => {
+    // A real SPA/hydration pattern (documentElement.replaceChild(newBody,
+    // document.body)), not just a churn-suite construction: observing the
+    // old body element directly would keep watching an orphaned, detached
+    // node forever once it's replaced -- nothing under the *new* body would
+    // ever be seen again, silently killing all future reclassification.
+    // Watching document.documentElement (never itself replaced by this
+    // pattern) and reading document.body live at fire time is what this
+    // test guards.
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML = '<div id="a"></div>'
+      const session = createSessionLifecycle()
+      let fireCount = 0
+      const contentSession = createContentSession(
+        SWATCHES.default,
+        session,
+        () => {
+          fireCount += 1
+        }
+      )
+
+      contentSession.observe()
+
+      const newBody = document.createElement("body")
+      newBody.innerHTML = '<div id="b"></div>'
+      document.documentElement.replaceChild(newBody, document.body)
+
+      const target = document.getElementById("b")
+      expect(target).not.toBeNull()
+      if (target === null) return
+
+      target.style.backgroundColor = "rgb(9, 9, 9)"
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(100)
+
+      expect(fireCount).toBe(1)
 
       contentSession.teardown()
     } finally {

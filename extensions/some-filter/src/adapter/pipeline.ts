@@ -72,6 +72,25 @@ function shouldSkip(el: Element): boolean {
   if (el.id === "__sw_overlay_root") return true
   if (el.hasAttribute("data-my-ext")) return true
   if (el.closest("[data-my-ext]")) return true
+  // A "surface"-tagged element's live computed background is the
+  // actuator's own hue-preserving darkened output (actuator.ts's
+  // emit-surface-color rule targets it with !important, which always wins
+  // over the vendor's original inline/stylesheet value) — never the
+  // vendor's true color again, for as long as the tag stands. Reading it
+  // back in as fresh evidence is pure self-feedback: the hypothesis (which
+  // never forgets a key, by design — Ĥ is append-only) accumulates the
+  // extension's own dark output as if it were new vendor signal, and
+  // pageAlreadyDark()'s mean drifts down with every reactive rescan until
+  // it eventually crosses the threshold and decide() emits restore-native
+  // — the page "undoes its own theming" under nothing but its own churn,
+  // with no vendor change involved at all. Excluding tagged elements from
+  // classification breaks the loop at its source. (Elements tagged
+  // "preserve" get `revert`ed, not overridden, so their computed style
+  // already reflects the vendor's true color — but scan() has no cheap way
+  // to distinguish the two tag values here, and re-including "preserve"
+  // elements only forgoes reacting to a vendor recolor of an already
+  // near-black surface, a narrow loss next to the runaway alternative.)
+  if (el.hasAttribute("data-sw-patched")) return true
   return false
 }
 
@@ -122,8 +141,8 @@ export function scan(root: Element): ScanResult {
 export type ContentSession = {
   /** Full re-scan + one coalesced decide/realize cycle. Safe to call repeatedly — the SPA re-patch path (`yt-navigate-finish`) is just another call. */
   rescan(root?: Element): void
-  /** Attaches the Sensor's MutationObserver over `root`. Idempotent. */
-  observe(root?: Element): void
+  /** Attaches the Sensor's MutationObserver over `document.documentElement` (survives body/head replacement). Idempotent. */
+  observe(): void
   /** Disconnects the observer and cancels any pending coalesced invocation. */
   teardown(): void
 }
@@ -200,18 +219,30 @@ export function createContentSession(
       ingest(root)
       fire()
     },
-    observe(root: Element = document.body): void {
+    observe(): void {
       if (observer !== null) return
+      // Watches <html> (document.documentElement), not document.body: a
+      // vendor page can wholesale-replace body (and head) via
+      // documentElement.replaceChild — a real SPA/hydration pattern, not
+      // just a churn-suite construction — which detaches whatever node an
+      // observer had captured, silently killing all future reclassification
+      // (the observer keeps watching the orphaned old body forever; nothing
+      // under the new one is ever seen again). document.documentElement
+      // itself is never replaced by any of that — only its children are
+      // swapped — so it is the one structurally stable root to observe
+      // from. ingest() below re-reads `document.body` live at fire time
+      // (not a value captured here) for the same reason: after a body
+      // swap, `document.body` the getter already points at the new one.
       observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
           if (mutation.type === "childList" || mutation.type === "attributes") {
-            ingest(root)
+            ingest(document.body)
             coalescer.trigger()
             return
           }
         }
       })
-      observer.observe(root, {
+      observer.observe(document.documentElement, {
         childList: true,
         subtree: true,
         attributes: true,
