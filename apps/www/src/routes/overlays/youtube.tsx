@@ -1,11 +1,7 @@
 import { componentRegistry } from "@some-ui/content-registry"
 import { createFileRoute } from "@tanstack/react-router"
 import { useSceneLifetimes } from "some-ui-utils"
-import {
-  dramaTree,
-  OrchestratedYouTubeViewport,
-  useSceneDrivenLayout,
-} from "wireframes"
+import { dramaTree, OrchestratedYouTubeViewport } from "wireframes"
 
 // Search params validation
 type YouTubeWireframeSearch = {
@@ -30,10 +26,12 @@ const YouTubeWireframeRoute = (): React.JSX.Element => {
   const { transitionMs, enableFocus, layoutMode } = Route.useSearch()
 
   const activeLifetimes = useSceneLifetimes()
-  const { currentLayout } = useSceneDrivenLayout()
 
-  // Select layout tree based on mode
-  const layoutTree = layoutMode === "drama" ? dramaTree : currentLayout
+  // Select layout tree based on mode. This route is a standalone engine
+  // demo, disconnected from the real player's scene/session data - see
+  // epic #693 story 4 (#696) for why there's no scene- or session-driven
+  // layout to fall back to here anymore.
+  const layoutTree = layoutMode === "drama" ? dramaTree : null
 
   return (
     <div className="absolute inset-0">

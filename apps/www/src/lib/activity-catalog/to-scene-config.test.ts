@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import { ACTIVITY_CATALOG, ACTIVITY_IDS, getActivity } from "./catalog"
-import { LAYOUT_TEMPLATES } from "./layout-templates"
 import { layoutTreeFor, sequenceScenes, toSceneConfig } from "./to-scene-config"
 import type { ActivityId } from "./types"
 
@@ -59,24 +58,6 @@ describe("toSceneConfig", () => {
     expect(scene.ui[0]?.panels?.mainContent?.props).toEqual({
       path: "topiks/advanced.json",
     })
-  })
-
-  it("seeds layout from the activity's declared template, cloned independently per scene", () => {
-    const first = toSceneConfig(
-      "honeycomb",
-      { mode: "completion", durationMinutes: 5 },
-      { startTime: 0 }
-    )
-    const second = toSceneConfig(
-      "honeycomb",
-      { mode: "completion", durationMinutes: 5 },
-      { startTime: 0 }
-    )
-
-    expect(first.layout).toEqual(LAYOUT_TEMPLATES.study)
-    expect(second.layout).toEqual(LAYOUT_TEMPLATES.study)
-    expect(first.layout).not.toBe(second.layout)
-    expect(first.layout).not.toBe(LAYOUT_TEMPLATES.study)
   })
 
   it("scopes scene_name with an instanceLabel when given, and leaves it bare otherwise", () => {

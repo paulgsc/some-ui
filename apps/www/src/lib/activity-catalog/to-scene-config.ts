@@ -1,7 +1,6 @@
 import type { SceneConfig } from "some-types-utils"
 
 import { getActivity } from "./catalog"
-import { LAYOUT_TEMPLATES } from "./layout-templates"
 import type { ActivityConfigValues, ActivityId, LayoutTreeId } from "./types"
 
 export type SceneBuildOptions = {
@@ -42,10 +41,6 @@ export function toSceneConfig(
     scene_name: sceneName,
     start_time: startTime,
     duration: durationMsFor(activityId, config),
-    // Clone so every scene owns an independent tree - mutating one scene's
-    // layout (e.g. in the composer) must never alias another scene's, or
-    // the activity's shared template.
-    layout: structuredClone(LAYOUT_TEMPLATES[layoutTreeFor(activityId)]),
     ui: [
       {
         panels: {

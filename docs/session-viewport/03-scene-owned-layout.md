@@ -1,5 +1,16 @@
 # A layout tree belongs to the scene: one source of truth, three forks retired
 
+> **Superseded.** This story's code was never merged (it lived on a branch
+> and was unwound before landing) and its central premise - the scene owns
+> its own topology - was overturned by a follow-up architecture discussion
+> on #693/#696: topology moved to the _session_, not the scene, and chrome
+> was decided to live entirely outside the tree rather than joining it.
+> Kept here, unmodified, as the historical record of what was tried and
+> why it changed - see #693's current epic body for the live decision, and
+> #696 for the story that replaced this one. Read
+> `01-overflow-doctrine-and-audit.md` and `02-kill-the-cutoff.md` first for
+> context that's still current - this doc's own findings below are not.
+
 > Findings for epic #693, story 3 (#696). Read `01-overflow-doctrine-and-audit.md`
 > and `02-kill-the-cutoff.md` first - this story gives `Layout(t)` an owner;
 > it does not change how a bounded `V` is measured or clipped.

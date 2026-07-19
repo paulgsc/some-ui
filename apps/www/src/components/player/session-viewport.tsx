@@ -1,13 +1,12 @@
 import type { JSX } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
 import { useSceneLifetimes } from "some-ui-utils"
-import { OrchestratedYouTubeViewport, useSceneDrivenLayout } from "wireframes"
+import { OrchestratedYouTubeViewport } from "wireframes"
 
-import { FALLBACK_LAYOUT } from "./layout"
+import { MAIN_CONTENT_LAYOUT } from "./layout"
 
 export const SessionViewport = (): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
-  const { currentLayout } = useSceneDrivenLayout()
 
   return (
     <div className="bg-muted relative w-full flex-1 min-h-0 overflow-hidden rounded-lg border">
@@ -17,7 +16,7 @@ export const SessionViewport = (): JSX.Element => {
         </div>
       ) : (
         <OrchestratedYouTubeViewport
-          layoutTree={currentLayout ?? FALLBACK_LAYOUT}
+          layoutTree={MAIN_CONTENT_LAYOUT}
           activeLifetimes={activeLifetimes}
           componentRegistry={componentRegistry}
           enableFocus={false}

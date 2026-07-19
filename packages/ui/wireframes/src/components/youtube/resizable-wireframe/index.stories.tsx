@@ -1,6 +1,5 @@
 import { componentRegistry } from "@some-ui/content-registry"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { useSceneDrivenLayout } from "@wireframes/hooks/use-scene-driven-layout"
 import { dramaTree } from "@wireframes/lib/layout-tree"
 import { useSceneLifetimes } from "some-ui-utils"
 
@@ -14,21 +13,20 @@ import { OrchestratedYouTubeViewport } from "."
 type AnimatedStoryProps = {
   transitionMs?: number
   enableFocus?: boolean
-  layoutTree?: typeof dramaTree
+  layoutTree?: typeof dramaTree | null
 }
 
 const AnimatedStory = ({
-  layoutTree,
+  layoutTree = null,
   transitionMs = 300,
   enableFocus = true,
 }: AnimatedStoryProps) => {
   const activeLifetimes = useSceneLifetimes()
-  const { currentLayout } = useSceneDrivenLayout()
 
   return (
     <div className="absolute inset-0">
       <OrchestratedYouTubeViewport
-        layoutTree={layoutTree ?? currentLayout}
+        layoutTree={layoutTree}
         activeLifetimes={activeLifetimes}
         componentRegistry={componentRegistry}
         transitionMs={transitionMs}
