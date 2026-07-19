@@ -67,8 +67,69 @@ describe("scan", () => {
   })
 })
 
-describe("createContentSession — coalescing (Definition 7.2)", () => {
-  it("a burst of N mutations within the debounce window triggers exactly one decide/realize cycle", () => {
+describe("createContentSession — rescan() is immediate, not coalesced", () => {
+  it("rescan() settles synchronously — no timer, no caller-visible delay", () => {
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(255, 255, 255)"></div>'
+    const session = createSessionLifecycle()
+    let fireCount = 0
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      () => {
+        fireCount += 1
+      }
+    )
+
+    contentSession.rescan()
+
+    expect(fireCount).toBe(1)
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    const target = document.getElementById("a")
+    expect(target?.dataset.swPatched).toBe("rgb(255, 255, 255)")
+
+    contentSession.teardown()
+  })
+
+  it("a genuinely dark page (mean luminance low) restores native instead of tagging, immediately", () => {
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>'
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    const target = document.getElementById("a")
+    expect(target?.dataset.swPatched).toBeUndefined()
+
+    contentSession.teardown()
+  })
+
+  it("repeated rescan() calls each settle immediately (N calls -> N fires)", () => {
+    document.body.innerHTML = '<div id="a"></div>'
+    const session = createSessionLifecycle()
+    let fireCount = 0
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      () => {
+        fireCount += 1
+      }
+    )
+
+    for (let i = 0; i < 5; i++) {
+      contentSession.rescan()
+    }
+
+    expect(fireCount).toBe(5)
+
+    contentSession.teardown()
+  })
+})
+
+describe("createContentSession — observer coalescing (Definition 7.2)", () => {
+  it("a burst of N real mutations within the debounce window triggers exactly one decide/realize cycle", async () => {
     vi.useFakeTimers()
     try {
       document.body.innerHTML = '<div id="a"></div>'
@@ -86,13 +147,18 @@ describe("createContentSession — coalescing (Definition 7.2)", () => {
       expect(target).not.toBeNull()
       if (target === null) return
 
-      // A burst of rescans well within the 50ms reconcile window.
+      contentSession.observe()
+
+      // A burst of real style mutations, well within the 50ms reconcile window.
       for (let i = 0; i < 10; i++) {
         target.style.backgroundColor = `rgb(${i}, ${i}, ${i})`
-        contentSession.rescan()
       }
+      // Flush the MutationObserver's own microtask-scheduled delivery --
+      // independent of (and not advanced by) the fake macrotask clock.
+      await Promise.resolve()
+      await Promise.resolve()
 
-      expect(fireCount).toBe(0) // nothing has fired yet — still coalescing
+      expect(fireCount).toBe(0) // ingested, but still coalescing -- no fire yet
 
       vi.advanceTimersByTime(100)
 
@@ -104,7 +170,7 @@ describe("createContentSession — coalescing (Definition 7.2)", () => {
     }
   })
 
-  it("two well-separated rescans (past the debounce window) fire twice", () => {
+  it("two well-separated mutations (past the debounce window) fire twice", async () => {
     vi.useFakeTimers()
     try {
       document.body.innerHTML = '<div id="a"></div>'
@@ -118,57 +184,21 @@ describe("createContentSession — coalescing (Definition 7.2)", () => {
         }
       )
 
-      contentSession.rescan()
+      const target = document.getElementById("a")
+      expect(target).not.toBeNull()
+      if (target === null) return
+
+      contentSession.observe()
+
+      target.style.backgroundColor = "rgb(1, 1, 1)"
+      await Promise.resolve()
       vi.advanceTimersByTime(100)
       expect(fireCount).toBe(1)
 
-      contentSession.rescan()
+      target.style.backgroundColor = "rgb(2, 2, 2)"
+      await Promise.resolve()
       vi.advanceTimersByTime(100)
       expect(fireCount).toBe(2)
-
-      contentSession.teardown()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-})
-
-describe("createContentSession — end to end", () => {
-  it("a light page's div gets tagged and colored after the coalesced cycle fires", () => {
-    vi.useFakeTimers()
-    try {
-      document.body.innerHTML =
-        '<div id="a" style="background-color: rgb(255, 255, 255)"></div>'
-      const session = createSessionLifecycle()
-      const contentSession = createContentSession(SWATCHES.default, session)
-
-      contentSession.rescan()
-      vi.advanceTimersByTime(100)
-
-      expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
-      const target = document.getElementById("a")
-      expect(target?.dataset.swPatched).toBe("rgb(255, 255, 255)")
-
-      contentSession.teardown()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it("a genuinely dark page (mean luminance low) restores native instead of tagging", () => {
-    vi.useFakeTimers()
-    try {
-      document.body.innerHTML =
-        '<div id="a" style="background-color: rgb(13, 17, 23)"></div>'
-      const session = createSessionLifecycle()
-      const contentSession = createContentSession(SWATCHES.default, session)
-
-      contentSession.rescan()
-      vi.advanceTimersByTime(100)
-
-      expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
-      const target = document.getElementById("a")
-      expect(target?.dataset.swPatched).toBeUndefined()
 
       contentSession.teardown()
     } finally {

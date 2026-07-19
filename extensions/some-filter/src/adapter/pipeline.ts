@@ -188,8 +188,17 @@ export function createContentSession(
 
   return {
     rescan(root: Element = document.body): void {
+      // Immediate, not coalesced: rescan() is always an explicit,
+      // caller-initiated round (the initial classification, an SPA
+      // re-patch) — never a raw mutation-storm callback. Debouncing it
+      // would make the whole auto-theme path's very first visible outcome
+      // depend on a timer firing with no caller in a position to notice or
+      // recover if it doesn't (content.ts's veil-lift lives inside onFire).
+      // The coalescer is reserved for the one path Definition 7.2 actually
+      // governs: the observer callback below, where a burst of N raw
+      // mutations must still settle as exactly one decide/realize round.
       ingest(root)
-      coalescer.trigger()
+      fire()
     },
     observe(root: Element = document.body): void {
       if (observer !== null) return
