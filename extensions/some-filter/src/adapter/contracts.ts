@@ -107,7 +107,26 @@ export type RestoreNativeAction = {
   readonly kind: "restore-native"
 }
 
+/**
+ * The static-layer counterpart to `content.ts`'s unconditional
+ * `applyTheme("dark")` call (added in S5, #690, while wiring the real
+ * pipeline surfaced the gap): `activateDarkTheme()` sets `DARK_THEME_ATTR`
+ * and injects `buildDarkThemeCSS(swatch)` *regardless* of whether any
+ * per-surface evidence exists yet (the `transparent-page` e2e fixture — no
+ * element anywhere has an explicit background, so `Ĥ` is empty — still
+ * expects the static dark layer to activate). Emitted first, whenever a
+ * swatch is selected and the page does not already read as dark; the
+ * Actuator (S5) realizes it exactly once regardless of how many times
+ * `decide` re-emits it for an unchanged verdict (idempotent per Theorem
+ * 7.2, same as every other action here).
+ */
+export type ActivateThemeAction = {
+  readonly kind: "activate-theme"
+  readonly swatchId: string
+}
+
 export type FilterAction =
+  | ActivateThemeAction
   | TagSurfaceAction
   | EmitSurfaceColorAction
   | RestoreNativeAction

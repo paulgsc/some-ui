@@ -1,4 +1,9 @@
 import {
+  createContentSession,
+  type ContentSession,
+} from "@filter/adapter/pipeline"
+import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
@@ -8,17 +13,13 @@ import {
   enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
-import {
-  applyTheme,
-  repatchPage,
-  restoreVendor,
-} from "@filter/lib/content/theme-apply"
-import { detect } from "@filter/lib/content/theme-detector"
+import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
 import { assertNever } from "@some-extension/common"
+import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
 const DEFAULT_FILTER: FilterConfig = {
   invert: 1,
@@ -60,16 +61,28 @@ let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 let autoWasApplied = false
 
+// The content session's epoch source (Definition 5.4). Reset on every
+// SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
+// gets a fresh one for free, since this whole module re-initializes.
+const sessionLifecycle = createSessionLifecycle()
+let contentSession: ContentSession | null = null
+
 function applyState(state: TabState): void {
   currentState = state
   writeCachedState(state)
+
+  // Auto's pipeline owns its own MutationObserver — leaving auto (or
+  // re-entering it) must stop the previous one before anything else runs,
+  // or a stale session keeps reacting to mutations under the new mode.
+  contentSession?.teardown()
+  contentSession = null
 
   restoreVendor()
 
   if (state === "auto") {
     // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
-    // for snapshot isolation and handles veil teardown atomically after the
-    // theme is committed (or restored).
+    // for snapshot isolation; the pipeline's onFire hook handles veil teardown
+    // once the first decide/realize cycle actually settles.
     runAutoTheme()
     return
   }
@@ -92,43 +105,46 @@ function cycleState(): void {
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
 function runAutoTheme(): void {
-  // Apply-then-detect. The dark theme is the default; the detector only takes
-  // it back off for pages that are already dark.
+  // Apply-then-detect, now folded into decide() (S3): the pipeline scans
+  // true vendor colors under the veil, feeds them to the Estimator, and
+  // decide() itself withholds every per-surface action (emitting only
+  // restore-native) when the page reads as already dark — the "apply
+  // unconditionally, then restore" two-step is gone; decide() settles it
+  // in one pure call.
   //
-  // Ordering note: our theme is injected with `!important`, so once it is in the
-  // cascade getComputedStyle no longer reports vendor colors. The detector must
-  // therefore snapshot the verdict from TRUE vendor styles first — which it can
-  // do safely because the overlay veil (unlike the old restyle-in-place
-  // prepaint) does not poison computed styles. We then apply the theme
-  // unconditionally (default-on) and restore vendor only when the verdict says
-  // the page was already dark.
+  // Ordering note: the veil (unlike the old restyle-in-place prepaint) does
+  // not poison computed styles, so the Sensor's scan reads true vendor
+  // colors with the veil still up. withPrepaintSuppressed freezes
+  // transitions/animations around the *scan* only, so getComputedStyle
+  // reads settled values — the coalesced decide/realize cycle that follows
+  // does no further DOM reads.
   //
-  // detect(), applyTheme(), and the optional restoreVendor() all run inside the
-  // same suppression lock so the initial patch reads settled, non-transition-
-  // interpolated colors and the veil teardown below is atomic.
-  const { alreadyDark, avgLuminance } = withPrepaintSuppressed(() => {
-    const verdict = detect()
-    applyTheme("dark")
-    if (verdict.alreadyDark) {
-      restoreVendor()
+  // commitVisualState()/disablePrepaint() run on *every* fire, not just the
+  // first: both are idempotent no-ops once the veil is already down, and
+  // re-running them unconditionally is what lets the SPA re-patch path
+  // (yt-navigate-finish re-shows the veil, below) reuse this same callback
+  // to lift it again, instead of needing its own copy of this logic.
+  contentSession = createContentSession(
+    SWATCHES[DEFAULT_SWATCH_ID],
+    sessionLifecycle,
+    (actions) => {
+      const applied = actions.some((action) => action.kind === "activate-theme")
+      autoWasApplied = applied
+      document.body.dataset.swThemeApplied = applied ? "dark" : "none"
+      updateDebugAttrs()
+
+      if (applied) {
+        commitVisualState()
+      } else {
+        disablePrepaint()
+      }
     }
-    return verdict
+  )
+
+  withPrepaintSuppressed(() => {
+    contentSession?.rescan()
   })
-
-  autoWasApplied = !alreadyDark
-
-  if (autoWasApplied) {
-    commitVisualState()
-  } else {
-    disablePrepaint()
-  }
-
-  document.body.dataset.swLuminance =
-    avgLuminance !== null ? avgLuminance.toFixed(3) : "unknown"
-
-  document.body.dataset.swThemeApplied = autoWasApplied ? "dark" : "none"
-
-  updateDebugAttrs()
+  contentSession.observe()
 }
 
 function updateDebugAttrs(): void {
@@ -183,22 +199,26 @@ function init(): void {
     }
   })()
 
-  // SPA navigation re-patch: re-run the luminance patcher after pushState
-  // navigations and YouTube's custom navigation event so newly rendered
-  // subtrees are themed even when no new DOM nodes are added.
+  // SPA navigation re-patch: re-scan after pushState navigations and
+  // YouTube's custom navigation event so newly rendered subtrees are
+  // themed even when no new DOM nodes trigger the Sensor's own observer
+  // (Theorem D.1(a) — same-document navigation, epoch advances). This is
+  // no longer a bespoke re-patch call: it is the same coalesced
+  // decide/realize cycle every other mutation goes through, re-triggered
+  // by hand for an event the Sensor's MutationObserver cannot see itself.
   // Note: third-party tab suspenders that replace the page with their own
   // origin URL are out-of-process and cannot be covered here; our re-
   // engagement on the real-URL reload is handled by the normal init path.
   //
-  // We re-enable the veil before repatching so there is no frame where
-  // newly rendered vendor elements are visible without the dark theme token.
-  // commitVisualState() lifts the veil after two rAFs — by which point the
-  // repatch tokens are already in the cascade.
+  // We re-enable the veil before rescanning so there is no frame where
+  // newly rendered vendor elements are visible without the dark theme
+  // token — the pipeline's onFire hook (above) lifts it again once this
+  // round settles.
   window.addEventListener("yt-navigate-finish", () => {
     if (autoWasApplied) {
+      sessionLifecycle.resetContent()
       enablePrepaint()
-      repatchPage()
-      commitVisualState()
+      contentSession?.rescan()
     }
   })
 }

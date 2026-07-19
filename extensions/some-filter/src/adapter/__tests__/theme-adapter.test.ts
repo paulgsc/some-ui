@@ -59,9 +59,11 @@ describe("decide — purity", () => {
 })
 
 describe("decide — no bright surfaces", () => {
-  it("returns ∅ for an empty hypothesis", () => {
+  it("still activates the static theme layer for an empty hypothesis (no per-surface actions)", () => {
     const h = createHypothesis<SurfaceKey, SurfaceAttr>()
-    expect(decide(h, swatch)).toEqual([])
+    expect(decide(h, swatch)).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
+    ])
   })
 
   it("emits no per-surface action for mid-luminance (untouched-band) evidence", () => {
@@ -88,6 +90,7 @@ describe("decide — mixed page", () => {
     const actions = decide(h, swatch)
 
     expect(actions).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
       { kind: "tag-surface", key: "light", role: "surface" },
       {
         kind: "emit-surface-color",
@@ -101,7 +104,9 @@ describe("decide — mixed page", () => {
   it("skips near-transparent evidence regardless of luminance", () => {
     const h = createHypothesis<SurfaceKey, SurfaceAttr>()
     h.set("glass", attrFor("rgba(255, 255, 255, 0.05)", 0.05))
-    expect(decide(h, swatch)).toEqual([])
+    expect(decide(h, swatch)).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
+    ])
   })
 })
 

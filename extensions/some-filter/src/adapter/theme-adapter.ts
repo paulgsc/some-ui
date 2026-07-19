@@ -21,6 +21,11 @@
  * weight; `classifyPage()`'s tiered/viewport-coverage weighting is what
  * decides *which* evidence lands in Ĥ and is therefore a Sensor concern,
  * S5's to supply, not this pure function's to re-derive from live DOM).
+ *
+ * `ActivateThemeAction` (S5, #690) is always the first action whenever a
+ * swatch is active and the page doesn't already read as dark — the static
+ * layer (`buildDarkThemeCSS`) is a page-wide binary switch, independent of
+ * whether any individual surface needs its own tag/emit action.
  */
 
 import {
@@ -83,7 +88,12 @@ export function decide(
     return [{ kind: "restore-native" }]
   }
 
-  const actions: Array<FilterAction> = []
+  // Static layer first, independent of per-surface evidence: a page with
+  // zero evidenced keys (nothing anywhere has an explicit background) still
+  // gets the dark canvas + text tokens (the transparent-page fixture).
+  const actions: Array<FilterAction> = [
+    { kind: "activate-theme", swatchId: swatch.id },
+  ]
 
   for (const key of hypothesis.keys()) {
     const attr = hypothesis.get(key)
