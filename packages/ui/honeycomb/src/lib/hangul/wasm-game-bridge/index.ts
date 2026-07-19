@@ -366,6 +366,18 @@ export class WasmGameBridge {
 // DEFAULT CONFIG
 // ============================================================================
 
+// Every field here must match `GameConfig::default()` in
+// crates/hangul-game-core/src/internal/types.rs field for field. There is
+// no automated single-sourcing across the Rust/TS boundary, so
+// `default-config-parity.test.ts` (mirroring
+// `default_matches_typescript_bridge_defaults` in that Rust file) is the
+// only thing that catches the two copies drifting apart (Prop. 2.3).
+//
+// correctnessThresholdMs is deliberately 1500, not the Rust default's
+// former (unreachable) 600: because `loadHangulWasm` always merges this
+// object before constructing `HangulGameCore`, 1500 is the value every
+// real game session has actually run at, so it's the value the Rust side
+// was reconciled to rather than the reverse.
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   minTimeWindowMs: 1000,
   maxTimeWindowMs: 3000,

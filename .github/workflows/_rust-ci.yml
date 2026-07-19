@@ -21,5 +21,7 @@ jobs:
             -- -D warnings -A unknown-lints
       - name: Format check
         run: nix develop .#ci --command cargo fmt --all -- --check
+      - name: wasm_bindgen boundary guardrail
+        run: scripts/check-wasm-bindgen-boundary.sh
       - name: Tests
         run: nix develop .#ci --command cargo test --workspace --verbose

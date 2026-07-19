@@ -36,16 +36,20 @@ impl GameMode for CompletionMode {
         self.incomplete_characters.choose(&mut thread_rng()).cloned()
     }
 
-    fn on_match(&mut self, hangul: &str, _is_high_quality: bool, show_romanization: bool) -> bool {
-        // Only count toward completion if romanization is hidden (true mastery)
-        if !show_romanization && !self.completed_characters.contains(hangul) {
+    fn on_match(&mut self, hangul: &str, is_high_quality: bool, _show_romanization: bool) -> bool {
+        // Mastery of a jamo depends only on that jamo's own match history:
+        // whether *this* match was high-quality (fast enough to beat
+        // correctness_threshold_ms). It must not depend on show_romanization,
+        // which reflects a *global* streak built across all jamo and has no
+        // logical connection to this specific one (Rem. 6.1).
+        if is_high_quality && !self.completed_characters.contains(hangul) {
             self.completed_characters.insert(hangul.to_string());
 
             // Remove from incomplete pool
             self.incomplete_characters.retain(|ch| ch != hangul);
             true // Counts toward completion
         } else {
-            false // Just builds streak, doesn't complete the character
+            false // Not yet mastered - doesn't complete the character
         }
     }
 
@@ -90,31 +94,35 @@ mod tests {
     }
 
     #[test]
-    fn match_while_romanization_shown_does_not_count_toward_completion() {
+    fn high_quality_match_counts_toward_completion_even_while_romanization_is_shown() {
+        // A jamo can be mastered on its own merit even though the global
+        // streak (built on other jamo) hasn't yet hidden romanization.
         let mut mode = mode_with(&["ㄱ", "ㄴ"]);
 
         let counted = mode.on_match("ㄱ", true, true);
-
-        assert!(!counted);
-        assert_eq!(mode.get_progress().completed_keys, 0);
-    }
-
-    #[test]
-    fn match_while_romanization_hidden_counts_toward_completion() {
-        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
-
-        let counted = mode.on_match("ㄱ", true, false);
 
         assert!(counted);
         assert_eq!(mode.get_progress().completed_keys, 1);
     }
 
     #[test]
-    fn repeated_hidden_match_of_same_character_does_not_double_count() {
+    fn low_quality_match_does_not_count_even_when_romanization_is_hidden() {
+        // A slow match on THIS jamo must not be mastered just because a
+        // streak built on OTHER jamo happens to have hidden romanization.
         let mut mode = mode_with(&["ㄱ", "ㄴ"]);
-        mode.on_match("ㄱ", true, false);
 
-        let counted_again = mode.on_match("ㄱ", true, false);
+        let counted = mode.on_match("ㄱ", false, false);
+
+        assert!(!counted);
+        assert_eq!(mode.get_progress().completed_keys, 0);
+    }
+
+    #[test]
+    fn repeated_high_quality_match_of_same_character_does_not_double_count() {
+        let mut mode = mode_with(&["ㄱ", "ㄴ"]);
+        mode.on_match("ㄱ", true, true);
+
+        let counted_again = mode.on_match("ㄱ", true, true);
 
         assert!(!counted_again);
         assert_eq!(mode.get_progress().completed_keys, 1);
@@ -125,17 +133,17 @@ mod tests {
         let mut mode = mode_with(&["ㄱ", "ㄴ"]);
         assert!(!mode.is_complete());
 
-        mode.on_match("ㄱ", true, false);
+        mode.on_match("ㄱ", true, true);
         assert!(!mode.is_complete());
 
-        mode.on_match("ㄴ", true, false);
+        mode.on_match("ㄴ", true, true);
         assert!(mode.is_complete());
     }
 
     #[test]
     fn reset_clears_completed_and_restores_incomplete_pool() {
         let mut mode = mode_with(&["ㄱ", "ㄴ"]);
-        mode.on_match("ㄱ", true, false);
+        mode.on_match("ㄱ", true, true);
         assert_eq!(mode.get_progress().completed_keys, 1);
 
         mode.reset();

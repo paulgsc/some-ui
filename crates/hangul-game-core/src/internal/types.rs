@@ -33,11 +33,26 @@ pub struct GameConfig {
 }
 
 impl Default for GameConfig {
+    // Every field here must match `DEFAULT_GAME_CONFIG` in
+    // packages/ui/honeycomb/src/lib/hangul/wasm-game-bridge/index.ts field
+    // for field. There is no automated single-sourcing across the Rust/TS
+    // boundary (see the module comment on `correctness_threshold_ms` below
+    // for why), so `default_matches_typescript_bridge_defaults` in this
+    // file's test module, and the mirroring test in that TS file, are the
+    // only things that catch the two copies drifting apart (Prop. 2.3).
     fn default() -> Self {
         Self {
             min_time_window_ms: 1000,
             max_time_window_ms: 3000,
-            correctness_threshold_ms: 600,
+            // Reconciled to 1500 (was 600, silently unreachable in
+            // production - see Prop. 2.3): `loadHangulWasm` always merges a
+            // fully-populated DEFAULT_GAME_CONFIG before constructing
+            // HangulGameCore, so 1500 is the value every real game session
+            // has actually run at. Deliberately matching that lived
+            // behavior, rather than the unreached 600, so fixing the
+            // duplication doesn't also silently tighten the "high quality
+            // match" window underneath existing players.
+            correctness_threshold_ms: 1500,
             speed_increase_every_n_correct: 2,
             time_window_step_ms: 150,
             hide_romanization_streak: 5,
@@ -47,6 +62,34 @@ impl Default for GameConfig {
             buffer_timeout_ms: 400,
             game_duration_ms: 180_000,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cross-language tripwire for Prop. 2.3: the Rust and TypeScript
+    /// defaults have no shared source, so this test pins every field to the
+    /// literal values `DEFAULT_GAME_CONFIG`
+    /// (packages/ui/honeycomb/src/lib/hangul/wasm-game-bridge/index.ts) also
+    /// asserts against itself. Changing either default without updating both
+    /// tests leaves this one failing.
+    #[test]
+    fn default_matches_typescript_bridge_defaults() {
+        let config = GameConfig::default();
+
+        assert_eq!(config.min_time_window_ms, 1000);
+        assert_eq!(config.max_time_window_ms, 3000);
+        assert_eq!(config.correctness_threshold_ms, 1500);
+        assert_eq!(config.speed_increase_every_n_correct, 2);
+        assert_eq!(config.time_window_step_ms, 150);
+        assert_eq!(config.hide_romanization_streak, 5);
+        assert_eq!(config.points_per_correct, 10);
+        assert_eq!(config.points_per_miss, -5);
+        assert_eq!(config.streak_bonus_divisor, 5);
+        assert_eq!(config.game_duration_ms, 180_000);
+        assert_eq!(config.buffer_timeout_ms, 400);
     }
 }
 

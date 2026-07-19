@@ -3,6 +3,10 @@ mod internal;
 use internal::{GameConfig, GameEngine};
 use wasm_bindgen::prelude::*;
 
+// Axiom 11.1 (crates/hangul-game-core/docs/hangul-progression-canon.typ,
+// §11.2): this is the crate's only file allowed to reference wasm_bindgen -
+// enforced by scripts/check-wasm-bindgen-boundary.sh in CI.
+
 /// Thin WASM wrapper - delegates all logic to GameEngine
 #[wasm_bindgen]
 pub struct HangulGameCore {
