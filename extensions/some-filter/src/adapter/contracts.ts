@@ -96,7 +96,21 @@ export type EmitSurfaceColorAction = {
   readonly css: string
 }
 
-export type FilterAction = TagSurfaceAction | EmitSurfaceColorAction
+/**
+ * The page-level counterpart to `theme-detector.ts`'s `alreadyDark` verdict
+ * (added in S3, #688): `runAutoTheme()`'s `if (verdict.alreadyDark)
+ * restoreVendor()` branch becomes an action `decide` emits instead of an
+ * imperative call — withholding every per-surface action for the round
+ * rather than issuing them and having a caller undo the result.
+ */
+export type RestoreNativeAction = {
+  readonly kind: "restore-native"
+}
+
+export type FilterAction =
+  | TagSurfaceAction
+  | EmitSurfaceColorAction
+  | RestoreNativeAction
 
 /**
  * The instantiated kernel: `Adapter<SurfaceKey, SurfaceAttr, FilterAction>`.
