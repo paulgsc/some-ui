@@ -387,6 +387,24 @@ importers:
         specifier: ^120.0.4
         version: 120.0.5
 
+  extensions/filter-classifier:
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.60.0
+        version: 1.60.0
+      '@some-extension/filter':
+        specifier: workspace:*
+        version: link:../some-filter
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      maishatu-eslint-kit:
+        specifier: workspace:*
+        version: link:../../packages/eslint
+
   extensions/some-censor:
     dependencies:
       '@some-extension/common':
