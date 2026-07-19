@@ -48,16 +48,61 @@ function colorsClose(
   return distance <= tolerance
 }
 
+// ── Churn step table ──────────────────────────────────────────────────────────
+// One named, self-contained transition per entry. Every recovery test below is
+// built from this table so a failure localizes to a specific primitive (or to
+// the accumulated history leading into it) instead of a single opaque 30s
+// timeout at the end of a nine-operation script.
+
+type ChurnStep = {
+  readonly name: string
+  readonly run: (p: Page) => Promise<void>
+}
+
+const CHURN_STEPS: ReadonlyArray<ChurnStep> = [
+  { name: "blank", run: (p) => churn.blank(p) },
+  { name: "themeFlip", run: (p) => churn.themeFlip(p) },
+  { name: "bodyHeadReplace", run: (p) => churn.bodyHeadReplace(p) },
+  { name: "styleChurn", run: (p) => churn.styleChurn(p) },
+  { name: "spaNavigate", run: (p) => churn.spaNavigate(p) },
+  { name: "rootReplace", run: (p) => churn.rootReplace(p) },
+  {
+    name: "virtualizedRecycle",
+    run: (p) => churn.virtualizedRecycle(p, "#content-root", "k1", 1),
+  },
+  {
+    name: "extensionDomRemoval",
+    run: (p) => churn.extensionDomRemoval(p, "[data-my-ext]"),
+  },
+  { name: "sustainedMutation", run: (p) => churn.sustainedMutation(p, 500) },
+]
+
+// Runs the whole sequence, each primitive wrapped in a test.step so the
+// Playwright report shows exactly which one was running when a hang/throw hit.
 async function runFullChurnSequence(page: Page): Promise<void> {
-  await churn.blank(page)
-  await churn.themeFlip(page)
-  await churn.bodyHeadReplace(page)
-  await churn.styleChurn(page)
-  await churn.spaNavigate(page)
-  await churn.rootReplace(page)
-  await churn.virtualizedRecycle(page, "#content-root", "k1", 1)
-  await churn.extensionDomRemoval(page, "[data-my-ext]")
-  await churn.sustainedMutation(page, 500)
+  for (const step of CHURN_STEPS) {
+    await test.step(step.name, async () => {
+      await step.run(page)
+    })
+  }
+}
+
+// A single falsifiable transition assertion: after whatever just happened, the
+// light hostile page must (re)settle onto the default swatch's dark canvas.
+// waitForClassification is the recovery signal (the pipeline re-stamps
+// swThemeApplied); the 300ms margin lets the coalescer's reconcile window plus
+// realize() land before the computed style is read.
+async function expectConverged(page: Page): Promise<void> {
+  await waitForClassification(page)
+  await page.waitForTimeout(300)
+
+  const rendered = await page.evaluate(() => ({
+    hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
+    bodyBg: getComputedStyle(document.body).backgroundColor,
+  }))
+
+  expect(rendered.hasDarkAttr).toBe(true)
+  expect(colorsClose(rendered.bodyBg, swatch.bg0)).toBe(true)
 }
 
 test.describe("swatch-oracle: convergence (positive proof)", () => {
@@ -87,24 +132,64 @@ test.describe("swatch-oracle: convergence (positive proof)", () => {
     expect(rendered.stripPatched).toBe("preserve")
   })
 
-  test("the page still wears the default swatch's canvas after the full hostile churn sequence", async ({
+  test("the page wears the default swatch's canvas the moment it settles, before any churn", async ({
     fixture,
   }) => {
     const page = await fixture.goto("hostile-page")
-    await waitForClassification(page)
+    await expectConverged(page)
+  })
+})
 
-    await runFullChurnSequence(page)
+// Each test owns exactly one transition: converge from a clean load, apply a
+// single churn primitive, then require the page to re-converge. A failure here
+// names the primitive that breaks recovery *in isolation* (independent of any
+// accumulated history), so it is separable from an order/history effect.
+test.describe("swatch-oracle: single-primitive recovery (isolation)", () => {
+  for (const step of CHURN_STEPS) {
+    test(`re-converges after ${step.name}()`, async ({ fixture }) => {
+      const page = await fixture.goto("hostile-page")
+      await test.step("initial converge", async () => {
+        await expectConverged(page)
+      })
+      await test.step(step.name, async () => {
+        await step.run(page)
+      })
+      await test.step("re-converge", async () => {
+        await expectConverged(page)
+      })
+    })
+  }
+})
 
-    // Settle: the coalescer's window plus margin for the final round.
-    await page.waitForTimeout(300)
-
-    const rendered = await page.evaluate(() => ({
-      hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
-      bodyBg: getComputedStyle(document.body).backgroundColor,
-    }))
-
-    expect(rendered.hasDarkAttr).toBe(true)
-    expect(colorsClose(rendered.bodyBg, swatch.bg0)).toBe(true)
+// The cumulative counterpart: one page walked through the whole sequence, with
+// a convergence gate after every primitive. Because it is interleaved and
+// history-preserving, the Playwright report reads as
+//
+//   ✓ blank        ✓ converge after blank
+//   ✓ themeFlip    ✓ converge after themeFlip
+//   ✗ converge after bodyHeadReplace   (timeout)
+//
+// which names the *first operation, given the full history before it*, after
+// which the pipeline stops recovering — the single most useful signal for an
+// observer-based system. Given up to nine 5s convergence gates, the default
+// 30s test budget is not enough even on the happy path, so raise it.
+test.describe("swatch-oracle: cumulative recovery (history-preserving)", () => {
+  test("re-converges after every prefix of the full hostile sequence", async ({
+    fixture,
+  }) => {
+    test.setTimeout(120_000)
+    const page = await fixture.goto("hostile-page")
+    await test.step("baseline converge", async () => {
+      await expectConverged(page)
+    })
+    for (const step of CHURN_STEPS) {
+      await test.step(step.name, async () => {
+        await step.run(page)
+      })
+      await test.step(`converge after ${step.name}`, async () => {
+        await expectConverged(page)
+      })
+    }
   })
 })
 
