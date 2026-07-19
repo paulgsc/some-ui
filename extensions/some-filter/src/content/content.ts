@@ -272,10 +272,25 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
 
 // ── Run ───────────────────────────────────────────────────────────────────────
 
+function bootInit(): void {
+  try {
+    init()
+  } catch (error) {
+    // A throw in init() (a transport factory failing, restoreVendor or
+    // withPrepaintSuppressed dying before the pipeline's onFire hook ever
+    // runs) otherwise leaves the veil up forever with the failure visible
+    // nowhere — the silent-hang class of bug that reads, from the outside, as
+    // "the extension loads but never processes." Surface it on the console so
+    // it is at least diagnosable rather than a mute stall.
+    // eslint-disable-next-line no-console
+    console.error("[some-filter] content init() threw:", error)
+  }
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init, { once: true })
+  document.addEventListener("DOMContentLoaded", bootInit, { once: true })
 } else {
-  init()
+  bootInit()
 }
 
 export {}

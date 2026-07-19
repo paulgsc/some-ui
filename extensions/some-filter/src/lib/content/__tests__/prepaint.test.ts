@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   commitVisualState,
@@ -93,6 +93,55 @@ describe("commitVisualState", () => {
     // vitest.setup.ts stubs rAF to execute synchronously,
     // so both nested rAFs fire immediately.
     expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("removes the veil via the timer fallback when rAF never fires", () => {
+    // rAF is paused in occluded/background tabs. Simulate that by making it a
+    // no-op so only the setTimeout fallback can lift the veil.
+    vi.useFakeTimers()
+    const rafSpy = vi
+      .spyOn(globalThis, "requestAnimationFrame")
+      .mockImplementation(() => 0)
+    try {
+      enablePrepaint()
+      commitVisualState()
+
+      // rAF stubbed out — the veil is still up until the timer fires.
+      expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+      vi.advanceTimersByTime(200)
+
+      expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    } finally {
+      rafSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it("tears the veil down exactly once — a stale fallback timer is a no-op", () => {
+    // Under fake timers rAF is modeled as firing at ~16ms frames while the
+    // fallback timer is at 100ms, so advancing 50ms fires the rAF pair (which
+    // lifts the veil) but leaves the fallback timer still pending. The
+    // `dropped` guard must keep that stale timer from tearing down a *later*
+    // veil once it eventually fires.
+    vi.useFakeTimers()
+    try {
+      enablePrepaint()
+      commitVisualState()
+
+      vi.advanceTimersByTime(50)
+      // rAF pair has lifted the veil; the 100ms fallback is still pending.
+      expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+
+      // A fresh veil goes up before the stale fallback fires.
+      enablePrepaint()
+      vi.advanceTimersByTime(100)
+
+      // The stale timer's drop() was guarded — the new veil survives.
+      expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

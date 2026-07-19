@@ -55,9 +55,24 @@ export async function waitForClassification(
   page: Page,
   timeout = 5_000
 ): Promise<FilterDebug> {
+  // Two things matter here:
+  //  1. `{ timeout }` MUST be the third (options) argument. Playwright's
+  //     signature is waitForFunction(pageFunction, arg, options) — passed as
+  //     the second argument it is silently treated as `arg` (handed to the
+  //     page function, which ignores it), leaving the real timeout at its
+  //     30s default. That is the "everything times out at 30s" symptom.
+  //  2. `polling: <number>` (timed) rather than the default `'raf'`. The attr
+  //     is set synchronously by the pipeline's onFire hook, but rAF is paused
+  //     in tabs the browser treats as non-foreground (headed automation opens
+  //     a second page, so the fixture page is frequently occluded). With raf
+  //     polling the predicate is never re-evaluated there and the wait hangs
+  //     forever even though the attribute is already present. setTimeout still
+  //     fires (throttled) in occluded tabs, so timed polling always observes
+  //     it. This mirrors the veil-teardown timer fallback in prepaint.ts.
   await page.waitForFunction(
     () => document.body.dataset["swThemeApplied"] !== undefined,
-    { timeout }
+    undefined,
+    { timeout, polling: 100 }
   )
 
   return page.evaluate((): FilterDebug => {
