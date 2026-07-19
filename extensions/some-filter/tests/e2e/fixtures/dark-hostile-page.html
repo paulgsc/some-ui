@@ -6,6 +6,14 @@
   never in doubt — the point of this fixture is to churn a page that must
   be exonerated (restored to native styling, never held) and never falsely
   themed, not to probe the light/dark boundary itself.
+
+  At least MIN_EVIDENCE_FOR_DARK_VERDICT (theme-adapter.ts) *distinct* dark
+  colors, not merely elements: #card shares main's own key, so the original
+  two-color fixture (main/#card's shared key + #panel's) evidenced only 2
+  distinct keys — below the page-level verdict's minimum-evidence guard,
+  which exists specifically to distrust a sample this sparse. #strip adds a
+  third, distinct dark key so this fixture legitimately clears the guard
+  like a real, fully-rendered dark page would.
 -->
 <html style="background-color: rgb(30, 30, 30)">
   <head>
@@ -27,6 +35,9 @@
         </div>
         <div id="panel" style="background-color: rgb(20, 25, 35); padding: 8px">
           dark blue panel
+        </div>
+        <div id="strip" style="background-color: rgb(15, 15, 15); padding: 8px">
+          dark strip
         </div>
       </div>
     </main>

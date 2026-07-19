@@ -109,8 +109,13 @@ describe("createContentSession — rescan() is immediate, not coalesced", () => 
   })
 
   it("a genuinely dark page (mean luminance low) restores native instead of tagging, immediately", () => {
+    // Three distinct dark keys, at/above theme-adapter.ts's
+    // MIN_EVIDENCE_FOR_DARK_VERDICT -- a single evidenced element is exactly
+    // the sparse-sample case that guard exists to distrust.
     document.body.innerHTML =
-      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>'
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>' +
+      '<div id="b" style="background-color: rgb(5, 5, 5)"></div>' +
+      '<div id="c" style="background-color: rgb(10, 10, 10)"></div>'
     const session = createSessionLifecycle()
     const contentSession = createContentSession(SWATCHES.default, session)
 

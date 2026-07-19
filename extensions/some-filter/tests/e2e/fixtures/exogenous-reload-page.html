@@ -1,0 +1,50 @@
+<!doctype html>
+<!--
+  Exogenous self-reload fixture — reproduces a real-world pattern reported
+  from live YouTube: the page loads, paints once, then the page's OWN script
+  triggers a full reload shortly after (exact vendor trigger unconfirmed).
+  The content script gets a second document_start/document_end cycle on a
+  fresh document. Reported symptom: prepaint covers correctly on both loads,
+  but the FINAL settled state after the second load shows the native
+  (light) background instead of the extension's dark theme — "it settles to
+  white after the second document_end."
+
+  This fixture drives exactly that shape without needing a live, unstable
+  vendor page: a plain light page whose own inline script reloads itself
+  once (sessionStorage-gated, so it doesn't loop) a short delay after load.
+  The correctness bar: whatever happens transiently during/around the
+  reload, the extension must land on its themed dark canvas once the SECOND
+  load's content script settles — not strand the user on native white.
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Exogenous Reload Fixture</title>
+    <script>
+      // Same-tab reload, gated so it fires exactly once. sessionStorage is
+      // the right primitive here, not a URL param: it's scoped to this
+      // tab's session for this origin and, unlike an in-memory JS flag,
+      // survives the very reload it's guarding against looping on.
+      if (!sessionStorage.getItem("__sw_test_reloaded")) {
+        sessionStorage.setItem("__sw_test_reloaded", "1")
+        setTimeout(function () {
+          location.reload()
+        }, 200)
+      }
+    </script>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Exogenous Reload Fixture</h1>
+      <div id="card" style="background-color: rgb(255, 255, 255); padding: 8px">
+        white card
+      </div>
+      <div
+        id="panel"
+        style="background-color: rgb(200, 220, 255); padding: 8px"
+      >
+        light blue panel
+      </div>
+    </main>
+  </body>
+</html>

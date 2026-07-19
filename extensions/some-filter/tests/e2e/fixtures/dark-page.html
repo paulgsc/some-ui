@@ -9,6 +9,13 @@
   This distinguishes a real dark page from a prepaint-poisoned white page:
   both produce themeApplied="none", but only the poisoned case has luminance ≈ 0.005
   on what should be a white page.
+
+  Three distinct dark-colored descendants (main/header/footer), not one: the
+  page-level verdict (theme-adapter.ts's pageAlreadyDark) requires at least
+  MIN_EVIDENCE_FOR_DARK_VERDICT evidenced keys before trusting a dark mean —
+  a single evidenced element is exactly the sparse-sample case that guard
+  exists to distrust, so this fixture needs to legitimately clear it like a
+  real, fully-rendered dark page would.
 -->
 <html style="background-color: rgb(30, 30, 30)">
   <head>
@@ -22,9 +29,14 @@
       color: rgb(220, 220, 220);
     "
   >
-    <main style="background-color: rgb(30, 30, 30)">
+    <header style="background-color: rgb(25, 25, 25)">
       <h1>Dark Page Fixture</h1>
+    </header>
+    <main style="background-color: rgb(30, 30, 30)">
       <p>Dark background — dark theme should NOT be applied.</p>
     </main>
+    <footer style="background-color: rgb(20, 20, 20)">
+      <p>footer</p>
+    </footer>
   </body>
 </html>
