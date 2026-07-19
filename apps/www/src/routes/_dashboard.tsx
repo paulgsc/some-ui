@@ -19,9 +19,23 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "some-ui-shared"
+import { cn } from "some-ui-utils"
 
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Toaster } from "@/components/toaster"
+
+/**
+ * Matches only the session player route (/sessions/$sessionId), whose
+ * content owns a fixed viewport V (see docs/session-viewport) — the
+ * dashboard shell must not let the page scroll here, or V is never
+ * genuinely bounded. Every other route, including /sessions and
+ * /sessions/new, stays an ordinary scrolling document.
+ */
+const SESSION_PLAYER_PATH = /^\/sessions\/(?!new$)[^/]+$/
+
+function isViewportPath(pathname: string): boolean {
+  return SESSION_PLAYER_PATH.test(pathname)
+}
 
 type NavItem = {
   to: "/" | "/sessions" | "/profile" | "/settings"
@@ -45,9 +59,10 @@ const DashboardLayout = (): JSX.Element => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const isViewportRoute = isViewportPath(pathname)
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
       <Sidebar>
         <SidebarHeader>
           <div className="text-gradient-accent px-2 py-1.5 text-sm font-semibold">
@@ -81,7 +96,12 @@ const DashboardLayout = (): JSX.Element => {
           <SidebarTrigger />
           <ThemeSwitcher />
         </header>
-        <div className="flex-1 overflow-auto p-6">
+        <div
+          className={cn(
+            "flex-1 p-6",
+            isViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
+          )}
+        >
           <Outlet />
         </div>
       </SidebarInset>
