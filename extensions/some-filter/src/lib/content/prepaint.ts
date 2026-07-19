@@ -128,11 +128,27 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
   the veil is lifted, the dark CSS is already in the cascade and there is no
   intermediate native-substrate frame. Two rAFs ensure the theme has painted at
   least once under the veil before it is removed (atomic swap).
+
+  Timer fallback: requestAnimationFrame is paused entirely in tabs the browser
+  considers non-foreground (a page loaded in a background tab, or — in headed
+  automation — a page that is occluded by another). Relying on rAF alone leaves
+  the veil up indefinitely in exactly those cases, stranding the page under a
+  dark cover forever. setTimeout continues to fire (throttled) in occluded tabs,
+  so it guarantees teardown. Whichever fires first wins; `dropped` makes the
+  loser a no-op so the veil is never torn down twice. On a visible tab the rAF
+  pair resolves in ~1 frame, well before the timer, preserving the atomic swap.
 */
+const COMMIT_FALLBACK_MS = 100
+
 export function commitVisualState(): void {
+  let dropped = false
+  const drop = (): void => {
+    if (dropped) return
+    dropped = true
+    disablePrepaint()
+  }
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      disablePrepaint()
-    })
+    requestAnimationFrame(drop)
   })
+  setTimeout(drop, COMMIT_FALLBACK_MS)
 }

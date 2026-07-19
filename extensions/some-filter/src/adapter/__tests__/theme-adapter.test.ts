@@ -59,9 +59,11 @@ describe("decide — purity", () => {
 })
 
 describe("decide — no bright surfaces", () => {
-  it("returns ∅ for an empty hypothesis", () => {
+  it("still activates the static theme layer for an empty hypothesis (no per-surface actions)", () => {
     const h = createHypothesis<SurfaceKey, SurfaceAttr>()
-    expect(decide(h, swatch)).toEqual([])
+    expect(decide(h, swatch)).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
+    ])
   })
 
   it("emits no per-surface action for mid-luminance (untouched-band) evidence", () => {
@@ -88,6 +90,7 @@ describe("decide — mixed page", () => {
     const actions = decide(h, swatch)
 
     expect(actions).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
       { kind: "tag-surface", key: "light", role: "surface" },
       {
         kind: "emit-surface-color",
@@ -101,17 +104,21 @@ describe("decide — mixed page", () => {
   it("skips near-transparent evidence regardless of luminance", () => {
     const h = createHypothesis<SurfaceKey, SurfaceAttr>()
     h.set("glass", attrFor("rgba(255, 255, 255, 0.05)", 0.05))
-    expect(decide(h, swatch)).toEqual([])
+    expect(decide(h, swatch)).toEqual([
+      { kind: "activate-theme", swatchId: swatch.id },
+    ])
   })
 })
 
 describe("decide — page-level already-dark verdict", () => {
-  it("withholds every per-surface action and emits restore-native when the mean luminance reads dark", () => {
+  it("withholds every per-surface action and emits restore-native when the mean luminance reads dark (>= 3 evidenced keys)", () => {
     const h = createHypothesis<SurfaceKey, SurfaceAttr>()
     // Every evidenced key is near-black; classifyPage()'s reframe (detect())
-    // would call this page already dark.
+    // would call this page already dark. Three distinct keys, at/above
+    // MIN_EVIDENCE_FOR_DARK_VERDICT, so the verdict is actually trusted.
     h.set("a", attrFor("rgb(13, 17, 23)"))
     h.set("b", attrFor("rgb(5, 5, 5)"))
+    h.set("c", attrFor("rgb(10, 10, 10)"))
 
     expect(decide(h, swatch)).toEqual([{ kind: "restore-native" }])
   })
@@ -122,6 +129,26 @@ describe("decide — page-level already-dark verdict", () => {
 
     const actions = decide(h, swatch)
     expect(actions.some((a) => a.kind === "restore-native")).toBe(false)
+  })
+
+  it("does NOT emit restore-native from a sparse (< 3 keys) dark-reading sample, even if their mean is dark", () => {
+    // Guards against a real failure mode: a heavy client-rendered page can
+    // easily have only one or two dark chrome/skeleton elements evidenced
+    // early in hydration, well before its actual (light) body content has
+    // rendered. A reactive rescan firing on exactly that sparse a sample
+    // must not conclude "page is already dark" and strip the theme --
+    // restore-native's veil-drop is immediate and uncorrected once more
+    // (light) evidence later arrives. Two near-black keys alone -- below
+    // MIN_EVIDENCE_FOR_DARK_VERDICT -- must be treated as inconclusive, the
+    // same "insufficient evidence -> assume light" bias zero evidence
+    // already gets.
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set("a", attrFor("rgb(13, 17, 23)"))
+    h.set("b", attrFor("rgb(5, 5, 5)"))
+
+    const actions = decide(h, swatch)
+    expect(actions.some((a) => a.kind === "restore-native")).toBe(false)
+    expect(actions.some((a) => a.kind === "activate-theme")).toBe(true)
   })
 })
 

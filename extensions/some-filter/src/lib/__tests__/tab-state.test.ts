@@ -4,7 +4,7 @@ import { DEFAULT_TAB_STATE, nextTabState, STATE_CYCLE } from "../tab-state"
 
 describe("tab-state", () => {
   it("defaults to auto (themed-by-default)", () => {
-    expect(DEFAULT_TAB_STATE).toBe("legacy")
+    expect(DEFAULT_TAB_STATE).toBe("auto")
   })
 
   it("cycles legacy → auto → off → legacy", () => {

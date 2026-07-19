@@ -1,24 +1,25 @@
 /**
- * Theme applier — owns every DOM write involved in theming a page.
- *
- * Two strategies live here behind one surface:
- *   - dark theme: a static CSS layer (buildDarkThemeCSS) plus a JS luminance
- *     patcher (patchAll + MutationObserver) that tags vendor backgrounds.
+ * Theme applier — the static half of theming a page (S5, #690, split this
+ * module in two). Owns exactly:
+ *   - dark theme: the static CSS layer (buildDarkThemeCSS), a page-wide
+ *     binary switch (data-sw-dark + the token stylesheet), realized by
+ *     `src/adapter/actuator.ts`'s `activate-theme`/`restore-native` actions.
  *   - legacy filter: a single global root `filter: invert(...)` rule.
+ *     Untouched by S5 — no transport concept maps onto it yet.
+ *
+ * The per-element JS luminance patcher (classifyElement, colorTokens,
+ * patchAll, the MutationObserver) that used to live here has moved: its
+ * classification math is `adapter/theme-adapter.ts`'s `decide` (S3, pure,
+ * no DOM), its DOM writes are `adapter/actuator.ts` (S5, the *only* module
+ * that writes `data-sw-patched` now), and its sensing is
+ * `adapter/pipeline.ts` (S5, the Sensor + Estimator + Scheduler wiring).
+ * This module never writes `data-sw-patched` or the dynamic-color
+ * stylesheet — only the attribute and stylesheet the static layer owns.
  *
  * Public surface:
- *   - applyTheme(mode, config?) — apply the dark theme or the legacy filter.
- *   - restoreVendor()           — remove all theming, returning to native styles.
- * The granular dark-theme exports (injectDarkTheme/removeDarkTheme/repatchPage)
- * are retained for the SPA re-patch path and unit tests.
- *
- * Part A — CSS layer (static rules):
- *   Scoped to body (and html) with :not([data-my-ext]) / :not([data-my-ext] *)
- *   guards on rules that could bleed into extension-owned subtrees.
- *
- * Part B — JS luminance patcher (dynamic):
- *   Walks document.body, skips [data-my-ext] nodes and their descendants via
- *   shouldSkip(). Vendor DOM is left in place; extension nodes self-exclude.
+ *   - applyTheme(mode, config?, swatch?) — apply the dark theme or the legacy filter.
+ *   - restoreVendor()                    — remove all theming, returning to native styles.
+ * injectDarkTheme/removeDarkTheme are retained for the actuator and unit tests.
  */
 
 import {
@@ -28,8 +29,6 @@ import {
 } from "@filter/adapter/swatches"
 import type { FilterConfig } from "@filter/types/config"
 
-import { parseColor, relativeLuminance } from "./color"
-import { modifyBackgroundColor, rgbaToCss } from "./modify-colors"
 import { commitVisualState } from "./prepaint"
 
 export const DARK_THEME_ATTR = "data-sw-dark"
@@ -69,7 +68,8 @@ function swatchTokens(swatch: Swatch): string {
 // Guard: never apply theme rules inside extension-owned subtrees.
 // :not([data-my-ext] *)  — excludes descendants of marked nodes
 // :not([data-my-ext])    — excludes the marked node itself
-const EXT_GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
+// Exported so adapter/actuator.ts's dynamic per-surface rules use the same guard.
+export const EXT_GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
 
 export function buildDarkThemeCSS(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
@@ -196,11 +196,12 @@ body${EXT_GUARD} {
   fill: var(--sw-text-1) !important;
 }
 
-/* ── JS luminance patcher targets ───────────────────────────────────────── */
+/* ── Actuator targets (adapter/actuator.ts) ────────────────────────────── */
 
-/* Light backgrounds are tagged with a generated token (c0, c1, …) whose
-   hue-preserving dark color is emitted into the dynamic stylesheet by the
-   patcher (see tokenForBackground). Near-black backgrounds are preserved. */
+/* Light backgrounds are tagged with their own canonical color as the
+   attribute value; the matching hue-preserving dark rule is appended to a
+   separate dynamic stylesheet by the actuator's emit-surface-color action.
+   Near-black backgrounds are tagged "preserve" and revert here. */
 
 [data-sw-patched="preserve"]${EXT_GUARD} {
   background-color: revert !important;
@@ -209,160 +210,13 @@ body${EXT_GUARD} {
 `
 }
 
-// ── JS luminance patcher ──────────────────────────────────────────────────────
-
-const LIGHT_THRESHOLD = 0.3
-
-// ── Dynamic per-element color registry ──────────────────────────────────────────
-// Light backgrounds get a hue-preserving dark color computed via modify-colors.
-// To keep the patcher attribute-only (so restoreVendor is byte-identical — no
-// inline-style clobbering of vendor nodes), each distinct modified color is
-// assigned a token and a matching `[data-sw-patched="<token>"]` rule is appended
-// to a dynamic stylesheet. Elements only ever receive a data attribute.
-
-const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
-const colorTokens = new Map<string, string>()
-let colorTokenSeq = 0
-
-function dynamicStyleEl(): HTMLStyleElement {
-  const existing = document.getElementById(DYNAMIC_STYLE_ID)
-  if (existing instanceof HTMLStyleElement) return existing
-  const style = document.createElement("style")
-  style.id = DYNAMIC_STYLE_ID
-  document.head.appendChild(style)
-  return style
-}
-
-function tokenForBackground(modifiedCss: string): string {
-  const cached = colorTokens.get(modifiedCss)
-  if (cached !== undefined) return cached
-
-  const token = `c${colorTokenSeq++}`
-  colorTokens.set(modifiedCss, token)
-  dynamicStyleEl().textContent += `[data-sw-patched="${token}"]${EXT_GUARD}{background-color:${modifiedCss}!important}\n`
-  return token
-}
-
-function clearDynamicColors(): void {
-  document.getElementById(DYNAMIC_STYLE_ID)?.remove()
-  colorTokens.clear()
-  colorTokenSeq = 0
-}
-
-function classifyElement(el: Element): string | null {
-  const bg = getComputedStyle(el).backgroundColor
-  const c = parseColor(bg)
-
-  if (!c) return null
-
-  // Near-transparent elements are glass layers over the dark body canvas.
-  // Tagging them would revert/repaint their background once the transition or
-  // opacity settles, permanently leaking white.
-  if (c[3] < 0.1) return null
-
-  const lum = relativeLuminance(c[0], c[1], c[2])
-
-  if (lum > LIGHT_THRESHOLD) {
-    // Hue-preserving dark surface instead of a flat grey bucket.
-    return tokenForBackground(rgbaToCss(modifyBackgroundColor(c)))
-  }
-
-  if (lum < 0.06) return "preserve"
-
-  return null
-}
-
-const SKIP_TAGS = new Set([
-  "SCRIPT",
-  "STYLE",
-  "LINK",
-  "META",
-  "NOSCRIPT",
-  "IMG",
-  "VIDEO",
-  "CANVAS",
-  "AUDIO",
-  "PICTURE",
-  "EMBED",
-  "OBJECT",
-  "SVG",
-  "IFRAME",
-])
-
-function shouldSkip(el: Element): boolean {
-  if (SKIP_TAGS.has(el.tagName)) return true
-  if (el.id === "__sw_overlay_root") return true
-  // Skip extension-owned nodes and their descendants.
-  // The attribute check on el covers the root; the closest() check covers
-  // descendants that don't carry the attr themselves.
-  if (el.hasAttribute("data-my-ext")) return true
-  if (el.closest("[data-my-ext]")) return true
-  return false
-}
-
-function patchElement(el: Element): void {
-  if (!(el instanceof HTMLElement)) return
-  if (shouldSkip(el)) return
-
-  const token = classifyElement(el)
-  if (token !== null) {
-    el.dataset.swPatched = token
-  }
-}
-
-function patchAll(root: Element): void {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  let node: Node | null = walker.nextNode()
-  while (node !== null) {
-    if (node instanceof Element) {
-      patchElement(node)
-    }
-    node = walker.nextNode()
-  }
-}
-
-let patchObserver: MutationObserver | null = null
-
-function startPatchObserver(root: Element): void {
-  if (patchObserver) return
-
-  patchObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type === "childList") {
-        for (const node of mutation.addedNodes) {
-          if (node instanceof Element) {
-            patchElement(node)
-            patchAll(node)
-          }
-        }
-      } else if (mutation.type === "attributes") {
-        // Re-evaluate when class/style changes — the element's background
-        // may have changed during SPA re-renders or dynamic theming.
-        if (mutation.target instanceof Element) {
-          patchElement(mutation.target)
-        }
-      }
-    }
-  })
-
-  patchObserver.observe(root, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["class", "style"],
-  })
-}
-
-function stopPatchObserver(): void {
-  patchObserver?.disconnect()
-  patchObserver = null
-}
-
-// ── Dark theme injection ────────────────────────────────────────────────────────
+// ── Dark theme injection (static layer only) ───────────────────────────────────
 
 const STYLE_ID = "__sw_dark_theme"
 
-export function injectDarkTheme(): void {
+export function injectDarkTheme(
+  swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
+): void {
   const existing = document.getElementById(STYLE_ID)
   const style: HTMLStyleElement =
     existing instanceof HTMLStyleElement
@@ -372,34 +226,17 @@ export function injectDarkTheme(): void {
     style.id = STYLE_ID
     document.head.appendChild(style)
   }
-  style.textContent = buildDarkThemeCSS()
-
-  // Walk from body — patcher already skips [data-my-ext] nodes.
-  patchAll(document.body)
-  startPatchObserver(document.body)
-  // Veil removal is the caller's responsibility: inject theme first,
-  // then call commitVisualState() so the dark CSS is in the cascade
-  // before the veil's invert filter is lifted (atomic swap, F1).
+  style.textContent = buildDarkThemeCSS(swatch)
+  // Per-surface tagging and the dynamic color stylesheet are the actuator's
+  // job now (adapter/actuator.ts), driven by decide()'s returned actions —
+  // not this function's. Veil removal is the caller's responsibility: inject
+  // theme first, then call commitVisualState() so the dark CSS is in the
+  // cascade before the veil is lifted (atomic swap, F1).
 }
 
 export function removeDarkTheme(): void {
   document.getElementById(STYLE_ID)?.remove()
-  clearDynamicColors()
-  stopPatchObserver()
-
-  document.querySelectorAll("[data-sw-patched]").forEach((el) => {
-    el.removeAttribute("data-sw-patched")
-  })
   // Veil removal is the caller's responsibility.
-}
-
-/**
- * Re-run the luminance patcher over the full document body.
- * Used after SPA navigation (e.g. YouTube pushState swaps) to catch
- * subtrees that were re-rendered without being re-added via childList.
- */
-export function repatchPage(): void {
-  patchAll(document.body)
 }
 
 // ── Legacy filter ─────────────────────────────────────────────────────────────
@@ -457,9 +294,9 @@ function removeLegacyFilter(): void {
 
 // ── Dark theme activation (internal) ────────────────────────────────────────────
 
-function activateDarkTheme(): void {
+function activateDarkTheme(swatch: Swatch): void {
   document.documentElement.setAttribute(DARK_THEME_ATTR, "")
-  injectDarkTheme()
+  injectDarkTheme(swatch)
 }
 
 function deactivateDarkTheme(): void {
@@ -472,18 +309,23 @@ function deactivateDarkTheme(): void {
 export type ThemeMode = "dark" | "legacy"
 
 /**
- * Apply a theme. `dark` injects the dark-theme CSS layer + patcher; `legacy`
- * installs the global invert filter (pass `config` for legacy — omitted/undefined
- * is a no-op). Does not clear the other mode — the orchestrator calls
- * restoreVendor() first when switching.
+ * Apply a theme. `dark` injects the static dark-theme CSS layer only (the
+ * per-surface patcher is `adapter/actuator.ts`'s job now — this is just the
+ * page-wide switch); `legacy` installs the global invert filter (pass
+ * `config` for legacy — omitted/undefined is a no-op). Does not clear the
+ * other mode — the orchestrator calls restoreVendor() first when switching.
  */
-export function applyTheme(mode: ThemeMode, config?: FilterConfig): void {
+export function applyTheme(
+  mode: ThemeMode,
+  config?: FilterConfig,
+  swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
+): void {
   try {
     if (mode === "legacy") {
       if (config !== undefined) applyLegacyFilter(config)
       return
     }
-    activateDarkTheme()
+    activateDarkTheme(swatch)
   } finally {
     commitVisualState()
   }

@@ -21,6 +21,11 @@
  * weight; `classifyPage()`'s tiered/viewport-coverage weighting is what
  * decides *which* evidence lands in Ĥ and is therefore a Sensor concern,
  * S5's to supply, not this pure function's to re-derive from live DOM).
+ *
+ * `ActivateThemeAction` (S5, #690) is always the first action whenever a
+ * swatch is active and the page doesn't already read as dark — the static
+ * layer (`buildDarkThemeCSS`) is a page-wide binary switch, independent of
+ * whether any individual surface needs its own tag/emit action.
  */
 
 import {
@@ -39,6 +44,23 @@ const OPACITY_SKIP_THRESHOLD = 0.1
 
 // Mirrors theme-detector.ts's classifyPage()/detect() default threshold.
 const PAGE_LUMINANCE_THRESHOLD = 0.4
+
+// Below this many evidenced keys, an unweighted mean is not a page-level
+// verdict — it is one or two elements' colors standing in for the whole
+// page. Real pages routinely render a handful of dark chrome/skeleton
+// elements (nav bars, loading placeholders) well before their actual (light)
+// body content hydrates; on a heavy client-rendered SPA that reloads itself
+// shortly after initial paint (an observed real-world pattern, exact
+// trigger unconfirmed), a reactive rescan can fire while evidence is this
+// sparse and conclude "page is already dark" from pure happenstance. That
+// verdict then emits restore-native, which strips the theme and — via
+// content.ts's onFire, applied=false takes the immediate disablePrepaint()
+// branch rather than the atomic commitVisualState() swap — drops the veil
+// right away, exposing the page's true (light) background with no further
+// correction once more evidence arrives. Below the threshold, the existing
+// "insufficient evidence -> assume light" bias (previously only count === 0)
+// just extends to "not enough evidence to trust either way."
+const MIN_EVIDENCE_FOR_DARK_VERDICT = 3
 
 /**
  * `detect()`'s `alreadyDark` verdict, folded into a pure predicate over Ĥ:
@@ -60,7 +82,7 @@ function pageAlreadyDark(
     count += 1
   }
 
-  if (count === 0) return false
+  if (count < MIN_EVIDENCE_FOR_DARK_VERDICT) return false
 
   const avgLuminance = total / count
   return avgLuminance <= PAGE_LUMINANCE_THRESHOLD
@@ -83,7 +105,12 @@ export function decide(
     return [{ kind: "restore-native" }]
   }
 
-  const actions: Array<FilterAction> = []
+  // Static layer first, independent of per-surface evidence: a page with
+  // zero evidenced keys (nothing anywhere has an explicit background) still
+  // gets the dark canvas + text tokens (the transparent-page fixture).
+  const actions: Array<FilterAction> = [
+    { kind: "activate-theme", swatchId: swatch.id },
+  ]
 
   for (const key of hypothesis.keys()) {
     const attr = hypothesis.get(key)
