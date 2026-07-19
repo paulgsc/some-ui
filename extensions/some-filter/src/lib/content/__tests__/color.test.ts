@@ -52,6 +52,56 @@ describe("parseColor", () => {
     expect(c).not.toBeNull()
     expect(c![3]).toBeCloseTo(0.05)
   })
+
+  it("parses a 6-digit hex color (the swatch registry's own format)", () => {
+    const c = parseColor("#0d1117")
+    expect(c).not.toBeNull()
+    expect(c![0]).toBeCloseTo(0x0d / 255)
+    expect(c![1]).toBeCloseTo(0x11 / 255)
+    expect(c![2]).toBeCloseTo(0x17 / 255)
+    expect(c![3]).toBe(1)
+  })
+
+  it("parses a 6-digit hex color case-insensitively", () => {
+    expect(parseColor("#0D1117")).toEqual(parseColor("#0d1117"))
+  })
+
+  it("parses a 3-digit shorthand hex color", () => {
+    const c = parseColor("#fff")
+    expect(c).not.toBeNull()
+    expect(c![0]).toBeCloseTo(1)
+    expect(c![1]).toBeCloseTo(1)
+    expect(c![2]).toBeCloseTo(1)
+    expect(c![3]).toBe(1)
+  })
+
+  it("parses an 8-digit hex color with alpha", () => {
+    const c = parseColor("#ffffff80")
+    expect(c).not.toBeNull()
+    expect(c![3]).toBeCloseTo(0x80 / 255, 2)
+  })
+
+  it("parses a 4-digit shorthand hex color with alpha", () => {
+    const c = parseColor("#ffff")
+    expect(c).not.toBeNull()
+    expect(c![3]).toBeCloseTo(1)
+  })
+
+  it("returns null for hex alpha below the 0.05 floor", () => {
+    expect(parseColor("#ffffff05")).toBeNull()
+  })
+
+  it("returns null for a malformed hex string", () => {
+    expect(parseColor("#zzz")).toBeNull()
+    expect(parseColor("#12345")).toBeNull()
+  })
+
+  it("every SWATCHES bg0 hex value parses to the same rgb it renders as", async () => {
+    const { SWATCHES } = await import("../../../adapter/swatches")
+    for (const swatch of Object.values(SWATCHES)) {
+      expect(parseColor(swatch.bg0)).not.toBeNull()
+    }
+  })
 })
 
 describe("relativeLuminance", () => {

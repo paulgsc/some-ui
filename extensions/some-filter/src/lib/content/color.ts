@@ -10,6 +10,55 @@
 export type RGBA = [number, number, number, number]
 
 /**
+ * Parses #rgb/#rgba/#rrggbb/#rrggbbaa. getComputedStyle never returns this
+ * format (browsers always normalize to rgb()/rgba()), but the swatch
+ * registry (swatches.ts) stores its canonical colors as hex literals, and
+ * anything comparing a computed style against a swatch color needs both
+ * forms to parse to the same representation.
+ */
+function parseHexColor(css: string): RGBA | null {
+  const match = css.match(
+    /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
+  )
+  if (match === null) {
+    return null
+  }
+
+  const hex = match[1]
+  if (hex === undefined) {
+    return null
+  }
+
+  // charAt() always returns `string` (empty string past the end), unlike
+  // indexed access, which is `string | undefined` under
+  // noUncheckedIndexedAccess — avoids a run of non-null assertions here.
+  const expand = (short: string): string => short + short
+  const isShort = hex.length === 3 || hex.length === 4
+  const rHex = isShort ? expand(hex.charAt(0)) : hex.slice(0, 2)
+  const gHex = isShort ? expand(hex.charAt(1)) : hex.slice(2, 4)
+  const bHex = isShort ? expand(hex.charAt(2)) : hex.slice(4, 6)
+  const aHex =
+    hex.length === 4
+      ? expand(hex.charAt(3))
+      : hex.length === 8
+        ? hex.slice(6, 8)
+        : undefined
+
+  const a = aHex === undefined ? 1 : Number.parseInt(aHex, 16) / 255
+
+  if (a < 0.05) {
+    return null
+  }
+
+  return [
+    Number.parseInt(rHex, 16) / 255,
+    Number.parseInt(gHex, 16) / 255,
+    Number.parseInt(bHex, 16) / 255,
+    a,
+  ]
+}
+
+/**
  * Parse any CSS color string to [r, g, b, a] in 0–1 range.
  * Returns null for unparseable values.
  */
@@ -21,6 +70,10 @@ export function parseColor(css: string): RGBA | null {
     css === "rgba(0, 0, 0, 0)"
   ) {
     return null
+  }
+
+  if (css.startsWith("#")) {
+    return parseHexColor(css)
   }
 
   const match = css.match(
