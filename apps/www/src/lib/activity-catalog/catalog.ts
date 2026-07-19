@@ -96,8 +96,7 @@ const interview: ActivityDefinition = {
   description: "Practice answering mock interview questions on a timer.",
   icon: "mic",
   registryKey: "interview",
-  // Matches the existing SCENE_LAYOUT_MAP precedent, which puts "interview"
-  // on the same sidebar layout as "topik" rather than a dedicated tree.
+  // Shares the "topik" template's sidebar layout rather than a dedicated tree.
   layoutTree: "topik",
   fields: [
     {

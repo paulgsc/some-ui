@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useReducer } from "react"
+import { useReducer, useState } from "react"
 import {
   closestCenter,
   DndContext,
@@ -22,7 +22,7 @@ import {
 } from "@some-ui/slideshow"
 import type { EditorState } from "@some-ui/slideshow"
 import { ChevronDown } from "lucide-react"
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig, YouTubeRegion } from "some-types-utils"
 import {
   Card,
   CardContent,
@@ -31,9 +31,15 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
 } from "some-ui-shared"
 import { LayoutEditor } from "wireframes"
+import type { LayoutNode } from "wireframes"
 
 import { formatTimecode } from "@/lib/format"
 
@@ -62,8 +68,14 @@ export const ArrangementStep = ({
     editorReducer,
     CLOSED_EDITOR_STATE
   )
+  const [layoutEditIndex, setLayoutEditIndex] = useState(0)
   const scenes =
     mode === "advanced" ? (advancedScenes ?? basicScenes) : basicScenes
+  const clampedLayoutEditIndex = Math.max(
+    0,
+    Math.min(layoutEditIndex, scenes.length - 1)
+  )
+  const layoutEditScene = scenes[clampedLayoutEditIndex]
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -90,6 +102,12 @@ export const ArrangementStep = ({
   ): void => {
     const updated = [...scenes]
     updated[sceneIndex] = updatedScene
+    onScenesChange(resequence(updated))
+  }
+
+  const handleLayoutChange = (tree: LayoutNode<YouTubeRegion> | null): void => {
+    const updated = [...scenes]
+    updated[clampedLayoutEditIndex] = { ...layoutEditScene, layout: tree }
     onScenesChange(resequence(updated))
   }
 
@@ -168,20 +186,44 @@ export const ArrangementStep = ({
             <Card>
               <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-6 text-left">
                 <div>
-                  <p className="font-medium">Explore the layout engine</p>
+                  <p className="font-medium">Edit a scene&apos;s layout</p>
                   <p className="text-muted-foreground text-sm">
                     Each scene renders into named regions on screen - a
-                    &quot;layout&quot;. This is the same tool that layout is
-                    built with. Changes here are for exploration only and do not
-                    change your session.
+                    &quot;layout&quot;. Pick a scene below and rearrange its
+                    regions; changes are saved to that scene and used when it
+                    plays.
                   </p>
                 </div>
                 <ChevronDown className="size-5 shrink-0" />
               </CollapsibleTrigger>
               <CollapsibleContent>
+                <div className="flex items-center gap-3 border-t p-4">
+                  <span className="text-sm font-medium">Scene</span>
+                  <Select
+                    value={String(clampedLayoutEditIndex)}
+                    onValueChange={(value) => setLayoutEditIndex(Number(value))}
+                  >
+                    <SelectTrigger className="w-64">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scenes.map((scene, index) => (
+                        <SelectItem
+                          key={scene.scene_name}
+                          value={String(index)}
+                        >
+                          {scene.scene_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="overflow-x-auto border-t">
                   <div className="min-w-[1280px]">
-                    <LayoutEditor />
+                    <LayoutEditor
+                      value={layoutEditScene.layout ?? null}
+                      onChange={handleLayoutChange}
+                    />
                   </div>
                 </div>
               </CollapsibleContent>

@@ -1,14 +1,48 @@
 import type { ComponentType } from "react"
 import { z } from "zod"
 
-export type YouTubeRegion =
-  | "video"
-  | "title"
-  | "mainContent"
-  | "footerLeft"
-  | "sidebarTop"
-  | "sidebarBottom"
-  | "footerRight"
+export const YouTubeRegionSchema = z.enum([
+  "video",
+  "title",
+  "mainContent",
+  "footerLeft",
+  "sidebarTop",
+  "sidebarBottom",
+  "footerRight",
+])
+
+export type YouTubeRegion = z.infer<typeof YouTubeRegionSchema>
+
+/**
+ * Topology only - which leaf ids exist and how they're split. Structurally
+ * identical to `wireframes`' `LayoutNode<YouTubeRegion>`; declared here
+ * (rather than imported) so `some-types-utils` doesn't depend on the `ui`
+ * layer that already depends on it. Binding (which registry component sits
+ * in a leaf) lives in `UILayoutIntent.panels`, keyed by the same leaf ids;
+ * geometry is solved from this at render time and never persisted.
+ */
+export type LayoutTreeNode =
+  | { type: "leaf"; id: YouTubeRegion }
+  | {
+      type: "split"
+      axis: "row" | "col"
+      splitId: string
+      children: Array<{ node: LayoutTreeNode; weight: number }>
+    }
+
+export const LayoutTreeNodeSchema: z.ZodType<LayoutTreeNode> = z.lazy(() =>
+  z.union([
+    z.object({ type: z.literal("leaf"), id: YouTubeRegionSchema }),
+    z.object({
+      type: z.literal("split"),
+      axis: z.enum(["row", "col"]),
+      splitId: z.string(),
+      children: z.array(
+        z.object({ node: LayoutTreeNodeSchema, weight: z.number() })
+      ),
+    }),
+  ])
+)
 
 // --- Base Types ---
 export const TimeMsSchema = z.number().int()
@@ -56,6 +90,12 @@ export const SceneConfigSchema = z.object({
   duration: TimeMsSchema,
   start_time: TimeMsSchema,
   ui: z.array(UILayoutIntentSchema),
+  /**
+   * The scene's own topology. Owned by the scene (see epic #693 story 3):
+   * authored by the composer, persisted with the scene, read by every
+   * renderer - never a separate, hardcoded or scene-name-keyed tree.
+   */
+  layout: LayoutTreeNodeSchema.nullable().optional(),
 })
 
 export type SceneConfig = z.infer<typeof SceneConfigSchema>
@@ -81,6 +121,7 @@ const LifetimeKindSchema = z.object({
     scene_name: z.string(),
     duration: TimeMsSchema,
     ui: z.array(UILayoutIntentSchema).optional(),
+    layout: LayoutTreeNodeSchema.nullable().optional(),
   }),
 })
 
@@ -167,6 +208,7 @@ export const defaultOrchestratorState: OrchestratorState = {
 }
 
 // Registry Entry
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type RegistryEntry<P = any> = {
   Component: ComponentType<P>
   preload: () => Promise<{ default: ComponentType<P> }>

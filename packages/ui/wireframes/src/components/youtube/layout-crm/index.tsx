@@ -27,8 +27,28 @@ import {
 import { Button, Card, useToast } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
-export const LayoutEditor = (): JSX.Element => {
-  const [tree, setTree] = useState<LayoutNode<YouTubeRegion> | null>(null)
+export type LayoutEditorProps = {
+  /**
+   * Controlled tree value - e.g. a scene's own `layout`. Omit for
+   * standalone/uncontrolled use (Storybook, ad hoc exploration).
+   */
+  value?: LayoutNode<YouTubeRegion> | null
+  /** Called with the next tree whenever a spatial intent mutates it. */
+  onChange?: (tree: LayoutNode<YouTubeRegion> | null) => void
+}
+
+export const LayoutEditor = ({
+  value,
+  onChange,
+}: LayoutEditorProps = {}): JSX.Element => {
+  const isControlled = value !== undefined
+  const [internalTree, setInternalTree] =
+    useState<LayoutNode<YouTubeRegion> | null>(value ?? null)
+  const tree = isControlled ? value : internalTree
+  const setTree = (next: LayoutNode<YouTubeRegion> | null): void => {
+    if (!isControlled) setInternalTree(next)
+    onChange?.(next)
+  }
   const [selectedLeaf, setSelectedLeaf] = useState<YouTubeRegion | null>(null)
   const [showCode, setShowCode] = useState(false)
   const [copied, setCopied] = useState(false)

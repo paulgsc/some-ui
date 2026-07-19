@@ -70,6 +70,7 @@ export function buildActiveLifetimes(
             scene_name: scene.scene_name,
             duration: scene.duration,
             ui: scene.ui,
+            layout: scene.layout,
           },
         },
         started_at: start,
