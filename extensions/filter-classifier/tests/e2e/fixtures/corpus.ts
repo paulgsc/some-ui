@@ -83,29 +83,29 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
 
   {
     id: "default-swatch-rendered",
-    grammar: "harsh-contrast-default-swatch",
-    label: "hostile",
+    grammar: "comfortable-dark-default",
+    label: "comfortable",
     note:
-      "Body wears the shipped default swatch's own (bg0, text0) tokens " +
-      "(#0d1117 / #e2e8f0). This label flipped from 'comfortable' after the " +
-      "first real Comfort Lab eye score on it came back hostile (overall " +
-      '19, "the text is basically the sun", #735) despite passing the ' +
-      "*original* predicate. The gap: contrast 15.35 sat inside the old " +
-      "[7.5, 16] band but right at its ceiling — checking every registry " +
-      "swatch's own contrast found `default` as the sole outlier (the " +
-      "next-highest, warm-paper-dark, sits at 13.64), so CONTRAST_BAND_MAX " +
-      "tightened from 16 to 14 (swatches.ts). Text luminance (0.80), " +
-      "chromatic bias, and bgNotBlack all still pass on their own — only " +
-      "contrastInBand fails now. `default` is excluded from `some-filter`'s " +
-      'own "every registry entry satisfies Φ_comfort" test as a named, ' +
-      "checked exception (swatches.test.ts) rather than silently changing " +
-      "the swatch's actual colors.",
+      "Body wears the shipped default swatch's own (bg0, text0) tokens — " +
+      "#0d1117 / #cfdae8. text0 was originally #e2e8f0 (luminance 0.80, " +
+      "contrast 15.35): a blind Comfort Lab eye score on that exact pair " +
+      'came back hostile (overall 19, "the text is basically the sun", ' +
+      "#735) despite passing the original predicate, so CONTRAST_BAND_MAX " +
+      "tightened from 16 to 14 and text0 was redimmed to #cfdae8 (same " +
+      "~214° hue, luminance 0.69) rather than leaving a known-hostile " +
+      "default shipping. Verified against the new pair: contrast 13.38 " +
+      "(inside [7.5, 14], with margin below warm-paper-dark's 13.64 — the " +
+      "next-highest registry swatch), both channels chromatically biased, " +
+      "background well above the black floor. `some-filter`'s own " +
+      'registry test ("every registry entry satisfies Φ_comfort") enforces ' +
+      "this with zero exceptions — a hostile swatch fails the build, it " +
+      "does not ship (swatches.test.ts).",
     expectAlreadyDark: true,
-    expectComfortable: false,
+    expectComfortable: true,
     html: () => `<!doctype html>
 <html>
   <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Rendered</title></head>
-  <body style="background-color: rgb(13, 17, 23); color: rgb(226, 232, 240); margin: 0">
+  <body style="background-color: rgb(13, 17, 23); color: rgb(207, 218, 232); margin: 0">
     <main style="background-color: rgb(13, 17, 23); padding: 16px">
       <h1>Already themed</h1>
       <p>A vendor page that happens to already wear our own default tokens.</p>

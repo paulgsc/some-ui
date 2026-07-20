@@ -69,9 +69,16 @@ export const DEFAULT_SWATCH_ID = "default"
  * bar, #687).
  */
 export const SWATCHES = {
-  // Today's palette, verbatim (`theme-apply.ts`'s former `TOKENS`) — the
-  // active default, so behavior is unchanged until a picker (follow-on)
-  // selects otherwise.
+  // `theme-apply.ts`'s former `TOKENS`, still the active default — except
+  // `text0`, which is no longer byte-for-byte: the original `#e2e8f0`
+  // (luminance 0.80) paired with this swatch's own `bg0` produced contrast
+  // 15.35, failing a blind Comfort Lab eye score (overall 19, "the text is
+  // basically the sun", #735) despite passing the original predicate.
+  // `#cfdae8` keeps the same ~214° hue, dimmed from L=0.914 to L=0.86 —
+  // contrast 13.33 against this bg0, comfortably under CONTRAST_BAND_MAX
+  // (14) with margin below `warm-paper-dark` (13.64), the next-highest
+  // registry swatch. `bg0` is unchanged: the eye score's own note called
+  // the background fine, only the text harsh.
   default: {
     id: "default",
     label: "Default",
@@ -81,7 +88,7 @@ export const SWATCHES = {
     bg3: "#21252f",
     surface: "#1e222b",
     border: "rgba(255, 255, 255, 0.08)",
-    text0: "#e2e8f0",
+    text0: "#cfdae8",
     text1: "#94a3b8",
     text2: "#475569",
     link: "#7aa2f7",
