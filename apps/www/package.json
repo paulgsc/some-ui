@@ -50,6 +50,6 @@
     "@playwright/test": "1.60.0",
     "@vitejs/plugin-react": "^6.0.3",
     "rollup-plugin-visualizer": "^5.12.0",
-    "vite": "^8.1.4"
+    "vite": "^8.1.5"
   }
 }

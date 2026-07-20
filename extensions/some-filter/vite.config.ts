@@ -1,5 +1,4 @@
 import { extensionConfig } from "@some-extension/common/vite"
-import type { UserConfig } from "vite"
 
 // Platform split: content/background import `@filter/platform/*`, aliased to the
 // Firefox or Chrome implementation per build target.
@@ -23,7 +22,11 @@ const entries = [
 // it at dist/manifest.json); the Firefox build overwrites it afterwards.
 // public/prepaint.css and public/prepaint-start.js (the document_start
 // prepaint content script) ride along via the same public-dir copy.
-const config = ({ mode }: { mode: string }): UserConfig => {
+const config = ({
+  mode,
+}: {
+  mode: string
+}): ReturnType<typeof extensionConfig> => {
   const chromium = mode === "chromium"
   return extensionConfig({
     alias: platformAlias(chromium ? "chrome" : "firefox"),
