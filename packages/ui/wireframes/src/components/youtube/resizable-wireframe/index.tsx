@@ -1,13 +1,15 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { JSX, ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
+import { LeafResizeHandles } from "@wireframes/components/leaf-resize-handles"
 import { RenderSolved } from "@wireframes/components/render-solved"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
-import type { SolvedNode } from "@wireframes/lib/layout-types"
+import { extractLeafIds } from "@wireframes/lib/layout-intent"
+import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
-import { solveLayoutWithFocus } from "@wireframes/lib/layout-weighted"
+import { solveLayoutWithBindings } from "@wireframes/lib/layout-weighted"
 import { getSlotColor } from "@wireframes/lib/youtube-config"
 import type {
   ActiveLifetime,
@@ -15,6 +17,8 @@ import type {
   SlotId,
 } from "some-types-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
+
+type Edge = "left" | "right" | "top" | "bottom"
 
 type OrchestratedViewportProps<K extends string> = {
   /**
@@ -39,6 +43,34 @@ type OrchestratedViewportProps<K extends string> = {
    * Transition duration for animations
    */
   transitionMs?: number
+
+  /**
+   * Zero-collapse leaves with nothing bound, redistributing their space to
+   * siblings (story 5). Callers editing topology directly (story 6's edit
+   * mode) turn this off so there's still something to click on to bind.
+   */
+  collapseUnbound?: boolean
+
+  /**
+   * Right-click any leaf to reveal resize handles (story 7) - independent
+   * of edit mode, works during normal playback. Omit to disable the
+   * affordance entirely.
+   */
+  onLeafResize?: (
+    id: SlotId,
+    edge: Edge,
+    deltaPx: number,
+    containerSizePx: number
+  ) => void
+}
+
+function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
+  if (node.type === "leaf") return node.id === id ? node.rect : null
+  for (const child of node.children) {
+    const found = findSolvedRect(child, id)
+    if (found) return found
+  }
+  return null
 }
 
 /**
@@ -53,6 +85,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   componentRegistry,
   enableFocus = true,
   transitionMs = 300,
+  collapseUnbound = true,
+  onLeafResize,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
@@ -63,6 +97,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     regionId: SlotId
     position: { x: number; y: number }
   } | null>(null)
+
+  const [resizeArmedLeaf, setResizeArmedLeaf] = useState<SlotId | null>(null)
 
   // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
@@ -108,8 +144,13 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     if (!rect) return
     if (!layoutTree) return
 
-    return solveLayoutWithFocus(
+    const boundLeafIds = collapseUnbound
+      ? new Set(Object.keys(mergedPanels))
+      : extractLeafIds(layoutTree)
+
+    return solveLayoutWithBindings(
       layoutTree,
+      boundLeafIds,
       rect,
       enableFocus ? focusControls.focusedRegion : null,
       enableFocus ? focusControls.focusIntensity : 0
@@ -120,6 +161,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     enableFocus,
     focusControls.focusedRegion,
     focusControls.focusIntensity,
+    mergedPanels,
+    collapseUnbound,
   ])
 
   const handleLeafClick = useCallback(
@@ -141,6 +184,28 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const handleClosePopup = useCallback(() => {
     setPopup(null)
   }, [])
+
+  const handleLeafContextMenu = useCallback(
+    (id: SlotId) => {
+      if (!onLeafResize) return
+      setResizeArmedLeaf((prev) => (prev === id ? null : id))
+    },
+    [onLeafResize]
+  )
+
+  useEffect(() => {
+    if (!resizeArmedLeaf) return
+
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === "Escape") setResizeArmedLeaf(null)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return (): void => window.removeEventListener("keydown", handleKeyDown)
+  }, [resizeArmedLeaf])
+
+  const armedLeafRect =
+    resizeArmedLeaf && layout ? findSolvedRect(layout, resizeArmedLeaf) : null
 
   const renderLeaf = useMemo(
     () =>
@@ -169,7 +234,16 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           node={layout}
           renderLeaf={renderLeaf}
           onLeafClick={enableFocus ? handleLeafClick : undefined}
+          onLeafContextMenu={onLeafResize ? handleLeafContextMenu : undefined}
           transitionMs={transitionMs}
+        />
+      )}
+
+      {resizeArmedLeaf && armedLeafRect && onLeafResize && (
+        <LeafResizeHandles
+          leafId={resizeArmedLeaf}
+          rect={armedLeafRect}
+          onResize={onLeafResize}
         />
       )}
 

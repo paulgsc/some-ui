@@ -36,6 +36,9 @@ const AnimatedStory = ({
         componentRegistry={componentRegistry}
         transitionMs={transitionMs}
         enableFocus={enableFocus}
+        // These stories exist to visualize every named region - keep
+        // showing placeholder boxes rather than zero-collapsing (story 5).
+        collapseUnbound={false}
       />
     </div>
   )

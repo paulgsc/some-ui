@@ -1,3 +1,5 @@
 export * from "@wireframes/components"
 export type { LayoutNode } from "./lib"
 export { dramaTree, studyTree, topikTree, voiceTree } from "./lib/layout-tree"
+export { applyIntent } from "./lib/layout-intent"
+export type { LayoutIntent } from "./lib/layout-intent"

@@ -168,6 +168,39 @@ export function solveLayoutWithFocus<T>(
   return solveLayoutWithConstraints(tree, focusedConstraints, viewport)
 }
 
+// --- Binding-aware solver ---
+
+/**
+ * Solves geometry the same way `solveLayoutWithFocus` does, except a leaf
+ * with nothing bound to it (not in `boundLeafIds`) gets zero effective
+ * weight, so its siblings redistribute proportionally into the space it
+ * would have taken. A split whose entire subtree is unbound also
+ * zero-collapses, transitively, so bound leaves always exactly tile
+ * `viewport` rather than leaving a dead gap where an all-unbound branch
+ * would otherwise still claim its authored share.
+ *
+ * This never mutates a node's persisted `weight` - zeroing happens purely
+ * in the derived constraint used for this one solve, so re-binding a
+ * leaf later restores its prior proportional share rather than a fresh
+ * default.
+ */
+export function solveLayoutWithBindings<T>(
+  tree: LayoutNode<T>,
+  boundLeafIds: ReadonlySet<T>,
+  viewport: Rect,
+  focusId: T | null = null,
+  focusIntensity = 0
+): SolvedNode<T> {
+  const baseConstraints = weightsToConstraintsWithBindings(tree, boundLeafIds)
+
+  const constraints =
+    focusId && focusIntensity > 0
+      ? focusConstraints(tree, baseConstraints, focusId, focusIntensity)
+      : baseConstraints
+
+  return solveLayoutWithConstraints(tree, constraints, viewport)
+}
+
 // --- Constraints extraction ---
 
 function weightsToConstraints<T>(
@@ -195,6 +228,69 @@ function weightsToConstraints<T>(
 
         stack.push(child)
       }
+    }
+  }
+
+  return constraints
+}
+
+const ZERO_CONSTRAINT: Constraint = { ideal: 0, min: 0, max: 0 }
+
+/**
+ * A leaf zero-collapses iff it's unbound; a split zero-collapses iff every
+ * one of its children does (recursively) - so a branch that's entirely
+ * unbound collapses as a whole, rather than leaving a claimed-but-empty
+ * gap at the split level.
+ */
+function isZeroCollapsed<T>(
+  node: LayoutNode<T>,
+  boundLeafIds: ReadonlySet<T>,
+  cache: Map<LayoutNode<T>, boolean>
+): boolean {
+  const cached = cache.get(node)
+  if (cached !== undefined) return cached
+
+  const result =
+    node.type === "leaf"
+      ? !boundLeafIds.has(node.id)
+      : node.children.every(({ node: child }) =>
+          isZeroCollapsed(child, boundLeafIds, cache)
+        )
+
+  cache.set(node, result)
+  return result
+}
+
+/**
+ * Only descends into "split" nodes - a leaf's constraint is fully decided
+ * by its parent (weight share, zeroed or not) and never needs revisiting,
+ * so leaves are never re-pushed for further expansion here.
+ */
+function weightsToConstraintsWithBindings<T>(
+  tree: LayoutNode<T>,
+  boundLeafIds: ReadonlySet<T>
+): Map<T | string, Constraint> {
+  const constraints = new Map<T | string, Constraint>()
+  const zeroCache = new Map<LayoutNode<T>, boolean>()
+  const stack: Array<LayoutNode<T>> = [tree]
+
+  while (stack.length > 0) {
+    const node = stack.pop()!
+    if (node.type !== "split") continue
+
+    const totalWeight = node.children.reduce((sum, c) => sum + c.weight, 0)
+
+    for (const { node: child, weight } of node.children) {
+      const key = child.type === "leaf" ? child.id : child.splitId
+
+      constraints.set(
+        key,
+        isZeroCollapsed(child, boundLeafIds, zeroCache)
+          ? ZERO_CONSTRAINT
+          : { ideal: weight / totalWeight, min: 0, max: 1 }
+      )
+
+      stack.push(child)
     }
   }
 

@@ -6,11 +6,14 @@ export const RenderSolved = <T extends string>({
   node,
   renderLeaf,
   onLeafClick,
+  onLeafContextMenu,
   transitionMs = 300,
 }: {
   node: SolvedNode<T>
   renderLeaf: (id: T) => ReactNode
   onLeafClick?: (id: T, position: { x: number; y: number }) => void
+  /** Fires on right-click independent of `onLeafClick` - e.g. story 7's always-on resize affordance, unrelated to whether focus (`onLeafClick`) is enabled. */
+  onLeafContextMenu?: (id: T, position: { x: number; y: number }) => void
   transitionMs?: number
 }): JSX.Element => {
   // Iterative render using useMemo for performance
@@ -28,12 +31,9 @@ export const RenderSolved = <T extends string>({
             key={current.id}
             onContextMenu={(e) => {
               e.preventDefault()
-              if (onLeafClick) {
-                onLeafClick(current.id, {
-                  x: e.clientX,
-                  y: e.clientY,
-                })
-              }
+              const position = { x: e.clientX, y: e.clientY }
+              onLeafClick?.(current.id, position)
+              onLeafContextMenu?.(current.id, position)
             }}
             style={{
               position: "absolute",
@@ -59,7 +59,7 @@ export const RenderSolved = <T extends string>({
     }
 
     return out
-  }, [node, renderLeaf, onLeafClick, transitionMs])
+  }, [node, renderLeaf, onLeafClick, onLeafContextMenu, transitionMs])
 
   return <>{elements}</>
 }

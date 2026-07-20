@@ -41,6 +41,10 @@ const YouTubeWireframeRoute = (): React.JSX.Element => {
         componentRegistry={componentRegistry}
         transitionMs={transitionMs ?? 300}
         enableFocus={enableFocus ?? true}
+        // This route's whole point is visualizing named regions - keep
+        // showing every region's placeholder box (story 5's zero-collapse
+        // is for the real player's authoring flow, not this demo).
+        collapseUnbound={false}
       />
     </div>
   )

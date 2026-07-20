@@ -1,7 +1,8 @@
 import { useRef, useState } from "react"
 import type { ActiveLifetime, SlotId } from "some-types-utils"
 import { usePrimaryScene } from "some-ui-utils"
-import type { LayoutNode } from "wireframes"
+import type { LayoutIntent, LayoutNode } from "wireframes"
+import { applyIntent } from "wireframes"
 
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
@@ -23,6 +24,13 @@ type LiveLayoutEditor = {
   effectiveLifetimes: Array<ActiveLifetime>
   boundLeafIds: Set<SlotId>
   onBind: (leafId: SlotId, registryKey: string) => void
+  /** Story 7: right-click resize, available whether or not edit mode is mounted. */
+  onLeafResize: (
+    leafId: SlotId,
+    edge: "left" | "right" | "top" | "bottom",
+    deltaPx: number,
+    containerSizePx: number
+  ) => void
 }
 
 /**
@@ -105,6 +113,22 @@ export function useLiveLayoutEditor(
     updateSession.mutate({ id: session.id, patch: { scenes: nextScenes } })
   }
 
+  function onLeafResize(
+    leafId: SlotId,
+    edge: "left" | "right" | "top" | "bottom",
+    deltaPx: number,
+    containerSizePx: number
+  ): void {
+    const intent: LayoutIntent<SlotId> = {
+      kind: "resize",
+      region: leafId,
+      edge,
+      deltaPx,
+      containerSizePx,
+    }
+    onTreeChange(applyIntent(tree, intent))
+  }
+
   const overrideLifetime: ActiveLifetime | null =
     Object.keys(bindOverrides).length > 0
       ? {
@@ -144,5 +168,6 @@ export function useLiveLayoutEditor(
     effectiveLifetimes,
     boundLeafIds: boundLeafIdsOf(effectiveLifetimes),
     onBind,
+    onLeafResize,
   }
 }

@@ -28,6 +28,7 @@ export const SessionViewport = ({
     effectiveLifetimes,
     boundLeafIds,
     onBind,
+    onLeafResize,
   } = useLiveLayoutEditor(session, activeLifetimes)
 
   return (
@@ -43,6 +44,8 @@ export const SessionViewport = ({
             activeLifetimes={effectiveLifetimes}
             componentRegistry={componentRegistry}
             enableFocus={false}
+            collapseUnbound={!editMode}
+            onLeafResize={onLeafResize}
           />
 
           {editMode && (
