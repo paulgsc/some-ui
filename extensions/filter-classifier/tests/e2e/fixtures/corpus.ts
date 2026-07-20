@@ -106,21 +106,24 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
       "Tests 'does today's shipped default satisfy Φ_comfort', not a " +
       "specific pinned pair (#735) — its html() reads `SWATCHES[" +
       "DEFAULT_SWATCH_ID].bg0`/`.text0` live, so it tracks whatever the " +
-      "registry currently ships. Today that's #0d1117 / #cfdae8: contrast " +
-      "13.38 (inside [7.5, 14], with margin below warm-paper-dark's " +
-      "13.64 — the next-highest registry swatch), both channels " +
-      "chromatically biased, background well above the black floor. " +
-      "text0 was originally #e2e8f0 (contrast 15.35): a blind Comfort Lab " +
-      'eye score on that exact pair came back hostile (overall 19, "the ' +
-      'text is basically the sun") despite passing the original ' +
-      "predicate — see `default-swatch-legacy-text` below for that pair, " +
-      "pinned forever as regression evidence. This fixture's " +
-      "`expectComfortable: true` is the actual invariant: the shipped " +
-      "default must satisfy Φ_comfort, full stop — `some-filter`'s own " +
-      'registry test ("every registry entry satisfies Φ_comfort", ' +
-      "swatches.test.ts) enforces the same thing with zero exceptions, so " +
-      "a hostile default fails the build on two independent paths, not " +
-      "just this one.",
+      "registry currently ships. Today that's #171c25 / #8699b1: contrast " +
+      "5.86 (inside [5.5, 14] — CONTRAST_BAND_MIN dropped from 7.5 " +
+      "specifically to admit this pair), both channels chromatically " +
+      "biased, background well above the black floor. Two design moves " +
+      "landed here in sequence: text0 first redimmed to #cfdae8 after a " +
+      'blind eye score called the original #e2e8f0 hostile ("the text is ' +
+      'basically the sun", contrast 15.35 — see `default-swatch-legacy-' +
+      "text` below, pinned forever as that regression's evidence); then " +
+      "both bg0 and text0 moved again on the argument that minimizing " +
+      "luminance *transitions* over a session (not maximizing static " +
+      "contrast) is the more comfortable target — bg0 now lands almost " +
+      "exactly on Tokyo Night's own background, well clear of pure black. " +
+      "This fixture's `expectComfortable: true` is the actual invariant: " +
+      "the shipped default must satisfy Φ_comfort, full stop — some-" +
+      "filter's own registry test (\"every registry entry satisfies " +
+      'Φ_comfort", swatches.test.ts) enforces the same thing with zero ' +
+      "exceptions, so a hostile default fails the build on two " +
+      "independent paths, not just this one.",
     expectAlreadyDark: true,
     expectComfortable: true,
     html: () => `<!doctype html>

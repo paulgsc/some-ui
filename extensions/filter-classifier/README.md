@@ -93,11 +93,23 @@ against the _shipped default swatch's own_ `(bg0, text0)` pair came back
 hostile (overall 19, "the text is basically the sun") despite passing the
 original predicate — `text0`'s original `#e2e8f0` produced contrast 15.35,
 inside the old `[7.5, 16]` band but right at the ceiling. `CONTRAST_BAND_MAX`
-in `swatches.ts` tightened from 16 to 14, and `text0` was redimmed to
-`#cfdae8` (same ~214° hue, contrast 13.38). `some-filter`'s own
-`swatches.test.ts` enforces this with **zero exceptions** — "every registry
-entry satisfies Φ_comfort" runs over the whole registry, `default` included,
-so a hostile swatch fails the build instead of silently reaching users.
+in `swatches.ts` tightened from 16 to 14, and `text0` moved (first to
+`#cfdae8`, then to `#8699b1` — a genuinely desaturated "reading gray"). The
+argument behind the second move: most dark themes optimize for maximum
+perceived contrast while staying dark; sustained reading comfort is better
+served by minimizing luminance _transitions_ over a session instead. That
+argument applies to `bg0` too — `#0d1117` is darker than VS Code, Tokyo
+Night, Catppuccin, or Gruvbox, none of which go near-black, because it
+maximizes the adaptation distance to anything brighter. `bg0` moved to
+`#171c25` (lands almost exactly on Tokyo Night's own background), with
+`bg1`/`bg2`/`bg3`/`surface`/`inputBg` shifted to preserve the original
+luminance gaps between tiers rather than colliding with them. Together these
+land contrast at 5.86, below the old `CONTRAST_BAND_MIN` of 7.5 — a floor
+that had only ever been tightened from above, never re-examined from below.
+It moves to 5.5. `some-filter`'s own `swatches.test.ts` enforces the whole
+predicate with **zero exceptions** — "every registry entry satisfies
+Φ_comfort" runs over the whole registry, `default` included, so a hostile
+swatch fails the build instead of silently reaching users.
 
 That fix exposed a coupling bug in the fixture itself: every other entry in
 this file hardcodes its colors, which is correct for a fixed regression case
