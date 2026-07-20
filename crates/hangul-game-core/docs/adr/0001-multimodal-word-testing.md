@@ -5,6 +5,7 @@
 - **Epic:** #420
 - **Stories:** #421 (S1), #422 (S2), #423 (S3), #424 (S4), #425 (S5), #426 (S6)
 - **Supersedes:** none
+- **See also:** ADR 0002 (`0002-content-domain-genericity-and-crate-boundary.md`, epic #709) generalizes a second, independent axis — _which alphabet_ an answer is drawn from — and records the single-cell board-binding decision this ADR's own #425 needs before it can begin.
 
 ---
 
