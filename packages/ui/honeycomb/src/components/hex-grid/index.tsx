@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import type { JSX, ReactNode } from "react"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import type {
@@ -6,8 +6,20 @@ import type {
   HexPoint,
   HexRenderData,
 } from "@honeycomb/types/hex-grid"
+import type {
+  HexGridFitResult,
+  HexGridFitStatus,
+  HexGridFitStrategy,
+  ViewportSize,
+} from "@honeycomb/utils/hex-grid-fit"
+import { fitHexGrid } from "@honeycomb/utils/hex-grid-fit"
+import {
+  getCellCountForHexagonalGridRadius,
+  getHexagonalGridRadiusForCellCount,
+} from "@honeycomb/utils/hexagon-math"
+import { useResizeObserver } from "some-ui-utils"
 
-type HexGridProps<T = unknown> = {
+export type HexGridProps<T = unknown> = {
   cellCount: number
   hexSize: number
   viewBoxFactor?: number
@@ -24,9 +36,62 @@ type HexGridProps<T = unknown> = {
     hexPath: string
   ) => ReactNode
   backgroundOpacity?: number
+  /**
+   * Smallest on-screen hex circumradius (px) still considered legible.
+   * @default 18
+   */
+  minHexSize?: number
+  /** Space to reserve on every edge before fitting, in px. @default 16 */
+  padding?: number
+  /**
+   * How to react when the requested grid no longer fits. See
+   * `HexGridFitStrategy` for the tradeoffs — defaults to `"shrink-only"`
+   * because cell ids can carry meaning beyond rendering (e.g. game state
+   * keyed by cell id), and reducing the radius makes outer-ring cells
+   * disappear entirely.
+   * @default "shrink-only"
+   */
+  fitStrategy?: HexGridFitStrategy
+  /** Called whenever the layout negotiation result changes. */
+  onFitChange?: (fit: HexGridFitResult) => void
 }
 
 const HEX_ID_REGEX = /(-?\d+)[_-](-?\d+)[_-](-?\d+)/
+
+const FIT_BANNER_STYLES: Record<"shrunk" | "reduced-radius", string> = {
+  shrunk: "border-sky-500/30 bg-sky-500/15 text-sky-200",
+  "reduced-radius": "border-amber-500/30 bg-amber-500/15 text-amber-200",
+}
+
+const FitWarningBanner = ({
+  status,
+  message,
+}: {
+  status: HexGridFitStatus
+  message: string
+}): JSX.Element | null => {
+  if (status !== "shrunk" && status !== "reduced-radius") return null
+  return (
+    <div
+      className={`pointer-events-none absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[90%] rounded-full border px-3 py-1 text-center text-xs ${FIT_BANNER_STYLES[status]}`}
+    >
+      {message}
+    </div>
+  )
+}
+
+const ImpossibleNotice = ({
+  bounds,
+}: {
+  bounds: ViewportSize
+}): JSX.Element => (
+  <div className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-red-300">
+    <span className="text-sm font-semibold">Viewport too small</span>
+    <span className="text-xs text-red-300/80">
+      Minimum required: {Math.ceil(bounds.width)}×{Math.ceil(bounds.height)}px
+    </span>
+  </div>
+)
 
 export const HexGrid = <T = unknown,>({
   className = "",
@@ -36,18 +101,55 @@ export const HexGrid = <T = unknown,>({
   cellContent = [],
   renderCell,
   backgroundOpacity = 0.15,
+  minHexSize = 18,
+  padding = 16,
+  fitStrategy = "shrink-only",
+  onFitChange,
 }: HexGridProps<T>): JSX.Element => {
-  const [viewBox, setViewBox] = useState({
-    viewBox: "0 0 0 0",
-    transform: "",
-  })
+  const measureRef = useRef<HTMLDivElement>(null)
+  const { width, height } = useResizeObserver({ ref: measureRef })
+  const hasMeasured = width !== undefined && height !== undefined
 
-  // We use a ref to store the observer so it persists across renders
-  const observerRef = useRef<ResizeObserver | null>(null)
+  const requestedRadius = useMemo(
+    () => getHexagonalGridRadiusForCellCount(cellCount),
+    [cellCount]
+  )
+
+  const fit = useMemo((): HexGridFitResult | null => {
+    if (!hasMeasured) return null
+    return fitHexGrid({
+      viewport: { width, height },
+      requestedRadius,
+      preferredHexSize: hexSize,
+      minHexSize,
+      padding,
+      strategy: fitStrategy,
+    })
+  }, [
+    hasMeasured,
+    width,
+    height,
+    requestedRadius,
+    hexSize,
+    minHexSize,
+    padding,
+    fitStrategy,
+  ])
+
+  useEffect(() => {
+    if (fit) onFitChange?.(fit)
+  }, [fit, onFitChange])
+
+  const effectiveRadius = fit?.radius ?? requestedRadius
+  const effectiveHexSize = fit?.hexSize ?? hexSize
+  const effectiveCellCount = useMemo(
+    () => getCellCountForHexagonalGridRadius(effectiveRadius),
+    [effectiveRadius]
+  )
 
   const { hexCells, isLoading, error } = useHexgridWasm({
-    cellCount,
-    hexSize,
+    cellCount: effectiveCellCount,
+    hexSize: effectiveHexSize,
   })
 
   const pointsToPath = useCallback((points: Array<HexPoint>): string => {
@@ -55,34 +157,6 @@ export const HexGrid = <T = unknown,>({
     if (!first) return ""
     const rest = points.slice(1)
     return `M${first.x},${first.y} ${rest.map((p) => `L${p.x},${p.y}`).join(" ")} Z`
-  }, [])
-
-  // 2. Remount-safe Resize Observer using a Callback Ref
-  const svgRef = useCallback(
-    (node: SVGSVGElement | null): void => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-      }
-
-      if (node) {
-        observerRef.current = new ResizeObserver((entries) => {
-          const entry = entries[0]
-          if (entry) {
-            const { width, height } = entry.contentRect
-            const vb = `0 0 ${width * viewBoxFactor} ${height * viewBoxFactor}`
-            const tr = `translate(${(width * viewBoxFactor) / 2}, ${(height * viewBoxFactor) / 2})`
-            setViewBox({ viewBox: vb, transform: tr })
-          }
-        })
-        observerRef.current.observe(node)
-      }
-    },
-    [viewBoxFactor]
-  )
-
-  // Cleanup observer on component unmount
-  useEffect(() => {
-    return (): void => observerRef.current?.disconnect()
   }, [])
 
   const contentMap = useMemo((): Map<string, HexCellData<T>> => {
@@ -110,88 +184,126 @@ export const HexGrid = <T = unknown,>({
     [hexCells, contentMap]
   )
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-gray-400">
-        Loading hexagon grid...
-      </div>
-    )
-  }
+  const renderContent = (): ReactNode => {
+    if (!hasMeasured || isLoading) {
+      return (
+        <div className="flex h-full w-full items-center justify-center text-gray-400">
+          Loading hexagon grid...
+        </div>
+      )
+    }
 
-  if (error) {
+    if (error) {
+      return (
+        <div className="flex h-full w-full items-center justify-center text-red-400">
+          Error: {error}
+        </div>
+      )
+    }
+
+    if (!fit || fit.status === "impossible") {
+      return (
+        <ImpossibleNotice bounds={fit?.bounds ?? { width: 0, height: 0 }} />
+      )
+    }
+
+    const vbWidth = fit.bounds.width * viewBoxFactor
+    const vbHeight = fit.bounds.height * viewBoxFactor
+    const viewBox = `${-vbWidth / 2} ${-vbHeight / 2} ${vbWidth} ${vbHeight}`
+
     return (
-      <div className="flex h-full w-full items-center justify-center text-red-400">
-        Error: {error}
-      </div>
+      <>
+        <div className="flex size-full items-center justify-center">
+          <div
+            className="size-full"
+            style={{ maxWidth: vbWidth, maxHeight: vbHeight }}
+          >
+            <svg
+              viewBox={viewBox}
+              preserveAspectRatio="xMidYMid meet"
+              className={`size-full ${className}`}
+            >
+              <defs>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <g>
+                {/* Background grid */}
+                <g opacity={backgroundOpacity}>
+                  {hexCells.map((cell) => (
+                    <path
+                      key={`bg-${cell.id}`}
+                      d={pointsToPath(cell.points)}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="text-gray-950"
+                    />
+                  ))}
+                </g>
+
+                {/* Active/themed cells */}
+                {mergedCells.map((cell) => {
+                  const { content } = cell
+                  if (!content?.theme && !content?.data) return null
+
+                  const { theme } = content
+                  const numPoints = cell.points.length
+                  if (numPoints === 0) return null
+
+                  const centerX =
+                    cell.points.reduce((s, p) => s + p.x, 0) / numPoints
+                  const centerY =
+                    cell.points.reduce((s, p) => s + p.y, 0) / numPoints
+                  const xValues = cell.points.map((p) => p.x)
+                  const cellWidth = Math.max(...xValues) - Math.min(...xValues)
+                  const pathData = pointsToPath(cell.points)
+
+                  return (
+                    <g key={cell.id}>
+                      <path
+                        d={pathData}
+                        fill={
+                          theme.fill ||
+                          (cell.color
+                            ? `#${cell.color.toString(16).padStart(6, "0")}`
+                            : "none")
+                        }
+                        stroke={theme.stroke || "#999"}
+                        strokeWidth={theme.strokeWidth || 1}
+                        opacity={theme.opacity ?? 1}
+                        filter={theme.filter}
+                      />
+                      {renderCell?.(
+                        cell,
+                        centerX,
+                        centerY,
+                        cellWidth,
+                        pathData
+                      )}
+                    </g>
+                  )
+                })}
+              </g>
+            </svg>
+          </div>
+        </div>
+        {fit.warning && (
+          <FitWarningBanner status={fit.status} message={fit.warning} />
+        )}
+      </>
     )
   }
 
   return (
-    <svg
-      ref={svgRef}
-      viewBox={viewBox.viewBox}
-      className={`size-full ${className}`}
-    >
-      <defs>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <g transform={viewBox.transform}>
-        {/* Background grid */}
-        <g opacity={backgroundOpacity}>
-          {hexCells.map((cell) => (
-            <path
-              key={`bg-${cell.id}`}
-              d={pointsToPath(cell.points)}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="text-gray-950"
-            />
-          ))}
-        </g>
-
-        {/* Active/themed cells */}
-        {mergedCells.map((cell) => {
-          const { content } = cell
-          if (!content?.theme && !content?.data) return null
-
-          const { theme } = content
-          const numPoints = cell.points.length
-          if (numPoints === 0) return null
-
-          const centerX = cell.points.reduce((s, p) => s + p.x, 0) / numPoints
-          const centerY = cell.points.reduce((s, p) => s + p.y, 0) / numPoints
-          const xValues = cell.points.map((p) => p.x)
-          const cellWidth = Math.max(...xValues) - Math.min(...xValues)
-          const pathData = pointsToPath(cell.points)
-
-          return (
-            <g key={cell.id}>
-              <path
-                d={pathData}
-                fill={
-                  theme.fill ||
-                  (cell.color
-                    ? `#${cell.color.toString(16).padStart(6, "0")}`
-                    : "none")
-                }
-                stroke={theme.stroke || "#999"}
-                strokeWidth={theme.strokeWidth || 1}
-                opacity={theme.opacity ?? 1}
-                filter={theme.filter}
-              />
-              {renderCell?.(cell, centerX, centerY, cellWidth, pathData)}
-            </g>
-          )
-        })}
-      </g>
-    </svg>
+    <div ref={measureRef} className="relative size-full">
+      {renderContent()}
+    </div>
   )
 }

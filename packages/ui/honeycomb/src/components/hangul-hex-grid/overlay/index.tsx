@@ -196,6 +196,12 @@ export const HangulHexGrid = ({
               viewBoxFactor={1.2}
               cellContent={cellContent}
               backgroundOpacity={0.8}
+              // "shrink-only" (the default) is required here, not optional: the
+              // game engine's cell ids are enumerated from HANGUL_GRID_RADIUS
+              // (see wasm-game-bridge), so a smaller negotiated radius would
+              // make HexGrid render a different set of cell ids than the ones
+              // the game is spawning characters into.
+              fitStrategy="shrink-only"
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
               renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
                 const { id, content } = cell

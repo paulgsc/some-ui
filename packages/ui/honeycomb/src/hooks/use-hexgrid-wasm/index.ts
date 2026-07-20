@@ -6,7 +6,9 @@ import { initializeWasm } from "@honeycomb/utils/wasm-init"
 import { WasmHexGrid } from "@some-ui/some-hexagon"
 import { z } from "zod"
 
-const RadiusSchema = z.number().positive()
+// radius 0 is a valid single-cell grid (the minimum a fitting engine can
+// negotiate down to), so this must accept zero, not just positive integers.
+const RadiusSchema = z.number().int().nonnegative()
 const HexSizeSchema = z.number().positive().int()
 
 const HexgridInputSchema = z.object({

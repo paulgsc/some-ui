@@ -128,6 +128,22 @@ describe("useHexgridWasm", () => {
     expect(WasmHexGrid).not.toHaveBeenCalled()
   })
 
+  it("accepts radius 0, the minimum a fitting engine can negotiate down to", async () => {
+    vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(0)
+
+    const { result } = renderHook(() =>
+      useHexgridWasm({
+        cellCount: 1,
+        hexSize: 10,
+      })
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.error).toBeNull()
+    expect(WasmHexGrid).toHaveBeenCalledWith(0, 10)
+  })
+
   it("regenerates the grid cleanly on explicit execution calls", async () => {
     const { result } = renderHook(() =>
       useHexgridWasm({

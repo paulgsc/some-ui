@@ -42,12 +42,12 @@ export const StatsPanel = ({
   }
 
   return (
-    <div className="absolute top-8 start-6 glass-effect rounded-2xl px-6 py-4 text-white shadow-2xl max-w-fit">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+    <div className="absolute top-2 start-2 sm:top-8 sm:start-6 glass-effect rounded-2xl px-3 py-2 sm:px-6 sm:py-4 text-white shadow-2xl w-fit max-w-[calc(100%-1rem)] max-h-[calc(100%-1rem)] overflow-y-auto">
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <h2 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
           한글 타이핑
         </h2>
-        <div className="text-xs px-2 py-1 rounded-full bg-white/10 text-cyan-400 font-semibold">
+        <div className="text-xs px-2 py-1 rounded-full bg-white/10 text-cyan-400 font-semibold shrink-0">
           {mode === "completion" ? "📋 Complete" : "♾️ Endless"}
         </div>
       </div>
@@ -86,7 +86,9 @@ export const StatsPanel = ({
       <div className="space-y-2 text-sm">
         <div className="flex justify-between items-baseline">
           <span className="text-white/70">Score:</span>
-          <span className="font-bold text-xl text-cyan-400">{stats.score}</span>
+          <span className="font-bold text-base sm:text-xl text-cyan-400">
+            {stats.score}
+          </span>
         </div>
 
         <div className="flex justify-between items-baseline">
