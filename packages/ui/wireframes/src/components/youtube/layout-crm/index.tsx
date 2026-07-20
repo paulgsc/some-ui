@@ -13,7 +13,6 @@ import { serializeLayout } from "@wireframes/lib/tree-serialization"
 import {
   ALL_YOUTUBE_REGIONS,
   regionColors,
-  type YouTubeRegion,
 } from "@wireframes/lib/youtube-config"
 import {
   Check,
@@ -24,12 +23,13 @@ import {
   Plus,
   RotateCcw,
 } from "lucide-react"
+import type { SlotId } from "some-types-utils"
 import { Button, Card, useToast } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 export const LayoutEditor = (): JSX.Element => {
-  const [tree, setTree] = useState<LayoutNode<YouTubeRegion> | null>(null)
-  const [selectedLeaf, setSelectedLeaf] = useState<YouTubeRegion | null>(null)
+  const [tree, setTree] = useState<LayoutNode<SlotId> | null>(null)
+  const [selectedLeaf, setSelectedLeaf] = useState<SlotId | null>(null)
   const [showCode, setShowCode] = useState(false)
   const [copied, setCopied] = useState(false)
   const { toast } = useToast()
@@ -38,7 +38,7 @@ export const LayoutEditor = (): JSX.Element => {
   >(null)
 
   const lastResizeRef = useRef<{
-    region: YouTubeRegion
+    region: SlotId
     edge: string
     totalDelta: number
   } | null>(null)
@@ -52,12 +52,12 @@ export const LayoutEditor = (): JSX.Element => {
     (region) => !usedRegions.has(region)
   )
 
-  const handleIntent = (intent: LayoutIntent<YouTubeRegion>): void => {
+  const handleIntent = (intent: LayoutIntent<SlotId>): void => {
     const newTree = applyIntent(tree, intent)
     setTree(newTree)
   }
 
-  const handleRemove = (id: YouTubeRegion): void => {
+  const handleRemove = (id: SlotId): void => {
     handleIntent({ kind: "remove", region: id })
     toast({
       title: "Region removed",
@@ -66,8 +66,8 @@ export const LayoutEditor = (): JSX.Element => {
   }
 
   const handlePlaceIntent = (
-    region: YouTubeRegion,
-    relativeTo: YouTubeRegion,
+    region: SlotId,
+    relativeTo: SlotId,
     edge: "left" | "right" | "top" | "bottom"
   ): void => {
     handleIntent({
@@ -108,10 +108,8 @@ export const LayoutEditor = (): JSX.Element => {
   const handleCanvasDrop = (e: React.DragEvent): void => {
     e.preventDefault()
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const draggedRegion = e.dataTransfer.getData("text/plain") as
-      | YouTubeRegion
-      | undefined
+    const draggedRegion: SlotId | undefined =
+      e.dataTransfer.getData("text/plain") || undefined
 
     if (draggedRegion && canvasDropEdge) {
       // Place relative to root (entire tree)
@@ -119,16 +117,14 @@ export const LayoutEditor = (): JSX.Element => {
         handleIntent({
           kind: "move",
           region: draggedRegion,
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          relativeTo: "root" as YouTubeRegion,
+          relativeTo: "root",
           edge: canvasDropEdge,
         })
       } else {
         handleIntent({
           kind: "place",
           region: draggedRegion,
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          relativeTo: "root" as YouTubeRegion,
+          relativeTo: "root",
           edge: canvasDropEdge,
         })
       }
@@ -143,8 +139,8 @@ export const LayoutEditor = (): JSX.Element => {
   }
 
   const handleMoveIntent = (
-    region: YouTubeRegion,
-    relativeTo: YouTubeRegion,
+    region: SlotId,
+    relativeTo: SlotId,
     edge: "left" | "right" | "top" | "bottom"
   ): void => {
     handleIntent({
@@ -160,7 +156,7 @@ export const LayoutEditor = (): JSX.Element => {
   }
 
   const handleResizeIntent = (
-    region: YouTubeRegion,
+    region: SlotId,
     edge: "left" | "right" | "top" | "bottom",
     deltaPx: number,
     containerSizePx: number
@@ -174,7 +170,7 @@ export const LayoutEditor = (): JSX.Element => {
     })
   }
 
-  const handleAddToEmptyCanvas = (region: YouTubeRegion): void => {
+  const handleAddToEmptyCanvas = (region: SlotId): void => {
     handleIntent({
       kind: "place",
       region,

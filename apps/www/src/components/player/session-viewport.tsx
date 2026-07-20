@@ -1,12 +1,35 @@
 import type { JSX } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
 import { useSceneLifetimes } from "some-ui-utils"
-import { OrchestratedYouTubeViewport } from "wireframes"
+import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
-import { MAIN_CONTENT_LAYOUT } from "./layout"
+import type { SessionRecord } from "@/lib/tenant"
 
-export const SessionViewport = (): JSX.Element => {
+import { useLiveLayoutEditor } from "./use-live-layout-editor"
+
+const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
+  value: key,
+  label: key,
+}))
+
+type SessionViewportProps = {
+  session: SessionRecord
+}
+
+export const SessionViewport = ({
+  session,
+}: SessionViewportProps): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
+  const {
+    editMode,
+    toggleEditMode,
+    tree,
+    onTreeChange,
+    effectiveLifetimes,
+    boundLeafIds,
+    onBind,
+    onLeafResize,
+  } = useLiveLayoutEditor(session, activeLifetimes)
 
   return (
     <div className="bg-muted relative w-full flex-1 min-h-0 overflow-hidden rounded-lg border">
@@ -15,12 +38,36 @@ export const SessionViewport = (): JSX.Element => {
           <p className="text-muted-foreground text-sm">Press Play to begin</p>
         </div>
       ) : (
-        <OrchestratedYouTubeViewport
-          layoutTree={MAIN_CONTENT_LAYOUT}
-          activeLifetimes={activeLifetimes}
-          componentRegistry={componentRegistry}
-          enableFocus={false}
-        />
+        <>
+          <OrchestratedYouTubeViewport
+            layoutTree={tree}
+            activeLifetimes={effectiveLifetimes}
+            componentRegistry={componentRegistry}
+            enableFocus={false}
+            collapseUnbound={!editMode}
+            onLeafResize={onLeafResize}
+          />
+
+          {editMode && (
+            <LiveEditOverlay
+              tree={tree}
+              onTreeChange={onTreeChange}
+              boundLeafIds={boundLeafIds}
+              bindOptions={BIND_OPTIONS}
+              onBind={onBind}
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={toggleEditMode}
+            className="absolute top-2 right-2 z-50 rounded-md border bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm hover:text-foreground"
+          >
+            {editMode
+              ? "Editing layout — press E to exit"
+              : "Press E to edit layout"}
+          </button>
+        </>
       )}
     </div>
   )

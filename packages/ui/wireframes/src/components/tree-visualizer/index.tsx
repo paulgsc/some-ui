@@ -1,13 +1,13 @@
 import type { JSX } from "react"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
-import type { YouTubeRegion } from "@wireframes/lib/youtube-config"
 import { ChevronRight, Columns2, Rows2 } from "lucide-react"
+import type { SlotId } from "some-types-utils"
 import { cn } from "some-ui-utils"
 
 type TreeVisualizerProps = {
-  tree: LayoutNode<YouTubeRegion>
+  tree: LayoutNode<SlotId>
   onToggleAxis?: (splitId: string) => void
-  selectedLeaf?: YouTubeRegion | null
+  selectedLeaf?: SlotId | null
 }
 
 export const TreeVisualizer = ({
@@ -26,9 +26,9 @@ const TreeNode = ({
   depth,
   selectedLeaf,
 }: {
-  node: LayoutNode<YouTubeRegion>
+  node: LayoutNode<SlotId>
   depth: number
-  selectedLeaf?: YouTubeRegion | null
+  selectedLeaf?: SlotId | null
 }): JSX.Element => {
   if (node.type === "leaf") {
     const isSelected = selectedLeaf === node.id

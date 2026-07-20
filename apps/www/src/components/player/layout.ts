@@ -1,13 +1,14 @@
-import type { YouTubeRegion } from "some-types-utils"
+import type { SlotId } from "some-types-utils"
 import type { LayoutNode } from "wireframes"
 
 /**
- * Every activity's scene renders into a single "mainContent" panel (see
- * `toSceneConfig`), so the player only ever needs one region. Using one of
- * the multi-region layout trees here (title/sidebar/etc.) would render
- * empty placeholder boxes for regions nothing ever populates.
+ * The naive default: one leaf, filling `V`. Permanent for an indifferent
+ * user, not a seed - a session only ever gets richer topology than this
+ * by an explicit edit through the live editor (story 6). Every activity's
+ * scene still renders into this single "mainContent" panel until a user
+ * places more leaves (see `toSceneConfig`).
  */
-export const MAIN_CONTENT_LAYOUT: LayoutNode<YouTubeRegion> = {
+export const NAIVE_LAYOUT: LayoutNode<SlotId> = {
   type: "leaf",
   id: "mainContent",
 }

@@ -21,19 +21,14 @@ import {
   OrchestratorTimeline,
 } from "@some-ui/slideshow"
 import type { EditorState } from "@some-ui/slideshow"
-import { ChevronDown } from "lucide-react"
 import type { SceneConfig } from "some-types-utils"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   Switch,
 } from "some-ui-shared"
-import { LayoutEditor } from "wireframes"
 
 import { formatTimecode } from "@/lib/format"
 
@@ -164,29 +159,19 @@ export const ArrangementStep = ({
             </CardContent>
           </Card>
 
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 p-6 text-left">
-                <div>
-                  <p className="font-medium">Explore the layout engine</p>
-                  <p className="text-muted-foreground text-sm">
-                    Each scene renders into named regions on screen - a
-                    &quot;layout&quot;. This is the same tool that layout is
-                    built with. Changes here are for exploration only and do not
-                    change your session.
-                  </p>
-                </div>
-                <ChevronDown className="size-5 shrink-0" />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="overflow-x-auto border-t">
-                  <div className="min-w-[1280px]">
-                    <LayoutEditor />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="font-medium">Editing the layout</p>
+              <p className="text-muted-foreground text-sm">
+                Layout isn&apos;t arranged here. Press{" "}
+                <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-xs">
+                  E
+                </kbd>{" "}
+                while this session is playing to edit its layout live, in place,
+                on the real player.
+              </p>
+            </CardContent>
+          </Card>
 
           <EditSceneDialog
             state={editorState}

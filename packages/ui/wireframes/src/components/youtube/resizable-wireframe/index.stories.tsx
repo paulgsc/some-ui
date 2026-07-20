@@ -1,7 +1,11 @@
 import { componentRegistry } from "@some-ui/content-registry"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { useSceneDrivenLayout } from "@wireframes/hooks/use-scene-driven-layout"
-import { dramaTree } from "@wireframes/lib/layout-tree"
+import {
+  dramaTree,
+  studyTree,
+  topikTree,
+  voiceTree,
+} from "@wireframes/lib/layout-tree"
 import { useSceneLifetimes } from "some-ui-utils"
 
 import { OrchestratedYouTubeViewport } from "."
@@ -18,21 +22,23 @@ type AnimatedStoryProps = {
 }
 
 const AnimatedStory = ({
-  layoutTree,
+  layoutTree = studyTree,
   transitionMs = 300,
   enableFocus = true,
 }: AnimatedStoryProps) => {
   const activeLifetimes = useSceneLifetimes()
-  const { currentLayout } = useSceneDrivenLayout()
 
   return (
     <div className="absolute inset-0">
       <OrchestratedYouTubeViewport
-        layoutTree={layoutTree ?? currentLayout}
+        layoutTree={layoutTree}
         activeLifetimes={activeLifetimes}
         componentRegistry={componentRegistry}
         transitionMs={transitionMs}
         enableFocus={enableFocus}
+        // These stories exist to visualize every named region - keep
+        // showing placeholder boxes rather than zero-collapsing (story 5).
+        collapseUnbound={false}
       />
     </div>
   )
@@ -98,7 +104,7 @@ export const DramaLayout: Story = {
 
 export const VoiceLayout: Story = {
   render: (args) => <AnimatedStory {...args} />,
-  args: { transitionMs: 300 },
+  args: { layoutTree: voiceTree, transitionMs: 300 },
   parameters: {
     docs: {
       description: {
@@ -111,7 +117,7 @@ export const VoiceLayout: Story = {
 
 export const TopikLayout: Story = {
   render: (args) => <AnimatedStory {...args} />,
-  args: { transitionMs: 300 },
+  args: { layoutTree: topikTree, transitionMs: 300 },
   parameters: {
     docs: {
       description: {

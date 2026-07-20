@@ -1,5 +1,6 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig, SlotId } from "some-types-utils"
 import type { TTSProvider } from "some-ui-utils"
+import type { LayoutNode } from "wireframes"
 
 import type { LayoutTreeId, SessionActivity } from "../activity-catalog"
 
@@ -36,6 +37,14 @@ export type SessionRecord = {
   /** Finalized, playable scenes - the source of truth once Advanced editing may have touched them. */
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"
+  /**
+   * The session's own `Layout(t)`, one tree for its entire lifetime.
+   * Absent means the naive default (a single leaf filling `V`) - there's
+   * no seeding step, only an explicit edit via the live editor ever sets
+   * this. Scenes contribute bindings for these leaves (`ui.panels`), never
+   * topology.
+   */
+  layout?: LayoutNode<SlotId>
   totalDurationMs: number
   createdAt: string
   updatedAt: string

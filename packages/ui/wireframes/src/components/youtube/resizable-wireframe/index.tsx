@@ -1,27 +1,31 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { JSX, ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
+import { LeafResizeHandles } from "@wireframes/components/leaf-resize-handles"
 import { RenderSolved } from "@wireframes/components/render-solved"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
-import type { SolvedNode } from "@wireframes/lib/layout-types"
+import { extractLeafIds } from "@wireframes/lib/layout-intent"
+import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
-import { solveLayoutWithFocus } from "@wireframes/lib/layout-weighted"
-import { regionColors } from "@wireframes/lib/youtube-config"
+import { solveLayoutWithBindings } from "@wireframes/lib/layout-weighted"
+import { getSlotColor } from "@wireframes/lib/youtube-config"
 import type {
   ActiveLifetime,
   ComponentRegistry,
-  YouTubeRegion,
+  SlotId,
 } from "some-types-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
+
+type Edge = "left" | "right" | "top" | "bottom"
 
 type OrchestratedViewportProps<K extends string> = {
   /**
    * Layout tree from editor (defines topology)
    * This is the OUTPUT from your CRM editor
    */
-  layoutTree: LayoutNode<YouTubeRegion> | null
+  layoutTree: LayoutNode<SlotId> | null
 
   /**
    * Active lifetimes to render content from
@@ -39,6 +43,34 @@ type OrchestratedViewportProps<K extends string> = {
    * Transition duration for animations
    */
   transitionMs?: number
+
+  /**
+   * Zero-collapse leaves with nothing bound, redistributing their space to
+   * siblings (story 5). Callers editing topology directly (story 6's edit
+   * mode) turn this off so there's still something to click on to bind.
+   */
+  collapseUnbound?: boolean
+
+  /**
+   * Right-click any leaf to reveal resize handles (story 7) - independent
+   * of edit mode, works during normal playback. Omit to disable the
+   * affordance entirely.
+   */
+  onLeafResize?: (
+    id: SlotId,
+    edge: Edge,
+    deltaPx: number,
+    containerSizePx: number
+  ) => void
+}
+
+function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
+  if (node.type === "leaf") return node.id === id ? node.rect : null
+  for (const child of node.children) {
+    const found = findSolvedRect(child, id)
+    if (found) return found
+  }
+  return null
 }
 
 /**
@@ -53,20 +85,24 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   componentRegistry,
   enableFocus = true,
   transitionMs = 300,
+  collapseUnbound = true,
+  onLeafResize,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
   // Consumer manages its own focus state
-  const focusControls = useFocusControls<YouTubeRegion>()
+  const focusControls = useFocusControls<SlotId>()
 
   const [popup, setPopup] = useState<{
-    regionId: YouTubeRegion
+    regionId: SlotId
     position: { x: number; y: number }
   } | null>(null)
 
+  const [resizeArmedLeaf, setResizeArmedLeaf] = useState<SlotId | null>(null)
+
   // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
-    const panels: Partial<Record<YouTubeRegion, Array<() => ReactNode>>> = {}
+    const panels: Partial<Record<SlotId, Array<() => ReactNode>>> = {}
 
     for (const lifetime of activeLifetimes) {
       const scene = lifetime.kind.Scene
@@ -76,7 +112,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         for (const [region, panel] of Object.entries(
           layout.panels ?? {}
-        ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
+        ) as Array<[SlotId, { registry_key: K; props?: unknown }]>) {
           const factory = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,
@@ -99,17 +135,22 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     return Object.fromEntries(
       Object.entries(panels).map(([k, factories]) => [
         k,
-        (): ReactNode => factories.map((f) => f()),
+        (): ReactNode => (factories ?? []).map((f) => f()),
       ])
-    ) as Record<YouTubeRegion, () => ReactNode>
+    ) as Record<SlotId, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
 
-  const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
+  const layout: SolvedNode<SlotId> | undefined = useMemo(() => {
     if (!rect) return
     if (!layoutTree) return
 
-    return solveLayoutWithFocus(
+    const boundLeafIds = collapseUnbound
+      ? new Set(Object.keys(mergedPanels))
+      : extractLeafIds(layoutTree)
+
+    return solveLayoutWithBindings(
       layoutTree,
+      boundLeafIds,
       rect,
       enableFocus ? focusControls.focusedRegion : null,
       enableFocus ? focusControls.focusIntensity : 0
@@ -120,10 +161,12 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     enableFocus,
     focusControls.focusedRegion,
     focusControls.focusIntensity,
+    mergedPanels,
+    collapseUnbound,
   ])
 
   const handleLeafClick = useCallback(
-    (id: YouTubeRegion, position: { x: number; y: number }) => {
+    (id: SlotId, position: { x: number; y: number }) => {
       if (!enableFocus) return
       setPopup({ regionId: id, position })
     },
@@ -131,7 +174,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   )
 
   const handleApplyFocus = useCallback(
-    (regionId: YouTubeRegion, intensity: number) => {
+    (regionId: SlotId, intensity: number) => {
       focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
@@ -142,16 +185,38 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     setPopup(null)
   }, [])
 
+  const handleLeafContextMenu = useCallback(
+    (id: SlotId) => {
+      if (!onLeafResize) return
+      setResizeArmedLeaf((prev) => (prev === id ? null : id))
+    },
+    [onLeafResize]
+  )
+
+  useEffect(() => {
+    if (!resizeArmedLeaf) return
+
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === "Escape") setResizeArmedLeaf(null)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return (): void => window.removeEventListener("keydown", handleKeyDown)
+  }, [resizeArmedLeaf])
+
+  const armedLeafRect =
+    resizeArmedLeaf && layout ? findSolvedRect(layout, resizeArmedLeaf) : null
+
   const renderLeaf = useMemo(
     () =>
       // eslint-disable-next-line react/no-unstable-nested-components, react/display-name
-      (id: YouTubeRegion): ReactNode => {
+      (id: SlotId): ReactNode => {
         if (typeof mergedPanels[id] !== "function")
           return (
             <div
               className={cn(
                 "size-full inline-flex text-center items-center justify-center",
-                regionColors[id]
+                getSlotColor(id)
               )}
             >
               <h3 className="text-lg font-bold uppercase">{id}</h3>
@@ -169,7 +234,16 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           node={layout}
           renderLeaf={renderLeaf}
           onLeafClick={enableFocus ? handleLeafClick : undefined}
+          onLeafContextMenu={onLeafResize ? handleLeafContextMenu : undefined}
           transitionMs={transitionMs}
+        />
+      )}
+
+      {resizeArmedLeaf && armedLeafRect && onLeafResize && (
+        <LeafResizeHandles
+          leafId={resizeArmedLeaf}
+          rect={armedLeafRect}
+          onResize={onLeafResize}
         />
       )}
 

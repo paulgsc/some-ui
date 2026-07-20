@@ -1,4 +1,4 @@
-import type { YouTubeRegion } from "some-types-utils"
+import type { SlotId } from "some-types-utils"
 import { z } from "zod"
 import { create } from "zustand"
 
@@ -14,7 +14,7 @@ export const FocusProposalSchema = z.object({
 export type FocusProposal = z.infer<typeof FocusProposalSchema>
 
 export type ResolvedFocus = {
-  region: YouTubeRegion
+  region: SlotId
   intensity: number
 } | null
 
@@ -55,8 +55,7 @@ export function selectResolvedFocus(
     const winner = active.reduce((a, b) => (b.priority > a.priority ? b : a))
 
     return {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      region: winner.region as YouTubeRegion,
+      region: winner.region,
       intensity: winner.intensity,
     }
   }
@@ -64,7 +63,7 @@ export function selectResolvedFocus(
 
 // Hook for components to request focus (sandboxed)
 export function useRequestFocus(
-  region: YouTubeRegion
+  region: SlotId
 ): (intensity: number, ttlMs?: number) => void {
   const emit = useFocusStore((s) => s.emit)
 

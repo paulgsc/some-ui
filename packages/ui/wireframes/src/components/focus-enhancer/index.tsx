@@ -1,6 +1,6 @@
 import type { ComponentType, JSX } from "react"
 import { useRequestFocus } from "@wireframes/hooks/focus-system"
-import type { YouTubeRegion } from "some-types-utils"
+import type { SlotId } from "some-types-utils"
 import type { ComponentEnhancer } from "some-ui-utils"
 
 /**
@@ -27,11 +27,11 @@ export type FocusCapableProps = {
  * })
  * ```
  *
- * @param region - The YouTube region this component belongs to
+ * @param region - The slot id this component is bound to
  * @returns Component enhancer that injects requestFocus prop
  */
 export function withFocus<P extends object>(
-  region: YouTubeRegion
+  region: SlotId
 ): ComponentEnhancer<P & FocusCapableProps> {
   return (Component: ComponentType<P & FocusCapableProps>) => {
     const FocusWrapped = (props: P): JSX.Element => {
