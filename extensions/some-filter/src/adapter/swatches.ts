@@ -88,7 +88,7 @@ export const SWATCHES = {
     bg3: "#21252f",
     surface: "#1e222b",
     border: "rgba(255, 255, 255, 0.08)",
-    text0: "#cfdae8",
+    text0: "#8699b1",
     text1: "#94a3b8",
     text2: "#475569",
     link: "#7aa2f7",
