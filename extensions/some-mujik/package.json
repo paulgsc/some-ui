@@ -27,6 +27,6 @@
     "@playwright/test": "1.60.0",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
-    "vite": "^8.1.4"
+    "vite": "^8.1.5"
   }
 }
