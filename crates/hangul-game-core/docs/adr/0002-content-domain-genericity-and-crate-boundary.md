@@ -5,7 +5,8 @@
 - **Epic:** #709
 - **Stories:** #714 (B0), #715 (B1), #716 (B2), #717 (B3), #718 (B4)
 - **Supersedes:** none
-- **See also:** ADR 0001 (`0001-multimodal-word-testing.md`) — independent, orthogonal axis of generalization; see §1 below.
+- **Superseded (partially):** §2(d) (the #717 single-cell board-binding call) is superseded by ADR 0003 (`0003-word-challenge-board-and-overlay-architecture.md`) — multi-cell binding, per a concrete UX specification supplied after this ADR was accepted. The rest of this ADR (the `ContentDomain` trait, the API-authority axiom, the crate-boundary judgment) is unaffected.
+- **See also:** ADR 0001 (`0001-multimodal-word-testing.md`) — independent, orthogonal axis of generalization; see §1 below. ADR 0003 — supersedes §2(d) only, see above.
 
 ---
 
@@ -86,7 +87,14 @@ content-typing crate's matching needs coincide, at the algorithm level, with one
 implemented here, or (ii) `hangul-game-core` and `leetype_wasm`'s matchers are found needing the
 same change made twice (canon Rem. 11.3).
 
-### (d) Board cell-binding for word-shaped challenges (#717 addendum)
+### (d) Board cell-binding for word-shaped challenges (#717 addendum) — SUPERSEDED by ADR 0003
+
+> **This subsection's decision (single-cell binding) is superseded by ADR 0003
+> (`0003-word-challenge-board-and-overlay-architecture.md`), which records multi-cell binding
+> instead.** The reasoning below is kept as the historical record of what was decided here and
+> why — see ADR 0003 §2(a) for the concrete UX specification that triggered the reversal this
+> subsection's own last sentence anticipated ("if a concrete UX reason to prefer it surfaces
+> later, that is a new, properly-scoped story").
 
 ADR 0001's #425 (stimulus-aware hex cells) and #705's own narrative ("one or more cells in the
 honeycomb become highlighted or obscured") are compatible with two materially different board
