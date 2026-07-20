@@ -1,1 +1,22 @@
-{}
+{
+  "default-swatch-rendered": {
+    "luminanceComfort": 57,
+    "contrastComfort": 0,
+    "colorComfort": 19,
+    "emotionalComfort": 0,
+    "overall": 19,
+    "reviewer": "paulgsc",
+    "notes": "while the bg is dark and not causing eye strain due to constant flash, the text is basically the sun.\n",
+    "scoredAt": "2026-07-20T00:50:19.202Z"
+  },
+  "sun-glare-badges": {
+    "luminanceComfort": 42,
+    "contrastComfort": 0,
+    "colorComfort": 13,
+    "emotionalComfort": 0,
+    "overall": 14,
+    "reviewer": "paulgsc",
+    "notes": "the white text is high luminance, and the black text withing higher luminance tags, make those tags high luminance and maxmize eye strain",
+    "scoredAt": "2026-07-20T01:03:58.587Z"
+  }
+}
