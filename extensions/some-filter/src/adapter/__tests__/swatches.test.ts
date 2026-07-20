@@ -11,16 +11,26 @@ import {
 } from "../swatches"
 
 describe("SWATCHES", () => {
-  it("every registry entry satisfies Φ_comfort", () => {
+  // No exceptions, by design (#735): a swatch that fails Φ_comfort is a
+  // shipped regression, not a documentable exception — `default` failed
+  // this exact check until its `text0` was redimmed (see this file's own
+  // header comment). If a future edit makes any registry entry hostile
+  // again, this must fail the build, not grow another named carve-out.
+  it("every registry entry satisfies Φ_comfort — a hostile swatch never ships", () => {
     for (const swatch of Object.values(SWATCHES)) {
       expect(satisfiesComfort(swatchSample(swatch)), swatch.id).toBe(true)
     }
   })
 
-  it("the default swatch is byte-for-byte today's palette", () => {
+  // Not "byte-for-byte" or "unchanged" — bg0, bg1, bg2, bg3, surface,
+  // inputBg, and text0 have all moved since the original TOKENS import
+  // (#735: first a text0 redim, then a bg0-and-text0 pair chosen to
+  // minimize adaptation cost across a session rather than maximize static
+  // contrast). codeFg is the one token untouched through all of it.
+  it("the default swatch's current values (#735)", () => {
     const defaultSwatch = SWATCHES[DEFAULT_SWATCH_ID]
-    expect(defaultSwatch.bg0).toBe("#0d1117")
-    expect(defaultSwatch.text0).toBe("#e2e8f0")
+    expect(defaultSwatch.bg0).toBe("#171c25")
+    expect(defaultSwatch.text0).toBe("#8699b1")
     expect(defaultSwatch.codeFg).toBe("#e879f9")
   })
 

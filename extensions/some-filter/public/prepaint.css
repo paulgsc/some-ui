@@ -30,10 +30,10 @@
 */
 
 /* Dirty-by-default: body stays dark until we explicitly release it.
-   #0d1117 matches --sw-bg-0 in theme-apply.ts so lifting the veil produces
+   #171c25 matches --sw-bg-0 in theme-apply.ts so lifting the veil produces
    zero perceptual luminance jump for the auto/dark path. */
 html.sw-dirty > body {
-  background-color: #0d1117 !important;
+  background-color: #171c25 !important;
   color-scheme: dark !important;
 }
 
@@ -45,11 +45,11 @@ html[data-sw-legacy].sw-dirty > body {
 
 #__sw_prepaint_veil,
 #__sw_prepaint_veil:popover-open {
-  /* #0d1117 matches --sw-bg-0 so the veil colour and the settled dark-theme
+  /* #171c25 matches --sw-bg-0 so the veil colour and the settled dark-theme
      body colour are identical — lifting the veil produces no perceptual
      luminance jump for the human eye (avoids the instant-juxtaposition flash
      even when transitioning between two dark surfaces). */
-  background-color: #0d1117;
+  background-color: #171c25;
   border: 0;
   color-scheme: dark;
   height: 100vh;
@@ -78,7 +78,7 @@ html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
 
 /* Top-layer backdrop matches the veil face so nothing lighter shows at edges. */
 #__sw_prepaint_veil::backdrop {
-  background-color: #0d1117;
+  background-color: #171c25;
 }
 
 html[data-sw-legacy] #__sw_prepaint_veil::backdrop {

@@ -15,7 +15,36 @@
  * the label against the actual predicate, then add an entry — this file
  * *is* the review record #721 Story 5 asks for, in-repo and diffable
  * instead of behind a live UI.
+ *
+ * `<meta name="color-scheme" content="light dark">` on every fixture that
+ * carries an explicit `background-color`/`color` (#735): without it,
+ * Chromium's own forced/auto-dark rendering repaints those literal,
+ * ground-truth colors toward a "smarter" dark-mode-appropriate palette on
+ * any machine with system dark mode active — a paint-time transform
+ * `getComputedStyle` (and so the classifier and Playwright) never sees, but
+ * a Comfort Lab reviewer's eyes do. The tell: `transparent-ambiguous` below
+ * has no explicit colors and was never affected — only fixtures with
+ * authored colors were. Declaring `color-scheme` tells the browser this
+ * page's colors are intentional, not the "unprepared light page" forced-dark
+ * exists to correct.
+ *
+ * `default-swatch-rendered` is the one fixture in this file that reads
+ * colors from `SWATCHES` instead of hardcoding them (#735): every other
+ * entry pins specific rgb() values forever, which is exactly right for a
+ * regression fixture, but wrong for "does today's shipped default satisfy
+ * Φ_comfort" — a hardcoded copy of `SWATCHES.default`'s tokens would
+ * silently stop representing the shipped default the next time someone
+ * edits the registry, while this fixture's own `note` kept claiming it
+ * still did. `default-swatch-legacy-text`, below it, is the frozen
+ * counterpart: the original, pre-#735 `#e2e8f0` text this corpus caught as
+ * hostile, pinned forever so a future loosening of `CONTRAST_BAND_MAX`
+ * can't silently let it back in.
  */
+
+import {
+  DEFAULT_SWATCH_ID,
+  SWATCHES,
+} from "@some-extension/filter/adapter/swatches"
 
 export type HumanLabel =
   /** A light, unthemed vendor page — the everyday case some-filter themes. */
@@ -59,7 +88,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: null,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Plain Light Card</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Plain Light Card</title></head>
   <body style="background-color: rgb(255, 255, 255); color: rgb(17, 24, 39); margin: 0">
     <main style="background-color: rgb(255, 255, 255); padding: 16px">
       <h1>Ordinary article</h1>
@@ -74,19 +103,67 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     grammar: "comfortable-dark-default",
     label: "comfortable",
     note:
-      "Body already wears the shipped default swatch's own (bg0, text0) " +
-      "tokens (#0d1117 / #e2e8f0) — verified: contrast 15.35 (in [7.5, 16]), " +
-      "both channels chromatically biased, background well above the black " +
-      "floor. The classifier should exonerate this, not re-theme it.",
+      "Tests 'does today's shipped default satisfy Φ_comfort', not a " +
+      "specific pinned pair (#735) — its html() reads `SWATCHES[" +
+      "DEFAULT_SWATCH_ID].bg0`/`.text0` live, so it tracks whatever the " +
+      "registry currently ships. Today that's #171c25 / #8699b1: contrast " +
+      "5.86 (inside [5.5, 14] — CONTRAST_BAND_MIN dropped from 7.5 " +
+      "specifically to admit this pair), both channels chromatically " +
+      "biased, background well above the black floor. Two design moves " +
+      "landed here in sequence: text0 first redimmed to #cfdae8 after a " +
+      'blind eye score called the original #e2e8f0 hostile ("the text is ' +
+      'basically the sun", contrast 15.35 — see `default-swatch-legacy-' +
+      "text` below, pinned forever as that regression's evidence); then " +
+      "both bg0 and text0 moved again on the argument that minimizing " +
+      "luminance *transitions* over a session (not maximizing static " +
+      "contrast) is the more comfortable target — bg0 now lands almost " +
+      "exactly on Tokyo Night's own background, well clear of pure black. " +
+      "This fixture's `expectComfortable: true` is the actual invariant: " +
+      "the shipped default must satisfy Φ_comfort, full stop — some-" +
+      "filter's own registry test (\"every registry entry satisfies " +
+      'Φ_comfort", swatches.test.ts) enforces the same thing with zero ' +
+      "exceptions, so a hostile default fails the build on two " +
+      "independent paths, not just this one.",
     expectAlreadyDark: true,
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Default Swatch Rendered</title></head>
-  <body style="background-color: rgb(13, 17, 23); color: rgb(226, 232, 240); margin: 0">
-    <main style="background-color: rgb(13, 17, 23); padding: 16px">
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Rendered</title></head>
+  <body style="background-color: ${SWATCHES[DEFAULT_SWATCH_ID].bg0}; color: ${SWATCHES[DEFAULT_SWATCH_ID].text0}; margin: 0">
+    <main style="background-color: ${SWATCHES[DEFAULT_SWATCH_ID].bg0}; padding: 16px">
       <h1>Already themed</h1>
       <p>A vendor page that happens to already wear our own default tokens.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
+    id: "default-swatch-legacy-text",
+    grammar: "frozen-hostile-legacy-default-text",
+    label: "hostile",
+    note:
+      "Frozen regression evidence (#735), deliberately hardcoded rather " +
+      "than derived from `SWATCHES` like `default-swatch-rendered` above " +
+      "— this fixture's whole point is to keep testing the *original* " +
+      "shipped default text0 (#e2e8f0) forever, independent of whatever " +
+      "the registry's `default.text0` becomes next. A blind Comfort Lab " +
+      'eye score on #0d1117/#e2e8f0 came back hostile (overall 19, "the ' +
+      'text is basically the sun") despite passing the pre-#735 ' +
+      "predicate: contrast 15.35, inside the old [7.5, 16] band but right " +
+      "at its ceiling. CONTRAST_BAND_MAX tightened to 14 specifically to " +
+      "reject this pair; if it's ever loosened back toward 16, this " +
+      "fixture is what catches that regression, not a live-swatch test " +
+      "that would have already moved on to a different text0 by then.",
+    expectAlreadyDark: true,
+    expectComfortable: false,
+    html: () => `<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Legacy Text</title></head>
+  <body style="background-color: rgb(13, 17, 23); color: rgb(226, 232, 240); margin: 0">
+    <main style="background-color: rgb(13, 17, 23); padding: 16px">
+      <h1>Already themed (pre-#735)</h1>
+      <p>The original shipped default text color, pinned here forever as regression evidence.</p>
     </main>
   </body>
 </html>`,
@@ -107,7 +184,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Muted Warm Dark</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Muted Warm Dark</title></head>
   <body style="background-color: rgb(30, 26, 22); color: rgb(190, 170, 150); margin: 0">
     <main style="background-color: rgb(30, 26, 22); padding: 16px">
       <h1>Warm, muted, comfortable</h1>
@@ -136,7 +213,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: false,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Sun Glare Badges</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Sun Glare Badges</title></head>
   <body style="background-color: rgb(0, 0, 0); color: rgb(255, 255, 255); margin: 0">
     <main style="background-color: rgb(0, 0, 0); padding: 16px">
       <h1>Dashboard</h1>
@@ -164,7 +241,7 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Cool Blue Preserve Band</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Cool Blue Preserve Band</title></head>
   <body style="background-color: rgb(18, 22, 32); color: rgb(203, 213, 225); margin: 0">
     <main style="background-color: rgb(18, 22, 32); padding: 16px">
       <h1>Cool blue-gray</h1>
@@ -191,11 +268,41 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     expectComfortable: false,
     html: () => `<!doctype html>
 <html>
-  <head><meta charset="utf-8" /><title>Borderline Mid Gray</title></head>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Borderline Mid Gray</title></head>
   <body style="background-color: rgb(161, 161, 161); color: rgb(0, 0, 0); margin: 0">
     <main style="background-color: rgb(161, 161, 161); padding: 16px">
       <h1>Neither clearly light nor clearly dark</h1>
       <p>An achromatic mid-gray canvas, right at the classifier's own threshold.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
+    id: "neon-text-moderate-surface",
+    grammar: "bright-text-on-moderate-dark-surface",
+    label: "hostile",
+    note:
+      "#735's counterpoint to a merely-bright-background case ('a bright bg " +
+      "is trivial to target'): an ordinary moderate-dark surface (bgLuminance " +
+      "0.012 — comfortably clear of the black floor, and itself chromatically " +
+      "biased) carrying saturated near-yellow body copy, not badges. Verified: " +
+      "contrast 15.97 (inside the [7.5, 16] band, nowhere near the ceiling) " +
+      "and the background is unmistakably not a void — a contrast-or-" +
+      "blackness-only check waves this straight through. Only textLuminance " +
+      "0.937 (just over the 0.92 ceiling) fails. This is the fixture #722's " +
+      "'sun' framing was always about but sun-glare-badges (max-contrast, " +
+      "black void) can't isolate on its own: bright text is the hostile " +
+      "signal, independent of how dark or void the background is.",
+    expectAlreadyDark: true,
+    expectComfortable: false,
+    html: () => `<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Neon Text Moderate Surface</title></head>
+  <body style="background-color: rgb(28, 28, 32); color: rgb(255, 255, 102); margin: 0">
+    <main style="background-color: rgb(28, 28, 32); padding: 16px">
+      <h1>Changelog</h1>
+      <p>Every line of body copy here is set in the same searing near-yellow — no badges, no accents, just paragraph after paragraph bright enough to read like a screen left on max brightness in the dark.</p>
     </main>
   </body>
 </html>`,

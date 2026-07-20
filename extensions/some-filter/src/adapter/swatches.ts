@@ -69,24 +69,50 @@ export const DEFAULT_SWATCH_ID = "default"
  * bar, #687).
  */
 export const SWATCHES = {
-  // Today's palette, verbatim (`theme-apply.ts`'s former `TOKENS`) — the
-  // active default, so behavior is unchanged until a picker (follow-on)
-  // selects otherwise.
+  // No longer `theme-apply.ts`'s former `TOKENS` verbatim — two rounds of
+  // changes since (#735):
+  //
+  // 1. `text0` first moved from `#e2e8f0` to `#cfdae8` (a blind Comfort Lab
+  //    eye score on the original pair came back hostile — "the text is
+  //    basically the sun" — despite passing the predicate: contrast 15.35,
+  //    right at the old CONTRAST_BAND_MAX of 16). Then to `#8699b1` — a
+  //    genuinely desaturated "reading gray" (213.5°, 21.6% sat, L 61%)
+  //    rather than a dimmed light-blue-white, on the argument that most
+  //    dark themes optimize for maximum perceived contrast while staying
+  //    "dark," but sustained-reading comfort is better served by minimizing
+  //    luminance *transitions* over a session, not just avoiding one
+  //    hostile static frame.
+  // 2. That argument applies to `bg0` too: `#0d1117` (luminance 0.00548) is
+  //    darker than VS Code (#1e1e1e), Tokyo Night (#1a1b26), Catppuccin
+  //    Mocha (#1e1e2e), and Gruvbox (#282828) — none of which go
+  //    near-black, because it maximizes the adaptation distance to
+  //    anything brighter (a white flash, a tab switch). `bg0` moves to
+  //    `#171c25` (luminance 0.01146), which lands almost exactly on Tokyo
+  //    Night's own background. `bg1`/`bg2`/`bg3`/`surface`/`inputBg` shift
+  //    with it, preserving the original luminance *gaps* between tiers
+  //    (not just bg0 in isolation, which would have collided with the old
+  //    bg1–bg3 range and collapsed the elevation ramp).
+  //
+  // Together these drop contrast to 5.86 (bg0 #171c25, text0 #8699b1) —
+  // below the old CONTRAST_BAND_MIN of 7.5, which was tightened from the
+  // *other* direction only, never re-examined from below. CONTRAST_BAND_MIN
+  // moves to 5.5 to accommodate this pair with margin (see the constant's
+  // own comment below).
   default: {
     id: "default",
     label: "Default",
-    bg0: "#0d1117",
-    bg1: "#13161d",
-    bg2: "#1a1e27",
-    bg3: "#21252f",
-    surface: "#1e222b",
+    bg0: "#171c25",
+    bg1: "#1b1f29",
+    bg2: "#212631",
+    bg3: "#272b37",
+    surface: "#242934",
     border: "rgba(255, 255, 255, 0.08)",
-    text0: "#e2e8f0",
+    text0: "#8699b1",
     text1: "#94a3b8",
     text2: "#475569",
     link: "#7aa2f7",
     linkVisited: "#9d8cf7",
-    inputBg: "#1a1e27",
+    inputBg: "#212631",
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(122, 162, 247, 0.25)",
     codeFg: "#e879f9",
@@ -236,8 +262,24 @@ export function getSwatch(id: string): Swatch {
 // only thing that still knows about hex; every registry call site converts
 // through it, so this generalization changes no existing behavior.
 const TEXT_LUMINANCE_CEILING = 0.92
-const CONTRAST_BAND_MIN = 7.5
-const CONTRAST_BAND_MAX = 16
+// 7.5 was never re-examined from below until `default`'s own (bg0, text0)
+// moved to a deliberately lower-contrast "reading gray" pair — #8699b1 on
+// the new #171c25 bg0 lands at 5.86, under the original floor. Unlike the
+// 16→14 tightening above, there's no blind eye-score evidence this pair
+// reads as hostile — the opposite argument (minimizing adaptation cost
+// over a session favors lower, not higher, contrast) is what motivated the
+// pair in the first place. 5.5 accommodates it with real margin (0.36)
+// rather than sitting at the exact edge.
+const CONTRAST_BAND_MIN = 5.5
+// 16 (the WCAG-adjacent round number this started at) let the shipped
+// `default` swatch's own (bg0, text0) pair through at contrast 15.35 — and
+// a blind Comfort Lab eye score on that exact pair came back hostile
+// (overall 19, "the text is basically the sun") despite passing every
+// clause (#735). 14 is the real gap found by checking every registry
+// swatch's own contrast: the next-highest is `warm-paper-dark` at 13.64,
+// comfortably under; `default` at 15.35 is the outlier this band exists to
+// catch, not fit around.
+const CONTRAST_BAND_MAX = 14
 const CHROMATIC_SATURATION_FLOOR = 0.03
 const BACKGROUND_LUMINANCE_FLOOR = 0.001
 

@@ -48,8 +48,22 @@ export const themeGlobalTypes = {
  *   carries `theme-container`.
  * - App themes (`.scheduler`, `.code`) are full palettes applied to the same
  *   wrapper.
+ *
+ * `parameters.neutralCanvas` opts a story out of all of the above (#735):
+ * the toolbar's Mode/Theme globals persist across Storybook sessions, so a
+ * story reviewed after someone left the toolbar on "Dark" gets wrapped in a
+ * near-black canvas it never asked for. Harmless for ordinary component
+ * stories, but Comfort Lab's fixtures are explicit-background HTML a human
+ * is asked to eye-score in isolation — a dark surround around a white
+ * fixture biases that judgment (simultaneous contrast) regardless of what
+ * the fixture's own DOM says. Render the story with no wrapper at all so
+ * the canvas stays neutral no matter what the toolbar is set to.
  */
 export const withTheme: Decorator = (Story, context) => {
+  if (context.parameters.neutralCanvas === true) {
+    return <Story />
+  }
+
   const mode = String(context.globals.mode ?? "light")
   const themeId = String(context.globals.theme ?? "none")
   const meta = themes.find((t) => t.id === themeId)

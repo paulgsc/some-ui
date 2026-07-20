@@ -62,7 +62,11 @@ const ComfortLabStory = ({
 
 const meta: Meta = {
   title: "Extensions/FilterClassifier/Comfort Lab",
-  parameters: { layout: "fullscreen" },
+  // neutralCanvas (#735): keep the surrounding canvas fixed regardless of
+  // the toolbar's Mode/Theme globals — see theme-decorator.tsx's withTheme.
+  // A dark canvas left over from reviewing some other story biases the eye
+  // score before the reviewer even looks at the fixture itself.
+  parameters: { layout: "fullscreen", neutralCanvas: true },
 }
 export default meta
 
@@ -74,6 +78,10 @@ export const PlainLightCard: Story = {
 
 export const DefaultSwatchRendered: Story = {
   render: () => <ComfortLabStory fixtureId="default-swatch-rendered" />,
+}
+
+export const DefaultSwatchLegacyText: Story = {
+  render: () => <ComfortLabStory fixtureId="default-swatch-legacy-text" />,
 }
 
 export const MutedWarmDark: Story = {
@@ -94,4 +102,8 @@ export const BorderlineMidGray: Story = {
 
 export const TransparentAmbiguous: Story = {
   render: () => <ComfortLabStory fixtureId="transparent-ambiguous" />,
+}
+
+export const NeonTextModerateSurface: Story = {
+  render: () => <ComfortLabStory fixtureId="neon-text-moderate-surface" />,
 }

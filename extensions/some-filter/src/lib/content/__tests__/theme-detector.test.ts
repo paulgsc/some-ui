@@ -37,12 +37,13 @@ describe("classifyPage", () => {
   it("skip=true when html and body both carry the prepaint dark color (simulates un-suppressed prepaint)", () => {
     // Root cause of Bug 1: when findPrepaintSheet() fails (SecurityError on
     // cssRules access swallowed silently), the prepaint sheet stays active.
-    // html and body get background-color: #0d1117 from prepaint.css.
-    // classifyPage() samples these as luminance ≈ 0.005, avgLuminance ≈ 0.005.
-    // isLight = 0.005 > 0.4 → false.  skip = 0.005 < 0.2 → true.
+    // html and body get background-color: #171c25 from prepaint.css (#735:
+    // matches SWATCHES.default.bg0, moved from #0d1117).
+    // classifyPage() samples these as luminance ≈ 0.011, avgLuminance ≈ 0.011.
+    // isLight = 0.011 > 0.4 → false.  skip = 0.011 < 0.2 → true.
     // Result: no dark theme applied, veil drops, white page exposed.
-    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
-    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+    document.documentElement.style.backgroundColor = "rgb(23, 28, 37)"
+    document.body.style.backgroundColor = "rgb(23, 28, 37)"
 
     const result = classifyPage()
     expect(result.isLight).toBe(false)
