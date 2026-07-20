@@ -10,7 +10,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
     "@types/webextension-polyfill": "^0.10.0",
-    "eslint": "^10.6.0",
+    "eslint": "^10.7.0",
     "lucide-react": "^0.263.1",
     "maishatu-eslint-kit": "workspace:*",
     "web-ext": "^7.6.2",
