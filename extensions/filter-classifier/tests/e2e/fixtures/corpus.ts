@@ -83,15 +83,25 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
 
   {
     id: "default-swatch-rendered",
-    grammar: "comfortable-dark-default",
-    label: "comfortable",
+    grammar: "harsh-contrast-default-swatch",
+    label: "hostile",
     note:
-      "Body already wears the shipped default swatch's own (bg0, text0) " +
-      "tokens (#0d1117 / #e2e8f0) — verified: contrast 15.35 (in [7.5, 16]), " +
-      "both channels chromatically biased, background well above the black " +
-      "floor. The classifier should exonerate this, not re-theme it.",
+      "Body wears the shipped default swatch's own (bg0, text0) tokens " +
+      "(#0d1117 / #e2e8f0). This label flipped from 'comfortable' after the " +
+      "first real Comfort Lab eye score on it came back hostile (overall " +
+      '19, "the text is basically the sun", #735) despite passing the ' +
+      "*original* predicate. The gap: contrast 15.35 sat inside the old " +
+      "[7.5, 16] band but right at its ceiling — checking every registry " +
+      "swatch's own contrast found `default` as the sole outlier (the " +
+      "next-highest, warm-paper-dark, sits at 13.64), so CONTRAST_BAND_MAX " +
+      "tightened from 16 to 14 (swatches.ts). Text luminance (0.80), " +
+      "chromatic bias, and bgNotBlack all still pass on their own — only " +
+      "contrastInBand fails now. `default` is excluded from `some-filter`'s " +
+      'own "every registry entry satisfies Φ_comfort" test as a named, ' +
+      "checked exception (swatches.test.ts) rather than silently changing " +
+      "the swatch's actual colors.",
     expectAlreadyDark: true,
-    expectComfortable: true,
+    expectComfortable: false,
     html: () => `<!doctype html>
 <html>
   <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Rendered</title></head>

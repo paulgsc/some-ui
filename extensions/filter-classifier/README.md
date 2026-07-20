@@ -65,7 +65,7 @@ labeled — see the file's own `note` field per fixture for the numbers.
 | id                           | grammar                              | label         | alreadyDark | comfortable |
 | ---------------------------- | ------------------------------------ | ------------- | ----------- | ----------- |
 | `plain-light-card`           | unthemed-light-canvas                | needs-theming | false       | n/a         |
-| `default-swatch-rendered`    | comfortable-dark-default             | comfortable   | true        | true        |
+| `default-swatch-rendered`    | harsh-contrast-default-swatch        | **hostile**   | true        | **false**   |
 | `muted-warm-dark`            | comfortable-dark-muted               | comfortable   | true        | true        |
 | `sun-glare-badges`           | harsh-saturated-badges-on-void       | **hostile**   | true        | **false**   |
 | `cool-blue-preserve-band`    | comfortable-dark-alt-swatch          | comfortable   | true        | true        |
@@ -85,6 +85,20 @@ alone.
 `sun-glare-badges` is the corpus's centerpiece: it is the direct fixture form
 of #722's annotated screenshot (a dark dashboard carrying fully-saturated
 accent badges — literally captioned "the sun" by a human looking at it).
+
+`default-swatch-rendered` flipped from `comfortable` to `hostile` (#735):
+the first real Comfort Lab eye score against it — the _shipped default
+swatch's own_ `(bg0, text0)` pair — came back hostile (overall 19, "the text
+is basically the sun") despite passing the original predicate. Its contrast
+(15.35) sat inside the old `[7.5, 16]` band but right at the ceiling;
+checking every registry swatch's own contrast found `default` as the sole
+outlier (the next-highest, `warm-paper-dark`, sits at 13.64), so
+`CONTRAST_BAND_MAX` in `swatches.ts` tightened from 16 to 14. `some-filter`'s
+own `swatches.test.ts` now excludes `default` from "every registry entry
+satisfies Φ_comfort" as a named, checked exception — it predates Φ_comfort
+and hasn't been redesigned to satisfy the tightened bar, which is a real,
+open finding about the shipped default theme, not something papered over
+here.
 
 ## Adding a fixture (#731 — the full loop)
 

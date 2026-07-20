@@ -11,10 +11,30 @@ import {
 } from "../swatches"
 
 describe("SWATCHES", () => {
-  it("every registry entry satisfies Φ_comfort", () => {
+  // `default` is excluded, not silently passing: it predates Φ_comfort
+  // (kept byte-for-byte as "today's palette, verbatim" — see this file's
+  // own header comment) and a blind Comfort Lab eye score on its exact
+  // (bg0, text0) pair came back hostile (#735) once CONTRAST_BAND_MAX was
+  // tightened to the value the other six swatches were actually designed
+  // around. See the dedicated test below — this isn't a gap, it's a named,
+  // checked exception.
+  it("every purpose-built registry entry satisfies Φ_comfort", () => {
     for (const swatch of Object.values(SWATCHES)) {
+      if (swatch.id === DEFAULT_SWATCH_ID) continue
       expect(satisfiesComfort(swatchSample(swatch)), swatch.id).toBe(true)
     }
+  })
+
+  it("the default swatch does not satisfy Φ_comfort (#735) — legacy, not yet redesigned", () => {
+    const defaultSwatch = SWATCHES[DEFAULT_SWATCH_ID]
+    const report = comfortReport(swatchSample(defaultSwatch))
+    // contrast 15.35 — inside the old [7.5, 16] band, outside today's
+    // [7.5, 14]; every other clause still passes.
+    expect(report.contrastInBand).toBe(false)
+    expect(report.textNotBrightest).toBe(true)
+    expect(report.chromaticBias).toBe(true)
+    expect(report.bgNotBlack).toBe(true)
+    expect(satisfiesComfort(swatchSample(defaultSwatch))).toBe(false)
   })
 
   it("the default swatch is byte-for-byte today's palette", () => {

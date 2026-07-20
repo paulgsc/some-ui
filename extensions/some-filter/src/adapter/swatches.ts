@@ -237,7 +237,15 @@ export function getSwatch(id: string): Swatch {
 // through it, so this generalization changes no existing behavior.
 const TEXT_LUMINANCE_CEILING = 0.92
 const CONTRAST_BAND_MIN = 7.5
-const CONTRAST_BAND_MAX = 16
+// 16 (the WCAG-adjacent round number this started at) let the shipped
+// `default` swatch's own (bg0, text0) pair through at contrast 15.35 — and
+// a blind Comfort Lab eye score on that exact pair came back hostile
+// (overall 19, "the text is basically the sun") despite passing every
+// clause (#735). 14 is the real gap found by checking every registry
+// swatch's own contrast: the next-highest is `warm-paper-dark` at 13.64,
+// comfortably under; `default` at 15.35 is the outlier this band exists to
+// catch, not fit around.
+const CONTRAST_BAND_MAX = 14
 const CHROMATIC_SATURATION_FLOOR = 0.03
 const BACKGROUND_LUMINANCE_FLOOR = 0.001
 
