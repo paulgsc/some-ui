@@ -80,6 +80,10 @@ export const DefaultSwatchRendered: Story = {
   render: () => <ComfortLabStory fixtureId="default-swatch-rendered" />,
 }
 
+export const DefaultSwatchLegacyText: Story = {
+  render: () => <ComfortLabStory fixtureId="default-swatch-legacy-text" />,
+}
+
 export const MutedWarmDark: Story = {
   render: () => <ComfortLabStory fixtureId="muted-warm-dark" />,
 }

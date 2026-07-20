@@ -57,7 +57,7 @@ checked, falsifiable property of the repo instead of an anecdote.
 
 ## The corpus (`tests/e2e/fixtures/corpus.ts`)
 
-Eight fixtures span the grammar the classifier needs to bucket correctly.
+Nine fixtures span the grammar the classifier needs to bucket correctly.
 Every color in every fixture was checked against the actual comfort math
 (relative luminance, WCAG contrast ratio, HSL saturation) before being
 labeled — see the file's own `note` field per fixture for the numbers.
@@ -66,6 +66,7 @@ labeled — see the file's own `note` field per fixture for the numbers.
 | ---------------------------- | ------------------------------------ | ------------- | ----------- | ----------- |
 | `plain-light-card`           | unthemed-light-canvas                | needs-theming | false       | n/a         |
 | `default-swatch-rendered`    | comfortable-dark-default             | comfortable   | true        | true        |
+| `default-swatch-legacy-text` | frozen-hostile-legacy-default-text   | **hostile**   | true        | **false**   |
 | `muted-warm-dark`            | comfortable-dark-muted               | comfortable   | true        | true        |
 | `sun-glare-badges`           | harsh-saturated-badges-on-void       | **hostile**   | true        | **false**   |
 | `cool-blue-preserve-band`    | comfortable-dark-alt-swatch          | comfortable   | true        | true        |
@@ -86,20 +87,36 @@ alone.
 of #722's annotated screenshot (a dark dashboard carrying fully-saturated
 accent badges — literally captioned "the sun" by a human looking at it).
 
-`default-swatch-rendered` (#735): the first real Comfort Lab eye score
+**`default-swatch-rendered` / `default-swatch-legacy-text` (#735)** are a
+deliberate pair, not a duplicate. The first real Comfort Lab eye score
 against the _shipped default swatch's own_ `(bg0, text0)` pair came back
 hostile (overall 19, "the text is basically the sun") despite passing the
 original predicate — `text0`'s original `#e2e8f0` produced contrast 15.35,
-inside the old `[7.5, 16]` band but right at the ceiling. Checking every
-registry swatch's own contrast found `default` as the sole outlier (the
-next-highest, `warm-paper-dark`, sits at 13.64), so `CONTRAST_BAND_MAX` in
-`swatches.ts` tightened from 16 to 14, and `text0` was redimmed to
-`#cfdae8` (same ~214° hue, contrast 13.38 against this swatch's own `bg0`)
-rather than ship a swatch the classifier itself would call hostile.
-`some-filter`'s own `swatches.test.ts` enforces this with **zero
-exceptions** — "every registry entry satisfies Φ_comfort" runs over the
-whole registry, `default` included, so a hostile swatch fails the build
-instead of silently reaching users.
+inside the old `[7.5, 16]` band but right at the ceiling. `CONTRAST_BAND_MAX`
+in `swatches.ts` tightened from 16 to 14, and `text0` was redimmed to
+`#cfdae8` (same ~214° hue, contrast 13.38). `some-filter`'s own
+`swatches.test.ts` enforces this with **zero exceptions** — "every registry
+entry satisfies Φ_comfort" runs over the whole registry, `default` included,
+so a hostile swatch fails the build instead of silently reaching users.
+
+That fix exposed a coupling bug in the fixture itself: every other entry in
+this file hardcodes its colors, which is correct for a fixed regression case
+but was wrong here, where the `note` claimed to test "the shipped default
+swatch's own tokens" while the `html()` held a hardcoded copy that would
+silently stop matching the registry the next time someone edited `text0`.
+The fix splits it in two:
+
+- **`default-swatch-rendered`** reads `SWATCHES[DEFAULT_SWATCH_ID].bg0`/
+  `.text0` live (imported from `@some-extension/filter/adapter/swatches`,
+  the same package path `harness/entry.ts` already uses) — it answers "does
+  today's shipped default satisfy Φ_comfort," and tracks the registry
+  automatically. `expectComfortable: true` here isn't a snapshot of a
+  specific pair; it's the actual invariant this fixture exists to enforce.
+- **`default-swatch-legacy-text`** hardcodes the _original_ `#0d1117`/
+  `#e2e8f0` pair forever, independent of whatever `default.text0` becomes
+  next — permanent regression evidence that this exact pair must never
+  reclassify as comfortable, even if `CONTRAST_BAND_MAX` is ever loosened
+  back toward 16.
 
 ## Adding a fixture (#731 — the full loop)
 
@@ -108,6 +125,15 @@ human-verification record #721 Story 5 / #726 Story 5 ask for — kept in-repo
 and diffable rather than behind a live review UI. Found a real page (or a
 false positive/negative) worth adding? The full loop, in order:
 
+0. Decide which of two things this fixture is (#735): a **regression
+   case** — a specific `(bg, text)` pair that must always classify the same
+   way — should hardcode its colors, the same way every fixture except
+   `default-swatch-rendered` does. A fixture that's meant to track **the
+   current value of a registry swatch** should read from `SWATCHES` instead
+   (see `default-swatch-rendered`/`default-swatch-legacy-text` above for
+   the split and why conflating them is a real bug, not a style choice) —
+   otherwise its `note` will describe "the shipped X" while its `html()`
+   quietly stops being that the next time the registry changes.
 1. Add an entry to `CORPUS` in `tests/e2e/fixtures/corpus.ts` with the
    rendered `(bg, text)` pair you observed.
 2. Verify your expected `expectAlreadyDark`/`expectComfortable` against the

@@ -27,7 +27,24 @@
  * authored colors were. Declaring `color-scheme` tells the browser this
  * page's colors are intentional, not the "unprepared light page" forced-dark
  * exists to correct.
+ *
+ * `default-swatch-rendered` is the one fixture in this file that reads
+ * colors from `SWATCHES` instead of hardcoding them (#735): every other
+ * entry pins specific rgb() values forever, which is exactly right for a
+ * regression fixture, but wrong for "does today's shipped default satisfy
+ * Φ_comfort" — a hardcoded copy of `SWATCHES.default`'s tokens would
+ * silently stop representing the shipped default the next time someone
+ * edits the registry, while this fixture's own `note` kept claiming it
+ * still did. `default-swatch-legacy-text`, below it, is the frozen
+ * counterpart: the original, pre-#735 `#e2e8f0` text this corpus caught as
+ * hostile, pinned forever so a future loosening of `CONTRAST_BAND_MAX`
+ * can't silently let it back in.
  */
+
+import {
+  DEFAULT_SWATCH_ID,
+  SWATCHES,
+} from "@some-extension/filter/adapter/swatches"
 
 export type HumanLabel =
   /** A light, unthemed vendor page — the everyday case some-filter themes. */
@@ -86,29 +103,64 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     grammar: "comfortable-dark-default",
     label: "comfortable",
     note:
-      "Body wears the shipped default swatch's own (bg0, text0) tokens — " +
-      "#0d1117 / #cfdae8. text0 was originally #e2e8f0 (luminance 0.80, " +
-      "contrast 15.35): a blind Comfort Lab eye score on that exact pair " +
-      'came back hostile (overall 19, "the text is basically the sun", ' +
-      "#735) despite passing the original predicate, so CONTRAST_BAND_MAX " +
-      "tightened from 16 to 14 and text0 was redimmed to #cfdae8 (same " +
-      "~214° hue, luminance 0.69) rather than leaving a known-hostile " +
-      "default shipping. Verified against the new pair: contrast 13.38 " +
-      "(inside [7.5, 14], with margin below warm-paper-dark's 13.64 — the " +
-      "next-highest registry swatch), both channels chromatically biased, " +
-      "background well above the black floor. `some-filter`'s own " +
-      'registry test ("every registry entry satisfies Φ_comfort") enforces ' +
-      "this with zero exceptions — a hostile swatch fails the build, it " +
-      "does not ship (swatches.test.ts).",
+      "Tests 'does today's shipped default satisfy Φ_comfort', not a " +
+      "specific pinned pair (#735) — its html() reads `SWATCHES[" +
+      "DEFAULT_SWATCH_ID].bg0`/`.text0` live, so it tracks whatever the " +
+      "registry currently ships. Today that's #0d1117 / #cfdae8: contrast " +
+      "13.38 (inside [7.5, 14], with margin below warm-paper-dark's " +
+      "13.64 — the next-highest registry swatch), both channels " +
+      "chromatically biased, background well above the black floor. " +
+      "text0 was originally #e2e8f0 (contrast 15.35): a blind Comfort Lab " +
+      'eye score on that exact pair came back hostile (overall 19, "the ' +
+      'text is basically the sun") despite passing the original ' +
+      "predicate — see `default-swatch-legacy-text` below for that pair, " +
+      "pinned forever as regression evidence. This fixture's " +
+      "`expectComfortable: true` is the actual invariant: the shipped " +
+      "default must satisfy Φ_comfort, full stop — `some-filter`'s own " +
+      'registry test ("every registry entry satisfies Φ_comfort", ' +
+      "swatches.test.ts) enforces the same thing with zero exceptions, so " +
+      "a hostile default fails the build on two independent paths, not " +
+      "just this one.",
     expectAlreadyDark: true,
     expectComfortable: true,
     html: () => `<!doctype html>
 <html>
   <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Rendered</title></head>
-  <body style="background-color: rgb(13, 17, 23); color: rgb(207, 218, 232); margin: 0">
-    <main style="background-color: rgb(13, 17, 23); padding: 16px">
+  <body style="background-color: ${SWATCHES[DEFAULT_SWATCH_ID].bg0}; color: ${SWATCHES[DEFAULT_SWATCH_ID].text0}; margin: 0">
+    <main style="background-color: ${SWATCHES[DEFAULT_SWATCH_ID].bg0}; padding: 16px">
       <h1>Already themed</h1>
       <p>A vendor page that happens to already wear our own default tokens.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
+    id: "default-swatch-legacy-text",
+    grammar: "frozen-hostile-legacy-default-text",
+    label: "hostile",
+    note:
+      "Frozen regression evidence (#735), deliberately hardcoded rather " +
+      "than derived from `SWATCHES` like `default-swatch-rendered` above " +
+      "— this fixture's whole point is to keep testing the *original* " +
+      "shipped default text0 (#e2e8f0) forever, independent of whatever " +
+      "the registry's `default.text0` becomes next. A blind Comfort Lab " +
+      'eye score on #0d1117/#e2e8f0 came back hostile (overall 19, "the ' +
+      'text is basically the sun") despite passing the pre-#735 ' +
+      "predicate: contrast 15.35, inside the old [7.5, 16] band but right " +
+      "at its ceiling. CONTRAST_BAND_MAX tightened to 14 specifically to " +
+      "reject this pair; if it's ever loosened back toward 16, this " +
+      "fixture is what catches that regression, not a live-swatch test " +
+      "that would have already moved on to a different text0 by then.",
+    expectAlreadyDark: true,
+    expectComfortable: false,
+    html: () => `<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><meta name="color-scheme" content="light dark" /><title>Default Swatch Legacy Text</title></head>
+  <body style="background-color: rgb(13, 17, 23); color: rgb(226, 232, 240); margin: 0">
+    <main style="background-color: rgb(13, 17, 23); padding: 16px">
+      <h1>Already themed (pre-#735)</h1>
+      <p>The original shipped default text color, pinned here forever as regression evidence.</p>
     </main>
   </body>
 </html>`,
