@@ -1,13 +1,7 @@
 // youtube-config.ts - Constraints that allow filling
+import type { SlotId, YouTubeRegion } from "some-types-utils"
 
-export type YouTubeRegion =
-  | "video"
-  | "title"
-  | "mainContent"
-  | "footerLeft"
-  | "sidebarTop"
-  | "sidebarBottom"
-  | "footerRight"
+export type { YouTubeRegion }
 
 export type Constraint = {
   ideal: number // Preferred size
@@ -45,3 +39,11 @@ export const ALL_YOUTUBE_REGIONS: Array<YouTubeRegion> = [
   "sidebarBottom",
   "footerRight",
 ]
+
+const DEFAULT_SLOT_COLOR = "bg-slate-100 border-slate-300"
+const SLOT_COLOR_BY_ID = new Map<string, string>(Object.entries(regionColors))
+
+/** `regionColors` only has entries for the known vocabulary; any other slot id falls back to a neutral color. */
+export function getSlotColor(id: SlotId): string {
+  return SLOT_COLOR_BY_ID.get(id) ?? DEFAULT_SLOT_COLOR
+}

@@ -8,11 +8,11 @@ import { useFocusControls } from "@wireframes/hooks/use-focus-controls"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import { solveLayoutWithFocus } from "@wireframes/lib/layout-weighted"
-import { regionColors } from "@wireframes/lib/youtube-config"
+import { getSlotColor } from "@wireframes/lib/youtube-config"
 import type {
   ActiveLifetime,
   ComponentRegistry,
-  YouTubeRegion,
+  SlotId,
 } from "some-types-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
 
@@ -21,7 +21,7 @@ type OrchestratedViewportProps<K extends string> = {
    * Layout tree from editor (defines topology)
    * This is the OUTPUT from your CRM editor
    */
-  layoutTree: LayoutNode<YouTubeRegion> | null
+  layoutTree: LayoutNode<SlotId> | null
 
   /**
    * Active lifetimes to render content from
@@ -57,16 +57,16 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const { ref, rect } = useContainerRect()
 
   // Consumer manages its own focus state
-  const focusControls = useFocusControls<YouTubeRegion>()
+  const focusControls = useFocusControls<SlotId>()
 
   const [popup, setPopup] = useState<{
-    regionId: YouTubeRegion
+    regionId: SlotId
     position: { x: number; y: number }
   } | null>(null)
 
   // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
-    const panels: Partial<Record<YouTubeRegion, Array<() => ReactNode>>> = {}
+    const panels: Partial<Record<SlotId, Array<() => ReactNode>>> = {}
 
     for (const lifetime of activeLifetimes) {
       const scene = lifetime.kind.Scene
@@ -76,7 +76,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         for (const [region, panel] of Object.entries(
           layout.panels ?? {}
-        ) as Array<[YouTubeRegion, { registry_key: K; props?: unknown }]>) {
+        ) as Array<[SlotId, { registry_key: K; props?: unknown }]>) {
           const factory = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,
@@ -99,12 +99,12 @@ export const OrchestratedYouTubeViewport = <K extends string>({
     return Object.fromEntries(
       Object.entries(panels).map(([k, factories]) => [
         k,
-        (): ReactNode => factories.map((f) => f()),
+        (): ReactNode => (factories ?? []).map((f) => f()),
       ])
-    ) as Record<YouTubeRegion, () => ReactNode>
+    ) as Record<SlotId, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
 
-  const layout: SolvedNode<YouTubeRegion> | undefined = useMemo(() => {
+  const layout: SolvedNode<SlotId> | undefined = useMemo(() => {
     if (!rect) return
     if (!layoutTree) return
 
@@ -123,7 +123,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   ])
 
   const handleLeafClick = useCallback(
-    (id: YouTubeRegion, position: { x: number; y: number }) => {
+    (id: SlotId, position: { x: number; y: number }) => {
       if (!enableFocus) return
       setPopup({ regionId: id, position })
     },
@@ -131,7 +131,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   )
 
   const handleApplyFocus = useCallback(
-    (regionId: YouTubeRegion, intensity: number) => {
+    (regionId: SlotId, intensity: number) => {
       focusControls.setFocus(regionId, intensity)
       setPopup(null)
     },
@@ -145,13 +145,13 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   const renderLeaf = useMemo(
     () =>
       // eslint-disable-next-line react/no-unstable-nested-components, react/display-name
-      (id: YouTubeRegion): ReactNode => {
+      (id: SlotId): ReactNode => {
         if (typeof mergedPanels[id] !== "function")
           return (
             <div
               className={cn(
                 "size-full inline-flex text-center items-center justify-center",
-                regionColors[id]
+                getSlotColor(id)
               )}
             >
               <h3 className="text-lg font-bold uppercase">{id}</h3>

@@ -1,6 +1,15 @@
 import type { ComponentType } from "react"
 import { z } from "zod"
 
+/**
+ * A leaf id in a layout tree. Open by design - a user placing a leaf via
+ * the live editor names it themselves, so the type can't pre-declare every
+ * possible region up front. `YouTubeRegion` below is a known, non-exhaustive
+ * subset (the built-in vocabulary the pre-built layout templates use), not
+ * the full space of valid ids.
+ */
+export type SlotId = string
+
 export type YouTubeRegion =
   | "video"
   | "title"
@@ -167,6 +176,7 @@ export const defaultOrchestratorState: OrchestratorState = {
 }
 
 // Registry Entry
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type RegistryEntry<P = any> = {
   Component: ComponentType<P>
   preload: () => Promise<{ default: ComponentType<P> }>

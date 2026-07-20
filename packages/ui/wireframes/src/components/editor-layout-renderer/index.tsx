@@ -1,32 +1,37 @@
+import type { ReactNode } from "react"
 import { useState } from "react"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
-import type { YouTubeRegion } from "@wireframes/lib/youtube-config"
-import { regionColors } from "@wireframes/lib/youtube-config"
+import { getSlotColor } from "@wireframes/lib/youtube-config"
 import { X } from "lucide-react"
+import type { SlotId } from "some-types-utils"
 import { cn } from "some-ui-utils"
 
 type LayoutNodeRendererProps = {
-  node: SolvedNode<YouTubeRegion>
-  onLeafClick?: (id: YouTubeRegion) => void
-  selectedLeaf?: YouTubeRegion | null
-  onRemove?: (id: YouTubeRegion) => void
+  node: SolvedNode<SlotId>
+  onLeafClick?: (id: SlotId) => void
+  selectedLeaf?: SlotId | null
+  onRemove?: (id: SlotId) => void
   onPlaceIntent?: (
-    region: YouTubeRegion,
-    relativeTo: YouTubeRegion,
+    region: SlotId,
+    relativeTo: SlotId,
     edge: "left" | "right" | "top" | "bottom"
   ) => void
   onMoveIntent?: (
-    region: YouTubeRegion,
-    relativeTo: YouTubeRegion,
+    region: SlotId,
+    relativeTo: SlotId,
     edge: "left" | "right" | "top" | "bottom"
   ) => void
   onResizeIntent?: (
-    region: YouTubeRegion,
+    region: SlotId,
     edge: "left" | "right" | "top" | "bottom",
     deltaPx: number,
     containerSizePx: number
   ) => void
-  existingRegions?: Set<YouTubeRegion>
+  existingRegions?: Set<SlotId>
+  /** Translucent instead of solid, so content rendered underneath (e.g. a live edit overlay) stays visible. */
+  overlay?: boolean
+  /** Extra interactive content rendered inside each leaf box - e.g. a "bind to registry" control. */
+  renderLeafExtra?: (id: SlotId) => ReactNode
 }
 
 export const LayoutNodeRenderer = ({
@@ -38,6 +43,8 @@ export const LayoutNodeRenderer = ({
   onMoveIntent,
   onResizeIntent,
   existingRegions = new Set(),
+  overlay = false,
+  renderLeafExtra,
 }: LayoutNodeRendererProps): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
   const [draggedOver, setDraggedOver] = useState<
@@ -80,10 +87,8 @@ export const LayoutNodeRenderer = ({
       e.preventDefault()
       e.stopPropagation()
 
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      const draggedRegion = e.dataTransfer.getData("text/plain") as
-        | YouTubeRegion
-        | undefined
+      const draggedRegion: SlotId | undefined =
+        e.dataTransfer.getData("text/plain") || undefined
 
       if (draggedRegion && draggedRegion !== node.id) {
         if (draggedOver) {
@@ -161,11 +166,13 @@ export const LayoutNodeRenderer = ({
     }
 
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         className={cn(
           "absolute border-2 transition-all group p-0 m-0 box-border block",
-          regionColors[node.id],
+          getSlotColor(node.id),
+          overlay && "opacity-60",
           "flex items-center justify-center",
           "text-foreground font-mono text-xs font-medium",
           isSelected && "ring-2 ring-ring ring-offset-2 ring-offset-background",
@@ -180,6 +187,12 @@ export const LayoutNodeRenderer = ({
           cursor: getCursorStyle(),
         }}
         onClick={() => onLeafClick?.(node.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onLeafClick?.(node.id)
+          }
+        }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => {
           if (!isResizing) {
@@ -250,7 +263,9 @@ export const LayoutNodeRenderer = ({
             )}
           />
         )}
-      </button>
+
+        {renderLeafExtra?.(node.id)}
+      </div>
     )
   }
 
@@ -267,6 +282,8 @@ export const LayoutNodeRenderer = ({
           onMoveIntent={onMoveIntent}
           onResizeIntent={onResizeIntent}
           existingRegions={existingRegions}
+          overlay={overlay}
+          renderLeafExtra={renderLeafExtra}
         />
       ))}
     </>
