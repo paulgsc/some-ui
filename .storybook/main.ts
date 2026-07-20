@@ -121,6 +121,18 @@ const config: StorybookConfig = {
       allowedHosts: ["nixos.local", "localhost", "127.0.0.1"],
     }
 
+    // Pin an explicit build target. vite-plugin-top-level-await (pulled in via
+    // the root vite.config.ts, which Storybook auto-loads from the workspace
+    // root) falls back to a hardcoded legacy target list — including
+    // "safari14" — whenever build.target is unset. esbuild 0.28.1 can no
+    // longer downlevel destructuring for that exact "safari14" marker
+    // (regression), which breaks `storybook build` repo-wide. Matches
+    // tsconfig.json's ES2022 target.
+    config.build = {
+      ...config.build,
+      target: "es2022",
+    }
+
     // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
     // .storybook/uno.config.ts to the .storybook/ files only, so it adds the
     // catalog's utilities without altering how other stories render.
