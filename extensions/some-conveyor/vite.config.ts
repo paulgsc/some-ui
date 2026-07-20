@@ -1,5 +1,4 @@
 import { extensionConfig } from "@some-extension/common/vite"
-import type { UserConfig } from "vite"
 
 // Platform split: content/background import `@conveyor/platform/*`, aliased to
 // the Firefox or Chrome implementation per build target.
@@ -43,7 +42,11 @@ const unocss = [
 // (production) target is Firefox, matching the prior `build = build:firefox`.
 // public/manifest.json is the chromium manifest (Vite's public-dir copy lands
 // it at dist/manifest.json); the Firefox build overwrites it afterwards.
-const config = ({ mode }: { mode: string }): UserConfig => {
+const config = ({
+  mode,
+}: {
+  mode: string
+}): ReturnType<typeof extensionConfig> => {
   const chromium = mode === "chromium"
   return extensionConfig({
     alias: platformAlias(chromium ? "chrome" : "firefox"),
