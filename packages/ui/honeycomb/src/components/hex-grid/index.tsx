@@ -8,7 +8,6 @@ import type {
 } from "@honeycomb/types/hex-grid"
 import type {
   HexGridFitResult,
-  HexGridFitStatus,
   HexGridFitStrategy,
   ViewportSize,
 } from "@honeycomb/utils/hex-grid-fit"
@@ -18,6 +17,7 @@ import {
   getHexagonalGridRadiusForCellCount,
 } from "@honeycomb/utils/hexagon-math"
 import { useResizeObserver } from "some-ui-utils"
+import { toast } from "sonner"
 
 export type HexGridProps<T = unknown> = {
   cellCount: number
@@ -58,27 +58,7 @@ export type HexGridProps<T = unknown> = {
 
 const HEX_ID_REGEX = /(-?\d+)[_-](-?\d+)[_-](-?\d+)/
 
-const FIT_BANNER_STYLES: Record<"shrunk" | "reduced-radius", string> = {
-  shrunk: "border-sky-500/30 bg-sky-500/15 text-sky-200",
-  "reduced-radius": "border-amber-500/30 bg-amber-500/15 text-amber-200",
-}
-
-const FitWarningBanner = ({
-  status,
-  message,
-}: {
-  status: HexGridFitStatus
-  message: string
-}): JSX.Element | null => {
-  if (status !== "shrunk" && status !== "reduced-radius") return null
-  return (
-    <div
-      className={`pointer-events-none absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[90%] rounded-full border px-3 py-1 text-center text-xs ${FIT_BANNER_STYLES[status]}`}
-    >
-      {message}
-    </div>
-  )
-}
+const HEXGRID_FIT_TOAST_ID = "hexgrid-fit-status"
 
 const ImpossibleNotice = ({
   bounds,
@@ -137,7 +117,16 @@ export const HexGrid = <T = unknown,>({
   ])
 
   useEffect(() => {
-    if (fit) onFitChange?.(fit)
+    if (!fit) return
+    onFitChange?.(fit)
+
+    if (fit.status === "shrunk" || fit.status === "reduced-radius") {
+      const notify =
+        fit.status === "reduced-radius" ? toast.warning : toast.info
+      notify(fit.warning, { id: HEXGRID_FIT_TOAST_ID })
+    } else {
+      toast.dismiss(HEXGRID_FIT_TOAST_ID)
+    }
   }, [fit, onFitChange])
 
   const effectiveRadius = fit?.radius ?? requestedRadius
@@ -212,92 +201,81 @@ export const HexGrid = <T = unknown,>({
     const viewBox = `${-vbWidth / 2} ${-vbHeight / 2} ${vbWidth} ${vbHeight}`
 
     return (
-      <>
-        <div className="flex size-full items-center justify-center">
-          <div
-            className="size-full"
-            style={{ maxWidth: vbWidth, maxHeight: vbHeight }}
+      <div className="flex size-full items-center justify-center">
+        <div
+          className="size-full"
+          style={{ maxWidth: vbWidth, maxHeight: vbHeight }}
+        >
+          <svg
+            viewBox={viewBox}
+            preserveAspectRatio="xMidYMid meet"
+            className={`size-full ${className}`}
           >
-            <svg
-              viewBox={viewBox}
-              preserveAspectRatio="xMidYMid meet"
-              className={`size-full ${className}`}
-            >
-              <defs>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                  <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
+            <defs>
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
 
-              <g>
-                {/* Background grid */}
-                <g opacity={backgroundOpacity}>
-                  {hexCells.map((cell) => (
-                    <path
-                      key={`bg-${cell.id}`}
-                      d={pointsToPath(cell.points)}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      className="text-gray-950"
-                    />
-                  ))}
-                </g>
-
-                {/* Active/themed cells */}
-                {mergedCells.map((cell) => {
-                  const { content } = cell
-                  if (!content?.theme && !content?.data) return null
-
-                  const { theme } = content
-                  const numPoints = cell.points.length
-                  if (numPoints === 0) return null
-
-                  const centerX =
-                    cell.points.reduce((s, p) => s + p.x, 0) / numPoints
-                  const centerY =
-                    cell.points.reduce((s, p) => s + p.y, 0) / numPoints
-                  const xValues = cell.points.map((p) => p.x)
-                  const cellWidth = Math.max(...xValues) - Math.min(...xValues)
-                  const pathData = pointsToPath(cell.points)
-
-                  return (
-                    <g key={cell.id}>
-                      <path
-                        d={pathData}
-                        fill={
-                          theme.fill ||
-                          (cell.color
-                            ? `#${cell.color.toString(16).padStart(6, "0")}`
-                            : "none")
-                        }
-                        stroke={theme.stroke || "#999"}
-                        strokeWidth={theme.strokeWidth || 1}
-                        opacity={theme.opacity ?? 1}
-                        filter={theme.filter}
-                      />
-                      {renderCell?.(
-                        cell,
-                        centerX,
-                        centerY,
-                        cellWidth,
-                        pathData
-                      )}
-                    </g>
-                  )
-                })}
+            <g>
+              {/* Background grid */}
+              <g opacity={backgroundOpacity}>
+                {hexCells.map((cell) => (
+                  <path
+                    key={`bg-${cell.id}`}
+                    d={pointsToPath(cell.points)}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="text-gray-950"
+                  />
+                ))}
               </g>
-            </svg>
-          </div>
+
+              {/* Active/themed cells */}
+              {mergedCells.map((cell) => {
+                const { content } = cell
+                if (!content?.theme && !content?.data) return null
+
+                const { theme } = content
+                const numPoints = cell.points.length
+                if (numPoints === 0) return null
+
+                const centerX =
+                  cell.points.reduce((s, p) => s + p.x, 0) / numPoints
+                const centerY =
+                  cell.points.reduce((s, p) => s + p.y, 0) / numPoints
+                const xValues = cell.points.map((p) => p.x)
+                const cellWidth = Math.max(...xValues) - Math.min(...xValues)
+                const pathData = pointsToPath(cell.points)
+
+                return (
+                  <g key={cell.id}>
+                    <path
+                      d={pathData}
+                      fill={
+                        theme.fill ||
+                        (cell.color
+                          ? `#${cell.color.toString(16).padStart(6, "0")}`
+                          : "none")
+                      }
+                      stroke={theme.stroke || "#999"}
+                      strokeWidth={theme.strokeWidth || 1}
+                      opacity={theme.opacity ?? 1}
+                      filter={theme.filter}
+                    />
+                    {renderCell?.(cell, centerX, centerY, cellWidth, pathData)}
+                  </g>
+                )
+              })}
+            </g>
+          </svg>
         </div>
-        {fit.warning && (
-          <FitWarningBanner status={fit.status} message={fit.warning} />
-        )}
-      </>
+      </div>
     )
   }
 

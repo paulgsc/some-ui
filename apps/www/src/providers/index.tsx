@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react"
+import { Toaster } from "sonner"
 
 import { OrchestratorWrapper } from "./orchestrator"
 import { QueryProvider } from "./tanstack-query"
@@ -17,6 +18,7 @@ export const AppProviders = ({
           <OrchestratorWrapper>{children}</OrchestratorWrapper>
         </TTSProvider>
       </QueryProvider>
+      <Toaster />
     </ThemeProvider>
   )
 }

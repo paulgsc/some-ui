@@ -4,6 +4,7 @@ import "./index.css"
 
 import { withProviders } from "./storybook-decorator"
 import { themeGlobalTypes, withTheme } from "./theme-decorator"
+import { withToaster } from "./toast-decorator"
 import { withUnoCss } from "./unocss-decorator"
 
 // RIP eager globbing: turns out dumping every package CSS file directly into
@@ -17,7 +18,7 @@ import { withUnoCss } from "./unocss-decorator"
 // })
 
 const preview: Preview = {
-  decorators: [withTheme, withProviders, withUnoCss],
+  decorators: [withTheme, withProviders, withToaster, withUnoCss],
 
   globalTypes: themeGlobalTypes,
 

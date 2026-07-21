@@ -22,7 +22,6 @@ import {
 import { cn } from "some-ui-utils"
 
 import { ThemeSwitcher } from "@/components/theme-switcher"
-import { Toaster } from "@/components/toaster"
 
 /**
  * Matches only the session player route (/sessions/$sessionId), whose
@@ -105,7 +104,6 @@ const DashboardLayout = (): JSX.Element => {
           <Outlet />
         </div>
       </SidebarInset>
-      <Toaster />
     </SidebarProvider>
   )
 }

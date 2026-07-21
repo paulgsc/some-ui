@@ -2,8 +2,9 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import type { SceneConfig } from "some-types-utils"
-import { Button, useToast } from "some-ui-shared"
+import { Button } from "some-ui-shared"
 import { cn } from "some-ui-utils"
+import { toast } from "sonner"
 
 import { getActivity, sequenceScenes } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
@@ -43,7 +44,6 @@ export const SessionComposer = ({
   existingSession,
 }: SessionComposerProps): JSX.Element => {
   const navigate = useNavigate()
-  const { toast } = useToast()
   const createSession = useCreateSession()
   const updateSession = useUpdateSession()
 
@@ -146,7 +146,7 @@ export const SessionComposer = ({
         },
         {
           onSuccess: () => {
-            toast({ title: "Draft updated" })
+            toast("Draft updated")
             void navigate({ to: "/sessions" })
           },
         }
@@ -158,7 +158,7 @@ export const SessionComposer = ({
       { name: finalName, activities, scenes, layoutMode: arrangementMode },
       {
         onSuccess: () => {
-          toast({ title: "Session saved as draft" })
+          toast("Session saved as draft")
           void navigate({ to: "/sessions" })
         },
       }

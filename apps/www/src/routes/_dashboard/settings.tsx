@@ -22,10 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-  useToast,
 } from "some-ui-shared"
 import { BUILTIN_VOICES } from "some-ui-utils"
 import type { TTSProvider } from "some-ui-utils"
+import { toast } from "sonner"
 
 import type { LayoutTreeId } from "@/lib/activity-catalog"
 import type { UserSettings } from "@/lib/tenant"
@@ -83,7 +83,6 @@ const SettingsForm = ({
 }): JSX.Element => {
   const [draft, setDraft] = useState<UserSettings>(settings)
   const updateSettings = useUpdateSettings()
-  const { toast } = useToast()
   const { preference, setPreference } = useTheme()
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
@@ -97,7 +96,7 @@ const SettingsForm = ({
   const handleSave = (): void => {
     updateSettings.mutate(draft, {
       onSuccess: () => {
-        toast({ title: "Settings saved" })
+        toast("Settings saved")
       },
     })
   }

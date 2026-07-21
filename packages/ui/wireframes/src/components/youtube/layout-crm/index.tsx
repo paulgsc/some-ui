@@ -24,15 +24,15 @@ import {
   RotateCcw,
 } from "lucide-react"
 import type { SlotId } from "some-types-utils"
-import { Button, Card, useToast } from "some-ui-shared"
+import { Button, Card } from "some-ui-shared"
 import { cn } from "some-ui-utils"
+import { toast } from "sonner"
 
 export const LayoutEditor = (): JSX.Element => {
   const [tree, setTree] = useState<LayoutNode<SlotId> | null>(null)
   const [selectedLeaf, setSelectedLeaf] = useState<SlotId | null>(null)
   const [showCode, setShowCode] = useState(false)
   const [copied, setCopied] = useState(false)
-  const { toast } = useToast()
   const [canvasDropEdge, setCanvasDropEdge] = useState<
     "left" | "right" | "top" | "bottom" | null
   >(null)
@@ -59,8 +59,7 @@ export const LayoutEditor = (): JSX.Element => {
 
   const handleRemove = (id: SlotId): void => {
     handleIntent({ kind: "remove", region: id })
-    toast({
-      title: "Region removed",
+    toast("Region removed", {
       description: `${id} has been removed from the layout`,
     })
   }
@@ -76,8 +75,7 @@ export const LayoutEditor = (): JSX.Element => {
       relativeTo,
       edge,
     })
-    toast({
-      title: "Region placed",
+    toast("Region placed", {
       description: `${region} placed ${edge} of ${relativeTo}`,
     })
   }
@@ -129,8 +127,7 @@ export const LayoutEditor = (): JSX.Element => {
         })
       }
 
-      toast({
-        title: "Region placed",
+      toast("Region placed", {
         description: `${draggedRegion} placed at canvas ${canvasDropEdge} edge`,
       })
     }
@@ -149,8 +146,7 @@ export const LayoutEditor = (): JSX.Element => {
       relativeTo,
       edge,
     })
-    toast({
-      title: "Region moved",
+    toast("Region moved", {
       description: `${region} moved ${edge} of ${relativeTo}`,
     })
   }
@@ -176,8 +172,7 @@ export const LayoutEditor = (): JSX.Element => {
       region,
       edge: "left", // Doesn't matter for first region
     })
-    toast({
-      title: "Region added",
+    toast("Region added", {
       description: `${region} has been added to the canvas`,
     })
   }
@@ -189,10 +184,8 @@ export const LayoutEditor = (): JSX.Element => {
 
   const handleExportJSON = (): void => {
     if (!tree) {
-      toast({
-        title: "Nothing to export",
+      toast.error("Nothing to export", {
         description: "Add some regions to the canvas first",
-        variant: "destructive",
       })
       return
     }
@@ -205,8 +198,7 @@ export const LayoutEditor = (): JSX.Element => {
     a.download = "layout-tree.json"
     a.click()
     URL.revokeObjectURL(url)
-    toast({
-      title: "JSON exported",
+    toast("JSON exported", {
       description: "Layout tree has been downloaded",
     })
   }
@@ -222,10 +214,8 @@ export const LayoutEditor = (): JSX.Element => {
 
   const handleCopyJSON = async (): Promise<void> => {
     if (!tree) {
-      toast({
-        title: "Nothing to copy",
+      toast.error("Nothing to copy", {
         description: "Add some regions to the canvas first",
-        variant: "destructive",
       })
       return
     }
@@ -234,10 +224,8 @@ export const LayoutEditor = (): JSX.Element => {
     const ok = await copyText(json)
 
     if (!ok) {
-      toast({
-        title: "Copy failed",
+      toast.error("Copy failed", {
         description: "Clipboard is not available in this environment",
-        variant: "destructive",
       })
       return
     }
@@ -245,8 +233,7 @@ export const LayoutEditor = (): JSX.Element => {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
 
-    toast({
-      title: "Copied to clipboard",
+    toast("Copied to clipboard", {
       description: "JSON has been copied to your clipboard",
     })
   }

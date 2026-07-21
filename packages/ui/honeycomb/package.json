@@ -27,6 +27,7 @@
     "@some-ui/some-hexagon": "0.0.4",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
+    "sonner": "^2.0.7",
     "zod": "4.0.5"
   },
   "devDependencies": {
