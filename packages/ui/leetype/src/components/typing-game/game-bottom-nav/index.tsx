@@ -1,9 +1,15 @@
 import type { FC } from "react"
 import type { DisplayMode, GameState, Language } from "@leetype/types/leetype"
-import { Info, Play, RotateCcw, Settings2 } from "lucide-react"
+import { Gauge, Info, Play, RotateCcw, Settings2 } from "lucide-react"
 import {
   Badge,
   Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -49,6 +55,14 @@ type GameBottomNavProps = {
   onDisplayModeChange: (mode: DisplayMode) => void
   onDurationChange: (duration: number) => void
   info: GameInfoContent
+  /**
+   * Element the Sheet/Drawer/Dialog portal into. This activity forces its
+   * own app-theme on its root (like every other activity in the design
+   * system) — passing that root here keeps the overlays themed consistently
+   * with the card instead of falling back to whatever theme is ambient at
+   * the document root.
+   */
+  portalContainer?: HTMLElement | null
 }
 
 function formatTime(seconds: number): string {
@@ -61,6 +75,25 @@ function toLanguage(v: string): Language | null {
   if (v === "typescript" || v === "rust" || v === "cpp" || v === "c") return v
   return null
 }
+
+type StatTileProps = {
+  label: string
+  value: string
+  highlight?: boolean
+}
+
+const StatTile: FC<StatTileProps> = ({ label, value, highlight }) => (
+  <Card className="flex flex-col items-center gap-1 border-border bg-card p-4">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <span
+      className={`font-mono text-2xl font-bold tabular-nums ${
+        highlight ? "text-primary" : "text-card-foreground"
+      }`}
+    >
+      {value}
+    </span>
+  </Card>
+)
 
 export const GameBottomNav: FC<GameBottomNavProps> = ({
   gameState,
@@ -81,6 +114,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   onDisplayModeChange,
   onDurationChange,
   info,
+  portalContainer,
 }) => {
   return (
     <div className="flex shrink-0 items-center gap-3 border-t border-border bg-card px-3 py-2.5">
@@ -109,7 +143,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
               <Info className="h-4 w-4" />
             </Button>
           </DrawerTrigger>
-          <DrawerContent>
+          <DrawerContent container={portalContainer}>
             <DrawerHeader>
               <DrawerTitle>{info.title}</DrawerTitle>
               <DrawerDescription>{info.description}</DrawerDescription>
@@ -130,6 +164,31 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
           </DrawerContent>
         </Drawer>
 
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Session stats">
+              <Gauge className="h-4 w-4" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent container={portalContainer} showOverlay>
+            <DialogHeader>
+              <DialogTitle>Session Stats</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile
+                label="Time"
+                value={formatTime(
+                  gameState === "playing" ? timeLeft : duration
+                )}
+              />
+              <StatTile label="WPM" value={String(wpm)} highlight />
+              <StatTile label="Accuracy" value={`${accuracy.toFixed(0)}%`} />
+              <StatTile label="Progress" value={`${progress.toFixed(0)}%`} />
+              <StatTile label="Errors" value={String(errors)} />
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Sheet>
           <SheetTrigger asChild>
             <Button
@@ -141,7 +200,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
               <Settings2 className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right">
+          <SheetContent side="right" container={portalContainer}>
             <SheetHeader>
               <SheetTitle>Game Settings</SheetTitle>
               <SheetDescription>

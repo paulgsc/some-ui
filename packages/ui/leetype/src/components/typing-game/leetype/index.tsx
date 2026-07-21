@@ -76,6 +76,15 @@ export const Leetype: FC<LeetypeProps> = ({
   })
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Portal target for the bottom nav's Sheet/Drawer/Dialog: this activity
+  // forces its own "code" app-theme on its root (like every other activity
+  // in this design system), but Radix/vaul portals default to document.body
+  // — outside that subtree — so without an explicit container they'd fall
+  // back to whatever theme happens to be ambient at the document root
+  // instead of matching the card.
+  const [themedContainer, setThemedContainer] = useState<HTMLDivElement | null>(
+    null
+  )
   const onSessionCompleteRef = useRef(onSessionComplete)
   const latestStatsRef = useRef<CompletedSessionStats>({
     wpm: 0,
@@ -244,7 +253,10 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   return (
-    <div className="dark code absolute inset-0 flex flex-col overflow-hidden">
+    <div
+      ref={setThemedContainer}
+      className="dark code absolute inset-0 flex flex-col overflow-hidden"
+    >
       {/* Challenge identity strip — kept slim so the viewport still belongs
           to the code/input card below; everything actionable lives in the
           bottom nav's menus instead of inline controls. */}
@@ -334,6 +346,7 @@ export const Leetype: FC<LeetypeProps> = ({
         onDisplayModeChange={setDisplayMode}
         onDurationChange={setDuration}
         info={info}
+        portalContainer={themedContainer}
       />
     </div>
   )

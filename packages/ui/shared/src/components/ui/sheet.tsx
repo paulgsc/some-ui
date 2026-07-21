@@ -1,6 +1,6 @@
 import type {
   ComponentPropsWithoutRef,
-  ElementRef,
+  ComponentRef,
   HTMLAttributes,
 } from "react"
 import { forwardRef } from "react"
@@ -19,7 +19,7 @@ const SheetClose = SheetPrimitive.Close
 const SheetPortal = SheetPrimitive.Portal
 
 const SheetOverlay = forwardRef<
-  ElementRef<typeof SheetPrimitive.Overlay>,
+  ComponentRef<typeof SheetPrimitive.Overlay>,
   ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
@@ -52,16 +52,22 @@ const sheetVariants = cva(
   }
 )
 
-type SheetContentProps = {} & ComponentPropsWithoutRef<
-  typeof SheetPrimitive.Content
-> &
+type SheetContentProps = {
+  /**
+   * Portal target. Defaults to `document.body`; pass an element scoped to a
+   * themed subtree (e.g. an activity that forces its own app-theme class on
+   * its root) so the sheet inherits that theme instead of whatever is
+   * ambient at the document root.
+   */
+  container?: HTMLElement | null
+} & ComponentPropsWithoutRef<typeof SheetPrimitive.Content> &
   VariantProps<typeof sheetVariants>
 
 const SheetContent = forwardRef<
-  ElementRef<typeof SheetPrimitive.Content>,
+  ComponentRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
+>(({ side = "right", className, children, container, ...props }, ref) => (
+  <SheetPortal container={container}>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
@@ -107,7 +113,7 @@ const SheetFooter = ({
 SheetFooter.displayName = "SheetFooter"
 
 const SheetTitle = forwardRef<
-  ElementRef<typeof SheetPrimitive.Title>,
+  ComponentRef<typeof SheetPrimitive.Title>,
   ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
@@ -119,7 +125,7 @@ const SheetTitle = forwardRef<
 SheetTitle.displayName = SheetPrimitive.Title.displayName
 
 const SheetDescription = forwardRef<
-  ElementRef<typeof SheetPrimitive.Description>,
+  ComponentRef<typeof SheetPrimitive.Description>,
   ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description

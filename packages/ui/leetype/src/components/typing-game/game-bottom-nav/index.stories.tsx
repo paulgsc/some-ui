@@ -85,3 +85,52 @@ export const DisplayModeLocked: Story = {
     <Controlled gameState="playing" settingsEnabled={false} displayModeLocked />
   ),
 }
+
+const ThemedControlled = () => {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
+  const [language, setLanguage] = useState<Language>("typescript")
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
+  const [duration, setDuration] = useState(300)
+
+  return (
+    <div
+      ref={setContainer}
+      className="dark code flex min-h-[200px] flex-col justify-end p-4"
+    >
+      <GameBottomNav
+        gameState="idle"
+        onStart={() => {}}
+        onReset={() => {}}
+        timeLeft={214}
+        duration={duration}
+        wpm={54}
+        accuracy={96.5}
+        progress={38}
+        errors={0}
+        chunkLabel="Chunk 1/3+"
+        language={language}
+        displayMode={displayMode}
+        displayModeLocked={false}
+        settingsEnabled
+        onLanguageChange={setLanguage}
+        onDisplayModeChange={setDisplayMode}
+        onDurationChange={setDuration}
+        info={info}
+        portalContainer={container}
+      />
+    </div>
+  )
+}
+
+export const ThemedPortalContainer: Story = {
+  name: "Sheet/Drawer/Dialog inherit the local theme",
+  render: () => <ThemedControlled />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "portalContainer scopes the Settings sheet, info drawer, and stats dialog to this card's own `dark code` root instead of document.body, so they stay themed consistently regardless of whatever theme is ambient at the document root.",
+      },
+    },
+  },
+}
