@@ -45,8 +45,11 @@ beforeEach(() => {
   vi.mocked(initializeWasm).mockResolvedValue(undefined)
   vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
 
-  // Use a standard function so JavaScript can invoke it with `new`
-  vi.mocked(WasmHexGrid).mockImplementation(() => {
+  // Use a standard function (not an arrow function) so JavaScript can invoke
+  // it with `new` — arrow functions have no [[Construct]] internal method,
+  // so vitest's mock would throw "is not a constructor" on `new WasmHexGrid()`.
+  // eslint-disable-next-line prefer-arrow-callback -- see comment above
+  vi.mocked(WasmHexGrid).mockImplementation(function () {
     return createMockHexGrid(validCells)
   })
 })
@@ -81,7 +84,8 @@ describe("buildHexgrid", () => {
   })
 
   it("rejects invalid wasm output mapping to schema", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() => {
+    // eslint-disable-next-line prefer-arrow-callback -- must be `new`-able, see beforeEach above
+    vi.mocked(WasmHexGrid).mockImplementation(function () {
       return createMockHexGrid([{ foo: "bar" }])
     })
 
@@ -170,7 +174,8 @@ describe("useHexgridWasm", () => {
   })
 
   it("surfaces invalid wasm output structures gracefully", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() => {
+    // eslint-disable-next-line prefer-arrow-callback -- must be `new`-able, see beforeEach above
+    vi.mocked(WasmHexGrid).mockImplementation(function () {
       return createMockHexGrid([{ foo: "bar" }])
     })
 

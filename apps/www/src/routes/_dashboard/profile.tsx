@@ -16,9 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-  useToast,
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
+import { toast } from "sonner"
 
 import type { TopikLevel, UserProfile } from "@/lib/tenant"
 import { useProfile, useUpdateProfile } from "@/lib/tenant"
@@ -58,14 +58,13 @@ const ProfileSkeleton = (): JSX.Element => (
 const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
   const [draft, setDraft] = useState<UserProfile>(profile)
   const updateProfile = useUpdateProfile()
-  const { toast } = useToast()
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(draft)
 
   const handleSave = (): void => {
     updateProfile.mutate(draft, {
       onSuccess: () => {
-        toast({ title: "Profile saved" })
+        toast("Profile saved")
       },
     })
   }
