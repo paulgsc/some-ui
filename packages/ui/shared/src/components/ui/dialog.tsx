@@ -47,6 +47,13 @@ const DialogOverlay = ({
 type DialogContentProps = ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   showOverlay?: boolean
+  /**
+   * Portal target. Defaults to `document.body`; pass an element scoped to a
+   * themed subtree (e.g. an activity that forces its own app-theme class on
+   * its root) so the dialog inherits that theme instead of whatever is
+   * ambient at the document root.
+   */
+  container?: HTMLElement | null
 }
 
 const DialogContent: FC<DialogContentProps> = ({
@@ -54,10 +61,11 @@ const DialogContent: FC<DialogContentProps> = ({
   children,
   showCloseButton = true,
   showOverlay = false,
+  container,
   ...props
 }) => {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal data-slot="dialog-portal" container={container}>
       {showOverlay && <DialogOverlay />}
       <DialogPrimitive.Content
         data-slot="dialog-content"

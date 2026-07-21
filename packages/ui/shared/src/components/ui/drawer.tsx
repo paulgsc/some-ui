@@ -1,7 +1,7 @@
 import type {
   ComponentProps,
   ComponentPropsWithoutRef,
-  ElementRef,
+  ComponentRef,
   HTMLAttributes,
 } from "react"
 import { forwardRef } from "react"
@@ -27,7 +27,7 @@ const DrawerPortal = DrawerPrimitive.Portal
 const DrawerClose = DrawerPrimitive.Close
 
 const DrawerOverlay = forwardRef<
-  ElementRef<typeof DrawerPrimitive.Overlay>,
+  ComponentRef<typeof DrawerPrimitive.Overlay>,
   ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
@@ -38,11 +38,23 @@ const DrawerOverlay = forwardRef<
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
+type DrawerContentProps = ComponentPropsWithoutRef<
+  typeof DrawerPrimitive.Content
+> & {
+  /**
+   * Portal target. Defaults to `document.body`; pass an element scoped to a
+   * themed subtree (e.g. an activity that forces its own app-theme class on
+   * its root) so the drawer inherits that theme instead of whatever is
+   * ambient at the document root.
+   */
+  container?: HTMLElement | null
+}
+
 const DrawerContent = forwardRef<
-  ElementRef<typeof DrawerPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DrawerPortal>
+  ComponentRef<typeof DrawerPrimitive.Content>,
+  DrawerContentProps
+>(({ className, children, container, ...props }, ref) => (
+  <DrawerPortal container={container}>
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
@@ -81,7 +93,7 @@ const DrawerFooter = ({
 DrawerFooter.displayName = "DrawerFooter"
 
 const DrawerTitle = forwardRef<
-  ElementRef<typeof DrawerPrimitive.Title>,
+  ComponentRef<typeof DrawerPrimitive.Title>,
   ComponentPropsWithoutRef<typeof DrawerPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Title
@@ -96,7 +108,7 @@ const DrawerTitle = forwardRef<
 DrawerTitle.displayName = DrawerPrimitive.Title.displayName
 
 const DrawerDescription = forwardRef<
-  ElementRef<typeof DrawerPrimitive.Description>,
+  ComponentRef<typeof DrawerPrimitive.Description>,
   ComponentPropsWithoutRef<typeof DrawerPrimitive.Description>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Description

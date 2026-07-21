@@ -1,12 +1,9 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
-import { CodeDisplay } from "@leetype/components/typing-game/code-display"
-import { ErrorCodeState } from "@leetype/components/typing-game/error-code-state"
-import { LoadingCodeState } from "@leetype/components/typing-game/loading-code-state"
-import { SettingsCard } from "@leetype/components/typing-game/settings-card"
-import { StatsBar } from "@leetype/components/typing-game/stats-bar"
+import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
+import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
+import { GameBottomNav } from "@leetype/components/typing-game/game-bottom-nav"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
-import { TypingInputCard } from "@leetype/components/typing-game/typing-input-card"
 import { useGameTimer } from "@leetype/hooks"
 import { useTypingGame } from "@leetype/hooks/leetype"
 import { useChunkedCode } from "@leetype/hooks/leetype/use-chunked-code"
@@ -20,7 +17,7 @@ import type {
   Language,
   NContext,
 } from "@leetype/types/leetype"
-import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
+import { Badge } from "some-ui-shared"
 
 type LeetypeProps = {
   /** Direct code paths (legacy / story mode) */
@@ -46,6 +43,9 @@ const PRETTIER_PARSER_MAP: Record<Language, PrettierParser> = {
   c: "typescript",
 }
 
+const DEFAULT_PROMPT_DESCRIPTION =
+  "Describe what the user is supposed to implement, constraints, edge cases, or reasoning hints here."
+
 type CumulativeStats = {
   totalChunks: number
   totalCharsTyped: number
@@ -68,7 +68,6 @@ export const Leetype: FC<LeetypeProps> = ({
     initialLanguage ?? "typescript"
   )
   const [duration, setDuration] = useState(initialDuration ?? 300)
-  const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [adaptiveHidden, setAdaptiveHidden] = useState(false)
   const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats>({
     totalChunks: 0,
@@ -77,7 +76,15 @@ export const Leetype: FC<LeetypeProps> = ({
   })
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const codeDisplayRef = useRef<HTMLDivElement>(null)
+  // Portal target for the bottom nav's Sheet/Drawer/Dialog: this activity
+  // forces its own "code" app-theme on its root (like every other activity
+  // in this design system), but Radix/vaul portals default to document.body
+  // — outside that subtree — so without an explicit container they'd fall
+  // back to whatever theme happens to be ambient at the document root
+  // instead of matching the card.
+  const [themedContainer, setThemedContainer] = useState<HTMLDivElement | null>(
+    null
+  )
   const onSessionCompleteRef = useRef(onSessionComplete)
   const latestStatsRef = useRef<CompletedSessionStats>({
     wpm: 0,
@@ -203,24 +210,21 @@ export const Leetype: FC<LeetypeProps> = ({
       reset()
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setGameState("idle")
-      if (isLegacyMode) setSettingsExpanded(true)
       setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
       setAdaptiveHidden(false)
     }
-  }, [reset, language, codeState.status, isLegacyMode])
+  }, [reset, language, codeState.status])
 
   const handleStart = (): void => {
     if (codeState.status !== "SUCCESS") return
     setGameState("playing")
     start()
-    setSettingsExpanded(false)
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
   const handleReset = (): void => {
     setGameState("idle")
     reset()
-    if (isLegacyMode) setSettingsExpanded(true)
     setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
     setAdaptiveHidden(false)
   }
@@ -228,7 +232,6 @@ export const Leetype: FC<LeetypeProps> = ({
   const handleLanguageChange = (lang: Language): void => {
     setLanguage(lang)
     setGameState("idle")
-    if (isLegacyMode) setSettingsExpanded(true)
     setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
     setAdaptiveHidden(false)
   }
@@ -239,25 +242,26 @@ export const Leetype: FC<LeetypeProps> = ({
         100
       : progress
 
-  return (
-    <div className="dark code absolute inset-0 flex flex-col overflow-hidden">
-      {/* Settings card: only in legacy mode when idle */}
-      {isLegacyMode && gameState === "idle" && (
-        <SettingsCard
-          language={language}
-          displayMode={displayMode}
-          duration={duration}
-          expanded={settingsExpanded}
-          onLanguageChange={handleLanguageChange}
-          onDisplayModeChange={(mode) => setDisplayMode(mode)}
-          onDurationChange={setDuration}
-          onToggleExpanded={() => setSettingsExpanded(!settingsExpanded)}
-        />
-      )}
+  const chunkLabel = `Chunk ${currentChunkNumber}/${totalChunksEstimate}${
+    codeState.hasMore ? "+" : ""
+  }`
 
-      {/* Challenge mode header */}
+  const info: GameInfoContent = {
+    title: challenge ? challenge.title : "Problem Description",
+    description: challenge ? challenge.description : DEFAULT_PROMPT_DESCRIPTION,
+    tags: challenge ? challenge.tags : [],
+  }
+
+  return (
+    <div
+      ref={setThemedContainer}
+      className="dark code absolute inset-0 flex flex-col overflow-hidden"
+    >
+      {/* Challenge identity strip — kept slim so the viewport still belongs
+          to the code/input card below; everything actionable lives in the
+          bottom nav's menus instead of inline controls. */}
       {challenge && (
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-3 flex shrink-0 items-center gap-3">
           <span className="text-base font-semibold text-card-foreground">
             {challenge.title}
           </span>
@@ -286,133 +290,64 @@ export const Leetype: FC<LeetypeProps> = ({
         </div>
       )}
 
-      <StatsBar
+      <div className="relative min-h-0 flex-1">
+        <CodeInputCard
+          status={codeState.status}
+          loadError={codeState.error}
+          path={effectiveCodePaths[language] ?? ""}
+          onRetryLoad={() => handleLanguageChange(language)}
+          displayCode={displayCode}
+          language={language}
+          targetUnits={targetUnits}
+          userUnits={userUnits}
+          cursorUnitIndex={cursorUnitIndex}
+          displayMode={effectiveDisplayMode}
+          adaptiveMessage={
+            adaptiveHidden
+              ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
+              : undefined
+          }
+          gameState={gameState}
+          userInput={userInput}
+          onInputChange={handleInputChange}
+          inputRef={inputRef}
+          elapsedTime={elapsedTime}
+          accuracy={accuracy}
+          progress={progress}
+        />
+
+        <div className="pointer-events-none absolute inset-x-4 top-4 z-10">
+          <div className="pointer-events-auto">
+            <TypingErrorAlert
+              consecutiveErrors={consecutiveErrors}
+              onDismiss={onDismiss}
+              showErrorAlert={showErrorAlert}
+            />
+          </div>
+        </div>
+      </div>
+
+      <GameBottomNav
+        gameState={gameState}
+        onStart={handleStart}
+        onReset={handleReset}
         timeLeft={timer.timeLeft}
         duration={duration}
         wpm={wpm}
         accuracy={accuracy}
         progress={overallProgress}
         errors={totalErrors}
-        gameState={gameState}
+        chunkLabel={chunkLabel}
+        language={language}
+        displayMode={displayMode}
+        displayModeLocked={isHardDifficulty || adaptiveHidden}
+        settingsEnabled={isLegacyMode && gameState === "idle"}
+        onLanguageChange={handleLanguageChange}
+        onDisplayModeChange={setDisplayMode}
+        onDurationChange={setDuration}
+        info={info}
+        portalContainer={themedContainer}
       />
-
-      <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT COLUMN */}
-        <div className="flex min-w-0 flex-col">
-          <Tabs defaultValue="code" className="flex flex-1 min-h-0 flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <TabsList>
-                <TabsTrigger value="code">Code</TabsTrigger>
-                <TabsTrigger value="prompt">Prompt</TabsTrigger>
-              </TabsList>
-
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono text-xs">
-                  Chunk {currentChunkNumber}/{totalChunksEstimate}
-                  {codeState.hasMore && "+"}
-                </Badge>
-                <Badge variant="secondary" className="font-mono">
-                  {language}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="relative flex-1 min-h-0">
-              <TabsContent
-                value="code"
-                className="absolute inset-0 flex min-h-0 flex-col rounded-lg border bg-card p-6"
-              >
-                <h2 className="mb-4 text-lg font-semibold text-card-foreground">
-                  Target Code (Current Chunk)
-                </h2>
-
-                <div
-                  ref={codeDisplayRef}
-                  className="min-h-0 flex-1 overflow-auto"
-                >
-                  {codeState.status === "LOADING" ? (
-                    <LoadingCodeState attempt={1} />
-                  ) : codeState.status === "ERROR" ? (
-                    <ErrorCodeState
-                      error={codeState.error}
-                      path={effectiveCodePaths[language] ?? ""}
-                      onRetry={() => handleLanguageChange(language)}
-                    />
-                  ) : codeState.status === "SUCCESS" ? (
-                    <CodeDisplay
-                      displayCode={displayCode}
-                      language={language}
-                      targetUnits={targetUnits}
-                      cursorUnitIndex={cursorUnitIndex}
-                      userUnits={userUnits}
-                      displayMode={effectiveDisplayMode}
-                      adaptiveMessage={
-                        adaptiveHidden
-                          ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
-                          : undefined
-                      }
-                    />
-                  ) : (
-                    <LoadingCodeState attempt={0} />
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent
-                value="prompt"
-                className="absolute inset-0 overflow-auto rounded-lg border bg-card p-6"
-              >
-                <h2 className="mb-2 text-lg font-semibold text-card-foreground">
-                  {challenge ? challenge.title : "Problem Description"}
-                </h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {challenge
-                    ? challenge.description
-                    : "Describe what the user is supposed to implement, constraints, edge cases, or reasoning hints here."}
-                </p>
-                {challenge && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {challenge.tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="font-mono text-xs"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div className="min-w-0">
-          <TypingInputCard
-            gameState={gameState}
-            userInput={userInput}
-            elapsedTime={elapsedTime}
-            accuracy={accuracy}
-            progress={progress}
-            onStart={handleStart}
-            onReset={handleReset}
-            onInputChange={handleInputChange}
-            inputRef={inputRef}
-            disabled={codeState.status !== "SUCCESS"}
-          />
-        </div>
-
-        {/* FULL-WIDTH ALERT */}
-        <div className="lg:col-span-2">
-          <TypingErrorAlert
-            consecutiveErrors={consecutiveErrors}
-            onDismiss={onDismiss}
-            showErrorAlert={showErrorAlert}
-          />
-        </div>
-      </div>
     </div>
   )
 }
