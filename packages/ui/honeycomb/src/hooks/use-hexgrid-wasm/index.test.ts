@@ -5,10 +5,12 @@ import { WasmHexGrid } from "@some-ui/some-hexagon"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@some-ui/some-hexagon", () => ({
-  default: vi.fn(),
-  WasmHexGrid: vi.fn(),
-}))
+vi.mock("@some-ui/some-hexagon", () => {
+  return {
+    default: vi.fn().mockResolvedValue({}),
+    WasmHexGrid: vi.fn(),
+  }
+})
 
 vi.mock("@honeycomb/utils/hexagon-math", () => ({
   getHexagonalGridRadiusForCellCount: vi.fn(),
@@ -42,7 +44,11 @@ beforeEach(() => {
 
   vi.mocked(initializeWasm).mockResolvedValue(undefined)
   vi.mocked(getHexagonalGridRadiusForCellCount).mockReturnValue(2)
-  vi.mocked(WasmHexGrid).mockImplementation(() => createMockHexGrid(validCells))
+
+  // Use a standard function so JavaScript can invoke it with `new`
+  vi.mocked(WasmHexGrid).mockImplementation(() => {
+    return createMockHexGrid(validCells)
+  })
 })
 
 // ============================================================================
@@ -75,9 +81,9 @@ describe("buildHexgrid", () => {
   })
 
   it("rejects invalid wasm output mapping to schema", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() =>
-      createMockHexGrid([{ foo: "bar" }])
-    )
+    vi.mocked(WasmHexGrid).mockImplementation(() => {
+      return createMockHexGrid([{ foo: "bar" }])
+    })
 
     await expect(buildHexgrid(2, 10)).rejects.toThrow()
   })
@@ -164,9 +170,9 @@ describe("useHexgridWasm", () => {
   })
 
   it("surfaces invalid wasm output structures gracefully", async () => {
-    vi.mocked(WasmHexGrid).mockImplementation(() =>
-      createMockHexGrid([{ foo: "bar" }])
-    )
+    vi.mocked(WasmHexGrid).mockImplementation(() => {
+      return createMockHexGrid([{ foo: "bar" }])
+    })
 
     const { result } = renderHook(() =>
       useHexgridWasm({
