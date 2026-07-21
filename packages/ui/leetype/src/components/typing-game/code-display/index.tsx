@@ -5,8 +5,8 @@ import {
   isWasmLoaded,
 } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { CanonicalUnit, DisplayMode } from "@leetype/types/leetype"
-import { EyeOff } from "lucide-react"
 import Prism from "prismjs"
+import { cn } from "some-ui-utils"
 
 // Import Prism.js and its components
 import "prismjs/themes/prism-tomorrow.css"
@@ -20,6 +20,8 @@ type DisplayChar = {
   unitIndex: number
   displayIndex: number
 }
+
+const MASK_CHAR = "•"
 
 type CodeDisplayProps = {
   displayCode: string
@@ -117,9 +119,11 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     const tokens = Prism.tokenize(displayCode, grammar)
 
     let charIndex = 0
+    const isHidden = displayMode === "hidden"
 
     const renderChar = (displayChar: DisplayChar): JSX.Element => {
       const { char, unitIndex, displayIndex } = displayChar
+      const isWhitespace = char.trim() === ""
 
       if (unitIndex === cursorUnitIndex) {
         return (
@@ -128,7 +132,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             ref={caretRef}
             className="bg-blue-500/30 animate-pulse"
           >
-            {char}
+            {isHidden && !isWhitespace ? MASK_CHAR : char}
           </span>
         )
       }
@@ -150,6 +154,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           }
         }
 
+        // Already-typed characters are always revealed at full opacity,
+        // in either display mode — the reveal is what gives typing feedback.
         return (
           <span
             key={displayIndex}
@@ -160,6 +166,14 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             }
           >
             {char}
+          </span>
+        )
+      }
+
+      if (isHidden && !isWhitespace) {
+        return (
+          <span key={displayIndex} className="text-muted-foreground/40">
+            {MASK_CHAR}
           </span>
         )
       }
@@ -200,26 +214,19 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border ${
-        className ?? ""
-      }`}
+      className={cn(
+        "relative font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border",
+        className
+      )}
     >
       <pre className="m-0">
         <code className={`language-${language}`}>
           {renderHighlightedCode()}
         </code>
       </pre>
-      {displayMode === "hidden" && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-background/70 backdrop-blur-sm">
-          <EyeOff className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-muted-foreground">
-            Type from memory
-          </p>
-          {adaptiveMessage && (
-            <p className="text-xs text-muted-foreground/70">
-              {adaptiveMessage}
-            </p>
-          )}
+      {adaptiveMessage && (
+        <div className="absolute right-3 top-3 rounded-full border border-border bg-background/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
+          {adaptiveMessage}
         </div>
       )}
     </div>
