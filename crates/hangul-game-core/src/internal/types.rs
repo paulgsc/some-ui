@@ -7,6 +7,10 @@ pub struct ActiveReveal {
     pub expected_key: String,
     pub revealed_at_ms: u64,
     pub cell_id: String,
+    /// The answer's token count (canon §7, $n = |w|$). Every domain-sourced spawn today produces a
+    /// single token (`token_count == 1`); a value above 1 only ever arises from a
+    /// synthetic/test-only fixture until word-answer matching (ADR 0001 #422) lands.
+    pub token_count: usize,
 }
 
 /// A key press in the input buffer

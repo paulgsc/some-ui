@@ -1,16 +1,17 @@
 mod internal;
 
-use internal::{GameConfig, GameEngine};
+use internal::{GameConfig, GameEngine, Korean};
 use wasm_bindgen::prelude::*;
 
 // Axiom 11.1 (crates/hangul-game-core/docs/hangul-progression-canon.typ,
 // §11.2): this is the crate's only file allowed to reference wasm_bindgen -
 // enforced by scripts/check-wasm-bindgen-boundary.sh in CI.
 
-/// Thin WASM wrapper - delegates all logic to GameEngine
+/// Thin WASM wrapper - delegates all logic to GameEngine. Korean (canon Def.
+/// 11.1) is the sole production-wired content domain.
 #[wasm_bindgen]
 pub struct HangulGameCore {
-    engine: GameEngine,
+    engine: GameEngine<Korean>,
 }
 
 #[wasm_bindgen]
@@ -20,7 +21,7 @@ impl HangulGameCore {
     pub fn new(config_js: JsValue, mode: String) -> Result<HangulGameCore, JsValue> {
         let config: GameConfig = serde_wasm_bindgen::from_value(config_js).unwrap_or_else(|_| GameConfig::default());
 
-        let engine = GameEngine::new(config, mode);
+        let engine = GameEngine::<Korean>::new(config, mode);
 
         Ok(Self { engine })
     }
@@ -102,14 +103,14 @@ mod tests {
     #[test]
     fn test_engine_creation() {
         let config = GameConfig::default();
-        let engine = GameEngine::new(config.clone(), "endless".to_string());
+        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string());
         assert_eq!(engine.get_active_count(), 0);
     }
 
     #[test]
     fn test_spawn_and_match() {
         let config = GameConfig::default();
-        let mut engine = GameEngine::new(config, "endless".to_string());
+        let mut engine = GameEngine::<Korean>::new(config, "endless".to_string());
         engine.start_timer(1000);
 
         let cells = vec!["hex_0_0_0".to_string()];
@@ -124,7 +125,7 @@ mod tests {
         // Regression: a freshly constructed engine must start with the full
         // (max) character lifetime, not the tiny time-window step.
         let config = GameConfig::default();
-        let engine = GameEngine::new(config.clone(), "endless".to_string());
+        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string());
         assert_eq!(engine.get_timing_params().character_lifetime_ms, config.max_time_window_ms);
     }
 }
