@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  Filter-invert vendor page (#741). Plain, ordinary light page — the exact
+  shape light-page.html already uses — with one line added: `html { filter:
+  invert(1) }`, the same trick some-filter's own "legacy" style
+  (theme-apply.ts's applyLegacyFilter) uses deliberately, and a pattern real
+  vendor sites ship natively as their own accessibility "invert colours"
+  toggle.
+
+  Auto mode never inspects a page's own `filter` — pipeline.ts's readAttr()
+  reads only raw getComputedStyle().backgroundColor. This page's *declared*
+  colors are plain light (rgb(255, 255, 255) bg), so the pipeline correctly
+  decides to theme it. But injectDarkTheme() only ever overrides *declared*
+  colors (`background-color: var(--sw-bg-0) !important` etc.) — it never
+  touches or removes a pre-existing vendor `filter`. The vendor's own
+  invert(1) stays active as an ancestor filter over the whole subtree, so
+  the *rendered* result is the dark theme's own tokens inverted right back
+  toward a bright canvas: the auto pipeline's own remedy is what defeats it.
+  See specs/issue-741-auto-defects.spec.ts for the proof.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Filter Invert Vendor Page Fixture</title>
+    <style>
+      html {
+        filter: invert(1);
+      }
+    </style>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255); padding: 16px">
+      <h1>Vendor page with its own invert-based "dark mode"</h1>
+      <p>
+        No some-filter involvement here — just an ordinary light page wearing a
+        page-authored filter: invert(1) on &lt;html&gt;.
+      </p>
+    </main>
+  </body>
+</html>

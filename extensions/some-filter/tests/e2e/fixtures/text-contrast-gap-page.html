@@ -1,0 +1,52 @@
+<!doctype html>
+<!--
+  Text-contrast-gap page (#741). A light <div> card carrying its own inline
+  dark text color — a completely ordinary vendor pattern (a light card with
+  dark body copy), but on a tag buildDarkThemeCSS's text-color layer never
+  covers.
+
+  theme-apply.ts's buildDarkThemeCSS forces `color` on a fixed allowlist of
+  tags — h1-h6, p/span/label/caption/figcaption/blockquote/cite/li/dt/dd,
+  small/sub/sup/abbr/time, a, code/kbd/samp, pre, th/td, input/textarea/select,
+  dialog/[popover] — and nothing else. Plain <div> is not on that list, and
+  the actuator's own per-surface pipeline (adapter/contracts.ts's
+  FilterAction alphabet) has no foreground/text counterpart to
+  `emit-surface-color` at all — only backgrounds are ever recolored per
+  surface (adapter/actuator.ts's `realize`, theme-adapter.ts's `decide`).
+  `modifyForegroundColor` (lib/content/modify-colors.ts) exists and is unit
+  tested, but nothing in the live pipeline calls it.
+
+  #card's own background (rgb(255, 255, 255), luminance 1.0) clears
+  LIGHT_THRESHOLD (0.3, theme-adapter.ts) and gets tagged "surface" +
+  hue-preserving-darkened via modifyBackgroundColor — which, for an
+  achromatic white input (h=0, s=0, l=1), lands at HSL(0, 0%, 8%) ≈
+  rgb(20, 20, 20) (BG_DARK_MIN, modify-colors.ts). #card's own inline
+  `color: rgb(20, 20, 20)` — chosen to be readable against its *original*
+  white background — is left completely untouched. The two coincide exactly:
+  after theming, #card's background and its own text resolve to the same
+  literal rgb(20, 20, 20), a contrast ratio of 1:1 — not merely "hard to
+  read," but exactly the same pixel color as its background. See
+  specs/issue-741-auto-defects.spec.ts for the proof.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Text Contrast Gap Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255); padding: 16px">
+      <h1>Ordinary page, one plain light card</h1>
+      <div
+        id="card"
+        style="
+          background-color: rgb(255, 255, 255);
+          color: rgb(20, 20, 20);
+          padding: 16px;
+        "
+      >
+        Body copy set directly on a &lt;div&gt;, dark-on-light as authored — no
+        p/span/label wrapper.
+      </div>
+    </main>
+  </body>
+</html>

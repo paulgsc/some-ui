@@ -107,3 +107,11 @@ export const TransparentAmbiguous: Story = {
 export const NeonTextModerateSurface: Story = {
   render: () => <ComfortLabStory fixtureId="neon-text-moderate-surface" />,
 }
+
+export const FilterInvertReadsDark: Story = {
+  render: () => <ComfortLabStory fixtureId="filter-invert-reads-dark" />,
+}
+
+export const FilterInvertReadsLight: Story = {
+  render: () => <ComfortLabStory fixtureId="filter-invert-reads-light" />,
+}
