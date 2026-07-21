@@ -37,7 +37,7 @@ export const GameOverModal = ({
       aria-label="Close modal overlay"
     >
       <div
-        className="glass-effect rounded-3xl px-12 py-10 text-white text-center max-w-md"
+        className="glass-effect rounded-3xl px-6 py-6 sm:px-12 sm:py-10 text-white text-center max-w-md max-h-[calc(100%-2rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         role="presentation"

@@ -49,7 +49,7 @@ export const ThemedCells: Story = {
         <HexGrid
           cellCount={37}
           hexSize={25}
-          viewBoxFactor={0.5}
+          viewBoxFactor={1.1}
           cellContent={cellContent}
         />
       </div>
@@ -98,6 +98,42 @@ export const WithCustomRender: Story = {
       </div>
     )
   },
+}
+
+export const Fit: Story = {
+  name: "Fit (comfortable viewport)",
+  render: () => (
+    <div className="h-[600px] w-[600px] bg-neutral-900">
+      <HexGrid cellCount={37} hexSize={25} />
+    </div>
+  ),
+}
+
+export const Shrunk: Story = {
+  name: "Shrunk (grid scaled down to fit)",
+  render: () => (
+    <div className="h-[400px] w-[400px] bg-neutral-900">
+      <HexGrid cellCount={61} hexSize={70} />
+    </div>
+  ),
+}
+
+export const ReducedRadius: Story = {
+  name: "Reduced radius (opt-in shrink-then-reduce)",
+  render: () => (
+    <div className="h-[150px] w-[150px] bg-neutral-900">
+      <HexGrid cellCount={61} hexSize={70} fitStrategy="shrink-then-reduce" />
+    </div>
+  ),
+}
+
+export const Impossible: Story = {
+  name: "Impossible (viewport too small to render legibly)",
+  render: () => (
+    <div className="h-[60px] w-[60px] bg-neutral-900">
+      <HexGrid cellCount={7} hexSize={30} />
+    </div>
+  ),
 }
 
 export const LoadingState: Story = {

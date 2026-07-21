@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { useCallback, useEffect, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
@@ -17,12 +18,12 @@ import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
-import {
-  HANGUL_GRID_CELL_COUNT,
-  type GameMode,
-  type GameStats,
-  type TimingParams,
+import type {
+  GameMode,
+  GameStats,
+  TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import { HANGUL_GRID_CELL_COUNT } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
 
@@ -32,7 +33,7 @@ type HangulHexGridProps = {
 
 export const HangulHexGrid = ({
   mode = "completion",
-}: HangulHexGridProps): React.JSX.Element => {
+}: HangulHexGridProps): JSX.Element => {
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
     autoStart: true,
     mode,
@@ -196,6 +197,12 @@ export const HangulHexGrid = ({
               viewBoxFactor={1.2}
               cellContent={cellContent}
               backgroundOpacity={0.8}
+              // "shrink-only" (the default) is required here, not optional: the
+              // game engine's cell ids are enumerated from HANGUL_GRID_RADIUS
+              // (see wasm-game-bridge), so a smaller negotiated radius would
+              // make HexGrid render a different set of cell ids than the ones
+              // the game is spawning characters into.
+              fitStrategy="shrink-only"
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
               renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
                 const { id, content } = cell
