@@ -9,6 +9,58 @@ use super::{
 /// pathologically long answer sequence can never park a board cell indefinitely (canon Cor. 7.2.1).
 const MAX_CHALLENGE_BUDGET_MS: u64 = 15_000;
 
+/// `advance_or_complete`'s two possible outcomes (canon Axiom 12.1, ADR 0004 #751): the caller
+/// switches on this instead of handing down a live `&mut EventBatch` for the helper to populate.
+enum AdvanceOutcome {
+    /// The challenge's cursor advanced but did not complete it.
+    Progressed(UiHintEvent),
+    /// This was the challenge's last token; it is now removed from `active_reveals`.
+    Completed(PrimaryEvent, Vec<SecondaryEvent>),
+}
+
+/// The part of `handle_match`'s work that is a pure function of prior stats, config, and elapsed
+/// time alone (canon Axiom 12.1, ADR 0004 #752) - everything except the stateful `GameMode::on_match`
+/// mastery check, which `handle_match` still performs itself as the one genuine mutation this
+/// calculation cannot make on the caller's behalf.
+struct MatchCalc {
+    is_high_quality: bool,
+    points: i32,
+    time_gap_ms: u32,
+    /// `Some(streak)` exactly on the tick a multiple-of-5 streak is first reached.
+    streak_milestone: Option<usize>,
+}
+
+fn compute_match_outcome(stats: &GameStats, config: &GameConfig, revealed_at_ms: u64, now: u64) -> (GameStats, MatchCalc) {
+    let time_gap = now.saturating_sub(revealed_at_ms);
+    let is_high_quality = time_gap <= config.correctness_threshold_ms as u64;
+    let prev_streak = stats.current_streak;
+
+    let mut new_stats = stats.clone();
+    new_stats.total_correct += 1;
+    new_stats.current_streak += 1;
+    new_stats.best_streak = new_stats.best_streak.max(new_stats.current_streak);
+
+    let streak_bonus = (new_stats.current_streak / config.streak_bonus_divisor) as i32;
+    let points = config.points_per_correct + streak_bonus;
+    new_stats.score += points;
+
+    let streak_milestone = if new_stats.current_streak > 0 && new_stats.current_streak % 5 == 0 && new_stats.current_streak != prev_streak {
+        Some(new_stats.current_streak)
+    } else {
+        None
+    };
+
+    (
+        new_stats,
+        MatchCalc {
+            is_high_quality,
+            points,
+            time_gap_ms: time_gap as u32,
+            streak_milestone,
+        },
+    )
+}
+
 /// The pure Rust game engine - no WASM dependencies. Generic over a content domain `D` (canon Def.
 /// 11.1): every content-specific decision (which alphabet, which key a token maps to) is delegated
 /// to `D` rather than hard-coded here.
@@ -115,14 +167,22 @@ impl<D: ContentDomain> GameEngine<D> {
                 // CLEAR MATCH: Only one possibility
                 let idx = self.find_best_match_index(&exact_matches);
                 self.key_buffer.clear();
-                self.advance_or_complete(idx, now, &mut batch);
+                match self.advance_or_complete(idx, now) {
+                    AdvanceOutcome::Progressed(hint) => batch.add_ui_hint(hint),
+                    AdvanceOutcome::Completed(primary, secondary) => {
+                        batch.primary = Some(primary);
+                        batch.secondary.extend(secondary);
+                    }
+                }
             }
         } else if potential_extensions {
             // PARTIAL MATCH: Valid prefix
             batch.add_ui_hint(UiHintEvent::BufferUpdated { current_buffer: buffer_str });
         } else {
             // INVALID: No match, no prefix
-            self.handle_miss(&mut batch);
+            let (primary, secondary) = self.handle_miss();
+            batch.primary = Some(primary);
+            batch.secondary.extend(secondary);
             self.key_buffer.clear();
         }
 
@@ -194,7 +254,9 @@ impl<D: ContentDomain> GameEngine<D> {
             // Slow down once per expired token (canon Thm. 7.2(b)): at token_count == 1 this is exactly once
             // per expired challenge, unchanged.
             for _ in 0..expired_tokens {
-                self.adjust_difficulty_slower(DifficultyChangeReason::CharacterExpired, &mut batch);
+                if let Some(event) = self.adjust_difficulty_slower(DifficultyChangeReason::CharacterExpired) {
+                    batch.add_secondary(event);
+                }
             }
         }
 
@@ -321,46 +383,42 @@ impl<D: ContentDomain> GameEngine<D> {
     /// active. At `answer_keys.len() == 1` the only reachable branch is completion, on the same
     /// condition as before #422 (canon Thm. 4.1) - score/streak/difficulty are touched only here,
     /// never on an intermediate token match.
-    fn advance_or_complete(&mut self, idx: usize, now: u64, batch: &mut EventBatch) {
+    ///
+    /// Returns its outcome instead of taking `&mut EventBatch` (canon Axiom 12.1, ADR 0004 #751):
+    /// `process_input` is the only function that owns a live `EventBatch` binding, so this and
+    /// every helper below it compute a value and hand it back rather than mutating one passed in.
+    fn advance_or_complete(&mut self, idx: usize, now: u64) -> AdvanceOutcome {
         let is_last_token = self.active_reveals[idx].cursor + 1 == self.active_reveals[idx].answer_keys.len();
 
         if is_last_token {
             let challenge = self.active_reveals.swap_remove(idx);
-            self.handle_match(challenge, now, batch);
-        } else {
-            let challenge = &mut self.active_reveals[idx];
-            challenge.cursor += 1;
-
-            batch.add_ui_hint(UiHintEvent::AnswerProgress {
-                cell_ids: challenge.cell_ids.clone(),
-                composed_so_far: challenge.answer_glyphs[..challenge.cursor].to_vec(),
-                remaining: challenge.answer_glyphs[challenge.cursor..].to_vec(),
-                cursor: challenge.cursor,
-                total: challenge.answer_keys.len(),
-            });
+            let (primary, secondary) = self.handle_match(challenge, now);
+            return AdvanceOutcome::Completed(primary, secondary);
         }
+
+        let challenge = &mut self.active_reveals[idx];
+        challenge.cursor += 1;
+
+        AdvanceOutcome::Progressed(UiHintEvent::AnswerProgress {
+            cell_ids: challenge.cell_ids.clone(),
+            composed_so_far: challenge.answer_glyphs[..challenge.cursor].to_vec(),
+            remaining: challenge.answer_glyphs[challenge.cursor..].to_vec(),
+            cursor: challenge.cursor,
+            total: challenge.answer_keys.len(),
+        })
     }
 
-    fn handle_match(&mut self, challenge: ActiveChallenge, now: u64, batch: &mut EventBatch) {
-        let time_gap = now.saturating_sub(challenge.revealed_at_ms);
-        let is_high_quality = time_gap <= self.config.correctness_threshold_ms as u64;
+    fn handle_match(&mut self, challenge: ActiveChallenge, now: u64) -> (PrimaryEvent, Vec<SecondaryEvent>) {
+        let show_romanization = self.stats.current_streak < self.config.hide_romanization_streak;
         let token_count = challenge.answer_keys.len();
 
-        let show_romanization = self.stats.current_streak < self.config.hide_romanization_streak;
+        let (new_stats, calc) = compute_match_outcome(&self.stats, &self.config, challenge.revealed_at_ms, now);
+        self.stats = new_stats;
 
-        // Update stats
-        let prev_streak = self.stats.current_streak;
-        self.stats.total_correct += 1;
-        self.stats.current_streak += 1;
-        self.stats.best_streak = self.stats.best_streak.max(self.stats.current_streak);
-
-        // Calculate points
-        let streak_bonus = (self.stats.current_streak / self.config.streak_bonus_divisor) as i32;
-        let points = self.config.points_per_correct + streak_bonus;
-        self.stats.score += points;
-
-        // Check game mode completion
-        let counts_toward_completion = self.game_mode.on_match(&challenge.identity, is_high_quality, show_romanization);
+        // Check game mode completion - the one mutation compute_match_outcome cannot perform
+        // itself, since it is a stateful mastery check against the game mode's own pool, not a
+        // function of stats/config/timing alone.
+        let counts_toward_completion = self.game_mode.on_match(&challenge.identity, calc.is_high_quality, show_romanization);
 
         // When a challenge is completed it locks into its cell(s): reserve them
         // so no future challenge spawns on top of the persisted glyph(s).
@@ -368,47 +426,39 @@ impl<D: ContentDomain> GameEngine<D> {
             self.completed_cells.extend(challenge.cell_ids.iter().cloned());
         }
 
-        // Primary event
-        batch.primary = Some(PrimaryEvent::MatchFound {
+        let mut secondary = vec![SecondaryEvent::StatsUpdated { stats: self.stats.clone() }];
+        if let Some(streak) = calc.streak_milestone {
+            secondary.push(SecondaryEvent::StreakMilestone { streak });
+        }
+        if calc.is_high_quality {
+            secondary.extend(self.adjust_difficulty_faster(token_count));
+        }
+
+        let primary = PrimaryEvent::MatchFound {
             cell_id: challenge.cell_ids[0].clone(),
             cell_ids: challenge.cell_ids.clone(),
             hangul: challenge.answer_glyphs.join(""),
             answer_glyphs: challenge.answer_glyphs.clone(),
             stimulus: challenge.stimulus.clone(),
-            points,
-            is_high_quality,
-            time_gap_ms: time_gap as u32,
+            points: calc.points,
+            is_high_quality: calc.is_high_quality,
+            time_gap_ms: calc.time_gap_ms,
             counts_toward_completion,
-        });
+        };
 
-        // Secondary: Stats update
-        batch.add_secondary(SecondaryEvent::StatsUpdated { stats: self.stats.clone() });
-
-        // Secondary: Streak milestone
-        if self.stats.current_streak > 0 && self.stats.current_streak % 5 == 0 && self.stats.current_streak != prev_streak {
-            batch.add_secondary(SecondaryEvent::StreakMilestone {
-                streak: self.stats.current_streak,
-            });
-        }
-
-        // Secondary: Difficulty adjustment on perfect match
-        if is_high_quality {
-            self.adjust_difficulty_faster(token_count, batch);
-        }
+        (primary, secondary)
     }
 
-    fn handle_miss(&mut self, batch: &mut EventBatch) {
+    fn handle_miss(&mut self) -> (PrimaryEvent, Vec<SecondaryEvent>) {
         self.stats.current_streak = 0;
         self.streak_tokens = 0;
 
-        // Primary event
-        batch.primary = Some(PrimaryEvent::InputMissed);
+        let mut secondary = vec![SecondaryEvent::StatsUpdated { stats: self.stats.clone() }];
+        if let Some(event) = self.adjust_difficulty_slower(DifficultyChangeReason::InputMiss) {
+            secondary.push(event);
+        }
 
-        // Secondary: Stats update
-        batch.add_secondary(SecondaryEvent::StatsUpdated { stats: self.stats.clone() });
-
-        // Secondary: Difficulty adjustment
-        self.adjust_difficulty_slower(DifficultyChangeReason::InputMiss, batch);
+        (PrimaryEvent::InputMissed, secondary)
     }
 
     /// Steps the difficulty up once for every multiple of `speed_increase_every_n_correct` that
@@ -416,37 +466,17 @@ impl<D: ContentDomain> GameEngine<D> {
     /// trigger more than one step, exactly as that many single-token matches would have. At
     /// `tokens_matched == 1` on every call (today's only production case), this reduces to the
     /// original "one step every Nth correct match" trigger.
-    fn adjust_difficulty_faster(&mut self, tokens_matched: usize, batch: &mut EventBatch) {
-        let step_every = self.config.speed_increase_every_n_correct;
-        let old_level = self.streak_tokens / step_every;
-        self.streak_tokens += tokens_matched;
-        let new_level = self.streak_tokens / step_every;
-
-        for _ in old_level..new_level {
-            let old_lifetime = self.current_lifetime_ms;
-            self.current_lifetime_ms = self.current_lifetime_ms.saturating_sub(self.config.time_window_step_ms).max(self.config.min_time_window_ms);
-
-            if old_lifetime != self.current_lifetime_ms {
-                batch.add_secondary(SecondaryEvent::DifficultyChanged {
-                    new_lifetime_ms: self.current_lifetime_ms,
-                    new_interval_ms: self.calculate_spawn_interval(),
-                    reason: DifficultyChangeReason::PerfectMatch,
-                });
-            }
-        }
+    fn adjust_difficulty_faster(&mut self, tokens_matched: usize) -> Vec<SecondaryEvent> {
+        let (new_streak_tokens, new_lifetime, events) = difficulty::compute_speedup(self.streak_tokens, tokens_matched, self.current_lifetime_ms, &self.config);
+        self.streak_tokens = new_streak_tokens;
+        self.current_lifetime_ms = new_lifetime;
+        events
     }
 
-    fn adjust_difficulty_slower(&mut self, reason: DifficultyChangeReason, batch: &mut EventBatch) {
-        let old_lifetime = self.current_lifetime_ms;
-        self.current_lifetime_ms = (self.current_lifetime_ms + self.config.time_window_step_ms).min(self.config.max_time_window_ms);
-
-        if old_lifetime != self.current_lifetime_ms {
-            batch.add_secondary(SecondaryEvent::DifficultyChanged {
-                new_lifetime_ms: self.current_lifetime_ms,
-                new_interval_ms: self.calculate_spawn_interval(),
-                reason,
-            });
-        }
+    fn adjust_difficulty_slower(&mut self, reason: DifficultyChangeReason) -> Option<SecondaryEvent> {
+        let (new_lifetime, event) = difficulty::compute_slowdown(self.current_lifetime_ms, &self.config, reason);
+        self.current_lifetime_ms = new_lifetime;
+        event
     }
 
     fn calculate_spawn_interval(&self) -> u32 {
@@ -476,6 +506,84 @@ mod tests {
 
     fn engine_with(mode: &str) -> GameEngine<Korean> {
         engine_with_config(GameConfig::default(), mode)
+    }
+
+    /// Direct unit tests for `compute_match_outcome` (canon Axiom 12.1, ADR 0004 #752): no
+    /// `GameEngine` construction needed, since the function is a pure calculation over
+    /// `GameStats`/`GameConfig`/timing alone.
+    mod compute_match_outcome_tests {
+        use super::*;
+
+        #[test]
+        fn fast_match_is_high_quality_and_awards_points() {
+            let stats = GameStats::new();
+            let config = GameConfig::default();
+
+            let (new_stats, calc) = compute_match_outcome(&stats, &config, 1000, 1100);
+
+            assert!(calc.is_high_quality);
+            assert_eq!(calc.time_gap_ms, 100);
+            assert_eq!(new_stats.current_streak, 1);
+            assert_eq!(new_stats.total_correct, 1);
+            assert_eq!(new_stats.score, calc.points);
+        }
+
+        #[test]
+        fn slow_match_is_not_high_quality_but_still_counts() {
+            let stats = GameStats::new();
+            let config = GameConfig::default();
+            let slow_gap = u64::from(config.correctness_threshold_ms) + 1;
+
+            let (new_stats, calc) = compute_match_outcome(&stats, &config, 0, slow_gap);
+
+            assert!(!calc.is_high_quality);
+            assert_eq!(new_stats.current_streak, 1);
+            assert_eq!(new_stats.total_correct, 1);
+        }
+
+        #[test]
+        fn streak_milestone_fires_only_on_the_fifth_match() {
+            let config = GameConfig::default();
+            let mut stats = GameStats::new();
+
+            for _ in 0..4 {
+                let (new_stats, calc) = compute_match_outcome(&stats, &config, 0, 0);
+                assert!(calc.streak_milestone.is_none());
+                stats = new_stats;
+            }
+
+            let (new_stats, calc) = compute_match_outcome(&stats, &config, 0, 0);
+            assert_eq!(calc.streak_milestone, Some(5));
+            assert_eq!(new_stats.current_streak, 5);
+        }
+
+        #[test]
+        fn best_streak_only_grows_never_shrinks() {
+            let config = GameConfig::default();
+            let stats = GameStats {
+                current_streak: 2,
+                best_streak: 10,
+                ..GameStats::new()
+            };
+
+            let (new_stats, _) = compute_match_outcome(&stats, &config, 0, 0);
+
+            assert_eq!(new_stats.current_streak, 3);
+            assert_eq!(new_stats.best_streak, 10);
+        }
+
+        #[test]
+        fn does_not_mutate_the_stats_passed_in() {
+            // Purity check: compute_match_outcome takes &GameStats, so the caller's original value
+            // must be observable, unchanged, after the call.
+            let stats = GameStats::new();
+            let config = GameConfig::default();
+
+            let (_, _) = compute_match_outcome(&stats, &config, 0, 0);
+
+            assert_eq!(stats.current_streak, 0);
+            assert_eq!(stats.total_correct, 0);
+        }
     }
 
     /// Single-token challenge (n=1) - the exact pre-#421/#422 shape, just built through the new
