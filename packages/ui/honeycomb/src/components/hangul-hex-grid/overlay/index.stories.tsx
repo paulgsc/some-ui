@@ -5,10 +5,37 @@ import { HangulHexGrid } from "."
 type Story = StoryObj<typeof HangulHexGrid>
 type Meta = MetaObj<typeof HangulHexGrid>
 
-export const Default: Story = {}
+// Every story here renders the *real* HangulHexGrid, wired to the real WASM
+// engine (no mocks) - this is the "story the entire flow" half of the
+// component's visual-regression coverage: a reviewer can play a full game
+// of each mode directly in Storybook without running the tanstack `www`
+// app. The composable pieces each mode is built from (hex cells, key
+// buffer, word progress, prompt station, ...) get their own static-prop
+// stories under `UI/Honeycomb/Hangul/Components/*` for finer-grained
+// regression coverage that doesn't depend on WASM load timing or RNG.
+
+export const Completion: Story = {
+  args: { mode: "completion" },
+}
+
+export const Endless: Story = {
+  args: { mode: "endless" },
+}
+
+export const Vocabulary: Story = {
+  name: "Vocabulary (word mode, ADR 0001)",
+  args: { mode: "vocabulary" },
+}
+
+export const VocabularyEndless: Story = {
+  args: { mode: "vocabulary-endless" },
+}
 
 const meta: Meta = {
-  title: "UI/Honeycomb/Components/HangulHexGrid",
+  title: "UI/Honeycomb/Hangul/Flow/HangulHexGrid",
   component: HangulHexGrid,
+  parameters: {
+    layout: "fullscreen",
+  },
 }
 export default meta
