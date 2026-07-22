@@ -7,12 +7,16 @@
 // (`@honeycomb/lib/hangul/speech`) - generated on the fly, not bundled, so it carries no
 // licensing obligation either. No `Image` stimulus is seeded (ADR 0001's own stated preference:
 // "Prefer TTS ... and an existing openly-licensed icon set ... over hand-collected images").
+// Every entry's stimulus is `Icon` - `ttsText`/`romanization` are additional enrichment the
+// Prompt/Concept Station (#762) escalates to on struggle, not separate stimulus kinds.
 //
 // Every word is open-syllable (no batchim/final-consonant jamo): `Korean::key_for`
 // (crates/hangul-game-core/src/internal/content_domain/korean.rs) only maps the 19 lead
 // consonants + 21 vowels, not final-position consonants, so `answerKeys`/`answerGlyphs` below are
 // hand-verified against that exact table - a batchim-bearing word would silently produce an
 // unmappable/unmatchable token.
+
+import type { ChallengeSeed } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
 export type WordEntry = {
   id: string
@@ -227,3 +231,22 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     category: "nature",
   },
 ]
+
+/**
+ * A `WordEntry` as the engine's `ChallengeSeed` wire shape (canon Def. 6.1's `Challenge`).
+ * `identity` is the entry's stable slug, not its Hangul text - two entries could in principle
+ * share display text, but ids are unique by construction. `stimulus.name` carries the same slug,
+ * so `#762`'s Prompt Station can look the full `WordEntry` back up from an active challenge's
+ * `Stimulus` alone (`HANGUL_WORDS.find(w => w.id === stimulus.name)`).
+ */
+export function toChallengeSeed(entry: WordEntry): ChallengeSeed {
+  return {
+    stimulus: { kind: "icon", name: entry.id },
+    answerKeys: entry.answerKeys,
+    answerGlyphs: entry.answerGlyphs,
+    identity: entry.id,
+  }
+}
+
+export const HANGUL_WORD_POOL: Array<ChallengeSeed> =
+  HANGUL_WORDS.map(toChallengeSeed)

@@ -9,6 +9,7 @@ import { InstructionsPanel } from "@honeycomb/components/hangul-hex-grid/instruc
 import { KeyBufferDisplay } from "@honeycomb/components/hangul-hex-grid/key-buffer-display"
 import { LoadingState } from "@honeycomb/components/hangul-hex-grid/loading-state"
 import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overlay"
+import { PromptStation } from "@honeycomb/components/hangul-hex-grid/prompt-station"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
 import { WordProgressOverlay } from "@honeycomb/components/hangul-hex-grid/word-progress-overlay"
@@ -18,6 +19,7 @@ import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
+import { usePromptEscalation } from "@honeycomb/hooks/use-prompt-escalation"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
   GameMode,
@@ -71,6 +73,7 @@ export const HangulHexGrid = ({
   const [celebrationWord, setCelebrationWord] = useState<string | undefined>(
     undefined
   )
+  const [missCount, setMissCount] = useState(0)
 
   // Initialize audio
   const { unlockAudio, playSound } = useGameAudio({
@@ -119,6 +122,7 @@ export const HangulHexGrid = ({
       playSound("board_full")
     },
     setWordProgress,
+    setMissCount,
   })
 
   // Keyboard input hook
@@ -137,6 +141,20 @@ export const HangulHexGrid = ({
     playSound,
     setWordProgress,
     setCelebrationWord,
+    setMissCount,
+  })
+
+  // #762 Prompt/Concept Station: derive the tracked word's stimulus/spawn
+  // time from the same activeCharacters entries the hex cells already read,
+  // rather than duplicating that state.
+  const trackedCellId = wordProgress?.cellIds[0]
+  const trackedCharacter = trackedCellId
+    ? activeCharacters.get(trackedCellId)
+    : undefined
+  const promptTier = usePromptEscalation({
+    active: trackedCharacter !== undefined,
+    spawnedAt: trackedCharacter?.spawnedAt,
+    missCount,
   })
 
   const handleReset = useCallback(() => {
@@ -150,6 +168,7 @@ export const HangulHexGrid = ({
     setKeyBuffer("")
     setWordProgress(null)
     setCelebrationWord(undefined)
+    setMissCount(0)
     setIsPaused(false)
 
     // Restart timer for timed modes
@@ -286,6 +305,11 @@ export const HangulHexGrid = ({
         />
 
         <WordProgressOverlay progress={wordProgress} />
+
+        <PromptStation
+          stimulus={trackedCharacter?.stimulus ?? null}
+          tier={promptTier}
+        />
 
         <ControlButtons
           isPaused={isPaused}

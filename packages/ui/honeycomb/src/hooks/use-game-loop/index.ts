@@ -26,6 +26,8 @@ type UseGameLoopProps = {
   onBoardFull?: () => void
   /** Tracks the currently in-progress multi-token challenge, if any (#426). */
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
+  /** Misses observed since the tracked word spawned, for #762's hint escalation. */
+  setMissCount?: React.Dispatch<React.SetStateAction<number>>
 }
 
 export const useGameLoop = ({
@@ -38,6 +40,7 @@ export const useGameLoop = ({
   playSound,
   onBoardFull,
   setWordProgress,
+  setMissCount,
 }: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -54,6 +57,7 @@ export const useGameLoop = ({
   const playSoundRef = useRef(playSound)
   const onBoardFullRef = useRef(onBoardFull)
   const setWordProgressRef = useRef(setWordProgress)
+  const setMissCountRef = useRef(setMissCount)
   const wordProgressCellIdsRef = useRef<Array<string>>([])
 
   useEffect(() => {
@@ -80,6 +84,9 @@ export const useGameLoop = ({
   useEffect(() => {
     setWordProgressRef.current = setWordProgress
   }, [setWordProgress])
+  useEffect(() => {
+    setMissCountRef.current = setMissCount
+  }, [setMissCount])
 
   // ====================================================================
   // SPAWN CHARACTER
@@ -118,6 +125,7 @@ export const useGameLoop = ({
               answerGlyphs: event.spawnResult.answerGlyphs,
               cursor: 0,
             })
+            setMissCountRef.current?.(0)
           }
 
           const timing = bridge.getTimingParams()

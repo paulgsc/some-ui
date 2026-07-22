@@ -33,6 +33,8 @@ type UseKeyboardInputProps = {
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
   /** The just-completed word's glyph text, for the "Celebrate" ceremony (#426). */
   setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
+  /** Misses observed since the tracked word spawned, for #762's hint escalation. */
+  setMissCount?: React.Dispatch<React.SetStateAction<number>>
 }
 
 export const useKeyboardInput = ({
@@ -50,6 +52,7 @@ export const useKeyboardInput = ({
   playSound,
   setWordProgress,
   setCelebrationWord,
+  setMissCount,
 }: UseKeyboardInputProps): void => {
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
@@ -77,6 +80,7 @@ export const useKeyboardInput = ({
             keyboardManager,
             setWordProgress,
             setCelebrationWord,
+            setMissCount,
           })
         })
         return
@@ -109,6 +113,7 @@ export const useKeyboardInput = ({
           keyboardManager,
           setWordProgress,
           setCelebrationWord,
+          setMissCount,
         })
       })
     }
@@ -130,6 +135,7 @@ export const useKeyboardInput = ({
     setAmbiguousCharacters,
     setWordProgress,
     setCelebrationWord,
+    setMissCount,
   ])
 }
 
@@ -154,6 +160,7 @@ type EventHandlers = {
   keyboardManager: KeyboardInputManager
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
   setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
+  setMissCount?: React.Dispatch<React.SetStateAction<number>>
 }
 
 function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
@@ -170,6 +177,7 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
     keyboardManager,
     setWordProgress,
     setCelebrationWord,
+    setMissCount,
   } = handlers
 
   try {
@@ -294,6 +302,10 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         keyboardManager.clearBuffer()
         setKeyBuffer("")
         setAmbiguousCharacters([])
+
+        // Drives #762's hint-tier escalation (miss count on the current
+        // challenge); reset back to 0 on each new spawn (useGameLoop).
+        setMissCount?.((count) => count + 1)
 
         playSound("match_miss")
 
