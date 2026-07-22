@@ -7,7 +7,10 @@ import type {
   TimingParams,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 
 type UseKeyboardInputProps = {
   gameBridge: WasmGameBridge | null
@@ -26,6 +29,10 @@ type UseKeyboardInputProps = {
   setLastPoints: React.Dispatch<React.SetStateAction<number>>
   setAmbiguousCharacters: React.Dispatch<React.SetStateAction<Array<string>>>
   playSound: (event: AudioEvent) => void
+  /** Tracks the currently in-progress multi-token challenge, if any (#426). */
+  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
+  /** The just-completed word's glyph text, for the "Celebrate" ceremony (#426). */
+  setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
 }
 
 export const useKeyboardInput = ({
@@ -41,6 +48,8 @@ export const useKeyboardInput = ({
   setLastPoints,
   setAmbiguousCharacters,
   playSound,
+  setWordProgress,
+  setCelebrationWord,
 }: UseKeyboardInputProps): void => {
   useEffect(() => {
     if (isPaused || !gameBridge || !isInitialized) return
@@ -66,6 +75,8 @@ export const useKeyboardInput = ({
             playSound,
             gameBridge,
             keyboardManager,
+            setWordProgress,
+            setCelebrationWord,
           })
         })
         return
@@ -96,6 +107,8 @@ export const useKeyboardInput = ({
           playSound,
           gameBridge,
           keyboardManager,
+          setWordProgress,
+          setCelebrationWord,
         })
       })
     }
@@ -115,6 +128,8 @@ export const useKeyboardInput = ({
     setShowSuccessFeedback,
     setLastPoints,
     setAmbiguousCharacters,
+    setWordProgress,
+    setCelebrationWord,
   ])
 }
 
@@ -137,6 +152,8 @@ type EventHandlers = {
   playSound: (event: AudioEvent) => void
   gameBridge: WasmGameBridge
   keyboardManager: KeyboardInputManager
+  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
+  setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
 }
 
 function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
@@ -151,6 +168,8 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
     playSound,
     gameBridge,
     keyboardManager,
+    setWordProgress,
+    setCelebrationWord,
   } = handlers
 
   try {
@@ -186,6 +205,15 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         })
 
         setLastPoints(event.points)
+
+        // A multi-token match is a word's "Celebrate" ceremony (ADR 0003
+        // §2(c)): show the completed glyph text alongside the points popup.
+        // A single-jamo match clears it back to undefined, matching today's
+        // points-only popup.
+        setCelebrationWord?.(
+          event.cellIds.length > 1 ? event.hangul : undefined
+        )
+        setWordProgress?.(null)
 
         setShowSuccessFeedback(true)
         setTimeout(() => {
@@ -242,6 +270,12 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
             }
           })
           return next
+        })
+
+        setWordProgress?.({
+          cellIds: event.cellIds,
+          answerGlyphs: [...event.composedSoFar, ...event.remaining],
+          cursor: event.cursor,
         })
 
         // The engine clears its key buffer on this same transition

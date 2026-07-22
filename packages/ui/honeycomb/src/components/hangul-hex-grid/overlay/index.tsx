@@ -11,6 +11,7 @@ import { LoadingState } from "@honeycomb/components/hangul-hex-grid/loading-stat
 import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overlay"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
+import { WordProgressOverlay } from "@honeycomb/components/hangul-hex-grid/word-progress-overlay"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
@@ -24,7 +25,10 @@ import type {
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import { HANGUL_GRID_CELL_COUNT } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 type HangulHexGridProps = {
@@ -63,6 +67,10 @@ export const HangulHexGrid = ({
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false)
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
+  const [wordProgress, setWordProgress] = useState<WordProgress | null>(null)
+  const [celebrationWord, setCelebrationWord] = useState<string | undefined>(
+    undefined
+  )
 
   // Initialize audio
   const { unlockAudio, playSound } = useGameAudio({
@@ -110,6 +118,7 @@ export const HangulHexGrid = ({
     onBoardFull: () => {
       playSound("board_full")
     },
+    setWordProgress,
   })
 
   // Keyboard input hook
@@ -126,6 +135,8 @@ export const HangulHexGrid = ({
     setLastPoints,
     setAmbiguousCharacters,
     playSound,
+    setWordProgress,
+    setCelebrationWord,
   })
 
   const handleReset = useCallback(() => {
@@ -137,6 +148,8 @@ export const HangulHexGrid = ({
     setStats(gameBridge.getStats())
     setTimingParams(gameBridge.getTimingParams())
     setKeyBuffer("")
+    setWordProgress(null)
+    setCelebrationWord(undefined)
     setIsPaused(false)
 
     // Restart timer for timed modes
@@ -187,7 +200,11 @@ export const HangulHexGrid = ({
           style={{ animationDuration: "8s" }}
         />
 
-        <SuccessFeedback show={showSuccessFeedback} points={lastPoints} />
+        <SuccessFeedback
+          show={showSuccessFeedback}
+          points={lastPoints}
+          word={celebrationWord}
+        />
 
         <main className="size-full absolute">
           <div className="size-full relative">
@@ -267,6 +284,8 @@ export const HangulHexGrid = ({
           buffer={keyBuffer}
           ambiguousCharacters={ambiguousCharacters}
         />
+
+        <WordProgressOverlay progress={wordProgress} />
 
         <ControlButtons
           isPaused={isPaused}

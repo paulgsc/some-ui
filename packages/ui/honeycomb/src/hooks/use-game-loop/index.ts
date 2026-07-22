@@ -5,7 +5,10 @@ import type {
   TimingParams,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 import { assertNever } from "@honeycomb/utils/error"
 
 type UseGameLoopProps = {
@@ -21,6 +24,8 @@ type UseGameLoopProps = {
   setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
   playSound: (event: AudioEvent) => void
   onBoardFull?: () => void
+  /** Tracks the currently in-progress multi-token challenge, if any (#426). */
+  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
 }
 
 export const useGameLoop = ({
@@ -32,6 +37,7 @@ export const useGameLoop = ({
   setTimingParams,
   playSound,
   onBoardFull,
+  setWordProgress,
 }: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -47,6 +53,8 @@ export const useGameLoop = ({
   const setTimingParamsRef = useRef(setTimingParams)
   const playSoundRef = useRef(playSound)
   const onBoardFullRef = useRef(onBoardFull)
+  const setWordProgressRef = useRef(setWordProgress)
+  const wordProgressCellIdsRef = useRef<Array<string>>([])
 
   useEffect(() => {
     gameBridgeRef.current = gameBridge
@@ -69,6 +77,9 @@ export const useGameLoop = ({
   useEffect(() => {
     onBoardFullRef.current = onBoardFull
   }, [onBoardFull])
+  useEffect(() => {
+    setWordProgressRef.current = setWordProgress
+  }, [setWordProgress])
 
   // ====================================================================
   // SPAWN CHARACTER
@@ -96,6 +107,18 @@ export const useGameLoop = ({
             })
             return next
           })
+
+          // Track a newly spawned word challenge for the masked-word overlay
+          // (#426). A single-jamo (n=1) spawn is intentionally not tracked -
+          // WordProgressOverlay itself no-ops below answerGlyphs.length > 1.
+          if (event.spawnResult.answerGlyphs.length > 1) {
+            wordProgressCellIdsRef.current = event.spawnResult.cellIds
+            setWordProgressRef.current?.({
+              cellIds: event.spawnResult.cellIds,
+              answerGlyphs: event.spawnResult.answerGlyphs,
+              cursor: 0,
+            })
+          }
 
           const timing = bridge.getTimingParams()
           setTimingParamsRef.current(timing)
@@ -159,6 +182,17 @@ export const useGameLoop = ({
             event.cellIds.forEach((id) => next.delete(id))
             return next
           })
+
+          // If the word the overlay is currently tracking just expired,
+          // clear it rather than leaving a stale masked word on screen.
+          if (
+            wordProgressCellIdsRef.current.some((id) =>
+              event.cellIds.includes(id)
+            )
+          ) {
+            wordProgressCellIdsRef.current = []
+            setWordProgressRef.current?.(null)
+          }
           break
         }
         case "statsUpdated": {

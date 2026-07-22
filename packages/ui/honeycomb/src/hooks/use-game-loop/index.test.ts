@@ -34,6 +34,7 @@ type MockGameLoopProps = {
   setTimingParams: Mock<(params: TimingParams) => void>
   playSound: Mock<(event: AudioEvent) => void>
   onBoardFull: Mock<() => void>
+  setWordProgress: Mock
 }
 
 function createBaseProps(
@@ -74,6 +75,7 @@ function createBaseProps(
     setTimingParams: vi.fn(),
     playSound: vi.fn(),
     onBoardFull: vi.fn(),
+    setWordProgress: vi.fn(),
     ...overrides,
   }
 }
@@ -153,8 +155,12 @@ describe("spawn loop event handling", () => {
   it("adds a spawned character and plays the spawn sound", () => {
     const spawnResult = {
       cellId: "cell-1",
+      cellIds: ["cell-1"],
       hangul: "ㄱ",
       expectedKey: "r",
+      stimulus: { kind: "glyph", text: "ㄱ" },
+      answerKeys: ["r"],
+      answerGlyphs: ["ㄱ"],
       revealedAtMs: 0,
       playSpawnSound: true,
     }
@@ -187,8 +193,12 @@ describe("spawn loop event handling", () => {
         type: "characterSpawned",
         spawnResult: {
           cellId: "cell-1",
+          cellIds: ["cell-1"],
           hangul: "ㄱ",
           expectedKey: "r",
+          stimulus: { kind: "glyph", text: "ㄱ" },
+          answerKeys: ["r"],
+          answerGlyphs: ["ㄱ"],
           revealedAtMs: 0,
           playSpawnSound: false,
         },
@@ -368,5 +378,95 @@ describe("update loop event handling", () => {
     vi.advanceTimersByTime(50)
 
     expect(props.gameBridge!.updateStatus).toHaveBeenCalled()
+  })
+})
+
+describe("word progress tracking (#426)", () => {
+  it("tracks a multi-token spawn for the masked-word overlay", () => {
+    const props = createBaseProps()
+    props.gameBridge!.spawnCharacter = vi.fn(() => [
+      {
+        type: "characterSpawned",
+        spawnResult: {
+          cellId: "cell-a",
+          cellIds: ["cell-a", "cell-b"],
+          hangul: "ㅅㅏ",
+          expectedKey: "t",
+          stimulus: { kind: "icon", name: "apple" },
+          answerKeys: ["t", "k"],
+          answerGlyphs: ["ㅅ", "ㅏ"],
+          revealedAtMs: 0,
+          playSpawnSound: false,
+        },
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(1000)
+
+    expect(props.setWordProgress).toHaveBeenCalledWith({
+      cellIds: ["cell-a", "cell-b"],
+      answerGlyphs: ["ㅅ", "ㅏ"],
+      cursor: 0,
+    })
+  })
+
+  it("does not track a single-jamo (n=1) spawn", () => {
+    const props = createBaseProps()
+    props.gameBridge!.spawnCharacter = vi.fn(() => [
+      {
+        type: "characterSpawned",
+        spawnResult: {
+          cellId: "cell-a",
+          cellIds: ["cell-a"],
+          hangul: "ㄱ",
+          expectedKey: "r",
+          stimulus: { kind: "glyph", text: "ㄱ" },
+          answerKeys: ["r"],
+          answerGlyphs: ["ㄱ"],
+          revealedAtMs: 0,
+          playSpawnSound: false,
+        },
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(1000)
+
+    expect(props.setWordProgress).not.toHaveBeenCalled()
+  })
+
+  it("clears tracked word progress when its cells expire", () => {
+    const props = createBaseProps()
+    props.gameBridge!.spawnCharacter = vi.fn(() => [
+      {
+        type: "characterSpawned",
+        spawnResult: {
+          cellId: "cell-a",
+          cellIds: ["cell-a", "cell-b"],
+          hangul: "ㅅㅏ",
+          expectedKey: "t",
+          stimulus: { kind: "icon", name: "apple" },
+          answerKeys: ["t", "k"],
+          answerGlyphs: ["ㅅ", "ㅏ"],
+          revealedAtMs: 0,
+          playSpawnSound: false,
+        },
+      },
+    ])
+    props.gameBridge!.checkExpired = vi.fn(() => [
+      {
+        type: "charactersExpired",
+        cellIds: ["cell-a", "cell-b"],
+        hanguls: ["ㅅㅏ"],
+        count: 1,
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(1000) // spawn tick
+    vi.advanceTimersByTime(50) // update tick picks up the expiry
+
+    expect(props.setWordProgress).toHaveBeenLastCalledWith(null)
   })
 })

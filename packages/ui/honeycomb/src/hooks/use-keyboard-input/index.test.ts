@@ -31,6 +31,8 @@ type MockKeyboardInputProps = {
   setLastPoints: Mock
   setAmbiguousCharacters: Mock
   playSound: Mock
+  setWordProgress: Mock
+  setCelebrationWord: Mock
 }
 
 function createBaseProps(
@@ -58,6 +60,8 @@ function createBaseProps(
     setLastPoints: vi.fn(),
     setAmbiguousCharacters: vi.fn(),
     playSound: vi.fn(),
+    setWordProgress: vi.fn(),
+    setCelebrationWord: vi.fn(),
     ...overrides,
   }
 }
@@ -432,6 +436,11 @@ describe("answerProgress (mid-word cursor advance)", () => {
 
     expect(next.get("cell-a").cursor).toBe(1)
     expect(next.get("cell-b").cursor).toBe(1)
+    expect(props.setWordProgress).toHaveBeenCalledWith({
+      cellIds: ["cell-a", "cell-b"],
+      answerGlyphs: ["ㅅ", "ㅏ"],
+      cursor: 1,
+    })
     expect(props.keyboardManager.clearBuffer).toHaveBeenCalled()
     expect(props.setKeyBuffer).toHaveBeenCalledWith("")
     expect(props.playSound).toHaveBeenCalledWith("match_correct")
@@ -470,4 +479,61 @@ it("locks every reserved cell of a multi-cell challenge on matchFound", () => {
 
   expect(next.get("cell-a").isSolved).toBe(true)
   expect(next.get("cell-b").isSolved).toBe(true)
+})
+
+describe("Celebrate ceremony (#426)", () => {
+  it("sets the celebration word on a multi-cell matchFound", () => {
+    const props = createBaseProps({
+      gameBridge: {
+        processKeyPress: vi.fn(() => [
+          {
+            type: "matchFound",
+            cellId: "cell-a",
+            cellIds: ["cell-a", "cell-b"],
+            hangul: "ㅅㅏ",
+            points: 50,
+            isHighQuality: true,
+            countsTowardCompletion: true,
+          },
+        ]),
+        getTimingParams: vi.fn(),
+      },
+    })
+
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }))
+    })
+
+    expect(props.setCelebrationWord).toHaveBeenCalledWith("ㅅㅏ")
+    expect(props.setWordProgress).toHaveBeenCalledWith(null)
+  })
+
+  it("clears the celebration word on a single-jamo matchFound", () => {
+    const props = createBaseProps({
+      gameBridge: {
+        processKeyPress: vi.fn(() => [
+          {
+            type: "matchFound",
+            cellId: "cell-a",
+            cellIds: ["cell-a"],
+            hangul: "ㄱ",
+            points: 10,
+            isHighQuality: true,
+            countsTowardCompletion: true,
+          },
+        ]),
+        getTimingParams: vi.fn(),
+      },
+    })
+
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "r" }))
+    })
+
+    expect(props.setCelebrationWord).toHaveBeenCalledWith(undefined)
+  })
 })
