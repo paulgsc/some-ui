@@ -8,12 +8,14 @@ type UseKeyboardInputProps = Parameters<typeof useKeyboardInput>[0]
 
 type MockGameBridge = {
   processKeyPress: Mock<(key: string) => Array<unknown>>
+  processBackspace?: Mock<() => Array<unknown>>
   getTimingParams: Mock<() => unknown>
 }
 
 type MockKeyboardManager = {
   addKey: Mock<(key: string, now: number) => void>
   clearBuffer: Mock<() => void>
+  removeLastKey?: Mock<() => void>
 }
 
 type MockKeyboardInputProps = {
@@ -37,6 +39,7 @@ function createBaseProps(
   return {
     gameBridge: {
       processKeyPress: vi.fn(() => []),
+      processBackspace: vi.fn(() => []),
       getTimingParams: vi.fn(() => ({ speed: 1 })),
       // Adding minimal placeholders if the hook ever accesses them outside of mocks
     },
@@ -45,6 +48,7 @@ function createBaseProps(
     keyboardManager: {
       addKey: vi.fn(),
       clearBuffer: vi.fn(),
+      removeLastKey: vi.fn(),
     },
     setActiveCharacters: vi.fn(),
     setStats: vi.fn(),
@@ -200,6 +204,7 @@ it("handles matchFound correctly", () => {
         {
           type: "matchFound",
           cellId: "1",
+          cellIds: ["1"],
           points: 50,
           isHighQuality: true,
         },
@@ -235,6 +240,7 @@ it("persists a completed character in its cell instead of removing it", () => {
         {
           type: "matchFound",
           cellId: "cell-a",
+          cellIds: ["cell-a"],
           points: 50,
           isHighQuality: true,
           countsTowardCompletion: true,
@@ -269,6 +275,7 @@ it("removes a correct-but-not-completed character from its cell", () => {
         {
           type: "matchFound",
           cellId: "cell-b",
+          cellIds: ["cell-b"],
           points: 10,
           isHighQuality: false,
           countsTowardCompletion: false,
@@ -365,4 +372,102 @@ it("handles inputMissed", () => {
 
   expect(props.keyboardManager.clearBuffer).toHaveBeenCalled()
   expect(props.playSound).toHaveBeenCalledWith("match_miss")
+})
+
+describe("backspace (ADR 0003 §2(b))", () => {
+  it("calls processBackspace instead of processKeyPress and routes its events", () => {
+    const props = createBaseProps({
+      gameBridge: {
+        processKeyPress: vi.fn(() => []),
+        processBackspace: vi.fn(() => [
+          { type: "bufferUpdated", currentBuffer: "t" },
+        ]),
+        getTimingParams: vi.fn(),
+      },
+    })
+
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace" }))
+    })
+
+    expect(props.gameBridge!.processBackspace).toHaveBeenCalled()
+    expect(props.gameBridge!.processKeyPress).not.toHaveBeenCalled()
+    expect(props.keyboardManager.removeLastKey).toHaveBeenCalled()
+    expect(props.setKeyBuffer).toHaveBeenCalledWith("t")
+  })
+})
+
+describe("answerProgress (mid-word cursor advance)", () => {
+  it("advances cursor on every cell of the challenge and clears the buffer", () => {
+    const props = createBaseProps({
+      gameBridge: {
+        processKeyPress: vi.fn(() => [
+          {
+            type: "answerProgress",
+            cellIds: ["cell-a", "cell-b"],
+            composedSoFar: ["ㅅ"],
+            remaining: ["ㅏ"],
+            cursor: 1,
+            total: 2,
+          },
+        ]),
+        getTimingParams: vi.fn(),
+      },
+    })
+
+    renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "t" }))
+    })
+
+    const updater = props.setActiveCharacters.mock.calls[0]![0]
+    const prev = new Map([
+      ["cell-a", { cellId: "cell-a", tokenIndex: 0, cursor: 0 }],
+      ["cell-b", { cellId: "cell-b", tokenIndex: 1, cursor: 0 }],
+    ])
+    const next = updater(prev)
+
+    expect(next.get("cell-a").cursor).toBe(1)
+    expect(next.get("cell-b").cursor).toBe(1)
+    expect(props.keyboardManager.clearBuffer).toHaveBeenCalled()
+    expect(props.setKeyBuffer).toHaveBeenCalledWith("")
+    expect(props.playSound).toHaveBeenCalledWith("match_correct")
+  })
+})
+
+it("locks every reserved cell of a multi-cell challenge on matchFound", () => {
+  const props = createBaseProps({
+    gameBridge: {
+      processKeyPress: vi.fn(() => [
+        {
+          type: "matchFound",
+          cellId: "cell-a",
+          cellIds: ["cell-a", "cell-b"],
+          points: 50,
+          isHighQuality: true,
+          countsTowardCompletion: true,
+        },
+      ]),
+      getTimingParams: vi.fn(),
+    },
+  })
+
+  renderHook(() => useKeyboardInput(asKeyboardInputProps(props)))
+
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }))
+  })
+
+  const updater = props.setActiveCharacters.mock.calls[0]![0]
+  const prev = new Map([
+    ["cell-a", { cellId: "cell-a", timeRemaining: 0.4 }],
+    ["cell-b", { cellId: "cell-b", timeRemaining: 0.4 }],
+  ])
+  const next = updater(prev)
+
+  expect(next.get("cell-a").isSolved).toBe(true)
+  expect(next.get("cell-b").isSolved).toBe(true)
 })

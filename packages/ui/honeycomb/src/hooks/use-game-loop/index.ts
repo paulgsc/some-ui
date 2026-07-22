@@ -83,7 +83,7 @@ export const useGameLoop = ({
       const { type: t } = event
       switch (t) {
         case "characterSpawned": {
-          const char = bridge.createDisplayCharacter(event.spawnResult)
+          const chars = bridge.createDisplayCharacters(event.spawnResult)
 
           if (event.spawnResult.playSpawnSound) {
             playSoundRef.current("character_spawn")
@@ -91,7 +91,9 @@ export const useGameLoop = ({
 
           setActiveCharactersRef.current((prev) => {
             const next = new Map(prev)
-            next.set(char.cellId, { ...char, timeRemaining: 1 })
+            chars.forEach((char) => {
+              next.set(char.cellId, { ...char, timeRemaining: 1 })
+            })
             return next
           })
 
@@ -113,6 +115,7 @@ export const useGameLoop = ({
         case "matchFound":
         case "inputMissed":
         case "ambiguousInput":
+        case "answerProgress":
         case "bufferUpdated":
         case "streakMilestone":
         case "statsUpdated":
@@ -175,6 +178,7 @@ export const useGameLoop = ({
         case "inputMissed":
         case "bufferUpdated":
         case "ambiguousInput":
+        case "answerProgress":
         case "streakMilestone": {
           // These are handled in:
           // - spawn loop
@@ -190,15 +194,19 @@ export const useGameLoop = ({
     })
 
     // Update timeRemaining for active characters. Solved characters are locked
-    // into their cell and no longer count down.
+    // into their cell and no longer count down. The engine's budget is
+    // per-*token* (revealed_at_ms + answerKeys.length * currentWindow, canon
+    // Thm. 7.2/ADR 0003 §2(a)'s shared word countdown) - a single-jamo (n=1)
+    // cell's budget is unchanged since answerKeys.length is 1 there.
     setActiveCharactersRef.current((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
         if (char.isSolved) return
         const age = now - char.spawnedAt
+        const tokenCount = char.answerKeys.length || 1
         next.set(cellId, {
           ...char,
-          timeRemaining: Math.max(0, 1 - age / currentWindow),
+          timeRemaining: Math.max(0, 1 - age / (currentWindow * tokenCount)),
         })
       })
       return next

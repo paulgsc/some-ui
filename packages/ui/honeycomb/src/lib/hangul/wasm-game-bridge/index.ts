@@ -73,10 +73,43 @@ const TimingParamsSchema = z.object({
   showRomanization: z.boolean(),
 })
 
+// Stimulus (canon Def. 3.1, ADR 0001 §2(a)): what the player perceives. The engine only ever
+// carries ids/refs (Axiom 3.1's asset-opacity invariant) - this package resolves them to
+// renderable/speakable sources (icon glyphs via @honeycomb/data, TTS via
+// @honeycomb/lib/hangul/speech).
+export const StimulusSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("glyph"), text: z.string() }),
+  z.object({ kind: z.literal("image"), assetId: z.string() }),
+  z.object({ kind: z.literal("icon"), name: z.string() }),
+  z.object({
+    kind: z.literal("speech"),
+    audioRef: z.string().optional(),
+    ttsText: z.string().optional(),
+  }),
+])
+
+// What a `GameMode` hands the engine for the next spawn (canon Def. 6.1's `Challenge` + the
+// `identity` a mode needs for completion bookkeeping). Also the wire shape a curated word pool is
+// sent to the engine in (`HangulGameCore`'s `word_pool_js` constructor param), for
+// `"vocabulary"`/`"vocabulary-endless"` modes.
+export const ChallengeSeedSchema = z.object({
+  stimulus: StimulusSchema,
+  answerKeys: z.array(z.string()),
+  answerGlyphs: z.array(z.string()),
+  identity: z.string(),
+})
+
+// cellId/hangul/expectedKey are the pre-#421 fields (first cell / full display text / first
+// token's key), kept exactly as-is for single-jamo back-compat; cellIds/stimulus/answerKeys/
+// answerGlyphs are the ADR 0001/0003 widening (canon Rem. 8.1: additive only).
 const SpawnResultSchema = z.object({
   cellId: z.string(),
+  cellIds: z.array(z.string()),
   hangul: z.string(),
   expectedKey: z.string(),
+  stimulus: StimulusSchema,
+  answerKeys: z.array(z.string()),
+  answerGlyphs: z.array(z.string()),
   revealedAtMs: z.number().int().nonnegative(),
   playSpawnSound: z.boolean(),
 })
@@ -92,7 +125,10 @@ const GameEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("matchFound"),
     cellId: z.string(),
+    cellIds: z.array(z.string()),
     hangul: z.string(),
+    answerGlyphs: z.array(z.string()),
+    stimulus: StimulusSchema,
     points: z.number().int(),
     isHighQuality: z.boolean(),
     timeGapMs: z.number().int().nonnegative(),
@@ -115,6 +151,14 @@ const GameEventSchema = z.discriminatedUnion("type", [
     type: z.literal("ambiguousInput"),
     currentBuffer: z.string(),
     potentialMatches: z.array(z.string()),
+  }),
+  z.object({
+    type: z.literal("answerProgress"),
+    cellIds: z.array(z.string()),
+    composedSoFar: z.array(z.string()),
+    remaining: z.array(z.string()),
+    cursor: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal("characterSpawned"),
@@ -148,17 +192,31 @@ export type GameProgress = z.infer<typeof GameProgressSchema>
 export type GameStatus = z.infer<typeof GameStatusSchema>
 export type GameStats = z.infer<typeof GameStatsSchema>
 export type TimingParams = z.infer<typeof TimingParamsSchema>
+export type Stimulus = z.infer<typeof StimulusSchema>
+export type ChallengeSeed = z.infer<typeof ChallengeSeedSchema>
 export type SpawnResult = z.infer<typeof SpawnResultSchema>
 export type GameEvent = z.infer<typeof GameEventSchema>
-export type GameMode = "endless" | "completion"
+export type GameMode =
+  | "endless"
+  | "completion"
+  | "vocabulary"
+  | "vocabulary-endless"
 
 export type DisplayCharacter = {
   cellId: string
+  cellIds: Array<string>
   hangul: string
   qwertyKey: string
   romanization: string
   color: string
   spawnedAt: number
+  stimulus: Stimulus
+  answerKeys: Array<string>
+  answerGlyphs: Array<string>
+  /** This cell's position in a multi-cell challenge; 0 for single-cell (jamo) challenges. */
+  tokenIndex: number
+  /** Tokens matched so far in the shared challenge; this cell is revealed once cursor > tokenIndex. */
+  cursor: number
 }
 
 type StatusListener = () => void
@@ -283,23 +341,53 @@ export class WasmGameBridge {
     return events
   }
 
+  /**
+   * Correct the in-progress token before it locks in (ADR 0003 §2(b)) -
+   * returns array of events
+   */
+  processBackspace(): Array<GameEvent> {
+    const now = BigInt(Date.now())
+    const result = this.wasmCore.processBackspace(now)
+
+    const events = z.array(GameEventSchema).parse(result)
+    return events
+  }
+
   // ============================================================================
   // HELPERS
   // ============================================================================
 
   /**
-   * Convert spawn event to display character
+   * Convert a spawn event into one display character per reserved cell
+   * (ADR 0003 §2(a), multi-cell binding). A single-jamo (n=1) spawn returns
+   * a one-element array with exactly today's shape; a word spawn returns
+   * `answerKeys.length` entries, each carrying only its own token - sibling
+   * cells share one color and one `stimulus`, so the word reads as one
+   * challenge rather than several unrelated ones.
    */
-  createDisplayCharacter(spawn: SpawnResult): DisplayCharacter {
-    const mapping = this.getHangulMapping(spawn.hangul)
-    return {
-      cellId: spawn.cellId,
-      hangul: spawn.hangul,
-      qwertyKey: spawn.expectedKey,
-      romanization: mapping.romanization,
-      color: getHangulColor(spawn.hangul),
-      spawnedAt: spawn.revealedAtMs,
-    }
+  createDisplayCharacters(spawn: SpawnResult): Array<DisplayCharacter> {
+    const color = getHangulColor(spawn.answerGlyphs[0] ?? spawn.hangul)
+
+    return spawn.cellIds.map((cellId, tokenIndex) => {
+      const glyph = spawn.answerGlyphs[tokenIndex] ?? ""
+      const key = spawn.answerKeys[tokenIndex] ?? ""
+      const mapping = this.getHangulMapping(glyph)
+
+      return {
+        cellId,
+        cellIds: spawn.cellIds,
+        hangul: glyph,
+        qwertyKey: key,
+        romanization: mapping.romanization,
+        color,
+        spawnedAt: spawn.revealedAtMs,
+        stimulus: spawn.stimulus,
+        answerKeys: spawn.answerKeys,
+        answerGlyphs: spawn.answerGlyphs,
+        tokenIndex,
+        cursor: 0,
+      }
+    })
   }
 
   private getHangulMapping(hangul: string): HangulMapping {

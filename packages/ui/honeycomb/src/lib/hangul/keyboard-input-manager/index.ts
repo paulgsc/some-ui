@@ -36,6 +36,14 @@ export class KeyboardInputManager {
   }
 
   /**
+   * Drop the most recent key (ADR 0003 §2(b) backspace) - a no-op on an
+   * already-empty buffer.
+   */
+  removeLastKey(): void {
+    this.keyBuffer.pop()
+  }
+
+  /**
    * Get current buffer as string for display
    */
   getBuffer(): string {

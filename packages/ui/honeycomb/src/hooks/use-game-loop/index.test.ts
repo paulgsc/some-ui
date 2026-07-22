@@ -22,7 +22,7 @@ type MockGameBridge = {
   getTimingParams: Mock
   getCurrentTimeWindow: Mock
   updateStatus: Mock
-  createDisplayCharacter: Mock<(spawn: SpawnResult) => unknown>
+  createDisplayCharacters: Mock<(spawn: SpawnResult) => Array<unknown>>
 }
 
 type MockGameLoopProps = {
@@ -50,14 +50,22 @@ function createBaseProps(
       })),
       getCurrentTimeWindow: vi.fn(() => 3000),
       updateStatus: vi.fn(),
-      createDisplayCharacter: vi.fn((spawn) => ({
-        cellId: spawn.cellId,
-        hangul: spawn.hangul,
-        qwertyKey: spawn.expectedKey,
-        romanization: "",
-        color: "#000000",
-        spawnedAt: spawn.revealedAtMs,
-      })),
+      createDisplayCharacters: vi.fn((spawn) => [
+        {
+          cellId: spawn.cellId,
+          cellIds: spawn.cellIds,
+          hangul: spawn.hangul,
+          qwertyKey: spawn.expectedKey,
+          romanization: "",
+          color: "#000000",
+          spawnedAt: spawn.revealedAtMs,
+          stimulus: spawn.stimulus,
+          answerKeys: spawn.answerKeys,
+          answerGlyphs: spawn.answerGlyphs,
+          tokenIndex: 0,
+          cursor: 0,
+        },
+      ]),
     },
     isInitialized: true,
     isPaused: false,
@@ -298,11 +306,37 @@ describe("update loop event handling", () => {
           spawnedAt: Date.now() - 1500,
           isSolved: false,
           timeRemaining: 1,
+          answerKeys: ["r"],
         },
       ],
     ])
     const next = updater(prev)
     expect(next.get("cell-1")!.timeRemaining).toBeCloseTo(0.5, 5)
+  })
+
+  it("scales the decay window by token count for a multi-token challenge", () => {
+    const props = createBaseProps()
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    const updater = props.setActiveCharacters.mock.calls[0]![0]
+    const prev = new Map([
+      [
+        "cell-1",
+        {
+          cellId: "cell-1",
+          spawnedAt: Date.now() - 1500,
+          isSolved: false,
+          timeRemaining: 1,
+          // 2 tokens * 3000ms window = 6000ms budget; 1500ms elapsed is a
+          // quarter of that, not half - the single-token calculation would
+          // wrongly report 0.5 here.
+          answerKeys: ["t", "k"],
+        },
+      ],
+    ])
+    const next = updater(prev)
+    expect(next.get("cell-1")!.timeRemaining).toBeCloseTo(0.75, 5)
   })
 
   it("does not decay timeRemaining for solved characters", () => {
@@ -319,6 +353,7 @@ describe("update loop event handling", () => {
           spawnedAt: Date.now() - 1500,
           isSolved: true,
           timeRemaining: 0.42,
+          answerKeys: ["r"],
         },
       ],
     ])

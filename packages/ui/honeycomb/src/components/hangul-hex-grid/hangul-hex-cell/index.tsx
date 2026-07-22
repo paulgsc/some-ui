@@ -12,7 +12,16 @@ type HangulHexCellProps = {
   timeRemaining: number // 0 to 1
   showRomanization?: boolean // Whether to show hints
   isSolved?: boolean // Whether the character has been completed and locked in
+  /**
+   * True while this cell belongs to a not-yet-typed token of a multi-cell
+   * word challenge (ADR 0003 §2(a)/#425): masks the glyph and QWERTY hint
+   * behind a neutral placeholder instead of revealing them early. Always
+   * false for a single-jamo (n=1) challenge.
+   */
+  isPlaceholder?: boolean
 }
+
+const PLACEHOLDER_GLYPH = "?"
 
 const SOLVED_COLOR = "#22c55e" // emerald-500
 
@@ -26,6 +35,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   timeRemaining,
   showRomanization = true,
   isSolved = false,
+  isPlaceholder = false,
 }): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -70,9 +80,10 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
       <path
         d={hexPath}
         fill={isSolved ? SOLVED_COLOR : character.color}
-        fillOpacity={isSolved ? 0.22 : 0.3}
+        fillOpacity={isSolved ? 0.22 : isPlaceholder ? 0.15 : 0.3}
         stroke={urgencyColor}
         strokeWidth={isSolved ? 3 : 2}
+        strokeDasharray={isPlaceholder ? "4 3" : undefined}
         filter={glowIntensity}
       />
 
@@ -101,7 +112,8 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         }}
       />
 
-      {/* Hangul character - large and centered */}
+      {/* Hangul character - large and centered. Masked to a neutral
+          placeholder glyph while this cell hasn't been reached yet (#425). */}
       <text
         x={centerX}
         y={centerY}
@@ -109,16 +121,17 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         dominantBaseline="middle"
         fontSize={hangulFontSize}
         fontWeight="900"
-        fill="white"
+        fill={isPlaceholder ? "rgba(255,255,255,0.35)" : "white"}
         className="font-sans pointer-events-none"
         style={{
           textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          transition: "fill 0.2s ease-out",
         }}
       >
-        {character.hangul}
+        {isPlaceholder ? PLACEHOLDER_GLYPH : character.hangul}
       </text>
 
-      {/* QWERTY key hint - small text below (hidden once solved) */}
+      {/* QWERTY key hint - small text below (hidden once solved or placeholder) */}
       <text
         x={centerX}
         y={centerY + cellWidth * 0.28}
@@ -129,7 +142,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         fill="rgba(255,255,255,0.5)"
         className="font-mono pointer-events-none"
       >
-        {!isSolved && showRomanization && character.qwertyKey}
+        {!isSolved && !isPlaceholder && showRomanization && character.qwertyKey}
       </text>
 
       {/* Completion checkmark badge */}
@@ -149,8 +162,9 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         </text>
       )}
 
-      {/* Hover popup with romanization */}
-      {isHovered && showRomanization && (
+      {/* Hover popup with romanization (suppressed for a not-yet-reached
+          placeholder cell - it must not leak the answer early) */}
+      {isHovered && showRomanization && !isPlaceholder && (
         <foreignObject
           x={centerX - cellWidth * 0.6}
           y={centerY - cellWidth * 1.2}

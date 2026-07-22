@@ -1,4 +1,5 @@
 import type {
+  ChallengeSeed,
   GameConfig,
   GameMode,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
@@ -18,6 +19,7 @@ import { createWasmLoader } from "@some-ui/wasm-loader"
 // consulted config/mode on the attempt that actually constructs the core.
 let pendingConfig: Partial<GameConfig> | undefined
 let pendingMode: GameMode = "completion"
+let pendingWordPool: Array<ChallengeSeed> = []
 let coreInstance: HangulGameCore | null = null
 
 const loader = createWasmLoader<WasmGameBridge>({
@@ -31,7 +33,11 @@ const loader = createWasmLoader<WasmGameBridge>({
       ...pendingConfig,
     })
 
-    const core = new module.HangulGameCore(finalConfig, pendingMode)
+    const core = new module.HangulGameCore(
+      finalConfig,
+      pendingMode,
+      pendingWordPool
+    )
     coreInstance = core
     return new WasmGameBridge(core, pendingMode)
   },
@@ -58,10 +64,12 @@ export function getBridgeInstance(): WasmGameBridge | null {
  */
 export async function loadHangulWasm(
   config?: Partial<GameConfig>,
-  mode: GameMode = "completion"
+  mode: GameMode = "completion",
+  wordPool: Array<ChallengeSeed> = []
 ): Promise<WasmGameBridge | null> {
   pendingConfig = config
   pendingMode = mode
+  pendingWordPool = wordPool
   return loader.load()
 }
 

@@ -139,37 +139,72 @@ describe("generateCellIds", () => {
   })
 })
 
-describe("createDisplayCharacter", () => {
-  it("maps a known hangul to its qwerty key and romanization", () => {
+describe("createDisplayCharacters", () => {
+  it("maps a single-cell (jamo) spawn to one display character", () => {
     const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
 
-    const display = bridge.createDisplayCharacter({
+    const [display] = bridge.createDisplayCharacters({
       cellId: "hex_0_0_0",
+      cellIds: ["hex_0_0_0"],
       hangul: "ㄱ",
       expectedKey: "r",
+      stimulus: { kind: "glyph", text: "ㄱ" },
+      answerKeys: ["r"],
+      answerGlyphs: ["ㄱ"],
       revealedAtMs: 1000,
       playSpawnSound: true,
     })
 
-    expect(display.cellId).toBe("hex_0_0_0")
-    expect(display.qwertyKey).toBe("r")
-    expect(display.romanization).toBe("g/k")
-    expect(display.spawnedAt).toBe(1000)
-    expect(display.color).toMatch(/^#[0-9a-f]{6}$/i)
+    expect(display?.cellId).toBe("hex_0_0_0")
+    expect(display?.qwertyKey).toBe("r")
+    expect(display?.romanization).toBe("g/k")
+    expect(display?.spawnedAt).toBe(1000)
+    expect(display?.tokenIndex).toBe(0)
+    expect(display?.color).toMatch(/^#[0-9a-f]{6}$/i)
   })
 
   it("falls back to empty romanization for an unmapped hangul", () => {
     const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
 
-    const display = bridge.createDisplayCharacter({
+    const [display] = bridge.createDisplayCharacters({
       cellId: "hex_0_0_0",
+      cellIds: ["hex_0_0_0"],
       hangul: "not-a-real-jamo",
       expectedKey: "",
+      stimulus: { kind: "glyph", text: "not-a-real-jamo" },
+      answerKeys: [""],
+      answerGlyphs: ["not-a-real-jamo"],
       revealedAtMs: 500,
       playSpawnSound: false,
     })
 
-    expect(display.romanization).toBe("")
+    expect(display?.romanization).toBe("")
+  })
+
+  it("returns one display character per cell for a multi-cell word challenge", () => {
+    const bridge = new WasmGameBridge(asHangulGameCore(makeCore()))
+
+    const displays = bridge.createDisplayCharacters({
+      cellId: "hex_0_0_0",
+      cellIds: ["hex_0_0_0", "hex_1_-1_0"],
+      hangul: "ㅅㅏ",
+      expectedKey: "t",
+      stimulus: { kind: "icon", name: "apple" },
+      answerKeys: ["t", "k"],
+      answerGlyphs: ["ㅅ", "ㅏ"],
+      revealedAtMs: 1000,
+      playSpawnSound: true,
+    })
+
+    expect(displays).toHaveLength(2)
+    expect(displays[0]?.cellId).toBe("hex_0_0_0")
+    expect(displays[0]?.hangul).toBe("ㅅ")
+    expect(displays[0]?.tokenIndex).toBe(0)
+    expect(displays[1]?.cellId).toBe("hex_1_-1_0")
+    expect(displays[1]?.hangul).toBe("ㅏ")
+    expect(displays[1]?.tokenIndex).toBe(1)
+    // Sibling cells of the same challenge share one color, not one each.
+    expect(displays[0]?.color).toBe(displays[1]?.color)
   })
 })
 

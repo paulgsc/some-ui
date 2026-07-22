@@ -216,9 +216,16 @@ export const HangulHexGrid = ({
                     spawnedAt,
                     timeRemaining,
                     isSolved,
+                    tokenIndex,
+                    cursor,
                   },
                   theme: { opacity },
                 } = content
+                // A word challenge's cells stay masked placeholders until the
+                // token-cursor reaches their position (ADR 0003 §2(a)); a
+                // single-jamo (n=1) cell has tokenIndex 0 >= cursor 0, so it's
+                // never a placeholder - it reveals on its own first match.
+                const isPlaceholder = !isSolved && tokenIndex >= cursor
                 return (
                   <HangulHexCell
                     character={{
@@ -239,6 +246,7 @@ export const HangulHexGrid = ({
                     timeRemaining={timeRemaining}
                     showRomanization={timingParams.showRomanization}
                     isSolved={isSolved}
+                    isPlaceholder={isPlaceholder}
                   />
                 )
               }}

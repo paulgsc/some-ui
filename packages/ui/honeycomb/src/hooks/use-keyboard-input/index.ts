@@ -46,8 +46,33 @@ export const useKeyboardInput = ({
     if (isPaused || !gameBridge || !isInitialized) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      // Ignore special keys
-      if (e.ctrlKey || e.altKey || e.metaKey || e.key.length > 1) return
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+
+      // Backspace corrects the in-progress token only (ADR 0003 §2(b)) - it's
+      // a multi-char key name, so it must be special-cased before the
+      // length > 1 guard below that otherwise ignores it.
+      if (e.key === "Backspace") {
+        keyboardManager.removeLastKey()
+        const events = gameBridge.processBackspace()
+        events.forEach((event) => {
+          processGameEvent(event, {
+            setActiveCharacters,
+            setStats,
+            setTimingParams,
+            setKeyBuffer,
+            setShowSuccessFeedback,
+            setLastPoints,
+            setAmbiguousCharacters,
+            playSound,
+            gameBridge,
+            keyboardManager,
+          })
+        })
+        return
+      }
+
+      // Ignore other special keys
+      if (e.key.length > 1) return
       if (e.key === " ") return
 
       const now = Date.now()
@@ -134,22 +159,28 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
         setActiveCharacters((prev) => {
           const next = new Map(prev)
 
-          if (event.countsTowardCompletion) {
-            // Completed: lock the character into its cell (persist) and stop it
-            // counting down. The engine has already drained it from the test
-            // pool and reserved the cell, so nothing will spawn on top of it.
-            const solved = next.get(event.cellId)
-            if (solved) {
-              next.set(event.cellId, {
-                ...solved,
-                isSolved: true,
-                timeRemaining: 1,
-              })
+          // A word challenge locks in every cell it reserved (ADR 0003 §2(a)),
+          // not just one; a single-jamo (n=1) match has cellIds = [cellId],
+          // so this loop is exactly today's single-cell behavior there.
+          event.cellIds.forEach((cellId) => {
+            if (event.countsTowardCompletion) {
+              // Completed: lock the character into its cell (persist) and stop
+              // it counting down. The engine has already drained it from the
+              // test pool and reserved the cell, so nothing will spawn on top
+              // of it.
+              const solved = next.get(cellId)
+              if (solved) {
+                next.set(cellId, {
+                  ...solved,
+                  isSolved: true,
+                  timeRemaining: 1,
+                })
+              }
+            } else {
+              // Correct but not yet mastered: it will respawn, so clear the cell.
+              next.delete(cellId)
             }
-          } else {
-            // Correct but not yet mastered: it will respawn, so clear the cell.
-            next.delete(event.cellId)
-          }
+          })
 
           return next
         })
@@ -193,6 +224,34 @@ function processGameEvent(event: GameEvent, handlers: EventHandlers): void {
       case "ambiguousInput": {
         setKeyBuffer(event.currentBuffer)
         setAmbiguousCharacters(event.potentialMatches)
+
+        break
+      }
+
+      case "answerProgress": {
+        // A mid-word token matched (canon Def. 4.3) but the challenge isn't
+        // complete yet: advance every sibling cell's cursor so placeholder
+        // cells past it reveal, without touching score/streak/mastery (those
+        // are handled only on the completing match, in "matchFound").
+        setActiveCharacters((prev) => {
+          const next = new Map(prev)
+          event.cellIds.forEach((cellId) => {
+            const char = next.get(cellId)
+            if (char) {
+              next.set(cellId, { ...char, cursor: event.cursor })
+            }
+          })
+          return next
+        })
+
+        // The engine clears its key buffer on this same transition
+        // (process_input's advance_or_complete), mirroring matchFound's own
+        // client-side clear rather than waiting for a separate bufferUpdated.
+        keyboardManager.clearBuffer()
+        setKeyBuffer("")
+        setAmbiguousCharacters([])
+
+        playSound("match_correct")
 
         break
       }
