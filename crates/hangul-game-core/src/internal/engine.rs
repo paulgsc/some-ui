@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use super::{
-    content_domain::ContentDomain, create_game_mode, difficulty, ActiveReveal, DifficultyChangeReason, EventBatch, GameConfig, GameMode, GameStats, GameStatus,
-    KeyBufferEntry, PrimaryEvent, SecondaryEvent, SpawnResult, TimingParams, UiHintEvent,
+    content_domain::ContentDomain, create_game_mode, difficulty, ActiveChallenge, ChallengeSeed, DifficultyChangeReason, EventBatch, GameConfig, GameMode, GameStats,
+    GameStatus, KeyBufferEntry, PrimaryEvent, SecondaryEvent, SpawnResult, TimingParams, UiHintEvent,
 };
 
 /// A challenge's total expiry budget is clamped here regardless of how many tokens it carries, so a
@@ -14,7 +14,7 @@ const MAX_CHALLENGE_BUDGET_MS: u64 = 15_000;
 /// to `D` rather than hard-coded here.
 pub struct GameEngine<D: ContentDomain> {
     config: GameConfig,
-    active_reveals: Vec<ActiveReveal>,
+    active_reveals: Vec<ActiveChallenge>,
     /// Cells holding a completed character. These persist on the board and are
     /// never reused for new spawns until the game is reset.
     completed_cells: Vec<String>,
@@ -38,8 +38,8 @@ pub struct GameEngine<D: ContentDomain> {
 }
 
 impl<D: ContentDomain> GameEngine<D> {
-    pub fn new(config: GameConfig, mode: String) -> Self {
-        let game_mode = create_game_mode::<D>(&mode);
+    pub fn new(config: GameConfig, mode: String, word_pool: Vec<ChallengeSeed>) -> Self {
+        let game_mode = create_game_mode::<D>(&mode, word_pool);
         let buffer_timeout_ms = config.buffer_timeout_ms;
         let game_duration_ms = config.game_duration_ms;
 
@@ -64,7 +64,11 @@ impl<D: ContentDomain> GameEngine<D> {
         self.game_mode.initialize(&self.config);
     }
 
-    /// Process input with ambiguity resolution
+    /// Process input with ambiguity resolution. Generalizes canon Def. 4.3's token-cursor matching:
+    /// every occurrence of a reveal's single `expected_key` is replaced by its *current* token,
+    /// `current_key()` (= `answer_keys[cursor]`). At `answer_keys.len() == 1` this is
+    /// observationally identical to the pre-#421/#422 matcher (canon Thm. 4.1) - the only new
+    /// reachable branch is an exact match that doesn't yet complete the challenge (§ below).
     pub fn process_input(&mut self, key: String, now: u64) -> EventBatch {
         let mut batch = EventBatch::new();
 
@@ -83,14 +87,14 @@ impl<D: ContentDomain> GameEngine<D> {
             .active_reveals
             .iter()
             .enumerate()
-            .filter(|(_, r)| r.expected_key == buffer_str)
+            .filter(|(_, r)| r.current_key() == buffer_str)
             .map(|(i, _)| i)
             .collect();
 
         let potential_extensions = self
             .active_reveals
             .iter()
-            .any(|r| r.expected_key.starts_with(&buffer_str) && r.expected_key.len() > buffer_str.len());
+            .any(|r| r.current_key().starts_with(&buffer_str) && r.current_key().len() > buffer_str.len());
 
         // Resolve intent
         if !exact_matches.is_empty() {
@@ -99,8 +103,8 @@ impl<D: ContentDomain> GameEngine<D> {
                 let potentials: Vec<String> = self
                     .active_reveals
                     .iter()
-                    .filter(|r| r.expected_key.starts_with(&buffer_str))
-                    .map(|r| r.hangul.clone())
+                    .filter(|r| r.current_key().starts_with(&buffer_str))
+                    .map(|r| r.answer_glyphs[r.cursor].clone())
                     .collect();
 
                 batch.add_ui_hint(UiHintEvent::AmbiguousInput {
@@ -110,9 +114,8 @@ impl<D: ContentDomain> GameEngine<D> {
             } else {
                 // CLEAR MATCH: Only one possibility
                 let idx = self.find_best_match_index(&exact_matches);
-                let reveal = self.active_reveals.swap_remove(idx);
-                self.handle_match(reveal, now, &mut batch);
                 self.key_buffer.clear();
+                self.advance_or_complete(idx, now, &mut batch);
             }
         } else if potential_extensions {
             // PARTIAL MATCH: Valid prefix
@@ -126,6 +129,22 @@ impl<D: ContentDomain> GameEngine<D> {
         batch
     }
 
+    /// Clears the last entry of the *current token's* key buffer only (ADR 0003 §2(b)): the same
+    /// timeout-gated buffer `process_input` maintains. Cannot un-advance a challenge's cursor past
+    /// an already-matched token, cannot reopen an already-revealed cell, and never touches score,
+    /// streak, or mastery state - it only pops the transient buffer every miss/match already clears.
+    pub fn process_backspace(&mut self, now: u64) -> EventBatch {
+        let mut batch = EventBatch::new();
+
+        self.key_buffer.retain(|entry| now.saturating_sub(entry.timestamp_ms) < self.buffer_timeout_ms);
+        self.key_buffer.pop();
+
+        let buffer_str: String = self.key_buffer.iter().map(|e| e.key).collect();
+        batch.add_ui_hint(UiHintEvent::BufferUpdated { current_buffer: buffer_str });
+
+        batch
+    }
+
     /// Check for expired characters
     pub fn tick(&mut self, now: u64) -> EventBatch {
         let mut batch = EventBatch::new();
@@ -135,20 +154,24 @@ impl<D: ContentDomain> GameEngine<D> {
 
         self.active_reveals.retain(|reveal| {
             let age = now.saturating_sub(reveal.revealed_at_ms);
-            let budget = (reveal.token_count as u64 * self.current_lifetime_ms as u64).min(MAX_CHALLENGE_BUDGET_MS);
+            let token_count = reveal.answer_keys.len() as u64;
+            let budget = (token_count * self.current_lifetime_ms as u64).min(MAX_CHALLENGE_BUDGET_MS);
             let is_expired = age > budget;
 
             if is_expired {
-                expired_cells.push(reveal.cell_id.clone());
-                expired_hanguls.push(reveal.hangul.clone());
-                expired_tokens += reveal.token_count;
-                self.game_mode.on_miss(&reveal.hangul);
+                expired_cells.extend(reveal.cell_ids.iter().cloned());
+                expired_hanguls.push(reveal.answer_glyphs.join(""));
+                expired_tokens += reveal.answer_keys.len();
+                self.game_mode.on_miss(&reveal.identity);
             }
 
             !is_expired
         });
 
-        let count = expired_cells.len();
+        // count is the number of expired *challenges* (matches expired_hanguls, one entry per
+        // challenge), not expired cells - a multi-cell word challenge contributes many entries to
+        // expired_cells but is still exactly one miss for stats/scoring purposes.
+        let count = expired_hanguls.len();
         if count > 0 {
             self.stats.total_missed += count;
             self.stats.current_streak = 0;
@@ -178,52 +201,58 @@ impl<D: ContentDomain> GameEngine<D> {
         batch
     }
 
-    /// Spawn a new character
+    /// Spawn a new challenge. Reserves `answer_keys.len()` cells at once (ADR 0003 §2(a),
+    /// multi-cell binding): a single-token challenge (today's jamo play) reserves exactly one cell,
+    /// unchanged in behavior; a multi-token word reserves all of them simultaneously, each a
+    /// placeholder until its token is typed in order.
     pub fn spawn_character(&mut self, now: u64, available_cell_ids: Vec<String>) -> EventBatch {
         let mut batch = EventBatch::new();
 
-        // Get next character from game mode
-        let hangul = match self.game_mode.get_next_character() {
-            Some(ch) => ch,
-            None => return batch, // No more characters
+        // Get next challenge from game mode
+        let seed = match self.game_mode.get_next_challenge() {
+            Some(seed) => seed,
+            None => return batch, // No more challenges
         };
+        let n = seed.answer_keys.len().max(1);
 
-        let expected_key = D::key_for(&hangul);
-
-        // Find available cell (exclude both active reveals and persisted completed cells)
+        // Find available cells (exclude both active reveals and persisted completed cells)
         let available: Vec<String> = available_cell_ids
             .into_iter()
-            .filter(|id| !self.active_reveals.iter().any(|r| &r.cell_id == id) && !self.completed_cells.contains(id))
+            .filter(|id| !self.active_reveals.iter().any(|r| r.cell_ids.contains(id)) && !self.completed_cells.contains(id))
             .collect();
 
-        if available.is_empty() {
+        if available.len() < n {
             batch.primary = Some(PrimaryEvent::BoardFull);
             return batch;
         }
 
-        // Pick random cell
+        // Pick n random, distinct cells
         use rand::seq::SliceRandom;
-        if let Some(cell_id) = available.choose(&mut rand::thread_rng()).cloned() {
-            let spawn_result = SpawnResult {
-                cell_id: cell_id.clone(),
-                hangul: hangul.clone(),
-                expected_key: expected_key.clone(),
-                revealed_at_ms: now,
-                play_spawn_sound: true,
-            };
+        let cell_ids: Vec<String> = available.choose_multiple(&mut rand::thread_rng(), n).cloned().collect();
 
-            self.active_reveals.push(ActiveReveal {
-                hangul,
-                expected_key,
-                revealed_at_ms: now,
-                cell_id,
-                // A content domain's spawn is a single token today; multi-token challenges
-                // arrive only via ADR 0001 #422's word-answer matching, not yet landed.
-                token_count: 1,
-            });
+        let spawn_result = SpawnResult {
+            cell_id: cell_ids[0].clone(),
+            cell_ids: cell_ids.clone(),
+            hangul: seed.answer_glyphs.join(""),
+            expected_key: seed.answer_keys[0].clone(),
+            stimulus: seed.stimulus.clone(),
+            answer_keys: seed.answer_keys.clone(),
+            answer_glyphs: seed.answer_glyphs.clone(),
+            revealed_at_ms: now,
+            play_spawn_sound: true,
+        };
 
-            batch.primary = Some(PrimaryEvent::CharacterSpawned { spawn_result });
-        }
+        self.active_reveals.push(ActiveChallenge {
+            stimulus: seed.stimulus,
+            answer_keys: seed.answer_keys,
+            answer_glyphs: seed.answer_glyphs,
+            cursor: 0,
+            revealed_at_ms: now,
+            cell_ids,
+            identity: seed.identity,
+        });
+
+        batch.primary = Some(PrimaryEvent::CharacterSpawned { spawn_result });
 
         batch
     }
@@ -286,10 +315,36 @@ impl<D: ContentDomain> GameEngine<D> {
     }
 
     // --- Private Helper Methods ---
-    fn handle_match(&mut self, reveal: ActiveReveal, now: u64, batch: &mut EventBatch) {
-        let time_gap = now.saturating_sub(reveal.revealed_at_ms);
+
+    /// Advances a matched challenge's cursor (canon Def. 4.3): completes it (today's
+    /// `handle_match`) if this was its last token, otherwise emits `AnswerProgress` and leaves it
+    /// active. At `answer_keys.len() == 1` the only reachable branch is completion, on the same
+    /// condition as before #422 (canon Thm. 4.1) - score/streak/difficulty are touched only here,
+    /// never on an intermediate token match.
+    fn advance_or_complete(&mut self, idx: usize, now: u64, batch: &mut EventBatch) {
+        let is_last_token = self.active_reveals[idx].cursor + 1 == self.active_reveals[idx].answer_keys.len();
+
+        if is_last_token {
+            let challenge = self.active_reveals.swap_remove(idx);
+            self.handle_match(challenge, now, batch);
+        } else {
+            let challenge = &mut self.active_reveals[idx];
+            challenge.cursor += 1;
+
+            batch.add_ui_hint(UiHintEvent::AnswerProgress {
+                cell_ids: challenge.cell_ids.clone(),
+                composed_so_far: challenge.answer_glyphs[..challenge.cursor].to_vec(),
+                remaining: challenge.answer_glyphs[challenge.cursor..].to_vec(),
+                cursor: challenge.cursor,
+                total: challenge.answer_keys.len(),
+            });
+        }
+    }
+
+    fn handle_match(&mut self, challenge: ActiveChallenge, now: u64, batch: &mut EventBatch) {
+        let time_gap = now.saturating_sub(challenge.revealed_at_ms);
         let is_high_quality = time_gap <= self.config.correctness_threshold_ms as u64;
-        let token_count = reveal.token_count;
+        let token_count = challenge.answer_keys.len();
 
         let show_romanization = self.stats.current_streak < self.config.hide_romanization_streak;
 
@@ -305,18 +360,21 @@ impl<D: ContentDomain> GameEngine<D> {
         self.stats.score += points;
 
         // Check game mode completion
-        let counts_toward_completion = self.game_mode.on_match(&reveal.hangul, is_high_quality, show_romanization);
+        let counts_toward_completion = self.game_mode.on_match(&challenge.identity, is_high_quality, show_romanization);
 
-        // When a character is completed it locks into its cell: reserve the cell
-        // so no future character spawns on top of the persisted glyph.
+        // When a challenge is completed it locks into its cell(s): reserve them
+        // so no future challenge spawns on top of the persisted glyph(s).
         if counts_toward_completion {
-            self.completed_cells.push(reveal.cell_id.clone());
+            self.completed_cells.extend(challenge.cell_ids.iter().cloned());
         }
 
         // Primary event
         batch.primary = Some(PrimaryEvent::MatchFound {
-            cell_id: reveal.cell_id,
-            hangul: reveal.hangul,
+            cell_id: challenge.cell_ids[0].clone(),
+            cell_ids: challenge.cell_ids.clone(),
+            hangul: challenge.answer_glyphs.join(""),
+            answer_glyphs: challenge.answer_glyphs.clone(),
+            stimulus: challenge.stimulus.clone(),
             points,
             is_high_quality,
             time_gap_ms: time_gap as u32,
@@ -410,27 +468,52 @@ impl<D: ContentDomain> GameEngine<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::internal::content_domain::Korean;
+    use crate::internal::{content_domain::Korean, Stimulus};
 
     fn engine_with_config(config: GameConfig, mode: &str) -> GameEngine<Korean> {
-        GameEngine::new(config, mode.to_string())
+        GameEngine::new(config, mode.to_string(), vec![])
     }
 
     fn engine_with(mode: &str) -> GameEngine<Korean> {
         engine_with_config(GameConfig::default(), mode)
     }
 
+    /// Single-token challenge (n=1) - the exact pre-#421/#422 shape, just built through the new
+    /// `ActiveChallenge` struct.
     fn push_reveal(engine: &mut GameEngine<Korean>, cell_id: &str, hangul: &str, expected_key: &str, revealed_at_ms: u64) {
-        push_reveal_with_tokens(engine, cell_id, hangul, expected_key, revealed_at_ms, 1);
+        push_word_challenge(engine, &[cell_id], &[hangul], &[expected_key], revealed_at_ms);
     }
 
-    fn push_reveal_with_tokens(engine: &mut GameEngine<Korean>, cell_id: &str, hangul: &str, expected_key: &str, revealed_at_ms: u64, token_count: usize) {
-        engine.active_reveals.push(ActiveReveal {
-            hangul: hangul.to_string(),
-            expected_key: expected_key.to_string(),
+    /// A genuine multi-token challenge with distinct, individually-typeable tokens, for tests that
+    /// drive `process_input` all the way through cursor advancement to completion.
+    fn push_word_challenge(engine: &mut GameEngine<Korean>, cell_ids: &[&str], glyphs: &[&str], keys: &[&str], revealed_at_ms: u64) {
+        assert_eq!(cell_ids.len(), glyphs.len());
+        assert_eq!(glyphs.len(), keys.len());
+        let identity: String = glyphs.concat();
+        engine.active_reveals.push(ActiveChallenge {
+            stimulus: Stimulus::Glyph { text: identity.clone() },
+            answer_keys: keys.iter().map(|s| s.to_string()).collect(),
+            answer_glyphs: glyphs.iter().map(|s| s.to_string()).collect(),
+            cursor: 0,
             revealed_at_ms,
-            cell_id: cell_id.to_string(),
-            token_count,
+            cell_ids: cell_ids.iter().map(|s| s.to_string()).collect(),
+            identity,
+        });
+    }
+
+    /// A challenge with `token_count` tokens for tests that only exercise `tick()`'s expiry-budget
+    /// scaling and never call `process_input` against it - repeated glyph/key content is harmless
+    /// there since the matcher itself is never touched.
+    fn push_reveal_with_token_count(engine: &mut GameEngine<Korean>, cell_id: &str, hangul: &str, expected_key: &str, revealed_at_ms: u64, token_count: usize) {
+        let cell_ids: Vec<String> = (0..token_count).map(|i| format!("{cell_id}-{i}")).collect();
+        engine.active_reveals.push(ActiveChallenge {
+            stimulus: Stimulus::Glyph { text: hangul.to_string() },
+            answer_keys: vec![expected_key.to_string(); token_count],
+            answer_glyphs: vec![hangul.to_string(); token_count],
+            cursor: 0,
+            revealed_at_ms,
+            cell_ids,
+            identity: hangul.to_string(),
         });
     }
 
@@ -662,7 +745,7 @@ mod tests {
         // max_time_window_ms defaults to 3000, so a 4-token challenge's
         // budget is 12,000ms.
         let mut engine = engine_with_config(GameConfig::default(), "endless");
-        push_reveal_with_tokens(&mut engine, "cell-word", "ㄱ", "r", 0, 4);
+        push_reveal_with_token_count(&mut engine, "cell-word", "ㄱ", "r", 0, 4);
 
         let still_alive = engine.tick(11_999);
         assert!(still_alive.primary.is_none(), "must not expire before its scaled budget elapses");
@@ -695,14 +778,14 @@ mod tests {
         // canon Cor. 7.2.1: a pathologically long answer cannot park a cell
         // indefinitely. 100 tokens * 3000ms would be 300,000ms uncapped.
         let mut before_ceiling = engine_with_config(GameConfig::default(), "endless");
-        push_reveal_with_tokens(&mut before_ceiling, "cell-huge", "ㄱ", "r", 0, 100);
+        push_reveal_with_token_count(&mut before_ceiling, "cell-huge", "ㄱ", "r", 0, 100);
         assert!(
             before_ceiling.tick(MAX_CHALLENGE_BUDGET_MS).primary.is_none(),
             "must not expire before reaching the ceiling"
         );
 
         let mut after_ceiling = engine_with_config(GameConfig::default(), "endless");
-        push_reveal_with_tokens(&mut after_ceiling, "cell-huge", "ㄱ", "r", 0, 100);
+        push_reveal_with_token_count(&mut after_ceiling, "cell-huge", "ㄱ", "r", 0, 100);
         match after_ceiling.tick(MAX_CHALLENGE_BUDGET_MS + 1).primary {
             Some(PrimaryEvent::CharactersExpired { count, .. }) => assert_eq!(count, 1),
             other => panic!("expected the pathologically long challenge to expire at the ceiling, got {other:?}"),
@@ -711,10 +794,11 @@ mod tests {
 
     #[test]
     fn adjust_difficulty_faster_triggers_once_per_multiple_of_tokens_matched() {
-        // canon Thm. 7.2(b): stepping counts tokens, not challenges. A
-        // single challenge carrying 4 tokens at speed_increase_every_n_correct
-        // = 4 must step exactly once, which a naive per-challenge counter
-        // (needing 4 separate matches) could never do in one match.
+        // canon Thm. 7.2(b): stepping counts tokens, not challenges. A single
+        // 4-token challenge, typed token by token to completion, must step
+        // exactly once at speed_increase_every_n_correct = 4 - the same total
+        // step a naive per-challenge counter would need 4 separate
+        // *challenges* to produce.
         let config = GameConfig {
             min_time_window_ms: 1000,
             max_time_window_ms: 3000,
@@ -723,9 +807,12 @@ mod tests {
             ..GameConfig::default()
         };
         let mut engine = engine_with_config(config, "endless");
-        push_reveal_with_tokens(&mut engine, "cell-word", "ㄱ", "r", 0, 4);
+        push_word_challenge(&mut engine, &["cell-0", "cell-1", "cell-2", "cell-3"], &["ㄱ", "ㄴ", "ㅅ", "ㄷ"], &["r", "s", "t", "e"], 0);
 
-        let batch = engine.process_input("r".to_string(), 100);
+        engine.process_input("r".to_string(), 100);
+        engine.process_input("s".to_string(), 100);
+        engine.process_input("t".to_string(), 100);
+        let batch = engine.process_input("e".to_string(), 100);
 
         assert!(batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::DifficultyChanged { .. })));
         assert_eq!(engine.get_timing_params().character_lifetime_ms, 2850);
@@ -738,10 +825,70 @@ mod tests {
             ..GameConfig::default()
         };
         let mut engine = engine_with_config(config, "endless");
-        push_reveal_with_tokens(&mut engine, "cell-word", "ㄱ", "r", 0, 3);
+        push_word_challenge(&mut engine, &["cell-0", "cell-1", "cell-2"], &["ㄱ", "ㄴ", "ㅅ"], &["r", "s", "t"], 0);
 
-        let batch = engine.process_input("r".to_string(), 100);
+        engine.process_input("r".to_string(), 100);
+        engine.process_input("s".to_string(), 100);
+        let batch = engine.process_input("t".to_string(), 100);
 
         assert!(!batch.secondary.iter().any(|e| matches!(e, SecondaryEvent::DifficultyChanged { .. })));
+    }
+
+    #[test]
+    fn mid_word_match_emits_answer_progress_and_keeps_challenge_active() {
+        // canon Def. 4.3: an exact match that doesn't complete the answer
+        // advances the cursor and emits AnswerProgress, but the challenge
+        // stays active (not swap_removed) until its last token matches.
+        let mut engine = engine_with("endless");
+        push_word_challenge(&mut engine, &["cell-0", "cell-1"], &["ㅅ", "ㅏ"], &["t", "k"], 0);
+
+        let batch = engine.process_input("t".to_string(), 100);
+
+        match batch.ui_hints.as_slice() {
+            [UiHintEvent::AnswerProgress {
+                cell_ids,
+                composed_so_far,
+                remaining,
+                cursor,
+                total,
+            }] => {
+                assert_eq!(cell_ids, &vec!["cell-0".to_string(), "cell-1".to_string()]);
+                assert_eq!(composed_so_far, &vec!["ㅅ".to_string()]);
+                assert_eq!(remaining, &vec!["ㅏ".to_string()]);
+                assert_eq!(*cursor, 1);
+                assert_eq!(*total, 2);
+            }
+            other => panic!("expected a single AnswerProgress hint, got {other:?}"),
+        }
+        assert!(batch.primary.is_none());
+        assert_eq!(engine.get_active_count(), 1);
+
+        let complete_batch = engine.process_input("k".to_string(), 200);
+        match complete_batch.primary {
+            Some(PrimaryEvent::MatchFound { cell_ids, hangul, .. }) => {
+                assert_eq!(cell_ids, vec!["cell-0".to_string(), "cell-1".to_string()]);
+                // Raw jamo stream (ADR 0001 §2(b), resolved as Option A - no syllable
+                // composition layer): the joined glyphs, not the precomposed Unicode block.
+                assert_eq!(hangul, "ㅅㅏ");
+            }
+            other => panic!("expected MatchFound, got {other:?}"),
+        }
+        assert_eq!(engine.get_active_count(), 0);
+    }
+
+    #[test]
+    fn spawn_character_reserves_all_cells_for_a_multi_token_challenge() {
+        // ADR 0003 §2(a): a word challenge reserves |w| cells simultaneously.
+        // Simulated here via a synthetic word-pool game mode is out of scope
+        // for this file (see game_modes/vocabulary.rs); this test exercises
+        // spawn_character's cell-reservation arithmetic directly by pushing a
+        // pre-built two-token challenge and confirming a subsequent spawn
+        // cannot reuse either of its cells.
+        let mut engine = engine_with("endless");
+        push_word_challenge(&mut engine, &["cell-0", "cell-1"], &["ㅅ", "ㅏ"], &["t", "k"], 0);
+
+        let batch = engine.spawn_character(0, vec!["cell-0".to_string(), "cell-1".to_string()]);
+
+        assert!(matches!(batch.primary, Some(PrimaryEvent::BoardFull)));
     }
 }

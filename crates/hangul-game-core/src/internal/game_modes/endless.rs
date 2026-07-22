@@ -1,17 +1,17 @@
 use rand::{seq::SliceRandom, thread_rng};
 
-use super::{GameConfig, GameMode, GameProgress};
+use super::{ChallengeSeed, GameConfig, GameMode, GameProgress};
 
-/// Endless mode - game never completes, characters spawn infinitely from whatever alphabet its
-/// content domain (canon Def. 11.1) provides.
+/// Endless mode - game never completes, challenges spawn infinitely from whatever pool it was
+/// built with (today, always the content domain's single-jamo pool via `korean_seed_pool`).
 #[derive(Debug, Clone)]
 pub struct EndlessMode {
-    alphabet: Vec<String>,
+    pool: Vec<ChallengeSeed>,
 }
 
 impl EndlessMode {
-    pub fn new(alphabet: Vec<String>) -> Self {
-        Self { alphabet }
+    pub fn new(pool: Vec<ChallengeSeed>) -> Self {
+        Self { pool }
     }
 }
 
@@ -20,17 +20,17 @@ impl GameMode for EndlessMode {
         // Nothing to initialize
     }
 
-    fn get_next_character(&mut self) -> Option<String> {
-        // Draw a genuine token from the domain's own alphabet instead of the
-        // "random" sentinel no host-layer code ever consumed.
-        self.alphabet.choose(&mut thread_rng()).cloned()
+    fn get_next_challenge(&mut self) -> Option<ChallengeSeed> {
+        // Draw a genuine challenge from the pool instead of the "random" sentinel no
+        // host-layer code ever consumed.
+        self.pool.choose(&mut thread_rng()).cloned()
     }
 
-    fn on_match(&mut self, _hangul: &str, _is_high_quality: bool, _show_romanization: bool) -> bool {
+    fn on_match(&mut self, _identity: &str, _is_high_quality: bool, _show_romanization: bool) -> bool {
         true // All matches count in endless mode
     }
 
-    fn on_miss(&mut self, _hangul: &str) {
+    fn on_miss(&mut self, _identity: &str) {
         // Misses handled by streak system
     }
 
@@ -56,18 +56,26 @@ impl GameMode for EndlessMode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::internal::content_domain::{ContentDomain, Korean};
+    use crate::internal::{
+        content_domain::{ContentDomain, Korean},
+        game_modes::korean_seed_pool,
+    };
 
     #[test]
-    fn get_next_character_never_returns_the_unconsumed_random_sentinel() {
-        let mut mode = EndlessMode::new(Korean::completion_alphabet());
+    fn get_next_challenge_never_returns_the_unconsumed_random_sentinel() {
+        let mut mode = EndlessMode::new(korean_seed_pool::<Korean>());
 
         for _ in 0..200 {
-            let Some(hangul) = mode.get_next_character() else {
-                panic!("endless mode always has a next character");
+            let Some(seed) = mode.get_next_challenge() else {
+                panic!("endless mode always has a next challenge");
             };
-            assert_ne!(hangul, "random");
-            assert!(!Korean::key_for(&hangul).is_empty(), "spawned {hangul} has no qwerty mapping and can never be matched");
+            assert_ne!(seed.identity, "random");
+            assert!(
+                !Korean::key_for(&seed.identity).is_empty(),
+                "spawned {} has no qwerty mapping and can never be matched",
+                seed.identity
+            );
+            assert_eq!(seed.answer_keys, vec![Korean::key_for(&seed.identity)]);
         }
     }
 }

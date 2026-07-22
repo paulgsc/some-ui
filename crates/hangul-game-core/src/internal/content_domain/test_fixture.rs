@@ -33,7 +33,7 @@ impl ContentDomain for TestDigits {
 
 #[test]
 fn full_challenge_lifecycle_against_a_non_korean_domain() {
-    let mut engine = GameEngine::<TestDigits>::new(GameConfig::default(), "completion".to_string());
+    let mut engine = GameEngine::<TestDigits>::new(GameConfig::default(), "completion".to_string(), vec![]);
     engine.start_timer(0);
 
     let batch = engine.spawn_character(0, vec!["cell-0".to_string()]);

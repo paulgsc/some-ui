@@ -1,6 +1,6 @@
 mod internal;
 
-use internal::{GameConfig, GameEngine, Korean};
+use internal::{ChallengeSeed, GameConfig, GameEngine, Korean};
 use wasm_bindgen::prelude::*;
 
 // Axiom 11.1 (crates/hangul-game-core/docs/hangul-progression-canon.typ,
@@ -16,12 +16,17 @@ pub struct HangulGameCore {
 
 #[wasm_bindgen]
 impl HangulGameCore {
-    /// Create a new game instance
+    /// Create a new game instance. `word_pool_js` backs `"vocabulary"`/`"vocabulary-endless"`
+    /// modes (ADR 0001 #423/#424: the curated word list is owned and curated by the honeycomb
+    /// layer, threaded in here as data rather than hard-coded in the engine); every other mode
+    /// ignores it, so an absent/unparseable value falls back to an empty pool rather than failing
+    /// construction.
     #[wasm_bindgen(constructor)]
-    pub fn new(config_js: JsValue, mode: String) -> Result<HangulGameCore, JsValue> {
+    pub fn new(config_js: JsValue, mode: String, word_pool_js: JsValue) -> Result<HangulGameCore, JsValue> {
         let config: GameConfig = serde_wasm_bindgen::from_value(config_js).unwrap_or_else(|_| GameConfig::default());
+        let word_pool: Vec<ChallengeSeed> = serde_wasm_bindgen::from_value(word_pool_js).unwrap_or_default();
 
-        let engine = GameEngine::<Korean>::new(config, mode);
+        let engine = GameEngine::<Korean>::new(config, mode, word_pool);
 
         Ok(Self { engine })
     }
@@ -44,6 +49,14 @@ impl HangulGameCore {
     #[wasm_bindgen(js_name = checkExpired)]
     pub fn check_expired(&mut self, current_time_ms: u64) -> JsValue {
         let batch = self.engine.tick(current_time_ms);
+        let events = batch.flatten();
+        serde_wasm_bindgen::to_value(&events).unwrap_or(JsValue::NULL)
+    }
+
+    /// Correct the in-progress token before it locks in (ADR 0003 §2(b)) - returns array of events
+    #[wasm_bindgen(js_name = processBackspace)]
+    pub fn process_backspace(&mut self, pressed_at_ms: u64) -> JsValue {
+        let batch = self.engine.process_backspace(pressed_at_ms);
         let events = batch.flatten();
         serde_wasm_bindgen::to_value(&events).unwrap_or(JsValue::NULL)
     }
@@ -103,14 +116,14 @@ mod tests {
     #[test]
     fn test_engine_creation() {
         let config = GameConfig::default();
-        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string());
+        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string(), vec![]);
         assert_eq!(engine.get_active_count(), 0);
     }
 
     #[test]
     fn test_spawn_and_match() {
         let config = GameConfig::default();
-        let mut engine = GameEngine::<Korean>::new(config, "endless".to_string());
+        let mut engine = GameEngine::<Korean>::new(config, "endless".to_string(), vec![]);
         engine.start_timer(1000);
 
         let cells = vec!["hex_0_0_0".to_string()];
@@ -125,7 +138,7 @@ mod tests {
         // Regression: a freshly constructed engine must start with the full
         // (max) character lifetime, not the tiny time-window step.
         let config = GameConfig::default();
-        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string());
+        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string(), vec![]);
         assert_eq!(engine.get_timing_params().character_lifetime_ms, config.max_time_window_ms);
     }
 }
