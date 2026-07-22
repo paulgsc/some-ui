@@ -27,7 +27,7 @@ impl GameMode for CompletionMode {
         self.reset();
     }
 
-    fn get_next_challenge(&mut self) -> Option<ChallengeSeed> {
+    fn get_next_challenge(&self) -> Option<ChallengeSeed> {
         if self.incomplete.is_empty() {
             return None; // All challenges mastered, no more spawns
         }
@@ -52,7 +52,7 @@ impl GameMode for CompletionMode {
         }
     }
 
-    fn on_miss(&mut self, _identity: &str) {
+    fn on_miss(&self, _identity: &str) {
         // Misses just reset streak, handled by main game logic
     }
 

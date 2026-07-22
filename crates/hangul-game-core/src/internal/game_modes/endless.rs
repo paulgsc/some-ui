@@ -20,7 +20,7 @@ impl GameMode for EndlessMode {
         // Nothing to initialize
     }
 
-    fn get_next_challenge(&mut self) -> Option<ChallengeSeed> {
+    fn get_next_challenge(&self) -> Option<ChallengeSeed> {
         // Draw a genuine challenge from the pool instead of the "random" sentinel no
         // host-layer code ever consumed.
         self.pool.choose(&mut thread_rng()).cloned()
@@ -30,7 +30,7 @@ impl GameMode for EndlessMode {
         true // All matches count in endless mode
     }
 
-    fn on_miss(&mut self, _identity: &str) {
+    fn on_miss(&self, _identity: &str) {
         // Misses handled by streak system
     }
 
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn get_next_challenge_never_returns_the_unconsumed_random_sentinel() {
-        let mut mode = EndlessMode::new(korean_seed_pool::<Korean>());
+        let mode = EndlessMode::new(korean_seed_pool::<Korean>());
 
         for _ in 0..200 {
             let Some(seed) = mode.get_next_challenge() else {

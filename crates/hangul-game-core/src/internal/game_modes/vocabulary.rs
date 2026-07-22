@@ -34,7 +34,7 @@ impl GameMode for VocabularyMode {
         self.reset();
     }
 
-    fn get_next_challenge(&mut self) -> Option<ChallengeSeed> {
+    fn get_next_challenge(&self) -> Option<ChallengeSeed> {
         if self.endless {
             return self.all.choose(&mut thread_rng()).cloned();
         }
@@ -59,7 +59,7 @@ impl GameMode for VocabularyMode {
         }
     }
 
-    fn on_miss(&mut self, _identity: &str) {
+    fn on_miss(&self, _identity: &str) {
         // Misses just reset streak, handled by main game logic
     }
 

@@ -18,14 +18,18 @@ pub trait GameMode {
     /// Called when initializing the game
     fn initialize(&mut self, config: &GameConfig);
 
-    /// Get the next challenge to spawn (returns None if no more challenges available)
-    fn get_next_challenge(&mut self) -> Option<ChallengeSeed>;
+    /// Get the next challenge to spawn (returns None if no more challenges available). `&self`
+    /// (canon Axiom 12.1, ADR 0004 #750): drawing a random entry from an existing pool reads
+    /// state, it does not transition it - no implementation mutates `self` here.
+    fn get_next_challenge(&self) -> Option<ChallengeSeed>;
 
     /// Handle a successful match - returns whether it counts toward completion
     fn on_match(&mut self, identity: &str, is_high_quality: bool, show_romanization: bool) -> bool;
 
-    /// Handle a miss
-    fn on_miss(&mut self, identity: &str);
+    /// Handle a miss. `&self` (canon Axiom 12.1, ADR 0004 #750): every implementation's body is a
+    /// no-op today (misses are handled by the shared streak/difficulty logic in `GameEngine`), so
+    /// nothing here actually transitions `self`.
+    fn on_miss(&self, identity: &str);
 
     /// Check if game is complete
     fn is_complete(&self) -> bool;
@@ -82,7 +86,7 @@ mod tests {
 
     #[test]
     fn unknown_mode_string_falls_back_to_endless() {
-        let mut mode = create_game_mode::<Korean>("not-a-real-mode", vec![]);
+        let mode = create_game_mode::<Korean>("not-a-real-mode", vec![]);
 
         assert!(!mode.is_complete());
         let Some(seed) = mode.get_next_challenge() else {
