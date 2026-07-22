@@ -39,6 +39,14 @@ const honeycomb: ActivityDefinition = {
       options: [
         { value: "completion", label: "Completion (clear the board)" },
         { value: "endless", label: "Endless (survive as long as you can)" },
+        {
+          value: "vocabulary",
+          label: "Vocabulary (master the word list)",
+        },
+        {
+          value: "vocabulary-endless",
+          label: "Vocabulary Endless (words, no end)",
+        },
       ],
       defaultValue: "completion",
     },

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { HANGUL_WORD_POOL } from "@honeycomb/data"
 import {
   getCoreInstance,
   getLastError,
   loadHangulWasm,
 } from "@honeycomb/lib/hangul/hangul-wasm-runtime"
 import type {
+  ChallengeSeed,
   GameConfig,
   GameMode,
   WasmGameBridge,
@@ -14,6 +16,12 @@ export type UseHangulGameWasmOptions = {
   config?: Partial<GameConfig>
   autoStart?: boolean
   mode: GameMode
+  /**
+   * Word pool for "vocabulary"/"vocabulary-endless" modes; ignored by every
+   * other mode. Defaults to the full seed vocabulary (@honeycomb/data) so
+   * callers only need to override it for a curated subset.
+   */
+  wordPool?: Array<ChallengeSeed>
 }
 
 export type UseHangulGameWasmReturn = {
@@ -31,9 +39,10 @@ export type UseHangulGameWasmReturn = {
  */
 async function loadGameSystem(
   mode: GameMode,
-  config?: Partial<GameConfig>
+  config?: Partial<GameConfig>,
+  wordPool?: Array<ChallengeSeed>
 ): Promise<WasmGameBridge> {
-  const instance = await loadHangulWasm(config, mode)
+  const instance = await loadHangulWasm(config, mode, wordPool)
   if (!instance) {
     throw new Error(
       getLastError()?.message ?? "Unknown error loading Hangul WASM"
@@ -46,6 +55,7 @@ export function useHangulGameWasm({
   config,
   mode,
   autoStart = true,
+  wordPool = HANGUL_WORD_POOL,
 }: UseHangulGameWasmOptions): UseHangulGameWasmReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -62,7 +72,7 @@ export function useHangulGameWasm({
     setError(null)
 
     try {
-      const instance = await loadGameSystem(mode, config)
+      const instance = await loadGameSystem(mode, config, wordPool)
       setBridge(instance)
       setIsInitialized(true)
       initializedRef.current = true
@@ -71,7 +81,7 @@ export function useHangulGameWasm({
     } finally {
       setIsLoading(false)
     }
-  }, [mode, config])
+  }, [mode, config, wordPool])
 
   // Explicit, safe autoStart initialization effect
   useEffect(() => {

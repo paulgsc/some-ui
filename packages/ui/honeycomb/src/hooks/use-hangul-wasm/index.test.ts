@@ -1,3 +1,4 @@
+import { HANGUL_WORD_POOL } from "@honeycomb/data"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import {
   getLastError,
@@ -40,7 +41,11 @@ describe("autoStart", () => {
 
     await waitFor(() => expect(result.current.isInitialized).toBe(true))
 
-    expect(loadHangulWasm).toHaveBeenCalledWith(undefined, "completion")
+    expect(loadHangulWasm).toHaveBeenCalledWith(
+      undefined,
+      "completion",
+      HANGUL_WORD_POOL
+    )
     expect(result.current.gameBridge).toBe(bridge)
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
