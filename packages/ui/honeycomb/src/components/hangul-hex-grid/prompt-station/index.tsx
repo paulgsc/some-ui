@@ -3,20 +3,31 @@ import { HANGUL_WORDS } from "@honeycomb/data"
 import type { HintTier } from "@honeycomb/hooks/use-prompt-escalation"
 import { speak } from "@honeycomb/lib/hangul/speech"
 import type { Stimulus } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import type { WordProgress } from "@honeycomb/types/hangul-types"
 
 type PromptStationProps = {
   stimulus: Stimulus | null
   tier: HintTier
+  /** The tracked word's masked-progress snapshot, shown alongside the icon. */
+  progress: WordProgress | null
 }
 
 /**
  * Prompt/Concept Station (ADR 0003 §2(d), #762): a persistent, corner-anchored
- * overlay rendering the active word challenge's stimulus, with progressively
- * richer hints as the player struggles. Idle ("radio") state is a minimal
- * footprint; it expands ("TV") once a word challenge is active, then layers
- * in TTS playback and a romanization caption per `usePromptEscalation`'s
- * tier. Both are host-layer realizations of engine primitives (canon Axiom
- * 3.1) - no new engine type backs this component.
+ * overlay rendering the active word challenge's stimulus and progress, with
+ * progressively richer hints as the player struggles. Idle ("radio") state
+ * is a minimal footprint; it expands ("TV") once a word challenge is active,
+ * then layers in TTS playback and a romanization caption per
+ * `usePromptEscalation`'s tier. Both are host-layer realizations of engine
+ * primitives (canon Axiom 3.1) - no new engine type backs this component.
+ *
+ * The masked-word display (blanks that reveal per-jamo as the cursor
+ * advances) lives here rather than as its own centered overlay: the honeycomb
+ * grid itself is the game board and must stay uninterrupted, and everything
+ * about "what word am I typing and how far along am I" is a single concept -
+ * splitting it across a corner station and a separate floating card in the
+ * middle of the board duplicated the same information in two places for no
+ * benefit.
  *
  * Renders nothing for `Glyph` stimuli (today's single-jamo play): this
  * overlay only exists to carry a non-text prompt, so ordinary jamo modes are
@@ -25,6 +36,7 @@ type PromptStationProps = {
 export const PromptStation = ({
   stimulus,
   tier,
+  progress,
 }: PromptStationProps): React.JSX.Element | null => {
   const lastAutoPlayedTierRef = useRef<HintTier | null>(null)
 
@@ -58,6 +70,25 @@ export const PromptStation = ({
           <div className="text-6xl" aria-hidden>
             {entry.icon}
           </div>
+
+          {/* Masked-word progress - baseline feedback, not an escalating
+              hint, so it shows from the moment the station expands. */}
+          {progress && progress.answerGlyphs.length > 1 && (
+            <div className="flex gap-1.5 font-mono text-lg font-bold">
+              {progress.answerGlyphs.map((glyph, index) => {
+                const isRevealed = index < progress.cursor
+                return (
+                  <span
+                    // eslint-disable-next-line react/no-array-index-key -- token position within one challenge's fixed-length answer is a stable identity here
+                    key={index}
+                    className={isRevealed ? "text-white" : "text-white/25"}
+                  >
+                    {isRevealed ? glyph : "_"}
+                  </span>
+                )
+              })}
+            </div>
+          )}
 
           {(tier === "icon-tts" || tier === "icon-tts-romanization") && (
             <button

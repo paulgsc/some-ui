@@ -12,7 +12,6 @@ import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overla
 import { PromptStation } from "@honeycomb/components/hangul-hex-grid/prompt-station"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
-import { WordProgressOverlay } from "@honeycomb/components/hangul-hex-grid/word-progress-overlay"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
@@ -121,6 +120,7 @@ export const HangulHexGrid = ({
     onBoardFull: () => {
       playSound("board_full")
     },
+    wordProgress,
     setWordProgress,
     setMissCount,
   })
@@ -254,14 +254,22 @@ export const HangulHexGrid = ({
                     isSolved,
                     tokenIndex,
                     cursor,
+                    answerGlyphs,
                   },
                   theme: { opacity },
                 } = content
-                // A word challenge's cells stay masked placeholders until the
-                // token-cursor reaches their position (ADR 0003 §2(a)); a
-                // single-jamo (n=1) cell has tokenIndex 0 >= cursor 0, so it's
-                // never a placeholder - it reveals on its own first match.
-                const isPlaceholder = !isSolved && tokenIndex >= cursor
+                // Only a genuine multi-cell word challenge (ADR 0003 §2(a))
+                // masks its cells until the token-cursor reaches them. A
+                // single-jamo (n=1) challenge's gameplay predates this epic
+                // and must stay exactly as it was: the glyph is visible from
+                // the instant it spawns, full stop - it is never "reached"
+                // by a cursor, because single-jamo play has no cursor
+                // concept at all (answerProgress never fires for n=1, so
+                // tokenIndex/cursor would otherwise both sit at their 0/0
+                // spawn defaults for the cell's entire lifetime, which is
+                // indistinguishable from "not yet reached" without this gate).
+                const isPlaceholder =
+                  !isSolved && answerGlyphs.length > 1 && tokenIndex >= cursor
                 return (
                   <HangulHexCell
                     character={{
@@ -304,11 +312,10 @@ export const HangulHexGrid = ({
           ambiguousCharacters={ambiguousCharacters}
         />
 
-        <WordProgressOverlay progress={wordProgress} />
-
         <PromptStation
           stimulus={trackedCharacter?.stimulus ?? null}
           tier={promptTier}
+          progress={wordProgress}
         />
 
         <ControlButtons

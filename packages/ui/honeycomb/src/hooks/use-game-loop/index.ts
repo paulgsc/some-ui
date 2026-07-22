@@ -24,7 +24,14 @@ type UseGameLoopProps = {
   setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
   playSound: (event: AudioEvent) => void
   onBoardFull?: () => void
-  /** Tracks the currently in-progress multi-token challenge, if any (#426). */
+  /**
+   * The currently in-progress multi-token challenge, if any - both read
+   * (to gate spawning: a word challenge is a queue of one, never several
+   * simultaneously in flight) and written (via `setWordProgress`, on each
+   * new word spawn) by this hook. Always `null` for single-jamo (n=1) play,
+   * which has no such concept and spawns exactly as it always has.
+   */
+  wordProgress?: WordProgress | null
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
   /** Misses observed since the tracked word spawned, for #762's hint escalation. */
   setMissCount?: React.Dispatch<React.SetStateAction<number>>
@@ -39,6 +46,7 @@ export const useGameLoop = ({
   setTimingParams,
   playSound,
   onBoardFull,
+  wordProgress,
   setWordProgress,
   setMissCount,
 }: UseGameLoopProps): void => {
@@ -58,7 +66,7 @@ export const useGameLoop = ({
   const onBoardFullRef = useRef(onBoardFull)
   const setWordProgressRef = useRef(setWordProgress)
   const setMissCountRef = useRef(setMissCount)
-  const wordProgressCellIdsRef = useRef<Array<string>>([])
+  const wordProgressRef = useRef(wordProgress)
 
   useEffect(() => {
     gameBridgeRef.current = gameBridge
@@ -87,6 +95,9 @@ export const useGameLoop = ({
   useEffect(() => {
     setMissCountRef.current = setMissCount
   }, [setMissCount])
+  useEffect(() => {
+    wordProgressRef.current = wordProgress
+  }, [wordProgress])
 
   // ====================================================================
   // SPAWN CHARACTER
@@ -94,6 +105,14 @@ export const useGameLoop = ({
   const spawnCharacter = useCallback(() => {
     const bridge = gameBridgeRef.current
     if (!bridge) return
+
+    // A word challenge is a queue of one (never several simultaneously in
+    // flight): wait for the tracked word to resolve - matched or expired -
+    // before asking the engine to spawn the next one. Single-jamo play
+    // never populates wordProgress, so this is a no-op there and every
+    // existing completion/endless cell keeps spawning concurrently exactly
+    // as it always has.
+    if (wordProgressRef.current) return
 
     const events = bridge.spawnCharacter()
 
@@ -115,11 +134,13 @@ export const useGameLoop = ({
             return next
           })
 
-          // Track a newly spawned word challenge for the masked-word overlay
-          // (#426). A single-jamo (n=1) spawn is intentionally not tracked -
-          // WordProgressOverlay itself no-ops below answerGlyphs.length > 1.
+          // Track a newly spawned word challenge - both for the
+          // Prompt/Concept Station's progress display (#762) and as the
+          // queue-gate `spawnCharacter` checks above. A single-jamo (n=1)
+          // spawn is intentionally not tracked - there is never more than
+          // one jamo-shaped "challenge" worth gating on, since completion/
+          // endless play was always meant to spawn concurrently.
           if (event.spawnResult.answerGlyphs.length > 1) {
-            wordProgressCellIdsRef.current = event.spawnResult.cellIds
             setWordProgressRef.current?.({
               cellIds: event.spawnResult.cellIds,
               answerGlyphs: event.spawnResult.answerGlyphs,
@@ -191,14 +212,14 @@ export const useGameLoop = ({
             return next
           })
 
-          // If the word the overlay is currently tracking just expired,
-          // clear it rather than leaving a stale masked word on screen.
+          // If the word the station is currently tracking just expired,
+          // clear it - this also releases the spawn queue-gate above, so
+          // the next spawn tick can start the next word.
           if (
-            wordProgressCellIdsRef.current.some((id) =>
+            wordProgressRef.current?.cellIds.some((id) =>
               event.cellIds.includes(id)
             )
           ) {
-            wordProgressCellIdsRef.current = []
             setWordProgressRef.current?.(null)
           }
           break

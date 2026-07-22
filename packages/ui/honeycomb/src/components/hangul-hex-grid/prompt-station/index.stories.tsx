@@ -1,4 +1,7 @@
-import { mockIconStimulus } from "@honeycomb/lib/hangul/story-fixtures"
+import {
+  mockIconStimulus,
+  mockWordProgress,
+} from "@honeycomb/lib/hangul/story-fixtures"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { PromptStation } from "."
@@ -17,6 +20,7 @@ const meta: Meta<typeof PromptStation> = {
   ],
   args: {
     stimulus: mockIconStimulus("apple"),
+    progress: mockWordProgress({ cursor: 2 }),
   },
 } satisfies Meta<typeof PromptStation>
 
@@ -25,12 +29,20 @@ type Story = StoryObj<typeof meta>
 
 /** No word challenge active - the minimal "radio" dot, audio-first footprint. */
 export const Idle: Story = {
-  args: { tier: "idle" },
+  args: { tier: "idle", progress: null },
 }
 
-/** A word just spawned - icon shown, no escalation yet. */
+/**
+ * A word just spawned - icon and masked progress shown (all blanks, cursor
+ * 0), no escalation yet.
+ */
 export const IconOnly: Story = {
-  args: { tier: "icon" },
+  args: { tier: "icon", progress: mockWordProgress({ cursor: 0 }) },
+}
+
+/** Midway through the word - some jamo revealed, no escalation yet. */
+export const MidWordProgress: Story = {
+  args: { tier: "icon", progress: mockWordProgress({ cursor: 2 }) },
 }
 
 /** After one miss or 3s elapsed - icon plus a TTS replay button (auto-plays once on entry). */

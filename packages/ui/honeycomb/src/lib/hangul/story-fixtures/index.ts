@@ -60,7 +60,7 @@ export function mockCharacter(
   }
 }
 
-/** A word challenge's mid-progress snapshot (`WordProgressOverlay`, `#426`). Defaults to 사과 (apple) at cursor 2/4. */
+/** A word challenge's mid-progress snapshot (`PromptStation`, `#426`/`#762`). Defaults to 사과 (apple) at cursor 2/4. */
 export function mockWordProgress(
   overrides: Partial<WordProgress> = {}
 ): WordProgress {

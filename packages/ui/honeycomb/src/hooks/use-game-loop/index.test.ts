@@ -5,7 +5,10 @@ import type {
   SpawnResult,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 import { renderHook } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -34,7 +37,8 @@ type MockGameLoopProps = {
   setTimingParams: Mock<(params: TimingParams) => void>
   playSound: Mock<(event: AudioEvent) => void>
   onBoardFull: Mock<() => void>
-  setWordProgress: Mock
+  wordProgress: WordProgress | null
+  setWordProgress: Mock<(progress: WordProgress | null) => void>
 }
 
 function createBaseProps(
@@ -75,6 +79,7 @@ function createBaseProps(
     setTimingParams: vi.fn(),
     playSound: vi.fn(),
     onBoardFull: vi.fn(),
+    wordProgress: null,
     setWordProgress: vi.fn(),
     ...overrides,
   }
@@ -463,10 +468,56 @@ describe("word progress tracking (#426)", () => {
       },
     ])
 
-    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    const { rerender } = renderHook(
+      (p: MockGameLoopProps) => useGameLoop(asGameLoopProps(p)),
+      { initialProps: props }
+    )
     vi.advanceTimersByTime(1000) // spawn tick
+
+    // Mirror the real parent component: the wordProgress state it just set
+    // via setWordProgress flows back in as a prop on the next render.
+    const tracked = props.setWordProgress.mock.calls[0]![0]
+    rerender({ ...props, wordProgress: tracked })
+
     vi.advanceTimersByTime(50) // update tick picks up the expiry
 
     expect(props.setWordProgress).toHaveBeenLastCalledWith(null)
+  })
+
+  it("does not spawn a new challenge while a word challenge is already in flight (queue semantics)", () => {
+    const props = createBaseProps({
+      wordProgress: {
+        cellIds: ["cell-a", "cell-b"],
+        answerGlyphs: ["ㅅ", "ㅏ"],
+        cursor: 0,
+      },
+    })
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(1000)
+
+    expect(props.gameBridge!.spawnCharacter).not.toHaveBeenCalled()
+  })
+
+  it("resumes spawning once the tracked word progress clears", () => {
+    const props = createBaseProps({
+      wordProgress: {
+        cellIds: ["cell-a", "cell-b"],
+        answerGlyphs: ["ㅅ", "ㅏ"],
+        cursor: 0,
+      },
+    })
+
+    const { rerender } = renderHook(
+      (p: MockGameLoopProps) => useGameLoop(asGameLoopProps(p)),
+      { initialProps: props }
+    )
+    vi.advanceTimersByTime(1000)
+    expect(props.gameBridge!.spawnCharacter).not.toHaveBeenCalled()
+
+    rerender({ ...props, wordProgress: null })
+    vi.advanceTimersByTime(1000)
+
+    expect(props.gameBridge!.spawnCharacter).toHaveBeenCalledTimes(1)
   })
 })
