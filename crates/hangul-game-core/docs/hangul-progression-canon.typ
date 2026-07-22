@@ -1326,6 +1326,91 @@ a fair question to ask --- and, on inspection, to answer.
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
+= Mutation Isolation and the Purity Boundary
+// ═══════════════════════════════════════════════════════════════════════════
+
+§3--§11 fix _what_ the engine's types and invariants are; none of them says
+anything about _how_ a function signature should express changing one. An
+audit run against \#748 found the mutable-borrow style --- `&mut self`,
+`&mut T` threaded through multiple private call boundaries --- is the
+crate's default, not an isolated exception reserved for genuine state
+transitions. This section states the missing constraint as an axiom,
+exhibits the audit's violations as the forcing evidence, and names the
+exemplars already in-crate that satisfy it without having been written
+against it explicitly.
+
+#axiom("12.1", name: "Mutation isolation")[
+  A function or method takes `T`/`&T` by default. `mut T`/`&mut T` is
+  permitted only where a genuine state transition occurs, confined to the
+  smallest possible scope: the mutation happens at one explicit transition
+  point per operation, and a `&mut` reference is never re-threaded across
+  more than one private-helper call boundary. Where a value is a state
+  machine (as `GameEngine` is), its top-level public methods
+  (`process_input`, `tick`, `spawn_character`, `start_timer`, `reset`) are
+  the transition points; every private helper they call computes and
+  *returns* a value instead of mutating one handed to it.
+]
+
+#remark("12.1", name: "Orthogonal to Axiom 11.1")[
+  Axiom 11.1 (§11.2) governs the crate/wasm-boundary _shape_: one thin
+  `#[wasm_bindgen]` wrapper per crate, pure core behind it. It says nothing
+  about mutation discipline _inside_ that pure core --- a crate can satisfy
+  Axiom 11.1 to the letter (all logic private, one wrapper) while still
+  threading `&mut` references through every private helper beneath that
+  wrapper, which is exactly the state \#748's audit found. Axiom 12.1 is a
+  second, independent constraint on the same pure core, not a restatement
+  of the first: neither Axiom 11.1 nor ADR 0001 mentions function-level
+  mutability at all.
+]
+
+#proposition("12.1", name: "The mutable-borrow style is the default, not an isolated exception")[
+  Two independent pieces of evidence show Axiom 12.1 is violated by
+  default rather than in one isolated spot: (a) `GameEngine::process_input`
+  builds a local `let mut batch = EventBatch::new()` and threads `&mut
+  batch` --- a second, independently mutable reference alongside the
+  `&mut self` call chain --- through `advance_or_complete`, into
+  `handle_match`/`handle_miss`, into `adjust_difficulty_faster`/
+  `adjust_difficulty_slower`: four levels of `&mut self` and three levels
+  of `&mut EventBatch` fan out from a single keypress. (b) `GameMode`'s
+  trait contract requires `&mut self` on `get_next_challenge` and
+  `on_miss`, but no implementation --- `CompletionMode`, `EndlessMode`, or
+  `VocabularyMode` --- mutates `self` in either method; `EndlessMode` is a
+  zero-field unit struct, so _every one_ of its `&mut self` methods is
+  structurally a no-op, which is itself proof the trait over-requires
+  mutation for a degenerate implementation.
+]
+
+#proof[
+  By inspection of `internal/engine.rs`'s `process_input`/
+  `advance_or_complete`/`handle_match`/`handle_miss`/
+  `adjust_difficulty_faster`/`adjust_difficulty_slower` call chain, and of
+  `internal/game_modes.rs`'s trait definition against
+  `game_modes/{completion,endless,vocabulary}.rs`'s three implementations.
+]
+
+#proposition("12.2", name: "The exemplars already in-crate")[
+  `internal/difficulty.rs` is fully pure --- zero `&mut` anywhere in the
+  file --- and `internal/events.rs::flatten` builds a local, owned
+  `Vec<GameEvent>`, mutates only what it locally owns, and returns it,
+  touching no field of any type it did not construct itself. Both predate
+  \#748 and already satisfy Axiom 12.1; `flatten` in particular is the
+  pattern `process_input`'s call chain should imitate, not a new one
+  invented for this section.
+]
+
+#remark("12.2", name: "What this section does not require")[
+  Axiom 12.1 does not forbid `&mut self` outright, and does not ask
+  `GameEngine`'s genuinely stateful top-level methods --- `start_timer`,
+  `spawn_character`, `reset`, or `tick`'s own `active_reveals` retention ---
+  to become pure. It asks that mutation stop being _re-threaded_: a
+  private helper below one of those top-level methods should compute and
+  return a value the caller assigns, rather than receiving a second live
+  `&mut` reference of its own.
+]
+
+#pagebreak()
+
+// ═══════════════════════════════════════════════════════════════════════════
 = The Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1393,6 +1478,11 @@ stories, and adds exactly one prerequisite the ADR does not yet name:
   meeting Remark 11.3's trigger.* Proposition 11.4's judgment is the default;
   departing from it requires exhibiting condition (i) or (ii) of Remark 11.3,
   not general tidiness or DRY sentiment.
+- *No `&mut T`/`&mut self` parameter is added under `internal/` without
+  exhibiting a genuine, isolated state transition (Axiom 12.1).* A private
+  helper that only needs to read state, or that returns a value the caller
+  assigns, must not be given a live mutable reference merely because the
+  function that calls it already has one.
 
 == Versioning
 
@@ -1431,6 +1521,22 @@ Amendment Protocol's sequencing and non-negotiables were extended
 accordingly, and the Grounding table, Notation Index, and References gained
 the corresponding rows.
 
+*v1.1 → v1.2* (2026-07-22). A *minor* amendment: it adds §12, "Mutation
+Isolation and the Purity Boundary," in response to \#748's audit of every
+`&mut`/`mut` signature under `src/internal/`, which found the mutable-borrow
+style is the crate's default rather than an isolated exception. New content:
+the mutation-isolation axiom itself (Axiom 12.1); its explicit orthogonality
+to the API-authority axiom of §11.2 (Remark 12.1) --- one governs
+crate/wasm-boundary shape, the other governs mutation discipline inside the
+pure core the first axiom already requires; the audit's two forcing examples
+as a proposition (Prop. 12.1: `process_input`'s four-level `&mut self`/
+three-level `&mut EventBatch` fan-out, and `GameMode`'s over-required `&mut
+self` on `EndlessMode`'s zero-field unit struct); and the exemplars already
+in-crate that satisfy the axiom without having been written against it
+(Prop. 12.2: `internal/difficulty.rs`, `internal/events.rs::flatten`). No
+axiom, theorem, or proposition in §1--§11 was weakened or amended; §12 is
+additive. The Non-negotiables list gained one corresponding entry.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1461,8 +1567,12 @@ the corresponding rows.
 - ADR 0001, "Multimodal word testing: a Stimulus/Answer domain model for the
   Hangul game," `crates/hangul-game-core/docs/adr/0001-multimodal-word-testing.md`
   --- the design decision this canon derives and extends.
+- ADR 0004, "Mutation isolation," `crates/hangul-game-core/docs/adr/0004-mutation-isolation.md`
+  --- ratifies §12's axiom; filed against epic \#748.
 - `paulgsc/some-ui`\#705, "current wasm is overfit for level 1" --- the issue
   this canon is filed against.
+- `paulgsc/some-ui`\#748, "Isolate mutation in hangul-game-core" --- the epic
+  whose audit findings §12 formalizes.
 - Engine source: `crates/hangul-game-core/src/internal/{engine,types,events,spawning,game_modes,difficulty}.rs`,
   `src/internal/game_modes/{completion,endless}.rs`, `src/lib.rs`.
 - Host source: `packages/ui/honeycomb/src/{lib/hangul,hooks,components/hangul-hex-grid,types,utils}`.
