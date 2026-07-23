@@ -107,6 +107,16 @@ export const SessionComposer = ({
   const durationWarning = describeDurationCheck(durationCheck)
 
   const handleAddActivity = (id: ActivityId): void => {
+    // Once the session is already over the duration cap, adding yet another
+    // activity can't make it valid again - a no-op (with an explanation)
+    // beats silently growing an already-invalid session further.
+    if (durationCheck.state === "too-long") {
+      toast.error(
+        "Session duration cap reached - remove or shorten an activity before adding another."
+      )
+      return
+    }
+
     setItems((current) => [
       ...current,
       {
