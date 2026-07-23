@@ -1346,9 +1346,9 @@ against it explicitly.
   point per operation, and a `&mut` reference is never re-threaded across
   more than one private-helper call boundary. Where a value is a state
   machine (as `GameEngine` is), its top-level public methods
-  (`process_input`, `tick`, `spawn_character`, `start_timer`, `reset`) are
-  the transition points; every private helper they call computes and
-  *returns* a value instead of mutating one handed to it.
+  (`process_input`, `tick`, `spawn_character`, `start_timer`, `reset`,
+  `set_mode`) are the transition points; every private helper they call
+  computes and *returns* a value instead of mutating one handed to it.
 ]
 
 #remark("12.1", name: "Orthogonal to Axiom 11.1")[
@@ -1406,6 +1406,19 @@ against it explicitly.
   private helper below one of those top-level methods should compute and
   return a value the caller assigns, rather than receiving a second live
   `&mut` reference of its own.
+]
+
+#remark("12.3", name: "set_mode as a concrete grounding instance")[
+  A host-layer defect (mode/word_pool were readable only through
+  `GameEngine::new`, so switching game modes at runtime forced a full
+  reconstruction of the WASM object rather than a state transition on the
+  existing one) is itself evidence for Axiom 12.1's own framing: mode is
+  session lifecycle state a player can legitimately change mid-page-session,
+  not fixed construction-time configuration the way `config` is. `set_mode`
+  (ADR 0004 §2(f)) is exactly the shape the axiom predicts such a case
+  should take --- a new named top-level transition point, sharing its
+  session-clearing with `reset` through one private helper
+  (`clear_session_state`) rather than duplicating it.
 ]
 
 #pagebreak()

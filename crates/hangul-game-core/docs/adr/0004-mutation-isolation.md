@@ -95,6 +95,31 @@ with exactly the top-level `GameEngine` methods named in Axiom 12.1: `process_in
 `spawn_character`, `start_timer`, `reset`. It runs in the same CI step as
 `check-wasm-bindgen-boundary.sh`, so both boundary constraints are enforced together going forward.
 
+### (f) Addendum: `set_mode` as a state transition, not a constructor argument
+
+A host-layer defect surfaced during post-landing review of the word-mode epic (#420): the honeycomb
+UI's mode selector had no effect after the first successful WASM load in a browser tab, because mode
+and word_pool were only ever consulted by `HangulGameCore::new` - switching modes required tearing
+down and reconstructing the entire WASM object, which nothing in the JS bridge actually did (a
+loader-level singleton silently kept returning the first-constructed core). The first fix patched
+this at the JS loader layer (force a fresh `HangulGameCore` when the requested mode differs from the
+one loaded). This addendum replaces that patch with the correct shape Axiom 12.1 itself predicts:
+mode/word_pool are session lifecycle state a player can legitimately change mid-session, exactly like
+`reset()`'s stats/board state, not fixed construction-time configuration the way `config` is - so a
+constructor-only mode parameter was itself an instance of the pattern this ADR names, just one level
+up the stack from `internal/`.
+
+`GameEngine::set_mode(&mut self, mode: String, word_pool: Vec<ChallengeSeed>)` is a new named
+top-level transition point (added to Axiom 12.1's list and `check-mutation-boundary.sh`'s
+allow-list), sharing `reset`'s session-clearing through one extracted private helper
+(`clear_session_state`) rather than duplicating it, then rebuilding `game_mode` via the same
+`create_game_mode` factory `new` uses. `HangulGameCore::changeMode` (`js_name = changeMode`) exposes
+it at the wasm boundary with the same permissive parse-or-default `word_pool_js` handling as the
+constructor. The JS loader (`hangul-wasm-runtime.ts`) goes back to true "construct once": the module
+and `HangulGameCore` are built exactly once per page session, and a later `loadHangulWasm` call with
+a different mode calls `bridge.changeMode(...)` on the existing core instead of reconstructing
+anything.
+
 ## 3. Alternatives considered
 
 - **Fold this into ADR 0002 as an addendum instead of a new ADR.** Rejected: ADR 0002 is Accepted and

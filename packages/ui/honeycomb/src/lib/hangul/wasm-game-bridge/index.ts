@@ -303,6 +303,20 @@ export class WasmGameBridge {
     this.notifyStatusChange()
   }
 
+  /**
+   * Switches to a different game mode (and word pool, for vocabulary modes)
+   * on the existing engine instance, instead of constructing a new
+   * HangulGameCore - mode is runtime lifecycle state a session can
+   * legitimately change, not fixed construction-time configuration (ADR
+   * 0004 §2(f)). Clears board/stats exactly like reset() does.
+   */
+  changeMode(mode: GameMode, wordPool: Array<ChallengeSeed> = []): void {
+    this.wasmCore.changeMode(mode, wordPool)
+    this.gameMode = mode
+    this.lastStatus = null
+    this.notifyStatusChange()
+  }
+
   // ============================================================================
   // EVENT-DRIVEN API
   // ============================================================================

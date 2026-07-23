@@ -366,17 +366,35 @@ impl<D: ContentDomain> GameEngine<D> {
 
     /// Reset game
     pub fn reset(&mut self) {
+        self.clear_session_state();
+        self.game_mode.reset();
+    }
+
+    /// Switches to a different game mode (and word pool, for vocabulary modes) as a genuine,
+    /// isolated state transition (canon Axiom 12.1, ADR 0004) rather than requiring a fresh
+    /// `GameEngine`: mode/word_pool are lifecycle state a session can legitimately change at
+    /// runtime, not fixed construction-time configuration the way `config` is. Clears
+    /// board/stats/difficulty exactly like `reset()` - a new mode's challenges are not
+    /// comparable to the old one's - then rebuilds `game_mode` via the same factory `new` uses.
+    pub fn set_mode(&mut self, mode: String, word_pool: Vec<ChallengeSeed>) {
+        self.clear_session_state();
+        self.game_mode = create_game_mode::<D>(&mode, word_pool);
+    }
+
+    // --- Private Helper Methods ---
+
+    /// The session-state clearing shared by `reset` and `set_mode` (canon Axiom 12.1): everything
+    /// except the decision of what `game_mode` should be afterward, which the two callers make
+    /// differently (keep and reset it in place, vs. replace it outright).
+    fn clear_session_state(&mut self) {
         self.active_reveals.clear();
         self.completed_cells.clear();
         self.current_lifetime_ms = self.config.max_time_window_ms;
         self.stats = GameStats::new();
         self.key_buffer.clear();
         self.streak_tokens = 0;
-        self.game_mode.reset();
         self.game_timer_start_ms = 0;
     }
-
-    // --- Private Helper Methods ---
 
     /// Advances a matched challenge's cursor (canon Def. 4.3): completes it (today's
     /// `handle_match`) if this was its last token, otherwise emits `AnswerProgress` and leaves it
@@ -827,6 +845,55 @@ mod tests {
         assert_eq!(engine.get_active_count(), 0);
         assert_eq!(engine.get_stats().score, 0);
         assert_eq!(engine.get_timing_params().character_lifetime_ms, GameConfig::default().max_time_window_ms);
+    }
+
+    #[test]
+    fn set_mode_clears_session_state_like_reset() {
+        let mut engine = engine_with("completion");
+        push_reveal(&mut engine, "cell-1", "ㄱ", "r", 0);
+        engine.process_input("r".to_string(), 0);
+        assert!(engine.get_stats().score > 0);
+
+        engine.set_mode("endless".to_string(), vec![]);
+
+        assert_eq!(engine.get_active_count(), 0);
+        assert_eq!(engine.get_stats().score, 0);
+        assert_eq!(engine.get_timing_params().character_lifetime_ms, GameConfig::default().max_time_window_ms);
+    }
+
+    #[test]
+    fn set_mode_actually_swaps_the_game_mode_not_just_its_state() {
+        // "completion" has a 40-entry pool with a finite progress; "endless"
+        // always reports zero total_keys (canon Rem. 6.1's degenerate
+        // instance) - this is only true if set_mode really replaces
+        // game_mode, not merely resets the previous mode in place.
+        let mut engine = engine_with("completion");
+        assert_eq!(engine.get_status(0).progress.total_keys, 40);
+
+        engine.set_mode("endless".to_string(), vec![]);
+
+        assert_eq!(engine.get_status(0).progress.total_keys, 0);
+    }
+
+    #[test]
+    fn set_mode_to_vocabulary_spawns_from_the_new_word_pool_not_the_old_mode() {
+        let mut engine = engine_with("endless");
+
+        let word_pool = vec![ChallengeSeed {
+            stimulus: Stimulus::Icon { name: "apple".to_string() },
+            answer_keys: vec!["t".to_string(), "k".to_string()],
+            answer_glyphs: vec!["ㅅ".to_string(), "ㅏ".to_string()],
+            identity: "사과".to_string(),
+        }];
+        engine.set_mode("vocabulary".to_string(), word_pool);
+
+        let batch = engine.spawn_character(0, vec!["cell-1".to_string(), "cell-2".to_string()]);
+        match batch.primary {
+            Some(PrimaryEvent::CharacterSpawned { spawn_result }) => {
+                assert_eq!(spawn_result.answer_glyphs, vec!["ㅅ".to_string(), "ㅏ".to_string()]);
+            }
+            other => panic!("expected CharacterSpawned from the new word pool, got {other:?}"),
+        }
     }
 
     #[test]

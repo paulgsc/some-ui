@@ -32,6 +32,11 @@ ALLOWLIST=(
   "engine.rs:tick"
   "engine.rs:spawn_character"
   "engine.rs:reset"
+  # set_mode joins the above as a state-machine transition point in its own
+  # right: mode/word_pool are runtime lifecycle state a session can
+  # legitimately change (the UI's mode selector), not fixed
+  # construction-time configuration - see ADR 0004's set_mode addendum.
+  "engine.rs:set_mode"
   # Private helpers one level below the above (#751/#752): each re-borrows
   # the same &mut self its caller already holds for exactly one terminal
   # assignment to a field it owns (self.stats, self.active_reveals,
@@ -47,6 +52,11 @@ ALLOWLIST=(
   "engine.rs:handle_miss"
   "engine.rs:adjust_difficulty_faster"
   "engine.rs:adjust_difficulty_slower"
+  # Shared by reset and set_mode: the session-clearing they have in common,
+  # factored out so neither duplicates it (still just one re-borrowed &mut
+  # self, called once each by its two callers - not a second, independently
+  # threaded reference).
+  "engine.rs:clear_session_state"
   # GameMode's genuinely stateful methods (#750): initialize/on_match/reset
   # stay &mut self on the trait because CompletionMode/VocabularyMode
   # genuinely mutate in all three (mastery bookkeeping, pool reset).

@@ -107,6 +107,16 @@ impl HangulGameCore {
     pub fn reset(&mut self) {
         self.engine.reset();
     }
+
+    /// Switch to a different game mode (and word pool, for vocabulary modes) on the existing
+    /// engine, instead of constructing a new `HangulGameCore` - mode/word_pool are runtime
+    /// lifecycle state (canon Axiom 12.1), not fixed construction-time configuration. Same
+    /// permissive parse-or-default word_pool handling as the constructor.
+    #[wasm_bindgen(js_name = changeMode)]
+    pub fn change_mode(&mut self, mode: String, word_pool_js: JsValue) {
+        let word_pool: Vec<ChallengeSeed> = serde_wasm_bindgen::from_value(word_pool_js).unwrap_or_default();
+        self.engine.set_mode(mode, word_pool);
+    }
 }
 
 #[cfg(test)]

@@ -13,20 +13,17 @@ import type { WasmLoaderState } from "@some-ui/wasm-loader"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 
 // Set immediately before load()/preload() so the in-flight importModule()
-// call (if one starts) picks them up.
+// call (if one starts) picks them up. Only ever consulted on the attempt
+// that actually constructs the core (see loadHangulWasm's own comment for
+// why a later mode change does not need these re-read).
 let pendingConfig: Partial<GameConfig> | undefined
 let pendingMode: GameMode = "completion"
 let pendingWordPool: Array<ChallengeSeed> = []
 let coreInstance: HangulGameCore | null = null
 
-// The mode actually baked into the currently-loaded HangulGameCore (set once
-// importModule() finishes), distinct from pendingMode: a mode is "loaded",
-// not merely "requested", only once the core exists. loadHangulWasm() uses
-// this to detect a mode switch and force a fresh core - the loader below is
-// a page-wide singleton (one WASM module, one HangulGameCore instance), so
-// without this check, switching modes after the first successful load would
-// silently keep running whichever mode was loaded first for the rest of the
-// page session, no matter what a later loadHangulWasm() call passes in.
+// The mode actually baked into the currently-loaded HangulGameCore (set on
+// construction, and again by every changeMode call). loadHangulWasm() uses
+// this to detect a mode switch on an already-loaded core.
 let loadedMode: GameMode | null = null
 
 const loader = createWasmLoader<WasmGameBridge>({
@@ -67,28 +64,39 @@ export function getBridgeInstance(): WasmGameBridge | null {
 }
 
 /**
- * Load Hangul WASM module and initialize core & bridge
- * Lazy, singleton, race-safe
+ * Load Hangul WASM module and initialize core & bridge.
+ * Lazy, singleton, race-safe: the WASM module and HangulGameCore are
+ * constructed exactly once per page session, never rebuilt.
+ *
+ * A request for a mode different from the one currently loaded is a runtime
+ * state transition on the *existing* core (GameEngine::set_mode /
+ * HangulGameCore.changeMode, ADR 0004 §2(f)), not a reason to tear down and
+ * reconstruct the WASM object - mode/word_pool are session lifecycle state
+ * a player can legitimately change mid-session, the same way reset()
+ * already changes stats/board state on the existing core.
  */
 export async function loadHangulWasm(
   config?: Partial<GameConfig>,
   mode: GameMode = "completion",
   wordPool: Array<ChallengeSeed> = []
 ): Promise<WasmGameBridge | null> {
-  // A request for a mode other than the one currently loaded must force a
-  // fresh core - see loadedMode's comment above for why the loader can't be
-  // trusted to pick this up on its own.
-  if (loadedMode !== null && loadedMode !== mode) {
-    resetHangulWasm()
-  }
   pendingConfig = config
   pendingMode = mode
   pendingWordPool = wordPool
-  return loader.load()
+
+  const bridge = await loader.load()
+
+  if (bridge && loadedMode !== null && loadedMode !== mode) {
+    bridge.changeMode(mode, wordPool)
+    loadedMode = mode
+  }
+
+  return bridge
 }
 
 /**
- * Reset runtime (HMR, test cleanup, mode switch)
+ * Reset runtime (HMR, test cleanup) - not part of the normal mode-switch
+ * flow anymore; see loadHangulWasm's own doc comment.
  */
 export function resetHangulWasm(): void {
   loader.reset()
