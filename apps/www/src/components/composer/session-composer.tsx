@@ -8,6 +8,10 @@ import { toast } from "sonner"
 
 import { getActivity, sequenceScenes } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import {
+  checkSessionDuration,
+  describeDurationCheck,
+} from "@/lib/session-duration-policy"
 import type { SessionRecord } from "@/lib/tenant"
 import { useCreateSession, useUpdateSession } from "@/lib/tenant"
 
@@ -95,6 +99,12 @@ export const SessionComposer = ({
     arrangementMode === "advanced"
       ? (advancedScenes ?? basicScenes)
       : basicScenes
+
+  // Checked against the actual scenes, not the friendly per-activity form
+  // fields, so a manual Advanced-arrangement edit is caught the same way a
+  // Configure-step value would be (see session-duration-policy).
+  const durationCheck = checkSessionDuration(scenes)
+  const durationWarning = describeDurationCheck(durationCheck)
 
   const handleAddActivity = (id: ActivityId): void => {
     setItems((current) => [
@@ -304,6 +314,12 @@ export const SessionComposer = ({
         />
       )}
 
+      {durationWarning && (
+        <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+          {durationWarning}
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-t pt-4">
         <Button variant="outline" onClick={handleBack} disabled={step === 1}>
           Back
@@ -320,11 +336,14 @@ export const SessionComposer = ({
             <Button
               variant="outline"
               onClick={handleSaveDraft}
-              disabled={isSaving}
+              disabled={isSaving || durationCheck.state !== "valid"}
             >
               Save as draft
             </Button>
-            <Button onClick={handleSaveAndPlay} disabled={isSaving}>
+            <Button
+              onClick={handleSaveAndPlay}
+              disabled={isSaving || durationCheck.state !== "valid"}
+            >
               Save &amp; Play
             </Button>
           </div>
