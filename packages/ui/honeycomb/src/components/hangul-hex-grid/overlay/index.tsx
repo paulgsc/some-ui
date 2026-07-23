@@ -4,6 +4,7 @@ import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-bu
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
 import { GameOverModal } from "@honeycomb/components/hangul-hex-grid/game-over-modal"
+import { GridErrorOverlay } from "@honeycomb/components/hangul-hex-grid/grid-error-overlay"
 import { HangulHexCell } from "@honeycomb/components/hangul-hex-grid/hangul-hex-cell"
 import { InstructionsPanel } from "@honeycomb/components/hangul-hex-grid/instructions-panel"
 import { KeyBufferDisplay } from "@honeycomb/components/hangul-hex-grid/key-buffer-display"
@@ -73,6 +74,21 @@ export const HangulHexGrid = ({
     undefined
   )
   const [missCount, setMissCount] = useState(0)
+  // The honeycomb grid's own hex-geometry WASM module (@some-ui/some-hexagon,
+  // via HexGrid/useHexgridWasm) is an entirely separate concern from the
+  // game engine's WASM module above - a fatal failure there previously had
+  // no way to reach this component at all: the grid would show its own
+  // inline error while the game loop, audio, and timer kept running blind
+  // (spawning, ticking, playing sounds) with nothing rendered to show it on.
+  // HexGrid's onStatusChange callback closes that gap.
+  const [gridError, setGridError] = useState<string | null>(null)
+  const isGridFatal = gridError !== null
+  const handleGridStatusChange = useCallback(
+    (status: { isLoading: boolean; error: string | null }) => {
+      setGridError(status.error)
+    },
+    []
+  )
 
   // Initialize audio
   const { unlockAudio, playSound } = useGameAudio({
@@ -112,7 +128,7 @@ export const HangulHexGrid = ({
   useGameLoop({
     gameBridge,
     isInitialized,
-    isPaused,
+    isPaused: isPaused || isGridFatal,
     setActiveCharacters,
     setStats,
     setTimingParams,
@@ -129,7 +145,7 @@ export const HangulHexGrid = ({
   useKeyboardInput({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGameOver,
+    isPaused: isPaused || isGameOver || isGridFatal,
     keyboardManager,
     setActiveCharacters,
     setStats,
@@ -239,6 +255,7 @@ export const HangulHexGrid = ({
               // make HexGrid render a different set of cell ids than the ones
               // the game is spawning characters into.
               fitStrategy="shrink-only"
+              onStatusChange={handleGridStatusChange}
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
               renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
                 const { id, content } = cell
@@ -327,9 +344,11 @@ export const HangulHexGrid = ({
         <InstructionsPanel mode={mode} />
 
         <PauseOverlay
-          isPaused={isPaused && !isGameOver}
+          isPaused={isPaused && !isGameOver && !isGridFatal}
           onResume={handleTogglePause}
         />
+
+        <GridErrorOverlay error={gridError} />
 
         <GameOverModal
           isOpen={isGameOver}
