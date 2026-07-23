@@ -25,7 +25,9 @@ import {
   useSessions,
   useUpdateStatusManySessions,
 } from "@/lib/tenant"
+import { usePagination } from "@/hooks/use-pagination"
 import { summarizeConfig } from "@/components/composer/utils"
+import { PaginationControls } from "@/components/pagination-controls"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -179,22 +181,10 @@ const SessionSection = ({
   selectedIds: ReadonlySet<string>
   onToggleSelected: (id: string) => void
 }): JSX.Element | null => {
-  const [page, setPage] = useState(1)
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(sessions, SESSIONS_PAGE_SIZE)
 
   if (sessions.length === 0) return null
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(sessions.length / SESSIONS_PAGE_SIZE)
-  )
-  // Clamped for rendering/controls rather than written back to state - a
-  // shrinking list (e.g. after a bulk delete) should fall back to the last
-  // valid page without an extra effect just to keep `page` in sync.
-  const currentPage = Math.min(page, totalPages)
-  const pageSessions = sessions.slice(
-    (currentPage - 1) * SESSIONS_PAGE_SIZE,
-    currentPage * SESSIONS_PAGE_SIZE
-  )
 
   return (
     <section className="space-y-3">
@@ -203,7 +193,7 @@ const SessionSection = ({
         <span className="text-muted-foreground">({sessions.length})</span>
       </h2>
       <div className="space-y-2">
-        {pageSessions.map((session) => (
+        {pageItems.map((session) => (
           <SessionCard
             key={session.id}
             session={session}
@@ -212,29 +202,12 @@ const SessionSection = ({
           />
         ))}
       </div>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span className="text-muted-foreground text-xs">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPrevious={goToPreviousPage}
+        onNext={goToNextPage}
+      />
     </section>
   )
 }

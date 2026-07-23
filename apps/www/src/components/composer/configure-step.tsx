@@ -15,7 +15,12 @@ import {
 
 import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { PaginationControls } from "@/components/pagination-controls"
+
+/** Each card is tall (multiple fields), so a smaller page keeps a page's worth of cards on screen. */
+const CONFIGURE_PAGE_SIZE = 5
 
 export type ConfigurableActivity = {
   instanceId: string
@@ -40,16 +45,27 @@ export const ConfigureStep = ({
   for (const item of items) {
     totalById.set(item.activityId, (totalById.get(item.activityId) ?? 0) + 1)
   }
-  const ordinalById = new Map<ActivityId, number>()
+
+  // Computed against the full list before paginating, so an instance's "#N"
+  // label stays stable regardless of which page it's currently showing on.
+  const ordinalByInstanceId = new Map<string, number>()
+  const seenById = new Map<ActivityId, number>()
+  for (const item of items) {
+    const ordinal = (seenById.get(item.activityId) ?? 0) + 1
+    seenById.set(item.activityId, ordinal)
+    ordinalByInstanceId.set(item.instanceId, ordinal)
+  }
+
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(items, CONFIGURE_PAGE_SIZE)
 
   return (
     <div className="space-y-4">
-      {items.map((item) => {
+      {pageItems.map((item) => {
         const activity = ACTIVITY_CATALOG[item.activityId]
         const config = item.config
         const total = totalById.get(item.activityId) ?? 1
-        const ordinal = (ordinalById.get(item.activityId) ?? 0) + 1
-        ordinalById.set(item.activityId, ordinal)
+        const ordinal = ordinalByInstanceId.get(item.instanceId) ?? 1
 
         return (
           <Card key={item.instanceId}>
@@ -132,6 +148,12 @@ export const ConfigureStep = ({
           </Card>
         )
       })}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPrevious={goToPreviousPage}
+        onNext={goToNextPage}
+      />
     </div>
   )
 }

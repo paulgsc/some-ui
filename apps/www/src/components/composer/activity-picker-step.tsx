@@ -9,7 +9,12 @@ import {
   getActivity,
 } from "@/lib/activity-catalog"
 import type { ActivityId } from "@/lib/activity-catalog"
+import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { PaginationControls } from "@/components/pagination-controls"
+
+/** Rows here are compact (one line each), so a larger page fits comfortably. */
+const MANIFEST_PAGE_SIZE = 10
 
 export type PickedActivity = {
   instanceId: string
@@ -31,6 +36,16 @@ export const ActivityPickerStep = ({
   for (const item of items) {
     countsById.set(item.activityId, (countsById.get(item.activityId) ?? 0) + 1)
   }
+
+  // Numbered against the full list before paginating, so the badge always
+  // reflects each instance's true position in the session, not its position
+  // within the current page.
+  const numberedItems = items.map((item, index) => ({
+    item,
+    position: index + 1,
+  }))
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(numberedItems, MANIFEST_PAGE_SIZE)
 
   return (
     <div className="space-y-4">
@@ -82,9 +97,14 @@ export const ActivityPickerStep = ({
 
       {items.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">Added to this session</p>
+          <p className="text-sm font-medium">
+            Added to this session{" "}
+            <span className="text-muted-foreground font-normal">
+              ({items.length})
+            </span>
+          </p>
           <div className="space-y-1.5">
-            {items.map((item, index) => {
+            {pageItems.map(({ item, position }) => {
               const activity = getActivity(item.activityId)
               return (
                 <div
@@ -92,7 +112,7 @@ export const ActivityPickerStep = ({
                   className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
                 >
                   <span className="bg-muted flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                    {index + 1}
+                    {position}
                   </span>
                   <ActivityIcon
                     icon={activity.icon}
@@ -113,6 +133,12 @@ export const ActivityPickerStep = ({
               )
             })}
           </div>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
         </div>
       )}
     </div>

@@ -13,9 +13,13 @@ import {
 import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
 import { formatDurationMs } from "@/lib/format"
+import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { PaginationControls } from "@/components/pagination-controls"
 
 import { summarizeConfig, totalDurationOfScenes } from "./utils"
+
+const REVIEW_PAGE_SIZE = 10
 
 type ReviewStepProps = {
   items: ReadonlyArray<{
@@ -40,6 +44,15 @@ export const ReviewStep = ({
 }: ReviewStepProps): JSX.Element => {
   const totalDurationMs = totalDurationOfScenes(scenes)
 
+  // Numbered against the full list before paginating, same reasoning as the
+  // other composer steps' lists.
+  const numberedItems = items.map((item, index) => ({
+    item,
+    position: index + 1,
+  }))
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(numberedItems, REVIEW_PAGE_SIZE)
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -54,15 +67,20 @@ export const ReviewStep = ({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Activities</CardTitle>
+          <CardTitle className="text-base">
+            Activities{" "}
+            <span className="text-muted-foreground font-normal">
+              ({items.length})
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {items.map((item, index) => {
+          {pageItems.map(({ item, position }) => {
             const activity = ACTIVITY_CATALOG[item.activityId]
             return (
               <div key={item.instanceId} className="flex items-center gap-3">
                 <span className="bg-muted flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  {index + 1}
+                  {position}
                 </span>
                 <ActivityIcon
                   icon={activity.icon}
@@ -77,6 +95,12 @@ export const ReviewStep = ({
               </div>
             )
           })}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
         </CardContent>
       </Card>
 
