@@ -31,6 +31,17 @@ export const VocabularyEndless: Story = {
   args: { mode: "vocabulary-endless" },
 }
 
+/** Difficulty is a lay-facing label (Relaxed/Standard/Challenging), not raw
+ * engine config - the activity setup screen in apps/www offers this
+ * alongside mode selection; HangulHexGrid alone resolves what it means. */
+export const ChallengingDifficulty: Story = {
+  args: { mode: "completion", difficulty: "challenging" },
+}
+
+export const RelaxedDifficulty: Story = {
+  args: { mode: "completion", difficulty: "relaxed" },
+}
+
 const meta: Meta = {
   title: "UI/Honeycomb/Hangul/Flow/HangulHexGrid",
   component: HangulHexGrid,

@@ -51,6 +51,17 @@ const honeycomb: ActivityDefinition = {
       defaultValue: "completion",
     },
     {
+      kind: "select",
+      key: "difficulty",
+      label: "Difficulty",
+      options: [
+        { value: "relaxed", label: "Relaxed - more time per letter" },
+        { value: "standard", label: "Standard" },
+        { value: "challenging", label: "Challenging - fast-paced" },
+      ],
+      defaultValue: "standard",
+    },
+    {
       kind: "duration",
       key: "durationMinutes",
       label: "Session length",
@@ -60,8 +71,19 @@ const honeycomb: ActivityDefinition = {
       defaultMinutes: 10,
     },
   ],
-  defaultConfig: { mode: "completion", durationMinutes: 10 },
-  toSceneProps: (config) => ({ mode: config.mode }),
+  defaultConfig: {
+    mode: "completion",
+    difficulty: "standard",
+    durationMinutes: 10,
+  },
+  // difficulty is passed through as the friendly label the player picked
+  // ("relaxed"/"standard"/"challenging"), not resolved into GameConfig
+  // fields here - HangulHexGrid (@some-ui/honeycomb) owns what each preset
+  // actually means, so this app never needs to know its shape.
+  toSceneProps: (config) => ({
+    mode: config.mode,
+    difficulty: config.difficulty,
+  }),
 }
 
 const topik: ActivityDefinition = {

@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
@@ -20,13 +20,18 @@ import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
 import { usePromptEscalation } from "@honeycomb/hooks/use-prompt-escalation"
+import type { DifficultyPreset } from "@honeycomb/lib/hangul/difficulty-presets"
+import { resolveDifficultyConfig } from "@honeycomb/lib/hangul/difficulty-presets"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
   GameMode,
   GameStats,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import { HANGUL_GRID_CELL_COUNT } from "@honeycomb/lib/hangul/wasm-game-bridge"
+import {
+  DEFAULT_GAME_CONFIG,
+  HANGUL_GRID_CELL_COUNT,
+} from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
   CharacterWithLifetime,
   WordProgress,
@@ -35,14 +40,37 @@ import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 type HangulHexGridProps = {
   mode?: GameMode
+  /**
+   * A named difficulty, not raw engine config (ADR-aligned with #762's
+   * "host-layer realizations of engine primitives" idiom): a host app picks
+   * one of three lay-facing labels, and this package alone knows what each
+   * means in terms of GameConfig fields (see difficulty-presets).
+   * @default "standard"
+   */
+  difficulty?: DifficultyPreset
 }
 
 export const HangulHexGrid = ({
   mode = "completion",
+  difficulty,
 }: HangulHexGridProps): JSX.Element => {
+  // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
+  // initialize() callback stays referentially stable across re-renders that
+  // don't change the difficulty prop.
+  const config = useMemo(
+    () => resolveDifficultyConfig(difficulty),
+    [difficulty]
+  )
+  // The engine only reports whether romanization is *currently* shown
+  // (TimingParams.showRomanization), not the streak threshold that governs
+  // it - StatsPanel needs the actual configured number to display, which
+  // for "standard" is the engine's own default (no override present).
+  const hideRomanizationStreak =
+    config.hideRomanizationStreak ?? DEFAULT_GAME_CONFIG.hideRomanizationStreak
   const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
     autoStart: true,
     mode,
+    config,
   })
 
   const [keyboardManager] = useState(() => new KeyboardInputManager())
@@ -322,6 +350,7 @@ export const HangulHexGrid = ({
           mode={mode}
           timeRemaining={timeRemainingMs}
           progress={progress}
+          hideRomanizationStreak={hideRomanizationStreak}
         />
 
         <KeyBufferDisplay
