@@ -45,12 +45,14 @@ impl GameMode for VocabularyMode {
         self.incomplete.choose(&mut thread_rng()).cloned()
     }
 
-    fn on_match(&mut self, identity: &str, is_high_quality: bool, _show_romanization: bool) -> bool {
+    fn on_match(&mut self, identity: &str, is_high_quality: bool, show_romanization: bool) -> bool {
+        // Same hint-visibility gate as CompletionMode (canon Rem. 6.2): a match made while the
+        // QWERTY hint is on screen isn't evidence of recall, in either variant.
         if self.endless {
-            return true; // All matches count in the endless variant
+            return !show_romanization;
         }
 
-        if is_high_quality && !self.completed.contains(identity) {
+        if is_high_quality && !show_romanization && !self.completed.contains(identity) {
             self.completed.insert(identity.to_string());
             self.incomplete.retain(|seed| seed.identity != identity);
             true
@@ -134,6 +136,21 @@ mod tests {
 
         assert!(!mode.on_match("사과", false, false));
         assert!(!mode.is_complete());
+    }
+
+    #[test]
+    fn high_quality_match_does_not_count_while_romanization_is_shown() {
+        let mut mode = VocabularyMode::new(vec![seed("사과")], false);
+
+        assert!(!mode.on_match("사과", true, true));
+        assert!(!mode.is_complete());
+    }
+
+    #[test]
+    fn endless_variant_does_not_count_a_match_while_romanization_is_shown() {
+        let mut mode = VocabularyMode::new(vec![seed("사과")], true);
+
+        assert!(!mode.on_match("사과", true, true));
     }
 
     #[test]

@@ -33,7 +33,15 @@ impl ContentDomain for TestDigits {
 
 #[test]
 fn full_challenge_lifecycle_against_a_non_korean_domain() {
-    let mut engine = GameEngine::<TestDigits>::new(GameConfig::default(), "completion".to_string(), vec![]);
+    // hide_romanization_streak: 0 keeps this test's concern isolated to ContentDomain genericity -
+    // otherwise the very first match of a fresh session runs with the hint on screen
+    // (current_streak 0 < the default 5), which now correctly withholds completion credit
+    // (canon Rem. 6.2) regardless of domain.
+    let config = GameConfig {
+        hide_romanization_streak: 0,
+        ..GameConfig::default()
+    };
+    let mut engine = GameEngine::<TestDigits>::new(config, "completion".to_string(), vec![]);
     engine.start_timer(0);
 
     let batch = engine.spawn_character(0, vec!["cell-0".to_string()]);
@@ -49,7 +57,7 @@ fn full_challenge_lifecycle_against_a_non_korean_domain() {
             hangul, counts_toward_completion, ..
         }) => {
             assert_eq!(hangul, spawn_result.hangul);
-            assert!(counts_toward_completion, "a high-quality match on a fresh domain must count toward completion");
+            assert!(counts_toward_completion, "a high-quality, unhinted match on a fresh domain must count toward completion");
         }
         other => panic!("expected MatchFound, got {other:?}"),
     }

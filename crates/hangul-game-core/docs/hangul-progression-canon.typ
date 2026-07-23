@@ -906,6 +906,29 @@ must keep working":
   will otherwise inherit the identical coupling at every stage.
 ]
 
+#remark("6.2", name: "Remark 6.1's own resolution was wrong: the gate is a required invariant, not a defect")[
+  \#423's implementation resolved Remark 6.1 by deleting the
+  `!show_romanization` condition outright, decoupling mastery from hint
+  visibility entirely. Direct product feedback overturned that resolution:
+  the gate must stay, in `CompletionMode` and in every other `GameMode`
+  (`EndlessMode`, `VocabularyMode`'s both variants) that reports whether a
+  match `counts_toward_completion`. The reasoning Remark 6.1 gave --- that
+  `show_romanization` is a *global* signal built from streak across other
+  challenges, not a fact about the one just matched --- is correct as an
+  observation but wrong as an objection. There is exactly one
+  hint-visibility setting for the whole board (`GameEngine::get_timing_params`);
+  a match made while it reads `true` is, definitionally, a match the player
+  could have produced by reading the on-screen QWERTY hint rather than
+  recalling it, regardless of which challenge built the streak that hid or
+  showed it. Crediting that match toward mastery or cell persistence
+  rewards the crutch, not the recall. The corrected contract: `on_match`
+  requires `!show_romanization` in every implementation
+  (`src/internal/game_modes/{completion,vocabulary,endless}.rs`), in
+  addition to whatever `is_high_quality` check a mode already performed. A
+  `StagedCurriculumMode` inherits this corrected gate automatically, the
+  same way Remark 6.1 warned it would otherwise inherit the coupling.
+]
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1114,7 +1137,7 @@ that it is checkable, today, against a specific file and identifier.
   [Answer sequence, cursor matcher (Def. 4.1--4.3)], [Generalizes `ActiveReveal.expected_key` and `GameEngine::process_input`, `src/internal/engine.rs`],
   [Challenge, board binding (Def. 4.2, 5.1)], [Generalizes `ActiveReveal`/`SpawnResult`'s `cell_id: String`; cell pool from `WasmGameBridge.generateCellIds()`, `wasm-game-bridge/index.ts`],
   [Generalized `GameMode` (Def. 6.1)], [`src/internal/game_modes.rs`'s trait; `EndlessMode`/`CompletionMode` as degenerate instances (Prop. 6.1)],
-  [Completion/hint coupling defect (Rem. 6.1)], [`CompletionMode::on_match`'s `!show_romanization` gate, `src/internal/game_modes/completion.rs`],
+  [Completion/hint coupling defect and its corrected resolution (Rem. 6.1--6.2)], [`!show_romanization` gate on every `GameMode::on_match`, `src/internal/game_modes/{completion,vocabulary,endless}.rs`],
   [Difficulty scalar, spawn-interval floor (§7)], [`current_lifetime_ms`, `adjust_difficulty_faster`/`_slower`, `src/internal/engine.rs`; `min_spawn = 800.0`, `src/internal/difficulty.rs`],
   [Event algebra (§8)], [`PrimaryEvent`, `SecondaryEvent`, `UiHintEvent`, `GameEvent`, `EventBatch`, `src/internal/events.rs`],
   [Serde⇄zod parity (§9)], [`GameEventSchema`, `GameConfigSchema`, `wasm-game-bridge/index.ts`],
@@ -1549,6 +1572,23 @@ in-crate that satisfy the axiom without having been written against it
 (Prop. 12.2: `internal/difficulty.rs`, `internal/events.rs::flatten`). No
 axiom, theorem, or proposition in §1--§11 was weakened or amended; §12 is
 additive. The Non-negotiables list gained one corresponding entry.
+
+*v1.2 → v1.3* (2026-07-23). A *corrective* amendment, the first to reverse
+rather than extend a prior remark: Remark 6.2 overturns Remark 6.1's own
+resolution. \#423's implementation of Remark 6.1 removed the
+`!show_romanization` gate from `CompletionMode::on_match` entirely, on the
+theory that mastery must depend only on the matched challenge itself, never
+on a global streak built across others. Direct product feedback identified
+this as backwards: the gate is a required invariant (a match made while the
+QWERTY hint is visibly on screen is not evidence of recall, however fast or
+however unrelated the streak that hid or showed the hint), not the
+accidental coupling Remark 6.1 took it for. The gate is restored in
+`CompletionMode` and newly added to `VocabularyMode` (both variants) and
+`EndlessMode`, which never had it. This is the first amendment to weaken a
+prior remark's conclusion rather than add beside it; it is recorded as a
+distinct remark (6.2) rather than a silent edit to 6.1, per this canon's own
+discipline of citation anchors surviving revision (see the note on manual
+numbering, above).
 
 #pagebreak()
 

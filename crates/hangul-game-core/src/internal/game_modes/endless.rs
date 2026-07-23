@@ -26,8 +26,10 @@ impl GameMode for EndlessMode {
         self.pool.choose(&mut thread_rng()).cloned()
     }
 
-    fn on_match(&mut self, _identity: &str, _is_high_quality: bool, _show_romanization: bool) -> bool {
-        true // All matches count in endless mode
+    fn on_match(&mut self, _identity: &str, _is_high_quality: bool, show_romanization: bool) -> bool {
+        // Persisting a cell as "completed" is this mode's only stand-in for a mastery signal;
+        // withhold it while the QWERTY hint is on screen, same as every other mode (canon Rem. 6.2).
+        !show_romanization
     }
 
     fn on_miss(&self, _identity: &str) {
