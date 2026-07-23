@@ -22,7 +22,7 @@
   "dependencies": {
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
-    "@some-ui/hangul-game-core": "0.0.4",
+    "@some-ui/hangul-game-core": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/some-hexagon": "0.0.4",
     "some-ui-shared": "workspace:*",

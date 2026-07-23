@@ -1294,8 +1294,8 @@ importers:
         specifier: workspace:*
         version: link:../../fetch-kit
       '@some-ui/hangul-game-core':
-        specifier: 0.0.4
-        version: 0.0.4
+        specifier: workspace:*
+        version: link:../../../crates/hangul-game-core
       '@some-ui/some-hexagon':
         specifier: 0.0.4
         version: 0.0.4
@@ -5212,9 +5212,6 @@ packages:
     resolution: {integrity: sha512-AeGTBg8Wtkh/0s+evyLtP8piQoS4wyqqQaAFs2HJcFMMjYAtUgo+ZPduRXLjPlqKVc2ejeR544oeqpbn8Egn8A==}
     peerDependencies:
       solid-js: ^1.6.12
-
-  '@some-ui/hangul-game-core@0.0.4':
-    resolution: {integrity: sha512-x8Z+BA9l0IaJOmlNzKOcbvj3C1hX1+3Y5yb9eqPTpmEOESxwnE8Fz7uFh4BfNHrCsnMaliVEuFpO+bJZi2Tg9w==}
 
   '@some-ui/leetype-wasm@0.0.4':
     resolution: {integrity: sha512-V4FOv4uF22Lc4Y7rgEsDa6Z2wXscJhisw3nO+DW+nLT3ROwYv+UGahLR7DQrfvd28pCj/T1ypargMBoMzrQbmA==}
@@ -16103,8 +16100,6 @@ snapshots:
   '@solid-primitives/utils@6.4.0(solid-js@1.9.13)':
     dependencies:
       solid-js: 1.9.13
-
-  '@some-ui/hangul-game-core@0.0.4': {}
 
   '@some-ui/leetype-wasm@0.0.4': {}
 
