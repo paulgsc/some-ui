@@ -39,21 +39,45 @@ export function summarizeConfig(
     .join(" • ")
 }
 
+/**
+ * Same activityId may appear more than once (two Honeycomb blocks with
+ * different modes are a valid, expected session shape, not a duplicate to
+ * collapse) - so this counts occurrences and labels repeats "Name ×N" rather
+ * than assuming activityIds is a set.
+ */
 export function defaultSessionName(
   activityIds: ReadonlyArray<ActivityId>
 ): string {
   if (activityIds.length === 0) return "New session"
-  return activityIds.map((id) => getActivity(id).name).join(" + ")
+
+  const counts = new Map<ActivityId, number>()
+  for (const id of activityIds) counts.set(id, (counts.get(id) ?? 0) + 1)
+
+  const seen = new Set<ActivityId>()
+  const parts: Array<string> = []
+  for (const id of activityIds) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    const count = counts.get(id) ?? 1
+    const name = getActivity(id).name
+    parts.push(count > 1 ? `${name} ×${count}` : name)
+  }
+  return parts.join(" + ")
 }
 
+/**
+ * One entry per activity *instance* the user has added to the session -
+ * not one per distinct activityId. A session is a serial list, and the
+ * same activity can legitimately appear any number of times (e.g. two
+ * Honeycomb blocks, one "completion" and one "endless"), so this takes
+ * whatever order/repetition the composer's own instance list already has
+ * and only strips the instanceId, which is composer-local UI state that
+ * SessionActivity has no use for (array position is authoritative there).
+ */
 export function buildSessionActivities(
-  activityIds: ReadonlyArray<ActivityId>,
-  configs: Partial<Record<ActivityId, ActivityConfigValues>>
+  items: ReadonlyArray<{ activityId: ActivityId; config: ActivityConfigValues }>
 ): Array<SessionActivity> {
-  return activityIds.map((activityId) => ({
-    activityId,
-    config: configs[activityId] ?? getActivity(activityId).defaultConfig,
-  }))
+  return items.map(({ activityId, config }) => ({ activityId, config }))
 }
 
 export function totalDurationOfScenes(

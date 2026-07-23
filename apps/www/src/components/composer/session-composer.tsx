@@ -39,6 +39,18 @@ type SessionComposerProps = {
   existingSession?: SessionRecord
 }
 
+type ComposerActivity = {
+  /**
+   * Composer-local identity distinguishing repeated instances of the same
+   * activity within one session (e.g. two Honeycomb blocks with different
+   * modes) - never persisted. `SessionActivity` has no equivalent field;
+   * array position is authoritative there (see composer/utils.ts).
+   */
+  instanceId: string
+  activityId: ActivityId
+  config: ActivityConfigValues
+}
+
 export const SessionComposer = ({
   initialActivity,
   existingSession,
@@ -48,23 +60,23 @@ export const SessionComposer = ({
   const updateSession = useUpdateSession()
 
   const [step, setStep] = useState<ComposerStep>(1)
-  const [selectedIds, setSelectedIds] = useState<Array<ActivityId>>(() =>
+  const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
-      ? existingSession.activities.map((activity) => activity.activityId)
+      ? existingSession.activities.map((activity) => ({
+          instanceId: crypto.randomUUID(),
+          activityId: activity.activityId,
+          config: activity.config,
+        }))
       : initialActivity
-        ? [initialActivity]
+        ? [
+            {
+              instanceId: crypto.randomUUID(),
+              activityId: initialActivity,
+              config: getActivity(initialActivity).defaultConfig,
+            },
+          ]
         : []
   )
-  const [configs, setConfigs] = useState<
-    Partial<Record<ActivityId, ActivityConfigValues>>
-  >(() => {
-    if (!existingSession) return {}
-    const seeded: Partial<Record<ActivityId, ActivityConfigValues>> = {}
-    for (const activity of existingSession.activities) {
-      seeded[activity.activityId] = activity.config
-    }
-    return seeded
-  })
   const [arrangementMode, setArrangementMode] = useState<ArrangementMode>(
     () => existingSession?.layoutMode ?? "basic"
   )
@@ -76,33 +88,43 @@ export const SessionComposer = ({
     () => existingSession?.name ?? ""
   )
 
-  const activities = buildSessionActivities(selectedIds, configs)
+  const selectedIds = items.map((item) => item.activityId)
+  const activities = buildSessionActivities(items)
   const basicScenes = sequenceScenes(activities)
   const scenes =
     arrangementMode === "advanced"
       ? (advancedScenes ?? basicScenes)
       : basicScenes
 
-  const handleToggleActivity = (id: ActivityId): void => {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((existing) => existing !== id)
-        : [...current, id]
+  const handleAddActivity = (id: ActivityId): void => {
+    setItems((current) => [
+      ...current,
+      {
+        instanceId: crypto.randomUUID(),
+        activityId: id,
+        config: getActivity(id).defaultConfig,
+      },
+    ])
+  }
+
+  const handleRemoveActivity = (instanceId: string): void => {
+    setItems((current) =>
+      current.filter((item) => item.instanceId !== instanceId)
     )
   }
 
   const handleFieldChange = (
-    activityId: ActivityId,
+    instanceId: string,
     key: string,
     value: string | number
   ): void => {
-    setConfigs((current) => ({
-      ...current,
-      [activityId]: {
-        ...(current[activityId] ?? getActivity(activityId).defaultConfig),
-        [key]: value,
-      },
-    }))
+    setItems((current) =>
+      current.map((item) =>
+        item.instanceId === instanceId
+          ? { ...item, config: { ...item.config, [key]: value } }
+          : item
+      )
+    )
   }
 
   const handleEnableAdvanced = (): void => {
@@ -253,16 +275,13 @@ export const SessionComposer = ({
 
       {step === 1 && (
         <ActivityPickerStep
-          selectedIds={selectedIds}
-          onToggle={handleToggleActivity}
+          items={items}
+          onAdd={handleAddActivity}
+          onRemove={handleRemoveActivity}
         />
       )}
       {step === 2 && (
-        <ConfigureStep
-          selectedIds={selectedIds}
-          configs={configs}
-          onFieldChange={handleFieldChange}
-        />
+        <ConfigureStep items={items} onFieldChange={handleFieldChange} />
       )}
       {step === 3 && (
         <ArrangementStep
@@ -276,8 +295,7 @@ export const SessionComposer = ({
       )}
       {step === 4 && (
         <ReviewStep
-          selectedIds={selectedIds}
-          configs={configs}
+          items={items}
           scenes={scenes}
           mode={arrangementMode}
           sessionName={sessionName}
