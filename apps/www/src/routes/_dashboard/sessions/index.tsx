@@ -4,12 +4,14 @@ import { Copy, Pencil, Play, Sparkles, Trash2 } from "lucide-react"
 import { Badge, Button, Card, CardContent, Skeleton } from "some-ui-shared"
 import { formatRelativeTime } from "some-ui-utils"
 
+import { getActivity } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
   useDeleteSession,
   useDuplicateSession,
   useSessions,
 } from "@/lib/tenant"
+import { summarizeConfig } from "@/components/composer/utils"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -82,7 +84,28 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
               {STATUS_LABEL[session.status]}
             </Badge>
           </div>
-          <p className="text-muted-foreground text-xs">
+          {/* One tag per activity's mode/difficulty/etc. (the same
+              summarizeConfig the completion summary already uses) so
+              sessions of the same activity are distinguishable at a
+              glance - e.g. two Honeycomb drafts, one Vocabulary and one
+              Endless, don't otherwise look identical in this list. */}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {session.activities.map((sessionActivity, index) => {
+              const activity = getActivity(sessionActivity.activityId)
+              return (
+                <Badge
+                  // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
+                  key={`${sessionActivity.activityId}-${index}`}
+                  variant="outline"
+                  className="text-muted-foreground font-normal"
+                >
+                  {activity.name}:{" "}
+                  {summarizeConfig(activity, sessionActivity.config)}
+                </Badge>
+              )
+            })}
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">
             Updated {formatRelativeTime(session.updatedAt)}
           </p>
         </div>
