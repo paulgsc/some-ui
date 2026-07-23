@@ -63,10 +63,16 @@ export function useHangulGameWasm({
   const [bridge, setBridge] = useState<WasmGameBridge | null>(null)
 
   const initializedRef = useRef(false)
+  // The mode this hook instance last successfully initialized against - not
+  // necessarily the current `mode` prop, if the caller re-renders with a
+  // different mode on an already-initialized instance rather than
+  // remounting. Compared below to force a fresh initialize() in that case,
+  // instead of initializedRef's guard silently keeping the stale mode.
+  const loadedModeRef = useRef<GameMode | null>(null)
 
   // Wrap inside useCallback to safely add it to useEffect dependency arrays
   const initialize = useCallback(async (): Promise<void> => {
-    if (initializedRef.current) return
+    if (initializedRef.current && loadedModeRef.current === mode) return
 
     setIsLoading(true)
     setError(null)
@@ -76,6 +82,7 @@ export function useHangulGameWasm({
       setBridge(instance)
       setIsInitialized(true)
       initializedRef.current = true
+      loadedModeRef.current = mode
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -83,7 +90,10 @@ export function useHangulGameWasm({
     }
   }, [mode, config, wordPool])
 
-  // Explicit, safe autoStart initialization effect
+  // Explicit, safe autoStart initialization effect - also the mode-switch
+  // path: a mode change re-creates `initialize` (mode is in its dep array
+  // above), which re-runs this effect and, per initialize()'s own guard,
+  // performs a fresh load rather than a no-op.
   useEffect(() => {
     let active = true
 

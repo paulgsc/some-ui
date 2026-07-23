@@ -13,14 +13,21 @@ import type { WasmLoaderState } from "@some-ui/wasm-loader"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 
 // Set immediately before load()/preload() so the in-flight importModule()
-// call (if one starts) picks them up. A later loadHangulWasm() call with
-// different args while a load is already in flight or already loaded is a
-// no-op on those args - matches the pre-canon behavior, which only ever
-// consulted config/mode on the attempt that actually constructs the core.
+// call (if one starts) picks them up.
 let pendingConfig: Partial<GameConfig> | undefined
 let pendingMode: GameMode = "completion"
 let pendingWordPool: Array<ChallengeSeed> = []
 let coreInstance: HangulGameCore | null = null
+
+// The mode actually baked into the currently-loaded HangulGameCore (set once
+// importModule() finishes), distinct from pendingMode: a mode is "loaded",
+// not merely "requested", only once the core exists. loadHangulWasm() uses
+// this to detect a mode switch and force a fresh core - the loader below is
+// a page-wide singleton (one WASM module, one HangulGameCore instance), so
+// without this check, switching modes after the first successful load would
+// silently keep running whichever mode was loaded first for the rest of the
+// page session, no matter what a later loadHangulWasm() call passes in.
+let loadedMode: GameMode | null = null
 
 const loader = createWasmLoader<WasmGameBridge>({
   importModule: async () => {
@@ -39,6 +46,7 @@ const loader = createWasmLoader<WasmGameBridge>({
       pendingWordPool
     )
     coreInstance = core
+    loadedMode = pendingMode
     return new WasmGameBridge(core, pendingMode)
   },
   errorPolicy: "resolve-null",
@@ -67,6 +75,12 @@ export async function loadHangulWasm(
   mode: GameMode = "completion",
   wordPool: Array<ChallengeSeed> = []
 ): Promise<WasmGameBridge | null> {
+  // A request for a mode other than the one currently loaded must force a
+  // fresh core - see loadedMode's comment above for why the loader can't be
+  // trusted to pick this up on its own.
+  if (loadedMode !== null && loadedMode !== mode) {
+    resetHangulWasm()
+  }
   pendingConfig = config
   pendingMode = mode
   pendingWordPool = wordPool
@@ -74,9 +88,10 @@ export async function loadHangulWasm(
 }
 
 /**
- * Reset runtime (HMR, test cleanup)
+ * Reset runtime (HMR, test cleanup, mode switch)
  */
 export function resetHangulWasm(): void {
   loader.reset()
   coreInstance = null
+  loadedMode = null
 }

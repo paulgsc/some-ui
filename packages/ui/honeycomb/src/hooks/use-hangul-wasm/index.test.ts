@@ -1,4 +1,5 @@
 import { HANGUL_WORD_POOL } from "@honeycomb/data"
+import type { UseHangulGameWasmOptions } from "@honeycomb/hooks/use-hangul-wasm"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import {
   getLastError,
@@ -93,6 +94,62 @@ describe("manual initialize", () => {
     await act(async () => {
       await result.current.initialize()
       await result.current.initialize()
+    })
+
+    expect(loadHangulWasm).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("mode switching", () => {
+  // Regression coverage: initializedRef's guard used to stay true forever
+  // after the first successful load, so a mode prop change on an
+  // already-initialized instance (no remount) silently kept the stale
+  // mode's bridge instead of loading a new one.
+  it("re-initializes when mode changes on an already-initialized instance", async () => {
+    const completionBridge = { id: "completion-bridge" }
+    const vocabularyBridge = { id: "vocabulary-bridge" }
+    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
+      asWasmGameBridge(completionBridge)
+    )
+
+    const { result, rerender } = renderHook(
+      (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
+      { initialProps: { mode: "completion" } }
+    )
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true))
+    expect(result.current.gameBridge).toBe(completionBridge)
+
+    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
+      asWasmGameBridge(vocabularyBridge)
+    )
+    rerender({ mode: "vocabulary" })
+
+    await waitFor(() =>
+      expect(result.current.gameBridge).toBe(vocabularyBridge)
+    )
+    expect(loadHangulWasm).toHaveBeenCalledTimes(2)
+    expect(loadHangulWasm).toHaveBeenLastCalledWith(
+      undefined,
+      "vocabulary",
+      HANGUL_WORD_POOL
+    )
+  })
+
+  it("does not re-initialize on a re-render with the same mode", async () => {
+    const bridge = { id: "bridge-stable" }
+    vi.mocked(loadHangulWasm).mockResolvedValue(asWasmGameBridge(bridge))
+
+    const { result, rerender } = renderHook(
+      (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
+      { initialProps: { mode: "completion" } }
+    )
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true))
+
+    rerender({ mode: "completion" })
+    await act(async () => {
+      await Promise.resolve()
     })
 
     expect(loadHangulWasm).toHaveBeenCalledTimes(1)
