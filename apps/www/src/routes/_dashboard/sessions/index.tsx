@@ -1,15 +1,29 @@
 import type { JSX } from "react"
+import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Pencil, Play, Sparkles, Trash2 } from "lucide-react"
-import { Badge, Button, Card, CardContent, Skeleton } from "some-ui-shared"
-import { formatRelativeTime } from "some-ui-utils"
+import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from "some-ui-shared"
+import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { getActivity } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
+  useDeleteManySessions,
   useDeleteSession,
   useDuplicateSession,
   useSessions,
+  useUpdateStatusManySessions,
 } from "@/lib/tenant"
 import { summarizeConfig } from "@/components/composer/utils"
 
@@ -37,7 +51,15 @@ const SessionsSkeleton = (): JSX.Element => (
   </div>
 )
 
-const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
+const SessionCard = ({
+  session,
+  isSelected,
+  onToggleSelected,
+}: {
+  session: SessionRecord
+  isSelected: boolean
+  onToggleSelected: (id: string) => void
+}): JSX.Element => {
   const duplicateSession = useDuplicateSession()
   const deleteSession = useDeleteSession()
 
@@ -75,8 +97,15 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
     )
 
   return (
-    <Card>
+    <Card className={cn(isSelected && "border-primary ring-primary/50 ring-1")}>
       <CardContent className="flex items-center justify-between gap-4 py-4">
+        <input
+          type="checkbox"
+          className="accent-primary size-4 shrink-0"
+          checked={isSelected}
+          onChange={() => onToggleSelected(session.id)}
+          aria-label={`Select "${session.name}"`}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-medium">{session.name}</p>
@@ -139,9 +168,13 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
 const SessionSection = ({
   title,
   sessions,
+  selectedIds,
+  onToggleSelected,
 }: {
   title: string
   sessions: Array<SessionRecord>
+  selectedIds: ReadonlySet<string>
+  onToggleSelected: (id: string) => void
 }): JSX.Element | null => {
   if (sessions.length === 0) return null
 
@@ -153,10 +186,92 @@ const SessionSection = ({
       </h2>
       <div className="space-y-2">
         {sessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
+          <SessionCard
+            key={session.id}
+            session={session}
+            isSelected={selectedIds.has(session.id)}
+            onToggleSelected={onToggleSelected}
+          />
         ))}
       </div>
     </section>
+  )
+}
+
+const BULK_STATUS_OPTIONS: ReadonlyArray<SessionStatus> = [
+  "draft",
+  "scheduled",
+  "paused",
+  "completed",
+]
+
+function isBulkStatus(value: string): value is SessionStatus {
+  return BULK_STATUS_OPTIONS.some((status) => status === value)
+}
+
+const BulkActionBar = ({
+  selectedIds,
+  onClearSelection,
+}: {
+  selectedIds: ReadonlySet<string>
+  onClearSelection: () => void
+}): JSX.Element => {
+  const deleteMany = useDeleteManySessions()
+  const updateStatusMany = useUpdateStatusManySessions()
+  const ids = [...selectedIds]
+  const isBusy = deleteMany.isPending || updateStatusMany.isPending
+
+  const handleDeleteSelected = (): void => {
+    if (
+      confirm(
+        `Delete ${ids.length} session${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+      )
+    ) {
+      deleteMany.mutate(ids, { onSuccess: onClearSelection })
+    }
+  }
+
+  const handleStatusChange = (status: string): void => {
+    if (!isBulkStatus(status)) return
+    updateStatusMany.mutate({ ids, status }, { onSuccess: onClearSelection })
+  }
+
+  return (
+    <div className="bg-muted/50 sticky top-0 z-10 flex items-center gap-3 rounded-lg border px-4 py-2.5">
+      <span className="text-sm font-medium">{ids.length} selected</span>
+      <Select onValueChange={handleStatusChange} disabled={isBusy}>
+        <SelectTrigger className="h-8 w-[160px]">
+          <SelectValue placeholder="Set status to..." />
+        </SelectTrigger>
+        <SelectContent>
+          {BULK_STATUS_OPTIONS.map((status) => (
+            <SelectItem key={status} value={status}>
+              {STATUS_LABEL[status]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleDeleteSelected}
+        disabled={isBusy}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 className="mr-1.5 size-3.5" />
+        Delete
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={onClearSelection}
+        disabled={isBusy}
+        className="ml-auto"
+      >
+        <X className="mr-1.5 size-3.5" />
+        Clear selection
+      </Button>
+    </div>
   )
 }
 
@@ -168,6 +283,23 @@ const IN_PROGRESS_STATUSES: ReadonlyArray<SessionStatus> = [
 
 const SessionsRoute = (): JSX.Element => {
   const { data: sessions, isLoading } = useSessions()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const handleToggleSelected = (id: string): void => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleClearSelection = (): void => {
+    setSelectedIds(new Set())
+  }
 
   if (isLoading || !sessions) {
     return <SessionsSkeleton />
@@ -198,9 +330,30 @@ const SessionsRoute = (): JSX.Element => {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <SessionSection title="In progress" sessions={inProgress} />
-      <SessionSection title="Drafts" sessions={drafts} />
-      <SessionSection title="Completed" sessions={completed} />
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          selectedIds={selectedIds}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+      <SessionSection
+        title="In progress"
+        sessions={inProgress}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
+      <SessionSection
+        title="Drafts"
+        sessions={drafts}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
+      <SessionSection
+        title="Completed"
+        sessions={completed}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
     </div>
   )
 }

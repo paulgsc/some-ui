@@ -10,7 +10,7 @@ import {
   readJSON,
   writeJSON,
 } from "./storage"
-import type { SessionRecord } from "./types"
+import type { SessionRecord, SessionStatus } from "./types"
 
 const STORAGE_KEY = "some-ui.tenant.sessions.v1"
 
@@ -100,6 +100,29 @@ export class SessionsRepository {
   async remove(id: string): Promise<void> {
     await delay(this.latencyMs)
     this.writeAll(this.readAll().filter((s) => s.id !== id))
+  }
+
+  async removeMany(ids: ReadonlyArray<string>): Promise<void> {
+    await delay(this.latencyMs)
+    const idSet = new Set(ids)
+    this.writeAll(this.readAll().filter((s) => !idSet.has(s.id)))
+  }
+
+  /** Bulk status transition - the one field it's coherent to set identically across an
+   * arbitrary, heterogeneous group of sessions (unlike name/activities/scenes, which are
+   * per-session by nature). */
+  async updateStatusMany(
+    ids: ReadonlyArray<string>,
+    status: SessionStatus
+  ): Promise<Array<SessionRecord>> {
+    await delay(this.latencyMs)
+    const idSet = new Set(ids)
+    const now = new Date().toISOString()
+    const all = this.readAll().map((s) =>
+      idSet.has(s.id) ? { ...s, status, updatedAt: now } : s
+    )
+    this.writeAll(all)
+    return all.filter((s) => idSet.has(s.id))
   }
 
   async duplicate(id: string): Promise<SessionRecord> {

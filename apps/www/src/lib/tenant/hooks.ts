@@ -8,7 +8,12 @@ import type {
 } from "./sessions-repository"
 import { createSessionsRepository } from "./sessions-repository"
 import { createSettingsRepository } from "./settings-repository"
-import type { SessionRecord, UserProfile, UserSettings } from "./types"
+import type {
+  SessionRecord,
+  SessionStatus,
+  UserProfile,
+  UserSettings,
+} from "./types"
 
 const profileRepository = createProfileRepository()
 const settingsRepository = createSettingsRepository()
@@ -131,6 +136,36 @@ export function useDuplicateSession(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => sessionsRepository.duplicate(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+    },
+  })
+}
+
+export function useDeleteManySessions(): UseMutationResult<
+  void,
+  Error,
+  ReadonlyArray<string>
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: ReadonlyArray<string>) =>
+      sessionsRepository.removeMany(ids),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sessionsKey })
+    },
+  })
+}
+
+export function useUpdateStatusManySessions(): UseMutationResult<
+  Array<SessionRecord>,
+  Error,
+  { ids: ReadonlyArray<string>; status: SessionStatus }
+> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, status }) =>
+      sessionsRepository.updateStatusMany(ids, status),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
     },
