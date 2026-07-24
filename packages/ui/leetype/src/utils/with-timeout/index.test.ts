@@ -87,10 +87,13 @@ describe("withTimeout Property Tests (fast-check)", () => {
         async ([d1, d2, d3]) => {
           vi.useFakeTimers()
 
-          // Randomize which role gets which delay
-          const promiseDelay = d1
-          const timeoutMs = d2
-          const abortDelay = d3
+          // minLength/maxLength: 3 above guarantees 3 elements at runtime;
+          // fc.uniqueArray's return type is plain number[], so TS can't see
+          // that guarantee - assert it rather than widen every downstream
+          // use to `number | undefined`.
+          const promiseDelay = d1!
+          const timeoutMs = d2!
+          const abortDelay = d3!
 
           const controller = new AbortController()
           const abortReason = new Error("abort-win")

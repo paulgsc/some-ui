@@ -32,10 +32,19 @@ function makeModel(
       return c
     }),
   }
+  // fake only implements the subset of TextModel this suite exercises;
+  // structurally incompatible with the full interface, hence the cast.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return fake as unknown as TextModel
 }
 
-function deferred<T>() {
+type Deferred<T> = {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (reason: unknown) => void
+}
+
+function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void
   let reject!: (reason: unknown) => void
   const promise = new Promise<T>((res, rej) => {
@@ -203,6 +212,11 @@ describe("Bug Regressions", () => {
       useChunkedCode("file.ts", { prettierParser: "typescript" })
     )
 
+    // async (with nothing literally awaited inside) is deliberate here: the
+    // rejection is reacted to on a microtask, not synchronously within this
+    // callback, so `act` needs to be its async form to flush it before the
+    // assertion below runs.
+    // eslint-disable-next-line @typescript-eslint/require-await
     await act(async () => {
       gate.reject(new Error("First error"))
     })
@@ -210,6 +224,7 @@ describe("Bug Regressions", () => {
 
     // Late resolve attempt (e.g., duplicate event/retry wrap)
     const model = makeModel({ 0: chunk() }, 5)
+    // eslint-disable-next-line @typescript-eslint/require-await -- see above
     await act(async () => {
       try {
         gate.resolve(model)
@@ -321,19 +336,22 @@ describe("Property Tests (fast-check)", () => {
           const deferreds = paths.map(() => deferred<TextModel>())
 
           vi.mocked(loadTextModel).mockImplementation((path) => {
+            // idx is always found: path always comes from this same paths
+            // array (initial or a later rerender), and deferreds has one
+            // entry per path - both indexing operations below are safe.
             const idx = paths.indexOf(path)
-            return deferreds[idx].promise
+            return deferreds[idx]!.promise
           })
 
           const { result, rerender } = renderHook(
             ({ path }) =>
               useChunkedCode(path, { prettierParser: "typescript" }),
-            { initialProps: { path: paths[0] } }
+            { initialProps: { path: paths[0]! } }
           )
 
           // Step through rapid path changes
           for (let i = 1; i < paths.length; i++) {
-            rerender({ path: paths[i] })
+            rerender({ path: paths[i]! })
           }
 
           // Shuffle resolution order
@@ -342,18 +360,18 @@ describe("Property Tests (fast-check)", () => {
             .sort(() => Math.random() - 0.5)
 
           for (const idx of resolutionOrder) {
-            const pathName = paths[idx]
+            const pathName = paths[idx]!
             const model = makeModel(
               { 0: chunk({ content: `content-${pathName}` }) },
               10
             )
             await act(async () => {
-              deferreds[idx].resolve(model)
-              await deferreds[idx].promise
+              deferreds[idx]!.resolve(model)
+              await deferreds[idx]!.promise
             })
           }
 
-          const lastPath = paths[paths.length - 1]
+          const lastPath = paths[paths.length - 1]!
           await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
           expect(result.current.currentChunk?.content).toBe(
             `content-${lastPath}`
