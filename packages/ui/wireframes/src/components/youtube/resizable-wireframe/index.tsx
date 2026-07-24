@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import type { JSX, ReactNode } from "react"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
@@ -17,6 +17,17 @@ import type {
   SlotId,
 } from "some-types-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
+
+/**
+ * A region can be bound by more than one active lifetime at once - most
+ * visibly during a scene-transition crossfade, where the outgoing and
+ * incoming scene are briefly both "active" and can bind the same slot. Each
+ * entry's `key` is `${lifetime.id}:${layoutIndex}` - lifetime id alone in
+ * case one lifetime's scene defines the same region across more than one
+ * `ui` layout entry (unusual, but not impossible) - stable across renders so
+ * a mid-transition panel isn't remounted every tick.
+ */
+type PanelEntry = { key: string; render: () => ReactNode }
 
 type Edge = "left" | "right" | "top" | "bottom"
 
@@ -102,18 +113,18 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
-    const panels: Partial<Record<SlotId, Array<() => ReactNode>>> = {}
+    const panels: Partial<Record<SlotId, Array<PanelEntry>>> = {}
 
     for (const lifetime of activeLifetimes) {
       const scene = lifetime.kind.Scene
       if (!scene.ui) continue
 
-      for (const layout of scene.ui) {
+      scene.ui.forEach((layout, layoutIndex) => {
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         for (const [region, panel] of Object.entries(
           layout.panels ?? {}
         ) as Array<[SlotId, { registry_key: K; props?: unknown }]>) {
-          const factory = (): ReactNode =>
+          const render = (): ReactNode =>
             renderRegistryComponent(
               componentRegistry,
               panel.registry_key,
@@ -126,16 +137,19 @@ export const OrchestratedYouTubeViewport = <K extends string>({
             )
 
           panels[region] ??= []
-          panels[region].push(factory)
+          panels[region].push({ key: `${lifetime.id}:${layoutIndex}`, render })
         }
-      }
+      })
     }
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return Object.fromEntries(
-      Object.entries(panels).map(([k, factories]) => [
+      Object.entries(panels).map(([k, entries]) => [
         k,
-        (): ReactNode => (factories ?? []).map((f) => f()),
+        (): ReactNode =>
+          (entries ?? []).map((entry) => (
+            <Fragment key={entry.key}>{entry.render()}</Fragment>
+          )),
       ])
     ) as Record<SlotId, () => ReactNode>
   }, [activeLifetimes, componentRegistry])
