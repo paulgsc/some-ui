@@ -26,6 +26,12 @@ let coreInstance: HangulGameCore | null = null
 // this to detect a mode switch on an already-loaded core.
 let loadedMode: GameMode | null = null
 
+// True once importModule has actually run and constructed a core - as
+// opposed to loadedMode's null-ness, which flips to non-null *during* that
+// same construction, before loadHangulWasm's own post-await check runs (see
+// loadHangulWasm's forceReset handling for why this distinction matters).
+let hasConstructedCore = false
+
 const loader = createWasmLoader<WasmGameBridge>({
   importModule: async () => {
     const module = await import("@some-ui/hangul-game-core")
@@ -44,6 +50,7 @@ const loader = createWasmLoader<WasmGameBridge>({
     )
     coreInstance = core
     loadedMode = pendingMode
+    hasConstructedCore = true
     return new WasmGameBridge(core, pendingMode)
   },
   errorPolicy: "resolve-null",
@@ -74,19 +81,33 @@ export function getBridgeInstance(): WasmGameBridge | null {
  * reconstruct the WASM object - mode/word_pool are session lifecycle state
  * a player can legitimately change mid-session, the same way reset()
  * already changes stats/board state on the existing core.
+ *
+ * `forceReset` covers a case mode-diffing alone cannot: this loader is a
+ * page-wide singleton, so it has no concept of "session" at all - only
+ * "what mode is currently loaded." Two *different* sessions that happen to
+ * both play, say, "completion" mode look identical to this function, so
+ * without forceReset the second session would silently inherit the first
+ * one's board/stats. `useHangulGameWasm` passes `true` on a fresh hook
+ * instance's own first successful init - i.e. exactly when a new
+ * `HangulHexGrid` mount (a new session, per its caller's `key={session.id}`)
+ * needs a guaranteed-clean engine regardless of whether the mode string
+ * happens to match whatever the previous session left loaded.
  */
 export async function loadHangulWasm(
   config?: Partial<GameConfig>,
   mode: GameMode = "completion",
-  wordPool: Array<ChallengeSeed> = []
+  wordPool: Array<ChallengeSeed> = [],
+  forceReset = false
 ): Promise<WasmGameBridge | null> {
+  const wasAlreadyConstructed = hasConstructedCore
+
   pendingConfig = config
   pendingMode = mode
   pendingWordPool = wordPool
 
   const bridge = await loader.load()
 
-  if (bridge && loadedMode !== null && loadedMode !== mode) {
+  if (wasAlreadyConstructed && bridge && (loadedMode !== mode || forceReset)) {
     bridge.changeMode(mode, wordPool)
     loadedMode = mode
   }
@@ -102,4 +123,5 @@ export function resetHangulWasm(): void {
   loader.reset()
   coreInstance = null
   loadedMode = null
+  hasConstructedCore = false
 }

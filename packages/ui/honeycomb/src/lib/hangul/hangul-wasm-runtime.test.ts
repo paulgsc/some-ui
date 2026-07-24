@@ -86,3 +86,37 @@ describe("loadHangulWasm mode switching", () => {
     expect(second).toBe(first)
   })
 })
+
+describe("loadHangulWasm forceReset", () => {
+  // Regression coverage: this loader is a page-wide singleton with no
+  // concept of "session" - only "what mode is currently loaded." Without
+  // forceReset, a second *session* that happens to play the same mode as a
+  // prior one looked identical to a same-mode no-op call, so its
+  // completed-cells/stats silently inherited the previous session's board
+  // instead of starting clean (the bug useHangulGameWasm's
+  // isFirstInitForThisInstance flag exists to close).
+  it("calls changeMode even when the mode is unchanged, when forceReset is true", async () => {
+    await loadHangulWasm(undefined, "completion", [])
+    expect(changeMode).not.toHaveBeenCalled()
+
+    await loadHangulWasm(undefined, "completion", [], true)
+
+    expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
+    expect(changeMode).toHaveBeenCalledTimes(1)
+    expect(changeMode).toHaveBeenLastCalledWith("completion", [])
+  })
+
+  it("does not call changeMode on the very first load, even with forceReset true", async () => {
+    await loadHangulWasm(undefined, "completion", [], true)
+
+    expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
+    expect(changeMode).not.toHaveBeenCalled()
+  })
+
+  it("still only calls changeMode once for a forceReset call, not twice", async () => {
+    await loadHangulWasm(undefined, "completion", [])
+    await loadHangulWasm(undefined, "vocabulary", [], true)
+
+    expect(changeMode).toHaveBeenCalledTimes(1)
+  })
+})

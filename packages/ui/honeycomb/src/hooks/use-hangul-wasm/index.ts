@@ -40,9 +40,10 @@ export type UseHangulGameWasmReturn = {
 async function loadGameSystem(
   mode: GameMode,
   config?: Partial<GameConfig>,
-  wordPool?: Array<ChallengeSeed>
+  wordPool?: Array<ChallengeSeed>,
+  forceReset?: boolean
 ): Promise<WasmGameBridge> {
-  const instance = await loadHangulWasm(config, mode, wordPool)
+  const instance = await loadHangulWasm(config, mode, wordPool, forceReset)
   if (!instance) {
     throw new Error(
       getLastError()?.message ?? "Unknown error loading Hangul WASM"
@@ -74,11 +75,26 @@ export function useHangulGameWasm({
   const initialize = useCallback(async (): Promise<void> => {
     if (initializedRef.current && loadedModeRef.current === mode) return
 
+    // This loader is a page-wide singleton with no concept of "session" -
+    // only "what mode is currently loaded" (see loadHangulWasm's own doc
+    // comment). A fresh hook instance's first init (a new HangulHexGrid
+    // mount - a new session, per its caller's `key={session.id}`) must
+    // force a real engine reset even if the singleton's last-loaded mode
+    // already happens to equal `mode` (e.g. two different sessions both
+    // playing "completion"), or the new session would silently inherit the
+    // previous one's board/stats.
+    const isFirstInitForThisInstance = !initializedRef.current
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const instance = await loadGameSystem(mode, config, wordPool)
+      const instance = await loadGameSystem(
+        mode,
+        config,
+        wordPool,
+        isFirstInitForThisInstance
+      )
       setBridge(instance)
       setIsInitialized(true)
       initializedRef.current = true
