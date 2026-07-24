@@ -16,7 +16,21 @@ import type {
   ComponentRegistry,
   SlotId,
 } from "some-types-utils"
+import type { ComponentEnhancer } from "some-ui-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
+
+/**
+ * Applies `outer` around `inner` (if given) - both run, neither knows the
+ * other exists. Lets a caller's own enhancer (e.g. injecting a session
+ * identity) compose with this component's internal `withFocus`, rather than
+ * one having to replace the other.
+ */
+function composeEnhancers<P extends object>(
+  outer: ComponentEnhancer<P>,
+  inner?: ComponentEnhancer<P>
+): ComponentEnhancer<P> {
+  return (Component) => outer(inner ? inner(Component) : Component)
+}
 
 /**
  * A region can be bound by more than one active lifetime at once - most
@@ -73,6 +87,14 @@ type OrchestratedViewportProps<K extends string> = {
     deltaPx: number,
     containerSizePx: number
   ) => void
+
+  /**
+   * Caller-supplied enhancer composed alongside this component's own
+   * internal `withFocus`, so a consumer can inject whatever cross-cutting
+   * context its registry components need (dependency inversion - this
+   * component stays unaware of what, if anything, gets injected).
+   */
+  enhanceComponent?: ComponentEnhancer
 }
 
 function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
@@ -98,6 +120,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   transitionMs = 300,
   collapseUnbound = true,
   onLeafResize,
+  enhanceComponent,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
@@ -130,7 +153,10 @@ export const OrchestratedYouTubeViewport = <K extends string>({
               panel.registry_key,
               panel.props ?? {},
               {
-                enhanceComponent: withFocus(region),
+                enhanceComponent: composeEnhancers(
+                  withFocus(region),
+                  enhanceComponent
+                ),
                 withErrorBoundary: true,
                 withSuspense: true,
               }
@@ -152,7 +178,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           )),
       ])
     ) as Record<SlotId, () => ReactNode>
-  }, [activeLifetimes, componentRegistry])
+  }, [activeLifetimes, componentRegistry, enhanceComponent])
 
   const layout: SolvedNode<SlotId> | undefined = useMemo(() => {
     if (!rect) return
