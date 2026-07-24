@@ -36,6 +36,9 @@ export function toSceneConfig(
   const sceneName = instanceLabel
     ? `${activityId}-${instanceLabel}`
     : activityId
+  const componentKey = instanceLabel
+    ? `${activityId}-${instanceLabel}`
+    : activityId
 
   return {
     scene_name: sceneName,
@@ -46,7 +49,7 @@ export function toSceneConfig(
         panels: {
           mainContent: {
             registry_key: activity.registryKey,
-            props: activity.toSceneProps(config),
+            props: activity.toSceneProps({ ...config, key: componentKey }),
             children: [],
           },
         },

@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react"
 import { useEffect } from "react"
 import type { AudioEvent } from "@honeycomb/hooks/use-game-audio"
 import type { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
@@ -17,24 +18,22 @@ type UseKeyboardInputProps = {
   isInitialized: boolean
   isPaused: boolean
   keyboardManager: KeyboardInputManager
-  setActiveCharacters: React.Dispatch<
-    React.SetStateAction<Map<string, CharacterWithLifetime>>
+  setActiveCharacters: Dispatch<
+    SetStateAction<Map<string, CharacterWithLifetime>>
   >
-  setStats: React.Dispatch<
-    React.SetStateAction<GameStats & { accuracy: number }>
-  >
-  setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
-  setKeyBuffer: React.Dispatch<React.SetStateAction<string>>
-  setShowSuccessFeedback: React.Dispatch<React.SetStateAction<boolean>>
-  setLastPoints: React.Dispatch<React.SetStateAction<number>>
-  setAmbiguousCharacters: React.Dispatch<React.SetStateAction<Array<string>>>
+  setStats: Dispatch<SetStateAction<GameStats & { accuracy: number }>>
+  setTimingParams: Dispatch<SetStateAction<TimingParams>>
+  setKeyBuffer: Dispatch<SetStateAction<string>>
+  setShowSuccessFeedback: Dispatch<SetStateAction<boolean>>
+  setLastPoints: Dispatch<SetStateAction<number>>
+  setAmbiguousCharacters: Dispatch<SetStateAction<Array<string>>>
   playSound: (event: AudioEvent) => void
   /** Tracks the currently in-progress multi-token challenge, if any (#426). */
-  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
+  setWordProgress?: Dispatch<SetStateAction<WordProgress | null>>
   /** The just-completed word's glyph text, for the "Celebrate" ceremony (#426). */
-  setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
+  setCelebrationWord?: Dispatch<SetStateAction<string | undefined>>
   /** Misses observed since the tracked word spawned, for #762's hint escalation. */
-  setMissCount?: React.Dispatch<React.SetStateAction<number>>
+  setMissCount?: Dispatch<SetStateAction<number>>
 }
 
 export const useKeyboardInput = ({
@@ -144,23 +143,21 @@ export const useKeyboardInput = ({
 // ============================================================================
 
 type EventHandlers = {
-  setActiveCharacters: React.Dispatch<
-    React.SetStateAction<Map<string, CharacterWithLifetime>>
+  setActiveCharacters: Dispatch<
+    SetStateAction<Map<string, CharacterWithLifetime>>
   >
-  setStats: React.Dispatch<
-    React.SetStateAction<GameStats & { accuracy: number }>
-  >
-  setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
-  setKeyBuffer: React.Dispatch<React.SetStateAction<string>>
-  setShowSuccessFeedback: React.Dispatch<React.SetStateAction<boolean>>
-  setLastPoints: React.Dispatch<React.SetStateAction<number>>
-  setAmbiguousCharacters: React.Dispatch<React.SetStateAction<Array<string>>>
+  setStats: Dispatch<SetStateAction<GameStats & { accuracy: number }>>
+  setTimingParams: Dispatch<SetStateAction<TimingParams>>
+  setKeyBuffer: Dispatch<SetStateAction<string>>
+  setShowSuccessFeedback: Dispatch<SetStateAction<boolean>>
+  setLastPoints: Dispatch<SetStateAction<number>>
+  setAmbiguousCharacters: Dispatch<SetStateAction<Array<string>>>
   playSound: (event: AudioEvent) => void
   gameBridge: WasmGameBridge
   keyboardManager: KeyboardInputManager
-  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
-  setCelebrationWord?: React.Dispatch<React.SetStateAction<string | undefined>>
-  setMissCount?: React.Dispatch<React.SetStateAction<number>>
+  setWordProgress?: Dispatch<SetStateAction<WordProgress | null>>
+  setCelebrationWord?: Dispatch<SetStateAction<string | undefined>>
+  setMissCount?: Dispatch<SetStateAction<number>>
 }
 
 function processGameEvent(event: GameEvent, handlers: EventHandlers): void {

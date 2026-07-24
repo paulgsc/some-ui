@@ -23,7 +23,7 @@ export function useEditModeHotkey(active: boolean): [boolean, () => void] {
     if (!active) return
 
     function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key.toLowerCase() !== "e" || e.metaKey || e.ctrlKey || e.altKey) {
+      if (e.key.toLowerCase() !== "{" || e.metaKey || e.ctrlKey || e.altKey) {
         return
       }
       if (isTypingTarget(e.target)) return

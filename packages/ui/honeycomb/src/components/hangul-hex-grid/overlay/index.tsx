@@ -77,13 +77,6 @@ export const HangulHexGrid = ({
   // for "standard" is the engine's own default (no override present).
   const hideRomanizationStreak =
     config.hideRomanizationStreak ?? DEFAULT_GAME_CONFIG.hideRomanizationStreak
-  const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
-    autoStart: true,
-    mode,
-    config,
-    sessionKey,
-  })
-
   const [keyboardManager] = useState(() => new KeyboardInputManager())
   const [activeCharacters, setActiveCharacters] = useState<
     Map<string, CharacterWithLifetime>
@@ -128,6 +121,13 @@ export const HangulHexGrid = ({
     },
     []
   )
+
+  const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
+    autoStart: true,
+    mode,
+    config,
+    sessionKey,
+  })
 
   // Initialize audio
   const { unlockAudio, playSound } = useGameAudio({
