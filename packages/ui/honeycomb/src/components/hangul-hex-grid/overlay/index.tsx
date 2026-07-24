@@ -48,11 +48,21 @@ type HangulHexGridProps = {
    * @default "standard"
    */
   difficulty?: DifficultyPreset
+  /**
+   * Opaque identity of whatever session/instance is currently placing this
+   * component - this package doesn't interpret it, only forwards it so the
+   * WASM loader singleton can tell "a new session started" apart from "the
+   * same session continues," independent of whether `mode` also changed
+   * (see useHangulGameWasm). Omit if the host has no such concept (e.g.
+   * Storybook) - the engine falls back to mode-only diffing.
+   */
+  sessionKey?: string
 }
 
 export const HangulHexGrid = ({
   mode = "completion",
   difficulty,
+  sessionKey,
 }: HangulHexGridProps): JSX.Element => {
   // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
   // initialize() callback stays referentially stable across re-renders that
@@ -71,6 +81,7 @@ export const HangulHexGrid = ({
     autoStart: true,
     mode,
     config,
+    sessionKey,
   })
 
   const [keyboardManager] = useState(() => new KeyboardInputManager())

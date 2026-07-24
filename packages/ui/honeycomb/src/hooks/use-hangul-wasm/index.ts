@@ -22,6 +22,11 @@ export type UseHangulGameWasmOptions = {
    * callers only need to override it for a curated subset.
    */
   wordPool?: Array<ChallengeSeed>
+  /**
+   * Opaque session/instance identity, forwarded to loadHangulWasm unchanged
+   * - see its own doc comment for why this exists alongside mode-diffing.
+   */
+  sessionKey?: string
 }
 
 export type UseHangulGameWasmReturn = {
@@ -41,9 +46,9 @@ async function loadGameSystem(
   mode: GameMode,
   config?: Partial<GameConfig>,
   wordPool?: Array<ChallengeSeed>,
-  forceReset?: boolean
+  sessionKey?: string
 ): Promise<WasmGameBridge> {
-  const instance = await loadHangulWasm(config, mode, wordPool, forceReset)
+  const instance = await loadHangulWasm(config, mode, wordPool, sessionKey)
   if (!instance) {
     throw new Error(
       getLastError()?.message ?? "Unknown error loading Hangul WASM"
@@ -57,6 +62,7 @@ export function useHangulGameWasm({
   mode,
   autoStart = true,
   wordPool = HANGUL_WORD_POOL,
+  sessionKey,
 }: UseHangulGameWasmOptions): UseHangulGameWasmReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -64,52 +70,50 @@ export function useHangulGameWasm({
   const [bridge, setBridge] = useState<WasmGameBridge | null>(null)
 
   const initializedRef = useRef(false)
-  // The mode this hook instance last successfully initialized against - not
-  // necessarily the current `mode` prop, if the caller re-renders with a
-  // different mode on an already-initialized instance rather than
+  // What this hook instance last successfully initialized against - not
+  // necessarily the current props, if the caller re-renders with a new mode
+  // and/or sessionKey on an already-initialized instance rather than
   // remounting. Compared below to force a fresh initialize() in that case,
-  // instead of initializedRef's guard silently keeping the stale mode.
+  // instead of initializedRef's guard silently keeping the stale values.
+  // Tracked as an explicit pair, not inferred from hook lifecycle timing:
+  // mode can legitimately change mid-session (a live mode switch) and
+  // sessionKey can legitimately stay the same across a mode switch or change
+  // independent of mode (a new session that happens to reuse the same
+  // mode) - either difference alone must trigger a fresh load.
   const loadedModeRef = useRef<GameMode | null>(null)
+  const loadedSessionKeyRef = useRef<string | undefined>(undefined)
 
   // Wrap inside useCallback to safely add it to useEffect dependency arrays
   const initialize = useCallback(async (): Promise<void> => {
-    if (initializedRef.current && loadedModeRef.current === mode) return
-
-    // This loader is a page-wide singleton with no concept of "session" -
-    // only "what mode is currently loaded" (see loadHangulWasm's own doc
-    // comment). A fresh hook instance's first init (a new HangulHexGrid
-    // mount - a new session, per its caller's `key={session.id}`) must
-    // force a real engine reset even if the singleton's last-loaded mode
-    // already happens to equal `mode` (e.g. two different sessions both
-    // playing "completion"), or the new session would silently inherit the
-    // previous one's board/stats.
-    const isFirstInitForThisInstance = !initializedRef.current
+    if (
+      initializedRef.current &&
+      loadedModeRef.current === mode &&
+      loadedSessionKeyRef.current === sessionKey
+    ) {
+      return
+    }
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const instance = await loadGameSystem(
-        mode,
-        config,
-        wordPool,
-        isFirstInitForThisInstance
-      )
+      const instance = await loadGameSystem(mode, config, wordPool, sessionKey)
       setBridge(instance)
       setIsInitialized(true)
       initializedRef.current = true
       loadedModeRef.current = mode
+      loadedSessionKeyRef.current = sessionKey
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setIsLoading(false)
     }
-  }, [mode, config, wordPool])
+  }, [mode, config, wordPool, sessionKey])
 
-  // Explicit, safe autoStart initialization effect - also the mode-switch
-  // path: a mode change re-creates `initialize` (mode is in its dep array
-  // above), which re-runs this effect and, per initialize()'s own guard,
-  // performs a fresh load rather than a no-op.
+  // Explicit, safe autoStart initialization effect - also the mode/session
+  // switch path: a change to either re-creates `initialize` (both are in its
+  // dep array above), which re-runs this effect and, per initialize()'s own
+  // guard, performs a fresh load rather than a no-op.
   useEffect(() => {
     let active = true
 

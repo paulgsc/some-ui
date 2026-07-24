@@ -87,36 +87,52 @@ describe("loadHangulWasm mode switching", () => {
   })
 })
 
-describe("loadHangulWasm forceReset", () => {
+describe("loadHangulWasm sessionKey", () => {
   // Regression coverage: this loader is a page-wide singleton with no
-  // concept of "session" - only "what mode is currently loaded." Without
-  // forceReset, a second *session* that happens to play the same mode as a
-  // prior one looked identical to a same-mode no-op call, so its
-  // completed-cells/stats silently inherited the previous session's board
-  // instead of starting clean (the bug useHangulGameWasm's
-  // isFirstInitForThisInstance flag exists to close).
-  it("calls changeMode even when the mode is unchanged, when forceReset is true", async () => {
-    await loadHangulWasm(undefined, "completion", [])
+  // concept of "session" on its own - it only ever sees whatever the caller
+  // hands it. Two *different* sessions that happen to play the same mode
+  // were indistinguishable by mode alone, so the second one's
+  // completed-cells/stats silently inherited the first session's board
+  // instead of starting clean. sessionKey is an explicit, caller-supplied
+  // identity this function diffs against what it last saw - not something
+  // inferred from unrelated signals like component mount timing.
+  it("calls changeMode when sessionKey changes even though mode is unchanged", async () => {
+    await loadHangulWasm(undefined, "completion", [], "session-a")
     expect(changeMode).not.toHaveBeenCalled()
 
-    await loadHangulWasm(undefined, "completion", [], true)
+    await loadHangulWasm(undefined, "completion", [], "session-b")
 
     expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
     expect(changeMode).toHaveBeenCalledTimes(1)
     expect(changeMode).toHaveBeenLastCalledWith("completion", [])
   })
 
-  it("does not call changeMode on the very first load, even with forceReset true", async () => {
-    await loadHangulWasm(undefined, "completion", [], true)
+  it("does not call changeMode when both mode and sessionKey are unchanged", async () => {
+    await loadHangulWasm(undefined, "completion", [], "session-a")
+    await loadHangulWasm(undefined, "completion", [], "session-a")
 
     expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
     expect(changeMode).not.toHaveBeenCalled()
   })
 
-  it("still only calls changeMode once for a forceReset call, not twice", async () => {
-    await loadHangulWasm(undefined, "completion", [])
-    await loadHangulWasm(undefined, "vocabulary", [], true)
+  it("does not call changeMode on the very first load, even with a sessionKey present", async () => {
+    await loadHangulWasm(undefined, "completion", [], "session-a")
+
+    expect(hangulGameCoreCtor).toHaveBeenCalledTimes(1)
+    expect(changeMode).not.toHaveBeenCalled()
+  })
+
+  it("still only calls changeMode once when both mode and sessionKey change together", async () => {
+    await loadHangulWasm(undefined, "completion", [], "session-a")
+    await loadHangulWasm(undefined, "vocabulary", [], "session-b")
 
     expect(changeMode).toHaveBeenCalledTimes(1)
+  })
+
+  it("treats an absent sessionKey consistently across calls (no spurious reset)", async () => {
+    await loadHangulWasm(undefined, "completion", [])
+    await loadHangulWasm(undefined, "completion", [])
+
+    expect(changeMode).not.toHaveBeenCalled()
   })
 })

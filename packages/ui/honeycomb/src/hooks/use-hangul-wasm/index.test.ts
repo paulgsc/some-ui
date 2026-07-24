@@ -42,13 +42,13 @@ describe("autoStart", () => {
 
     await waitFor(() => expect(result.current.isInitialized).toBe(true))
 
-    // forceReset is true: a fresh hook instance's own first init, per
-    // isFirstInitForThisInstance.
+    // No sessionKey option was given, so undefined is forwarded as-is -
+    // loadHangulWasm's own comparison logic decides what that means.
     expect(loadHangulWasm).toHaveBeenCalledWith(
       undefined,
       "completion",
       HANGUL_WORD_POOL,
-      true
+      undefined
     )
     expect(result.current.gameBridge).toBe(bridge)
     expect(result.current.isLoading).toBe(false)
@@ -132,28 +132,23 @@ describe("mode switching", () => {
       expect(result.current.gameBridge).toBe(vocabularyBridge)
     )
     expect(loadHangulWasm).toHaveBeenCalledTimes(2)
-    // forceReset is false here: this instance was already initialized, so
-    // mode-diffing alone (loadHangulWasm's own concern) is what should
-    // trigger the reset, not a redundant forceReset.
+    // No sessionKey option was given on either render, so undefined is
+    // forwarded both times unchanged - it's mode-diffing alone (loadHangulWasm's
+    // own concern) that should trigger the reset here.
     expect(loadHangulWasm).toHaveBeenLastCalledWith(
       undefined,
       "vocabulary",
       HANGUL_WORD_POOL,
-      false
+      undefined
     )
   })
 
-  // Regression coverage for the actual cross-session bug: this loader is a
-  // page-wide singleton with no concept of "session," so a *new*
-  // HangulHexGrid instance (a new session) requesting the same mode a prior,
-  // now-unmounted instance last loaded must still signal forceReset=true -
-  // otherwise the new session silently inherits the old one's board/stats.
-  it("signals forceReset on a fresh instance's first init even if mode matches what was last loaded", async () => {
-    const bridge = { id: "fresh-instance-bridge" }
+  it("forwards a given sessionKey on initial mount", async () => {
+    const bridge = { id: "session-a-bridge" }
     vi.mocked(loadHangulWasm).mockResolvedValue(asWasmGameBridge(bridge))
 
     const { result } = renderHook(() =>
-      useHangulGameWasm({ mode: "completion" })
+      useHangulGameWasm({ mode: "completion", sessionKey: "session-a" })
     )
 
     await waitFor(() => expect(result.current.isInitialized).toBe(true))
@@ -162,7 +157,42 @@ describe("mode switching", () => {
       undefined,
       "completion",
       HANGUL_WORD_POOL,
-      true
+      "session-a"
+    )
+  })
+
+  // Regression coverage for the actual cross-session bug: a sessionKey change
+  // on an already-initialized instance (same mode, e.g. a new session reusing
+  // "completion") must still trigger a fresh load - initialize()'s guard
+  // compares sessionKey independently of mode, not just "has this instance
+  // ever initialized before."
+  it("re-initializes when sessionKey changes even though mode stays the same", async () => {
+    const sessionABridge = { id: "session-a-bridge" }
+    const sessionBBridge = { id: "session-b-bridge" }
+    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
+      asWasmGameBridge(sessionABridge)
+    )
+
+    const { result, rerender } = renderHook(
+      (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
+      { initialProps: { mode: "completion", sessionKey: "session-a" } }
+    )
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true))
+    expect(result.current.gameBridge).toBe(sessionABridge)
+
+    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
+      asWasmGameBridge(sessionBBridge)
+    )
+    rerender({ mode: "completion", sessionKey: "session-b" })
+
+    await waitFor(() => expect(result.current.gameBridge).toBe(sessionBBridge))
+    expect(loadHangulWasm).toHaveBeenCalledTimes(2)
+    expect(loadHangulWasm).toHaveBeenLastCalledWith(
+      undefined,
+      "completion",
+      HANGUL_WORD_POOL,
+      "session-b"
     )
   })
 

@@ -5,6 +5,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import type { SessionRecord } from "@/lib/tenant"
 
+import { SessionKeyProvider, withSessionKey } from "./session-key-context"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
@@ -38,7 +39,7 @@ export const SessionViewport = ({
           <p className="text-muted-foreground text-sm">Press Play to begin</p>
         </div>
       ) : (
-        <>
+        <SessionKeyProvider value={session.id}>
           <OrchestratedYouTubeViewport
             layoutTree={tree}
             activeLifetimes={effectiveLifetimes}
@@ -46,6 +47,7 @@ export const SessionViewport = ({
             enableFocus={false}
             collapseUnbound={!editMode}
             onLeafResize={onLeafResize}
+            enhanceComponent={withSessionKey}
           />
 
           {editMode && (
@@ -67,7 +69,7 @@ export const SessionViewport = ({
               ? "Editing layout — press E to exit"
               : "Press E to edit layout"}
           </button>
-        </>
+        </SessionKeyProvider>
       )}
     </div>
   )

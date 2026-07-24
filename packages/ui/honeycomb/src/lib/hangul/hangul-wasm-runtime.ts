@@ -21,15 +21,19 @@ let pendingMode: GameMode = "completion"
 let pendingWordPool: Array<ChallengeSeed> = []
 let coreInstance: HangulGameCore | null = null
 
-// The mode actually baked into the currently-loaded HangulGameCore (set on
+// What's actually baked into the currently-loaded HangulGameCore (set on
 // construction, and again by every changeMode call). loadHangulWasm() uses
-// this to detect a mode switch on an already-loaded core.
+// these two - independently - to detect either a mode switch or a session
+// change on an already-loaded core. Neither is inferred from caller
+// lifecycle timing (e.g. "is this the caller's first render"); both are
+// explicit values the caller hands in, compared as data.
 let loadedMode: GameMode | null = null
+let loadedSessionKey: string | undefined
 
 // True once importModule has actually run and constructed a core - as
 // opposed to loadedMode's null-ness, which flips to non-null *during* that
 // same construction, before loadHangulWasm's own post-await check runs (see
-// loadHangulWasm's forceReset handling for why this distinction matters).
+// loadHangulWasm's own comment for why this distinction matters).
 let hasConstructedCore = false
 
 const loader = createWasmLoader<WasmGameBridge>({
@@ -73,7 +77,9 @@ export function getBridgeInstance(): WasmGameBridge | null {
 /**
  * Load Hangul WASM module and initialize core & bridge.
  * Lazy, singleton, race-safe: the WASM module and HangulGameCore are
- * constructed exactly once per page session, never rebuilt.
+ * constructed exactly once per page session, never rebuilt or re-imported -
+ * `sessionKey` changes what state the existing engine is in, never whether
+ * the WASM binary itself gets reloaded.
  *
  * A request for a mode different from the one currently loaded is a runtime
  * state transition on the *existing* core (GameEngine::set_mode /
@@ -82,22 +88,26 @@ export function getBridgeInstance(): WasmGameBridge | null {
  * a player can legitimately change mid-session, the same way reset()
  * already changes stats/board state on the existing core.
  *
- * `forceReset` covers a case mode-diffing alone cannot: this loader is a
- * page-wide singleton, so it has no concept of "session" at all - only
- * "what mode is currently loaded." Two *different* sessions that happen to
- * both play, say, "completion" mode look identical to this function, so
- * without forceReset the second session would silently inherit the first
- * one's board/stats. `useHangulGameWasm` passes `true` on a fresh hook
- * instance's own first successful init - i.e. exactly when a new
- * `HangulHexGrid` mount (a new session, per its caller's `key={session.id}`)
- * needs a guaranteed-clean engine regardless of whether the mode string
- * happens to match whatever the previous session left loaded.
+ * `sessionKey` covers what mode-diffing alone cannot: this loader has no
+ * concept of "session" on its own - it only ever sees whatever the caller
+ * hands it. Two *different* sessions that happen to both play, say,
+ * "completion" mode are indistinguishable by mode alone, so without a
+ * session identity the second session would silently inherit the first
+ * one's board/stats. `sessionKey` is that identity: an opaque token this
+ * function never interprets, only diffs against what it last saw -
+ * `useHangulGameWasm` forwards whatever its own `sessionKey` option was
+ * (ultimately `session.id`, threaded down via `withSessionKey`, see
+ * apps/www's session-key-context). The caller that actually knows when a
+ * session has changed (the host app) is the one asserting that fact here;
+ * this loader only ever reads and compares it - never decides on its own
+ * that a "new session" must have started based on unrelated signals like
+ * when a component happened to mount.
  */
 export async function loadHangulWasm(
   config?: Partial<GameConfig>,
   mode: GameMode = "completion",
   wordPool: Array<ChallengeSeed> = [],
-  forceReset = false
+  sessionKey?: string
 ): Promise<WasmGameBridge | null> {
   const wasAlreadyConstructed = hasConstructedCore
 
@@ -107,21 +117,28 @@ export async function loadHangulWasm(
 
   const bridge = await loader.load()
 
-  if (wasAlreadyConstructed && bridge && (loadedMode !== mode || forceReset)) {
+  const sessionChanged =
+    wasAlreadyConstructed && loadedSessionKey !== sessionKey
+  const modeChanged = wasAlreadyConstructed && loadedMode !== mode
+
+  if (bridge && wasAlreadyConstructed && (modeChanged || sessionChanged)) {
     bridge.changeMode(mode, wordPool)
     loadedMode = mode
   }
+
+  loadedSessionKey = sessionKey
 
   return bridge
 }
 
 /**
- * Reset runtime (HMR, test cleanup) - not part of the normal mode-switch
- * flow anymore; see loadHangulWasm's own doc comment.
+ * Reset runtime (HMR, test cleanup) - not part of the normal mode/session
+ * switch flow anymore; see loadHangulWasm's own doc comment.
  */
 export function resetHangulWasm(): void {
   loader.reset()
   coreInstance = null
   loadedMode = null
+  loadedSessionKey = undefined
   hasConstructedCore = false
 }
