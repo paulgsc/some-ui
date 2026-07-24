@@ -16,21 +16,7 @@ import type {
   ComponentRegistry,
   SlotId,
 } from "some-types-utils"
-import type { ComponentEnhancer } from "some-ui-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
-
-/**
- * Applies `outer` around `inner` (if given) - both run, neither knows the
- * other exists. Lets a caller's own enhancer (e.g. injecting a session
- * identity) compose with this component's internal `withFocus`, rather than
- * one having to replace the other.
- */
-function composeEnhancers<P extends object>(
-  outer: ComponentEnhancer<P>,
-  inner?: ComponentEnhancer<P>
-): ComponentEnhancer<P> {
-  return (Component) => outer(inner ? inner(Component) : Component)
-}
 
 /**
  * A region can be bound by more than one active lifetime at once - most
@@ -89,12 +75,15 @@ type OrchestratedViewportProps<K extends string> = {
   ) => void
 
   /**
-   * Caller-supplied enhancer composed alongside this component's own
-   * internal `withFocus`, so a consumer can inject whatever cross-cutting
-   * context its registry components need (dependency inversion - this
-   * component stays unaware of what, if anything, gets injected).
+   * Plain values merged onto every rendered panel's own props, alongside
+   * whatever the persisted scene already supplies - lets a caller thread
+   * cross-cutting, runtime-only facts (e.g. a session identity, or whether
+   * something else currently needs exclusive control) down to registry
+   * components uniformly, regardless of which `registry_key` a given panel
+   * happens to be. This component never interprets the values, only merges
+   * them - so it stays unaware of what, if anything, is being injected.
    */
-  enhanceComponent?: ComponentEnhancer
+  extraProps?: Record<string, unknown>
 }
 
 function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
@@ -120,7 +109,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   transitionMs = 300,
   collapseUnbound = true,
   onLeafResize,
-  enhanceComponent,
+  extraProps,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
@@ -151,12 +140,13 @@ export const OrchestratedYouTubeViewport = <K extends string>({
             renderRegistryComponent(
               componentRegistry,
               panel.registry_key,
-              panel.props ?? {},
               {
-                enhanceComponent: composeEnhancers(
-                  withFocus(region),
-                  enhanceComponent
-                ),
+                // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- persisted scene props are typed unknown; spreading is safe regardless of shape
+                ...(panel.props as Record<string, unknown> | undefined),
+                ...extraProps,
+              },
+              {
+                enhanceComponent: withFocus(region),
                 withErrorBoundary: true,
                 withSuspense: true,
               }
@@ -178,7 +168,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           )),
       ])
     ) as Record<SlotId, () => ReactNode>
-  }, [activeLifetimes, componentRegistry, enhanceComponent])
+  }, [activeLifetimes, componentRegistry, extraProps])
 
   const layout: SolvedNode<SlotId> | undefined = useMemo(() => {
     if (!rect) return

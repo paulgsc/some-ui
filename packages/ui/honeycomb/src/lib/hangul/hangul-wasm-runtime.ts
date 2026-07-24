@@ -96,8 +96,10 @@ export function getBridgeInstance(): WasmGameBridge | null {
  * one's board/stats. `sessionKey` is that identity: an opaque token this
  * function never interprets, only diffs against what it last saw -
  * `useHangulGameWasm` forwards whatever its own `sessionKey` option was
- * (ultimately `session.id`, threaded down via `withSessionKey`, see
- * apps/www's session-key-context). The caller that actually knows when a
+ * (ultimately `session.id`, published to the shared session-context store by
+ * apps/www's SessionViewport and merged into this component's props by
+ * OrchestratedYouTubeViewport's `extraProps` - see some-ui-utils's
+ * session-context-store). The caller that actually knows when a
  * session has changed (the host app) is the one asserting that fact here;
  * this loader only ever reads and compares it - never decides on its own
  * that a "new session" must have started based on unrelated signals like

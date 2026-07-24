@@ -1,11 +1,17 @@
 import type { JSX } from "react"
+import { useEffect, useMemo } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
-import { useSceneLifetimes } from "some-ui-utils"
+import {
+  setSessionKey,
+  setSuspended,
+  useSceneLifetimes,
+  useSessionKey,
+  useSuspended,
+} from "some-ui-utils"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import type { SessionRecord } from "@/lib/tenant"
 
-import { SessionKeyProvider, withSessionKey } from "./session-key-context"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
@@ -32,6 +38,27 @@ export const SessionViewport = ({
     onLeafResize,
   } = useLiveLayoutEditor(session, activeLifetimes)
 
+  // This is the layer with write authority over both facts - which session
+  // is live, and whether the layout editor currently needs exclusive
+  // control - so it's the only place that ever calls these setters. Every
+  // registry component downstream only ever sees the resolved values as
+  // plain props (extraProps below), never this store.
+  useEffect(() => {
+    setSessionKey(session.id)
+  }, [session.id])
+
+  useEffect(() => {
+    setSuspended(editMode)
+  }, [editMode])
+
+  const sessionKey = useSessionKey()
+  const suspended = useSuspended()
+
+  const extraProps = useMemo(
+    () => ({ sessionKey: sessionKey ?? undefined, suspended }),
+    [sessionKey, suspended]
+  )
+
   return (
     <div className="bg-muted relative w-full flex-1 min-h-0 overflow-hidden rounded-lg border">
       {activeLifetimes.length === 0 ? (
@@ -39,7 +66,7 @@ export const SessionViewport = ({
           <p className="text-muted-foreground text-sm">Press Play to begin</p>
         </div>
       ) : (
-        <SessionKeyProvider value={session.id}>
+        <>
           <OrchestratedYouTubeViewport
             layoutTree={tree}
             activeLifetimes={effectiveLifetimes}
@@ -47,7 +74,7 @@ export const SessionViewport = ({
             enableFocus={false}
             collapseUnbound={!editMode}
             onLeafResize={onLeafResize}
-            enhanceComponent={withSessionKey}
+            extraProps={extraProps}
           />
 
           {editMode && (
@@ -69,7 +96,7 @@ export const SessionViewport = ({
               ? "Editing layout — press E to exit"
               : "Press E to edit layout"}
           </button>
-        </SessionKeyProvider>
+        </>
       )}
     </div>
   )

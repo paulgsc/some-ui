@@ -57,12 +57,22 @@ type HangulHexGridProps = {
    * Storybook) - the engine falls back to mode-only diffing.
    */
   sessionKey?: string
+  /**
+   * True when something outside this component currently needs exclusive
+   * control (e.g. a host-level layout editor is open) - the game loop and
+   * keyboard capture idle while this is true, the same way they already do
+   * for the manual pause button, rather than silently continuing to spawn/
+   * tick/consume keystrokes underneath whatever else is now in control.
+   * Omit if the host has no such concept.
+   */
+  suspended?: boolean
 }
 
 export const HangulHexGrid = ({
   mode = "completion",
   difficulty,
   sessionKey,
+  suspended = false,
 }: HangulHexGridProps): JSX.Element => {
   // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
   // initialize() callback stays referentially stable across re-renders that
@@ -167,7 +177,7 @@ export const HangulHexGrid = ({
   useGameLoop({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGridFatal,
+    isPaused: isPaused || isGridFatal || suspended,
     setActiveCharacters,
     setStats,
     setTimingParams,
@@ -184,7 +194,7 @@ export const HangulHexGrid = ({
   useKeyboardInput({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGameOver || isGridFatal,
+    isPaused: isPaused || isGameOver || isGridFatal || suspended,
     keyboardManager,
     setActiveCharacters,
     setStats,
