@@ -71,6 +71,7 @@ export function useChunkedCode(
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("Failed to load next chunk:", err)
+      setStatus("ERROR")
       setError(
         err instanceof Error ? err : new Error(`Unknown error: ${String(err)}`)
       )
@@ -96,6 +97,7 @@ export function useChunkedCode(
       setCurrentChunk(undefined)
       setError(null)
       setCurrentLine(0)
+      loaderRef.current = null
 
       try {
         const result = await withTimeout(
@@ -125,6 +127,7 @@ export function useChunkedCode(
 
         setStatus("ERROR")
         setError(errorObj)
+        loaderRef.current = null
       }
     }
 
