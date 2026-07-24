@@ -1,5 +1,6 @@
 import { interviewQuestions } from "@some-ui/interview"
 import type { Question } from "@some-ui/interview"
+import { CHALLENGES } from "@some-ui/leetype"
 
 import type { ActivityDefinition, ActivityId } from "./types"
 
@@ -21,6 +22,21 @@ function filterInterviewQuestions(
   if (byCategory.length > 0) return byCategory
 
   return interviewQuestions
+}
+
+/**
+ * Resolves the composer's plain `difficulty` identifier into the actual
+ * challenge (title/description/tags/codePaths) Leetype's component expects -
+ * the "live player's job" this activity's `toSceneProps` previously deferred
+ * (see ActivityDefinition.toSceneProps's own doc comment), leaving every
+ * session's `path` empty and its loader permanently idle. Deterministic
+ * (first match) rather than random, so replaying a session shows the same
+ * challenge it did the first time.
+ */
+function pickLeetypeChallenge(
+  difficulty: unknown
+): (typeof CHALLENGES)[number] {
+  return CHALLENGES.find((c) => c.difficulty === difficulty) ?? CHALLENGES[0]
 }
 
 const honeycomb: ActivityDefinition = {
@@ -214,8 +230,8 @@ const leetype: ActivityDefinition = {
     durationMinutes: 10,
   },
   toSceneProps: (config) => ({
-    language: config.language,
-    difficulty: config.difficulty,
+    challenge: pickLeetypeChallenge(config.difficulty),
+    initialLanguage: config.language,
   }),
 }
 
