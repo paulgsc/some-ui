@@ -1,4 +1,4 @@
-# @some-ui/resume
+# @some-ui/assessment
 
 ## 0.1.0
 
@@ -21,48 +21,3 @@
     `@some-ui/overlays` package (all YouTube-chrome components with zero
     consumers) - both fully superseded by the real session player
     (`SessionViewport`, under `/sessions/$sessionId`).
-
-## 0.0.5
-
-### Patch Changes
-
-- Updated dependencies []:
-  - some-ui-utils@1.1.5
-  - some-ui-nfl@0.0.10
-  - some-ui-shared@0.0.10
-
-## 0.0.4
-
-### Patch Changes
-
-- Updated dependencies []:
-  - some-ui-utils@1.1.4
-  - some-ui-nfl@0.0.9
-  - some-ui-shared@0.0.9
-
-## 0.0.3
-
-### Patch Changes
-
-- Updated dependencies []:
-  - some-ui-utils@1.1.3
-  - some-ui-nfl@0.0.8
-  - some-ui-shared@0.0.8
-
-## 0.0.2
-
-### Patch Changes
-
-- Updated dependencies []:
-  - some-ui-utils@1.1.2
-  - some-ui-nfl@0.0.7
-  - some-ui-shared@0.0.7
-
-## 0.0.1
-
-### Patch Changes
-
-- Updated dependencies []:
-  - some-ui-nfl@0.0.6
-  - some-ui-utils@1.1.1
-  - some-ui-shared@0.0.6
