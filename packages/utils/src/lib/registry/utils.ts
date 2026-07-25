@@ -1,6 +1,6 @@
 import type { ComponentType } from "react"
 import { lazy } from "react"
-import type { ComponentRegistry, RegistryEntry } from "some-types-utils"
+import type { ComponentRegistry, RegistryEntry } from "@some-ui/types"
 
 /**
  * Overload 1: Default exports

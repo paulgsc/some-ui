@@ -1,4 +1,4 @@
-import type { ComponentRegistry } from "some-types-utils"
+import type { ComponentRegistry } from "@some-ui/types"
 import { lazyWithPreload } from "some-ui-utils"
 
 type RegistryKey =

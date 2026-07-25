@@ -1,4 +1,4 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 
 import type { SessionActivity } from "../activity-catalog"
 import type { StorageAdapter } from "./storage"

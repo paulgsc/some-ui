@@ -18,7 +18,7 @@
  *   lintText() with a virtual path.
  *
  * HOW TO RUN:
- *   pnpm --filter maishatu-eslint-kit gen:fixtures
+ *   pnpm --filter @some-ui/eslint-kit gen:fixtures
  *
  * WHEN TO RE-RUN:
  *   Any time you add or modify a test snippet in typescript.lint.test.ts.
@@ -101,7 +101,7 @@ async function write(fixtures: Array<FixtureFile>): Promise<void> {
 
 const tsconfig: FixtureFile = file(
   "tsconfig.json",
-  JSON.stringify(
+  `${JSON.stringify(
     {
       compilerOptions: {
         strict: true,
@@ -117,7 +117,7 @@ const tsconfig: FixtureFile = file(
     },
     null,
     2
-  ) + "\n"
+  )}\n`
 )
 
 // ── explicit-function-return-type ─────────────────────────────────────────

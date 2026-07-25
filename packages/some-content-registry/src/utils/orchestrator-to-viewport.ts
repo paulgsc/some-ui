@@ -4,8 +4,8 @@ import type {
   WasmCycleName,
   WasmItem,
   YouTubeRegion,
-} from "some-types-utils"
-import { PolyhedronFactory } from "some-types-utils"
+} from "@some-ui/types"
+import { PolyhedronFactory } from "@some-ui/types"
 
 /**
  * Build viewport config for a single region

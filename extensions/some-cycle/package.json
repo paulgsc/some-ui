@@ -12,7 +12,7 @@
     "@types/webextension-polyfill": "^0.10.0",
     "eslint": "^10.6.0",
     "lucide-react": "^0.263.1",
-    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "web-ext": "^7.6.2",
     "webextension-polyfill": "^0.10.0"
   },

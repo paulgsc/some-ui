@@ -1,4 +1,4 @@
-import { extensionsRecommended } from "maishatu-eslint-kit"
+import { extensionsRecommended } from "@some-ui/eslint-kit"
 
 // vitest.config.ts references vitest/config which bundles vite@5 internally,
 // while the workspace uses vite@6. Including it in tsconfig.json causes

@@ -1,5 +1,5 @@
-import type { ViewportConfig } from "some-types-utils"
-import { validateViewportConfig } from "some-types-utils"
+import type { ViewportConfig } from "@some-ui/types"
+import { validateViewportConfig } from "@some-ui/types"
 
 import type { Viewport } from "./viewport"
 import { ViewportFactory } from "./viewport"

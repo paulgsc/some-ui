@@ -5,10 +5,12 @@ import BoredAnimation from "."
 type Meta = MetaObj<typeof BoredAnimation>
 type Story = StoryObj<typeof BoredAnimation>
 
-export default {
+const meta = {
   title: "Animations/Components/Bored",
   component: BoredAnimation,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 export const Complete: Story = {}
 

@@ -10,8 +10,8 @@
  * No discovery logic, no loading logic, purely policy.
  */
 
-import type { SceneConfig } from "some-types-utils"
-import { SceneConfigSchema, UILayoutIntentSchema } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
+import { SceneConfigSchema, UILayoutIntentSchema } from "@some-ui/types"
 import {
   HttpFileDiscovery,
   HttpJsonLoader,

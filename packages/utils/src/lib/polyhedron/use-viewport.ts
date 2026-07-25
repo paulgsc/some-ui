@@ -3,8 +3,8 @@ import type {
   ViewportConfig,
   WasmTransition,
   WasmViewportState,
-} from "some-types-utils"
-import { TransitionFactory } from "some-types-utils"
+} from "@some-ui/types"
+import { TransitionFactory } from "@some-ui/types"
 
 import type { Viewport } from "./viewport"
 import { ViewportEngine } from "./viewport-engine"

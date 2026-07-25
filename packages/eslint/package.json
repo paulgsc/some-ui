@@ -1,5 +1,5 @@
 {
-  "name": "maishatu-eslint-kit",
+  "name": "@some-ui/eslint-kit",
   "private": true,
   "version": "2.0.0",
   "description": "Strict ESLint flat config kit for some-ui and related repos",

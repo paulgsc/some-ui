@@ -1,4 +1,4 @@
-import type { SlotId } from "some-types-utils"
+import type { SlotId } from "@some-ui/types"
 import { z } from "zod"
 import { create } from "zustand"
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import type { OrchestratorCommand } from "some-types-utils"
+import type { OrchestratorCommand } from "@some-ui/types"
 
 import { useOrchestratorStore } from "../../../context/zustand-store"
 import type { EngineState } from "./mock-orchestrator-engine"

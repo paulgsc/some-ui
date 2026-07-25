@@ -5,7 +5,7 @@
   "dependencies": {
     "lucide-react": "^0.522.0",
     "some-ui-shared": "workspace:*",
-    "some-types-utils": "workspace:*",
+    "@some-ui/types": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "some-ui-utils": "workspace:*",

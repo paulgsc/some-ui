@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    name: "maishatu-eslint-kit",
+    name: "@some-ui/eslint-kit",
     environment: "node",
     include: ["tests/**/*.test.ts", "fixtures"],
     exclude: ["tests/lint-fixtures/**"],

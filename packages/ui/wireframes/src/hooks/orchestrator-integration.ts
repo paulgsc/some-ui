@@ -1,10 +1,10 @@
 import { useCallback, useEffect } from "react"
+import type { SceneConfig } from "@some-ui/types"
 import {
   selectResolvedFocus,
   useFocusStore,
 } from "@wireframes/hooks/focus-system"
 import type { ResolvedFocus } from "@wireframes/hooks/focus-system"
-import type { SceneConfig } from "some-types-utils"
 
 /* -----------------------------------------------------------
  * Scene registry

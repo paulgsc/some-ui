@@ -1,5 +1,5 @@
 {
-  "name": "some-types-utils",
+  "name": "@some-ui/types",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
     "lint:fix": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint --fix",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {

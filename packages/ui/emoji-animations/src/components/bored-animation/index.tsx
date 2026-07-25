@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import type { FC } from "react"
 import BatteryIndicator from "@emoji/components/battery-indicator"
 import BoredEmoji from "@emoji/components/bored-emoji"
@@ -12,11 +11,9 @@ type BoredAnimationProps = {
 
 const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
   const { charge, isCharging, toggleCharging, delCharge } = useBatteryState()
-  const [isSleeping, setIsSleeping] = useState(false)
 
-  useEffect(() => {
-    setIsSleeping(charge === 0)
-  }, [charge])
+  // Calculate derived state directly during render
+  const isSleeping = charge === 0
 
   return (
     <div
@@ -40,7 +37,7 @@ const BoredAnimation: FC<BoredAnimationProps> = ({ className }) => {
         {isCharging ? (
           "Charging!"
         ) : (
-          <p className="size-full shrink-0 text-center  text-sm capitalize tracking-tight">
+          <p className="size-full shrink-0 text-center text-sm capitalize tracking-tight">
             <span className="group-hover:hidden group-focus:hidden">
               motivation
             </span>

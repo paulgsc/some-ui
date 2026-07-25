@@ -16,7 +16,7 @@ directions:
 
 The balance: **hoist the _contract_ and the _typestate_ here; keep the
 _application_ isolated per workspace; enforce the idioms with a shared linter
-([`maishatu-eslint-kit`](../../packages/eslint)) rather than a shared runtime.**
+([`@some-ui/eslint-kit`](../../packages/eslint)) rather than a shared runtime.**
 
 ## 📜 The Good-Citizen Charter
 
@@ -32,7 +32,7 @@ exist to uphold it.
 | ------------------------------------------- | -------------------------------------------- | ---------------------------------------------- |
 | Commands / keybindings                      | shared **typestate** (one definition)        | `@some-extension/common`                       |
 | Isolation, fullscreen, disposal, attention  | shared **primitives** (reference impls)      | `@some-extension/common`                       |
-| Namespacing, storage, z-index, logic-purity | shared **lint rules** (per-workspace config) | [`maishatu-eslint-kit`](../../packages/eslint) |
+| Namespacing, storage, z-index, logic-purity | shared **lint rules** (per-workspace config) | [`@some-ui/eslint-kit`](../../packages/eslint) |
 | Schema changes from any of the above        | **per-workspace, isolated migrations**       | each workspace's migration ledger              |
 
 Migrations are namespaced per workspace: workspace `w` may have applied `m`

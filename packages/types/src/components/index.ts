@@ -1,6 +1,5 @@
 export { createEnumSchema } from "./create-enum-zod-schema"
 export * from "./now-playing"
-export * from "./range"
 export * from "./polyhedron"
 export * from "./obs-websocket"
 export * from "./orchestrator-types"

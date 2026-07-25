@@ -1,4 +1,3 @@
-import type { ZodIssue } from "zod"
 import { z } from "zod"
 
 /**
@@ -163,7 +162,7 @@ export function safeParseViewportConfig(
   return {
     success: false,
     error: result.error.issues
-      .map((e: ZodIssue) => `${e.path.join(".")}: ${e.message}`)
+      .map((e) => `${e.path.join(".")}: ${e.message}`)
       .join(", "),
   }
 }

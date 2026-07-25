@@ -47,6 +47,8 @@ export default defineConfig({
         "./packages/some-content/src"
       ),
 
+      "@ws": path.resolve(__dirname, "./packages/ws/src"),
+
       // --------------- Extensions ---------------
       "@drama": path.resolve(__dirname, "./extensions/some-drama/src"),
       "@tab": path.resolve(__dirname, "./extensions/tab-tracker/src"),

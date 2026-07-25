@@ -1,7 +1,7 @@
 import { useReducer } from "react"
 import type { EditorAction, EditorState } from "@slideshow/utils/scene-editor"
+import type { SceneConfig } from "@some-ui/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import type { SceneConfig } from "some-types-utils"
 
 import { EditSceneDialog } from "."
 

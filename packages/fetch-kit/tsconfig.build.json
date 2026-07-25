@@ -5,6 +5,8 @@
     "**/*.stories.tsx",
     "**/*.stories.ts",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "vite.config*.ts",
+    "vitest.*.ts"
   ]
 }

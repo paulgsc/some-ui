@@ -1,4 +1,4 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import type { SessionActivity } from "../activity-catalog"

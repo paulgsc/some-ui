@@ -5,7 +5,7 @@
   "dependencies": {
     "@some-ui/styles": "workspace:*",
     "lucide-react": "^0.562.0",
-    "some-types-utils": "workspace:*",
+    "@some-ui/types": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "some-ui-shared": "workspace:*",
     "@some-ui/slideshow": "workspace:*",

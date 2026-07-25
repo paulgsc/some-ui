@@ -1,7 +1,7 @@
 import type { FC, JSX } from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import type { ActiveLifetime } from "@some-ui/types"
 import { Activity, ChevronDown, Clock, Layers, LayoutGrid } from "lucide-react"
-import type { ActiveLifetime } from "some-types-utils"
 import { Badge, Card, ScrollArea } from "some-ui-shared"
 import {
   cn,

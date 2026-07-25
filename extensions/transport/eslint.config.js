@@ -1,4 +1,4 @@
-import { extensionsRecommended } from "maishatu-eslint-kit"
+import { extensionsRecommended } from "@some-ui/eslint-kit"
 
 const transportConfig = [
   ...extensionsRecommended,

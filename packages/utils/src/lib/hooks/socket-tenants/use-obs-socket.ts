@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from "react"
-import { useWebSocket } from "@some-ui/ws"
-import type { UseWebSocketOptions, WebSocketManager } from "@some-ui/ws"
 import type {
   IncomingEvent,
   ObsCommand,
   OutgoingObsEvent,
-} from "some-types-utils"
-import { IncomingEventSchema, OutgoingObsEventSchema } from "some-types-utils"
+} from "@some-ui/types"
+import { IncomingEventSchema, OutgoingObsEventSchema } from "@some-ui/types"
+import { useWebSocket } from "@some-ui/ws"
+import type { UseWebSocketOptions, WebSocketManager } from "@some-ui/ws"
 
 import { useObsStore } from "../../context/zustand-store/obs-store"
 

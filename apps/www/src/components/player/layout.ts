@@ -1,4 +1,4 @@
-import type { SlotId } from "some-types-utils"
+import type { SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
 /**

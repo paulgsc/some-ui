@@ -1,5 +1,5 @@
 // youtube-config.ts - Constraints that allow filling
-import type { SlotId, YouTubeRegion } from "some-types-utils"
+import type { SlotId, YouTubeRegion } from "@some-ui/types"
 
 export type { YouTubeRegion }
 

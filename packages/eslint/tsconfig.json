@@ -8,6 +8,7 @@
   "include": [
     "eslint.config.*.{cjs,mjs,js,ts}",
     "eslint.config.{cjs,mjs,js,ts}",
+    "scripts",
     "src",
     "tests",
     "vitest.config.*.{cjs,mjs,js,ts}"

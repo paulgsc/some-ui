@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef } from "react"
-import type { WebSocketManager } from "@some-ui/ws"
-import { useWebSocket } from "@some-ui/ws"
 import type {
   IncomingEvent,
   OrchestratorCommand,
   OutgoingMessage,
   SceneConfig,
-} from "some-types-utils"
-import { IncomingEventSchema, OutgoingMessageSchema } from "some-types-utils"
+} from "@some-ui/types"
+import { IncomingEventSchema, OutgoingMessageSchema } from "@some-ui/types"
+import type { WebSocketManager } from "@some-ui/ws"
+import { useWebSocket } from "@some-ui/ws"
 
 import { useOrchestratorStore } from "../../../context/zustand-store"
 

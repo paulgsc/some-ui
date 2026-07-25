@@ -4,7 +4,7 @@ import type {
   WasmCycleName,
   WasmTransition,
   WasmViewportState,
-} from "some-types-utils"
+} from "@some-ui/types"
 import {
   TransitionFactory,
   validateViewportConfig,
@@ -12,7 +12,7 @@ import {
   validateWasmPolyhedronType,
   validateWasmTransition,
   validateWasmViewportState,
-} from "some-types-utils"
+} from "@some-ui/types"
 
 /**
  * Viewport class - wraps a single viewport instance in the WASM manager

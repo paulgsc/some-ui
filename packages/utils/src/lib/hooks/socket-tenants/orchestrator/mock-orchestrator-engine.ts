@@ -4,7 +4,7 @@ import type {
   OrchestratorMode,
   OrchestratorState,
   SceneConfig,
-} from "some-types-utils"
+} from "@some-ui/types"
 
 /**
  * Pure simulation of the orchestrator FSM/clock. Kept free of React and

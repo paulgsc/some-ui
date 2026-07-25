@@ -3,12 +3,19 @@
   "compilerOptions": {
     "declarationDir": "./",
     "composite": true,
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "paths": {
       "@fkit/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": [
+    "eslint.config.js",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "test",
+    "src"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

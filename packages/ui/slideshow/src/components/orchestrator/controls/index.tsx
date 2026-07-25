@@ -1,6 +1,6 @@
 import type { FC } from "react"
+import type { SceneConfig } from "@some-ui/types"
 import { Pause, Play, RotateCcw, SkipForward, Square } from "lucide-react"
-import type { SceneConfig } from "some-types-utils"
 import { Badge, Button, Card } from "some-ui-shared"
 import { cn, selectIsRunning, useOrchestratorStore } from "some-ui-utils"
 

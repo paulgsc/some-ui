@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import type { WasmCycleName } from "some-types-utils"
+import type { WasmCycleName } from "@some-ui/types"
 
 type Rotation = {
   xRotation: number

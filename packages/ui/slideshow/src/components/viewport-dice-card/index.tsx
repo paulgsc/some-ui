@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { Fragment } from "react"
 import { useViewportPreloadHints } from "@slideshow/hooks/use-viewport-preload-hints"
-import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
+import type { ComponentRegistry, ViewportConfig } from "@some-ui/types"
 import {
   hasRegistryKey,
   renderRegistryComponent,

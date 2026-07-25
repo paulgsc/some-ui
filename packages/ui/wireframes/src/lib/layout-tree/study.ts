@@ -1,5 +1,5 @@
+import type { YouTubeRegion } from "@some-ui/types"
 import type { LayoutNode } from "@wireframes/lib"
-import type { YouTubeRegion } from "some-types-utils"
 
 export const studyTree: LayoutNode<YouTubeRegion> = {
   type: "split",

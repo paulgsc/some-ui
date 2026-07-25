@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react"
-import type { ComponentRegistry, ViewportConfig } from "some-types-utils"
+import type { ComponentRegistry, ViewportConfig } from "@some-ui/types"
 import { preloadRegistryComponents } from "some-ui-utils"
 
 type UseViewportPreloadHintsArgs<K extends string> = {

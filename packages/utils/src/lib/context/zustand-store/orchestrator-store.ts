@@ -5,8 +5,8 @@ import type {
   OrchestratorState,
   SceneConfig,
   StreamStatus,
-} from "some-types-utils"
-import { defaultOrchestratorState } from "some-types-utils"
+} from "@some-ui/types"
+import { defaultOrchestratorState } from "@some-ui/types"
 import { create } from "zustand"
 import { useShallow } from "zustand/shallow"
 

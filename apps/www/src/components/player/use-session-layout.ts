@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import type { SlotId } from "some-types-utils"
+import type { SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
 import type { SessionRecord } from "@/lib/tenant"
