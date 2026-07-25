@@ -1,4 +1,17 @@
-import type { Challenge } from "@some-ui/leetype"
+type Difficulty = "easy" | "medium" | "hard"
+type SessionMode = "data-structure" | "algorithm"
+type Language = "typescript" | "rust" | "cpp" | "c"
+
+type Challenge = {
+  id: string
+  title: string
+  description: string
+  difficulty: Difficulty
+  mode: SessionMode
+  tags: Array<string>
+  codePaths: Record<Language, string>
+  levelRequired: number
+}
 
 export const CHALLENGES: Array<Challenge> = [
   // ── Data Structures ────────────────────────────────────────────────────
