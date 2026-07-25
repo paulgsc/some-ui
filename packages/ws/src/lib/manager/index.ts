@@ -1,7 +1,7 @@
-import { LifecycleStateMachine } from "./lifecycle"
-import { ListenerRegistry } from "./listener-registry"
-import { MutationQueue } from "./mutation-queue"
-import { ReferenceCounter } from "./ref-counter"
+import { LifecycleStateMachine } from "@ws/lib/lifecycle"
+import { ListenerRegistry } from "@ws/lib/listener-registry"
+import { MutationQueue } from "@ws/lib/mutation-queue"
+import { ReferenceCounter } from "@ws/lib/ref-counter"
 
 export type WebSocketManagerOptions = {
   autoReconnect?: boolean

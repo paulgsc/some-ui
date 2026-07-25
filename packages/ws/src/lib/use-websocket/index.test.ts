@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
+import { FakeWebSocket, nextUrl } from "@ws/lib/__tests__/fake-websocket"
+import { WebSocketManager } from "@ws/lib/manager"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { FakeWebSocket, nextUrl } from "./__tests__/fake-websocket"
-import { WebSocketManager } from "./manager"
-import { useWebSocket } from "./use-websocket"
+import { useWebSocket } from "."
 
 beforeEach(() => {
   FakeWebSocket.instances = []

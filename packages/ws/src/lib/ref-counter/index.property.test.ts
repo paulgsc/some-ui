@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it, vi } from "vitest"
 
-import { ReferenceCounter } from "./ref-counter"
+import { ReferenceCounter } from "."
 
 type Op = "acquire" | "release" | "reset"
 

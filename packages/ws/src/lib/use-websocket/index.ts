@@ -6,9 +6,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import { WebSocketManager, type InitFunction } from "@ws/lib/manager"
 import { z } from "zod"
-
-import { WebSocketManager, type InitFunction } from "./manager"
 
 export type UseWebSocketOptions<I, O> = {
   url: string

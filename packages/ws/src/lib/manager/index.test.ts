@@ -1,7 +1,7 @@
+import { FakeWebSocket, nextUrl } from "@ws/lib/__tests__/fake-websocket"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { FakeWebSocket, nextUrl } from "./__tests__/fake-websocket"
-import { WebSocketManager } from "./manager"
+import { WebSocketManager } from "."
 
 beforeEach(() => {
   FakeWebSocket.instances = []

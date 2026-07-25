@@ -9,6 +9,13 @@
       "@ws/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": [
+    "eslint.config.js",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "test",
+    "src"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

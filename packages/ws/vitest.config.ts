@@ -3,13 +3,16 @@ import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   plugins: [react()],
+
+  resolve: {
+    alias: {
+      "@ws": new URL("./src", import.meta.url).pathname,
+    },
+  },
+
   test: {
-    // use-websocket.ts is a React hook (useSyncExternalStore) - needs a DOM.
     environment: "jsdom",
-
-    // Allows 'describe', 'it', 'expect' without importing them in every file
     globals: true,
-
     include: ["**/*.test.{ts,tsx}"],
   },
 })

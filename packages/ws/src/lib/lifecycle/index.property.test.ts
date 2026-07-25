@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { LifecycleStateMachine, type LifecycleState } from "./lifecycle"
+import { LifecycleStateMachine, type LifecycleState } from "."
 
 /**
  * Independent model of the legal-transitions contract `lifecycle.ts` claims

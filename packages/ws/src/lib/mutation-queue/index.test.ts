@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { MutationQueue } from "./mutation-queue"
+import { MutationQueue } from "."
 
 beforeEach(() => {
   vi.useFakeTimers()
