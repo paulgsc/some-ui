@@ -14,7 +14,7 @@
     "@some-ui/slideshow": "workspace:*",
     "@some-ui/stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "@some-ui/resume": "workspace:*",
+    "@some-ui/assessment": "workspace:*",
     "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*",
     "zod": "4.0.5",

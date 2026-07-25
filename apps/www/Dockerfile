@@ -46,9 +46,16 @@ FROM base AS builder
 #
 # Rust toolchain
 #
+# tar/xz are explicit (not just BusyBox's built-ins) because
+# @some-ui/resume's build step downloads a pinned typst release as a
+# .tar.xz and extracts it with system `tar` - relying on BusyBox tar's
+# xz support being compiled in is a bad bet for a release pipeline.
+#
 RUN apk add --no-cache \
         curl \
         build-base \
+        tar \
+        xz \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --default-toolchain stable
 

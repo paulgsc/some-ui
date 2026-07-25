@@ -37,10 +37,9 @@ export default defineConfig({
       "@makjang": path.resolve(__dirname, "./packages/ui/makjang/src"),
       "@umag": path.resolve(__dirname, "./packages/ui/umag/src"),
       "@stepper": path.resolve(__dirname, "./packages/ui/stepper/src"),
-      "@overlays": path.resolve(__dirname, "./packages/ui/overlays/src"),
       "@honeycomb": path.resolve(__dirname, "./packages/ui/honeycomb/src"),
       "@calendar": path.resolve(__dirname, "./packages/ui/calendar/src"),
-      "@resume": path.resolve(__dirname, "./packages/ui/resume/src"),
+      "@assessment": path.resolve(__dirname, "./packages/ui/assessment/src"),
       "@neon-sign": path.resolve(__dirname, "./packages/ui/neon-sign/src"),
       "@content": path.resolve(__dirname, "./packages/some-content/src"),
       "@some-ui/content": path.resolve(

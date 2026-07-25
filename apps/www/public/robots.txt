@@ -1,6 +1,3 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-
-# Overlay routes are meant to be embedded (e.g. in a stream), not indexed.
-Disallow: /overlays/
