@@ -1018,10 +1018,6 @@ importers:
         version: 5.9.3
 
   packages/some-content:
-    dependencies:
-      '@some-ui/leetype':
-        specifier: workspace:*
-        version: link:../ui/leetype
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
