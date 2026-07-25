@@ -39,7 +39,6 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@some-ui/interview": "workspace:*",
-    "@some-ui/leetype": "workspace:*",
     "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
     "@some-ui/slideshow": "workspace:*",

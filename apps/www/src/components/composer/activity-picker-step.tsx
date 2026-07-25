@@ -16,7 +16,7 @@ import { PaginationControls } from "@/components/pagination-controls"
 /** Rows here are compact (one line each), so a larger page fits comfortably. */
 const MANIFEST_PAGE_SIZE = 10
 
-export type PickedActivity = {
+type PickedActivity = {
   instanceId: string
   activityId: ActivityId
 }
