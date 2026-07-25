@@ -26,7 +26,15 @@ export type WordEntry = {
   answerGlyphs: Array<string>
   icon: string
   ttsText: string
-  category: "food" | "animal" | "object" | "nature"
+  /**
+   * Free-form grouping label - purely descriptive, never read by the engine
+   * or any component (grep confirms no `.category` reader exists outside
+   * this file). Deliberately `string`, not a closed union: the demo set
+   * below happens to use "food"/"animal"/"object"/"nature", but a
+   * host-supplied `words` override (HangulHexGrid's `words` prop) is free to
+   * use whatever topic labels it wants (e.g. "numbers", "calendar").
+   */
+  category: string
 }
 
 export const HANGUL_WORDS: Array<WordEntry> = [

@@ -14,6 +14,8 @@ import { PromptStation } from "@honeycomb/components/hangul-hex-grid/prompt-stat
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
 import { HexGrid } from "@honeycomb/components/hex-grid"
+import { HANGUL_WORDS, toChallengeSeed } from "@honeycomb/data"
+import type { WordEntry } from "@honeycomb/data"
 import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
@@ -66,6 +68,18 @@ type HangulHexGridProps = {
    * Omit if the host has no such concept.
    */
   suspended?: boolean
+  /**
+   * The word pool for "vocabulary"/"vocabulary-endless" modes (ignored by
+   * every other mode) - defaults to the bundled demo seed
+   * (`@honeycomb/data`'s `HANGUL_WORDS`), same as before this prop existed.
+   * This is the seam a host app uses to swap in its own challenge seed
+   * (e.g. an LLM-generated, environment-specific vocab set fetched at
+   * runtime) without this package knowing or caring where the words came
+   * from - it only ever sees a plain `Array<WordEntry>`, matching
+   * `hangul-words.ts`'s own shape/constraints (open-syllable only, see that
+   * file's header comment).
+   */
+  words?: Array<WordEntry>
 }
 
 export const HangulHexGrid = ({
@@ -73,6 +87,7 @@ export const HangulHexGrid = ({
   difficulty,
   sessionKey,
   suspended = false,
+  words = HANGUL_WORDS,
 }: HangulHexGridProps): JSX.Element => {
   // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
   // initialize() callback stays referentially stable across re-renders that
@@ -81,6 +96,7 @@ export const HangulHexGrid = ({
     () => resolveDifficultyConfig(difficulty),
     [difficulty]
   )
+  const wordPool = useMemo(() => words.map(toChallengeSeed), [words])
   // The engine only reports whether romanization is *currently* shown
   // (TimingParams.showRomanization), not the streak threshold that governs
   // it - StatsPanel needs the actual configured number to display, which
@@ -136,6 +152,7 @@ export const HangulHexGrid = ({
     autoStart: true,
     mode,
     config,
+    wordPool,
     sessionKey,
   })
 
@@ -383,6 +400,7 @@ export const HangulHexGrid = ({
           stimulus={trackedCharacter?.stimulus ?? null}
           tier={promptTier}
           progress={wordProgress}
+          words={words}
         />
 
         <ControlButtons

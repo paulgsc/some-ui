@@ -1,19 +1,25 @@
-// honeycomb's sfx and leetype's code samples live in packages/some-content
-// (see apps/www/.gitignore) and aren't checked into this app's public/ dir.
-// CI's Pages build (pages.yml) copies them into public/ at build time; for
-// local `vite dev` this symlinks them instead, so the dev server serves the
-// real files straight out of packages/some-content, live, with no rebuild
-// needed. Run manually via `pnpm run content:link` when you have the actual
-// asset files locally - deliberately NOT wired into a pre/postinstall or
-// pre<script> hook, since auto-executing Node on install/dev is a footgun
-// (surprise side effects, supply-chain scanner flags on the lifecycle
-// script itself). vite.config.ts warns at dev-server startup instead if
-// these are missing, pointing back at this command.
+// honeycomb's sfx, leetype's code samples, and (optionally) an LLM-generated
+// hangul vocab file all live in packages/some-content (see
+// apps/www/.gitignore) and aren't checked into this app's public/ dir. CI's
+// Pages build (pages.yml) copies sfx/code-samples into public/ at build
+// time - hangul is deliberately NOT part of that copy step, since the
+// static GitHub Pages build has no companion data at all (see
+// src/lib/hangul-vocab). For local `vite dev` this symlinks all three
+// instead, so the dev server serves the real files straight out of
+// packages/some-content, live, with no rebuild needed. Run manually via
+// `pnpm run content:link` when you have the actual asset files locally -
+// deliberately NOT wired into a pre/postinstall or pre<script> hook, since
+// auto-executing Node on install/dev is a footgun (surprise side effects,
+// supply-chain scanner flags on the lifecycle script itself). vite.config.ts
+// warns at dev-server startup if sfx/code-samples are missing, pointing back
+// at this command - hangul is excluded from that warning since, unlike
+// those two, its absence is expected/harmless (HangulHexGrid's bundled demo
+// seed covers it).
 //
 // No-op for any subdir that doesn't exist locally: these assets are
 // curated/gitignored, not part of a fresh checkout, so a machine without
-// them just runs without honeycomb sound / leetype samples rather than
-// failing.
+// them just runs without honeycomb sound / leetype samples / custom hangul
+// vocab rather than failing.
 import {
   existsSync,
   lstatSync,
@@ -31,7 +37,7 @@ const contentPublicDir = resolve(
   "../../../packages/some-content/public"
 )
 
-for (const name of ["sfx", "code-samples"]) {
+for (const name of ["sfx", "code-samples", "hangul"]) {
   const src = resolve(contentPublicDir, name)
   const dest = resolve(appPublicDir, name)
 

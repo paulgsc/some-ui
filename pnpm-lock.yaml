@@ -294,6 +294,12 @@ importers:
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../../packages/fetch-kit
+      '@some-ui/honeycomb':
+        specifier: workspace:*
+        version: link:../../packages/ui/honeycomb
       '@some-ui/interview':
         specifier: workspace:*
         version: link:../../packages/ui/interview

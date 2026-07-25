@@ -10,6 +10,7 @@ import {
 } from "some-ui-utils"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
+import { useHangulVocab } from "@/lib/hangul-vocab"
 import type { SessionRecord } from "@/lib/tenant"
 
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
@@ -53,10 +54,19 @@ export const SessionViewport = ({
 
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
+  // Only HangulHexGrid declares a `words` prop; every other registry
+  // component ignores it the same way it already ignores sessionKey/
+  // suspended when it doesn't need them (see extraProps' own doc comment
+  // below and RegistryEntry<P = any> in @some-ui/types).
+  const hangulWords = useHangulVocab()
 
   const extraProps = useMemo(
-    () => ({ sessionKey: sessionKey ?? undefined, suspended }),
-    [sessionKey, suspended]
+    () => ({
+      sessionKey: sessionKey ?? undefined,
+      suspended,
+      words: hangulWords,
+    }),
+    [sessionKey, suspended, hangulWords]
   )
 
   return (
