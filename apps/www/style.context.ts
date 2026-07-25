@@ -13,6 +13,7 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
  * component.
  */
 const uiPackages = [
+  "assessment",
   "calendar",
   "chat",
   "dice-card",
@@ -22,9 +23,7 @@ const uiPackages = [
   "makjang",
   "neon-sign",
   "nfl",
-  "overlays",
   "portfolio-chart",
-  "resume",
   "shared",
   "slideshow",
   "stepper",

@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/_dashboard/index'
-import { Route as OverlaysYoutubeRouteImport } from './routes/overlays/youtube'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
+import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
@@ -27,14 +27,14 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const OverlaysYoutubeRoute = OverlaysYoutubeRouteImport.update({
-  id: '/overlays/youtube',
-  path: '/overlays/youtube',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardResumeRoute = DashboardResumeRouteImport.update({
+  id: '/resume',
+  path: '/resume',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
@@ -62,16 +62,16 @@ const DashboardSessionsSessionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof DashboardIndexRoute
   '/profile': typeof DashboardProfileRoute
+  '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
-  '/overlays/youtube': typeof OverlaysYoutubeRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/profile': typeof DashboardProfileRoute
+  '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
-  '/overlays/youtube': typeof OverlaysYoutubeRoute
   '/': typeof DashboardIndexRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
@@ -81,8 +81,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_dashboard': typeof DashboardRouteWithChildren
   '/_dashboard/profile': typeof DashboardProfileRoute
+  '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
-  '/overlays/youtube': typeof OverlaysYoutubeRoute
   '/_dashboard/': typeof DashboardIndexRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
@@ -93,16 +93,16 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/profile'
+    | '/resume'
     | '/settings'
-    | '/overlays/youtube'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/profile'
+    | '/resume'
     | '/settings'
-    | '/overlays/youtube'
     | '/'
     | '/sessions/$sessionId'
     | '/sessions/new'
@@ -111,8 +111,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_dashboard'
     | '/_dashboard/profile'
+    | '/_dashboard/resume'
     | '/_dashboard/settings'
-    | '/overlays/youtube'
     | '/_dashboard/'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
@@ -121,7 +121,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
-  OverlaysYoutubeRoute: typeof OverlaysYoutubeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,18 +139,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/overlays/youtube': {
-      id: '/overlays/youtube'
-      path: '/overlays/youtube'
-      fullPath: '/overlays/youtube'
-      preLoaderRoute: typeof OverlaysYoutubeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_dashboard/settings': {
       id: '/_dashboard/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/resume': {
+      id: '/_dashboard/resume'
+      path: '/resume'
+      fullPath: '/resume'
+      preLoaderRoute: typeof DashboardResumeRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/profile': {
@@ -187,6 +186,7 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardResumeRoute: typeof DashboardResumeRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardSessionsSessionIdRoute: typeof DashboardSessionsSessionIdRoute
@@ -196,6 +196,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardResumeRoute: DashboardResumeRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardSessionsSessionIdRoute: DashboardSessionsSessionIdRoute,
@@ -209,7 +210,6 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
-  OverlaysYoutubeRoute: OverlaysYoutubeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

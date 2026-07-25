@@ -5,7 +5,7 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { Home, ListVideo, Settings, User } from "lucide-react"
+import { FileText, Home, ListVideo, Settings, User } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -37,7 +37,7 @@ function isViewportPath(pathname: string): boolean {
 }
 
 type NavItem = {
-  to: "/" | "/sessions" | "/profile" | "/settings"
+  to: "/" | "/sessions" | "/resume" | "/profile" | "/settings"
   label: string
   icon: typeof Home
 }
@@ -45,6 +45,7 @@ type NavItem = {
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { to: "/", label: "Home", icon: Home },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
+  { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ]

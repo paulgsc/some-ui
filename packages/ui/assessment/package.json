@@ -1,0 +1,61 @@
+{
+  "name": "@some-ui/assessment",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "build-storybook": "storybook build",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "concurrently": "10.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "unpkg": "some-ui-assessment.umd.js",
+  "main": "./dist/@some-ui/assessment.cjs.js",
+  "module": "./dist/@some-ui/assessment.es.js",
+  "types": "./dist/@some-ui/assessment.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/assessment.d.ts",
+      "import": "./dist/@some-ui/assessment.es.js",
+      "require": "./dist/@some-ui/assessment.cjs.js",
+      "default": "./dist/@some-ui/assessment.es.js"
+    },
+    "./style.css": "./dist/assessment.css"
+  },
+  "dependencies": {
+    "lucide-react": "^0.511.0"
+  },
+  "style": "./dist/assessment.css"
+}
