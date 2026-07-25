@@ -1,0 +1,11 @@
+{
+  "name": "@some-ui/canon",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Canonical home for the repository's .typ metamathematics canons — the documents source is derived from, not the other way around",
+  "type": "module",
+  "scripts": {
+    "canon:build": "bash ./scripts/build.sh",
+    "canon:check": "bash ./scripts/check-citations.sh"
+  }
+}

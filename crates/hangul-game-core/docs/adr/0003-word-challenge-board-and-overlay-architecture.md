@@ -15,7 +15,7 @@
 
 ## 1. Context
 
-`crates/hangul-game-core/docs/hangul-progression-canon.typ` ("The Single-Glyph Ceiling") and ADR
+`docs/canon/hangul-progression-canon.typ` ("The Single-Glyph Ceiling") and ADR
 0001 already derive most of what a word-mode extension needs: a `Stimulus` type (canon §3), an
 `Answer` sequence with token-cursor matching (canon §4), a generalized `Challenge`/`GameMode`
 (canon §5–§6), and `AnswerProgress`/widened completion events (canon §8). That derivation is
@@ -191,7 +191,7 @@ as optional/future content-layer work under `#424`, not core scope for `#762`.
 
 ## 5. References
 
-- Canon: `crates/hangul-game-core/docs/hangul-progression-canon.typ`, §3 (Stimulus, Axiom 3.1),
+- Canon: `docs/canon/hangul-progression-canon.typ`, §3 (Stimulus, Axiom 3.1),
   §4 (Answer sequence, token-cursor matcher, Def. 4.1–4.3, Thm. 4.1), §5.1 (Rem. 5.1, board
   binding), §6 (generalized `GameMode`), §7 (difficulty/timing invariance, Thm. 7.2), §8
   (event algebra, Def. 8.1, Prop. 8.1), §11.3 (crate-boundary judgment, Prop. 11.3–11.4)

@@ -1,5 +1,22 @@
 # Virtual Package Manager: A Systems Programming Journey
 
+> [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
+>
+> - [`docs/canon/adaptive-learning-canon.typ`](../docs/canon/adaptive-learning-canon.typ) — _The Unobservable Learner_ — the level checklist below is an ordered syllabus with heading-derived concept identity and boolean gates — all three rejected in P.2, Thm. 1.1, and Prop. 2.2. The content here is the strongest in the repository and the learner model under it is the weakest; §11's obligation O1 is what changes that
+>
+> These are not background reading. They are the documents this package is
+> _derived_ from: modules here are checked against a Definition / Axiom /
+> Theorem number, not against a feature spec. If a change cannot be traced to
+> a canon citation, either it belongs somewhere else or the canon is missing
+> an amendment that should land first.
+>
+> **Human reviewers:** a diff that changes behaviour governed by a canon and
+> cites nothing is incomplete — ask for the citation.
+> **LLM agents:** read the cited sections before proposing a change, and never
+> silently renumber or rewrite a canon result. See
+> [`docs/canon/README.md`](../docs/canon/README.md) for the amendment
+> discipline.
+
 [![CI](https://github.com/YOUR_USERNAME/virtual-package-manager/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/virtual-package-manager/actions)
 
 > A progressive, hands-on implementation of pnpm's core architectural concepts: content-addressable storage, hard linking, and dependency resolution.

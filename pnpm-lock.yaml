@@ -377,6 +377,8 @@ importers:
 
   crates/viewport-rotation: {}
 
+  docs/canon: {}
+
   extensions/common:
     dependencies:
       rollup:

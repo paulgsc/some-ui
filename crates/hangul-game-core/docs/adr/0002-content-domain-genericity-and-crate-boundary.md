@@ -18,7 +18,7 @@ of those stories touches _which alphabet_ the answers are drawn from. `hangul_to
 (`src/internal/spawning.rs`, now removed) and `create_game_mode`'s 40-entry Korean jamo list
 (`src/internal/game_modes.rs`) were closed, content-specific functions: their signatures admitted
 no second domain without a change to their own source, independent of anything ADR 0001 changes.
-The progression canon (`crates/hangul-game-core/docs/hangul-progression-canon.typ`, §11) calls this
+The progression canon (`docs/canon/hangul-progression-canon.typ`, §11) calls this
 a _fifth closed commitment_, orthogonal to the four ADR 0001 already addresses (canon §2.1) —
 "today Korean, tomorrow perhaps HSK Chinese, who knows" is a real constraint on the crate's shape,
 not a hypothetical.
@@ -161,7 +161,7 @@ jamo does not force board resizing under this decision.
 
 ## 5. References
 
-- Canon: `crates/hangul-game-core/docs/hangul-progression-canon.typ`, §11 (Content-Domain
+- Canon: `docs/canon/hangul-progression-canon.typ`, §11 (Content-Domain
   Genericity and the Crate-Boundary Question), §5.1 (board cell-binding, Rem. 5.1, Prop. 5.1), §7
   (Difficulty and Timing Invariance, Thm. 7.2, Cor. 7.2.1)
 - ADR 0001, `crates/hangul-game-core/docs/adr/0001-multimodal-word-testing.md`, and epic #420

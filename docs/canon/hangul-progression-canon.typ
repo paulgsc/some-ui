@@ -157,7 +157,7 @@
   introduce is admitted only because a specific, exhibited failure of the
   present, narrower model forces it, in the same spirit as the extensions
   canon's minimal-sufficient-state-space objective
-  (`extensions/docs/dom-state-estimation-canon.typ`).
+  (`docs/canon/dom-state-estimation-canon.typ`).
 ]
 
 #pagebreak()
@@ -1632,6 +1632,6 @@ numbering, above).
 - `crates/leetype_wasm/src/{lib,game_core,leetype,leetype/{canonical,state,stats,validation}}.rs`
   --- the independently-authored sibling crate compared against in §11 for
   the API-authority axiom and the crate-boundary judgment.
-- Extensions canon, "The Unsettled Surface," `extensions/docs/dom-state-estimation-canon.typ`
+- Extensions canon, "The Unsettled Surface," `docs/canon/dom-state-estimation-canon.typ`
   --- the format, minimal-sufficient-state-space objective, and Amendment
   Protocol discipline this document deliberately mirrors.

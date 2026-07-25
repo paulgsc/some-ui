@@ -3,13 +3,13 @@
 A property-agnostic transport kernel implementing the four-stage
 observe/estimate/plan/act architecture (and its lifecycle/adapter
 refinements) derived in
-[`extensions/docs/dom-state-estimation-canon.typ`](../docs/dom-state-estimation-canon.typ)
+[`docs/canon/dom-state-estimation-canon.typ`](../../docs/canon/dom-state-estimation-canon.typ)
 (§5–§8, §D).
 
 **This package is not the source of truth for its own behavior — the canon
 is.** Every module here is checked against a Definition/Axiom/Theorem number
 in that file, not a feature spec. If a change here can't be traced to a
-canon citation, it belongs in an [Adapter](../docs/dom-state-estimation-canon.typ)
+canon citation, it belongs in an [Adapter](../../docs/canon/dom-state-estimation-canon.typ)
 (Definition D.3) instead, or the canon is missing an amendment (§10) that
 should land first.
 

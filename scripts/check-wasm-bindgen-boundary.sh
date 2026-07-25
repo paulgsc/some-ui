@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # CI guardrail for Axiom 11.1 in
-# crates/hangul-game-core/docs/hangul-progression-canon.typ (§11.2):
+# docs/canon/hangul-progression-canon.typ (§11.2):
 # `#[wasm_bindgen]` may appear only in a crate's designated thin wrapper
 # file. Every other file - in particular all pure game/typing logic - must
 # stay free of any wasm-bindgen dependency, so it stays testable with plain
