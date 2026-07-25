@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { ApiError, createFetchClient } from "./fetch-client"
+import { ApiError, createFetchClient } from "."
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

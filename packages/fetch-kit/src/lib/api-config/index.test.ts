@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { API_V1_PREFIX, apiUrl, DEFAULT_API_BASE_URL } from "./api-config"
+import { API_V1_PREFIX, apiUrl, DEFAULT_API_BASE_URL } from "."
 
 describe("apiUrl", () => {
   it("prefixes the path with the versioned base path against the default base URL", () => {

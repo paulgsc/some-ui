@@ -1,8 +1,8 @@
+import type { FetchClient } from "@fkit/lib/fetch-client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { createDataSource } from "./data-source"
-import type { FetchClient } from "./fetch-client"
+import { createDataSource } from "."
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

@@ -11,6 +11,10 @@
  * copy or error handling.
  */
 
+import { apiClient } from "@fkit/lib/fetch-client"
+import type { FetchClient, FetchOptions } from "@fkit/lib/fetch-client"
+import type { RuntimeMode, RuntimeModeOptions } from "@fkit/lib/runtime-mode"
+import { resolveRuntimeMode } from "@fkit/lib/runtime-mode"
 import type {
   QueryKey,
   UseQueryOptions,
@@ -18,11 +22,6 @@ import type {
 } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
 import type { z } from "zod"
-
-import type { FetchClient, FetchOptions } from "./fetch-client"
-import { apiClient } from "./fetch-client"
-import type { RuntimeMode, RuntimeModeOptions } from "./runtime-mode"
-import { resolveRuntimeMode } from "./runtime-mode"
 
 export type ResourceLocator<TParams> = (params: TParams) => URL
 

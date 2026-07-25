@@ -14,6 +14,8 @@
  * See ADR "TanStack Query Integration Strategy" (2026-02-13).
  */
 
+import type { FetchClient, HttpMethod } from "@fkit/lib/fetch-client"
+import { apiClient } from "@fkit/lib/fetch-client"
 import type {
   DefaultOptions,
   UseMutationOptions,
@@ -23,9 +25,6 @@ import type {
 } from "@tanstack/react-query"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import type { z } from "zod"
-
-import type { FetchClient, HttpMethod } from "./fetch-client"
-import { apiClient } from "./fetch-client"
 
 type QueriesDefaultOptions<TData, TError> = DefaultOptions<TError>["queries"] &
   Omit<UseQueryOptions<TData, TError>, "queryKey" | "queryFn">

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import type { ReactElement, ReactNode } from "react"
+import type { FetchClient } from "@fkit/lib/fetch-client"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import type { FetchClient } from "./fetch-client"
-import { createApiHooks } from "./query-hooks"
+import { createApiHooks } from "."
 
 function fakeClient(): FetchClient {
   return {
