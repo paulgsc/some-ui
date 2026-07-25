@@ -23,7 +23,6 @@
       "@some-ui/chat": ["../ui/chat/src/index.ts"],
       "some-ui-emoji-animations": ["../ui/emoji-animations/src/index.ts"],
       "some-ui-input": ["../ui/input/src/index.ts"],
-      "some-ui-mdx": ["../mdx-generator/src/index.ts"],
       "some-ui-neon-sign": ["../ui/neon-sign/src/index.ts"],
       "some-ui-nfl": ["../ui/nfl/src/index.ts"],
       "some-ui-rollup-config": ["../rollup-config/src/index.ts"],
