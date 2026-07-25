@@ -12,4 +12,5 @@ count.txt
 /public/sfx
 # assets of unknown size
 /public/code-samples
+/public/hangul
 /public/resume.pdf
