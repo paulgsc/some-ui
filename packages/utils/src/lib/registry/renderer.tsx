@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react"
 import { Component, Suspense } from "react"
-import type { ComponentRegistry } from "some-types-utils"
+import type { ComponentRegistry } from "@some-ui/types"
 
 // Error Boundary
 class ComponentErrorBoundary extends Component<

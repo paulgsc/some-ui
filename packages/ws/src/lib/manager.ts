@@ -92,6 +92,10 @@ export class WebSocketManager {
   }
 
   getSnapshot = <I = unknown>(): WebSocketSnapshot<I> => {
+    // `this.snapshot` is stored untyped (lastMessage: unknown) since the
+    // manager itself never validates incoming messages - the caller's zod
+    // schema (in useWebSocket) is the actual trust boundary for `I`.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return this.snapshot as WebSocketSnapshot<I>
   }
 
@@ -246,12 +250,14 @@ export class WebSocketManager {
 
         this.socket.onmessage = (event): void => {
           try {
-            const data = JSON.parse(event.data)
+            const data: unknown = JSON.parse(String(event.data))
             this.messageListeners.notify(data)
-            this.emitStoreChange()
+            this.updateSnapshot({ lastMessage: data })
           } catch (err) {
             this.log("Failed to parse message:", err)
-            this.errorListeners.notify(err as Error)
+            this.errorListeners.notify(
+              err instanceof Error ? err : new Error(String(err))
+            )
             this.updateSnapshot({
               parseErrorCount: this.snapshot.parseErrorCount + 1,
             })
@@ -300,7 +306,9 @@ export class WebSocketManager {
         }
       } catch (err) {
         this.log("Connection setup error:", err)
-        this.errorListeners.notify(err as Error)
+        this.errorListeners.notify(
+          err instanceof Error ? err : new Error(String(err))
+        )
         reject(err)
       }
     })

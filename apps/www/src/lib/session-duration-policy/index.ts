@@ -1,4 +1,4 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 
 /**
  * The knobs that bound what a "session" is allowed to be, kept as a single

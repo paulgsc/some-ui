@@ -1,7 +1,7 @@
 import { componentRegistry } from "@some-ui/content-registry"
+import type { ViewportConfig } from "@some-ui/types"
+import { PolyhedronFactory } from "@some-ui/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import type { ViewportConfig } from "some-types-utils"
-import { PolyhedronFactory } from "some-types-utils"
 
 import { ViewportDiceCard } from "."
 

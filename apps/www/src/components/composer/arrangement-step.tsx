@@ -21,7 +21,7 @@ import {
   OrchestratorTimeline,
 } from "@some-ui/slideshow"
 import type { EditorState } from "@some-ui/slideshow"
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 import {
   Card,
   CardContent,

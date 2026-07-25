@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react"
+import type {
+  IncomingEvent,
+  UtteranceEvents,
+  UtterancePrompt,
+} from "@some-ui/types"
+import { IncomingEventSchema, UtteranceEventTypeSchema } from "@some-ui/types"
 import { useWebSocket } from "@some-ui/ws"
 import type {
   UseWebSocketOptions,
   UseWebSocketReturn,
   WebSocketManager,
 } from "@some-ui/ws"
-import type {
-  IncomingEvent,
-  UtteranceEvents,
-  UtterancePrompt,
-} from "some-types-utils"
-import { IncomingEventSchema, UtteranceEventTypeSchema } from "some-types-utils"
 
 type UseUtteranceOptions = Omit<
   UseWebSocketOptions<IncomingEvent, UtteranceEvents>,

@@ -9,7 +9,7 @@ import type {
   SceneInfo,
   SourceInfo,
   TransitionInfo,
-} from "some-types-utils"
+} from "@some-ui/types"
 import { create } from "zustand"
 import { useShallow } from "zustand/shallow"
 

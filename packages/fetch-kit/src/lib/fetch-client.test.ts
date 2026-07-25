@@ -24,7 +24,7 @@ function blobResponse(status = 200): Response {
   })
 }
 
-let fetchMock: ReturnType<typeof vi.fn>
+let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 beforeEach(() => {
   fetchMock = vi.fn()
@@ -122,9 +122,9 @@ describe("timeout handling", () => {
 
   it("aborts and throws a 408 timeout ApiError when the request exceeds the timeout", async () => {
     fetchMock.mockImplementation(
-      (_url: URL, init: RequestInit) =>
+      (_url: string | URL | Request, init?: RequestInit) =>
         new Promise((_resolve, reject) => {
-          init.signal?.addEventListener("abort", () => {
+          init?.signal?.addEventListener("abort", () => {
             reject(new DOMException("The operation was aborted.", "AbortError"))
           })
         })

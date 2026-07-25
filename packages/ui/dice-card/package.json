@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@some-ui/styles": "workspace:*",
-    "some-types-utils": "workspace:*",
     "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },

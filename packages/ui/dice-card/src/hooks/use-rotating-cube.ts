@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { Range as ValidNumbers } from "some-types-utils"
 import { createEventBus } from "some-ui-utils"
+
+import type { Range as ValidNumbers } from "../types/range"
+import { assertNever } from "../utils/assert-never"
 
 type Unsubscribe = () => void
 type CubeState = {
@@ -133,14 +135,17 @@ export const useRotatingCube = ({
   const chooseRotationAxis = useCallback((): void => {
     switch (dof) {
       case "Y-axis":
-      case "X-axis":
+      case "X-axis": {
         setRotationAxis(dof)
         break
-      case "All":
+      }
+      case "All": {
         setRotationAxis(Math.random() < 0.5 ? "X-axis" : "Y-axis")
         break
-      default:
-        dof satisfies never
+      }
+      default: {
+        return assertNever(dof)
+      }
     }
   }, [dof])
 

@@ -1,7 +1,7 @@
 import type { JSX, MouseEvent as ReactMouseEvent } from "react"
 import { useState } from "react"
+import type { SlotId } from "@some-ui/types"
 import type { Rect } from "@wireframes/lib/layout-types"
-import type { SlotId } from "some-types-utils"
 import { cn } from "some-ui-utils"
 
 type Edge = "left" | "right" | "top" | "bottom"

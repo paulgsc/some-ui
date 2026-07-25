@@ -5,7 +5,7 @@ import type {
   ViewportConfig,
   WasmCycleName,
   YouTubeRegion,
-} from "some-types-utils"
+} from "@some-ui/types"
 import { cn, useSceneLifetimes } from "some-ui-utils"
 
 import { buildViewportConfigForRegion } from "../../../utils/orchestrator-to-viewport"

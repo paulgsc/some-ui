@@ -1,4 +1,4 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 
 import { getActivity } from "./catalog"
 import type { ActivityConfigValues, ActivityId, LayoutTreeId } from "./types"

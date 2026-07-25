@@ -1,4 +1,4 @@
-import type { OrchestratorCommand, SceneConfig } from "some-types-utils"
+import type { OrchestratorCommand, SceneConfig } from "@some-ui/types"
 import { describe, expect, it } from "vitest"
 
 import {

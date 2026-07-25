@@ -3,7 +3,7 @@
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/portfolio": "workspace:*",
-    "some-types-utils": "workspace:*",
+    "@some-ui/types": "workspace:*",
     "@some-ui/chat": "workspace:*",
     "@some-ui/interview": "workspace:*",
     "@some-ui/topik": "workspace:*",

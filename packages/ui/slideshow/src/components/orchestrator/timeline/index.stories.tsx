@@ -1,5 +1,5 @@
+import type { SceneConfig } from "@some-ui/types"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
-import type { SceneConfig } from "some-types-utils"
 
 import { OrchestratorTimeline } from "."
 

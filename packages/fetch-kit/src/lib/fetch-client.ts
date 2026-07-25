@@ -162,6 +162,9 @@ export const createFetchClient = (
       }
     }
 
+    // No schema was provided to validate `data` against - the caller is
+    // trusting the generic `T` it asked for, same as an untyped `fetch()` call.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return data as T
   }
 
@@ -187,9 +190,16 @@ export const createFetchClient = (
       // `body` is already fully serialized by `fetchWithSchema` (JSON string
       // for plain objects, untouched for FormData/Blob/etc.). Serializing again
       // here would double-encode JSON payloads and mangle multipart bodies.
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const body = restOptions.body as BodyInit | undefined
+      // `headers` is always constructed internally (DEFAULT_OPTIONS + caller
+      // overrides) as a plain string-keyed record, never a Headers instance
+      // or tuple array, even though FetchOptions#headers is typed as the
+      // broader HeadersInit.
       const headers: Record<string, string> = {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         ...(options.headers as Record<string, string>),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         ...(restOptions.headers as Record<string, string>),
       }
 

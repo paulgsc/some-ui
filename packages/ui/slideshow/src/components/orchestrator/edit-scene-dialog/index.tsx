@@ -7,6 +7,7 @@ import {
   getEditorView,
 } from "@slideshow/utils/scene-editor"
 import { createSceneInstance } from "@slideshow/utils/scene-selector"
+import type { SceneConfig } from "@some-ui/types"
 import {
   AlertCircle,
   Clock,
@@ -15,7 +16,6 @@ import {
   Library as LibraryIcon,
   Save,
 } from "lucide-react"
-import type { SceneConfig } from "some-types-utils"
 import {
   Badge,
   Button,

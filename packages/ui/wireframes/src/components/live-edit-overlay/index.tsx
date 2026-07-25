@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import type { SlotId } from "@some-ui/types"
 import { LayoutNodeRenderer } from "@wireframes/components/editor-layout-renderer"
 import { useContainerRect } from "@wireframes/hooks/use-container-rect"
 import type { LayoutIntent } from "@wireframes/lib/layout-intent"
@@ -7,7 +8,6 @@ import { applyIntent, extractLeafIds } from "@wireframes/lib/layout-intent"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import { solveLayout } from "@wireframes/lib/layout-weighted"
 import { Plus } from "lucide-react"
-import type { SlotId } from "some-types-utils"
 import { Button, Input } from "some-ui-shared"
 
 export type BindOption = { value: string; label: string }

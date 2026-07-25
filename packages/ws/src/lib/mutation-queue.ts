@@ -11,18 +11,13 @@ export class MutationQueue {
   enqueue<T>(fn: () => T | Promise<T>): Promise<T> {
     this.pendingCount++
 
-    const mutation = this.queue
-      .then(async () => {
-        try {
-          return await fn()
-        } finally {
-          this.pendingCount--
-        }
-      })
-      .catch((err) => {
+    const mutation = this.queue.then(async () => {
+      try {
+        return await fn()
+      } finally {
         this.pendingCount--
-        throw err
-      })
+      }
+    })
 
     // Update queue to wait for this mutation
     this.queue = mutation.then(

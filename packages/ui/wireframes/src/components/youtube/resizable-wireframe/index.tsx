@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import type { JSX, ReactNode } from "react"
+import type { ActiveLifetime, ComponentRegistry, SlotId } from "@some-ui/types"
 import { withFocus } from "@wireframes/components/focus-enhancer"
 import { FocusControlPopup } from "@wireframes/components/focus-popup"
 import { LeafResizeHandles } from "@wireframes/components/leaf-resize-handles"
@@ -11,11 +12,6 @@ import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
 import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import { solveLayoutWithBindings } from "@wireframes/lib/layout-weighted"
 import { getSlotColor } from "@wireframes/lib/youtube-config"
-import type {
-  ActiveLifetime,
-  ComponentRegistry,
-  SlotId,
-} from "some-types-utils"
 import { cn, renderRegistryComponent } from "some-ui-utils"
 
 /**

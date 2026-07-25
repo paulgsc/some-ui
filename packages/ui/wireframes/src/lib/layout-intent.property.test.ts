@@ -1,5 +1,5 @@
+import type { YouTubeRegion } from "@some-ui/types"
 import fc from "fast-check"
-import type { YouTubeRegion } from "some-types-utils"
 import { describe, expect, it } from "vitest"
 
 import {

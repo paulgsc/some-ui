@@ -1,4 +1,4 @@
-import type { YouTubeRegion } from "some-types-utils"
+import type { YouTubeRegion } from "@some-ui/types"
 import { create } from "zustand"
 
 import type { Rect } from "../../../types/resizable"

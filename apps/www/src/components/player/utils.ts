@@ -1,4 +1,4 @@
-import type { ActiveLifetime, SlotId } from "some-types-utils"
+import type { ActiveLifetime, SlotId } from "@some-ui/types"
 
 import { getActivityByRegistryKey } from "@/lib/activity-catalog"
 

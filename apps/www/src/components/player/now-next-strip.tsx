@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 import { useOrchestratorClock, usePrimaryScene } from "some-ui-utils"
 
 import { friendlyActivityName } from "./utils"

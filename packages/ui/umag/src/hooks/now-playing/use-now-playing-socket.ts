@@ -1,15 +1,15 @@
 import { useCallback } from "react"
+import type { IncomingEvent, OutgoingNowPlayingEvent } from "@some-ui/types"
+import {
+  IncomingEventSchema,
+  OutgoingNowPlayingEventSchema,
+} from "@some-ui/types"
 import type {
   UseWebSocketOptions,
   UseWebSocketReturn,
   WebSocketManager,
 } from "@some-ui/ws"
 import { useWebSocket } from "@some-ui/ws"
-import type { IncomingEvent, OutgoingNowPlayingEvent } from "some-types-utils"
-import {
-  IncomingEventSchema,
-  OutgoingNowPlayingEventSchema,
-} from "some-types-utils"
 
 import { pushNowPlaying } from "./store"
 

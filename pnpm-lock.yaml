@@ -303,6 +303,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.3.1(vite@8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -330,9 +333,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../packages/types
       some-ui-shared:
         specifier: workspace:*
         version: link:../../packages/ui/shared
@@ -1061,6 +1061,9 @@ importers:
       '@some-ui/topik':
         specifier: workspace:*
         version: link:../ui/topik
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../types
       '@some-ui/umag':
         specifier: workspace:*
         version: link:../ui/umag
@@ -1073,9 +1076,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../types
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../ui/neon-sign
@@ -1268,9 +1268,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../types
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1579,9 +1576,6 @@ importers:
       some-bricks:
         specifier: link:../../../crates/some-bricks/dist
         version: link:../../../crates/some-bricks/dist
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../types
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1803,6 +1797,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../../types
       '@some-ui/umag':
         specifier: workspace:*
         version: link:../umag
@@ -1818,9 +1815,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../types
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../neon-sign
@@ -1938,6 +1932,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../../types
       '@some-ui/ws':
         specifier: workspace:*
         version: link:../../ws
@@ -1953,9 +1950,6 @@ importers:
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../types
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -1987,6 +1981,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../../types
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.0.0)
@@ -1996,9 +1993,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../../types
       some-ui-shared:
         specifier: workspace:*
         version: link:../shared
@@ -2036,6 +2030,9 @@ importers:
       '@some-ui/polyhedron':
         specifier: 0.0.4
         version: 0.0.4
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../types
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../wasm-loader
@@ -2051,9 +2048,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-types-utils:
-        specifier: workspace:*
-        version: link:../types
       tailwind-merge:
         specifier: ^2.4.0
         version: 2.6.1
@@ -2107,6 +2101,9 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../some-vite-config
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
 
 packages:
 

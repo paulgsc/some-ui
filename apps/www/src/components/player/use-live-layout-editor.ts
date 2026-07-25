@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import type { ActiveLifetime, SlotId } from "some-types-utils"
+import type { ActiveLifetime, SlotId } from "@some-ui/types"
 import { usePrimaryScene } from "some-ui-utils"
 import type { LayoutIntent, LayoutNode } from "wireframes"
 import { applyIntent } from "wireframes"

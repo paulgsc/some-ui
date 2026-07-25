@@ -1,5 +1,5 @@
 /* eslint-disable switch-lint/require-fail-fast-default */
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 
 import { assertNever } from "./error"
 import type { SceneSelection } from "./scene-selector"

@@ -1,6 +1,6 @@
 import type { ComponentType, JSX } from "react"
+import type { SlotId } from "@some-ui/types"
 import { useRequestFocus } from "@wireframes/hooks/focus-system"
-import type { SlotId } from "some-types-utils"
 import type { ComponentEnhancer } from "some-ui-utils"
 
 /**

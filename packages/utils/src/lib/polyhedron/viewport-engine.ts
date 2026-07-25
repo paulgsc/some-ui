@@ -1,4 +1,4 @@
-import type { WasmTransition, WasmViewportState } from "some-types-utils"
+import type { WasmTransition, WasmViewportState } from "@some-ui/types"
 
 import type { Viewport } from "./viewport"
 

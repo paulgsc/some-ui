@@ -1,4 +1,4 @@
-import type { SceneConfig } from "some-types-utils"
+import type { SceneConfig } from "@some-ui/types"
 
 export type SceneSelection = {
   id: string // Unique ID for this selection instance

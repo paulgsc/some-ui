@@ -58,7 +58,7 @@ export const ElementInfoSchema = z.object({
 })
 
 export const UtteranceMetadataSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
   domain: z.string(),
   title: z.string(),
   timestamp: z.string().regex(isoTimestampRegex, {
