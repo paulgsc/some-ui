@@ -1,5 +1,18 @@
 # www
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/content-registry@1.0.1
+  - wireframes@0.0.10
+  - @some-ui/leetype@0.0.1
+  - some-ui-utils@1.1.5
+  - some-ui-shared@0.0.10
+  - @some-ui/slideshow@0.0.10
+  - @some-ui/interview@0.0.1
+
 ## 0.0.1
 
 ### Patch Changes

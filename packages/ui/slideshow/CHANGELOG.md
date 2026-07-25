@@ -1,5 +1,16 @@
 # @some-ui/slideshow
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-utils@1.1.5
+  - @some-ui/dice-card@0.0.6
+  - some-ui-neon-sign@0.0.10
+  - some-ui-shared@0.0.10
+  - @some-ui/umag@0.0.10
+
 ## 0.0.9
 
 ### Patch Changes
