@@ -5,9 +5,11 @@ import BatteryIndicator from "."
 type Meta = MetaObj<typeof BatteryIndicator>
 type Story = StoryObj<typeof BatteryIndicator>
 
-export default {
+const meta = {
   title: "Animations/Components/Battery",
   component: BatteryIndicator,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 export const Complete: Story = {}

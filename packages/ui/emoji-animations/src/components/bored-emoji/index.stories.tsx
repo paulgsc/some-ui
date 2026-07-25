@@ -5,10 +5,12 @@ import BoredEmoji from "."
 type Meta = MetaObj<typeof BoredEmoji>
 type Story = StoryObj<typeof BoredEmoji>
 
-export default {
+const meta = {
   title: "Animations/Components/Bored Emoji",
   component: BoredEmoji,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 export const Complete: Story = {
   args: {

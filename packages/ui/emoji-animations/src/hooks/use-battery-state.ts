@@ -37,7 +37,7 @@ export const useBatteryState = (
     return (): void => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [charge, isCharging, dischargeRate])
+  }, [charge, setCharge, isCharging, dischargeRate])
 
   const toggleCharging = (): void => {
     setIsCharging(!isCharging)
