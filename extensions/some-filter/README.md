@@ -1,5 +1,22 @@
 # some-filter
 
+> [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
+>
+> - [`docs/canon/dom-state-estimation-canon.typ`](../../docs/canon/dom-state-estimation-canon.typ) — _The Unsettled Surface_ — the estimator, planner, and adapter results this extension's swatch adapter and session guards implement; §10 is the amendment protocol any unexpected vendor behaviour is triaged against first
+>
+> These are not background reading. They are the documents this package is
+> _derived_ from: modules here are checked against a Definition / Axiom /
+> Theorem number, not against a feature spec. If a change cannot be traced to
+> a canon citation, either it belongs somewhere else or the canon is missing
+> an amendment that should land first.
+>
+> **Human reviewers:** a diff that changes behaviour governed by a canon and
+> cites nothing is incomplete — ask for the citation.
+> **LLM agents:** read the cited sections before proposing a change, and never
+> silently renumber or rewrite a canon result. See
+> [`docs/canon/README.md`](../../docs/canon/README.md) for the amendment
+> discipline.
+
 ## Overview
 
 `some-filter` provides a structurally isolated dark theme system for arbitrary web pages, with an optional legacy invert filter for edge cases. The architecture separates vendor DOM from extension UI to guarantee that theming and filtering never interfere with extension-rendered components.

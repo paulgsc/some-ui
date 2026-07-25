@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # CI guardrail for Axiom 12.1 in
-# crates/hangul-game-core/docs/hangul-progression-canon.typ (§12, ADR 0004):
+# docs/canon/hangul-progression-canon.typ (§12, ADR 0004):
 # a function/method takes T/&T by default. &mut T/&mut self is permitted
 # only where a genuine, isolated state transition occurs - confined to the
 # smallest possible scope, never re-threaded across more than one

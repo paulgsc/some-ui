@@ -21,7 +21,7 @@
  * void. It is defined here, statically, over the registry; S6 asserts the
  * same predicate on rendered output. A canon amendment proposing `Φ_comfort`
  * as a named predicate (extending `Φ` or as a sibling) is proposed alongside
- * this story per §10 — see `extensions/docs/dom-state-estimation-canon.typ`.
+ * this story per §10 — see `docs/canon/dom-state-estimation-canon.typ`.
  */
 
 // Relative, not `@filter/*`-aliased: that alias only resolves inside this

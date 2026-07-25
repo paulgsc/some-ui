@@ -49,7 +49,7 @@ than one private-helper call boundary. `GameEngine`'s genuinely stateful top-lev
 (`process_input`, `tick`, `spawn_character`, `start_timer`, `reset`) are the transition points; every
 private helper they call computes and returns a value instead of mutating one handed to it.
 
-This is stated in `crates/hangul-game-core/docs/hangul-progression-canon.typ` §12, following the same
+This is stated in `docs/canon/hangul-progression-canon.typ` §12, following the same
 axiom/proposition/remark structure §11 uses for Axiom 11.1.
 
 ### (b) `GameMode` de-mutification (#750)
@@ -163,7 +163,7 @@ anything.
 
 ## 5. References
 
-- Canon: `crates/hangul-game-core/docs/hangul-progression-canon.typ`, §12 (Mutation Isolation and the
+- Canon: `docs/canon/hangul-progression-canon.typ`, §12 (Mutation Isolation and the
   Purity Boundary, Axiom 12.1, Prop. 12.1–12.2, Rem. 12.1–12.2), §11.2 (Axiom 11.1, orthogonal)
 - ADR 0002, `crates/hangul-game-core/docs/adr/0002-content-domain-genericity-and-crate-boundary.md`
   (Axiom 11.1's original filing; the format precedent this ADR follows)
