@@ -1,1 +1,0 @@
-export { createRollupConfig } from "./configs"

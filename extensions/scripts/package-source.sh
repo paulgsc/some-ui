@@ -42,7 +42,7 @@ git -C "$REPO_ROOT" archive --format=zip HEAD \
 # would make `pnpm install --frozen-lockfile` fail inside the extracted
 # archive with an unresolvable `workspace:*` reference.
 PRUNED_PKG_JSON="$(mktemp)"
-ARCHIVE_ONLY_DEPS='["some-ui-utils","rollup","some-ui-rollup-config"]'
+ARCHIVE_ONLY_DEPS='["some-ui-utils","rollup"]'
 node -e "
   const fs = require('fs');
   const pkg = JSON.parse(fs.readFileSync('$REPO_ROOT/package.json', 'utf8'));

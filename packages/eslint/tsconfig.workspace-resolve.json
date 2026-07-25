@@ -25,7 +25,6 @@
       "some-ui-input": ["../ui/input/src/index.ts"],
       "some-ui-neon-sign": ["../ui/neon-sign/src/index.ts"],
       "some-ui-nfl": ["../ui/nfl/src/index.ts"],
-      "some-ui-rollup-config": ["../rollup-config/src/index.ts"],
       "some-ui-searchbar": ["../ui/searchbar/src/index.ts"],
       "some-ui-shared": ["../ui/shared/src/index.ts"],
       "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
