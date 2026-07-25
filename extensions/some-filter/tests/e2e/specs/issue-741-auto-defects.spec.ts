@@ -80,6 +80,89 @@ test.describe("auto theme under a vendor-authored filter: invert (#741)", () => 
   })
 })
 
+// ── prepaint veil poisoned by a previously-applied filter, across a new session ──
+
+test.describe("the prepaint veil under a previously-applied filter, across a new session (#741)", () => {
+  test("a second (SPA-navigation) session's anti-flash veil composites bright, not dark, while the page's own filter is still active", async ({
+    fixture,
+  }) => {
+    const page = await fixture.goto("filter-invert-vendor-page")
+    await waitForClassification(page)
+    await page.waitForTimeout(300)
+
+    // Precondition: the first session already themed this page (established
+    // by the sibling test above) — autoWasApplied is exactly what gates
+    // content.ts's yt-navigate-finish handler below.
+    const firstSession = await page.evaluate(
+      () => document.body.dataset["swThemeApplied"]
+    )
+    expect(firstSession).toBe("dark")
+
+    // content.ts's yt-navigate-finish listener is a plain window event
+    // listener, not scoped to youtube.com — dispatching it here simulates an
+    // SPA-style re-navigation within the same document. It resets the
+    // content session's epoch (sessionLifecycle.resetContent(), the
+    // codebase's own "new session" boundary — Definition 5.4/Theorem D.1(a))
+    // and re-arms the veil via enablePrepaint(), synchronously followed by a
+    // fresh rescan()/decide()/realize() round. Everything here happens
+    // inside one page.evaluate() call so the veil's computed background is
+    // sampled before commitVisualState()'s requestAnimationFrame pair can
+    // tear it back down — the veil removal is scheduled, not synchronous.
+    const veil = await page.evaluate(() => {
+      window.dispatchEvent(new Event("yt-navigate-finish"))
+      const el = document.getElementById("__sw_prepaint_veil")
+      return {
+        present: el !== null,
+        bg: el ? getComputedStyle(el).backgroundColor : null,
+      }
+    })
+
+    expect(
+      veil.present,
+      "the new session should re-arm the anti-flash veil (enablePrepaint())"
+    ).toBe(true)
+
+    const veilBg = veil.bg ?? ""
+    const match = veilBg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+    if (match === null) {
+      throw new Error(`unparseable veil background: ${veilBg}`)
+    }
+    const [, rStr, gStr, bStr] = match
+    if (rStr === undefined || gStr === undefined || bStr === undefined) {
+      throw new Error(`unparseable veil background: ${veilBg}`)
+    }
+    const declared: [number, number, number] = [
+      Number(rStr) / 255,
+      Number(gStr) / 255,
+      Number(bStr) / 255,
+    ]
+    const asSeen: [number, number, number] = [
+      1 - declared[0],
+      1 - declared[1],
+      1 - declared[2],
+    ]
+    const asSeenLuminance = relativeLuminance(...asSeen)
+
+    // The veil exists purely to hold a dark, flash-free canvas while a
+    // session settles (prepaint.ts/prepaint.css). Its declared color is only
+    // ever adjusted for *our own* legacy filter (prepaint.css's
+    // `html[data-sw-legacy] #__sw_prepaint_veil` rule) — never for a page's
+    // own, independently-applied filter, which is exactly this fixture's
+    // condition and was already active before this second session started.
+    // Composited through it, the veil's dark declared color reads as bright
+    // — the anti-flash mechanism becomes the flash, for a session that
+    // starts *after* the page has already loaded and a human is far more
+    // likely to be looking at the screen than during the initial load.
+    expect(
+      asSeenLuminance,
+      `veil declared bg ${veilBg} is meant to hold a dark canvas, but ` +
+        `composited through the page's own, previously-applied filter: ` +
+        `invert(1) it reads as luminance ${asSeenLuminance.toFixed(3)} — ` +
+        "bright, not dark"
+    ).toBeLessThan(0.3)
+  })
+})
+
 // ── per-surface darkening with no matching per-surface text adjustment ──────
 
 test.describe("auto theme's per-surface darkening leaves untargeted text unreadable (#741)", () => {
