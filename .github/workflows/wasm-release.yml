@@ -41,6 +41,8 @@ jobs:
           fetch-depth: 0
       - name: Detect changed wasm crates
         id: detect
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
 
@@ -72,7 +74,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publish_only }}" = "true" ]; then
             is_release_commit=true
           elif [ "${{ github.event_name }}" != "workflow_dispatch" ] && \
-               [[ "${{ github.event.head_commit.message }}" == "${{ env.RELEASE_COMMIT_MESSAGE }}"* ]]; then
+               [[ "$HEAD_COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
             is_release_commit=true
           fi
           echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
