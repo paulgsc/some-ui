@@ -24,7 +24,7 @@
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "esbuild": "^0.25.0",
-    "maishatu-eslint-kit": "workspace:*"
+    "@some-ui/eslint-kit": "workspace:*"
   },
   "scripts": {
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

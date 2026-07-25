@@ -27,7 +27,7 @@
     "esbuild": "^0.25.0",
     "eslint": "^10.6.0",
     "fast-check": "^3.23.1",
-    "maishatu-eslint-kit": "workspace:*"
+    "@some-ui/eslint-kit": "workspace:*"
   },
   "scripts": {
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

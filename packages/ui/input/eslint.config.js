@@ -1,5 +1,5 @@
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
-import someUIEslint, { switchLintConfig } from "maishatu-eslint-kit"
+import someUIEslint, { switchLintConfig } from "@some-ui/eslint-kit"
 import tseslint from "typescript-eslint"
 
 const inputConfig = [

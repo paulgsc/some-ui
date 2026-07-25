@@ -9,7 +9,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
     "eslint": "^10.6.0",
-    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "vite": "^8.1.5",
     "web-ext": "8.3.0"
   },

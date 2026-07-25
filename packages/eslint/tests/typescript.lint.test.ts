@@ -16,7 +16,7 @@
  *   on those real paths.
  *
  * GENERATING / REGENERATING FIXTURES:
- *   pnpm --filter maishatu-eslint-kit gen:fixtures
+ *   pnpm --filter @some-ui/eslint-kit gen:fixtures
  *
  *   Re-run whenever you add or change a snippet.  The generated files are
  *   committed so CI does not need to run the script.
@@ -48,7 +48,6 @@
 
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { fileURLToPath } from "node:url"
 import { ESLint } from "eslint"
 import { describe, expect, it } from "vitest"
 
@@ -75,7 +74,7 @@ async function lintFile(
   if (!existsSync(filePath)) {
     throw new Error(
       `Fixture file not found: ${filePath}\n` +
-        `Run: pnpm --filter maishatu-eslint-kit gen:fixtures`
+        `Run: pnpm --filter @some-ui/eslint-kit gen:fixtures`
     )
   }
 
@@ -367,7 +366,7 @@ describe("lint: JS file — no type-aware rule messages emitted", () => {
     if (tsMessages.length > 0) {
       throw new Error(
         `No type-aware @typescript-eslint rules should fire on .js, but got:\n${tsMessages
-          .map((m) => `  ${m.ruleId} (line ${m.line})`)
+          .map((m) => `  ${m.ruleId ?? "(no ruleId)"} (line ${m.line})`)
           .join("\n")}`
       )
     }

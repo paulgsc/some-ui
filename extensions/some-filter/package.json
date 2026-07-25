@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
     "vite": "^8.1.5"
   },

@@ -22,7 +22,7 @@ the _application_ isolated per workspace; enforce the idioms with a shared
 linter rather than a shared runtime.** An idiom living here does _not_ imply a
 shared implementation — where an idiom cannot be a single source of truth
 (namespacing, storage prefixes, z-index discipline), the shared artifact is a
-**lint rule** in `maishatu-eslint-kit` that keeps each workspace from drifting.
+**lint rule** in `@some-ui/eslint-kit` that keeps each workspace from drifting.
 
 ---
 
@@ -213,7 +213,7 @@ If a page update occurs, the extension degrades gracefully.
 | -------------------------------------------------------- | -------------------------------------------- | --------------------------------- |
 | Commands / keybindings (#3)                              | shared **typestate** (one definition)        | `@some-extension/common`          |
 | Isolation, fullscreen, disposal, attention (#5–#8)       | shared **primitives** (reference impls)      | `@some-extension/common`          |
-| Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `maishatu-eslint-kit`             |
+| Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `@some-ui/eslint-kit`             |
 | Schema changes from any of the above                     | **per-workspace, isolated migrations**       | each workspace's migration ledger |
 
 ### Migrations are per-workspace and isolated

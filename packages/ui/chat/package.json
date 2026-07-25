@@ -24,7 +24,7 @@
   "dependencies": {
     "@some-ui/styles": "workspace:*",
     "some-ui-shared": "workspace:*",
-    "maishatu-eslint-kit": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {

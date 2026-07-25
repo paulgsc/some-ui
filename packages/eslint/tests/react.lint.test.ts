@@ -198,8 +198,7 @@ describe("lint: react-hooks/exhaustive-deps (severity escalated to error)", () =
     if (msg === undefined) {
       const fired = messages.map((m) => m.ruleId).join(", ") || "(none)"
       throw new Error(
-        `Expected react-hooks/exhaustive-deps to fire on missing dep.
-` + `  Rules that fired: ${fired}`
+        `Expected react-hooks/exhaustive-deps to fire on missing dep.\n  Rules that fired: ${fired}`
       )
     }
     expect(msg.severity).toBe(2)

@@ -54,6 +54,9 @@ importers:
       '@playwright/test':
         specifier: 1.60.0
         version: 1.60.0
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:packages/eslint
       '@some-ui/styles':
         specifier: workspace:*
         version: link:packages/some-styles
@@ -186,9 +189,6 @@ importers:
       lint-staged:
         specifier: 15.4.3
         version: 15.4.3
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:packages/eslint
       postcss:
         specifier: 8.5.6
         version: 8.5.6
@@ -414,6 +414,9 @@ importers:
       '@some-extension/filter':
         specifier: workspace:*
         version: link:../some-filter
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -429,9 +432,6 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
 
   extensions/some-censor:
     dependencies:
@@ -439,6 +439,9 @@ importers:
         specifier: workspace:*
         version: link:../common
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -448,9 +451,6 @@ importers:
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
       vite:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -467,6 +467,9 @@ importers:
         specifier: 0.0.4
         version: 0.0.4
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -482,9 +485,6 @@ importers:
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
       unocss:
         specifier: ^66.0.0
         version: 66.7.3(vite@8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -501,6 +501,9 @@ importers:
         specifier: workspace:*
         version: link:packages/content
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -519,9 +522,6 @@ importers:
       lucide-react:
         specifier: ^0.263.1
         version: 0.263.1(react@19.0.0)
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
@@ -609,15 +609,15 @@ importers:
         specifier: workspace:*
         version: link:../transport
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.5
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
       vite:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -677,6 +677,9 @@ importers:
         specifier: workspace:*
         version: link:../common
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -692,9 +695,6 @@ importers:
       fast-check:
         specifier: ^3.23.1
         version: 3.23.2
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
       vite:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -720,6 +720,9 @@ importers:
       '@playwright/test':
         specifier: 1.60.0
         version: 1.60.0
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../packages/eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -732,9 +735,6 @@ importers:
       fast-check:
         specifier: ^3.23.1
         version: 3.23.2
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../packages/eslint
 
   packages/core-utils:
     dependencies:
@@ -1074,12 +1074,12 @@ importers:
 
   packages/ui/chat:
     dependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../eslint
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
-      maishatu-eslint-kit:
-        specifier: workspace:*
-        version: link:../../eslint
       react:
         specifier: ^19.0.0
         version: 19.0.0

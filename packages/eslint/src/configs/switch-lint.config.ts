@@ -18,7 +18,7 @@ export const switchLintPlugin = {
  * Opt-in config — NOT included in maishatuRecommended/extensionsRecommended.
  * Spread it into a workspace's own eslint.config.js once you're ready:
  *
- *   import { switchLintConfig } from "maishatu-eslint-kit"
+ *   import { switchLintConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...maishatuRecommended, ...switchLintConfig])
  *
  * require-case-braces is a pure syntax transform and autofixable, so it's

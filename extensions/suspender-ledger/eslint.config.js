@@ -1,5 +1,5 @@
 import { defineConfig } from "eslint/config"
-import { extensionsRecommended } from "maishatu-eslint-kit"
+import { extensionsRecommended } from "@some-ui/eslint-kit"
 
 export default defineConfig(...extensionsRecommended, {
   files: ["scripts/**/*.{js,mjs}"],

@@ -2,7 +2,7 @@ import { defineConfig } from "eslint/config"
 import {
   extensionCharterPlugin,
   extensionsRecommended,
-} from "maishatu-eslint-kit"
+} from "@some-ui/eslint-kit"
 
 export default defineConfig(...extensionsRecommended, {
   files: ["src/logic/**/*.{js,mjs,ts,tsx}"],

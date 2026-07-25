@@ -17,7 +17,7 @@
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
       "@some-ui/ws": ["../ws/src/index.ts"],
-      "maishatu-eslint-kit": ["./src/index.ts"],
+      "@some-ui/eslint-kit": ["./src/index.ts"],
       "some-cycle": ["../../extensions/some-cycle/src/index.ts"],
       "@some-ui/types": ["../types/src/index.ts"],
       "@some-ui/chat": ["../ui/chat/src/index.ts"],

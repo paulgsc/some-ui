@@ -59,7 +59,7 @@ candidates. The only thing that stopped it emitting them was the hand-written
    consumer inherits it. You never touch N workspaces again.
 
 3. **An ESLint rule enforces the invariant.**
-   `build-hygiene/no-manual-build-exclude` (in `maishatu-eslint-kit`) flags any
+   `build-hygiene/no-manual-build-exclude` (in `@some-ui/eslint-kit`) flags any
    `dtsOptions.exclude` glob in a `vite.config.ts` that belongs to a centralized
    category, and autofixes it away. Genuinely package-specific globs
    (`**/obs-monitor/**`, `**/recap/**`) are left alone.
