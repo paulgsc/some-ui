@@ -1,15 +1,33 @@
 import type { JSX } from "react"
+import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Pencil, Play, Sparkles, Trash2 } from "lucide-react"
-import { Badge, Button, Card, CardContent, Skeleton } from "some-ui-shared"
-import { formatRelativeTime } from "some-ui-utils"
+import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from "some-ui-shared"
+import { cn, formatRelativeTime } from "some-ui-utils"
 
+import { getActivity } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
+  useDeleteManySessions,
   useDeleteSession,
   useDuplicateSession,
   useSessions,
+  useUpdateStatusManySessions,
 } from "@/lib/tenant"
+import { usePagination } from "@/hooks/use-pagination"
+import { summarizeConfig } from "@/components/composer/utils"
+import { PaginationControls } from "@/components/pagination-controls"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -35,7 +53,15 @@ const SessionsSkeleton = (): JSX.Element => (
   </div>
 )
 
-const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
+const SessionCard = ({
+  session,
+  isSelected,
+  onToggleSelected,
+}: {
+  session: SessionRecord
+  isSelected: boolean
+  onToggleSelected: (id: string) => void
+}): JSX.Element => {
   const duplicateSession = useDuplicateSession()
   const deleteSession = useDeleteSession()
 
@@ -73,8 +99,15 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
     )
 
   return (
-    <Card>
+    <Card className={cn(isSelected && "border-primary ring-primary/50 ring-1")}>
       <CardContent className="flex items-center justify-between gap-4 py-4">
+        <input
+          type="checkbox"
+          className="accent-primary size-4 shrink-0"
+          checked={isSelected}
+          onChange={() => onToggleSelected(session.id)}
+          aria-label={`Select "${session.name}"`}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-medium">{session.name}</p>
@@ -82,7 +115,28 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
               {STATUS_LABEL[session.status]}
             </Badge>
           </div>
-          <p className="text-muted-foreground text-xs">
+          {/* One tag per activity's mode/difficulty/etc. (the same
+              summarizeConfig the completion summary already uses) so
+              sessions of the same activity are distinguishable at a
+              glance - e.g. two Honeycomb drafts, one Vocabulary and one
+              Endless, don't otherwise look identical in this list. */}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {session.activities.map((sessionActivity, index) => {
+              const activity = getActivity(sessionActivity.activityId)
+              return (
+                <Badge
+                  // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
+                  key={`${sessionActivity.activityId}-${index}`}
+                  variant="outline"
+                  className="text-muted-foreground font-normal"
+                >
+                  {activity.name}:{" "}
+                  {summarizeConfig(activity, sessionActivity.config)}
+                </Badge>
+              )
+            })}
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">
             Updated {formatRelativeTime(session.updatedAt)}
           </p>
         </div>
@@ -113,13 +167,23 @@ const SessionCard = ({ session }: { session: SessionRecord }): JSX.Element => {
   )
 }
 
+/** Sessions per page, per section - each section (In progress/Drafts/Completed) paginates independently. */
+const SESSIONS_PAGE_SIZE = 10
+
 const SessionSection = ({
   title,
   sessions,
+  selectedIds,
+  onToggleSelected,
 }: {
   title: string
   sessions: Array<SessionRecord>
+  selectedIds: ReadonlySet<string>
+  onToggleSelected: (id: string) => void
 }): JSX.Element | null => {
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(sessions, SESSIONS_PAGE_SIZE)
+
   if (sessions.length === 0) return null
 
   return (
@@ -129,11 +193,99 @@ const SessionSection = ({
         <span className="text-muted-foreground">({sessions.length})</span>
       </h2>
       <div className="space-y-2">
-        {sessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
+        {pageItems.map((session) => (
+          <SessionCard
+            key={session.id}
+            session={session}
+            isSelected={selectedIds.has(session.id)}
+            onToggleSelected={onToggleSelected}
+          />
         ))}
       </div>
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPrevious={goToPreviousPage}
+        onNext={goToNextPage}
+      />
     </section>
+  )
+}
+
+const BULK_STATUS_OPTIONS: ReadonlyArray<SessionStatus> = [
+  "draft",
+  "scheduled",
+  "paused",
+  "completed",
+]
+
+function isBulkStatus(value: string): value is SessionStatus {
+  return BULK_STATUS_OPTIONS.some((status) => status === value)
+}
+
+const BulkActionBar = ({
+  selectedIds,
+  onClearSelection,
+}: {
+  selectedIds: ReadonlySet<string>
+  onClearSelection: () => void
+}): JSX.Element => {
+  const deleteMany = useDeleteManySessions()
+  const updateStatusMany = useUpdateStatusManySessions()
+  const ids = [...selectedIds]
+  const isBusy = deleteMany.isPending || updateStatusMany.isPending
+
+  const handleDeleteSelected = (): void => {
+    if (
+      confirm(
+        `Delete ${ids.length} session${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+      )
+    ) {
+      deleteMany.mutate(ids, { onSuccess: onClearSelection })
+    }
+  }
+
+  const handleStatusChange = (status: string): void => {
+    if (!isBulkStatus(status)) return
+    updateStatusMany.mutate({ ids, status }, { onSuccess: onClearSelection })
+  }
+
+  return (
+    <div className="bg-muted/50 sticky top-0 z-10 flex items-center gap-3 rounded-lg border px-4 py-2.5">
+      <span className="text-sm font-medium">{ids.length} selected</span>
+      <Select onValueChange={handleStatusChange} disabled={isBusy}>
+        <SelectTrigger className="h-8 w-[160px]">
+          <SelectValue placeholder="Set status to..." />
+        </SelectTrigger>
+        <SelectContent>
+          {BULK_STATUS_OPTIONS.map((status) => (
+            <SelectItem key={status} value={status}>
+              {STATUS_LABEL[status]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleDeleteSelected}
+        disabled={isBusy}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 className="mr-1.5 size-3.5" />
+        Delete
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={onClearSelection}
+        disabled={isBusy}
+        className="ml-auto"
+      >
+        <X className="mr-1.5 size-3.5" />
+        Clear selection
+      </Button>
+    </div>
   )
 }
 
@@ -145,6 +297,23 @@ const IN_PROGRESS_STATUSES: ReadonlyArray<SessionStatus> = [
 
 const SessionsRoute = (): JSX.Element => {
   const { data: sessions, isLoading } = useSessions()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const handleToggleSelected = (id: string): void => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleClearSelection = (): void => {
+    setSelectedIds(new Set())
+  }
 
   if (isLoading || !sessions) {
     return <SessionsSkeleton />
@@ -175,9 +344,30 @@ const SessionsRoute = (): JSX.Element => {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <SessionSection title="In progress" sessions={inProgress} />
-      <SessionSection title="Drafts" sessions={drafts} />
-      <SessionSection title="Completed" sessions={completed} />
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          selectedIds={selectedIds}
+          onClearSelection={handleClearSelection}
+        />
+      )}
+      <SessionSection
+        title="In progress"
+        sessions={inProgress}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
+      <SessionSection
+        title="Drafts"
+        sessions={drafts}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
+      <SessionSection
+        title="Completed"
+        sessions={completed}
+        selectedIds={selectedIds}
+        onToggleSelected={handleToggleSelected}
+      />
     </div>
   )
 }

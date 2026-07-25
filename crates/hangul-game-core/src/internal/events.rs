@@ -1,4 +1,4 @@
-use super::{GameStats, SpawnResult};
+use super::{stimulus::Stimulus, GameStats, SpawnResult};
 use serde::Serialize;
 
 /// ============================================================
@@ -10,7 +10,13 @@ use serde::Serialize;
 pub enum PrimaryEvent {
     MatchFound {
         cell_id: String,
+        cell_ids: Vec<String>,
         hangul: String,
+        answer_glyphs: Vec<String>,
+        /// The completed challenge's stimulus (canon Axiom 3.1: carried opaquely), so a
+        /// completion ceremony (#426) can reference what was just matched - e.g. replaying an
+        /// icon or TTS line alongside the revealed word.
+        stimulus: Stimulus,
         points: i32,
         is_high_quality: bool,
         time_gap_ms: u32,
@@ -55,8 +61,23 @@ pub enum SecondaryEvent {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum UiHintEvent {
-    BufferUpdated { current_buffer: String },
-    AmbiguousInput { current_buffer: String, potential_matches: Vec<String> },
+    BufferUpdated {
+        current_buffer: String,
+    },
+    AmbiguousInput {
+        current_buffer: String,
+        potential_matches: Vec<String>,
+    },
+    /// Emitted when a token-cursor advance (canon Def. 4.3) doesn't yet complete the challenge:
+    /// mid-word progress for a multi-token answer. Never fired for a single-token (n=1) challenge,
+    /// since its one and only token match is always the completing one (canon Thm. 4.1).
+    AnswerProgress {
+        cell_ids: Vec<String>,
+        composed_so_far: Vec<String>,
+        remaining: Vec<String>,
+        cursor: usize,
+        total: usize,
+    },
 }
 
 /// ============================================================
@@ -81,7 +102,12 @@ pub enum GameEvent {
     MatchFound {
         #[serde(rename = "cellId")]
         cell_id: String,
+        #[serde(rename = "cellIds")]
+        cell_ids: Vec<String>,
         hangul: String,
+        #[serde(rename = "answerGlyphs")]
+        answer_glyphs: Vec<String>,
+        stimulus: Stimulus,
         points: i32,
         #[serde(rename = "isHighQuality")]
         is_high_quality: bool,
@@ -106,6 +132,15 @@ pub enum GameEvent {
         current_buffer: String,
         #[serde(rename = "potentialMatches")]
         potential_matches: Vec<String>,
+    },
+    AnswerProgress {
+        #[serde(rename = "cellIds")]
+        cell_ids: Vec<String>,
+        #[serde(rename = "composedSoFar")]
+        composed_so_far: Vec<String>,
+        remaining: Vec<String>,
+        cursor: usize,
+        total: usize,
     },
     CharacterSpawned {
         #[serde(rename = "spawnResult")]
@@ -164,7 +199,10 @@ impl EventBatch {
             match primary {
                 PrimaryEvent::MatchFound {
                     cell_id,
+                    cell_ids,
                     hangul,
+                    answer_glyphs,
+                    stimulus,
                     points,
                     is_high_quality,
                     time_gap_ms,
@@ -172,7 +210,10 @@ impl EventBatch {
                 } => {
                     events.push(GameEvent::MatchFound {
                         cell_id,
+                        cell_ids,
                         hangul,
+                        answer_glyphs,
+                        stimulus,
                         points,
                         is_high_quality,
                         time_gap_ms,
@@ -215,6 +256,19 @@ impl EventBatch {
                 } => events.push(GameEvent::AmbiguousInput {
                     current_buffer,
                     potential_matches,
+                }),
+                UiHintEvent::AnswerProgress {
+                    cell_ids,
+                    composed_so_far,
+                    remaining,
+                    cursor,
+                    total,
+                } => events.push(GameEvent::AnswerProgress {
+                    cell_ids,
+                    composed_so_far,
+                    remaining,
+                    cursor,
+                    total,
                 }),
             }
         }
@@ -267,7 +321,10 @@ mod tests {
     fn match_found_serializes_with_camel_case_wire_format() {
         let event = GameEvent::MatchFound {
             cell_id: "cell-1".to_string(),
+            cell_ids: vec!["cell-1".to_string()],
             hangul: "ㄱ".to_string(),
+            answer_glyphs: vec!["ㄱ".to_string()],
+            stimulus: Stimulus::Glyph { text: "ㄱ".to_string() },
             points: 10,
             is_high_quality: true,
             time_gap_ms: 200,

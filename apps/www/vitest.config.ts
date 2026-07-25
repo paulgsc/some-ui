@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { defineConfig } from "vitest/config"
 
 /**
@@ -14,5 +15,13 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+  },
+  resolve: {
+    alias: {
+      // Mirrors vite.config.ts's "@" -> "./src" alias - this config doesn't
+      // extend that one, so tests importing a "@/..." module (most of src/
+      // does) need their own copy of the same mapping.
+      "@": resolve(__dirname, "./src"),
+    },
   },
 })

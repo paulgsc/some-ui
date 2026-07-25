@@ -6,7 +6,7 @@
 - **Stories:** #714 (B0), #715 (B1), #716 (B2), #717 (B3), #718 (B4)
 - **Supersedes:** none
 - **Superseded (partially):** §2(d) (the #717 single-cell board-binding call) is superseded by ADR 0003 (`0003-word-challenge-board-and-overlay-architecture.md`) — multi-cell binding, per a concrete UX specification supplied after this ADR was accepted. The rest of this ADR (the `ContentDomain` trait, the API-authority axiom, the crate-boundary judgment) is unaffected.
-- **See also:** ADR 0001 (`0001-multimodal-word-testing.md`) — independent, orthogonal axis of generalization; see §1 below. ADR 0003 — supersedes §2(d) only, see above.
+- **See also:** ADR 0001 (`0001-multimodal-word-testing.md`) — independent, orthogonal axis of generalization; see §1 below. ADR 0003 — supersedes §2(d) only, see above. ADR 0004 (`0004-mutation-isolation.md`, epic #748) — a second, independent constraint on this same pure core: this ADR's Axiom 11.1 governs crate/wasm-boundary _shape_, ADR 0004's Axiom 12.1 governs mutation discipline _inside_ it.
 
 ---
 

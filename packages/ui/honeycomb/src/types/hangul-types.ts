@@ -6,6 +6,18 @@ export type CharacterWithLifetime = DisplayCharacter & {
   isSolved?: boolean
 }
 
+/**
+ * Masked-word feedback state for the currently-tracked multi-token challenge
+ * (ADR 0003 §2(d)'s feedback overlay, #426) - null when no word challenge is
+ * in progress. Single-jamo (n=1) challenges never populate this; they only
+ * ever have one token, so there is no "so far vs. remaining" to show.
+ */
+export type WordProgress = {
+  cellIds: Array<string>
+  answerGlyphs: Array<string>
+  cursor: number
+}
+
 export type HangulCharacter = {
   id: string
   hangul: string

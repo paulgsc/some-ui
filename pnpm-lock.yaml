@@ -288,12 +288,18 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/content':
+        specifier: workspace:*
+        version: link:../../packages/some-content
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
       '@some-ui/interview':
         specifier: workspace:*
         version: link:../../packages/ui/interview
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../../packages/ui/leetype
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
@@ -1294,8 +1300,8 @@ importers:
         specifier: workspace:*
         version: link:../../fetch-kit
       '@some-ui/hangul-game-core':
-        specifier: 0.0.4
-        version: 0.0.4
+        specifier: workspace:*
+        version: link:../../../crates/hangul-game-core
       '@some-ui/some-hexagon':
         specifier: 0.0.4
         version: 0.0.4
@@ -1422,6 +1428,9 @@ importers:
 
   packages/ui/leetype:
     dependencies:
+      '@some-ui/content':
+        specifier: workspace:*
+        version: link:../../some-content
       '@some-ui/leetype-wasm':
         specifier: 0.0.4
         version: 0.0.4
@@ -1471,6 +1480,9 @@ importers:
       eslint-import-resolver-typescript:
         specifier: 4.4.5
         version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.62.0(eslint@10.6.0(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint@10.6.0(jiti@2.7.0)))(eslint-plugin-import@2.32.0)(eslint@10.6.0(jiti@2.7.0))
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
 
   packages/ui/makjang:
     dependencies:
@@ -2138,6 +2150,15 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.0.0)
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
+      jsdom:
+        specifier: 26.0.0
+        version: 26.0.0
 
   packages/wasm-loader:
     devDependencies:
@@ -5203,9 +5224,6 @@ packages:
     resolution: {integrity: sha512-AeGTBg8Wtkh/0s+evyLtP8piQoS4wyqqQaAFs2HJcFMMjYAtUgo+ZPduRXLjPlqKVc2ejeR544oeqpbn8Egn8A==}
     peerDependencies:
       solid-js: ^1.6.12
-
-  '@some-ui/hangul-game-core@0.0.4':
-    resolution: {integrity: sha512-x8Z+BA9l0IaJOmlNzKOcbvj3C1hX1+3Y5yb9eqPTpmEOESxwnE8Fz7uFh4BfNHrCsnMaliVEuFpO+bJZi2Tg9w==}
 
   '@some-ui/leetype-wasm@0.0.4':
     resolution: {integrity: sha512-V4FOv4uF22Lc4Y7rgEsDa6Z2wXscJhisw3nO+DW+nLT3ROwYv+UGahLR7DQrfvd28pCj/T1ypargMBoMzrQbmA==}
@@ -16094,8 +16112,6 @@ snapshots:
   '@solid-primitives/utils@6.4.0(solid-js@1.9.13)':
     dependencies:
       solid-js: 1.9.13
-
-  '@some-ui/hangul-game-core@0.0.4': {}
 
   '@some-ui/leetype-wasm@0.0.4': {}
 

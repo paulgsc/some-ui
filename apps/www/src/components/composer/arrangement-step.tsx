@@ -31,10 +31,14 @@ import {
 } from "some-ui-shared"
 
 import { formatTimecode } from "@/lib/format"
+import { usePagination } from "@/hooks/use-pagination"
+import { PaginationControls } from "@/components/pagination-controls"
 
 import { resequence } from "./utils"
 
 const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
+/** Basic mode's read-only preview list is compact rows, same page size as the other simple lists. */
+const BASIC_SCENE_PAGE_SIZE = 10
 
 type ArrangementStepProps = {
   basicScenes: Array<SceneConfig>
@@ -59,6 +63,22 @@ export const ArrangementStep = ({
   )
   const scenes =
     mode === "advanced" ? (advancedScenes ?? basicScenes) : basicScenes
+
+  // Numbered against the full list before paginating, so a scene's position
+  // badge stays correct regardless of which page it's on. Called
+  // unconditionally (basicScenes is always available) even though its
+  // result is only rendered in "basic" mode - Rules of Hooks.
+  const numberedBasicScenes = basicScenes.map((scene, index) => ({
+    scene,
+    position: index + 1,
+  }))
+  const {
+    pageItems: basicScenePage,
+    currentPage: basicPageNumber,
+    totalPages: basicTotalPages,
+    goToPreviousPage: goToPreviousBasicPage,
+    goToNextPage: goToNextBasicPage,
+  } = usePagination(numberedBasicScenes, BASIC_SCENE_PAGE_SIZE)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -111,12 +131,12 @@ export const ArrangementStep = ({
 
       {mode === "basic" ? (
         <div className="space-y-2">
-          {basicScenes.map((scene, index) => (
+          {basicScenePage.map(({ scene, position }) => (
             <Card key={scene.scene_name}>
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
                   <span className="bg-muted flex size-6 items-center justify-center rounded-full text-xs font-medium">
-                    {index + 1}
+                    {position}
                   </span>
                   <p className="font-medium">{scene.scene_name}</p>
                 </div>
@@ -127,6 +147,12 @@ export const ArrangementStep = ({
               </CardContent>
             </Card>
           ))}
+          <PaginationControls
+            currentPage={basicPageNumber}
+            totalPages={basicTotalPages}
+            onPrevious={goToPreviousBasicPage}
+            onNext={goToNextBasicPage}
+          />
         </div>
       ) : (
         <>

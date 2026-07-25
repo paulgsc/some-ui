@@ -8,6 +8,10 @@ import { toast } from "sonner"
 
 import { getActivity, sequenceScenes } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import {
+  checkSessionDuration,
+  describeDurationCheck,
+} from "@/lib/session-duration-policy"
 import type { SessionRecord } from "@/lib/tenant"
 import { useCreateSession, useUpdateSession } from "@/lib/tenant"
 
@@ -39,6 +43,18 @@ type SessionComposerProps = {
   existingSession?: SessionRecord
 }
 
+type ComposerActivity = {
+  /**
+   * Composer-local identity distinguishing repeated instances of the same
+   * activity within one session (e.g. two Honeycomb blocks with different
+   * modes) - never persisted. `SessionActivity` has no equivalent field;
+   * array position is authoritative there (see composer/utils.ts).
+   */
+  instanceId: string
+  activityId: ActivityId
+  config: ActivityConfigValues
+}
+
 export const SessionComposer = ({
   initialActivity,
   existingSession,
@@ -48,23 +64,23 @@ export const SessionComposer = ({
   const updateSession = useUpdateSession()
 
   const [step, setStep] = useState<ComposerStep>(1)
-  const [selectedIds, setSelectedIds] = useState<Array<ActivityId>>(() =>
+  const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
-      ? existingSession.activities.map((activity) => activity.activityId)
+      ? existingSession.activities.map((activity) => ({
+          instanceId: crypto.randomUUID(),
+          activityId: activity.activityId,
+          config: activity.config,
+        }))
       : initialActivity
-        ? [initialActivity]
+        ? [
+            {
+              instanceId: crypto.randomUUID(),
+              activityId: initialActivity,
+              config: getActivity(initialActivity).defaultConfig,
+            },
+          ]
         : []
   )
-  const [configs, setConfigs] = useState<
-    Partial<Record<ActivityId, ActivityConfigValues>>
-  >(() => {
-    if (!existingSession) return {}
-    const seeded: Partial<Record<ActivityId, ActivityConfigValues>> = {}
-    for (const activity of existingSession.activities) {
-      seeded[activity.activityId] = activity.config
-    }
-    return seeded
-  })
   const [arrangementMode, setArrangementMode] = useState<ArrangementMode>(
     () => existingSession?.layoutMode ?? "basic"
   )
@@ -76,33 +92,59 @@ export const SessionComposer = ({
     () => existingSession?.name ?? ""
   )
 
-  const activities = buildSessionActivities(selectedIds, configs)
+  const selectedIds = items.map((item) => item.activityId)
+  const activities = buildSessionActivities(items)
   const basicScenes = sequenceScenes(activities)
   const scenes =
     arrangementMode === "advanced"
       ? (advancedScenes ?? basicScenes)
       : basicScenes
 
-  const handleToggleActivity = (id: ActivityId): void => {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((existing) => existing !== id)
-        : [...current, id]
+  // Checked against the actual scenes, not the friendly per-activity form
+  // fields, so a manual Advanced-arrangement edit is caught the same way a
+  // Configure-step value would be (see session-duration-policy).
+  const durationCheck = checkSessionDuration(scenes)
+  const durationWarning = describeDurationCheck(durationCheck)
+
+  const handleAddActivity = (id: ActivityId): void => {
+    // Once the session is already over the duration cap, adding yet another
+    // activity can't make it valid again - a no-op (with an explanation)
+    // beats silently growing an already-invalid session further.
+    if (durationCheck.state === "too-long") {
+      toast.error(
+        "Session duration cap reached - remove or shorten an activity before adding another."
+      )
+      return
+    }
+
+    setItems((current) => [
+      ...current,
+      {
+        instanceId: crypto.randomUUID(),
+        activityId: id,
+        config: getActivity(id).defaultConfig,
+      },
+    ])
+  }
+
+  const handleRemoveActivity = (instanceId: string): void => {
+    setItems((current) =>
+      current.filter((item) => item.instanceId !== instanceId)
     )
   }
 
   const handleFieldChange = (
-    activityId: ActivityId,
+    instanceId: string,
     key: string,
     value: string | number
   ): void => {
-    setConfigs((current) => ({
-      ...current,
-      [activityId]: {
-        ...(current[activityId] ?? getActivity(activityId).defaultConfig),
-        [key]: value,
-      },
-    }))
+    setItems((current) =>
+      current.map((item) =>
+        item.instanceId === instanceId
+          ? { ...item, config: { ...item.config, [key]: value } }
+          : item
+      )
+    )
   }
 
   const handleEnableAdvanced = (): void => {
@@ -253,16 +295,13 @@ export const SessionComposer = ({
 
       {step === 1 && (
         <ActivityPickerStep
-          selectedIds={selectedIds}
-          onToggle={handleToggleActivity}
+          items={items}
+          onAdd={handleAddActivity}
+          onRemove={handleRemoveActivity}
         />
       )}
       {step === 2 && (
-        <ConfigureStep
-          selectedIds={selectedIds}
-          configs={configs}
-          onFieldChange={handleFieldChange}
-        />
+        <ConfigureStep items={items} onFieldChange={handleFieldChange} />
       )}
       {step === 3 && (
         <ArrangementStep
@@ -276,14 +315,19 @@ export const SessionComposer = ({
       )}
       {step === 4 && (
         <ReviewStep
-          selectedIds={selectedIds}
-          configs={configs}
+          items={items}
           scenes={scenes}
           mode={arrangementMode}
           sessionName={sessionName}
           onSessionNameChange={setSessionName}
           defaultName={defaultSessionName(selectedIds)}
         />
+      )}
+
+      {durationWarning && (
+        <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+          {durationWarning}
+        </div>
       )}
 
       <div className="flex items-center justify-between border-t pt-4">
@@ -302,11 +346,14 @@ export const SessionComposer = ({
             <Button
               variant="outline"
               onClick={handleSaveDraft}
-              disabled={isSaving}
+              disabled={isSaving || durationCheck.state !== "valid"}
             >
               Save as draft
             </Button>
-            <Button onClick={handleSaveAndPlay} disabled={isSaving}>
+            <Button
+              onClick={handleSaveAndPlay}
+              disabled={isSaving || durationCheck.state !== "valid"}
+            >
               Save &amp; Play
             </Button>
           </div>

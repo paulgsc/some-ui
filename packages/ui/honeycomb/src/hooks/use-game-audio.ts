@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useRef } from "react"
 
 const AUDIO_EVENTS = [
   "match_correct",
@@ -44,22 +44,44 @@ export const useGameAudio = ({
   enabled = true,
   volume = 0.5,
 }: UseGameAudioProps = {}): UseGameAudioReturn => {
-  const audioMap = useMemo(() => {
+  // A ref, not useMemo: the Audio elements it holds are native resources
+  // with side effects (each construction starts a network load), so their
+  // creation belongs in an effect paired with its own cleanup - not in
+  // useMemo, whose cached value survives StrictMode's dev-only mount ->
+  // cleanup -> remount replay untouched while nothing rebuilt it, silently
+  // leaving every entry cleared out (and every subsequent playSound call
+  // finding nothing) for the rest of the component's life.
+  const audioMapRef = useRef<Map<AudioEvent, HTMLAudioElement>>(new Map())
+
+  useEffect(() => {
     const map = new Map<AudioEvent, HTMLAudioElement>()
 
     // Looping over a strongly typed tuple means 'event' is inherently an AudioEvent
     AUDIO_EVENTS.forEach((event) => {
       const audio = new Audio(AUDIO_FILES[event])
       audio.preload = "auto"
-      audio.volume = volume
       map.set(event, audio)
     })
 
-    return map
+    audioMapRef.current = map
+
+    return (): void => {
+      map.forEach((audio) => {
+        audio.pause()
+        audio.src = ""
+      })
+      map.clear()
+    }
+  }, [])
+
+  useEffect(() => {
+    audioMapRef.current.forEach((audio) => {
+      audio.volume = volume
+    })
   }, [volume])
 
   const unlockAudio = useCallback(() => {
-    audioMap.forEach((audio) => {
+    audioMapRef.current.forEach((audio) => {
       const wasMuted = audio.muted
       audio.muted = true
 
@@ -72,29 +94,13 @@ export const useGameAudio = ({
         })
         .catch(() => {})
     })
-  }, [audioMap])
-
-  useEffect(() => {
-    return (): void => {
-      audioMap.forEach((audio) => {
-        audio.pause()
-        audio.src = ""
-      })
-      audioMap.clear()
-    }
-  }, [audioMap])
-
-  useEffect(() => {
-    audioMap.forEach((audio) => {
-      audio.volume = volume
-    })
-  }, [audioMap, volume])
+  }, [])
 
   const playSound = useCallback(
     (event: AudioEvent) => {
       if (!enabled) return
 
-      const audio = audioMap.get(event)
+      const audio = audioMapRef.current.get(event)
       if (!audio) {
         // eslint-disable-next-line no-console
         console.log("no audio found for event: ", event)
@@ -109,7 +115,7 @@ export const useGameAudio = ({
         console.warn(`Playback blocked for ${event}:`, err)
       })
     },
-    [audioMap, enabled, volume]
+    [enabled, volume]
   )
 
   return { playSound, unlockAudio }

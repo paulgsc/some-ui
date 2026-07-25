@@ -1,3 +1,4 @@
+import { CHALLENGES } from "@some-ui/content"
 import { interviewQuestions } from "@some-ui/interview"
 import type { Question } from "@some-ui/interview"
 
@@ -23,6 +24,21 @@ function filterInterviewQuestions(
   return interviewQuestions
 }
 
+/**
+ * Resolves the composer's plain `difficulty` identifier into the actual
+ * challenge (title/description/tags/codePaths) Leetype's component expects -
+ * the "live player's job" this activity's `toSceneProps` previously deferred
+ * (see ActivityDefinition.toSceneProps's own doc comment), leaving every
+ * session's `path` empty and its loader permanently idle. Deterministic
+ * (first match) rather than random, so replaying a session shows the same
+ * challenge it did the first time.
+ */
+function pickLeetypeChallenge(
+  difficulty: unknown
+): (typeof CHALLENGES)[number] {
+  return CHALLENGES.find((c) => c.difficulty === difficulty) ?? CHALLENGES[0]
+}
+
 const honeycomb: ActivityDefinition = {
   id: "honeycomb",
   name: "Hangul Honeycomb",
@@ -39,8 +55,27 @@ const honeycomb: ActivityDefinition = {
       options: [
         { value: "completion", label: "Completion (clear the board)" },
         { value: "endless", label: "Endless (survive as long as you can)" },
+        {
+          value: "vocabulary",
+          label: "Vocabulary (master the word list)",
+        },
+        {
+          value: "vocabulary-endless",
+          label: "Vocabulary Endless (words, no end)",
+        },
       ],
       defaultValue: "completion",
+    },
+    {
+      kind: "select",
+      key: "difficulty",
+      label: "Difficulty",
+      options: [
+        { value: "relaxed", label: "Relaxed - more time per letter" },
+        { value: "standard", label: "Standard" },
+        { value: "challenging", label: "Challenging - fast-paced" },
+      ],
+      defaultValue: "standard",
     },
     {
       kind: "duration",
@@ -52,8 +87,19 @@ const honeycomb: ActivityDefinition = {
       defaultMinutes: 10,
     },
   ],
-  defaultConfig: { mode: "completion", durationMinutes: 10 },
-  toSceneProps: (config) => ({ mode: config.mode }),
+  defaultConfig: {
+    mode: "completion",
+    difficulty: "standard",
+    durationMinutes: 10,
+  },
+  // difficulty is passed through as the friendly label the player picked
+  // ("relaxed"/"standard"/"challenging"), not resolved into GameConfig
+  // fields here - HangulHexGrid (@some-ui/honeycomb) owns what each preset
+  // actually means, so this app never needs to know its shape.
+  toSceneProps: (config) => ({
+    mode: config.mode,
+    difficulty: config.difficulty,
+  }),
 }
 
 const topik: ActivityDefinition = {
@@ -184,8 +230,8 @@ const leetype: ActivityDefinition = {
     durationMinutes: 10,
   },
   toSceneProps: (config) => ({
-    language: config.language,
-    difficulty: config.difficulty,
+    challenge: pickLeetypeChallenge(config.difficulty),
+    initialLanguage: config.language,
   }),
 }
 

@@ -14,6 +14,8 @@ type StatsPanelProps = {
   mode: GameMode
   timeRemaining?: number
   progress?: GameProgress
+  /** The streak threshold that hides romanization hints, per the active difficulty. @default 5 */
+  hideRomanizationStreak?: number
 }
 
 export const StatsPanel = ({
@@ -23,6 +25,7 @@ export const StatsPanel = ({
   mode,
   timeRemaining,
   progress,
+  hideRomanizationStreak = 5,
 }: StatsPanelProps): JSX.Element => {
   const [showDetails, setShowDetails] = useState(false)
 
@@ -188,7 +191,9 @@ export const StatsPanel = ({
 
           <div className="flex justify-between">
             <span className="text-white/50">Streak to hide:</span>
-            <span className="text-cyan-400">{stats.currentStreak} / 5</span>
+            <span className="text-cyan-400">
+              {stats.currentStreak} / {hideRomanizationStreak}
+            </span>
           </div>
         </div>
       </div>

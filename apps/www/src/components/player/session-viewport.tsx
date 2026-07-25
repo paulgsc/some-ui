@@ -1,6 +1,13 @@
 import type { JSX } from "react"
+import { useEffect, useMemo } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
-import { useSceneLifetimes } from "some-ui-utils"
+import {
+  setSessionKey,
+  setSuspended,
+  useSceneLifetimes,
+  useSessionKey,
+  useSuspended,
+} from "some-ui-utils"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import type { SessionRecord } from "@/lib/tenant"
@@ -31,6 +38,27 @@ export const SessionViewport = ({
     onLeafResize,
   } = useLiveLayoutEditor(session, activeLifetimes)
 
+  // This is the layer with write authority over both facts - which session
+  // is live, and whether the layout editor currently needs exclusive
+  // control - so it's the only place that ever calls these setters. Every
+  // registry component downstream only ever sees the resolved values as
+  // plain props (extraProps below), never this store.
+  useEffect(() => {
+    setSessionKey(session.id)
+  }, [session.id])
+
+  useEffect(() => {
+    setSuspended(editMode)
+  }, [editMode])
+
+  const sessionKey = useSessionKey()
+  const suspended = useSuspended()
+
+  const extraProps = useMemo(
+    () => ({ sessionKey: sessionKey ?? undefined, suspended }),
+    [sessionKey, suspended]
+  )
+
   return (
     <div className="bg-muted relative w-full flex-1 min-h-0 overflow-hidden rounded-lg border">
       {activeLifetimes.length === 0 ? (
@@ -46,6 +74,7 @@ export const SessionViewport = ({
             enableFocus={false}
             collapseUnbound={!editMode}
             onLeafResize={onLeafResize}
+            extraProps={extraProps}
           />
 
           {editMode && (

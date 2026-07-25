@@ -7,6 +7,7 @@ export type {
 } from "./types"
 export {
   useCreateSession,
+  useDeleteManySessions,
   useDeleteSession,
   useDuplicateSession,
   useProfile,
@@ -16,4 +17,5 @@ export {
   useUpdateProfile,
   useUpdateSession,
   useUpdateSettings,
+  useUpdateStatusManySessions,
 } from "./hooks"

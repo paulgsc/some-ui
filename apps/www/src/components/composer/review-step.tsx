@@ -13,13 +13,20 @@ import {
 import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
 import { formatDurationMs } from "@/lib/format"
+import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { PaginationControls } from "@/components/pagination-controls"
 
 import { summarizeConfig, totalDurationOfScenes } from "./utils"
 
+const REVIEW_PAGE_SIZE = 10
+
 type ReviewStepProps = {
-  selectedIds: ReadonlyArray<ActivityId>
-  configs: Partial<Record<ActivityId, ActivityConfigValues>>
+  items: ReadonlyArray<{
+    instanceId: string
+    activityId: ActivityId
+    config: ActivityConfigValues
+  }>
   scenes: Array<SceneConfig>
   mode: "basic" | "advanced"
   sessionName: string
@@ -28,8 +35,7 @@ type ReviewStepProps = {
 }
 
 export const ReviewStep = ({
-  selectedIds,
-  configs,
+  items,
   scenes,
   mode,
   sessionName,
@@ -37,6 +43,15 @@ export const ReviewStep = ({
   defaultName,
 }: ReviewStepProps): JSX.Element => {
   const totalDurationMs = totalDurationOfScenes(scenes)
+
+  // Numbered against the full list before paginating, same reasoning as the
+  // other composer steps' lists.
+  const numberedItems = items.map((item, index) => ({
+    item,
+    position: index + 1,
+  }))
+  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
+    usePagination(numberedItems, REVIEW_PAGE_SIZE)
 
   return (
     <div className="space-y-4">
@@ -52,16 +67,20 @@ export const ReviewStep = ({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Activities</CardTitle>
+          <CardTitle className="text-base">
+            Activities{" "}
+            <span className="text-muted-foreground font-normal">
+              ({items.length})
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {selectedIds.map((activityId, index) => {
-            const activity = ACTIVITY_CATALOG[activityId]
-            const config = configs[activityId] ?? activity.defaultConfig
+          {pageItems.map(({ item, position }) => {
+            const activity = ACTIVITY_CATALOG[item.activityId]
             return (
-              <div key={activityId} className="flex items-center gap-3">
+              <div key={item.instanceId} className="flex items-center gap-3">
                 <span className="bg-muted flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                  {index + 1}
+                  {position}
                 </span>
                 <ActivityIcon
                   icon={activity.icon}
@@ -70,12 +89,18 @@ export const ReviewStep = ({
                 <div>
                   <p className="font-medium">{activity.name}</p>
                   <p className="text-muted-foreground text-sm">
-                    {summarizeConfig(activity, config)}
+                    {summarizeConfig(activity, item.config)}
                   </p>
                 </div>
               </div>
             )
           })}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrevious={goToPreviousPage}
+            onNext={goToNextPage}
+          />
         </CardContent>
       </Card>
 

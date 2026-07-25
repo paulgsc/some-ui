@@ -1,4 +1,4 @@
-import { CHALLENGES } from "@leetype/data/leetype"
+import { CHALLENGES } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ChallengeSelector } from "."

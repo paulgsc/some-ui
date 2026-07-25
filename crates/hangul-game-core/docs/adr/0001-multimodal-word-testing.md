@@ -5,7 +5,7 @@
 - **Epic:** #420
 - **Stories:** #421 (S1), #422 (S2), #423 (S3), #424 (S4), #425 (S5), #426 (S6), #762 (S7)
 - **Supersedes:** none
-- **See also:** ADR 0002 (`0002-content-domain-genericity-and-crate-boundary.md`, epic #709) generalizes a second, independent axis — _which alphabet_ an answer is drawn from. ADR 0003 (`0003-word-challenge-board-and-overlay-architecture.md`) settles the board cell-binding (multi-cell, not ADR 0002's original single-cell call), backspace scope, and the prompt/feedback overlay architecture this ADR's own #421–#426 and #762 build against.
+- **See also:** ADR 0002 (`0002-content-domain-genericity-and-crate-boundary.md`, epic #709) generalizes a second, independent axis — _which alphabet_ an answer is drawn from. ADR 0003 (`0003-word-challenge-board-and-overlay-architecture.md`) settles the board cell-binding (multi-cell, not ADR 0002's original single-cell call), backspace scope, and the prompt/feedback overlay architecture this ADR's own #421–#426 and #762 build against. ADR 0004 (`0004-mutation-isolation.md`, epic #748) is orthogonal to all of the above — it constrains function-signature mutation discipline inside the engine, not any type or story sequencing this ADR decides.
 
 ---
 

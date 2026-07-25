@@ -1,14 +1,16 @@
 import type { JSX } from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ControlButtons } from "@honeycomb/components/hangul-hex-grid/control-buttons"
 import { DecorativeParticles } from "@honeycomb/components/hangul-hex-grid/decorative-particles"
 import { ErrorState } from "@honeycomb/components/hangul-hex-grid/error-state"
 import { GameOverModal } from "@honeycomb/components/hangul-hex-grid/game-over-modal"
+import { GridErrorOverlay } from "@honeycomb/components/hangul-hex-grid/grid-error-overlay"
 import { HangulHexCell } from "@honeycomb/components/hangul-hex-grid/hangul-hex-cell"
 import { InstructionsPanel } from "@honeycomb/components/hangul-hex-grid/instructions-panel"
 import { KeyBufferDisplay } from "@honeycomb/components/hangul-hex-grid/key-buffer-display"
 import { LoadingState } from "@honeycomb/components/hangul-hex-grid/loading-state"
 import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overlay"
+import { PromptStation } from "@honeycomb/components/hangul-hex-grid/prompt-station"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
 import { HexGrid } from "@honeycomb/components/hex-grid"
@@ -17,28 +19,74 @@ import { useGameLoop } from "@honeycomb/hooks/use-game-loop"
 import { useGameTimer } from "@honeycomb/hooks/use-game-timer"
 import { useHangulGameWasm } from "@honeycomb/hooks/use-hangul-wasm"
 import { useKeyboardInput } from "@honeycomb/hooks/use-keyboard-input"
+import { usePromptEscalation } from "@honeycomb/hooks/use-prompt-escalation"
+import type { DifficultyPreset } from "@honeycomb/lib/hangul/difficulty-presets"
+import { resolveDifficultyConfig } from "@honeycomb/lib/hangul/difficulty-presets"
 import { KeyboardInputManager } from "@honeycomb/lib/hangul/keyboard-input-manager"
 import type {
   GameMode,
   GameStats,
   TimingParams,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import { HANGUL_GRID_CELL_COUNT } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import {
+  DEFAULT_GAME_CONFIG,
+  HANGUL_GRID_CELL_COUNT,
+} from "@honeycomb/lib/hangul/wasm-game-bridge"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
 
 type HangulHexGridProps = {
   mode?: GameMode
+  /**
+   * A named difficulty, not raw engine config (ADR-aligned with #762's
+   * "host-layer realizations of engine primitives" idiom): a host app picks
+   * one of three lay-facing labels, and this package alone knows what each
+   * means in terms of GameConfig fields (see difficulty-presets).
+   * @default "standard"
+   */
+  difficulty?: DifficultyPreset
+  /**
+   * Opaque identity of whatever session/instance is currently placing this
+   * component - this package doesn't interpret it, only forwards it so the
+   * WASM loader singleton can tell "a new session started" apart from "the
+   * same session continues," independent of whether `mode` also changed
+   * (see useHangulGameWasm). Omit if the host has no such concept (e.g.
+   * Storybook) - the engine falls back to mode-only diffing.
+   */
+  sessionKey?: string
+  /**
+   * True when something outside this component currently needs exclusive
+   * control (e.g. a host-level layout editor is open) - the game loop and
+   * keyboard capture idle while this is true, the same way they already do
+   * for the manual pause button, rather than silently continuing to spawn/
+   * tick/consume keystrokes underneath whatever else is now in control.
+   * Omit if the host has no such concept.
+   */
+  suspended?: boolean
 }
 
 export const HangulHexGrid = ({
   mode = "completion",
+  difficulty,
+  sessionKey,
+  suspended = false,
 }: HangulHexGridProps): JSX.Element => {
-  const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
-    autoStart: true,
-    mode,
-  })
-
+  // Memoized so useHangulGameWasm's own [mode, config, wordPool]-keyed
+  // initialize() callback stays referentially stable across re-renders that
+  // don't change the difficulty prop.
+  const config = useMemo(
+    () => resolveDifficultyConfig(difficulty),
+    [difficulty]
+  )
+  // The engine only reports whether romanization is *currently* shown
+  // (TimingParams.showRomanization), not the streak threshold that governs
+  // it - StatsPanel needs the actual configured number to display, which
+  // for "standard" is the engine's own default (no override present).
+  const hideRomanizationStreak =
+    config.hideRomanizationStreak ?? DEFAULT_GAME_CONFIG.hideRomanizationStreak
   const [keyboardManager] = useState(() => new KeyboardInputManager())
   const [activeCharacters, setActiveCharacters] = useState<
     Map<string, CharacterWithLifetime>
@@ -63,6 +111,33 @@ export const HangulHexGrid = ({
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false)
   const [lastPoints, setLastPoints] = useState(0)
   const [keyBuffer, setKeyBuffer] = useState("")
+  const [wordProgress, setWordProgress] = useState<WordProgress | null>(null)
+  const [celebrationWord, setCelebrationWord] = useState<string | undefined>(
+    undefined
+  )
+  const [missCount, setMissCount] = useState(0)
+  // The honeycomb grid's own hex-geometry WASM module (@some-ui/some-hexagon,
+  // via HexGrid/useHexgridWasm) is an entirely separate concern from the
+  // game engine's WASM module above - a fatal failure there previously had
+  // no way to reach this component at all: the grid would show its own
+  // inline error while the game loop, audio, and timer kept running blind
+  // (spawning, ticking, playing sounds) with nothing rendered to show it on.
+  // HexGrid's onStatusChange callback closes that gap.
+  const [gridError, setGridError] = useState<string | null>(null)
+  const isGridFatal = gridError !== null
+  const handleGridStatusChange = useCallback(
+    (status: { isLoading: boolean; error: string | null }) => {
+      setGridError(status.error)
+    },
+    []
+  )
+
+  const { isLoading, error, gameBridge, isInitialized } = useHangulGameWasm({
+    autoStart: true,
+    mode,
+    config,
+    sessionKey,
+  })
 
   // Initialize audio
   const { unlockAudio, playSound } = useGameAudio({
@@ -102,7 +177,7 @@ export const HangulHexGrid = ({
   useGameLoop({
     gameBridge,
     isInitialized,
-    isPaused,
+    isPaused: isPaused || isGridFatal || suspended,
     setActiveCharacters,
     setStats,
     setTimingParams,
@@ -110,13 +185,16 @@ export const HangulHexGrid = ({
     onBoardFull: () => {
       playSound("board_full")
     },
+    wordProgress,
+    setWordProgress,
+    setMissCount,
   })
 
   // Keyboard input hook
   useKeyboardInput({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGameOver,
+    isPaused: isPaused || isGameOver || isGridFatal || suspended,
     keyboardManager,
     setActiveCharacters,
     setStats,
@@ -126,6 +204,22 @@ export const HangulHexGrid = ({
     setLastPoints,
     setAmbiguousCharacters,
     playSound,
+    setWordProgress,
+    setCelebrationWord,
+    setMissCount,
+  })
+
+  // #762 Prompt/Concept Station: derive the tracked word's stimulus/spawn
+  // time from the same activeCharacters entries the hex cells already read,
+  // rather than duplicating that state.
+  const trackedCellId = wordProgress?.cellIds[0]
+  const trackedCharacter = trackedCellId
+    ? activeCharacters.get(trackedCellId)
+    : undefined
+  const promptTier = usePromptEscalation({
+    active: trackedCharacter !== undefined,
+    spawnedAt: trackedCharacter?.spawnedAt,
+    missCount,
   })
 
   const handleReset = useCallback(() => {
@@ -137,6 +231,9 @@ export const HangulHexGrid = ({
     setStats(gameBridge.getStats())
     setTimingParams(gameBridge.getTimingParams())
     setKeyBuffer("")
+    setWordProgress(null)
+    setCelebrationWord(undefined)
+    setMissCount(0)
     setIsPaused(false)
 
     // Restart timer for timed modes
@@ -187,7 +284,11 @@ export const HangulHexGrid = ({
           style={{ animationDuration: "8s" }}
         />
 
-        <SuccessFeedback show={showSuccessFeedback} points={lastPoints} />
+        <SuccessFeedback
+          show={showSuccessFeedback}
+          points={lastPoints}
+          word={celebrationWord}
+        />
 
         <main className="size-full absolute">
           <div className="size-full relative">
@@ -203,6 +304,7 @@ export const HangulHexGrid = ({
               // make HexGrid render a different set of cell ids than the ones
               // the game is spawning characters into.
               fitStrategy="shrink-only"
+              onStatusChange={handleGridStatusChange}
               className="[&_g:first-of-type_path]:stroke-white/30 [&_g:first-of-type_path]:stroke-[2]"
               renderCell={(cell, centerX, centerY, cellWidth, hexPath) => {
                 const { id, content } = cell
@@ -216,9 +318,24 @@ export const HangulHexGrid = ({
                     spawnedAt,
                     timeRemaining,
                     isSolved,
+                    tokenIndex,
+                    cursor,
+                    answerGlyphs,
                   },
                   theme: { opacity },
                 } = content
+                // Only a genuine multi-cell word challenge (ADR 0003 §2(a))
+                // masks its cells until the token-cursor reaches them. A
+                // single-jamo (n=1) challenge's gameplay predates this epic
+                // and must stay exactly as it was: the glyph is visible from
+                // the instant it spawns, full stop - it is never "reached"
+                // by a cursor, because single-jamo play has no cursor
+                // concept at all (answerProgress never fires for n=1, so
+                // tokenIndex/cursor would otherwise both sit at their 0/0
+                // spawn defaults for the cell's entire lifetime, which is
+                // indistinguishable from "not yet reached" without this gate).
+                const isPlaceholder =
+                  !isSolved && answerGlyphs.length > 1 && tokenIndex >= cursor
                 return (
                   <HangulHexCell
                     character={{
@@ -239,6 +356,7 @@ export const HangulHexGrid = ({
                     timeRemaining={timeRemaining}
                     showRomanization={timingParams.showRomanization}
                     isSolved={isSolved}
+                    isPlaceholder={isPlaceholder}
                   />
                 )
               }}
@@ -253,11 +371,18 @@ export const HangulHexGrid = ({
           mode={mode}
           timeRemaining={timeRemainingMs}
           progress={progress}
+          hideRomanizationStreak={hideRomanizationStreak}
         />
 
         <KeyBufferDisplay
           buffer={keyBuffer}
           ambiguousCharacters={ambiguousCharacters}
+        />
+
+        <PromptStation
+          stimulus={trackedCharacter?.stimulus ?? null}
+          tier={promptTier}
+          progress={wordProgress}
         />
 
         <ControlButtons
@@ -269,9 +394,11 @@ export const HangulHexGrid = ({
         <InstructionsPanel mode={mode} />
 
         <PauseOverlay
-          isPaused={isPaused && !isGameOver}
+          isPaused={isPaused && !isGameOver && !isGridFatal}
           onResume={handleTogglePause}
         />
+
+        <GridErrorOverlay error={gridError} />
 
         <GameOverModal
           isOpen={isGameOver}

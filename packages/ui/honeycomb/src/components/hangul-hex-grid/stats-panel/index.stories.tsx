@@ -44,7 +44,7 @@ const baseProgress = (overrides?: Partial<GameProgress>): GameProgress => ({
 // ---------------------------------------------------------------------------
 
 const meta: Meta<typeof StatsPanel> = {
-  title: "UI/Honeycomb/Components/HangulHexGrid/StatsPanel",
+  title: "UI/Honeycomb/Hangul/Components/StatsPanel",
   component: StatsPanel,
   tags: ["autodocs"],
   parameters: {
@@ -176,5 +176,21 @@ export const HighAccuracy: Story = {
     timingParams: baseTiming(),
     currentTimeWindow: 2_500,
     mode: "endless",
+  },
+}
+
+// ---- Vocabulary mode (epic #420) ------------------------------------------
+// StatsPanel only special-cases `mode === "completion"` today; every other
+// mode (including the two new vocabulary variants) falls back to the same
+// "♾️ Endless" badge and no progress bar/timer. This story pins that
+// behavior down for the new mode values so a future change to the badge
+// logic has to touch this snapshot deliberately.
+
+export const VocabularyMode: Story = {
+  args: {
+    stats: baseStats({ score: 340, totalCorrect: 12, totalMissed: 2 }),
+    timingParams: baseTiming(),
+    currentTimeWindow: 2_500,
+    mode: "vocabulary",
   },
 }

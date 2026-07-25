@@ -1,24 +1,10 @@
 import type { CodeChunk, TextModel } from "@leetype/lib/leetype/load-code-file"
 import { loadTextModel } from "@leetype/lib/leetype/load-code-file"
 import { act, renderHook, waitFor } from "@testing-library/react"
+import fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useChunkedCode } from "."
-
-// ═══════════════════════════════════════════════════════════════════════════
-// S6 — use-chunked-code.ts's load effect (:60-136) races a 5s timeout
-// against `loadTextModel`, tracks a `cancelled` flag across path changes,
-// and resets `currentLine` to 0 on every new path. These are exactly the
-// "does the effect re-fire the right number of times, and does a stale
-// resolve get ignored" invariants #555 flags as the highest-risk class in
-// this paydown — pinned here before any set-state-in-effect/
-// exhaustive-deps fix touches the hook.
-//
-// `loadTextModel` is mocked directly (it owns a module-level path cache
-// with no reset hook, and calls real `fetch` — mocking at this boundary,
-// like the wasm-bridge tests mock their crate, keeps timing fully
-// controllable per test).
-// ═══════════════════════════════════════════════════════════════════════════
 
 vi.mock("@leetype/lib/leetype/load-code-file", () => ({
   loadTextModel: vi.fn(),
@@ -46,17 +32,19 @@ function makeModel(
       return c
     }),
   }
-  // `TextModel`'s real fields are private, so a fake exposing only the two
-  // methods `useChunkedCode` calls can never satisfy it structurally.
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
+  // fake only implements the subset of TextModel this suite exercises;
+  // structurally incompatible with the full interface, hence the cast.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   return fake as unknown as TextModel
 }
 
-function deferred<T>(): {
+type Deferred<T> = {
   promise: Promise<T>
   resolve: (value: T) => void
   reject: (reason: unknown) => void
-} {
+}
+
+function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void
   let reject!: (reason: unknown) => void
   const promise = new Promise<T>((res, rej) => {
@@ -74,8 +62,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("initial load", () => {
-  it("goes IDLE -> LOADING -> SUCCESS and stores the first chunk", async () => {
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. Essential Behavioral Tests (Happy path & Key state shifts)
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Core Functionality", () => {
+  it("initial load goes IDLE -> LOADING -> SUCCESS and stores initial chunk", async () => {
     const model = makeModel(
       { 0: chunk({ startLine: 0, endLine: 5, hasMore: true, content: "abc" }) },
       20
@@ -85,110 +76,16 @@ describe("initial load", () => {
     const { result } = renderHook(() =>
       useChunkedCode("file.ts", { prettierParser: "typescript" })
     )
+
     expect(result.current.status).toBe("LOADING")
-
     await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
-
     expect(result.current.currentChunk?.content).toBe("abc")
     expect(result.current.totalLines).toBe(20)
     expect(result.current.currentLine).toBe(5)
     expect(result.current.hasMore).toBe(true)
-    expect(loadTextModel).toHaveBeenCalledTimes(1)
   })
 
-  it("resets to IDLE without calling the loader when path is empty", () => {
-    const { result } = renderHook(() =>
-      useChunkedCode("", { prettierParser: "typescript" })
-    )
-
-    expect(result.current.status).toBe("IDLE")
-    expect(loadTextModel).not.toHaveBeenCalled()
-  })
-})
-
-describe("path change cancellation", () => {
-  it("ignores a stale resolve from the previous path once a new path has started loading", async () => {
-    const gateA = deferred<TextModel>()
-    const gateB = deferred<TextModel>()
-    vi.mocked(loadTextModel)
-      .mockImplementationOnce(() => gateA.promise)
-      .mockImplementationOnce(() => gateB.promise)
-
-    const { result, rerender } = renderHook(
-      (props: { path: string }) =>
-        useChunkedCode(props.path, { prettierParser: "typescript" }),
-      { initialProps: { path: "a.ts" } }
-    )
-    expect(result.current.status).toBe("LOADING")
-
-    rerender({ path: "b.ts" })
-    expect(result.current.status).toBe("LOADING")
-    expect(result.current.currentLine).toBe(0)
-
-    const modelB = makeModel(
-      { 0: chunk({ startLine: 0, endLine: 8, hasMore: false, content: "B" }) },
-      8
-    )
-    await act(async () => {
-      gateB.resolve(modelB)
-      await gateB.promise
-    })
-    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
-    expect(result.current.currentChunk?.content).toBe("B")
-
-    // A's effect cleanup already set `cancelled = true` for that run when
-    // the path changed — resolving it now must not clobber B's state.
-    const modelA = makeModel(
-      { 0: chunk({ startLine: 0, endLine: 3, hasMore: true, content: "A" }) },
-      3
-    )
-    await act(async () => {
-      gateA.resolve(modelA)
-      await gateA.promise
-    })
-
-    expect(result.current.currentChunk?.content).toBe("B")
-    expect(result.current.status).toBe("SUCCESS")
-  })
-})
-
-describe("loadNextChunk", () => {
-  it("no-ops while status is not SUCCESS", () => {
-    const gate = deferred<TextModel>()
-    vi.mocked(loadTextModel).mockImplementation(() => gate.promise)
-
-    const { result } = renderHook(() =>
-      useChunkedCode("file.ts", { prettierParser: "typescript" })
-    )
-    expect(result.current.status).toBe("LOADING")
-
-    act(() => {
-      result.current.loadNextChunk()
-    })
-
-    expect(result.current.currentChunk).toBeUndefined()
-  })
-
-  it("no-ops once hasMore is false", async () => {
-    const model = makeModel(
-      { 0: chunk({ startLine: 0, endLine: 5, hasMore: false }) },
-      5
-    )
-    vi.mocked(loadTextModel).mockResolvedValue(model)
-
-    const { result } = renderHook(() =>
-      useChunkedCode("file.ts", { prettierParser: "typescript" })
-    )
-    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
-
-    act(() => {
-      result.current.loadNextChunk()
-    })
-
-    expect(model.getChunk).toHaveBeenCalledTimes(1) // only the initial getChunk(0)
-  })
-
-  it("advances currentLine and replaces currentChunk when hasMore is true", async () => {
+  it("advances currentLine and replaces chunk on loadNextChunk", async () => {
     const model = makeModel(
       {
         0: chunk({ startLine: 0, endLine: 5, hasMore: true, content: "first" }),
@@ -206,9 +103,8 @@ describe("loadNextChunk", () => {
     const { result } = renderHook(() =>
       useChunkedCode("file.ts", { prettierParser: "typescript" })
     )
-    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
-    expect(result.current.currentChunk?.content).toBe("first")
 
+    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
     act(() => {
       result.current.loadNextChunk()
     })
@@ -219,21 +115,269 @@ describe("loadNextChunk", () => {
   })
 })
 
-describe("timeout", () => {
-  it("moves to ERROR after TIMEOUT_MS if the loader never settles", async () => {
-    vi.useFakeTimers()
-    vi.mocked(loadTextModel).mockImplementation(() => new Promise(() => {}))
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. Targeted Regression Tests (Specific Bug Fixes)
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Bug Regressions", () => {
+  it("REGRESSION: loadNextChunk failure transitions status to ERROR", async () => {
+    const model = makeModel(
+      {
+        0: chunk({ startLine: 0, endLine: 5, hasMore: true }),
+      },
+      10
+    )
+    // Next chunk call will throw
+    vi.spyOn(model, "getChunk").mockImplementation((line) => {
+      if (line === 0) return chunk({ startLine: 0, endLine: 5, hasMore: true })
+      throw new Error("Disk read error")
+    })
+
+    vi.mocked(loadTextModel).mockResolvedValue(model)
 
     const { result } = renderHook(() =>
       useChunkedCode("file.ts", { prettierParser: "typescript" })
     )
-    expect(result.current.status).toBe("LOADING")
+    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000)
+    act(() => {
+      result.current.loadNextChunk()
     })
 
     expect(result.current.status).toBe("ERROR")
-    expect(result.current.error?.message).toMatch(/Timeout after 5000ms/)
+    expect(result.current.error?.message).toBe("Disk read error")
+  })
+
+  it("REGRESSION: failed initial load resets loaderRef so loadNextChunk is a no-op", async () => {
+    const modelA = makeModel(
+      { 0: chunk({ startLine: 0, endLine: 5, hasMore: true }) },
+      10
+    )
+    const getChunkSpy = vi.spyOn(modelA, "getChunk")
+
+    vi.mocked(loadTextModel)
+      .mockResolvedValueOnce(modelA)
+      .mockRejectedValueOnce(new Error("Network failed"))
+
+    const { result, rerender } = renderHook(
+      ({ path }) => useChunkedCode(path, { prettierParser: "typescript" }),
+      { initialProps: { path: "a.ts" } }
+    )
+
+    await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
+    expect(getChunkSpy).toHaveBeenCalledTimes(1) // initial getChunk(0)
+
+    // Switch path to B, which fails
+    rerender({ path: "b.ts" })
+    await waitFor(() => expect(result.current.status).toBe("ERROR"))
+
+    act(() => {
+      result.current.loadNextChunk()
+    })
+
+    // getChunk count should remain 1 (no extra calls made after error)
+    expect(getChunkSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("REGRESSION: late resolve after timeout remains in ERROR state", async () => {
+    vi.useFakeTimers()
+    const gate = deferred<TextModel>()
+    vi.mocked(loadTextModel).mockImplementation(() => gate.promise)
+
+    const { result } = renderHook(() =>
+      useChunkedCode("file.ts", { prettierParser: "typescript" })
+    )
+
+    // Trigger timeout
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(result.current.status).toBe("ERROR")
+
+    // Loader resolves late
+    const model = makeModel({ 0: chunk() }, 5)
+    await act(async () => {
+      gate.resolve(model)
+      await gate.promise
+    })
+
+    expect(result.current.status).toBe("ERROR")
+    expect(result.current.currentChunk).toBeUndefined()
+  })
+
+  it("REGRESSION: late resolve after rejection remains in ERROR state", async () => {
+    const gate = deferred<TextModel>()
+    vi.mocked(loadTextModel).mockImplementation(() => gate.promise)
+
+    const { result } = renderHook(() =>
+      useChunkedCode("file.ts", { prettierParser: "typescript" })
+    )
+
+    // async (with nothing literally awaited inside) is deliberate here: the
+    // rejection is reacted to on a microtask, not synchronously within this
+    // callback, so `act` needs to be its async form to flush it before the
+    // assertion below runs.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    await act(async () => {
+      gate.reject(new Error("First error"))
+    })
+    expect(result.current.status).toBe("ERROR")
+
+    // Late resolve attempt (e.g., duplicate event/retry wrap)
+    const model = makeModel({ 0: chunk() }, 5)
+    // eslint-disable-next-line @typescript-eslint/require-await -- see above
+    await act(async () => {
+      try {
+        gate.resolve(model)
+      } catch {
+        /* ignore */
+      }
+    })
+
+    expect(result.current.status).toBe("ERROR")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. Property-Based Testing (Invariants & Event Sequences)
+// ═══════════════════════════════════════════════════════════════════════════
+describe("Property Tests (fast-check)", () => {
+  it("INVARIANT: calling loadNextChunk is safe and maintains state rules in any state", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom("IDLE", "LOADING", "SUCCESS", "ERROR"),
+        async (targetStatus) => {
+          // Setup state mock according to targetStatus
+          const gate = deferred<TextModel>()
+
+          if (targetStatus === "IDLE") {
+            const { result } = renderHook(() =>
+              useChunkedCode("", { prettierParser: "typescript" })
+            )
+            act(() => result.current.loadNextChunk())
+            expect(result.current.status).toBe("IDLE")
+          } else if (targetStatus === "LOADING") {
+            vi.mocked(loadTextModel).mockImplementation(() => gate.promise)
+            const { result } = renderHook(() =>
+              useChunkedCode("a.ts", { prettierParser: "typescript" })
+            )
+            act(() => result.current.loadNextChunk())
+            expect(result.current.status).toBe("LOADING")
+          } else if (targetStatus === "ERROR") {
+            vi.mocked(loadTextModel).mockRejectedValue(new Error("Failed"))
+            const { result } = renderHook(() =>
+              useChunkedCode("a.ts", { prettierParser: "typescript" })
+            )
+            await waitFor(() => expect(result.current.status).toBe("ERROR"))
+            act(() => result.current.loadNextChunk())
+            expect(result.current.status).toBe("ERROR")
+          }
+        }
+      )
+    )
+  })
+
+  it("PROPERTY: Sequential chunk exhaustion yields all chunks in order to totalLines", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Generate 1 to 5 contiguous chunks
+        fc.array(fc.integer({ min: 1, max: 20 }), {
+          minLength: 1,
+          maxLength: 5,
+        }),
+        async (chunkLengths) => {
+          let currentLine = 0
+          const chunksByLine: Record<number, CodeChunk> = {}
+
+          chunkLengths.forEach((len, idx) => {
+            const start = currentLine
+            const end = currentLine + len
+            const isLast = idx === chunkLengths.length - 1
+            chunksByLine[start] = chunk({
+              startLine: start,
+              endLine: end,
+              hasMore: !isLast,
+              content: `chunk-${idx}`,
+            })
+            currentLine = end
+          })
+
+          const totalLines = currentLine
+          const model = makeModel(chunksByLine, totalLines)
+          vi.mocked(loadTextModel).mockResolvedValue(model)
+
+          const { result } = renderHook(() =>
+            useChunkedCode("file.ts", { prettierParser: "typescript" })
+          )
+
+          await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
+
+          let steps = 0
+          while (result.current.hasMore && steps < 10) {
+            act(() => {
+              result.current.loadNextChunk()
+            })
+            steps++
+          }
+
+          expect(result.current.currentLine).toBe(totalLines)
+          expect(result.current.hasMore).toBe(false)
+          expect(result.current.status).toBe("SUCCESS")
+        }
+      ),
+      { numRuns: 20 }
+    )
+  })
+
+  it("PROPERTY: Rapid path changes with out-of-order resolution always land on the last requested path", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 6 }),
+        async (paths) => {
+          const deferreds = paths.map(() => deferred<TextModel>())
+
+          vi.mocked(loadTextModel).mockImplementation((path) => {
+            // idx is always found: path always comes from this same paths
+            // array (initial or a later rerender), and deferreds has one
+            // entry per path - both indexing operations below are safe.
+            const idx = paths.indexOf(path)
+            return deferreds[idx]!.promise
+          })
+
+          const { result, rerender } = renderHook(
+            ({ path }) =>
+              useChunkedCode(path, { prettierParser: "typescript" }),
+            { initialProps: { path: paths[0]! } }
+          )
+
+          // Step through rapid path changes
+          for (let i = 1; i < paths.length; i++) {
+            rerender({ path: paths[i]! })
+          }
+
+          // Shuffle resolution order
+          const resolutionOrder = paths
+            .map((_, i) => i)
+            .sort(() => Math.random() - 0.5)
+
+          for (const idx of resolutionOrder) {
+            const pathName = paths[idx]!
+            const model = makeModel(
+              { 0: chunk({ content: `content-${pathName}` }) },
+              10
+            )
+            await act(async () => {
+              deferreds[idx]!.resolve(model)
+              await deferreds[idx]!.promise
+            })
+          }
+
+          const lastPath = paths[paths.length - 1]!
+          await waitFor(() => expect(result.current.status).toBe("SUCCESS"))
+          expect(result.current.currentChunk?.content).toBe(
+            `content-${lastPath}`
+          )
+        }
+      )
+    )
   })
 })

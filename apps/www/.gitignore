@@ -10,3 +10,5 @@ count.txt
 
 # mp3 static assets for honeycomb
 /public/sfx
+# assets of unknown size
+/public/code-samples

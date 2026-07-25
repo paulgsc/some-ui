@@ -5,7 +5,10 @@ import type {
   TimingParams,
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
-import type { CharacterWithLifetime } from "@honeycomb/types/hangul-types"
+import type {
+  CharacterWithLifetime,
+  WordProgress,
+} from "@honeycomb/types/hangul-types"
 import { assertNever } from "@honeycomb/utils/error"
 
 type UseGameLoopProps = {
@@ -21,6 +24,17 @@ type UseGameLoopProps = {
   setTimingParams: React.Dispatch<React.SetStateAction<TimingParams>>
   playSound: (event: AudioEvent) => void
   onBoardFull?: () => void
+  /**
+   * The currently in-progress multi-token challenge, if any - both read
+   * (to gate spawning: a word challenge is a queue of one, never several
+   * simultaneously in flight) and written (via `setWordProgress`, on each
+   * new word spawn) by this hook. Always `null` for single-jamo (n=1) play,
+   * which has no such concept and spawns exactly as it always has.
+   */
+  wordProgress?: WordProgress | null
+  setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
+  /** Misses observed since the tracked word spawned, for #762's hint escalation. */
+  setMissCount?: React.Dispatch<React.SetStateAction<number>>
 }
 
 export const useGameLoop = ({
@@ -32,6 +46,9 @@ export const useGameLoop = ({
   setTimingParams,
   playSound,
   onBoardFull,
+  wordProgress,
+  setWordProgress,
+  setMissCount,
 }: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -47,6 +64,9 @@ export const useGameLoop = ({
   const setTimingParamsRef = useRef(setTimingParams)
   const playSoundRef = useRef(playSound)
   const onBoardFullRef = useRef(onBoardFull)
+  const setWordProgressRef = useRef(setWordProgress)
+  const setMissCountRef = useRef(setMissCount)
+  const wordProgressRef = useRef(wordProgress)
 
   useEffect(() => {
     gameBridgeRef.current = gameBridge
@@ -69,6 +89,15 @@ export const useGameLoop = ({
   useEffect(() => {
     onBoardFullRef.current = onBoardFull
   }, [onBoardFull])
+  useEffect(() => {
+    setWordProgressRef.current = setWordProgress
+  }, [setWordProgress])
+  useEffect(() => {
+    setMissCountRef.current = setMissCount
+  }, [setMissCount])
+  useEffect(() => {
+    wordProgressRef.current = wordProgress
+  }, [wordProgress])
 
   // ====================================================================
   // SPAWN CHARACTER
@@ -77,13 +106,21 @@ export const useGameLoop = ({
     const bridge = gameBridgeRef.current
     if (!bridge) return
 
+    // A word challenge is a queue of one (never several simultaneously in
+    // flight): wait for the tracked word to resolve - matched or expired -
+    // before asking the engine to spawn the next one. Single-jamo play
+    // never populates wordProgress, so this is a no-op there and every
+    // existing completion/endless cell keeps spawning concurrently exactly
+    // as it always has.
+    if (wordProgressRef.current) return
+
     const events = bridge.spawnCharacter()
 
     events.forEach((event) => {
       const { type: t } = event
       switch (t) {
         case "characterSpawned": {
-          const char = bridge.createDisplayCharacter(event.spawnResult)
+          const chars = bridge.createDisplayCharacters(event.spawnResult)
 
           if (event.spawnResult.playSpawnSound) {
             playSoundRef.current("character_spawn")
@@ -91,9 +128,26 @@ export const useGameLoop = ({
 
           setActiveCharactersRef.current((prev) => {
             const next = new Map(prev)
-            next.set(char.cellId, { ...char, timeRemaining: 1 })
+            chars.forEach((char) => {
+              next.set(char.cellId, { ...char, timeRemaining: 1 })
+            })
             return next
           })
+
+          // Track a newly spawned word challenge - both for the
+          // Prompt/Concept Station's progress display (#762) and as the
+          // queue-gate `spawnCharacter` checks above. A single-jamo (n=1)
+          // spawn is intentionally not tracked - there is never more than
+          // one jamo-shaped "challenge" worth gating on, since completion/
+          // endless play was always meant to spawn concurrently.
+          if (event.spawnResult.answerGlyphs.length > 1) {
+            setWordProgressRef.current?.({
+              cellIds: event.spawnResult.cellIds,
+              answerGlyphs: event.spawnResult.answerGlyphs,
+              cursor: 0,
+            })
+            setMissCountRef.current?.(0)
+          }
 
           const timing = bridge.getTimingParams()
           setTimingParamsRef.current(timing)
@@ -113,6 +167,7 @@ export const useGameLoop = ({
         case "matchFound":
         case "inputMissed":
         case "ambiguousInput":
+        case "answerProgress":
         case "bufferUpdated":
         case "streakMilestone":
         case "statsUpdated":
@@ -156,6 +211,17 @@ export const useGameLoop = ({
             event.cellIds.forEach((id) => next.delete(id))
             return next
           })
+
+          // If the word the station is currently tracking just expired,
+          // clear it - this also releases the spawn queue-gate above, so
+          // the next spawn tick can start the next word.
+          if (
+            wordProgressRef.current?.cellIds.some((id) =>
+              event.cellIds.includes(id)
+            )
+          ) {
+            setWordProgressRef.current?.(null)
+          }
           break
         }
         case "statsUpdated": {
@@ -175,6 +241,7 @@ export const useGameLoop = ({
         case "inputMissed":
         case "bufferUpdated":
         case "ambiguousInput":
+        case "answerProgress":
         case "streakMilestone": {
           // These are handled in:
           // - spawn loop
@@ -190,15 +257,19 @@ export const useGameLoop = ({
     })
 
     // Update timeRemaining for active characters. Solved characters are locked
-    // into their cell and no longer count down.
+    // into their cell and no longer count down. The engine's budget is
+    // per-*token* (revealed_at_ms + answerKeys.length * currentWindow, canon
+    // Thm. 7.2/ADR 0003 §2(a)'s shared word countdown) - a single-jamo (n=1)
+    // cell's budget is unchanged since answerKeys.length is 1 there.
     setActiveCharactersRef.current((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
         if (char.isSolved) return
         const age = now - char.spawnedAt
+        const tokenCount = char.answerKeys.length || 1
         next.set(cellId, {
           ...char,
-          timeRemaining: Math.max(0, 1 - age / currentWindow),
+          timeRemaining: Math.max(0, 1 - age / (currentWindow * tokenCount)),
         })
       })
       return next

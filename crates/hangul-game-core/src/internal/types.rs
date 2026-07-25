@@ -1,16 +1,46 @@
 use serde::{Deserialize, Serialize};
 
-/// An active character reveal in the game
+use super::stimulus::Stimulus;
+
+/// An active challenge on the board (canon Def. 4.2): a stimulus paired with an ordered answer
+/// sequence, a cursor into it, and the (possibly multi-cell, ADR 0003 §2(a)) board placement it
+/// occupies. Generalizes the old single-jamo `ActiveReveal`; at `answer_keys.len() == 1` this is
+/// observationally identical to it (canon Thm. 4.1).
 #[derive(Debug, Clone)]
-pub struct ActiveReveal {
-    pub hangul: String,
-    pub expected_key: String,
+pub struct ActiveChallenge {
+    pub stimulus: Stimulus,
+    /// w - the ordered QWERTY key tokens the player must type.
+    pub answer_keys: Vec<String>,
+    /// Parallel jamo/display tokens (index-aligned with `answer_keys`), used for progressive
+    /// reveal and completion display. No syllable-composition layer: this is the raw jamo stream
+    /// (ADR 0001 §2(b)'s deferred choice, resolved as Option A).
+    pub answer_glyphs: Vec<String>,
+    /// c - tokens of the answer already matched.
+    pub cursor: usize,
     pub revealed_at_ms: u64,
-    pub cell_id: String,
-    /// The answer's token count (canon §7, $n = |w|$). Every domain-sourced spawn today produces a
-    /// single token (`token_count == 1`); a value above 1 only ever arises from a
-    /// synthetic/test-only fixture until word-answer matching (ADR 0001 #422) lands.
-    pub token_count: usize,
+    /// Ordered board cells; `cell_ids[i]` is bound to answer token `i` (ADR 0003 §2(a)).
+    pub cell_ids: Vec<String>,
+    /// Stable key for `GameMode::on_match`/`on_miss` bookkeeping (a jamo, or a word's id).
+    pub identity: String,
+}
+
+impl ActiveChallenge {
+    /// t(C) = w_c - the current expected token (canon Def. 4.3).
+    pub fn current_key(&self) -> &str {
+        &self.answer_keys[self.cursor]
+    }
+}
+
+/// What a `GameMode` hands the engine when asked for the next thing to spawn (canon Def. 6.1's
+/// `Challenge`, plus the `identity` a mode needs for its own completion bookkeeping). Also the
+/// wire shape a word pool arrives in from JS (`Deserialize`) for `VocabularyMode`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChallengeSeed {
+    pub stimulus: Stimulus,
+    pub answer_keys: Vec<String>,
+    pub answer_glyphs: Vec<String>,
+    pub identity: String,
 }
 
 /// A key press in the input buffer
@@ -120,13 +150,20 @@ impl GameStats {
     }
 }
 
-/// Result of spawning a new character
+/// Result of spawning a new character. `cell_id`/`hangul`/`expected_key` are the pre-#421 fields,
+/// kept exactly as-is (first cell / full display text / first token's key) for back-compat with
+/// single-jamo consumers; `cell_ids`/`stimulus`/`answer_keys`/`answer_glyphs` are the ADR 0001/0003
+/// widening (canon Rem. 8.1: additive only, nothing removed).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnResult {
     pub cell_id: String,
+    pub cell_ids: Vec<String>,
     pub hangul: String,
     pub expected_key: String,
+    pub stimulus: Stimulus,
+    pub answer_keys: Vec<String>,
+    pub answer_glyphs: Vec<String>,
     pub revealed_at_ms: u64,
     pub play_spawn_sound: bool,
 }

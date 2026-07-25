@@ -54,6 +54,19 @@ export type HexGridProps<T = unknown> = {
   fitStrategy?: HexGridFitStrategy
   /** Called whenever the layout negotiation result changes. */
   onFitChange?: (fit: HexGridFitResult) => void
+  /**
+   * Called whenever the internal hex-geometry WASM module's loading/error
+   * status changes. `HexGrid` already renders its own inline
+   * loading/error state in place of the grid - this callback exists so a
+   * parent orchestrating other state around the grid (a game loop, audio,
+   * timers) can react to a fatal load failure instead of continuing to run
+   * blind: nothing about this component's own WASM concern is otherwise
+   * visible outside it.
+   */
+  onStatusChange?: (status: {
+    isLoading: boolean
+    error: string | null
+  }) => void
 }
 
 const HEX_ID_REGEX = /(-?\d+)[_-](-?\d+)[_-](-?\d+)/
@@ -85,6 +98,7 @@ export const HexGrid = <T = unknown,>({
   padding = 16,
   fitStrategy = "shrink-only",
   onFitChange,
+  onStatusChange,
 }: HexGridProps<T>): JSX.Element => {
   const measureRef = useRef<HTMLDivElement>(null)
   const { width, height } = useResizeObserver({ ref: measureRef })
@@ -140,6 +154,10 @@ export const HexGrid = <T = unknown,>({
     cellCount: effectiveCellCount,
     hexSize: effectiveHexSize,
   })
+
+  useEffect(() => {
+    onStatusChange?.({ isLoading, error })
+  }, [isLoading, error, onStatusChange])
 
   const pointsToPath = useCallback((points: Array<HexPoint>): string => {
     const first = points[0]

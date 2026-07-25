@@ -104,14 +104,14 @@ export function useResizeObserver<T extends Element = Element>(
         previousSize.current.width !== newWidth ||
         previousSize.current.height !== newHeight
 
-      if (hasChanged) {
+      if (hasChanged && isMounted()) {
         const newSize: Size = { width: newWidth, height: newHeight }
         previousSize.current.width = newWidth
         previousSize.current.height = newHeight
 
         if (onResize.current) {
           onResize.current(newSize)
-        } else if (isMounted()) {
+        } else {
           setSize(newSize)
         }
       }

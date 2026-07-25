@@ -138,4 +138,43 @@ describe("SessionsRepository", () => {
       SessionNotFoundError
     )
   })
+
+  it("removeMany deletes exactly the selected sessions, leaving the rest", async () => {
+    const repo = createSessionsRepository(storage, 0)
+    const a = await repo.create(input({ name: "A" }))
+    const b = await repo.create(input({ name: "B" }))
+    const c = await repo.create(input({ name: "C" }))
+
+    await repo.removeMany([a.id, c.id])
+
+    const remaining = await repo.list()
+    expect(remaining.map((s) => s.id)).toEqual([b.id])
+  })
+
+  it("removeMany is a no-op for ids that don't exist, and for an empty list", async () => {
+    const repo = createSessionsRepository(storage, 0)
+    await repo.create(input())
+
+    await repo.removeMany(["does-not-exist"])
+    await repo.removeMany([])
+
+    expect(await repo.list()).toHaveLength(1)
+  })
+
+  it("updateStatusMany transitions exactly the selected sessions and bumps their updatedAt", async () => {
+    const repo = createSessionsRepository(storage, 0)
+    const a = await repo.create(input({ name: "A" }))
+    const b = await repo.create(input({ name: "B" }))
+
+    await new Promise((r) => setTimeout(r, 2))
+    const updated = await repo.updateStatusMany([a.id], "scheduled")
+
+    expect(updated).toHaveLength(1)
+    expect(updated[0]?.status).toBe("scheduled")
+    expect(updated[0]?.updatedAt).not.toBe(a.updatedAt)
+
+    const all = await repo.list()
+    expect(all.find((s) => s.id === a.id)?.status).toBe("scheduled")
+    expect(all.find((s) => s.id === b.id)?.status).toBe("draft")
+  })
 })
