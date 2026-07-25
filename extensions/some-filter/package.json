@@ -60,6 +60,7 @@
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "prettier:fix": "prettier . --write",
     "test": "vitest",
+    "test:claude:e2e": "bash scripts/claude-e2e.sh",
     "test:e2e": "pnpm build:chromium && playwright test",
     "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
     "test:e2e:headed": "pnpm build:chromium && playwright test --headed",

@@ -57,6 +57,20 @@ export type HumanLabel =
   | "borderline"
   /** No explicit background anywhere — theme-detector.ts's own documented "unknown == probably light" bias applies. */
   | "ambiguous"
+  /**
+   * The page's true light/dark state is masked by a CSS `filter` (its own,
+   * or — in the live extension — some-filter's own "legacy" invert style)
+   * that inverts what a human sees without changing any `background-color`
+   * `detect()`/`classifyPage()`/`sampleBodyComfort()` read (#741). Declared
+   * colors say one thing; the rendered page says the opposite. Comfort is
+   * deliberately left unevaluated (`expectComfortable: null`) rather than
+   * guessed at: `sampleBodyComfort()` samples the same raw, un-inverted
+   * `getComputedStyle` pair `detect()` does, so it isn't judging the
+   * rendered page any more than `detect()` is — asserting a comfort verdict
+   * here would silently trade one filter-blind reading for another instead
+   * of naming the gap.
+   */
+  | "filter-masked"
 
 export type CorpusFixture = {
   readonly id: string
@@ -303,6 +317,91 @@ export const CORPUS: ReadonlyArray<CorpusFixture> = [
     <main style="background-color: rgb(28, 28, 32); padding: 16px">
       <h1>Changelog</h1>
       <p>Every line of body copy here is set in the same searing near-yellow — no badges, no accents, just paragraph after paragraph bright enough to read like a screen left on max brightness in the dark.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
+    id: "filter-invert-reads-dark",
+    grammar: "filter-invert-light-canvas-reads-dark",
+    label: "filter-masked",
+    note:
+      "some-filter's own 'legacy' style (theme-apply.ts's applyLegacyFilter) " +
+      "themes a page by putting a global `filter: invert(...)` on <html> " +
+      "rather than recoloring anything — and real vendor pages use the exact " +
+      "same trick natively (an accessibility 'invert colours' toggle some " +
+      "sites ship themselves). This fixture is the plainest instance: a " +
+      "literal copy of 'plain-light-card' (rgb(255,255,255) canvas, " +
+      "rgb(17,24,39) text) with one line added — `html { filter: invert(1) " +
+      "}`. To a human looking at the rendered page (or a screenshot), the " +
+      "canvas is black and the text is off-white: a genuinely, comfortably " +
+      "dark page, needing no theming at all. `detect()`/`classifyPage()` " +
+      "(theme-detector.ts) never read `getComputedStyle(el).filter` — only " +
+      "raw `backgroundColor` — so today they report this fixture exactly as " +
+      "they report 'plain-light-card' itself: isLight=true, alreadyDark=" +
+      "false. #741's 'guilty until innocent': the classifier must presume " +
+      "correctly even under a global CSS filter it never inspects, not just " +
+      "on the un-filtered fixtures the corpus happened to start with.",
+    expectAlreadyDark: true,
+    expectComfortable: null,
+    html: () => `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Filter Invert Reads Dark</title>
+    <style>
+      html {
+        filter: invert(1);
+      }
+    </style>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); color: rgb(17, 24, 39); margin: 0">
+    <main style="background-color: rgb(255, 255, 255); padding: 16px">
+      <h1>Looks dark to any human, or any screenshot</h1>
+      <p>Declared colors are the same plain light card — only a page-wide filter: invert(1) on &lt;html&gt; separates this from 'plain-light-card'.</p>
+    </main>
+  </body>
+</html>`,
+  },
+
+  {
+    id: "filter-invert-reads-light",
+    grammar: "filter-invert-dark-canvas-reads-light",
+    label: "filter-masked",
+    note:
+      "The inverse of 'filter-invert-reads-dark', and the sharper of the two " +
+      "cases: declared colors are a plain dark canvas (rgb(20,20,20) bg, " +
+      "rgb(230,230,230) text — the same shape 'dark-hostile-page' e2e fixture " +
+      "uses) wrapped in the same page-authored `html { filter: invert(1) }`. " +
+      "Inverting a near-black canvas with near-white text renders a near-" +
+      "white canvas with near-black text — an ordinary, unthemed-looking " +
+      "light page that genuinely needs theming, wearing dark *declared* " +
+      "colors purely as an artifact of the filter trick. `detect()` samples " +
+      "raw backgroundColor only, sees the dark declared value, and reports " +
+      "alreadyDark=true — exactly backwards. This is the classifier-level " +
+      "shape of the live pipeline's worse failure (extensions/some-filter's " +
+      "own filter-invert e2e spec, #741): if `alreadyDark` reports true for " +
+      "a page a human would call light, the live pipeline withholds theming " +
+      "entirely and the page's true (post-invert, bright) vendor background " +
+      "stays fully exposed — 'guilty' read as 'innocent'.",
+    expectAlreadyDark: false,
+    expectComfortable: null,
+    html: () => `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Filter Invert Reads Light</title>
+    <style>
+      html {
+        filter: invert(1);
+      }
+    </style>
+  </head>
+  <body style="background-color: rgb(20, 20, 20); color: rgb(230, 230, 230); margin: 0">
+    <main style="background-color: rgb(20, 20, 20); padding: 16px">
+      <h1>Looks light to any human, or any screenshot</h1>
+      <p>Declared colors are a plain dark canvas — only a page-wide filter: invert(1) on &lt;html&gt; separates this from an ordinary dark-hostile page, and it renders the opposite of what it declares.</p>
     </main>
   </body>
 </html>`,

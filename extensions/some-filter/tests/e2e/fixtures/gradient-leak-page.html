@@ -1,0 +1,46 @@
+<!doctype html>
+<!--
+  Gradient-leak page (#741). A <div> themed entirely via `background-image`
+  (a light linear-gradient), with no `background-color` at all — an ordinary
+  vendor pattern (a hero banner, a card with a subtle sheen) that some-filter
+  has no path to ever see.
+
+  Both pipeline.ts's readAttr() (the live per-surface Sensor) and
+  theme-detector.ts's classifyPage() sample only
+  getComputedStyle(el).backgroundColor — neither reads backgroundImage.
+  #gradient-card's backgroundColor computes to "rgba(0, 0, 0, 0)" (nothing
+  declared), which color.ts's parseColor treats as no sample at all — the
+  exact same value an element with no background whatsoever would produce.
+  The element is invisible to classification: never becomes a SurfaceKey,
+  never gets `data-sw-patched`, never gets an emit-surface-color rule. Its
+  light gradient — fully opaque, so it fully covers whatever dark canvas
+  sits behind it — renders completely untouched, a bright rectangle on the
+  otherwise-dark page. See specs/issue-741-auto-defects.spec.ts for the
+  proof.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gradient Leak Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255); padding: 16px">
+      <h1>Ordinary page, one gradient banner</h1>
+      <div
+        id="gradient-card"
+        style="
+          background-color: transparent;
+          background-image: linear-gradient(
+            to bottom,
+            rgb(255, 255, 255),
+            rgb(238, 238, 238)
+          );
+          padding: 16px;
+        "
+      >
+        Banner styled with only a light background-image gradient — no
+        background-color anywhere on it.
+      </div>
+    </main>
+  </body>
+</html>

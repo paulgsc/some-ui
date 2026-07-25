@@ -33,6 +33,7 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test:claude:e2e": "bash scripts/claude-e2e.sh",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:headed": "playwright test --config playwright.config.ts --headed",
     "test:e2e:ui": "playwright test --config playwright.config.ts --ui",
