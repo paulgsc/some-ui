@@ -39,7 +39,7 @@ const HOURS = 60 * MINUTES
  * long enough for a genuine multi-activity study block, nowhere near a day.
  */
 export const DEFAULT_SESSION_DURATION_POLICY: SessionDurationPolicy = {
-  minActivityDurationMs: 0 * MINUTES,
+  minActivityDurationMs: 5 * MINUTES,
   maxTotalDurationMs: 4 * HOURS,
 }
 

@@ -288,6 +288,9 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/content':
+        specifier: workspace:*
+        version: link:../../packages/some-content
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
@@ -1015,6 +1018,10 @@ importers:
         version: 5.9.3
 
   packages/some-content:
+    dependencies:
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../ui/leetype
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1425,6 +1432,9 @@ importers:
 
   packages/ui/leetype:
     dependencies:
+      '@some-ui/content':
+        specifier: workspace:*
+        version: link:../../some-content
       '@some-ui/leetype-wasm':
         specifier: 0.0.4
         version: 0.0.4

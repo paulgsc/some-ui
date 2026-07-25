@@ -1,6 +1,6 @@
+import { CHALLENGES } from "@some-ui/content"
 import { interviewQuestions } from "@some-ui/interview"
 import type { Question } from "@some-ui/interview"
-import { CHALLENGES } from "@some-ui/leetype"
 
 import type { ActivityDefinition, ActivityId } from "./types"
 

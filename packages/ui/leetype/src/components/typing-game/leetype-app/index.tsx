@@ -6,13 +6,13 @@ import { LevelProgress } from "@leetype/components/typing-game/level-progress"
 import { ResultsCard } from "@leetype/components/typing-game/results-card"
 import { SessionConfig } from "@leetype/components/typing-game/session-config"
 import type { SessionStartConfig } from "@leetype/components/typing-game/session-config"
-import { CHALLENGES } from "@leetype/data/leetype"
 import { usePlayerProgress } from "@leetype/hooks/leetype/use-player-progress"
 import type {
   Challenge,
   CompletedSessionStats,
   SolveRecord,
 } from "@leetype/types/leetype"
+import { CHALLENGES } from "@some-ui/content"
 
 type AppScreen = "selector" | "config" | "game" | "results"
 

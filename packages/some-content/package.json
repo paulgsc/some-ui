@@ -19,6 +19,9 @@
   "private": true,
   "type": "module",
   "version": "1.0.4",
+  "dependencies": {
+    "@some-ui/leetype": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"

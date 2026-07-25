@@ -1,4 +1,4 @@
-import type { Challenge } from "@leetype/types/leetype"
+import type { Challenge } from "@some-ui/leetype"
 
 export const CHALLENGES: Array<Challenge> = [
   // ── Data Structures ────────────────────────────────────────────────────
@@ -12,10 +12,10 @@ export const CHALLENGES: Array<Challenge> = [
     tags: ["linked-list", "pointers", "nodes"],
     levelRequired: 1,
     codePaths: {
-      typescript: "/code-samples/ds/linked-list.ts",
-      rust: "/code-samples/ds/linked-list.rs",
-      cpp: "/code-samples/ds/linked-list.cpp",
-      c: "/code-samples/ds/linked-list.c",
+      typescript: "/code-samples/two-sum.ts",
+      rust: "/code-samples/two-sum.rs",
+      cpp: "/code-samples/two-sum.cpp",
+      c: "/code-samples/two-sum.c",
     },
   },
   {
