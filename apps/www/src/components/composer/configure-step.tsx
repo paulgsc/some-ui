@@ -22,7 +22,7 @@ import { PaginationControls } from "@/components/pagination-controls"
 /** Each card is tall (multiple fields), so a smaller page keeps a page's worth of cards on screen. */
 const CONFIGURE_PAGE_SIZE = 5
 
-export type ConfigurableActivity = {
+type ConfigurableActivity = {
   instanceId: string
   activityId: ActivityId
   config: ActivityConfigValues
