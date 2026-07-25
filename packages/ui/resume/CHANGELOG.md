@@ -1,5 +1,14 @@
 # @some-ui/resume
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - some-ui-utils@1.1.5
+  - some-ui-nfl@0.0.10
+  - some-ui-shared@0.0.10
+
 ## 0.0.4
 
 ### Patch Changes
