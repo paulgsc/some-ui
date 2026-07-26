@@ -1066,4 +1066,60 @@ mod tests {
 
         assert!(matches!(batch.primary, Some(PrimaryEvent::BoardFull)));
     }
+
+    #[test]
+    fn batchim_word_completes_like_any_other_multi_token_challenge() {
+        // Regression coverage for a false constraint that briefly lived in a
+        // seed-data comment (fixed alongside this test): 사람 (saram,
+        // "person") has two batchim (ㄹ after ㅏ, ㅁ after ㅏ). The engine has
+        // no concept of "batchim" anywhere in this file or in
+        // content_domain/korean.rs - process_input just matches
+        // answer_keys[cursor] against typed input, so a batchim jamo (ㄹ/ㅁ
+        // here) is matched exactly the same way any onset jamo would be.
+        // `Korean::key_for` isn't even called for word-mode challenges (see
+        // VocabularyMode::get_next_challenge) - answer_keys/answer_glyphs
+        // arrive pre-built from the seed and are used verbatim.
+        let mut engine = engine_with("endless");
+        push_word_challenge(
+            &mut engine,
+            &["cell-0", "cell-1", "cell-2", "cell-3", "cell-4"],
+            &["ㅅ", "ㅏ", "ㄹ", "ㅏ", "ㅁ"],
+            &["t", "k", "f", "k", "a"],
+            0,
+        );
+
+        for key in ["t", "k", "f", "k"] {
+            let batch = engine.process_input(key.to_string(), 100);
+            assert!(batch.primary.is_none(), "expected progress, not completion, on {key}");
+        }
+        let final_batch = engine.process_input("a".to_string(), 100);
+        match final_batch.primary {
+            Some(PrimaryEvent::MatchFound { hangul, .. }) => assert_eq!(hangul, "ㅅㅏㄹㅏㅁ"),
+            other => panic!("expected MatchFound, got {other:?}"),
+        }
+        assert_eq!(engine.get_active_count(), 0);
+    }
+
+    #[test]
+    fn compound_batchim_as_one_glyph_with_a_combined_key_completes_too() {
+        // 닭 (dalg, "chicken"): batchim ㄺ is a compound (ㄹ+ㄱ). Korean::key_for
+        // has no table entry for "ㄺ" as one character, but nothing in
+        // process_input requires answer_keys[i] to be a single QWERTY
+        // character or to come from key_for at all for vocabulary-mode
+        // challenges - this mirrors exactly how composite vowels like ㅘ
+        // already work (one glyph slot, a 2-char key "hk").
+        let mut engine = engine_with("endless");
+        push_word_challenge(&mut engine, &["cell-0", "cell-1", "cell-2"], &["ㄷ", "ㅏ", "ㄺ"], &["e", "k", "fr"], 0);
+
+        engine.process_input("e".to_string(), 100);
+        engine.process_input("k".to_string(), 100);
+        // "f" alone should be a partial/prefix match (ambiguity/extension), not a miss.
+        let partial = engine.process_input("f".to_string(), 100);
+        assert!(partial.primary.is_none(), "expected a partial-match hint, not a miss, got {partial:?}");
+        let complete = engine.process_input("r".to_string(), 100);
+        match complete.primary {
+            Some(PrimaryEvent::MatchFound { hangul, .. }) => assert_eq!(hangul, "ㄷㅏㄺ"),
+            other => panic!("expected MatchFound, got {other:?}"),
+        }
+    }
 }

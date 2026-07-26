@@ -10,11 +10,20 @@
 // Every entry's stimulus is `Icon` - `ttsText`/`romanization` are additional enrichment the
 // Prompt/Concept Station (#762) escalates to on struggle, not separate stimulus kinds.
 //
-// Every word is open-syllable (no batchim/final-consonant jamo): `Korean::key_for`
-// (crates/hangul-game-core/src/internal/content_domain/korean.rs) only maps the 19 lead
-// consonants + 21 vowels, not final-position consonants, so `answerKeys`/`answerGlyphs` below are
-// hand-verified against that exact table - a batchim-bearing word would silently produce an
-// unmappable/unmatchable token.
+// `answerKeys`/`answerGlyphs` below are each word's full jamo stream in typing order, hand-verified
+// against `Korean::key_for`'s table (crates/hangul-game-core/src/internal/content_domain/korean.rs)
+// - not derived from `word` at runtime; the engine never calls `key_for` for vocabulary-mode
+// challenges (see `VocabularyMode::get_next_challenge`), it matches whatever token sequence a seed
+// supplies, verbatim. `key_for` is position-agnostic (19 consonants + 21 vowels, 7 of the vowels
+// composite), so batchim jamo decompose and play exactly like any other jamo - there is no
+// open-syllable restriction. (An earlier version of this comment claimed otherwise; disproven by
+// `batchim_word_completes_like_any_other_multi_token_challenge` in engine.rs's test module.) The
+// one real gap is `key_for` having no entry for a *compound* batchim as a single character
+// (ㄳ/ㄵ/ㄶ/ㄺ/ㄻ/ㄼ/ㄽ/ㄾ/ㄿ/ㅀ/ㅄ) - since nothing validates answerKeys against key_for at
+// runtime either, represent one as a single glyph slot with its two component keys concatenated
+// (e.g. 닭's ㄺ -> glyph "ㄺ", key "fr"), the same convention the composite vowels above already
+// use (e.g. ㅘ -> key "hk"). Verified working end to end by
+// `compound_batchim_as_one_glyph_with_a_combined_key_completes_too`, also in engine.rs.
 
 import type { ChallengeSeed } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
@@ -26,7 +35,15 @@ export type WordEntry = {
   answerGlyphs: Array<string>
   icon: string
   ttsText: string
-  category: "food" | "animal" | "object" | "nature"
+  /**
+   * Free-form grouping label - purely descriptive, never read by the engine
+   * or any component (grep confirms no `.category` reader exists outside
+   * this file). Deliberately `string`, not a closed union: the demo set
+   * below happens to use "food"/"animal"/"object"/"nature", but a
+   * host-supplied `words` override (HangulHexGrid's `words` prop) is free to
+   * use whatever topic labels it wants (e.g. "numbers", "calendar").
+   */
+  category: string
 }
 
 export const HANGUL_WORDS: Array<WordEntry> = [

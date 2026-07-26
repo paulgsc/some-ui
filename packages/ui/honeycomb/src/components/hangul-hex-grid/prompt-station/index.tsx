@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import { HANGUL_WORDS } from "@honeycomb/data"
+import type { WordEntry } from "@honeycomb/data"
 import type { HintTier } from "@honeycomb/hooks/use-prompt-escalation"
 import { speak } from "@honeycomb/lib/hangul/speech"
 import type { Stimulus } from "@honeycomb/lib/hangul/wasm-game-bridge"
@@ -10,6 +11,13 @@ type PromptStationProps = {
   tier: HintTier
   /** The tracked word's masked-progress snapshot, shown alongside the icon. */
   progress: WordProgress | null
+  /**
+   * The word pool `stimulus.name` is looked up against - must be the same
+   * list HangulHexGrid seeded the WASM engine's `wordPool` from, or a
+   * mid-game stimulus id won't resolve to an entry here. Defaults to the
+   * bundled demo seed so direct/Storybook usage needs no wiring.
+   */
+  words?: Array<WordEntry>
 }
 
 /**
@@ -37,12 +45,13 @@ export const PromptStation = ({
   stimulus,
   tier,
   progress,
+  words = HANGUL_WORDS,
 }: PromptStationProps): React.JSX.Element | null => {
   const lastAutoPlayedTierRef = useRef<HintTier | null>(null)
 
   const entry =
     stimulus?.kind === "icon"
-      ? HANGUL_WORDS.find((word) => word.id === stimulus.name)
+      ? words.find((word) => word.id === stimulus.name)
       : undefined
 
   useEffect(() => {

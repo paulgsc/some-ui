@@ -21,6 +21,16 @@
 # `docker compose up www` working out of the box against this repo's own
 # (mostly empty/gitignored) copies.
 #
+# packages/some-content/public/hangul is the same story with one difference:
+# it's optional, not load-bearing. HangulHexGrid's own bundled demo seed
+# (@some-ui/honeycomb) always works with nothing mounted here at all - this
+# volume only matters if you've asked an LLM to generate a
+# hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) and want this
+# container to serve it instead of the demo words. Unlike sfx/code-samples,
+# the GitHub Pages build never bakes this in either way: there's no
+# companion data there, by design (apps/www resolves to "static" mode and
+# never fetches it).
+#
 # REPO_ROOT must actually be exported (e.g. `export REPO_ROOT=$(pwd)` from
 # repo root) before running docker compose. The root docker-compose.yml
 # includes this file via `include:`, and Compose resolves any relative
@@ -42,6 +52,7 @@ services:
       - ${REPO_ROOT:-.}/certs:/etc/nginx/certs:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
       - ${WWW_CODE_SAMPLES_PATH:-${REPO_ROOT:-.}/packages/some-content/public/code-samples}:/usr/share/nginx/html/code-samples:ro
+      - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
     networks:
       - some-ui-network
     # Dockerfile bakes in the same wget-spider HEALTHCHECK as a baseline for
