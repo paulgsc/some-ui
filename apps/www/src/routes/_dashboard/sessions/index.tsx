@@ -335,7 +335,7 @@ const SessionsRoute = (): JSX.Element => {
           <Sparkles className="size-6" />
           <p>No sessions yet.</p>
           <Button asChild size="sm" className="mt-2">
-            <Link to="/">Start something new</Link>
+            <Link to="/app">Start something new</Link>
           </Button>
         </CardContent>
       </Card>

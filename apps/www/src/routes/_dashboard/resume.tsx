@@ -9,7 +9,12 @@ import {
   CardTitle,
 } from "some-ui-shared"
 
-const RESUME_PDF_PATH = "/resume.pdf"
+// GitHub Pages serves this app under /<repo>/ (see vite.config.ts's
+// VITE_BASE_PATH); a bare "/resume.pdf" would request the domain root
+// instead and 404 there. import.meta.env.BASE_URL always ends in "/", so
+// this resolves correctly for GitHub Pages, the Docker/nginx build, and
+// local dev alike.
+const RESUME_PDF_PATH = `${import.meta.env.BASE_URL}resume.pdf`
 
 const ResumeRoute = (): JSX.Element => (
   <Card className="flex h-full flex-col">
