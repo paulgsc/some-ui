@@ -122,6 +122,16 @@ const Landing = (): JSX.Element => (
           résumé - built and deployed from a single monorepo. Pick a destination
           below.
         </p>
+        {/* The three cards answer "what is deployed here". /mission answers
+            why any of it exists - kept as a text link so it doesn't compete
+            with the destinations for the same glance. */}
+        <Link
+          to="/mission"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm underline-offset-4 transition-colors hover:underline"
+        >
+          Why this exists
+          <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {DESTINATIONS.map((destination) => (
