@@ -20,6 +20,7 @@ export default defineConfig(
       "**/dist/**",
       "**/package.json",
       "**/package-lock.json",
+      "**/public/**",
       "**/fixtures/**",
       "**/coverage/**",
       "**/__snapshots__/**",
