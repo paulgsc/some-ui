@@ -12,11 +12,14 @@ import type {
   Challenge,
   ChunkCompletionStats,
   CompletedSessionStats,
+  Difficulty,
   DisplayMode,
   GameState,
   Language,
   NContext,
 } from "@leetype/types/leetype"
+import { resolveChallenge } from "@leetype/utils/leetype"
+import { CHALLENGES } from "@some-ui/content"
 import { Badge } from "some-ui-shared"
 
 type LeetypeProps = {
@@ -24,6 +27,23 @@ type LeetypeProps = {
   codePaths?: Record<Language, string>
   /** Challenge metadata — enables adaptive mode and difficulty enforcement */
   challenge?: Challenge
+  /**
+   * Friendly difficulty label used to resolve a `challenge` out of
+   * `challenges` when the caller only has a config-time difficulty pick, not
+   * a fully hydrated challenge (the config-driven "LeetType" activity's
+   * path - see apps/www's activity-catalog). Ignored when `challenge` is
+   * passed directly.
+   */
+  difficulty?: Difficulty
+  /**
+   * The pool `difficulty` resolves against - defaults to the bundled demo
+   * set (`@some-ui/content`'s `CHALLENGES`), same as before this prop
+   * existed. This is the seam a host app uses to swap in its own challenge
+   * corpus (e.g. an LLM-generated, environment-specific set fetched at
+   * runtime) without this component knowing or caring where the challenges
+   * came from.
+   */
+  challenges?: Array<Challenge>
   /** Pre-selected language (challenge mode) */
   initialLanguage?: Language
   /** Pre-selected duration in seconds (challenge mode) */
@@ -55,12 +75,16 @@ type CumulativeStats = {
 export const Leetype: FC<LeetypeProps> = ({
   codePaths,
   challenge,
+  difficulty,
+  challenges = CHALLENGES,
   initialLanguage,
   initialDuration,
   nContext,
   onSessionComplete,
 }) => {
-  const isLegacyMode = !challenge
+  const resolvedChallenge =
+    challenge ?? resolveChallenge(challenges, difficulty)
+  const isLegacyMode = !resolvedChallenge
 
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
@@ -101,7 +125,7 @@ export const Leetype: FC<LeetypeProps> = ({
   }, [onSessionComplete])
 
   const effectiveCodePaths: Partial<Record<Language, string>> =
-    challenge?.codePaths ?? codePaths ?? {}
+    resolvedChallenge?.codePaths ?? codePaths ?? {}
 
   const codeState = useChunkedCode(effectiveCodePaths[language] ?? "", {
     prettierParser: PRETTIER_PARSER_MAP[language],
@@ -170,7 +194,7 @@ export const Leetype: FC<LeetypeProps> = ({
     setAdaptiveHidden(true)
   }
 
-  const isHardDifficulty = challenge?.difficulty === "hard"
+  const isHardDifficulty = resolvedChallenge?.difficulty === "hard"
   const effectiveDisplayMode: DisplayMode =
     isHardDifficulty || adaptiveHidden ? "hidden" : displayMode
 
@@ -247,9 +271,11 @@ export const Leetype: FC<LeetypeProps> = ({
   }`
 
   const info: GameInfoContent = {
-    title: challenge ? challenge.title : "Problem Description",
-    description: challenge ? challenge.description : DEFAULT_PROMPT_DESCRIPTION,
-    tags: challenge ? challenge.tags : [],
+    title: resolvedChallenge ? resolvedChallenge.title : "Problem Description",
+    description: resolvedChallenge
+      ? resolvedChallenge.description
+      : DEFAULT_PROMPT_DESCRIPTION,
+    tags: resolvedChallenge ? resolvedChallenge.tags : [],
   }
 
   return (
@@ -260,22 +286,22 @@ export const Leetype: FC<LeetypeProps> = ({
       {/* Challenge identity strip — kept slim so the viewport still belongs
           to the code/input card below; everything actionable lives in the
           bottom nav's menus instead of inline controls. */}
-      {challenge && (
+      {resolvedChallenge && (
         <div className="mb-3 flex shrink-0 items-center gap-3">
           <span className="text-base font-semibold text-card-foreground">
-            {challenge.title}
+            {resolvedChallenge.title}
           </span>
           <Badge
             variant={
-              challenge.difficulty === "easy"
+              resolvedChallenge.difficulty === "easy"
                 ? "default"
-                : challenge.difficulty === "medium"
+                : resolvedChallenge.difficulty === "medium"
                   ? "secondary"
                   : "destructive"
             }
             className="capitalize"
           >
-            {challenge.difficulty}
+            {resolvedChallenge.difficulty}
           </Badge>
           {nContext && (
             <Badge variant="outline" className="font-mono text-xs capitalize">

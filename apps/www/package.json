@@ -30,6 +30,7 @@
     "@some-ui/content": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
+    "@some-ui/leetype": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.2.2",

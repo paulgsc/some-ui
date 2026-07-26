@@ -1,4 +1,3 @@
-import { CHALLENGES } from "@some-ui/content"
 import { interviewQuestions } from "@some-ui/interview"
 import type { Question } from "@some-ui/interview"
 
@@ -22,21 +21,6 @@ function filterInterviewQuestions(
   if (byCategory.length > 0) return byCategory
 
   return interviewQuestions
-}
-
-/**
- * Resolves the composer's plain `difficulty` identifier into the actual
- * challenge (title/description/tags/codePaths) Leetype's component expects -
- * the "live player's job" this activity's `toSceneProps` previously deferred
- * (see ActivityDefinition.toSceneProps's own doc comment), leaving every
- * session's `path` empty and its loader permanently idle. Deterministic
- * (first match) rather than random, so replaying a session shows the same
- * challenge it did the first time.
- */
-function pickLeetypeChallenge(
-  difficulty: unknown
-): (typeof CHALLENGES)[number] {
-  return CHALLENGES.find((c) => c.difficulty === difficulty) ?? CHALLENGES[0]
 }
 
 const honeycomb: ActivityDefinition = {
@@ -229,8 +213,15 @@ const leetype: ActivityDefinition = {
     difficulty: "easy",
     durationMinutes: 10,
   },
+  // `difficulty` is passed through as the friendly label the player picked
+  // ("easy"/"medium"/"hard"), not resolved into a full Challenge here -
+  // Leetype (@some-ui/leetype) resolves it at render time against its own
+  // `challenges` pool (bundled CHALLENGES by default, optionally overridden
+  // with a local/Docker-fetched corpus - see
+  // apps/www/src/lib/leetype-challenges), the same way session-viewport
+  // already lets HangulHexGrid resolve its own word pool.
   toSceneProps: (config) => ({
-    challenge: pickLeetypeChallenge(config.difficulty),
+    difficulty: config.difficulty,
     initialLanguage: config.language,
   }),
 }
