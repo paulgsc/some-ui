@@ -38,5 +38,3 @@ export const WordEntrySchema = z
   })
 
 export const HangulVocabFileSchema = z.array(WordEntrySchema).min(1)
-
-export type HangulVocabFile = z.infer<typeof HangulVocabFileSchema>

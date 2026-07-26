@@ -4,7 +4,7 @@ import type { WordEntry } from "@some-ui/honeycomb"
 
 import { HangulVocabFileSchema } from "./schema"
 
-export const DEFAULT_HANGUL_VOCAB_TOPIC = "vocab"
+const DEFAULT_HANGUL_VOCAB_TOPIC = "vocab"
 
 type HangulVocabParams = { topic: string }
 
