@@ -34,11 +34,11 @@
   #tagline[Software Engineer — Rust/WebAssembly, TypeScript/React, CI/CD]
   #v(0.25em)
   #text(size: 9pt)[
-    aulgondu\@gmail.com
+    paulgathondudev\@gmail.com
     #h(0.6em) · #h(0.6em)
     github.com/paulgsc
     #h(0.6em) · #h(0.6em)
-    pgdev.maishatu.com
+    paulgsc.github.io/some-ui
     #h(0.6em) · #h(0.6em)
     github.com/paulgsc/some-ui
   ]
