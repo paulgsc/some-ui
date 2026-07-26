@@ -60,44 +60,45 @@ The file itself is a JSON array of these, with **at least one entry**.
 
 ---
 
-## Hard Constraint: Open-Syllable Words Only
+## Decomposition: Batchim Is Fine, Compound Batchim Needs One Extra Step
 
-**This is the constraint most likely to be violated, and a violation silently
-produces an unplayable word - read this section before generating anything.**
+**There is no open-syllable restriction. Batchim (받침, final consonants)
+decompose and play correctly** - the game engine has no concept of syllable
+position at all; it just matches an ordered list of jamo tokens against
+typed input, and a batchim jamo is matched the exact same way an onset jamo
+is. (This is empirically verified, not just asserted - see
+`batchim_word_completes_like_any_other_multi_token_challenge` in
+`crates/hangul-game-core/src/internal/engine.rs`.) Do not avoid batchim
+words or prefer loanwords to route around them - decompose the whole word,
+in reading order, every jamo including any batchim.
 
-The game engine (`Korean::key_for`,
-`crates/hangul-game-core/src/internal/content_domain/korean.rs`) maps
-**only** the 19 lead consonants and 21 vowels to QWERTY keys. It has **no
-mapping for batchim (받침, final/trailing consonants)**. Every syllable
-block in every word must therefore be exactly **lead consonant + vowel**,
-nothing after the vowel.
+- 사람 (saram, "person") -> ㅅ, ㅏ, ㄹ, ㅏ, ㅁ -> keys `t`, `k`, `f`, `k`, `a`
+- 달 (dal, "moon") -> ㄷ, ㅏ, ㄹ -> keys `e`, `k`, `f`
 
-- ✅ 사과 (ㅅ+ㅏ, ㄱ+ㅘ) - two blocks, each lead+vowel only
-- ✅ 우유 (ㅇ+ㅜ, ㅇ+ㅠ)
-- ❌ 사람 (ㅅ+ㅏ, ㄹ+ㅏ+**ㅁ**) - final ㅁ has no key mapping
-- ❌ 하나**둘** (둘 = ㄷ+ㅜ+**ㄹ**) - final ㄹ has no key mapping
+**The one real wrinkle: compound batchim.** Eleven jamo characters
+(ㄳ/ㄵ/ㄶ/ㄺ/ㄻ/ㄼ/ㄽ/ㄾ/ㄿ/ㅀ/ㅄ) are themselves a fusion of two basic
+consonants and have no entry in the engine's key-mapping table as a single
+character. Represent one as **one glyph slot with its two component keys
+concatenated** - the exact same convention the mapping table below already
+uses for composite vowels (ㅘ is one glyph, key `hk`):
 
-This rules out a large fraction of "natural" vocabulary in almost every
-topic - e.g. most native-Korean counting words (둘, 셋, 넷, 다섯, ...) and
-most Sino-Korean tens (십, 이십, 삼십, ...) have batchim and are **not**
-usable as-is. Do not force a topic's canonical word list; select only the
-subset of words for that topic that happen to be open-syllable, and prefer
-loanwords/simpler forms where they help (e.g. 커피 for "coffee" over a
-batchim-bearing native alternative). A shorter, fully-valid list is strictly
-better than a longer list with unplayable entries.
+- 닭 (dalg, "chicken") -> ㄷ, ㅏ, ㄺ -> keys `e`, `k`, `fr` (ㄺ = ㄹ`f` + ㄱ`r`)
+- 값 (gap, "price") -> ㄱ, ㅏ, ㅄ -> keys `r`, `k`, `qt` (ㅄ = ㅂ`q` + ㅅ`t`)
 
-If a topic genuinely has too few open-syllable words to reach the requested
-count, generate fewer and say so in one line before the JSON block, rather
-than including a batchim word to hit the count.
+This is also empirically verified end to end, not inferred - see
+`compound_batchim_as_one_glyph_with_a_combined_key_completes_too`, same
+file. If a topic's most natural word has a compound batchim, use it; don't
+substitute a less natural word to avoid this.
 
 ---
 
 ## Dubeolsik (두벌식) QWERTY Mapping Table
 
-Use this table to derive `answerKeys`/`answerGlyphs` - decompose each
-syllable block into its lead consonant and vowel, then look each up here, in
-the order they appear in the word (consonant, then vowel, per block, left to
-right through the whole word). This is the same table
+Use this table to derive `answerKeys`/`answerGlyphs` - decompose the whole
+word into its individual jamo, in reading order (every consonant and vowel a
+syllable block contains, including any batchim), then look each one up here.
+The table is position-agnostic: the same row applies whether a consonant is
+a syllable's onset or its batchim. This is the same table
 `packages/ui/honeycomb/src/utils/hangul-keyboard-mapping` uses at runtime -
 keep this list in sync with that file if it ever changes.
 
@@ -153,18 +154,20 @@ keep this list in sync with that file if it ever changes.
 
 Every entry above is a real, verified `WordEntry` from the bundled demo
 seed (`packages/ui/honeycomb/src/data/hangul-words.ts`) - use those 20
-entries as additional worked examples if any of the above is ambiguous.
+entries as additional worked examples if any of the above is ambiguous. That
+seed happens to be all open-syllable words, but that reflects when it was
+written, not a real constraint - see "Decomposition" above.
 
 ---
 
-## Worked Example
+## Worked Examples
 
-Word: 포도 ("grape")
+Word: 포도 ("grape") - no batchim, for the basic case:
 
-| Block | Lead consonant | Vowel  | answerKeys | answerGlyphs |
-| ----- | -------------- | ------ | ---------- | ------------ |
-| 포    | ㅍ (v)         | ㅗ (h) | `v`, `h`   | `ㅍ`, `ㅗ`   |
-| 도    | ㄷ (e)         | ㅗ (h) | `e`, `h`   | `ㄷ`, `ㅗ`   |
+| Block | Jamo, in order | answerKeys | answerGlyphs |
+| ----- | -------------- | ---------- | ------------ |
+| 포    | ㅍ (v), ㅗ (h) | `v`, `h`   | `ㅍ`, `ㅗ`   |
+| 도    | ㄷ (e), ㅗ (h) | `e`, `h`   | `ㄷ`, `ㅗ`   |
 
 ```json
 {
@@ -179,15 +182,37 @@ Word: 포도 ("grape")
 }
 ```
 
+Word: 달 ("moon") - a single batchim, decomposed like any other jamo:
+
+| Block | Jamo, in order         | answerKeys    | answerGlyphs     |
+| ----- | ---------------------- | ------------- | ---------------- |
+| 달    | ㄷ (e), ㅏ (k), ㄹ (f) | `e`, `k`, `f` | `ㄷ`, `ㅏ`, `ㄹ` |
+
+```json
+{
+  "id": "moon",
+  "word": "달",
+  "romanization": "dal",
+  "answerKeys": ["e", "k", "f"],
+  "answerGlyphs": ["ㄷ", "ㅏ", "ㄹ"],
+  "icon": "🌙",
+  "ttsText": "달",
+  "category": "nature"
+}
+```
+
 Diphthong vowels (ㅘ, ㅙ, ㅚ, ㅝ, ㅞ, ㅟ, ㅢ) are still **one** array slot
 each, even though their QWERTY token is two characters (`hk`, `nj`, ...) -
-one token/glyph pair per jamo, not per keystroke.
+one token/glyph pair per jamo, not per keystroke. Compound batchim
+(ㄳ/ㄵ/ㄶ/ㄺ/ㄻ/ㄼ/ㄽ/ㄾ/ㄿ/ㅀ/ㅄ) follow the identical pattern: one glyph
+slot, its two component consonants' keys concatenated (see "Decomposition"
+above).
 
 ---
 
 ## Self-Check Before Returning the File
 
-- [ ] Every syllable block in every word is lead-consonant + vowel only - no batchim, anywhere
+- [ ] Every word is fully decomposed into its jamo, in reading order, including any batchim
 - [ ] `answerKeys.length === answerGlyphs.length` for every entry
 - [ ] Every `answerKeys`/`answerGlyphs` pair was derived from the mapping table above, block by block, left to right
 - [ ] Every `id` is unique, kebab-case, ASCII

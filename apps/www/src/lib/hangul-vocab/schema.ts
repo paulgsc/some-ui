@@ -10,13 +10,14 @@ import { z } from "zod"
  * component; `z.infer` below stays structurally assignable to `WordEntry`
  * because the field types match exactly.
  *
- * Same open-syllable constraint as the bundled demo seed applies here too:
  * `answerKeys`/`answerGlyphs` must be hand-verified (or LLM-verified) against
  * the dubeolsik QWERTY mapping table
- * (`packages/ui/honeycomb/src/utils/hangul-keyboard-mapping`) - the engine
- * only maps lead consonants + vowels, not batchim/final consonants, so a
- * word like 사람 (batchim ㅁ) has no valid `answerKeys` encoding. Prefer
- * words whose every syllable block is lead-consonant + vowel only.
+ * (`packages/ui/honeycomb/src/utils/hangul-keyboard-mapping`) - every jamo in
+ * the word, in order, including batchim (there is no open-syllable
+ * restriction: the mapping table is position-agnostic, and the engine never
+ * re-derives these from `word` at runtime - see hangul-words.ts's header
+ * comment and crates/hangul-game-core/src/internal/engine.rs's
+ * `batchim_word_completes_like_any_other_multi_token_challenge` test).
  */
 export const WordEntrySchema = z
   .object({
