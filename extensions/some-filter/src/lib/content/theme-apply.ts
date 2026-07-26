@@ -29,7 +29,10 @@ import {
 } from "@filter/adapter/swatches"
 import type { FilterConfig } from "@filter/types/config"
 
+import { parseColor } from "./color"
+import { rgbaToCss } from "./modify-colors"
 import { commitVisualState } from "./prepaint"
+import { counterInvertColor, detectVendorInvert } from "./vendor-filter"
 
 /**
  * Every `<style>` this extension injects carries `[data-my-ext]`. Two
@@ -63,6 +66,45 @@ function setStyleText(style: HTMLStyleElement, css: string): void {
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 export const LEGACY_THEME_ATTR = "data-sw-legacy"
+
+/**
+ * Counter-inverts every color a `Swatch` carries so that, once composited
+ * through a still-active *vendor* `filter: invert(...)` (#741 — a real
+ * accessibility toggle some sites ship on their own `<html>`, distinct from
+ * this extension's own legacy filter mode), a human/screenshot sees the
+ * swatch's real, intended dark tokens rather than their bright inverse. A
+ * no-op (`invertAmount = 0`, the overwhelming majority case) returns
+ * `swatch` unchanged.
+ */
+function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
+  if (invertAmount === 0) return swatch
+
+  const counter = (css: string): string => {
+    const parsed = parseColor(css)
+    return parsed === null
+      ? css
+      : rgbaToCss(counterInvertColor(parsed, invertAmount))
+  }
+
+  return {
+    ...swatch,
+    bg0: counter(swatch.bg0),
+    bg1: counter(swatch.bg1),
+    bg2: counter(swatch.bg2),
+    bg3: counter(swatch.bg3),
+    surface: counter(swatch.surface),
+    border: counter(swatch.border),
+    text0: counter(swatch.text0),
+    text1: counter(swatch.text1),
+    text2: counter(swatch.text2),
+    link: counter(swatch.link),
+    linkVisited: counter(swatch.linkVisited),
+    inputBg: counter(swatch.inputBg),
+    inputBorder: counter(swatch.inputBorder),
+    selectionBg: counter(swatch.selectionBg),
+    codeFg: counter(swatch.codeFg),
+  }
+}
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 // Values come from the active swatch (default: SWATCHES.default, byte-for-byte
@@ -257,7 +299,14 @@ export function injectDarkTheme(
   if (!(existing instanceof HTMLStyleElement)) {
     document.head.appendChild(style)
   }
-  setStyleText(style, buildDarkThemeCSS(swatch))
+  // The compensation is recomputed per call (a vendor's own invert toggle
+  // can flip at any time), but the assignment still goes through
+  // setStyleText: an unchanged filter state rebuilds byte-identical CSS,
+  // and rewriting it would be a mutation the Sensor reacts to (#831).
+  setStyleText(
+    style,
+    buildDarkThemeCSS(compensateSwatch(swatch, detectVendorInvert()))
+  )
   // Per-surface tagging and the dynamic color stylesheet are the actuator's
   // job now (adapter/actuator.ts), driven by decide()'s returned actions —
   // not this function's. Veil removal is the caller's responsibility: inject

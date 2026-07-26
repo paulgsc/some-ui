@@ -29,7 +29,11 @@
  * sense/`decide`/`realize` cycle, sensing included.
  */
 
-import { parseColor, relativeLuminance } from "@filter/lib/content/color"
+import {
+  parseColor,
+  relativeLuminance,
+  type RGBA,
+} from "@filter/lib/content/color"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import { DARK_THEME_STYLE_ID } from "@filter/lib/content/theme-apply"
@@ -100,15 +104,58 @@ function shouldSkip(el: Element): boolean {
   return false
 }
 
+// Only recognized gradient functions — real `url(...)` photographic
+// background-images are out of scope (#741 is specifically about gradients;
+// there is no reliable way to assume a color for an arbitrary photo, and
+// forcibly stripping one would be a much bigger, untested visual change).
+const GRADIENT_RE = /(?:repeating-)?(?:linear|radial|conic)-gradient\(/i
+
+/** Luminance 1 (pure white) — the same "unknown == probably light" bias `theme-detector.ts` already documents, applied here to a surface whose real color a `background-image` gradient hides from every sampler in this file. */
+const ASSUMED_LIGHT_IMAGE: SurfaceAttr["color"] = [1, 1, 1, 1]
+
+/**
+ * The element's own, non-inherited text color, or null when it has none of
+ * its own (its computed `color` just matches its parent's — plain
+ * inheritance, nothing for a surface-role recolor to re-target). `color` is
+ * an inherited CSS property, so — unlike `background-color` — a matching
+ * value doesn't mean "unset here," it means "not overridden here."
+ */
+function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
+  const parent = el.parentElement
+  if (parent === null) return null
+  const inherited = getComputedStyle(parent).color
+  if (style.color === inherited) return null
+  return parseColor(style.color)
+}
+
 function readAttr(el: Element): SurfaceAttr | null {
-  const bg = getComputedStyle(el).backgroundColor
-  const c = parseColor(bg)
-  if (c === null) return null
-  return {
-    color: c,
-    luminance: relativeLuminance(c[0], c[1], c[2]),
-    opacity: c[3],
+  const style = getComputedStyle(el)
+  const c = parseColor(style.backgroundColor)
+
+  if (c !== null) {
+    return {
+      color: c,
+      luminance: relativeLuminance(c[0], c[1], c[2]),
+      opacity: c[3],
+      text: ownTextColor(el, style),
+    }
   }
+
+  // No explicit background-color, but a light gradient background-image is
+  // just as capable of leaking a bright surface onto an otherwise-dark page
+  // (#741) and is invisible to every other check here — treat it as
+  // assumed-light evidence so it gets themed like any other surface.
+  if (GRADIENT_RE.test(style.backgroundImage)) {
+    return {
+      color: ASSUMED_LIGHT_IMAGE,
+      luminance: 1,
+      opacity: 1,
+      text: ownTextColor(el, style),
+      imageOnly: true,
+    }
+  }
+
+  return null
 }
 
 // ── Vendor truth (Axiom 3.5, read side) ──────────────────────────────────────
@@ -228,6 +275,47 @@ export type ScanResult = {
   readonly attrsByKey: ReadonlyMap<SurfaceKey, SurfaceAttr>
 }
 
+/**
+ * The dedup key for a scanned element's evidence. Normally just its
+ * canonical background color (S1's original design — "one hypothesis per
+ * observed background"). Two refinements fold additional attributes into
+ * the key, both guarding the same failure mode: `elementsByKey`/`attrsByKey`
+ * only ever record the *first* element seen for a given key (`scan()`
+ * below) — every later element sharing that key is tagged identically but
+ * never gets to contribute its own evidence.
+ *
+ *   - Own text color: an element sharing a light ancestor's exact
+ *     background (`<main style="background-color: white">` wrapping
+ *     `<div id="card" style="background-color: white; color: #141414">` is
+ *     an ordinary vendor pattern, not a contrived one) collapses onto
+ *     whichever of the two `scan()`'s TreeWalker visits *first* — always
+ *     the ancestor, which has no `color` of its own — permanently
+ *     discarding the descendant's own text color from the hypothesis
+ *     (#741's "it darkens text so that it's not visible at all": the
+ *     per-surface foreground fix in `theme-adapter.ts`'s `decide()` never
+ *     even sees the evidence needed to apply it).
+ *   - `imageOnly`: an assumed-light gradient carrier can coincidentally
+ *     share its assumed color's canonical string with a real, same-colored
+ *     `background-color` elsewhere on the page (#741's "white gradients
+ *     leak" fixture is exactly this — a white `<main>` ancestor, and a
+ *     transparent-bg `<div>` whose only color evidence is a white
+ *     gradient) — without a distinct key, the real background-color
+ *     element's (correct, non-suppressing) attr wins and the gradient
+ *     carrier's own `background-image` is never actually suppressed.
+ *
+ * Both refinements give same-bg-but-differently-evidenced carriers distinct
+ * keys, each with its own tag and dynamic rule, instead of silently sharing
+ * whichever arrived first.
+ */
+function surfaceKeyFor(attr: SurfaceAttr): SurfaceKey {
+  const bgKey =
+    attr.imageOnly === true
+      ? `image:${rgbaToCss(attr.color)}`
+      : rgbaToCss(attr.color)
+  if (attr.text === undefined || attr.text === null) return bgKey
+  return `${bgKey}|text:${rgbaToCss(attr.text)}`
+}
+
 /** Walks `root`'s descendants (never `root` itself — matches `patchAll`'s old scope; `root`'s own canvas is the static layer's job). */
 export function scan(root: Element): ScanResult {
   const elementsByKey = new Map<SurfaceKey, Array<Element>>()
@@ -240,7 +328,7 @@ export function scan(root: Element): ScanResult {
     if (node instanceof HTMLElement && !shouldSkip(node)) {
       const attr = readAttr(node)
       if (attr !== null) {
-        const key = rgbaToCss(attr.color)
+        const key = surfaceKeyFor(attr)
         const list = elementsByKey.get(key)
         if (list !== undefined) {
           list.push(node)

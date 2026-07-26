@@ -117,15 +117,24 @@ export function relativeLuminance(r: number, g: number, b: number): number {
 
 /**
  * Walk up the DOM from el to find the first ancestor with a non-transparent
- * background-color. Returns luminance 0-1, or null if none found.
+ * background-color. Returns the parsed color, or null if none found.
  */
-export function effectiveBgLuminance(el: Element): number | null {
+export function effectiveBgColor(el: Element): RGBA | null {
   let cur: Element | null = el
   while (cur) {
     const bg = getComputedStyle(cur).backgroundColor
     const c = parseColor(bg)
-    if (c) return relativeLuminance(c[0], c[1], c[2])
+    if (c) return c
     cur = cur.parentElement
   }
   return null
+}
+
+/**
+ * Walk up the DOM from el to find the first ancestor with a non-transparent
+ * background-color. Returns luminance 0-1, or null if none found.
+ */
+export function effectiveBgLuminance(el: Element): number | null {
+  const c = effectiveBgColor(el)
+  return c ? relativeLuminance(c[0], c[1], c[2]) : null
 }

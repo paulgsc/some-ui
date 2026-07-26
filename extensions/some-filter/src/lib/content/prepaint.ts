@@ -30,6 +30,10 @@
  *                       from re-creating) then removes veil element
  */
 
+import { parseColor } from "./color"
+import { rgbaToCss } from "./modify-colors"
+import { counterInvertColor, detectVendorInvert } from "./vendor-filter"
+
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
 
 /**
@@ -43,6 +47,10 @@ export const PREPAINT_DIRTY_CLASS = "sw-dirty"
 
 const DIRTY_CLASS = PREPAINT_DIRTY_CLASS
 
+// Matches --sw-bg-0 (SWATCHES.default.bg0) / prepaint.css's own dirty-canvas
+// color — the veil's default, uncompensated dark fill.
+const VEIL_BG = "#171c25"
+
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
 }
@@ -52,6 +60,33 @@ export function isPrepaintActive(): boolean {
   return (
     document.documentElement.classList.contains(DIRTY_CLASS) ||
     getVeil() !== null
+  )
+}
+
+/**
+ * Counter-inverts the veil's background so it still reads dark once
+ * composited through a *vendor's own*, still-active `filter:
+ * invert(...)` (#741) — prepaint.css already does the analogous thing for
+ * this extension's own legacy filter (`html[data-sw-legacy]`), but that
+ * CSS-only rule has no way to see a filter the vendor, not this extension,
+ * applied. `!important` inline (highest-specificity, author-origin) beats
+ * prepaint.css's own `!important` class rule. A no-op (`invertAmount = 0`,
+ * the overwhelming majority case) clears any previous override instead —
+ * enablePrepaint() reuses an existing veil across repeated calls, and an
+ * override from a filter that is no longer active must not linger.
+ */
+function compensateVeilBackground(veil: HTMLElement): void {
+  const invertAmount = detectVendorInvert()
+  if (invertAmount === 0) {
+    veil.style.removeProperty("background-color")
+    return
+  }
+  const base = parseColor(VEIL_BG)
+  if (base === null) return
+  veil.style.setProperty(
+    "background-color",
+    rgbaToCss(counterInvertColor(base, invertAmount)),
+    "important"
   )
 }
 
@@ -77,7 +112,15 @@ export function enablePrepaint(): void {
     document.documentElement.classList.add(DIRTY_CLASS)
   }
 
-  if (getVeil()) return
+  const existing = getVeil()
+  if (existing) {
+    // Re-entrant call (e.g. an SPA re-navigation re-arming an already-live
+    // veil, #741's second symptom): re-check the vendor filter every time,
+    // not just at creation — it can still be active, or have changed, since
+    // the veil was first created.
+    compensateVeilBackground(existing)
+    return
+  }
 
   const veil = document.createElement("div")
   veil.id = PREPAINT_VEIL_ID
@@ -88,6 +131,7 @@ export function enablePrepaint(): void {
   // remove a sibling of <body>; only a full documentElement.replaceChildren
   // could do so, and the CSS backstop covers that extreme case.
   document.documentElement.appendChild(veil)
+  compensateVeilBackground(veil)
 
   try {
     veil.showPopover()

@@ -123,11 +123,22 @@ export function realize(
   }
 
   const colorRules = actions
-    .filter((action) => action.kind === "emit-surface-color")
-    .map(
-      (action) =>
-        `[data-sw-patched="${action.key}"]${EXT_GUARD}{background-color:${action.css}!important}`
+    .filter(
+      (
+        action
+      ): action is Extract<FilterAction, { kind: "emit-surface-color" }> =>
+        action.kind === "emit-surface-color"
     )
+    .map((action) => {
+      const declarations = [`background-color:${action.css}!important`]
+      if (action.textCss !== undefined) {
+        declarations.push(`color:${action.textCss}!important`)
+      }
+      if (action.suppressImage === true) {
+        declarations.push("background-image:none!important")
+      }
+      return `[data-sw-patched="${action.key}"]${EXT_GUARD}{${declarations.join(";")}}`
+    })
 
   if (colorRules.length > 0) {
     const css = colorRules.join("\n")
