@@ -196,6 +196,6 @@ const DashboardHome = (): JSX.Element => {
   )
 }
 
-export const Route = createFileRoute("/_dashboard/")({
+export const Route = createFileRoute("/_dashboard/app")({
   component: DashboardHome,
 })

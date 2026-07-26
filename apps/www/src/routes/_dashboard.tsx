@@ -37,13 +37,13 @@ function isViewportPath(pathname: string): boolean {
 }
 
 type NavItem = {
-  to: "/" | "/sessions" | "/resume" | "/profile" | "/settings"
+  to: "/app" | "/sessions" | "/resume" | "/profile" | "/settings"
   label: string
   icon: typeof Home
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { to: "/", label: "Home", icon: Home },
+  { to: "/app", label: "Home", icon: Home },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/profile", label: "Profile", icon: User },
@@ -51,7 +51,6 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
 ]
 
 function isNavItemActive(itemPath: NavItem["to"], pathname: string): boolean {
-  if (itemPath === "/") return pathname === "/"
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
 }
 
