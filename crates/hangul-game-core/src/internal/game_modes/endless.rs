@@ -40,6 +40,10 @@ impl GameMode for EndlessMode {
         false // Never completes
     }
 
+    fn has_time_limit(&self) -> bool {
+        false // Endless means endless - no wall-clock cutoff either
+    }
+
     fn get_progress(&self) -> GameProgress {
         GameProgress {
             total_keys: 0,

@@ -34,6 +34,15 @@ pub trait GameMode {
     /// Check if game is complete
     fn is_complete(&self) -> bool;
 
+    /// Whether this mode is bound by `GameConfig::game_duration_ms` at all - `GameEngine::get_status`
+    /// only ever reports `is_timed_out` when this is true. Defaults to `true` (today's universal
+    /// behavior for every mode that doesn't override it); `EndlessMode` and the endless variant of
+    /// `VocabularyMode` are the only ones that are not time-boxed by definition, so they're the only
+    /// overrides.
+    fn has_time_limit(&self) -> bool {
+        true
+    }
+
     /// Get progress information
     fn get_progress(&self) -> GameProgress;
 
