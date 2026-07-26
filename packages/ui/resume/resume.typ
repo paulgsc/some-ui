@@ -1,11 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  resume.typ — source of truth for Paul Gathondu's résumé.
+//  resume.typ — Paul Gathondu's résumé. Conventional grammar, on purpose:
+//  deliverables and technologies, not motivation or methodology. This file
+//  is meant to be a generic drop-in for any application flow (upload, ATS
+//  parse, print) — nothing posting-specific lives here.
 //
-//  MVP note: this is a STAR-method distillation of `some-ui` itself. The
-//  repository is the dataset — every claim below traces to something that
-//  actually ships from it (a workflow file, a package, a shipped extension),
-//  not aspirational copy. See packages/ui/resume/README.md for the build
-//  pipeline and what's deliberately out of scope for this first cut.
+//  Every line still traces to something that actually ships from `some-ui`
+//  (a package, a workflow file, a shipped extension) — see
+//  packages/ui/resume/resume.meta.typ (same directory) for the full
+//  provenance map, the "why" behind each decision, and any posting-specific
+//  requirements analysis. That file is commentary; this one is the résumé.
 // ═══════════════════════════════════════════════════════════════════════════
 
 #set document(title: "Paul Gathondu — Résumé", author: "Paul Gathondu")
@@ -28,14 +31,14 @@
 #align(center)[
   #text(size: 20pt, weight: "bold")[Paul Gathondu]
   #v(0.15em)
-  #tagline[Solo Engineer — Adaptive Learning Systems, Rust/WASM, Browser Extensions]
+  #tagline[Software Engineer — Rust/WebAssembly, TypeScript/React, CI/CD]
   #v(0.25em)
   #text(size: 9pt)[
-    aulgondu\@gmail.com
+    paulgathondudev\@gmail.com
     #h(0.6em) · #h(0.6em)
     github.com/paulgsc
     #h(0.6em) · #h(0.6em)
-    pgdev.maishatu.com
+    paulgsc.github.io/some-ui
     #h(0.6em) · #h(0.6em)
     github.com/paulgsc/some-ui
   ]
@@ -43,62 +46,49 @@
 
 #sectionhead[Summary]
 
-I build and ship `some-ui`: a solo-maintained, production-shaped monorepo
-whose real deliverable is an adaptive, gamified tutor for Korean and
-low-level Rust — measured against a benchmark I can't fake, whether I
-actually reach TOPIK-level Korean and genuine Rust systems fluency myself.
-Everything else in the repo (the extension suite, the CI/CD, the release
-pipeline) exists to make that one product sustainable for a team of one,
-on a real budget, without trading engineering taste for velocity.
+Software engineer who designs, builds, and operates production systems end
+to end — a Rust/WebAssembly engine, a React/TypeScript application, and the
+CI/CD and release infrastructure behind them. Sole maintainer of `some-ui`,
+a 61-package monorepo shipping an adaptive language-learning platform and
+15+ browser extensions.
 
-#sectionhead[some-ui --- Monorepo, Sole Engineer (2024 --- Present)]
+#sectionhead[Sole Engineer --- some-ui (2024 --- Present)]
 
-*Situation.* One developer, one budget, 61 workspace packages spanning a
-React/TypeScript app, a Rust/WASM game engine, and 15+ shipped browser
-extensions. No headcount to throw at regression risk and no budget to
-route every change through a frontier model — the repo has to defend its
-own quality bar structurally, not by brute force.
+Design, build, and maintain a production-scale monorepo (61 TypeScript and
+Rust packages) powering an adaptive language-learning platform and a suite
+of browser extensions, alone, from architecture through release.
 
-*What I built and why it holds up:*
+*Highlights*
 
-- *Adaptive learning core* — designed and shipped `hangul-game-core`
-  (Rust/WASM) and `honeycomb` (hex-grid study UI) for Korean acquisition,
-  plus a TOPIK prep module and a typing-drill engine. Architecture changes
-  to the curriculum model are derived in written ADRs and formal design
-  canons *before* implementation — e.g. generalizing the engine from
-  single-glyph to multi-token words was proved correct (an equivalence
-  theorem, not a hope) before a line of the change landed — because the
-  curriculum only gets harder from here and a wrong abstraction compounds.
-- *CI/CD as a dependency graph, not a checklist* — Turborepo + pnpm
-  workspaces power a PR pipeline that scopes lint/typecheck/test to
-  changed packages and their transitive dependents (one required
-  `ci-gate` check), backed by a separate full-repo trunk sweep and a
-  standalone Rust CI job. Regression enforcement is real: lints, types,
-  and Rust's clippy/cargo-deny gate merges, not a suggestion.
-- *Release, for real* — Changesets drives versioned publishing with
-  auto-generated changelogs across every workspace package; GitHub Actions
-  handle Storybook/design-system deploys, Docker/GHCR builds for the app,
-  and signed extension releases, all issue- and milestone-tracked through
-  normal PR review rather than direct-to-main commits.
-- *Flagship extension: `some-filter`* — a structurally isolated dark-theme
-  and invert-filter system for arbitrary third-party pages, built around
-  an explicit DOM-layer invariant (extension UI can never nest inside the
-  patched page layer, by construction, not by convention) so theming a
-  hostile page can never leak into or break the extension's own chrome.
-  Shipped alongside 14 other extensions on shared `common`/`transport`
-  packages.
-- *Judgment over automation-as-default* — the same discipline that keeps
-  CI honest shows up inside the product: the learning engine keeps its
-  content model typed and explicitly boundaried (a `Stimulus`/`Answer`
-  split, not a bag of strings) so *what data belongs where* is a design
-  decision made once, deliberately — not something quietly decided by
-  whatever an LLM felt like inferring from a prompt.
+- Developed a Rust/WebAssembly game engine (`hangul-game-core`) and a React
+  hex-grid study interface (`honeycomb`) for an adaptive Hangul-learning
+  platform.
+- Built a TOPIK exam-prep module and a typing-drill engine on the same
+  curriculum platform.
+- Authored architecture decision records ahead of curriculum-model changes,
+  including generalizing the engine from single-character to multi-word
+  exercises, backed by a typed `Stimulus`/`Answer` content schema.
+- Built a Turborepo + pnpm CI/CD pipeline on GitHub Actions that scopes
+  lint, type-check, and test runs to changed packages and their
+  dependents behind a required merge check, plus a full-repo sweep and a
+  standalone Rust CI job (clippy, cargo-deny).
+- Built a release pipeline with Changesets (versioned publishing,
+  changelogs), GitHub Actions (Storybook and design-system deploys,
+  Docker/GHCR builds), and signed browser-extension releases.
+- Developed a browser-extension architecture (`some-filter`) that isolates
+  extension UI from host-page DOM mutations, preventing style leakage on
+  arbitrary third-party sites; shipped alongside 14 other extensions on
+  shared internal packages.
+- Built a Tailwind CSS design system (`some-styles`) documented in
+  Storybook, and a labeled test corpus (`filter-classifier`) for a DOM
+  theme/comfort classifier.
 
-#sectionhead[Stack]
+#sectionhead[Technical Skills]
 
 #text(size: 9.3pt)[
-  TypeScript · React · Rust · WebAssembly · Turborepo · pnpm · Vite ·
-  GitHub Actions · Zod · Changesets · Typst
+  TypeScript · React · Rust · WebAssembly · Tailwind CSS · Storybook ·
+  Turborepo · pnpm · Vite · Docker · GitHub Actions · Git · Zod ·
+  Changesets · Typst
 ]
 
 #v(0.6em)

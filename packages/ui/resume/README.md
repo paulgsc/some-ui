@@ -2,9 +2,14 @@
 
 `resume.typ` is the source of truth for Paul Gathondu's résumé — a
 [Typst](https://typst.app) document, distilled from this repository itself.
-The content is a STAR-shaped summary of what `some-ui` actually is: an
-adaptive learning product, a browser extension suite, and the CI/CD and
-release machinery holding both together for a solo developer.
+It's written in conventional résumé grammar (deliverables and technologies,
+one page, no posting-specific content) so it's a reusable drop-in for any
+application flow.
+
+The engineering rationale behind each line, and any posting-specific
+requirements analysis, live separately in `resume.meta.typ` — read as
+source, the same way `docs/canon/*.typ` is not something you build so much
+as something you cite. See its header comment for why the split exists.
 
 ## Pipeline (MVP)
 
