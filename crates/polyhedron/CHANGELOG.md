@@ -1,5 +1,11 @@
 # @some-ui/polyhedron
 
+## 0.0.6
+
+### Patch Changes
+
+- Update WASM package for polyhedron to version 0.0.0
+
 ## 0.0.5
 
 ### Patch Changes

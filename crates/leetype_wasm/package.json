@@ -1,7 +1,7 @@
 {
   "name": "@some-ui/leetype-wasm",
   "private": false,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "dist/leetype_wasm.js",
   "module": "dist/leetype_wasm.js",
   "types": "dist/leetype_wasm.d.ts",
