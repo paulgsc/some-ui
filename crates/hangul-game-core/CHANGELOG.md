@@ -1,5 +1,11 @@
 # @some-ui/hangul-game-core
 
+## 0.0.7
+
+### Patch Changes
+
+- Update WASM package for hangul-game-core to version 0.0.0
+
 ## 0.0.6
 
 ### Patch Changes
