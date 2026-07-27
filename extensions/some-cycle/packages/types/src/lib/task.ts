@@ -26,6 +26,13 @@ export type TaskEvent = {
   }
 }
 
+/** The subset of a browser tab this extension ever reads off the wire. */
+export type TabInfo = {
+  id?: number
+  url?: string
+  title?: string
+}
+
 export type TabEventData = {
   event:
     | "tab_created"
@@ -33,18 +40,14 @@ export type TabEventData = {
     | "tab_switched"
     | "extension_startup"
     | "extension_installed"
-  tab?: {
-    id?: number
-    url?: string
-    title?: string
-  }
+  tab?: TabInfo
   timestamp: number
   userAgent?: string
 }
 
 export type ApiRequest = {
   event: string
-  tab?: any
+  tab?: TabInfo
   timestamp: number
   sessionId?: string
 }
@@ -53,7 +56,8 @@ export type ApiResponse = {
   success: boolean
   event: TaskEvent
   message?: string
-  debug?: any
+  /** Free-form diagnostic payload; `unknown` so callers must narrow before use. */
+  debug?: unknown
 }
 
 export type StorageData = {
@@ -85,7 +89,8 @@ export type ExtensionMessage = {
     | "DISMISS_NOTIFICATION"
   event?: TaskEvent
   settings?: StorageData["userPreferences"]
-  payload?: any
+  /** Per-message-type payload; `unknown` so callers must narrow before use. */
+  payload?: unknown
 }
 
 // Utility types
