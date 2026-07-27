@@ -329,7 +329,11 @@ impl<D: ContentDomain> GameEngine<D> {
             0
         };
 
-        let is_timed_out = if self.game_duration_ms > 0 { elapsed_ms >= self.game_duration_ms } else { false };
+        let is_timed_out = if self.game_duration_ms > 0 && self.game_mode.has_time_limit() {
+            elapsed_ms >= self.game_duration_ms
+        } else {
+            false
+        };
 
         let time_remaining_ms = if self.game_duration_ms > 0 {
             self.game_duration_ms.saturating_sub(elapsed_ms)
@@ -894,6 +898,64 @@ mod tests {
             }
             other => panic!("expected CharacterSpawned from the new word pool, got {other:?}"),
         }
+    }
+
+    // game_timer_start_ms == 0 is this engine's "timer never started" sentinel
+    // (get_status's `if self.game_timer_start_ms > 0` gate, and the default/
+    // clear_session_state value) - these tests start the timer at a nonzero
+    // timestamp so elapsed time is actually computed, matching how a real
+    // caller always passes a genuine (always > 0) Date.now()-derived value.
+    const TIMER_START_MS: u64 = 1_000;
+
+    #[test]
+    fn completion_mode_times_out_once_game_duration_elapses() {
+        let mut engine = engine_with("completion");
+        engine.start_timer(TIMER_START_MS);
+
+        let status = engine.get_status(TIMER_START_MS + GameConfig::default().game_duration_ms);
+
+        assert!(status.is_timed_out);
+    }
+
+    #[test]
+    fn endless_mode_never_times_out_no_matter_how_long_the_timer_has_run() {
+        let mut engine = engine_with("endless");
+        engine.start_timer(TIMER_START_MS);
+
+        // Many multiples of the configured game_duration_ms - "endless" must mean endless, not
+        // "times out like every other mode, just not displayed."
+        let status = engine.get_status(TIMER_START_MS + GameConfig::default().game_duration_ms * 100);
+
+        assert!(!status.is_timed_out);
+    }
+
+    #[test]
+    fn vocabulary_endless_variant_never_times_out_but_the_non_endless_variant_does() {
+        let mut timed = engine_with("vocabulary");
+        timed.start_timer(TIMER_START_MS);
+        assert!(timed.get_status(TIMER_START_MS + GameConfig::default().game_duration_ms).is_timed_out);
+
+        let mut untimed = engine_with("vocabulary-endless");
+        untimed.start_timer(TIMER_START_MS);
+        assert!(!untimed.get_status(TIMER_START_MS + GameConfig::default().game_duration_ms * 100).is_timed_out);
+    }
+
+    #[test]
+    fn switching_from_a_timed_mode_to_endless_stops_it_from_timing_out() {
+        // set_mode replaces game_mode wholesale (canon Axiom 12.1) - has_time_limit must be
+        // re-read from whatever mode is current, not cached from construction time. set_mode
+        // also resets game_timer_start_ms to 0 (clear_session_state), so restart the timer
+        // explicitly to actually exercise the timed-out branch under the new mode instead of
+        // trivially passing because the timer never restarted.
+        let mut engine = engine_with("completion");
+        engine.start_timer(TIMER_START_MS);
+        let far_future = TIMER_START_MS + GameConfig::default().game_duration_ms * 100;
+        assert!(engine.get_status(far_future).is_timed_out);
+
+        engine.set_mode("endless".to_string(), vec![]);
+        engine.start_timer(TIMER_START_MS);
+
+        assert!(!engine.get_status(far_future).is_timed_out);
     }
 
     #[test]

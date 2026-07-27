@@ -1,11 +1,12 @@
 import { buildDisplayMap } from "@leetype/lib/leetype/leetype-wasm-loader"
-import type { GameStats } from "@leetype/types/leetype"
+import type { Challenge, GameStats } from "@leetype/types/leetype"
 import { describe, expect, it, vi } from "vitest"
 
 import {
   codeToUnits,
   deriveCursorIndex,
   deriveDisplayMap,
+  resolveChallenge,
   sliceUserUnits,
 } from "."
 
@@ -88,5 +89,35 @@ describe("deriveDisplayMap", () => {
     vi.mocked(buildDisplayMap).mockReturnValue(new Uint32Array([2, 1, 0]))
     expect(deriveDisplayMap("abc")).toEqual([2, 1, 0])
     expect(buildDisplayMap).toHaveBeenCalledWith("abc")
+  })
+})
+
+describe("resolveChallenge", () => {
+  const makeChallenge = (overrides: Partial<Challenge> = {}): Challenge => ({
+    id: "id",
+    title: "title",
+    description: "description",
+    difficulty: "easy",
+    mode: "algorithm",
+    tags: [],
+    codePaths: { typescript: "", rust: "", cpp: "", c: "" },
+    levelRequired: 1,
+    ...overrides,
+  })
+
+  const easy = makeChallenge({ id: "easy-1", difficulty: "easy" })
+  const medium = makeChallenge({ id: "medium-1", difficulty: "medium" })
+  const pool = [easy, medium]
+
+  it("returns undefined when no difficulty is given", () => {
+    expect(resolveChallenge(pool, undefined)).toBeUndefined()
+  })
+
+  it("returns the first challenge matching the requested difficulty", () => {
+    expect(resolveChallenge(pool, "medium")).toBe(medium)
+  })
+
+  it("falls back to the pool's first entry when nothing matches", () => {
+    expect(resolveChallenge(pool, "hard")).toBe(easy)
   })
 })

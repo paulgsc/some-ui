@@ -21,15 +21,17 @@
 # `docker compose up www` working out of the box against this repo's own
 # (mostly empty/gitignored) copies.
 #
-# packages/some-content/public/hangul is the same story with one difference:
-# it's optional, not load-bearing. HangulHexGrid's own bundled demo seed
-# (@some-ui/honeycomb) always works with nothing mounted here at all - this
-# volume only matters if you've asked an LLM to generate a
-# hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) and want this
-# container to serve it instead of the demo words. Unlike sfx/code-samples,
-# the GitHub Pages build never bakes this in either way: there's no
-# companion data there, by design (apps/www resolves to "static" mode and
-# never fetches it).
+# packages/some-content/public/hangul and .../leetype are the same story with
+# one difference: they're optional, not load-bearing. HangulHexGrid's and
+# Leetype's own bundled demo pools (@some-ui/honeycomb's HANGUL_WORDS,
+# @some-ui/content's CHALLENGES) always work with nothing mounted here at
+# all - these volumes only matter if you've asked an LLM to generate a
+# hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) or a
+# leetype/challenges.json (see apps/www/src/lib/leetype-challenges) and want
+# this container to serve one instead of its demo pool. Unlike
+# sfx/code-samples, the GitHub Pages build never bakes either of these in
+# either way: there's no companion data there, by design (apps/www resolves
+# to "static" mode and never fetches them).
 #
 # REPO_ROOT must actually be exported (e.g. `export REPO_ROOT=$(pwd)` from
 # repo root) before running docker compose. The root docker-compose.yml
@@ -53,6 +55,7 @@ services:
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
       - ${WWW_CODE_SAMPLES_PATH:-${REPO_ROOT:-.}/packages/some-content/public/code-samples}:/usr/share/nginx/html/code-samples:ro
       - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
+      - ${WWW_LEETYPE_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/leetype}:/usr/share/nginx/html/leetype:ro
     networks:
       - some-ui-network
     # Dockerfile bakes in the same wget-spider HEALTHCHECK as a baseline for

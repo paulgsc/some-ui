@@ -13,4 +13,5 @@ count.txt
 # assets of unknown size
 /public/code-samples
 /public/hangul
+/public/leetype
 /public/resume.pdf

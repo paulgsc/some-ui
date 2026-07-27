@@ -69,6 +69,12 @@ impl GameMode for VocabularyMode {
         !self.endless && !self.all.is_empty() && self.completed.len() == self.all.len()
     }
 
+    fn has_time_limit(&self) -> bool {
+        // Same "endless means endless" carve-out as EndlessMode - the non-endless variant keeps
+        // today's universal time-boxed behavior.
+        !self.endless
+    }
+
     fn get_progress(&self) -> GameProgress {
         let total = self.all.len();
         let completed = self.completed.len();

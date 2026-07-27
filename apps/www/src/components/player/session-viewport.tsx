@@ -11,6 +11,7 @@ import {
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useHangulVocab } from "@/lib/hangul-vocab"
+import { useLeetypeChallenges } from "@/lib/leetype-challenges"
 import type { SessionRecord } from "@/lib/tenant"
 
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
@@ -54,19 +55,22 @@ export const SessionViewport = ({
 
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
-  // Only HangulHexGrid declares a `words` prop; every other registry
-  // component ignores it the same way it already ignores sessionKey/
-  // suspended when it doesn't need them (see extraProps' own doc comment
-  // below and RegistryEntry<P = any> in @some-ui/types).
+  // Only HangulHexGrid declares a `words` prop and only Leetype declares a
+  // `challenges` prop; every other registry component ignores whichever one
+  // it doesn't need, the same way it already ignores sessionKey/suspended
+  // (see extraProps' own doc comment below and RegistryEntry<P = any> in
+  // @some-ui/types).
   const hangulWords = useHangulVocab()
+  const leetypeChallenges = useLeetypeChallenges()
 
   const extraProps = useMemo(
     () => ({
       sessionKey: sessionKey ?? undefined,
       suspended,
       words: hangulWords,
+      challenges: leetypeChallenges,
     }),
-    [sessionKey, suspended, hangulWords]
+    [sessionKey, suspended, hangulWords, leetypeChallenges]
   )
 
   return (

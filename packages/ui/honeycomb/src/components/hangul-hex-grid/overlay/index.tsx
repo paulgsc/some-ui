@@ -194,7 +194,11 @@ export const HangulHexGrid = ({
   useGameLoop({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGridFatal || suspended,
+    // isGameOver mirrors useKeyboardInput's own gate below - without it, the
+    // spawn/update interval only stops once the onComplete/onTimeout
+    // callback's setIsPaused(true) round-trips through a render, one or more
+    // ticks after the engine-derived status already says the game is over.
+    isPaused: isPaused || isGameOver || isGridFatal || suspended,
     setActiveCharacters,
     setStats,
     setTimingParams,
