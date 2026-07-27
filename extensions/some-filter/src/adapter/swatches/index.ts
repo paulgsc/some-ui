@@ -31,8 +31,8 @@
 // its typecheck and its esbuild bundling need a path Node/esbuild can
 // resolve on their own — the same reason transport's own cross-package-safe
 // leaf (`contracts/adapter.ts`) uses only relative imports.
-import { relativeLuminance, type RGBA } from "../lib/content/color"
-import { rgbToHSL } from "../lib/content/modify-colors"
+import { relativeLuminance, type RGBA } from "../../lib/content/color"
+import { rgbToHSL } from "../../lib/content/modify-colors"
 
 /**
  * Generalizes `theme-apply.ts`'s `TOKENS` fields. Every CSS custom property

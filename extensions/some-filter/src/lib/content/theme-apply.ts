@@ -36,7 +36,7 @@ export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 // Values come from the active swatch (default: SWATCHES.default, byte-for-byte
-// today's palette) rather than a hardcoded literal — see src/adapter/swatches.ts.
+// today's palette) rather than a hardcoded literal — see src/adapter/swatches/index.ts.
 
 function swatchTokens(swatch: Swatch): string {
   return `

@@ -15,7 +15,7 @@
  *   - `classify`/`detect` — `theme-detector.ts`'s existing page-level
  *     light/dark heuristic ("does this page need theming, or is it already
  *     dark enough to leave alone?"). Luminance-only.
- *   - `sampleBodyComfort` — `adapter/swatches.ts`'s Φ_comfort, generalized
+ *   - `sampleBodyComfort` — `adapter/swatches/index.ts`'s Φ_comfort, generalized
  *     (#722) to run over a live-sampled `(bg, text)` pair instead of only a
  *     registry `Swatch`'s hex tokens. A page can be `alreadyDark` per the
  *     first verdict while still failing Φ_comfort — a `#fff`-on-`#000`

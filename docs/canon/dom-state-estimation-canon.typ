@@ -1428,7 +1428,7 @@ and Axiom C.1's pessimistic default does not apply to it.
   that transiently fails it is a worse-looking page, not the frame-of-native-
   luminance failure Axiom C.1 exists to exclude at any cost. It is therefore
   checked once, statically, over the finite swatch registry
-  (`some-filter`'s `src/adapter/swatches.ts`, landed with issue 687) rather than
+  (`some-filter`'s `src/adapter/swatches/index.ts`, landed with issue 687) rather than
   continuously re-evaluated by the estimator/planner machinery of §5--§8 the
   way $Phi$ is. Where $Phi_"comfort"$ *is* expected to inherit this canon's
   discipline is a later story in the `some-filter`-on-transport epic (issue 685):
@@ -2070,7 +2070,7 @@ solely as a source-code commit message; it must be reflected in this file.
   missing. $Phi_"comfort"$ is intentionally *not* folded into $Phi$: it is
   not zero-leak, Axiom C.1's pessimistic default does not apply to it, and
   it is checked statically over a finite swatch registry
-  (`some-filter/src/adapter/swatches.ts`) rather than continuously by the
+  (`some-filter/src/adapter/swatches/index.ts`) rather than continuously by the
   estimator/planner machinery §5--§8 governs. No existing axiom, definition,
   or theorem in §1--§8, §C, or §D was weakened or renumbered. Whether
   $Phi_"comfort"$ is later promoted into $Phi$ itself, once a rendered-page
