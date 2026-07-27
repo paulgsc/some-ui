@@ -1,5 +1,12 @@
 # wireframes
 
+## 0.0.11
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/honeycomb@0.1.1
+
 ## 0.0.10
 
 ### Patch Changes
