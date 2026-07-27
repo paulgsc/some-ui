@@ -9,7 +9,7 @@
     "webextension-polyfill": "^0.10.0"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.2",
+    "@preact/preset-vite": "^2.10.6",
     "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
