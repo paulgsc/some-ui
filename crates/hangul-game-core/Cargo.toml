@@ -15,7 +15,8 @@ wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"
 serde = { workspace = true , features = ["derive"] }
 serde_json = { workspace = true }
-rand = { version = "0.8", features = ["small_rng"] }
+# Floor pinned for RUSTSEC-2026-0097 — patched in 0.8.6 on the 0.8 line.
+rand = { version = "0.8.6", features = ["small_rng"] }
 getrandom = { version = "0.2", features = ["js"] } 
 
 [lints]
