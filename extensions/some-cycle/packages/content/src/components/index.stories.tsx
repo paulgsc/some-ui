@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import type { Task, TaskEvent } from "@/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -12,7 +12,7 @@ const mockTasks: Array<Task> = [
     urgency: "high",
     intervalMs: 24 * 60 * 60 * 1000, // 1 day
     lastCompleted: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-    isActive: true,
+    category: "home",
   },
   {
     id: "2",
@@ -20,7 +20,7 @@ const mockTasks: Array<Task> = [
     urgency: "critical",
     intervalMs: 24 * 60 * 60 * 1000, // 1 day
     lastCompleted: Date.now() - 6 * 60 * 60 * 1000, // 6 hours ago
-    isActive: true,
+    category: "health",
   },
   {
     id: "3",
@@ -28,7 +28,7 @@ const mockTasks: Array<Task> = [
     urgency: "medium",
     intervalMs: 3 * 24 * 60 * 60 * 1000, // 3 days
     lastCompleted: Date.now() - 4 * 24 * 60 * 60 * 1000, // 4 days ago
-    isActive: true,
+    category: "home",
   },
   {
     id: "4",
@@ -36,7 +36,7 @@ const mockTasks: Array<Task> = [
     urgency: "low",
     intervalMs: 2 * 24 * 60 * 60 * 1000, // 2 days
     lastCompleted: Date.now() - 3 * 24 * 60 * 60 * 1000, // 3 days ago
-    isActive: true,
+    category: "fitness",
   },
   {
     id: "5",
@@ -44,7 +44,7 @@ const mockTasks: Array<Task> = [
     urgency: "medium",
     intervalMs: 7 * 24 * 60 * 60 * 1000, // 1 week
     lastCompleted: Date.now() - 8 * 24 * 60 * 60 * 1000, // 8 days ago
-    isActive: true,
+    category: "errands",
   },
   {
     id: "6",
@@ -52,7 +52,7 @@ const mockTasks: Array<Task> = [
     urgency: "high",
     intervalMs: 24 * 60 * 60 * 1000,
     lastCompleted: Date.now() - 1 * 24 * 60 * 60 * 1000,
-    isActive: true,
+    category: "home",
   },
 ]
 
@@ -64,6 +64,14 @@ const createMockEvent = (
   tasks,
   timestamp: Date.now(),
 })
+
+// Named events for the interactive container demo below.
+const sampleEvents = {
+  critical: createMockEvent("critical", [mockTasks[1]]),
+  warning: createMockEvent("warning", [mockTasks[0], mockTasks[5]]),
+  reminder: createMockEvent("reminder", [mockTasks[2], mockTasks[4]]),
+  multiple: createMockEvent("warning", mockTasks.slice(0, 5)),
+}
 
 // TaskNotification Stories
 const meta: Meta<typeof TaskNotification> = {
