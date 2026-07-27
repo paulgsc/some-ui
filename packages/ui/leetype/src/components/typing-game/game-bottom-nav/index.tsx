@@ -1,6 +1,11 @@
 import type { FC } from "react"
-import type { DisplayMode, GameState, Language } from "@leetype/types/leetype"
-import { Gauge, Info, Play, RotateCcw, Settings2 } from "lucide-react"
+import type {
+  DisplayMode,
+  GameState,
+  Language,
+  TextGradient,
+} from "@leetype/types/leetype"
+import { Gauge, Info, Palette, Play, RotateCcw, Settings2 } from "lucide-react"
 import {
   Badge,
   Button,
@@ -16,6 +21,13 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -51,9 +63,11 @@ type GameBottomNavProps = {
   displayMode: DisplayMode
   displayModeLocked: boolean
   settingsEnabled: boolean
+  textGradient: TextGradient
   onLanguageChange: (lang: Language) => void
   onDisplayModeChange: (mode: DisplayMode) => void
   onDurationChange: (duration: number) => void
+  onTextGradientChange: (gradient: TextGradient) => void
   info: GameInfoContent
   /**
    * Element the Sheet/Drawer/Dialog portal into. This activity forces its
@@ -75,6 +89,23 @@ function toLanguage(v: string): Language | null {
   if (v === "typescript" || v === "rust" || v === "cpp" || v === "c") return v
   return null
 }
+
+function toTextGradient(v: string): TextGradient | null {
+  if (v === "none" || v === "heading" || v === "accent" || v === "muted") {
+    return v
+  }
+  return null
+}
+
+const TEXT_GRADIENT_OPTIONS: ReadonlyArray<{
+  value: TextGradient
+  label: string
+}> = [
+  { value: "none", label: "Off (syntax highlight)" },
+  { value: "heading", label: "Heading" },
+  { value: "accent", label: "Accent" },
+  { value: "muted", label: "Muted" },
+]
 
 type StatTileProps = {
   label: string
@@ -110,9 +141,11 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   displayMode,
   displayModeLocked,
   settingsEnabled,
+  textGradient,
   onLanguageChange,
   onDisplayModeChange,
   onDurationChange,
+  onTextGradientChange,
   info,
   portalContainer,
 }) => {
@@ -188,6 +221,35 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
             </div>
           </DialogContent>
         </Dialog>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Source text color">
+              <Palette className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            container={portalContainer}
+            align="end"
+            className="w-48"
+          >
+            <DropdownMenuLabel>Source text color</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={textGradient}
+              onValueChange={(v) => {
+                const gradient = toTextGradient(v)
+                if (gradient) onTextGradientChange(gradient)
+              }}
+            >
+              {TEXT_GRADIENT_OPTIONS.map((option) => (
+                <DropdownMenuRadioItem key={option.value} value={option.value}>
+                  {option.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Sheet>
           <SheetTrigger asChild>

@@ -1,5 +1,9 @@
 import { useState } from "react"
-import type { DisplayMode, Language } from "@leetype/types/leetype"
+import type {
+  DisplayMode,
+  Language,
+  TextGradient,
+} from "@leetype/types/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { GameBottomNav } from "."
@@ -36,6 +40,7 @@ const Controlled = (props: {
   const [language, setLanguage] = useState<Language>("typescript")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [duration, setDuration] = useState(300)
+  const [textGradient, setTextGradient] = useState<TextGradient>("none")
 
   return (
     <GameBottomNav
@@ -53,9 +58,11 @@ const Controlled = (props: {
       displayMode={displayMode}
       displayModeLocked={props.displayModeLocked ?? false}
       settingsEnabled={props.settingsEnabled ?? true}
+      textGradient={textGradient}
       onLanguageChange={setLanguage}
       onDisplayModeChange={setDisplayMode}
       onDurationChange={setDuration}
+      onTextGradientChange={setTextGradient}
       info={info}
     />
   )
@@ -91,6 +98,7 @@ const ThemedControlled = () => {
   const [language, setLanguage] = useState<Language>("typescript")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [duration, setDuration] = useState(300)
+  const [textGradient, setTextGradient] = useState<TextGradient>("none")
 
   return (
     <div
@@ -112,9 +120,11 @@ const ThemedControlled = () => {
         displayMode={displayMode}
         displayModeLocked={false}
         settingsEnabled
+        textGradient={textGradient}
         onLanguageChange={setLanguage}
         onDisplayModeChange={setDisplayMode}
         onDurationChange={setDuration}
+        onTextGradientChange={setTextGradient}
         info={info}
         portalContainer={container}
       />
@@ -129,7 +139,7 @@ export const ThemedPortalContainer: Story = {
     docs: {
       description: {
         story:
-          "portalContainer scopes the Settings sheet, info drawer, and stats dialog to this card's own `dark code` root instead of document.body, so they stay themed consistently regardless of whatever theme is ambient at the document root.",
+          "portalContainer scopes the Settings sheet, info drawer, stats dialog, and source-text-color dropdown to this card's own `dark code` root instead of document.body, so they stay themed consistently regardless of whatever theme is ambient at the document root.",
       },
     },
   },

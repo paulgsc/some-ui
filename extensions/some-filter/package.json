@@ -23,6 +23,10 @@
         "types": "./dist/cjs/index.d.ts"
       }
     },
+    "./adapter/swatches": {
+      "types": "./src/adapter/swatches/index.ts",
+      "import": "./src/adapter/swatches/index.ts"
+    },
     "./*": {
       "types": "./src/*.ts",
       "import": "./src/*.ts"

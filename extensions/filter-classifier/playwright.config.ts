@@ -6,7 +6,7 @@
  * (`extensions/some-filter/tests/e2e`) proves the *extension* wires the
  * classifier correctly end to end; this suite exists to test the
  * classifier itself — `classifyPage`/`detect` (theme-detector.ts) and
- * `comfortReport`/`satisfiesComfort` (adapter/swatches.ts) — against a
+ * `comfortReport`/`satisfiesComfort` (adapter/swatches/index.ts) — against a
  * small, human-labeled fixture corpus (#721, #722). A plain Chromium page
  * is all real DOM/CSS rendering (getComputedStyle, luminance, contrast)
  * needs; loading an extension would only add the Nix-patched-Chromium and

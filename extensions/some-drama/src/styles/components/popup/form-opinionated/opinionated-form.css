@@ -13,6 +13,11 @@
   --moon-800: #2d2940;
   --moon-700: #3b3652;
 
+  /* Soft moonlit off-white, not pure #fff — same "text is never the
+     brightest thing on screen" argument as some-styles' strawberry-moon
+     theme (packages/some-styles/themes/strawberry-moon.css). */
+  --moon-ink: #ede7f2;
+
   --dj-paper: #fff8f4;
   --dj-paper-soft: #fdf4ef;
 

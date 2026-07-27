@@ -8,6 +8,7 @@ import type {
   CanonicalUnit,
   DisplayMode,
   GameState,
+  TextGradient,
 } from "@leetype/types/leetype"
 import { cn } from "some-ui-utils"
 
@@ -23,6 +24,7 @@ type CodeInputCardProps = {
   cursorUnitIndex: number
   displayMode: DisplayMode
   adaptiveMessage?: string
+  textGradient?: TextGradient
   gameState: GameState
   userInput: string
   onInputChange: (value: string) => void
@@ -57,6 +59,7 @@ export const CodeInputCard: FC<CodeInputCardProps> = ({
   cursorUnitIndex,
   displayMode,
   adaptiveMessage,
+  textGradient,
   gameState,
   userInput,
   onInputChange,
@@ -114,6 +117,7 @@ export const CodeInputCard: FC<CodeInputCardProps> = ({
             userUnits={userUnits}
             displayMode={displayMode}
             adaptiveMessage={adaptiveMessage}
+            textGradient={textGradient}
           />
         )}
 

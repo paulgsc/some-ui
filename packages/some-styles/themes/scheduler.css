@@ -7,7 +7,10 @@
 .scheduler {
   /* ── Surfaces ─────────────────────────────── */
   --background: oklch(0.14 0.01 260);
-  --foreground: oklch(0.92 0.008 260);
+  /* Dimmed from oklch(0.92 0.008 260) — same "never the sun" bar as
+     tokens/base.css's own --foreground, hue kept at this theme's own
+     260 (neutral-cool). */
+  --foreground: oklch(0.68 0.03 260);
 
   --card: oklch(0.18 0.012 260);
   --card-foreground: var(--foreground);
@@ -17,13 +20,13 @@
 
   /* ── Interactive surfaces ─────────────────── */
   --secondary: oklch(0.22 0.012 260);
-  --secondary-foreground: oklch(0.8 0.008 260);
+  --secondary-foreground: var(--foreground);
 
   --muted: oklch(0.26 0.01 260);
-  --muted-foreground: oklch(0.54 0.008 260);
+  --muted-foreground: oklch(0.46 0.02 260);
 
   --accent: oklch(0.24 0.012 260);
-  --accent-foreground: oklch(0.88 0.008 260);
+  --accent-foreground: var(--foreground);
 
   /* ── Primary — violet (outer ring) ───────── */
   --primary: oklch(0.68 0.18 300);
@@ -40,7 +43,7 @@
 
   /* ── Sidebar ──────────────────────────────── */
   --sidebar: oklch(0.16 0.01 260);
-  --sidebar-foreground: oklch(0.72 0.008 260);
+  --sidebar-foreground: oklch(0.55 0.025 260);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.22 0.012 260);

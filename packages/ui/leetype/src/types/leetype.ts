@@ -4,6 +4,16 @@ export type GameState = "idle" | "playing" | "finished" | "timeout"
 
 export type DisplayMode = "shown" | "hidden"
 export type Language = "typescript" | "rust" | "cpp" | "c"
+/**
+ * Alternate source-text coloring, swapped in for Prism's syntax-highlight
+ * palette — a `text-gradient-*` utility (packages/some-styles/tailwind.css)
+ * painted across the not-yet-typed code instead. Options mirror the
+ * swatch-driven gradient stops already defined for headings/accents
+ * (tokens/base.css's `--gradient-heading` / `--gradient-accent` /
+ * `--gradient-muted`), so the same "text is never the flat maximum-contrast
+ * color" idiom applies to the code display, not just prose.
+ */
+export type TextGradient = "none" | "heading" | "accent" | "muted"
 export type SessionMode = "data-structure" | "algorithm"
 export type Difficulty = "easy" | "medium" | "hard"
 export type NContext = "tiny" | "small" | "medium" | "large"

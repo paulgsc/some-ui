@@ -17,6 +17,7 @@ import type {
   GameState,
   Language,
   NContext,
+  TextGradient,
 } from "@leetype/types/leetype"
 import { resolveChallenge } from "@leetype/utils/leetype"
 import { CHALLENGES } from "@some-ui/content"
@@ -88,6 +89,7 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
+  const [textGradient, setTextGradient] = useState<TextGradient>("none")
   const [language, setLanguage] = useState<Language>(
     initialLanguage ?? "typescript"
   )
@@ -333,6 +335,7 @@ export const Leetype: FC<LeetypeProps> = ({
               ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
               : undefined
           }
+          textGradient={textGradient}
           gameState={gameState}
           userInput={userInput}
           onInputChange={handleInputChange}
@@ -368,9 +371,11 @@ export const Leetype: FC<LeetypeProps> = ({
         displayMode={displayMode}
         displayModeLocked={isHardDifficulty || adaptiveHidden}
         settingsEnabled={isLegacyMode && gameState === "idle"}
+        textGradient={textGradient}
         onLanguageChange={handleLanguageChange}
         onDisplayModeChange={setDisplayMode}
         onDurationChange={setDuration}
+        onTextGradientChange={setTextGradient}
         info={info}
         portalContainer={themedContainer}
       />

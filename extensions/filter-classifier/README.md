@@ -15,7 +15,7 @@ extension into Chromium via `--load-extension`, which requires
 
 This suite tests the **classifier itself** — `classifyPage`/`detect`
 (`theme-detector.ts`) and `comfortReport`/`satisfiesComfort`
-(`adapter/swatches.ts`) — against a small, human-labeled fixture corpus. None
+(`adapter/swatches/index.ts`) — against a small, human-labeled fixture corpus. None
 of that needs an extension: a plain Chromium page gives real
 `getComputedStyle`/rendering behavior (which is the entire reason this is
 Playwright and not a jsdom unit test), with no build step and no `--load-extension`
@@ -42,7 +42,7 @@ Two independent verdicts are exposed, kept deliberately separate:
 - **`detect()` / `classify()`** — the existing page-level light/dark
   heuristic: is this page unthemed (needs our dark theme), or already dark
   enough that we should restore native styling? Luminance-only.
-- **`sampleBodyComfort()`** — `Φ_comfort` (`adapter/swatches.ts`), generalized
+- **`sampleBodyComfort()`** — `Φ_comfort` (`adapter/swatches/index.ts`), generalized
   by this PR from "a registry `Swatch`'s hex tokens" to any observed
   `(bg, text)` sample, so it can run over a live `getComputedStyle` read
   instead of only static swatch data.

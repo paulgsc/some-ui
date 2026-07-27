@@ -1,6 +1,6 @@
 import type {
   ComponentPropsWithoutRef,
-  ElementRef,
+  ComponentRef,
   HTMLAttributes,
 } from "react"
 import { forwardRef } from "react"
@@ -22,7 +22,7 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
 const DropdownMenuSubTrigger = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  ComponentRef<typeof DropdownMenuPrimitive.SubTrigger>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean
   }
@@ -44,7 +44,7 @@ DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName
 
 const DropdownMenuSubContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  ComponentRef<typeof DropdownMenuPrimitive.SubContent>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
@@ -60,10 +60,19 @@ DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
 const DropdownMenuContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+  ComponentRef<typeof DropdownMenuPrimitive.Content>,
+  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    /**
+     * Portal target. Defaults to `document.body`; pass an element scoped to
+     * a themed subtree (e.g. an activity that forces its own app-theme
+     * class on its root) so the menu inherits that theme instead of
+     * whatever is ambient at the document root. Mirrors DialogContent's
+     * own `container` prop.
+     */
+    container?: HTMLElement | null
+  }
+>(({ className, sideOffset = 4, container, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal container={container}>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
@@ -78,7 +87,7 @@ const DropdownMenuContent = forwardRef<
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
 const DropdownMenuItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Item>,
+  ComponentRef<typeof DropdownMenuPrimitive.Item>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean
   }
@@ -96,7 +105,7 @@ const DropdownMenuItem = forwardRef<
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
 const DropdownMenuCheckboxItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  ComponentRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
 >(({ className, children, checked, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
@@ -120,7 +129,7 @@ DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName
 
 const DropdownMenuRadioItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  ComponentRef<typeof DropdownMenuPrimitive.RadioItem>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
 >(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
@@ -142,7 +151,7 @@ const DropdownMenuRadioItem = forwardRef<
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
 const DropdownMenuLabel = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Label>,
+  ComponentRef<typeof DropdownMenuPrimitive.Label>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
     inset?: boolean
   }
@@ -160,7 +169,7 @@ const DropdownMenuLabel = forwardRef<
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 
 const DropdownMenuSeparator = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  ComponentRef<typeof DropdownMenuPrimitive.Separator>,
   ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator

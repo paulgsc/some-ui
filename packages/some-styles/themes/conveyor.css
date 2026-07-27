@@ -43,9 +43,16 @@
   --cv-line: #39444f;
 
   /* ── Raw ink ramp ─────────────────────────────────────────── */
-  --cv-ink: #e9eef3;
-  --cv-ink-2: #aab6c4;
-  --cv-ink-3: #717f8e;
+  /* Dimmed from #e9eef3/#aab6c4/#717f8e (oklch L .947/.771/.590) — every
+     consumer below is a text-color role read against a near-black steel
+     surface, and the top of that ramp was glowing white regardless of its
+     small chroma (the same "never the sun" argument as
+     tokens/base.css's own --foreground). Hue held at ~250 throughout, and
+     the tier spread preserved — just the whole ramp shifted down into a
+     comfortable reading range. */
+  --cv-ink: #849bb4;
+  --cv-ink-2: #657689;
+  --cv-ink-3: #414f5d;
 
   /* ── Raw semantics (used with restraint) ──────────────────── */
   --cv-signal: #f4b740; /* scheduler tick / caution */
