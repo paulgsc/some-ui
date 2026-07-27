@@ -4,7 +4,11 @@ import {
   buildDisplayMap,
   isWasmLoaded,
 } from "@leetype/lib/leetype/leetype-wasm-loader"
-import type { CanonicalUnit, DisplayMode } from "@leetype/types/leetype"
+import type {
+  CanonicalUnit,
+  DisplayMode,
+  TextGradient,
+} from "@leetype/types/leetype"
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
 
@@ -23,6 +27,29 @@ type DisplayChar = {
 
 const MASK_CHAR = "•"
 
+/**
+ * Maps each non-"none" `TextGradient` option to the swatch-driven gradient
+ * custom property it paints (`--gradient-heading` / `--gradient-accent` /
+ * `--gradient-muted`, tokens/base.css — the same ones the `text-gradient-*`
+ * utilities in packages/some-styles/tailwind.css consume).
+ *
+ * Applied as an inline style rather than that utility class: PrismJS's
+ * theme (`prismjs/themes/prism-tomorrow.css`, imported below) is a plain,
+ * unlayered stylesheet, and its `code[class*="language-"] { color: #ccc }`
+ * rule outranks *any* `@layer utilities` class — including this one —
+ * regardless of specificity, per the CSS cascade-layers spec. An inline
+ * style outranks both, so it's the only reliable way to override Prism's
+ * base color from here.
+ */
+const TEXT_GRADIENT_STYLE: Record<
+  Exclude<TextGradient, "none">,
+  { backgroundImage: string }
+> = {
+  heading: { backgroundImage: "var(--gradient-heading)" },
+  accent: { backgroundImage: "var(--gradient-accent)" },
+  muted: { backgroundImage: "var(--gradient-muted)" },
+}
+
 type CodeDisplayProps = {
   displayCode: string
   language: string
@@ -32,6 +59,14 @@ type CodeDisplayProps = {
   displayMode?: DisplayMode
   adaptiveMessage?: string
   className?: string
+  /**
+   * When set to anything but "none", not-yet-typed code renders in a
+   * swatch-driven gradient instead of Prism's syntax-highlight palette —
+   * already-typed feedback (correct/incorrect) and the cursor keep their
+   * own colors either way, since that signal stays functional regardless
+   * of the cosmetic mode.
+   */
+  textGradient?: TextGradient
 }
 
 export const CodeDisplay: FC<CodeDisplayProps> = ({
@@ -43,6 +78,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayMode = "shown",
   adaptiveMessage,
   className,
+  textGradient = "none",
 }): JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const caretRef = useRef<HTMLSpanElement>(null)
@@ -201,8 +237,17 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             })
           : renderToken(token.content, `${key}-sub`)
 
+      // Gradient mode drops Prism's `.token.<type>` class so these
+      // characters have no explicit `color` of their own, letting them
+      // inherit `color: transparent` from the gradient-clipped <code>
+      // below instead of Prism's syntax-highlight palette.
       return (
-        <span key={key} className={`token ${token.type}`}>
+        <span
+          key={key}
+          className={
+            textGradient === "none" ? `token ${token.type}` : undefined
+          }
+        >
           {content}
         </span>
       )
@@ -220,7 +265,20 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       )}
     >
       <pre className="m-0">
-        <code className={`language-${language}`}>
+        <code
+          className={`language-${language}`}
+          style={
+            textGradient !== "none"
+              ? {
+                  ...TEXT_GRADIENT_STYLE[textGradient],
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "transparent",
+                }
+              : undefined
+          }
+        >
           {renderHighlightedCode()}
         </code>
       </pre>
