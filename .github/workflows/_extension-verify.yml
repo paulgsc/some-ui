@@ -105,7 +105,7 @@ jobs:
       # restored and skips Build below), and the pnpm lockfile.
       - name: Restore extension build cache
         id: ext-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ matrix.extension_path }}/dist
           key: ext-build-${{ matrix.extension_name }}-${{ runner.os }}-${{ hashFiles(format('{0}/**', matrix.extension_path), 'extensions/common/**', 'pnpm-lock.yaml') }}
