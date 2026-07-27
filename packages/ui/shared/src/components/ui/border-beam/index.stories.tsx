@@ -24,7 +24,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Shared/Components/BorderBeam",
   component: BorderBeam,
-} as Meta
+} satisfies Meta
+
+export default meta

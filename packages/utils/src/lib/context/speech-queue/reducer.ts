@@ -58,7 +58,7 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
       }
     }
 
-    case "PAUSE":
+    case "PAUSE": {
       if (state.currentItem) {
         state.currentItem.controller.abort()
       }
@@ -66,16 +66,18 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
         ...state,
         status: "paused",
       }
+    }
 
-    case "RESUME":
+    case "RESUME": {
       return {
         ...state,
         status:
           state.items.length > 0 || state.currentItem ? "speaking" : "idle",
         error: null,
       }
+    }
 
-    case "CLEAR":
+    case "CLEAR": {
       state.items.forEach((item) => item.controller.abort())
       if (state.currentItem) {
         state.currentItem.controller.abort()
@@ -88,6 +90,7 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
         status: "idle",
         error: null,
       }
+    }
 
     case "ITEM_STARTED": {
       const { item } = action.payload
@@ -100,13 +103,14 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
       }
     }
 
-    case "ITEM_COMPLETED":
+    case "ITEM_COMPLETED": {
       return {
         ...state,
         currentItem: null,
         status: state.items.length > 0 ? "speaking" : "idle",
         totalProcessed: state.totalProcessed + 1,
       }
+    }
 
     case "ITEM_FAILED": {
       const { itemId, error, shouldRetry } = action.payload
@@ -146,14 +150,16 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
       }
     }
 
-    case "ITEM_CANCELLED":
+    case "ITEM_CANCELLED": {
       return {
         ...state,
         currentItem: null,
         status: state.items.length > 0 ? "speaking" : "idle",
       }
+    }
 
-    default:
+    default: {
       return state
+    }
   }
 }

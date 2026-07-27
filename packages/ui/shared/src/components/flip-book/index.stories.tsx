@@ -11,7 +11,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "AccordionDemo",
   component: AccordionDemo,
-} as Meta
+} satisfies Meta
+
+export default meta

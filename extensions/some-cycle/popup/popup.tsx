@@ -93,27 +93,35 @@ const TaskPopup: FC = () => {
 
   const getEventIcon = (eventType: string): JSX.Element => {
     switch (eventType) {
-      case "critical":
+      case "critical": {
         return <Zap className="size-5 text-red-400" />
-      case "warning":
+      }
+      case "warning": {
         return <AlertTriangle className="size-5 text-orange-400" />
-      case "reminder":
+      }
+      case "reminder": {
         return <Clock className="size-5 text-blue-400" />
-      default:
+      }
+      default: {
         return <CheckCircle className="size-5 text-green-400" />
+      }
     }
   }
 
   const getEventTitle = (eventType: string): string => {
     switch (eventType) {
-      case "critical":
+      case "critical": {
         return "Critical Tasks Overdue"
-      case "warning":
+      }
+      case "warning": {
         return "Important Tasks Pending"
-      case "reminder":
+      }
+      case "reminder": {
         return "Tasks Need Attention"
-      default:
+      }
+      default: {
         return "All Tasks Up to Date"
+      }
     }
   }
 

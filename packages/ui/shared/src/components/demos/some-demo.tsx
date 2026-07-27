@@ -1,4 +1,4 @@
-import type { FC, ReactNode, RefObject } from "react"
+import type { FC, ReactNode } from "react"
 import { useRef } from "react"
 import { useMeasureRect } from "some-ui-utils"
 
@@ -11,7 +11,7 @@ const RectDisplay: FC<RectDisplayProps> = ({ className }) => {
   const ref = useRef<HTMLDivElement>(null)
 
   const { height, width } = useMeasureRect({
-    ref: ref as RefObject<HTMLElement>,
+    ref,
   })
 
   return (

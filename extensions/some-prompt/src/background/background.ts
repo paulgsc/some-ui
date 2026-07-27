@@ -77,23 +77,27 @@ async function handleMessage(
 ): Promise<void> {
   try {
     switch (message.type) {
-      case "POST_UTTERANCE":
+      case "POST_UTTERANCE": {
         await handlePostUtterance(message.payload, sendResponse)
         break
+      }
 
-      case "GET_SETTINGS":
+      case "GET_SETTINGS": {
         await handleGetSettings(sendResponse)
         break
+      }
 
-      case "UPDATE_SETTINGS":
+      case "UPDATE_SETTINGS": {
         await handleUpdateSettings(message.payload, sendResponse)
         break
+      }
 
-      default:
+      default: {
         sendResponse({
           success: false,
           error: `Unknown message type: ${message.type}`,
         })
+      }
     }
   } catch (error) {
     // eslint-disable-next-line no-console

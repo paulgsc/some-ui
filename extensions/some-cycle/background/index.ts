@@ -109,14 +109,18 @@ class TaskTracker {
 
   private getBadgeColor(eventType: TaskEvent["type"]): string {
     switch (eventType) {
-      case "critical":
-        return "#dc2626" // red-600
-      case "warning":
-        return "#ea580c" // orange-600
-      case "reminder":
-        return "#0891b2" // cyan-600
-      default:
-        return "#6b7280" // gray-500
+      case "critical": {
+        return "#dc2626"
+      } // red-600
+      case "warning": {
+        return "#ea580c"
+      } // orange-600
+      case "reminder": {
+        return "#0891b2"
+      } // cyan-600
+      default: {
+        return "#6b7280"
+      } // gray-500
     }
   }
 

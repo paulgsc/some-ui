@@ -229,9 +229,11 @@ export function onDismiss(
     case "PIPELINE_TRIGGER_FAILED":
     case "PRUNE_DONE":
     case "RECONCILE_REVIEW":
-    case "ERROR":
+    case "ERROR": {
       return { kind: "IDLE", tab_count, db_count, last_synced_at }
-    default:
+    }
+    default: {
       return prev
+    }
   }
 }

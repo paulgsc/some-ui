@@ -164,8 +164,9 @@ const livestreamReducer = (
       }
     }
 
-    default:
+    default: {
       return state
+    }
   }
 }
 

@@ -11,7 +11,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Shared/Components/PeachyUI/PeachyThumbnail",
   component: PeachyThumbnail,
-} as Meta
+} satisfies Meta
+
+export default meta

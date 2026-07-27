@@ -19,7 +19,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Shared/Components/DeckShuffle",
   component: DeckShuffle,
-} as Meta
+} satisfies Meta
+
+export default meta
