@@ -10,6 +10,17 @@ name: Pages
 # directory tree, and only that merged tree is ever uploaded as the Pages
 # artifact / deployed. Splitting this into per-app workflows would silently
 # make each deploy wipe out the other app's last-deployed content.
+#
+# A plain `push: branches: [main]` trigger would also mean every merge to
+# main rebuilds and redeploys the whole site, even though several PRs often
+# land within minutes of each other - each one paying for a full www +
+# Storybook build that the next merge immediately supersedes. So, patterned
+# after wasm-release.yml / www-docker-release.yml: a push to main that
+# touches release-worthy paths doesn't deploy directly. It opens/updates a
+# standing release PR (branch `release/pages`) instead, and only merging
+# that PR - the human "yes, ship what's on main now" judgment call - builds
+# and deploys. Multiple merges before someone gets to it collapse into one
+# deploy instead of one per PR.
 on:
   push:
     branches: [main]
@@ -20,6 +31,10 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
+      # The release PR's own commit only touches this file (see the
+      # release-pr job below) - without it here, merging that PR would
+      # never re-trigger the workflow, and the deploy would never fire.
+      - ".github/pages-release-marker.txt"
   pull_request:
     branches: [main]
     paths:
@@ -30,6 +45,14 @@ on:
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
   workflow_dispatch:
+    inputs:
+      publish_only:
+        description: "Skip detection/PR and build+deploy the Pages site straight from the current main (use to force a redeploy, or retry a deploy that failed after the release PR merged)"
+        type: boolean
+        default: false
+env:
+  RELEASE_COMMIT_MESSAGE: "chore(release): deploy pages site"
+  RELEASE_BRANCH: "release/pages"
 permissions:
   contents: read
   pages: write
@@ -38,24 +61,25 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  # ── Detect which of the two builds this change actually needs ───────────
-  # The paths above decide whether this workflow runs at all, but they're
-  # a union — a PR touching only apps/www/** still matches, and would build
-  # Storybook too without this. On pull_request, split www vs storybook so
-  # each build only runs when its own inputs changed.
+  # ── Detect which builds a PR needs, and what main's push should do ──────
+  # The paths above decide whether this workflow runs at all, but they're a
+  # union - a PR touching only apps/www/** still matches, and would build
+  # Storybook too without the per-path split below. On pull_request, split
+  # www vs storybook so each preview build only runs when its own inputs
+  # changed.
   #
-  # On push (and workflow_dispatch), always build both regardless: Pages
-  # serves one deployment per repo and assemble/deploy replace the *entire*
-  # artifact each run (see header) — skipping one build here would deploy a
-  # site missing whichever app wasn't rebuilt. Push already only reaches this
-  # workflow when the outer paths filter matched, so "build both" here is
-  # not the eager case this split is fixing.
+  # On push (and workflow_dispatch), the per-path split doesn't apply -
+  # pages-detect below decides instead whether this push opens/updates the
+  # release PR or is the release PR's own merge landing (in which case both
+  # builds always run regardless of what changed, since assemble/deploy
+  # replace the *entire* Pages artifact each run - see header).
   detect:
     name: Detect Pages Changes
     runs-on: ubuntu-latest
     outputs:
-      www: ${{ steps.gate.outputs.www }}
-      storybook: ${{ steps.gate.outputs.storybook }}
+      www: ${{ steps.filter.outputs.www }}
+      storybook: ${{ steps.filter.outputs.storybook }}
+      release_mode: ${{ steps.pages-detect.outputs.release_mode }}
     steps:
       - uses: actions/checkout@v7
       - name: Filter paths
@@ -75,22 +99,57 @@ jobs:
               - 'pnpm-lock.yaml'
               - '.github/workflows/pages.yml'
               - '.github/actions/**'
-      - name: Gate on event type
-        id: gate
+      - id: pages-detect
+        uses: ./.github/actions/pages-detect
+        with:
+          event-name: ${{ github.event_name }}
+          publish-only: ${{ inputs.publish_only }}
+          commit-message: ${{ github.event.head_commit.message }}
+          release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+
+  # ── Open/update the release PR ──────────────────────────────────────────
+  # Re-running this on a later push updates the same PR/branch, so several
+  # merges before a maintainer gets to it collapse into one review instead
+  # of one deploy each. No changeset/version bump here, unlike
+  # wasm-release.yml / www-docker-release.yml's release tracks - the Pages
+  # site isn't a versioned artifact, just a standing "deploy what's on main
+  # now" gate, so the PR's only content is a marker file to give it a diff.
+  release-pr:
+    name: Open/Update Pages Release PR
+    needs: detect
+    if: needs.detect.outputs.release_mode == 'release-pr'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Bump Pages release marker
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "www=${{ steps.filter.outputs.www }}" >> "$GITHUB_OUTPUT"
-            echo "storybook=${{ steps.filter.outputs.storybook }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "www=true" >> "$GITHUB_OUTPUT"
-            echo "storybook=true" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "Pending Pages deploy through commit ${{ github.sha }}"
+            echo "Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .github/pages-release-marker.txt
+      - name: Open release PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ${{ env.RELEASE_BRANCH }}
+          base: main
+          delete-branch: true
+          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          body: >
+            Opened automatically because a change reachable from `apps/www`, `packages/**`, or `.storybook/**` landed on `main`. Several PRs landing close together would otherwise each trigger their own Pages build+deploy; this collects them into one. Review and merge via **squash** (the merge commit message drives the deploy step below) to build and deploy the Pages site (www + Storybook).
 
   # ── Build the tanstack app ───────────────────────────────────────────────
   build-www:
     name: Build www (TanStack app)
     needs: detect
-    if: needs.detect.outputs.www == 'true'
+    if: >
+      (github.event_name == 'pull_request' && needs.detect.outputs.www == 'true') ||
+      (github.event_name != 'pull_request' && needs.detect.outputs.release_mode == 'publish')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -153,7 +212,9 @@ jobs:
   build-storybook:
     name: Build Storybook
     needs: detect
-    if: needs.detect.outputs.storybook == 'true'
+    if: >
+      (github.event_name == 'pull_request' && needs.detect.outputs.storybook == 'true') ||
+      (github.event_name != 'pull_request' && needs.detect.outputs.release_mode == 'publish')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -225,8 +286,17 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: assemble
-    # Only deploy on pushes to main - not PRs, not workflow_dispatch previews.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Only deploy on the release commit landing on main (a merged release
+    # PR, or a forced workflow_dispatch publish_only) - never on ordinary
+    # PRs, preview builds, or a push that only opened/updated the release
+    # PR (assemble is skipped in that case). The explicit
+    # needs.assemble.result check matters here, not just event/ref: a
+    # skipped upstream job doesn't reliably skip a job with its own custom
+    # `if`, so this can't just rely on assemble having been skipped.
+    if: >
+      needs.assemble.result == 'success' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
