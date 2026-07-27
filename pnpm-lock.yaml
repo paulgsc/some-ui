@@ -542,6 +542,15 @@ importers:
       '@some-cycle/types':
         specifier: workspace:*
         version: link:../types
+      '@types/webextension-polyfill':
+        specifier: ^0.10.0
+        version: 0.10.7
+      preact:
+        specifier: ^10.27.1
+        version: 10.29.3
+      webextension-polyfill:
+        specifier: ^0.10.0
+        version: 0.10.0
     devDependencies:
       '@preact/preset-vite':
         specifier: ^2.10.2
@@ -555,21 +564,12 @@ importers:
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.5
-      '@types/webextension-polyfill':
-        specifier: ^0.10.0
-        version: 0.10.7
       lucide-react:
         specifier: ^0.263.1
         version: 0.263.1(react@19.0.0)
-      preact:
-        specifier: ^10.27.1
-        version: 10.29.3
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
-      webextension-polyfill:
-        specifier: ^0.10.0
-        version: 0.10.0
 
   extensions/some-cycle/packages/types:
     devDependencies:
