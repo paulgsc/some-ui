@@ -13,7 +13,9 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 console_error_panic_hook = "0.1"
 getrandom = { version = "0.3", features = ["wasm_js"] }
-rand = "0.9.0"
+# Floor pinned for RUSTSEC-2026-0097 (unsound `rand::rng()` under a custom
+# logger). Patched in 0.9.3 on the 0.9 line — do not lower below this.
+rand = "0.9.3"
 serde = { workspace = true, features = ["derive"] }
 wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"

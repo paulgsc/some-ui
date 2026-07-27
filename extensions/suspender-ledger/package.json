@@ -6,12 +6,12 @@
     "@some-extension/common": "workspace:*"
   },
   "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/chrome": "^0.0.293",
     "@types/firefox-webext-browser": "^120.0.4",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.0",
     "fast-check": "^3.23.1",
-    "@some-ui/eslint-kit": "workspace:*",
     "vite": "^8.1.5",
     "web-ext": "^8.4.0"
   },

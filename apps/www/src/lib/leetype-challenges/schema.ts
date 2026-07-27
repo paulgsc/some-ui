@@ -35,5 +35,3 @@ export const ChallengeSchema = z.object({
 })
 
 export const LeetypeChallengesFileSchema = z.array(ChallengeSchema).min(1)
-
-export type LeetypeChallengesFile = z.infer<typeof LeetypeChallengesFileSchema>

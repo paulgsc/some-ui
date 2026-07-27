@@ -23,11 +23,11 @@
   ],
   "devDependencies": {
     "@playwright/test": "1.60.0",
+    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "esbuild": "^0.25.0",
-    "eslint": "^10.6.0",
-    "fast-check": "^3.23.1",
-    "@some-ui/eslint-kit": "workspace:*"
+    "eslint": "^10.8.0",
+    "fast-check": "^3.23.1"
   },
   "scripts": {
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

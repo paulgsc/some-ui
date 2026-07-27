@@ -27,7 +27,6 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@radix-ui/react-accordion": "^1.2.7",
     "@some-ui/content-registry": "workspace:*",
-    "@some-ui/content": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/leetype": "workspace:*",
