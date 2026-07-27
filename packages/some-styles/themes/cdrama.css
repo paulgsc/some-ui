@@ -68,7 +68,13 @@
 .cdrama.dark,
 .dark .cdrama {
   --background: oklch(0.18 0.03 30);
-  --foreground: oklch(0.96 0.02 40);
+
+  /* Dimmed from oklch(0.96 0.02 40) — same "text is never the brightest
+     thing on screen" argument as some-filter's swatch registry (see
+     packages/some-styles/tokens/base.css's own --foreground comment);
+     0.96 read as glowing white against this dark ground regardless of
+     its tiny chroma. Hue kept at 40 (cdrama's own warm cream tone). */
+  --foreground: oklch(0.68 0.03 40);
 
   --card: oklch(0.22 0.03 30);
   --popover: oklch(0.22 0.03 30);
