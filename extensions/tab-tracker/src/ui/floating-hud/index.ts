@@ -192,7 +192,9 @@ export class FloatingHUD {
         DRAG_KEY,
         JSON.stringify({ x: this.posX, y: this.posY })
       )
-    } catch {}
+    } catch {
+      // sessionStorage can throw (quota, private mode); position is non-critical.
+    }
   }
 
   private restoreDragPosition(): void {
@@ -204,7 +206,9 @@ export class FloatingHUD {
         this.posY = y
         this.applyPosition()
       }
-    } catch {}
+    } catch {
+      // Unreadable/corrupt stored position — fall back to the default.
+    }
   }
 
   // ── Panel ─────────────────────────────────────────────────────────────────────

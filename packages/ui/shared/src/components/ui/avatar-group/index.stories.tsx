@@ -32,7 +32,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Shared/AvatarGroup",
   component: AvatarGroup,
-} as Meta
+} satisfies Meta
+
+export default meta

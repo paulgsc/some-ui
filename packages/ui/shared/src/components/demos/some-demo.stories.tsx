@@ -2,10 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import RectDisplay from "./some-demo"
 
-export default {
+const meta = {
   title: "Components/RectDemo",
   component: RectDisplay,
-} as Meta
+} satisfies Meta
+
+export default meta
 
 type Story = StoryObj<typeof RectDisplay>
 

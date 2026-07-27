@@ -26,34 +26,48 @@ export function render(state: PopupState, dispatch: Dispatch): void {
 
 function renderState(state: PopupState, dispatch: Dispatch): HTMLElement {
   switch (state.kind) {
-    case "INIT":
+    case "INIT": {
       return renderInit()
-    case "IDLE":
+    }
+    case "IDLE": {
       return renderIdle(state, dispatch)
-    case "SYNCING":
+    }
+    case "SYNCING": {
       return renderSyncing(state)
-    case "SYNC_DONE":
+    }
+    case "SYNC_DONE": {
       return renderSyncDone(state, dispatch)
-    case "SYNC_FAILED":
+    }
+    case "SYNC_FAILED": {
       return renderSyncFailed(state, dispatch)
-    case "RECONCILING":
+    }
+    case "RECONCILING": {
       return renderWorking("reconciling with db")
-    case "RECONCILE_REVIEW":
+    }
+    case "RECONCILE_REVIEW": {
       return renderReconcileReview(state, dispatch)
-    case "RECONCILE_DELETING":
+    }
+    case "RECONCILE_DELETING": {
       return renderWorking(`deleting ${state.tab_ids.length} tab records`)
-    case "TRIGGERING_PIPELINE":
+    }
+    case "TRIGGERING_PIPELINE": {
       return renderWorking("publishing to nats")
-    case "PIPELINE_QUEUED":
+    }
+    case "PIPELINE_QUEUED": {
       return renderPipelineQueued(state, dispatch)
-    case "PIPELINE_TRIGGER_FAILED":
+    }
+    case "PIPELINE_TRIGGER_FAILED": {
       return renderPipelineFailed(state, dispatch)
-    case "PRUNING":
+    }
+    case "PRUNING": {
       return renderWorking("pruning stale records")
-    case "PRUNE_DONE":
+    }
+    case "PRUNE_DONE": {
       return renderPruneDone(state, dispatch)
-    case "ERROR":
+    }
+    case "ERROR": {
       return renderError(state, dispatch)
+    }
   }
 }
 

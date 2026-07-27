@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ElementRef } from "react"
+import type { ComponentPropsWithoutRef, ComponentRef } from "react"
 import { forwardRef } from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
@@ -11,7 +11,7 @@ const Tooltip = TooltipPrimitive.Root
 const TooltipTrigger = TooltipPrimitive.Trigger
 
 const TooltipContent = forwardRef<
-  ElementRef<typeof TooltipPrimitive.Content>,
+  ComponentRef<typeof TooltipPrimitive.Content>,
   ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => (
   <TooltipPrimitive.Content

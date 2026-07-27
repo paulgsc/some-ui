@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof AnimatedBadge>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Shared/Components/AnimatedBadge",
   component: AnimatedBadge,
-} as Meta
+} satisfies Meta
+
+export default meta

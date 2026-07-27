@@ -56,19 +56,25 @@ export type Action =
 
 async function dispatch(action: Action): Promise<void> {
   switch (action.type) {
-    case "SYNC":
+    case "SYNC": {
       return doSync()
-    case "RECONCILE":
+    }
+    case "RECONCILE": {
       return doReconcile()
-    case "RECONCILE_CONFIRM_DELETE":
+    }
+    case "RECONCILE_CONFIRM_DELETE": {
       return doReconcileDelete(action.tab_ids)
-    case "TRIGGER_PIPELINE":
+    }
+    case "TRIGGER_PIPELINE": {
       return doPipelineTrigger()
-    case "PRUNE":
+    }
+    case "PRUNE": {
       return doPrune()
-    case "DISMISS":
+    }
+    case "DISMISS": {
       setState(onDismiss(state, _tab_count, _db_count, _last_synced_at))
       return
+    }
   }
 }
 

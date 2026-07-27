@@ -3,18 +3,18 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "@some-cycle/types": "workspace:*"
+    "@some-cycle/types": "workspace:*",
+    "@types/webextension-polyfill": "^0.10.0",
+    "preact": "^10.27.1",
+    "webextension-polyfill": "^0.10.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",
     "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
-    "@types/webextension-polyfill": "^0.10.0",
     "lucide-react": "^0.263.1",
-    "preact": "^10.27.1",
-    "web-ext": "^7.6.2",
-    "webextension-polyfill": "^0.10.0"
+    "web-ext": "^7.6.2"
   },
   "exports": {
     ".": {

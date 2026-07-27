@@ -191,43 +191,49 @@ function deepEqual(a: any, b: any): boolean {
 function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
   switch (event.type) {
     case "streamStatusResponse":
-    case "streamStateChanged":
+    case "streamStateChanged": {
       return {
         ...state,
         streaming: event.data.streaming ?? state.streaming,
         streamTimecode: event.data.timecode ?? state.streamTimecode,
       }
+    }
     case "recordingStatusResponse":
-    case "recordStateChanged":
+    case "recordStateChanged": {
       return {
         ...state,
         recording: event.data.recording ?? state.recording,
         recordTimecode: event.data.timecode ?? state.recordTimecode,
       }
-    case "sceneListResponse":
+    }
+    case "sceneListResponse": {
       return {
         ...state,
         scenes: event.data.scenes ?? state.scenes,
         currentScene: event.data.currentScene ?? state.currentScene,
       }
+    }
     case "currentSceneResponse":
-    case "currentProgramSceneChanged":
+    case "currentProgramSceneChanged": {
       return {
         ...state,
         currentScene: event.data.sceneName ?? state.currentScene,
       }
-    case "sourcesListResponse":
+    }
+    case "sourcesListResponse": {
       return {
         ...state,
         sources: event.data.sources ?? state.sources,
       }
-    case "inputListResponse":
+    }
+    case "inputListResponse": {
       return {
         ...state,
         inputs: event.data.inputs ?? state.inputs,
       }
+    }
     case "audioMuteResponse":
-    case "inputMuteStateChanged":
+    case "inputMuteStateChanged": {
       if (
         event.data.inputName !== undefined &&
         event.data.muted !== undefined
@@ -241,8 +247,9 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
         }
       }
       return state
+    }
     case "audioVolumeResponse":
-    case "inputVolumeChanged":
+    case "inputVolumeChanged": {
       if (
         event.data.inputName !== undefined &&
         event.data.volumeDb !== undefined &&
@@ -260,53 +267,62 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
         }
       }
       return state
-    case "profileListResponse":
+    }
+    case "profileListResponse": {
       return {
         ...state,
         profiles: event.data.profiles ?? state.profiles,
         currentProfile: event.data.currentProfile ?? state.currentProfile,
       }
-    case "currentProfileResponse":
+    }
+    case "currentProfileResponse": {
       return {
         ...state,
         currentProfile: event.data.profileName ?? state.currentProfile,
       }
-    case "sceneCollectionListResponse":
+    }
+    case "sceneCollectionListResponse": {
       return {
         ...state,
         collections: event.data.collections ?? state.collections,
         currentCollection:
           event.data.currentCollection ?? state.currentCollection,
       }
-    case "currentCollectionResponse":
+    }
+    case "currentCollectionResponse": {
       return {
         ...state,
         currentCollection: event.data.collectionName ?? state.currentCollection,
       }
+    }
     case "virtualCamStatusResponse":
-    case "virtualcamStateChanged":
+    case "virtualcamStateChanged": {
       return {
         ...state,
         virtualCamActive: event.data.active ?? state.virtualCamActive,
       }
+    }
     case "replayBufferStatusResponse":
-    case "replayBufferStateChanged":
+    case "replayBufferStateChanged": {
       return {
         ...state,
         replayBufferActive: event.data.active ?? state.replayBufferActive,
       }
+    }
     case "studioModeResponse":
-    case "studioModeStateChanged":
+    case "studioModeStateChanged": {
       return {
         ...state,
         studioModeEnabled: event.data.enabled ?? state.studioModeEnabled,
       }
-    case "statsResponse":
+    }
+    case "statsResponse": {
       return {
         ...state,
         stats: event.data.stats ?? state.stats,
       }
-    case "currentTransitionResponse":
+    }
+    case "currentTransitionResponse": {
       return {
         ...state,
         currentTransitionName:
@@ -314,28 +330,33 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
         currentTransitionDuration:
           event.data.transitionDuration ?? state.currentTransitionDuration,
       }
-    case "currentSceneTransitionChanged":
+    }
+    case "currentSceneTransitionChanged": {
       return {
         ...state,
         currentTransitionName:
           event.data.transitionName ?? state.currentTransitionName,
       }
-    case "transitionListResponse":
+    }
+    case "transitionListResponse": {
       return {
         ...state,
         transitions: event.data.transitions ?? state.transitions,
       }
-    case "sceneTransitionStarted":
+    }
+    case "sceneTransitionStarted": {
       return {
         ...state,
         lastTransitionStartedName: event.data.transitionName,
       }
-    case "sceneTransitionEnded":
+    }
+    case "sceneTransitionEnded": {
       return {
         ...state,
         lastTransitionEndedName: event.data.transitionName,
       }
-    case "filterListResponse":
+    }
+    case "filterListResponse": {
       if (event.data.sourceName && event.data.filters) {
         return {
           ...state,
@@ -346,28 +367,33 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
         }
       }
       return state
-    case "hotkeyListResponse":
+    }
+    case "hotkeyListResponse": {
       return {
         ...state,
         hotkeys: event.data.hotkeys ?? state.hotkeys,
       }
-    case "versionResponse":
+    }
+    case "versionResponse": {
       return {
         ...state,
         obsVersion: event.data.obsVersion ?? state.obsVersion,
         websocketVersion: event.data.websocketVersion ?? state.websocketVersion,
       }
-    case "hello":
+    }
+    case "hello": {
       return {
         ...state,
         obsVersion: event.data.obsVersion ?? state.obsVersion,
       }
-    case "identified":
+    }
+    case "identified": {
       return {
         ...state,
         identified: true,
       }
-    case "sceneItemEnableStateChanged":
+    }
+    case "sceneItemEnableStateChanged": {
       if (
         event.data.sceneName !== undefined &&
         event.data.itemId !== undefined &&
@@ -385,7 +411,8 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
         }
       }
       return state
-    case "unknownResponse":
+    }
+    case "unknownResponse": {
       return {
         ...state,
         lastUnknownResponse: {
@@ -393,7 +420,8 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
           data: event.data.data,
         },
       }
-    case "unknownEvent":
+    }
+    case "unknownEvent": {
       return {
         ...state,
         lastUnknownEvent: {
@@ -401,8 +429,10 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
           data: event.data.data,
         },
       }
-    default:
+    }
+    default: {
       return state
+    }
   }
 }
 

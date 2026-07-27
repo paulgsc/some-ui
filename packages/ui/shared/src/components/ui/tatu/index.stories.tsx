@@ -13,7 +13,9 @@ export const Default: Story = {
   ),
 }
 
-export default {
+const meta = {
   title: "UI/Shared/Components/Tatu",
   component: Tatu,
-} as Meta
+} satisfies Meta
+
+export default meta

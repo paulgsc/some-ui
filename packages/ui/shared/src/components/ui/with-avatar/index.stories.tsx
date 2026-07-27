@@ -18,7 +18,9 @@ export const Default: Story = {
   },
 }
 
-export default {
+const meta = {
   title: "UI/Shared/WithAvatar",
   component: WithAvatar,
-} as Meta
+} satisfies Meta
+
+export default meta

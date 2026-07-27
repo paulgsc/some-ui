@@ -129,20 +129,27 @@ browser.runtime.onMessage.addListener(
     const msg = message as MessageToBackground
 
     switch (msg.kind) {
-      case "GET_STATUS":
+      case "GET_STATUS": {
         return handleGetStatus()
-      case "SYNC_TABS":
+      }
+      case "SYNC_TABS": {
         return handleSyncTabs()
-      case "RECONCILE":
+      }
+      case "RECONCILE": {
         return handleReconcile()
-      case "DELETE_TABS":
+      }
+      case "DELETE_TABS": {
         return handleDeleteTabs(msg.tab_ids)
-      case "TRIGGER_PIPELINE":
+      }
+      case "TRIGGER_PIPELINE": {
         return handleTriggerPipeline()
-      case "PRUNE_TABS":
+      }
+      case "PRUNE_TABS": {
         return handlePruneTabs(msg.older_than_days)
-      default:
+      }
+      default: {
         return true
+      }
     }
   }
 )

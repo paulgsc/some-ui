@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof NFLJersey>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Shared/Icons/NFLJersey",
   component: NFLJersey,
-} as Meta
+} satisfies Meta
+
+export default meta

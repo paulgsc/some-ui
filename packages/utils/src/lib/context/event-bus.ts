@@ -234,7 +234,7 @@ export function createEventBus<
 
   // Return the appropriate interface based on whether state was provided
   if (initialState === undefined) {
-    return { on, onWithSelector, emit } as EventBusWithoutState<Events>
+    return { on, onWithSelector, emit }
   }
   return {
     on,
@@ -243,7 +243,7 @@ export function createEventBus<
     getState,
     setState,
     subscribe,
-  } as EventBusWithState<Events & { "state:changed": StateChangeEvent<S> }, S>
+  }
 }
 
 /**

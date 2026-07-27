@@ -7,7 +7,9 @@ type Meta = MetaObj<typeof AntSvg>
 
 export const Default: Story = {}
 
-export default {
+const meta = {
   title: "UI/Shared/Icons/AntSvg",
   component: AntSvg,
-} as Meta
+} satisfies Meta
+
+export default meta

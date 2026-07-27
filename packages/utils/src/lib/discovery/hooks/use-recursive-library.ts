@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from "react"
-import type { ZodSchema } from "zod"
+import type { ZodType } from "zod"
 
 import type { FileDiscovery, ResourceLoader } from ".."
 
@@ -71,7 +71,7 @@ export type LibraryConfig<TRaw, TValidated, TKey extends string = string> = {
   loader: ResourceLoader
 
   /** Zod schema for raw file validation */
-  rawSchema: ZodSchema<TRaw>
+  rawSchema: ZodType<TRaw>
 
   /** Transform raw data into domain model */
   normalize: (key: TKey, raw: TRaw) => TValidated
