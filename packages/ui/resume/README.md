@@ -2,14 +2,33 @@
 
 `resume.typ` is the source of truth for Paul Gathondu's résumé — a
 [Typst](https://typst.app) document, distilled from this repository itself.
-It's written in conventional résumé grammar (deliverables and technologies,
-one page, no posting-specific content) so it's a reusable drop-in for any
-application flow.
 
-The engineering rationale behind each line, and any posting-specific
-requirements analysis, live separately in `resume.meta.typ` — read as
-source, the same way `docs/canon/*.typ` is not something you build so much
-as something you cite. See its header comment for why the split exists.
+It's written in STAR grammar, told project-first. Each entry opens with the
+premise the project exists to answer — a browser is an operating system and
+tabs are its processes; exposure should be opt-in; visual comfort is
+measurable; a curriculum should adapt to the learner — and then cashes that
+premise out in the mechanism implementing it: the state machine, the
+invariant, the build constraint, the test corpus. The rule the document is
+held to is that **a premise earns its place only if the next line cashes it
+out in a mechanism**; motivation without mechanism doesn't belong on the
+page.
+
+There is deliberately no "Technical Skills" list. Enumerating languages and
+tools communicates nothing a reader can verify; the same tools appear in the
+bullets, attached to the thing they were used to build.
+
+Nothing posting-specific lives here, so the document stays a reusable
+drop-in for any application flow. The provenance map (résumé claim → the
+crate, package, or workflow file backing it), the format's revision history,
+and any posting-specific requirements analysis live separately in
+`resume.meta.typ` — read as source, the same way `docs/canon/*.typ` is not
+something you build so much as something you cite. See its header comment
+for why the split exists.
+
+> Claims in `resume.typ` are load-bearing: if something here stops being
+> true, cut the line rather than re-justifying it, and update the matching
+> entry in `resume.meta.typ` §2. The workspace counts in particular are
+> derived, not remembered — see that section's _Counts_ note.
 
 ## Pipeline (MVP)
 
