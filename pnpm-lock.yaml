@@ -508,34 +508,34 @@ importers:
       '@some-cycle/content':
         specifier: workspace:*
         version: link:packages/content
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../packages/some-styles
+      '@types/webextension-polyfill':
+        specifier: ^0.10.0
+        version: 0.10.7
+      lucide-react:
+        specifier: ^0.263.1
+        version: 0.263.1(react@19.0.0)
+      webextension-polyfill:
+        specifier: ^0.10.0
+        version: 0.10.0
     devDependencies:
       '@some-ui/eslint-kit':
         specifier: workspace:*
         version: link:../../packages/eslint
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../packages/some-styles
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.5
-      '@types/webextension-polyfill':
-        specifier: ^0.10.0
-        version: 0.10.7
       eslint:
         specifier: ^10.8.0
         version: 10.8.0(jiti@2.7.0)
-      lucide-react:
-        specifier: ^0.263.1
-        version: 0.263.1(react@19.0.0)
       web-ext:
         specifier: ^7.6.2
         version: 7.12.0
-      webextension-polyfill:
-        specifier: ^0.10.0
-        version: 0.10.0
 
   extensions/some-cycle/packages/content:
     dependencies:

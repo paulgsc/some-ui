@@ -78,7 +78,9 @@ async function resolveTabId(): Promise<number | null> {
   try {
     const resp = await sendMessage({ type: "GET_OWN_TAB_ID" })
     if (resp.type === "OWN_TAB_ID") ownTabId = resp.tabId
-  } catch {}
+  } catch {
+    // Background may not be listening yet; caller falls back to a null id.
+  }
   return ownTabId
 }
 
@@ -106,7 +108,9 @@ async function poll(
 
     hud.updateNode(nodeState, activeMs)
     banner.setNode(nodeState) // ← drives ribbon clock + segment sync
-  } catch {}
+  } catch {
+    // UI refresh is best-effort; a torn-down hud/banner must not break tracking.
+  }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

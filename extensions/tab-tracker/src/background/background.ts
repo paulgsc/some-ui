@@ -331,7 +331,9 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await browser.tabs.get(tabId)
     ensureNode(tabId, tab.url)
-  } catch {}
+  } catch {
+    // Tab may already be gone by the time this fires; nothing to seed.
+  }
   activateTab(tabId)
   void persistStorage()
 })
@@ -365,7 +367,9 @@ browser.windows.onFocusChanged.addListener(async (windowId) => {
       activateTab(tab.id)
       void persistStorage()
     }
-  } catch {}
+  } catch {
+    // Best-effort seeding — a tab that vanished mid-query is not an error.
+  }
 })
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
@@ -380,7 +384,9 @@ async function bootstrap(): Promise<void> {
       activateTab(tab.id)
       void persistStorage()
     }
-  } catch {}
+  } catch {
+    // Best-effort seeding — a tab that vanished mid-query is not an error.
+  }
 }
 
 void bootstrap()

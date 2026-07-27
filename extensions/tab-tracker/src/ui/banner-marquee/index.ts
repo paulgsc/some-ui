@@ -313,7 +313,9 @@ export class BannerMarquee {
       if (resp.type === "BANNER_STATE") {
         this.applyBannerState(resp.banner)
       }
-    } catch {}
+    } catch {
+      // Background may not be ready; the banner keeps its current state.
+    }
   }
 
   mount(container: HTMLElement): void {

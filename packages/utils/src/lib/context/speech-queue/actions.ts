@@ -26,7 +26,7 @@ export type SpeechAction =
   | { type: "ITEM_CANCELLED"; payload: { itemId: string } }
 
 export const generateId = (): string =>
-  `speech_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  `speech_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
 export const createSpeechItem = (
   componentId: string,
