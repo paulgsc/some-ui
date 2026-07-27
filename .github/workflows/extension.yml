@@ -77,7 +77,7 @@ jobs:
       # Key covers pnpm-lock + all package/crate source trees.
       - name: Restore workspace dist cache
         id: ws-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             packages/*/dist
