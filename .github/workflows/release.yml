@@ -29,7 +29,7 @@ jobs:
       - name: Build packages
         run: nix develop .#ci --command pnpm build --concurrency=100%
       - name: Create Release PR or Publish
-        uses: changesets/action@v1.4.9
+        uses: changesets/action@v1.9.0
         with:
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
