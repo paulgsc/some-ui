@@ -10,15 +10,23 @@ updates:
       wasm-crates:
         patterns:
           - "@some-ui/*"
+      # update-types keeps majors out of the group so they arrive as their
+      # own PRs. Without it a single breaking bump makes the whole group
+      # unmergeable and the routine patches riding with it stall too — see
+      # #515, where typescript 5.9.3 -> 7.0.2 held up five @typescript-eslint
+      # updates, and #775, where eslint-plugin-unicorn 69 -> 72 held up four.
+      # Majors are not dropped, only ungrouped.
       typescript-tooling:
         patterns:
           - "typescript*"
           - "@typescript-eslint/*"
           - "tsc-*"
+        update-types: ["minor", "patch"]
       eslint:
         patterns:
           - "eslint*"
           - "@eslint/*"
+        update-types: ["minor", "patch"]
       storybook:
         patterns:
           - "@storybook/*"
