@@ -117,7 +117,7 @@
   background: rgb(139 92 246 / 40%);
   border-radius: 999px;
   bottom: calc(100% - 72px - 12px + 6px); /* over canvas, bottom-right */
-  color: #fff;
+  color: rgb(255 255 255 / 92%);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -187,7 +187,10 @@
 
 /* Title */
 .ytmo-title {
-  color: #fff;
+  /* Off-white, matching this file's own .ytmo-now-playing-label /
+     .ytmo-artist opacity-dimmed idiom (rgb(255 255 255 / N%)) — never a
+     literal opaque #fff, the brightest thing the widget can render. */
+  color: rgb(255 255 255 / 92%);
   font-size: 13.5px;
   font-weight: 600;
   line-height: 1.3;

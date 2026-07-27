@@ -80,7 +80,10 @@
   --code-number: oklch(0.56 0 0);
 
   --selection: oklch(0.145 0 0);
-  --selection-foreground: oklch(1 0 0);
+  /* oklch(0.985 0 0), not literal oklch(1 0 0) pure white — matches the
+     near-white convention used for every other text-on-dark/saturated
+     element in this file (primary-foreground, destructive-foreground, …). */
+  --selection-foreground: oklch(0.985 0 0);
 
   /* Text gradient stops — consumed by the `text-gradient-*` utilities
      (tailwind.css). Kept as full `linear-gradient()` values so a theme can
@@ -109,22 +112,26 @@
   --foreground: oklch(0.9 0.004 260);
 
   --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
+  /* var(--foreground), not a separate near-white literal — card is a
+     neutral dark surface, same "never the sun" argument as --foreground
+     itself (see comment above). Matches every other theme's own
+     card-foreground (cdrama.css, code.css, scheduler.css, …). */
+  --card-foreground: var(--foreground);
 
   --popover: oklch(0.269 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --popover-foreground: var(--foreground);
 
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
 
   --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: var(--foreground);
 
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
 
   --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent-foreground: var(--foreground);
 
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
@@ -134,11 +141,11 @@
   --ring: oklch(0.556 0 0);
 
   --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.439 0 0);
 
