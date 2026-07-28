@@ -32,7 +32,7 @@ describe("toSceneConfig", () => {
   it("converts durationMinutes into milliseconds", () => {
     const scene = toSceneConfig(
       "leetype",
-      { language: "rust", difficulty: "medium", durationMinutes: 5 },
+      { language: "rust", durationMinutes: 5 },
       { startTime: 0 }
     )
     expect(scene.duration).toBe(5 * 60_000)

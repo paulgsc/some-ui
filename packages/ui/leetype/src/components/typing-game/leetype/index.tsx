@@ -1,5 +1,6 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
+import { ChallengeSelector } from "@leetype/components/typing-game/challenge-selector"
 import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
 import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
 import { GameBottomNav } from "@leetype/components/typing-game/game-bottom-nav"
@@ -7,42 +8,46 @@ import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-a
 import { useGameTimer } from "@leetype/hooks"
 import { useTypingGame } from "@leetype/hooks/leetype"
 import { useChunkedCode } from "@leetype/hooks/leetype/use-chunked-code"
+import { usePlayerProgress } from "@leetype/hooks/leetype/use-player-progress"
+import type { PrettierParser } from "@leetype/lib/leetype/format-code"
 import { ADAPTIVE_WPM_THRESHOLD } from "@leetype/lib/leetype/player-store"
 import type {
   Challenge,
   ChunkCompletionStats,
   CompletedSessionStats,
-  Difficulty,
   DisplayMode,
   GameState,
   Language,
   NContext,
   TextGradient,
 } from "@leetype/types/leetype"
-import { resolveChallenge } from "@leetype/utils/leetype"
 import { CHALLENGES } from "@some-ui/content"
-import { Badge } from "some-ui-shared"
+import {
+  Badge,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "some-ui-shared"
 
 type LeetypeProps = {
-  /** Direct code paths (legacy / story mode) */
+  /** Direct code paths (legacy / story mode) — skips the challenge picker. */
   codePaths?: Record<Language, string>
-  /** Challenge metadata — enables adaptive mode and difficulty enforcement */
+  /**
+   * A pre-hydrated challenge, e.g. from a host flow (like `LeetypeApp`) that
+   * already ran its own selection step before mounting this component.
+   * Skips the challenge picker below.
+   */
   challenge?: Challenge
   /**
-   * Friendly difficulty label used to resolve a `challenge` out of
-   * `challenges` when the caller only has a config-time difficulty pick, not
-   * a fully hydrated challenge (the config-driven "LeetType" activity's
-   * path - see apps/www's activity-catalog). Ignored when `challenge` is
-   * passed directly.
-   */
-  difficulty?: Difficulty
-  /**
-   * The pool `difficulty` resolves against - defaults to the bundled demo
-   * set (`@some-ui/content`'s `CHALLENGES`), same as before this prop
-   * existed. This is the seam a host app uses to swap in its own challenge
-   * corpus (e.g. an LLM-generated, environment-specific set fetched at
-   * runtime) without this component knowing or caring where the challenges
-   * came from.
+   * The pool the required challenge picker selects from when neither
+   * `challenge` nor `codePaths` is given (the config-driven "LeetType"
+   * activity's path - see apps/www's activity-catalog). Defaults to the
+   * bundled demo set (`@some-ui/content`'s `CHALLENGES`). This is the seam a
+   * host app uses to swap in its own challenge corpus (e.g. an
+   * LLM-generated, environment-specific set fetched at runtime) without this
+   * component knowing or caring where the challenges came from.
    */
   challenges?: Array<Challenge>
   /** Pre-selected language (challenge mode) */
@@ -55,13 +60,11 @@ type LeetypeProps = {
   onSessionComplete?: (stats: CompletedSessionStats) => void
 }
 
-type PrettierParser = "typescript" | "babel" | "rust" | "cpp"
-
 const PRETTIER_PARSER_MAP: Record<Language, PrettierParser> = {
   typescript: "typescript",
   rust: "rust",
-  cpp: "babel",
-  c: "typescript",
+  cpp: "cpp",
+  c: "c",
 }
 
 const DEFAULT_PROMPT_DESCRIPTION =
@@ -76,16 +79,24 @@ type CumulativeStats = {
 export const Leetype: FC<LeetypeProps> = ({
   codePaths,
   challenge,
-  difficulty,
   challenges = CHALLENGES,
   initialLanguage,
   initialDuration,
   nContext,
   onSessionComplete,
 }) => {
-  const resolvedChallenge =
-    challenge ?? resolveChallenge(challenges, difficulty)
-  const isLegacyMode = !resolvedChallenge
+  // Neither a fully-hydrated challenge nor direct code paths were given, so
+  // this mount is the config-driven "LeetType" activity's path: the picker
+  // below is a required, blocking step of the session itself (not a
+  // composer-time setting) — see issue #829.
+  const needsChallengeSelection = !challenge && codePaths === undefined
+  const [pickedChallenge, setPickedChallenge] = useState<Challenge | null>(null)
+  const { progress: playerProgress } = usePlayerProgress()
+
+  const resolvedChallenge = challenge ?? pickedChallenge ?? undefined
+  const isLegacyMode = !needsChallengeSelection && !resolvedChallenge
+  const awaitingChallengeSelection =
+    needsChallengeSelection && !resolvedChallenge
 
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
@@ -161,7 +172,7 @@ export const Leetype: FC<LeetypeProps> = ({
     consecutiveErrors,
     userInput,
     elapsedTime,
-    cursorUnitIndex,
+    cursorDisplayIndex,
     userUnits,
     displayCode,
     targetUnits,
@@ -285,100 +296,138 @@ export const Leetype: FC<LeetypeProps> = ({
       ref={setThemedContainer}
       className="dark code absolute inset-0 flex flex-col overflow-hidden"
     >
-      {/* Challenge identity strip — kept slim so the viewport still belongs
-          to the code/input card below; everything actionable lives in the
-          bottom nav's menus instead of inline controls. */}
-      {resolvedChallenge && (
-        <div className="mb-3 flex shrink-0 items-center gap-3">
-          <span className="text-base font-semibold text-card-foreground">
-            {resolvedChallenge.title}
-          </span>
-          <Badge
-            variant={
-              resolvedChallenge.difficulty === "easy"
-                ? "default"
-                : resolvedChallenge.difficulty === "medium"
-                  ? "secondary"
-                  : "destructive"
-            }
-            className="capitalize"
+      {awaitingChallengeSelection ? (
+        // Required, blocking step of the session itself — no close button,
+        // and outside interactions are suppressed so a session can't start
+        // without a challenge picked (see issue #829: this used to be a
+        // silent composer-time "difficulty" setting instead).
+        <Dialog open>
+          <DialogContent
+            container={themedContainer}
+            showOverlay
+            showCloseButton={false}
+            className="max-h-[85vh] max-w-3xl overflow-y-auto"
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
-            {resolvedChallenge.difficulty}
-          </Badge>
-          {nContext && (
-            <Badge variant="outline" className="font-mono text-xs capitalize">
-              N={nContext}
-            </Badge>
-          )}
-          {effectiveDisplayMode === "hidden" && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              {adaptiveHidden ? "Adaptive: hidden" : "Hidden mode"}
-            </Badge>
-          )}
-        </div>
-      )}
-
-      <div className="relative min-h-0 flex-1">
-        <CodeInputCard
-          status={codeState.status}
-          loadError={codeState.error}
-          path={effectiveCodePaths[language] ?? ""}
-          onRetryLoad={() => handleLanguageChange(language)}
-          displayCode={displayCode}
-          language={language}
-          targetUnits={targetUnits}
-          userUnits={userUnits}
-          cursorUnitIndex={cursorUnitIndex}
-          displayMode={effectiveDisplayMode}
-          adaptiveMessage={
-            adaptiveHidden
-              ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
-              : undefined
-          }
-          textGradient={textGradient}
-          gameState={gameState}
-          userInput={userInput}
-          onInputChange={handleInputChange}
-          inputRef={inputRef}
-          elapsedTime={elapsedTime}
-          accuracy={accuracy}
-          progress={progress}
-        />
-
-        <div className="pointer-events-none absolute inset-x-4 top-4 z-10">
-          <div className="pointer-events-auto">
-            <TypingErrorAlert
-              consecutiveErrors={consecutiveErrors}
-              onDismiss={onDismiss}
-              showErrorAlert={showErrorAlert}
+            <DialogHeader className="sr-only">
+              <DialogTitle>Choose a Challenge</DialogTitle>
+              <DialogDescription>
+                Pick what you want to type before the session begins.
+              </DialogDescription>
+            </DialogHeader>
+            <ChallengeSelector
+              challenges={challenges}
+              progress={playerProgress}
+              onSelect={setPickedChallenge}
             />
-          </div>
-        </div>
-      </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <>
+          {/* Challenge identity strip — kept slim so the viewport still
+              belongs to the code/input card below; everything actionable
+              lives in the bottom nav's menus instead of inline controls. */}
+          {resolvedChallenge && (
+            <div className="mb-3 flex shrink-0 items-center gap-3">
+              <span className="text-base font-semibold text-card-foreground">
+                {resolvedChallenge.title}
+              </span>
+              <Badge
+                variant={
+                  resolvedChallenge.difficulty === "easy"
+                    ? "default"
+                    : resolvedChallenge.difficulty === "medium"
+                      ? "secondary"
+                      : "destructive"
+                }
+                className="capitalize"
+              >
+                {resolvedChallenge.difficulty}
+              </Badge>
+              {nContext && (
+                <Badge
+                  variant="outline"
+                  className="font-mono text-xs capitalize"
+                >
+                  N={nContext}
+                </Badge>
+              )}
+              {effectiveDisplayMode === "hidden" && (
+                <Badge
+                  variant="outline"
+                  className="text-xs text-muted-foreground"
+                >
+                  {adaptiveHidden ? "Adaptive: hidden" : "Hidden mode"}
+                </Badge>
+              )}
+            </div>
+          )}
 
-      <GameBottomNav
-        gameState={gameState}
-        onStart={handleStart}
-        onReset={handleReset}
-        timeLeft={timer.timeLeft}
-        duration={duration}
-        wpm={wpm}
-        accuracy={accuracy}
-        progress={overallProgress}
-        errors={totalErrors}
-        chunkLabel={chunkLabel}
-        language={language}
-        displayMode={displayMode}
-        displayModeLocked={isHardDifficulty || adaptiveHidden}
-        settingsEnabled={isLegacyMode && gameState === "idle"}
-        textGradient={textGradient}
-        onLanguageChange={handleLanguageChange}
-        onDisplayModeChange={setDisplayMode}
-        onDurationChange={setDuration}
-        onTextGradientChange={setTextGradient}
-        info={info}
-        portalContainer={themedContainer}
-      />
+          <div className="relative min-h-0 flex-1">
+            <CodeInputCard
+              status={codeState.status}
+              loadError={codeState.error}
+              path={effectiveCodePaths[language] ?? ""}
+              onRetryLoad={() => handleLanguageChange(language)}
+              displayCode={displayCode}
+              language={language}
+              targetUnits={targetUnits}
+              userUnits={userUnits}
+              cursorDisplayIndex={cursorDisplayIndex}
+              displayMode={effectiveDisplayMode}
+              adaptiveMessage={
+                adaptiveHidden
+                  ? `Adaptive mode engaged at ${ADAPTIVE_WPM_THRESHOLD} WPM`
+                  : undefined
+              }
+              textGradient={textGradient}
+              gameState={gameState}
+              userInput={userInput}
+              onInputChange={handleInputChange}
+              inputRef={inputRef}
+              elapsedTime={elapsedTime}
+              accuracy={accuracy}
+              progress={progress}
+            />
+
+            <div className="pointer-events-none absolute inset-x-4 top-4 z-10">
+              <div className="pointer-events-auto">
+                <TypingErrorAlert
+                  consecutiveErrors={consecutiveErrors}
+                  onDismiss={onDismiss}
+                  showErrorAlert={showErrorAlert}
+                />
+              </div>
+            </div>
+          </div>
+
+          <GameBottomNav
+            gameState={gameState}
+            onStart={handleStart}
+            onReset={handleReset}
+            timeLeft={timer.timeLeft}
+            duration={duration}
+            wpm={wpm}
+            accuracy={accuracy}
+            progress={overallProgress}
+            errors={totalErrors}
+            chunkLabel={chunkLabel}
+            language={language}
+            displayMode={displayMode}
+            displayModeLocked={isHardDifficulty || adaptiveHidden}
+            settingsEnabled={isLegacyMode && gameState === "idle"}
+            textGradient={textGradient}
+            onLanguageChange={handleLanguageChange}
+            onDisplayModeChange={setDisplayMode}
+            onDurationChange={setDuration}
+            onTextGradientChange={setTextGradient}
+            info={info}
+            portalContainer={themedContainer}
+          />
+        </>
+      )}
     </div>
   )
 }

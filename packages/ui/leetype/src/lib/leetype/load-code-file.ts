@@ -1,3 +1,6 @@
+import type { PrettierParser } from "./format-code"
+import { formatCode } from "./format-code"
+
 const modelCache = new Map<string, Promise<TextModel>>()
 
 export type CodeChunk = {
@@ -53,15 +56,23 @@ export class TextModel {
 }
 
 /**
- * Loads a text model and caches it by path.
+ * Loads a text model and caches it by path (+ formatting intent, so a path
+ * requested both raw and through prettier never share a cache slot).
  * Editor semantics: one resident model per open file.
+ *
+ * When `prettierParser` is given, the fetched text is formatted once here,
+ * before the model ever slices it into chunks - so every chunk (including
+ * ones loaded later via `getChunk`) is already-formatted text, not just the
+ * first one. Omitting it preserves the previous raw-text behavior exactly.
  */
 export async function loadTextModel(
   path: string,
-  linesPerChunk = 100
+  linesPerChunk = 100,
+  prettierParser?: PrettierParser
 ): Promise<TextModel> {
-  if (modelCache.has(path)) {
-    return modelCache.get(path)!
+  const cacheKey = `${path}::${prettierParser ?? "raw"}`
+  if (modelCache.has(cacheKey)) {
+    return modelCache.get(cacheKey)!
   }
 
   const promise = (async () => {
@@ -70,11 +81,12 @@ export async function loadTextModel(
       throw new Error(`Failed to load code file: ${path}, status ${res.status}`)
     }
 
-    const text = await res.text()
+    const raw = await res.text()
+    const text = prettierParser ? await formatCode(raw, prettierParser) : raw
     return new TextModel(text, linesPerChunk)
   })()
 
-  modelCache.set(path, promise)
+  modelCache.set(cacheKey, promise)
   return promise
 }
 

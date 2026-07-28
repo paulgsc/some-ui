@@ -9,6 +9,7 @@ import type {
   DisplayMode,
   TextGradient,
 } from "@leetype/types/leetype"
+import { ChevronDown } from "lucide-react"
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
 
@@ -55,7 +56,16 @@ type CodeDisplayProps = {
   language: string
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
-  cursorUnitIndex: number
+  /**
+   * Index, into `displayCode`'s characters (not canonical units), of the
+   * character the player is currently on. Deliberately display-character
+   * granularity rather than unit granularity: a canonical unit can span
+   * several rendered characters (e.g. a run of indentation whitespace
+   * collapses to one separator unit), and matching on unit index made the
+   * cursor highlight that whole run at once instead of tracking each
+   * keystroke - the off-by-one/visual-confusion bug from issue #829.
+   */
+  cursorDisplayIndex: number
   displayMode?: DisplayMode
   adaptiveMessage?: string
   className?: string
@@ -74,7 +84,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   language,
   targetUnits,
   userUnits,
-  cursorUnitIndex,
+  cursorDisplayIndex,
   displayMode = "shown",
   adaptiveMessage,
   className,
@@ -137,7 +147,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
         caret.scrollIntoView({ behavior: "smooth", block: "center" })
       }
     }
-  }, [cursorUnitIndex])
+  }, [cursorDisplayIndex])
 
   const renderHighlightedCode = (): ReactNode => {
     if (!displayBuffer) return displayCode
@@ -161,13 +171,18 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       const { char, unitIndex, displayIndex } = displayChar
       const isWhitespace = char.trim() === ""
 
-      if (unitIndex === cursorUnitIndex) {
+      if (displayIndex === cursorDisplayIndex) {
         return (
           <span
             key={displayIndex}
             ref={caretRef}
-            className="bg-blue-500/30 animate-pulse"
+            title="You are here"
+            className="relative rounded-[2px] bg-blue-500/30 ring-2 ring-blue-400 ring-offset-1 ring-offset-background animate-pulse"
           >
+            <ChevronDown
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-3.5 left-1/2 h-3 w-3 -translate-x-1/2 text-blue-400"
+            />
             {isHidden && !isWhitespace ? MASK_CHAR : char}
           </span>
         )

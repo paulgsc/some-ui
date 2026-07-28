@@ -1,33 +1,16 @@
 import { buildDisplayMap } from "@leetype/lib/leetype/leetype-wasm-loader"
-import type { Challenge, GameStats } from "@leetype/types/leetype"
 import { describe, expect, it, vi } from "vitest"
 
 import {
   codeToUnits,
-  deriveCursorIndex,
+  deriveCursorDisplayIndex,
   deriveDisplayMap,
-  resolveChallenge,
   sliceUserUnits,
 } from "."
 
 vi.mock("@leetype/lib/leetype/leetype-wasm-loader", () => ({
   buildDisplayMap: vi.fn(),
 }))
-
-function makeStats(overrides: Partial<GameStats> = {}): GameStats {
-  return {
-    progress: 0,
-    accuracy: 0,
-    wpm: 0,
-    elapsed_time: 0,
-    total_errors: 0,
-    consecutive_errors: 0,
-    show_error_alert: false,
-    cursor: 0,
-    is_complete: false,
-    ...overrides,
-  }
-}
 
 describe("codeToUnits", () => {
   it("maps every character to a char-kind canonical unit", () => {
@@ -73,9 +56,17 @@ describe("sliceUserUnits", () => {
   })
 })
 
-describe("deriveCursorIndex", () => {
-  it("returns the stats' cursor field", () => {
-    expect(deriveCursorIndex(makeStats({ cursor: 7 }))).toBe(7)
+describe("deriveCursorDisplayIndex", () => {
+  it("returns the raw input's character count", () => {
+    expect(deriveCursorDisplayIndex("func")).toBe(4)
+  })
+
+  it("returns 0 for empty input", () => {
+    expect(deriveCursorDisplayIndex("")).toBe(0)
+  })
+
+  it("counts by code point, not UTF-16 code unit, for astral characters", () => {
+    expect(deriveCursorDisplayIndex("a🙂b")).toBe(3)
   })
 })
 
@@ -89,35 +80,5 @@ describe("deriveDisplayMap", () => {
     vi.mocked(buildDisplayMap).mockReturnValue(new Uint32Array([2, 1, 0]))
     expect(deriveDisplayMap("abc")).toEqual([2, 1, 0])
     expect(buildDisplayMap).toHaveBeenCalledWith("abc")
-  })
-})
-
-describe("resolveChallenge", () => {
-  const makeChallenge = (overrides: Partial<Challenge> = {}): Challenge => ({
-    id: "id",
-    title: "title",
-    description: "description",
-    difficulty: "easy",
-    mode: "algorithm",
-    tags: [],
-    codePaths: { typescript: "", rust: "", cpp: "", c: "" },
-    levelRequired: 1,
-    ...overrides,
-  })
-
-  const easy = makeChallenge({ id: "easy-1", difficulty: "easy" })
-  const medium = makeChallenge({ id: "medium-1", difficulty: "medium" })
-  const pool = [easy, medium]
-
-  it("returns undefined when no difficulty is given", () => {
-    expect(resolveChallenge(pool, undefined)).toBeUndefined()
-  })
-
-  it("returns the first challenge matching the requested difficulty", () => {
-    expect(resolveChallenge(pool, "medium")).toBe(medium)
-  })
-
-  it("falls back to the pool's first entry when nothing matches", () => {
-    expect(resolveChallenge(pool, "hard")).toBe(easy)
   })
 })

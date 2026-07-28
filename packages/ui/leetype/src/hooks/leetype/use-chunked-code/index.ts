@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { PrettierParser } from "@leetype/lib/leetype/format-code"
 import type { CodeChunk, TextModel } from "@leetype/lib/leetype/load-code-file"
 import { loadTextModel } from "@leetype/lib/leetype/load-code-file"
 import { withTimeout } from "@leetype/utils"
 
 type Options = {
-  prettierParser: "typescript" | "babel" | "rust" | "cpp"
+  prettierParser: PrettierParser
   linesPerChunk?: number
 }
 
@@ -28,9 +29,10 @@ type FirstChunkResult = {
 
 async function loadFirstChunk(
   path: string,
-  linesPerChunk: number
+  linesPerChunk: number,
+  prettierParser: Options["prettierParser"]
 ): Promise<FirstChunkResult> {
-  const model = await loadTextModel(path, linesPerChunk)
+  const model = await loadTextModel(path, linesPerChunk, prettierParser)
 
   return {
     model,
@@ -46,7 +48,7 @@ async function loadFirstChunk(
 
 export function useChunkedCode(
   path: string,
-  { linesPerChunk = 100 }: Options
+  { prettierParser, linesPerChunk = 100 }: Options
 ): ChunkedCodeState {
   const [status, setStatus] = useState<ChunkedCodeState["status"]>("IDLE")
   const [currentChunk, setCurrentChunk] = useState<CodeChunk>()
@@ -101,7 +103,7 @@ export function useChunkedCode(
 
       try {
         const result = await withTimeout(
-          loadFirstChunk(path, linesPerChunk),
+          loadFirstChunk(path, linesPerChunk, prettierParser),
           TIMEOUT_MS,
           controller.signal
         )
@@ -134,7 +136,7 @@ export function useChunkedCode(
     void run()
 
     return (): void => controller.abort()
-  }, [path, linesPerChunk])
+  }, [path, linesPerChunk, prettierParser])
 
   return {
     status,

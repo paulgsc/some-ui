@@ -21,7 +21,7 @@ type CodeInputCardProps = {
   language: string
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
-  cursorUnitIndex: number
+  cursorDisplayIndex: number
   displayMode: DisplayMode
   adaptiveMessage?: string
   textGradient?: TextGradient
@@ -56,7 +56,7 @@ export const CodeInputCard: FC<CodeInputCardProps> = ({
   language,
   targetUnits,
   userUnits,
-  cursorUnitIndex,
+  cursorDisplayIndex,
   displayMode,
   adaptiveMessage,
   textGradient,
@@ -113,7 +113,7 @@ export const CodeInputCard: FC<CodeInputCardProps> = ({
             displayCode={displayCode}
             language={language}
             targetUnits={targetUnits}
-            cursorUnitIndex={cursorUnitIndex}
+            cursorDisplayIndex={cursorDisplayIndex}
             userUnits={userUnits}
             displayMode={displayMode}
             adaptiveMessage={adaptiveMessage}

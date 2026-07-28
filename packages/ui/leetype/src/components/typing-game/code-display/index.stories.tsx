@@ -32,11 +32,13 @@ const StoryFromFile = ({
 }) => {
   // Determine the Prettier parser
   const prettierParser =
-    language === "typescript" || language === "c"
+    language === "typescript"
       ? "typescript"
       : language === "rust"
         ? "rust"
-        : "babel"
+        : language === "cpp"
+          ? "cpp"
+          : "c"
 
   // Consume the full FSM state
   const state = useFormattedCode(path, {
@@ -111,7 +113,7 @@ const StoryFromFile = ({
           language={language}
           targetUnits={targetUnits}
           userUnits={userUnits}
-          cursorUnitIndex={typedChars}
+          cursorDisplayIndex={typedChars}
         />
       )
     }

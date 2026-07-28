@@ -1,10 +1,5 @@
 import { buildDisplayMap } from "@leetype/lib/leetype/leetype-wasm-loader"
-import type {
-  CanonicalUnit,
-  Challenge,
-  Difficulty,
-  GameStats,
-} from "@leetype/types/leetype"
+import type { CanonicalUnit } from "@leetype/types/leetype"
 
 export function codeToUnits(code: string): Array<CanonicalUnit> {
   return Array.from(code).map((char) => ({
@@ -21,10 +16,14 @@ export function sliceUserUnits(
 }
 
 /**
- * Derive cursor index from game stats
+ * Derive the cursor's position in `displayCode`'s characters (not canonical
+ * units) from the raw, already-accepted keystrokes typed so far - advances
+ * exactly one display character per accepted keystroke, including through
+ * multi-char whitespace runs where a canonical unit spans several rendered
+ * characters.
  */
-export function deriveCursorIndex(stats: GameStats): number {
-  return stats.cursor
+export function deriveCursorDisplayIndex(rawUserInput: string): number {
+  return Array.from(rawUserInput).length
 }
 
 /**
@@ -34,22 +33,4 @@ export function deriveCursorIndex(stats: GameStats): number {
 export function deriveDisplayMap(input: string): Array<number> {
   if (!input) return []
   return Array.from(buildDisplayMap(input))
-}
-
-/**
- * Resolves a friendly `difficulty` identifier into one challenge from
- * `challenges` - deterministic (first match, not random), so replaying a
- * session shows the same challenge it did the first time. Falls back to the
- * pool's first entry when nothing matches, mirroring the pool always having
- * *something* playable rather than leaving the caller with `undefined` for
- * an off-pool difficulty label. Returns `undefined` only when `difficulty`
- * itself is absent, so a caller that already has a fully hydrated
- * `challenge` never needs to call this at all.
- */
-export function resolveChallenge(
-  challenges: ReadonlyArray<Challenge>,
-  difficulty: Difficulty | undefined
-): Challenge | undefined {
-  if (!difficulty) return undefined
-  return challenges.find((c) => c.difficulty === difficulty) ?? challenges[0]
 }
