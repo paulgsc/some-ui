@@ -30,10 +30,12 @@ entry point by `vite.config.ts` (the shared `extensionConfig` build):
 | Service worker | `src/worker/worker.ts`              | `worker.js` | Background logic: discard scheduling, prefs, context menu, keyboard commands |
 | Content script | `src/content/watch.ts`              | `watch.js`  | Per-page activity detection (input/scroll/visibility) reported to the worker |
 | Popup          | `popup.html` → `src/popup/index.ts` | `popup.js`  | Toolbar UI: per-tab actions, whitelist toggle, settings form                 |
+| Diagnostics    | `debug.html` → `src/debug/index.ts` | `debug.js`  | Local health, metrics and event timeline ([docs](docs/observability.md))     |
 
 Supporting modules:
 
-- `src/worker/core/` — `discard`, `navigate`, `prefs`, `startup`, `utils`
+- `src/worker/core/` — `discard`, `navigate`, `prefs`, `startup`, `utils`,
+  `observability` (the local flight recorder — see `docs/observability.md`)
   (the suspension engine and storage layer)
 - `src/worker/menu.ts`, `src/worker/modes/number.ts` — context menu and the
   "keep N most-recent tabs loaded" mode

@@ -17,6 +17,10 @@
       "import": "./vite/index.ts",
       "types": "./vite/index.ts"
     },
+    "./observability": {
+      "import": "./src/observability/index.ts",
+      "types": "./src/observability/index.ts"
+    },
     "./*": {
       "import": "./src/*.ts",
       "types": "./src/*.ts"

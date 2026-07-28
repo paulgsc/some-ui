@@ -5,9 +5,20 @@
 // Ported from auto-tab-discard v3/worker/modes/number.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+import type { JsonValue } from "@some-extension/common/observability"
 import { collectMeta } from "@suspender/content/meta"
 
 import { discard } from "../core/discard"
+import {
+  CHECK_ALARM,
+  clampCheckPeriodSeconds,
+  count,
+  noteCheckCompleted,
+  obs,
+  observe,
+  record,
+  safeOrigin,
+} from "../core/observability"
 import { storage } from "../core/prefs"
 import { starters } from "../core/startup"
 import { log, match, query } from "../core/utils"
@@ -74,13 +85,58 @@ type PluginFilter = {
 
 type NumberMode = {
   IGNORE: Partial<CheckPrefs>
-  install(period: number): void
+  install(period: number): Promise<void>
   remove(): void
   check(
     filterTabsFrom?: ReadonlyArray<{ id?: number }>,
     ops?: Partial<CheckPrefs>,
     reason?: string
   ): Promise<void>
+}
+
+/** Float-tolerant cadence comparison — `periodInMinutes` is seconds/60. */
+function closeEnough(a: number | undefined, b: number): boolean {
+  return a !== undefined && Math.abs(a - b) < 1e-6
+}
+
+/**
+ * Record the end of one sweep: duration into the aggregate, tallies into the
+ * timeline. Every exit path from `check()` goes through here or through the
+ * `check.skipped` branches, so a sweep that vanishes mid-flight is visible as
+ * a `check.start` with no matching terminal event.
+ */
+function finish(
+  startedAt: number,
+  tally: {
+    scanned: number
+    ignored: number
+    eligible: number
+    selected: number
+  }
+): void {
+  const duration = Date.now() - startedAt
+  observe("check_duration_ms", duration)
+  record("check.done", undefined, { ...tally, durationMs: duration })
+}
+
+/**
+ * Read the currently-registered check alarm, or `undefined` when none exists.
+ *
+ * `alarms.get` is promise-shaped on Firefox and promise-or-callback on Chrome;
+ * the shared wrapper keeps the two call sites (install, watchdog) honest and
+ * swallows a rejection as "no alarm", which is the safe reading — a scheduler
+ * we cannot see is a scheduler we must re-create.
+ */
+async function getCheckAlarm(): Promise<chrome.alarms.Alarm | undefined> {
+  try {
+    const alarm = await chrome.alarms.get(CHECK_ALARM)
+    // The typings mark the result non-optional; at runtime it is absent when
+    // no alarm is registered.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return alarm ?? undefined
+  } catch {
+    return undefined
+  }
 }
 
 const ICONS: Record<string, string> = {
@@ -116,19 +172,83 @@ const number: NumberMode = {
     "max.single.discard": Infinity,
     "ignore.meta.data": true,
   },
-  install(period) {
-    // clamp the check interval to between 1 and 20 minutes
-    period = Math.min(20 * 60, Math.max(60, period / 3))
-    void chrome.alarms.create("number.check", {
-      when: Date.now() + period * 1000,
-      periodInMinutes: period / 60,
+  /**
+   * Ensure the periodic sweep alarm exists — **without resetting it** when it
+   * already does.
+   *
+   * This idempotency is the fix for the sporadic "tabs never get suspended"
+   * bug, and the reason it is load-bearing is worth spelling out.
+   *
+   * `install` is called from a `starters` callback, and `starters` run at
+   * module evaluation on *every* worker generation (see `core/startup.ts`:
+   * MV3 event pages are recycled aggressively, and neither `onStartup` nor
+   * `onInstalled` fires on a respawn, so the gate has to open unconditionally).
+   * The previous implementation unconditionally called `alarms.create` with
+   * `when: Date.now() + period`, which **re-armed the alarm from zero on every
+   * respawn**.
+   *
+   * The extension registers `tabs.onUpdated`, `tabs.onActivated`,
+   * `runtime.onMessage` and friends — so during active browsing the event page
+   * is woken every few seconds. Each wake pushed the next sweep another full
+   * interval into the future, so the alarm could only ever fire during a lull
+   * longer than the whole interval. Hence the symptom: suspension works fine
+   * on an idle machine and silently never happens while you are actually using
+   * the browser — sporadic, unreproducible on demand, and invisible in logs
+   * because nothing was failing. Nothing *ran*.
+   *
+   * So: create the alarm only when it is missing or its cadence changed.
+   */
+  async install(period) {
+    const seconds = clampCheckPeriodSeconds(period)
+    const periodInMinutes = seconds / 60
+    const existing = await getCheckAlarm()
+
+    if (existing && closeEnough(existing.periodInMinutes, periodInMinutes)) {
+      count("alarm_kept")
+      record("alarm.kept", CHECK_ALARM, {
+        scheduledTime: existing.scheduledTime,
+        periodInMinutes,
+        dueInMs: existing.scheduledTime - Date.now(),
+      })
+      obs.setSnapshot("alarm:check", {
+        scheduledTime: existing.scheduledTime,
+        periodInMinutes,
+        origin: "kept",
+      })
+      return
+    }
+
+    const when = Date.now() + seconds * 1000
+    void chrome.alarms.create(CHECK_ALARM, { when, periodInMinutes })
+    count("alarm_installs")
+    record("alarm.installed", CHECK_ALARM, {
+      when,
+      periodInMinutes,
+      replaced: existing
+        ? { periodInMinutes: existing.periodInMinutes ?? null }
+        : null,
+    })
+    obs.setSnapshot("alarm:check", {
+      scheduledTime: when,
+      periodInMinutes,
+      origin: "installed",
     })
   },
   remove() {
-    void chrome.alarms.clear("number.check")
+    void chrome.alarms.clear(CHECK_ALARM)
+    record("alarm.cleared", CHECK_ALARM)
+    obs.deleteSnapshot("alarm:check")
   },
   async check(filterTabsFrom, ops = {}, reason) {
     log("number.check is called", reason)
+    const startedAt = Date.now()
+    count("checks_run")
+    record("check.start", reason ?? "manual")
+    // Noted at the *start*: what the CheckRanRecently invariant is really
+    // asking is "did the scheduler wake us", and a sweep that skips out early
+    // (machine not idle, tab count below threshold) answers that just as well
+    // as one that suspends something.
+    noteCheckCompleted(startedAt)
 
     const base = await storage<Omit<CheckPrefs, "whitelist.session">>({
       mode: "time-based",
@@ -164,12 +284,16 @@ const number: NumberMode = {
       )
       if (state !== "idle") {
         log("discarding is skipped", "not in the idle state")
+        count("checks_skipped")
+        record("check.skipped", reason ?? "manual", { why: "machine-not-idle" })
         return
       }
     }
     // only check if INTERNET is connected
     if (prefs.online && navigator.onLine === false) {
       log("discarding is skipped", "No INTERNET connection detected")
+      count("checks_skipped")
+      record("check.skipped", reason ?? "manual", { why: "offline" })
       return
     }
 
@@ -187,6 +311,22 @@ const number: NumberMode = {
       options.audible = false
     }
     let tbs = await query(options)
+    count("tabs_scanned", tbs.length)
+
+    /** Record why one tab was passed over. The "why wasn't this tab suspended?"
+     *  question is answered entirely from these events. */
+    const skipped = (
+      tb: chrome.tabs.Tab,
+      why: string,
+      extra: Record<string, JsonValue> = {}
+    ): void => {
+      count("tabs_skipped")
+      record("tab.skipped", tb.id, {
+        why,
+        origin: safeOrigin(tb.url),
+        ...extra,
+      })
+    }
 
     const icon = (tb: chrome.tabs.Tab, title: string): void => {
       void chrome.action.setTitle({ tabId: tb.id, title })
@@ -227,12 +367,14 @@ const number: NumberMode = {
           ) {
             icon(tb, "tab is in the whitelist")
             log("number.check", "tab is ignored", "url-based whitelist", tb.url)
+            skipped(tb, "url-whitelist")
             exceptionCount += 1
             return false
           }
           if (m(prefs.whitelist) || m(prefs["whitelist.session"])) {
             icon(tb, "tab is in the session or permanent whitelist")
             log("number.check", "tab is ignored", "whitelist", tb.url)
+            skipped(tb, "whitelist")
             exceptionCount += 1
             return false
           }
@@ -256,6 +398,13 @@ const number: NumberMode = {
           tbs.length,
           prefs.number
         )
+        count("checks_skipped")
+        record("check.skipped", reason ?? "manual", {
+          why: "below-tab-threshold",
+          candidates: tbs.length,
+          ignored: exceptionCount,
+          threshold: prefs.number,
+        })
         return
       }
     }
@@ -268,6 +417,11 @@ const number: NumberMode = {
         continue
       }
       try {
+        // An injection failure used to be swallowed whole (`() => []`), which
+        // made "this tab is silently never eligible" indistinguishable from
+        // "this tab is fine". Keep the same non-fatal behaviour, but keep the
+        // reason.
+        let injectionError: string | undefined
         const results =
           tb.status === "unloaded"
             ? []
@@ -280,8 +434,19 @@ const number: NumberMode = {
                 })
                 .then(
                   (r) => r,
-                  () => []
+                  (e: unknown) => {
+                    injectionError = e instanceof Error ? e.message : String(e)
+                    return []
+                  }
                 )
+        if (injectionError !== undefined) {
+          count("meta_errors")
+          record("tab.meta_error", tb.id, {
+            origin: safeOrigin(tb.url),
+            status: tb.status ?? null,
+            error: injectionError,
+          })
+        }
         const ms: Array<TabMeta> = results.map((o) => readMeta(o.result))
 
         // remove protected tabs (e.g. addons.mozilla.org)
@@ -292,6 +457,7 @@ const number: NumberMode = {
           ) {
             log("discarding aborted", "metadata fetch error", tb.url)
             icon(tb, "metadata fetch error")
+            skipped(tb, "metadata-unavailable", { status: tb.status ?? null })
             exceptionCount += 1
             continue
           }
@@ -320,52 +486,69 @@ const number: NumberMode = {
           meta.memory > prefs["memory-value"] * 1024 * 1024
         ) {
           log("forced discarding", "memory usage")
+          record("suspend.requested", tb.id, {
+            trigger: "memory-pressure",
+            origin: safeOrigin(tb.url),
+          })
           void discard(tb)
           continue
         }
         if (meta.ready !== true && ops["ignore.ready.state"] !== true) {
           log("discarding aborted", "tab is not ready", tb)
+          skipped(tb, "not-ready", { status: tb.status ?? null })
           exceptionCount += 1
           continue
         }
         if (prefs.audio && meta.audible) {
           log("discarding aborted", "audio is playing", tb)
           icon(tb, "tab plays an audio")
+          skipped(tb, "audible")
           exceptionCount += 1
           continue
         }
         if (prefs.paused && meta.paused) {
           log("discarding aborted", "player is paused", tb)
           icon(tb, "tab has a paused player")
+          skipped(tb, "paused-media")
           exceptionCount += 1
           continue
         }
         if (prefs.form && meta.forms) {
           log("discarding aborted", "active form", tb)
           icon(tb, "there is an active form on this tab")
+          skipped(tb, "unsaved-form")
           exceptionCount += 1
           continue
         }
         if (prefs["notification.permission"] && meta.permission) {
           log("discarding aborted", "tab has notification permission")
           icon(tb, "tab has notification permission")
+          skipped(tb, "notification-permission")
           exceptionCount += 1
           continue
         }
         if (tb.autoDiscardable === false) {
           log("discarding aborted", "tab is not discardable", tb)
+          skipped(tb, "not-auto-discardable")
           exceptionCount += 1
           icon(tb, "tab is not discardable")
           continue
         }
         if (now - (meta.time ?? tb.lastAccessed ?? now) < prefs.period * 1000) {
           log("discarding aborted", "tab is not old", tb)
+          skipped(tb, "too-young", {
+            ageMs: now - (meta.time ?? tb.lastAccessed ?? now),
+            thresholdMs: prefs.period * 1000,
+            ageSource:
+              meta.time !== undefined ? "content-script" : "lastAccessed",
+          })
           exceptionCount += 1
           icon.reset(tb)
           continue
         }
         if (tb.active) {
           log("discarding aborted", "tab is active", tb)
+          skipped(tb, "active")
           exceptionCount += 1
           icon.reset(tb)
           continue
@@ -378,6 +561,13 @@ const number: NumberMode = {
         }
       } catch (e) {
         log("number.check error", e)
+        count("check_errors")
+        record(
+          "check.error",
+          tb.id,
+          { error: e instanceof Error ? e.message : String(e) },
+          "error"
+        )
       }
     }
 
@@ -389,6 +579,13 @@ const number: NumberMode = {
           tbs.length,
           prefs.number
         )
+        count("checks_skipped")
+        record("check.skipped", reason ?? "manual", {
+          why: "below-tab-threshold",
+          candidates: tbs.length,
+          ignored: exceptionCount,
+          threshold: prefs.number,
+        })
         return
       }
     }
@@ -407,9 +604,21 @@ const number: NumberMode = {
       )
 
     log("number check", "discarding", tbds.length)
+    count("tabs_selected", tbds.length)
     for (const tb of tbds) {
+      record("suspend.requested", tb.id, {
+        trigger: reason ?? "manual",
+        origin: safeOrigin(tb.url),
+        ageMs: now - (map.get(tb)?.time ?? now),
+      })
       void discard(tb)
     }
+    finish(startedAt, {
+      scanned: tbs.length,
+      ignored: exceptionCount,
+      eligible: arr.length,
+      selected: tbds.length,
+    })
   },
 }
 
@@ -417,18 +626,99 @@ const number: NumberMode = {
 const pluginFilters: Record<string, PluginFilter> = {}
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "number.check") {
-    log("alarm fire", "number.check", alarm.name)
-    // make sure alarm is firing next time
+  if (alarm.name === CHECK_ALARM) {
+    log("alarm fire", CHECK_ALARM, alarm.name)
+    const now = Date.now()
+    count("alarm_fires")
+
+    // Interval between consecutive fires is the single most diagnostic number
+    // this extension has: it is the difference between "the scheduler is
+    // running" and "the scheduler exists but never gets to run". The gap that
+    // exposed the deferred-alarm bug is visible here as a fire interval that
+    // simply never arrives.
+    const previous = readNumberSnapshot("alarm:lastFire")
+    if (previous !== undefined) {
+      const interval = now - previous
+      observe("alarm_interval_ms", interval)
+      const expected = alarm.periodInMinutes
+        ? alarm.periodInMinutes * 60 * 1000
+        : undefined
+      if (expected !== undefined && interval > expected * 2) {
+        count("alarm_missed")
+        record(
+          "alarm.missed",
+          CHECK_ALARM,
+          { intervalMs: interval, expectedMs: expected },
+          "warn"
+        )
+      }
+    }
+    obs.setSnapshot("alarm:lastFire", now)
+    record("alarm.fired", CHECK_ALARM, {
+      scheduledTime: alarm.scheduledTime,
+      lateByMs: now - alarm.scheduledTime,
+      periodInMinutes: alarm.periodInMinutes ?? null,
+    })
+
+    // Re-arm after firing. This is safe where `install` was not: it happens at
+    // fire time, not at every worker wake, so it advances the schedule by
+    // exactly one interval rather than deferring it indefinitely.
     if (alarm.periodInMinutes) {
       void chrome.alarms.create(alarm.name, {
-        when: Date.now() + alarm.periodInMinutes * 60 * 1000,
+        when: now + alarm.periodInMinutes * 60 * 1000,
         periodInMinutes: alarm.periodInMinutes,
       })
     }
     void number.check(undefined, undefined, "number/1")
   }
 })
+
+/** Read a numeric recorder snapshot, or undefined when absent/not a number. */
+function readNumberSnapshot(key: string): number | undefined {
+  const value = obs.snapshotEntries()[key]
+  return typeof value === "number" ? value : undefined
+}
+
+/**
+ * Watchdog: on every worker generation, notice a sweep that should already
+ * have happened and run it now.
+ *
+ * Defence in depth behind the `install` fix. An alarm can also be lost to a
+ * crash, a profile restore, or a browser bug — and the failure mode is
+ * completely silent, because nothing errors when a timer simply never fires.
+ * The cost of being wrong here is one extra sweep; the cost of not checking is
+ * the bug this patch exists to fix, back again by another route.
+ */
+async function watchdog(periodSeconds: number): Promise<void> {
+  const intervalMs = clampCheckPeriodSeconds(periodSeconds) * 1000
+  const alarm = await getCheckAlarm()
+  const now = Date.now()
+
+  if (!alarm) {
+    // `install` runs alongside this and will create it; the sweep it would
+    // have performed is what we owe the user right now.
+    count("alarm_repairs")
+    record("alarm.repaired", CHECK_ALARM, { why: "absent" }, "warn")
+    void number.check(undefined, undefined, "watchdog/absent")
+    return
+  }
+
+  const overdueBy = now - alarm.scheduledTime
+  if (overdueBy > intervalMs) {
+    count("alarm_repairs")
+    record(
+      "alarm.repaired",
+      CHECK_ALARM,
+      { why: "overdue", overdueBy, intervalMs },
+      "warn"
+    )
+    void chrome.alarms.create(CHECK_ALARM, {
+      when: now + intervalMs,
+      periodInMinutes: intervalMs / 60_000,
+    })
+    void number.check(undefined, undefined, "watchdog/overdue")
+  }
+}
 
 // fix outdated alarms when the machine wakes up
 chrome.idle.onStateChanged.addListener((state) => {
@@ -449,24 +739,30 @@ chrome.idle.onStateChanged.addListener((state) => {
 
 /* start: install/remove the alarm based on mode */
 {
-  const check = (): Promise<void> =>
+  /** Resolves with the active age threshold, or undefined when disabled. */
+  const check = (): Promise<number | undefined> =>
     storage<{ mode: string; period: number; tmp_disable: number }>({
       mode: "time-based",
       period: 10 * 60,
       tmp_disable: 0,
-    }).then((ps) => {
+    }).then(async (ps) => {
       if (
         ps.period &&
         (ps.mode === "time-based" || ps.mode === "url-based") &&
         ps.tmp_disable === 0
       ) {
-        number.install(ps.period)
-      } else {
-        number.remove()
+        await number.install(ps.period)
+        return ps.period
       }
+      number.remove()
+      return undefined
     })
   starters.push(() => {
-    void check()
+    void check().then(async (period) => {
+      if (period !== undefined) {
+        await watchdog(period)
+      }
+    })
   })
   chrome.storage.onChanged.addListener((ps) => {
     if (ps.period || ps.mode || ps.tmp_disable) {

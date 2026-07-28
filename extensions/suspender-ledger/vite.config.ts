@@ -18,6 +18,7 @@ export default extensionConfig({
     { name: "watch", input: "src/content/watch.ts" },
     { name: "resume-veil", input: "src/content/resume-veil.ts" },
     { name: "popup", input: "popup.html", classic: false },
+    { name: "debug", input: "debug.html", classic: false },
   ],
   copy: [{ from: "public/manifest.firefox.json", to: "manifest.json" }],
 })

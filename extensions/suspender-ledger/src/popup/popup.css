@@ -404,6 +404,23 @@ body {
   font-size: 11px;
 }
 
+.popup__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 12px 10px;
+}
+
+.popup__diagnostics {
+  color: var(--sl-fg-faint);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.popup__diagnostics:hover {
+  color: var(--sl-fg);
+  text-decoration: underline;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     --sl-bg: #f6f6f7;

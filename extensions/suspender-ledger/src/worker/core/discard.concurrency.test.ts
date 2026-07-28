@@ -75,6 +75,17 @@ beforeEach(() => {
     const result = opts.func(...(opts.args ?? []))
     return Promise.resolve([{ frameId: 0, result }])
   }) as never)
+
+  // The browser's own view of a tab, which the post-discard verification reads
+  // to tell a real suspend from a silent no-op. Note this is deliberately NOT
+  // the *caller's* snapshot: the property below is about a caller whose cached
+  // tab object stays stale across attempts, which is a different thing from
+  // the browser lying about what it did.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  vi.mocked(chrome.tabs.get).mockImplementation(((
+    id: number,
+    cb: (t?: chrome.tabs.Tab) => void
+  ) => cb(tab({ id, discarded: true }))) as never)
 })
 
 afterEach(() => {

@@ -9,15 +9,21 @@
 // embedded settings form, then bridges UI intent onto the worker message
 // protocol (`PopupToWorkerMessage`) and `storage.local`.
 
-import type { Prefs } from "@suspender/worker/core/prefs"
 import { ActionMenu } from "@suspender/popup/components/action-menu"
 import {
   SettingsForm,
   type SettingsValues,
   type ShortcutHint,
 } from "@suspender/popup/components/settings-form"
-import { TabStatus, type TabState } from "@suspender/popup/components/tab-status"
-import type { PopupCommand, PopupToWorkerMessage } from "@suspender/types/messages"
+import {
+  TabStatus,
+  type TabState,
+} from "@suspender/popup/components/tab-status"
+import type {
+  PopupCommand,
+  PopupToWorkerMessage,
+} from "@suspender/types/messages"
+import type { Prefs } from "@suspender/worker/core/prefs"
 
 import "./popup.css"
 
@@ -29,7 +35,13 @@ import "./popup.css"
 
 type PopupPrefKeys = Pick<
   Prefs,
-  "whitelist" | "idle-timeout" | "period" | "number" | "favicon" | "prepends" | "pinned"
+  | "whitelist"
+  | "idle-timeout"
+  | "period"
+  | "number"
+  | "favicon"
+  | "prepends"
+  | "pinned"
 >
 
 const PREF_DEFAULTS: PopupPrefKeys = {
@@ -144,7 +156,10 @@ function isWhitelisted(): boolean {
 
 function settingsValues(): SettingsValues {
   return {
-    idleTimeoutMinutes: Math.max(1, Math.round(state.prefs["idle-timeout"] / 60)),
+    idleTimeoutMinutes: Math.max(
+      1,
+      Math.round(state.prefs["idle-timeout"] / 60)
+    ),
     discardPeriodMinutes: Math.max(0, Math.round(state.prefs.period / 60)),
     minTabs: state.prefs.number,
     showFavicon: state.prefs.favicon,
@@ -265,6 +280,31 @@ function render(): void {
       onWhitelistRemove,
     })
   )
+
+  root.appendChild(diagnosticsLink())
+}
+
+/**
+ * Entry point to `debug.html`.
+ *
+ * Deliberately just a link: the popup must stay fast to open, and rendering a
+ * health summary here would mean a message round trip to the worker on every
+ * open. The page it opens computes health on demand instead.
+ */
+function diagnosticsLink(): HTMLElement {
+  const footer = document.createElement("footer")
+  footer.className = "popup__footer"
+
+  const link = document.createElement("a")
+  link.className = "popup__diagnostics"
+  link.href = browser.runtime.getURL("debug.html")
+  link.target = "_blank"
+  link.rel = "noopener"
+  link.textContent = "Diagnostics"
+  link.title = "Health, metrics and the suspend event timeline"
+
+  footer.appendChild(link)
+  return footer
 }
 
 // ── Hydration ─────────────────────────────────────────────────────────────────

@@ -25,6 +25,24 @@ const tab = (over: Partial<chrome.tabs.Tab>): chrome.tabs.Tab => ({
   ...over,
 })
 
+/** Tab ids the fake browser currently considers discarded. */
+const discarded = new Set<number>()
+
+/**
+ * Resolve a `tabs.discard` call the way a real browser does: the tab is now
+ * discarded, and every later `tabs.get` must agree. Tests that install their
+ * own `tabs.discard` mock go through this so the fake browser stays
+ * self-consistent — post-discard verification reads `tabs.get`, so a discard
+ * that "succeeds" without updating it is indistinguishable from a silent
+ * no-op, which is exactly the failure that verification exists to catch.
+ */
+const settleDiscard = (id: number | undefined): chrome.tabs.Tab => {
+  if (id !== undefined) {
+    discarded.add(id)
+  }
+  return tab({ id, discarded: true })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   discard.count = 0
@@ -50,20 +68,24 @@ beforeEach(() => {
   // chrome.tabs.discard does not support the callback overload the
   // @types/chrome bindings advertise; only the promise form works
   // cross-browser (see discard-adapter.ts's discardOnce docstring).
+  //
+  // The two mocks below share `discarded` state on purpose. `tabs.get` is
+  // consulted as ground truth on two paths — the rollback path (is this tab
+  // genuinely still live?) and the post-success verification (did the discard
+  // actually land, or silently no-op?) — so a mock where `discard` reports
+  // success while `get` keeps reporting the tab live models a browser that
+  // cannot exist, and would make every successful suspend look like a no-op.
+  discarded.clear()
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
-    Promise.resolve(tab({ id, discarded: true }))
+    Promise.resolve(settleDiscard(id))
   )
 
-  // tabs.get resolves a live (non-discarded) snapshot by default. The rollback
-  // path consults it as ground truth: a marker is only stripped from a tab
-  // that is genuinely still live, so we never inject into (and thereby reload)
-  // a tab the browser has already discarded.
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   vi.mocked(chrome.tabs.get).mockImplementation(((
     id: number,
     cb: (t?: chrome.tabs.Tab) => void
-  ) => cb(tab({ id, discarded: false }))) as never)
+  ) => cb(tab({ id, discarded: discarded.has(id) }))) as never)
 })
 
 describe("discard", () => {
@@ -209,7 +231,7 @@ describe("discard", () => {
         if (calls === 1) {
           return Promise.reject(new Error("Tabs cannot be discarded."))
         }
-        return Promise.resolve(tab({ id, discarded: true }))
+        return Promise.resolve(settleDiscard(id))
       })
 
       const done = discard(
@@ -223,6 +245,62 @@ describe("discard", () => {
       expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
       prefs.prepends = ""
     } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("rolls back the marker when discard reports success but the tab is still live", async () => {
+    // The silent no-op. Firefox resolves `tabs.discard` for tabs it then
+    // declines to discard (a beforeunload handler, a tab it considers too
+    // recently used). Before verification this was indistinguishable from
+    // success at the call site: the tab stayed live, kept working, and wore a
+    // 💤 marker forever — with nothing in any log to say so.
+    prefs.prepends = "💤"
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) =>
+        // Resolves happily; deliberately does NOT mark the tab discarded.
+        Promise.resolve(tab({ id, discarded: false }))
+      )
+
+      await discard(
+        tab({ id: 77, url: "https://example.com/", title: "Example" })
+      )
+
+      // mark, then unmark: the marker must not be stranded on a live tab.
+      expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(2)
+    } finally {
+      prefs.prepends = ""
+    }
+  })
+
+  it("accepts a discard that lands slightly after the promise resolves", async () => {
+    // The browser updates `discarded` asynchronously with respect to the
+    // discard promise, so a slow-but-real suspend must not be misread as a
+    // no-op and rolled back.
+    vi.useFakeTimers()
+    prefs.prepends = "💤"
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      vi.mocked(chrome.tabs.discard).mockImplementation((id?: number) => {
+        setTimeout(() => {
+          if (id !== undefined) {
+            discarded.add(id)
+          }
+        }, 100)
+        return Promise.resolve(tab({ id, discarded: true }))
+      })
+
+      const done = discard(
+        tab({ id: 78, url: "https://example.com/", title: "Example" })
+      )
+      await vi.advanceTimersByTimeAsync(3000)
+      await done
+
+      // Only the mark ran — nothing was rolled back.
+      expect(chrome.scripting.executeScript).toHaveBeenCalledTimes(1)
+    } finally {
+      prefs.prepends = ""
       vi.useRealTimers()
     }
   })
@@ -255,9 +333,12 @@ describe("discard", () => {
 
     /* eslint-disable @typescript-eslint/no-misused-promises -- mockImplementation's typed overloads include a void-returning form; the promise form is the one that's actually cross-browser-correct, see discard-adapter.ts */
     vi.mocked(chrome.tabs.discard).mockImplementation(
-      () =>
+      (id?: number) =>
         new Promise<chrome.tabs.Tab>((resolve) => {
-          resolvers.push(resolve)
+          resolvers.push((t) => {
+            settleDiscard(id)
+            resolve(t)
+          })
         })
     )
     /* eslint-enable @typescript-eslint/no-misused-promises */

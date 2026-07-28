@@ -26,6 +26,15 @@ import {
   injectUnmark,
   requestDiscard,
 } from "./discard-adapter"
+import {
+  count,
+  forgetTab,
+  observe,
+  record,
+  registerStateProbe,
+  safeOrigin,
+  snapshotTab,
+} from "./observability"
 import { prefs, storage } from "./prefs"
 import {
   INITIAL_STATE,
@@ -70,7 +79,13 @@ function transition(
     // Unreachable given the fixed transition table (see suspend-fsm.ts) — a
     // future edge that produces this has a bug, not this tab a bad day.
     log("suspend-fsm invariant violated", { tabId, from, event, next })
-    trace("fsm.INVARIANT_VIOLATED", tabId, { from, event, next })
+    count("fsm_violations")
+    record(
+      "fsm.violation",
+      tabId,
+      { from: from.kind, event: event.type, next: next.kind },
+      "error"
+    )
   }
   if (isSettled(next)) {
     tabStates.delete(tabId)
@@ -80,8 +95,21 @@ function transition(
   return next
 }
 
-/** Tab ids currently mid-suspend, used to debounce duplicate requests. */
-const inprogress = new Set<number>()
+/**
+ * Tab ids currently mid-suspend, mapped to when the attempt started. Used to
+ * debounce duplicate requests; the timestamps additionally let the
+ * NoStuckInFlightSuspend invariant notice an attempt that never settles, which
+ * would otherwise block every later suspend of that tab forever and in total
+ * silence.
+ */
+const inprogress = new Map<number, number>()
+
+// Publish in-flight state to the health checks. Registered rather than
+// imported so `observability.ts` — which this module records into — never has
+// to import back.
+registerStateProbe(() => ({
+  inFlight: [...inprogress].map(([tabId, startedAt]) => ({ tabId, startedAt })),
+}))
 
 /**
  * The queued discard mechanism. `discard.count` tracks in-flight discards;
@@ -95,6 +123,41 @@ type DiscardFn = {
   time: number
   perform(tab: chrome.tabs.Tab): Promise<void>
 }
+
+/**
+ * Did the discard actually land?
+ *
+ * Returns `true` when the browser now reports the tab as discarded, `false`
+ * when it is demonstrably still live (the silent no-op), and `undefined` when
+ * we cannot tell — the tab is gone, or `tabs.get` failed. Unknown is
+ * deliberately *not* folded into failure: rolling a marker back on a guess
+ * would run `executeScript` against a possibly-discarded tab and reload it,
+ * which is a strictly worse bug than the one being detected.
+ *
+ * The browser updates a tab's `discarded` flag asynchronously with respect to
+ * the `discard()` promise, so a single immediate read would report a false
+ * no-op on a discard that was merely still settling. One short re-check is
+ * enough to separate "slow" from "didn't happen".
+ */
+async function confirmDiscarded(tabId: number): Promise<boolean | undefined> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise<void>((r) => setTimeout(r, VERIFY_DELAY_MS))
+    }
+    const snapshot = await getTabSnapshot(tabId)
+    if (!snapshot) {
+      // Tab closed out from under us — nothing left to be wrong about.
+      return undefined
+    }
+    if (snapshot.discarded) {
+      return true
+    }
+  }
+  return false
+}
+
+/** How long to let a discard settle before calling it a no-op. */
+const VERIFY_DELAY_MS = 250
 
 /**
  * The terminal action: drive one tab through its suspend lifecycle by
@@ -116,7 +179,19 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
       return
     }
     const tabId = tab.id
+    const startedAt = Date.now()
+    const origin = safeOrigin(tab.url)
     trace("perform:start", tabId, { url: tab.url, title: tab.title })
+    count("suspend_attempts")
+    snapshotTab(tabId, { fsm: "PREPARING", origin, lastAttemptAt: startedAt })
+
+    /** Terminal bookkeeping for one suspend attempt. */
+    const settle = (
+      outcome: "succeeded" | "noop" | "failed" | "rolled_back"
+    ): void => {
+      observe("suspend_latency_ms", Date.now() - startedAt)
+      snapshotTab(tabId, { origin, lastAttemptAt: startedAt, outcome })
+    }
 
     let state = transition(tabId, tabStates.get(tabId) ?? INITIAL_STATE, {
       type: "SUSPEND_REQUESTED",
@@ -130,13 +205,57 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
           ? { type: "MARK_APPLIED" }
           : { type: "MARK_SKIPPED" }
       )
+      record("suspend.marked", tabId, { outcome, origin })
 
       void requestDiscard(tabId).then(async (attempt) => {
         trace("perform:requestDiscard-result", tabId, attempt)
         if (attempt.ok) {
-          transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
-          trace("perform:done-success", tabId)
-          resolve()
+          // A resolved `tabs.discard` is a claim, not a receipt. Firefox
+          // resolves it happily for tabs it then declines to discard (a
+          // beforeunload handler, a tab the browser considers too recently
+          // used) — a silent no-op that leaves the tab live and wearing the
+          // sleep marker, which is indistinguishable from success at this
+          // call site and was invisible in every log we had. Confirm against
+          // the browser's own view before believing it. `tabs.get` reads
+          // cached metadata, so unlike executeScript it can never
+          // materialize (reload) a tab that really did discard.
+          const landed = await confirmDiscarded(tabId)
+          if (landed !== false) {
+            transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
+            count("suspend_succeeded")
+            record("suspend.discarded", tabId, {
+              origin,
+              verified: landed === true,
+            })
+            settle("succeeded")
+            trace("perform:done-success", tabId)
+            resolve()
+            return
+          }
+
+          // Reported success, still live: the silent no-op. Treat it exactly
+          // as a refusal — strip the marker rather than strand it on a tab the
+          // user can still see and use.
+          count("suspend_noop")
+          record(
+            "suspend.noop",
+            tabId,
+            { origin, why: "discard resolved but tab is still live" },
+            "warn"
+          )
+          state = transition(tabId, state, { type: "DISCARD_FAILED" })
+          if (state.kind !== "ROLLING_BACK") {
+            settle("noop")
+            resolve()
+            return
+          }
+          void injectUnmark(tabId, prefs.prepends).then(() => {
+            transition(tabId, state, { type: "MARKER_CLEARED" })
+            count("suspend_rolled_back")
+            record("suspend.rolled_back", tabId, { origin, after: "noop" })
+            settle("rolled_back")
+            resolve()
+          })
           return
         }
 
@@ -168,6 +287,13 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
             attempt.message
           )
           transition(tabId, state, { type: "DISCARD_SUCCEEDED" })
+          count("suspend_succeeded")
+          record("suspend.discarded", tabId, {
+            origin,
+            verified: true,
+            despiteError: attempt.message,
+          })
+          settle("succeeded")
           trace("perform:done-false-negative", tabId)
           resolve()
           return
@@ -180,10 +306,18 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
           "discard refused; tab still live, rolling back marker",
           attempt.message
         )
+        count("suspend_failed")
+        record(
+          "suspend.failed",
+          tabId,
+          { origin, error: attempt.message },
+          "warn"
+        )
         state = transition(tabId, state, { type: "DISCARD_FAILED" })
 
         if (state.kind !== "ROLLING_BACK") {
           // Bare tab (never marked) — nothing to strip, just fall back to ACTIVE.
+          settle("failed")
           trace("perform:done-bare-refused", tabId)
           resolve()
           return
@@ -191,6 +325,9 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
 
         void injectUnmark(tabId, prefs.prepends).then(() => {
           transition(tabId, state, { type: "MARKER_CLEARED" })
+          count("suspend_rolled_back")
+          record("suspend.rolled_back", tabId, { origin, after: "refused" })
+          settle("rolled_back")
           trace("perform:done-rolled-back", tabId)
           resolve()
         })
@@ -221,7 +358,7 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
   // timer alone can expire while a queued or slow-to-complete suspend is still
   // in flight, letting a second concurrent request re-enter and re-mark the
   // same live tab.
-  inprogress.add(tabId)
+  inprogress.set(tabId, Date.now())
   const cooldown = new Promise<void>((resolve) => setTimeout(resolve, 2000))
   const release = (op: Promise<void>): void => {
     void Promise.all([cooldown, op]).finally(() => inprogress.delete(tabId))
@@ -266,6 +403,12 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
       // the same tab and re-mark a title the first copy already marked.
       if (!discard.tabs.some((qt) => qt.id === tabId)) {
         log("discarding queue for", tab)
+        count("suspend_queued")
+        record("suspend.queued", tabId, {
+          origin: safeOrigin(tab.url),
+          depth: discard.tabs.length + 1,
+          inFlight: discard.count,
+        })
         discard.tabs.push(tab)
       }
       return
@@ -334,8 +477,11 @@ function reconcileActivatedTab(tabId: number): void {
     trace("reconcileActivatedTab:refocus-mid-suspend", tabId)
     const rollingBack = transition(tabId, tracked, { type: "TAB_ACTIVATED" })
     if (rollingBack.kind === "ROLLING_BACK") {
+      record("reconcile.activated", tabId, { case: "refocus-mid-suspend" })
       void injectUnmark(tabId, marker).then(() => {
         transition(tabId, rollingBack, { type: "MARKER_CLEARED" })
+        count("reconcile_repairs")
+        record("reconcile.repaired", tabId, { via: "fsm-rollback" })
       })
     }
     return
@@ -348,6 +494,13 @@ function reconcileActivatedTab(tabId: number): void {
     if (typeof tab.title === "string" && tab.title.startsWith(`${marker} `)) {
       log("stripping stranded marker on activated tab", tabId)
       trace("reconcileActivatedTab:title-heuristic-rollback", tabId, tab.title)
+      count("reconcile_repairs")
+      record(
+        "reconcile.repaired",
+        tabId,
+        { via: "title-heuristic", origin: safeOrigin(tab.url) },
+        "warn"
+      )
       void injectUnmark(tabId, marker)
     }
   })
@@ -355,23 +508,40 @@ function reconcileActivatedTab(tabId: number): void {
 
 chrome.tabs.onActivated.addListener(({ tabId }) => reconcileActivatedTab(tabId))
 
-// TEMP DIAGNOSTIC LISTENERS for the silent-background-reload bug — delete
-// alongside trace.ts once found. These are the ground-truth signal: prior to
-// this, nothing in the extension observed onUpdated at all, so a tab
-// reloading in the background left no trace anywhere in our own logs.
+/**
+ * Ground truth from the browser about tabs we are mid-decision on.
+ *
+ * This listener used to record *every* `onUpdated` — every favicon, every
+ * title change, every load-progress tick across every tab. That is a firehose
+ * that would fill a 500-event ring in under a minute of normal browsing and
+ * bury the handful of events worth reading. It is filtered to the two signals
+ * that actually settle a question: a change in the `discarded` flag (did the
+ * suspend land? did something silently un-suspend it?), and any update at all
+ * on a tab we are currently acting on.
+ */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  trace("browser.onUpdated", tabId, {
-    changeInfo,
-    discarded: tab.discarded,
-    status: tab.status,
+  const tracked = tabStates.get(tabId)?.kind
+  const acting = tracked !== undefined || inprogress.has(tabId)
+  if (changeInfo.discarded === undefined && !acting) {
+    return
+  }
+  record("browser.tab_updated", tabId, {
+    changeInfo: {
+      discarded: changeInfo.discarded ?? null,
+      status: changeInfo.status ?? null,
+      title: changeInfo.title === undefined ? null : "(changed)",
+    },
+    discarded: tab.discarded === true,
     active: tab.active,
-    title: tab.title,
-    tracked: tabStates.get(tabId)?.kind,
+    tracked: tracked ?? null,
     inprogress: inprogress.has(tabId),
   })
 })
 chrome.tabs.onRemoved.addListener((tabId) => {
-  trace("browser.onRemoved", tabId)
+  record("browser.tab_removed", tabId)
+  // Drop per-tab belief with the tab, so the snapshot map tracks the current
+  // profile rather than every tab ever opened.
+  forgetTab(tabId)
 })
 
 export { discard, inprogress, reconcileActivatedTab }
