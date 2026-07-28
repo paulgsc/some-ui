@@ -188,17 +188,6 @@ const leetype: ActivityDefinition = {
       defaultValue: "typescript",
     },
     {
-      kind: "select",
-      key: "difficulty",
-      label: "Difficulty",
-      options: [
-        { value: "easy", label: "Easy" },
-        { value: "medium", label: "Medium" },
-        { value: "hard", label: "Hard" },
-      ],
-      defaultValue: "easy",
-    },
-    {
       kind: "duration",
       key: "durationMinutes",
       label: "Session length",
@@ -210,18 +199,16 @@ const leetype: ActivityDefinition = {
   ],
   defaultConfig: {
     language: "typescript",
-    difficulty: "easy",
     durationMinutes: 10,
   },
-  // `difficulty` is passed through as the friendly label the player picked
-  // ("easy"/"medium"/"hard"), not resolved into a full Challenge here -
-  // Leetype (@some-ui/leetype) resolves it at render time against its own
+  // No `difficulty`/challenge picked here - that's a required step of the
+  // session itself now, not a composer-time setting (issue #829). Leetype
+  // (@some-ui/leetype) prompts for it at render time against its own
   // `challenges` pool (bundled CHALLENGES by default, optionally overridden
   // with a local/Docker-fetched corpus - see
   // apps/www/src/lib/leetype-challenges), the same way session-viewport
   // already lets HangulHexGrid resolve its own word pool.
   toSceneProps: (config) => ({
-    difficulty: config.difficulty,
     initialLanguage: config.language,
   }),
 }

@@ -13,7 +13,10 @@ import type {
   InputResult,
   TypedTypingGame as TypedTypingGameType,
 } from "@leetype/types/leetype"
-import { deriveCursorIndex, deriveDisplayMap } from "@leetype/utils/leetype"
+import {
+  deriveCursorDisplayIndex,
+  deriveDisplayMap,
+} from "@leetype/utils/leetype"
 
 type UseTypingGameProps = {
   targetCode: string
@@ -29,7 +32,7 @@ type UseTypingGameReturn = {
   displayCode: string
   targetUnits: Array<CanonicalUnit>
   userUnits: Array<CanonicalUnit>
-  cursorUnitIndex: number
+  cursorDisplayIndex: number
   displayMap: Array<number>
   errors: number
   consecutiveErrors: number
@@ -133,7 +136,12 @@ export function useTypingGame({
     return deriveDisplayMap(rawUserInput)
   }, [rawUserInput])
 
-  const cursorUnitIndex = stats ? deriveCursorIndex(stats) : 0
+  // Display-character granularity, not canonical-unit granularity: derived
+  // from the raw accepted keystrokes so it advances one rendered character
+  // per keystroke, including through multi-char whitespace runs (see
+  // CodeDisplay's `cursorDisplayIndex` doc comment for why unit granularity
+  // was wrong here).
+  const cursorDisplayIndex = deriveCursorDisplayIndex(rawUserInput)
 
   const handleInputChange = useCallback(
     (input: string): void => {
@@ -209,7 +217,7 @@ export function useTypingGame({
       displayCode: targetCode,
       targetUnits,
       userUnits: [],
-      cursorUnitIndex: 0,
+      cursorDisplayIndex,
       displayMap: [],
       errors: 0,
       consecutiveErrors: 0,
@@ -233,7 +241,7 @@ export function useTypingGame({
     displayCode: targetCode,
     targetUnits,
     userUnits,
-    cursorUnitIndex,
+    cursorDisplayIndex,
     displayMap,
     errors: stats.total_errors,
     consecutiveErrors: stats.consecutive_errors,

@@ -62,11 +62,13 @@ const StoryFromFile = ({
   const wasmReady = useWasmReady()
 
   const prettierParser =
-    language === "typescript" || language === "c"
+    language === "typescript"
       ? "typescript"
       : language === "rust"
         ? "rust"
-        : "babel"
+        : language === "cpp"
+          ? "cpp"
+          : "c"
 
   const state = useFormattedCode(path, { prettierParser })
 
@@ -85,7 +87,7 @@ const StoryFromFile = ({
             language={language}
             targetUnits={[]}
             userUnits={[]}
-            cursorUnitIndex={0}
+            cursorDisplayIndex={0}
             displayMode={displayMode}
             gameState="idle"
             userInput=""
@@ -111,7 +113,7 @@ const StoryFromFile = ({
             language={language}
             targetUnits={[]}
             userUnits={[]}
-            cursorUnitIndex={0}
+            cursorDisplayIndex={0}
             displayMode={displayMode}
             gameState="idle"
             userInput=""
@@ -140,7 +142,7 @@ const StoryFromFile = ({
             language={language}
             targetUnits={targetUnits}
             userUnits={userUnits}
-            cursorUnitIndex={typedChars}
+            cursorDisplayIndex={typedChars}
             displayMode={displayMode}
             gameState={gameState}
             userInput={userInput}
