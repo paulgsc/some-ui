@@ -31,10 +31,28 @@
  */
 
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
-const DIRTY_CLASS = "sw-dirty"
+
+/**
+ * The veil's ownership signal on `<html>`. Exported because it is one of the
+ * very few *extension* writes that lands on a *vendor* node, which makes it
+ * indistinguishable from vendor churn to anything watching `class` — the
+ * Sensor (`adapter/pipeline.ts`) needs the name to recognise its own echo
+ * (Axiom 3.5).
+ */
+export const PREPAINT_DIRTY_CLASS = "sw-dirty"
+
+const DIRTY_CLASS = PREPAINT_DIRTY_CLASS
 
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
+}
+
+/** True while the veil is up in either of its two halves (element, CSS backstop). */
+export function isPrepaintActive(): boolean {
+  return (
+    document.documentElement.classList.contains(DIRTY_CLASS) ||
+    getVeil() !== null
+  )
 }
 
 /**
@@ -47,7 +65,17 @@ function getVeil(): HTMLElement | null {
  * remove it. Also adds the sw-dirty class which activates the CSS backstop.
  */
 export function enablePrepaint(): void {
-  document.documentElement.classList.add(DIRTY_CLASS)
+  // `classList.add`/`remove` run the DOM's "update steps" unconditionally —
+  // they re-serialize and re-set the `class` attribute even when the token
+  // set is unchanged, and a same-value `setAttribute` still queues a
+  // MutationRecord. The Sensor watches `class` on every node including
+  // <html>, so an unguarded no-op call here is not free: it is a mutation
+  // the pipeline sees, reacts to, and (via commitVisualState -> this
+  // module) causes again — a self-sustaining rescan loop with no vendor
+  // change anywhere in it (#831). Only write when the bit actually flips.
+  if (!document.documentElement.classList.contains(DIRTY_CLASS)) {
+    document.documentElement.classList.add(DIRTY_CLASS)
+  }
 
   if (getVeil()) return
 
@@ -80,7 +108,12 @@ export function enablePrepaint(): void {
 export function disablePrepaint(): void {
   // Remove dirty class first — this is what the self-healing observer checks
   // to distinguish intentional teardown from an accidental vendor removal.
-  document.documentElement.classList.remove(DIRTY_CLASS)
+  // Guarded for the same reason as enablePrepaint()'s add: an already-down
+  // veil must produce *zero* DOM writes, or every fire re-notifies the
+  // Sensor of a change that never happened (#831).
+  if (document.documentElement.classList.contains(DIRTY_CLASS)) {
+    document.documentElement.classList.remove(DIRTY_CLASS)
+  }
 
   const veil = getVeil()
   if (!veil) return
@@ -141,6 +174,12 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
 const COMMIT_FALLBACK_MS = 100
 
 export function commitVisualState(): void {
+  // Called on *every* pipeline fire (content.ts's onFire), not just the
+  // first. Once the veil is down there is nothing left to commit, and
+  // scheduling another rAF pair + fallback timer per fire only creates work
+  // whose sole effect would be a redundant disablePrepaint().
+  if (!isPrepaintActive()) return
+
   let dropped = false
   const drop = (): void => {
     if (dropped) return

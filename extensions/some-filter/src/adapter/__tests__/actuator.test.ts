@@ -130,6 +130,68 @@ describe("realize — idempotence (Theorem 7.2)", () => {
 
     cleanUp()
   })
+
+  it("re-running the same actions twice emits no mutation records at all (#831)", async () => {
+    // Equal *outcome* is not enough: the Sensor reacts to mutation records,
+    // not to net state. `style.textContent =` replaces the sheet's child
+    // text node and `setAttribute` re-queues a record even for an identical
+    // value, so a byte-identical re-realize used to look — to the observer
+    // watching childList over the whole documentElement subtree — exactly
+    // like the vendor changing the page, which scheduled the next round,
+    // which re-realized, forever.
+    const div = document.createElement("div")
+    document.body.appendChild(div)
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    const elementsByKey = new Map([[key, [div]]])
+    const actions: ReadonlyArray<FilterAction> = [
+      { kind: "activate-theme", swatchId: "default" },
+      { kind: "tag-surface", key, role: "surface" },
+      { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
+    ]
+
+    realize(actions, elementsByKey)
+
+    const records: Array<MutationRecord> = []
+    const observer = new MutationObserver((batch) => records.push(...batch))
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    })
+
+    realize(actions, elementsByKey)
+    await Promise.resolve()
+
+    expect(records).toEqual([])
+    observer.disconnect()
+
+    cleanUp()
+  })
+
+  it("marks its dynamic stylesheet [data-my-ext] so the Sensor can recognise it", () => {
+    const div = document.createElement("div")
+    document.body.appendChild(div)
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+
+    realize(
+      [
+        { kind: "activate-theme", swatchId: "default" },
+        { kind: "tag-surface", key, role: "surface" },
+        { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
+      ],
+      new Map([[key, [div]]])
+    )
+
+    expect(
+      document.getElementById(DYNAMIC_STYLE_ID)?.hasAttribute("data-my-ext")
+    ).toBe(true)
+    expect(document.getElementById(STYLE_ID)?.hasAttribute("data-my-ext")).toBe(
+      true
+    )
+
+    cleanUp()
+  })
 })
 
 describe("realize — restore-native", () => {

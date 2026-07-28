@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  Self-feedback fixture (#831).
+
+  A plainly light page that carries the surfaces buildDarkThemeCSS() recolors
+  *without* tagging them — input, textarea, select, pre, code, th, dialog. The
+  Actuator only ever writes data-sw-patched on surfaces decide() named, so
+  these carriers are invisible to the Sensor's [data-sw-patched] skip: after
+  activation their computed background is the extension's own swatch, and a
+  scan that reads it folds our output back into an append-only hypothesis as
+  if it were fresh vendor evidence. Enough of that and pageAlreadyDark()'s
+  mean crosses the threshold, decide() emits restore-native, and the theme
+  strips itself off a page whose vendor colors never changed — the reported
+  "another loop runs and reveals the white bg".
+
+  The one delayed mutation at the bottom is the trigger: a single reactive
+  round is all it takes. Everything after that must be quiescent — no timer,
+  no polling, no further extension writes — which is the other half of what
+  this fixture is here to make observable.
+
+  The colors here are deliberately lopsided in the direction real pages lean:
+  exactly ONE distinct vendor background (white) against several surfaces the
+  static layer paints from distinct swatch tokens (--sw-bg-2 for pre/th,
+  --sw-bg-3 for code, --sw-surface for dialog). Ĥ is keyed by color, so a
+  post-activation scan turns that into one light key against three dark ones
+  — mean ≈ 0.25, under theme-adapter.ts's 0.4 threshold — and the page
+  concludes it was dark all along. A scan that reads vendor truth instead
+  sees one light key and no dark ones at all.
+
+  Expected outcome: data-sw-theme-applied="dark" and data-sw-dark on <html>,
+  both still true seconds later, with zero extension-authored DOM churn in
+  between.
+-->
+<html class="vendor-root" style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Self-feedback Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Self-feedback Page Fixture</h1>
+      <p style="background-color: rgb(255, 255, 255)">
+        White page. The dark theme should apply — and stay applied.
+      </p>
+
+      <!-- Static-layer recolor targets, all with transparent vendor
+           backgrounds: they contribute no evidence at all until the theme
+           paints them, and are never tagged data-sw-patched because decide()
+           never named their (nonexistent) vendor key. -->
+      <pre id="block">preformatted</pre>
+      <code id="inline">inline code</code>
+      <table>
+        <thead>
+          <tr>
+            <th id="head-cell">Header</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td id="body-cell">Cell</td>
+          </tr>
+        </tbody>
+      </table>
+      <dialog id="sheet">dialog surface</dialog>
+
+      <div id="churn" style="background-color: rgb(255, 255, 255)">
+        vendor subtree
+      </div>
+    </main>
+
+    <script>
+      // One vendor mutation, well after classification settles, so exactly one
+      // reactive round runs. A page that keeps mutating would make continuous
+      // rescans legitimate and hide the loop this fixture exists to expose.
+      setTimeout(function () {
+        document.getElementById("churn").classList.add("vendor-churned")
+      }, 400)
+    </script>
+  </body>
+</html>

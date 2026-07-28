@@ -45,6 +45,26 @@ describe("enablePrepaint", () => {
     expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
   })
 
+  it("writes nothing at all when the veil is already up (#831)", async () => {
+    enablePrepaint()
+    document.documentElement.classList.add("vendor-a")
+    const records: Array<MutationRecord> = []
+    const observer = new MutationObserver((batch) => records.push(...batch))
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+      childList: true,
+      subtree: true,
+    })
+
+    enablePrepaint()
+    await Promise.resolve()
+
+    expect(records).toEqual([])
+    observer.disconnect()
+    document.documentElement.classList.remove("vendor-a")
+  })
+
   it("sw-dirty is added even when a veil element already exists", () => {
     document.documentElement.classList.remove("sw-dirty")
     enablePrepaint() // creates veil
@@ -84,6 +104,33 @@ describe("disablePrepaint", () => {
     disablePrepaint()
     expect(document.documentElement.classList.contains("sw-dirty")).toBe(false)
   })
+
+  it("writes nothing at all when the veil is already down (#831)", async () => {
+    // `classList.remove` of an *absent* token still re-serializes and re-sets
+    // the class attribute whenever the element has one — which every real
+    // page's <html> does — and a same-value setAttribute still queues a
+    // MutationRecord. The pipeline watches `class`, so an unguarded no-op
+    // here is a phantom "the page changed" signal; because content.ts calls
+    // commitVisualState() -> disablePrepaint() on every fire, that signal
+    // schedules the next fire, which sends it again. "No veil to remove"
+    // must therefore mean "no DOM writes", not just "no visible change".
+    document.documentElement.className = "vendor-a vendor-b"
+    const records: Array<MutationRecord> = []
+    const observer = new MutationObserver((batch) => records.push(...batch))
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+      childList: true,
+      subtree: true,
+    })
+
+    disablePrepaint()
+    await Promise.resolve()
+
+    expect(records).toEqual([])
+    observer.disconnect()
+    document.documentElement.className = ""
+  })
 })
 
 describe("commitVisualState", () => {
@@ -93,6 +140,22 @@ describe("commitVisualState", () => {
     // vitest.setup.ts stubs rAF to execute synchronously,
     // so both nested rAFs fire immediately.
     expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("schedules nothing when the veil is already down (#831)", () => {
+    // Called on every pipeline fire, not just the first. Once there is no
+    // veil left to commit, the rAF pair and the fallback timer would only
+    // queue work whose sole effect is another disablePrepaint().
+    const rafSpy = vi.spyOn(globalThis, "requestAnimationFrame")
+    try {
+      expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+
+      commitVisualState()
+
+      expect(rafSpy).not.toHaveBeenCalled()
+    } finally {
+      rafSpy.mockRestore()
+    }
   })
 
   it("removes the veil via the timer fallback when rAF never fires", () => {
