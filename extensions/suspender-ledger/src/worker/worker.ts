@@ -5,8 +5,17 @@
 // Ported from auto-tab-discard v3/worker/core.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
+import { isDebugToWorkerMessage } from "@suspender/types/messages"
+
 import { discard } from "./core/discard"
 import { isMoveCommand, navigate } from "./core/navigate"
+import {
+  count,
+  exportDiagnostics,
+  hydrateObservability,
+  obs,
+  record,
+} from "./core/observability"
 import { prefs, storage } from "./core/prefs"
 import { starters } from "./core/startup"
 import { log, query } from "./core/utils"
@@ -55,6 +64,22 @@ chrome.runtime.onMessageExternal.addListener((request, _sender, response) => {
 chrome.runtime.onMessage.addListener((request, sender, response) => {
   log("onMessage request received", request)
   const { method } = request
+  if (isDebugToWorkerMessage(request)) {
+    // The diagnostics page asks the live worker rather than reading the last
+    // flushed bundle out of storage — see DebugToWorkerMessage.
+    if (request.cmd === "clear") {
+      void obs.clear().then(() => response({ ok: true }))
+      return true
+    }
+    void exportDiagnostics().then(
+      (bundle) => response(bundle),
+      (error: unknown) =>
+        response({
+          error: error instanceof Error ? error.message : String(error),
+        })
+    )
+    return true
+  }
   if (method === "discard.on.load") {
     // for links discarded after the initial load
     if (sender.tab) {
@@ -70,6 +95,19 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
     return true
   }
   return undefined
+})
+
+// Flight recorder: rehydrate before anything else records, so counters span
+// the extension's whole life rather than this worker generation's. The
+// `worker.start` count is itself diagnostic — an implausibly high rate is the
+// signature of an event page being churned.
+starters.push(() => {
+  void hydrateObservability().then(() => {
+    count("worker_starts")
+    record("worker.start", chrome.runtime.getManifest().version, {
+      startedAt: Date.now(),
+    })
+  })
 })
 
 // left-click action: show the popup when configured, otherwise fall back to the

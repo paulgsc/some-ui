@@ -78,6 +78,37 @@ export type PopupToWorkerMessage =
     }
 
 /**
+ * What the diagnostics page (`debug.html`) can ask the worker for.
+ *
+ * The page could read the recorder's persisted bundle out of `storage.local`
+ * directly, but it asks the worker instead: the worker holds the *live*
+ * in-memory ring buffer, which is by definition fresher than the last debounced
+ * flush, and only the worker can evaluate invariants that need `tabs.query`.
+ * Sending a message also wakes a recycled event page, so the page never reports
+ * on a worker that is merely asleep.
+ */
+export type ObservabilityCommand = "export" | "clear"
+
+export type DebugToWorkerMessage = {
+  method: "observability"
+  cmd: ObservabilityCommand
+}
+
+/** Narrowing guard for the debug-page protocol. */
+export function isDebugToWorkerMessage(
+  value: unknown
+): value is DebugToWorkerMessage {
+  if (value === null || typeof value !== "object" || !("method" in value)) {
+    return false
+  }
+  if (value.method !== "observability") {
+    return false
+  }
+  const cmd: unknown = Reflect.get(value, "cmd")
+  return cmd === "export" || cmd === "clear"
+}
+
+/**
  * The worker's reply to a {@link PopupToWorkerMessage} `storage` read: the
  * merged `local` + `session` preference snapshot. Keys are untyped at the wire
  * boundary; callers narrow against the `Prefs` schema before use.
