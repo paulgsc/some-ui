@@ -66,6 +66,24 @@ export type SurfaceAttr = {
   readonly color: RGBA
   readonly luminance: number
   readonly opacity: number
+  /**
+   * The element's own, non-inherited text color — set only when it differs
+   * from its parent's computed `color` (an explicit vendor declaration, not
+   * ambient inheritance). `undefined`/`null` when there is nothing of the
+   * carrier's own to re-target. A `surface`-classified element's inline
+   * text was authored for its *original* (light) background and is
+   * otherwise left untouched when that background gets darkened — #741's
+   * "it darkens text so that it's not visible at all".
+   */
+  readonly text?: RGBA | null
+  /**
+   * True when this key's `color`/`luminance` are an *assumed* stand-in
+   * (not a real `background-color`) for a light `background-image`
+   * gradient the sampler found no other way to evidence — #741's "white
+   * gradients leak". The actuator suppresses the image itself for these
+   * keys, since there is no real color to recolor.
+   */
+  readonly imageOnly?: boolean
 }
 
 /**
@@ -94,6 +112,10 @@ export type EmitSurfaceColorAction = {
   readonly kind: "emit-surface-color"
   readonly key: SurfaceKey
   readonly css: string
+  /** Hue-preserving-lightened override for the carrier's own text color (`SurfaceAttr.text`), when it has one. */
+  readonly textCss?: string
+  /** Suppresses `background-image` on the carrier — set when this key's evidence came from `SurfaceAttr.imageOnly`, so there is no real background color underneath the emitted `css` to show through otherwise. */
+  readonly suppressImage?: boolean
 }
 
 /**

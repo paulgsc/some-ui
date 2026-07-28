@@ -10,7 +10,11 @@
  * element's computed background via `color.ts` — the one place in this
  * story that still calls `getComputedStyle` (Axiom D.1 scopes the DOM-free
  * requirement to `decide`, not to sensing). A `MutationObserver` with the
- * same `attributeFilter: ["class", "style"]` as before re-triggers it.
+ * same `attributeFilter: ["class", "style"]` as before re-triggers it,
+ * filtered by `isSelfAuthored` so the Actuator's own writes are never
+ * mistaken for vendor evidence (Axiom 3.5), and every scan runs under
+ * `withVendorColorsVisible` so what it reads is the vendor's page and not
+ * the theme this pipeline painted on it.
  *
  * Estimator: one `update()` per *distinct* observed key per scan (Ĥ is
  * keyed by color, not by element — S1) using transport's own
@@ -22,11 +26,17 @@
  * Scheduler: `RECONCILE_POLICY`/`BOUNDED_DELIVERY_MS` are Definition 7.2's
  * `R`, declared once here (§8.3's conformance requirement) — a burst of N
  * mutations inside the debounce window coalesces into exactly one
- * `decide`/`realize` cycle.
+ * sense/`decide`/`realize` cycle, sensing included.
  */
 
-import { parseColor, relativeLuminance } from "@filter/lib/content/color"
+import {
+  parseColor,
+  relativeLuminance,
+  type RGBA,
+} from "@filter/lib/content/color"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
+import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
+import { DARK_THEME_STYLE_ID } from "@filter/lib/content/theme-apply"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import {
@@ -41,7 +51,7 @@ import {
 } from "@some-extension/transport/scheduler/reconcile"
 import type { SessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
-import { realize } from "./actuator"
+import { DYNAMIC_STYLE_ID, realize } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -94,20 +104,216 @@ function shouldSkip(el: Element): boolean {
   return false
 }
 
+// Only recognized gradient functions — real `url(...)` photographic
+// background-images are out of scope (#741 is specifically about gradients;
+// there is no reliable way to assume a color for an arbitrary photo, and
+// forcibly stripping one would be a much bigger, untested visual change).
+const GRADIENT_RE = /(?:repeating-)?(?:linear|radial|conic)-gradient\(/i
+
+/** Luminance 1 (pure white) — the same "unknown == probably light" bias `theme-detector.ts` already documents, applied here to a surface whose real color a `background-image` gradient hides from every sampler in this file. */
+const ASSUMED_LIGHT_IMAGE: SurfaceAttr["color"] = [1, 1, 1, 1]
+
+/**
+ * The element's own, non-inherited text color, or null when it has none of
+ * its own (its computed `color` just matches its parent's — plain
+ * inheritance, nothing for a surface-role recolor to re-target). `color` is
+ * an inherited CSS property, so — unlike `background-color` — a matching
+ * value doesn't mean "unset here," it means "not overridden here."
+ */
+function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
+  const parent = el.parentElement
+  if (parent === null) return null
+  const inherited = getComputedStyle(parent).color
+  if (style.color === inherited) return null
+  return parseColor(style.color)
+}
+
 function readAttr(el: Element): SurfaceAttr | null {
-  const bg = getComputedStyle(el).backgroundColor
-  const c = parseColor(bg)
-  if (c === null) return null
-  return {
-    color: c,
-    luminance: relativeLuminance(c[0], c[1], c[2]),
-    opacity: c[3],
+  const style = getComputedStyle(el)
+  const c = parseColor(style.backgroundColor)
+
+  if (c !== null) {
+    return {
+      color: c,
+      luminance: relativeLuminance(c[0], c[1], c[2]),
+      opacity: c[3],
+      text: ownTextColor(el, style),
+    }
   }
+
+  // No explicit background-color, but a light gradient background-image is
+  // just as capable of leaking a bright surface onto an otherwise-dark page
+  // (#741) and is invisible to every other check here — treat it as
+  // assumed-light evidence so it gets themed like any other surface.
+  if (GRADIENT_RE.test(style.backgroundImage)) {
+    return {
+      color: ASSUMED_LIGHT_IMAGE,
+      luminance: 1,
+      opacity: 1,
+      text: ownTextColor(el, style),
+      imageOnly: true,
+    }
+  }
+
+  return null
+}
+
+// ── Vendor truth (Axiom 3.5, read side) ──────────────────────────────────────
+
+/** The two sheets that carry *our* colors; everything else in the page is vendor. */
+const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
+  DARK_THEME_STYLE_ID,
+  DYNAMIC_STYLE_ID,
+]
+
+/**
+ * Runs `fn` with this extension's own color sheets disabled, so every
+ * `getComputedStyle` inside it reads the *vendor's* background rather than
+ * the theme we painted over it.
+ *
+ * `shouldSkip`'s `[data-sw-patched]` exclusion covers only the surfaces the
+ * Actuator tagged. The static layer (`buildDarkThemeCSS`) recolors far more
+ * than that — `html`/`body`, `th`, `pre`, `code`, `input`, `textarea`,
+ * `select`, `dialog` — with `!important` rules keyed on element type, and
+ * none of those carriers are tagged. Their post-activation computed
+ * background is our swatch, and the hypothesis is append-only, so every
+ * reactive rescan folded more of our own dark output back in as if it were
+ * fresh vendor evidence until `pageAlreadyDark()`'s mean crossed the
+ * threshold and `decide()` emitted `restore-native` — the theme undoing
+ * itself with no vendor change involved (#831, symptom 2).
+ *
+ * Disabling via `CSSStyleSheet.disabled` rather than detaching the elements
+ * is what makes this safe to do on the hot path: it mutates no DOM (so it
+ * queues no MutationRecord to react to) and, because the whole scan is one
+ * synchronous task, no frame is ever painted with the theme off.
+ */
+export function withVendorColorsVisible<T>(fn: () => T): T {
+  const suppressed: Array<CSSStyleSheet> = []
+
+  for (const id of OWN_COLOR_SHEET_IDS) {
+    const el = document.getElementById(id)
+    const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+    if (sheet !== null && !sheet.disabled) {
+      sheet.disabled = true
+      suppressed.push(sheet)
+    }
+  }
+
+  try {
+    return fn()
+  } finally {
+    for (const sheet of suppressed) {
+      sheet.disabled = false
+    }
+  }
+}
+
+// ── Self-authored mutations (Axiom 3.5, write side) ──────────────────────────
+
+function isExtensionAuthored(node: Node): boolean {
+  const el = node instanceof Element ? node : node.parentElement
+  if (el === null) return false
+  return el.hasAttribute("data-my-ext") || el.closest("[data-my-ext]") !== null
+}
+
+/**
+ * The prepaint veil's ownership signal is the one extension write that
+ * lands on a *vendor* node (`sw-dirty` on `<html>`), so it cannot be
+ * recognised by target — only by what changed. Compares the record's
+ * `oldValue` against the live class list and reports whether the veil class
+ * is the *only* difference.
+ */
+function isDirtyClassToggle(record: MutationRecord): boolean {
+  if (record.attributeName !== "class") return false
+  if (record.target !== document.documentElement) return false
+
+  const before = new Set(
+    (record.oldValue ?? "").split(/\s+/).filter((token) => token.length > 0)
+  )
+  const after = new Set(document.documentElement.classList)
+
+  before.delete(PREPAINT_DIRTY_CLASS)
+  after.delete(PREPAINT_DIRTY_CLASS)
+
+  if (before.size !== after.size) return false
+  for (const token of before) {
+    if (!after.has(token)) return false
+  }
+  return true
+}
+
+/**
+ * Axiom 3.5 (Actuator re-entrance): true when this record is our own
+ * actuation echoing back, not vendor evidence. Defense in depth alongside
+ * the write guards in `actuator.ts`/`prepaint.ts` — those keep an unchanged
+ * round from emitting records at all; this keeps the records a *changed*
+ * round legitimately emits from being mistaken for a reason to run again.
+ */
+export function isSelfAuthored(record: MutationRecord): boolean {
+  if (isExtensionAuthored(record.target)) return true
+
+  if (record.type === "childList") {
+    // Removal of an extension-owned node is deliberately *not* treated as
+    // self-authored, even though this module is one of the things that
+    // removes them. Remark 7.2's whole point is that "our node is gone" is
+    // ambiguous between "we took it down" and "the vendor did" — and the
+    // second case is the one that must be repaired, so the ambiguity has to
+    // resolve toward reacting. Reacting to our own teardown costs exactly
+    // one extra round and cannot loop: the round that follows re-derives
+    // the same verdict and, finding nothing left to remove, writes nothing.
+    if (record.removedNodes.length > 0) return false
+
+    const added = [...record.addedNodes]
+    return added.length > 0 && added.every(isExtensionAuthored)
+  }
+
+  return isDirtyClassToggle(record)
 }
 
 export type ScanResult = {
   readonly elementsByKey: ReadonlyMap<SurfaceKey, ReadonlyArray<Element>>
   readonly attrsByKey: ReadonlyMap<SurfaceKey, SurfaceAttr>
+}
+
+/**
+ * The dedup key for a scanned element's evidence. Normally just its
+ * canonical background color (S1's original design — "one hypothesis per
+ * observed background"). Two refinements fold additional attributes into
+ * the key, both guarding the same failure mode: `elementsByKey`/`attrsByKey`
+ * only ever record the *first* element seen for a given key (`scan()`
+ * below) — every later element sharing that key is tagged identically but
+ * never gets to contribute its own evidence.
+ *
+ *   - Own text color: an element sharing a light ancestor's exact
+ *     background (`<main style="background-color: white">` wrapping
+ *     `<div id="card" style="background-color: white; color: #141414">` is
+ *     an ordinary vendor pattern, not a contrived one) collapses onto
+ *     whichever of the two `scan()`'s TreeWalker visits *first* — always
+ *     the ancestor, which has no `color` of its own — permanently
+ *     discarding the descendant's own text color from the hypothesis
+ *     (#741's "it darkens text so that it's not visible at all": the
+ *     per-surface foreground fix in `theme-adapter.ts`'s `decide()` never
+ *     even sees the evidence needed to apply it).
+ *   - `imageOnly`: an assumed-light gradient carrier can coincidentally
+ *     share its assumed color's canonical string with a real, same-colored
+ *     `background-color` elsewhere on the page (#741's "white gradients
+ *     leak" fixture is exactly this — a white `<main>` ancestor, and a
+ *     transparent-bg `<div>` whose only color evidence is a white
+ *     gradient) — without a distinct key, the real background-color
+ *     element's (correct, non-suppressing) attr wins and the gradient
+ *     carrier's own `background-image` is never actually suppressed.
+ *
+ * Both refinements give same-bg-but-differently-evidenced carriers distinct
+ * keys, each with its own tag and dynamic rule, instead of silently sharing
+ * whichever arrived first.
+ */
+function surfaceKeyFor(attr: SurfaceAttr): SurfaceKey {
+  const bgKey =
+    attr.imageOnly === true
+      ? `image:${rgbaToCss(attr.color)}`
+      : rgbaToCss(attr.color)
+  if (attr.text === undefined || attr.text === null) return bgKey
+  return `${bgKey}|text:${rgbaToCss(attr.text)}`
 }
 
 /** Walks `root`'s descendants (never `root` itself — matches `patchAll`'s old scope; `root`'s own canvas is the static layer's job). */
@@ -122,7 +328,7 @@ export function scan(root: Element): ScanResult {
     if (node instanceof HTMLElement && !shouldSkip(node)) {
       const attr = readAttr(node)
       if (attr !== null) {
-        const key = rgbaToCss(attr.color)
+        const key = surfaceKeyFor(attr)
         const list = elementsByKey.get(key)
         if (list !== undefined) {
           list.push(node)
@@ -158,10 +364,31 @@ export function createContentSession(
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
   let lastScan: ScanResult = { elementsByKey: new Map(), attrsByKey: new Map() }
   let observer: MutationObserver | null = null
+  let evidenceEpoch = session.epoch
+
+  /**
+   * Theorem D.1(a): a content reset means the page under us was replaced.
+   * `update()`'s epoch dominance already keeps stale evidence from *winning*
+   * a key that recurs, but Ĥ never forgets a key outright, so keys the new
+   * page does not carry at all would otherwise keep voting in
+   * `pageAlreadyDark()`'s mean forever — the previous route's colors
+   * deciding the current route's verdict.
+   */
+  function dropStaleEvidence(): void {
+    for (const key of [...hypothesis.keys()]) {
+      hypothesis.delete(key)
+    }
+    provenance.clear()
+  }
 
   function ingest(root: Element): void {
     try {
-      lastScan = scan(root)
+      if (session.epoch !== evidenceEpoch) {
+        evidenceEpoch = session.epoch
+        dropStaleEvidence()
+      }
+
+      lastScan = withVendorColorsVisible(() => scan(root))
       const timestamp = Date.now()
       for (const [key, attrs] of lastScan.attrsByKey) {
         update(hypothesis, provenance, {
@@ -203,7 +430,23 @@ export function createContentSession(
     onFire?.(actions)
   }
 
-  const coalescer: Coalescer = createCoalescer(RECONCILE_POLICY, fire)
+  /** One full round: sense, then decide/realize on what was sensed. */
+  function cycle(root: Element): void {
+    ingest(root)
+    fire()
+  }
+
+  // The coalesced round senses *inside* the debounce window, not before it.
+  // Scanning per raw mutation batch (as this used to) made the Sensor's cost
+  // scale with the vendor's churn rate rather than with the reconcile
+  // policy: a page mutating steadily paid a full O(nodes) tree walk plus a
+  // getComputedStyle per node for every batch, and threw away all but the
+  // last result when the single coalesced fire finally ran (#831, symptom
+  // 3). Definition 7.2's whole point is that a burst of N mutations costs
+  // one round — sensing included.
+  const coalescer: Coalescer = createCoalescer(RECONCILE_POLICY, () => {
+    cycle(document.body)
+  })
 
   return {
     rescan(root: Element = document.body): void {
@@ -216,8 +459,7 @@ export function createContentSession(
       // The coalescer is reserved for the one path Definition 7.2 actually
       // governs: the observer callback below, where a burst of N raw
       // mutations must still settle as exactly one decide/realize round.
-      ingest(root)
-      fire()
+      cycle(root)
     },
     observe(): void {
       if (observer !== null) return
@@ -235,11 +477,14 @@ export function createContentSession(
       // swap, `document.body` the getter already points at the new one.
       observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-          if (mutation.type === "childList" || mutation.type === "attributes") {
-            ingest(document.body)
-            coalescer.trigger()
-            return
-          }
+          // Axiom 3.5: our own actuation is not evidence. Without this,
+          // realizing a verdict (injecting the theme sheet, lifting the
+          // veil) is itself a mutation that schedules the next round, which
+          // realizes the same verdict again — a closed loop that never
+          // quiesces and never involves the vendor at all (#831).
+          if (isSelfAuthored(mutation)) continue
+          coalescer.trigger()
+          return
         }
       })
       observer.observe(document.documentElement, {
@@ -247,6 +492,10 @@ export function createContentSession(
         subtree: true,
         attributes: true,
         attributeFilter: ["class", "style"],
+        // Required by isSelfAuthored's `sw-dirty` check — the veil's
+        // ownership signal is only distinguishable from a vendor class
+        // change by diffing against the previous value.
+        attributeOldValue: true,
       })
     },
     teardown(): void {

@@ -16,17 +16,27 @@
  * 7.3.1 requires is already discharged the way canon §9.2 already
  * describes for this extension — `[data-my-ext]` marks extension-owned
  * subtrees (checked by the Sensor before an element is ever read, in
- * `pipeline.ts`), and the Sensor's `MutationObserver` watches only
- * `attributeFilter: ["class", "style"]`, so writing `data-sw-patched`,
- * `data-sw-dark`, or the `<style>` elements' `textContent` can never
- * itself re-trigger ingestion. Adding transport's generic ownership
- * attributes on top would tag thousands of ordinary vendor elements with
- * extension bookkeeping for no additional loop-suppression benefit.
+ * `pipeline.ts`). Adding transport's generic ownership attributes on top
+ * would tag thousands of ordinary vendor elements with extension
+ * bookkeeping for no additional loop-suppression benefit.
+ *
+ * The `attributeFilter: ["class", "style"]` on the Sensor's observer is
+ * *not*, on its own, the reason our writes cannot re-trigger ingestion —
+ * this module's doc used to claim it was, and that claim cost #831. The
+ * filter constrains only the `attributes` records; the observer is also
+ * subscribed to `childList` over the whole `documentElement` subtree, and
+ * injecting a `<style>` into `<head>` (or reassigning its `textContent`,
+ * which replaces its child text node) is exactly such a mutation. Two
+ * things close that hole, both required: every stylesheet this extension
+ * inserts carries `[data-my-ext]` so the Sensor can *recognise* the record
+ * as its own (`pipeline.ts`'s `isSelfAuthored`), and every write below is
+ * guarded so an unchanged round emits no record to recognise.
  *
  * Idempotence (Theorem 7.2): every `realize` call rebuilds the dynamic
  * stylesheet's *entire* content from the current action list (not an
- * incremental append), so re-running the same actions twice is a no-op
- * `style.textContent` assignment. Per-surface tagging never explicitly
+ * incremental append), and assigns it only when the rebuilt text actually
+ * differs, so re-running the same actions twice is not merely a no-op in
+ * *effect* but a no-op in *DOM writes*. Per-surface tagging never explicitly
  * clears a stale attribute when an element's classification changes away
  * from "surface"/"preserve" — this matches the pre-S5 patcher's own
  * behavior exactly (`patchElement` never cleared either), not a new gap.
@@ -43,13 +53,16 @@ import {
 import type { FilterAction, SurfaceKey } from "./contracts"
 import { getSwatch } from "./swatches"
 
-const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
+export const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
 
 function dynamicStyleEl(): HTMLStyleElement {
   const existing = document.getElementById(DYNAMIC_STYLE_ID)
   if (existing instanceof HTMLStyleElement) return existing
   const style = document.createElement("style")
   style.id = DYNAMIC_STYLE_ID
+  // Marks this sheet extension-owned for both EXT_GUARD and the Sensor's
+  // self-authored-mutation filter — see theme-apply.ts's createExtensionStyle.
+  style.setAttribute("data-my-ext", "")
   document.head.appendChild(style)
   return style
 }
@@ -86,7 +99,13 @@ export function realize(
       action.kind === "activate-theme"
   )
   if (activate !== undefined) {
-    document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+    // `setAttribute` re-queues a mutation record even when the value is
+    // unchanged (unlike `removeAttribute`, which no-ops on an absent
+    // attribute) — write only on a real transition, so a re-fire of an
+    // unchanged verdict touches nothing at all (#831).
+    if (!document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+    }
     injectDarkTheme(getSwatch(activate.swatchId))
   } else {
     document.documentElement.removeAttribute(DARK_THEME_ATTR)
@@ -97,21 +116,41 @@ export function realize(
     if (action.kind !== "tag-surface") continue
     const value = action.role === "preserve" ? "preserve" : action.key
     for (const el of elementsByKey.get(action.key) ?? []) {
-      if (el instanceof HTMLElement) {
+      if (el instanceof HTMLElement && el.dataset.swPatched !== value) {
         el.dataset.swPatched = value
       }
     }
   }
 
   const colorRules = actions
-    .filter((action) => action.kind === "emit-surface-color")
-    .map(
-      (action) =>
-        `[data-sw-patched="${action.key}"]${EXT_GUARD}{background-color:${action.css}!important}`
+    .filter(
+      (
+        action
+      ): action is Extract<FilterAction, { kind: "emit-surface-color" }> =>
+        action.kind === "emit-surface-color"
     )
+    .map((action) => {
+      const declarations = [`background-color:${action.css}!important`]
+      if (action.textCss !== undefined) {
+        declarations.push(`color:${action.textCss}!important`)
+      }
+      if (action.suppressImage === true) {
+        declarations.push("background-image:none!important")
+      }
+      return `[data-sw-patched="${action.key}"]${EXT_GUARD}{${declarations.join(";")}}`
+    })
 
   if (colorRules.length > 0) {
-    dynamicStyleEl().textContent = colorRules.join("\n")
+    const css = colorRules.join("\n")
+    const style = dynamicStyleEl()
+    // Same reason as the attribute guard above, one level up: `textContent =`
+    // replaces the element's child text node unconditionally, so re-emitting
+    // byte-identical CSS is still a childList mutation the Sensor sees. That
+    // is what turned "rebuild the whole sheet every round" (this module's
+    // idempotence strategy) into a self-sustaining rescan loop (#831).
+    if (style.textContent !== css) {
+      style.textContent = css
+    }
   } else {
     document.getElementById(DYNAMIC_STYLE_ID)?.remove()
   }

@@ -18,12 +18,34 @@
  * Tier 3 samples `body > *` directly (vendor DOM is not wrapped). Extension-owned
  * nodes are excluded via the [data-my-ext] attribute filter.
  *
+ * Filter-aware sampling (#741): every sampled color is a *declared* value —
+ * getComputedStyle never reflects a `filter` an ancestor (typically <html>)
+ * has applied, so a page wrapped in its own `filter: invert(...)` (a real
+ * vendor accessibility toggle, or this extension's own legacy style) reads
+ * exactly backwards to a human/screenshot versus what raw backgroundColor
+ * says. `vendor-filter.ts`'s `detectVendorInvert()` reads the net invert
+ * amount once per call and every tier composites its raw samples through it
+ * before computing luminance, so the verdict tracks what is actually
+ * rendered, not just what was declared.
+ *
  * NOTE: the `isLight` framing is retained from the classify-then-apply era. The
  * always-apply / already-dark reframe is tracked in #236; this module's split
  * (#233) is structural only and preserves the existing decision semantics.
  */
 
-import { effectiveBgLuminance, parseColor, relativeLuminance } from "./color"
+import {
+  effectiveBgColor,
+  parseColor,
+  relativeLuminance,
+  type RGBA,
+} from "./color"
+import { applyInvertToColor, detectVendorInvert } from "./vendor-filter"
+
+/** Luminance of `color` as it actually renders once composited through a still-active ancestor `invert(amount)` filter. */
+function renderedLuminance(color: RGBA, invertAmount: number): number {
+  const [r, g, b] = applyInvertToColor(color, invertAmount)
+  return relativeLuminance(r, g, b)
+}
 
 function viewportCoverage(el: Element): number {
   const rect = el.getBoundingClientRect()
@@ -52,6 +74,7 @@ export type ClassificationResult = {
  */
 export function classifyPage(threshold = 0.4): ClassificationResult {
   const samples: Array<{ lum: number; weight: number }> = []
+  const invertAmount = detectVendorInvert()
 
   // Tier 1: html and body
   const root = document.documentElement
@@ -63,7 +86,7 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
     if (el == null) continue
     const bg = getComputedStyle(el).backgroundColor
     const c = parseColor(bg)
-    if (c) samples.push({ lum: relativeLuminance(c[0], c[1], c[2]), weight: 2 })
+    if (c) samples.push({ lum: renderedLuminance(c, invertAmount), weight: 2 })
   }
 
   // Tier 2: semantic containers
@@ -84,8 +107,9 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
     const el = document.querySelector(sel)
     if (!el) continue
     if (el.hasAttribute("data-my-ext") || el.closest("[data-my-ext]")) continue
-    const lum = effectiveBgLuminance(el)
-    if (lum !== null) samples.push({ lum, weight: 1.5 })
+    const c = effectiveBgColor(el)
+    if (c !== null)
+      samples.push({ lum: renderedLuminance(c, invertAmount), weight: 1.5 })
   }
 
   // Tier 3: largest visible containers by viewport coverage.
@@ -112,7 +136,7 @@ export function classifyPage(threshold = 0.4): ClassificationResult {
     const c = parseColor(bg)
     if (c)
       samples.push({
-        lum: relativeLuminance(c[0], c[1], c[2]),
+        lum: renderedLuminance(c, invertAmount),
         weight: coverage,
       })
   }

@@ -30,6 +30,7 @@
 
 import {
   modifyBackgroundColor,
+  modifyForegroundColor,
   rgbaToCss,
 } from "@filter/lib/content/modify-colors"
 import type { Hypothesis } from "@some-extension/transport/contracts/hypothesis"
@@ -123,6 +124,22 @@ export function decide(
         kind: "emit-surface-color",
         key,
         css: rgbaToCss(modifyBackgroundColor(attr.color)),
+        // The carrier's own inline text color (if it has one) was authored
+        // for its *original* light background and is otherwise left
+        // untouched by darkening that background out from under it — #741
+        // ("it darkens text so that it's not visible at all"). Lifted
+        // through the same hue-preserving band the swatch registry's own
+        // text tokens use, never a raw #fff (Φ_comfort's "text is never the
+        // brightest thing on screen" — the "bright white text" failure mode
+        // is exactly as unacceptable here as the unthemed-bright-bg one).
+        ...(attr.text !== undefined && attr.text !== null
+          ? { textCss: rgbaToCss(modifyForegroundColor(attr.text)) }
+          : {}),
+        // imageOnly evidence (a light background-image gradient, #741 "white
+        // gradients leak") has no real background-color underneath the
+        // emitted css above — the image itself must go, or it keeps
+        // rendering exactly as authored on top of it.
+        ...(attr.imageOnly === true ? { suppressImage: true } : {}),
       })
       continue
     }

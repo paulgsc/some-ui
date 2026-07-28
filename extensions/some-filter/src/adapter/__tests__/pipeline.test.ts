@@ -2,7 +2,12 @@ import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
 import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { createContentSession, scan } from "../pipeline"
+import {
+  createContentSession,
+  isSelfAuthored,
+  scan,
+  withVendorColorsVisible,
+} from "../pipeline"
 import { SWATCHES } from "../swatches"
 
 const STYLE_ID = "__sw_dark_theme"
@@ -273,5 +278,338 @@ describe("createContentSession — observer survives body replacement", () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe("createContentSession — Axiom 3.5: actuation is not evidence (#831)", () => {
+  it("quiesces after a settled round instead of re-triggering itself forever", async () => {
+    // The reported symptom: a steadily incrementing log line on a page that
+    // is not changing. Realizing a verdict writes to the DOM (the theme
+    // stylesheet into <head>, the dynamic sheet's text, the veil's ownership
+    // class), the observer sees those writes, schedules another round, and
+    // that round realizes the same verdict again — a closed loop with no
+    // vendor mutation anywhere in it. Once settled, an untouched page must
+    // cost exactly zero further cycles.
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML =
+        '<div id="a" style="background-color: rgb(255, 255, 255)"></div>' +
+        '<div id="b" style="background-color: rgb(240, 240, 240)"></div>'
+      const session = createSessionLifecycle()
+      let fireCount = 0
+      const contentSession = createContentSession(
+        SWATCHES.default,
+        session,
+        () => {
+          fireCount += 1
+        }
+      )
+
+      contentSession.observe()
+      contentSession.rescan()
+
+      expect(fireCount).toBe(1)
+
+      // Let the observer deliver whatever the round's own writes produced,
+      // then run the clock well past several debounce windows. Nothing in
+      // the page changed, so nothing more may fire.
+      for (let i = 0; i < 5; i++) {
+        await Promise.resolve()
+        await Promise.resolve()
+        vi.advanceTimersByTime(200)
+      }
+
+      expect(fireCount).toBe(1)
+
+      contentSession.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("ignores mutations authored by the extension itself", async () => {
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML = '<div id="a"></div>'
+      const session = createSessionLifecycle()
+      let fireCount = 0
+      const contentSession = createContentSession(
+        SWATCHES.default,
+        session,
+        () => {
+          fireCount += 1
+        }
+      )
+
+      contentSession.observe()
+
+      // An extension-owned stylesheet landing in <head> is a childList
+      // mutation under documentElement — the attributeFilter never covered
+      // it, which is how injecting the theme re-triggered the scan that
+      // injected it.
+      const own = document.createElement("style")
+      own.setAttribute("data-my-ext", "")
+      own.textContent = "body{}"
+      document.head.appendChild(own)
+
+      // The veil's ownership signal is the one extension write that lands on
+      // a vendor node, so it can only be recognised by what changed.
+      document.documentElement.classList.add("sw-dirty")
+      document.documentElement.classList.remove("sw-dirty")
+
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(200)
+
+      expect(fireCount).toBe(0)
+
+      own.remove()
+      contentSession.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("still reacts to a vendor class change on <html>", async () => {
+    // The `sw-dirty` filter must be keyed on the veil's own token, not on
+    // "class changes on <html> are boring" — vendors drive real theming off
+    // exactly that attribute.
+    vi.useFakeTimers()
+    try {
+      document.body.innerHTML = '<div id="a"></div>'
+      const session = createSessionLifecycle()
+      let fireCount = 0
+      const contentSession = createContentSession(
+        SWATCHES.default,
+        session,
+        () => {
+          fireCount += 1
+        }
+      )
+
+      contentSession.observe()
+
+      document.documentElement.classList.add("vendor-dark")
+
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(200)
+
+      expect(fireCount).toBe(1)
+
+      document.documentElement.classList.remove("vendor-dark")
+      contentSession.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("senses once per coalesced round, not once per raw mutation batch", async () => {
+    // The compute half of the report: sensing used to run on the raw
+    // mutation callback while only decide/realize was debounced, so the
+    // Sensor's cost (a full tree walk plus a getComputedStyle per node)
+    // scaled with the vendor's churn rate and all but the last result was
+    // thrown away. Definition 7.2 says a burst costs one round.
+    vi.useFakeTimers()
+    const walkSpy = vi.spyOn(document, "createTreeWalker")
+    try {
+      document.body.innerHTML = '<div id="a"></div>'
+      const session = createSessionLifecycle()
+      const contentSession = createContentSession(SWATCHES.default, session)
+
+      const target = document.getElementById("a")
+      expect(target).not.toBeNull()
+      if (target === null) return
+
+      contentSession.observe()
+      walkSpy.mockClear()
+
+      for (let i = 0; i < 10; i++) {
+        target.style.backgroundColor = `rgb(${i}, ${i}, ${i})`
+      }
+      await Promise.resolve()
+      await Promise.resolve()
+      vi.advanceTimersByTime(200)
+
+      expect(walkSpy).toHaveBeenCalledTimes(1)
+
+      contentSession.teardown()
+    } finally {
+      walkSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe("isSelfAuthored", () => {
+  function recordsFrom(
+    mutate: () => void,
+    init: MutationObserverInit
+  ): Promise<ReadonlyArray<MutationRecord>> {
+    return new Promise((resolve) => {
+      const observer = new MutationObserver((batch) => {
+        observer.disconnect()
+        resolve(batch)
+      })
+      observer.observe(document.documentElement, init)
+      mutate()
+    })
+  }
+
+  it("recognises a stylesheet this extension inserted into <head>", async () => {
+    const own = document.createElement("style")
+    own.setAttribute("data-my-ext", "")
+
+    const records = await recordsFrom(() => document.head.appendChild(own), {
+      childList: true,
+      subtree: true,
+    })
+
+    expect(records.length).toBeGreaterThan(0)
+    expect(records.every(isSelfAuthored)).toBe(true)
+    own.remove()
+  })
+
+  it("does not recognise a vendor node inserted into the page", async () => {
+    const vendor = document.createElement("div")
+
+    const records = await recordsFrom(() => document.body.appendChild(vendor), {
+      childList: true,
+      subtree: true,
+    })
+
+    expect(records.some((record) => !isSelfAuthored(record))).toBe(true)
+    vendor.remove()
+  })
+
+  it("does not recognise the removal of an extension-owned node (Remark 7.2)", async () => {
+    // "Our node is gone" is ambiguous between our own teardown and a hostile
+    // page stripping [data-my-ext] out from under us. Reading it as our own
+    // would mean never repairing the second case — the swatch-oracle's
+    // extensionDomRemoval primitive is exactly that scenario.
+    const own = document.createElement("style")
+    own.setAttribute("data-my-ext", "")
+    document.head.appendChild(own)
+
+    const records = await recordsFrom(() => own.remove(), {
+      childList: true,
+      subtree: true,
+    })
+
+    expect(records.some((record) => !isSelfAuthored(record))).toBe(true)
+  })
+
+  it("recognises the veil's sw-dirty toggle alongside unrelated vendor classes", async () => {
+    document.documentElement.className = "vendor-a vendor-b"
+
+    const records = await recordsFrom(
+      () => document.documentElement.classList.add("sw-dirty"),
+      { attributes: true, attributeFilter: ["class"], attributeOldValue: true }
+    )
+
+    expect(records.every(isSelfAuthored)).toBe(true)
+    document.documentElement.className = ""
+  })
+
+  it("does not recognise a vendor class change that happens to also carry sw-dirty", async () => {
+    document.documentElement.className = "sw-dirty"
+
+    const records = await recordsFrom(
+      () => document.documentElement.classList.add("vendor-dark"),
+      { attributes: true, attributeFilter: ["class"], attributeOldValue: true }
+    )
+
+    expect(records.some((record) => !isSelfAuthored(record))).toBe(true)
+    document.documentElement.className = ""
+  })
+})
+
+describe("withVendorColorsVisible — evidence is vendor truth, not our own output", () => {
+  function ownSheet(id: string): HTMLStyleElement {
+    const style = document.createElement("style")
+    style.id = id
+    style.setAttribute("data-my-ext", "")
+    style.textContent = "body{background-color:rgb(13,17,23)}"
+    document.head.appendChild(style)
+    return style
+  }
+
+  it("disables the extension's own color sheets for the duration of the scan", () => {
+    const stat = ownSheet(STYLE_ID)
+    const dynamic = ownSheet(DYNAMIC_STYLE_ID)
+
+    const seen = withVendorColorsVisible(() => [
+      stat.sheet?.disabled,
+      dynamic.sheet?.disabled,
+    ])
+
+    expect(seen).toEqual([true, true])
+    expect(stat.sheet?.disabled).toBe(false)
+    expect(dynamic.sheet?.disabled).toBe(false)
+
+    stat.remove()
+    dynamic.remove()
+  })
+
+  it("re-enables them even when the scan throws", () => {
+    const stat = ownSheet(STYLE_ID)
+
+    expect(() =>
+      withVendorColorsVisible(() => {
+        throw new Error("scan blew up")
+      })
+    ).toThrow("scan blew up")
+
+    expect(stat.sheet?.disabled).toBe(false)
+
+    stat.remove()
+  })
+
+  it("leaves a vendor stylesheet alone", () => {
+    const vendor = document.createElement("style")
+    vendor.id = "vendor-sheet"
+    vendor.textContent = "body{background-color:rgb(255,255,255)}"
+    document.head.appendChild(vendor)
+
+    // jsdom leaves `disabled` unset until something assigns it, so compare
+    // against the truthy state the suppression actually sets, not `false`.
+    const seen = withVendorColorsVisible(() => vendor.sheet?.disabled === true)
+
+    expect(seen).toBe(false)
+    vendor.remove()
+  })
+})
+
+describe("createContentSession — evidence is scoped to the content epoch", () => {
+  it("drops the previous route's evidence after a content reset (Theorem D.1(a))", () => {
+    // Ĥ never forgets a key, and epoch dominance only settles keys that
+    // *recur*. Without an explicit drop, colors from a route the user has
+    // already navigated away from keep voting in the page-level verdict —
+    // enough of them, and a light page inherits the previous page's "already
+    // dark" conclusion and never gets themed.
+    document.body.innerHTML =
+      '<div style="background-color: rgb(13, 17, 23)"></div>' +
+      '<div style="background-color: rgb(5, 5, 5)"></div>' +
+      '<div style="background-color: rgb(10, 10, 10)"></div>' +
+      '<div style="background-color: rgb(20, 20, 20)"></div>'
+
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+
+    // Same-document navigation to a light route.
+    document.body.innerHTML =
+      '<div style="background-color: rgb(180, 180, 180)"></div>' +
+      '<div style="background-color: rgb(185, 185, 185)"></div>' +
+      '<div style="background-color: rgb(190, 190, 190)"></div>'
+    session.resetContent()
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+
+    contentSession.teardown()
   })
 })

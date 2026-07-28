@@ -30,11 +30,64 @@
  *                       from re-creating) then removes veil element
  */
 
+import { parseColor } from "./color"
+import { rgbaToCss } from "./modify-colors"
+import { counterInvertColor, detectVendorInvert } from "./vendor-filter"
+
 export const PREPAINT_VEIL_ID = "__sw_prepaint_veil"
-const DIRTY_CLASS = "sw-dirty"
+
+/**
+ * The veil's ownership signal on `<html>`. Exported because it is one of the
+ * very few *extension* writes that lands on a *vendor* node, which makes it
+ * indistinguishable from vendor churn to anything watching `class` — the
+ * Sensor (`adapter/pipeline.ts`) needs the name to recognise its own echo
+ * (Axiom 3.5).
+ */
+export const PREPAINT_DIRTY_CLASS = "sw-dirty"
+
+const DIRTY_CLASS = PREPAINT_DIRTY_CLASS
+
+// Matches --sw-bg-0 (SWATCHES.default.bg0) / prepaint.css's own dirty-canvas
+// color — the veil's default, uncompensated dark fill.
+const VEIL_BG = "#171c25"
 
 function getVeil(): HTMLElement | null {
   return document.getElementById(PREPAINT_VEIL_ID)
+}
+
+/** True while the veil is up in either of its two halves (element, CSS backstop). */
+export function isPrepaintActive(): boolean {
+  return (
+    document.documentElement.classList.contains(DIRTY_CLASS) ||
+    getVeil() !== null
+  )
+}
+
+/**
+ * Counter-inverts the veil's background so it still reads dark once
+ * composited through a *vendor's own*, still-active `filter:
+ * invert(...)` (#741) — prepaint.css already does the analogous thing for
+ * this extension's own legacy filter (`html[data-sw-legacy]`), but that
+ * CSS-only rule has no way to see a filter the vendor, not this extension,
+ * applied. `!important` inline (highest-specificity, author-origin) beats
+ * prepaint.css's own `!important` class rule. A no-op (`invertAmount = 0`,
+ * the overwhelming majority case) clears any previous override instead —
+ * enablePrepaint() reuses an existing veil across repeated calls, and an
+ * override from a filter that is no longer active must not linger.
+ */
+function compensateVeilBackground(veil: HTMLElement): void {
+  const invertAmount = detectVendorInvert()
+  if (invertAmount === 0) {
+    veil.style.removeProperty("background-color")
+    return
+  }
+  const base = parseColor(VEIL_BG)
+  if (base === null) return
+  veil.style.setProperty(
+    "background-color",
+    rgbaToCss(counterInvertColor(base, invertAmount)),
+    "important"
+  )
 }
 
 /**
@@ -47,9 +100,27 @@ function getVeil(): HTMLElement | null {
  * remove it. Also adds the sw-dirty class which activates the CSS backstop.
  */
 export function enablePrepaint(): void {
-  document.documentElement.classList.add(DIRTY_CLASS)
+  // `classList.add`/`remove` run the DOM's "update steps" unconditionally —
+  // they re-serialize and re-set the `class` attribute even when the token
+  // set is unchanged, and a same-value `setAttribute` still queues a
+  // MutationRecord. The Sensor watches `class` on every node including
+  // <html>, so an unguarded no-op call here is not free: it is a mutation
+  // the pipeline sees, reacts to, and (via commitVisualState -> this
+  // module) causes again — a self-sustaining rescan loop with no vendor
+  // change anywhere in it (#831). Only write when the bit actually flips.
+  if (!document.documentElement.classList.contains(DIRTY_CLASS)) {
+    document.documentElement.classList.add(DIRTY_CLASS)
+  }
 
-  if (getVeil()) return
+  const existing = getVeil()
+  if (existing) {
+    // Re-entrant call (e.g. an SPA re-navigation re-arming an already-live
+    // veil, #741's second symptom): re-check the vendor filter every time,
+    // not just at creation — it can still be active, or have changed, since
+    // the veil was first created.
+    compensateVeilBackground(existing)
+    return
+  }
 
   const veil = document.createElement("div")
   veil.id = PREPAINT_VEIL_ID
@@ -60,6 +131,7 @@ export function enablePrepaint(): void {
   // remove a sibling of <body>; only a full documentElement.replaceChildren
   // could do so, and the CSS backstop covers that extreme case.
   document.documentElement.appendChild(veil)
+  compensateVeilBackground(veil)
 
   try {
     veil.showPopover()
@@ -80,7 +152,12 @@ export function enablePrepaint(): void {
 export function disablePrepaint(): void {
   // Remove dirty class first — this is what the self-healing observer checks
   // to distinguish intentional teardown from an accidental vendor removal.
-  document.documentElement.classList.remove(DIRTY_CLASS)
+  // Guarded for the same reason as enablePrepaint()'s add: an already-down
+  // veil must produce *zero* DOM writes, or every fire re-notifies the
+  // Sensor of a change that never happened (#831).
+  if (document.documentElement.classList.contains(DIRTY_CLASS)) {
+    document.documentElement.classList.remove(DIRTY_CLASS)
+  }
 
   const veil = getVeil()
   if (!veil) return
@@ -141,6 +218,12 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
 const COMMIT_FALLBACK_MS = 100
 
 export function commitVisualState(): void {
+  // Called on *every* pipeline fire (content.ts's onFire), not just the
+  // first. Once the veil is down there is nothing left to commit, and
+  // scheduling another rAF pair + fallback timer per fire only creates work
+  // whose sole effect would be a redundant disablePrepaint().
+  if (!isPrepaintActive()) return
+
   let dropped = false
   const drop = (): void => {
     if (dropped) return

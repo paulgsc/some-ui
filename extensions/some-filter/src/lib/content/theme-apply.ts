@@ -29,10 +29,82 @@ import {
 } from "@filter/adapter/swatches"
 import type { FilterConfig } from "@filter/types/config"
 
+import { parseColor } from "./color"
+import { rgbaToCss } from "./modify-colors"
 import { commitVisualState } from "./prepaint"
+import { counterInvertColor, detectVendorInvert } from "./vendor-filter"
+
+/**
+ * Every `<style>` this extension injects carries `[data-my-ext]`. Two
+ * separate consumers depend on it: `EXT_GUARD` (below) keeps theme rules
+ * off extension-owned nodes, and the Sensor (`adapter/pipeline.ts`) uses
+ * the same marker to recognise a mutation record as its own actuation echo
+ * rather than vendor evidence (Axiom 3.5). An unmarked stylesheet is
+ * invisible to the first and indistinguishable from vendor churn to the
+ * second — which is how injecting one ended up re-triggering the very scan
+ * that injected it (#831).
+ */
+function createExtensionStyle(id: string): HTMLStyleElement {
+  const style = document.createElement("style")
+  style.id = id
+  style.setAttribute("data-my-ext", "")
+  return style
+}
+
+/**
+ * Assigns `css` only when it differs from what the element already holds.
+ * `textContent =` replaces the element's child text node unconditionally,
+ * which is a childList mutation the Sensor observes — so an unguarded
+ * re-assignment of identical CSS is a phantom "the page changed" signal
+ * (Theorem 7.2's idempotence requirement, at the level of *DOM writes*, not
+ * just of resulting state).
+ */
+function setStyleText(style: HTMLStyleElement, css: string): void {
+  if (style.textContent === css) return
+  style.textContent = css
+}
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 export const LEGACY_THEME_ATTR = "data-sw-legacy"
+
+/**
+ * Counter-inverts every color a `Swatch` carries so that, once composited
+ * through a still-active *vendor* `filter: invert(...)` (#741 — a real
+ * accessibility toggle some sites ship on their own `<html>`, distinct from
+ * this extension's own legacy filter mode), a human/screenshot sees the
+ * swatch's real, intended dark tokens rather than their bright inverse. A
+ * no-op (`invertAmount = 0`, the overwhelming majority case) returns
+ * `swatch` unchanged.
+ */
+function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
+  if (invertAmount === 0) return swatch
+
+  const counter = (css: string): string => {
+    const parsed = parseColor(css)
+    return parsed === null
+      ? css
+      : rgbaToCss(counterInvertColor(parsed, invertAmount))
+  }
+
+  return {
+    ...swatch,
+    bg0: counter(swatch.bg0),
+    bg1: counter(swatch.bg1),
+    bg2: counter(swatch.bg2),
+    bg3: counter(swatch.bg3),
+    surface: counter(swatch.surface),
+    border: counter(swatch.border),
+    text0: counter(swatch.text0),
+    text1: counter(swatch.text1),
+    text2: counter(swatch.text2),
+    link: counter(swatch.link),
+    linkVisited: counter(swatch.linkVisited),
+    inputBg: counter(swatch.inputBg),
+    inputBorder: counter(swatch.inputBorder),
+    selectionBg: counter(swatch.selectionBg),
+    codeFg: counter(swatch.codeFg),
+  }
+}
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 // Values come from the active swatch (default: SWATCHES.default, byte-for-byte
@@ -212,7 +284,9 @@ body${EXT_GUARD} {
 
 // ── Dark theme injection (static layer only) ───────────────────────────────────
 
-const STYLE_ID = "__sw_dark_theme"
+export const DARK_THEME_STYLE_ID = "__sw_dark_theme"
+
+const STYLE_ID = DARK_THEME_STYLE_ID
 
 export function injectDarkTheme(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
@@ -221,12 +295,18 @@ export function injectDarkTheme(
   const style: HTMLStyleElement =
     existing instanceof HTMLStyleElement
       ? existing
-      : document.createElement("style")
+      : createExtensionStyle(STYLE_ID)
   if (!(existing instanceof HTMLStyleElement)) {
-    style.id = STYLE_ID
     document.head.appendChild(style)
   }
-  style.textContent = buildDarkThemeCSS(swatch)
+  // The compensation is recomputed per call (a vendor's own invert toggle
+  // can flip at any time), but the assignment still goes through
+  // setStyleText: an unchanged filter state rebuilds byte-identical CSS,
+  // and rewriting it would be a mutation the Sensor reacts to (#831).
+  setStyleText(
+    style,
+    buildDarkThemeCSS(compensateSwatch(swatch, detectVendorInvert()))
+  )
   // Per-surface tagging and the dynamic color stylesheet are the actuator's
   // job now (adapter/actuator.ts), driven by decide()'s returned actions —
   // not this function's. Veil removal is the caller's responsibility: inject
@@ -261,14 +341,14 @@ function applyLegacyFilter(config: FilterConfig): void {
   // Set the attribute on html so prepaint CSS can react instantly
   document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
 
-  let style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+  const existing = document.getElementById(LEGACY_FILTER_STYLE_ID)
+  const style =
+    existing instanceof HTMLStyleElement
+      ? existing
+      : createExtensionStyle(LEGACY_FILTER_STYLE_ID)
 
-  if (!style) {
-    style = document.createElement("style")
-    style.id = LEGACY_FILTER_STYLE_ID
-
-    const root = document.head
-    root.appendChild(style)
+  if (existing === null) {
+    document.head.appendChild(style)
   }
 
   // "dim" style (no invert): the browser's native dark theme already darkened
@@ -281,10 +361,13 @@ function applyLegacyFilter(config: FilterConfig): void {
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
 
-  style.textContent = `
+  setStyleText(
+    style,
+    `
     html { filter: ${buildFilterString(config)} !important; ${canvasRule} }
     ${mediaRule}
   `
+  )
 }
 
 function removeLegacyFilter(): void {
