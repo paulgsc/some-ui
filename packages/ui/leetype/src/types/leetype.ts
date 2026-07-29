@@ -25,6 +25,67 @@ export const N_VALUES: Record<NContext, number> = {
   large: 10000,
 }
 
+/**
+ * Where an exercise sits on the ladder from "recall the syntax" to "solve the
+ * original problem" — Bloom's cognitive operations, read through the Dreyfus
+ * progression. Ordered; see `CURRICULUM_STAGES`.
+ *
+ * `master` is deliberately the odd one out: it isn't a cognitive operation,
+ * it's the position of the dense problem the whole curriculum was decomposed
+ * from. Exactly one exercise per curriculum carries it.
+ */
+export type CurriculumStage =
+  | "remember"
+  | "understand"
+  | "apply"
+  | "analyze"
+  | "integrate"
+  | "master"
+
+/**
+ * A challenge's place in a decomposed curriculum: the node it occupies in the
+ * knowledge graph behind some dense problem, plus the edges into it.
+ *
+ * Optional on `Challenge` — the bundled demo pool is a flat set of classic
+ * data structures with no curriculum behind them, and a corpus generated
+ * before this existed must keep loading. When it *is* present, the UI stops
+ * presenting the challenge as a standalone problem and starts presenting it
+ * as step N of a progression with a stated purpose (see `ChallengeBrief`).
+ */
+export type ChallengeCurriculum = {
+  stage: CurriculumStage
+  /** 1-based position in the linearized curriculum. */
+  step: number
+  /** How many exercises the curriculum has in total, this one included. */
+  totalSteps: number
+  /**
+   * The one-sentence answer to "what single insight does this exercise give
+   * me?" If it takes more than a sentence, the exercise was too broad and
+   * should have been split — so this field is also the design constraint.
+   */
+  insight: string
+  learningObjectives: Array<string>
+  /** New ideas this exercise is the first to require. Ideally exactly one. */
+  conceptsIntroduced: Array<string>
+  /** Ideas from earlier exercises this one puts back to work. */
+  conceptsReinforced: Array<string>
+  /** Challenge ids this one assumes — the dependency-graph edges into it. */
+  dependsOn: Array<string>
+  /** Observable, code-level conditions for having finished this exercise. */
+  completionCriteria: Array<string>
+  /** The dense problem the whole curriculum culminates in. */
+  targetProblem: string
+}
+
+/**
+ * Source text per language. `rust` is the one guaranteed member: a decomposed
+ * curriculum is authored in Rust (see the Curriculum Decomposer prompt in
+ * packages/some-content/prompts/leetype-challenge-generator), and the other
+ * three are a legacy of the flat multi-language demo pool. `Leetype` picks a
+ * language the challenge actually carries rather than assuming all four.
+ */
+export type CodePaths = { rust: string } & Partial<Record<Language, string>>
+
 export type Challenge = {
   id: string
   title: string
@@ -32,8 +93,10 @@ export type Challenge = {
   difficulty: Difficulty
   mode: SessionMode
   tags: Array<string>
-  codePaths: Record<Language, string>
+  codePaths: CodePaths
   levelRequired: number
+  /** Curriculum position, when this challenge came from a decomposition. */
+  curriculum?: ChallengeCurriculum
 }
 
 export type CompletedSessionStats = {

@@ -19,6 +19,15 @@ import { z } from "zod"
  * comment and crates/hangul-game-core/src/internal/engine.rs's
  * `batchim_word_completes_like_any_other_multi_token_challenge` test).
  */
+const WordPedagogySchema = z.object({
+  gloss: z.string().min(1),
+  note: z.string().min(1),
+  example: z.object({
+    korean: z.string().min(1),
+    english: z.string().min(1),
+  }),
+})
+
 export const WordEntrySchema = z
   .object({
     id: z.string().min(1),
@@ -30,6 +39,14 @@ export const WordEntrySchema = z
     ttsText: z.string().min(1),
     /** Free-form topic label (e.g. "numbers", "calendar") - not a closed enum. */
     category: z.string().min(1),
+    /**
+     * Debrief content for a word the player ran out of time on. Optional on
+     * purpose: a generated file that omits it still plays, it just gets a
+     * reveal with no prose behind it, so an older vocab.json on disk never
+     * becomes unloadable. Present-but-partial is still rejected - half a
+     * debrief is worse than none.
+     */
+    pedagogy: WordPedagogySchema.optional(),
   })
   .refine((entry) => entry.answerKeys.length === entry.answerGlyphs.length, {
     message:

@@ -1,7 +1,13 @@
 import type { FC } from "react"
 import { useState } from "react"
+import {
+  compareByCurriculum,
+  hasCurriculum,
+  STAGE_META,
+} from "@leetype/lib/leetype/curriculum"
 import type {
   Challenge,
+  CurriculumStage,
   Difficulty,
   PlayerProgress,
 } from "@leetype/types/leetype"
@@ -87,6 +93,182 @@ const ChallengeCard: FC<ChallengeCardProps> = ({
   </button>
 )
 
+type CurriculumRowProps = {
+  challenge: Challenge
+  locked: boolean
+  isLast: boolean
+  onSelect: () => void
+}
+
+/**
+ * One rung of the ladder. Reads as a numbered step on a rail rather than as a
+ * card in a grid, because the ordering *is* the information: exercise 4 is not
+ * an alternative to exercise 3, it is what comes after it.
+ */
+const CurriculumRow: FC<CurriculumRowProps> = ({
+  challenge,
+  locked,
+  isLast,
+  onSelect,
+}) => {
+  const curriculum = challenge.curriculum
+  const isFinal = curriculum?.stage === "master"
+
+  return (
+    <li className="relative flex gap-3">
+      {/* The rail: a numbered node with a line running to the next step. */}
+      <div className="flex flex-col items-center">
+        <span
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full border font-mono text-xs font-bold tabular-nums",
+            isFinal
+              ? "border-destructive/50 bg-destructive/10 text-destructive"
+              : "border-border bg-card text-muted-foreground"
+          )}
+        >
+          {curriculum?.step ?? "–"}
+        </span>
+        {!isLast && <span className="w-px flex-1 bg-border" />}
+      </div>
+
+      <button
+        onClick={onSelect}
+        disabled={locked}
+        className={cn(
+          "mb-2 flex w-full flex-col gap-1.5 rounded-lg border bg-card p-3 text-left transition-colors",
+          locked
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer hover:border-primary/50 hover:bg-card/80",
+          isFinal && "border-destructive/40"
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-semibold leading-tight text-card-foreground">
+            {challenge.title}
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            {locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs capitalize",
+                DIFFICULTY_COLORS[challenge.difficulty]
+              )}
+            >
+              {challenge.difficulty}
+            </Badge>
+          </span>
+        </div>
+
+        {/* The insight, not the description: on a ladder the useful preview is
+            "what will this teach me", and the description is a click away. */}
+        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          {curriculum?.insight ?? challenge.description}
+        </p>
+
+        {curriculum && curriculum.conceptsIntroduced.length > 0 && (
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {curriculum.conceptsIntroduced.map((concept) => (
+              <span
+                key={concept}
+                className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary"
+              >
+                {concept}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+    </li>
+  )
+}
+
+type CurriculumViewProps = {
+  challenges: Array<Challenge>
+  isLocked: (challenge: Challenge) => boolean
+  onSelect: (challenge: Challenge) => void
+}
+
+/**
+ * The curriculum framing: a destination, then the ordered path to it.
+ *
+ * Deliberately not the difficulty/mode grid below. Those axes let a player
+ * shop for a challenge, which is the right affordance for a flat pool and the
+ * wrong one for a decomposition — here the exercises are not interchangeable
+ * and their order is the whole product.
+ */
+const CurriculumView: FC<CurriculumViewProps> = ({
+  challenges,
+  isLocked,
+  onSelect,
+}) => {
+  const ordered = [...challenges].sort(compareByCurriculum)
+  const target = ordered.find((c) => c.curriculum)?.curriculum?.targetProblem
+
+  // Group consecutive runs by stage so the rungs get named headers without
+  // reordering anything the decomposition already linearized.
+  const groups: Array<{
+    stage: CurriculumStage | null
+    rows: Array<Challenge>
+  }> = []
+  for (const challenge of ordered) {
+    const stage = challenge.curriculum?.stage ?? null
+    const last = groups.at(-1)
+    if (last?.stage === stage) {
+      last.rows.push(challenge)
+    } else {
+      groups.push({ stage, rows: [challenge] })
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {target && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3.5">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {ordered.length} exercises, all building to
+          </div>
+          <p className="text-sm leading-relaxed text-card-foreground">
+            {target}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Work them in order — each one exists because the next one needs it.
+          </p>
+        </div>
+      )}
+
+      {groups.map((group, groupIndex) => (
+        <div key={group.stage ?? `loose-${groupIndex}`} className="space-y-2">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-card-foreground">
+              {group.stage ? STAGE_META[group.stage].label : "Also available"}
+            </h3>
+            <span className="text-[11px] text-muted-foreground">
+              {group.stage
+                ? STAGE_META[group.stage].blurb
+                : "Standalone challenges, outside the ladder."}
+            </span>
+          </div>
+          <ol className="flex flex-col">
+            {group.rows.map((challenge, index) => (
+              <CurriculumRow
+                key={challenge.id}
+                challenge={challenge}
+                locked={isLocked(challenge)}
+                isLast={
+                  groupIndex === groups.length - 1 &&
+                  index === group.rows.length - 1
+                }
+                onSelect={() => onSelect(challenge)}
+              />
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
   challenges,
   progress,
@@ -106,6 +288,28 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
 
   const isLocked = (challenge: Challenge): boolean =>
     progress.level < challenge.levelRequired
+
+  // A decomposed pool is presented as a ladder; a flat pool keeps the
+  // mode/difficulty grid it always had.
+  if (hasCurriculum(challenges)) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-card-foreground">
+            Pick up the curriculum
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            A dense problem, decomposed into progressively harder exercises.
+          </p>
+        </div>
+        <CurriculumView
+          challenges={challenges}
+          isLocked={isLocked}
+          onSelect={onSelect}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">

@@ -7,6 +7,7 @@ import type {
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
   CharacterWithLifetime,
+  MissedWord,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
 import { assertNever } from "@honeycomb/utils/error"
@@ -35,6 +36,14 @@ type UseGameLoopProps = {
   setWordProgress?: React.Dispatch<React.SetStateAction<WordProgress | null>>
   /** Misses observed since the tracked word spawned, for #762's hint escalation. */
   setMissCount?: React.Dispatch<React.SetStateAction<number>>
+  /**
+   * The tracked word challenge ran out of time with jamo still unreached.
+   * Fired instead of quietly dropping the cells, so the host can reveal what
+   * was missed and debrief before the next word spawns. Not fired for a word
+   * the player completed (that resolves through `matchFound`), and never for
+   * single-jamo (n=1) play, which has no tracked word to begin with.
+   */
+  onWordMissed?: (missed: MissedWord) => void
 }
 
 export const useGameLoop = ({
@@ -49,6 +58,7 @@ export const useGameLoop = ({
   wordProgress,
   setWordProgress,
   setMissCount,
+  onWordMissed,
 }: UseGameLoopProps): void => {
   const spawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -67,6 +77,7 @@ export const useGameLoop = ({
   const setWordProgressRef = useRef(setWordProgress)
   const setMissCountRef = useRef(setMissCount)
   const wordProgressRef = useRef(wordProgress)
+  const onWordMissedRef = useRef(onWordMissed)
 
   useEffect(() => {
     gameBridgeRef.current = gameBridge
@@ -98,6 +109,9 @@ export const useGameLoop = ({
   useEffect(() => {
     wordProgressRef.current = wordProgress
   }, [wordProgress])
+  useEffect(() => {
+    onWordMissedRef.current = onWordMissed
+  }, [onWordMissed])
 
   // ====================================================================
   // SPAWN CHARACTER
@@ -206,21 +220,51 @@ export const useGameLoop = ({
       switch (t) {
         case "charactersExpired": {
           if (event.count > 0) playSoundRef.current("character_expire")
+
+          const tracked = wordProgressRef.current
+          const trackedExpired =
+            tracked?.cellIds.some((id) => event.cellIds.includes(id)) ?? false
+          // A tracked word that ran out of time with jamo still unreached is
+          // the teachable case: hand it to the host to reveal and debrief
+          // rather than deleting the evidence. The host is responsible for
+          // clearing these cells when it's done with them.
+          const missedWord: MissedWord | null =
+            tracked &&
+            trackedExpired &&
+            tracked.cursor < tracked.answerGlyphs.length
+              ? {
+                  cellIds: tracked.cellIds,
+                  answerGlyphs: tracked.answerGlyphs,
+                  cursor: tracked.cursor,
+                }
+              : null
+
           setActiveCharactersRef.current((prev) => {
             const next = new Map(prev)
-            event.cellIds.forEach((id) => next.delete(id))
+            event.cellIds.forEach((id) => {
+              if (missedWord?.cellIds.includes(id)) {
+                const char = next.get(id)
+                // Frozen in place, flagged missed: the debrief renders off
+                // these same cells, so they have to outlive the expiry.
+                if (char)
+                  next.set(id, { ...char, isMissed: true, timeRemaining: 0 })
+                return
+              }
+              next.delete(id)
+            })
             return next
           })
 
           // If the word the station is currently tracking just expired,
           // clear it - this also releases the spawn queue-gate above, so
-          // the next spawn tick can start the next word.
-          if (
-            wordProgressRef.current?.cellIds.some((id) =>
-              event.cellIds.includes(id)
-            )
-          ) {
+          // the next spawn tick can start the next word. When there's a
+          // debrief to run first, the host re-gates spawning by pausing the
+          // loop for as long as the debrief is up.
+          if (trackedExpired) {
             setWordProgressRef.current?.(null)
+          }
+          if (missedWord) {
+            onWordMissedRef.current?.(missedWord)
           }
           break
         }
@@ -264,7 +308,9 @@ export const useGameLoop = ({
     setActiveCharactersRef.current((prev) => {
       const next = new Map(prev)
       next.forEach((char, cellId) => {
-        if (char.isSolved) return
+        // Solved cells are locked in; missed ones are frozen at 0 for the
+        // debrief. Neither has a countdown left to run.
+        if (char.isSolved || char.isMissed) return
         const age = now - char.spawnedAt
         const tokenCount = char.answerKeys.length || 1
         next.set(cellId, {

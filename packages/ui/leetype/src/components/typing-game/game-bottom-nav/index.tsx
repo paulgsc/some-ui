@@ -1,11 +1,22 @@
 import type { FC, ReactNode } from "react"
+import { ChallengeBrief } from "@leetype/components/typing-game/challenge-brief"
+import { STAGE_META } from "@leetype/lib/leetype/curriculum"
 import type {
+  ChallengeCurriculum,
   DisplayMode,
   GameState,
   Language,
   TextGradient,
 } from "@leetype/types/leetype"
-import { Gauge, Info, Palette, Play, RotateCcw, Settings2 } from "lucide-react"
+import {
+  Gauge,
+  GraduationCap,
+  Info,
+  Palette,
+  Play,
+  RotateCcw,
+  Settings2,
+} from "lucide-react"
 import {
   Badge,
   Button,
@@ -29,6 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  ScrollArea,
   Select,
   SelectContent,
   SelectItem,
@@ -46,6 +58,12 @@ export type GameInfoContent = {
   title: string
   description: string
   tags: Array<string>
+  /**
+   * The challenge's place in a decomposed curriculum, when it has one. Its
+   * presence changes what the info panel *is*: not a problem statement but a
+   * "why am I on this rung" brief — see `ChallengeBrief`.
+   */
+  curriculum?: ChallengeCurriculum
 }
 
 type GameBottomNavProps = {
@@ -68,6 +86,13 @@ type GameBottomNavProps = {
   onDisplayModeChange: (mode: DisplayMode) => void
   onDurationChange: (duration: number) => void
   onTextGradientChange: (gradient: TextGradient) => void
+  /**
+   * The languages the current challenge actually ships source for. A
+   * decomposed curriculum is Rust-only, so offering all four would let the
+   * player pick their way into a load error. Defaults to all four for the
+   * flat demo pool, which has them.
+   */
+  languages?: ReadonlyArray<Language>
   info: GameInfoContent
   /**
    * The skip/resume picker, rendered inline with the other overlay
@@ -103,6 +128,20 @@ function toTextGradient(v: string): TextGradient | null {
   }
   return null
 }
+
+const LANGUAGE_LABELS: Record<Language, string> = {
+  typescript: "TypeScript",
+  rust: "Rust",
+  cpp: "C++",
+  c: "C",
+}
+
+const ALL_LANGUAGES: ReadonlyArray<Language> = [
+  "typescript",
+  "rust",
+  "cpp",
+  "c",
+]
 
 const TEXT_GRADIENT_OPTIONS: ReadonlyArray<{
   value: TextGradient
@@ -153,6 +192,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   onDisplayModeChange,
   onDurationChange,
   onTextGradientChange,
+  languages = ALL_LANGUAGES,
   info,
   sectionNavigator,
   portalContainer,
@@ -182,28 +222,53 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
 
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Challenge info">
-              <Info className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              // The trigger says which kind of panel is behind it: a
+              // curriculum exercise gets the graduation cap, a standalone
+              // problem keeps the plain info glyph.
+              aria-label={
+                info.curriculum
+                  ? `Exercise brief: step ${info.curriculum.step} of ${info.curriculum.totalSteps}`
+                  : "Challenge info"
+              }
+            >
+              {info.curriculum ? (
+                <GraduationCap className="h-4 w-4" />
+              ) : (
+                <Info className="h-4 w-4" />
+              )}
             </Button>
           </DrawerTrigger>
           <DrawerContent container={portalContainer}>
             <DrawerHeader>
-              <DrawerTitle>{info.title}</DrawerTitle>
-              <DrawerDescription>{info.description}</DrawerDescription>
-            </DrawerHeader>
-            {info.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 px-4 pb-6">
-                {info.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="font-mono text-xs"
-                  >
-                    {tag}
+              <DrawerTitle className="flex flex-wrap items-center gap-2">
+                {info.title}
+                {info.curriculum && (
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {info.curriculum.step}/{info.curriculum.totalSteps}
                   </Badge>
-                ))}
-              </div>
-            )}
+                )}
+              </DrawerTitle>
+              {/* One line of framing, never the description itself — that
+                  lives in the body below, so the two don't say it twice. */}
+              <DrawerDescription>
+                {info.curriculum
+                  ? `${STAGE_META[info.curriculum.stage].label} — one step of a decomposed curriculum, not a standalone problem.`
+                  : "Standalone problem — what to implement, and its constraints."}
+              </DrawerDescription>
+            </DrawerHeader>
+            {/* Bounded and scrollable: a curriculum brief is a good deal
+                taller than the two-line description this drawer used to
+                carry, and the drawer must not grow past the viewport. */}
+            <ScrollArea className="max-h-[60vh] px-4 pb-6">
+              <ChallengeBrief
+                description={info.description}
+                tags={info.tags}
+                curriculum={info.curriculum}
+              />
+            </ScrollArea>
           </DrawerContent>
         </Drawer>
 
@@ -299,10 +364,11 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="typescript">TypeScript</SelectItem>
-                    <SelectItem value="rust">Rust</SelectItem>
-                    <SelectItem value="cpp">C++</SelectItem>
-                    <SelectItem value="c">C</SelectItem>
+                    {languages.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {LANGUAGE_LABELS[option]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

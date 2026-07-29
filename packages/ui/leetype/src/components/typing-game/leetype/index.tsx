@@ -10,6 +10,11 @@ import { useGameTimer } from "@leetype/hooks"
 import { useTypingGame } from "@leetype/hooks/leetype"
 import { useChunkedCode } from "@leetype/hooks/leetype/use-chunked-code"
 import { usePlayerProgress } from "@leetype/hooks/leetype/use-player-progress"
+import {
+  availableLanguages,
+  resolveLanguage,
+  STAGE_META,
+} from "@leetype/lib/leetype/curriculum"
 import type { PrettierParser } from "@leetype/lib/leetype/format-code"
 import { ADAPTIVE_WPM_THRESHOLD } from "@leetype/lib/leetype/player-store"
 import type {
@@ -102,7 +107,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const [gameState, setGameState] = useState<GameState>("idle")
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [textGradient, setTextGradient] = useState<TextGradient>("none")
-  const [language, setLanguage] = useState<Language>(
+  const [preferredLanguage, setPreferredLanguage] = useState<Language>(
     initialLanguage ?? "typescript"
   )
   const [duration, setDuration] = useState(initialDuration ?? 300)
@@ -140,6 +145,14 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const effectiveCodePaths: Partial<Record<Language, string>> =
     resolvedChallenge?.codePaths ?? codePaths ?? {}
+
+  // A decomposed curriculum ships Rust only (see the Curriculum Decomposer
+  // prompt), so the preferred language — a default, or whatever the player
+  // picked for some earlier multi-language challenge — may not exist here.
+  // Resolving it down to something the challenge actually carries is the
+  // difference between "this exercise is in Rust" and a load error.
+  const language = resolveLanguage(effectiveCodePaths, preferredLanguage)
+  const offeredLanguages = availableLanguages(effectiveCodePaths)
 
   const codeState = useChunkedCode(effectiveCodePaths[language] ?? "", {
     prettierParser: PRETTIER_PARSER_MAP[language],
@@ -283,7 +296,7 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   const handleLanguageChange = (lang: Language): void => {
-    setLanguage(lang)
+    setPreferredLanguage(lang)
     setGameState("idle")
     setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
     setAdaptiveHidden(false)
@@ -299,12 +312,15 @@ export const Leetype: FC<LeetypeProps> = ({
     codeState.hasMore ? "+" : ""
   }`
 
+  const curriculum = resolvedChallenge?.curriculum
+
   const info: GameInfoContent = {
     title: resolvedChallenge ? resolvedChallenge.title : "Problem Description",
     description: resolvedChallenge
       ? resolvedChallenge.description
       : DEFAULT_PROMPT_DESCRIPTION,
     tags: resolvedChallenge ? resolvedChallenge.tags : [],
+    curriculum,
   }
 
   return (
@@ -346,7 +362,26 @@ export const Leetype: FC<LeetypeProps> = ({
               belongs to the code/input card below; everything actionable
               lives in the bottom nav's menus instead of inline controls. */}
           {resolvedChallenge && (
-            <div className="mb-3 flex shrink-0 items-center gap-3">
+            <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+              {/* Curriculum position leads the strip when there is one: on a
+                  decomposed ladder, "step 4 of 10, Apply" is what tells the
+                  player what they're looking at — the title alone reads as a
+                  standalone problem, which is exactly the wrong frame. */}
+              {curriculum && (
+                <span className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      curriculum.stage === "master" ? "destructive" : "default"
+                    }
+                    className="text-xs"
+                  >
+                    {STAGE_META[curriculum.stage].label}
+                  </Badge>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {curriculum.step}/{curriculum.totalSteps}
+                  </span>
+                </span>
+              )}
               <span className="text-base font-semibold text-card-foreground">
                 {resolvedChallenge.title}
               </span>
@@ -441,6 +476,7 @@ export const Leetype: FC<LeetypeProps> = ({
             onDisplayModeChange={setDisplayMode}
             onDurationChange={setDuration}
             onTextGradientChange={setTextGradient}
+            languages={offeredLanguages}
             info={info}
             sectionNavigator={
               <SectionNavigator

@@ -44,7 +44,7 @@ describe("usePromptEscalation", () => {
     expect(result.current).toBe("icon-tts")
   })
 
-  it("escalates to icon-tts-romanization after two misses", () => {
+  it("escalates to icon-tts-hangul after two misses", () => {
     const { result } = renderHook(() =>
       usePromptEscalation({
         active: true,
@@ -53,7 +53,7 @@ describe("usePromptEscalation", () => {
       })
     )
 
-    expect(result.current).toBe("icon-tts-romanization")
+    expect(result.current).toBe("icon-tts-hangul")
   })
 
   it("escalates purely from elapsed time, with no misses at all", () => {
@@ -72,7 +72,7 @@ describe("usePromptEscalation", () => {
 
     vi.advanceTimersByTime(3000)
     rerender({ missCount: 0 })
-    expect(result.current).toBe("icon-tts-romanization")
+    expect(result.current).toBe("icon-tts-hangul")
   })
 
   it("resets to idle once the tracked challenge is no longer active", () => {
@@ -86,7 +86,7 @@ describe("usePromptEscalation", () => {
       { initialProps }
     )
 
-    expect(result.current).toBe("icon-tts-romanization")
+    expect(result.current).toBe("icon-tts-hangul")
 
     rerender({ active: false, spawnedAt: undefined })
     expect(result.current).toBe("idle")

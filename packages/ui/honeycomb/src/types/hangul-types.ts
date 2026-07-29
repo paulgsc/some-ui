@@ -4,6 +4,32 @@ export type CharacterWithLifetime = DisplayCharacter & {
   timeRemaining: number
   /** True once the character has been completed and is locked into its cell. */
   isSolved?: boolean
+  /**
+   * True while this cell belongs to a word challenge that ran out of time
+   * unfinished and is being shown back to the player. It outranks the
+   * placeholder mask - the whole point of the debrief is that the jamo the
+   * player never reached are finally revealed - and it is scored as a miss,
+   * not a solve. Cleared by removing the cell when the debrief is dismissed.
+   */
+  isMissed?: boolean
+}
+
+/**
+ * A vocabulary challenge that expired before the player finished typing it -
+ * the input to the reveal-and-debrief step that runs before the next word
+ * spawns. A word the player *did* complete never produces one of these; it
+ * takes the untouched `matchFound` path (celebrate, clear, spawn the next).
+ */
+export type MissedWord = {
+  cellIds: Array<string>
+  answerGlyphs: Array<string>
+  /**
+   * How many tokens the player had matched when the clock ran out, i.e. the
+   * index of the first jamo they never got to. `0` means they typed nothing;
+   * anything less than `answerGlyphs.length` is a miss by definition (a full
+   * cursor completes the challenge instead of expiring).
+   */
+  cursor: number
 }
 
 /**

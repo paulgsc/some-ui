@@ -1,6 +1,7 @@
 export { Leetype } from "./leetype"
 export { LeetypeApp } from "./leetype-app"
 export { ChallengeSelector } from "./challenge-selector"
+export { ChallengeBrief } from "./challenge-brief"
 export { SessionConfig } from "./session-config"
 export type { SessionStartConfig } from "./session-config"
 export { LevelProgress } from "./level-progress"

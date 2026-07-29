@@ -28,11 +28,19 @@ describe("ChallengeSchema", () => {
     expect(ChallengeSchema.safeParse(withoutId).success).toBe(false)
   })
 
-  it("rejects codePaths missing one of the four languages", () => {
-    const { c: _c, ...codePathsWithoutC } = validChallenge.codePaths
+  it("accepts a Rust-only corpus - the shape the Curriculum Decomposer emits", () => {
     const result = ChallengeSchema.safeParse({
       ...validChallenge,
-      codePaths: codePathsWithoutC,
+      codePaths: { rust: "/leetype/samples/ds-stack.rs" },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects codePaths with no Rust source", () => {
+    const { rust: _rust, ...withoutRust } = validChallenge.codePaths
+    const result = ChallengeSchema.safeParse({
+      ...validChallenge,
+      codePaths: withoutRust,
     })
     expect(result.success).toBe(false)
   })
@@ -41,6 +49,60 @@ describe("ChallengeSchema", () => {
     const result = ChallengeSchema.safeParse({
       ...validChallenge,
       difficulty: "impossible",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("ChallengeSchema curriculum", () => {
+  const validCurriculum = {
+    stage: "analyze",
+    step: 8,
+    totalSteps: 10,
+    insight: "CAS turns 'read then write' into one step that can fail.",
+    learningObjectives: ["Write a CAS loop that re-reads on failure"],
+    conceptsIntroduced: ["compare_exchange"],
+    conceptsReinforced: ["AtomicPtr"],
+    dependsOn: ["treiber-07-atomic-ptr"],
+    completionCriteria: [
+      "Two threads incrementing 10_000 times each reach 20_000",
+    ],
+    targetProblem: "Implement a lock-free Treiber stack.",
+  }
+
+  it("accepts a fully decomposed entry", () => {
+    const result = ChallengeSchema.safeParse({
+      ...validChallenge,
+      curriculum: validCurriculum,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts an entry with no curriculum - a pre-decomposition corpus still loads", () => {
+    expect(ChallengeSchema.safeParse(validChallenge).success).toBe(true)
+  })
+
+  it("rejects a partial curriculum - half a decomposition misleads the UI", () => {
+    const { insight: _insight, ...partial } = validCurriculum
+    const result = ChallengeSchema.safeParse({
+      ...validChallenge,
+      curriculum: partial,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects a stage outside the ladder", () => {
+    const result = ChallengeSchema.safeParse({
+      ...validChallenge,
+      curriculum: { ...validCurriculum, stage: "transcend" },
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects a non-positive step", () => {
+    const result = ChallengeSchema.safeParse({
+      ...validChallenge,
+      curriculum: { ...validCurriculum, step: 0 },
     })
     expect(result.success).toBe(false)
   })

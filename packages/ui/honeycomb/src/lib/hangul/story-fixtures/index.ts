@@ -14,6 +14,7 @@
 import type { Stimulus } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
   HangulCharacter,
+  MissedWord,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
 
@@ -70,6 +71,14 @@ export function mockWordProgress(
     cursor: 2,
     ...overrides,
   }
+}
+
+/** A word that expired unfinished (`VocabDebriefModal`). Defaults to 사과 (apple) abandoned at 2 of 4 jamo. */
+export function mockMissedWord(
+  overrides: Partial<MissedWord> = {}
+): MissedWord {
+  const { cellIds, answerGlyphs, cursor } = mockWordProgress()
+  return { cellIds, answerGlyphs, cursor, ...overrides }
 }
 
 /** An `Icon` stimulus keyed by a `HANGUL_WORDS` id (defaults to "apple" - 사과). */

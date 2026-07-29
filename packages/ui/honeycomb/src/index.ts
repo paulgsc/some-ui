@@ -1,2 +1,2 @@
 export { HangulHexGrid } from "./components"
-export type { WordEntry } from "./data/hangul-words"
+export type { WordEntry, WordPedagogy } from "./data/hangul-words"
