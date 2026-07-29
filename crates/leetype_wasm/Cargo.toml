@@ -6,6 +6,9 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "Typing-game engine for LeetType: compiles source code into a typeable stream that skips layout whitespace, so the caret tracks the rendered code exactly."
+keywords = ["typing", "wasm", "game", "leetype"]
+categories = ["game-development", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
