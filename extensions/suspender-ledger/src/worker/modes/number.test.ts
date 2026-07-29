@@ -49,6 +49,9 @@ const readyResult = (
 ]
 
 beforeEach(() => {
+  // Any test that installs fake timers must not be able to leak them into the
+  // next one, even if it fails before its own cleanup runs.
+  vi.useRealTimers()
   vi.clearAllMocks()
   discard.count = 0
   discard.time = 0
@@ -125,6 +128,46 @@ describe("number.check — auto-discard", () => {
 
     expect(chrome.tabs.discard).toHaveBeenCalledWith(10)
     expect(chrome.tabs.remove).not.toHaveBeenCalled()
+  })
+
+  it("does not let a tab that never answers stall the rest of the sweep", async () => {
+    // A wedged content process is what this looks like from the worker:
+    // executeScript neither resolves nor rejects, because the injected function
+    // is queued behind a page main thread that is never going to run it.
+    // Awaited unguarded, it does not slow the sweep down — it ends it, and
+    // every tab after it in the list is never evaluated again.
+    vi.useFakeTimers()
+    try {
+      const tabs = Array.from({ length: 8 }, (_, i) => makeTab({ id: 10 + i }))
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      vi.mocked(chrome.tabs.query).mockImplementation(((
+        _opts: unknown,
+        cb: QueryCb
+      ) => cb(tabs)) as never)
+
+      vi.mocked(chrome.scripting.executeScript).mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        (injection: { target?: { tabId?: number } }) =>
+          injection.target?.tabId === 10
+            ? new Promise(() => undefined)
+            : Promise.resolve(readyResult())
+      )
+
+      const sweep = number.check(undefined, { number: 0 })
+      await vi.advanceTimersByTimeAsync(10_000)
+      await sweep
+
+      // The sweep resolved at all — before the probe deadline it hung here
+      // forever — and every tab behind the wedged one was still judged.
+      for (const id of [11, 12, 13, 14, 15, 16, 17]) {
+        expect(chrome.tabs.discard).toHaveBeenCalledWith(id)
+      }
+      // The unanswerable tab is passed over, not suspended blind: we cannot see
+      // unsaved form input in a page that will not talk to us.
+      expect(chrome.tabs.discard).not.toHaveBeenCalledWith(10)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("skips a tab whose meta.ready is false (collector not yet injected)", async () => {
