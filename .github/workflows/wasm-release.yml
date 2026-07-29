@@ -231,13 +231,36 @@ jobs:
           pattern: wasm-changeset-*
           path: .changeset
           merge-multiple: true
+      # actions/download-artifact nests each artifact under its own name
+      # only when more than one matches the pattern; a lone match is
+      # extracted straight into `path`. Globbing for `wasm-dist-*`
+      # directories therefore found nothing the first time this workflow
+      # had to release a single crate on its own (run 30422724972), and the
+      # unexpanded glob was handed to `mv`. The detect job already knows
+      # exactly which crates were built, so take the list from there and
+      # accept either layout rather than inferring it from the filesystem.
       - name: Restore dist artifacts into each crate directory
+        env:
+          BUILT_CRATES: ${{ needs.detect.outputs.matrix }}
         run: |
           set -euo pipefail
-          for artifact_dir in dist/wasm/wasm-dist-*; do
-            crate_name=$(basename "$artifact_dir" | sed 's/^wasm-dist-//')
+
+          mapfile -t crate_names < <(jq -r '.include[].crate_name' <<<"$BUILT_CRATES")
+
+          for crate_name in "${crate_names[@]}"; do
+            nested="dist/wasm/wasm-dist-${crate_name}"
+
+            if [ -d "$nested" ]; then
+              source_dir="$nested"
+            elif [ "${#crate_names[@]}" -eq 1 ] && [ -d "dist/wasm" ]; then
+              source_dir="dist/wasm"
+            else
+              echo "::error::no dist artifact found for ${crate_name} (looked for ${nested})"
+              exit 1
+            fi
+
             rm -rf "crates/${crate_name}/dist"
-            mv "$artifact_dir" "crates/${crate_name}/dist"
+            mv "$source_dir" "crates/${crate_name}/dist"
           done
       # This only needs the root project's own devDependencies (changesets
       # and friends) to run `npx changeset publish` below - nothing here
