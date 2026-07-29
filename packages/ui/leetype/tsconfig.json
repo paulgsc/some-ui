@@ -5,9 +5,20 @@
     "rootDir": ".",
     "outDir": "./dist",
     "paths": {
-      "@leetype/*": ["./src/*"]
+      "@leetype/*": ["./src/*"],
+      // The wasm package is consumed as a workspace crate whose dist/ only
+      // exists after a wasm-pack build, so tsc resolves the hand-written
+      // stub instead — the same mapping tsconfig.eslint.json uses, hoisted
+      // here so `tsc --noEmit` doesn't depend on a built crate.
+      "@some-ui/leetype-wasm": ["./src/types/wasm/leetype-wasm.d.ts"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "vitest.setup.test.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

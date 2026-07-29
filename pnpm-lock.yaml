@@ -1308,8 +1308,8 @@ importers:
         specifier: workspace:*
         version: link:../../some-content
       '@some-ui/leetype-wasm':
-        specifier: 0.0.4
-        version: 0.0.4
+        specifier: workspace:*
+        version: link:../../../crates/leetype_wasm
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -4609,9 +4609,6 @@ packages:
 
   '@some-ui/hangul-game-core@0.0.5':
     resolution: {integrity: sha512-TeC+861SSq3NYR+Hg+4Z3QF0XuadvNAcbGRosSuXaLLG2JKVczpy5/J9jVvh/pWVLdamsxGGDfEjX+LkqqvloA==}
-
-  '@some-ui/leetype-wasm@0.0.4':
-    resolution: {integrity: sha512-V4FOv4uF22Lc4Y7rgEsDa6Z2wXscJhisw3nO+DW+nLT3ROwYv+UGahLR7DQrfvd28pCj/T1ypargMBoMzrQbmA==}
 
   '@some-ui/polyhedron@0.0.4':
     resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
@@ -13709,8 +13706,6 @@ snapshots:
       solid-js: 1.9.13
 
   '@some-ui/hangul-game-core@0.0.5': {}
-
-  '@some-ui/leetype-wasm@0.0.4': {}
 
   '@some-ui/polyhedron@0.0.4': {}
 

@@ -1,22 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useTypingGameStats } from "@leetype/lib/leetype/game-store"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
-  canonicalizeText,
-  isWasmLoaded,
   loadWasm,
   TypedTypingGame,
 } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type {
-  CanonicalUnit,
   ChunkCompletionStats,
   GameState,
-  InputResult,
+  Layout,
+  Outcome,
+  Rejection,
+  SectionProgress,
+  Snapshot,
   TypedTypingGame as TypedTypingGameType,
 } from "@leetype/types/leetype"
-import {
-  deriveCursorDisplayIndex,
-  deriveDisplayMap,
-} from "@leetype/utils/leetype"
 
 type UseTypingGameProps = {
   targetCode: string
@@ -26,27 +22,86 @@ type UseTypingGameProps = {
   maxConsecutiveErrors?: number
 }
 
-type UseTypingGameReturn = {
-  userInput: string
-  rawUserInput: string
-  displayCode: string
-  targetUnits: Array<CanonicalUnit>
-  userUnits: Array<CanonicalUnit>
-  cursorDisplayIndex: number
-  displayMap: Array<number>
-  errors: number
-  consecutiveErrors: number
-  showErrorAlert: boolean
-  progress: number
-  accuracy: number
-  wpm: number
-  elapsedTime: number
-  handleInputChange: (input: string) => void
+/**
+ * Everything the renderer needs, read out of the engine in one go.
+ *
+ * `roles` and `slotOfDisplay` only change when the chunk does; `slotStatus`
+ * and `snapshot` change on every accepted keystroke. They are grouped
+ * because they must be read from the *same* engine state — a `slotStatus`
+ * from before a keystroke paired with a `snapshot` from after it would put
+ * the caret one character ahead of the highlighting.
+ */
+export type GameView = {
+  layout: Layout
+  roles: Uint8Array
+  slotOfDisplay: Int32Array
+  slotStatus: Uint8Array
+  snapshot: Snapshot
+}
+
+type UseTypingGameReturn = GameView & {
+  /** Per-section completion, read lazily for the skip/resume picker. */
+  readSectionProgress: () => Array<SectionProgress>
+  /** Why the last keystroke was refused, if it was. */
+  rejection: Rejection | null
+  press: (key: string) => void
+  backspace: () => void
+  jumpToSection: (section: number) => void
+  resume: () => void
   reset: () => void
   start: () => void
   onDismiss: () => void
   isLoading: boolean
   error: Error | null
+}
+
+const EMPTY_LAYOUT: Layout = { displayLen: 0, slotCount: 0, sections: [] }
+
+const EMPTY_SNAPSHOT: Snapshot = {
+  cursorSlot: 0,
+  cursorDisplay: 0,
+  cursorSection: null,
+  slotCount: 0,
+  filled: 0,
+  correct: 0,
+  firstGapSlot: null,
+  progress: 0,
+  accuracy: 100,
+  wpm: 0,
+  elapsedTime: 0,
+  totalErrors: 0,
+  consecutiveErrors: 0,
+  showErrorAlert: false,
+  isComplete: false,
+  started: false,
+}
+
+const EMPTY_VIEW: GameView = {
+  layout: EMPTY_LAYOUT,
+  roles: new Uint8Array(),
+  slotOfDisplay: new Int32Array(),
+  slotStatus: new Uint8Array(),
+  snapshot: EMPTY_SNAPSHOT,
+}
+
+/** Read the whole render-facing view out of one engine state. */
+function readView(game: TypedTypingGameType, now: number): GameView {
+  return {
+    layout: game.layout(),
+    roles: game.roles(),
+    slotOfDisplay: game.slotOfDisplay(),
+    slotStatus: game.slotStatus(),
+    snapshot: game.snapshot(now),
+  }
+}
+
+/** The cheaper re-read after a keystroke: the chunk's structure is fixed. */
+function refreshView(previous: GameView, game: TypedTypingGameType): GameView {
+  return {
+    ...previous,
+    slotStatus: game.slotStatus(),
+    snapshot: game.snapshot(Date.now()),
+  }
 }
 
 export function useTypingGame({
@@ -61,9 +116,8 @@ export function useTypingGame({
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [rawUserInput, setRawUserInput] = useState("")
-  const [userUnits, setUserUnits] = useState<Array<CanonicalUnit>>([])
-  const [targetUnits, setTargetUnits] = useState<Array<CanonicalUnit>>([])
+  const [view, setView] = useState<GameView>(EMPTY_VIEW)
+  const [rejection, setRejection] = useState<Rejection | null>(null)
 
   // Latest-ref: the mount effect below only wants targetCode's value *at
   // construction time* — it must not re-run (and reload wasm) on every
@@ -93,7 +147,7 @@ export function useTypingGame({
         gameRef.current = game
         completedRef.current = false
 
-        setTargetUnits(canonicalizeText(targetCodeRef.current))
+        setView(readView(game, Date.now()))
         setIsLoading(false)
       } catch (e) {
         if (!aliveRef.current) return
@@ -114,143 +168,105 @@ export function useTypingGame({
     if (!game || !targetCode || isLoading) return
 
     try {
-      game.startNextChunk(targetCode)
+      game.startNextChunk(targetCode, Date.now())
       // Reacting to a prop change (targetCode) by resyncing local UI state
       // to match the engine's new chunk — the imperative startNextChunk
       // call above can't move to render (it must run exactly once per
       // change), so this can't be restructured as a render-time adjustment.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTargetUnits(canonicalizeText(targetCode))
-      setRawUserInput("")
-      setUserUnits([])
+      setView(readView(game, Date.now()))
+      setRejection(null)
       completedRef.current = false
     } catch (e) {
       setError(e instanceof Error ? e : new Error("Chunk transition failed"))
     }
   }, [targetCode, isLoading])
 
-  const stats = useTypingGameStats(gameRef)
-
-  const displayMap = useMemo(() => {
-    if (!isWasmLoaded()) return []
-    return deriveDisplayMap(rawUserInput)
-  }, [rawUserInput])
-
-  // Display-character granularity, not canonical-unit granularity: derived
-  // from the raw accepted keystrokes so it advances one rendered character
-  // per keystroke, including through multi-char whitespace runs (see
-  // CodeDisplay's `cursorDisplayIndex` doc comment for why unit granularity
-  // was wrong here).
-  const cursorDisplayIndex = deriveCursorDisplayIndex(rawUserInput)
-
-  const handleInputChange = useCallback(
-    (input: string): void => {
+  /**
+   * Run one engine command and republish what it produced. The engine hands
+   * back the outcome and the fresh snapshot together, so there is no window
+   * where the caret and the highlighting disagree.
+   */
+  const dispatch = useCallback(
+    (command: (game: TypedTypingGameType, now: number) => Outcome): void => {
       const game = gameRef.current
-      if (!game || gameState !== "playing") return
+      if (!game) return
 
-      const result: InputResult = game.handleInput(input)
-      if (!result.accepted) return
-
-      setRawUserInput(input)
-      setUserUnits(game.getUserUnits())
+      const outcome = command(game, Date.now())
+      setRejection(outcome.rejection)
+      setView((previous) => refreshView(previous, game))
     },
-    [gameState]
+    []
   )
 
-  const resetInternal = (): void => {
-    completedRef.current = false
-    setRawUserInput("")
-    setUserUnits([])
-  }
+  const press = useCallback(
+    (key: string): void => {
+      if (gameState !== "playing") return
+      dispatch((game, now) => game.press(key, now))
+    },
+    [dispatch, gameState]
+  )
+
+  const backspace = useCallback((): void => {
+    if (gameState !== "playing") return
+    dispatch((game, now) => game.backspace(now))
+  }, [dispatch, gameState])
+
+  const jumpToSection = useCallback(
+    (section: number): void => {
+      dispatch((game, now) => game.jumpToSection(section, now))
+    },
+    [dispatch]
+  )
+
+  const resume = useCallback((): void => {
+    dispatch((game, now) => game.resume(now))
+  }, [dispatch])
 
   const reset = useCallback((): void => {
-    gameRef.current?.reset()
-    resetInternal()
-  }, [])
+    completedRef.current = false
+    dispatch((game, now) => game.reset(now))
+  }, [dispatch])
 
   const start = useCallback((): void => {
-    gameRef.current?.start(Date.now())
-    resetInternal()
-  }, [])
+    completedRef.current = false
+    dispatch((game, now) => game.start(now))
+  }, [dispatch])
 
   const onDismiss = useCallback((): void => {
-    gameRef.current?.dismissError()
-  }, [])
+    dispatch((game, now) => game.dismissAlert(now))
+  }, [dispatch])
+
+  const readSectionProgress = useCallback(
+    (): Array<SectionProgress> => gameRef.current?.sectionProgress() ?? [],
+    []
+  )
+
+  const { isComplete } = view.snapshot
 
   useEffect(() => {
-    if (
-      completedRef.current ||
-      gameState !== "playing" ||
-      !stats ||
-      userUnits.length !== targetUnits.length
-    ) {
-      return
-    }
+    if (completedRef.current || gameState !== "playing" || !isComplete) return
 
-    for (let i = 0; i < targetUnits.length; i++) {
-      const u = userUnits[i]
-      const t = targetUnits[i]
-      if (!u || !t) return
-      if (
-        u.kind !== t.kind ||
-        (u.kind === "char" && t.kind === "char" && u.value !== t.value)
-      ) {
-        return
-      }
-    }
+    const game = gameRef.current
+    if (!game) return
 
     completedRef.current = true
 
-    const game = gameRef.current
-    if (game && onChunkComplete) {
-      const chunkStats = game.completeChunk(Date.now())
-      onChunkComplete(chunkStats)
+    const outcome = game.completeChunk(Date.now())
+    if (outcome.chunk && onChunkComplete) {
+      onChunkComplete(outcome.chunk)
     }
 
     onComplete()
-  }, [userUnits, targetUnits, stats, gameState, onComplete, onChunkComplete])
-
-  if (!stats) {
-    return {
-      userInput: "",
-      rawUserInput: "",
-      displayCode: targetCode,
-      targetUnits,
-      userUnits: [],
-      cursorDisplayIndex,
-      displayMap: [],
-      errors: 0,
-      consecutiveErrors: 0,
-      showErrorAlert: false,
-      progress: 0,
-      accuracy: 100,
-      wpm: 0,
-      elapsedTime: 0,
-      handleInputChange,
-      reset,
-      start,
-      onDismiss,
-      isLoading,
-      error,
-    }
-  }
+  }, [isComplete, gameState, onComplete, onChunkComplete])
 
   return {
-    userInput: rawUserInput,
-    rawUserInput,
-    displayCode: targetCode,
-    targetUnits,
-    userUnits,
-    cursorDisplayIndex,
-    displayMap,
-    errors: stats.total_errors,
-    consecutiveErrors: stats.consecutive_errors,
-    showErrorAlert: stats.show_error_alert,
-    progress: stats.progress,
-    accuracy: stats.accuracy,
-    wpm: stats.wpm,
-    elapsedTime: stats.elapsed_time,
-    handleInputChange,
+    ...view,
+    readSectionProgress,
+    rejection,
+    press,
+    backspace,
+    jumpToSection,
+    resume,
     reset,
     start,
     onDismiss,

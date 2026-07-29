@@ -1,7 +1,8 @@
-pub mod canonical;
-pub mod state;
+pub mod program;
+pub mod session;
 pub mod stats;
-pub mod validation;
+pub mod view;
 
-pub use canonical::{canonicalize, CanonicalUnit};
-pub(crate) use state::TypingState;
+pub use program::{Program, Role, Section};
+pub use session::{Rejection, SessionConfig};
+pub use view::{ChunkCompletionStats, CumulativeStats, Layout, Outcome, SectionProgress, Snapshot};

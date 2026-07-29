@@ -1,14 +1,7 @@
 import type { FC, JSX, ReactNode } from "react"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import {
-  buildDisplayMap,
-  isWasmLoaded,
-} from "@leetype/lib/leetype/leetype-wasm-loader"
-import type {
-  CanonicalUnit,
-  DisplayMode,
-  TextGradient,
-} from "@leetype/types/leetype"
+import { useLayoutEffect, useRef } from "react"
+import type { DisplayMode, TextGradient } from "@leetype/types/leetype"
+import { ROLE_TYPEABLE, SLOT_CORRECT, SLOT_WRONG } from "@leetype/types/leetype"
 import { ChevronDown } from "lucide-react"
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
@@ -20,13 +13,14 @@ import "prismjs/components/prism-c"
 import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
-type DisplayChar = {
-  char: string
-  unitIndex: number
-  displayIndex: number
-}
-
 const MASK_CHAR = "•"
+
+const LANGUAGE_MAP: Record<string, string> = {
+  typescript: "typescript",
+  rust: "rust",
+  cpp: "cpp",
+  c: "c",
+}
 
 /**
  * Maps each non-"none" `TextGradient` option to the swatch-driven gradient
@@ -54,18 +48,29 @@ const TEXT_GRADIENT_STYLE: Record<
 type CodeDisplayProps = {
   displayCode: string
   language: string
-  targetUnits: Array<CanonicalUnit>
-  userUnits: Array<CanonicalUnit>
   /**
-   * Index, into `displayCode`'s characters (not canonical units), of the
-   * character the player is currently on. Deliberately display-character
-   * granularity rather than unit granularity: a canonical unit can span
-   * several rendered characters (e.g. a run of indentation whitespace
-   * collapses to one separator unit), and matching on unit index made the
-   * cursor highlight that whole run at once instead of tracking each
-   * keystroke - the off-by-one/visual-confusion bug from issue #829.
+   * Per-rendered-character role from the engine: `ROLE_SKIP` for layout the
+   * caret jumps over, `ROLE_TYPEABLE` for characters the player owes a
+   * keystroke for.
    */
-  cursorDisplayIndex: number
+  roles: Uint8Array
+  /**
+   * Per-rendered-character slot ordinal, `-1` for layout characters. The
+   * indirection is the whole point of the new model: a run of indentation
+   * has display indices but no slots, so it can be rendered in place while
+   * being completely absent from what the player has to type.
+   */
+  slotOfDisplay: Int32Array
+  /** Per-slot status: untouched / correct / wrong. */
+  slotStatus: Uint8Array
+  /**
+   * Index, into `displayCode`'s characters, of the character the player is
+   * currently on. The engine guarantees this is always a typeable character
+   * (or one past the end when the chunk is done) — the caret never lands
+   * inside an indentation run, which is what makes the overlay read as
+   * "you are exactly here" instead of drifting through whitespace.
+   */
+  cursorDisplay: number
   displayMode?: DisplayMode
   adaptiveMessage?: string
   className?: string
@@ -82,9 +87,10 @@ type CodeDisplayProps = {
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,
   language,
-  targetUnits,
-  userUnits,
-  cursorDisplayIndex,
+  roles,
+  slotOfDisplay,
+  slotStatus,
+  cursorDisplay,
   displayMode = "shown",
   adaptiveMessage,
   className,
@@ -92,164 +98,103 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 }): JSX.Element => {
   const containerRef = useRef<HTMLDivElement>(null)
   const caretRef = useRef<HTMLSpanElement>(null)
-  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [wasmReady, setWasmReady] = useState(isWasmLoaded())
-
-  useEffect(() => {
-    if (!wasmReady) {
-      checkIntervalRef.current = setInterval(() => {
-        if (isWasmLoaded()) {
-          setWasmReady(true)
-          if (checkIntervalRef.current) clearInterval(checkIntervalRef.current)
-        }
-      }, 50)
-    }
-    return (): void => {
-      if (checkIntervalRef.current) clearInterval(checkIntervalRef.current)
-    }
-  }, [wasmReady])
-
-  const displayBuffer = useMemo((): Array<DisplayChar> | null => {
-    if (!wasmReady) return null
-
-    try {
-      const map: Array<number> = Array.from(buildDisplayMap(displayCode))
-      const chars = Array.from(displayCode)
-
-      // Ensure map length matches chars length to avoid undefined access
-      const lastUnitIndex = map.length > 0 ? (map[map.length - 1] ?? 0) : 0
-
-      return chars.map(
-        (char, i): DisplayChar => ({
-          char,
-          unitIndex: map[i] ?? lastUnitIndex,
-          displayIndex: i,
-        })
-      )
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Error building display map:", error)
-      return null
-    }
-  }, [displayCode, wasmReady])
 
   useLayoutEffect(() => {
-    if (caretRef.current && containerRef.current) {
-      const container = containerRef.current
-      const caret = caretRef.current
-      const containerRect = container.getBoundingClientRect()
-      const caretRect = caret.getBoundingClientRect()
+    const container = containerRef.current
+    const caret = caretRef.current
+    if (!caret || !container) return
 
-      if (
-        caretRect.bottom > containerRect.bottom - 100 ||
-        caretRect.top < containerRect.top + 100
-      ) {
-        caret.scrollIntoView({ behavior: "smooth", block: "center" })
-      }
+    const containerRect = container.getBoundingClientRect()
+    const caretRect = caret.getBoundingClientRect()
+
+    if (
+      caretRect.bottom > containerRect.bottom - 100 ||
+      caretRect.top < containerRect.top + 100
+    ) {
+      caret.scrollIntoView({ behavior: "smooth", block: "center" })
     }
-  }, [cursorDisplayIndex])
+  }, [cursorDisplay])
 
-  const renderHighlightedCode = (): ReactNode => {
-    if (!displayBuffer) return displayCode
+  const isHidden = displayMode === "hidden"
 
-    const languageMap: Record<string, string> = {
-      typescript: "typescript",
-      rust: "rust",
-      cpp: "cpp",
-      c: "c",
+  const renderChar = (char: string, displayIndex: number): JSX.Element => {
+    const isTypeable = roles[displayIndex] === ROLE_TYPEABLE
+    const slot = slotOfDisplay[displayIndex] ?? -1
+    const status = slot >= 0 ? slotStatus[slot] : undefined
+
+    if (displayIndex === cursorDisplay) {
+      return (
+        <span
+          key={displayIndex}
+          ref={caretRef}
+          title="You are here"
+          className="relative animate-pulse rounded-[2px] bg-blue-500/30 ring-2 ring-blue-400 ring-offset-1 ring-offset-background"
+        >
+          <ChevronDown
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-3.5 left-1/2 h-3 w-3 -translate-x-1/2 text-blue-400"
+          />
+          {isHidden ? MASK_CHAR : char}
+        </span>
+      )
     }
 
-    const selectedLang = languageMap[language] ?? "javascript"
-    const grammar = Prism.languages[selectedLang]
-    if (!grammar) return displayCode
-    const tokens = Prism.tokenize(displayCode, grammar)
+    if (status === SLOT_CORRECT) {
+      return (
+        <span key={displayIndex} className="bg-green-500/10 text-green-400">
+          {char}
+        </span>
+      )
+    }
 
-    let charIndex = 0
-    const isHidden = displayMode === "hidden"
+    if (status === SLOT_WRONG) {
+      return (
+        <span key={displayIndex} className="bg-red-500/30 text-red-400">
+          {char}
+        </span>
+      )
+    }
 
-    const renderChar = (displayChar: DisplayChar): JSX.Element => {
-      const { char, unitIndex, displayIndex } = displayChar
-      const isWhitespace = char.trim() === ""
-
-      if (displayIndex === cursorDisplayIndex) {
-        return (
-          <span
-            key={displayIndex}
-            ref={caretRef}
-            title="You are here"
-            className="relative rounded-[2px] bg-blue-500/30 ring-2 ring-blue-400 ring-offset-1 ring-offset-background animate-pulse"
-          >
-            <ChevronDown
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-3.5 left-1/2 h-3 w-3 -translate-x-1/2 text-blue-400"
-            />
-            {isHidden && !isWhitespace ? MASK_CHAR : char}
-          </span>
-        )
-      }
-
-      if (unitIndex < userUnits.length) {
-        const targetUnit = targetUnits[unitIndex]
-        const userUnit = userUnits[unitIndex]
-
-        let isCorrect = true
-        if (targetUnit && userUnit) {
-          if (targetUnit.kind !== userUnit.kind) {
-            isCorrect = false
-          } else if (
-            targetUnit.kind === "char" &&
-            userUnit.kind === "char" &&
-            targetUnit.value !== userUnit.value
-          ) {
-            isCorrect = false
-          }
-        }
-
-        // Already-typed characters are always revealed at full opacity,
-        // in either display mode — the reveal is what gives typing feedback.
-        return (
-          <span
-            key={displayIndex}
-            className={
-              isCorrect
-                ? "bg-green-500/10 text-green-400"
-                : "bg-red-500/30 text-red-400"
-            }
-          >
-            {char}
-          </span>
-        )
-      }
-
-      if (isHidden && !isWhitespace) {
-        return (
-          <span key={displayIndex} className="text-muted-foreground/40">
-            {MASK_CHAR}
-          </span>
-        )
-      }
-
+    // Layout the engine skips: rendered as-is so the code keeps its shape,
+    // never masked and never scored. This is the visual half of "you don't
+    // type indentation" — the player's eye follows the caret straight past
+    // it.
+    if (!isTypeable) {
       return <span key={displayIndex}>{char}</span>
     }
+
+    if (isHidden) {
+      return (
+        <span key={displayIndex} className="text-muted-foreground/40">
+          {MASK_CHAR}
+        </span>
+      )
+    }
+
+    return <span key={displayIndex}>{char}</span>
+  }
+
+  const renderHighlightedCode = (): ReactNode => {
+    const selectedLang = LANGUAGE_MAP[language] ?? "javascript"
+    const grammar = Prism.languages[selectedLang]
+    if (!grammar || roles.length === 0) return displayCode
+
+    const tokens = Prism.tokenize(displayCode, grammar)
+    let charIndex = 0
+
+    const renderRun = (text: string): Array<JSX.Element> =>
+      Array.from(text).map((char) => renderChar(char, charIndex++))
 
     const renderToken = (
       token: string | Prism.Token,
       key: string | number
     ): ReactNode => {
-      if (typeof token === "string") {
-        return token.split("").map((_) => {
-          const displayChar = displayBuffer[charIndex++]
-          return displayChar ? renderChar(displayChar) : null
-        })
-      }
+      if (typeof token === "string") return renderRun(token)
 
       const content = Array.isArray(token.content)
         ? token.content.map((t, i) => renderToken(t, `${key}-${i}`))
         : typeof token.content === "string"
-          ? token.content.split("").map((_) => {
-              const displayChar = displayBuffer[charIndex++]
-              return displayChar ? renderChar(displayChar) : null
-            })
+          ? renderRun(token.content)
           : renderToken(token.content, `${key}-sub`)
 
       // Gradient mode drops Prism's `.token.<type>` class so these
@@ -268,14 +213,32 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       )
     }
 
-    return tokens.map((token, i) => renderToken(token, i))
+    const body = tokens.map((token, i) => renderToken(token, i))
+
+    // The caret parks one past the last character when the chunk is done,
+    // so it needs somewhere to live that no source character occupies.
+    if (cursorDisplay >= roles.length) {
+      return (
+        <>
+          {body}
+          <span
+            key="caret-end"
+            ref={caretRef}
+            title="Chunk complete"
+            className="relative rounded-[2px] bg-blue-500/20 px-1 ring-2 ring-blue-400/60"
+          />
+        </>
+      )
+    }
+
+    return body
   }
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        "relative font-mono text-sm leading-relaxed h-[500px] overflow-auto p-4 bg-secondary rounded-lg border border-border",
+        "relative h-[500px] overflow-auto rounded-lg border border-border bg-secondary p-4 font-mono text-sm leading-relaxed",
         className
       )}
     >

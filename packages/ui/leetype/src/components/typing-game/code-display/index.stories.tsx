@@ -1,6 +1,6 @@
 import { useFormattedCode } from "@leetype/hooks/leetype/use-formatted-code"
+import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
 import { assertNever } from "@leetype/utils"
-import { codeToUnits, sliceUserUnits } from "@leetype/utils/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { CodeDisplay } from "."
@@ -44,6 +44,14 @@ const StoryFromFile = ({
   const state = useFormattedCode(path, {
     prettierParser: prettierParser,
   })
+
+  // Drives the real engine `typedChars` keystrokes in, so the story shows
+  // what the player would actually see rather than a hand-rolled guess at
+  // where the caret lands around indentation.
+  const preview = usePreviewGame(
+    state.status === "SUCCESS" ? state.code : "",
+    typedChars
+  )
 
   // --- Handle FSM States ---
 
@@ -102,18 +110,23 @@ const StoryFromFile = ({
     }
 
     case "SUCCESS": {
-      // Type-safe: TS guarantees state.code is a string
-      const targetUnits = codeToUnits(state.code)
-      const userUnits = sliceUserUnits(targetUnits, typedChars)
+      if (!preview) {
+        return (
+          <div style={{ padding: "20px", color: "#888" }}>
+            Starting engine...
+          </div>
+        )
+      }
 
       return (
         <CodeDisplay
           className={"code"}
           displayCode={state.code}
           language={language}
-          targetUnits={targetUnits}
-          userUnits={userUnits}
-          cursorDisplayIndex={typedChars}
+          roles={preview.roles}
+          slotOfDisplay={preview.slotOfDisplay}
+          slotStatus={preview.slotStatus}
+          cursorDisplay={preview.snapshot.cursorDisplay}
         />
       )
     }
