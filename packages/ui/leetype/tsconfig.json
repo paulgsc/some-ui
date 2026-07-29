@@ -13,6 +13,12 @@
       "@some-ui/leetype-wasm": ["./src/types/wasm/leetype-wasm.d.ts"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "vitest.setup.test.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }
