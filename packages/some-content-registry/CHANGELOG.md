@@ -1,5 +1,12 @@
 # @some-ui/content-registry
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/leetype@0.0.1
+
 ## 1.0.2
 
 ### Patch Changes
