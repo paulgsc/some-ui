@@ -66,8 +66,11 @@ export type SuspenderEventKind =
   | "check.skipped"
   | "check.done"
   | "check.error"
+  | "check.failed"
+  | "check.census"
   | "tab.skipped"
   | "tab.meta_error"
+  | "tab.meta_timeout"
   // one tab's suspend lifecycle
   | "suspend.requested"
   | "suspend.queued"
@@ -95,12 +98,14 @@ export type SuspenderCounter =
   | "alarm_missed"
   | "alarm_repairs"
   | "checks_run"
+  | "checks_done"
   | "checks_skipped"
   | "check_errors"
   | "tabs_scanned"
   | "tabs_selected"
   | "tabs_skipped"
   | "meta_errors"
+  | "meta_timeouts"
   | "suspend_attempts"
   | "suspend_succeeded"
   | "suspend_noop"
@@ -132,6 +137,10 @@ export type InvariantContext = {
   alarmScheduledTime: number | undefined
   /** Epoch ms of the last completed sweep, if one has run since install. */
   lastCheckAt: number | undefined
+  /** Lifetime count of sweeps entered. */
+  sweepsStarted: number
+  /** Lifetime count of sweeps that reached a terminal outcome. */
+  sweepsSettled: number
   /** The configured title marker; "" disables marking entirely. */
   marker: string
   tabs: ReadonlyArray<{
@@ -197,6 +206,26 @@ export const suspenderInvariants: ReadonlyArray<Invariant<InvariantContext>> = [
         ? violated({
             msSinceLastCheck: since,
             expectedIntervalMs: ctx.expectedIntervalMs,
+          })
+        : { ok: true }
+    },
+  },
+  {
+    name: "SweepsTerminate",
+    description:
+      "Sweeps entered and sweeps finished must stay in step — a growing gap means each sweep is starting and then dying mid-flight.",
+    check: (ctx): InvariantOutcome => {
+      if (ctx.sweepsStarted === 0) {
+        return { ok: "unknown" }
+      }
+      // One sweep may legitimately be in flight at the moment of the reading;
+      // a second is already a pattern, not a race.
+      const stranded = ctx.sweepsStarted - ctx.sweepsSettled
+      return stranded > 1
+        ? violated({
+            stranded,
+            started: ctx.sweepsStarted,
+            settled: ctx.sweepsSettled,
           })
         : { ok: true }
     },
@@ -406,6 +435,11 @@ export async function collectInvariantContext(): Promise<InvariantContext> {
     expectedIntervalMs: schedulingEnabled ? checkIntervalMs(stored.period) : 0,
     alarmScheduledTime,
     lastCheckAt,
+    sweepsStarted: obs.metrics.counter("checks_run"),
+    sweepsSettled:
+      obs.metrics.counter("checks_done") +
+      obs.metrics.counter("checks_skipped") +
+      obs.metrics.counter("check_errors"),
     marker: prefs.prepends,
     tabs,
     inFlight: stateProbe().inFlight,

@@ -129,6 +129,27 @@ export class Recorder<
    * Load persisted state. Call once, early in worker startup: an MV3 event
    * page is recycled constantly, and a recorder that starts empty on every
    * respawn measures the worker's lifetime instead of the extension's.
+   *
+   * ## Why this merges rather than replaces
+   *
+   * `hydrate` is asynchronous — it awaits a storage read — but recording is
+   * not, and the worker does not wait. Module evaluation registers the event
+   * listeners, and whatever those listeners fire during the read window (an
+   * alarm that fired *and is what woke the page*, the startup sweep it kicks
+   * off) records into a recorder that has not loaded yet.
+   *
+   * The previous implementation then did `buffer.clear()` and overwrote every
+   * counter with the on-disk value, so all of it vanished. The visible symptom
+   * was a timeline where a sweep's `tab.skipped` events appear with no
+   * preceding `check.start`, and where a worker generation woken *by* an alarm
+   * shows `worker.start` → `alarm.kept` and no `alarm.fired` — which then reads
+   * downstream as a phantom "missed alarm" whose interval is a clean multiple
+   * of the period. The scheduler was fine; the recorder was eating the proof.
+   *
+   * That window is the single most diagnostically valuable part of a worker's
+   * life, so it is the one part that must not be dropped. Stored history is
+   * folded in *underneath* what this generation has already seen: disk events
+   * first, then live events re-sequenced to follow them.
    */
   async hydrate(): Promise<void> {
     if (this.hydrated || this.disposed) {
@@ -140,6 +161,11 @@ export class Recorder<
       // Absent, or written by a different workspace sharing the storage area.
       return
     }
+
+    // Everything recorded while the load above was in flight.
+    const live = this.buffer.toArray()
+    const liveMetrics = this.metrics.snapshot()
+
     const events = stored.events.filter(isEventShape)
     const restored = RingBuffer.from(
       this.buffer.capacity,
@@ -148,12 +174,28 @@ export class Recorder<
     )
     this.buffer.clear()
     this.buffer.extend(restored.toArray())
+
+    this.metrics.reset()
     this.metrics.hydrate(stored.metrics)
+    this.metrics.merge(liveMetrics)
+
+    // Stored snapshots must not clobber a fresher value this generation already
+    // published — `alarm:lastFire` written by the very alarm that woke us is
+    // newer than the one on disk by definition.
     for (const [key, value] of Object.entries(stored.snapshots)) {
-      this.snapshots.set(key, value)
+      if (!this.snapshots.has(key)) {
+        this.snapshots.set(key, value)
+      }
     }
-    this.errorCount = events.filter((e) => e.severity === "error").length
+
     this.seq = events.reduce((max, e) => Math.max(max, e.seq), 0)
+    for (const event of live) {
+      this.seq += 1
+      this.buffer.push({ ...event, seq: this.seq })
+    }
+    this.errorCount =
+      events.filter((e) => e.severity === "error").length +
+      live.filter((e) => e.severity === "error").length
   }
 
   /** Stop recording without losing what is already held. */

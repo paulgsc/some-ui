@@ -40,6 +40,16 @@ import { log, match, query } from "../core/utils"
  *     affected tabs are skipped.
  */
 
+/**
+ * One frame's result from the meta-collector injection. Structural rather than
+ * `chrome.scripting.InjectionResult<CollectedMeta>`: `readMeta` already treats
+ * `result` as untrusted, and the collector runs in a page we do not control.
+ */
+type MetaInjection = {
+  frameId?: number
+  result?: unknown
+}
+
 /** Per-tab metadata returned by the injected meta collector. */
 type TabMeta = {
   ready?: boolean
@@ -100,6 +110,81 @@ function closeEnough(a: number | undefined, b: number): boolean {
 }
 
 /**
+ * How long to wait for one tab's metadata probe before giving up on it.
+ *
+ * `chrome.scripting.executeScript` resolves when the injected function has run
+ * *in the page's own main thread*. It therefore inherits that thread's health:
+ * a page pegged by a busy script, a wedged content process, or a cross-origin
+ * frame that never becomes scriptable simply never answers. It does not reject,
+ * and it has no built-in deadline — a rejection handler is no defence, because
+ * nothing is ever rejected.
+ *
+ * Awaited unguarded in a sequential loop, one such tab is not a slow tab: it is
+ * a permanently stopped sweep, and every tab behind it in the list is never
+ * evaluated again for the life of the profile.
+ */
+const META_TIMEOUT_MS = 5_000
+
+/**
+ * How many tabs to probe at once.
+ *
+ * Strictly sequential probing costs a full round-trip per tab; across a
+ * few-hundred-tab profile that is minutes of wall-clock during which the event
+ * page can be recycled out from under the sweep — losing it just as surely as
+ * a hang, only less obviously. Modest parallelism keeps a sweep to seconds.
+ * Kept low deliberately: each probe runs script in a real page, and a good
+ * citizen does not stampede the browser to save a few hundred milliseconds.
+ */
+const META_CONCURRENCY = 6
+
+/**
+ * Resolve with `undefined` if `promise` has not settled within `ms`.
+ *
+ * The pending promise is abandoned, not cancelled — there is no way to cancel
+ * an in-flight `executeScript`. That is acceptable: it holds one closure, and
+ * the sweep no longer waits on it.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | undefined> {
+  return new Promise<T | undefined>((resolve) => {
+    const timer = setTimeout(() => resolve(undefined), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(undefined)
+      }
+    )
+  })
+}
+
+/** Run `worker` over every item, at most `limit` in flight. Never rejects. */
+async function forEachConcurrent<T>(
+  items: ReadonlyArray<T>,
+  limit: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  let cursor = 0
+  const lanes = Array.from(
+    { length: Math.max(1, Math.min(limit, items.length)) },
+    async () => {
+      while (cursor < items.length) {
+        const item = items[cursor++]
+        if (item !== undefined) {
+          await worker(item)
+        }
+      }
+    }
+  )
+  await Promise.all(lanes)
+}
+
+/**
  * Record the end of one sweep: duration into the aggregate, tallies into the
  * timeline. Every exit path from `check()` goes through here or through the
  * `check.skipped` branches, so a sweep that vanishes mid-flight is visible as
@@ -116,7 +201,81 @@ function finish(
 ): void {
   const duration = Date.now() - startedAt
   observe("check_duration_ms", duration)
+  count("checks_done")
+  noteCheckCompleted(Date.now())
   record("check.done", undefined, { ...tally, durationMs: duration })
+}
+
+/**
+ * Terminate a sweep early — a legitimate outcome, not a failure. A sweep that
+ * decides there is nothing to do has run just as surely as one that suspends
+ * something, so it counts as completion for {@link noteCheckCompleted}.
+ */
+function abandon(
+  reason: string,
+  why: string,
+  detail: Record<string, JsonValue> = {}
+): void {
+  count("checks_skipped")
+  noteCheckCompleted(Date.now())
+  record("check.skipped", reason, { why, ...detail })
+}
+
+/**
+ * The whole tab population, independent of the sweep's candidate filters.
+ *
+ * Answers "does the suspender even see my tabs?" — a question the candidate
+ * count alone cannot, since it is the count *after* every filter has run.
+ */
+async function readTabCensus(): Promise<{
+  total: number
+  windows: number
+  discarded: number
+  active: number
+  pinned: number
+  audible: number
+}> {
+  try {
+    const all = await chrome.tabs.query({})
+    return {
+      total: all.length,
+      windows: new Set(all.map((t) => t.windowId)).size,
+      discarded: all.filter((t) => t.discarded === true).length,
+      active: all.filter((t) => t.active).length,
+      pinned: all.filter((t) => t.pinned).length,
+      audible: all.filter((t) => t.audible === true).length,
+    }
+  } catch {
+    return {
+      total: -1,
+      windows: -1,
+      discarded: -1,
+      active: -1,
+      pinned: -1,
+      audible: -1,
+    }
+  }
+}
+
+/**
+ * Run a sweep, recording a rejection rather than dropping it.
+ *
+ * Every scheduled sweep is launched fire-and-forget, so before this an
+ * exception thrown after `check.start` — anywhere outside the per-tab
+ * `try`/`catch` — became an unhandled rejection: no event, no counter, no
+ * console line. The sweep simply stopped existing, and the timeline showed a
+ * `check.start` with nothing after it.
+ */
+function runCheck(reason: string): void {
+  void number.check(undefined, undefined, reason).catch((e: unknown) => {
+    count("check_errors")
+    record(
+      "check.failed",
+      reason,
+      { error: e instanceof Error ? e.message : String(e) },
+      "error"
+    )
+  })
 }
 
 /**
@@ -244,11 +403,12 @@ const number: NumberMode = {
     const startedAt = Date.now()
     count("checks_run")
     record("check.start", reason ?? "manual")
-    // Noted at the *start*: what the CheckRanRecently invariant is really
-    // asking is "did the scheduler wake us", and a sweep that skips out early
-    // (machine not idle, tab count below threshold) answers that just as well
-    // as one that suspends something.
-    noteCheckCompleted(startedAt)
+    // Completion is noted at the *terminal* points (`finish` / `abandon`), not
+    // here. Noting it on entry made CheckRanRecently ask "did the scheduler
+    // wake us" — which a sweep that starts and then hangs forever answers
+    // perfectly well. The whole class of bug the invariant exists to catch
+    // lives after this line, so a mark taken before it can only ever read
+    // green.
 
     const base = await storage<Omit<CheckPrefs, "whitelist.session">>({
       mode: "time-based",
@@ -284,16 +444,14 @@ const number: NumberMode = {
       )
       if (state !== "idle") {
         log("discarding is skipped", "not in the idle state")
-        count("checks_skipped")
-        record("check.skipped", reason ?? "manual", { why: "machine-not-idle" })
+        abandon(reason ?? "manual", "machine-not-idle")
         return
       }
     }
     // only check if INTERNET is connected
     if (prefs.online && navigator.onLine === false) {
       log("discarding is skipped", "No INTERNET connection detected")
-      count("checks_skipped")
-      record("check.skipped", reason ?? "manual", { why: "offline" })
+      abandon(reason ?? "manual", "offline")
       return
     }
 
@@ -312,6 +470,25 @@ const number: NumberMode = {
     }
     let tbs = await query(options)
     count("tabs_scanned", tbs.length)
+
+    // The candidate query is heavily filtered — `discarded: false` alone hides
+    // every tab the browser already unloaded, which on a session-restored
+    // profile is most of them. Without the total alongside it, `tabs_scanned`
+    // is unreadable: there is no way to tell "your 200 tabs are already
+    // unloaded, nothing to do" apart from "the sweep can only see 20 of your
+    // 200 tabs", and those call for opposite responses. Record the census.
+    const census = await readTabCensus()
+    record("check.census", reason ?? "manual", {
+      ...census,
+      candidates: tbs.length,
+      query: {
+        discarded: false,
+        active: options.active ?? null,
+        pinned: options.pinned ?? null,
+        audible: options.audible ?? null,
+      },
+    })
+    obs.setSnapshot("tabs:census", { ...census, at: Date.now() })
 
     /** Record why one tab was passed over. The "why wasn't this tab suspended?"
      *  question is answered entirely from these events. */
@@ -398,9 +575,7 @@ const number: NumberMode = {
           tbs.length,
           prefs.number
         )
-        count("checks_skipped")
-        record("check.skipped", reason ?? "manual", {
-          why: "below-tab-threshold",
+        abandon(reason ?? "manual", "below-tab-threshold", {
           candidates: tbs.length,
           ignored: exceptionCount,
           threshold: prefs.number,
@@ -412,9 +587,15 @@ const number: NumberMode = {
     const now = Date.now()
     const map = new Map<chrome.tabs.Tab, TabMeta>()
     const arr: Array<chrome.tabs.Tab> = []
-    for (const tb of tbs) {
+
+    /**
+     * Judge one tab: either add it to the candidate set or record why not.
+     * Never throws and never waits indefinitely, so no single tab can decide
+     * the fate of the whole sweep.
+     */
+    const evaluate = async (tb: chrome.tabs.Tab): Promise<void> => {
       if (tb.id === undefined) {
-        continue
+        return
       }
       try {
         // An injection failure used to be swallowed whole (`() => []`), which
@@ -422,23 +603,46 @@ const number: NumberMode = {
         // "this tab is fine". Keep the same non-fatal behaviour, but keep the
         // reason.
         let injectionError: string | undefined
-        const results =
-          tb.status === "unloaded"
-            ? []
-            : await chrome.scripting
-                .executeScript({
-                  target: { tabId: tb.id, allFrames: true },
-                  // Inject the collector as a function, not a bundled file: a
-                  // bundler tree-shakes the file's completion-value payload.
-                  func: collectMeta,
-                })
-                .then(
-                  (r) => r,
-                  (e: unknown) => {
-                    injectionError = e instanceof Error ? e.message : String(e)
-                    return []
-                  }
-                )
+        let results: Array<MetaInjection> = []
+        if (tb.status !== "unloaded") {
+          const probed = await withTimeout(
+            chrome.scripting
+              .executeScript({
+                target: { tabId: tb.id, allFrames: true },
+                // Inject the collector as a function, not a bundled file: a
+                // bundler tree-shakes the file's completion-value payload.
+                func: collectMeta,
+              })
+              .then(
+                (r) => r,
+                (e: unknown) => {
+                  injectionError = e instanceof Error ? e.message : String(e)
+                  return []
+                }
+              ),
+            META_TIMEOUT_MS
+          )
+          if (probed === undefined) {
+            // The page never answered. Treat it as unjudgeable rather than as
+            // safe-to-suspend: we cannot see unsaved form input from here, and
+            // suspending through it would lose the user's work.
+            count("meta_timeouts")
+            record(
+              "tab.meta_timeout",
+              tb.id,
+              {
+                origin: safeOrigin(tb.url),
+                status: tb.status ?? null,
+                timeoutMs: META_TIMEOUT_MS,
+              },
+              "warn"
+            )
+            skipped(tb, "meta-timeout", { timeoutMs: META_TIMEOUT_MS })
+            exceptionCount += 1
+            return
+          }
+          results = probed
+        }
         if (injectionError !== undefined) {
           count("meta_errors")
           record("tab.meta_error", tb.id, {
@@ -459,7 +663,7 @@ const number: NumberMode = {
             icon(tb, "metadata fetch error")
             skipped(tb, "metadata-unavailable", { status: tb.status ?? null })
             exceptionCount += 1
-            continue
+            return
           }
         }
         const meta: TabMeta = Object.assign({}, ...ms)
@@ -491,48 +695,48 @@ const number: NumberMode = {
             origin: safeOrigin(tb.url),
           })
           void discard(tb)
-          continue
+          return
         }
         if (meta.ready !== true && ops["ignore.ready.state"] !== true) {
           log("discarding aborted", "tab is not ready", tb)
           skipped(tb, "not-ready", { status: tb.status ?? null })
           exceptionCount += 1
-          continue
+          return
         }
         if (prefs.audio && meta.audible) {
           log("discarding aborted", "audio is playing", tb)
           icon(tb, "tab plays an audio")
           skipped(tb, "audible")
           exceptionCount += 1
-          continue
+          return
         }
         if (prefs.paused && meta.paused) {
           log("discarding aborted", "player is paused", tb)
           icon(tb, "tab has a paused player")
           skipped(tb, "paused-media")
           exceptionCount += 1
-          continue
+          return
         }
         if (prefs.form && meta.forms) {
           log("discarding aborted", "active form", tb)
           icon(tb, "there is an active form on this tab")
           skipped(tb, "unsaved-form")
           exceptionCount += 1
-          continue
+          return
         }
         if (prefs["notification.permission"] && meta.permission) {
           log("discarding aborted", "tab has notification permission")
           icon(tb, "tab has notification permission")
           skipped(tb, "notification-permission")
           exceptionCount += 1
-          continue
+          return
         }
         if (tb.autoDiscardable === false) {
           log("discarding aborted", "tab is not discardable", tb)
           skipped(tb, "not-auto-discardable")
           exceptionCount += 1
           icon(tb, "tab is not discardable")
-          continue
+          return
         }
         if (now - (meta.time ?? tb.lastAccessed ?? now) < prefs.period * 1000) {
           log("discarding aborted", "tab is not old", tb)
@@ -544,21 +748,17 @@ const number: NumberMode = {
           })
           exceptionCount += 1
           icon.reset(tb)
-          continue
+          return
         }
         if (tb.active) {
           log("discarding aborted", "tab is active", tb)
           skipped(tb, "active")
           exceptionCount += 1
           icon.reset(tb)
-          continue
+          return
         }
         map.set(tb, meta)
         arr.push(tb)
-        if (arr.length > prefs["max.single.discard"]) {
-          log("number.check", "breaking", "max number of tabs reached")
-          break
-        }
       } catch (e) {
         log("number.check error", e)
         count("check_errors")
@@ -571,6 +771,14 @@ const number: NumberMode = {
       }
     }
 
+    // Note on the dropped early-exit: the sequential loop used to `break` once
+    // `arr` passed `max.single.discard`. That truncated the candidate set
+    // *before* it was sorted by age, so the cap was applied to whichever tabs
+    // the query happened to list first rather than to the oldest ones. The
+    // `slice` below still enforces the same cap, now against a fully-sorted
+    // set — the oldest tabs win, which is what the cap was always for.
+    await forEachConcurrent(tbs, META_CONCURRENCY, evaluate)
+
     if (prefs["icon-update"] === true) {
       if (tbs.length + exceptionCount <= prefs.number) {
         log(
@@ -579,9 +787,7 @@ const number: NumberMode = {
           tbs.length,
           prefs.number
         )
-        count("checks_skipped")
-        record("check.skipped", reason ?? "manual", {
-          why: "below-tab-threshold",
+        abandon(reason ?? "manual", "below-tab-threshold", {
           candidates: tbs.length,
           ignored: exceptionCount,
           threshold: prefs.number,
@@ -669,7 +875,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         periodInMinutes: alarm.periodInMinutes,
       })
     }
-    void number.check(undefined, undefined, "number/1")
+    runCheck("number/1")
   }
 })
 
@@ -699,7 +905,7 @@ async function watchdog(periodSeconds: number): Promise<void> {
     // have performed is what we owe the user right now.
     count("alarm_repairs")
     record("alarm.repaired", CHECK_ALARM, { why: "absent" }, "warn")
-    void number.check(undefined, undefined, "watchdog/absent")
+    runCheck("watchdog/absent")
     return
   }
 
@@ -716,7 +922,7 @@ async function watchdog(periodSeconds: number): Promise<void> {
       when: now + intervalMs,
       periodInMinutes: intervalMs / 60_000,
     })
-    void number.check(undefined, undefined, "watchdog/overdue")
+    runCheck("watchdog/overdue")
   }
 }
 

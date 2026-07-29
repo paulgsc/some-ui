@@ -3,45 +3,40 @@
  * Diagnostics page styling. Deliberately plain: this page is a debugging
  * instrument, not product surface, and it must stay readable when the thing it
  * reports on is broken. Everything is theme-token driven so it inherits the
- * popup's palette. */
+ * popup's palette.
+ *
+ * Dark unconditionally, matching popup.css — and matching the rest of this
+ * workspace, which ships an extension whose whole job is forcing vendor pages
+ * dark. Following `prefers-color-scheme` here meant our own surface was the one
+ * thing that ignored the preference every other surface is built to enforce:
+ * open the diagnostics page from a dark popup and get a white flash. A page we
+ * own should not need the filter extension pointed at it. */
 
 :root {
+  color-scheme: dark;
+
   --sl-bg: #1a1a1a;
   --sl-fg: #e0e0e0;
   --sl-muted: #8a8a8a;
-  --sl-panel: #232323;
-  --sl-border: #383838;
+  --sl-panel: #232326;
+  --sl-border: rgb(255 255 255 / 8%);
   --sl-ok: #4ade80;
   --sl-warn: #fbbf24;
   --sl-bad: #f87171;
-  --sl-accent: #60a5fa;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --sl-bg: #fafafa;
-    --sl-fg: #1a1a1a;
-    --sl-muted: #666;
-    --sl-panel: #fff;
-    --sl-border: #ddd;
-    --sl-ok: #15803d;
-    --sl-warn: #a16207;
-    --sl-bad: #b91c1c;
-    --sl-accent: #1d4ed8;
-  }
+  --sl-accent: #6aa6ff;
 }
 
 #app {
-  max-width: 60rem;
   margin: 0 auto;
+  max-width: 60rem;
   padding: 1.5rem 1rem 4rem;
 }
 
 .sl-head {
+  align-items: baseline;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  align-items: baseline;
   justify-content: space-between;
   margin-bottom: 1.25rem;
 }
@@ -62,14 +57,14 @@
 }
 
 button {
+  background: var(--sl-panel);
+  border: 1px solid var(--sl-border);
+  border-radius: 0.35rem;
+  color: var(--sl-fg);
+  cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
   padding: 0.35rem 0.75rem;
-  border-radius: 0.35rem;
-  border: 1px solid var(--sl-border);
-  background: var(--sl-panel);
-  color: var(--sl-fg);
-  cursor: pointer;
 }
 
 button:hover {
@@ -80,16 +75,16 @@ section {
   background: var(--sl-panel);
   border: 1px solid var(--sl-border);
   border-radius: 0.5rem;
-  padding: 0.9rem 1rem;
   margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
 }
 
 section > h2 {
+  color: var(--sl-muted);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sl-muted);
   margin: 0 0 0.75rem;
+  text-transform: uppercase;
 }
 
 .sl-score {
@@ -99,20 +94,23 @@ section > h2 {
 }
 
 .sl-score small {
+  color: var(--sl-muted);
   font-size: 0.8rem;
   font-weight: 400;
-  color: var(--sl-muted);
 }
 
 .ok {
   color: var(--sl-ok);
 }
+
 .warn {
   color: var(--sl-warn);
 }
+
 .bad {
   color: var(--sl-bad);
 }
+
 .muted {
   color: var(--sl-muted);
 }
@@ -124,11 +122,11 @@ ul.sl-checks {
 }
 
 ul.sl-checks li {
-  display: grid;
-  grid-template-columns: 1.25rem 1fr;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
   border-top: 1px solid var(--sl-border);
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1.25rem 1fr;
+  padding: 0.35rem 0;
 }
 
 ul.sl-checks .sl-desc {
@@ -138,17 +136,17 @@ ul.sl-checks .sl-desc {
 
 .sl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
   gap: 0.5rem 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
 }
 
 .sl-metric {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
   border-bottom: 1px dotted var(--sl-border);
-  padding: 0.2rem 0;
+  display: flex;
   font-variant-numeric: tabular-nums;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.2rem 0;
 }
 
 .sl-metric .k {
@@ -160,22 +158,22 @@ ul.sl-checks .sl-desc {
 }
 
 table.sl-events {
-  width: 100%;
   border-collapse: collapse;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  width: 100%;
 }
 
 table.sl-events th {
-  text-align: left;
   color: var(--sl-muted);
   font-weight: 500;
   padding: 0.25rem 0.5rem 0.4rem 0;
+  text-align: left;
 }
 
 table.sl-events td {
-  padding: 0.2rem 0.5rem 0.2rem 0;
   border-top: 1px solid var(--sl-border);
+  padding: 0.2rem 0.5rem 0.2rem 0;
   vertical-align: top;
 }
 
@@ -194,13 +192,13 @@ table.sl-events td.detail {
 
 .sl-filter input,
 .sl-filter select {
+  background: var(--sl-bg);
+  border: 1px solid var(--sl-border);
+  border-radius: 0.35rem;
+  color: var(--sl-fg);
   font: inherit;
   font-size: 0.8rem;
   padding: 0.3rem 0.5rem;
-  border-radius: 0.35rem;
-  border: 1px solid var(--sl-border);
-  background: var(--sl-bg);
-  color: var(--sl-fg);
 }
 
 .sl-empty {

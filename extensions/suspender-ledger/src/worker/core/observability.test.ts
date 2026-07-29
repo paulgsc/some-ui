@@ -124,6 +124,61 @@ describe("Recorder", () => {
     expect(second.events().map((e) => e.kind)).toEqual(["a"])
   })
 
+  it("keeps events recorded before hydrate resolves", async () => {
+    const persistence = memoryPersistence()
+    const first = makeRecorder(persistence)
+    first.record({ kind: "a", subject: "old" })
+    await first.flush()
+
+    // The startup window: an MV3 worker registers its listeners at module
+    // evaluation and they fire immediately — an alarm that fired *and is what
+    // woke the page* records here, while hydrate's storage read is still in
+    // flight. Clearing the buffer on load deleted exactly that, which is how a
+    // sweep's `tab.skipped` events came to appear with no `check.start` before
+    // them, and how a real alarm fire came to look like a missed one.
+    const second = makeRecorder(persistence)
+    const loading = second.hydrate()
+    second.record({ kind: "b", subject: "during-hydrate" })
+    await loading
+
+    expect(second.events().map((e) => e.subject)).toEqual([
+      "old",
+      "during-hydrate",
+    ])
+    // Re-sequenced to follow the restored history, not left colliding with it.
+    expect(second.events().map((e) => e.seq)).toEqual([1, 2])
+  })
+
+  it("adds counters taken during the hydrate window to the stored ones", async () => {
+    const persistence = memoryPersistence()
+    const first = makeRecorder(persistence)
+    first.count("hits", 4)
+    await first.flush()
+
+    const second = makeRecorder(persistence)
+    const loading = second.hydrate()
+    second.count("hits", 2)
+    await loading
+
+    // 6, not 4 — overwriting would silently discard the live count, which is
+    // what made `alarm_fires` under-report every fire that woke the worker.
+    expect(second.metrics.counter("hits")).toBe(6)
+  })
+
+  it("does not let a stored snapshot overwrite a fresher live one", async () => {
+    const persistence = memoryPersistence()
+    const first = makeRecorder(persistence)
+    first.setSnapshot("alarm:lastFire", 1000)
+    await first.flush()
+
+    const second = makeRecorder(persistence)
+    const loading = second.hydrate()
+    second.setSnapshot("alarm:lastFire", 2000)
+    await loading
+
+    expect(second.snapshotEntries()["alarm:lastFire"]).toBe(2000)
+  })
+
   it("continues the sequence after hydrating rather than restarting at 1", async () => {
     const persistence = memoryPersistence()
     const first = makeRecorder(persistence)
@@ -256,6 +311,8 @@ const context = (over: Partial<InvariantContext> = {}): InvariantContext => ({
   expectedIntervalMs: INTERVAL,
   alarmScheduledTime: NOW + INTERVAL,
   lastCheckAt: NOW - 1000,
+  sweepsStarted: 10,
+  sweepsSettled: 10,
   marker: "💤",
   tabs: [],
   inFlight: [],
@@ -316,6 +373,35 @@ describe("suspender invariants", () => {
     const result = await check(
       "CheckRanRecently",
       context({ lastCheckAt: undefined })
+    )
+    expect(result.status).toBe("unknown")
+  })
+
+  it("SweepsTerminate catches sweeps that start and never finish", async () => {
+    // The exact shape of the reported regression: the scheduler is healthy and
+    // firing, every sweep is entered, and not one of them ever reaches a
+    // terminal outcome because a tab probe hangs mid-loop. Every other
+    // invariant reads green through this — which is how a profile that had not
+    // suspended a single tab in hours still scored 100.
+    const result = await check(
+      "SweepsTerminate",
+      context({ sweepsStarted: 13, sweepsSettled: 0 })
+    )
+    expect(result.status).toBe("violated")
+  })
+
+  it("SweepsTerminate tolerates exactly one sweep in flight", async () => {
+    const result = await check(
+      "SweepsTerminate",
+      context({ sweepsStarted: 13, sweepsSettled: 12 })
+    )
+    expect(result.status).toBe("ok")
+  })
+
+  it("SweepsTerminate reports unknown before any sweep has run", async () => {
+    const result = await check(
+      "SweepsTerminate",
+      context({ sweepsStarted: 0, sweepsSettled: 0 })
     )
     expect(result.status).toBe("unknown")
   })

@@ -102,6 +102,46 @@ export class MetricsStore<
     }
   }
 
+  /**
+   * Fold a snapshot into what is already held, rather than replacing it.
+   *
+   * The difference from {@link hydrate} is load-bearing during startup. An MV3
+   * worker records before `hydrate()`'s storage read resolves — the alarm
+   * listener and the startup sweep both run in that window — and those counts
+   * are real. Overwriting them with the on-disk value silently deletes exactly
+   * the evidence the startup window exists to produce.
+   */
+  merge(snapshot: MetricsSnapshot | undefined): void {
+    if (!snapshot) {
+      return
+    }
+    for (const [name, value] of Object.entries(snapshot.counters)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        this.counters.set(name, (this.counters.get(name) ?? 0) + value)
+      }
+    }
+    for (const [name, value] of Object.entries(snapshot.aggregates)) {
+      if (!isAggregate(value)) {
+        continue
+      }
+      const prior = this.aggregates.get(name)
+      if (!prior) {
+        this.aggregates.set(name, { ...value })
+        continue
+      }
+      this.aggregates.set(name, {
+        count: prior.count + value.count,
+        sum: prior.sum + value.sum,
+        min: Math.min(prior.min, value.min),
+        max: Math.max(prior.max, value.max),
+        // `prior` is the newer of the two: merge folds a just-loaded historical
+        // snapshot into counts taken moments ago, so the in-memory `last` is
+        // the more recent observation.
+        last: prior.last,
+      })
+    }
+  }
+
   /** Zero everything — the debug page's "reset counters" action. */
   reset(): void {
     this.counters.clear()
