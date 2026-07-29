@@ -7,15 +7,20 @@ set -euo pipefail
 # only where a genuine, isolated state transition occurs - confined to the
 # smallest possible scope, never re-threaded across more than one
 # private-helper call boundary. This scans for &mut self/&mut T parameters
-# under hangul-game-core's internal/ tree and fails unless the function is
-# on the allow-list below, each entry carrying the reasoning that justified
-# keeping it. Sibling to scripts/check-wasm-bindgen-boundary.sh (Axiom 11.1).
+# under each guarded tree below and fails unless the function is on the
+# allow-list, each entry carrying the reasoning that justified keeping it.
+# Sibling to scripts/check-wasm-bindgen-boundary.sh (Axiom 11.1).
 #
 # Usage: scripts/check-mutation-boundary.sh
 
 cd "$(git rev-parse --show-toplevel)"
 
-CRATE_DIR="crates/hangul-game-core/src/internal"
+# Trees held to Axiom 12.1. Allow-list entries below are named relative to
+# whichever of these directories the file lives under.
+GUARDED_DIRS=(
+  "crates/hangul-game-core/src/internal"
+  "crates/leetype_wasm/src"
+)
 
 # "relative/path.rs:fn_name" pairs already reasoned about as genuine,
 # isolated state transitions (ADR 0004 §2). Extending this list for a NEW
@@ -82,6 +87,15 @@ ALLOWLIST=(
   # you locally own.
   "events.rs:add_secondary"
   "events.rs:add_ui_hint"
+  # leetype_wasm's single transition point. `step` is a free function that
+  # takes &TypingGameCore and *returns* the core that should replace it, so
+  # dispatch's whole body is one call plus one terminal `*self = next`.
+  # Nothing below it takes &mut anything: the session reducer, the program
+  # compiler, the stats and the view projections are all free functions over
+  # borrowed state. The wasm wrapper in that crate's lib.rs has no &mut self
+  # at all - it reaches this function through a RefCell borrow taken and
+  # released inside one method body.
+  "game_core.rs:dispatch"
 )
 
 is_allowed() {
@@ -96,35 +110,43 @@ is_allowed() {
 
 status=0
 
-while IFS= read -r -d '' file; do
-  rel="${file#"$CRATE_DIR"/}"
+for crate_dir in "${GUARDED_DIRS[@]}"; do
+  if [ ! -d "$crate_dir" ]; then
+    echo "::error::guarded directory $crate_dir does not exist"
+    status=1
+    continue
+  fi
 
-  # This crate always puts #[cfg(test)] mod tests { ... } at the end of the
-  # file - test-only helpers (e.g. push_reveal(engine: &mut GameEngine<..>))
-  # are out of this check's scope, so anything at or after that marker is
-  # excluded.
-  test_start=$(grep -n '^#\[cfg(test)\]' "$file" | head -1 | cut -d: -f1 || true)
+  while IFS= read -r -d '' file; do
+    rel="${file#"$crate_dir"/}"
 
-  while IFS=: read -r line_no line; do
-    if [ -n "$test_start" ] && [ "$line_no" -ge "$test_start" ]; then
-      continue
-    fi
+    # These crates always put #[cfg(test)] mod tests { ... } at the end of
+    # the file - test-only helpers (e.g. push_reveal(engine: &mut
+    # GameEngine<..>)) are out of this check's scope, so anything at or
+    # after that marker is excluded.
+    test_start=$(grep -n '^#\[cfg(test)\]' "$file" | head -1 | cut -d: -f1 || true)
 
-    fn_name=$(sed -n 's/.*fn[[:space:]]\+\([a-zA-Z0-9_]\+\).*/\1/p' <<<"$line")
-    if [ -z "$fn_name" ]; then
-      continue
-    fi
+    while IFS=: read -r line_no line; do
+      if [ -n "$test_start" ] && [ "$line_no" -ge "$test_start" ]; then
+        continue
+      fi
 
-    candidate="$rel:$fn_name"
-    if ! is_allowed "$candidate"; then
-      echo "::error::$file:$line_no: fn '$fn_name' takes &mut self/&mut T but is not on scripts/check-mutation-boundary.sh's allow-list"
-      status=1
-    fi
-  done < <(grep -n 'fn [a-zA-Z0-9_]*(.*&mut \(self\|[A-Z]\)' "$file" || true)
-done < <(find "$CRATE_DIR" -name '*.rs' -print0)
+      fn_name=$(sed -n 's/.*fn[[:space:]]\+\([a-zA-Z0-9_]\+\).*/\1/p' <<<"$line")
+      if [ -z "$fn_name" ]; then
+        continue
+      fi
+
+      candidate="$rel:$fn_name"
+      if ! is_allowed "$candidate"; then
+        echo "::error::$file:$line_no: fn '$fn_name' takes &mut self/&mut T but is not on scripts/check-mutation-boundary.sh's allow-list"
+        status=1
+      fi
+    done < <(grep -n 'fn [a-zA-Z0-9_]*(.*&mut \(self\|[A-Z]\)' "$file" || true)
+  done < <(find "$crate_dir" -name '*.rs' -print0)
+done
 
 if [ "$status" -eq 0 ]; then
-  echo "OK: every &mut self/&mut T parameter under $CRATE_DIR is on the named allow-list."
+  echo "OK: every &mut self/&mut T parameter under ${GUARDED_DIRS[*]} is on the named allow-list."
 fi
 
 exit "$status"

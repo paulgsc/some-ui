@@ -7,24 +7,49 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useTypingGame } from "."
 
 // ═══════════════════════════════════════════════════════════════════════════
-// S5 — use-typing-game-wasm.ts:67-99 holds the workspace's canonical
-// `const aliveRef = { current: true }` mount-guard: an async `loadWasm()`
-// that resolves *after* unmount must not construct a `TypedTypingGame`
-// instance or touch a freed one, and `gameRef.current?.free()` must run
-// exactly once on cleanup. These tests pin that behavior (and plain
-// mount/remount stability) *before* the react-hooks/refs + immutability +
-// no-floating-promises fixes land, per #554.
+// Two things are pinned here.
 //
-// The leetype-wasm crate itself is mocked (module aliased to the stub in
-// vitest.config.ts, overridden here) so `loadWasm()`'s real caching/guard
-// logic in leetype-wasm-loader.ts runs unmodified against a controllable
-// fake TypingGame. `resetWasm()` (exported "useful for testing") clears
+// 1. The workspace's canonical `const aliveRef = { current: true }`
+//    mount-guard (#554): an async `loadWasm()` that resolves *after*
+//    unmount must not construct a `TypedTypingGame` instance or touch a
+//    freed one, and `free()` must run exactly once on cleanup.
+//
+// 2. The keystroke contract that replaced the old whole-buffer
+//    `handle_input(string)`: the hook forwards one `press`/`backspace`
+//    command per keystroke, only while playing, and republishes the
+//    engine's own snapshot rather than deriving a cursor of its own.
+//
+// The leetype-wasm crate itself is mocked so `loadWasm()`'s real
+// caching/guard logic in leetype-wasm-loader.ts runs unmodified against a
+// controllable fake. `resetWasm()` (exported "useful for testing") clears
 // the loader's module-level singleton between tests.
 // ═══════════════════════════════════════════════════════════════════════════
+
+const SNAPSHOT = {
+  cursorSlot: 0,
+  cursorDisplay: 0,
+  cursorSection: null,
+  slotCount: 3,
+  filled: 0,
+  correct: 0,
+  firstGapSlot: 0,
+  progress: 0,
+  accuracy: 100,
+  wpm: 0,
+  elapsedTime: 0,
+  totalErrors: 0,
+  consecutiveErrors: 0,
+  showErrorAlert: false,
+  isComplete: false,
+  started: false,
+}
+
+type FakeCall = { method: string; args: Array<unknown> }
 
 type FakeTypingGameInstance = {
   targetCode: string
   maxConsecutiveErrors: number | undefined
+  calls: Array<FakeCall>
   freed: boolean
   free: Mock
 }
@@ -35,6 +60,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
     targetCode: string
     maxConsecutiveErrors: number | undefined
+    calls: Array<FakeCall> = []
     freed = false
     free: Mock
 
@@ -47,51 +73,64 @@ vi.mock("@some-ui/leetype-wasm", () => {
       registerInstance(this)
     }
 
-    start(): void {}
-    reset(): void {}
-    handle_input(): unknown {
-      return {
-        total_errors: 0,
-        consecutive_errors: 0,
-        show_error_alert: false,
-        accepted: true,
-      }
+    private record(method: string, ...args: Array<unknown>): unknown {
+      this.calls.push({ method, args })
+      return { accepted: true, rejection: undefined, snapshot: SNAPSHOT }
     }
-    get_stats(): unknown {
-      return {
-        progress: 0,
-        accuracy: 100,
-        wpm: 0,
-        elapsed_time: 0,
-        total_errors: 0,
-        consecutive_errors: 0,
-        show_error_alert: false,
-        cursor: 0,
-        is_complete: false,
-      }
+
+    layout(): unknown {
+      return { displayLen: 3, slotCount: 3, sections: [] }
     }
-    get_user_input(): string {
-      return ""
+    roles(): Uint8Array {
+      return new Uint8Array([1, 1, 1])
     }
-    get_target_units(): unknown {
+    slot_of_display(): Int32Array {
+      return new Int32Array([0, 1, 2])
+    }
+    slot_status(): Uint8Array {
+      return new Uint8Array([0, 0, 0])
+    }
+    snapshot(): unknown {
+      return SNAPSHOT
+    }
+    section_progress(): unknown {
       return []
     }
-    get_user_units(): unknown {
-      return []
+    cumulative_stats(): unknown {
+      return { charsTyped: 0, errors: 0 }
     }
-    get_cursor(): unknown {
-      return []
+    start(now: number): unknown {
+      return this.record("start", now)
     }
-    complete_chunk(): unknown {
-      return { chars_typed: 0, errors: 0, elapsed_time: 0 }
+    press(key: string, now: number): unknown {
+      return this.record("press", key, now)
     }
-    start_next_chunk(): void {}
-    reset_game(): void {}
-    get_cumulative_stats(): unknown {
-      return [0, 0]
+    backspace(now: number): unknown {
+      return this.record("backspace", now)
     }
-    target_length(): number {
-      return 0
+    jump_to_slot(slot: number, now: number): unknown {
+      return this.record("jump_to_slot", slot, now)
+    }
+    jump_to_section(section: number, now: number): unknown {
+      return this.record("jump_to_section", section, now)
+    }
+    resume(now: number): unknown {
+      return this.record("resume", now)
+    }
+    dismiss_alert(now: number): unknown {
+      return this.record("dismiss_alert", now)
+    }
+    reset(now: number): unknown {
+      return this.record("reset", now)
+    }
+    reset_game(now: number): unknown {
+      return this.record("reset_game", now)
+    }
+    complete_chunk(now: number): unknown {
+      return this.record("complete_chunk", now)
+    }
+    start_next_chunk(source: string, now: number): unknown {
+      return this.record("start_next_chunk", source, now)
     }
   }
 
@@ -102,8 +141,8 @@ vi.mock("@some-ui/leetype-wasm", () => {
   return {
     default: vi.fn(() => Promise.resolve()),
     TypingGame,
-    canonicalize_text: vi.fn(() => []),
-    build_display_map_from_code: vi.fn(() => new Uint32Array()),
+    classify_source: vi.fn(() => new Uint8Array()),
+    slot_map_from_source: vi.fn(() => new Int32Array()),
   }
 })
 
@@ -118,6 +157,12 @@ function baseProps(overrides: { gameState?: GameState } = {}): {
     onComplete: vi.fn(),
     ...overrides,
   }
+}
+
+function methodsOf(
+  instance: FakeTypingGameInstance | undefined
+): Array<string> {
+  return (instance?.calls ?? []).map((call) => call.method)
 }
 
 /** Deferred promise controller — lets a test decide exactly when `init()` settles. */
@@ -139,9 +184,7 @@ beforeEach(async () => {
   instances = []
   resetWasm()
   const wasmStub = await import("@some-ui/leetype-wasm")
-  vi
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
-    .mocked(wasmStub.default as unknown as () => Promise<void>)
+  vi.mocked(wasmStub.default)
     .mockReset()
     .mockImplementation(() => Promise.resolve())
 })
@@ -158,6 +201,16 @@ describe("lazy init", () => {
     expect(instances[0]?.targetCode).toBe("const x = 1")
   })
 
+  it("publishes the engine's layout and maps once loaded", async () => {
+    const { result } = renderHook(() => useTypingGame(baseProps()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.layout.slotCount).toBe(3)
+    expect(Array.from(result.current.roles)).toEqual([1, 1, 1])
+    expect(Array.from(result.current.slotOfDisplay)).toEqual([0, 1, 2])
+    expect(result.current.snapshot.cursorDisplay).toBe(0)
+  })
+
   it("keeps the same game instance across re-renders when maxConsecutiveErrors is unchanged", async () => {
     const props = baseProps()
     const { result, rerender } = renderHook(
@@ -172,6 +225,53 @@ describe("lazy init", () => {
     rerender({ ...props, onComplete: vi.fn() })
 
     expect(instances).toHaveLength(1)
+  })
+})
+
+describe("keystroke commands", () => {
+  it("forwards one press per keystroke instead of a whole buffer", async () => {
+    const { result } = renderHook(() => useTypingGame(baseProps()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.press("c")
+      result.current.press("o")
+    })
+
+    const pressed = (instances[0]?.calls ?? [])
+      .filter((call) => call.method === "press")
+      .map((call) => call.args[0])
+    expect(pressed).toEqual(["c", "o"])
+  })
+
+  it("ignores typing while the game is not playing", async () => {
+    const { result } = renderHook(() =>
+      useTypingGame(baseProps({ gameState: "idle" }))
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.press("c")
+      result.current.backspace()
+    })
+
+    expect(methodsOf(instances[0])).not.toContain("press")
+    expect(methodsOf(instances[0])).not.toContain("backspace")
+  })
+
+  it("routes navigation commands to the engine even when not playing", async () => {
+    const { result } = renderHook(() =>
+      useTypingGame(baseProps({ gameState: "idle" }))
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.jumpToSection(2)
+      result.current.resume()
+    })
+
+    expect(methodsOf(instances[0])).toContain("jump_to_section")
+    expect(methodsOf(instances[0])).toContain("resume")
   })
 })
 
@@ -213,10 +313,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not construct a game instance if loadWasm resolves after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
-    vi
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
-      .mocked(wasmStub.default as unknown as () => Promise<void>)
-      .mockImplementation(() => gate.promise)
+    vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 
     const { unmount } = renderHook(() => useTypingGame(baseProps()))
 
@@ -239,10 +336,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not surface an error state if loadWasm rejects after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
     const gate = deferred<void>()
-    vi
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- the wasm init's InitOutput return is unused; the mock only needs to resolve
-      .mocked(wasmStub.default as unknown as () => Promise<void>)
-      .mockImplementation(() => gate.promise)
+    vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 
     const { result, unmount } = renderHook(() => useTypingGame(baseProps()))
     unmount()

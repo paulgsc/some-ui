@@ -1,16 +1,18 @@
 import type {
-  CanonicalUnit,
-  ChunkCompletionStats,
-  GameStats,
-  InputResult,
+  CumulativeStats,
+  Layout,
+  Outcome,
+  SectionProgress,
+  Snapshot,
   TypingGameWasm,
   WasmModule,
 } from "@leetype/types/leetype"
 import {
-  CanonicalUnitSchema,
-  ChunkCompletionStatsSchema,
-  GameStatsSchema,
-  InputResultSchema,
+  CumulativeStatsSchema,
+  LayoutSchema,
+  OutcomeSchema,
+  SectionProgressSchema,
+  SnapshotSchema,
 } from "@leetype/types/leetype"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 import { z } from "zod"
@@ -20,11 +22,7 @@ const loader = createWasmLoader<WasmModule>({
     try {
       const wasm = await import("@some-ui/leetype-wasm")
       await wasm.default() // Initialize the WASM module
-      // The wasm-bindgen output's generated shape doesn't structurally match
-      // the hand-written WasmModule type, so a cast is unavoidable here -
-      // the single, documented cast for this file.
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
-      return wasm as unknown as WasmModule
+      return wasm
     } catch (error) {
       throw new Error(
         `Failed to load WASM module: ${error instanceof Error ? error.message : String(error)}`,
@@ -50,169 +48,156 @@ export async function loadWasm(): Promise<WasmModule> {
   return mod
 }
 
+function requireModule(): WasmModule {
+  const wasmModule = loader.peek()
+  if (!wasmModule) {
+    throw new Error("WASM module not loaded. Call loadWasm() first.")
+  }
+  return wasmModule
+}
+
 /**
- * Type-safe wrapper around the WASM TypingGame with React subscription support
+ * Type-safe wrapper around the WASM `TypingGame`.
+ *
+ * Every mutating call returns the `Outcome` the engine produced — the fresh
+ * snapshot travels back with the command rather than being fetched
+ * separately, so a keystroke is one round trip across the boundary. The
+ * per-character maps (`roles`, `slotOfDisplay`, `slotStatus`) come back as
+ * typed arrays instead of boxed objects, since the renderer reads them once
+ * per frame over the whole chunk.
  */
 export class TypedTypingGame {
   private instance: TypingGameWasm
   private listeners = new Set<() => void>()
-  private cachedStats: GameStats | null = null
 
   constructor(targetCode: string, maxConsecutiveErrors?: number) {
-    const wasmModule = loader.peek()
-    if (!wasmModule) {
-      throw new Error("WASM module not loaded. Call loadWasm() first.")
-    }
-    this.instance = new wasmModule.TypingGame(targetCode, maxConsecutiveErrors)
+    this.instance = new (requireModule().TypingGame)(
+      targetCode,
+      maxConsecutiveErrors
+    )
+  }
+
+  /** The current chunk's fixed structure: sizes and navigable sections. */
+  layout(): Layout {
+    return LayoutSchema.parse(this.instance.layout())
+  }
+
+  /** Per-rendered-character role: `ROLE_SKIP` or `ROLE_TYPEABLE`. */
+  roles(): Uint8Array {
+    return this.instance.roles()
+  }
+
+  /** Per-rendered-character slot ordinal, `-1` where the char is layout. */
+  slotOfDisplay(): Int32Array {
+    return this.instance.slot_of_display()
+  }
+
+  /** Per-slot status: `SLOT_UNTOUCHED` / `SLOT_CORRECT` / `SLOT_WRONG`. */
+  slotStatus(): Uint8Array {
+    return this.instance.slot_status()
+  }
+
+  snapshot(now: number): Snapshot {
+    return SnapshotSchema.parse(this.instance.snapshot(now))
+  }
+
+  sectionProgress(): Array<SectionProgress> {
+    return z
+      .array(SectionProgressSchema)
+      .parse(this.instance.section_progress())
+  }
+
+  cumulativeStats(): CumulativeStats {
+    return CumulativeStatsSchema.parse(this.instance.cumulative_stats())
+  }
+
+  start(now: number): Outcome {
+    return this.commit(this.instance.start(now))
+  }
+
+  press(key: string, now: number): Outcome {
+    return this.commit(this.instance.press(key, now))
+  }
+
+  backspace(now: number): Outcome {
+    return this.commit(this.instance.backspace(now))
+  }
+
+  jumpToSlot(slot: number, now: number): Outcome {
+    return this.commit(this.instance.jump_to_slot(slot, now))
+  }
+
+  jumpToSection(section: number, now: number): Outcome {
+    return this.commit(this.instance.jump_to_section(section, now))
+  }
+
+  /** Move the caret back to the first slot never resolved. */
+  resume(now: number): Outcome {
+    return this.commit(this.instance.resume(now))
+  }
+
+  dismissAlert(now: number): Outcome {
+    return this.commit(this.instance.dismiss_alert(now))
+  }
+
+  /** Clear this chunk's progress, keeping session totals. */
+  reset(now: number): Outcome {
+    return this.commit(this.instance.reset(now))
+  }
+
+  /** Clear everything, including session totals and the clock. */
+  resetGame(now: number): Outcome {
+    return this.commit(this.instance.reset_game(now))
+  }
+
+  /** Fold this chunk's work into the session totals. */
+  completeChunk(now: number): Outcome {
+    return this.commit(this.instance.complete_chunk(now))
+  }
+
+  /** Swap in the next chunk of source, keeping the clock running. */
+  startNextChunk(newTargetCode: string, now: number): Outcome {
+    return this.commit(this.instance.start_next_chunk(newTargetCode, now))
   }
 
   /**
-   * Complete current chunk and extract stats.
-   * Returns stats for the completed chunk.
+   * Subscribe to engine changes. Returns an unsubscribe function.
    */
-  completeChunk(currentTimestamp: number): ChunkCompletionStats {
-    const result = this.instance.complete_chunk(currentTimestamp)
-    this.notifyListeners()
-    return ChunkCompletionStatsSchema.parse(result)
-  }
-
-  /**
-   * Start next chunk with new target code.
-   * Previous chunk data is discarded (bounded memory).
-   */
-  startNextChunk(newTargetCode: string): void {
-    this.instance.start_next_chunk(newTargetCode)
-    this.notifyListeners()
-  }
-
-  /**
-   * Reset entire game (all chunks, all cumulative stats).
-   */
-  resetGame(): void {
-    this.instance.reset_game()
-    this.notifyListeners()
-  }
-
-  /**
-   * Get cumulative stats across alal completed chunks.
-   * Returns [totalCharsTyped, totalErrors]
-   */
-  getCumulativeStats(): [number, number] {
-    const result = this.instance.get_cumulative_stats()
-    return z.tuple([z.number(), z.number()]).parse(result)
-  }
-
-  /**
-   * Get the current target length in canonical units.
-   * Useful for UI to track progress with chunked loading.
-   */
-  getTargetLength(): number {
-    return this.instance.target_length()
-  }
-
-  /**
-   * Subscribe to stats changes (for React external store)
-   * Returns an unsubscribe function
-   */
-  subscribeStats(callback: () => void): () => void {
+  subscribe(callback: () => void): () => void {
     this.listeners.add(callback)
-    return () => {
+    return (): void => {
       this.listeners.delete(callback)
     }
   }
 
-  /**
-   * Notify all subscribers that stats have changed
-   * Also invalidates the cached stats
-   */
-  private notifyListeners(): void {
-    this.cachedStats = null // Invalidate cache
-    this.listeners.forEach((cb) => cb())
-  }
-
-  start(timestamp: number): void {
-    this.instance.start(timestamp)
-    this.notifyListeners()
-  }
-
-  reset(): void {
-    this.instance.reset()
-    this.notifyListeners()
-  }
-
-  handleInput(input: string): InputResult {
-    const result = this.instance.handle_input(input)
-    // Notify after input is processed so React can re-read stats
-    this.notifyListeners()
-    return InputResultSchema.parse(result)
-  }
-
-  getStats(currentTimestamp: number): GameStats {
-    // Return cached stats if available to maintain referential equality
-    if (this.cachedStats) {
-      return this.cachedStats
-    }
-
-    const stats = this.instance.get_stats(currentTimestamp)
-    const parsed = GameStatsSchema.parse(stats)
-    this.cachedStats = parsed
-    return parsed
-  }
-
-  getUserInput(): string {
-    return this.instance.get_user_input()
-  }
-
-  getTargetUnits(): Array<CanonicalUnit> {
-    const units = this.instance.get_target_units()
-    return z.array(CanonicalUnitSchema).parse(units)
-  }
-
-  getUserUnits(): Array<CanonicalUnit> {
-    const units = this.instance.get_user_units()
-    return z.array(CanonicalUnitSchema).parse(units)
-  }
-
-  getCursor(): Array<CanonicalUnit> {
-    const units = this.instance.get_cursor()
-    return z.array(CanonicalUnitSchema).parse(units)
-  }
-
-  dismissError(): void {
-    // If your WASM has a dismiss_error method, call it here
-    // Otherwise, this is handled via getStats
-    this.notifyListeners()
-  }
-
   free(): void {
     this.listeners.clear()
-    this.cachedStats = null
     this.instance.free()
   }
+
+  /** Validate an outcome at the seam, then wake subscribers. */
+  private commit(raw: unknown): Outcome {
+    const outcome = OutcomeSchema.parse(raw)
+    this.listeners.forEach((listener) => listener())
+    return outcome
+  }
 }
 
 /**
- * Standalone canonicalize function
+ * Classify a source string's rendered characters without constructing a
+ * game — `ROLE_SKIP` for layout the caret jumps over, `ROLE_TYPEABLE` for
+ * characters the player owes a keystroke.
  */
-export function canonicalizeText(input: string): Array<CanonicalUnit> {
-  const wasmModule = loader.peek()
-  if (!wasmModule) {
-    throw new Error("WASM module not loaded. Call loadWasm() first.")
-  }
-  const result = wasmModule.canonicalize_text(input)
-  return z.array(CanonicalUnitSchema).parse(result)
+export function classifySource(input: string): Uint8Array {
+  return requireModule().classify_source(input)
 }
 
 /**
- * Build the display map (JS-friendly)
+ * Map each rendered character of a source string to its slot ordinal, `-1`
+ * where the character is layout the player never types.
  */
-export function buildDisplayMap(input: string): Uint32Array {
-  const wasmModule = loader.peek()
-  if (!wasmModule) {
-    throw new Error("WASM module not loaded. Call loadWasm() first.")
-  }
-  const result = wasmModule.build_display_map_from_code(input)
-  return z.instanceof(Uint32Array).parse(result)
+export function slotMapFromSource(input: string): Int32Array {
+  return requireModule().slot_map_from_source(input)
 }
 
 /**

@@ -21,7 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@some-ui/leetype-wasm": "0.0.4",
+    "@some-ui/leetype-wasm": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/content": "workspace:*",

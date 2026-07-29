@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, ReactNode } from "react"
 import type {
   DisplayMode,
   GameState,
@@ -69,6 +69,13 @@ type GameBottomNavProps = {
   onDurationChange: (duration: number) => void
   onTextGradientChange: (gradient: TextGradient) => void
   info: GameInfoContent
+  /**
+   * The skip/resume picker, rendered inline with the other overlay
+   * triggers. Passed as a node rather than as props because it owns its own
+   * dialog state and reads section progress lazily from the engine — this
+   * nav's job is placement, not knowing what a section is.
+   */
+  sectionNavigator?: ReactNode
   /**
    * Element the Sheet/Drawer/Dialog portal into. This activity forces its
    * own app-theme on its root (like every other activity in the design
@@ -147,6 +154,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   onDurationChange,
   onTextGradientChange,
   info,
+  sectionNavigator,
   portalContainer,
 }) => {
   return (
@@ -170,6 +178,8 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
+        {sectionNavigator}
+
         <Drawer>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Challenge info">

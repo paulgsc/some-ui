@@ -10,5 +10,5 @@ declare const init: () => Promise<void>
 export default init
 
 export declare const TypingGame: WasmModule["TypingGame"]
-export function canonicalize_text(input: string): unknown
-export function build_display_map_from_code(input: string): Array<number>
+export function classify_source(input: string): Uint8Array
+export function slot_map_from_source(input: string): Int32Array

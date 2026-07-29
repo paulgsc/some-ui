@@ -4,6 +4,7 @@ import { ChallengeSelector } from "@leetype/components/typing-game/challenge-sel
 import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
 import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
 import { GameBottomNav } from "@leetype/components/typing-game/game-bottom-nav"
+import { SectionNavigator } from "@leetype/components/typing-game/section-navigator"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useGameTimer } from "@leetype/hooks"
 import { useTypingGame } from "@leetype/hooks/leetype"
@@ -155,7 +156,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const handleChunkComplete = (chunkStats: ChunkCompletionStats): void => {
     setCumulativeStats((prev) => ({
       totalChunks: prev.totalChunks + 1,
-      totalCharsTyped: prev.totalCharsTyped + chunkStats.chars_typed,
+      totalCharsTyped: prev.totalCharsTyped + chunkStats.charsTyped,
       totalErrors: prev.totalErrors + chunkStats.errors,
     }))
 
@@ -167,28 +168,43 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   const {
+    layout,
+    roles,
+    slotOfDisplay,
+    slotStatus,
+    snapshot,
+    readSectionProgress,
+    rejection,
     onDismiss,
-    showErrorAlert,
-    consecutiveErrors,
-    userInput,
-    elapsedTime,
-    cursorDisplayIndex,
-    userUnits,
-    displayCode,
-    targetUnits,
-    errors,
-    progress,
-    accuracy,
-    wpm,
+    press,
+    backspace,
+    jumpToSection,
+    resume,
     start,
     reset,
-    handleInputChange,
   } = useTypingGame({
     targetCode,
     gameState,
     onComplete: () => {},
     onChunkComplete: handleChunkComplete,
   })
+
+  const {
+    showErrorAlert,
+    consecutiveErrors,
+    elapsedTime,
+    cursorDisplay,
+    totalErrors: errors,
+    progress,
+    accuracy,
+    wpm,
+  } = snapshot
+
+  // The caret is "behind" whenever an earlier section was skipped — that is
+  // exactly when "resume where you left off" has somewhere to go.
+  const hasUnfinishedWork =
+    snapshot.firstGapSlot !== null &&
+    snapshot.firstGapSlot < snapshot.cursorSlot
 
   const timer = useGameTimer({
     gameState,
@@ -371,11 +387,12 @@ export const Leetype: FC<LeetypeProps> = ({
               loadError={codeState.error}
               path={effectiveCodePaths[language] ?? ""}
               onRetryLoad={() => handleLanguageChange(language)}
-              displayCode={displayCode}
+              displayCode={targetCode}
               language={language}
-              targetUnits={targetUnits}
-              userUnits={userUnits}
-              cursorDisplayIndex={cursorDisplayIndex}
+              roles={roles}
+              slotOfDisplay={slotOfDisplay}
+              slotStatus={slotStatus}
+              cursorDisplay={cursorDisplay}
               displayMode={effectiveDisplayMode}
               adaptiveMessage={
                 adaptiveHidden
@@ -384,8 +401,9 @@ export const Leetype: FC<LeetypeProps> = ({
               }
               textGradient={textGradient}
               gameState={gameState}
-              userInput={userInput}
-              onInputChange={handleInputChange}
+              onKey={press}
+              onBackspace={backspace}
+              rejection={rejection}
               inputRef={inputRef}
               elapsedTime={elapsedTime}
               accuracy={accuracy}
@@ -424,6 +442,18 @@ export const Leetype: FC<LeetypeProps> = ({
             onDurationChange={setDuration}
             onTextGradientChange={setTextGradient}
             info={info}
+            sectionNavigator={
+              <SectionNavigator
+                sections={layout.sections}
+                readProgress={readSectionProgress}
+                currentSection={snapshot.cursorSection}
+                hasUnfinishedWork={hasUnfinishedWork}
+                onJumpToSection={jumpToSection}
+                onResume={resume}
+                disabled={gameState !== "playing"}
+                portalContainer={themedContainer}
+              />
+            }
             portalContainer={themedContainer}
           />
         </>

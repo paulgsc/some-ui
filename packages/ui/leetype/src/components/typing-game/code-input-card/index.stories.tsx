@@ -1,29 +1,14 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import { useFormattedCode } from "@leetype/hooks/leetype/use-formatted-code"
-import {
-  isWasmLoaded,
-  loadWasm,
-} from "@leetype/lib/leetype/leetype-wasm-loader"
+import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
 import type { GameState } from "@leetype/types/leetype"
 import { assertNever } from "@leetype/utils"
-import { codeToUnits, sliceUserUnits } from "@leetype/utils/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { CodeInputCard } from "."
 
-// The display buffer (highlighting, masking, cursor) is only computed once
-// the WASM module is loaded — outside the full Leetype game screen nothing
-// triggers that load, so these stories kick it off themselves.
-function useWasmReady(): boolean {
-  const [ready, setReady] = useState(isWasmLoaded())
-
-  useEffect(() => {
-    if (ready) return
-    void loadWasm().then(() => setReady(true))
-  }, [ready])
-
-  return ready
-}
+const EMPTY_ROLES = new Uint8Array()
+const EMPTY_SLOTS = new Int32Array()
 
 const meta: Meta<typeof CodeInputCard> = {
   title: "UI/Input/Components/Typing/CodeInputCard",
@@ -57,9 +42,7 @@ const StoryFromFile = ({
   gameState,
   displayMode = "shown",
 }: StoryFromFileProps) => {
-  const [userInput, setUserInput] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const wasmReady = useWasmReady()
 
   const prettierParser =
     language === "typescript"
@@ -71,6 +54,14 @@ const StoryFromFile = ({
           : "c"
 
   const state = useFormattedCode(path, { prettierParser })
+
+  // Drives the real engine `typedChars` keystrokes in, so the story shows
+  // the caret exactly where a player would find it — including where it
+  // jumps an indentation run — instead of a hand-rolled approximation.
+  const preview = usePreviewGame(
+    state.status === "SUCCESS" ? state.code : "",
+    typedChars
+  )
 
   const { status } = state
   switch (status) {
@@ -85,13 +76,15 @@ const StoryFromFile = ({
             onRetryLoad={() => {}}
             displayCode=""
             language={language}
-            targetUnits={[]}
-            userUnits={[]}
-            cursorDisplayIndex={0}
+            roles={EMPTY_ROLES}
+            slotOfDisplay={EMPTY_SLOTS}
+            slotStatus={EMPTY_ROLES}
+            cursorDisplay={0}
             displayMode={displayMode}
             gameState="idle"
-            userInput=""
-            onInputChange={() => {}}
+            onKey={() => {}}
+            onBackspace={() => {}}
+            rejection={null}
             inputRef={inputRef}
             elapsedTime={0}
             accuracy={100}
@@ -111,13 +104,15 @@ const StoryFromFile = ({
             onRetryLoad={() => {}}
             displayCode=""
             language={language}
-            targetUnits={[]}
-            userUnits={[]}
-            cursorDisplayIndex={0}
+            roles={EMPTY_ROLES}
+            slotOfDisplay={EMPTY_SLOTS}
+            slotStatus={EMPTY_ROLES}
+            cursorDisplay={0}
             displayMode={displayMode}
             gameState="idle"
-            userInput=""
-            onInputChange={() => {}}
+            onKey={() => {}}
+            onBackspace={() => {}}
+            rejection={null}
             inputRef={inputRef}
             elapsedTime={0}
             accuracy={100}
@@ -128,29 +123,28 @@ const StoryFromFile = ({
     }
 
     case "SUCCESS": {
-      const targetUnits = codeToUnits(state.code)
-      const userUnits = sliceUserUnits(targetUnits, typedChars)
-
       return (
         <div style={{ height: "100vh" }}>
           <CodeInputCard
-            status={wasmReady ? "SUCCESS" : "LOADING"}
+            status={preview ? "SUCCESS" : "LOADING"}
             loadError={null}
             path={path}
             onRetryLoad={() => {}}
             displayCode={state.code}
             language={language}
-            targetUnits={targetUnits}
-            userUnits={userUnits}
-            cursorDisplayIndex={typedChars}
+            roles={preview?.roles ?? EMPTY_ROLES}
+            slotOfDisplay={preview?.slotOfDisplay ?? EMPTY_SLOTS}
+            slotStatus={preview?.slotStatus ?? EMPTY_ROLES}
+            cursorDisplay={preview?.snapshot.cursorDisplay ?? 0}
             displayMode={displayMode}
             gameState={gameState}
-            userInput={userInput}
-            onInputChange={setUserInput}
+            onKey={() => {}}
+            onBackspace={() => {}}
+            rejection={null}
             inputRef={inputRef}
             elapsedTime={42}
             accuracy={96.5}
-            progress={(typedChars / targetUnits.length) * 100}
+            progress={preview?.snapshot.progress ?? 0}
           />
         </div>
       )

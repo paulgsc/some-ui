@@ -74,66 +74,147 @@ export type CodeSamplesMap = {
   [L in Language]: CodeSample
 }
 
-// Zod schemas matching the Rust types
-export const CanonicalUnitSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("char"),
-    value: z.string(),
-  }),
-  z.object({
-    kind: z.literal("separator"),
-    value: z.string(),
-  }),
-])
+// ── Engine vocabulary ─────────────────────────────────────────────────────
+//
+// The engine talks in two coordinate systems and it matters which one you
+// are holding:
+//
+//   display index — an index into the *rendered* source, every character
+//                   included, indentation and newlines and all.
+//   slot          — an index into the *typeable stream*: the subsequence of
+//                   rendered characters the player actually presses a key
+//                   for. Layout whitespace has a display index but no slot,
+//                   which is exactly what lets the caret fly over
+//                   indentation while still sitting on a real character.
+//
+// `ROLE_TYPEABLE`/`ROLE_SKIP` decode the per-display-character role map;
+// `SLOT_*` decode the per-slot status map. Both cross the boundary as
+// typed arrays, so they are numbers rather than strings.
 
-export const InputResultSchema = z.object({
-  total_errors: z.number(),
-  consecutive_errors: z.number(),
-  show_error_alert: z.boolean(),
-  accepted: z.boolean(),
+export const ROLE_SKIP = 0
+export const ROLE_TYPEABLE = 1
+
+export const SLOT_UNTOUCHED = 0
+export const SLOT_CORRECT = 1
+export const SLOT_WRONG = 2
+
+/**
+ * `Option<T>` crosses the wasm-bindgen boundary as `undefined`, but every
+ * consumer here wants a plain nullable — normalizing once at the seam beats
+ * spelling `?? null` at each call site.
+ */
+const nullableNumber = z
+  .number()
+  .nullish()
+  .transform((value): number | null => value ?? null)
+
+// Zod schemas matching the Rust projections in crates/leetype_wasm.
+export const SectionSchema = z.object({
+  index: z.number(),
+  label: z.string(),
+  startLine: z.number(),
+  endLine: z.number(),
+  startSlot: z.number(),
+  endSlot: z.number(),
+  startDisplay: z.number(),
 })
 
-export const GameStatsSchema = z.object({
+export const LayoutSchema = z.object({
+  displayLen: z.number(),
+  slotCount: z.number(),
+  sections: z.array(SectionSchema),
+})
+
+export const SnapshotSchema = z.object({
+  cursorSlot: z.number(),
+  /**
+   * Where the caret sits in the *rendered* source. Always a typeable
+   * character, or one past the last character when the chunk is done — the
+   * engine guarantees it never lands inside indentation.
+   */
+  cursorDisplay: z.number(),
+  cursorSection: nullableNumber,
+  slotCount: z.number(),
+  filled: z.number(),
+  correct: z.number(),
+  firstGapSlot: nullableNumber,
   progress: z.number(),
   accuracy: z.number(),
   wpm: z.number(),
-  elapsed_time: z.number(),
-  total_errors: z.number(),
-  consecutive_errors: z.number(),
-  show_error_alert: z.boolean(),
-  cursor: z.number(),
-  is_complete: z.boolean(),
+  elapsedTime: z.number(),
+  totalErrors: z.number(),
+  consecutiveErrors: z.number(),
+  showErrorAlert: z.boolean(),
+  isComplete: z.boolean(),
+  started: z.boolean(),
 })
+
+export const SectionProgressSchema = z.object({
+  index: z.number(),
+  slotCount: z.number(),
+  filled: z.number(),
+  correct: z.number(),
+})
+
+export const RejectionSchema = z.enum([
+  "extraSpace",
+  "errorCeiling",
+  "nothingPending",
+  "notTypeable",
+])
 
 export const ChunkCompletionStatsSchema = z.object({
-  chars_typed: z.number(),
+  charsTyped: z.number(),
   errors: z.number(),
-  elapsed_time: z.number(),
+  elapsedTime: z.number(),
 })
 
-// TypeScript types derived from schemas
-export type CanonicalUnit = z.infer<typeof CanonicalUnitSchema>
-export type InputResult = z.infer<typeof InputResultSchema>
-export type GameStats = z.infer<typeof GameStatsSchema>
+export const CumulativeStatsSchema = z.object({
+  charsTyped: z.number(),
+  errors: z.number(),
+})
+
+export const OutcomeSchema = z.object({
+  accepted: z.boolean(),
+  rejection: RejectionSchema.nullish().transform(
+    (value): Rejection | null => value ?? null
+  ),
+  chunk: ChunkCompletionStatsSchema.nullish().transform(
+    (value): ChunkCompletionStats | null => value ?? null
+  ),
+  snapshot: SnapshotSchema,
+})
+
+export type Section = z.infer<typeof SectionSchema>
+export type Layout = z.infer<typeof LayoutSchema>
+export type Snapshot = z.infer<typeof SnapshotSchema>
+export type SectionProgress = z.infer<typeof SectionProgressSchema>
+export type Rejection = z.infer<typeof RejectionSchema>
 export type ChunkCompletionStats = z.infer<typeof ChunkCompletionStatsSchema>
+export type CumulativeStats = z.infer<typeof CumulativeStatsSchema>
+export type Outcome = z.infer<typeof OutcomeSchema>
 
 // WASM module interface
 export type TypingGameWasm = {
-  new (target_code: string, max_consecutive_errors?: number): TypingGameWasm
-  start(timestamp: number): void
-  reset(): void
-  handle_input(input: string): unknown
-  get_stats(current_timestamp: number): unknown
-  get_user_input(): string
-  get_target_units(): unknown
-  get_user_units(): unknown
-  get_cursor(): number
+  layout(): unknown
+  roles(): Uint8Array
+  slot_of_display(): Int32Array
+  slot_status(): Uint8Array
+  snapshot(now: number): unknown
+  section_progress(): unknown
+  cumulative_stats(): unknown
+  start(now: number): unknown
+  press(key: string, now: number): unknown
+  backspace(now: number): unknown
+  jump_to_slot(slot: number, now: number): unknown
+  jump_to_section(section: number, now: number): unknown
+  resume(now: number): unknown
+  dismiss_alert(now: number): unknown
+  reset(now: number): unknown
+  reset_game(now: number): unknown
+  complete_chunk(now: number): unknown
+  start_next_chunk(new_target_code: string, now: number): unknown
   free(): void
-  complete_chunk(current_timestamp: number): unknown
-  start_next_chunk(new_target_code: string): void
-  reset_game(): void
-  get_cumulative_stats(): unknown
-  target_length(): number
 }
 
 export type WasmModule = {
@@ -141,28 +222,28 @@ export type WasmModule = {
     target_code: string,
     max_consecutive_errors?: number
   ) => TypingGameWasm
-  canonicalize_text(input: string): unknown
-  build_display_map_from_code(input: string): Array<number>
+  classify_source(input: string): Uint8Array
+  slot_map_from_source(input: string): Int32Array
 }
 
 export type TypedTypingGame = {
-  start(timestamp: number): void
-  reset(): void
-  handleInput(input: string): InputResult
-  getStats(currentTimestamp: number): GameStats
-  getUserInput(): string
-  getTargetUnits(): Array<CanonicalUnit>
-  getUserUnits(): Array<CanonicalUnit>
-  getCursor(): Array<CanonicalUnit>
-  dismissError(): void
+  layout(): Layout
+  roles(): Uint8Array
+  slotOfDisplay(): Int32Array
+  slotStatus(): Uint8Array
+  snapshot(now: number): Snapshot
+  sectionProgress(): Array<SectionProgress>
+  cumulativeStats(): CumulativeStats
+  start(now: number): Outcome
+  press(key: string, now: number): Outcome
+  backspace(now: number): Outcome
+  jumpToSlot(slot: number, now: number): Outcome
+  jumpToSection(section: number, now: number): Outcome
+  resume(now: number): Outcome
+  dismissAlert(now: number): Outcome
+  reset(now: number): Outcome
+  resetGame(now: number): Outcome
+  completeChunk(now: number): Outcome
+  startNextChunk(newTargetCode: string, now: number): Outcome
   free(): void
-  getTargetLength(): number
-  subscribeStats(callback: () => void): () => void
-  completeChunk(currentTimestamp: number): ChunkCompletionStats
-  startNextChunk(newTargetCode: string): void
-  resetGame(): void
-  getCumulativeStats(): [number, number]
 }
-
-// If you need to update the ref type used in useTypingGameStats:
-export type GameRef = { current: TypedTypingGame | null }
