@@ -1,5 +1,13 @@
 # www
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/leetype@0.0.1
+  - @some-ui/content-registry@1.0.3
+
 ## 0.1.2
 
 ### Patch Changes
