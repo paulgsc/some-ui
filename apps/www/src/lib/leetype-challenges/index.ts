@@ -51,12 +51,48 @@ const leetypeChallengesSource = createDataSource<
  *   is also non-fatal to the caller, but is logged loudly so it doesn't
  *   read as "the feature silently doesn't work."
  *
- * Either way the caller gets back `Array<Challenge> | undefined`;
- * `undefined` means "no override" - pass it straight through to `Leetype`'s
- * `challenges` prop, whose own default (bundled `CHALLENGES`) takes over.
+ * Either way the caller gets back a `challenges` of `Array<Challenge> |
+ * undefined`; `undefined` means "no override" - pass it straight through to
+ * `Leetype`'s `challenges` prop, whose own default (bundled `CHALLENGES`)
+ * takes over.
+ *
+ * `isPending` is the second half of that answer and is not optional to
+ * forward. `challenges` alone collapses two different states into
+ * `undefined` - "there is no override" and "the answer isn't back yet" - and
+ * `Leetype`'s challenge picker is a *blocking* step the player acts on
+ * immediately, so during the fetch window it would offer the bundled demo
+ * pool and lock in a pick from it before the real corpus ever arrived. See
+ * `Leetype`'s `challengesPending` prop.
  */
-export function useLeetypeChallenges(): Array<Challenge> | undefined {
-  const { data, error, isError } = leetypeChallengesSource.useResource(
+export type LeetypeChallengePool = {
+  /** The fetched corpus, or `undefined` when there is no override to apply. */
+  challenges: Array<Challenge> | undefined
+  /** True only while a request is genuinely in flight - see `isPoolPending`. */
+  isPending: boolean
+}
+
+/**
+ * Whether the corpus is still on the wire, from a react-query result.
+ *
+ * Extracted and exported because the choice here is the whole fix and it is
+ * not the obvious one. `isPending` alone is wrong: react-query reports a
+ * disabled query (`enabled: false`, i.e. the static GitHub Pages build, where
+ * no request is ever issued) as pending *forever*, which would leave the
+ * challenge picker waiting on a fetch that is never going to happen. The
+ * correct predicate is `isPending && isFetching` - react-query's own
+ * `isLoading` - which is false for a disabled query, false after a 404, and
+ * false after a successful load, so "no challenges and not pending"
+ * unambiguously means "no override, use the bundled pool".
+ */
+export function isPoolPending(query: {
+  isPending: boolean
+  isFetching: boolean
+}): boolean {
+  return query.isPending && query.isFetching
+}
+
+export function useLeetypeChallenges(): LeetypeChallengePool {
+  const query = leetypeChallengesSource.useResource(
     ["leetype-challenges"],
     {},
     LeetypeChallengesFileSchema,
@@ -65,6 +101,7 @@ export function useLeetypeChallenges(): Array<Challenge> | undefined {
       retry: false,
     }
   )
+  const { data, error, isError } = query
 
   useEffect(() => {
     if (!isError) return
@@ -79,5 +116,5 @@ export function useLeetypeChallenges(): Array<Challenge> | undefined {
     )
   }, [isError, error])
 
-  return data
+  return { challenges: data, isPending: isPoolPending(query) }
 }

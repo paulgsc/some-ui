@@ -55,22 +55,27 @@ export const SessionViewport = ({
 
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
-  // Only HangulHexGrid declares a `words` prop and only Leetype declares a
-  // `challenges` prop; every other registry component ignores whichever one
-  // it doesn't need, the same way it already ignores sessionKey/suspended
-  // (see extraProps' own doc comment below and RegistryEntry<P = any> in
-  // @some-ui/types).
+  // Only HangulHexGrid declares a `words` prop and only Leetype declares
+  // `challenges`/`challengesPending`; every other registry component ignores
+  // whichever one it doesn't need, the same way it already ignores
+  // sessionKey/suspended (see extraProps' own doc comment below and
+  // RegistryEntry<P = any> in @some-ui/types).
   const hangulWords = useHangulVocab()
-  const leetypeChallenges = useLeetypeChallenges()
+  const { challenges, isPending: challengesPending } = useLeetypeChallenges()
 
   const extraProps = useMemo(
     () => ({
       sessionKey: sessionKey ?? undefined,
       suspended,
       words: hangulWords,
-      challenges: leetypeChallenges,
+      challenges,
+      // Forwarded, not dropped: Leetype's challenge picker is a blocking step
+      // of the session, so it has to know the difference between "this host
+      // has no corpus" and "this host's corpus is still on the wire" - see
+      // useLeetypeChallenges' own doc comment.
+      challengesPending,
     }),
-    [sessionKey, suspended, hangulWords, leetypeChallenges]
+    [sessionKey, suspended, hangulWords, challenges, challengesPending]
   )
 
   return (

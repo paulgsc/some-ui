@@ -4,6 +4,7 @@ import { ChallengeSelector } from "@leetype/components/typing-game/challenge-sel
 import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
 import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
 import { GameBottomNav } from "@leetype/components/typing-game/game-bottom-nav"
+import { LoadingChallengesState } from "@leetype/components/typing-game/loading-challenges-state"
 import { SectionNavigator } from "@leetype/components/typing-game/section-navigator"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useGameTimer } from "@leetype/hooks"
@@ -56,6 +57,23 @@ type LeetypeProps = {
    * component knowing or caring where the challenges came from.
    */
   challenges?: Array<Challenge>
+  /**
+   * True while the host is still fetching the pool above and has not yet
+   * decided what `challenges` will be.
+   *
+   * Without it, `challenges` being absent is ambiguous: it means both "this
+   * host has no corpus of its own, use the bundled demo pool" and "this
+   * host's corpus hasn't landed yet". The picker is a *blocking* step the
+   * player acts on the instant it appears, so resolving that ambiguity the
+   * wrong way is not a cosmetic flicker - the player picks from the demo pool,
+   * `pickedChallenge` latches it, and the corpus that arrives a moment later
+   * is never seen. So while this is true the picker waits instead of offering
+   * a pool it is about to replace.
+   *
+   * Hosts with a synchronous pool (Storybook, `LeetypeApp`) omit it.
+   * @default false
+   */
+  challengesPending?: boolean
   /** Pre-selected language (challenge mode) */
   initialLanguage?: Language
   /** Pre-selected duration in seconds (challenge mode) */
@@ -86,6 +104,7 @@ export const Leetype: FC<LeetypeProps> = ({
   codePaths,
   challenge,
   challenges = CHALLENGES,
+  challengesPending = false,
   initialLanguage,
   initialDuration,
   nContext,
@@ -349,11 +368,15 @@ export const Leetype: FC<LeetypeProps> = ({
                 Pick what you want to type before the session begins.
               </DialogDescription>
             </DialogHeader>
-            <ChallengeSelector
-              challenges={challenges}
-              progress={playerProgress}
-              onSelect={setPickedChallenge}
-            />
+            {challengesPending ? (
+              <LoadingChallengesState />
+            ) : (
+              <ChallengeSelector
+                challenges={challenges}
+                progress={playerProgress}
+                onSelect={setPickedChallenge}
+              />
+            )}
           </DialogContent>
         </Dialog>
       ) : (
