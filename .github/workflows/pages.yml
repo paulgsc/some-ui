@@ -196,6 +196,14 @@ jobs:
           # GitHub Pages serves this repo under /<repo>/ - www's own
           # Dockerfile/nginx build leaves this unset (defaults to "/").
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          # This build deploys no companion data (the copy step above takes
+          # only sfx/code-samples), so every content shim must fall back to
+          # its bundled demo seed instead of fetching - see
+          # apps/www/src/lib/data-mode. Deliberately its own flag rather than
+          # NODE_ENV or Vite's PROD: the Docker image is also a production
+          # build, and it *does* serve public/, so neither of those can tell
+          # the two apart.
+          VITE_STATIC_DATA: "true"
       - name: Add SPA fallback for client-side routing
         # GitHub Pages has no server-side rewrite; a hard refresh or deep
         # link on a client-side route 404s without this. Serving the same

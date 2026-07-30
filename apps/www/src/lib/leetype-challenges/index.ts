@@ -2,6 +2,8 @@ import { useEffect } from "react"
 import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import type { Challenge } from "@some-ui/leetype"
 
+import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
+
 import { LeetypeChallengesFileSchema } from "./schema"
 
 type LeetypeChallengesParams = Record<string, never>
@@ -24,13 +26,8 @@ const leetypeChallengesSource = createDataSource<
   Array<Challenge>
 >(
   { static: locateChallengesFile, server: locateChallengesFile },
-  {
-    // Docker/local dev is also reachable over the LAN mDNS hostname
-    // vite.config.ts allows (`nixos.local`, for the HTTPS/getUserMedia
-    // path) - widen fetch-kit's hostname heuristic to match, so that host
-    // resolves to "server" the same as plain localhost does.
-    serverHostnames: ["localhost", "127.0.0.1", "[::1]", "nixos.local"],
-  }
+  // One build-time bit, not a runtime hostname guess - see src/lib/data-mode.
+  { mode: DATA_MODE }
 )
 
 /**
@@ -39,11 +36,13 @@ const leetypeChallengesSource = createDataSource<
  * stays fetch-free and ships only the bundled demo `CHALLENGES`; this hook
  * is where a host app opts into something else.
  *
- * - **GitHub Pages / any non-server host**: `leetypeChallengesSource.mode`
- *   resolves to `"static"`, the query is `enabled: false`, and no request is
- *   ever issued - there is no companion server and no `public/leetype` dir
- *   in that build to fetch from anyway.
- * - **localhost / Docker / LAN dev**: fetches `/leetype/challenges.json`
+ * The fetch-or-seed decision is one build-time bit (`DATA_MODE`), not a
+ * runtime guess:
+ *
+ * - **GitHub Pages**: `"static"`, the query is `enabled: false`, and no
+ *   request is ever issued - there is no `public/leetype` dir in that build
+ *   to fetch from anyway.
+ * - **`vite dev` / `vite preview` / Docker**: fetches `/leetype/challenges.json`
  *   (gitignored, developer-populated - see
  *   `packages/some-content/public/leetype`). A 404 (the common case on a
  *   fresh checkout, before anyone has generated a corpus) resolves quietly
@@ -96,10 +95,7 @@ export function useLeetypeChallenges(): LeetypeChallengePool {
     ["leetype-challenges"],
     {},
     LeetypeChallengesFileSchema,
-    {
-      enabled: leetypeChallengesSource.mode === "server",
-      retry: false,
-    }
+    { enabled: FETCHES_CONTENT, retry: false }
   )
   const { data, error, isError } = query
 

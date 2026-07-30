@@ -69,18 +69,17 @@ type OrchestratedViewportProps<K extends string> = {
     deltaPx: number,
     containerSizePx: number
   ) => void
-
-  /**
-   * Plain values merged onto every rendered panel's own props, alongside
-   * whatever the persisted scene already supplies - lets a caller thread
-   * cross-cutting, runtime-only facts (e.g. a session identity, or whether
-   * something else currently needs exclusive control) down to registry
-   * components uniformly, regardless of which `registry_key` a given panel
-   * happens to be. This component never interprets the values, only merges
-   * them - so it stays unaware of what, if anything, is being injected.
-   */
-  extraProps?: Record<string, unknown>
 }
+
+// There is deliberately no `extraProps` escape hatch here. It existed to let a
+// caller merge runtime values onto *every* rendered panel regardless of its
+// `registry_key`, which meant one panel's content concerns landed on every
+// other panel as stray props, and made this layout component the holder of a
+// bag it could not interpret. A caller that needs to inject per-panel props
+// already knows both the key and the value at compile time, so it can merge
+// them into the lifetimes it passes in (see apps/www's scene-props adapter) -
+// and this component goes back to rendering panels with the props they came
+// with.
 
 function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
   if (node.type === "leaf") return node.id === id ? node.rect : null
@@ -105,7 +104,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
   transitionMs = 300,
   collapseUnbound = true,
   onLeafResize,
-  extraProps,
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
@@ -136,11 +134,8 @@ export const OrchestratedYouTubeViewport = <K extends string>({
             renderRegistryComponent(
               componentRegistry,
               panel.registry_key,
-              {
-                // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- persisted scene props are typed unknown; spreading is safe regardless of shape
-                ...(panel.props as Record<string, unknown> | undefined),
-                ...extraProps,
-              },
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- scene props are typed unknown; spreading is safe regardless of shape
+              (panel.props as Record<string, unknown> | undefined) ?? {},
               {
                 enhanceComponent: withFocus(region),
                 withErrorBoundary: true,
@@ -164,7 +159,7 @@ export const OrchestratedYouTubeViewport = <K extends string>({
           )),
       ])
     ) as Record<SlotId, () => ReactNode>
-  }, [activeLifetimes, componentRegistry, extraProps])
+  }, [activeLifetimes, componentRegistry])
 
   const layout: SolvedNode<SlotId> | undefined = useMemo(() => {
     if (!rect) return

@@ -1,7 +1,13 @@
 import type { ComponentRegistry } from "@some-ui/types"
 import { lazyWithPreload } from "some-ui-utils"
 
-type RegistryKey =
+/**
+ * Every panel identity this app can bind, known at compile time. Exported so
+ * a host can build a statically-checked per-key map (e.g. apps/www's
+ * scene-props adapter, which associates fetched content with the exact keys
+ * that consume it instead of merging one bag onto every panel).
+ */
+export type RegistryKey =
   | "cube"
   | "hangul"
   | "leetype"

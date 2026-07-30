@@ -14,6 +14,7 @@ import { useHangulVocab } from "@/lib/hangul-vocab"
 import { useLeetypeChallenges } from "@/lib/leetype-challenges"
 import type { SessionRecord } from "@/lib/tenant"
 
+import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
@@ -55,27 +56,39 @@ export const SessionViewport = ({
 
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
-  // Only HangulHexGrid declares a `words` prop and only Leetype declares
-  // `challenges`/`challengesPending`; every other registry component ignores
-  // whichever one it doesn't need, the same way it already ignores
-  // sessionKey/suspended (see extraProps' own doc comment below and
-  // RegistryEntry<P = any> in @some-ui/types).
   const hangulWords = useHangulVocab()
   const { challenges, isPending: challengesPending } = useLeetypeChallenges()
 
-  const extraProps = useMemo(
-    () => ({
-      sessionKey: sessionKey ?? undefined,
-      suspended,
-      words: hangulWords,
-      challenges,
-      // Forwarded, not dropped: Leetype's challenge picker is a blocking step
-      // of the session, so it has to know the difference between "this host
-      // has no corpus" and "this host's corpus is still on the wire" - see
-      // useLeetypeChallenges' own doc comment.
-      challengesPending,
-    }),
+  // Each panel's runtime props, associated with the one registry key that
+  // consumes them. Nothing here is cross-cutting - `words`/`sessionKey`/
+  // `suspended` are HangulHexGrid's alone, `challenges`/`challengesPending`
+  // are Leetype's alone - so the association is made statically here rather
+  // than by merging one bag onto every panel in the viewport.
+  // Built through `defineSceneProps` rather than annotated: a plain
+  // ScenePropsMap annotation would not catch a misspelled registry key here -
+  // see that function's own comment.
+  const sceneProps = useMemo(
+    () =>
+      defineSceneProps({
+        hangul: {
+          sessionKey: sessionKey ?? undefined,
+          suspended,
+          words: hangulWords,
+        },
+        leetype: {
+          challenges,
+          // Leetype's picker is a blocking step of the session, so it has to
+          // know the difference between "this build has no corpus" and "this
+          // build's corpus is still on the wire" - see useLeetypeChallenges.
+          challengesPending,
+        },
+      }),
     [sessionKey, suspended, hangulWords, challenges, challengesPending]
+  )
+
+  const renderedLifetimes = useMemo(
+    () => withSceneProps(effectiveLifetimes, sceneProps),
+    [effectiveLifetimes, sceneProps]
   )
 
   return (
@@ -88,12 +101,11 @@ export const SessionViewport = ({
         <>
           <OrchestratedYouTubeViewport
             layoutTree={tree}
-            activeLifetimes={effectiveLifetimes}
+            activeLifetimes={renderedLifetimes}
             componentRegistry={componentRegistry}
             enableFocus={false}
             collapseUnbound={!editMode}
             onLeafResize={onLeafResize}
-            extraProps={extraProps}
           />
 
           {editMode && (

@@ -2,6 +2,8 @@ import { useEffect } from "react"
 import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import type { WordEntry } from "@some-ui/honeycomb"
 
+import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
+
 import { HangulVocabFileSchema } from "./schema"
 
 const DEFAULT_HANGUL_VOCAB_TOPIC = "vocab"
@@ -23,13 +25,8 @@ function locateVocabFile({ topic }: HangulVocabParams): URL {
 
 const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
   { static: locateVocabFile, server: locateVocabFile },
-  {
-    // Docker/local dev is also reachable over the LAN mDNS hostname
-    // vite.config.ts allows (`nixos.local`, for the HTTPS/getUserMedia
-    // path) - widen fetch-kit's hostname heuristic to match, so that host
-    // resolves to "server" the same as plain localhost does.
-    serverHostnames: ["localhost", "127.0.0.1", "[::1]", "nixos.local"],
-  }
+  // One build-time bit, not a runtime hostname guess - see src/lib/data-mode.
+  { mode: DATA_MODE }
 )
 
 /**
@@ -39,11 +36,13 @@ const hangulVocabSource = createDataSource<HangulVocabParams, Array<WordEntry>>(
  * ships only the bundled demo `WordEntry[]`; this hook is where a host app
  * opts into something else.
  *
- * - **GitHub Pages / any non-server host**: `hangulVocabSource.mode` resolves
- *   to `"static"`, the query is `enabled: false`, and no request is ever
- *   issued - there is no companion server and no `public/hangul/words` dir
- *   in that build to fetch from anyway.
- * - **localhost / Docker / LAN dev**: fetches
+ * The fetch-or-seed decision is one build-time bit (`DATA_MODE`), not a
+ * runtime guess:
+ *
+ * - **GitHub Pages**: `"static"`, the query is `enabled: false`, and no
+ *   request is ever issued - there is no `public/hangul/words` dir in that
+ *   build to fetch from anyway.
+ * - **`vite dev` / `vite preview` / Docker**: fetches
  *   `/hangul/words/<topic>.json` (gitignored, developer-populated - see
  *   `packages/some-content/public/hangul/words`). A 404 (the common case on
  *   a fresh checkout, before anyone has generated a file) resolves quietly
@@ -69,10 +68,7 @@ export function useHangulVocab(
     ["hangul-vocab", topic],
     { topic },
     HangulVocabFileSchema,
-    {
-      enabled: hangulVocabSource.mode === "server",
-      retry: false,
-    }
+    { enabled: FETCHES_CONTENT, retry: false }
   )
 
   useEffect(() => {
