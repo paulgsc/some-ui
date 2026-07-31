@@ -79,7 +79,19 @@ type GameBottomNavProps = {
   language: Language
   displayMode: DisplayMode
   displayModeLocked: boolean
-  settingsEnabled: boolean
+  /**
+   * Whether the session-shaping controls (language, duration) can be touched
+   * right now. They restart the run, so they are held back mid-play — but the
+   * panel itself always opens, because "you cannot change the duration while
+   * typing" and "the settings button does nothing" are different messages and
+   * only one of them is true.
+   *
+   * This used to gate the trigger's `disabled` instead, computed from a
+   * predicate (`isLegacyMode`) that is false for every challenge-driven
+   * session — which is all of them in the app. The button was inert in every
+   * state, with no way to tell that from a button that simply did not work.
+   */
+  sessionControlsEnabled: boolean
   textGradient: TextGradient
   onLanguageChange: (lang: Language) => void
   onDisplayModeChange: (mode: DisplayMode) => void
@@ -185,7 +197,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   language,
   displayMode,
   displayModeLocked,
-  settingsEnabled,
+  sessionControlsEnabled,
   textGradient,
   onLanguageChange,
   onDisplayModeChange,
@@ -326,12 +338,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
 
         <Sheet>
           <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Settings"
-              disabled={!settingsEnabled}
-            >
+            <Button variant="ghost" size="icon" aria-label="Settings">
               <Settings2 className="h-4 w-4" />
             </Button>
           </SheetTrigger>
@@ -339,7 +346,9 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
             <SheetHeader>
               <SheetTitle>Game Settings</SheetTitle>
               <SheetDescription>
-                Changing language or duration restarts the current session.
+                {sessionControlsEnabled
+                  ? "Changing language or duration restarts the current session."
+                  : "Language and duration restart the session, so they are locked while you are typing. Finish or reset first."}
               </SheetDescription>
             </SheetHeader>
 
@@ -357,6 +366,10 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                     const lang = toLanguage(v)
                     if (lang) onLanguageChange(lang)
                   }}
+                  // A single-language challenge (every curriculum exercise is
+                  // Rust-only) has nothing to choose between; the select stays
+                  // visible so the language is still legible, but inert.
+                  disabled={!sessionControlsEnabled || languages.length <= 1}
                 >
                   <SelectTrigger id="bottom-nav-language">
                     <SelectValue />
@@ -369,6 +382,11 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                {languages.length <= 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    This challenge ships {LANGUAGE_LABELS[language]} only.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -413,6 +431,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                       const value = Number.parseInt(e.target.value, 10)
                       if (!Number.isNaN(value)) onDurationChange(value)
                     }}
+                    disabled={!sessionControlsEnabled}
                     className="w-24"
                   />
                   <span className="text-sm text-muted-foreground">seconds</span>

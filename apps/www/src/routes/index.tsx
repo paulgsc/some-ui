@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent } from "some-ui-shared"
 
+import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -111,6 +112,10 @@ const Landing = (): JSX.Element => (
     </div>
     <div className="mx-auto flex min-h-svh max-w-4xl flex-col justify-center gap-10 px-6 py-16">
       <div className="space-y-3 text-center">
+        {/* The mark leads the hero, with the wordmark under it — the pair is
+            one unit, so the mark is decorative here rather than a second
+            announcement of the same name. */}
+        <HexCombMark tone="brand" className="mx-auto size-12" />
         <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
           Some UI
         </p>

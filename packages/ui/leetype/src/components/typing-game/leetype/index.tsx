@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ChallengeSelector } from "@leetype/components/typing-game/challenge-selector"
 import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
 import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
@@ -119,11 +119,15 @@ export const Leetype: FC<LeetypeProps> = ({
   const { progress: playerProgress } = usePlayerProgress()
 
   const resolvedChallenge = challenge ?? pickedChallenge ?? undefined
-  const isLegacyMode = !needsChallengeSelection && !resolvedChallenge
   const awaitingChallengeSelection =
     needsChallengeSelection && !resolvedChallenge
 
   const [gameState, setGameState] = useState<GameState>("idle")
+  // Bumped by every path that starts the session over. The timer cannot infer
+  // this from `gameState` alone — leaving "playing" is a pause as far as it is
+  // concerned, and a timed-out run had banked its whole duration, so Start
+  // after Reset used to re-time-out on its first frame.
+  const [runId, setRunId] = useState(0)
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [textGradient, setTextGradient] = useState<TextGradient>("none")
   const [preferredLanguage, setPreferredLanguage] = useState<Language>(
@@ -241,6 +245,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const timer = useGameTimer({
     gameState,
     duration,
+    runId,
     onTimeout: () => setGameState("timeout"),
   })
 
@@ -290,15 +295,25 @@ export const Leetype: FC<LeetypeProps> = ({
     onSessionCompleteRef.current?.(statsSnapshot)
   }, [gameState])
 
+  // Everything that "start this session over" means, in one place: the engine,
+  // the accumulated stats, the adaptive latch, and — via runId — the clock.
+  // Leaving any one of them out is how the Reset button came to be a no-op,
+  // so they move together by construction rather than by three call sites
+  // remembering to agree.
+  const beginNewRun = useCallback((): void => {
+    reset()
+    setGameState("idle")
+    setRunId((current) => current + 1)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
+    setAdaptiveHidden(false)
+  }, [reset])
+
   useEffect(() => {
     if (codeState.status === "SUCCESS") {
-      reset()
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setGameState("idle")
-      setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-      setAdaptiveHidden(false)
+      beginNewRun()
     }
-  }, [reset, language, codeState.status])
+  }, [beginNewRun, language, codeState.status])
 
   const handleStart = (): void => {
     if (codeState.status !== "SUCCESS") return
@@ -308,17 +323,19 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   const handleReset = (): void => {
-    setGameState("idle")
-    reset()
-    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-    setAdaptiveHidden(false)
+    beginNewRun()
   }
 
   const handleLanguageChange = (lang: Language): void => {
     setPreferredLanguage(lang)
-    setGameState("idle")
-    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-    setAdaptiveHidden(false)
+    beginNewRun()
+  }
+
+  // A duration typed into the settings panel is a new run, not a mid-flight
+  // adjustment to the current one — the panel says so in as many words.
+  const handleDurationChange = (seconds: number): void => {
+    setDuration(seconds)
+    beginNewRun()
   }
 
   const overallProgress =
@@ -496,11 +513,11 @@ export const Leetype: FC<LeetypeProps> = ({
             language={language}
             displayMode={displayMode}
             displayModeLocked={isHardDifficulty || adaptiveHidden}
-            settingsEnabled={isLegacyMode && gameState === "idle"}
+            sessionControlsEnabled={gameState !== "playing"}
             textGradient={textGradient}
             onLanguageChange={handleLanguageChange}
             onDisplayModeChange={setDisplayMode}
-            onDurationChange={setDuration}
+            onDurationChange={handleDurationChange}
             onTextGradientChange={setTextGradient}
             languages={offeredLanguages}
             info={info}

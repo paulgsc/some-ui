@@ -1,0 +1,51 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  width="64"
+  height="64"
+  role="img"
+  aria-label="Some UI"
+>
+  <title>Some UI</title>
+  <!--
+    A seven-cell honeycomb: one core cell ringed by six neighbours.
+
+    Geometry (kept in step with src/components/brand/hex-comb-mark.tsx, which
+    draws the same mark for in-app use): flat-top hexagons of circumradius 9,
+    neighbour centres 20 apart on the 30/90/150/210/270/330 degree spokes.
+
+    That 20 is the one number here worth explaining. Cells touch at 15.59, and
+    the obvious "just enough to see" spacing of 17 leaves a 1.4-unit gap — 0.35
+    of a pixel once the 64 box is drawn at 16, which is to say no gap at all,
+    and the mark collapses into an amber blob at exactly the size that decides
+    whether a favicon works. 20 leaves a gap that survives the downscale, so it
+    still reads as a *comb* in a tab strip.
+
+    Solid fills rather than outlines for the same reason: a stroke thin enough
+    to look right at 64px disappears entirely at 16px.
+  -->
+  <defs>
+    <path id="cell" d="M9 0 4.5 7.794 -4.5 7.794 -9 0 -4.5 -7.794 4.5 -7.794Z" />
+  </defs>
+  <style>
+    /* Tab strips are not all the same colour, and a favicon gets no say in
+       which one it lands on. Honey-amber at two weights holds up against
+       both, with the pairing inverted so the core always stays the brighter
+       of the two. */
+    .ring { fill: #f59e0b; }
+    .core { fill: #fde68a; }
+    @media (prefers-color-scheme: light) {
+      .ring { fill: #d97706; }
+      .core { fill: #f59e0b; }
+    }
+  </style>
+  <g transform="translate(32 32)">
+    <use href="#cell" class="ring" transform="translate(0 -20)" />
+    <use href="#cell" class="ring" transform="translate(17.321 -10)" />
+    <use href="#cell" class="ring" transform="translate(17.321 10)" />
+    <use href="#cell" class="ring" transform="translate(0 20)" />
+    <use href="#cell" class="ring" transform="translate(-17.321 10)" />
+    <use href="#cell" class="ring" transform="translate(-17.321 -10)" />
+    <use href="#cell" class="core" />
+  </g>
+</svg>

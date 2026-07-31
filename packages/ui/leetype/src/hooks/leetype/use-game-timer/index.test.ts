@@ -152,6 +152,86 @@ describe("duration changes", () => {
   })
 })
 
+describe("restart", () => {
+  const playingRun: { gameState: GameState; runId: number } = {
+    gameState: "playing",
+    runId: 0,
+  }
+
+  // The bug this pins: leaving `playing` banks the elapsed time so a resume
+  // continues where it stopped, and a run that timed out banked a *full*
+  // duration. Pressing Reset returned the state machine to "idle" but left
+  // that banked time in place, so the next Start resumed an already-spent
+  // clock and timed out on its first frame — the session could never be
+  // played again. `runId` is what tells the two apart.
+  it("starts the clock over after a timeout when the run id changes", () => {
+    const onTimeout = vi.fn()
+    const { result, rerender } = renderHook(
+      (props: { gameState: GameState; runId: number }) =>
+        useGameTimer({ duration: 10, onTimeout, ...props }),
+      { initialProps: playingRun }
+    )
+
+    advance(11_000)
+    expect(onTimeout).toHaveBeenCalledTimes(1)
+    expect(result.current.timeLeft).toBe(0)
+
+    // What pressing Reset does: back to idle, on a new run.
+    rerender({ gameState: "idle", runId: 1 })
+    expect(result.current.timeLeft).toBe(10)
+
+    // ...and what pressing Start then does.
+    rerender({ gameState: "playing", runId: 1 })
+    advance(1000)
+
+    expect(onTimeout).toHaveBeenCalledTimes(1)
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(8)
+  })
+
+  it("discards banked pause time on restart rather than resuming it", () => {
+    const { result, rerender } = renderHook(
+      (props: { gameState: GameState; runId: number }) =>
+        useGameTimer({ duration: 10, onTimeout: vi.fn(), ...props }),
+      { initialProps: playingRun }
+    )
+
+    advance(4000)
+    expect(result.current.timeLeft).toBeLessThanOrEqual(7)
+
+    rerender({ gameState: "playing", runId: 1 })
+    expect(result.current.timeLeft).toBe(10)
+
+    // Advancing is the part that matters: the displayed value resets during
+    // render, but the *clock* only does if the banked elapsed time was
+    // dropped too. Leave this out and the assertion above passes over a hook
+    // that snaps straight back to 6 on its next frame.
+    advance(1000)
+
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(8)
+  })
+
+  it("still resumes rather than restarts when the run id is unchanged", () => {
+    // The other half of the distinction: a plain pause must keep its banked
+    // time, or this fix would have traded one bug for its mirror image.
+    const { result, rerender } = renderHook(
+      (props: { gameState: GameState }) =>
+        useGameTimer({ duration: 10, onTimeout: vi.fn(), runId: 3, ...props }),
+      { initialProps: playingProps }
+    )
+
+    advance(3000)
+    const beforePause = result.current.timeLeft
+
+    rerender({ gameState: "idle" })
+    advance(3000)
+    rerender({ gameState: "playing" })
+    advance(50)
+
+    expect(result.current.timeLeft).toBeLessThanOrEqual(beforePause)
+    expect(result.current.timeLeft).toBeGreaterThanOrEqual(beforePause - 1)
+  })
+})
+
 describe("unmount", () => {
   it("cancels the animation frame loop on unmount without throwing", () => {
     const onTimeout = vi.fn()

@@ -63,7 +63,14 @@ const config: StorybookConfig = {
   stories: storyGlobs(),
   logLevel: "error",
 
-  staticDirs: existsSync(someContentPublic) ? [someContentPublic] : [],
+  staticDirs: [
+    ...(existsSync(someContentPublic) ? [someContentPublic] : []),
+    // Serves the brand mark at /brand/ for the managerHead link below. Note
+    // this deliberately does *not* live under a package `public/` directory:
+    // .gitignore excludes `packages/**/public`, so an asset placed there is
+    // never committed and CI would build a Storybook with a broken favicon.
+    { from: resolve(__dirname, "../packages/some-styles/brand"), to: "/brand" },
+  ],
 
   core: {
     disableTelemetry: true,
@@ -79,6 +86,13 @@ const config: StorybookConfig = {
   ],
 
   framework: getAbsolutePath("@storybook/react-vite"),
+
+  // Storybook is a deployed surface of its own (GitHub Pages serves it at
+  // /storybook/), so it gets the brand mark rather than Storybook's default
+  // favicon. Relative, not root-absolute: the Pages build sets a base of
+  // /some-ui/storybook/, and a leading slash would point at the domain root.
+  managerHead: (head) =>
+    `${head ?? ""}\n<link rel="icon" type="image/svg+xml" href="brand/favicon.svg" />`,
 
   viteFinal: (config) => {
     config.define = {

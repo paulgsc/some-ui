@@ -82,13 +82,26 @@ export function useHangulGameWasm({
   // mode) - either difference alone must trigger a fresh load.
   const loadedModeRef = useRef<GameMode | null>(null)
   const loadedSessionKeyRef = useRef<string | undefined>(undefined)
+  // The vocabulary the engine was actually built with. Without this the guard
+  // above was satisfied by an unchanged mode/sessionKey pair, so a word pool
+  // that arrived *after* mount — which is the normal case in apps/www, where
+  // the vocabulary is fetched — was silently discarded for the whole session
+  // and the player got the demo seed instead.
+  //
+  // Identity, not deep equality: the pool is a fetch result or a module
+  // constant, so a new array genuinely means new words. A caller that builds
+  // its pool inline on every render would re-initialize on every render, which
+  // is the same requirement every other array-valued prop in this codebase
+  // carries.
+  const loadedWordPoolRef = useRef<Array<ChallengeSeed> | null>(null)
 
   // Wrap inside useCallback to safely add it to useEffect dependency arrays
   const initialize = useCallback(async (): Promise<void> => {
     if (
       initializedRef.current &&
       loadedModeRef.current === mode &&
-      loadedSessionKeyRef.current === sessionKey
+      loadedSessionKeyRef.current === sessionKey &&
+      loadedWordPoolRef.current === wordPool
     ) {
       return
     }
@@ -103,6 +116,7 @@ export function useHangulGameWasm({
       initializedRef.current = true
       loadedModeRef.current = mode
       loadedSessionKeyRef.current = sessionKey
+      loadedWordPoolRef.current = wordPool
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -110,10 +124,13 @@ export function useHangulGameWasm({
     }
   }, [mode, config, wordPool, sessionKey])
 
-  // Explicit, safe autoStart initialization effect - also the mode/session
-  // switch path: a change to either re-creates `initialize` (both are in its
-  // dep array above), which re-runs this effect and, per initialize()'s own
-  // guard, performs a fresh load rather than a no-op.
+  // Explicit, safe autoStart initialization effect - also the
+  // mode/session/word-pool switch path: a change to any of them re-creates
+  // `initialize` (all three are in its dep array above), which re-runs this
+  // effect and, per initialize()'s own guard, performs a fresh load rather
+  // than a no-op. A mid-session vocabulary swap therefore resets the engine,
+  // score and streak included - the alternative is a session that keeps
+  // scoring against words the player is no longer being shown.
   useEffect(() => {
     let active = true
 
