@@ -53,10 +53,53 @@ Each array element (a `WordEntry`) must match exactly:
   icon: string         // a single Unicode emoji - no bundled image asset (provenance discipline, ADR 0001 §5)
   ttsText: string      // usually == word; spoken via the Web Speech API at runtime
   category: string     // free-form topic label, e.g. "numbers" - not a closed enum
+  pedagogy?: {         // shown when the player runs out of time on this word - see below
+    gloss: string                                  // the English meaning, kept short
+    note: string                                   // one sentence on why this word earns its place
+    example: { korean: string; english: string }   // one TOPIK-1 sentence using it, plus a translation
+  }
 }
 ```
 
 The file itself is a JSON array of these, with **at least one entry**.
+
+---
+
+## `pedagogy`: What the Player Reads After Missing a Word
+
+When a vocabulary word expires before the player finished typing it, the game
+does not silently move on: it reveals the jamo they never reached, then holds
+the session for a few seconds with a debrief panel built from `pedagogy` (see
+`packages/ui/honeycomb/src/components/hangul-hex-grid/vocab-debrief-modal`).
+That panel is the only moment in a session where the player has demonstrably
+reached for something and come up short, so it is the only moment worth
+spending prose on. Write for it accordingly.
+
+`pedagogy` is **optional in the schema but expected in generated output**. It
+is optional only so an older file already on disk keeps loading; a file
+generated today should carry it on every entry. Note that "present but
+partial" is rejected by the loader - include all three fields or none.
+
+- **`gloss`** - the English meaning, as short as it can honestly be
+  (`"sweet potato"`, not `"a starchy tuberous root vegetable"`).
+- **`note`** - one sentence on what makes this word worth remembering, aimed
+  at a learner who just failed to type it. Good material: a homograph
+  (다리 is both "bridge" and "leg"), a minimal pair against another word in
+  the same file (거미 vs 개미, one vowel apart), a compound the word seeds
+  (나무 → 나무젓가락), a spelling consequence worth naming (Korean has no /f/,
+  so "coffee" becomes 커피), or a grammatical trap (a hat takes 쓰다, not
+  입다). **Not** a restatement of `gloss` - that field already did that job,
+  and a five-second panel has to earn its space with something the player
+  would otherwise miss.
+- **`example.korean`** - one short sentence at TOPIK 1/2 level that actually
+  uses the word, ending in polite -아요/-어요/-예요 form. Keep the surrounding
+  grammar easier than the word itself.
+- **`example.english`** - a natural translation of that sentence, not a
+  word-by-word gloss.
+
+Every entry in the bundled demo seed
+(`packages/ui/honeycomb/src/data/hangul-words.ts`) has a hand-written
+`pedagogy` block - use those 20 as the register to match.
 
 ---
 
@@ -178,7 +221,15 @@ Word: 포도 ("grape") - no batchim, for the basic case:
   "answerGlyphs": ["ㅍ", "ㅗ", "ㄷ", "ㅗ"],
   "icon": "🍇",
   "ttsText": "포도",
-  "category": "food"
+  "category": "food",
+  "pedagogy": {
+    "gloss": "grape",
+    "note": "포도 seeds two words you will meet soon: 포도주 (wine, literally \"grape liquor\") and 포도알 (a single grape).",
+    "example": {
+      "korean": "포도가 정말 달아요.",
+      "english": "The grapes are really sweet."
+    }
+  }
 }
 ```
 
@@ -197,7 +248,15 @@ Word: 달 ("moon") - a single batchim, decomposed like any other jamo:
   "answerGlyphs": ["ㄷ", "ㅏ", "ㄹ"],
   "icon": "🌙",
   "ttsText": "달",
-  "category": "nature"
+  "category": "nature",
+  "pedagogy": {
+    "gloss": "moon",
+    "note": "달 also means \"month\" - 세 달 is three months, not three moons. The ㄹ batchim is what separates it from 다 (\"all\").",
+    "example": {
+      "korean": "오늘 달이 아주 밝아요.",
+      "english": "The moon is very bright tonight."
+    }
+  }
 }
 ```
 
@@ -218,6 +277,9 @@ above).
 - [ ] Every `id` is unique, kebab-case, ASCII
 - [ ] Every `icon` is exactly one Unicode emoji, no bundled/attributed image
 - [ ] `ttsText` is the Korean word (not romanization, not English)
+- [ ] Every entry has a full `pedagogy` block - all three fields, never a partial one
+- [ ] Every `note` says something `gloss` does not (homograph, minimal pair, compound, grammatical trap) - not a restated definition
+- [ ] Every `example.korean` actually contains the word, sits at TOPIK 1/2 level, and ends in polite -아요/-어요/-예요 form
 - [ ] `category` is the topic string, e.g. `"numbers"`, not one of the demo set's `"food"/"animal"/"object"/"nature"` labels unless the topic actually is one of those
 - [ ] Output is a bare JSON array - no comments, no trailing commas, no surrounding prose
 

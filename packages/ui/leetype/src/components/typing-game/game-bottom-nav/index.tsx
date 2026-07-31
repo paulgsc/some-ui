@@ -1,11 +1,22 @@
 import type { FC, ReactNode } from "react"
+import { ChallengeBrief } from "@leetype/components/typing-game/challenge-brief"
+import { STAGE_META } from "@leetype/lib/leetype/curriculum"
 import type {
+  ChallengeCurriculum,
   DisplayMode,
   GameState,
   Language,
   TextGradient,
 } from "@leetype/types/leetype"
-import { Gauge, Info, Palette, Play, RotateCcw, Settings2 } from "lucide-react"
+import {
+  Gauge,
+  GraduationCap,
+  Info,
+  Palette,
+  Play,
+  RotateCcw,
+  Settings2,
+} from "lucide-react"
 import {
   Badge,
   Button,
@@ -46,6 +57,12 @@ export type GameInfoContent = {
   title: string
   description: string
   tags: Array<string>
+  /**
+   * The challenge's place in a decomposed curriculum, when it has one. Its
+   * presence changes what the info panel *is*: not a problem statement but a
+   * "why am I on this rung" brief — see `ChallengeBrief`.
+   */
+  curriculum?: ChallengeCurriculum
 }
 
 type GameBottomNavProps = {
@@ -62,12 +79,31 @@ type GameBottomNavProps = {
   language: Language
   displayMode: DisplayMode
   displayModeLocked: boolean
-  settingsEnabled: boolean
+  /**
+   * Whether the session-shaping controls (language, duration) can be touched
+   * right now. They restart the run, so they are held back mid-play — but the
+   * panel itself always opens, because "you cannot change the duration while
+   * typing" and "the settings button does nothing" are different messages and
+   * only one of them is true.
+   *
+   * This used to gate the trigger's `disabled` instead, computed from a
+   * predicate (`isLegacyMode`) that is false for every challenge-driven
+   * session — which is all of them in the app. The button was inert in every
+   * state, with no way to tell that from a button that simply did not work.
+   */
+  sessionControlsEnabled: boolean
   textGradient: TextGradient
   onLanguageChange: (lang: Language) => void
   onDisplayModeChange: (mode: DisplayMode) => void
   onDurationChange: (duration: number) => void
   onTextGradientChange: (gradient: TextGradient) => void
+  /**
+   * The languages the current challenge actually ships source for. A
+   * decomposed curriculum is Rust-only, so offering all four would let the
+   * player pick their way into a load error. Defaults to all four for the
+   * flat demo pool, which has them.
+   */
+  languages?: ReadonlyArray<Language>
   info: GameInfoContent
   /**
    * The skip/resume picker, rendered inline with the other overlay
@@ -103,6 +139,20 @@ function toTextGradient(v: string): TextGradient | null {
   }
   return null
 }
+
+const LANGUAGE_LABELS: Record<Language, string> = {
+  typescript: "TypeScript",
+  rust: "Rust",
+  cpp: "C++",
+  c: "C",
+}
+
+const ALL_LANGUAGES: ReadonlyArray<Language> = [
+  "typescript",
+  "rust",
+  "cpp",
+  "c",
+]
 
 const TEXT_GRADIENT_OPTIONS: ReadonlyArray<{
   value: TextGradient
@@ -147,12 +197,13 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
   language,
   displayMode,
   displayModeLocked,
-  settingsEnabled,
+  sessionControlsEnabled,
   textGradient,
   onLanguageChange,
   onDisplayModeChange,
   onDurationChange,
   onTextGradientChange,
+  languages = ALL_LANGUAGES,
   info,
   sectionNavigator,
   portalContainer,
@@ -182,28 +233,52 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
 
         <Drawer>
           <DrawerTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Challenge info">
-              <Info className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              // The trigger says which kind of panel is behind it: a
+              // curriculum exercise gets the graduation cap, a standalone
+              // problem keeps the plain info glyph.
+              aria-label={
+                info.curriculum
+                  ? `Exercise brief: step ${info.curriculum.step} of ${info.curriculum.totalSteps}`
+                  : "Challenge info"
+              }
+            >
+              {info.curriculum ? (
+                <GraduationCap className="h-4 w-4" />
+              ) : (
+                <Info className="h-4 w-4" />
+              )}
             </Button>
           </DrawerTrigger>
           <DrawerContent container={portalContainer}>
             <DrawerHeader>
-              <DrawerTitle>{info.title}</DrawerTitle>
-              <DrawerDescription>{info.description}</DrawerDescription>
-            </DrawerHeader>
-            {info.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 px-4 pb-6">
-                {info.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="font-mono text-xs"
-                  >
-                    {tag}
+              <DrawerTitle className="flex flex-wrap items-center gap-2">
+                {info.title}
+                {info.curriculum && (
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {info.curriculum.step}/{info.curriculum.totalSteps}
                   </Badge>
-                ))}
-              </div>
-            )}
+                )}
+              </DrawerTitle>
+              {/* One line of framing, never the description itself — that
+                  lives in the body below, so the two don't say it twice. */}
+              <DrawerDescription>
+                {info.curriculum
+                  ? `${STAGE_META[info.curriculum.stage].label} — one step of a decomposed curriculum, not a standalone problem.`
+                  : "Standalone problem — what to implement, and its constraints."}
+              </DrawerDescription>
+            </DrawerHeader>
+            {/* No scroll fallback: ChallengeBrief splits itself across tabs
+                so each pane fits the box, and the box is bounded here. */}
+            <div className="min-h-0 overflow-hidden px-4 pb-6">
+              <ChallengeBrief
+                description={info.description}
+                tags={info.tags}
+                curriculum={info.curriculum}
+              />
+            </div>
           </DrawerContent>
         </Drawer>
 
@@ -263,12 +338,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
 
         <Sheet>
           <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Settings"
-              disabled={!settingsEnabled}
-            >
+            <Button variant="ghost" size="icon" aria-label="Settings">
               <Settings2 className="h-4 w-4" />
             </Button>
           </SheetTrigger>
@@ -276,7 +346,9 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
             <SheetHeader>
               <SheetTitle>Game Settings</SheetTitle>
               <SheetDescription>
-                Changing language or duration restarts the current session.
+                {sessionControlsEnabled
+                  ? "Changing language or duration restarts the current session."
+                  : "Language and duration restart the session, so they are locked while you are typing. Finish or reset first."}
               </SheetDescription>
             </SheetHeader>
 
@@ -294,17 +366,27 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                     const lang = toLanguage(v)
                     if (lang) onLanguageChange(lang)
                   }}
+                  // A single-language challenge (every curriculum exercise is
+                  // Rust-only) has nothing to choose between; the select stays
+                  // visible so the language is still legible, but inert.
+                  disabled={!sessionControlsEnabled || languages.length <= 1}
                 >
                   <SelectTrigger id="bottom-nav-language">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="typescript">TypeScript</SelectItem>
-                    <SelectItem value="rust">Rust</SelectItem>
-                    <SelectItem value="cpp">C++</SelectItem>
-                    <SelectItem value="c">C</SelectItem>
+                    {languages.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {LANGUAGE_LABELS[option]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {languages.length <= 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    This challenge ships {LANGUAGE_LABELS[language]} only.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -349,6 +431,7 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                       const value = Number.parseInt(e.target.value, 10)
                       if (!Number.isNaN(value)) onDurationChange(value)
                     }}
+                    disabled={!sessionControlsEnabled}
                     className="w-24"
                   />
                   <span className="text-sm text-muted-foreground">seconds</span>

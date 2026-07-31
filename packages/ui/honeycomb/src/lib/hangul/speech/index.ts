@@ -4,7 +4,7 @@
 // list (`@honeycomb/data`) ships `ttsText` instead of an audio file per word.
 //
 // No-ops (never throws) when `speechSynthesis` isn't available, so callers don't need their own
-// feature-detection branch - #762's UI must fall back to the romanization caption either way.
+// feature-detection branch - #762's UI shows the word's Hangul spelling either way.
 
 export function isSpeechSynthesisAvailable(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window

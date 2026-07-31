@@ -1,11 +1,11 @@
-import type { JSX } from "react"
+import type { ComponentType, JSX } from "react"
 import {
   createFileRoute,
   Link,
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { FileText, Home, ListVideo, Settings, User } from "lucide-react"
+import { FileText, ListVideo, Settings, User } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ import {
 } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
+import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -39,11 +40,16 @@ function isViewportPath(pathname: string): boolean {
 type NavItem = {
   to: "/app" | "/sessions" | "/resume" | "/profile" | "/settings"
   label: string
-  icon: typeof Home
+  // Widened from `typeof Home` so the brand mark sits alongside the lucide
+  // glyphs. Both are sized the same way, by the sidebar's own `[&>svg]:size-4`
+  // rule rather than by anything either component asks for.
+  icon: ComponentType<{ className?: string }>
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { to: "/app", label: "Home", icon: Home },
+  // Home is the app's front door, so it gets the mark rather than a generic
+  // house — the same seven-cell comb as the favicon and the landing hero.
+  { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/profile", label: "Profile", icon: User },
@@ -98,6 +104,10 @@ const DashboardLayout = (): JSX.Element => {
         <div
           className={cn(
             "flex-1 p-6",
+            // scroll-intent: page — an ordinary document route scrolls as a
+            // page. The viewport route is the bounded one, and takes the
+            // overflow-hidden branch precisely so it cannot (docs/ui-fit,
+            // docs/session-viewport/02-kill-the-cutoff.md).
             isViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
           )}
         >

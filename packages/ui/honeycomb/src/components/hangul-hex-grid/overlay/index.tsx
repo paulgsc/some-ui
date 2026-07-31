@@ -13,6 +13,7 @@ import { PauseOverlay } from "@honeycomb/components/hangul-hex-grid/pause-overla
 import { PromptStation } from "@honeycomb/components/hangul-hex-grid/prompt-station"
 import { StatsPanel } from "@honeycomb/components/hangul-hex-grid/stats-panel"
 import { SuccessFeedback } from "@honeycomb/components/hangul-hex-grid/success-feedback"
+import { VocabDebriefModal } from "@honeycomb/components/hangul-hex-grid/vocab-debrief-modal"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { HANGUL_WORDS, toChallengeSeed } from "@honeycomb/data"
 import type { WordEntry } from "@honeycomb/data"
@@ -36,6 +37,7 @@ import {
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
   CharacterWithLifetime,
+  MissedWord,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
@@ -132,6 +134,11 @@ export const HangulHexGrid = ({
     undefined
   )
   const [missCount, setMissCount] = useState(0)
+  // A vocabulary word that ran out of time unfinished. While this is set, the
+  // run is held: the board keeps the expired cells (revealed and marked
+  // missed) and the debrief panel explains what was missed, and only once it
+  // is dismissed do those cells go away and the next word spawn.
+  const [missedWord, setMissedWord] = useState<MissedWord | null>(null)
   // The honeycomb grid's own hex-geometry WASM module (@some-ui/some-hexagon,
   // via HexGrid/useHexgridWasm) is an entirely separate concern from the
   // game engine's WASM module above - a fatal failure there previously had
@@ -190,15 +197,26 @@ export const HangulHexGrid = ({
     },
   })
 
+  // Everything that stops the run: the manual pause button, a terminal game
+  // status, a fatal grid failure, a host taking exclusive control - and now a
+  // missed-word debrief, which holds the session in place until the player
+  // has seen what they missed. Spawning is what actually needs holding: the
+  // debrief renders off cells that would otherwise be overwritten by the next
+  // word.
+  //
+  // isGameOver is in here (rather than left to the manual pause state)
+  // because without it the spawn/update interval only stops once the
+  // onComplete/onTimeout callback's setIsPaused(true) round-trips through a
+  // render, one or more ticks after the engine-derived status already says
+  // the game is over.
+  const isHalted =
+    isPaused || isGameOver || isGridFatal || suspended || missedWord !== null
+
   // Game loop hook
   useGameLoop({
     gameBridge,
     isInitialized,
-    // isGameOver mirrors useKeyboardInput's own gate below - without it, the
-    // spawn/update interval only stops once the onComplete/onTimeout
-    // callback's setIsPaused(true) round-trips through a render, one or more
-    // ticks after the engine-derived status already says the game is over.
-    isPaused: isPaused || isGameOver || isGridFatal || suspended,
+    isPaused: isHalted,
     setActiveCharacters,
     setStats,
     setTimingParams,
@@ -209,13 +227,14 @@ export const HangulHexGrid = ({
     wordProgress,
     setWordProgress,
     setMissCount,
+    onWordMissed: setMissedWord,
   })
 
   // Keyboard input hook
   useKeyboardInput({
     gameBridge,
     isInitialized,
-    isPaused: isPaused || isGameOver || isGridFatal || suspended,
+    isPaused: isHalted,
     keyboardManager,
     setActiveCharacters,
     setStats,
@@ -243,6 +262,30 @@ export const HangulHexGrid = ({
     missCount,
   })
 
+  // Same trick as `trackedCharacter` above, for the word being debriefed: its
+  // cells are deliberately still on the board (revealed and flagged missed),
+  // so the seed entry behind them is a lookup away rather than another copy
+  // of state to keep in sync.
+  const missedCellId = missedWord?.cellIds[0]
+  const missedStimulus = missedCellId
+    ? activeCharacters.get(missedCellId)?.stimulus
+    : undefined
+  const missedEntry =
+    missedStimulus?.kind === "icon"
+      ? words.find((word) => word.id === missedStimulus.name)
+      : undefined
+
+  const handleDebriefDismiss = useCallback(() => {
+    if (!missedWord) return
+    // The debrief was the only reason these cells outlived their expiry.
+    setActiveCharacters((prev) => {
+      const next = new Map(prev)
+      missedWord.cellIds.forEach((cellId) => next.delete(cellId))
+      return next
+    })
+    setMissedWord(null)
+  }, [missedWord])
+
   const handleReset = useCallback(() => {
     if (!gameBridge) return
 
@@ -255,6 +298,7 @@ export const HangulHexGrid = ({
     setWordProgress(null)
     setCelebrationWord(undefined)
     setMissCount(0)
+    setMissedWord(null)
     setIsPaused(false)
 
     // Restart timer for timed modes
@@ -342,6 +386,7 @@ export const HangulHexGrid = ({
                     tokenIndex,
                     cursor,
                     answerGlyphs,
+                    isMissed,
                   },
                   theme: { opacity },
                 } = content
@@ -378,6 +423,7 @@ export const HangulHexGrid = ({
                     showRomanization={timingParams.showRomanization}
                     isSolved={isSolved}
                     isPlaceholder={isPlaceholder}
+                    isMissed={isMissed}
                   />
                 )
               }}
@@ -421,6 +467,15 @@ export const HangulHexGrid = ({
         />
 
         <GridErrorOverlay error={gridError} />
+
+        {/* Suppressed once the game itself is over - the run isn't going to
+            resume into a next word, so a "next word in 5s" panel would be
+            lying, and GameOverModal is the screen that matters then. */}
+        <VocabDebriefModal
+          missed={isGameOver || isGridFatal ? null : missedWord}
+          entry={missedEntry}
+          onDismiss={handleDebriefDismiss}
+        />
 
         <GameOverModal
           isOpen={isGameOver}

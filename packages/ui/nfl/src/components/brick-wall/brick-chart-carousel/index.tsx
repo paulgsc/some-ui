@@ -26,8 +26,9 @@ export const BrickChartCarousel: FC<BrickChartCarouselProps> = ({
   loader = <div>Loading...</div>,
   chartProps,
 }): JSX.Element | null => {
-  const autoplay = useMemo(
+  const autoplay = useMemo<ReturnType<typeof Autoplay>>(
     () =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       Autoplay({
         delay: autoplayDelay,
         stopOnInteraction,

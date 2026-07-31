@@ -43,6 +43,7 @@ const meta: Meta<typeof HangulHexCell> = {
     showRomanization: true,
     isSolved: false,
     isPlaceholder: false,
+    isMissed: false,
   },
 } satisfies Meta<typeof HangulHexCell>
 
@@ -69,6 +70,20 @@ export const Solved: Story = {
 export const Placeholder: Story = {
   args: {
     isPlaceholder: true,
+    character: mockCharacter({ hangul: "ㅘ", qwertyKey: "hk" }),
+  },
+}
+
+/**
+ * The word ran out of time before the cursor reached this token: the mask
+ * comes off, the glyph is struck in red, and the QWERTY key the player needed
+ * is shown. The counterpart to `Solved`, in the incorrect register.
+ */
+export const Missed: Story = {
+  args: {
+    isMissed: true,
+    isPlaceholder: true,
+    timeRemaining: 0,
     character: mockCharacter({ hangul: "ㅘ", qwertyKey: "hk" }),
   },
 }

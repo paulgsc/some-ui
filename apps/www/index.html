@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <link rel="icon" href="/favicon.ico" />
+    <!-- SVG first, .ico as the fallback for anything that cannot take one.
+         Browsers pick the first rel="icon" they understand, so order is the
+         declaration; the SVG also carries a prefers-color-scheme rule the
+         .ico has no way to express. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo192.png" />
     <!-- Pre-paint safety net, ahead of the theme script below: inline CSS
          parses synchronously with zero network/script latency, so even if
          the script is slow, blocked, or JS is disabled, the very first
@@ -64,7 +70,7 @@
       name="description"
       content="Some UI lets you compose and run focused study sessions — pick activities, arrange layouts, and play them back with text-to-speech."
     />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#101010" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Open Graph -->

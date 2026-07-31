@@ -25,7 +25,7 @@ type PromptStationProps = {
  * overlay rendering the active word challenge's stimulus and progress, with
  * progressively richer hints as the player struggles. Idle ("radio") state
  * is a minimal footprint; it expands ("TV") once a word challenge is active,
- * then layers in TTS playback and a romanization caption per
+ * then layers in TTS playback and finally the word's Hangul spelling per
  * `usePromptEscalation`'s tier. Both are host-layer realizations of engine
  * primitives (canon Axiom 3.1) - no new engine type backs this component.
  *
@@ -99,7 +99,7 @@ export const PromptStation = ({
             </div>
           )}
 
-          {(tier === "icon-tts" || tier === "icon-tts-romanization") && (
+          {(tier === "icon-tts" || tier === "icon-tts-hangul") && (
             <button
               type="button"
               onClick={() => speak(entry.ttsText)}
@@ -109,10 +109,13 @@ export const PromptStation = ({
             </button>
           )}
 
-          {tier === "icon-tts-romanization" && (
+          {/* Last-resort hint: the word in Hangul, which is what the player
+              has to produce. Romanization is deliberately not shown - see
+              usePromptEscalation's header comment. */}
+          {tier === "icon-tts-hangul" && (
             <div className="text-center">
-              <div className="text-xs text-white/60 italic">
-                {entry.romanization}
+              <div className="text-xl font-bold tracking-wide text-white/85">
+                {entry.word}
               </div>
             </div>
           )}

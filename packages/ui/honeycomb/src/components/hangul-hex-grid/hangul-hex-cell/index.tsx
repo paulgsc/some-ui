@@ -2,6 +2,8 @@ import type { FC } from "react"
 import { useState } from "react"
 import type { HangulCharacter } from "@honeycomb/types/hangul-types"
 
+import "./index.css"
+
 type HangulHexCellProps = {
   character: HangulCharacter
   centerX: number
@@ -19,11 +21,20 @@ type HangulHexCellProps = {
    * false for a single-jamo (n=1) challenge.
    */
   isPlaceholder?: boolean
+  /**
+   * True while this cell belongs to a word challenge that expired unfinished
+   * and is being revealed back to the player. Outranks `isPlaceholder`: the
+   * jamo they never reached is exactly what the debrief exists to show, so it
+   * is unmasked here and scored in the incorrect register (red, struck, no
+   * checkmark) rather than the solved one.
+   */
+  isMissed?: boolean
 }
 
 const PLACEHOLDER_GLYPH = "?"
 
 const SOLVED_COLOR = "#22c55e" // emerald-500
+const MISSED_COLOR = "#ef4444" // red-500
 
 export const HangulHexCell: FC<HangulHexCellProps> = ({
   character,
@@ -36,8 +47,13 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   showRomanization = true,
   isSolved = false,
   isPlaceholder = false,
+  isMissed = false,
 }): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
+
+  // The debrief's whole purpose is to show what was never reached, so a
+  // missed cell is always unmasked no matter what the cursor said.
+  const isMasked = isPlaceholder && !isMissed
 
   const hangulFontSize = Math.max(16, cellWidth * 0.35)
   const qwertyFontSize = Math.max(10, cellWidth * 0.18)
@@ -46,22 +62,31 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
   const ringRadius = cellWidth * 0.42
   const ringStrokeWidth = 3
   const circumference = 2 * Math.PI * ringRadius
-  // Solved cells show a full ring; active cells reflect remaining time.
-  const progressOffset = isSolved ? 0 : circumference * (1 - timeRemaining)
+  // Solved and missed cells both show a full ring - their clock is over
+  // either way; only the colour says which way it went. Active cells reflect
+  // remaining time.
+  const progressOffset =
+    isSolved || isMissed ? 0 : circumference * (1 - timeRemaining)
 
-  // Color intensity based on time remaining. Solved cells are always calm/green.
-  const urgencyColor = isSolved
-    ? SOLVED_COLOR
-    : timeRemaining < 0.3
-      ? "#ef4444"
-      : character.color
+  // Color intensity based on time remaining. Solved cells are always calm/green,
+  // missed ones always alarm/red.
+  const urgencyColor = isMissed
+    ? MISSED_COLOR
+    : isSolved
+      ? SOLVED_COLOR
+      : timeRemaining < 0.3
+        ? MISSED_COLOR
+        : character.color
   const glowIntensity =
-    !isSolved && timeRemaining < 0.3 ? "url(#urgent-glow)" : "none"
+    isMissed || (!isSolved && timeRemaining < 0.3)
+      ? "url(#urgent-glow)"
+      : "none"
 
   return (
     <g
       opacity={opacity}
       style={{ cursor: "pointer" }}
+      className={isMissed ? "hangul-cell-missed" : undefined}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -79,11 +104,13 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
       {/* Hex background */}
       <path
         d={hexPath}
-        fill={isSolved ? SOLVED_COLOR : character.color}
-        fillOpacity={isSolved ? 0.22 : isPlaceholder ? 0.15 : 0.3}
+        fill={
+          isMissed ? MISSED_COLOR : isSolved ? SOLVED_COLOR : character.color
+        }
+        fillOpacity={isMissed ? 0.28 : isSolved ? 0.22 : isMasked ? 0.15 : 0.3}
         stroke={urgencyColor}
-        strokeWidth={isSolved ? 3 : 2}
-        strokeDasharray={isPlaceholder ? "4 3" : undefined}
+        strokeWidth={isSolved || isMissed ? 3 : 2}
+        strokeDasharray={isMasked ? "4 3" : undefined}
         filter={glowIntensity}
       />
 
@@ -107,13 +134,15 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         strokeDashoffset={progressOffset}
         strokeLinecap="round"
         transform={`rotate(-90 ${centerX} ${centerY})`}
+        className={isMissed ? "hangul-ring-missed" : undefined}
         style={{
           transition: "stroke-dashoffset 0.1s linear",
         }}
       />
 
       {/* Hangul character - large and centered. Masked to a neutral
-          placeholder glyph while this cell hasn't been reached yet (#425). */}
+          placeholder glyph while this cell hasn't been reached yet (#425),
+          and struck out in red once the word expired without reaching it. */}
       <text
         x={centerX}
         y={centerY}
@@ -121,17 +150,31 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         dominantBaseline="middle"
         fontSize={hangulFontSize}
         fontWeight="900"
-        fill={isPlaceholder ? "rgba(255,255,255,0.35)" : "white"}
-        className="font-sans pointer-events-none"
+        fill={
+          isMissed
+            ? MISSED_COLOR
+            : isMasked
+              ? "rgba(255,255,255,0.35)"
+              : "white"
+        }
+        className={
+          isMissed
+            ? "font-sans pointer-events-none hangul-glyph-missed"
+            : "font-sans pointer-events-none"
+        }
         style={{
-          textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          textShadow: isMissed
+            ? "0 0 10px rgba(239,68,68,0.85)"
+            : "0 2px 8px rgba(0,0,0,0.5)",
           transition: "fill 0.2s ease-out",
         }}
       >
-        {isPlaceholder ? PLACEHOLDER_GLYPH : character.hangul}
+        {isMasked ? PLACEHOLDER_GLYPH : character.hangul}
       </text>
 
-      {/* QWERTY key hint - small text below (hidden once solved or placeholder) */}
+      {/* QWERTY key hint - small text below. Hidden once solved or still
+          masked; a missed cell shows it, since "the key you needed" is the
+          one thing worth carrying out of a miss. */}
       <text
         x={centerX}
         y={centerY + cellWidth * 0.28}
@@ -139,14 +182,33 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
         dominantBaseline="middle"
         fontSize={qwertyFontSize}
         fontWeight="700"
-        fill="rgba(255,255,255,0.5)"
+        fill={isMissed ? "rgba(239,68,68,0.85)" : "rgba(255,255,255,0.5)"}
         className="font-mono pointer-events-none"
       >
-        {!isSolved && !isPlaceholder && showRomanization && character.qwertyKey}
+        {(isMissed || (!isSolved && !isMasked && showRomanization)) &&
+          character.qwertyKey}
       </text>
 
+      {/* Missed badge - the counterpart to the completion checkmark, so a
+          frozen board reads correct-vs-missed without any colour vision. */}
+      {isMissed && (
+        <text
+          x={centerX + cellWidth * 0.28}
+          y={centerY - cellWidth * 0.28}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={qwertyFontSize * 1.1}
+          fontWeight="900"
+          fill={MISSED_COLOR}
+          className="pointer-events-none"
+          style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+        >
+          ✗
+        </text>
+      )}
+
       {/* Completion checkmark badge */}
-      {isSolved && (
+      {isSolved && !isMissed && (
         <text
           x={centerX + cellWidth * 0.28}
           y={centerY - cellWidth * 0.28}
@@ -164,7 +226,7 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
 
       {/* Hover popup with romanization (suppressed for a not-yet-reached
           placeholder cell - it must not leak the answer early) */}
-      {isHovered && showRomanization && !isPlaceholder && (
+      {isHovered && showRomanization && !isMasked && (
         <foreignObject
           x={centerX - cellWidth * 0.6}
           y={centerY - cellWidth * 1.2}

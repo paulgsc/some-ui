@@ -37,7 +37,8 @@
     "knip": "knip --no-progress --reporter compact",
     "prepare": "husky",
     "test": "turbo test",
-    "storybook": "storybook dev -p 6006 --no-open"
+    "storybook": "storybook dev -p 6006 --no-open",
+    "test:ui-fit": "CI=1 pnpm build-storybook -o storybook-static && STORYBOOK_STATIC=storybook-static pnpm --filter www test:ui-fit"
   },
   "packageManager": "pnpm@10.11.1",
   "author": "pgdev",

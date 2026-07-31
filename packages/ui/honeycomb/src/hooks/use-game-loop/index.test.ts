@@ -7,6 +7,7 @@ import type {
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
   CharacterWithLifetime,
+  MissedWord,
   WordProgress,
 } from "@honeycomb/types/hangul-types"
 import { renderHook } from "@testing-library/react"
@@ -39,6 +40,7 @@ type MockGameLoopProps = {
   onBoardFull: Mock<() => void>
   wordProgress: WordProgress | null
   setWordProgress: Mock<(progress: WordProgress | null) => void>
+  onWordMissed: Mock<(missed: MissedWord) => void>
 }
 
 function createBaseProps(
@@ -81,6 +83,7 @@ function createBaseProps(
     onBoardFull: vi.fn(),
     wordProgress: null,
     setWordProgress: vi.fn(),
+    onWordMissed: vi.fn(),
     ...overrides,
   }
 }
@@ -482,6 +485,143 @@ describe("word progress tracking (#426)", () => {
     vi.advanceTimersByTime(50) // update tick picks up the expiry
 
     expect(props.setWordProgress).toHaveBeenLastCalledWith(null)
+  })
+
+  it("reports a tracked word that expired unfinished, and keeps its cells for the debrief", () => {
+    const wordProgress: WordProgress = {
+      cellIds: ["cell-a", "cell-b", "cell-c"],
+      answerGlyphs: ["ㅅ", "ㅏ", "ㄱ"],
+      cursor: 1,
+    }
+    const props = createBaseProps({ wordProgress })
+    props.gameBridge!.checkExpired = vi.fn(() => [
+      {
+        type: "charactersExpired",
+        cellIds: ["cell-a", "cell-b", "cell-c", "unrelated-jamo"],
+        hanguls: ["ㅅㅏㄱ", "ㄴ"],
+        count: 4,
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    expect(props.onWordMissed).toHaveBeenCalledWith({
+      cellIds: ["cell-a", "cell-b", "cell-c"],
+      answerGlyphs: ["ㅅ", "ㅏ", "ㄱ"],
+      cursor: 1,
+    })
+
+    const updater = props.setActiveCharacters.mock.calls[0]![0]
+    const next = updater(
+      new Map([
+        ["cell-a", { cellId: "cell-a", timeRemaining: 0.1 }],
+        ["cell-b", { cellId: "cell-b", timeRemaining: 0.1 }],
+        ["cell-c", { cellId: "cell-c", timeRemaining: 0.1 }],
+        ["unrelated-jamo", { cellId: "unrelated-jamo", timeRemaining: 0.1 }],
+      ])
+    )
+
+    // The word's cells survive their own expiry, flagged and frozen, because
+    // the reveal renders off them. Anything else that expired on the same tick
+    // is dropped exactly as before.
+    expect(next.get("cell-a")).toMatchObject({
+      isMissed: true,
+      timeRemaining: 0,
+    })
+    expect(next.get("cell-c")).toMatchObject({ isMissed: true })
+    expect(next.has("unrelated-jamo")).toBe(false)
+  })
+
+  it("does not report a miss for a word whose every jamo was typed", () => {
+    const props = createBaseProps({
+      wordProgress: {
+        cellIds: ["cell-a", "cell-b"],
+        answerGlyphs: ["ㅅ", "ㅏ"],
+        cursor: 2,
+      },
+    })
+    props.gameBridge!.checkExpired = vi.fn(() => [
+      {
+        type: "charactersExpired",
+        cellIds: ["cell-a", "cell-b"],
+        hanguls: ["ㅅㅏ"],
+        count: 2,
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    expect(props.onWordMissed).not.toHaveBeenCalled()
+    const updater = props.setActiveCharacters.mock.calls[0]![0]
+    const next = updater(new Map([["cell-a", { cellId: "cell-a" }]]))
+    expect(next.has("cell-a")).toBe(false)
+  })
+
+  it("does not report a miss for single-jamo play, which has no tracked word", () => {
+    const props = createBaseProps()
+    props.gameBridge!.checkExpired = vi.fn(() => [
+      {
+        type: "charactersExpired",
+        cellIds: ["cell-1"],
+        hanguls: ["ㄱ"],
+        count: 1,
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    expect(props.onWordMissed).not.toHaveBeenCalled()
+  })
+
+  it("does not report a miss when some other cell expires mid-word", () => {
+    const props = createBaseProps({
+      wordProgress: {
+        cellIds: ["cell-a", "cell-b"],
+        answerGlyphs: ["ㅅ", "ㅏ"],
+        cursor: 0,
+      },
+    })
+    props.gameBridge!.checkExpired = vi.fn(() => [
+      {
+        type: "charactersExpired",
+        cellIds: ["some-other-cell"],
+        hanguls: ["ㄴ"],
+        count: 1,
+      },
+    ])
+
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    expect(props.onWordMissed).not.toHaveBeenCalled()
+    expect(props.setWordProgress).not.toHaveBeenCalled()
+  })
+
+  it("leaves a missed cell's countdown alone instead of decaying it", () => {
+    const props = createBaseProps()
+    renderHook(() => useGameLoop(asGameLoopProps(props)))
+    vi.advanceTimersByTime(50)
+
+    const updater = props.setActiveCharacters.mock.calls[0]![0]
+    const next = updater(
+      new Map([
+        [
+          "cell-a",
+          {
+            cellId: "cell-a",
+            spawnedAt: Date.now() - 1500,
+            isMissed: true,
+            timeRemaining: 0,
+            answerKeys: ["t", "k"],
+          },
+        ],
+      ])
+    )
+
+    expect(next.get("cell-a")!.timeRemaining).toBe(0)
   })
 
   it("does not spawn a new challenge while a word challenge is already in flight (queue semantics)", () => {

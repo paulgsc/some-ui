@@ -50,15 +50,15 @@ export const IconWithTts: Story = {
   args: { tier: "icon-tts" },
 }
 
-/** After two misses or 6s elapsed - icon, TTS, and a romanization caption. */
+/** After two misses or 6s elapsed - icon, TTS, and the word's Hangul spelling. */
 export const FullEscalation: Story = {
-  args: { tier: "icon-tts-romanization" },
+  args: { tier: "icon-tts-hangul" },
 }
 
 /** A `Glyph` stimulus (ordinary jamo play) - the station renders nothing, unaffected by hangul word mode. */
 export const HiddenForGlyphStimulus: Story = {
   args: {
     stimulus: { kind: "glyph", text: "ㄱ" },
-    tier: "icon-tts-romanization",
+    tier: "icon-tts-hangul",
   },
 }

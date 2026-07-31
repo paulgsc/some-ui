@@ -3,6 +3,13 @@
   "exclude": [
     "**/*.stories.tsx",
     "**/*.stories.ts",
+    // Tests are typechecked by `pnpm typecheck` (tsconfig.json, which picks up
+    // vitest.setup.ts and with it the jest-dom matcher augmentation) - the
+    // build excludes them because they contribute nothing to the emitted
+    // types, and without the setup file in scope their matchers don't resolve.
+    // Mirrors packages/ui/topik's own build config.
+    "**/*.test.ts",
+    "**/*.test.tsx",
     "**/hexagon-grid-demo/**",
     "vite.config.ts",
     "vitest.config.ts",

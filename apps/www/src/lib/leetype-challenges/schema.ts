@@ -14,10 +14,30 @@ import { z } from "zod"
  * whatever's mounted/symlinked at `public/leetype` (see
  * infra/compose/www.yml and scripts/link-content-assets.js) - so a local
  * corpus's `challenges.json` should point at files it also places under
- * that same directory (e.g. `/leetype/samples/ds-stack.ts`), not at
+ * that same directory (e.g. `/leetype/samples/ds-stack.rs`), not at
  * `/code-samples/*` (the small, committed demo set that ships on GitHub
  * Pages).
  */
+const CurriculumSchema = z.object({
+  stage: z.enum([
+    "remember",
+    "understand",
+    "apply",
+    "analyze",
+    "integrate",
+    "master",
+  ]),
+  step: z.number().int().positive(),
+  totalSteps: z.number().int().positive(),
+  insight: z.string().min(1),
+  learningObjectives: z.array(z.string().min(1)),
+  conceptsIntroduced: z.array(z.string().min(1)),
+  conceptsReinforced: z.array(z.string().min(1)),
+  dependsOn: z.array(z.string().min(1)),
+  completionCriteria: z.array(z.string().min(1)),
+  targetProblem: z.string().min(1),
+})
+
 export const ChallengeSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -25,13 +45,30 @@ export const ChallengeSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]),
   mode: z.enum(["data-structure", "algorithm"]),
   tags: z.array(z.string().min(1)),
+  /**
+   * `rust` is the only required language: a decomposed curriculum is authored
+   * in Rust (see the Curriculum Decomposer prompt in
+   * packages/some-content/prompts/leetype-challenge-generator), and `Leetype`
+   * resolves the player's preferred language down to one the challenge
+   * actually carries. The other three stay accepted so the older
+   * four-language corpora keep loading.
+   */
   codePaths: z.object({
-    typescript: z.string().min(1),
     rust: z.string().min(1),
-    cpp: z.string().min(1),
-    c: z.string().min(1),
+    typescript: z.string().min(1).optional(),
+    cpp: z.string().min(1).optional(),
+    c: z.string().min(1).optional(),
   }),
   levelRequired: z.number(),
+  /**
+   * The challenge's node in the knowledge graph its corpus was decomposed
+   * from. Optional so a pre-curriculum corpus already on disk keeps loading -
+   * it just gets presented as a flat pool of standalone problems, which is
+   * what it is. Present-but-partial is still rejected: the UI's whole
+   * curriculum framing (`ChallengeBrief`, the picker's ladder) reads every
+   * field, and half a decomposition is more misleading than none.
+   */
+  curriculum: CurriculumSchema.optional(),
 })
 
 export const LeetypeChallengesFileSchema = z.array(ChallengeSchema).min(1)

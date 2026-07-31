@@ -1,15 +1,21 @@
 import type { FC } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ChallengeSelector } from "@leetype/components/typing-game/challenge-selector"
 import { CodeInputCard } from "@leetype/components/typing-game/code-input-card"
 import type { GameInfoContent } from "@leetype/components/typing-game/game-bottom-nav"
 import { GameBottomNav } from "@leetype/components/typing-game/game-bottom-nav"
+import { LoadingChallengesState } from "@leetype/components/typing-game/loading-challenges-state"
 import { SectionNavigator } from "@leetype/components/typing-game/section-navigator"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useGameTimer } from "@leetype/hooks"
 import { useTypingGame } from "@leetype/hooks/leetype"
 import { useChunkedCode } from "@leetype/hooks/leetype/use-chunked-code"
 import { usePlayerProgress } from "@leetype/hooks/leetype/use-player-progress"
+import {
+  availableLanguages,
+  resolveLanguage,
+  STAGE_META,
+} from "@leetype/lib/leetype/curriculum"
 import type { PrettierParser } from "@leetype/lib/leetype/format-code"
 import { ADAPTIVE_WPM_THRESHOLD } from "@leetype/lib/leetype/player-store"
 import type {
@@ -51,6 +57,23 @@ type LeetypeProps = {
    * component knowing or caring where the challenges came from.
    */
   challenges?: Array<Challenge>
+  /**
+   * True while the host is still fetching the pool above and has not yet
+   * decided what `challenges` will be.
+   *
+   * Without it, `challenges` being absent is ambiguous: it means both "this
+   * host has no corpus of its own, use the bundled demo pool" and "this
+   * host's corpus hasn't landed yet". The picker is a *blocking* step the
+   * player acts on the instant it appears, so resolving that ambiguity the
+   * wrong way is not a cosmetic flicker - the player picks from the demo pool,
+   * `pickedChallenge` latches it, and the corpus that arrives a moment later
+   * is never seen. So while this is true the picker waits instead of offering
+   * a pool it is about to replace.
+   *
+   * Hosts with a synchronous pool (Storybook, `LeetypeApp`) omit it.
+   * @default false
+   */
+  challengesPending?: boolean
   /** Pre-selected language (challenge mode) */
   initialLanguage?: Language
   /** Pre-selected duration in seconds (challenge mode) */
@@ -81,6 +104,7 @@ export const Leetype: FC<LeetypeProps> = ({
   codePaths,
   challenge,
   challenges = CHALLENGES,
+  challengesPending = false,
   initialLanguage,
   initialDuration,
   nContext,
@@ -95,14 +119,18 @@ export const Leetype: FC<LeetypeProps> = ({
   const { progress: playerProgress } = usePlayerProgress()
 
   const resolvedChallenge = challenge ?? pickedChallenge ?? undefined
-  const isLegacyMode = !needsChallengeSelection && !resolvedChallenge
   const awaitingChallengeSelection =
     needsChallengeSelection && !resolvedChallenge
 
   const [gameState, setGameState] = useState<GameState>("idle")
+  // Bumped by every path that starts the session over. The timer cannot infer
+  // this from `gameState` alone — leaving "playing" is a pause as far as it is
+  // concerned, and a timed-out run had banked its whole duration, so Start
+  // after Reset used to re-time-out on its first frame.
+  const [runId, setRunId] = useState(0)
   const [displayMode, setDisplayMode] = useState<DisplayMode>("shown")
   const [textGradient, setTextGradient] = useState<TextGradient>("none")
-  const [language, setLanguage] = useState<Language>(
+  const [preferredLanguage, setPreferredLanguage] = useState<Language>(
     initialLanguage ?? "typescript"
   )
   const [duration, setDuration] = useState(initialDuration ?? 300)
@@ -140,6 +168,14 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const effectiveCodePaths: Partial<Record<Language, string>> =
     resolvedChallenge?.codePaths ?? codePaths ?? {}
+
+  // A decomposed curriculum ships Rust only (see the Curriculum Decomposer
+  // prompt), so the preferred language — a default, or whatever the player
+  // picked for some earlier multi-language challenge — may not exist here.
+  // Resolving it down to something the challenge actually carries is the
+  // difference between "this exercise is in Rust" and a load error.
+  const language = resolveLanguage(effectiveCodePaths, preferredLanguage)
+  const offeredLanguages = availableLanguages(effectiveCodePaths)
 
   const codeState = useChunkedCode(effectiveCodePaths[language] ?? "", {
     prettierParser: PRETTIER_PARSER_MAP[language],
@@ -209,6 +245,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const timer = useGameTimer({
     gameState,
     duration,
+    runId,
     onTimeout: () => setGameState("timeout"),
   })
 
@@ -258,15 +295,25 @@ export const Leetype: FC<LeetypeProps> = ({
     onSessionCompleteRef.current?.(statsSnapshot)
   }, [gameState])
 
+  // Everything that "start this session over" means, in one place: the engine,
+  // the accumulated stats, the adaptive latch, and — via runId — the clock.
+  // Leaving any one of them out is how the Reset button came to be a no-op,
+  // so they move together by construction rather than by three call sites
+  // remembering to agree.
+  const beginNewRun = useCallback((): void => {
+    reset()
+    setGameState("idle")
+    setRunId((current) => current + 1)
+    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
+    setAdaptiveHidden(false)
+  }, [reset])
+
   useEffect(() => {
     if (codeState.status === "SUCCESS") {
-      reset()
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setGameState("idle")
-      setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-      setAdaptiveHidden(false)
+      beginNewRun()
     }
-  }, [reset, language, codeState.status])
+  }, [beginNewRun, language, codeState.status])
 
   const handleStart = (): void => {
     if (codeState.status !== "SUCCESS") return
@@ -276,17 +323,19 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   const handleReset = (): void => {
-    setGameState("idle")
-    reset()
-    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-    setAdaptiveHidden(false)
+    beginNewRun()
   }
 
   const handleLanguageChange = (lang: Language): void => {
-    setLanguage(lang)
-    setGameState("idle")
-    setCumulativeStats({ totalChunks: 0, totalCharsTyped: 0, totalErrors: 0 })
-    setAdaptiveHidden(false)
+    setPreferredLanguage(lang)
+    beginNewRun()
+  }
+
+  // A duration typed into the settings panel is a new run, not a mid-flight
+  // adjustment to the current one — the panel says so in as many words.
+  const handleDurationChange = (seconds: number): void => {
+    setDuration(seconds)
+    beginNewRun()
   }
 
   const overallProgress =
@@ -299,12 +348,15 @@ export const Leetype: FC<LeetypeProps> = ({
     codeState.hasMore ? "+" : ""
   }`
 
+  const curriculum = resolvedChallenge?.curriculum
+
   const info: GameInfoContent = {
     title: resolvedChallenge ? resolvedChallenge.title : "Problem Description",
     description: resolvedChallenge
       ? resolvedChallenge.description
       : DEFAULT_PROMPT_DESCRIPTION,
     tags: resolvedChallenge ? resolvedChallenge.tags : [],
+    curriculum,
   }
 
   return (
@@ -322,7 +374,10 @@ export const Leetype: FC<LeetypeProps> = ({
             container={themedContainer}
             showOverlay
             showCloseButton={false}
-            className="max-h-[85vh] max-w-3xl overflow-y-auto"
+            // A definite, bounded box laid out as a column - the picker
+            // inside it fits itself to this rather than growing past the
+            // screen and handing the remainder to a scrollbar.
+            className="flex h-[min(38rem,88vh)] max-w-5xl flex-col overflow-hidden"
             onEscapeKeyDown={(e) => e.preventDefault()}
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
@@ -333,11 +388,15 @@ export const Leetype: FC<LeetypeProps> = ({
                 Pick what you want to type before the session begins.
               </DialogDescription>
             </DialogHeader>
-            <ChallengeSelector
-              challenges={challenges}
-              progress={playerProgress}
-              onSelect={setPickedChallenge}
-            />
+            {challengesPending ? (
+              <LoadingChallengesState />
+            ) : (
+              <ChallengeSelector
+                challenges={challenges}
+                progress={playerProgress}
+                onSelect={setPickedChallenge}
+              />
+            )}
           </DialogContent>
         </Dialog>
       ) : (
@@ -346,7 +405,26 @@ export const Leetype: FC<LeetypeProps> = ({
               belongs to the code/input card below; everything actionable
               lives in the bottom nav's menus instead of inline controls. */}
           {resolvedChallenge && (
-            <div className="mb-3 flex shrink-0 items-center gap-3">
+            <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+              {/* Curriculum position leads the strip when there is one: on a
+                  decomposed ladder, "step 4 of 10, Apply" is what tells the
+                  player what they're looking at — the title alone reads as a
+                  standalone problem, which is exactly the wrong frame. */}
+              {curriculum && (
+                <span className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      curriculum.stage === "master" ? "destructive" : "default"
+                    }
+                    className="text-xs"
+                  >
+                    {STAGE_META[curriculum.stage].label}
+                  </Badge>
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {curriculum.step}/{curriculum.totalSteps}
+                  </span>
+                </span>
+              )}
               <span className="text-base font-semibold text-card-foreground">
                 {resolvedChallenge.title}
               </span>
@@ -435,12 +513,13 @@ export const Leetype: FC<LeetypeProps> = ({
             language={language}
             displayMode={displayMode}
             displayModeLocked={isHardDifficulty || adaptiveHidden}
-            settingsEnabled={isLegacyMode && gameState === "idle"}
+            sessionControlsEnabled={gameState !== "playing"}
             textGradient={textGradient}
             onLanguageChange={handleLanguageChange}
             onDisplayModeChange={setDisplayMode}
-            onDurationChange={setDuration}
+            onDurationChange={handleDurationChange}
             onTextGradientChange={setTextGradient}
+            languages={offeredLanguages}
             info={info}
             sectionNavigator={
               <SectionNavigator

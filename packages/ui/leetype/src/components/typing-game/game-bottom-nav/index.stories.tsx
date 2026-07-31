@@ -34,7 +34,7 @@ const info = {
 const Controlled = (props: {
   gameState: "idle" | "playing" | "finished" | "timeout"
   errors?: number
-  settingsEnabled?: boolean
+  sessionControlsEnabled?: boolean
   displayModeLocked?: boolean
 }) => {
   const [language, setLanguage] = useState<Language>("typescript")
@@ -57,7 +57,7 @@ const Controlled = (props: {
       language={language}
       displayMode={displayMode}
       displayModeLocked={props.displayModeLocked ?? false}
-      settingsEnabled={props.settingsEnabled ?? true}
+      sessionControlsEnabled={props.sessionControlsEnabled ?? true}
       textGradient={textGradient}
       onLanguageChange={setLanguage}
       onDisplayModeChange={setDisplayMode}
@@ -73,23 +73,31 @@ export const Idle: Story = {
 }
 
 export const Playing: Story = {
-  render: () => <Controlled gameState="playing" settingsEnabled={false} />,
+  render: () => (
+    <Controlled gameState="playing" sessionControlsEnabled={false} />
+  ),
 }
 
 export const PlayingWithErrors: Story = {
   render: () => (
-    <Controlled gameState="playing" settingsEnabled={false} errors={7} />
+    <Controlled gameState="playing" sessionControlsEnabled={false} errors={7} />
   ),
 }
 
 export const Finished: Story = {
-  render: () => <Controlled gameState="finished" settingsEnabled={false} />,
+  // Session controls come *back* once the run ends — that is the state Reset
+  // and a duration change are for.
+  render: () => <Controlled gameState="finished" />,
 }
 
 export const DisplayModeLocked: Story = {
   name: "Display mode locked (hard difficulty / adaptive)",
   render: () => (
-    <Controlled gameState="playing" settingsEnabled={false} displayModeLocked />
+    <Controlled
+      gameState="playing"
+      sessionControlsEnabled={false}
+      displayModeLocked
+    />
   ),
 }
 
@@ -119,7 +127,7 @@ const ThemedControlled = () => {
         language={language}
         displayMode={displayMode}
         displayModeLocked={false}
-        settingsEnabled
+        sessionControlsEnabled
         textGradient={textGradient}
         onLanguageChange={setLanguage}
         onDisplayModeChange={setDisplayMode}

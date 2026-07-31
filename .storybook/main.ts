@@ -63,7 +63,14 @@ const config: StorybookConfig = {
   stories: storyGlobs(),
   logLevel: "error",
 
-  staticDirs: existsSync(someContentPublic) ? [someContentPublic] : [],
+  staticDirs: [
+    ...(existsSync(someContentPublic) ? [someContentPublic] : []),
+    // Serves the brand mark at /brand/ for the managerHead link below. Note
+    // this deliberately does *not* live under a package `public/` directory:
+    // .gitignore excludes `packages/**/public`, so an asset placed there is
+    // never committed and CI would build a Storybook with a broken favicon.
+    { from: resolve(__dirname, "../packages/some-styles/brand"), to: "/brand" },
+  ],
 
   core: {
     disableTelemetry: true,
@@ -79,6 +86,13 @@ const config: StorybookConfig = {
   ],
 
   framework: getAbsolutePath("@storybook/react-vite"),
+
+  // Storybook is a deployed surface of its own (GitHub Pages serves it at
+  // /storybook/), so it gets the brand mark rather than Storybook's default
+  // favicon. Relative, not root-absolute: the Pages build sets a base of
+  // /some-ui/storybook/, and a leading slash would point at the domain root.
+  managerHead: (head) =>
+    `${head ?? ""}\n<link rel="icon" type="image/svg+xml" href="brand/favicon.svg" />`,
 
   viteFinal: (config) => {
     config.define = {
@@ -132,6 +146,33 @@ const config: StorybookConfig = {
       ...config.build,
       target: "es2022",
     }
+
+    // Drop vite-plugin-top-level-await, which arrives with that same
+    // auto-loaded root config.
+    //
+    // The es2022 target above supports top-level await natively, so the
+    // plugin has nothing to add here — and what it does instead is actively
+    // wrong. It rewrites every module that transitively touches a TLA into a
+    // `__tla` promise whose exports are assigned only after that promise
+    // settles, then leaves consumer chunks importing those bindings without
+    // awaiting it. The leetype wasm loader is downstream of one, so the four
+    // story groups that reach it (CodeDisplay, CodeInputCard, Leetype,
+    // LeetypeApp) died on `TypeError: f is not a function` — a chunk calling
+    // a sibling's module-init thunk before the gate had assigned it — and
+    // rendered nothing at all in a built Storybook.
+    //
+    // Matched by name rather than by rebuilding the plugin list, so the rest
+    // of the root config (vite-plugin-wasm especially, which the same wasm
+    // import does need) is untouched.
+    config.plugins = (config.plugins ?? []).filter(
+      (plugin) =>
+        !(
+          plugin &&
+          typeof plugin === "object" &&
+          "name" in plugin &&
+          plugin.name === "vite-plugin-top-level-await"
+        )
+    )
 
     // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
     // .storybook/uno.config.ts to the .storybook/ files only, so it adds the

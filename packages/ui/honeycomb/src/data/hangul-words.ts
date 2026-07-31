@@ -27,6 +27,28 @@
 
 import type { ChallengeSeed } from "@honeycomb/lib/hangul/wasm-game-bridge"
 
+/**
+ * What the missed-word debrief teaches with (see `VocabDebriefModal`). Only
+ * read when a vocabulary challenge expires unfinished, so it is optional: a
+ * host-supplied `words` override (HangulHexGrid's `words` prop) that omits it
+ * still plays, it just gets a debrief with the word and its jamo and no prose.
+ * The bundled seed below fills it in for every entry.
+ */
+export type WordPedagogy = {
+  /** The English meaning, as short as it can honestly be. */
+  gloss: string
+  /**
+   * One sentence on why this word is worth the player's memory - a homograph
+   * to watch for, a minimal pair against another word on the board, a
+   * compound it seeds. Deliberately not a dictionary definition: `gloss`
+   * already covers "what it means", and a debrief the player reads for five
+   * seconds has to earn its space with something they'd otherwise miss.
+   */
+  note: string
+  /** One TOPIK-1-level sentence using the word, with its translation. */
+  example: { korean: string; english: string }
+}
+
 export type WordEntry = {
   id: string
   word: string
@@ -44,6 +66,8 @@ export type WordEntry = {
    * use whatever topic labels it wants (e.g. "numbers", "calendar").
    */
   category: string
+  /** Debrief content shown when this word expires unfinished - see `WordPedagogy`. */
+  pedagogy?: WordPedagogy
 }
 
 export const HANGUL_WORDS: Array<WordEntry> = [
@@ -56,6 +80,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🍎",
     ttsText: "사과",
     category: "food",
+    pedagogy: {
+      gloss: "apple",
+      note: '사과 is also the everyday word for an apology - 사과하다 means "to apologize", same spelling, unrelated word.',
+      example: {
+        korean: "사과 한 개 주세요.",
+        english: "One apple, please.",
+      },
+    },
   },
   {
     id: "grape",
@@ -66,6 +98,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🍇",
     ttsText: "포도",
     category: "food",
+    pedagogy: {
+      gloss: "grape",
+      note: '포도 seeds two words you will meet soon: 포도주 (wine, literally "grape liquor") and 포도알 (a single grape).',
+      example: {
+        korean: "포도가 정말 달아요.",
+        english: "The grapes are really sweet.",
+      },
+    },
   },
   {
     id: "banana",
@@ -76,6 +116,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🍌",
     ttsText: "바나나",
     category: "food",
+    pedagogy: {
+      gloss: "banana",
+      note: "A loanword, so it is spelled the way Korean hears it: three identical open syllables, ㅂㅏ-ㄴㅏ-ㄴㅏ.",
+      example: {
+        korean: "저는 아침에 바나나를 먹어요.",
+        english: "I eat a banana in the morning.",
+      },
+    },
   },
   {
     id: "tomato",
@@ -86,6 +134,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🍅",
     ttsText: "토마토",
     category: "food",
+    pedagogy: {
+      gloss: "tomato",
+      note: "Another three-open-syllable loanword. ㅌ is the aspirated partner of ㄷ - same mouth shape, a puff of air added.",
+      example: {
+        korean: "토마토는 과일이 아니에요.",
+        english: "A tomato is not a fruit.",
+      },
+    },
   },
   {
     id: "coffee",
@@ -96,6 +152,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "☕",
     ttsText: "커피",
     category: "food",
+    pedagogy: {
+      gloss: "coffee",
+      note: 'Korean has no /f/, so "coffee" arrives as 커피 - both consonants land on the aspirated pair, ㅋ and ㅍ.',
+      example: {
+        korean: "커피 한 잔 마실래요?",
+        english: "Shall we have a cup of coffee?",
+      },
+    },
   },
   {
     id: "milk",
@@ -106,6 +170,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🥛",
     ttsText: "우유",
     category: "food",
+    pedagogy: {
+      gloss: "milk",
+      note: "The easiest word on the board: ㅇ is silent as an onset, so 우유 is nothing but the two vowels ㅜ and ㅠ.",
+      example: {
+        korean: "우유를 냉장고에 넣어 주세요.",
+        english: "Please put the milk in the fridge.",
+      },
+    },
   },
   {
     id: "sweet-potato",
@@ -116,6 +188,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🍠",
     ttsText: "고구마",
     category: "food",
+    pedagogy: {
+      gloss: "sweet potato",
+      note: "Not to be confused with 감자 (potato). 군고구마 - roasted sweet potato - is Korea's winter street food.",
+      example: {
+        korean: "겨울에는 군고구마가 맛있어요.",
+        english: "Roasted sweet potatoes are delicious in winter.",
+      },
+    },
   },
   {
     id: "cucumber",
@@ -126,6 +206,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🥒",
     ttsText: "오이",
     category: "food",
+    pedagogy: {
+      gloss: "cucumber",
+      note: "Four jamo and not one real consonant sound among them: two silent ㅇ onsets carrying ㅗ and ㅣ.",
+      example: {
+        korean: "오이를 얇게 썰어요.",
+        english: "Slice the cucumber thinly.",
+      },
+    },
   },
   {
     id: "spider",
@@ -136,6 +224,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🕷️",
     ttsText: "거미",
     category: "animal",
+    pedagogy: {
+      gloss: "spider",
+      note: "거미 (spider) and 개미 (ant) are a minimal pair - only the first vowel differs, ㅓ against ㅐ.",
+      example: {
+        korean: "거미가 거미줄을 만들어요.",
+        english: "The spider is making a web.",
+      },
+    },
   },
   {
     id: "fox",
@@ -146,6 +242,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🦊",
     ttsText: "여우",
     category: "animal",
+    pedagogy: {
+      gloss: "fox",
+      note: "Both ㅇ here are silent placeholders, so 여우 sounds like just ㅕ then ㅜ. Calling someone 여우 means they are sly.",
+      example: {
+        korean: "여우는 꼬리가 길어요.",
+        english: "The fox has a long tail.",
+      },
+    },
   },
   {
     id: "frog",
@@ -156,6 +260,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🐸",
     ttsText: "개구리",
     category: "animal",
+    pedagogy: {
+      gloss: "frog",
+      note: 'It opens with 개, which on its own means "dog" - a coincidence of spelling, not a compound. Watch the ㅐ.',
+      example: {
+        korean: "비가 오면 개구리가 울어요.",
+        english: "When it rains, the frogs croak.",
+      },
+    },
   },
   {
     id: "butterfly",
@@ -166,6 +278,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🦋",
     ttsText: "나비",
     category: "animal",
+    pedagogy: {
+      gloss: "butterfly",
+      note: '나비 is also the stock name Koreans give a cat, the way English reaches for "Kitty".',
+      example: {
+        korean: "나비가 꽃에 앉았어요.",
+        english: "A butterfly landed on the flower.",
+      },
+    },
   },
   {
     id: "duck",
@@ -176,6 +296,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🦆",
     ttsText: "오리",
     category: "animal",
+    pedagogy: {
+      gloss: "duck",
+      note: "오리 (duck) against 오이 (cucumber): same opening syllable, and the whole difference is ㄹ versus ㅇ.",
+      example: {
+        korean: "오리가 물에서 헤엄쳐요.",
+        english: "The duck is swimming in the water.",
+      },
+    },
   },
   {
     id: "map",
@@ -186,6 +314,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🗺️",
     ttsText: "지도",
     category: "object",
+    pedagogy: {
+      gloss: "map",
+      note: '지도 doubles as "guidance" - 지도하다 is what a teacher or coach does. Context, not spelling, tells them apart.',
+      example: {
+        korean: "지도를 보고 길을 찾았어요.",
+        english: "I found the way by looking at the map.",
+      },
+    },
   },
   {
     id: "scissors",
@@ -196,6 +332,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "✂️",
     ttsText: "가위",
     category: "object",
+    pedagogy: {
+      gloss: "scissors",
+      note: "The 가위 of 가위바위보 (rock-paper-scissors). Note ㅟ: one jamo, but two keys - n then l.",
+      example: {
+        korean: "가위로 종이를 잘라요.",
+        english: "I cut the paper with scissors.",
+      },
+    },
   },
   {
     id: "skirt",
@@ -206,6 +350,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "👗",
     ttsText: "치마",
     category: "object",
+    pedagogy: {
+      gloss: "skirt",
+      note: "Pairs with 바지 (trousers). ㅊ is the aspirated partner of ㅈ, one key over on the same row.",
+      example: {
+        korean: "저 치마가 마음에 들어요.",
+        english: "I like that skirt.",
+      },
+    },
   },
   {
     id: "hat",
@@ -216,6 +368,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🎩",
     ttsText: "모자",
     category: "object",
+    pedagogy: {
+      gloss: "hat",
+      note: "A hat takes 쓰다, not 입다 - Korean picks the verb by where the thing goes, and headwear gets its own.",
+      example: {
+        korean: "모자를 쓰고 나갔어요.",
+        english: "I went out wearing a hat.",
+      },
+    },
   },
   {
     id: "tree",
@@ -226,6 +386,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🌳",
     ttsText: "나무",
     category: "nature",
+    pedagogy: {
+      gloss: "tree",
+      note: "나무 means both the living tree and the wood it becomes: 나무젓가락 are wooden chopsticks, 소나무 a pine.",
+      example: {
+        korean: "마당에 나무를 심었어요.",
+        english: "I planted a tree in the yard.",
+      },
+    },
   },
   {
     id: "bridge",
@@ -236,6 +404,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🌉",
     ttsText: "다리",
     category: "nature",
+    pedagogy: {
+      gloss: "bridge",
+      note: '다리 is both "bridge" and "leg" - one of the first homographs every learner trips over.',
+      example: {
+        korean: "다리를 건너서 학교에 가요.",
+        english: "I cross the bridge to get to school.",
+      },
+    },
   },
   {
     id: "country",
@@ -246,6 +422,14 @@ export const HANGUL_WORDS: Array<WordEntry> = [
     icon: "🌍",
     ttsText: "나라",
     category: "nature",
+    pedagogy: {
+      gloss: "country",
+      note: '나라 is the native Korean word; 국가 is its Sino-Korean twin. "Our country" fuses into one word: 우리나라.',
+      example: {
+        korean: "한국은 아름다운 나라예요.",
+        english: "Korea is a beautiful country.",
+      },
+    },
   },
 ]
 

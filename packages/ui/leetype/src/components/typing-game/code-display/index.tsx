@@ -237,6 +237,12 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   return (
     <div
       ref={containerRef}
+      // scroll-intent: code-display — the source the player reads and types
+      // through is as long as the file is, and the caret is auto-scrolled to
+      // follow them. The scroll *is* the interaction here, not a fallback for
+      // a box that was handed too much; declared so the ui-fit sweep can tell
+      // the two apart (docs/ui-fit).
+      data-scroll-intent="code-display"
       className={cn(
         "relative h-[500px] overflow-auto rounded-lg border border-border bg-secondary p-4 font-mono text-sm leading-relaxed",
         className
