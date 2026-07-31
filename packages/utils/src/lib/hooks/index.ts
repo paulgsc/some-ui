@@ -24,3 +24,5 @@ export {
   useSpeechQueueMetrics,
 } from "./use-speech-queue"
 export { useContainerRect } from "./use-container-rect"
+export { useFittedPage } from "./use-fitted-page"
+export type { FittedPage } from "./use-fitted-page"

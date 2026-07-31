@@ -6,6 +6,10 @@ export {
   default as tailwindIdiomConfig,
   tailwindIdiomPlugin,
 } from "./tailwind-idiom.config.js"
+export {
+  default as fitsTheBoxConfig,
+  fitsTheBoxPlugin,
+} from "./fits-the-box.config.js"
 export { default as toolsOverrideConfig } from "./overrides-tools.config.js"
 export { default as testsOverrideConfig } from "./overrides-tests.config.js"
 export { default as depsOverrideConfig } from "./overrides-deps.config.js"

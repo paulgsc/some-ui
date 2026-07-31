@@ -10,6 +10,8 @@ import {
   extensionCharterPlugin,
   extensionsCharterConfig,
   extensionsSecurityConfig,
+  fitsTheBoxConfig,
+  fitsTheBoxPlugin,
   reactConfig,
   reactPeerDependencyConfig,
   switchLintConfig,
@@ -35,6 +37,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...buildHygieneConfig,
   ...switchLintConfig,
   ...tailwindIdiomConfig,
+  ...fitsTheBoxConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -68,6 +71,7 @@ export {
 export { switchLintConfig, switchLintPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
+export { fitsTheBoxConfig, fitsTheBoxPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
 
 // ── Library-build hygiene (centralized dts excludes) ───────────────────────

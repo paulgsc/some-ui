@@ -97,7 +97,13 @@ export const LeetypeApp: FC = () => {
       <LevelProgress progress={progress} compact className="mb-4" />
 
       {screen === "selector" && (
-        <div className="flex-1 overflow-auto">
+        <div
+          className={
+            // scroll-intent: page — LeetypeApp is a full-page shell, not an
+            // overlay surface; these panes scroll the way a document does.
+            "flex-1 overflow-auto"
+          }
+        >
           <ChallengeSelector
             challenges={CHALLENGES}
             progress={progress}
@@ -107,7 +113,13 @@ export const LeetypeApp: FC = () => {
       )}
 
       {screen === "config" && activeChallenge && (
-        <div className="flex-1 overflow-auto">
+        <div
+          className={
+            // scroll-intent: page — LeetypeApp is a full-page shell, not an
+            // overlay surface; these panes scroll the way a document does.
+            "flex-1 overflow-auto"
+          }
+        >
           <SessionConfig
             challenge={activeChallenge}
             onStart={handleSessionStart}
@@ -129,7 +141,13 @@ export const LeetypeApp: FC = () => {
       )}
 
       {screen === "results" && activeChallenge && lastResult && (
-        <div className="flex-1 overflow-auto">
+        <div
+          className={
+            // scroll-intent: page — LeetypeApp is a full-page shell, not an
+            // overlay surface; these panes scroll the way a document does.
+            "flex-1 overflow-auto"
+          }
+        >
           <ResultsCard
             challenge={activeChallenge}
             solve={lastResult.solve}

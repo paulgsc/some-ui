@@ -5,8 +5,8 @@ import {
   stageOrder,
 } from "@leetype/lib/leetype/curriculum"
 import type { ChallengeCurriculum } from "@leetype/types/leetype"
-import { Check, Flag, Lightbulb, Link2, Sparkles, Target } from "lucide-react"
-import { Badge } from "some-ui-shared"
+import { Check, Flag, Lightbulb, Link2, Target } from "lucide-react"
+import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
 import { cn } from "some-ui-utils"
 
 type ChallengeBriefProps = {
@@ -145,11 +145,18 @@ export const ChallengeBrief: FC<ChallengeBriefProps> = ({
   }
 
   const meta = STAGE_META[curriculum.stage]
+  const hasConcepts =
+    curriculum.conceptsIntroduced.length > 0 ||
+    curriculum.conceptsReinforced.length > 0
 
   return (
-    <div className="space-y-5">
-      {/* Position, first and largest: step N of M on a named rung. */}
-      <div className="space-y-2.5">
+    // Fixed height, not min/max: the panes below differ wildly in length, and
+    // sizing to content would make the drawer jump every time a tab changed.
+    // A definite box also gives each pane something to fit inside.
+    <div className="flex h-[26rem] max-h-full flex-col gap-4">
+      {/* Position stays out of the tabs - it is the one thing worth seeing
+          whichever pane is open. */}
+      <div className="shrink-0 space-y-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant={curriculum.stage === "master" ? "destructive" : "default"}
@@ -162,52 +169,73 @@ export const ChallengeBrief: FC<ChallengeBriefProps> = ({
           </span>
         </div>
         <StageLadder stage={curriculum.stage} />
-        <p className="text-xs italic text-muted-foreground/80">{meta.blurb}</p>
       </div>
 
-      {/* The single sentence that justifies this exercise existing at all. */}
-      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
-        <h3 className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-          <Lightbulb className="h-3.5 w-3.5" />
-          Why this one
-        </h3>
-        <p className="text-sm leading-relaxed text-card-foreground">
-          {curriculum.insight}
-        </p>
-      </div>
+      {/* Four short panes instead of one long column. Every pane below fits
+          the box on its own, which is what lets this drawer have no scroll
+          fallback at all. */}
+      <Tabs defaultValue="why" className="flex min-h-0 flex-1 flex-col gap-3">
+        <TabsList className="w-full shrink-0">
+          <TabsTrigger value="why" className="flex-1 text-xs">
+            Why
+          </TabsTrigger>
+          <TabsTrigger value="task" className="flex-1 text-xs">
+            Task
+          </TabsTrigger>
+          {hasConcepts && (
+            <TabsTrigger value="concepts" className="flex-1 text-xs">
+              Concepts
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="goal" className="flex-1 text-xs">
+            Goal
+          </TabsTrigger>
+        </TabsList>
 
-      <Section icon={<Target className="h-3.5 w-3.5" />} title="This exercise">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {description}
-        </p>
-      </Section>
+        <TabsContent value="why" className="min-h-0 flex-1 space-y-4">
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
+            <h3 className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+              <Lightbulb className="h-3.5 w-3.5" />
+              Why this one
+            </h3>
+            <p className="text-sm leading-relaxed text-card-foreground">
+              {curriculum.insight}
+            </p>
+          </div>
+          <p className="text-xs italic text-muted-foreground/80">
+            {meta.blurb}
+          </p>
+        </TabsContent>
 
-      {curriculum.learningObjectives.length > 0 && (
-        <Section
-          icon={<Flag className="h-3.5 w-3.5" />}
-          title="You should come out able to"
-        >
-          <ul className="space-y-1.5">
-            {curriculum.learningObjectives.map((objective) => (
-              <li
-                key={objective}
-                className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
-              >
-                <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                {objective}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+        <TabsContent value="task" className="min-h-0 flex-1 space-y-4">
+          <Section
+            icon={<Target className="h-3.5 w-3.5" />}
+            title="This exercise"
+          >
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          </Section>
 
-      {(curriculum.conceptsIntroduced.length > 0 ||
-        curriculum.conceptsReinforced.length > 0) && (
-        <Section
-          icon={<Sparkles className="h-3.5 w-3.5" />}
-          title="Concepts in play"
-        >
-          <div className="space-y-2">
+          {curriculum.completionCriteria.length > 0 && (
+            <Section icon={<Check className="h-3.5 w-3.5" />} title="Done when">
+              <ul className="space-y-1.5">
+                {curriculum.completionCriteria.map((criterion) => (
+                  <li
+                    key={criterion}
+                    className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
+                    {criterion}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+        </TabsContent>
+
+        {hasConcepts && (
+          <TabsContent value="concepts" className="min-h-0 flex-1 space-y-4">
             {curriculum.conceptsIntroduced.length > 0 && (
               <div className="space-y-1">
                 <span className="text-[11px] text-muted-foreground/70">
@@ -227,60 +255,73 @@ export const ChallengeBrief: FC<ChallengeBriefProps> = ({
                 />
               </div>
             )}
-          </div>
-        </Section>
-      )}
-
-      {curriculum.completionCriteria.length > 0 && (
-        <Section icon={<Check className="h-3.5 w-3.5" />} title="Done when">
-          <ul className="space-y-1.5">
-            {curriculum.completionCriteria.map((criterion) => (
-              <li
-                key={criterion}
-                className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
+            {curriculum.dependsOn.length > 0 && (
+              <Section
+                icon={<Link2 className="h-3.5 w-3.5" />}
+                title="Builds on"
               >
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
-                {criterion}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+                <div className="flex flex-wrap gap-1.5">
+                  {curriculum.dependsOn.map((id) => (
+                    <Badge
+                      key={id}
+                      variant="secondary"
+                      className="font-mono text-xs"
+                    >
+                      {id}
+                    </Badge>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </TabsContent>
+        )}
 
-      {curriculum.dependsOn.length > 0 && (
-        <Section icon={<Link2 className="h-3.5 w-3.5" />} title="Builds on">
-          <div className="flex flex-wrap gap-1.5">
-            {curriculum.dependsOn.map((id) => (
-              <Badge key={id} variant="secondary" className="font-mono text-xs">
-                {id}
-              </Badge>
-            ))}
+        <TabsContent value="goal" className="min-h-0 flex-1 space-y-4">
+          <div className="rounded-lg border border-border bg-muted/30 p-3.5">
+            <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {curriculum.stage === "master"
+                ? "You are here"
+                : "All of this is for"}
+            </h3>
+            <p className="text-sm leading-relaxed text-card-foreground">
+              {curriculum.targetProblem}
+            </p>
           </div>
-        </Section>
-      )}
 
-      {/* The destination, stated last so it reads as "where this is going"
-          rather than as today's task. */}
-      <div className="rounded-lg border border-border bg-muted/30 p-3.5">
-        <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {curriculum.stage === "master"
-            ? "You are here"
-            : "All of this is for"}
-        </h3>
-        <p className="text-sm leading-relaxed text-card-foreground">
-          {curriculum.targetProblem}
-        </p>
-      </div>
+          {curriculum.learningObjectives.length > 0 && (
+            <Section
+              icon={<Flag className="h-3.5 w-3.5" />}
+              title="You should come out able to"
+            >
+              <ul className="space-y-1.5">
+                {curriculum.learningObjectives.map((objective) => (
+                  <li
+                    key={objective}
+                    className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                    {objective}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
 
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-border pt-4">
-          {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="font-mono text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 border-t border-border pt-4">
+              {tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className="font-mono text-xs"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

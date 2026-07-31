@@ -40,7 +40,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  ScrollArea,
   Select,
   SelectContent,
   SelectItem,
@@ -259,16 +258,15 @@ export const GameBottomNav: FC<GameBottomNavProps> = ({
                   : "Standalone problem — what to implement, and its constraints."}
               </DrawerDescription>
             </DrawerHeader>
-            {/* Bounded and scrollable: a curriculum brief is a good deal
-                taller than the two-line description this drawer used to
-                carry, and the drawer must not grow past the viewport. */}
-            <ScrollArea className="max-h-[60vh] px-4 pb-6">
+            {/* No scroll fallback: ChallengeBrief splits itself across tabs
+                so each pane fits the box, and the box is bounded here. */}
+            <div className="min-h-0 overflow-hidden px-4 pb-6">
               <ChallengeBrief
                 description={info.description}
                 tags={info.tags}
                 curriculum={info.curriculum}
               />
-            </ScrollArea>
+            </div>
           </DrawerContent>
         </Drawer>
 

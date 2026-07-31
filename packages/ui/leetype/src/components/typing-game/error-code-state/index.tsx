@@ -38,7 +38,15 @@ export const ErrorCodeState: FC<ErrorCodeStateProps> = ({
           <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             View Error Details
           </summary>
-          <pre className="mt-2 text-xs bg-muted/50 p-3 rounded overflow-auto max-h-32 text-destructive border border-destructive/20">
+          <pre
+            data-scroll-intent="long-form"
+            className={
+              // scroll-intent: long-form — a stack trace is as long as it is,
+              // and truncating one hides the line that explains the failure.
+              // Bounded to max-h-32 so it cannot take over the panel.
+              "mt-2 text-xs bg-muted/50 p-3 rounded overflow-auto max-h-32 text-destructive border border-destructive/20"
+            }
+          >
             {error?.message}
           </pre>
         </details>

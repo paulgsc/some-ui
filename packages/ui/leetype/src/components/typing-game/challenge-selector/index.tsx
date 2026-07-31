@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
   compareByCurriculum,
   hasCurriculum,
@@ -15,12 +15,13 @@ import { Lock } from "lucide-react"
 import {
   Badge,
   Button,
+  PageControls,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "some-ui-shared"
-import { cn } from "some-ui-utils"
+import { cn, useFittedPage } from "some-ui-utils"
 
 type ChallengeSelectorProps = {
   challenges: Array<Challenge>
@@ -202,69 +203,153 @@ const CurriculumView: FC<CurriculumViewProps> = ({
   isLocked,
   onSelect,
 }) => {
-  const ordered = [...challenges].sort(compareByCurriculum)
+  const ordered = useMemo(
+    () => [...challenges].sort(compareByCurriculum),
+    [challenges]
+  )
   const target = ordered.find((c) => c.curriculum)?.curriculum?.targetProblem
 
-  // Group consecutive runs by stage so the rungs get named headers without
-  // reordering anything the decomposition already linearized.
-  const groups: Array<{
-    stage: CurriculumStage | null
-    rows: Array<Challenge>
-  }> = []
-  for (const challenge of ordered) {
-    const stage = challenge.curriculum?.stage ?? null
-    const last = groups.at(-1)
-    if (last?.stage === stage) {
-      last.rows.push(challenge)
-    } else {
-      groups.push({ stage, rows: [challenge] })
+  // Group by stage, preserving the decomposition's own linearization inside
+  // each group.
+  const groups = useMemo(() => {
+    const byStage: Array<{
+      stage: CurriculumStage | null
+      rows: Array<Challenge>
+    }> = []
+    for (const challenge of ordered) {
+      const stage = challenge.curriculum?.stage ?? null
+      const last = byStage.at(-1)
+      if (last?.stage === stage) {
+        last.rows.push(challenge)
+      } else {
+        byStage.push({ stage, rows: [challenge] })
+      }
     }
-  }
+    return byStage
+  }, [ordered])
+
+  const [activeGroup, setActiveGroup] = useState(0)
+  const current = groups[Math.min(activeGroup, groups.length - 1)]
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {target && (
-        <div className="rounded-lg border border-border bg-muted/30 p-3.5">
+        <div className="shrink-0 rounded-lg border border-border bg-muted/30 p-3">
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {ordered.length} exercises, all building to
           </div>
-          <p className="text-sm leading-relaxed text-card-foreground">
+          <p className="line-clamp-2 text-sm leading-relaxed text-card-foreground">
             {target}
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Work them in order — each one exists because the next one needs it.
           </p>
         </div>
       )}
 
-      {groups.map((group, groupIndex) => (
-        <div key={group.stage ?? `loose-${groupIndex}`} className="space-y-2">
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-card-foreground">
-              {group.stage ? STAGE_META[group.stage].label : "Also available"}
-            </h3>
-            <span className="text-[11px] text-muted-foreground">
-              {group.stage
-                ? STAGE_META[group.stage].blurb
-                : "Standalone challenges, outside the ladder."}
-            </span>
-          </div>
-          <ol className="flex flex-col">
-            {group.rows.map((challenge, index) => (
+      {/* A stage rail rather than one long scroll: the ladder is already
+          grouped, and a group is 1-3 rungs, so showing one group at a time
+          means the list always fits without a scrollbar. Rail on the side at
+          width, a row of pills below it - the same navigation either way. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row sm:gap-4">
+        <nav
+          aria-label="Curriculum stage"
+          className="flex shrink-0 gap-1.5 overflow-x-auto sm:w-40 sm:flex-col sm:overflow-x-visible"
+        >
+          {groups.map((group, index) => {
+            const isActive = index === Math.min(activeGroup, groups.length - 1)
+            return (
+              <button
+                key={group.stage ?? `loose-${index}`}
+                type="button"
+                onClick={() => setActiveGroup(index)}
+                aria-current={isActive ? "true" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors",
+                  isActive
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-transparent text-muted-foreground hover:bg-accent/40"
+                )}
+              >
+                <span className="truncate font-medium">
+                  {group.stage ? STAGE_META[group.stage].label : "Also"}
+                </span>
+                <span className="shrink-0 font-mono tabular-nums opacity-60">
+                  {group.rows.length}
+                </span>
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+          <p className="shrink-0 text-[11px] text-muted-foreground">
+            {current?.stage
+              ? STAGE_META[current.stage].blurb
+              : "Standalone challenges, outside the ladder."}
+          </p>
+          <ol className="flex min-h-0 flex-col">
+            {(current?.rows ?? []).map((challenge, index) => (
               <CurriculumRow
                 key={challenge.id}
                 challenge={challenge}
                 locked={isLocked(challenge)}
-                isLast={
-                  groupIndex === groups.length - 1 &&
-                  index === group.rows.length - 1
-                }
+                isLast={index === (current?.rows.length ?? 0) - 1}
                 onSelect={() => onSelect(challenge)}
               />
             ))}
           </ol>
         </div>
-      ))}
+      </div>
+    </div>
+  )
+}
+
+type PagedChallengeGridProps = {
+  challenges: Array<Challenge>
+  isLocked: (challenge: Challenge) => boolean
+  onSelect: (challenge: Challenge) => void
+}
+
+/**
+ * The flat pool's grid, showing as many cards as the box fits and paging the
+ * rest. A fixed page size would be wrong at every viewport but one, so the
+ * count comes from measuring - see `useFittedPage`.
+ */
+const PagedChallengeGrid: FC<PagedChallengeGridProps> = ({
+  challenges,
+  isLocked,
+  onSelect,
+}) => {
+  const {
+    viewportRef,
+    contentRef,
+    pageItems,
+    page,
+    pageCount,
+    next,
+    previous,
+  } = useFittedPage(challenges, { minPerPage: 2 })
+
+  return (
+    <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2">
+      <div ref={viewportRef} className="min-h-0 flex-1 overflow-hidden">
+        <div ref={contentRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {pageItems.map((challenge) => (
+            <ChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              locked={isLocked(challenge)}
+              onSelect={() => onSelect(challenge)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <PageControls
+        page={page}
+        pageCount={pageCount}
+        onPrevious={previous}
+        onNext={next}
+        label="challenges"
+      />
     </div>
   )
 }
@@ -293,8 +378,8 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
   // mode/difficulty grid it always had.
   if (hasCurriculum(challenges)) {
     return (
-      <div className="flex flex-col gap-4">
-        <div>
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        <div className="shrink-0">
           <h2 className="text-lg font-semibold text-card-foreground">
             Pick up the curriculum
           </h2>
@@ -312,8 +397,8 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex shrink-0 items-center justify-between">
         <h2 className="text-lg font-semibold text-card-foreground">
           Choose a Challenge
         </h2>
@@ -332,8 +417,11 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
         </div>
       </div>
 
-      <Tabs defaultValue="data-structure">
-        <TabsList className="w-full">
+      <Tabs
+        defaultValue="data-structure"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <TabsList className="w-full shrink-0">
           <TabsTrigger value="data-structure" className="flex-1">
             Data Structures
           </TabsTrigger>
@@ -342,20 +430,15 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="data-structure">
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {filterByDifficulty(dsChallenges).map((challenge) => (
-              <ChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                locked={isLocked(challenge)}
-                onSelect={() => onSelect(challenge)}
-              />
-            ))}
-          </div>
+        <TabsContent value="data-structure" className="min-h-0 flex-1">
+          <PagedChallengeGrid
+            challenges={filterByDifficulty(dsChallenges)}
+            isLocked={isLocked}
+            onSelect={onSelect}
+          />
         </TabsContent>
 
-        <TabsContent value="algorithm">
+        <TabsContent value="algorithm" className="min-h-0 flex-1">
           {progress.level < 3 && (
             <div className="mt-3 flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-400">
               <Lock className="h-4 w-4 shrink-0" />
@@ -365,16 +448,11 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
               </span>
             </div>
           )}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {filterByDifficulty(algoChallenges).map((challenge) => (
-              <ChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                locked={isLocked(challenge)}
-                onSelect={() => onSelect(challenge)}
-              />
-            ))}
-          </div>
+          <PagedChallengeGrid
+            challenges={filterByDifficulty(algoChallenges)}
+            isLocked={isLocked}
+            onSelect={onSelect}
+          />
         </TabsContent>
       </Tabs>
     </div>

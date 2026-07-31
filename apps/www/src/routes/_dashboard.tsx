@@ -98,6 +98,10 @@ const DashboardLayout = (): JSX.Element => {
         <div
           className={cn(
             "flex-1 p-6",
+            // scroll-intent: page — an ordinary document route scrolls as a
+            // page. The viewport route is the bounded one, and takes the
+            // overflow-hidden branch precisely so it cannot (docs/ui-fit,
+            // docs/session-viewport/02-kill-the-cutoff.md).
             isViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
           )}
         >
