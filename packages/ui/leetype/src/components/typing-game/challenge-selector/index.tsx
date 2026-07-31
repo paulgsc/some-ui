@@ -248,7 +248,7 @@ const CurriculumView: FC<CurriculumViewProps> = ({
           grouped, and a group is 1-3 rungs, so showing one group at a time
           means the list always fits without a scrollbar. Rail on the side at
           width, a row of pills below it - the same navigation either way. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row sm:gap-4">
+      <div className="flex min-h-0 flex-1 flex-col items-start gap-3 sm:flex-row sm:gap-4">
         <nav
           aria-label="Curriculum stage"
           className="flex shrink-0 gap-1.5 overflow-x-auto sm:w-40 sm:flex-col sm:overflow-x-visible"
@@ -279,7 +279,7 @@ const CurriculumView: FC<CurriculumViewProps> = ({
           })}
         </nav>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+        <div className="flex min-h-0 flex-1 w-full flex-col gap-2 overflow-hidden">
           <p className="shrink-0 text-[11px] text-muted-foreground">
             {current?.stage
               ? STAGE_META[current.stage].blurb
@@ -430,7 +430,10 @@ export const ChallengeSelector: FC<ChallengeSelectorProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="data-structure" className="min-h-0 flex-1">
+        <TabsContent
+          value="data-structure"
+          className="min-h-0 flex-1 data-[state=active]:flex data-[state=active]:flex-col"
+        >
           <PagedChallengeGrid
             challenges={filterByDifficulty(dsChallenges)}
             isLocked={isLocked}

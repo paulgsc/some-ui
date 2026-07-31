@@ -377,7 +377,7 @@ export const Leetype: FC<LeetypeProps> = ({
             // A definite, bounded box laid out as a column - the picker
             // inside it fits itself to this rather than growing past the
             // screen and handing the remainder to a scrollbar.
-            className="flex h-[min(38rem,88vh)] max-w-3xl flex-col overflow-hidden"
+            className="flex h-[85vh] max-h-[50rem] w-full flex-col overflow-hidden"
             onEscapeKeyDown={(e) => e.preventDefault()}
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
