@@ -205,7 +205,14 @@ export const SnapshotSchema = z.object({
   accuracy: z.number(),
   wpm: z.number(),
   elapsedTime: z.number(),
+  /** Lifetime tally of wrong keystrokes, corrected ones included. */
   totalErrors: z.number(),
+  /**
+   * How far the caret has run past its earliest *uncorrected* mistake — a
+   * distance back to the divergence, not a count of wrong slots. A correct
+   * character typed while already diverged extends this (the player is still
+   * misaligned) without adding to `totalErrors`. Zero means aligned.
+   */
   consecutiveErrors: z.number(),
   showErrorAlert: z.boolean(),
   isComplete: z.boolean(),

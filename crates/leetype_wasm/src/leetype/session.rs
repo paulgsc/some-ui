@@ -228,17 +228,42 @@ pub fn first_gap(entries: &[Option<char>]) -> Option<usize> {
     entries.iter().position(Option::is_none)
 }
 
-/// How many wrong keystrokes sit immediately behind the caret. An untouched
-/// slot ends the streak: a hole left by a jump is not a mistake.
+/// How far the caret has run past its earliest *unrepaired* mistake.
+///
+/// This is the distance back to the first divergence in the contiguous run of
+/// typed slots behind the caret — not a count of wrong slots, and deliberately
+/// not "wrong slots immediately behind the caret".
+///
+/// The difference is the whole point of the error ceiling. Under the older
+/// "contiguous wrong suffix" reading, one lucky-correct keystroke reset the
+/// streak to zero, so a player could carry unrepaired mistakes to the end of a
+/// chunk and never once be stopped. Typing `baf roo` for `bar foo` did exactly
+/// that: two wrong slots, the last two keystrokes correct, streak zero, chunk
+/// finished. The ceiling exists to make the player go back and fix the
+/// divergence, and it can only do that if being past a divergence is what it
+/// measures.
+///
+/// An untouched slot still ends the scan: a hole left by a jump is not a
+/// mistake, and work on the far side of one belongs to a different run.
+///
+/// Note this is scored per *position*, not per keystroke — `total_errors`
+/// remains the lifetime tally of wrong keystrokes and is untouched by this.
+/// A correct character typed while diverged extends the streak (the player is
+/// still misaligned with what they owe) but is not itself counted as an error
+/// against accuracy.
 pub fn consecutive_errors(state: &SessionState, program: &Program) -> usize {
-    let mut streak = 0;
+    let mut divergence = None;
+
     for slot in (0..state.cursor).rev() {
-        match (state.entries.get(slot).copied().flatten(), program.slot_char(slot)) {
-            (Some(typed), Some(expected)) if typed != expected => streak += 1,
-            _ => break,
+        let (Some(typed), Some(expected)) = (state.entries.get(slot).copied().flatten(), program.slot_char(slot)) else {
+            break;
+        };
+        if typed != expected {
+            divergence = Some(slot);
         }
     }
-    streak
+
+    divergence.map_or(0, |slot| state.cursor - slot)
 }
 
 /// Per-slot render status: `0` untouched, `1` correct, `2` wrong.
@@ -287,13 +312,25 @@ mod tests {
 
     impl Harness {
         fn new(source: &str) -> Self {
+            Self::with_ceiling(source, SessionConfig::default().max_consecutive_errors)
+        }
+
+        /// The default ceiling is 3, which is lower than some invariants need
+        /// to observe: with the streak measured from the divergence, input is
+        /// blocked three keystrokes past it, so a longer misalignment can only
+        /// be *reached* with the ceiling raised out of the way.
+        fn with_ceiling(source: &str, max_consecutive_errors: usize) -> Self {
             let program = Program::compile(source);
             let state = SessionState::empty(program.slot_count());
             Self {
                 program,
-                config: SessionConfig::default(),
+                config: SessionConfig { max_consecutive_errors },
                 state,
             }
+        }
+
+        fn streak(&self) -> usize {
+            consecutive_errors(&self.state, &self.program)
         }
 
         fn send(&mut self, command: Command) -> Option<Rejection> {
@@ -443,5 +480,160 @@ mod tests {
         harness.send(Command::JumpToSlot { slot: 3 });
         harness.type_text("d");
         assert_eq!(consecutive_errors(&harness.state, &harness.program), 0);
+    }
+
+    // ── Backspace / streak invariants ────────────────────────────────────
+    //
+    // The suite above mostly replays happy paths, which lets an
+    // implementation look correct while violating the model. These assert
+    // the model directly.
+
+    #[test]
+    fn backspace_reduces_the_streak_by_exactly_one() {
+        // Implied by three separate claims the implementation makes: errors
+        // are mismatching entries, the streak is measured back from the
+        // caret, and backspace removes the slot immediately behind it.
+        let mut harness = Harness::new("abcdef");
+        harness.type_text("xyz");
+        assert_eq!(harness.streak(), 3);
+
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 2);
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 1);
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 0);
+    }
+
+    #[test]
+    fn backspacing_below_the_ceiling_unblocks_input_immediately() {
+        // The policy, not the mechanism: one backspace is enough to earn back
+        // exactly one keystroke.
+        let mut harness = Harness::new("abcdef");
+        harness.type_text("xyz");
+        assert_eq!(harness.send(Command::Press { key: 'q' }), Some(Rejection::ErrorCeiling));
+
+        harness.send(Command::Backspace);
+        assert_eq!(harness.send(Command::Press { key: 'q' }), None);
+    }
+
+    #[test]
+    fn backspace_touches_exactly_one_slot() {
+        let mut harness = Harness::new("abcdef");
+        harness.type_text("xyz");
+        harness.send(Command::Backspace);
+
+        assert_eq!(harness.state.entries[0], Some('x'));
+        assert_eq!(harness.state.entries[1], Some('y'));
+        assert_eq!(harness.state.entries[2], None);
+    }
+
+    #[test]
+    fn a_wrong_slot_stays_wrong_until_it_is_erased() {
+        let mut harness = Harness::new("abc");
+        harness.type_text("x");
+        assert_eq!(harness.streak(), 1);
+
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 0);
+
+        harness.send(Command::Press { key: 'a' });
+        assert_eq!(harness.streak(), 0);
+    }
+
+    #[test]
+    fn jumping_away_ends_the_streak_without_forgiving_the_errors() {
+        // "Active misalignment" and "historical error count" are different
+        // quantities and must not be conflated: the jump lands the caret in a
+        // region with no typed run behind it, but the mistakes still happened.
+        let mut harness = Harness::new("abcdef");
+        harness.type_text("xyz");
+
+        harness.send(Command::JumpToSlot { slot: 5 });
+        assert_eq!(harness.streak(), 0);
+        assert_eq!(harness.state.total_errors, 3);
+    }
+
+    // ── Alignment: the streak measures divergence, not mismatch ──────────
+
+    #[test]
+    fn a_correct_key_typed_while_diverged_does_not_heal_the_streak() {
+        let mut harness = Harness::new("abcdef");
+        harness.type_text("x");
+        assert_eq!(harness.streak(), 1);
+
+        // 'b' is the right character for slot 1, but slot 0 is still wrong -
+        // the player is past an unrepaired divergence and typing on regardless.
+        harness.send(Command::Press { key: 'b' });
+        assert_eq!(harness.streak(), 2);
+    }
+
+    #[test]
+    fn the_streak_is_the_distance_back_to_the_earliest_unrepaired_divergence() {
+        // "bar foo" typed as "baf roo": two wrong slots, but the space and the
+        // trailing "oo" are only accidentally in the right place. Needs the
+        // ceiling raised - see `with_ceiling`.
+        let mut harness = Harness::with_ceiling("bar foo", 99);
+        harness.type_text("baf roo");
+
+        assert_eq!(harness.streak(), 5);
+        // Scoring is still per-keystroke: only two keys were actually wrong.
+        assert_eq!(harness.state.total_errors, 2);
+    }
+
+    #[test]
+    fn an_earlier_divergence_outranks_a_later_one() {
+        let mut harness = Harness::with_ceiling("abcdef", 99);
+        harness.type_text("xbzdef");
+
+        // Divergences at slots 0 and 2; the streak is measured from slot 0.
+        assert_eq!(harness.streak(), 6);
+    }
+
+    #[test]
+    fn the_ceiling_engages_three_keys_past_a_divergence_however_correct_they_are() {
+        // The behaviour the old "contiguous wrong suffix" reading gave away:
+        // there, `baf roo` finished the chunk with the streak back at zero and
+        // the ceiling never once consulted.
+        let mut harness = Harness::new("bar foo");
+        harness.type_text("baf");
+
+        assert_eq!(harness.streak(), 1);
+        assert_eq!(harness.send(Command::Press { key: ' ' }), None);
+        assert_eq!(harness.send(Command::Press { key: 'r' }), None);
+        assert_eq!(harness.streak(), 3);
+        assert_eq!(harness.send(Command::Press { key: 'o' }), Some(Rejection::ErrorCeiling));
+    }
+
+    #[test]
+    fn only_backspacing_onto_the_divergence_clears_it() {
+        let mut harness = Harness::with_ceiling("bar foo", 99);
+        harness.type_text("baf roo");
+        assert_eq!(harness.streak(), 5);
+
+        // Back over the accidentally-right tail: still diverged the whole way.
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 4);
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 3);
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 2);
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 1);
+
+        // This one erases slot 2 itself - the divergence - and only now is the
+        // player aligned again.
+        harness.send(Command::Backspace);
+        assert_eq!(harness.streak(), 0);
+    }
+
+    #[test]
+    fn a_streak_can_never_exceed_the_ceiling_that_governs_it() {
+        // Follows from the two together: `press` refuses at the ceiling, and
+        // nothing but a press can grow the streak.
+        let mut harness = Harness::new("abcdefghij");
+        harness.type_text("xxxxxxxxxx");
+
+        assert_eq!(harness.streak(), SessionConfig::default().max_consecutive_errors);
     }
 }
