@@ -1308,8 +1308,8 @@ importers:
         specifier: workspace:*
         version: link:../../some-content
       '@some-ui/leetype-wasm':
-        specifier: 0.0.8
-        version: 0.0.8
+        specifier: ^0.0.9
+        version: 0.0.9
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -4610,8 +4610,8 @@ packages:
   '@some-ui/hangul-game-core@0.0.5':
     resolution: {integrity: sha512-TeC+861SSq3NYR+Hg+4Z3QF0XuadvNAcbGRosSuXaLLG2JKVczpy5/J9jVvh/pWVLdamsxGGDfEjX+LkqqvloA==}
 
-  '@some-ui/leetype-wasm@0.0.8':
-    resolution: {integrity: sha512-jSluuiCNY0ZhoDHfutH2wuJux+7hB6mstQl16RIVn38jz+rFghg9pcHnJji3zTURHpTiXdtCJ8gu7qZ0W8jiOg==}
+  '@some-ui/leetype-wasm@0.0.9':
+    resolution: {integrity: sha512-HEgOAtRHVE8Qvt3bgJL0FFs4t34x7Deq5nZPlXOaBbbd/ewXL3z9R5JX5HOkJx+r3aWeltOUL7cisrMCapZOYw==}
 
   '@some-ui/polyhedron@0.0.4':
     resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
@@ -5833,6 +5833,11 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  acorn@8.18.0:
+    resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
   addons-linter@6.28.0:
     resolution: {integrity: sha512-fCTjXL/yG4hwq74JG8tQdrvEu0OvGrEN9yU+Df0020RDtHl3g/tTCyMeC4G1uyk8IuyMzp4myCBNnOGC7MWSQQ==}
     engines: {node: '>=16.0.0'}
@@ -6191,8 +6196,8 @@ packages:
     resolution: {integrity: sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==}
     engines: {node: 18 || 20 || >=22}
 
-  brace-expansion@5.0.8:
-    resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
+  brace-expansion@5.0.9:
+    resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
     engines: {node: 20 || >=22}
 
   braces@3.0.3:
@@ -7483,8 +7488,8 @@ packages:
   fast-uri@3.1.3:
     resolution: {integrity: sha512-i70LwGWUduXqzicKXWshooq+sWL1K3WUU5rKZNG/0i3a1OSoX3HqhH5WbWwTmqWfor4urUakGPiRQcleRZTwOg==}
 
-  fast-uri@3.1.4:
-    resolution: {integrity: sha512-8JnbkQ4juDyvYs4mgFGQqg4yCYtFDtUtmp2QIQq11ZZe5CFQ5wcqm1rqDgAh/QdMySuBnPzMUiJUNZG5N/AiQw==}
+  fast-uri@3.1.5:
+    resolution: {integrity: sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==}
 
   fastest-levenshtein@1.0.16:
     resolution: {integrity: sha512-eRnCtTTtGZFpQCwhJiUOuxPQWRXVKYDn0b2PeHfXL6/Zi53SLAzAHfVhVWK2AryC/WH05kGfxhFIPvTF0SXQzg==}
@@ -13710,7 +13715,7 @@ snapshots:
 
   '@some-ui/hangul-game-core@0.0.5': {}
 
-  '@some-ui/leetype-wasm@0.0.8': {}
+  '@some-ui/leetype-wasm@0.0.9': {}
 
   '@some-ui/polyhedron@0.0.4': {}
 
@@ -15033,6 +15038,9 @@ snapshots:
 
   acorn@8.17.0: {}
 
+  acorn@8.18.0:
+    optional: true
+
   addons-linter@6.28.0(node-fetch@3.3.1):
     dependencies:
       '@fluent/syntax': 0.19.0
@@ -15212,7 +15220,7 @@ snapshots:
   ajv@8.18.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.4
+      fast-uri: 3.1.5
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
     optional: true
@@ -15482,7 +15490,7 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  brace-expansion@5.0.8:
+  brace-expansion@5.0.9:
     dependencies:
       balanced-match: 4.0.4
     optional: true
@@ -17092,7 +17100,7 @@ snapshots:
 
   fast-uri@3.1.3: {}
 
-  fast-uri@3.1.4:
+  fast-uri@3.1.5:
     optional: true
 
   fastest-levenshtein@1.0.16: {}
@@ -18437,7 +18445,7 @@ snapshots:
 
   minimatch@10.2.3:
     dependencies:
-      brace-expansion: 5.0.8
+      brace-expansion: 5.0.9
     optional: true
 
   minimatch@10.2.5:
@@ -20126,7 +20134,7 @@ snapshots:
   terser@5.48.0:
     dependencies:
       '@jridgewell/source-map': 0.3.11
-      acorn: 8.17.0
+      acorn: 8.18.0
       commander: 2.20.3
       source-map-support: 0.5.21
     optional: true
