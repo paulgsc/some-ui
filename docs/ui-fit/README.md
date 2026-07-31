@@ -85,7 +85,18 @@ attempt:
 - **It asserts each story actually mounted.** A story that renders nothing
   cannot be checked, and a harness that reports that as a pass is worse than
   no harness. Known-broken stories go in `NON_RENDERING_STORIES` with the
-  reason, so the debt stays greppable.
+  reason, so the debt stays greppable. That list is currently empty, and
+  should be argued down rather than added to.
+
+That second guard immediately earned itself: it caught four leetype story
+groups (CodeDisplay, CodeInputCard, Leetype, LeetypeApp) rendering nothing at
+all in a built Storybook, dying on `TypeError: f is not a function`. The cause
+was `vite-plugin-top-level-await`, arriving via the root `vite.config.ts` that
+Storybook auto-loads: it rewrites every module downstream of a top-level await
+so its exports are assigned only after a `__tla` promise settles, then leaves
+consumer chunks importing those bindings without awaiting it. Storybook builds
+at `es2022`, which supports top-level await natively, so the plugin had nothing
+to add and is now filtered out in `.storybook/main.ts`.
 
 If you add a sweep like this elsewhere, plant a deliberately-overflowing
 fixture and confirm it goes red before believing a green run.

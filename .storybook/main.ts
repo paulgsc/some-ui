@@ -133,6 +133,33 @@ const config: StorybookConfig = {
       target: "es2022",
     }
 
+    // Drop vite-plugin-top-level-await, which arrives with that same
+    // auto-loaded root config.
+    //
+    // The es2022 target above supports top-level await natively, so the
+    // plugin has nothing to add here — and what it does instead is actively
+    // wrong. It rewrites every module that transitively touches a TLA into a
+    // `__tla` promise whose exports are assigned only after that promise
+    // settles, then leaves consumer chunks importing those bindings without
+    // awaiting it. The leetype wasm loader is downstream of one, so the four
+    // story groups that reach it (CodeDisplay, CodeInputCard, Leetype,
+    // LeetypeApp) died on `TypeError: f is not a function` — a chunk calling
+    // a sibling's module-init thunk before the gate had assigned it — and
+    // rendered nothing at all in a built Storybook.
+    //
+    // Matched by name rather than by rebuilding the plugin list, so the rest
+    // of the root config (vite-plugin-wasm especially, which the same wasm
+    // import does need) is untouched.
+    config.plugins = (config.plugins ?? []).filter(
+      (plugin) =>
+        !(
+          plugin &&
+          typeof plugin === "object" &&
+          "name" in plugin &&
+          plugin.name === "vite-plugin-top-level-await"
+        )
+    )
+
     // UnoCSS preset utilities for the @some-ui/styles catalog. Scoped via
     // .storybook/uno.config.ts to the .storybook/ files only, so it adds the
     // catalog's utilities without altering how other stories render.

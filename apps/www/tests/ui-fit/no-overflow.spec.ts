@@ -86,17 +86,13 @@ const ALLOWED_SCROLL_INTENTS = new Set([
  * guards against everywhere else. Listing them keeps the debt greppable and
  * makes removing an entry the natural close-out when the cause is fixed.
  *
- * These all reach `useTypingGame` -> the leetype wasm module, whose `.wasm`
- * asset 404s in the static build (`TypeError: f is not a function` out of
- * use-preview-game). Pre-existing and unrelated to layout - they are broken in
- * Storybook today, sweep or no sweep.
+ * Currently empty. The four leetype story groups that used to live here
+ * (CodeDisplay, CodeInputCard, Leetype, LeetypeApp) died on
+ * `TypeError: f is not a function` from vite-plugin-top-level-await's chunk
+ * gating; that plugin is now filtered out of the Storybook build, which needs
+ * no TLA polyfill at its es2022 target. See .storybook/main.ts.
  */
-const NON_RENDERING_STORIES: ReadonlyArray<string> = [
-  "ui-input-components-typing-codedisplay--",
-  "ui-input-components-typing-codeinputcard--",
-  "ui-input-components-typing-leetype--",
-  "ui-input-components-typing-leetypeapp--",
-]
+const NON_RENDERING_STORIES: ReadonlyArray<string> = []
 
 type StoryEntry = { id: string; title: string; name: string; type?: string }
 
