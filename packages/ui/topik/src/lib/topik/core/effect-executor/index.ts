@@ -27,7 +27,8 @@ export type EffectExecutorConfig = {
   queryBridge: IQueryBridge
 
   // TTS configuration
-  speechAdapter?: SpeechAdapter
+  /** Absent or null both mean "no voice" - the TTS handler is not built. */
+  speechAdapter?: SpeechAdapter | null
   componentId?: string
   enableTTS?: boolean
 

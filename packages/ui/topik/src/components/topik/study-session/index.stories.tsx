@@ -1,63 +1,27 @@
 import type { JSX, ReactNode } from "react"
-import { SpeechProvider, useSpeechAdapter } from "@some-ui/speech"
+import { SpeechProvider } from "@some-ui/speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
-import {
-  createTopikMetadataRepository,
-  createTopikRepository,
-  SessionConfigProvider,
-} from "@topik/lib/topik"
-import { cn } from "some-ui-utils"
 
 import { KoreanStudyPage } from "."
 
-// 1. Initialize mock repositories for the story environment
-const storyTopikRepository = createTopikRepository()
-const storyMetadataRepository = createTopikMetadataRepository(
-  "/topiks/manifest.json"
-)
-
 /**
- * Storybook has no companion services, so the session is configured as
- * `static` - which `@some-ui/speech` resolves to the browser's own voice.
- * The story never names a backend, and it never built one out of a
- * hardcoded host and API key the way this decorator used to.
+ * The whole decorator, now.
+ *
+ * It used to build the session config by hand - two repositories and an
+ * adapter pulled out of the speech session through a second nested
+ * component, because `useSpeechAdapter` is a hook and the config object
+ * needed its return value. The applet assembles all of that itself; a story
+ * only supplies what is genuinely environmental.
+ *
+ * Storybook has no companion services, so the session is `static`, which
+ * `@some-ui/speech` resolves to the browser's own voice. Removing the
+ * provider entirely would also work - the applet runs silently without one -
+ * but a Korean lesson is worth hearing.
  */
-const WithSessionConfig = ({
-  children,
-}: {
-  children: ReactNode
-}): JSX.Element => (
-  <SpeechProvider
-    config={{ mode: "static", lang: "ko-KR" }}
-    fallback={
-      <div className={cn("flex items-center justify-center gap-3 p-4")}>
-        <div
-          className={cn("bg-primary/20 size-12 animate-pulse rounded-full")}
-        />
-        <span className={cn("text-muted-foreground animate-pulse font-medium")}>
-          Waiting for TTS Provider
-        </span>
-      </div>
-    }
-  >
-    <WithSessionAdapter>{children}</WithSessionAdapter>
-  </SpeechProvider>
-)
-
-const WithSessionAdapter = ({
-  children,
-}: {
-  children: ReactNode
-}): JSX.Element => (
-  <SessionConfigProvider
-    value={{
-      topikRepository: storyTopikRepository,
-      metadataRepository: storyMetadataRepository,
-      speechAdapter: useSpeechAdapter(),
-    }}
-  >
+const WithSpeech = ({ children }: { children: ReactNode }): JSX.Element => (
+  <SpeechProvider config={{ mode: "static", lang: "ko-KR" }}>
     {children}
-  </SessionConfigProvider>
+  </SpeechProvider>
 )
 
 type Story = StoryObj<typeof KoreanStudyPage>
@@ -68,12 +32,20 @@ const meta: Meta = {
   component: KoreanStudyPage,
   decorators: [
     (Story) => (
-      <WithSessionConfig>
+      <WithSpeech>
         <Story />
-      </WithSessionConfig>
+      </WithSpeech>
     ),
   ],
 }
 export default meta
 
 export const Default: Story = {}
+
+/**
+ * What the content registry mounts: no props, no providers, no host
+ * knowledge of what this applet needs.
+ */
+export const AsMountedByTheRegistry: Story = {
+  decorators: [(Story) => <Story />],
+}

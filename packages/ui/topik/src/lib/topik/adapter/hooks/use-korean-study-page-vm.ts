@@ -87,7 +87,10 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
     metadataRepository,
     speechAdapter,
     componentId,
-    enableTTS: true,
+    // No voice, no spoken prompts. The effect executor already treats a
+    // missing adapter as "no TTS handler"; saying so here keeps the two
+    // from disagreeing.
+    enableTTS: speechAdapter !== null,
   })
 
   const { state, dispatch } = session

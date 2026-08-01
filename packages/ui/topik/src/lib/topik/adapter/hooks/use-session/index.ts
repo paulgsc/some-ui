@@ -27,7 +27,8 @@ import { createQueryBridge } from "@topik/lib/topik/adapter/server"
 export type UseEnhancedSessionConfig = {
   repository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
-  speechAdapter: SpeechAdapter
+  /** Null when the host provides no speech session. */
+  speechAdapter: SpeechAdapter | null
   componentId: string
   enableTTS: boolean
   onBatchComplete?: (batchIndex: number) => void
@@ -45,7 +46,7 @@ export type UseEnhancedSessionReturn = {
   currentSpeakingId: string | null
   machine: ISessionMachine
   repository: ITopikRepository
-  speechAdapter: SpeechAdapter
+  speechAdapter: SpeechAdapter | null
 }
 
 export function useSession(

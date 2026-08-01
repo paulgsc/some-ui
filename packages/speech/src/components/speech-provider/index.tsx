@@ -148,6 +148,26 @@ export function useSpeechSession(): SpeechSession {
 }
 
 /**
+ * The session if there is one, `null` if there isn't.
+ *
+ * For code that can work without a voice and must not crash when there is
+ * none - a lazily-loaded applet that a host may mount anywhere, a Storybook
+ * story, a test. Speech is genuinely ambient (there is one pair of speakers
+ * per page), so reading it from context is right; requiring it to exist is
+ * not, and a consumer should not have to know how to check.
+ *
+ * `useSpeechSession` stays throwing for code that has no meaning without a
+ * voice - being explicit about which of the two you are is the point.
+ */
+export function useOptionalSpeechSession(): SpeechSession | null {
+  return useContext(SpeechSessionContext)
+}
+
+export function useOptionalSpeechAdapter(): SpeechAdapter | null {
+  return useOptionalSpeechSession()?.adapter ?? null
+}
+
+/**
  * The session's adapter, for call sites that speak directly rather than
  * through the queue (a one-shot prompt, a question read aloud). Queued,
  * priority-ordered speech should use `useSpeechQueue` instead.
