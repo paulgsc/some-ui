@@ -23,6 +23,9 @@ import type { SpeechAdapter, SpeechConfig } from "@speech/lib/adapters"
 import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
+import type { SpeechNotifier } from "@speech/lib/status"
+
+import { SpeechStatusAnnouncer } from "../speech-status"
 
 export type SpeechSession = {
   readonly adapter: SpeechAdapter
@@ -36,6 +39,19 @@ export type SpeechProviderProps = {
   config?: SpeechConfig
   /** Rendered while the session is being established (one commit). */
   fallback?: ReactNode
+  /**
+   * Where user-facing notices go - typically the app's toast function.
+   *
+   * A page that starts talking is a surprise, so the session announces
+   * itself once on mount, once if speech breaks, and once if it recovers.
+   * That budget is enforced here (`lib/status`), not by the caller: the
+   * sink is handed whole notices, never events, so no consumer can turn a
+   * failing backend into a stream of toasts.
+   *
+   * Omitting it is silent but not undisclosed - the `aria-live` region
+   * below announces the same notices either way.
+   */
+  notify?: SpeechNotifier
 }
 
 /**
@@ -67,6 +83,7 @@ export const SpeechProvider = ({
   children,
   config = {},
   fallback = null,
+  notify,
 }: SpeechProviderProps): JSX.Element => {
   const [session, setSession] = useState<SpeechSession | null>(null)
   const configKey = configKeyOf(config)
@@ -102,6 +119,7 @@ export const SpeechProvider = ({
 
   return (
     <SpeechSessionContext.Provider value={session}>
+      <SpeechStatusAnnouncer notify={notify} />
       {children}
     </SpeechSessionContext.Provider>
   )

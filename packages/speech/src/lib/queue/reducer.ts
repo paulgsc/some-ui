@@ -110,12 +110,17 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
 
     case "ITEM_STARTED": {
       const { item } = action.payload
+      // `error` deliberately survives here. Starting an utterance is not
+      // evidence that anything works - only finishing one is. Clearing it on
+      // start made `error` flicker null/set on every retry against a failing
+      // backend, which reads downstream as "recovered, broken, recovered,
+      // broken..." - see status/index.ts, where that flicker became one
+      // toast per retry until an integration test caught it.
       return {
         ...state,
         currentItem: item,
         items: state.items.filter((i) => i.id !== item.id),
         status: "speaking",
-        error: null,
       }
     }
 
@@ -125,6 +130,8 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
         currentItem: null,
         status: settledStatus(state),
         totalProcessed: state.totalProcessed + 1,
+        // A completed utterance is the one thing that ends a fault episode.
+        error: null,
       }
     }
 

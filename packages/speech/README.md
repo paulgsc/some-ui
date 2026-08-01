@@ -45,6 +45,54 @@ say), the other one is used instead, because that is a fact about the
 browser rather than about the deployment and the caller has no business
 handling it.
 
+## Telling the person
+
+Everything above is machinery, and none of it is a user's problem. But a page
+that starts talking unprompted is a surprise, and a page that has quietly lost
+the ability to talk is worse — the applet looks fine and simply never speaks
+again. So the session discloses itself, in a vocabulary with no internals in
+it: **which voice** (the one built into your device, or one this deployment
+hosts — the distinction worth disclosing, since one sends text off the machine
+and the other doesn't) and **whether it works** (ready, faulted, unavailable).
+
+The budget is three notices per session, and it is enforced by a state machine
+rather than by the caller:
+
+| when                                | notice                  |
+| ----------------------------------- | ----------------------- |
+| the session activates               | `activated` (info)      |
+| speech breaks                       | `faulted` (warning)     |
+| an utterance succeeds after a fault | `recovered` (info)      |
+| the runtime cannot speak at all     | `unavailable` (warning) |
+
+Repeating a status emits nothing. **N consecutive failures are one notice** —
+the fault _episode_ is the unit, not the error — and a failing backend against
+a chat applet that speaks per message produces exactly one warning, not forty.
+No two consecutive notices are ever identical. Those rules are property tests
+over arbitrary status sequences in `lib/status/index.test.ts`, because the
+failure mode is precisely the interleaving nobody thought of; the version of
+this that shipped one toast per retry was caught by
+`components/speech-status/index.test.tsx` driving a real failing session.
+
+Notices carry prose, never identifiers — no hostname, port, adapter name or
+backend error string reaches a person. The underlying error stays in the queue
+state, where a developer can read it.
+
+```tsx
+<SpeechProvider config={…} notify={(n) => toast[n.tone](n.title, { description: n.description })}>
+```
+
+`notify` is the app's, not this package's — the one place this workspace
+deliberately stops short of owning the concern. `apps/www` mounts exactly one
+`<Toaster />`, and a library rendering its own would stack a second toaster
+beside it with its own placement, theme and z-order. This package decides
+_what_ is worth saying and _when_, which is the part that must not be
+re-derived per applet, and hands the rendering to whoever already owns it.
+Omitting `notify` is silent but never undisclosed: the provider always
+mirrors the current status into an `aria-live` region. Applets that want a
+standing indicator can drop in `SpeechStatusBadge`, or build their own on
+`useSpeechStatus()`.
+
 ## The settlement contract
 
 Speech is a long-running, interruptible side effect, and the bug class this

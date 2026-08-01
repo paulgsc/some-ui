@@ -458,3 +458,69 @@ describe("speechReducer - conservation properties", () => {
     )
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ERROR LIFECYCLE - what `error` means, and for how long
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("speechReducer - error survives until something actually succeeds", () => {
+  function failedState(): SpeechQueueState {
+    let state = initialState()
+    state = speechReducer(state, speak("a", 1))
+    const item = state.items[0]!
+    state = speechReducer(state, { type: "ITEM_STARTED", payload: { item } })
+    return speechReducer(state, {
+      type: "ITEM_FAILED",
+      payload: { itemId: item.id, error: "backend down", shouldRetry: false },
+    })
+  }
+
+  it("keeps the error while the next utterance is merely starting", () => {
+    let state = failedState()
+    expect(state.error).toBe("backend down")
+
+    state = speechReducer(state, speak("b", 1))
+    const next = state.items[0]!
+    state = speechReducer(state, {
+      type: "ITEM_STARTED",
+      payload: { item: next },
+    })
+
+    // Starting is not evidence of working. Clearing here made `error`
+    // flicker on every retry against a dead backend, which downstream reads
+    // as recovered/broken/recovered/broken - one user-facing toast per
+    // retry, which is the exact noise the status layer exists to prevent.
+    expect(state.error).toBe("backend down")
+  })
+
+  it("clears the error only when an utterance completes", () => {
+    let state = failedState()
+    state = speechReducer(state, speak("b", 1))
+    const next = state.items[0]!
+    state = speechReducer(state, {
+      type: "ITEM_STARTED",
+      payload: { item: next },
+    })
+
+    state = speechReducer(state, {
+      type: "ITEM_COMPLETED",
+      payload: { itemId: next.id },
+    })
+
+    expect(state.error).toBeNull()
+    expect(state.totalProcessed).toBe(1)
+  })
+
+  it("property: only ITEM_COMPLETED, RESUME and CLEAR ever clear an error", () => {
+    const survives: Array<SpeechAction> = [
+      { type: "ITEM_CANCELLED", payload: { itemId: "x" } },
+      { type: "CANCEL", payload: { componentId: "nobody" } },
+      { type: "PAUSE" },
+      { type: "SPEAK", payload: { componentId: "b", text: "hi" }, priority: 0 },
+    ]
+
+    for (const action of survives) {
+      expect(speechReducer(failedState(), action).error).toBe("backend down")
+    }
+  })
+})
