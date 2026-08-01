@@ -1,3 +1,6 @@
-import someUIEslint from "@some-ui/eslint-kit"
+import { appsRecommended } from "@some-ui/eslint-kit"
 
-export default someUIEslint
+// `appsRecommended`, not the default export: this is a deployable host with
+// an entry chunk, so the lints about what lands in that chunk apply here and
+// nowhere else. See the preset's doc comment.
+export default appsRecommended

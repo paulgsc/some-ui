@@ -31,11 +31,11 @@ export const lazyRegistryPlugin = {
 
 export default defineConfig([
   {
-    // Every workspace, because each one runs eslint from its own directory -
-    // a path glob like `apps/**` matches nothing when the base path already
-    // *is* `apps/www`. The `allow` list below carries the exceptions
-    // instead, which is the more honest place for them anyway: each is a
-    // decision with a reason, not a directory.
+    // Every file of whoever extends this - which is `appsRecommended`, and
+    // only that. A path glob can't do the scoping here: each workspace runs
+    // eslint from its own directory, so `apps/**` matches nothing when the
+    // base path already *is* `apps/www`. Who extends the preset is the
+    // scope.
     files: ["**/*.{ts,tsx}"],
     plugins: { "lazy-registry": lazyRegistryPlugin },
     rules: {
@@ -55,21 +55,13 @@ export default defineConfig([
             "some-ui-neon-sign",
           ],
           allow: [
-            // Two genuine direct dependencies, neither of them the component
-            // the registry loads:
-            //
-            // - apps/www's composer embeds slideshow's *editor*
-            //   (editorReducer, EditSceneDialog, OrchestratorTimeline), and
-            //   the registry loads `ActiveLifetimesPanel` under "scheduled".
-            //   The composer route is itself code-split, so the eager edge
-            //   is bounded to it.
-            // - @some-ui/slideshow composes umag's NowPlayingCard, and the
-            //   registry's own cube-content composes slideshow's
-            //   ViewportDiceCard. Package-to-package composition is an
-            //   ordinary dependency; the hazard this rule exists for is a
-            //   *host* short-circuiting its own lazy boundary.
+            // One genuine direct dependency, and not the component the
+            // registry loads: apps/www's composer embeds slideshow's
+            // *editor* (editorReducer, EditSceneDialog,
+            // OrchestratorTimeline), while the registry loads
+            // `ActiveLifetimesPanel` under "scheduled". The composer route
+            // is itself code-split, so the eager edge is bounded to it.
             "@some-ui/slideshow",
-            "@some-ui/umag",
           ],
         },
       ],
