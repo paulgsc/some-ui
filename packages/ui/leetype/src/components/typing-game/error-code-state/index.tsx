@@ -1,6 +1,6 @@
 import type { FC, JSX } from "react"
-import { AlertCircle, FileQuestion, RefreshCw } from "lucide-react"
 import { Button } from "@some-ui/shared"
+import { AlertCircle, FileQuestion, RefreshCw } from "lucide-react"
 
 type ErrorCodeStateProps = {
   error: Error | null

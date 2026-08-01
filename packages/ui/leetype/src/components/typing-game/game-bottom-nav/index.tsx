@@ -9,15 +9,6 @@ import type {
   TextGradient,
 } from "@leetype/types/leetype"
 import {
-  Gauge,
-  GraduationCap,
-  Info,
-  Palette,
-  Play,
-  RotateCcw,
-  Settings2,
-} from "lucide-react"
-import {
   Badge,
   Button,
   Card,
@@ -52,6 +43,15 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@some-ui/shared"
+import {
+  Gauge,
+  GraduationCap,
+  Info,
+  Palette,
+  Play,
+  RotateCcw,
+  Settings2,
+} from "lucide-react"
 
 export type GameInfoContent = {
   title: string

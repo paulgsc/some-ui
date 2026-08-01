@@ -1,7 +1,5 @@
 import type { FC, SVGProps } from "react"
 import { useState } from "react"
-import { CelebrationOverlay } from "@umag/components/mujik-discovery/celebration-mode"
-import { Clock, FolderHeart, Heart, Trophy, Zap } from "lucide-react"
 import {
   Button,
   DropdownMenu,
@@ -11,6 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@some-ui/shared"
+import { CelebrationOverlay } from "@umag/components/mujik-discovery/celebration-mode"
+import { Clock, FolderHeart, Heart, Trophy, Zap } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type DiscoveryMode =

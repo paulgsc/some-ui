@@ -1,4 +1,5 @@
 import type { FC } from "react"
+import { Button, Slider } from "@some-ui/shared"
 import {
   useAudioContext,
   useAudioElement,
@@ -6,7 +7,6 @@ import {
   useVolumeControl,
   useWaveformVisualization,
 } from "@umag/hooks"
-import { Button, Slider } from "@some-ui/shared"
 
 type WaveBarChartProps = {
   width: number

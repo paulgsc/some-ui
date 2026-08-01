@@ -1,14 +1,5 @@
 import { useRef } from "react"
 import type { FC } from "react"
-import { BackgroundGlow } from "@umag/components/now-playing/background-glow"
-import { SongInfo } from "@umag/components/now-playing/song-info"
-import { StreamingNotes } from "@umag/components/now-playing/streaming-notes"
-import { VinylRecord } from "@umag/components/now-playing/vinyl-record"
-import {
-  useLatestNowPlaying,
-  useNowPlayingWebSocket,
-} from "@umag/hooks/now-playing"
-import { AlertCircle, Home, Loader2, RefreshCw } from "lucide-react"
 import {
   Button,
   Card,
@@ -18,6 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@some-ui/shared"
+import { BackgroundGlow } from "@umag/components/now-playing/background-glow"
+import { SongInfo } from "@umag/components/now-playing/song-info"
+import { StreamingNotes } from "@umag/components/now-playing/streaming-notes"
+import { VinylRecord } from "@umag/components/now-playing/vinyl-record"
+import {
+  useLatestNowPlaying,
+  useNowPlayingWebSocket,
+} from "@umag/hooks/now-playing"
+import { AlertCircle, Home, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type NowPlayingProps = {

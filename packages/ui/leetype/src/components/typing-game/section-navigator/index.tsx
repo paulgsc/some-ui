@@ -1,7 +1,6 @@
 import type { FC } from "react"
 import { useMemo, useState } from "react"
 import type { Section, SectionProgress } from "@leetype/types/leetype"
-import { Check, CornerUpLeft, ListTree, SkipForward } from "lucide-react"
 import {
   Badge,
   Button,
@@ -14,6 +13,7 @@ import {
   PageControls,
   Progress,
 } from "@some-ui/shared"
+import { Check, CornerUpLeft, ListTree, SkipForward } from "lucide-react"
 import { cn, useFittedPage } from "some-ui-utils"
 
 type SectionNavigatorProps = {
