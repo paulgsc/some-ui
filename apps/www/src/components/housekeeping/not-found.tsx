@@ -1,7 +1,7 @@
 import type { JSX } from "react"
+import { Button } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { Home, MapPinOff } from "lucide-react"
-import { Button } from "@some-ui/shared"
 
 /**
  * 404 page. Wired as the router's `defaultNotFoundComponent`, so any

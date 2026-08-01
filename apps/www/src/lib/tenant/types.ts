@@ -3,6 +3,7 @@ import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
 import type { LayoutTreeId, SessionActivity } from "../activity-catalog"
+import type { AudioPreferences } from "../audio-preferences"
 
 export type TopikLevel = "beginner" | "intermediate" | "advanced"
 
@@ -17,6 +18,12 @@ export type UserSettings = {
   ttsProvider: TTSProvider
   /** Empty string means "use the provider's default voice". */
   ttsVoiceId: string
+  /**
+   * What this app may play, per channel. Lives with the rest of the tenant
+   * settings rather than in its own store so that a person's audio choices
+   * round-trip exactly like their voice choice does.
+   */
+  audio: AudioPreferences
   defaultSessionDurationMinutes: number
   defaultLayoutTree: LayoutTreeId
 }

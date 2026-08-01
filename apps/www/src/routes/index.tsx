@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { Card, CardContent } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowRight,
@@ -7,7 +8,6 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react"
-import { Card, CardContent } from "@some-ui/shared"
 
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"

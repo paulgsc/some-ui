@@ -18,6 +18,7 @@ import {
   announce,
   createSpeechAnnouncer,
   deriveSpeechStatus,
+  describeStatus,
   INITIAL_ANNOUNCER_STATE,
   voiceKindOf,
 } from "."
@@ -29,6 +30,18 @@ const statusArbitrary: fc.Arbitrary<SpeechStatus> = fc.record({
     "faulted" as const,
     "unavailable" as const
   ),
+  muted: fc.constant(false),
+})
+
+/** The same space, but with muting in play - used where that is the subject. */
+const mutableStatusArbitrary: fc.Arbitrary<SpeechStatus> = fc.record({
+  voice: fc.constantFrom("device" as const, "hosted" as const),
+  health: fc.constantFrom(
+    "ready" as const,
+    "faulted" as const,
+    "unavailable" as const
+  ),
+  muted: fc.boolean(),
 })
 
 /** Runs a sequence through the machine and collects what a person would see. */
@@ -78,8 +91,12 @@ describe("deriveSpeechStatus", () => {
 
   it("never carries the underlying error text into what a person sees", () => {
     const announcer = createSpeechAnnouncer()
-    announcer.observe({ voice: "hosted", health: "ready" })
-    const notice = announcer.observe({ voice: "hosted", health: "faulted" })
+    announcer.observe({ voice: "hosted", health: "ready", muted: false })
+    const notice = announcer.observe({
+      voice: "hosted",
+      health: "faulted",
+      muted: false,
+    })
 
     // The queue's `error` is a backend message - "openai TTS API error: 503
     // Service Unavailable - upstream is down" and the like. It is useful in
@@ -113,10 +130,11 @@ describe("announcer - the four rules", () => {
         fc.integer({ min: 1, max: 40 }),
         (voice, failures) => {
           const notices = noticesFor([
-            { voice, health: "ready" },
+            { voice, health: "ready", muted: false },
             ...Array.from({ length: failures }, () => ({
               voice,
               health: "faulted" as const,
+              muted: false,
             })),
           ])
 
@@ -211,8 +229,12 @@ describe("announcer - the four rules", () => {
 
 describe("announcer - the happy path a person actually sees", () => {
   it("discloses once on activation, and says which voice is speaking", () => {
-    const device = noticesFor([{ voice: "device", health: "ready" }])
-    const hosted = noticesFor([{ voice: "hosted", health: "ready" }])
+    const device = noticesFor([
+      { voice: "device", health: "ready", muted: false },
+    ])
+    const hosted = noticesFor([
+      { voice: "hosted", health: "ready", muted: false },
+    ])
 
     expect(device[0]?.kind).toBe("activated")
     expect(device[0]?.description).toMatch(/nothing you hear is sent anywhere/i)
@@ -222,13 +244,13 @@ describe("announcer - the happy path a person actually sees", () => {
 
   it("walks activation, fault and recovery once each across a whole session", () => {
     const notices = noticesFor([
-      { voice: "hosted", health: "ready" },
-      { voice: "hosted", health: "ready" },
-      { voice: "hosted", health: "faulted" },
-      { voice: "hosted", health: "faulted" },
-      { voice: "hosted", health: "faulted" },
-      { voice: "hosted", health: "ready" },
-      { voice: "hosted", health: "ready" },
+      { voice: "hosted", health: "ready", muted: false },
+      { voice: "hosted", health: "ready", muted: false },
+      { voice: "hosted", health: "faulted", muted: false },
+      { voice: "hosted", health: "faulted", muted: false },
+      { voice: "hosted", health: "faulted", muted: false },
+      { voice: "hosted", health: "ready", muted: false },
+      { voice: "hosted", health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual([
@@ -245,8 +267,8 @@ describe("announcer - the happy path a person actually sees", () => {
 
   it("says nothing about recovery when speech was never announced broken", () => {
     const notices = noticesFor([
-      { voice: "device", health: "ready" },
-      { voice: "device", health: "ready" },
+      { voice: "device", health: "ready", muted: false },
+      { voice: "device", health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual(["activated"])
@@ -257,6 +279,7 @@ describe("announcer - the happy path a person actually sees", () => {
       Array.from({ length: 10 }, () => ({
         voice: "device" as const,
         health: "unavailable" as const,
+        muted: false,
       }))
     )
 
@@ -267,8 +290,8 @@ describe("announcer - the happy path a person actually sees", () => {
     // A different voice means different data handling - text that stayed on
     // the device may now be leaving it. That is a new disclosure, not noise.
     const notices = noticesFor([
-      { voice: "device", health: "ready" },
-      { voice: "hosted", health: "ready" },
+      { voice: "device", health: "ready", muted: false },
+      { voice: "hosted", health: "ready", muted: false },
     ])
 
     expect(notices.map((notice) => notice.kind)).toEqual([
@@ -291,5 +314,55 @@ describe("announce - purity", () => {
       }),
       { numRuns: 100 }
     )
+  })
+})
+
+describe("announcer - muting is a choice, not an event", () => {
+  it("says nothing at all while muted", () => {
+    fc.assert(
+      fc.property(
+        fc.array(mutableStatusArbitrary, { minLength: 1, maxLength: 40 }),
+        (statuses) => {
+          const muted = statuses.map((status) => ({ ...status, muted: true }))
+          // A person who just clicked mute does not need a toast confirming
+          // their own click, and "voice output is on" would be a lie.
+          expect(noticesFor(muted)).toEqual([])
+        }
+      ),
+      { numRuns: 200 }
+    )
+  })
+
+  it("freezes rather than forgets - unmuting discloses what mute deferred", () => {
+    const notices = noticesFor([
+      { voice: "hosted", health: "ready", muted: true },
+      { voice: "hosted", health: "ready", muted: true },
+      { voice: "hosted", health: "ready", muted: false },
+    ])
+
+    expect(notices.map((notice) => notice.kind)).toEqual(["activated"])
+  })
+
+  it("does not re-disclose on every mute/unmute cycle", () => {
+    const cycles: Array<SpeechStatus> = []
+    for (let i = 0; i < 6; i++) {
+      cycles.push({ voice: "device", health: "ready", muted: false })
+      cycles.push({ voice: "device", health: "ready", muted: true })
+    }
+
+    expect(noticesFor(cycles).map((notice) => notice.kind)).toEqual([
+      "activated",
+    ])
+  })
+
+  it("describes muting as a choice, never as a broken browser", () => {
+    const text = describeStatus({
+      voice: "device",
+      health: "ready",
+      muted: true,
+    })
+
+    expect(text).toMatch(/off/i)
+    expect(text).not.toMatch(/unavailable|can't|problem|stopped working/i)
   })
 })

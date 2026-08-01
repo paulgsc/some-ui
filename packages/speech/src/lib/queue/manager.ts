@@ -55,6 +55,7 @@ export class SpeechQueueManager {
   private pumpScheduled = false
   private inFlight: SpeechItem | null = null
   private disposed = false
+  private muted = false
 
   constructor(adapter: SpeechAdapter, options: SpeechQueueManagerOptions = {}) {
     this.adapter = adapter
@@ -72,6 +73,11 @@ export class SpeechQueueManager {
     maxRetries = 2
   ): void {
     if (this.disposed) return
+    // Muted utterances are dropped, not queued. Queuing them would mean
+    // that unmuting replays everything the person chose not to hear -
+    // minutes of backlog arriving at once, which is exactly the surprise
+    // muting was meant to prevent.
+    if (this.muted) return
 
     const current = this.store.get().currentItem
     if (current && priority > current.priority) {
@@ -139,6 +145,29 @@ export class SpeechQueueManager {
 
   isDisposed(): boolean {
     return this.disposed
+  }
+
+  isMuted(): boolean {
+    return this.muted
+  }
+
+  /**
+   * Turns voice output off or on for this session.
+   *
+   * Muting stops what is speaking now and drops what was queued - a person
+   * who mutes wants silence immediately, not after the current paragraph.
+   * It is not `pause`: pause preserves the queue to resume from, and this
+   * deliberately does not.
+   */
+  setMuted(muted: boolean): void {
+    if (this.disposed || muted === this.muted) return
+    this.muted = muted
+    if (muted) {
+      this.store.dispatch({ type: "CLEAR" })
+      this.adapter.stop()
+      return
+    }
+    this.schedulePump()
   }
 
   /**

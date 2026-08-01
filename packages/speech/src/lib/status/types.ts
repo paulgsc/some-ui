@@ -45,6 +45,13 @@ export type SpeechHealth = "ready" | "faulted" | "unavailable"
 export type SpeechStatus = {
   readonly voice: SpeechVoiceKind
   readonly health: SpeechHealth
+  /**
+   * The person has turned voice output off. Distinct from `unavailable` on
+   * purpose: one is a choice they made and can undo, the other is a fact
+   * about the runtime. Conflating them is how apps end up telling someone
+   * their browser is broken when they simply muted it.
+   */
+  readonly muted: boolean
 }
 
 export type SpeechNoticeKind =

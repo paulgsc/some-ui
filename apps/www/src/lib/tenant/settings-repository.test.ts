@@ -30,3 +30,47 @@ describe("SettingsRepository", () => {
     expect(await repo.get()).toEqual(updated)
   })
 })
+
+describe("SettingsRepository - forward compatibility", () => {
+  it("fills in fields a stored blob predates", async () => {
+    // Exactly what a browser holds after using the app before audio
+    // preferences existed. Settings persist as one JSON object under one
+    // key, so a missing field comes back `undefined` rather than defaulted -
+    // and `preferences.speech.enabled` on undefined is a blank page, not a
+    // missing toggle.
+    storage.setItem(
+      "some-ui.tenant.settings.v1",
+      JSON.stringify({
+        ttsProvider: "openai",
+        ttsVoiceId: "",
+        defaultSessionDurationMinutes: 10,
+        defaultLayoutTree: "study",
+      })
+    )
+    const repo = createSettingsRepository(storage, 0)
+
+    const settings = await repo.get()
+
+    expect(settings.audio).toEqual(DEFAULT_SETTINGS.audio)
+    expect(settings.ttsProvider).toBe("openai")
+  })
+
+  it("keeps a stored audio choice rather than resetting it", async () => {
+    storage.setItem(
+      "some-ui.tenant.settings.v1",
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        audio: {
+          speech: { enabled: false, volume: 0.4 },
+          effects: { enabled: true, volume: 0.1 },
+        },
+      })
+    )
+    const repo = createSettingsRepository(storage, 0)
+
+    const settings = await repo.get()
+
+    expect(settings.audio.speech).toEqual({ enabled: false, volume: 0.4 })
+    expect(settings.audio.effects).toEqual({ enabled: true, volume: 0.1 })
+  })
+})

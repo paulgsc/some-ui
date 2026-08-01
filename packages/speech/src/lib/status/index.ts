@@ -73,9 +73,14 @@ export function healthOf(
 
 export function deriveSpeechStatus(
   adapter: SpeechAdapter,
-  queue: Pick<SpeechQueueState, "error">
+  queue: Pick<SpeechQueueState, "error">,
+  options: { muted?: boolean } = {}
 ): SpeechStatus {
-  return { voice: voiceKindOf(adapter), health: healthOf(adapter, queue) }
+  return {
+    voice: voiceKindOf(adapter),
+    health: healthOf(adapter, queue),
+    muted: options.muted ?? false,
+  }
 }
 
 // ── Copy ───────────────────────────────────────────────────────────────────
@@ -147,6 +152,9 @@ function assertNever(value: never): never {
  * notice machine gives a toaster - without needing any memory of its own.
  */
 export function describeStatus(status: SpeechStatus): string {
+  if (status.muted) {
+    return "Voice output is off. Nothing on this page will be read aloud until you turn it back on."
+  }
   const notice = noticeFor(
     status.health === "ready"
       ? "activated"
@@ -212,6 +220,16 @@ export function announce(
    * produced two identical warnings in a row.)
    */
   const voiceChanged = state.voice !== null && state.voice !== status.voice
+
+  /*
+   * Muting is something a person did, not something that happened to them.
+   * The indicator they just clicked already says so, and a toast confirming
+   * their own click is the definition of noise - so the machine goes quiet
+   * and freezes rather than announcing. Unmuting resumes from exactly the
+   * state it left: if the session was never announced, unmuting discloses
+   * it then, which is the right moment anyway.
+   */
+  if (status.muted) return silent()
 
   switch (status.health) {
     case "unavailable": {

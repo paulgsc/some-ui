@@ -82,6 +82,23 @@ state, where a developer can read it.
 <SpeechProvider config={…} notify={(n) => toast[n.tone](n.title, { description: n.description })}>
 ```
 
+### Where a toast is the wrong instrument
+
+`apps/www` deliberately **drops** the `activated` notice rather than
+toasting it. A toast on initial mount is the easiest thing in an interface
+to miss - it lands while a person is still orienting themselves visually
+and is gone before they look - so "this app has a voice" is disclosed by
+things that don't disappear: a persistent speaker indicator in the chrome,
+and a one-time inline notice on an activity that uses audio. What reaches
+the toaster is the part a toast is genuinely good at: acknowledging
+something that happened and that the person did not do, which is speech
+breaking, recovering, or turning out to be unsupported.
+
+Muting is the mirror image and the package handles it directly: while
+`muted`, the announcer emits nothing at all. A person who just clicked a
+mute toggle does not need a toast confirming their own click, and
+"voice output is on" would be false.
+
 `notify` is the app's, not this package's — the one place this workspace
 deliberately stops short of owning the concern. `apps/www` mounts exactly one
 `<Toaster />`, and a library rendering its own would stack a second toaster

@@ -18,7 +18,7 @@
  */
 
 import type { JSX } from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useQueueStore } from "@speech/lib/hooks/use-queue-store"
 import type { SpeechQueueState } from "@speech/lib/queue"
 import type { SpeechNotifier, SpeechStatus } from "@speech/lib/status"
@@ -37,20 +37,38 @@ const selectError = (state: SpeechQueueState): string | null => state.error
  * consumer can learn: which voice, and whether it works. Anything finer -
  * the adapter, the endpoint, the error text - is this package's business.
  */
-export function useSpeechStatus(): SpeechStatus {
+export function useSpeechStatus(
+  options: { muted?: boolean } = {}
+): SpeechStatus {
   const { adapter, manager } = useSpeechSession()
   const error = useQueueStore(manager.getStore(), selectError)
-  return deriveSpeechStatus(adapter, { error })
+  const muted = options.muted ?? manager.isMuted()
+
+  // Memoized so the identity only changes when the status actually does.
+  // Consumers put this straight into effect dependencies, and a fresh
+  // object every render would turn "on a transition" into "on every render"
+  // for all of them.
+  return useMemo(
+    () => deriveSpeechStatus(adapter, { error }, { muted }),
+    [adapter, error, muted]
+  )
 }
 
 export type SpeechStatusAnnouncerProps = {
   notify?: SpeechNotifier
+  /**
+   * Passed down rather than read off the manager: the manager's mute flag
+   * is not reactive, and this component must re-render when it flips so the
+   * live region and the frozen announcer both see it.
+   */
+  muted?: boolean
 }
 
 export const SpeechStatusAnnouncer = ({
   notify,
+  muted = false,
 }: SpeechStatusAnnouncerProps): JSX.Element => {
-  const status = useSpeechStatus()
+  const status = useSpeechStatus({ muted })
 
   // One announcer per session. It holds "what this person has already been
   // told", which is exactly the state that must not reset on re-render -
@@ -61,12 +79,11 @@ export const SpeechStatusAnnouncer = ({
     notifyRef.current = notify
   }, [notify])
 
-  // `status` is a fresh object every render, so this effect runs on every
-  // render - deliberately. `observe` is idempotent: it returns a notice only
-  // for a transition it has not already announced, and null otherwise. The
-  // dedup belongs in the machine, where it is property-tested, rather than
-  // in a dependency array that would silently stop working the day the
-  // status gains a field.
+  // `status` changes identity only when it changes value, so this runs on
+  // transitions. It would be correct either way: `observe` is idempotent
+  // and returns a notice only for a transition it has not already
+  // announced. The dedup lives in the machine, where it is property-tested,
+  // never in a dependency array.
   useEffect(() => {
     const notice = announcerRef.current.observe(status)
     if (notice) notifyRef.current?.(notice)

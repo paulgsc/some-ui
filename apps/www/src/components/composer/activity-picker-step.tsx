@@ -1,6 +1,6 @@
 import type { JSX } from "react"
-import { Plus, X } from "lucide-react"
 import { Badge, Button, Card, CardContent } from "@some-ui/shared"
+import { Plus, X } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 import {
@@ -11,6 +11,7 @@ import {
 import type { ActivityId } from "@/lib/activity-catalog"
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
 import { PaginationControls } from "@/components/pagination-controls"
 
 /** Rows here are compact (one line each), so a larger page fits comfortably. */
@@ -76,11 +77,14 @@ export const ActivityPickerStep = ({
                     icon={activity.icon}
                     className="text-primary size-6 shrink-0"
                   />
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-1">
                     <p className="font-semibold">{activity.name}</p>
                     <p className="text-muted-foreground text-sm">
                       {activity.description}
                     </p>
+                    {/* Said while the person is still choosing, so audio is
+                        never a surprise once the session starts. */}
+                    <AudioActivityHint activity={activity} />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {count > 0 && <Badge variant="secondary">×{count}</Badge>}

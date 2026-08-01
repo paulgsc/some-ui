@@ -1,7 +1,5 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import {
   Badge,
   Button,
@@ -14,6 +12,8 @@ import {
   SelectValue,
   Skeleton,
 } from "@some-ui/shared"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { getActivity } from "@/lib/activity-catalog"

@@ -71,6 +71,10 @@ const honeycomb: ActivityDefinition = {
       defaultMinutes: 10,
     },
   ],
+  audio: {
+    channels: ["effects"],
+    blurb: "Uses game sound effects",
+  },
   defaultConfig: {
     mode: "completion",
     difficulty: "standard",
@@ -116,6 +120,10 @@ const topik: ActivityDefinition = {
       defaultMinutes: 15,
     },
   ],
+  audio: {
+    channels: ["speech"],
+    blurb: "Uses Korean pronunciation",
+  },
   defaultConfig: { level: "beginner", durationMinutes: 15 },
   toSceneProps: (config) => ({ path: `topiks/${config.level}.json` }),
 }
@@ -161,6 +169,10 @@ const interview: ActivityDefinition = {
       defaultMinutes: 20,
     },
   ],
+  audio: {
+    channels: ["speech"],
+    blurb: "Reads questions aloud",
+  },
   defaultConfig: { level: "mid", category: "technical", durationMinutes: 20 },
   toSceneProps: (config) => ({
     interviewQuestions: filterInterviewQuestions(config.level, config.category),

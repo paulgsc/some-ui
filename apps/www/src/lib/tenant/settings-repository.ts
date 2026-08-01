@@ -1,3 +1,7 @@
+import {
+  DEFAULT_AUDIO_PREFERENCES,
+  withAudioDefaults,
+} from "../audio-preferences"
 import type { StorageAdapter } from "./storage"
 import {
   browserLocalStorage,
@@ -13,6 +17,7 @@ const STORAGE_KEY = "some-ui.tenant.settings.v1"
 export const DEFAULT_SETTINGS: UserSettings = {
   ttsProvider: "openai",
   ttsVoiceId: "",
+  audio: DEFAULT_AUDIO_PREFERENCES,
   defaultSessionDurationMinutes: 10,
   defaultLayoutTree: "study",
 }
@@ -25,7 +30,16 @@ export class SettingsRepository {
 
   async get(): Promise<UserSettings> {
     await delay(this.latencyMs)
-    return readJSON(this.storage, STORAGE_KEY, DEFAULT_SETTINGS)
+    const stored = readJSON(this.storage, STORAGE_KEY, DEFAULT_SETTINGS)
+    // Settings persist as one blob under a single key, so a browser holding
+    // a version of it written before a field existed hands that field back
+    // as `undefined`. Filling the gap on read is cheaper than a migration
+    // and cannot be forgotten the next time a field is added.
+    return {
+      ...DEFAULT_SETTINGS,
+      ...stored,
+      audio: withAudioDefaults(stored.audio),
+    }
   }
 
   async save(settings: UserSettings): Promise<UserSettings> {

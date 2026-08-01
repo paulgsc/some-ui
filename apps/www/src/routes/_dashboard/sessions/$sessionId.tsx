@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   Card,
   CardContent,
@@ -7,6 +6,7 @@ import {
   CardTitle,
   Skeleton,
 } from "@some-ui/shared"
+import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"

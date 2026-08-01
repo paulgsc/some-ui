@@ -8,6 +8,7 @@ import {
 
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
+import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
 
 import { CompletionSummary } from "./completion-summary"
 import { NowNextStrip } from "./now-next-strip"
@@ -79,6 +80,9 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-4">
+      {/* Layer 2 of audio disclosure: shown the first time a person enters
+          an activity that uses audio, then never again for that activity. */}
+      <SessionAudioNotice session={session} />
       <SessionViewport session={session} />
       <NowNextStrip scenes={session.scenes} />
       <TransportControls onPlay={() => void start()} />

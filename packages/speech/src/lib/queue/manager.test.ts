@@ -296,3 +296,62 @@ describe("SpeechQueueManager - whenIdle", () => {
     expect(idle.state).toBe("resolved")
   })
 })
+
+describe("SpeechQueueManager - muting", () => {
+  it("drops utterances rather than queuing them for later", async () => {
+    const { adapter, manager } = setup()
+
+    manager.setMuted(true)
+    manager.speak("c", "unheard one")
+    manager.speak("c", "unheard two")
+    await flushAsync()
+
+    expect(adapter.calls).toHaveLength(0)
+    expect(manager.getStore().get().items).toEqual([])
+
+    // Unmuting must not replay what the person chose not to hear - minutes
+    // of backlog arriving at once is the surprise muting exists to prevent.
+    manager.setMuted(false)
+    await flushAsync()
+    expect(adapter.calls).toHaveLength(0)
+  })
+
+  it("silences what is already speaking, immediately", async () => {
+    const { adapter, manager } = setup()
+
+    manager.speak("c", "mid-sentence")
+    await flushAsync()
+    const inFlight = track(adapter.calls[0]!.entry.promise)
+
+    manager.setMuted(true)
+
+    // Not "after the current paragraph" - a person who mutes wants quiet now.
+    expect(adapter.pending).toBe(0)
+    await flushAsync()
+    expect(isAbortError(inFlight.error)).toBe(true)
+    expect(manager.getStore().get().currentItem).toBeNull()
+  })
+
+  it("speaks again after unmuting", async () => {
+    const { adapter, manager } = setup()
+
+    manager.setMuted(true)
+    manager.setMuted(false)
+    manager.speak("c", "heard")
+    await flushAsync()
+
+    expect(adapter.calls.at(0)?.text).toBe("heard")
+  })
+
+  it("is idempotent, and a no-op once disposed", () => {
+    const { adapter, manager } = setup()
+
+    manager.setMuted(true)
+    manager.setMuted(true)
+    expect(adapter.stopCount).toBe(1)
+
+    manager.dispose()
+    manager.setMuted(false)
+    expect(manager.isMuted()).toBe(true)
+  })
+})

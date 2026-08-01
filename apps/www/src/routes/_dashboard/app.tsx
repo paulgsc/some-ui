@@ -1,6 +1,4 @@
 import type { JSX } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowRight, Play, Sparkles } from "lucide-react"
 import {
   Avatar,
   AvatarFallback,
@@ -10,6 +8,8 @@ import {
   CardContent,
   Skeleton,
 } from "@some-ui/shared"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { ArrowRight, Play, Sparkles } from "lucide-react"
 import { formatRelativeTime } from "some-ui-utils"
 
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@/lib/activity-catalog"

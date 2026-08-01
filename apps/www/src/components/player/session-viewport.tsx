@@ -10,6 +10,7 @@ import {
 } from "some-ui-utils"
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
+import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { useLeetypeChallenges } from "@/lib/leetype-challenges"
 import type { SessionRecord } from "@/lib/tenant"
@@ -57,6 +58,10 @@ export const SessionViewport = ({
   const sessionKey = useSessionKey()
   const suspended = useSuspended()
   const hangulWords = useHangulVocab()
+  // The effects channel, live. Honeycomb owns the sounds; the person owns
+  // whether they play, and this is the seam between the two - without it,
+  // the "Game sounds" toggle in the audio indicator would control nothing.
+  const { preferences: audioPreferences } = useAudioPreferences()
   const { challenges, isPending: challengesPending } = useLeetypeChallenges()
 
   // Each panel's runtime props, associated with the one registry key that
@@ -74,6 +79,7 @@ export const SessionViewport = ({
           sessionKey: sessionKey ?? undefined,
           suspended,
           words: hangulWords,
+          audio: audioPreferences.effects,
         },
         leetype: {
           challenges,
@@ -83,7 +89,14 @@ export const SessionViewport = ({
           challengesPending,
         },
       }),
-    [sessionKey, suspended, hangulWords, challenges, challengesPending]
+    [
+      sessionKey,
+      suspended,
+      hangulWords,
+      challenges,
+      challengesPending,
+      audioPreferences.effects,
+    ]
   )
 
   const renderedLifetimes = useMemo(

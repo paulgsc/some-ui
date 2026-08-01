@@ -40,6 +40,15 @@ export type SpeechProviderProps = {
   /** Rendered while the session is being established (one commit). */
   fallback?: ReactNode
   /**
+   * Turns voice output off without ending the session.
+   *
+   * Deliberately not part of the session's configuration key: muting is a
+   * preference a person flips, possibly often, and rebuilding the adapter
+   * and queue on each flip would tear down a live audio context to express
+   * "be quiet". It is applied to the running session instead.
+   */
+  muted?: boolean
+  /**
    * Where user-facing notices go - typically the app's toast function.
    *
    * A page that starts talking is a surprise, so the session announces
@@ -83,6 +92,7 @@ export const SpeechProvider = ({
   children,
   config = {},
   fallback = null,
+  muted = false,
   notify,
 }: SpeechProviderProps): JSX.Element => {
   const [session, setSession] = useState<SpeechSession | null>(null)
@@ -115,11 +125,15 @@ export const SpeechProvider = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey])
 
+  useEffect(() => {
+    session?.manager.setMuted(muted)
+  }, [session, muted])
+
   if (!session) return <>{fallback}</>
 
   return (
     <SpeechSessionContext.Provider value={session}>
-      <SpeechStatusAnnouncer notify={notify} />
+      <SpeechStatusAnnouncer muted={muted} notify={notify} />
       {children}
     </SpeechSessionContext.Provider>
   )
