@@ -1,7 +1,7 @@
 import { useState } from "react"
+import { Button, Card, Textarea } from "@some-ui/shared"
 import type { Message } from "@topik/lib/topik"
 import { CheckCircle2, Volume2 } from "lucide-react"
-import { Button, Card, Textarea } from "@some-ui/shared"
 
 type QuizActiveProps = {
   questionNumber: number
