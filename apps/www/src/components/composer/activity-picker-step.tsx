@@ -11,6 +11,7 @@ import {
 import type { ActivityId } from "@/lib/activity-catalog"
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"
 import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
 import { PaginationControls } from "@/components/pagination-controls"
 
@@ -78,7 +79,10 @@ export const ActivityPickerStep = ({
                     className="text-primary size-6 shrink-0"
                   />
                   <div className="flex-1 space-y-1">
-                    <p className="font-semibold">{activity.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{activity.name}</p>
+                      <ActivityMaturityBadge activity={activity} />
+                    </div>
                     <p className="text-muted-foreground text-sm">
                       {activity.description}
                     </p>

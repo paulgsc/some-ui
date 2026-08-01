@@ -124,6 +124,7 @@ const topik: ActivityDefinition = {
     channels: ["speech"],
     blurb: "Uses Korean pronunciation",
   },
+  maturity: "preview",
   defaultConfig: { level: "beginner", durationMinutes: 15 },
   toSceneProps: (config) => ({ path: `topiks/${config.level}.json` }),
 }
@@ -173,6 +174,7 @@ const interview: ActivityDefinition = {
     channels: ["speech"],
     blurb: "Reads questions aloud",
   },
+  maturity: "early",
   defaultConfig: { level: "mid", category: "technical", durationMinutes: 20 },
   toSceneProps: (config) => ({
     interviewQuestions: filterInterviewQuestions(config.level, config.category),

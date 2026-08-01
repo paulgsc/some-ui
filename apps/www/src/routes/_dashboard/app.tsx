@@ -17,6 +17,11 @@ import type { ActivityId } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { useProfile, useSessions } from "@/lib/tenant"
 import { ActivityIcon } from "@/components/activity-icon"
+import {
+  ActivityMaturityBadge,
+  ActivityMaturityNote,
+} from "@/components/activity/activity-maturity"
+import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -103,14 +108,21 @@ const ActivityQuickLaunch = (): JSX.Element => {
             >
               <Card className="hover:border-primary/50 h-full transition-colors">
                 <CardContent className="flex flex-col gap-2 pt-6">
-                  <ActivityIcon
-                    icon={activity.icon}
-                    className="text-primary size-6"
-                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <ActivityIcon
+                      icon={activity.icon}
+                      className="text-primary size-6"
+                    />
+                    {/* Said before the click, where the expectation is set -
+                        not after, where the disappointment lands. */}
+                    <ActivityMaturityBadge activity={activity} />
+                  </div>
                   <p className="font-semibold">{activity.name}</p>
                   <p className="text-muted-foreground text-sm">
                     {activity.description}
                   </p>
+                  <ActivityMaturityNote activity={activity} />
+                  <AudioActivityHint activity={activity} />
                 </CardContent>
               </Card>
             </Link>

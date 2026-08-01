@@ -38,6 +38,24 @@ export type ActivityIconKey = "hexagon" | "book-open" | "mic" | "keyboard"
 export type ActivityConfigValues = Record<string, string | number>
 
 /**
+ * How finished an activity is, in a person's terms rather than a
+ * developer's.
+ *
+ * This app ships applets at very different stages, and shipping them is the
+ * right call - they get better by being used. What is not right is letting
+ * someone walk into a half-built room expecting a finished one. This is the
+ * wet-floor sign: enough warning to set expectations, no diagnostics, no
+ * internals, no apology.
+ *
+ * - `"ready"` - works end to end. Says nothing, because there is nothing to
+ *   warn about, and a badge on everything is a badge on nothing.
+ * - `"preview"` - usable and worth using, with rough edges.
+ * - `"early"` - a construction zone. Parts are missing or unfinished, and a
+ *   person should expect that before they start rather than discover it.
+ */
+export type ActivityMaturity = "ready" | "preview" | "early"
+
+/**
  * What an activity does to a person's ears, in their terms.
  *
  * Different modules have genuinely different audio semantics - Korean
@@ -73,6 +91,8 @@ export type ActivityDefinition = {
   defaultConfig: ActivityConfigValues
   /** Absent means the activity is silent and needs no disclosure at all. */
   audio?: ActivityAudio
+  /** Absent means `"ready"` - the quiet default. */
+  maturity?: ActivityMaturity
   /**
    * Maps friendly config values onto the scene `props` payload for this
    * activity's registry component. Some fields (e.g. picking an exact
