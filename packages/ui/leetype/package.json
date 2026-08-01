@@ -21,10 +21,10 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@some-ui/leetype-wasm": "0.0.8",
+    "@some-ui/content": "workspace:*",
+    "@some-ui/leetype-wasm": "^0.0.9",
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
-    "@some-ui/content": "workspace:*",
     "lucide-react": "^0.525.0",
     "prettier": "3.4.2",
     "prismjs": "^1.30.0",
