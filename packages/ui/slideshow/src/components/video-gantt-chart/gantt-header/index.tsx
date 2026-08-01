@@ -1,5 +1,5 @@
-import { Clock, Info, Maximize2, Minimize2, X } from "lucide-react"
 import { Button } from "@some-ui/shared"
+import { Clock, Info, Maximize2, Minimize2, X } from "lucide-react"
 
 type GanttHeaderProps = {
   currentTime: number

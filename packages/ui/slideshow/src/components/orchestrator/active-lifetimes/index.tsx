@@ -1,8 +1,8 @@
 import type { FC, JSX } from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Badge, Card, ScrollArea } from "@some-ui/shared"
 import type { ActiveLifetime } from "@some-ui/types"
 import { Activity, ChevronDown, Clock, Layers, LayoutGrid } from "lucide-react"
-import { Badge, Card, ScrollArea } from "@some-ui/shared"
 import {
   cn,
   selectCurrentTime,
