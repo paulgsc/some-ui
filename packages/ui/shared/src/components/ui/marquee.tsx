@@ -58,6 +58,9 @@ export const Marquee = ({
         .fill(0)
         .map((_, i) => (
           <div
+            // These are N identical copies of `children` for a seamless scroll
+            // loop; the repeat slot is the only identity a copy has.
+            // eslint-disable-next-line react/no-array-index-key -- repeat slot is the identity
             key={i}
             className={cn("flex shrink-0 justify-around [gap:var(--gap)]", {
               "animate-marquee flex-row": !vertical,

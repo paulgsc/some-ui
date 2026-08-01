@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   Progress,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type SatelliteDetails = {
   dataType?: string

@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { Skeleton } from "some-ui-shared"
+import { Skeleton } from "@some-ui/shared"
 
 /**
  * Generic route-loading fallback. Wired as the router's

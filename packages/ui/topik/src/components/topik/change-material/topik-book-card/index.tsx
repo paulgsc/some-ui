@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { Layers, Target } from "lucide-react"
-import { Badge } from "some-ui-shared"
+import { Badge } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════

@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 const Swatch = ({ theme }: { theme: AppTheme }): JSX.Element => (
   <span

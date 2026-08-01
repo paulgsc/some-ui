@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
   ScrollArea,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type EventPreviewProps = {
   event: TimelineEvent | null

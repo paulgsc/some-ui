@@ -1,7 +1,7 @@
 # The Shared-Workspace Doctrine
 
 > Canonical reference for anything that wants to live in `some-ui-utils`,
-> `some-ui-shared`, or any future shared workspace.
+> `@some-ui/shared`, or any future shared workspace.
 > Lives in `packages/` because it is shared _judgement_ about shared code,
 > not shared code itself — the UI analogue of
 > [`extensions/common/GOOD_CITIZEN.md`](../extensions/common/GOOD_CITIZEN.md).

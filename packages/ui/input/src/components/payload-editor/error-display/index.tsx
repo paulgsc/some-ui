@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "some-ui-shared"
+import { Alert, AlertDescription } from "@some-ui/shared"
 
 type ErrorDisplayProps = {
   error: string

@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
   Progress,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type SatelliteData = {
   dataType?: string

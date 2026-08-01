@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { Plus, X } from "lucide-react"
-import { Badge, Button, Card, CardContent } from "some-ui-shared"
+import { Badge, Button, Card, CardContent } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 import {

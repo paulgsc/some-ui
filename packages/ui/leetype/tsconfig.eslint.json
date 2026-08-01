@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@leetype/*": ["./src/*"],
-      "some-ui-shared": ["../shared/src/index.ts"],
+      "@some-ui/shared": ["../shared/src/index.ts"],
       "some-ui-utils": ["../../utils/src/index.ts"],
       "@some-ui/leetype-wasm": ["./src/types/wasm/leetype-wasm.d.ts"]
     }

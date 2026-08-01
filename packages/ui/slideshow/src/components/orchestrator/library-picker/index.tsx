@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useSceneLibrary } from "@slideshow/hooks/use-scene-library"
 import { Check, Library } from "lucide-react"
-import { Badge, Button, Card, ScrollArea } from "some-ui-shared"
+import { Badge, Button, Card, ScrollArea } from "@some-ui/shared"
 
 type LibraryTemplatePickerProps = {
   onSelectTemplate: (ui: Array<unknown>, templateName: string) => void

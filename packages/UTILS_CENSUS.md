@@ -1,4 +1,4 @@
-# `some-ui-utils` / `some-ui-shared` Named-Import Consumer Census
+# `some-ui-utils` / `@some-ui/shared` Named-Import Consumer Census
 
 > Evidence base for UTL-FOUND S2 (#521). Every hoist/keep/de-hoist decision
 > in this milestone is scored against this table via the
@@ -6,14 +6,15 @@
 > against `package.json` dependency lists, which overcount (see
 > [Declared-but-unused](#declared-but-unused-dependencies) below).
 >
-> **Method:** every `import {...} from "some-ui-utils"` / `"some-ui-shared"`
+> **Method:** every `import {...} from "some-ui-utils"` / `"@some-ui/shared"`
 > statement in the repo (single- and multi-line, including `import type`),
 > excluding each package's own source tree, grouped by symbol → consuming
 > workspace → file. Zero-hit symbols were re-checked by hand to distinguish
 > "no consumers" from "internal-only, consumed by another exported hook."
 > Package specifiers confirmed against each package's `package.json` `name`
-> field — note `some-ui-shared` (not `@some-ui/shared`; that scope belongs
-> to the unrelated `@some-ui/styles` package).
+> field. This census was taken while the package was still named
+> `some-ui-shared`; it has since been renamed to `@some-ui/shared` and the
+> specifiers below are quoted under the new name.
 >
 > Zero code moves in this doc. Cleanup items called out below (dead code,
 > unreachable exports, stale deps) are evidence for later stories, not
@@ -197,12 +198,12 @@ not an import of this fixture — confirmed by reading the call site.)
 | ----------------------- | ------------------------------------------------------------------- | ------------ |
 | `useUtteranceWebSocket` | 1 workspace: `packages/ui/umag/src/components/prompt-dox/index.tsx` | **de-hoist** |
 
-## 15. `some-ui-shared` non-component exports
+## 15. `@some-ui/shared` non-component exports
 
 | Symbol                        | Real consumers                                                                                                                                                                                                                                                                                             | Verdict                                                                                                                                                                                                                                               |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `useToast` (`hooks/index.ts`) | 2 workspaces: `apps/www`, `packages/ui/wireframes`                                                                                                                                                                                                                                                         | **borderline → flag for DEHOIST S5**                                                                                                                                                                                                                  |
-| `cn` (`lib/utils.ts`)         | **Not part of the public barrel.** `src/index.ts` only re-exports `./components` and `./hooks` — `lib/utils.ts` is never re-exported. All internal `some-ui-shared` usages go through the `@shared/lib/utils` path alias, not the package barrel. Zero external files import `cn` from `"some-ui-shared"`. | **no external consumers** — and confirmed to be an independent implementation from `some-ui-utils`'s `cn`, not a re-export or duplicate call path. This resolves the ambiguity in the epic's first-pass table: only `some-ui-utils`'s `cn` is public. |
+| `cn` (`lib/utils.ts`)         | **Not part of the public barrel.** `src/index.ts` only re-exports `./components` and `./hooks` — `lib/utils.ts` is never re-exported. All internal `@some-ui/shared` usages go through the `@shared/lib/utils` path alias, not the package barrel. Zero external files import `cn` from `"@some-ui/shared"`. | **no external consumers** — and confirmed to be an independent implementation from `some-ui-utils`'s `cn`, not a re-export or duplicate call path. This resolves the ambiguity in the epic's first-pass table: only `some-ui-utils`'s `cn` is public. |
 
 ## Declared-but-unused dependencies
 
@@ -210,11 +211,11 @@ Cross-checking `package.json` deps against actual imports found workspaces
 that declare a dependency but never import a named symbol — pure
 package.json noise, independent of any hoist/de-hoist decision:
 
-| Workspace                     | Declares `some-ui-utils` | Declares `some-ui-shared` | Actual imports                                                                |
+| Workspace                     | Declares `some-ui-utils` | Declares `@some-ui/shared` | Actual imports                                                                |
 | ----------------------------- | ------------------------ | ------------------------- | ----------------------------------------------------------------------------- |
 | `packages/ui/portfolio-chart` | yes                      | yes                       | none                                                                          |
 | `packages/mdx-generator`      | yes                      | no                        | none                                                                          |
-| `packages/ui/honeycomb`       | yes                      | yes                       | `some-ui-shared` only (real component consumer); zero `some-ui-utils` imports |
+| `packages/ui/honeycomb`       | yes                      | yes                       | `@some-ui/shared` only (real component consumer); zero `some-ui-utils` imports |
 
 No `extensions/*` workspace declares or imports either package — fully out
 of scope for this census.

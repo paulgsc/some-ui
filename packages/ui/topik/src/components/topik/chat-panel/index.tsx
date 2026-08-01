@@ -8,7 +8,7 @@ import {
   RotateCcw,
   Volume2,
 } from "lucide-react"
-import { Button, Card, ScrollArea, WithAvatar } from "some-ui-shared"
+import { Button, Card, ScrollArea, WithAvatar } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type ChatPanelProps = {

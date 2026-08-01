@@ -10,7 +10,7 @@ fi
 pnpm install
 
 # Build every workspace package's dist/ output so lint/typecheck can resolve
-# `some-ui-shared`, `some-ui-utils`, `some-ui-slideshow`, etc. via their
+# `@some-ui/shared`, `some-ui-utils`, `some-ui-slideshow`, etc. via their
 # package.json main/exports instead of hitting import/no-unresolved or
 # TS2307 on a cold checkout.
 #

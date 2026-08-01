@@ -6,7 +6,7 @@ import {
   Trophy,
   XCircle,
 } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
+import { Button, Card } from "@some-ui/shared"
 
 type QuizSummaryProps = {
   score: number

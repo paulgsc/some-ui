@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import { useState } from "react"
 import type { SceneConfig } from "@some-ui/types"
 import { useNavigate } from "@tanstack/react-router"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 

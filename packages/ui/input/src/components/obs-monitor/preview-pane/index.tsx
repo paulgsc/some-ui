@@ -16,7 +16,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type PreviewPaneProps = {
   currentTime: number

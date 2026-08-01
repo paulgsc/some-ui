@@ -22,9 +22,9 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@some-ui/styles": "workspace:*",
-    "some-ui-shared": "workspace:*",
     "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {

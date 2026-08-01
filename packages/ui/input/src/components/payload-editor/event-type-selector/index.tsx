@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type EventTypeSelectorProps = {
   value: EventType

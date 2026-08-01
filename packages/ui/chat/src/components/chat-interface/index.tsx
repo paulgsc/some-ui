@@ -3,7 +3,7 @@ import { useCallback, useRef } from "react"
 import { ChatHeader } from "@chat/components/chat-header"
 import { ChatMessages } from "@chat/components/chat-messages"
 import type { Message } from "@chat/types/chat"
-import type { AvatarGroupProps } from "some-ui-shared"
+import type { AvatarGroupProps } from "@some-ui/shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 type ChatInterfaceProps = {

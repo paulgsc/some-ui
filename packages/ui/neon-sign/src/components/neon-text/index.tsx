@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { StyledCharacters } from "@neon-sign/components/styled-characters"
-import { OverlayInput } from "some-ui-shared"
+import { OverlayInput } from "@some-ui/shared"
 import { cn, useLocalStorage } from "some-ui-utils"
 
 type NeonTextProps = {

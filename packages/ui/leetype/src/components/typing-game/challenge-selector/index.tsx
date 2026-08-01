@@ -20,7 +20,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn, useFittedPage } from "some-ui-utils"
 
 type ChallengeSelectorProps = {

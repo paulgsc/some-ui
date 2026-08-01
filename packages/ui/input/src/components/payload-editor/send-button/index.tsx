@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import type { EventType } from "@input/types/timeline-events"
 import { Send } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 type SendButtonProps = {
   eventType: EventType

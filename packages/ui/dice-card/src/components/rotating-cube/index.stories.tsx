@@ -1,5 +1,5 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
-import { Card } from "some-ui-shared"
+import { Card } from "@some-ui/shared"
 
 import { RotatingCube } from "."
 

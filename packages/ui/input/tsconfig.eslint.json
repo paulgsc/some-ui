@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@input/*": ["./src/*"],
-      "some-ui-shared": ["../shared/src/index.ts"],
+      "@some-ui/shared": ["../shared/src/index.ts"],
       "some-ui-utils": ["../../utils/src/index.ts"],
       "@some-ui/dice-card": ["../dice-card/src/index.ts"],
       "@some-ui/some-crossword": ["./src/types/wasm/some-crossword.d.ts"],

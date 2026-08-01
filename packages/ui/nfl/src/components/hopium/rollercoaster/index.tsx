@@ -4,7 +4,7 @@ import { useElementSize } from "@nfl/hooks/hopium/use-element-size"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { minMaxMood } from "@nfl/utils/hopium/mood"
 import { smoothPath } from "@nfl/utils/path"
-import { Card, CardContent } from "some-ui-shared"
+import { Card, CardContent } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type Props = {

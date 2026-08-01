@@ -10,9 +10,13 @@ pub struct Package {
 }
 
 impl Package {
+    /// Builds a package from its directory, using the directory name as the package name.
+    ///
+    /// Returns `None` when the path has no final component or that component is not valid UTF-8.
+    #[must_use]
     pub fn new(path: PathBuf) -> Option<Self> {
         let name = path.file_name()?.to_str()?.to_string();
-        Some(Package { name, path })
+        Some(Self { name, path })
     }
 }
 
@@ -20,6 +24,10 @@ impl Package {
 ///
 /// Filters out build/cache directories (e.g. `.turbo`, `dist`, `node_modules`) that are
 /// plain subdirectories but not real packages, so they never show up as template candidates.
+///
+/// # Errors
+///
+/// Returns an error if `workspaces` cannot be read, or if it contains no packages.
 pub fn find_packages(workspaces: &Path) -> IoResult<Vec<Package>> {
     let entries = fs::read_dir(workspaces).map_err(|e| Error::new(e.kind(), format!("Failed to read workspaces directory {}: {}", workspaces.display(), e)))?;
 
@@ -41,6 +49,11 @@ pub fn find_packages(workspaces: &Path) -> IoResult<Vec<Package>> {
 }
 
 /// Creates a new package directory structure
+///
+/// # Errors
+///
+/// Returns an error if the package already exists and `force` is not set, if
+/// `package_name` is not a valid npm package name, or if a directory cannot be created.
 pub fn create_package_structure(workspaces: &Path, package_name: &str, force: bool) -> IoResult<PathBuf> {
     let new_package_path = workspaces.join(package_name);
 
@@ -48,7 +61,7 @@ pub fn create_package_structure(workspaces: &Path, package_name: &str, force: bo
     if new_package_path.exists() && !force {
         return Err(Error::new(
             ErrorKind::AlreadyExists,
-            format!("Package '{}' already exists. Use --force to overwrite.", package_name),
+            format!("Package '{package_name}' already exists. Use --force to overwrite."),
         ));
     }
 

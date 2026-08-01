@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { BookOpen, PlayCircle } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
+import { Button, Card } from "@some-ui/shared"
 
 type QuizReadyProps = {
   onStartQuiz: () => void

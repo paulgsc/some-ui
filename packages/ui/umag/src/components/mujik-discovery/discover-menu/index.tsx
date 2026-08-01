@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type DiscoveryMode =

@@ -1,6 +1,6 @@
 import type { HTMLAttributes, LiHTMLAttributes } from "react"
 import { forwardRef } from "react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type SegmentProps = {

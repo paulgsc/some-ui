@@ -13,7 +13,7 @@ import {
   DialogTrigger,
   PageControls,
   Progress,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn, useFittedPage } from "some-ui-utils"
 
 type SectionNavigatorProps = {

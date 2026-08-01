@@ -24,7 +24,7 @@ import {
   Plus,
   RotateCcw,
 } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
+import { Button, Card } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 

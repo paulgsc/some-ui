@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 import { useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"

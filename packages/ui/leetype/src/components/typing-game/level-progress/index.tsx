@@ -5,7 +5,7 @@ import {
 } from "@leetype/lib/leetype/player-store"
 import type { PlayerProgress } from "@leetype/types/leetype"
 import { Lock, Unlock } from "lucide-react"
-import { Badge, Progress } from "some-ui-shared"
+import { Badge, Progress } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type LevelProgressProps = {

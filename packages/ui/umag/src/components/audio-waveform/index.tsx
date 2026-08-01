@@ -6,7 +6,7 @@ import {
   useVolumeControl,
   useWaveformVisualization,
 } from "@umag/hooks"
-import { Button, Slider } from "some-ui-shared"
+import { Button, Slider } from "@some-ui/shared"
 
 type WaveBarChartProps = {
   width: number

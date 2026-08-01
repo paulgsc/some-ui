@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 

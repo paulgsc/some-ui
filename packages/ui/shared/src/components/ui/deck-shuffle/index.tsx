@@ -1,9 +1,10 @@
 import "./index.css"
 
-import type { CSSProperties, FC, HTMLAttributes, ReactNode } from "react"
+import type { FC, HTMLAttributes, ReactNode } from "react"
 import { forwardRef } from "react"
 
 import { cn } from "../../../lib/utils"
+import type { CSSVarProperties } from "../../../types"
 
 export const Deck = forwardRef<
   HTMLUListElement,
@@ -48,30 +49,32 @@ export const DeckCard = forwardRef<
       ...props
     },
     ref
-  ) => (
-    <li
-      ref={ref}
-      style={
-        {
-          "--y-offset": yOffset,
-          "--animation-duration": `${duration}s`,
-          "--animation-iteration-count": iteration,
-          "--scale-offset": scaleOffset,
-          "--card-scale": scale,
-          "--card-index": -index,
-        } as CSSProperties
-      }
-      className={cn(
-        "col-start-1 col-end-1 row-start-1 row-end-1 flex aspect-[2.5/3.5] w-[23vmin]",
-        "rounded-2xl border border-black/25 bg-gray-100 shadow-lg",
-        "transform transition-transform will-change-transform",
-        "[transform:translateY(calc(var(--card-index)*0.5px))]",
-        "animate-deck-card",
-        className
-      )}
-      {...props}
-    />
-  )
+  ) => {
+    const cardStyle: CSSVarProperties = {
+      "--y-offset": yOffset,
+      "--animation-duration": `${duration}s`,
+      "--animation-iteration-count": iteration,
+      "--scale-offset": scaleOffset,
+      "--card-scale": scale,
+      "--card-index": -index,
+    }
+
+    return (
+      <li
+        ref={ref}
+        style={cardStyle}
+        className={cn(
+          "col-start-1 col-end-1 row-start-1 row-end-1 flex aspect-[2.5/3.5] w-[23vmin]",
+          "rounded-2xl border border-black/25 bg-gray-100 shadow-lg",
+          "transform transition-transform will-change-transform",
+          "[transform:translateY(calc(var(--card-index)*0.5px))]",
+          "animate-deck-card",
+          className
+        )}
+        {...props}
+      />
+    )
+  }
 )
 
 DeckCard.displayName = "DeckCard"
@@ -100,6 +103,9 @@ export const DeckShuffle: FC<DeckShuffleProps> = ({
 
         return (
           <DeckCard
+            // Position in the deck IS the card's identity here: `contents` is an
+            // opaque ReactNode list and the same index drives stacking order.
+            // eslint-disable-next-line react/no-array-index-key -- deck position is the identity
             key={i}
             index={i}
             className={cn(cardClassname, "")}

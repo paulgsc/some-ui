@@ -17,7 +17,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type NowPlayingProps = {

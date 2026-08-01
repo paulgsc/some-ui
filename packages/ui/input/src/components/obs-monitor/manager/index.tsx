@@ -6,7 +6,7 @@ import { ScriptEditor } from "@input/components/obs-monitor/script-editor"
 import { ScriptSidebar } from "@input/components/obs-monitor/script-sidebar"
 import { Timeline } from "@input/components/obs-monitor/timeline"
 import { Pause, Play, RotateCcw, Square } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 export const OBSScriptManager = (): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)

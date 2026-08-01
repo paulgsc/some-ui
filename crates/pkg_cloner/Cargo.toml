@@ -6,6 +6,10 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "Scaffolds a new JS/TS workspace package by cloning an existing package's config files."
+readme = "README.md"
+keywords = ["monorepo", "workspace", "scaffold", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }

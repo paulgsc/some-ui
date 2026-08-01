@@ -26,7 +26,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 // ═══════════════════════════════════════════════════════════════
 // Props

@@ -1,4 +1,4 @@
-import type { AvatarOptions } from "some-ui-shared"
+import type { AvatarOptions } from "@some-ui/shared"
 
 export type MessageType = "chat" | "thinking"
 

@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 type Region = {
   id: string

@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type ScriptEvent = {
   id: string

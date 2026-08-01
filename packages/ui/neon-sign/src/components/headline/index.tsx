@@ -1,6 +1,6 @@
 import type { ChangeEvent, FC } from "react"
 import { useEffect, useState } from "react"
-import { Input } from "some-ui-shared"
+import { Input } from "@some-ui/shared"
 import { cn, useLocalStorage } from "some-ui-utils"
 
 type HeadlineTheme = "peach-blossom" | "strawberry-moon" | "dark-gold"

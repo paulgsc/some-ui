@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import { useState } from "react"
 import type { Context } from "@input/types/timeline-events"
 import { Plus, X } from "lucide-react"
-import { Badge, Button, Input, Label, Separator } from "some-ui-shared"
+import { Badge, Button, Input, Label, Separator } from "@some-ui/shared"
 
 type ContextBuilderProps = {
   value: Context

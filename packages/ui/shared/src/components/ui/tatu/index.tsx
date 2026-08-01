@@ -21,9 +21,9 @@ export const Tatu = (): React.JSX.Element => {
   return (
     <div className="transform-3d perspective-distant relative h-64 w-96">
       <div className="transform-3d absolute inset-0 transition-all">
-        {cards.map(({ text, classNames }, index) => (
+        {cards.map(({ text, classNames }) => (
           <div
-            key={index}
+            key={text}
             className={cn(
               "absolute inset-0 flex size-full items-center justify-center",
               "rounded-xl text-2xl font-bold text-white shadow-2xl",

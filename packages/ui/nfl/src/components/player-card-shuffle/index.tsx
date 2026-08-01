@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { PlayerCardDialog } from "@nfl/components/player-card-dialog"
-import { Deck, DeckCard } from "some-ui-shared"
+import { Deck, DeckCard } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 export const NflPlayerCardShuffle: FC = () => {

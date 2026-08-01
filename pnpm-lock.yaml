@@ -303,6 +303,9 @@ importers:
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../../packages/ui/leetype
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../../packages/ui/shared
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
@@ -339,9 +342,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../../packages/ui/shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../packages/utils
@@ -1085,6 +1085,9 @@ importers:
       '@some-ui/eslint-kit':
         specifier: workspace:*
         version: link:../../eslint
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1094,9 +1097,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1116,6 +1116,9 @@ importers:
 
   packages/ui/dice-card:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1125,9 +1128,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1144,6 +1144,9 @@ importers:
 
   packages/ui/emoji-animations:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       framer-motion:
         specifier: 11.15.0
         version: 11.15.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1153,9 +1156,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1178,6 +1178,9 @@ importers:
       '@some-ui/hangul-game-core':
         specifier: 0.0.5
         version: 0.0.5
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/some-hexagon':
         specifier: 0.0.5
         version: 0.0.5
@@ -1193,9 +1196,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1221,6 +1221,9 @@ importers:
       '@some-ui/dice-card':
         specifier: workspace:*
         version: link:../dice-card
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/some-crossword':
         specifier: 0.0.4
         version: 0.0.4
@@ -1245,9 +1248,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1270,6 +1270,9 @@ importers:
 
   packages/ui/interview:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1282,9 +1285,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       zod:
         specifier: 4.0.5
         version: 4.0.5
@@ -1310,6 +1310,9 @@ importers:
       '@some-ui/leetype-wasm':
         specifier: ^0.0.9
         version: 0.0.9
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1331,9 +1334,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1362,6 +1362,9 @@ importers:
 
   packages/ui/makjang:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       lucide-react:
         specifier: ^0.474.0
         version: 0.474.0(react@19.0.0)
@@ -1374,9 +1377,6 @@ importers:
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1390,6 +1390,9 @@ importers:
 
   packages/ui/neon-sign:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1399,9 +1402,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1418,6 +1418,9 @@ importers:
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../fetch-kit
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       embla-carousel-autoplay:
         specifier: ^8.6.0
         version: 8.6.0(embla-carousel@8.0.0-rc15)
@@ -1433,9 +1436,6 @@ importers:
       some-bricks:
         specifier: link:../../../crates/some-bricks/dist
         version: link:../../../crates/some-bricks/dist
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1458,6 +1458,9 @@ importers:
 
   packages/ui/portfolio-chart:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@types/d3':
         specifier: ^7.4.3
         version: 7.4.3
@@ -1485,9 +1488,6 @@ importers:
       some-charts:
         specifier: link:../../../crates/some-charts/dist
         version: link:../../../crates/some-charts/dist
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1651,6 +1651,9 @@ importers:
       '@some-ui/fetch-kit':
         specifier: workspace:*
         version: link:../../fetch-kit
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1675,9 +1678,6 @@ importers:
       some-ui-neon-sign:
         specifier: workspace:*
         version: link:../neon-sign
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1700,6 +1700,9 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1727,9 +1730,6 @@ importers:
       some-ui-input:
         specifier: workspace:*
         version: link:../input
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1746,6 +1746,9 @@ importers:
 
   packages/ui/topik:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1761,9 +1764,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1786,6 +1786,9 @@ importers:
 
   packages/ui/umag:
     dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1807,9 +1810,6 @@ importers:
       react-resizable-panels:
         specifier: ^2.1.0
         version: 2.1.9(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils
@@ -1832,6 +1832,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../honeycomb
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../slideshow
@@ -1850,9 +1853,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      some-ui-shared:
-        specifier: workspace:*
-        version: link:../shared
       some-ui-utils:
         specifier: workspace:*
         version: link:../../utils

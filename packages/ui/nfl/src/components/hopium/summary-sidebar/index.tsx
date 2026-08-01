@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "some-ui-shared"
+import { Card, CardContent, CardHeader, CardTitle } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type WeekSummary = {

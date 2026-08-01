@@ -7,7 +7,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 // GitHub Pages serves this app under /<repo>/ (see vite.config.ts's
 // VITE_BASE_PATH); a bare "/resume.pdf" would request the domain root

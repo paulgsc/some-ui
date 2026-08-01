@@ -7,7 +7,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type EditorProps = {
   payloadJson: string

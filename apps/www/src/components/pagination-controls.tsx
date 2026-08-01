@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 type PaginationControlsProps = {
   currentPage: number

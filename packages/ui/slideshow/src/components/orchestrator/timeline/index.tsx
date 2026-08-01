@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import {
   cn,
   selectCurrentTime,

@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { Pause, Play, SkipForward, Square } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 import {
   useIsPaused,
   useIsRunning,

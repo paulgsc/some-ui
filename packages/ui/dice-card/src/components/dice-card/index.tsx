@@ -5,7 +5,7 @@ import type {
   Mode,
 } from "@dice-card/hooks/use-rotating-cube"
 import { useRotatingCube } from "@dice-card/hooks/use-rotating-cube"
-import { BorderBeam } from "some-ui-shared"
+import { BorderBeam } from "@some-ui/shared"
 import { cn, useMeasureRect } from "some-ui-utils"
 
 type RotatingCubeProps = {
