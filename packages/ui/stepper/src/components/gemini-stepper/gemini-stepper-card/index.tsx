@@ -1,6 +1,7 @@
 import "./index.css"
 
 import type { FC, JSX } from "react"
+import { Card, CardTitle } from "@some-ui/shared"
 import {
   Accordion,
   AccordionContent,
@@ -10,7 +11,6 @@ import {
 import type { StepKey } from "@stepper/hooks/use-accordion-stepper"
 import { useAccordionStepper } from "@stepper/hooks/use-accordion-stepper"
 import type { AccordionSteps } from "@stepper/types/accordion-stepper"
-import { Card, CardTitle } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type GeminiStepperProps = {
