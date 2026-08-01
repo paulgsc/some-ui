@@ -71,7 +71,8 @@ export type KoreanStudyPageVM = {
 }
 
 export function useKoreanStudyPageVM(): KoreanStudyPageVM {
-  const { topikRepository, metadataRepository, audioTTS } = useSessionConfig()
+  const { topikRepository, metadataRepository, speechAdapter } =
+    useSessionConfig()
 
   // componentId is an opaque, per-instance key threaded through to the
   // session/TTS pipeline (see use-session.ts, tts-effect-handler.ts) - it's
@@ -84,7 +85,7 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
   const session = useSession({
     repository: topikRepository,
     metadataRepository,
-    audioTTS,
+    speechAdapter,
     componentId,
     enableTTS: true,
   })

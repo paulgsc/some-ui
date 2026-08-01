@@ -1,5 +1,7 @@
 import type { FC } from "react"
 import { useEffect, useState } from "react"
+import { useSpeechQueue } from "@some-ui/speech"
+import type { TTSOptions, VoiceConfig } from "@some-ui/speech"
 import { MegaphoneSpectrum } from "@umag/components/megaphone-spectrum"
 import {
   ErrorBoundaryFallback,
@@ -7,8 +9,6 @@ import {
 } from "@umag/components/now-playing/now-playing-card"
 import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
 import { useUtteranceWebSocket } from "@umag/hooks/prompt-utterance"
-import { useSpeechQueue } from "some-ui-utils"
-import type { TTSOptions, VoiceConfig } from "some-ui-utils"
 
 type DoxPromptProps = {
   className?: string
@@ -32,11 +32,12 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     url: `ws://${window.location.hostname}:3000/ws`,
   })
 
-  const {
-    speak,
-    ttsHook: { voices, selectedVoice },
-  } = useSpeechQueue(COMPONENT_ID)
-  const [voice, setVoice] = useState<VoiceConfig | null>(selectedVoice)
+  // `voices`/`defaultVoice` come straight off the queue now. This used to
+  // read them through `ttsHook`, the whole `useAudioTTS` return that
+  // `useSpeechQueue` handed back - a consumer holding the TTS internals it
+  // has no business knowing about.
+  const { speak, voices, defaultVoice } = useSpeechQueue(COMPONENT_ID)
+  const [voice, setVoice] = useState<VoiceConfig | null>(defaultVoice)
 
   // Remove the useCallback entirely and put logic in useEffect
   useEffect(() => {
@@ -82,7 +83,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
   return (
     <VoiceSelectorTrigger
       voices={[...voices]}
-      selectedVoice={selectedVoice}
+      selectedVoice={defaultVoice}
       onVoiceSelect={(voice) => {
         setVoice(voice)
       }}

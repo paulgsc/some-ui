@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react"
+import type { JSX, ReactNode } from "react"
+import { SpeechProvider, useSpeechAdapter } from "@some-ui/speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import {
   createTopikMetadataRepository,
   createTopikRepository,
   SessionConfigProvider,
 } from "@topik/lib/topik"
-import { cn, useAudioTTS } from "some-ui-utils"
+import { cn } from "some-ui-utils"
 
 import { KoreanStudyPage } from "."
 
@@ -15,69 +16,49 @@ const storyMetadataRepository = createTopikMetadataRepository(
   "/topiks/manifest.json"
 )
 
-const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
-  const [isSpeechContextReady, setIsSpeechContextReady] = useState(false)
-  const audioTTS = useAudioTTS({
-    service: {
-      provider: "openai",
-      apiUrl: "http://nixos.local:5050/v1/audio/speech",
-      apiKey: "your_dummy_api_key_here",
-      format: "mp3",
-      timeout: 30_000,
-    },
-    voice: {
-      id: "ko-KR-SunHiNeural",
-      name: "Sun-Hi (Korean Female)",
-      provider: "openai",
-      language: "ko-KR",
-      gender: "female",
-    },
-    autoPlay: true,
-  })
-
-  useEffect(() => {
-    if (audioTTS.supported) {
-      try {
-        // Speech context initialized for Storybook
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("Speech context already initialized or error:", error)
-      } finally {
-        setIsSpeechContextReady(true)
-      }
-    }
-  }, [audioTTS.supported]) // Only depend on supported, not the entire hook
-
-  if (!isSpeechContextReady) {
-    const message = "Waiting for TTS Provider"
-
-    // You can return a loading spinner, a placeholder, or null
-
-    return (
+/**
+ * Storybook has no companion services, so the session is configured as
+ * `static` - which `@some-ui/speech` resolves to the browser's own voice.
+ * The story never names a backend, and it never built one out of a
+ * hardcoded host and API key the way this decorator used to.
+ */
+const WithSessionConfig = ({
+  children,
+}: {
+  children: ReactNode
+}): JSX.Element => (
+  <SpeechProvider
+    config={{ mode: "static", lang: "ko-KR" }}
+    fallback={
       <div className={cn("flex items-center justify-center gap-3 p-4")}>
         <div
           className={cn("bg-primary/20 size-12 animate-pulse rounded-full")}
         />
-
         <span className={cn("text-muted-foreground animate-pulse font-medium")}>
-          {message}
+          Waiting for TTS Provider
         </span>
       </div>
-    )
-  }
+    }
+  >
+    <WithSessionAdapter>{children}</WithSessionAdapter>
+  </SpeechProvider>
+)
 
-  return (
-    <SessionConfigProvider
-      value={{
-        topikRepository: storyTopikRepository,
-        metadataRepository: storyMetadataRepository,
-        audioTTS,
-      }}
-    >
-      {children}
-    </SessionConfigProvider>
-  )
-}
+const WithSessionAdapter = ({
+  children,
+}: {
+  children: ReactNode
+}): JSX.Element => (
+  <SessionConfigProvider
+    value={{
+      topikRepository: storyTopikRepository,
+      metadataRepository: storyMetadataRepository,
+      speechAdapter: useSpeechAdapter(),
+    }}
+  >
+    {children}
+  </SessionConfigProvider>
+)
 
 type Story = StoryObj<typeof KoreanStudyPage>
 type Meta = MetaObj<typeof KoreanStudyPage>

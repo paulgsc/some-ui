@@ -43,7 +43,8 @@
       "@suspender/*": ["./extensions/suspender-ledger/src/*"],
       "@some-ui/content/*": ["./packages/some-content/src/*"],
       "@wasm-loader/*": ["./packages/wasm-loader/src/*"],
-      "@ws/*": ["./packages/ws/src/*"]
+      "@ws/*": ["./packages/ws/src/*"],
+      "@speech/*": ["./packages/speech/src/*"]
     }
   },
   "include": [

@@ -1,5 +1,5 @@
+import type { TTSProvider } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
-import type { TTSProvider } from "some-ui-utils"
 import type { LayoutNode } from "wireframes"
 
 import type { LayoutTreeId, SessionActivity } from "../activity-catalog"

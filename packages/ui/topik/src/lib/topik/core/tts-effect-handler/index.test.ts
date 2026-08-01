@@ -1,6 +1,6 @@
+import type { SpeakOptions, SpeechAdapter } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
-import type { TTSOptions, UseAudioTTSReturn } from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import { createTTSEffectHandler } from "."
@@ -22,30 +22,35 @@ function makeMessage(id: string, content = `content-${id}`): Message {
 
 type CapturedCall = {
   content: string
-  options: TTSOptions
+  options: SpeakOptions
   resolveSpeak: () => void
   rejectSpeak: (error: Error) => void
 }
 
 /**
- * Fake audioTTS. `updateOptions` is always called immediately before `speak`
- * for the same message (see tts-effect-handler.ts `_speak`), so capturing the
- * pending options at the moment `speak` executes correctly associates each
- * call's onStart/onEnd/onError with its own message.
+ * A `SpeechAdapter` whose utterances finish only when a test says so.
+ *
+ * Each call's callbacks arrive with the call, so nothing has to assume an
+ * ordering to associate an onStart/onEnd with the message that asked for
+ * it. The fake this replaces had to capture options installed by a
+ * preceding `updateOptions` and trust that the pairing held.
  */
-function createFakeAudioTTS(): {
-  audioTTS: UseAudioTTSReturn
+function createFakeSpeechAdapter(): {
+  speechAdapter: SpeechAdapter
   calls: Array<CapturedCall>
 } {
   const calls: Array<CapturedCall> = []
-  let pendingOptions: TTSOptions = {}
 
-  const audioTTS: UseAudioTTSReturn = {
-    speak: vi.fn((content: string) => {
+  const speechAdapter: SpeechAdapter = {
+    id: "web-speech",
+    supported: true,
+    voices: [],
+    pending: 0,
+    speak: vi.fn((content: string, options: SpeakOptions = {}) => {
       return new Promise<void>((resolve, reject) => {
         calls.push({
           content,
-          options: pendingOptions,
+          options,
           resolveSpeak: resolve,
           rejectSpeak: reject,
         })
@@ -56,21 +61,10 @@ function createFakeAudioTTS(): {
     resume: vi.fn(),
     setVolume: vi.fn(),
     setPlaybackRate: vi.fn(),
-    updateOptions: vi.fn((opts: TTSOptions) => {
-      pendingOptions = opts
-    }),
-    speaking: false,
-    paused: false,
-    loading: false,
-    supported: true,
-    currentTime: 0,
-    duration: 0,
-    voices: [],
-    selectedVoice: null,
-    setSelectedVoice: vi.fn(),
+    dispose: vi.fn(),
   }
 
-  return { audioTTS, calls }
+  return { speechAdapter, calls }
 }
 
 const flushAsync = (): Promise<void> =>
@@ -104,9 +98,9 @@ function errorSpeaking(call: CapturedCall, error: Error): void {
 
 describe("TTSEffectHandler - serial queue", () => {
   it("speaks messages one at a time, in FIFO order", async () => {
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
     })
@@ -115,13 +109,13 @@ describe("TTSEffectHandler - serial queue", () => {
     handler.enqueue(makeMessage("m2"), true)
 
     // Second message must not start until the first completes.
-    expect(audioTTS.speak).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
     expect(calls[0]!.content).toBe("content-m1")
 
     finishSpeaking(calls[0]!)
     await flushAsync()
 
-    expect(audioTTS.speak).toHaveBeenCalledTimes(2)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
     expect(calls[1]!.content).toBe("content-m2")
 
     finishSpeaking(calls[1]!)
@@ -136,9 +130,9 @@ describe("TTSEffectHandler - serial queue", () => {
 
 describe("TTSEffectHandler - auto-play dedup", () => {
   it("does not re-speak an auto message that has already completed", async () => {
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
     })
@@ -147,20 +141,20 @@ describe("TTSEffectHandler - auto-play dedup", () => {
     handler.enqueue(msg, true)
     finishSpeaking(calls[0]!)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
 
     // A later effect re-dispatch (e.g. StrictMode double effect) re-enqueues
     // the same already-spoken message.
     handler.enqueue(msg, true)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
   })
 
   it("fires onMessageComplete exactly once for a completed auto message", async () => {
     const onMessageComplete = vi.fn()
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onMessageComplete,
@@ -183,9 +177,9 @@ describe("TTSEffectHandler - double-fire guard", () => {
   it("ignores a duplicate onEnd call for the same message", async () => {
     const onSpeechEnd = vi.fn()
     const onMessageComplete = vi.fn()
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onSpeechEnd,
@@ -205,9 +199,9 @@ describe("TTSEffectHandler - double-fire guard", () => {
   it("ignores onError after onEnd already completed the message", async () => {
     const onSpeechEnd = vi.fn()
     const onError = vi.fn()
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onSpeechEnd,
@@ -226,9 +220,9 @@ describe("TTSEffectHandler - double-fire guard", () => {
 
   it("treats onError as terminal too - a following onEnd is ignored", async () => {
     const onSpeechEnd = vi.fn()
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onSpeechEnd,
@@ -251,9 +245,9 @@ describe("TTSEffectHandler - double-fire guard", () => {
 describe("TTSEffectHandler - speakManually", () => {
   it("stops current playback and clears any queued auto messages", async () => {
     const onMessageComplete = vi.fn()
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onMessageComplete,
@@ -265,9 +259,9 @@ describe("TTSEffectHandler - speakManually", () => {
     const manualPromise = handler.speakManually(makeMessage("manual"))
     await flushAsync()
 
-    expect(audioTTS.stop).toHaveBeenCalled()
+    expect(speechAdapter.stop).toHaveBeenCalled()
     // Manual speak fires immediately - it does not wait for the queue.
-    expect(audioTTS.speak).toHaveBeenCalledTimes(2)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
     expect(calls[1]!.content).toBe("content-manual")
 
     finishSpeaking(calls[1]!)
@@ -280,13 +274,13 @@ describe("TTSEffectHandler - speakManually", () => {
     // call is resolved.
     finishSpeaking(calls[0]!)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(2)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
   })
 
   it("clears dedup state for the message being spoken manually", async () => {
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
     })
@@ -295,12 +289,12 @@ describe("TTSEffectHandler - speakManually", () => {
     handler.enqueue(msg, true)
     finishSpeaking(calls[0]!)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
 
     // Replay the already-spoken message manually (e.g. a "replay" button).
     const manualPromise = handler.speakManually(msg)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(2)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
 
     finishSpeaking(calls[1]!)
     await manualPromise
@@ -309,7 +303,7 @@ describe("TTSEffectHandler - speakManually", () => {
     // for the same message plays again instead of being silently dropped.
     handler.enqueue(msg, true)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(3)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -320,9 +314,9 @@ describe("TTSEffectHandler - speakManually", () => {
 describe("TTSEffectHandler - handleStopAudio", () => {
   it("stops mid-message playback, clears state, and drops the rest of the queue", async () => {
     const onSpeechEnd = vi.fn()
-    const { audioTTS } = createFakeAudioTTS()
+    const { speechAdapter } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onSpeechEnd,
@@ -336,31 +330,31 @@ describe("TTSEffectHandler - handleStopAudio", () => {
 
     handler.handleStopAudio()
 
-    expect(audioTTS.stop).toHaveBeenCalled()
+    expect(speechAdapter.stop).toHaveBeenCalled()
     expect(handler.isSpeaking()).toBe(false)
     expect(handler.getCurrentMessageId()).toBeNull()
     expect(onSpeechEnd).toHaveBeenCalledWith("m1")
 
     // m2 was queued but never gets a turn - the queue was cleared.
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
   })
 
   it("is a no-op when nothing is currently speaking", () => {
     const onSpeechEnd = vi.fn()
-    const { audioTTS } = createFakeAudioTTS()
+    const { speechAdapter } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
       onSpeechEnd,
     })
     // The constructor itself calls stop() once (handles the remount case) -
     // clear that so this test only observes handleStopAudio's own behavior.
-    vi.mocked(audioTTS.stop).mockClear()
+    vi.mocked(speechAdapter.stop).mockClear()
 
     handler.handleStopAudio()
-    expect(audioTTS.stop).not.toHaveBeenCalled()
+    expect(speechAdapter.stop).not.toHaveBeenCalled()
     expect(onSpeechEnd).not.toHaveBeenCalled()
   })
 })
@@ -371,19 +365,19 @@ describe("TTSEffectHandler - handleStopAudio", () => {
 
 describe("TTSEffectHandler - lifecycle", () => {
   it("stops any existing audio on construction (handles the remount case)", () => {
-    const { audioTTS } = createFakeAudioTTS()
+    const { speechAdapter } = createFakeSpeechAdapter()
     createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
     })
-    expect(audioTTS.stop).toHaveBeenCalledTimes(1)
+    expect(speechAdapter.stop).toHaveBeenCalledTimes(1)
   })
 
   it("destroy stops playback and clears dedup sets", async () => {
-    const { audioTTS, calls } = createFakeAudioTTS()
+    const { speechAdapter, calls } = createFakeSpeechAdapter()
     const handler = createTTSEffectHandler({
-      audioTTS,
+      speechAdapter,
       componentId: "c1",
       machine: fakeMachine,
     })
@@ -399,6 +393,6 @@ describe("TTSEffectHandler - lifecycle", () => {
     // fresh handler lifecycle would speak again.
     handler.enqueue(msg, true)
     await flushAsync()
-    expect(audioTTS.speak).toHaveBeenCalledTimes(2)
+    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,14 +1,14 @@
 import { createContext, useContext } from "react"
+import type { SpeechAdapter } from "@some-ui/speech"
 import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
-import type { UseAudioTTSReturn } from "some-ui-utils"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
-  audioTTS: UseAudioTTSReturn
+  speechAdapter: SpeechAdapter
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

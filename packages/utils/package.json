@@ -25,11 +25,12 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
+    "@some-ui/polyhedron": "0.0.4",
+    "@some-ui/speech": "workspace:*",
+    "@some-ui/types": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
-    "@some-ui/polyhedron": "0.0.4",
-    "@some-ui/types": "workspace:*",
     "tailwind-merge": "^2.4.0",
     "usehooks-ts": "3.1.0",
     "zustand": "^5.0.9"

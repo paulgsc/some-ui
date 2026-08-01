@@ -1,7 +1,7 @@
 import type { FC } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useSpeechQueue } from "some-ui-utils"
-import type { TTSOptions } from "some-ui-utils"
+import { useSpeechQueue } from "@some-ui/speech"
+import type { TTSOptions } from "@some-ui/speech"
 
 type Topic = {
   id: string | number

@@ -1,7 +1,5 @@
 import type { JSX, ReactNode } from "react"
 import { useState } from "react"
-import { assertNever } from "@umag/utils/error"
-import { Check, Globe, Mic, User } from "lucide-react"
 import {
   Badge,
   Button,
@@ -15,7 +13,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@some-ui/shared"
-import type { TTSProvider, VoiceConfig } from "some-ui-utils"
+import type { TTSProvider, VoiceConfig } from "@some-ui/speech"
+import { assertNever } from "@umag/utils/error"
+import { Check, Globe, Mic, User } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type VoiceSelectorTriggerProps = {

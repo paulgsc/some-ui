@@ -5,6 +5,7 @@
  * Bridges FSM (pure state transitions) with impure runtime (I/O, timers, queries).
  */
 
+import type { SpeechAdapter } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import { actions, getCurrentMessage } from "@topik/lib/topik"
 import type {
@@ -15,7 +16,6 @@ import type {
 } from "@topik/lib/topik/core/session-types"
 import type { TTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
 import { createTTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
-import type { UseAudioTTSReturn } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EXECUTOR CONFIGURATION
@@ -27,7 +27,7 @@ export type EffectExecutorConfig = {
   queryBridge: IQueryBridge
 
   // TTS configuration
-  audioTTS?: UseAudioTTSReturn
+  speechAdapter?: SpeechAdapter
   componentId?: string
   enableTTS?: boolean
 
@@ -57,10 +57,14 @@ export class EffectExecutor {
   private destroyed = false
 
   constructor(private readonly config: EffectExecutorConfig) {
-    // Initialize TTS handler if enabled and audioTTS provided
-    if (config.enableTTS !== false && config.audioTTS && config.componentId) {
+    // Initialize TTS handler if enabled and speechAdapter provided
+    if (
+      config.enableTTS !== false &&
+      config.speechAdapter &&
+      config.componentId
+    ) {
       this.ttsHandler = createTTSEffectHandler({
-        audioTTS: config.audioTTS,
+        speechAdapter: config.speechAdapter,
         componentId: config.componentId,
         machine: config.machine,
 

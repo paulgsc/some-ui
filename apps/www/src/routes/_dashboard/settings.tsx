@@ -2,12 +2,6 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { useTheme } from "@/providers/theme"
 import {
-  APP_THEMES,
-  isThemePreference,
-  SYSTEM_PREFERENCE,
-} from "@some-ui/styles/theme"
-import { createFileRoute } from "@tanstack/react-router"
-import {
   Button,
   Card,
   CardContent,
@@ -23,8 +17,14 @@ import {
   SelectValue,
   Skeleton,
 } from "@some-ui/shared"
-import { BUILTIN_VOICES } from "some-ui-utils"
-import type { TTSProvider } from "some-ui-utils"
+import { BUILTIN_VOICES } from "@some-ui/speech"
+import type { TTSProvider } from "@some-ui/speech"
+import {
+  APP_THEMES,
+  isThemePreference,
+  SYSTEM_PREFERENCE,
+} from "@some-ui/styles/theme"
+import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
 import type { LayoutTreeId } from "@/lib/activity-catalog"

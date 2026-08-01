@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@some-ui/shared": "workspace:*",
+    "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "lucide-react": "^0.562.0",
     "zod": "4.0.5"

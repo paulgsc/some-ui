@@ -1,7 +1,14 @@
 /**
  * TTS Effect Handler - Serial Queue with Deduplication
  *
- * Uses the upstream audio TTS API directly for speech synthesis.
+ * Speaks through a `SpeechAdapter` from `@some-ui/speech` - whichever
+ * backend that session resolved to. This used to be typed against
+ * `UseAudioTTSReturn`, the return value of a React hook, which meant this
+ * pure-TypeScript handler's contract was "whatever shape that hook happens
+ * to have today"; callbacks also had to be installed statefully via
+ * `updateOptions` immediately before each `speak`, so the association
+ * between a message and its own onStart/onEnd was positional and fragile.
+ * Callbacks are per-utterance arguments now.
  *
  * Ensures:
  * - Messages speak one at a time (serial queue)
@@ -11,16 +18,16 @@
  * - Survives React Strict Mode (double effect calls)
  */
 
+import type { SpeechAdapter } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
-import type { UseAudioTTSReturn } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type TTSEffectHandlerConfig = {
-  audioTTS: UseAudioTTSReturn
+  speechAdapter: SpeechAdapter
   componentId: string
   machine: ISessionMachine
   onMessageComplete?: (messageId: string) => void
@@ -51,7 +58,7 @@ export class TTSEffectHandler {
 
   constructor(private readonly config: TTSEffectHandlerConfig) {
     // Force stop any existing audio on construction (handles remount case)
-    this.config.audioTTS.stop()
+    this.config.speechAdapter.stop()
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -87,7 +94,7 @@ export class TTSEffectHandler {
 
     // Clear queue and stop current speech
     this.queue = []
-    this.config.audioTTS.stop()
+    this.config.speechAdapter.stop()
 
     // Reject any pending promise
     if (this.activeReject) {
@@ -105,7 +112,7 @@ export class TTSEffectHandler {
    */
   handleStopAudio(): void {
     if (this.currentMessageId) {
-      this.config.audioTTS.stop()
+      this.config.speechAdapter.stop()
       this.speaking = false
 
       const stoppedId = this.currentMessageId
@@ -142,7 +149,7 @@ export class TTSEffectHandler {
 
   destroy(): void {
     this.handleStopAudio()
-    this.config.audioTTS.stop()
+    this.config.speechAdapter.stop()
     this.spokenAutoIds.clear()
     this.completedIds.clear()
   }
@@ -207,41 +214,42 @@ export class TTSEffectHandler {
       }
     }
 
-    // Update options with callbacks BEFORE calling speak
-    this.config.audioTTS.updateOptions({
-      onStart: () => {
-        this.config.onSpeechStart?.(message.id)
-      },
-
-      onEnd: () => {
-        // Guard against duplicate onEnd calls
-        if (completionFired) {
-          return
-        }
-
-        this.config.onSpeechEnd?.(message.id)
-        cleanupAndComplete()
-      },
-
-      onError: (error) => {
-        // Guard against duplicate onError calls
-        if (completionFired) {
-          return
-        }
-
-        // eslint-disable-next-line no-console
-        console.error(`[TTS] ❌ Error: ${message.id}`, error)
-        this.config.onError?.(error, message.id)
-        this.config.onSpeechEnd?.(message.id)
-        cleanupAndComplete()
-      },
-    })
-
     try {
-      // Await the speak promise - this will block until audio completes
-      await this.config.audioTTS.speak(message.content)
+      // Await the speak promise - this blocks until the audio completes.
+      // The callbacks belong to *this* utterance, so a later one cannot
+      // finish an earlier one's bookkeeping.
+      await this.config.speechAdapter.speak(message.content, {
+        onStart: () => {
+          this.config.onSpeechStart?.(message.id)
+        },
+
+        onEnd: () => {
+          // Guard against duplicate onEnd calls
+          if (completionFired) {
+            return
+          }
+
+          this.config.onSpeechEnd?.(message.id)
+          cleanupAndComplete()
+        },
+
+        onError: (error) => {
+          // Guard against duplicate onError calls
+          if (completionFired) {
+            return
+          }
+
+          // eslint-disable-next-line no-console
+          console.error(`[TTS] ❌ Error: ${message.id}`, error)
+          this.config.onError?.(error, message.id)
+          this.config.onSpeechEnd?.(message.id)
+          cleanupAndComplete()
+        },
+      })
     } catch {
-      // Error already handled by onError callback
+      // Already reported through onError - or a cancellation, which is not
+      // an error at all. Either way the queue moves on.
+      cleanupAndComplete()
     }
   }
 }

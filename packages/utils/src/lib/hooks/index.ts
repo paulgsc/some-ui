@@ -7,22 +7,12 @@ export { useIsMobile } from "./use-mobile"
 export { useLocalStorage } from "./use-local-storage"
 export * from "./use-fetch"
 export * from "./use-interval"
-export { useAudioTTS } from "./use-audio-tts"
-
-export { useTTSFetch } from "./use-tts-fetch"
-export { useAudioSpeech } from "./use-audio-speech"
-export { useAudioFromStorage } from "./use-audio-storage"
 export {
   useObsStatusWebSocket,
   useOrchestrator,
   useMockOrchestrator,
 } from "./socket-tenants"
 export type { UseMockOrchestratorConfig } from "./socket-tenants"
-export {
-  useSpeechQueueActions,
-  useSpeechQueue,
-  useSpeechQueueMetrics,
-} from "./use-speech-queue"
 export { useContainerRect } from "./use-container-rect"
 export { useFittedPage } from "./use-fitted-page"
 export type { FittedPage } from "./use-fitted-page"

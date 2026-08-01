@@ -309,6 +309,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../packages/speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -1018,6 +1021,43 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
 
+  packages/speech:
+    dependencies:
+      '@some-ui/fetch-kit':
+        specifier: workspace:*
+        version: link:../fetch-kit
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+      '@tanstack/react-query':
+        specifier: ^5.66.11
+        version: 5.101.1(react@19.0.0)
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.4
+        version: 6.0.4(vite@8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
+      jsdom:
+        specifier: 26.0.0
+        version: 26.0.0
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      zod:
+        specifier: ^4.0.5
+        version: 4.0.5
+
   packages/tsconfig: {}
 
   packages/types:
@@ -1088,6 +1128,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1184,6 +1227,9 @@ importers:
       '@some-ui/some-hexagon':
         specifier: 0.0.5
         version: 0.0.5
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1273,6 +1319,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1703,6 +1752,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1749,6 +1801,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1789,6 +1844,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
@@ -1887,6 +1945,9 @@ importers:
       '@some-ui/polyhedron':
         specifier: 0.0.4
         version: 0.0.4
+      '@some-ui/speech':
+        specifier: workspace:*
+        version: link:../speech
       '@some-ui/types':
         specifier: workspace:*
         version: link:../types

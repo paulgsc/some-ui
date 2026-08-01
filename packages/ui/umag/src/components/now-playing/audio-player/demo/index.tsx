@@ -1,8 +1,11 @@
 import type { JSX } from "react"
 import { useCallback, useState } from "react"
+import type {
+  UseAudioStorageOptions,
+  UseAudioTTSOptions,
+} from "@some-ui/speech"
+import { useAudioFromStorage } from "@some-ui/speech"
 import { isError } from "@umag/utils/error"
-import type { UseAudioStorageOptions, UseAudioTTSOptions } from "some-ui-utils"
-import { useAudioFromStorage } from "some-ui-utils"
 
 type StorageOptions = {
   ttsOptions: UseAudioTTSOptions
