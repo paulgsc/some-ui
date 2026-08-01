@@ -25,7 +25,7 @@
 
 export type AudioChannelId = "speech" | "effects"
 
-export type AudioChannelPreference = {
+type AudioChannelPreference = {
   enabled: boolean
   /** 0-1. Honoured per channel; each owner clamps into its own range. */
   volume: number

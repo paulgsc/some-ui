@@ -297,9 +297,6 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
-      '@some-ui/interview':
-        specifier: workspace:*
-        version: link:../../packages/ui/interview
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../../packages/ui/leetype

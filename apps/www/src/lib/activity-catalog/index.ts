@@ -5,7 +5,6 @@ export {
   getActivityByRegistryKey,
 } from "./catalog"
 export type {
-  ActivityAudio,
   ActivityConfigValues,
   ActivityDefinition,
   ActivityIconKey,

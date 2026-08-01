@@ -66,7 +66,7 @@ export type ActivityMaturity = "ready" | "preview" | "early"
  * `blurb` is written to sit on an activity card next to a speaker glyph:
  * short, concrete, and about the experience rather than the mechanism.
  */
-export type ActivityAudio = {
+type ActivityAudio = {
   channels: ReadonlyArray<AudioChannelId>
   blurb: string
   /**
