@@ -5,8 +5,8 @@ import { PreviewPane } from "@input/components/obs-monitor/preview-pane"
 import { ScriptEditor } from "@input/components/obs-monitor/script-editor"
 import { ScriptSidebar } from "@input/components/obs-monitor/script-sidebar"
 import { Timeline } from "@input/components/obs-monitor/timeline"
-import { Pause, Play, RotateCcw, Square } from "lucide-react"
 import { Button } from "@some-ui/shared"
+import { Pause, Play, RotateCcw, Square } from "lucide-react"
 
 export const OBSScriptManager = (): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false)

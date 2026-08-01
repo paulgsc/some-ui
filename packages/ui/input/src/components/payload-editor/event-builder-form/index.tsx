@@ -5,7 +5,6 @@ import { TimestampControl } from "@input/components/payload-editor/timestamp-con
 import { UIDSelector } from "@input/components/payload-editor/uid-selector"
 import type { Context, EventType } from "@input/types/timeline-events"
 import { getEventRequirements } from "@input/utils/event-helpers"
-import { Hash } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -13,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@some-ui/shared"
+import { Hash } from "lucide-react"
 
 type EventBuilderFormProps = {
   eventType: EventType

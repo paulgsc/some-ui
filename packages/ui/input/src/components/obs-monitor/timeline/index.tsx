@@ -1,8 +1,8 @@
 import type { JSX } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { assertNever } from "@input/utils"
-import { Monitor, Play, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react"
 import { Badge, Button } from "@some-ui/shared"
+import { Monitor, Play, Volume2, VolumeX, ZoomIn, ZoomOut } from "lucide-react"
 
 type TimelineProps = {
   currentTime: number

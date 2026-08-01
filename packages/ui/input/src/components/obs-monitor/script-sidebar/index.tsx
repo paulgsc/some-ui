@@ -1,16 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import {
-  Clock,
-  FileText,
-  Folder,
-  Layers,
-  MoreVertical,
-  Play,
-  Plus,
-  Search,
-} from "lucide-react"
-import {
   Badge,
   Button,
   DropdownMenu,
@@ -20,6 +10,16 @@ import {
   Input,
   ScrollArea,
 } from "@some-ui/shared"
+import {
+  Clock,
+  FileText,
+  Folder,
+  Layers,
+  MoreVertical,
+  Play,
+  Plus,
+  Search,
+} from "lucide-react"
 
 type ScriptSidebarProps = {
   selectedScript: string | null

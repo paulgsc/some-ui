@@ -1,16 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import {
-  Clock,
-  GripVertical,
-  Monitor,
-  Play,
-  Plus,
-  Trash2,
-  Volume2,
-  VolumeX,
-} from "lucide-react"
-import {
   Badge,
   Button,
   Input,
@@ -27,6 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from "@some-ui/shared"
+import {
+  Clock,
+  GripVertical,
+  Monitor,
+  Play,
+  Plus,
+  Trash2,
+  Volume2,
+  VolumeX,
+} from "lucide-react"
 
 type ScriptEvent = {
   id: string

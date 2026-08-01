@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { Badge, Button } from "@some-ui/shared"
 import {
   Download,
   FileText,
@@ -7,7 +8,6 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react"
-import { Badge, Button } from "@some-ui/shared"
 import { cn, useObsStatusWebSocket } from "some-ui-utils"
 
 const buttonStyles = {
