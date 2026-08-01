@@ -14,6 +14,7 @@ import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferenc
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { useLeetypeChallenges } from "@/lib/leetype-challenges"
 import type { SessionRecord } from "@/lib/tenant"
+import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
@@ -80,6 +81,13 @@ export const SessionViewport = ({
           suspended,
           words: hangulWords,
           audio: audioPreferences.effects,
+        },
+        topik: {
+          // Plain functions, not repositories: importing topik's factories
+          // here would pull the applet into this app's main bundle and undo
+          // the registry's lazy import. See src/lib/topik-content.
+          loadManifest: loadTopikManifest,
+          loadTopik: loadTopikFile,
         },
         leetype: {
           challenges,

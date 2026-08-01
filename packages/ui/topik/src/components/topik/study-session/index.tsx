@@ -49,12 +49,26 @@ import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-
 export const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
 
 export type KoreanStudyPageProps = {
-  /** Overrides the default HTTP-backed repository. */
+  /** Overrides the default HTTP-backed repository outright. */
   topikRepository?: ITopikRepository
-  /** Overrides the default manifest repository. */
+  /** Overrides the default manifest repository outright. */
   metadataRepository?: ITopikMetadataRepository
   /** Ignored when `metadataRepository` is given. */
   manifestUrl?: string
+  /**
+   * Where the catalogue comes from, as a plain function.
+   *
+   * This is the seam a *registry* host can actually use. Passing a
+   * repository means importing this package's factories, which would pull
+   * the whole applet into the host's main bundle and undo the lazy import
+   * the content registry exists for. A loader is an ordinary function the
+   * host already has - `apps/www` passes one that fetches from `public/`
+   * where a build serves it and resolves to an empty catalogue on GitHub
+   * Pages, which ships no companion data.
+   */
+  loadManifest?: () => Promise<unknown>
+  /** Same seam for a single topik's batches, keyed by its manifest key. */
+  loadTopik?: (key: string) => Promise<unknown>
 }
 
 /**
@@ -100,6 +114,8 @@ export const KoreanStudyPage = ({
   topikRepository,
   metadataRepository,
   manifestUrl = DEFAULT_TOPIK_MANIFEST_URL,
+  loadManifest,
+  loadTopik,
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
    * The one thing that is legitimately ambient. There is one pair of
@@ -113,12 +129,26 @@ export const KoreanStudyPage = ({
 
   const value = useMemo(
     () => ({
-      topikRepository: topikRepository ?? createTopikRepository(),
+      // Precedence, most specific first: a repository the host built, a
+      // loader the host supplied, then this package's own HTTP default.
+      topikRepository:
+        topikRepository ??
+        (loadTopik
+          ? createTopikRepository(loadTopik)
+          : createTopikRepository()),
       metadataRepository:
-        metadataRepository ?? createTopikMetadataRepository(manifestUrl),
+        metadataRepository ??
+        createTopikMetadataRepository(loadManifest ?? manifestUrl),
       speechAdapter,
     }),
-    [topikRepository, metadataRepository, manifestUrl, speechAdapter]
+    [
+      topikRepository,
+      metadataRepository,
+      manifestUrl,
+      loadManifest,
+      loadTopik,
+      speechAdapter,
+    ]
   )
 
   return (

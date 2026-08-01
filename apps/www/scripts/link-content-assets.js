@@ -1,5 +1,6 @@
 // honeycomb's sfx, leetype's demo code samples, and (optionally) an
-// LLM-generated hangul vocab file or leetype challenge corpus all live in
+// LLM-generated hangul vocab file, leetype challenge corpus, or curated topik
+// study material all live in
 // packages/some-content (see apps/www/.gitignore) and aren't checked into
 // this app's public/ dir. CI's Pages build (pages.yml) copies sfx/
 // code-samples into public/ at build time - hangul/leetype are deliberately
@@ -20,7 +21,7 @@
 // No-op for any subdir that doesn't exist locally: these assets are
 // curated/gitignored, not part of a fresh checkout, so a machine without
 // them just runs without honeycomb sound / leetype samples / custom hangul
-// vocab / custom leetype challenges rather than failing.
+// vocab / custom leetype challenges / topik material rather than failing.
 import {
   existsSync,
   lstatSync,
@@ -38,7 +39,7 @@ const contentPublicDir = resolve(
   "../../../packages/some-content/public"
 )
 
-for (const name of ["sfx", "code-samples", "hangul", "leetype"]) {
+for (const name of ["sfx", "code-samples", "hangul", "leetype", "topiks"]) {
   const src = resolve(contentPublicDir, name)
   const dest = resolve(appPublicDir, name)
 
