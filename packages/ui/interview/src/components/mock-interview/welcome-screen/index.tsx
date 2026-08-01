@@ -1,5 +1,5 @@
-import { RotateCcw } from "lucide-react"
 import { Button, Card } from "@some-ui/shared"
+import { RotateCcw } from "lucide-react"
 
 type WelcomeScreenProps = {
   onStart: () => void

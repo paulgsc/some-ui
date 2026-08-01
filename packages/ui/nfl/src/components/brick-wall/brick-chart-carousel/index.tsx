@@ -3,8 +3,8 @@ import { useCallback, useMemo } from "react"
 import { BrickWallChart } from "@nfl/components/brick-wall/brick-ladder-chart"
 // Import the inferred type from your API/Schema file
 import type { SheetDataItem } from "@nfl/hooks/use-nfl-tennis"
-import Autoplay from "embla-carousel-autoplay"
 import { Carousel, CarouselContent, CarouselItem } from "@some-ui/shared"
+import Autoplay from "embla-carousel-autoplay"
 
 export type BrickChartCarouselProps = {
   // Use the exact shape parsed by Zod

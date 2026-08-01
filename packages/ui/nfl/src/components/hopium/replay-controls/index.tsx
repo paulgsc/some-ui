@@ -1,6 +1,6 @@
 import type { JSX } from "react"
-import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react"
 import { Button, Slider } from "@some-ui/shared"
+import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react"
 
 type Props = {
   playing: boolean

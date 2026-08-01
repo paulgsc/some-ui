@@ -12,6 +12,7 @@ import type {
   SortType,
 } from "@nfl/types/hopium/hopium-tracker"
 import { getVisibleItems } from "@nfl/utils/hopium/filtering-sorting"
+import { Badge, Button } from "@some-ui/shared"
 import {
   Activity,
   AlertTriangle,
@@ -19,7 +20,6 @@ import {
   Satellite,
   TrendingDown,
 } from "lucide-react"
-import { Badge, Button } from "@some-ui/shared"
 
 // Accept a generic T for the underlying satellite data payload, defaulting to unknown
 type SatelliteDashboardProps<T = unknown> = {
