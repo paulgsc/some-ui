@@ -1,27 +1,4 @@
-import { interviewQuestions } from "@some-ui/interview"
-import type { Question } from "@some-ui/interview"
-
 import type { ActivityDefinition, ActivityId } from "./types"
-
-/**
- * Falls back to a looser match (category only, then the full bank) so a
- * level+category combination with no exact matches in the mock question
- * bank still produces something playable, rather than an empty session.
- */
-function filterInterviewQuestions(
-  level: unknown,
-  category: unknown
-): Array<Question> {
-  const byLevelAndCategory = interviewQuestions.filter(
-    (q) => q.level === level && q.category === category
-  )
-  if (byLevelAndCategory.length > 0) return byLevelAndCategory
-
-  const byCategory = interviewQuestions.filter((q) => q.category === category)
-  if (byCategory.length > 0) return byCategory
-
-  return interviewQuestions
-}
 
 const honeycomb: ActivityDefinition = {
   id: "honeycomb",
@@ -176,8 +153,14 @@ const interview: ActivityDefinition = {
   },
   maturity: "early",
   defaultConfig: { level: "mid", category: "technical", durationMinutes: 20 },
+  // Config, not content. Selecting the questions here meant importing the
+  // question bank, and importing anything from `@some-ui/interview` for a
+  // value puts that package in this app's eager bundle - undoing the lazy
+  // import the content registry exists for. The applet owns its own bank
+  // and does the selection (see `selectInterviewQuestions`).
   toSceneProps: (config) => ({
-    interviewQuestions: filterInterviewQuestions(config.level, config.category),
+    level: config.level,
+    category: config.category,
   }),
 }
 

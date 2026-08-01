@@ -1,5 +1,8 @@
 export * from "./components"
-export { interviewQuestions } from "./data/interview-questions"
+export {
+  interviewQuestions,
+  selectInterviewQuestions,
+} from "./data/interview-questions"
 export type {
   Question,
   QuestionCategory,

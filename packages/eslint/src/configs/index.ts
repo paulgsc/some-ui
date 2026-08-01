@@ -10,6 +10,10 @@ export {
   default as fitsTheBoxConfig,
   fitsTheBoxPlugin,
 } from "./fits-the-box.config.js"
+export {
+  default as lazyRegistryConfig,
+  lazyRegistryPlugin,
+} from "./lazy-registry.config.js"
 export { default as toolsOverrideConfig } from "./overrides-tools.config.js"
 export { default as testsOverrideConfig } from "./overrides-tests.config.js"
 export { default as depsOverrideConfig } from "./overrides-deps.config.js"

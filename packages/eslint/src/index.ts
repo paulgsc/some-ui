@@ -12,6 +12,8 @@ import {
   extensionsSecurityConfig,
   fitsTheBoxConfig,
   fitsTheBoxPlugin,
+  lazyRegistryConfig,
+  lazyRegistryPlugin,
   reactConfig,
   reactPeerDependencyConfig,
   switchLintConfig,
@@ -38,6 +40,7 @@ export const maishatuRecommended: Config = defineConfig(
   ...switchLintConfig,
   ...tailwindIdiomConfig,
   ...fitsTheBoxConfig,
+  ...lazyRegistryConfig,
   toolsOverrideConfig,
   testsOverrideConfig,
   depsOverrideConfig
@@ -72,6 +75,9 @@ export { switchLintConfig, switchLintPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
+
+// ── Lazy content-registry loading ──────────────────────────────────────────
+export { lazyRegistryConfig, lazyRegistryPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
 
 // ── Library-build hygiene (centralized dts excludes) ───────────────────────
