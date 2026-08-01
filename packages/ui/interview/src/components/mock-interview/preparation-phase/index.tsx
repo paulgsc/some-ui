@@ -1,4 +1,4 @@
-import { Button, Card, Textarea } from "some-ui-shared"
+import { Button, Card, Textarea } from "@some-ui/shared"
 
 type PreparationPhaseProps = {
   question: string

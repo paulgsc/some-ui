@@ -51,7 +51,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 export type GameInfoContent = {
   title: string

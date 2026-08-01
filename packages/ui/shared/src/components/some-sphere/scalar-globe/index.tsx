@@ -201,8 +201,11 @@ export const LongitudeLines: FC<LongitudeLinesProps> = ({
   return (
     <g id="sphereGrid" clipPath="url(#sphereClip)">
       {/* Longitude lines */}
-      {[...Array(numLongitudes)].map((_, i) => {
-        const angle = (i / numLongitudes) * 360 - rotation
+      {Array.from(
+        { length: numLongitudes },
+        (_, i) => (i / numLongitudes) * 360
+      ).map((baseAngle) => {
+        const angle = baseAngle - rotation
         const angleRad = (angle * Math.PI) / 180
 
         // Calculate visibility for this longitude based on its position
@@ -242,7 +245,7 @@ export const LongitudeLines: FC<LongitudeLinesProps> = ({
 
         return (
           <path
-            key={`long-${i}`}
+            key={`long-${baseAngle}`}
             d={pathData}
             fill="none"
             stroke={`rgba(255, 255, 255, ${opacity})`}
@@ -269,7 +272,7 @@ export const LongitudeLines: FC<LongitudeLinesProps> = ({
 
         return (
           <ellipse
-            key={`lat-${i}`}
+            key={`lat-${latAngle}`}
             cx={centerX}
             cy={y}
             rx={latRadius}
@@ -303,10 +306,13 @@ export const PolarityNumbers: FC<PolarityNumbersProps> = ({
 }): React.JSX.Element => {
   return (
     <g id="numbers">
-      {[...Array(polarity)].map((_, index) => {
+      {Array.from({ length: polarity }, (_, i) => ({
+        label: polarNum ? polarNum : i + 1,
+        // Rotation-invariant angular slot: the stable identity of a numeral.
+        baseAngle: (i / polarity) * 2 * Math.PI,
+      })).map(({ label, baseAngle }) => {
         // Calculate the angle for this number around the sphere
-        const angle =
-          (index / polarity) * 2 * Math.PI + (rotation * Math.PI) / 180
+        const angle = baseAngle + (rotation * Math.PI) / 180
 
         // Position the number along the equator of the sphere
         // This ensures it's on the plane formed by the longitude
@@ -330,7 +336,11 @@ export const PolarityNumbers: FC<PolarityNumbersProps> = ({
         const fontSize = radius * 0.475
 
         return (
-          <g key={index} style={{ opacity: visibility }} data-z-index={zIndex}>
+          <g
+            key={baseAngle}
+            style={{ opacity: visibility }}
+            data-z-index={zIndex}
+          >
             <text
               x={projectedX}
               y={projectedY}
@@ -343,7 +353,7 @@ export const PolarityNumbers: FC<PolarityNumbersProps> = ({
               // Adjust scale based on z-position for perspective effect
               transform={`scale(${0.7 + 0.3 * ((z + radius) / (2 * radius))})`}
             >
-              {polarNum ? polarNum : index + 1}
+              {label}
             </text>
 
             {/* Add a subtle indicator connecting the number to the sphere surface */}

@@ -28,7 +28,7 @@ import {
   CardHeader,
   CardTitle,
   Switch,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 import { formatTimecode } from "@/lib/format"
 import { usePagination } from "@/hooks/use-pagination"

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.7",
+    "@some-ui/shared": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@types/canvas-confetti": "1.9.0",
     "@types/react": "^19.0.4",
@@ -30,7 +31,6 @@
     "framer-motion": "11.15.0",
     "lucide-react": "^0.503.0",
     "some-ui-input": "workspace:*",
-    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {

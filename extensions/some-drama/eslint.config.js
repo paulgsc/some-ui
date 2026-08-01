@@ -1,8 +1,8 @@
-import { defineConfig } from "eslint/config"
 import {
   extensionCharterPlugin,
   extensionsRecommended,
 } from "@some-ui/eslint-kit"
+import { defineConfig } from "eslint/config"
 
 export default defineConfig(...extensionsRecommended, {
   files: ["src/logic/**/*.{js,mjs,ts,tsx}"],

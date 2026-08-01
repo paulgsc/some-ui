@@ -1,6 +1,6 @@
 import type { FC } from "react"
 import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle, Button } from "some-ui-shared"
+import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 
 type TypingErrorAlertProps = {
   showErrorAlert: boolean

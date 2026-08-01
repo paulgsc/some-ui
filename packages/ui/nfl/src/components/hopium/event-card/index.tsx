@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { moodEmoji, moodLabel } from "@nfl/utils/hopium/mood"
 import { TrendingDown, TrendingUp } from "lucide-react"
-import { Badge, Card, CardContent } from "some-ui-shared"
+import { Badge, Card, CardContent } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type Props = {

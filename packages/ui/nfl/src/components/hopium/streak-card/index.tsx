@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef } from "react"
 import type { MoodEvent } from "@nfl/types/hopium/hopium-tracker"
 import { computeStreak } from "@nfl/utils/hopium/mood"
 import { Flame, Sparkles } from "lucide-react"
-import type { SparkleBurstHandle } from "some-ui-shared"
-import { Card, CardContent, SparkleBurst } from "some-ui-shared"
+import type { SparkleBurstHandle } from "@some-ui/shared"
+import { Card, CardContent, SparkleBurst } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type Props = {

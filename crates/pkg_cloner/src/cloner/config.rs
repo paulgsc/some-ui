@@ -22,6 +22,10 @@ const CONFIG_PATTERNS: &[&str] = &[
 const NEEDS_PROCESSING: &[&str] = &["package.json"];
 
 /// Find all config files in a directory matching our patterns
+///
+/// # Errors
+///
+/// Returns an error if `dir` cannot be read.
 pub fn find_config_files(dir: &Path) -> IoResult<Vec<PathBuf>> {
     let mut found = Vec::new();
 
@@ -33,9 +37,8 @@ pub fn find_config_files(dir: &Path) -> IoResult<Vec<PathBuf>> {
             continue;
         }
 
-        let filename = match path.file_name().and_then(|n| n.to_str()) {
-            Some(name) => name,
-            None => continue,
+        let Some(filename) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
         };
 
         if matches_any_pattern(filename) {
@@ -90,8 +93,13 @@ fn needs_processing(filename: &str) -> bool {
 }
 
 /// Updates package.json content with new package name
+///
+/// # Errors
+///
+/// Returns an error if `content` is not valid JSON, if its root is not an object,
+/// or if the updated document cannot be re-serialized.
 pub fn update_package_json(content: &str, new_package_name: &str) -> IoResult<String> {
-    let mut json: Value = serde_json::from_str(content).map_err(|e| Error::new(ErrorKind::InvalidData, format!("Invalid JSON in package.json: {}", e)))?;
+    let mut json: Value = serde_json::from_str(content).map_err(|e| Error::new(ErrorKind::InvalidData, format!("Invalid JSON in package.json: {e}")))?;
 
     if let Some(obj) = json.as_object_mut() {
         obj.insert("name".to_string(), json!(new_package_name));
@@ -109,10 +117,15 @@ pub fn update_package_json(content: &str, new_package_name: &str) -> IoResult<St
         return Err(Error::new(ErrorKind::InvalidData, "package.json root is not an object"));
     }
 
-    serde_json::to_string_pretty(&json).map_err(|e| Error::new(ErrorKind::InvalidData, format!("Failed to serialize JSON: {}", e)))
+    serde_json::to_string_pretty(&json).map_err(|e| Error::new(ErrorKind::InvalidData, format!("Failed to serialize JSON: {e}")))
 }
 
 /// Copies a single config file from source to destination
+///
+/// # Errors
+///
+/// Returns an error if `source` has no valid filename, or if reading, rewriting,
+/// or writing the file fails.
 pub fn copy_config_file(source: &Path, dest_dir: &Path, new_package_name: &str) -> IoResult<()> {
     let filename = source
         .file_name()
@@ -131,11 +144,16 @@ pub fn copy_config_file(source: &Path, dest_dir: &Path, new_package_name: &str) 
         fs::copy(source, &dest).map_err(|e| Error::new(e.kind(), format!("Failed to copy {} to {}: {}", source.display(), dest.display(), e)))?;
     }
 
-    println!("Copied {}", filename);
+    println!("Copied {filename}");
     Ok(())
 }
 
 /// Copies all config files from template to new package
+///
+/// # Errors
+///
+/// Returns an error if the template contains no config files, or if any individual
+/// file fails to copy.
 pub fn copy_configs(template_package: &Path, new_package_path: &Path, new_package_name: &str) -> IoResult<Vec<String>> {
     let config_files = find_config_files(template_package)?;
 

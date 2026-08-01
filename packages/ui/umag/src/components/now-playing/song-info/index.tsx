@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react"
 import { forwardRef } from "react"
 import type { NowPlayingType } from "@umag/types/now-playing"
-import { Marquee } from "some-ui-shared"
+import { Marquee } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type SongInfoProps = NowPlayingType & HTMLAttributes<HTMLDivElement>

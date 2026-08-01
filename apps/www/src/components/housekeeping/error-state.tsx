@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { Link, type ErrorComponentProps } from "@tanstack/react-router"
 import { Home, RotateCcw, TriangleAlert } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 /**
  * Route error boundary. Wired as the router's `defaultErrorComponent`, so a

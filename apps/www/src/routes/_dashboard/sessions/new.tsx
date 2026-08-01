@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 import { ACTIVITY_IDS } from "@/lib/activity-catalog"
 import type { ActivityId } from "@/lib/activity-catalog"

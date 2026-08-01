@@ -29,7 +29,7 @@
       "some-ui-neon-sign": ["../ui/neon-sign/src/index.ts"],
       "some-ui-nfl": ["../ui/nfl/src/index.ts"],
       "some-ui-searchbar": ["../ui/searchbar/src/index.ts"],
-      "some-ui-shared": ["../ui/shared/src/index.ts"],
+      "@some-ui/shared": ["../ui/shared/src/index.ts"],
       "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
       "@some-ui/stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],

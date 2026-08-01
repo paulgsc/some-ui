@@ -14,7 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 export type ProjectState = "active" | "dying" | "dead" | "growing"
 

@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
   Input,
   ScrollArea,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type ScriptSidebarProps = {
   selectedScript: string | null

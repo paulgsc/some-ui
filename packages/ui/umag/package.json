@@ -3,11 +3,11 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "dependencies": {
-    "lucide-react": "^0.522.0",
-    "some-ui-shared": "workspace:*",
-    "@some-ui/types": "workspace:*",
+    "@some-ui/shared": "workspace:*",
     "@some-ui/styles": "workspace:*",
+    "@some-ui/types": "workspace:*",
     "@some-ui/ws": "workspace:*",
+    "lucide-react": "^0.522.0",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5",
     "zustand": "^5.0.9"

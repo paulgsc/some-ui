@@ -11,16 +11,17 @@
 > for _whether_ an export belongs in a shared workspace at all.
 
 Reference implementations: `packages/utils` (`some-ui-utils`) and
-`packages/ui/shared` (`some-ui-shared`). When in doubt, diff a new package
+`packages/ui/shared` (`@some-ui/shared`). When in doubt, diff a new package
 against these two rather than an arbitrary sibling — they're the two
 workspaces this convention was extracted from.
 
 ## 1. `package.json`
 
-- **Name:** `@some-ui/<x>` (scoped) for new M14 workspaces. (The bare
-  `some-ui-<x>` / `some-ui-shared` naming on older packages predates this
-  convention and is not being renamed retroactively — see Doctrine §2, this
-  is a naming nit, not a de-hoist trigger.)
+- **Name:** `@some-ui/<x>` (scoped). `packages/ui/shared` was renamed
+  `some-ui-shared` → `@some-ui/shared` to conform. The bare `some-ui-<x>`
+  naming that remains on other older packages predates this convention and
+  is renamed opportunistically — see Doctrine §2, this is a naming nit, not
+  a de-hoist trigger.
 - **`peerDependencies` vs `dependencies` discipline:** anything the
   _consumer's_ React tree must own a single copy of (react, react-dom,
   framer-motion-style animation libs, anything with module-level state) goes

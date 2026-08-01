@@ -14,7 +14,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import type { TTSProvider, VoiceConfig } from "some-ui-utils"
 import { cn } from "some-ui-utils"
 

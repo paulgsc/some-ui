@@ -23,6 +23,12 @@ pub struct Cli {
 }
 
 impl Cli {
+    /// Parses the process arguments and validates them beyond what clap can check.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the workspaces path does not exist or is not a directory,
+    /// or if the similarity threshold falls outside `0.0..=1.0`.
     pub fn parse_and_validate() -> Result<Self, Box<dyn std::error::Error>> {
         let cli = Self::parse();
 
@@ -36,7 +42,7 @@ impl Cli {
         }
 
         // Validate similarity threshold
-        if cli.similarity_threshold < 0.0 || cli.similarity_threshold > 1.0 {
+        if !(0.0..=1.0).contains(&cli.similarity_threshold) {
             return Err("Similarity threshold must be between 0.0 and 1.0".into());
         }
 

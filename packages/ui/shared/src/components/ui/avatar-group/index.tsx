@@ -1,8 +1,9 @@
-import type { ComponentProps, CSSProperties, FC } from "react"
+import type { ComponentProps, FC } from "react"
 import { useMemo, useState } from "react"
 
 import type { AvatarImage } from ".."
 import { cn } from "../../../lib/utils"
+import type { CSSVarProperties } from "../../../types"
 import { Button } from "../button"
 import { WithAvatar } from "../with-avatar"
 
@@ -30,17 +31,23 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
     [showMore, avatars, limit]
   )
 
+  const groupStyle: CSSVarProperties = { "--avatar-spacing": avatarSpacing }
+
   return (
     <div
-      style={{ "--avatar-spacing": avatarSpacing } as CSSProperties}
+      style={groupStyle}
       className={cn(
         "flex items-center rtl:space-x-reverse",
         "-space-x-[calc(var(--avatar-spacing)*1px)]",
         className
       )}
     >
-      {renderAvatars.map((avatar, index) => (
-        <WithAvatar key={index} avatarSize={avatarSize} avatar={avatar} />
+      {renderAvatars.map((avatar) => (
+        <WithAvatar
+          key={avatar.src ?? avatar.alt}
+          avatarSize={avatarSize}
+          avatar={avatar}
+        />
       ))}
 
       {avatars.length > limit && (

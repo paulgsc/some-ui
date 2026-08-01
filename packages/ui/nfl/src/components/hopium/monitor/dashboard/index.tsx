@@ -19,7 +19,7 @@ import {
   Satellite,
   TrendingDown,
 } from "lucide-react"
-import { Badge, Button } from "some-ui-shared"
+import { Badge, Button } from "@some-ui/shared"
 
 // Accept a generic T for the underlying satellite data payload, defaulting to unknown
 type SatelliteDashboardProps<T = unknown> = {

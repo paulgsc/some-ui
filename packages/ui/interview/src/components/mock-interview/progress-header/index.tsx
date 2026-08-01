@@ -1,5 +1,5 @@
 import type { InterviewPhase } from "@interview/lib/interview/core/interview-types"
-import { Progress } from "some-ui-shared"
+import { Progress } from "@some-ui/shared"
 
 const PHASE_LABEL: Partial<Record<InterviewPhase, string>> = {
   question: "Listening",

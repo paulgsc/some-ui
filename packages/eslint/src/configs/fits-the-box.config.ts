@@ -16,7 +16,7 @@ import { noGreedyOverflow } from "../rules/index.js"
  *
  *   1. Split heterogeneous content across tabs, so each pane is short.
  *   2. Page a homogeneous list to the measured fit (`useFittedPage` +
- *      `PageControls` in some-ui-shared).
+ *      `PageControls` in @some-ui/shared).
  *   3. Navigate with a rail/sidebar, rendering one group at a time.
  *   4. Enlarge the surface — a wider or taller dialog is allowed.
  *   5. Only then, scroll, and say so.

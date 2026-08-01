@@ -17,7 +17,7 @@ cut content off somewhere else.
    → `ChallengeBrief` (Why / Task / Concepts / Goal).
 2. **A measured paged list**, when the content is a homogeneous list of
    unbounded length.
-   → `useFittedPage` (some-ui-utils) + `PageControls` (some-ui-shared).
+   → `useFittedPage` (some-ui-utils) + `PageControls` (@some-ui/shared).
 3. **A rail or sidebar**, when the list already has groups worth navigating by.
    → the challenge picker's stage rail: one stage's rungs at a time.
 4. **Enlarge the surface.** A wider or taller dialog is allowed and is often

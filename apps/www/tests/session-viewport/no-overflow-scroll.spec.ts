@@ -49,7 +49,7 @@ function shellHtml(variant: ShellVariant): string {
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { font-family: sans-serif; }
-  /* mirrors SidebarProvider's wrapper div (some-ui-shared/sidebar.tsx) */
+  /* mirrors SidebarProvider's wrapper div (@some-ui/shared/sidebar.tsx) */
   .wrapper { display: flex; width: 100%; ${wrapperCss} }
   .sidebar { width: 200px; flex-shrink: 0; background: #eee; }
   /* mirrors SidebarInset's <main> */

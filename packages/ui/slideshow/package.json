@@ -26,15 +26,15 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@radix-ui/react-accordion": "^1.1.2",
     "@some-ui/dice-card": "workspace:*",
+    "@some-ui/fetch-kit": "workspace:*",
+    "@some-ui/shared": "workspace:*",
     "@some-ui/styles": "workspace:*",
+    "@some-ui/types": "workspace:*",
+    "@some-ui/umag": "workspace:*",
     "framer-motion": "^12.4.10",
     "lucide-react": "^0.474.0",
-    "@some-ui/fetch-kit": "workspace:*",
-    "@some-ui/types": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
-    "some-ui-shared": "workspace:*",
-    "some-ui-utils": "workspace:*",
-    "@some-ui/umag": "workspace:*"
+    "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

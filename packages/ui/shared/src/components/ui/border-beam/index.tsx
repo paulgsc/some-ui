@@ -1,9 +1,9 @@
 import "./index.css"
 
-import { useEffect, useRef, useState } from "react"
-import type { CSSProperties } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { cn } from "../../../lib/utils"
+import type { CSSVarProperties } from "../../../types"
 import { AntSvg } from "../../icons/ant-svg"
 
 type BorderBeamProps = {
@@ -41,9 +41,10 @@ export const BorderBeam = ({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [isInitialized, setIsInitialized] = useState(false)
   const [trailLength, setTrailLength] = useState(0)
-  const [gradientId] = useState(
-    `gradient-${Math.random().toString(36).substring(2, 9)}`
-  )
+  // useId() is stable across renders and unique per instance, unlike
+  // Math.random(). Its delimiters are stripped so the value is safe to
+  // reference from an SVG url(#...) fragment.
+  const gradientId = `gradient-${useId().replace(/[^a-zA-Z0-9]/g, "")}`
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -64,7 +65,7 @@ export const BorderBeam = ({
     return (): void => resizeObserver.disconnect()
   }, [])
 
-  const cssVars = {
+  const cssVars: CSSVarProperties = {
     "--ant-size": `${size}px`,
     "--ant-color": color,
     "--ant-duration": `${duration}s`,
@@ -78,7 +79,7 @@ export const BorderBeam = ({
     "--container-width": `${dimensions.width}px`,
     "--container-height": `${dimensions.height}px`,
     "--trail-length": `${trailLength}px`,
-  } as CSSProperties
+  }
 
   return (
     <div

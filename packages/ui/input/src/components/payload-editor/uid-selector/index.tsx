@@ -25,7 +25,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type UIDSelectorProps = {

@@ -1,4 +1,5 @@
 /// Finds the closest match for input string among candidates using Levenshtein distance
+#[must_use]
 pub fn find_closest_match<'a>(input: &'a str, candidates: &[&'a str], similarity_threshold: f64) -> Option<&'a str> {
     if candidates.is_empty() {
         return None;
@@ -14,6 +15,9 @@ pub fn find_closest_match<'a>(input: &'a str, candidates: &[&'a str], similarity
         .map(|&candidate| {
             let distance = levenshtein(input, candidate);
             let max_len = input_len.max(candidate.chars().count());
+            // Both operands are package-name lengths, orders of magnitude below the
+            // 2^53 bound where a usize -> f64 cast starts losing integer precision.
+            #[allow(clippy::cast_precision_loss)]
             let similarity = if max_len == 0 { 1.0 } else { 1.0 - (distance as f64 / max_len as f64) };
             (candidate, similarity)
         })
@@ -23,6 +27,7 @@ pub fn find_closest_match<'a>(input: &'a str, candidates: &[&'a str], similarity
 }
 
 /// Calculates Levenshtein distance between two strings
+#[must_use]
 pub fn levenshtein(a: &str, b: &str) -> usize {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
@@ -39,17 +44,17 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
     let mut dp = vec![vec![0; b_len + 1]; a_len + 1];
 
     // Initialize first row and column
-    for i in 0..=a_len {
-        dp[i][0] = i;
+    for (i, row) in dp.iter_mut().enumerate() {
+        row[0] = i;
     }
-    for j in 0..=b_len {
-        dp[0][j] = j;
+    for (j, cell) in dp[0].iter_mut().enumerate() {
+        *cell = j;
     }
 
     // Fill the matrix
     for i in 1..=a_len {
         for j in 1..=b_len {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
+            let cost = usize::from(a_chars[i - 1] != b_chars[j - 1]);
             dp[i][j] = (dp[i - 1][j] + 1) // Deletion
                 .min(dp[i][j - 1] + 1) // Insertion
                 .min(dp[i - 1][j - 1] + cost); // Substitution

@@ -9,7 +9,7 @@ import {
   Card,
   CardContent,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { formatRelativeTime } from "some-ui-utils"
 
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@/lib/activity-catalog"

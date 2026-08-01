@@ -18,7 +18,7 @@ import { defineConfig } from "eslint/config"
 
 const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
 
-// Cross-package bare specifiers (some-ui-shared, some-ui-utils, ...) resolve
+// Cross-package specifiers (@some-ui/shared, some-ui-utils, ...) resolve
 // via package.json main/exports pointing at dist/, which doesn't exist
 // without a build. tsconfig.workspace-resolve.json maps them straight to
 // source so every consuming package's ESLint run resolves them without

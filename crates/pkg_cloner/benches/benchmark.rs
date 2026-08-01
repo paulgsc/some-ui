@@ -10,33 +10,33 @@ use tempfile::tempdir;
 const CONFIG_FILES: [&str; 5] = ["tsconfig.json", "package.json", "rollup.config.js", ".eslintrc", "jest.config.js"];
 
 fn benchmark_find_packages(c: &mut Criterion) {
-	c.bench_function("find_packages", |b| {
-		let workspaces_dir = tempdir().unwrap();
-		let workspaces = workspaces_dir.path();
+    c.bench_function("find_packages", |b| {
+        let workspaces_dir = tempdir().unwrap();
+        let workspaces = workspaces_dir.path();
 
-		for i in 0..3 {
-			let package_path = workspaces.join(format!("package_{i}"));
-			fs::create_dir_all(&package_path).unwrap();
-		}
+        for i in 0..3 {
+            let package_path = workspaces.join(format!("package_{i}"));
+            fs::create_dir_all(&package_path).unwrap();
+        }
 
-		b.iter(|| black_box(find_packages(black_box(workspaces))));
-	});
+        b.iter(|| black_box(find_packages(black_box(workspaces))));
+    });
 }
 
 fn benchmark_copy_configs(c: &mut Criterion) {
-	c.bench_function("copy_configs", |b| {
-		let template_dir = tempdir().unwrap();
-		let new_package_dir = tempdir().unwrap();
-		let template_package = template_dir.path();
-		let new_package_path = new_package_dir.path();
+    c.bench_function("copy_configs", |b| {
+        let template_dir = tempdir().unwrap();
+        let new_package_dir = tempdir().unwrap();
+        let template_package = template_dir.path();
+        let new_package_path = new_package_dir.path();
 
-		for filename in CONFIG_FILES {
-			let mut file = File::create(template_package.join(filename)).unwrap();
-			write!(file, "{{}}").unwrap();
-		}
+        for filename in CONFIG_FILES {
+            let mut file = File::create(template_package.join(filename)).unwrap();
+            write!(file, "{{}}").unwrap();
+        }
 
-		b.iter(|| black_box(copy_configs(black_box(template_package), black_box(new_package_path), "new_package_name")));
-	});
+        b.iter(|| black_box(copy_configs(black_box(template_package), black_box(new_package_path), "new_package_name")));
+    });
 }
 
 criterion_group!(benches, benchmark_find_packages, benchmark_copy_configs);

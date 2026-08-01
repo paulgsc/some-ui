@@ -1,7 +1,7 @@
 import { AudioPlayer } from "@interview/components/mock-interview/audio-player"
 import type { TranscriptionResult } from "@interview/lib/interview/core/interview-types"
 import { AlertCircle, Loader2 } from "lucide-react"
-import { Button, Card, Textarea } from "some-ui-shared"
+import { Button, Card, Textarea } from "@some-ui/shared"
 
 type ReviewPhaseProps = {
   audioUrl: string | null

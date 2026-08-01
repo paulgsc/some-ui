@@ -1,4 +1,4 @@
-# some-ui-shared
+# @some-ui/shared
 
 ## 0.0.10
 

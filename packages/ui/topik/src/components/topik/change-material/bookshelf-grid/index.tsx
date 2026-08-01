@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import { TopikBookCard } from "@topik/components/topik/change-material/topik-book-card"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 const ITEMS_PER_PAGE = 8
 type BookshelfGridProps = {

@@ -10,7 +10,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 // ═══════════════════════════════════════════════════════════════
 // Props — public API unchanged

@@ -1,6 +1,6 @@
 import { getCurrentTimestamp } from "@input/utils/event-helpers"
 import { Clock } from "lucide-react"
-import { Input, Label, Separator, Switch } from "some-ui-shared"
+import { Input, Label, Separator, Switch } from "@some-ui/shared"
 
 type TimestampControlProps = {
   useCurrentTime: boolean

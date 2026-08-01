@@ -19,8 +19,8 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/shared": "workspace:*",
     "framer-motion": "11.15.0",
-    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "usehooks-ts": "3.1.0"
   },

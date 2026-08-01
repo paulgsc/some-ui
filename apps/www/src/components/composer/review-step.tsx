@@ -8,7 +8,7 @@ import {
   CardTitle,
   Input,
   Label,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
 import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"

@@ -7,7 +7,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react"
-import { Badge, Button } from "some-ui-shared"
+import { Badge, Button } from "@some-ui/shared"
 import { cn, useObsStatusWebSocket } from "some-ui-utils"
 
 const buttonStyles = {

@@ -8,7 +8,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
-import { Badge, Button, Card } from "some-ui-shared"
+import { Badge, Button, Card } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type ResultsCardProps = {

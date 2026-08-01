@@ -6,7 +6,7 @@ import {
 } from "@leetype/lib/leetype/curriculum"
 import type { ChallengeCurriculum } from "@leetype/types/leetype"
 import { Check, Flag, Lightbulb, Link2, Target } from "lucide-react"
-import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "some-ui-shared"
+import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type ChallengeBriefProps = {

@@ -1,6 +1,6 @@
 import { useTypingEffect } from "@chat/hooks/use-typing-effect"
 import type { Message } from "@chat/types/chat"
-import { Badge, WithAvatar } from "some-ui-shared"
+import { Badge, WithAvatar } from "@some-ui/shared"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
 type ChatMessageProps = Message

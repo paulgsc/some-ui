@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { BUILTIN_VOICES } from "some-ui-utils"
 import type { TTSProvider } from "some-ui-utils"
 import { toast } from "sonner"

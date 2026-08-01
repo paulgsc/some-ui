@@ -1,4 +1,4 @@
-import type { ComponentProps, CSSProperties } from "react"
+import type { ComponentProps } from "react"
 import {
   MediaControlBar,
   MediaController,
@@ -12,10 +12,11 @@ import {
 } from "media-chrome/react"
 
 import { cn } from "../../../lib/utils"
+import type { CSSVarProperties } from "../../../types"
 
 export type VideoPlayerProps = ComponentProps<typeof MediaController>
 
-const variables = {
+const variables: CSSVarProperties = {
   "--media-primary-color": "var(--primary)",
   "--media-secondary-color": "var(--background)",
   "--media-text-color": "var(--foreground)",
@@ -25,7 +26,7 @@ const variables = {
   "--media-live-button-icon-color": "var(--muted-foreground)",
   "--media-live-button-indicator-color": "var(--destructive)",
   "--media-range-track-background": "var(--border)",
-} as CSSProperties
+}
 
 export const VideoPlayer = ({
   style,
@@ -123,5 +124,8 @@ export const VideoPlayerContent = ({
   className,
   ...props
 }: VideoPlayerContentProps): React.JSX.Element => (
+  // This is an unopinionated <video> wrapper; captions are supplied by the
+  // consumer as <track> children, which reach the element through {...props}.
+  // eslint-disable-next-line jsx-a11y/media-has-caption -- captions come from the consumer
   <video className={cn("mt-0 mb-0", className)} {...props} />
 )

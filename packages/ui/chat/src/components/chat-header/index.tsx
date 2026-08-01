@@ -1,12 +1,12 @@
 import type { ChangeEvent, FC, JSX } from "react"
-import type { AvatarGroupProps } from "some-ui-shared"
+import type { AvatarGroupProps } from "@some-ui/shared"
 import {
   AvatarGroup,
   Button,
   CardHeader,
   OverlayInput,
   SvgIcons,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn, useLocalStorage } from "some-ui-utils"
 
 type ChatHeaderProps = {

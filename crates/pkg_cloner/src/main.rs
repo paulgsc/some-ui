@@ -3,7 +3,7 @@ use std::process;
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         process::exit(1);
     }
 }
@@ -26,7 +26,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     // Show summary and confirm
     println!("\n=== Package Creation Summary ===");
     println!("Template: {}", template_package.name);
-    println!("New package: {}", new_package_name);
+    println!("New package: {new_package_name}");
     println!("Location: {}", cli.workspaces.join(&new_package_name).display());
 
     if !cli.force && !confirm_action("Create this package?")? {
@@ -41,12 +41,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let copied_configs = copy_configs(&template_package.path, &new_package_path, &new_package_name)?;
 
     // Success message
-    println!("\n✅ Successfully created new package: {}", new_package_name);
+    println!("\n✅ Successfully created new package: {new_package_name}");
     println!("📍 Location: {}", new_package_path.display());
     println!("📄 Copied {} configuration file(s)", copied_configs.len());
 
     for config in copied_configs {
-        println!("   - {}", config);
+        println!("   - {config}");
     }
 
     Ok(())

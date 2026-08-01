@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import type { PlayState } from "@topik/lib/topik"
 import { GraduationCap, Play } from "lucide-react"
-import { Card } from "some-ui-shared"
+import { Card } from "@some-ui/shared"
 
 type QuizIdleProps = {
   chatPlayState: PlayState

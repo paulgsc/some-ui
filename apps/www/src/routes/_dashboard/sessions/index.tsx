@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { getActivity } from "@/lib/activity-catalog"

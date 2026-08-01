@@ -8,7 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 import { getActivityByRegistryKey } from "@/lib/activity-catalog"
 import { formatDurationMs } from "@/lib/format"

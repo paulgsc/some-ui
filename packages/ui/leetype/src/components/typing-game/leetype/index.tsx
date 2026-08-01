@@ -36,7 +36,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 
 type LeetypeProps = {
   /** Direct code paths (legacy / story mode) — skips the challenge picker. */

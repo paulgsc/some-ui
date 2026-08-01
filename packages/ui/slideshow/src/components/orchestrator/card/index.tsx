@@ -24,7 +24,7 @@ import type { EditorState } from "@slideshow/utils/scene-editor"
 import { editorReducer } from "@slideshow/utils/scene-editor"
 import type { SceneConfig } from "@some-ui/types"
 import { Library, Plus } from "lucide-react"
-import { Button, Card } from "some-ui-shared"
+import { Button, Card } from "@some-ui/shared"
 
 export const OrchestratorDemo = ({
   initialScenes = [],

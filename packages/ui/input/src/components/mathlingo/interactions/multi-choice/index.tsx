@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import type { Option } from "@input/types/mathlingo"
-import { Button } from "some-ui-shared"
+import { Button } from "@some-ui/shared"
 
 type MultiChoiceProps = {
   options: Array<Option>

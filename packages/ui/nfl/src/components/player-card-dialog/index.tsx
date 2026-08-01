@@ -1,7 +1,7 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
 import { NflPlayerCard } from "@nfl/components/player-card"
-import { Button, Dialog, DialogContent, DialogTrigger } from "some-ui-shared"
+import { Button, Dialog, DialogContent, DialogTrigger } from "@some-ui/shared"
 import { useMeasureRect } from "some-ui-utils"
 
 type Dimension = {

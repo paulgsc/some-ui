@@ -21,11 +21,11 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*",
+    "@some-ui/shared": "workspace:*",
     "embla-carousel-autoplay": "^8.6.0",
     "lucide-react": "^0.536.0",
-    "@some-ui/fetch-kit": "workspace:*",
     "some-bricks": "link:../../../crates/some-bricks/dist",
-    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "zod": "4.0.5"
   },

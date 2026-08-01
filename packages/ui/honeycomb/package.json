@@ -20,12 +20,12 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*",
+    "@some-ui/hangul-game-core": "0.0.5",
+    "@some-ui/shared": "workspace:*",
+    "@some-ui/some-hexagon": "0.0.5",
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
-    "@some-ui/hangul-game-core": "0.0.5",
-    "@some-ui/fetch-kit": "workspace:*",
-    "@some-ui/some-hexagon": "0.0.5",
-    "some-ui-shared": "workspace:*",
     "some-ui-utils": "workspace:*",
     "sonner": "^2.0.7",
     "zod": "4.0.5"

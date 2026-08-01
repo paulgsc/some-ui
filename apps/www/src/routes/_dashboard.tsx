@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from "some-ui-shared"
+} from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 import { HexCombMark } from "@/components/brand/hex-comb-mark"

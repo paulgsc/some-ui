@@ -2,7 +2,7 @@ import type { JSX } from "react"
 import { useCallback, useEffect, useRef } from "react"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { Search } from "lucide-react"
-import { Input } from "some-ui-shared"
+import { Input } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type OmniSearchInputProps = {

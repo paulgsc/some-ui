@@ -101,21 +101,15 @@ function drawStarPath(
   innerRadius: number
 ): void {
   let rot = (Math.PI / 2) * 3
-  let x = 0
-  let y = 0
   const step = Math.PI / spikes
 
   ctx.beginPath()
   ctx.moveTo(0, -outerRadius)
   for (let i = 0; i < spikes; i++) {
-    x = Math.cos(rot) * outerRadius
-    y = Math.sin(rot) * outerRadius
-    ctx.lineTo(x, y)
+    ctx.lineTo(Math.cos(rot) * outerRadius, Math.sin(rot) * outerRadius)
     rot += step
 
-    x = Math.cos(rot) * innerRadius
-    y = Math.sin(rot) * innerRadius
-    ctx.lineTo(x, y)
+    ctx.lineTo(Math.cos(rot) * innerRadius, Math.sin(rot) * innerRadius)
     rot += step
   }
   ctx.lineTo(0, -outerRadius)
@@ -585,13 +579,26 @@ export const SparkleBurst = forwardRef<SparkleBurstHandle, Options>(
       <div
         ref={containerRef}
         className="relative size-full select-none overflow-hidden rounded-xl bg-none"
-        role="img"
-        aria-label="Celebration burst animation"
+        role="button"
+        tabIndex={0}
+        aria-label="Celebration burst animation. Activate to replay."
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            burst()
+          }
+        }}
       >
         {/* Canvas */}
-        <canvas ref={canvasRef} className="absolute inset-0 block" />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 block"
+          aria-hidden="true"
+        />
       </div>
     )
   }
 )
+
+SparkleBurst.displayName = "SparkleBurst"
