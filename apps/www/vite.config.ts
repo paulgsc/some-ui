@@ -132,25 +132,23 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rollupOptions: {
-        output: {
-          // Manual chunk splitting for better analysis.
-          // Vite 8's bundler (Rolldown) only supports the function form of
-          // manualChunks, not the plain object map Rollup accepted.
-          manualChunks: (id): string | undefined => {
-            const chunks: Record<string, Array<string>> = {
-              // Separate your authored dependencies
-              "authored-deps": ["@some-ui/leetype"], // Add your package names here, e.g., ['@myorg/package1', '@myorg/package2']
-              // Common vendor chunks
-              "react-vendor": ["react", "react-dom"],
-              "router-vendor": ["@tanstack/react-router"],
-              "utils-vendor": ["lodash", "date-fns"], // Add your utility deps
-            }
-            for (const [chunkName, packageNames] of Object.entries(chunks)) {
-              if (packageNames.some((pkg) => id.includes(pkg))) return chunkName
-            }
-            return undefined
-          },
-        },
+        // No `output.manualChunks`. The hand-rolled version here matched with
+        // `id.includes(pkg)` — a substring test against the full module path —
+        // which under pnpm matches far more than the package named. pnpm
+        // encodes peer deps in the virtual-store directory name
+        // (`framer-motion@11.15.0_react-dom@19.0.0_react@19.0.0__react@19.0.0`),
+        // so `includes("react")` swept up *every* package declaring react as a
+        // peer: lucide-react, framer-motion/motion-dom, all of @tanstack,
+        // cmdk, sonner, zustand. Those landed in one `react-vendor` chunk that
+        // index.html then `modulepreload`ed, so the landing page eagerly
+        // fetched ~190 KB gzip of which Lighthouse measured 56% unused —
+        // undoing the route splitting `autoCodeSplitting: true` had just done.
+        // Letting Rolldown chunk from the real import graph cut critical-path
+        // JS from ~340 KB to ~161 KB gzip and moved FCP 3.3s -> 2.3s. Reach
+        // for `advancedChunks` (Rolldown's grouping API) if this ever needs
+        // manual grouping again — and match on package *boundaries*, not
+        // substrings of the resolved path.
+        output: {},
         // Tree shaking options
         treeshake: {
           // Enable aggressive tree shaking

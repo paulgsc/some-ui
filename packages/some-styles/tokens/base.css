@@ -135,9 +135,28 @@
 
   --muted: oklch(0.269 0 0);
 
-  /* Same swatch registry, its text2 (#475569) — the dimmest of the
-     registry's three text tiers, for the secondary/muted role. */
-  --muted-foreground: oklch(0.446 0.037 257);
+  /* Was the swatch registry's text2 (#475569) verbatim — the dimmest of its
+     three text tiers. That tier is legible over the registry's own bg0
+     (#171c25), but this file's --background is oklch(0.145) / #0a0a0a, a
+     genuinely darker surface, and text2 landed at 2.37:1 over --card — under
+     WCAG's 4.5:1, and the only accessibility audit apps/www was failing.
+     Raised on lightness alone (chroma/hue untouched) to 5.44:1 over
+     --background and 4.93:1 over --card.
+     This is not a step toward the "text is basically the sun" failure the
+     registry's Φ_comfort predicate exists to reject: that predicate governs
+     the (bg0, text0) *primary* reading pair, which here is --foreground
+     oklch(0.676) at 6.78:1 — and this stays deliberately below it (0.62 <
+     0.676), so the muted tier is still dimmer than body text and nowhere near
+     CONTRAST_BAND_MAX. The glare argument is about the tier you read for
+     minutes at a time; this one was failing the opposite way, too dim to
+     read at all.
+     Known gap, deliberately not chased here: over the oklch(0.269) surfaces
+     (--muted / --popover / --secondary) this sits at 4.16:1. Clearing 4.5
+     there needs ~oklch(0.66), which collapses into --foreground and erases
+     the tier distinction — the wrong trade for this design. If muted text on
+     those surfaces needs to pass, darken the surface or use --foreground
+     there; don't push this token up. */
+  --muted-foreground: oklch(0.62 0.037 257);
 
   --accent: oklch(0.371 0 0);
   --accent-foreground: var(--foreground);
