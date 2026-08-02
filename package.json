@@ -15,7 +15,8 @@
   "scripts": {
     "clean": "turbo clean && turbo daemon stop && rimraf dist && rimraf .turbo && rimraf .rollup.cache && rimraf node_modules",
     "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
-    "build": "scripts/with-limits.sh turbo run build",
+    "build": "scripts/with-limits.sh turbo run build --filter='!./crates/*'",
+    "build:crates": "scripts/with-limits.sh turbo run build --filter='./crates/*'",
     "build:unsafe": "turbo run build",
     "build-storybook": "scripts/with-limits.sh storybook build",
     "build:template": "cargo run --manifest-path crates/pkg_cloner/Cargo.toml",

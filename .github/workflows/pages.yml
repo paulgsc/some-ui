@@ -155,15 +155,18 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
+      # No crates/*/dist here, and no crates/**/src/** in the key. www consumes
+      # the wasm packages from the npm registry at a pinned version (see
+      # packages/ui/*/package.json), not from crates/* as workspace source, so
+      # `--filter=www...` below never reaches a crate and nothing would ever
+      # populate crates/*/dist in this job. Hashing crate sources into the key
+      # was actively harmful: editing any .rs file invalidated the *packages*
+      # dist cache and forced a full JS rebuild for a change www cannot see.
       - name: Cache workspace build outputs
         uses: actions/cache@v6
         with:
-          path: |
-            packages/*/dist
-            crates/*/dist
-          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**', 'crates/**/src/**') }}
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
           restore-keys: workspace-dist-${{ runner.os }}-
       - name: Install dependencies
         run: |
@@ -230,8 +233,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
       - name: Cache workspace build outputs
         uses: actions/cache@v6
         with:
@@ -253,6 +254,14 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # `pnpm build` is `turbo run build --filter='!./crates/*'` (see the root
+      # package.json). The filter is what keeps wasm-pack out of this job:
+      # crates/* are pnpm workspaces with a `build` script that shells out to
+      # `wasm-pack build --release`, so an unfiltered `turbo run build`
+      # discovered and compiled all six of them here - despite Storybook, like
+      # www, importing those packages from the registry rather than from
+      # source. Note there is no cargo-cache in this job either, so each of
+      # those six builds compiled its full Rust dependency tree from cold.
       - name: Build workspace packages
         run: nix develop .#ci --command pnpm build --concurrency=100%
         env:
