@@ -1,8 +1,7 @@
 import type { JSX } from "react"
+import type { ActivityIconKey } from "@some-ui/activity-catalog"
 import type { LucideIcon } from "lucide-react"
 import { BookOpen, Hexagon, Keyboard, Mic } from "lucide-react"
-
-import type { ActivityIconKey } from "@/lib/activity-catalog"
 
 const ICONS: Record<ActivityIconKey, LucideIcon> = {
   hexagon: Hexagon,

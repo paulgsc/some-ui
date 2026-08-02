@@ -1,4 +1,24 @@
-import type { AudioChannelId } from "../audio-preferences"
+/**
+ * The audio channels an activity can declare it uses.
+ *
+ * Declared here rather than alongside the app's audio *preferences* because
+ * this is the producing end: an activity states what it does to a person's
+ * ears, and the app's preference store (which channels are allowed, at what
+ * volume) is the consumer of that vocabulary. Both ends need the same ids;
+ * only one of them can own them, and a closed union owned by the catalogue
+ * is what makes `AUDIO_CHANNELS` in the app exhaustive by construction.
+ */
+export type AudioChannelId = "speech" | "effects"
+
+/**
+ * The Korean-proficiency scale a person sets as their target, and the scale
+ * the study activities offer levels on.
+ *
+ * Lives here because it is the vocabulary shared between what an activity
+ * offers (`fields`) and what a profile is aiming at - `rankActivities` is
+ * the place those two meet, and it is in this package.
+ */
+export type TopikLevel = "beginner" | "intermediate" | "advanced"
 
 /**
  * The friendly, end-user-facing identity for one of the playable applets.

@@ -1,5 +1,9 @@
 import type { JSX } from "react"
 import {
+  getActivityByRegistryKey,
+  summarizeConfig,
+} from "@some-ui/activity-catalog"
+import {
   Badge,
   Button,
   Card,
@@ -10,12 +14,10 @@ import {
 import { Link, useNavigate } from "@tanstack/react-router"
 import { CheckCircle2, RotateCcw, StopCircle } from "lucide-react"
 
-import { getActivityByRegistryKey } from "@/lib/activity-catalog"
 import { formatDurationMs } from "@/lib/format"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
 import { ActivityIcon } from "@/components/activity-icon"
-import { summarizeConfig } from "@/components/composer/utils"
 
 type CompletionSummaryProps = {
   session: SessionRecord

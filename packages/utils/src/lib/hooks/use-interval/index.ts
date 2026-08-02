@@ -67,10 +67,14 @@ export function useInterval({
     if (onResume) onResume()
 
     const timeoutId = setTimeout(() => {
-      executeCallback()
+      // `executeCallback` handles both outcomes internally (onSuccess /
+      // onError, and it clears the interval on failure), and a timer
+      // discards what its callback returns - so these are voided rather
+      // than awaited, which they cannot be.
+      void executeCallback()
 
       // Then set up the interval for subsequent executions
-      intervalRef.current = setInterval(executeCallback, duration)
+      intervalRef.current = setInterval(() => void executeCallback(), duration)
     }, delay)
 
     return (): void => {

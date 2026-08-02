@@ -116,8 +116,14 @@ export function useObsStatus(options: UseObsStatusOptions): {
     sendRef.current = ws.sendSerialized
   }, [ws.sendSerialized])
 
-  // Set up command sender that wraps commands in the proper envelope
-  // CRITICAL: Must depend on sendRef.current to ensure sender is rebound when WebSocket updates
+  // Set up command sender that wraps commands in the proper envelope.
+  // CRITICAL: the sender has to be rebound when the WebSocket updates - so
+  // this depends on `ws.sendSerialized`, the value that actually changes.
+  // It used to list `sendRef.current`, which cannot work: mutating a ref
+  // never triggers a render, so a ref in a dependency array is only ever
+  // read at the moment the effect happens to run for some other reason.
+  // The ref-syncing effect above is declared first, so `sendRef.current` is
+  // already the new sender by the time this runs.
   useEffect(() => {
     if (!ws.isConnected || !sendRef.current) {
       // Set to null, not a throwing function - the store's warn() will handle it
@@ -134,7 +140,7 @@ export function useObsStatus(options: UseObsStatusOptions): {
     }
 
     setCommandSender(sendCommand)
-  }, [ws.isConnected, sendRef.current, setCommandSender])
+  }, [ws.isConnected, ws.sendSerialized, setCommandSender])
 
   // Clean up: reset state on unmount
   useEffect(() => {

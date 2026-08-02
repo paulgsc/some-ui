@@ -434,7 +434,17 @@ export const selectCurrentSceneId = (
   return sceneIds.size === 1 ? (Array.from(sceneIds).at(0) ?? null) : null
 }
 
+/**
+ * @deprecated Use useSceneLifetimes or selectActiveSceneIds instead.
+ *
+ * The selector below it carried the deprecation and this wrapper did not, so
+ * a consumer reaching for the hook - the form anyone would actually reach for
+ * - got no warning at all. Marked now; it has no consumers in this repo and
+ * can go once that is true outside it too.
+ */
 export const useCurrentSceneId = (): string | null =>
+  // Referencing a deprecated selector is this shim's entire purpose.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- see above
   useOrchestratorStore(selectCurrentSceneId)
 
 // -----------------------------------------------------------------------------

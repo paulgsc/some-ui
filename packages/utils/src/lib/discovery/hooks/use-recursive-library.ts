@@ -269,9 +269,18 @@ export function useRecursiveLibrary<
     }
   }
 
+  // Loading a library on mount is what an effect is for, and `load` sets
+  // `loading` synchronously on the way in - that is the point, not a
+  // cascading render: the first paint has to say "loading" rather than
+  // "empty". `load` is redefined every render (it closes over `config`), so
+  // listing it would re-run discovery on every render; the effect is keyed
+  // to mount deliberately, and `config` is documented as stable.
   useEffect(() => {
-    load()
-  }, []) // Note: Dependencies intentionally minimal - config is expected to be stable
+    // Not awaited: `load` routes both outcomes into state and never rejects.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [])
 
   return {
     library,

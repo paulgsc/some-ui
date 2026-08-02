@@ -37,6 +37,13 @@ export function useOrchestrator({
     callbacksRef.current = { onSceneChange, onError }
   }, [onSceneChange, onError])
 
+  // Reads the ref inside the callback rather than during render, so the
+  // manager always calls through to the *current* onError instead of the one
+  // that happened to be current when the socket was created.
+  const handleError = useCallback((error: Event | Error) => {
+    callbacksRef.current.onError?.(error)
+  }, [])
+
   const init = useCallback(
     async (manager: WebSocketManager) => {
       await manager.sendSerialized({
@@ -64,7 +71,9 @@ export function useOrchestrator({
   const onIncoming = useCallback(
     (event: IncomingEvent) => {
       if (event.type === "ping") {
-        sendRef.current?.({ type: "pong" })
+        // A pong is fire-and-forget; a failed send means the socket is
+        // already gone, which the reconnect path handles.
+        void sendRef.current?.({ type: "pong" })
         return
       }
 
@@ -100,16 +109,19 @@ export function useOrchestrator({
     reconnectInterval: 3000,
     init,
     onIncomingMessage: onIncoming,
-    onError: callbacksRef.current.onError,
+    onError: handleError,
   })
 
+  // The store's actions are listed as dependencies rather than silenced:
+  // zustand defines them once in `create`, so they are stable for the store's
+  // lifetime and adding them changes how often nothing runs.
   useEffect(() => {
     _setConnectionStatus(ws.isConnected, ws.isInitializing)
-  }, [ws.isConnected, ws.isInitializing])
+  }, [_setConnectionStatus, ws.isConnected, ws.isInitializing])
 
   useEffect(() => {
     _setError(ws.error)
-  }, [ws.error])
+  }, [_setError, ws.error])
 
   useEffect(() => {
     sendRef.current = ws.sendSerialized
@@ -117,9 +129,10 @@ export function useOrchestrator({
 
   useEffect(() => {
     if (!ws.isConnected || !sendRef.current) {
-      _setCommandSender(async () => {
-        throw new Error("Orchestrator not connected")
-      }, stream_id)
+      _setCommandSender(
+        () => Promise.reject(new Error("Orchestrator not connected")),
+        stream_id
+      )
       return
     }
 
@@ -132,5 +145,5 @@ export function useOrchestrator({
     }
 
     _setCommandSender(sendCommand, stream_id)
-  }, [ws.isConnected, stream_id])
+  }, [_setCommandSender, ws.isConnected, stream_id])
 }

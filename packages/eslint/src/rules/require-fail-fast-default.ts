@@ -91,6 +91,17 @@ export const requireFailFastDefault: Rule.RuleModule = {
       SwitchStatement(rawNode): void {
         const node = rawNode
         const discriminantText = sourceCode.getText(node.discriminant)
+        // For `switch (action.type)` over a discriminated union, the value
+        // that narrows to `never` in the default case is `action`, not
+        // `action.type` - TypeScript rejects a property access on `never`
+        // outright, so demanding the full discriminant text there asks for
+        // code that cannot compile. Both spellings are accepted when the
+        // discriminant is a member expression; the object alone is the one
+        // that actually type-checks.
+        const acceptedArguments = new Set([discriminantText])
+        if (node.discriminant.type === "MemberExpression") {
+          acceptedArguments.add(sourceCode.getText(node.discriminant.object))
+        }
         const defaultCase = node.cases.find(
           (switchCase: any) => switchCase.test === null
         )
@@ -103,7 +114,7 @@ export const requireFailFastDefault: Rule.RuleModule = {
             const argNode: Rule.Node = arg
             argText = sourceCode.getText(argNode)
           }
-          if (argText !== discriminantText) {
+          if (!acceptedArguments.has(argText)) {
             context.report({
               node: call,
               messageId: "wrongArgument",

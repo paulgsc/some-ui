@@ -35,7 +35,9 @@ export function useFetch<T>(url: string): FetchState<T> {
       }
     }
 
-    fetchData()
+    // Not awaited: an effect body cannot be async, and fetchData already
+    // routes both outcomes into state.
+    void fetchData()
   }, [url])
 
   return state

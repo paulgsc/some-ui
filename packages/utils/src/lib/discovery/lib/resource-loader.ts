@@ -42,10 +42,13 @@ export class ViteModuleLoader implements ResourceLoader {
 export class StaticResourceLoader implements ResourceLoader {
   constructor(private resources: Map<string, unknown>) {}
 
-  async load(path: string): Promise<unknown> {
+  // Synchronous under an async interface - see StaticFileDiscovery. The
+  // throw becomes a rejection either way, which is what callers already
+  // handle.
+  load(path: string): Promise<unknown> {
     if (!this.resources.has(path)) {
-      throw new Error(`Resource not found: ${path}`)
+      return Promise.reject(new Error(`Resource not found: ${path}`))
     }
-    return this.resources.get(path)
+    return Promise.resolve(this.resources.get(path))
   }
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { assertNever } from "../../assert-never"
 import type { Action, Reducer, Store } from "./ochestrated-store"
 
 // Simplified UI Element Definition
@@ -56,7 +57,7 @@ const livestreamReducer = (
         streamStartTime: startTime,
         currentTime: startTime,
         isLive: true,
-        intro: intro || null, // Convert undefined to null
+        intro: intro ?? null, // Convert undefined to null
         activeElements: newActive,
       }
     }
@@ -66,7 +67,7 @@ const livestreamReducer = (
       return {
         ...state,
         isLive: false,
-        outro: outro || null, // Convert undefined to null
+        outro: outro ?? null, // Convert undefined to null
         activeElements: outro ? new Set([outro.id]) : new Set(),
       }
     }
@@ -165,7 +166,10 @@ const livestreamReducer = (
     }
 
     default: {
-      return state
+      // `LivestreamAction` is a closed union owned by this file, so this is
+      // unreachable - and stays unreachable only because adding a member
+      // without a case stops compiling here.
+      return assertNever(action)
     }
   }
 }

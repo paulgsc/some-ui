@@ -44,7 +44,8 @@
       "@some-ui/content/*": ["./packages/some-content/src/*"],
       "@wasm-loader/*": ["./packages/wasm-loader/src/*"],
       "@ws/*": ["./packages/ws/src/*"],
-      "@speech/*": ["./packages/speech/src/*"]
+      "@speech/*": ["./packages/speech/src/*"],
+      "@activity-catalog/*": ["./packages/activity-catalog/src/*"]
     }
   },
   "include": [

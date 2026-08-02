@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { getActivity, summarizeConfig } from "@some-ui/activity-catalog"
 import {
   Badge,
   Button,
@@ -16,7 +17,6 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
-import { getActivity } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
   useDeleteManySessions,
@@ -26,7 +26,6 @@ import {
   useUpdateStatusManySessions,
 } from "@/lib/tenant"
 import { usePagination } from "@/hooks/use-pagination"
-import { summarizeConfig } from "@/components/composer/utils"
 import { PaginationControls } from "@/components/pagination-controls"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {

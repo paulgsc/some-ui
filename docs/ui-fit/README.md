@@ -101,6 +101,48 @@ to add and is now filtered out in `.storybook/main.ts`.
 If you add a sweep like this elsewhere, plant a deliberately-overflowing
 fixture and confirm it goes red before believing a green run.
 
+### 2b. `apps/www/tests/ui-fit/launcher-fit.spec.ts` (Playwright, for `apps/www`)
+
+The sweep above globs `packages/**` and `extensions/**`, so it never sees
+`apps/www` — and the failure epic #852 was about needs no `overflow-auto` at
+all to happen. A grid that renders N cards inside a page that happens to
+scroll passes the lint, passes the sweep, and pushes everything below it off
+the first screen anyway. The rule guards the symptom; nothing guarded the
+property.
+
+This spec guards the property, for the two surfaces that render the activity
+catalogue:
+
+```bash
+pnpm --filter www test:ui-fit          # runs both this and the sweep
+```
+
+It asserts an invariant rather than a pixel budget: **the launcher's
+footprint does not depend on the catalogue size.** `/app` is not a bounded
+viewport route — `routes/_dashboard.tsx` gives it `overflow-auto` on purpose
+— so "the document must not scroll" would fail for a reason the epic is not
+about. "The section is the same height at N = 50 as at N = 4" is the thing
+that is actually true of a correct launcher and false of a wrong one, at
+every viewport, forever.
+
+Two properties of it are load-bearing:
+
+- **It pins the failure as well as the fix.** A `catalogue` fixture
+  reproduces the pre-#852 grid and must still be seen to grow. An AFTER
+  assertion that has never gone red proves nothing — the same reason the
+  session-viewport spec keeps its BEFORE shell.
+- **It imports `k` and the fixture from the package** rather than copying
+  them, so a change to the breakpoint ladder moves the test with it. The CSS
+  it renders is still a hand-written mirror of the shipped classes, and that
+  can drift; the mirror is the price of not booting a router, a query client
+  and seeded tenant storage to measure a grid. See
+  [`docs/launcher/01-characterization.md`](../launcher/01-characterization.md).
+
+The catalogue itself carries a third guard: `catalogue-size.test.ts` fails
+when an activity is added, with a message saying to re-run the fit sweep and
+bump the recorded count. Adding an applet is meant to be easy; noticing that
+you did is meant to be automatic.
+
 ### 3. Review
 
 The remaining judgement calls — is this tab split natural, is this dialog the

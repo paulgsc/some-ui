@@ -103,7 +103,7 @@ const topik: ActivityDefinition = {
   },
   maturity: "preview",
   defaultConfig: { level: "beginner", durationMinutes: 15 },
-  toSceneProps: (config) => ({ path: `topiks/${config.level}.json` }),
+  toSceneProps: (config) => ({ path: `topiks/${String(config.level)}.json` }),
 }
 
 const interview: ActivityDefinition = {
@@ -210,7 +210,26 @@ const leetype: ActivityDefinition = {
   }),
 }
 
-/** The full catalog of end-user-facing activities, keyed by ActivityId. */
+/**
+ * The full catalog of end-user-facing activities, keyed by ActivityId.
+ *
+ * ## Adding one? The invariant to know about (#852)
+ *
+ * **No surface in this repo may render the whole catalogue.** Not the
+ * dashboard's quick launch, not the composer's picker. Both are bounded
+ * viewports, and `overflow-y-auto` is banned by lint precisely because it is
+ * the repair everyone reaches for.
+ *
+ * The launcher shows `k` *recommended* activities (`rankActivities`, `k` from
+ * the breakpoint) with the rest reachable by search; the composer's picker
+ * pages the catalogue with `useFittedPage`. Both are driven off this list, so
+ * adding an entry here needs no layout change - that is the whole point, and
+ * `catalogue-size.test.ts` is the tripwire that tells you if it stops being
+ * true.
+ *
+ * If you find yourself wanting to render all of them "just for now", the
+ * answer is one of: page it, rank it, or search it.
+ */
 export const ACTIVITY_CATALOG: Record<ActivityId, ActivityDefinition> = {
   honeycomb,
   topik,

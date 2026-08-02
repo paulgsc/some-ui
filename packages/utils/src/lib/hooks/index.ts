@@ -14,5 +14,6 @@ export {
 } from "./socket-tenants"
 export type { UseMockOrchestratorConfig } from "./socket-tenants"
 export { useContainerRect } from "./use-container-rect"
+export { useEditModeHotkey } from "./use-edit-mode-hotkey"
 export { useFittedPage } from "./use-fitted-page"
 export type { FittedPage } from "./use-fitted-page"

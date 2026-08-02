@@ -12,16 +12,9 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowRight, Play, Sparkles } from "lucide-react"
 import { formatRelativeTime } from "some-ui-utils"
 
-import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@/lib/activity-catalog"
-import type { ActivityId } from "@/lib/activity-catalog"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { useProfile, useSessions } from "@/lib/tenant"
-import { ActivityIcon } from "@/components/activity-icon"
-import {
-  ActivityMaturityBadge,
-  ActivityMaturityNote,
-} from "@/components/activity/activity-maturity"
-import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
+import { ActivityLauncher } from "@/components/activity/activity-launcher"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   draft: "Draft",
@@ -87,49 +80,6 @@ const ContinueSessionCard = ({
         </Button>
       </CardContent>
     </Card>
-  )
-}
-
-const ActivityQuickLaunch = (): JSX.Element => {
-  return (
-    <section className="space-y-3">
-      <h2 className="text-gradient-heading text-lg font-semibold">
-        Start something new
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ACTIVITY_IDS.map((id: ActivityId) => {
-          const activity = ACTIVITY_CATALOG[id]
-          return (
-            <Link
-              key={id}
-              to="/sessions/new"
-              search={{ activity: id }}
-              className="block"
-            >
-              <Card className="hover:border-primary/50 h-full transition-colors">
-                <CardContent className="flex flex-col gap-2 pt-6">
-                  <div className="flex items-start justify-between gap-2">
-                    <ActivityIcon
-                      icon={activity.icon}
-                      className="text-primary size-6"
-                    />
-                    {/* Said before the click, where the expectation is set -
-                        not after, where the disappointment lands. */}
-                    <ActivityMaturityBadge activity={activity} />
-                  </div>
-                  <p className="font-semibold">{activity.name}</p>
-                  <p className="text-muted-foreground text-sm">
-                    {activity.description}
-                  </p>
-                  <ActivityMaturityNote activity={activity} />
-                  <AudioActivityHint activity={activity} />
-                </CardContent>
-              </Card>
-            </Link>
-          )
-        })}
-      </div>
-    </section>
   )
 }
 
@@ -202,7 +152,7 @@ const DashboardHome = (): JSX.Element => {
     <div className="mx-auto max-w-5xl space-y-8">
       <ProfileSummary />
       {resumableSession && <ContinueSessionCard session={resumableSession} />}
-      <ActivityQuickLaunch />
+      <ActivityLauncher />
       <RecentSessions sessions={sessions} />
     </div>
   )

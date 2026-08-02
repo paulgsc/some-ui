@@ -23,7 +23,15 @@
  * any. It gets a row here the day something does, and not before.
  */
 
-export type AudioChannelId = "speech" | "effects"
+import type { AudioChannelId } from "@some-ui/activity-catalog"
+
+/**
+ * Re-exported, not redeclared: the ids are owned by
+ * `@some-ui/activity-catalog`, where activities *declare* the channels they
+ * use. This module is the consuming half - what the person allows - and the
+ * two only line up if exactly one of them defines the vocabulary.
+ */
+export type { AudioChannelId }
 
 type AudioChannelPreference = {
   enabled: boolean
