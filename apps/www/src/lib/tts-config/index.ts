@@ -57,8 +57,42 @@ function endpointForCurrentHost(): string | undefined {
   return `http://${hostname}:${DEFAULT_TTS_PORT}${TTS_PATH}`
 }
 
-export function resolveTTSEndpoint(): string | undefined {
+/**
+ * Which of the three rules above produced the endpoint.
+ *
+ * Worth naming rather than inferring from the URL, because the one that
+ * goes wrong silently is `override`: a stale `VITE_TTS_ENDPOINT` - in a
+ * shell (Vite reads `VITE_*` out of `process.env`, not just .env files), a
+ * gitignored apps/www/.env.local, a devshell - beats every default here by
+ * design, and the only evidence in the browser is a 404 on a path nobody
+ * serves. Naming the source is what makes that legible; see the dev-only
+ * disclosure in src/providers/tts.tsx.
+ */
+export type TTSEndpointSource =
+  | "override"
+  | "same-origin-proxy"
+  | "published-port"
+  | "unavailable"
+
+export type TTSEndpointResolution = {
+  endpoint: string | undefined
+  source: TTSEndpointSource
+}
+
+export function describeTTSEndpoint(): TTSEndpointResolution {
   const configured = import.meta.env.VITE_TTS_ENDPOINT
-  if (configured) return configured
-  return endpointForCurrentHost()
+  if (configured) return { endpoint: configured, source: "override" }
+
+  const endpoint = endpointForCurrentHost()
+  if (endpoint === undefined) return { endpoint, source: "unavailable" }
+  return {
+    endpoint,
+    source: endpoint.startsWith(TTS_PROXY_PATH)
+      ? "same-origin-proxy"
+      : "published-port",
+  }
+}
+
+export function resolveTTSEndpoint(): string | undefined {
+  return describeTTSEndpoint().endpoint
 }

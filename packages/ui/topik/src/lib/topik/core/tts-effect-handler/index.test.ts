@@ -1,4 +1,4 @@
-import type { SpeakOptions, SpeechAdapter } from "@some-ui/speech"
+import type { SpeakOptions, SpeechAdapter, VoiceConfig } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import { describe, expect, it, vi } from "vitest"
@@ -35,7 +35,7 @@ type CapturedCall = {
  * it. The fake this replaces had to capture options installed by a
  * preceding `updateOptions` and trust that the pairing held.
  */
-function createFakeSpeechAdapter(): {
+function createFakeSpeechAdapter(voices: ReadonlyArray<VoiceConfig> = []): {
   speechAdapter: SpeechAdapter
   calls: Array<CapturedCall>
 } {
@@ -44,7 +44,7 @@ function createFakeSpeechAdapter(): {
   const speechAdapter: SpeechAdapter = {
     id: "web-speech",
     supported: true,
-    voices: [],
+    voices,
     pending: 0,
     speak: vi.fn((content: string, options: SpeakOptions = {}) => {
       return new Promise<void>((resolve, reject) => {
@@ -394,5 +394,103 @@ describe("TTSEffectHandler - lifecycle", () => {
     handler.enqueue(msg, true)
     await flushAsync()
     expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VOICE SELECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * The mismatch this prevents does not degrade, it fails: `openai-edge-tts`
+ * asked to read Hangul in an en-US voice returns an empty audio stream,
+ * which the backend reports as a 500 about "parameters" and never as "wrong
+ * language". Since a host's default voice is English (apps/www ships an
+ * unset `ttsVoiceId`, which resolves to the catalogue's first entry), the
+ * applet asking for its own language is the whole difference between a
+ * Korean lesson that speaks and one that 500s on its first sentence.
+ */
+const KOREAN_VOICE: VoiceConfig = {
+  id: "ko-KR-SunHiNeural",
+  name: "Sun-Hi",
+  provider: "openai",
+  language: "ko-KR",
+}
+const ENGLISH_VOICE: VoiceConfig = {
+  id: "onyx",
+  name: "Onyx",
+  provider: "openai",
+  language: "en-US",
+}
+
+describe("TTSEffectHandler - voice selection", () => {
+  it("speaks with the adapter's Korean voice, not its first", () => {
+    const { speechAdapter, calls } = createFakeSpeechAdapter([
+      ENGLISH_VOICE,
+      KOREAN_VOICE,
+    ])
+    const handler = createTTSEffectHandler({
+      speechAdapter,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+
+    expect(calls[0]!.options.voice).toEqual(KOREAN_VOICE)
+  })
+
+  it("names no voice when the backend offers no Korean one", () => {
+    // The browser adapter on a machine with no Korean voice installed.
+    // Passing nothing leaves the session's own default in charge, which is
+    // what this applet did before it asked for a language at all.
+    const { speechAdapter, calls } = createFakeSpeechAdapter([ENGLISH_VOICE])
+    const handler = createTTSEffectHandler({
+      speechAdapter,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+
+    expect(calls[0]!.options.voice).toBeUndefined()
+  })
+
+  it("matches on the language subtag, not an exact locale", () => {
+    // Browser voices report tags like "ko" or "ko-KR-x-something"; an
+    // equality check would miss both and silently fall back to English.
+    const plainKorean: VoiceConfig = { ...KOREAN_VOICE, language: "KO" }
+    const { speechAdapter, calls } = createFakeSpeechAdapter([
+      ENGLISH_VOICE,
+      plainKorean,
+    ])
+    const handler = createTTSEffectHandler({
+      speechAdapter,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+
+    expect(calls[0]!.options.voice).toEqual(plainKorean)
+  })
+
+  it("keeps speaking with it across a queue", async () => {
+    const { speechAdapter, calls } = createFakeSpeechAdapter([
+      ENGLISH_VOICE,
+      KOREAN_VOICE,
+    ])
+    const handler = createTTSEffectHandler({
+      speechAdapter,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    handler.enqueue(makeMessage("m2"), true)
+    finishSpeaking(calls[0]!)
+    await flushAsync()
+
+    expect(calls[1]!.options.voice).toEqual(KOREAN_VOICE)
   })
 })

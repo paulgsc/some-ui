@@ -8,7 +8,12 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { DEFAULT_TTS_PORT, resolveTTSEndpoint, TTS_PROXY_PATH } from "."
+import {
+  DEFAULT_TTS_PORT,
+  describeTTSEndpoint,
+  resolveTTSEndpoint,
+  TTS_PROXY_PATH,
+} from "."
 
 /**
  * Worth pinning for the same reason `data-mode` is: getting this wrong
@@ -88,5 +93,43 @@ describe("resolveTTSEndpoint", () => {
     vi.stubEnv("VITE_TTS_ENDPOINT", "")
 
     expect(resolveTTSEndpoint() ?? "").toContain(String(DEFAULT_TTS_PORT))
+  })
+})
+
+/**
+ * The provenance exists for one failure in particular: an override that
+ * points somewhere nothing is served looks identical, from the browser, to
+ * a default that does - a 404 either way. Which rule won is the fact that
+ * separates them, so it is reported rather than guessed at.
+ */
+describe("describeTTSEndpoint", () => {
+  it("names an override as the reason, whatever it points at", () => {
+    servePageOver("https:", "nixos.local")
+    // A root-relative override with no proxy behind it: the case that
+    // costs an afternoon, because the request looks perfectly ordinary.
+    vi.stubEnv("VITE_TTS_ENDPOINT", "/v1/audio/speech")
+
+    expect(describeTTSEndpoint()).toEqual({
+      endpoint: "/v1/audio/speech",
+      source: "override",
+    })
+  })
+
+  it("distinguishes the two derived endpoints by scheme", () => {
+    vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
+
+    servePageOver("https:", "nixos.local")
+    expect(describeTTSEndpoint().source).toBe("same-origin-proxy")
+
+    servePageOver("http:", "nixos.local")
+    expect(describeTTSEndpoint().source).toBe("published-port")
+  })
+
+  it("agrees with resolveTTSEndpoint", () => {
+    servePageOver("https:", "nixos.local")
+    vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
+
+    expect(describeTTSEndpoint().endpoint).toBe(resolveTTSEndpoint())
+    expect(resolveTTSEndpoint()).toBe(`${TTS_PROXY_PATH}/v1/audio/speech`)
   })
 })
