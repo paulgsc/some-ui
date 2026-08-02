@@ -168,12 +168,9 @@ export default defineConfig(
       },
       // Generate source maps for better analysis
       sourcemap: true,
-      // Minification settings that preserve tree shaking info
       minify: "terser",
       terserOptions: {
         compress: {
-          // Keep function names for better analysis
-          keep_fnames: true,
           // Drop console statements in production
           drop_console: true,
           // Remove dead code
@@ -181,10 +178,14 @@ export default defineConfig(
           // Remove unused variables
           unused: true,
         },
-        mangle: {
-          // Keep function names for analysis
-          keep_fnames: true,
-        },
+        // No `keep_fnames` (it was set on both `compress` and `mangle`).
+        // It was there to keep readable names in the bundle analyzer, but it
+        // applies to every production build, not just analysis runs: function
+        // names survive mangling in shipped code, which is bytes users pay to
+        // download on a page they will never profile. `sourcemap: true` below
+        // already gives the analyzer real names without shipping them, and
+        // `pnpm build:analyze` reads the sourcemaps. Set it in that script's
+        // own build if the analyzer ever needs it, not in the default one.
       },
       // Chunk size warnings
       chunkSizeWarningLimit: 1000,
@@ -210,12 +211,11 @@ export default defineConfig(
       __FEATURE_A__: JSON.stringify(true),
       __FEATURE_B__: JSON.stringify(false),
     },
-    // ESBuild options for tree shaking
-    esbuild: {
-      // Tree shaking of unused imports
-      treeShaking: true,
-      // Keep names for better analysis
-      keepNames: true,
-    },
+    // No `esbuild` block. Vite 8 transforms with oxc, not esbuild, and
+    // ignores this key outright — the build printed "Both esbuild and oxc
+    // options were set. oxc options will be used and esbuild options will be
+    // ignored" on every run. `treeShaking: true` was also already the default,
+    // and `keepNames: true` pulled in the same direction as the `keep_fnames`
+    // removed above, so nothing here was doing work worth keeping.
   })
 )
