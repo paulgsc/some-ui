@@ -363,9 +363,6 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
-      '@some-ui/leetype':
-        specifier: workspace:*
-        version: link:../../packages/ui/leetype
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../../packages/ui/shared
@@ -1431,9 +1428,6 @@ importers:
 
   packages/ui/leetype:
     dependencies:
-      '@some-ui/content':
-        specifier: workspace:*
-        version: link:../../some-content
       '@some-ui/leetype-wasm':
         specifier: ^0.0.9
         version: 0.0.9

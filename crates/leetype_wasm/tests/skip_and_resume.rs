@@ -21,7 +21,7 @@ function second(b) {
 
 #[test]
 fn sections_partition_the_whole_token_stream() {
-    let core = TypingGameCore::new(SOURCE, None);
+    let core = TypingGameCore::new(SOURCE, None, None);
     let sections = core.layout().sections;
 
     assert_eq!(sections.len(), 3);
@@ -36,7 +36,7 @@ fn sections_partition_the_whole_token_stream() {
 
 #[test]
 fn section_labels_read_like_the_code_they_open() {
-    let core = TypingGameCore::new(SOURCE, None);
+    let core = TypingGameCore::new(SOURCE, None, None);
     let labels: Vec<String> = core.layout().sections.into_iter().map(|section| section.label).collect();
 
     assert_eq!(labels, vec!["import { thing } from \"./thing\"", "function first(a) {", "function second(b) {"]);
@@ -44,7 +44,7 @@ fn section_labels_read_like_the_code_they_open() {
 
 #[test]
 fn a_closing_brace_is_not_offered_as_its_own_section() {
-    let core = TypingGameCore::new(SOURCE, None);
+    let core = TypingGameCore::new(SOURCE, None, None);
     assert!(core.layout().sections.iter().all(|section| section.label != "}"));
 }
 

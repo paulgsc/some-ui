@@ -18,12 +18,13 @@
 use std::rc::Rc;
 
 use crate::leetype::program::Program;
+use crate::leetype::reveal::{self, RevealConfig};
 use crate::leetype::session::{self, Command as SessionCommand, SessionConfig, SessionState};
 use crate::leetype::view::{self, ChunkCompletionStats, CumulativeStats, Layout, Outcome, SectionProgress, Snapshot};
 use crate::leetype::{stats, Rejection};
 
 /// Everything a caller can ask the engine to do.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// Begin (or restart) the run, starting the clock.
     Start,
@@ -47,6 +48,19 @@ pub enum Command {
     CompleteChunk,
     /// Swap in the next chunk of source, keeping the clock running.
     StartNextChunk { source: String },
+    /// Replay the *same* source as a fresh attempt: the gate held, so the
+    /// step comes round again with a shorter initial delay and nothing else
+    /// carried over. Repetition is the intervention (see `reveal`).
+    RetryChunk,
+    /// Nothing happened. Drives the reveal loop for a player who has stopped
+    /// typing — see [`SessionCommand::Tick`].
+    Tick,
+    /// Replace the reveal loop's bands with ones derived from a fresh sample
+    /// of the player's own typing speed.
+    ///
+    /// A command rather than a setter because this crate has exactly one
+    /// mutation point and it is `dispatch` (canon Axiom 12.1 / ADR 0004).
+    Calibrate { reveal: RevealConfig },
 }
 
 /// What [`step`] produced besides the next core. Kept separate from
@@ -91,14 +105,16 @@ pub struct TypingGameCore {
 impl TypingGameCore {
     /// Compile `source` and start an untouched run over it.
     #[must_use]
-    pub fn new(source: &str, max_consecutive_errors: Option<usize>) -> Self {
+    pub fn new(source: &str, max_consecutive_errors: Option<usize>, reveal: Option<RevealConfig>) -> Self {
         let program = Rc::new(Program::compile(source));
         let session = SessionState::empty(program.slot_count());
+        let defaults = SessionConfig::default();
 
         Self {
             program,
             config: SessionConfig {
-                max_consecutive_errors: max_consecutive_errors.unwrap_or_else(|| SessionConfig::default().max_consecutive_errors),
+                max_consecutive_errors: max_consecutive_errors.unwrap_or(defaults.max_consecutive_errors),
+                reveal: reveal.map_or(defaults.reveal, RevealConfig::sanitized),
             },
             session,
             cumulative: CumulativeStats::default(),
@@ -144,10 +160,23 @@ impl TypingGameCore {
         session::slot_status_codes(&self.session, &self.program)
     }
 
+    /// Per-slot visibility (`0` masked, `1` revealed) — the reveal window
+    /// projected for the renderer, which owns no masking policy of its own.
+    #[must_use]
+    pub fn visibility_codes(&self) -> Vec<u8> {
+        reveal::visibility_codes(&self.session.reveal, &self.program, self.session.cursor)
+    }
+
+    /// What the runner should do with this step, given how it was typed.
+    #[must_use]
+    pub fn progression(&self, now: f64) -> reveal::Progression {
+        reveal::progression(self.snapshot(now).weighted_wpm, self.session.reveal.attempt, self.config.reveal)
+    }
+
     /// The live state of the run.
     #[must_use]
     pub fn snapshot(&self, now: f64) -> Snapshot {
-        view::snapshot(&self.session, &self.program, self.config, now)
+        view::snapshot(&self.session, &self.program, self.config, self.game_start_time, now)
     }
 
     /// How far the player has got in each section.
@@ -201,38 +230,59 @@ fn step(core: &TypingGameCore, command: &Command, now: f64) -> (TypingGameCore, 
 
         Command::CompleteChunk => complete_chunk(core, now),
 
+        // The clock the *snapshot* reports restarts here, and the session
+        // clock (`game_start_time`) does not. Both are wanted, for different
+        // consumers: the weighted figure gates one step and would be
+        // meaningless measured over every step before it, while the WASM
+        // object is deliberately not torn down and rebuilt, so session-wide
+        // timing stays continuous across the swap.
         Command::StartNextChunk { source } => {
             let program = Rc::new(Program::compile(source));
-            let session = SessionState::empty(program.slot_count()).inheriting_clock_from(&core.session);
+            let session = SessionState::empty(program.slot_count()).started(now);
             let next = TypingGameCore {
                 program,
                 config: core.config,
                 session,
                 cumulative: core.cumulative,
-                game_start_time: core.game_start_time,
+                game_start_time: core.game_start_time.or(Some(now)),
+            };
+            (next, StepResult::accepted())
+        }
+
+        Command::RetryChunk => {
+            let session = SessionState::retrying(core.program.slot_count(), &core.session).started(now);
+            (core.with_session(session), StepResult::accepted())
+        }
+
+        Command::Calibrate { reveal } => {
+            let mut next = core.with_session(core.session.clone());
+            next.config = SessionConfig {
+                reveal: reveal.sanitized(),
+                ..core.config
             };
             (next, StepResult::accepted())
         }
 
         Command::JumpToSection { section } => core.program.sections().get(*section).map_or_else(
             || (core.clone(), StepResult::refused(Rejection::NothingPending)),
-            |target| apply_session(core, SessionCommand::JumpToSlot { slot: target.start_slot }),
+            |target| apply_session(core, SessionCommand::JumpToSlot { slot: target.start_slot }, now),
         ),
 
         Command::ResumeAtFirstGap => {
             let slot = session::first_gap(&core.session.entries).unwrap_or_else(|| core.program.slot_count());
-            apply_session(core, SessionCommand::JumpToSlot { slot })
+            apply_session(core, SessionCommand::JumpToSlot { slot }, now)
         }
 
-        Command::Press { key } => apply_session(core, SessionCommand::Press { key: *key }),
-        Command::Backspace => apply_session(core, SessionCommand::Backspace),
-        Command::JumpToSlot { slot } => apply_session(core, SessionCommand::JumpToSlot { slot: *slot }),
-        Command::DismissAlert => apply_session(core, SessionCommand::DismissAlert),
+        Command::Press { key } => apply_session(core, SessionCommand::Press { key: *key }, now),
+        Command::Backspace => apply_session(core, SessionCommand::Backspace, now),
+        Command::JumpToSlot { slot } => apply_session(core, SessionCommand::JumpToSlot { slot: *slot }, now),
+        Command::DismissAlert => apply_session(core, SessionCommand::DismissAlert, now),
+        Command::Tick => apply_session(core, SessionCommand::Tick, now),
     }
 }
 
-fn apply_session(core: &TypingGameCore, command: SessionCommand) -> (TypingGameCore, StepResult) {
-    let transition = session::reduce(&core.session, &core.program, core.config, command);
+fn apply_session(core: &TypingGameCore, command: SessionCommand, now: f64) -> (TypingGameCore, StepResult) {
+    let transition = session::reduce(&core.session, &core.program, core.config, command, now);
     let result = transition.rejection.map_or_else(StepResult::accepted, StepResult::refused);
 
     (core.with_session(transition.state), result)
@@ -264,7 +314,7 @@ fn complete_chunk(core: &TypingGameCore, now: f64) -> (TypingGameCore, StepResul
 
 #[cfg(test)]
 mod tests {
-    use super::{Command, TypingGameCore};
+    use super::{Command, RevealConfig, TypingGameCore};
     use crate::leetype::Rejection;
 
     const SOURCE: &str = "fn one() {\n    a();\n}\nfn two() {\n    b();\n}\n";
@@ -277,7 +327,7 @@ mod tests {
 
     #[test]
     fn a_fresh_core_is_parked_on_the_first_token() {
-        let core = TypingGameCore::new(SOURCE, None);
+        let core = TypingGameCore::new(SOURCE, None, None);
         let snapshot = core.snapshot(0.0);
         assert_eq!(snapshot.cursor_slot, 0);
         assert_eq!(snapshot.cursor_display, 0);
@@ -287,7 +337,7 @@ mod tests {
 
     #[test]
     fn typing_the_token_stream_completes_the_chunk() {
-        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None);
+        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fn a() {b();}", 1.0);
 
@@ -300,7 +350,7 @@ mod tests {
 
     #[test]
     fn the_caret_never_lands_on_skipped_layout() {
-        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None);
+        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None, None);
         core.dispatch(&Command::Start, 0.0);
 
         let roles = core.role_codes();
@@ -317,7 +367,7 @@ mod tests {
 
     #[test]
     fn an_extra_space_is_reported_as_a_rejection() {
-        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None);
+        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fn a() {", 0.0);
 
@@ -329,7 +379,7 @@ mod tests {
 
     #[test]
     fn jumping_to_a_section_moves_the_caret_without_losing_work() {
-        let mut core = TypingGameCore::new(SOURCE, None);
+        let mut core = TypingGameCore::new(SOURCE, None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fn ", 0.0);
 
@@ -345,7 +395,7 @@ mod tests {
 
     #[test]
     fn jumping_to_a_section_that_does_not_exist_is_refused() {
-        let mut core = TypingGameCore::new(SOURCE, None);
+        let mut core = TypingGameCore::new(SOURCE, None, None);
         let outcome = core.dispatch(&Command::JumpToSection { section: 99 }, 0.0);
         assert!(!outcome.accepted);
         assert_eq!(outcome.snapshot.cursor_slot, 0);
@@ -353,7 +403,7 @@ mod tests {
 
     #[test]
     fn resume_returns_to_the_first_hole() {
-        let mut core = TypingGameCore::new(SOURCE, None);
+        let mut core = TypingGameCore::new(SOURCE, None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fn ", 0.0);
         core.dispatch(&Command::JumpToSection { section: 1 }, 0.0);
@@ -365,7 +415,7 @@ mod tests {
 
     #[test]
     fn section_progress_tracks_what_has_been_typed() {
-        let mut core = TypingGameCore::new(SOURCE, None);
+        let mut core = TypingGameCore::new(SOURCE, None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fnone", 0.0);
 
@@ -377,7 +427,7 @@ mod tests {
 
     #[test]
     fn completing_a_chunk_folds_into_the_cumulative_totals() {
-        let mut core = TypingGameCore::new("abc", None);
+        let mut core = TypingGameCore::new("abc", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "abc", 0.0);
 
@@ -390,22 +440,81 @@ mod tests {
     }
 
     #[test]
-    fn the_next_chunk_replaces_the_program_but_keeps_the_clock() {
-        let mut core = TypingGameCore::new("abc", None);
+    fn the_next_chunk_replaces_the_program_and_restarts_the_step_clock_only() {
+        // Two clocks, two consumers. The step clock restarts because the
+        // weighted figure gates *this* step and would be meaningless
+        // measured over every step before it; the session clock does not,
+        // because the engine is deliberately not torn down between steps.
+        let mut core = TypingGameCore::new("abc", None, None);
         core.dispatch(&Command::Start, 1_000.0);
         type_text(&mut core, "abc", 1_000.0);
-        core.dispatch(&Command::StartNextChunk { source: "de\nfg".to_owned() }, 1_000.0);
+        core.dispatch(&Command::StartNextChunk { source: "de\nfg".to_owned() }, 31_000.0);
 
         let snapshot = core.snapshot(61_000.0);
         assert_eq!(snapshot.slot_count, 4);
         assert_eq!(snapshot.filled, 0);
         assert!(snapshot.started);
-        assert!((snapshot.elapsed_time - 60.0).abs() < f64::EPSILON);
+        assert!((snapshot.elapsed_time - 30.0).abs() < f64::EPSILON);
+        assert!((snapshot.session_elapsed_time - 60.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn a_retry_replays_the_same_source_as_a_further_attempt() {
+        let mut core = TypingGameCore::new("abc", None, None);
+        core.dispatch(&Command::Start, 0.0);
+        type_text(&mut core, "axc", 0.0);
+        assert_eq!(core.snapshot(0.0).attempt, 0);
+
+        let outcome = core.dispatch(&Command::RetryChunk, 5_000.0);
+        assert_eq!(outcome.snapshot.attempt, 1);
+        assert_eq!(outcome.snapshot.slot_count, 3);
+        assert_eq!(outcome.snapshot.filled, 0);
+        assert_eq!(outcome.snapshot.total_errors, 0);
+        assert!(outcome.snapshot.started);
+    }
+
+    #[test]
+    fn calibrating_moves_the_gate_without_disturbing_the_run() {
+        let mut core = TypingGameCore::new("abcdef", None, None);
+        core.dispatch(&Command::Start, 0.0);
+        type_text(&mut core, "abc", 0.0);
+
+        let before = core.snapshot(1_000.0);
+        let outcome = core.dispatch(
+            &Command::Calibrate {
+                reveal: RevealConfig {
+                    baseline_wpm: 120.0,
+                    dispersion_wpm: 8.0,
+                },
+            },
+            1_000.0,
+        );
+
+        assert!(outcome.snapshot.gate_threshold > before.gate_threshold);
+        assert_eq!(outcome.snapshot.filled, before.filled);
+        assert_eq!(outcome.snapshot.cursor_slot, before.cursor_slot);
+    }
+
+    #[test]
+    fn a_tick_opens_the_window_for_a_player_who_has_stopped_typing() {
+        let mut core = TypingGameCore::new("let mut map = HashMap::new();", None, None);
+        core.dispatch(&Command::Start, 0.0);
+        assert_eq!(core.snapshot(0.0).reveal_k, 0, "a step starts fully masked");
+
+        let mut now = 0.0;
+        for _ in 0..4 {
+            now += 3_000.0;
+            core.dispatch(&Command::Tick, now);
+        }
+
+        let snapshot = core.snapshot(now);
+        assert!(snapshot.reveal_k > 0, "an idle player must not be locked out");
+        assert!(core.visibility_codes().contains(&1));
     }
 
     #[test]
     fn resetting_the_game_clears_totals_and_the_clock() {
-        let mut core = TypingGameCore::new("abc", None);
+        let mut core = TypingGameCore::new("abc", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "abc", 0.0);
         core.dispatch(&Command::CompleteChunk, 1_000.0);
@@ -417,7 +526,7 @@ mod tests {
 
     #[test]
     fn resetting_the_chunk_keeps_session_totals() {
-        let mut core = TypingGameCore::new("abc", None);
+        let mut core = TypingGameCore::new("abc", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "abc", 0.0);
         core.dispatch(&Command::CompleteChunk, 1_000.0);
@@ -429,7 +538,7 @@ mod tests {
 
     #[test]
     fn the_error_ceiling_blocks_input_until_a_backspace() {
-        let mut core = TypingGameCore::new("abcdefg", Some(2));
+        let mut core = TypingGameCore::new("abcdefg", Some(2), None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "xy", 0.0);
 
@@ -444,7 +553,7 @@ mod tests {
 
     #[test]
     fn dismissing_the_alert_hides_it_without_unblocking_input() {
-        let mut core = TypingGameCore::new("abcdefg", Some(2));
+        let mut core = TypingGameCore::new("abcdefg", Some(2), None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "xy", 0.0);
 
@@ -455,7 +564,7 @@ mod tests {
 
     #[test]
     fn the_status_and_role_maps_line_up_with_the_rendered_source() {
-        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None);
+        let mut core = TypingGameCore::new("fn a() {\n    b();\n}", None, None);
         core.dispatch(&Command::Start, 0.0);
         type_text(&mut core, "fx", 0.0);
 
@@ -472,7 +581,7 @@ mod tests {
 
     #[test]
     fn an_empty_program_is_inert_rather_than_complete() {
-        let mut core = TypingGameCore::new("", None);
+        let mut core = TypingGameCore::new("", None, None);
         let outcome = core.dispatch(&Command::Press { key: 'a' }, 0.0);
         assert_eq!(outcome.rejection, Some(Rejection::NothingPending));
         assert!(!outcome.snapshot.is_complete);

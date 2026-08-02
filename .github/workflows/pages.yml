@@ -172,16 +172,18 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
-      # honeycomb's sfx and leetype's demo code samples live in
-      # packages/some-content (pure assets, no build step of its own) and
-      # aren't part of www's own public/ dir. They're tiny/curated enough to
-      # bake into the static GitHub Pages build (unlike the Docker image,
-      # which volume-mounts them at runtime instead - see infra/compose).
-      # No-op for any subdir that doesn't exist (e.g. sfx/ is gitignored
+      # honeycomb's sfx lives in packages/some-content (pure assets, no build
+      # step of its own) and isn't part of www's own public/ dir. It's
+      # tiny/curated enough to bake into the static GitHub Pages build (unlike
+      # the Docker image, which volume-mounts it at runtime instead - see
+      # infra/compose). No-op if the subdir doesn't exist (sfx/ is gitignored
       # and only populated locally).
+      #
+      # leetype's code-samples dropped out in M20 (#887): exercises carry
+      # inline sources now, so no code path fetches a file to start a step.
       - name: Copy content assets into www's public dir
         run: |
-          for dir in sfx code-samples; do
+          for dir in sfx; do
             src="packages/some-content/public/$dir"
             if [ -d "$src" ]; then
               mkdir -p "apps/www/public/$dir"
@@ -197,7 +199,7 @@ jobs:
           # Dockerfile/nginx build leaves this unset (defaults to "/").
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           # This build deploys no companion data (the copy step above takes
-          # only sfx/code-samples), so every content shim must fall back to
+          # only sfx), so every content shim must fall back to
           # its bundled demo seed instead of fetching - see
           # apps/www/src/lib/data-mode. Deliberately its own flag rather than
           # NODE_ENV or Vite's PROD: the Docker image is also a production

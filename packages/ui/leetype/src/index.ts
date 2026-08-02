@@ -1,3 +1,6 @@
 export * from "./components"
 export * from "./hooks"
+export * from "./types/exercise"
 export * from "./types/leetype"
+export { nextExercise } from "./lib/leetype/exercises"
+export type { SelectionState } from "./lib/leetype/exercises"

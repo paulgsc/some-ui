@@ -36,7 +36,15 @@ const SNAPSHOT = {
   progress: 0,
   accuracy: 100,
   wpm: 0,
+  instantWpm: 0,
+  weightedWpm: 0,
+  gateThreshold: 20,
+  attempt: 0,
+  revealK: 0,
+  runCount: 1,
+  assisted: 0,
   elapsedTime: 0,
+  sessionElapsedTime: 0,
   totalErrors: 0,
   consecutiveErrors: 0,
   showErrorAlert: false,
@@ -49,6 +57,8 @@ type FakeCall = { method: string; args: Array<unknown> }
 type FakeTypingGameInstance = {
   targetCode: string
   maxConsecutiveErrors: number | undefined
+  baselineWpm: number | undefined
+  dispersionWpm: number | undefined
   calls: Array<FakeCall>
   freed: boolean
   free: Mock
@@ -60,13 +70,22 @@ vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
     targetCode: string
     maxConsecutiveErrors: number | undefined
+    baselineWpm: number | undefined
+    dispersionWpm: number | undefined
     calls: Array<FakeCall> = []
     freed = false
     free: Mock
 
-    constructor(targetCode: string, maxConsecutiveErrors?: number) {
+    constructor(
+      targetCode: string,
+      maxConsecutiveErrors?: number,
+      baselineWpm?: number,
+      dispersionWpm?: number
+    ) {
       this.targetCode = targetCode
       this.maxConsecutiveErrors = maxConsecutiveErrors
+      this.baselineWpm = baselineWpm
+      this.dispersionWpm = dispersionWpm
       this.free = vi.fn(() => {
         this.freed = true
       })
@@ -89,6 +108,13 @@ vi.mock("@some-ui/leetype-wasm", () => {
     }
     slot_status(): Uint8Array {
       return new Uint8Array([0, 0, 0])
+    }
+    visibility(): Uint8Array {
+      return new Uint8Array([0, 0, 0])
+    }
+    progression(now: number): unknown {
+      this.calls.push({ method: "progression", args: [now] })
+      return "advance"
     }
     snapshot(): unknown {
       return SNAPSHOT
@@ -132,6 +158,19 @@ vi.mock("@some-ui/leetype-wasm", () => {
     start_next_chunk(source: string, now: number): unknown {
       return this.record("start_next_chunk", source, now)
     }
+    retry_chunk(now: number): unknown {
+      return this.record("retry_chunk", now)
+    }
+    tick(now: number): unknown {
+      return this.record("tick", now)
+    }
+    calibrate(
+      baselineWpm: number,
+      dispersionWpm: number,
+      now: number
+    ): unknown {
+      return this.record("calibrate", baselineWpm, dispersionWpm, now)
+    }
   }
 
   function registerInstance(instance: FakeTypingGameInstance): void {
@@ -149,11 +188,13 @@ vi.mock("@some-ui/leetype-wasm", () => {
 function baseProps(overrides: { gameState?: GameState } = {}): {
   targetCode: string
   gameState: GameState
+  stepKey: string
   onComplete: Mock
 } {
   return {
     targetCode: "const x = 1",
     gameState: "playing",
+    stepKey: "step-0",
     onComplete: vi.fn(),
     ...overrides,
   }
@@ -259,19 +300,90 @@ describe("keystroke commands", () => {
     expect(methodsOf(instances[0])).not.toContain("backspace")
   })
 
-  it("routes navigation commands to the engine even when not playing", async () => {
+  it("dismisses the error alert even when not playing", async () => {
     const { result } = renderHook(() =>
       useTypingGame(baseProps({ gameState: "idle" }))
     )
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     act(() => {
-      result.current.jumpToSection(2)
-      result.current.resume()
+      result.current.onDismiss()
     })
 
-    expect(methodsOf(instances[0])).toContain("jump_to_section")
-    expect(methodsOf(instances[0])).toContain("resume")
+    expect(methodsOf(instances[0])).toContain("dismiss_alert")
+  })
+})
+
+describe("the reveal loop's clock", () => {
+  it("ticks the engine while a step is in flight", async () => {
+    // Not optional plumbing: the loop's most important input is a player who
+    // has *stopped* typing, and a state machine driven only by keystrokes
+    // cannot see one.
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useTypingGame(baseProps()))
+      await vi.waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(methodsOf(instances[0])).not.toContain("tick")
+      act(() => {
+        vi.advanceTimersByTime(1_000)
+      })
+      expect(methodsOf(instances[0])).toContain("tick")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not tick a step nobody is playing", async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() =>
+        useTypingGame(baseProps({ gameState: "idle" }))
+      )
+      await vi.waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      act(() => {
+        vi.advanceTimersByTime(2_000)
+      })
+      expect(methodsOf(instances[0])).not.toContain("tick")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe("calibration", () => {
+  it("hands the engine the player's own baseline at construction", async () => {
+    const { result } = renderHook(() =>
+      useTypingGame({
+        ...baseProps(),
+        initialBaseline: { wpm: 88, dispersion: 7, samples: 3, updatedAt: 0 },
+      })
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(instances[0]?.baselineWpm).toBe(88)
+    expect(instances[0]?.dispersionWpm).toBe(7)
+  })
+
+  it("applies a fresh sample as a command rather than a remount", async () => {
+    // Tearing the engine down to apply a baseline would reset the session
+    // clock and the totals with it.
+    const { result } = renderHook(() => useTypingGame(baseProps()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(instances).toHaveLength(1)
+
+    act(() => {
+      result.current.calibrate({
+        wpm: 62,
+        dispersion: 9,
+        samples: 2,
+        updatedAt: 1,
+      })
+    })
+
+    expect(instances).toHaveLength(1)
+    expect(methodsOf(instances[0])).toContain("calibrate")
   })
 })
 

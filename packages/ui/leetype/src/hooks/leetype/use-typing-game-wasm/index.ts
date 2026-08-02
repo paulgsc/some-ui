@@ -1,56 +1,112 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { Baseline } from "@leetype/lib/leetype/baseline-store"
 import {
   loadWasm,
   TypedTypingGame,
 } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type {
-  ChunkCompletionStats,
   GameState,
   Layout,
   Outcome,
+  Progression,
   Rejection,
-  SectionProgress,
   Snapshot,
   TypedTypingGame as TypedTypingGameType,
 } from "@leetype/types/leetype"
 
+/**
+ * How often the host pokes the engine while a step is in flight.
+ *
+ * The reveal loop is a controller whose most important input is a player who
+ * has stopped typing, and a state machine driven only by keystrokes cannot
+ * see one — `k` would freeze exactly when it most needs to open. 250ms is
+ * well under the shortest reveal the loop can produce and far above anything
+ * a person perceives as latency.
+ */
+const TICK_INTERVAL_MS = 250
+
 type UseTypingGameProps = {
+  /** The current step's source. */
   targetCode: string
   gameState: GameState
-  onComplete: () => void
-  onChunkComplete?: (stats: ChunkCompletionStats) => void
+  /**
+   * Identity of the step in flight.
+   *
+   * Explicit rather than inferred from `targetCode`, because two different
+   * steps are allowed to carry the same source — a corpus can repeat a proof
+   * — and inferring identity from the string would leave the engine holding
+   * a finished step forever, with nothing to tell it a new one had started.
+   */
+  stepKey: string
+  /**
+   * Zero-based. Increasing it *without* changing `stepKey` is the gate
+   * holding: the engine replays the same source as a further attempt, which
+   * shortens the reveal delay.
+   */
+  attempt?: number
+  /**
+   * The player's own sampled typing speed at construction time. Every
+   * threshold the engine applies is a fraction of it; omitting it takes the
+   * cold-start stand-in, which is playable.
+   *
+   * Later samples arrive through `calibrate`, not through this prop: a
+   * baseline change must not tear the engine down, because that would reset
+   * the session clock and the totals with it.
+   */
+  initialBaseline?: Baseline
+  onComplete?: () => void
   maxConsecutiveErrors?: number
 }
 
 /**
  * Everything the renderer needs, read out of the engine in one go.
  *
- * `roles` and `slotOfDisplay` only change when the chunk does; `slotStatus`
- * and `snapshot` change on every accepted keystroke. They are grouped
- * because they must be read from the *same* engine state — a `slotStatus`
- * from before a keystroke paired with a `snapshot` from after it would put
- * the caret one character ahead of the highlighting.
+ * `roles` and `slotOfDisplay` only change when the step does; `slotStatus`,
+ * `visibility` and `snapshot` change on every accepted keystroke and on
+ * every tick. They are grouped because they must be read from the *same*
+ * engine state — a `slotStatus` from before a keystroke paired with a
+ * `snapshot` from after it would put the caret one character ahead of the
+ * highlighting.
  */
-export type GameView = {
+type GameView = {
   layout: Layout
   roles: Uint8Array
   slotOfDisplay: Int32Array
   slotStatus: Uint8Array
+  visibility: Uint8Array
   snapshot: Snapshot
 }
 
 type UseTypingGameReturn = GameView & {
-  /** Per-section completion, read lazily for the skip/resume picker. */
-  readSectionProgress: () => Array<SectionProgress>
   /** Why the last keystroke was refused, if it was. */
   rejection: Rejection | null
   press: (key: string) => void
   backspace: () => void
-  jumpToSection: (section: number) => void
-  resume: () => void
   reset: () => void
   start: () => void
   onDismiss: () => void
+  /**
+   * What the engine makes of the step as typed — read at the moment the
+   * runner asks, because weighted WPM is a rate and asking it about time the
+   * player was not typing in would answer a different question.
+   */
+  readProgression: () => Progression
+  /**
+   * Which `stepKey#attempt` the engine is *currently* compiled for.
+   *
+   * The caller needs this to tell a live snapshot from a stale one. React
+   * commits a state update at the end of an effect pass, so between "the
+   * runner moved on" and "the engine was told" there is one render where the
+   * snapshot still describes the finished step — and a caller that acted on
+   * it would act twice. Comparing this against what it asked for is the
+   * whole guard.
+   */
+  activeStep: string | null
+  /**
+   * Re-derive every threshold from a fresh sample. A command to the engine,
+   * which is the external system this hook exists to wrap.
+   */
+  calibrate: (baseline: Baseline) => void
   isLoading: boolean
   error: Error | null
 }
@@ -68,7 +124,15 @@ const EMPTY_SNAPSHOT: Snapshot = {
   progress: 0,
   accuracy: 100,
   wpm: 0,
+  instantWpm: 0,
+  weightedWpm: 0,
+  gateThreshold: 0,
+  attempt: 0,
+  revealK: 0,
+  runCount: 0,
+  assisted: 0,
   elapsedTime: 0,
+  sessionElapsedTime: 0,
   totalErrors: 0,
   consecutiveErrors: 0,
   showErrorAlert: false,
@@ -81,6 +145,7 @@ const EMPTY_VIEW: GameView = {
   roles: new Uint8Array(),
   slotOfDisplay: new Int32Array(),
   slotStatus: new Uint8Array(),
+  visibility: new Uint8Array(),
   snapshot: EMPTY_SNAPSHOT,
 }
 
@@ -91,42 +156,58 @@ function readView(game: TypedTypingGameType, now: number): GameView {
     roles: game.roles(),
     slotOfDisplay: game.slotOfDisplay(),
     slotStatus: game.slotStatus(),
+    visibility: game.visibility(),
     snapshot: game.snapshot(now),
   }
 }
 
-/** The cheaper re-read after a keystroke: the chunk's structure is fixed. */
+/** The cheaper re-read after a command: the step's structure is fixed. */
 function refreshView(previous: GameView, game: TypedTypingGameType): GameView {
+  const now = Date.now()
   return {
     ...previous,
     slotStatus: game.slotStatus(),
-    snapshot: game.snapshot(Date.now()),
+    visibility: game.visibility(),
+    snapshot: game.snapshot(now),
   }
+}
+
+/** How a step is identified across the boundary: which one, and which try. */
+function tokenOf(stepKey: string, attempt: number): string {
+  return `${stepKey}#${attempt}`
 }
 
 export function useTypingGame({
   targetCode,
   gameState,
+  stepKey,
+  attempt = 0,
+  initialBaseline,
   onComplete,
-  onChunkComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
   const gameRef = useRef<TypedTypingGameType | null>(null)
   const completedRef = useRef(false)
+  /** The step the engine is compiled for, mirrored for the effect below. */
+  const activeStepRef = useRef<string | null>(null)
+  /** The previous step's identity, to tell a repeat from an advance. */
+  const previousKeyRef = useRef<string | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [view, setView] = useState<GameView>(EMPTY_VIEW)
   const [rejection, setRejection] = useState<Rejection | null>(null)
+  const [activeStep, setActiveStep] = useState<string | null>(null)
 
-  // Latest-ref: the mount effect below only wants targetCode's value *at
-  // construction time* — it must not re-run (and reload wasm) on every
-  // targetCode change, since the second effect already handles those via
-  // startNextChunk. Reading through a ref keeps it out of that effect's
-  // dependency array without going stale.
+  // Latest-ref: the mount effect below only wants these values *at
+  // construction time* — it must not re-run (and reload wasm) whenever the
+  // step changes, since the effects below already handle those.
   const targetCodeRef = useRef(targetCode)
+  const baselineRef = useRef(initialBaseline)
+  const initialTokenRef = useRef(tokenOf(stepKey, attempt))
   useEffect(() => {
     targetCodeRef.current = targetCode
+    baselineRef.current = initialBaseline
   })
 
   useEffect(() => {
@@ -142,11 +223,16 @@ export function useTypingGame({
 
         const game = new TypedTypingGame(
           targetCodeRef.current,
-          maxConsecutiveErrors
+          maxConsecutiveErrors,
+          baselineRef.current?.wpm,
+          baselineRef.current?.dispersion
         )
         gameRef.current = game
         completedRef.current = false
+        activeStepRef.current = initialTokenRef.current
+        previousKeyRef.current = initialTokenRef.current.split("#")[0] ?? null
 
+        setActiveStep(initialTokenRef.current)
         setView(readView(game, Date.now()))
         setIsLoading(false)
       } catch (e) {
@@ -167,19 +253,37 @@ export function useTypingGame({
     const game = gameRef.current
     if (!game || !targetCode || isLoading) return
 
+    const token = tokenOf(stepKey, attempt)
+    if (activeStepRef.current === token) return
+
     try {
-      game.startNextChunk(targetCode, Date.now())
-      // Reacting to a prop change (targetCode) by resyncing local UI state
-      // to match the engine's new chunk — the imperative startNextChunk
-      // call above can't move to render (it must run exactly once per
-      // change), so this can't be restructured as a render-time adjustment.
+      const now = Date.now()
+      // Same step, later attempt: the gate held, so the engine replays the
+      // source it already has rather than being handed a "new" one — which
+      // is what keeps the attempt counter (and the shortened reveal delay)
+      // meaningful. A different step is a swap.
+      if (previousKeyRef.current === stepKey) {
+        game.retryChunk(now)
+      } else {
+        game.startNextChunk(targetCode, now)
+      }
+
+      activeStepRef.current = token
+      previousKeyRef.current = stepKey
+      completedRef.current = false
+
+      // Reacting to a prop change by resyncing local UI state to match the
+      // engine's new step — the imperative call above can't move to render
+      // (it must run exactly once per change), so this can't be
+      // restructured as a render-time adjustment.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveStep(token)
       setView(readView(game, Date.now()))
       setRejection(null)
-      completedRef.current = false
     } catch (e) {
-      setError(e instanceof Error ? e : new Error("Chunk transition failed"))
+      setError(e instanceof Error ? e : new Error("Step transition failed"))
     }
-  }, [targetCode, isLoading])
+  }, [targetCode, stepKey, attempt, isLoading])
 
   /**
    * Run one engine command and republish what it produced. The engine hands
@@ -211,17 +315,6 @@ export function useTypingGame({
     dispatch((game, now) => game.backspace(now))
   }, [dispatch, gameState])
 
-  const jumpToSection = useCallback(
-    (section: number): void => {
-      dispatch((game, now) => game.jumpToSection(section, now))
-    },
-    [dispatch]
-  )
-
-  const resume = useCallback((): void => {
-    dispatch((game, now) => game.resume(now))
-  }, [dispatch])
-
   const reset = useCallback((): void => {
     completedRef.current = false
     dispatch((game, now) => game.reset(now))
@@ -236,12 +329,29 @@ export function useTypingGame({
     dispatch((game, now) => game.dismissAlert(now))
   }, [dispatch])
 
-  const readSectionProgress = useCallback(
-    (): Array<SectionProgress> => gameRef.current?.sectionProgress() ?? [],
+  const readProgression = useCallback(
+    (): Progression => gameRef.current?.progression(Date.now()) ?? "advance",
     []
   )
 
+  const calibrate = useCallback((baseline: Baseline): void => {
+    gameRef.current?.calibrate(baseline.wpm, baseline.dispersion, Date.now())
+  }, [])
+
+  // The tick. Only while a step is genuinely in flight: a finished or
+  // not-yet-started step has no window to open.
   const { isComplete } = view.snapshot
+  useEffect(() => {
+    if (gameState !== "playing" || isComplete || isLoading) return
+
+    const interval = setInterval(() => {
+      dispatch((game, now) => game.tick(now))
+    }, TICK_INTERVAL_MS)
+
+    return (): void => {
+      clearInterval(interval)
+    }
+  }, [gameState, isComplete, isLoading, dispatch])
 
   useEffect(() => {
     if (completedRef.current || gameState !== "playing" || !isComplete) return
@@ -250,26 +360,21 @@ export function useTypingGame({
     if (!game) return
 
     completedRef.current = true
-
-    const outcome = game.completeChunk(Date.now())
-    if (outcome.chunk && onChunkComplete) {
-      onChunkComplete(outcome.chunk)
-    }
-
-    onComplete()
-  }, [isComplete, gameState, onComplete, onChunkComplete])
+    game.completeChunk(Date.now())
+    onComplete?.()
+  }, [isComplete, gameState, onComplete])
 
   return {
     ...view,
-    readSectionProgress,
     rejection,
     press,
     backspace,
-    jumpToSection,
-    resume,
     reset,
     start,
     onDismiss,
+    readProgression,
+    activeStep,
+    calibrate,
     isLoading,
     error,
   }

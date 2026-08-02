@@ -1,8 +1,7 @@
 import { z } from "zod"
 
-export type GameState = "idle" | "playing" | "finished" | "timeout"
+export type GameState = "idle" | "playing" | "finished"
 
-export type DisplayMode = "shown" | "hidden"
 export type Language = "typescript" | "rust" | "cpp" | "c"
 /**
  * Alternate source-text coloring, swapped in for Prism's syntax-highlight
@@ -12,129 +11,29 @@ export type Language = "typescript" | "rust" | "cpp" | "c"
  * (tokens/base.css's `--gradient-heading` / `--gradient-accent` /
  * `--gradient-muted`), so the same "text is never the flat maximum-contrast
  * color" idiom applies to the code display, not just prose.
+ *
+ * Cosmetic and story-independent: it survived the prune because it costs
+ * nothing, and it is a host prop rather than a menu because the new session
+ * flow has no menus in it.
  */
 export type TextGradient = "none" | "heading" | "accent" | "muted"
-export type SessionMode = "data-structure" | "algorithm"
-export type Difficulty = "easy" | "medium" | "hard"
-export type NContext = "tiny" | "small" | "medium" | "large"
 
-export const N_VALUES: Record<NContext, number> = {
-  tiny: 10,
-  small: 100,
-  medium: 1000,
-  large: 10000,
-}
-
-/**
- * Where an exercise sits on the ladder from "recall the syntax" to "solve the
- * original problem" — Bloom's cognitive operations, read through the Dreyfus
- * progression. Ordered; see `CURRICULUM_STAGES`.
- *
- * `master` is deliberately the odd one out: it isn't a cognitive operation,
- * it's the position of the dense problem the whole curriculum was decomposed
- * from. Exactly one exercise per curriculum carries it.
- */
-export type CurriculumStage =
-  | "remember"
-  | "understand"
-  | "apply"
-  | "analyze"
-  | "integrate"
-  | "master"
-
-/**
- * A challenge's place in a decomposed curriculum: the node it occupies in the
- * knowledge graph behind some dense problem, plus the edges into it.
- *
- * Optional on `Challenge` — the bundled demo pool is a flat set of classic
- * data structures with no curriculum behind them, and a corpus generated
- * before this existed must keep loading. When it *is* present, the UI stops
- * presenting the challenge as a standalone problem and starts presenting it
- * as step N of a progression with a stated purpose (see `ChallengeBrief`).
- */
-export type ChallengeCurriculum = {
-  stage: CurriculumStage
-  /** 1-based position in the linearized curriculum. */
-  step: number
-  /** How many exercises the curriculum has in total, this one included. */
-  totalSteps: number
-  /**
-   * The one-sentence answer to "what single insight does this exercise give
-   * me?" If it takes more than a sentence, the exercise was too broad and
-   * should have been split — so this field is also the design constraint.
-   */
-  insight: string
-  learningObjectives: Array<string>
-  /** New ideas this exercise is the first to require. Ideally exactly one. */
-  conceptsIntroduced: Array<string>
-  /** Ideas from earlier exercises this one puts back to work. */
-  conceptsReinforced: Array<string>
-  /** Challenge ids this one assumes — the dependency-graph edges into it. */
-  dependsOn: Array<string>
-  /** Observable, code-level conditions for having finished this exercise. */
-  completionCriteria: Array<string>
-  /** The dense problem the whole curriculum culminates in. */
-  targetProblem: string
-}
-
-/**
- * Source text per language. `rust` is the one guaranteed member: a decomposed
- * curriculum is authored in Rust (see the Curriculum Decomposer prompt in
- * packages/some-content/prompts/leetype-challenge-generator), and the other
- * three are a legacy of the flat multi-language demo pool. `Leetype` picks a
- * language the challenge actually carries rather than assuming all four.
- */
-export type CodePaths = { rust: string } & Partial<Record<Language, string>>
-
-export type Challenge = {
-  id: string
-  title: string
-  description: string
-  difficulty: Difficulty
-  mode: SessionMode
-  tags: Array<string>
-  codePaths: CodePaths
-  levelRequired: number
-  /** Curriculum position, when this challenge came from a decomposition. */
-  curriculum?: ChallengeCurriculum
-}
-
+/** What a finished exercise reports. */
 export type CompletedSessionStats = {
+  /** Cumulative WPM across the whole run. */
   wpm: number
   accuracy: number
+  /** Seconds, across every step. */
   elapsedTime: number
   errors: number
-  displayMode: DisplayMode
-  wasAdaptive: boolean
-  gameState: "finished" | "timeout"
-}
-
-export type SolveRecord = {
-  challengeId: string
-  solvedAt: number
-  wpm: number
-  accuracy: number
-  elapsedTime: number
-  errors: number
-  n: NContext | null
-  displayMode: DisplayMode
-  xpEarned: number
-}
-
-export type PlayerProgress = {
-  xp: number
-  level: number
-  solves: Array<SolveRecord>
-}
-
-export type CodeSample = {
-  title: string
-  description: string
-  code: string
-}
-
-export type CodeSamplesMap = {
-  [L in Language]: CodeSample
+  stepsCompleted: number
+  /**
+   * Steps the gate let through only because the attempts ran out. Worth
+   * reporting: it is the honest record of where the player was carried.
+   */
+  stepsEscaped: number
+  /** Mean fraction of each step's resolved slots that were revealed, 0–1. */
+  assistance: number
 }
 
 // ── Engine vocabulary ─────────────────────────────────────────────────────
@@ -151,8 +50,9 @@ export type CodeSamplesMap = {
 //                   indentation while still sitting on a real character.
 //
 // `ROLE_TYPEABLE`/`ROLE_SKIP` decode the per-display-character role map;
-// `SLOT_*` decode the per-slot status map. Both cross the boundary as
-// typed arrays, so they are numbers rather than strings.
+// `SLOT_*` decode the per-slot status map; `VISIBILITY_*` decode the
+// per-slot reveal map. All three cross the boundary as typed arrays, so they
+// are numbers rather than strings.
 
 export const ROLE_SKIP = 0
 export const ROLE_TYPEABLE = 1
@@ -160,6 +60,15 @@ export const ROLE_TYPEABLE = 1
 export const SLOT_UNTOUCHED = 0
 export const SLOT_CORRECT = 1
 export const SLOT_WRONG = 2
+
+/**
+ * Per-slot reveal state, projected by the engine's control loop. The
+ * renderer draws what this says and owns no masking policy of its own —
+ * there is no `displayMode` prop and no React state anywhere describing
+ * whether code is hidden.
+ */
+export const VISIBILITY_MASKED = 0
+export const VISIBILITY_REVEALED = 1
 
 /**
  * `Option<T>` crosses the wasm-bindgen boundary as `undefined`, but every
@@ -192,7 +101,7 @@ export const SnapshotSchema = z.object({
   cursorSlot: z.number(),
   /**
    * Where the caret sits in the *rendered* source. Always a typeable
-   * character, or one past the last character when the chunk is done — the
+   * character, or one past the last character when the step is done — the
    * engine guarantees it never lands inside indentation.
    */
   cursorDisplay: z.number(),
@@ -203,8 +112,35 @@ export const SnapshotSchema = z.object({
   firstGapSlot: nullableNumber,
   progress: z.number(),
   accuracy: z.number(),
+  /** Cumulative WPM — the figure the player is shown. */
   wpm: z.number(),
+  /**
+   * Instantaneous, windowed WPM — what drives the reveal window. Volatile by
+   * design; that volatility is the signal.
+   */
+  instantWpm: z.number(),
+  /**
+   * Rate discounted by assistance taken and accuracy. The gate reads this
+   * one and nothing else.
+   */
+  weightedWpm: z.number(),
+  /**
+   * What `weightedWpm` has to reach to leave this step — a fraction of the
+   * player's own sampled baseline, never a constant.
+   */
+  gateThreshold: z.number(),
+  /** Which attempt at this step this is, zero-based. */
+  attempt: z.number(),
+  /** Runs ahead of the caret currently unmasked. `0` is fully masked. */
+  revealK: z.number(),
+  /** Reveal units the step holds in total. */
+  runCount: z.number(),
+  /** Correctly-resolved slots the player could see when they resolved them. */
+  assisted: z.number(),
+  /** Seconds this step has been in flight; restarts on every step. */
   elapsedTime: z.number(),
+  /** Seconds since the session began, continuous across steps. */
+  sessionElapsedTime: z.number(),
   /** Lifetime tally of wrong keystrokes, corrected ones included. */
   totalErrors: z.number(),
   /**
@@ -233,6 +169,13 @@ export const RejectionSchema = z.enum([
   "notTypeable",
 ])
 
+/**
+ * What the engine says should happen to a step the player just finished.
+ * `escape` is the repeat cap letting them past — the guarantee that an
+ * exercise always terminates.
+ */
+export const ProgressionSchema = z.enum(["advance", "repeat", "escape"])
+
 export const ChunkCompletionStatsSchema = z.object({
   charsTyped: z.number(),
   errors: z.number(),
@@ -260,6 +203,7 @@ export type Layout = z.infer<typeof LayoutSchema>
 export type Snapshot = z.infer<typeof SnapshotSchema>
 export type SectionProgress = z.infer<typeof SectionProgressSchema>
 export type Rejection = z.infer<typeof RejectionSchema>
+export type Progression = z.infer<typeof ProgressionSchema>
 export type ChunkCompletionStats = z.infer<typeof ChunkCompletionStatsSchema>
 export type CumulativeStats = z.infer<typeof CumulativeStatsSchema>
 export type Outcome = z.infer<typeof OutcomeSchema>
@@ -270,6 +214,8 @@ export type TypingGameWasm = {
   roles(): Uint8Array
   slot_of_display(): Int32Array
   slot_status(): Uint8Array
+  visibility(): Uint8Array
+  progression(now: number): unknown
   snapshot(now: number): unknown
   section_progress(): unknown
   cumulative_stats(): unknown
@@ -284,13 +230,18 @@ export type TypingGameWasm = {
   reset_game(now: number): unknown
   complete_chunk(now: number): unknown
   start_next_chunk(new_target_code: string, now: number): unknown
+  retry_chunk(now: number): unknown
+  tick(now: number): unknown
+  calibrate(baseline_wpm: number, dispersion_wpm: number, now: number): unknown
   free(): void
 }
 
 export type WasmModule = {
   TypingGame: new (
     target_code: string,
-    max_consecutive_errors?: number
+    max_consecutive_errors?: number,
+    baseline_wpm?: number,
+    dispersion_wpm?: number
   ) => TypingGameWasm
   classify_source(input: string): Uint8Array
   slot_map_from_source(input: string): Int32Array
@@ -301,6 +252,8 @@ export type TypedTypingGame = {
   roles(): Uint8Array
   slotOfDisplay(): Int32Array
   slotStatus(): Uint8Array
+  visibility(): Uint8Array
+  progression(now: number): Progression
   snapshot(now: number): Snapshot
   sectionProgress(): Array<SectionProgress>
   cumulativeStats(): CumulativeStats
@@ -315,5 +268,8 @@ export type TypedTypingGame = {
   resetGame(now: number): Outcome
   completeChunk(now: number): Outcome
   startNextChunk(newTargetCode: string, now: number): Outcome
+  retryChunk(now: number): Outcome
+  tick(now: number): Outcome
+  calibrate(baselineWpm: number, dispersionWpm: number, now: number): Outcome
   free(): void
 }

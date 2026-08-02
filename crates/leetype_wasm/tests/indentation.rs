@@ -97,7 +97,7 @@ fn blank_lines_between_blocks_cost_nothing() {
 
 #[test]
 fn the_role_map_lines_up_with_the_rendered_source() {
-    let core = TypingGameCore::new(RUST_SOURCE, None);
+    let core = TypingGameCore::new(RUST_SOURCE, None, None);
     let roles = core.role_codes();
     let slots = core.slot_of_display_codes();
 
@@ -114,7 +114,7 @@ fn the_role_map_lines_up_with_the_rendered_source() {
 
 #[test]
 fn a_source_that_is_only_whitespace_asks_for_nothing() {
-    let mut core = TypingGameCore::new("   \n\t\n   ", None);
+    let mut core = TypingGameCore::new("   \n\t\n   ", None, None);
     let outcome = core.dispatch(&Command::Press { key: 'a' }, 0.0);
 
     assert_eq!(outcome.rejection, Some(Rejection::NothingPending));

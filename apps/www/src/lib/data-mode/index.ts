@@ -3,15 +3,15 @@ import type { RuntimeMode } from "@some-ui/fetch-kit"
 /**
  * Where this build's companion data comes from, decided once at build time.
  *
- * Every locally-generated content file (`/hangul/words/*.json`,
- * `/leetype/challenges.json`, and the curated `sfx`/`code-samples` trees)
- * lives in `packages/some-content/public`, reachable over HTTP wherever
+ * Every locally-generated content file (`/hangul/words/*.json`, the topik
+ * study material, and the curated `sfx` tree) lives in
+ * `packages/some-content/public`, reachable over HTTP wherever
  * `public/` is actually served. So the question each data shim has to answer
  * is exactly one bit - *fetch, or fall back to the bundled demo seed* - and
  * this is that bit:
  *
  * - **`"static"`** - the GitHub Pages build. No companion data is deployed
- *   with it by design (pages.yml copies only `sfx`/`code-samples`), so no
+ *   with it by design (pages.yml copies only `sfx`), so no
  *   request is ever issued and every shim falls back to its package's own
  *   bundled demo seed.
  * - **`"server"`** - `vite dev`, `vite preview`, and the Docker/nginx image.

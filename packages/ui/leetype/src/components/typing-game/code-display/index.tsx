@@ -1,7 +1,11 @@
-import type { FC, JSX, ReactNode } from "react"
-import { useLayoutEffect, useRef } from "react"
-import type { DisplayMode, TextGradient } from "@leetype/types/leetype"
-import { ROLE_TYPEABLE, SLOT_CORRECT, SLOT_WRONG } from "@leetype/types/leetype"
+import type { FC, JSX, ReactNode, RefObject } from "react"
+import type { TextGradient } from "@leetype/types/leetype"
+import {
+  ROLE_TYPEABLE,
+  SLOT_CORRECT,
+  SLOT_WRONG,
+  VISIBILITY_MASKED,
+} from "@leetype/types/leetype"
 import { ChevronDown } from "lucide-react"
 import Prism from "prismjs"
 import { cn } from "some-ui-utils"
@@ -13,6 +17,15 @@ import "prismjs/components/prism-c"
 import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-rust"
 
+/**
+ * One character wide, exactly like every glyph it stands in for.
+ *
+ * That is not a cosmetic choice: masked and unmasked renderings of a step
+ * must have identical character counts per line, or unmasking reflows the
+ * text under the player's eye mid-word.
+ * `crates/leetype_wasm/tests/invariants.rs` asserts the width property; this
+ * constant is the half of it that lives on this side.
+ */
 const MASK_CHAR = "•"
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -56,23 +69,38 @@ type CodeDisplayProps = {
   roles: Uint8Array
   /**
    * Per-rendered-character slot ordinal, `-1` for layout characters. The
-   * indirection is the whole point of the new model: a run of indentation
-   * has display indices but no slots, so it can be rendered in place while
+   * indirection is the whole point of the model: a run of indentation has
+   * display indices but no slots, so it can be rendered in place while
    * being completely absent from what the player has to type.
    */
   slotOfDisplay: Int32Array
   /** Per-slot status: untouched / correct / wrong. */
   slotStatus: Uint8Array
   /**
+   * Per-slot reveal state, projected by the engine's control loop.
+   *
+   * This component decides *nothing* about masking. It has no threshold, no
+   * latch, no mode flag and no memory: it draws a bullet where the map says
+   * masked and the glyph where it says revealed. The policy — when `k`
+   * opens, how fast it closes, what the player has already been shown — is
+   * engine state, provable by `cargo test -p leetype_wasm` with no DOM in
+   * the picture.
+   */
+  visibility: Uint8Array
+  /**
    * Index, into `displayCode`'s characters, of the character the player is
    * currently on. The engine guarantees this is always a typeable character
-   * (or one past the end when the chunk is done) — the caret never lands
+   * (or one past the end when the step is done) — the caret never lands
    * inside an indentation run, which is what makes the overlay read as
    * "you are exactly here" instead of drifting through whitespace.
    */
   cursorDisplay: number
-  displayMode?: DisplayMode
-  adaptiveMessage?: string
+  /**
+   * Handed down so the scroll container can find the caret without this
+   * component having to know why anyone wants it. Caret-*following* is
+   * `TypingViewport`'s job; this component only says where the caret is.
+   */
+  caretRef?: RefObject<HTMLSpanElement | null>
   className?: string
   /**
    * When set to anything but "none", not-yet-typed code renders in a
@@ -84,43 +112,40 @@ type CodeDisplayProps = {
   textGradient?: TextGradient
 }
 
+/**
+ * A pure glyph renderer: a linear sequence of display characters plus caret
+ * state, and nothing else.
+ *
+ * It used to be three things — a renderer, a scroll container
+ * (`h-[500px] overflow-auto`) and a caret-following controller. The fixed
+ * height was the tell: a component that sizes itself owns its own scroll,
+ * and a component that owns its own scroll cannot be composed into a card
+ * that wants to give it the remaining 80% and no more. The scroll and the
+ * caret-following moved to `TypingViewport`; what is left renders correctly
+ * at whatever height its parent gives it.
+ *
+ * It knows nothing about exercises, prompts, steps or competencies. Its
+ * props contain no vocabulary from any of them, and that is the invariant
+ * worth protecting: adding a new kind of prompt-side block must never reach
+ * this file.
+ */
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,
   language,
   roles,
   slotOfDisplay,
   slotStatus,
+  visibility,
   cursorDisplay,
-  displayMode = "shown",
-  adaptiveMessage,
+  caretRef,
   className,
   textGradient = "none",
 }): JSX.Element => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const caretRef = useRef<HTMLSpanElement>(null)
-
-  useLayoutEffect(() => {
-    const container = containerRef.current
-    const caret = caretRef.current
-    if (!caret || !container) return
-
-    const containerRect = container.getBoundingClientRect()
-    const caretRect = caret.getBoundingClientRect()
-
-    if (
-      caretRect.bottom > containerRect.bottom - 100 ||
-      caretRect.top < containerRect.top + 100
-    ) {
-      caret.scrollIntoView({ behavior: "smooth", block: "center" })
-    }
-  }, [cursorDisplay])
-
-  const isHidden = displayMode === "hidden"
-
   const renderChar = (char: string, displayIndex: number): JSX.Element => {
     const isTypeable = roles[displayIndex] === ROLE_TYPEABLE
     const slot = slotOfDisplay[displayIndex] ?? -1
     const status = slot >= 0 ? slotStatus[slot] : undefined
+    const isMasked = slot >= 0 && visibility[slot] === VISIBILITY_MASKED
 
     if (displayIndex === cursorDisplay) {
       return (
@@ -134,7 +159,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
             aria-hidden="true"
             className="pointer-events-none absolute -top-3.5 left-1/2 h-3 w-3 -translate-x-1/2 text-blue-400"
           />
-          {isHidden ? MASK_CHAR : char}
+          {isMasked ? MASK_CHAR : char}
         </span>
       )
     }
@@ -163,7 +188,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
       return <span key={displayIndex}>{char}</span>
     }
 
-    if (isHidden) {
+    if (isMasked) {
       return (
         <span key={displayIndex} className="text-muted-foreground/40">
           {MASK_CHAR}
@@ -215,8 +240,8 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 
     const body = tokens.map((token, i) => renderToken(token, i))
 
-    // The caret parks one past the last character when the chunk is done,
-    // so it needs somewhere to live that no source character occupies.
+    // The caret parks one past the last character when the step is done, so
+    // it needs somewhere to live that no source character occupies.
     if (cursorDisplay >= roles.length) {
       return (
         <>
@@ -224,7 +249,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           <span
             key="caret-end"
             ref={caretRef}
-            title="Chunk complete"
+            title="Step complete"
             className="relative rounded-[2px] bg-blue-500/20 px-1 ring-2 ring-blue-400/60"
           />
         </>
@@ -235,19 +260,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   }
 
   return (
-    <div
-      ref={containerRef}
-      // scroll-intent: code-display — the source the player reads and types
-      // through is as long as the file is, and the caret is auto-scrolled to
-      // follow them. The scroll *is* the interaction here, not a fallback for
-      // a box that was handed too much; declared so the ui-fit sweep can tell
-      // the two apart (docs/ui-fit).
-      data-scroll-intent="code-display"
-      className={cn(
-        "relative h-[500px] overflow-auto rounded-lg border border-border bg-secondary p-4 font-mono text-sm leading-relaxed",
-        className
-      )}
-    >
+    <div className={cn("font-mono text-sm leading-relaxed", className)}>
       <pre className="m-0">
         <code
           className={`language-${language}`}
@@ -266,11 +279,6 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           {renderHighlightedCode()}
         </code>
       </pre>
-      {adaptiveMessage && (
-        <div className="absolute right-3 top-3 rounded-full border border-border bg-background/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
-          {adaptiveMessage}
-        </div>
-      )}
     </div>
   )
 }

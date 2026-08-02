@@ -10,6 +10,7 @@ export type PreviewGame = {
   roles: Uint8Array
   slotOfDisplay: Int32Array
   slotStatus: Uint8Array
+  visibility: Uint8Array
   snapshot: Snapshot
 }
 
@@ -25,7 +26,16 @@ export type PreviewGame = {
  */
 export function usePreviewGame(
   code: string,
-  typedTokens: number
+  typedTokens: number,
+  /**
+   * Seconds of wall clock to simulate before reading the projections out.
+   *
+   * The reveal window is a function of time as well as of keystrokes, so a
+   * story that wants to show revealed code has to say how long the player
+   * has been sitting there — a preview taken at `t = 0` is always fully
+   * masked, which is a real state but a dull one.
+   */
+  idleSeconds = 0
 ): PreviewGame | null {
   const [preview, setPreview] = useState<PreviewGame | null>(null)
 
@@ -38,8 +48,9 @@ export function usePreviewGame(
 
       const game = new TypedTypingGame(code)
       try {
-        const now = Date.now()
-        game.start(now)
+        const start = Date.now()
+        const now = start + idleSeconds * 1000
+        game.start(start)
 
         const roles = game.roles()
         const chars = Array.from(code)
@@ -55,10 +66,15 @@ export function usePreviewGame(
           pressed++
         }
 
+        // One tick so the reveal loop has run at `now` even for a story
+        // where nothing was typed at all.
+        game.tick(now)
+
         setPreview({
           roles,
           slotOfDisplay: game.slotOfDisplay(),
           slotStatus: game.slotStatus(),
+          visibility: game.visibility(),
           snapshot: game.snapshot(now),
         })
       } finally {
@@ -69,7 +85,7 @@ export function usePreviewGame(
     return (): void => {
       aliveRef.current = false
     }
-  }, [code, typedTokens])
+  }, [code, typedTokens, idleSeconds])
 
   return preview
 }
