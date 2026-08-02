@@ -1,9 +1,19 @@
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { Exercise } from "@leetype/types/exercise"
+import type { default as wasmInit } from "@some-ui/leetype-wasm"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { Leetype } from "."
+
+/**
+ * What `__wbg_init` resolves to — the wasm exports table. Derived from the
+ * bindings rather than written as `void` so this mock keeps tracking the
+ * real signature; the loader awaits init purely for sequencing and never
+ * reads the table, so a stand-in value is enough.
+ */
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a stand-in for the wasm exports table, which the loader awaits but never reads
+const INIT_OUTPUT = {} as Awaited<ReturnType<typeof wasmInit>>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // What is pinned here is the one thing the composition can get wrong in a way
@@ -248,7 +258,7 @@ beforeEach(async () => {
   const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
     .mockReset()
-    .mockImplementation(() => Promise.resolve())
+    .mockImplementation(() => Promise.resolve(INIT_OUTPUT))
 })
 
 describe("the step hand-off", () => {
