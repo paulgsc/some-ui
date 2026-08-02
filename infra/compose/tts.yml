@@ -27,6 +27,17 @@
 # VITE_TTS_ENDPOINT overrides both for deployments that front this service
 # somewhere else. The GitHub Pages build has no backend at all and resolves
 # to the browser's own speechSynthesis instead; nothing here applies to it.
+#
+# Both services here are load-bearing for anything reached from the host:
+# `docker compose up openai-edge-tts` on its own publishes *no* port at all
+# (that container only `expose`s 5050 to the compose network), so a page or a
+# `vite dev` proxy pointed at localhost:5050 finds a closed port and speech
+# fails while the backend sits there looking healthy. Start the pair:
+#
+#   docker compose up -d openai-edge-tts nginx
+#
+# The www container's /api/tts/ route is the one exception - it talks to
+# `openai-edge-tts` over some-ui-network and needs no published port.
 services:
   openai-edge-tts:
     image: travisvn/openai-edge-tts:latest-ffmpeg

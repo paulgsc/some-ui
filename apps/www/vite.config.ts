@@ -80,6 +80,25 @@ export default defineConfig(
           changeOrigin: true,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${TTS_PROXY_PATH}`), ""),
+          // `docker compose up openai-edge-tts` publishes nothing on the
+          // host - that container only `expose`s 5050 to the compose
+          // network, and it is the `nginx` service beside it that maps
+          // ${PORT:-5050} to your machine. Starting one without the other
+          // leaves this proxy connecting to a closed port, and Vite's own
+          // "http proxy error: ECONNREFUSED" says nothing about which
+          // container is missing. Name it once, here.
+          configure: (proxy): void => {
+            proxy.on("error", (error: Error & { code?: string }): void => {
+              if (error.code !== "ECONNREFUSED") return
+              // eslint-disable-next-line no-console
+              console.warn(
+                `\n[www] nothing is listening on ${ttsProxyTarget} - speech will fail while everything else works.\n` +
+                  `  Both TTS containers have to be up, not just the backend:\n` +
+                  `    docker compose up -d openai-edge-tts nginx\n` +
+                  `  (set TTS_PROXY_TARGET if your PORT is not 5050 or the backend is on another host.)\n`
+              )
+            })
+          },
         },
       },
       // Local mkcert certs are machine-local (gitignored) and only relevant to
