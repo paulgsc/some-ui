@@ -112,7 +112,20 @@ export const VocabDebriefModal = ({
       role="presentation"
     >
       <div
-        className="hangul-debrief-panel relative mx-4 flex max-h-[calc(100%-2rem)] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/85 px-6 py-7 text-center text-white shadow-2xl sm:px-10"
+        className={
+          // scroll-intent: long-form — `pedagogy.note` and `pedagogy.example`
+          // are prose carried by the word entry, so their length belongs to
+          // whoever wrote the corpus, not to this layout. docs/ui-fit's
+          // earlier options all come off worse here: tabs and a paged list
+          // both put a click between the player and the sentence they missed
+          // the word for, on a panel that dismisses itself in nine seconds,
+          // and the surface cannot be enlarged - it is already the full
+          // height of the board it covers. Scrolling is safe on this one
+          // surface precisely because engagement pauses the countdown (see
+          // `useAutoDismiss`), so a player who scrolls is not racing a timer.
+          "hangul-debrief-panel relative mx-4 flex max-h-[calc(100%-2rem)] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/85 px-6 py-7 text-center text-white shadow-2xl sm:px-10"
+        }
+        data-scroll-intent="long-form"
         role="dialog"
         aria-modal="true"
         aria-label={`Missed word: ${word}`}
