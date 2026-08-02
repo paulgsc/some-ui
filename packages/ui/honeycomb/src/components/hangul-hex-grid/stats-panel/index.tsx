@@ -49,7 +49,15 @@ export const StatsPanel = ({
   }
 
   return (
-    <div className="absolute top-2 start-2 sm:top-8 sm:start-6 glass-effect rounded-2xl px-3 py-2 sm:px-4 sm:py-3 lg:px-6 lg:py-4 text-white shadow-2xl w-fit max-w-[calc(100%-1rem)] sm:max-w-xs lg:max-w-sm max-h-[calc(100%-1rem)] overflow-y-auto">
+    // No height cap and no scroll: this panel's height is bounded by
+    // construction, not by a box it might overflow. Every row is a fixed
+    // label/value pair - there is no list here whose length belongs to the
+    // data - and the only optional block, the secondary stats, is already
+    // behind the `Details` disclosure below on anything narrower than `lg`.
+    // A HUD is also the one surface where a scrollbar is never the answer:
+    // a player mid-run has both hands on the keyboard and will not reach for
+    // one, so content parked below the fold would simply be content deleted.
+    <div className="absolute top-2 start-2 sm:top-8 sm:start-6 glass-effect rounded-2xl px-3 py-2 sm:px-4 sm:py-3 lg:px-6 lg:py-4 text-white shadow-2xl w-fit max-w-[calc(100%-1rem)] sm:max-w-xs lg:max-w-sm">
       {/* Header - always visible */}
       <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
         <h2 className="text-base sm:text-lg lg:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
