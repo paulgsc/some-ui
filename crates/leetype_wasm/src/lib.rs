@@ -6,7 +6,11 @@ mod game_core;
 mod leetype;
 
 pub use game_core::{Command, TypingGameCore};
-pub use leetype::{ChunkCompletionStats, CumulativeStats, Layout, Outcome, Program, Rejection, Role, Section, SectionProgress, SessionConfig, Snapshot};
+pub use leetype::reveal::{next_k, progression};
+pub use leetype::{
+    ChunkCompletionStats, CumulativeStats, Layout, Outcome, Program, Progression, Rejection, RevealConfig, Role, Run, Section, SectionProgress, SessionConfig, Snapshot,
+    MAX_STEP_ATTEMPTS,
+};
 
 // Axiom 11.1 (docs/canon/hangul-progression-canon.typ,
 // §11.2): this is the crate's only file allowed to reference wasm_bindgen -
@@ -32,11 +36,20 @@ pub struct TypingGame {
 
 #[wasm_bindgen]
 impl TypingGame {
+    /// `baseline_wpm` / `dispersion_wpm` are the player's own sampled typing
+    /// speed and its spread; every threshold in the reveal loop is a
+    /// function of them. Omitting them takes the cold-start stand-in, which
+    /// is what a player who has not calibrated yet gets — never a refusal to
+    /// play.
     #[wasm_bindgen(constructor)]
     #[must_use]
-    pub fn new(target_code: &str, max_consecutive_errors: Option<usize>) -> Self {
+    pub fn new(target_code: &str, max_consecutive_errors: Option<usize>, baseline_wpm: Option<f64>, dispersion_wpm: Option<f64>) -> Self {
         Self {
-            core: RefCell::new(TypingGameCore::new(target_code, max_consecutive_errors)),
+            core: RefCell::new(TypingGameCore::new(
+                target_code,
+                max_consecutive_errors,
+                baseline_wpm.map(|baseline| reveal_config(baseline, dispersion_wpm)),
+            )),
         }
     }
 
@@ -63,6 +76,24 @@ impl TypingGame {
     #[must_use]
     pub fn slot_status(&self) -> Vec<u8> {
         self.core.borrow().slot_status_codes()
+    }
+
+    /// Per-slot visibility: `0` masked, `1` revealed.
+    ///
+    /// The renderer draws what this says and owns no masking policy of its
+    /// own — same posture as `roles` and `slot_status`, and for the same
+    /// reason: the decision is engine state, so it should cross the boundary
+    /// as data rather than be re-derived from a prop.
+    #[must_use]
+    pub fn visibility(&self) -> Vec<u8> {
+        self.core.borrow().visibility_codes()
+    }
+
+    /// What the runner should do with this step: `"advance"`, `"repeat"`, or
+    /// `"escape"`.
+    #[must_use]
+    pub fn progression(&self, now: f64) -> JsValue {
+        encode(&self.core.borrow().progression(now))
     }
 
     /// The live state of the run.
@@ -139,11 +170,36 @@ impl TypingGame {
         self.apply(&Command::CompleteChunk, now)
     }
 
-    /// Swap in the next chunk of source, keeping the clock running.
+    /// Swap in the next chunk of source, keeping the session clock running.
     pub fn start_next_chunk(&self, new_target_code: &str, now: f64) -> JsValue {
         self.apply(
             &Command::StartNextChunk {
                 source: new_target_code.to_owned(),
+            },
+            now,
+        )
+    }
+
+    /// Replay the same source as a fresh attempt — the gate held.
+    pub fn retry_chunk(&self, now: f64) -> JsValue {
+        self.apply(&Command::RetryChunk, now)
+    }
+
+    /// Advance the reveal loop without a keystroke. The host calls this
+    /// while a step is in flight; without it, a player who has stopped
+    /// typing is invisible to the controller that exists for them.
+    pub fn tick(&self, now: f64) -> JsValue {
+        self.apply(&Command::Tick, now)
+    }
+
+    /// Re-derive every threshold from a fresh sample of the player's speed.
+    pub fn calibrate(&self, baseline_wpm: f64, dispersion_wpm: f64, now: f64) -> JsValue {
+        self.apply(
+            &Command::Calibrate {
+                reveal: RevealConfig {
+                    baseline_wpm,
+                    dispersion_wpm,
+                },
             },
             now,
         )
@@ -165,6 +221,16 @@ impl TypingGame {
 /// other side turn that into a typed error at the seam instead.
 fn encode<T: serde::Serialize>(value: &T) -> JsValue {
     serde_wasm_bindgen::to_value(value).unwrap_or(JsValue::NULL)
+}
+
+/// A calibration pair the host may or may not have. Absent means "this
+/// player has not warmed up yet", which is a cold start, not an error.
+fn reveal_config(baseline_wpm: f64, dispersion_wpm: Option<f64>) -> RevealConfig {
+    RevealConfig {
+        baseline_wpm,
+        dispersion_wpm: dispersion_wpm.unwrap_or(0.0),
+    }
+    .sanitized()
 }
 
 /// Classify a source string's characters without constructing a game:

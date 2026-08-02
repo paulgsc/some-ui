@@ -118,7 +118,7 @@ fn wpm_counts_correct_characters_over_elapsed_minutes() {
 
 #[test]
 fn the_clock_stays_still_until_the_run_starts() {
-    let core = leetype_wasm::TypingGameCore::new(SOURCE, None);
+    let core = leetype_wasm::TypingGameCore::new(SOURCE, None, None);
     let snapshot = core.snapshot(60_000.0);
     assert!(!snapshot.started);
     assert!((snapshot.elapsed_time - 0.0).abs() < f64::EPSILON);

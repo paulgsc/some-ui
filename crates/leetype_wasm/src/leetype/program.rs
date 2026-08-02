@@ -81,6 +81,38 @@ impl Section {
     }
 }
 
+/// A **run**: the unit the reveal window counts in (`k` runs ahead of the
+/// caret are unmasked — see `super::reveal`).
+///
+/// The alternative was the slot, and it is wrong for this job: revealing
+/// "the next three slots" of `or_insert_with` reveals `or_`, which is noise
+/// rather than a hint. The alternative on the other side — the lexical
+/// token — would require the engine to know something about the language,
+/// which it deliberately does not.
+///
+/// A run is the defensible middle, and it is derivable from the [`Role`]
+/// classification alone: a maximal span of adjacent typeable, non-whitespace
+/// slots. Layout breaks a run (indentation, a newline) because the caret
+/// flies over it, and the lone interior space breaks one because a space is
+/// not a thing anybody has to retrieve. So `HashMap::new();` is one run,
+/// `let mut map` is three, and no language knowledge was consulted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Run {
+    /// First slot of the run.
+    pub start_slot: usize,
+    /// One past the run's last slot.
+    pub end_slot: usize,
+}
+
+impl Run {
+    /// Whether `slot` falls inside this run.
+    #[must_use]
+    pub const fn contains(&self, slot: usize) -> bool {
+        slot >= self.start_slot && slot < self.end_slot
+    }
+}
+
 /// Longest section label kept before ellipsizing.
 const LABEL_MAX_CHARS: usize = 56;
 
@@ -95,6 +127,7 @@ pub struct Program {
     /// rendered-character index -> slot ordinal, or `None` when skipped.
     display_slot: Vec<Option<usize>>,
     sections: Vec<Section>,
+    runs: Vec<Run>,
 }
 
 impl Program {
@@ -117,6 +150,7 @@ impl Program {
         }
 
         let sections = build_sections(&chars, &display_slot, slot_display.len());
+        let runs = build_runs(&chars, &slot_display);
 
         Self {
             chars,
@@ -124,6 +158,7 @@ impl Program {
             slot_display,
             display_slot,
             sections,
+            runs,
         }
     }
 
@@ -176,6 +211,32 @@ impl Program {
     #[must_use]
     pub fn section_of_slot(&self, slot: usize) -> Option<&Section> {
         self.sections.iter().find(|section| slot >= section.start_slot && slot < section.end_slot)
+    }
+
+    /// The chunk's reveal units, in slot order.
+    #[must_use]
+    pub fn runs(&self) -> &[Run] {
+        &self.runs
+    }
+
+    /// Where the reveal window starts for a caret on `slot`: the run holding
+    /// it, or — when the caret sits on a lone interior space, or past the end
+    /// — the first run after it.
+    ///
+    /// Total by construction: a caret past the last run yields `runs().len()`,
+    /// which is an empty window rather than a panic.
+    #[must_use]
+    pub fn run_index_at_or_after(&self, slot: usize) -> usize {
+        self.runs.iter().position(|run| run.contains(slot) || run.start_slot > slot).unwrap_or(self.runs.len())
+    }
+
+    /// Whether the slot's expected character is whitespace — the lone
+    /// interior space, the only whitespace that owns a slot at all. Never
+    /// masked: a space is not a competency, and hiding one would only cost
+    /// the player a guess about which invisible character they owe.
+    #[must_use]
+    pub fn slot_is_space(&self, slot: usize) -> bool {
+        self.slot_char(slot).is_some_and(char::is_whitespace)
     }
 }
 
@@ -323,6 +384,41 @@ fn build_sections(chars: &[char], display_slot: &[Option<usize>], slot_count: us
     }
 
     folded
+}
+
+/// Cut the typeable stream into [`Run`]s: maximal spans of adjacent,
+/// non-whitespace slots.
+///
+/// "Adjacent" is measured in *display* indices, not slot ordinals — two
+/// consecutive slots separated by skipped layout (a newline and the
+/// indentation after it) belong to different runs even though their slot
+/// numbers are consecutive. That is the whole point: the run boundary is
+/// where the eye stops, and the eye stops at whitespace.
+fn build_runs(chars: &[char], slot_display: &[usize]) -> Vec<Run> {
+    let mut runs: Vec<Run> = Vec::new();
+
+    for (slot, &display) in slot_display.iter().enumerate() {
+        if chars.get(display).is_some_and(|ch| ch.is_whitespace()) {
+            continue;
+        }
+
+        let continues = runs.last().is_some_and(|run: &Run| {
+            run.end_slot == slot && slot_display.get(slot - 1).is_some_and(|&previous| previous + 1 == display)
+        });
+
+        if continues {
+            if let Some(run) = runs.last_mut() {
+                run.end_slot = slot + 1;
+            }
+        } else {
+            runs.push(Run {
+                start_slot: slot,
+                end_slot: slot + 1,
+            });
+        }
+    }
+
+    runs
 }
 
 /// `result[i]` = how many slots sit strictly before rendered character `i`.

@@ -45,8 +45,38 @@ pub struct Snapshot {
     pub first_gap_slot: Option<usize>,
     pub progress: f64,
     pub accuracy: f64,
+    /// Cumulative WPM over the whole run — the figure the player is shown.
     pub wpm: usize,
+    /// Instantaneous, windowed WPM — the figure the reveal window is driven
+    /// by. Volatile on purpose: that volatility *is* the signal.
+    pub instant_wpm: f64,
+    /// Weighted WPM: rate discounted by assistance taken and accuracy. The
+    /// gate reads this one and nothing else.
+    pub weighted_wpm: f64,
+    /// Weighted WPM the player must reach to leave this step, derived from
+    /// their own sampled baseline.
+    ///
+    /// The comparison itself is deliberately not a field: `weightedWpm >=
+    /// gateThreshold` is one expression, and a fourth boolean on a wire
+    /// projection is a worse trade than asking the caller to write it.
+    pub gate_threshold: f64,
+    /// Which attempt at this step this is, zero-based.
+    pub attempt: usize,
+    /// How many runs ahead of the caret are unmasked. `0` is fully masked.
+    pub reveal_k: usize,
+    /// Reveal units the chunk holds in total — the ceiling `reveal_k`
+    /// converges to for a player who never types.
+    pub run_count: usize,
+    /// Correctly-resolved slots the player could see at the moment they
+    /// resolved them.
+    pub assisted: usize,
+    /// Seconds this *step* has been in flight. Restarts on every source
+    /// swap, because the weighted figure gates one step and would be
+    /// meaningless measured over all the steps before it.
     pub elapsed_time: f64,
+    /// Seconds since the session began, across every step of it. Continuous
+    /// across a source swap — the engine is not torn down between steps.
+    pub session_elapsed_time: f64,
     pub total_errors: usize,
     pub consecutive_errors: usize,
     pub show_error_alert: bool,
@@ -97,10 +127,16 @@ pub struct CumulativeStats {
 }
 
 /// Project a session into the snapshot the UI renders from.
-pub fn snapshot(state: &SessionState, program: &Program, config: SessionConfig, now: f64) -> Snapshot {
+///
+/// `session_started_at` is the *game* clock, which outlives any one step;
+/// `state.started_at` is the step's own.
+pub fn snapshot(state: &SessionState, program: &Program, config: SessionConfig, session_started_at: Option<f64>, now: f64) -> Snapshot {
     let correct = session::correct_count(state, program);
     let consecutive_errors = session::consecutive_errors(state, program);
     let elapsed_time = stats::elapsed_seconds(state.started_at, now);
+    let assisted = state.assisted_count(program);
+    let weighted_wpm = stats::weighted_wpm(correct, assisted, state.total_errors, elapsed_time);
+    let gate_threshold = config.reveal.gate_threshold();
 
     Snapshot {
         cursor_slot: state.cursor,
@@ -113,7 +149,15 @@ pub fn snapshot(state: &SessionState, program: &Program, config: SessionConfig, 
         progress: stats::progress(correct, program.slot_count()),
         accuracy: stats::accuracy(correct, state.total_errors),
         wpm: stats::wpm(correct, elapsed_time),
+        instant_wpm: stats::instantaneous_wpm(&state.keystrokes, now),
+        weighted_wpm,
+        gate_threshold,
+        attempt: state.reveal.attempt,
+        reveal_k: state.reveal.k,
+        run_count: program.runs().len(),
+        assisted,
         elapsed_time,
+        session_elapsed_time: stats::elapsed_seconds(session_started_at, now),
         total_errors: state.total_errors,
         consecutive_errors,
         show_error_alert: consecutive_errors >= config.max_consecutive_errors && !state.alert_dismissed,
@@ -161,7 +205,7 @@ mod tests {
     fn a_fresh_snapshot_parks_the_caret_on_the_first_token() {
         let program = Program::compile("    fn a() {}\n");
         let state = SessionState::empty(program.slot_count());
-        let view = snapshot(&state, &program, SessionConfig::default(), 0.0);
+        let view = snapshot(&state, &program, SessionConfig::default(), None, 0.0);
 
         assert_eq!(view.cursor_slot, 0);
         assert_eq!(view.cursor_display, 4);

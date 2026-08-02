@@ -9,18 +9,26 @@
 use serde::{Deserialize, Serialize};
 
 use super::program::Program;
+use super::reveal::{self, RevealConfig, RevealState};
+use super::stats;
 
 /// Tuning knobs fixed at construction time.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SessionConfig {
     /// How many wrong keystrokes in a row before input is blocked and the
     /// player has to back up.
     pub max_consecutive_errors: usize,
+    /// The bands and delays the reveal loop runs on, all derived from the
+    /// player's own sampled typing speed.
+    pub reveal: RevealConfig,
 }
 
 impl Default for SessionConfig {
     fn default() -> Self {
-        Self { max_consecutive_errors: 3 }
+        Self {
+            max_consecutive_errors: 3,
+            reveal: RevealConfig::default(),
+        }
     }
 }
 
@@ -64,6 +72,22 @@ pub struct SessionState {
     /// The player waved off the error alert; cleared as soon as the streak
     /// that raised it is broken.
     pub alert_dismissed: bool,
+    /// Timestamps of the most recent keystrokes, oldest first, capped at
+    /// [`stats::INSTANT_WINDOW`].
+    ///
+    /// Bounded on purpose: a `Vec<f64>` growing with the step would be
+    /// affordable at step scale, but "affordable" is not the same as
+    /// "decided", and the instantaneous figure only ever reads the tail. The
+    /// cumulative figures do not need the history at all — they are
+    /// arithmetic over counts and one start time.
+    pub keystrokes: Vec<f64>,
+    /// Per slot: was the player being shown it at the moment they resolved
+    /// it? This is the per-slot assistance fact the weighted figure
+    /// discounts by, recorded where it is knowable rather than guessed at
+    /// per step afterwards.
+    pub assisted: Vec<bool>,
+    /// How much of the step is currently unmasked.
+    pub reveal: RevealState,
 }
 
 impl SessionState {
@@ -75,6 +99,18 @@ impl SessionState {
             total_errors: 0,
             started_at: None,
             alert_dismissed: false,
+            keystrokes: Vec::with_capacity(stats::INSTANT_WINDOW),
+            assisted: vec![false; slot_count],
+            reveal: RevealState::empty(slot_count),
+        }
+    }
+
+    /// A fresh pass counted as a repeat of a step already attempted — the
+    /// reveal window opens sooner, and nothing else is carried over.
+    pub fn retrying(slot_count: usize, previous: &Self) -> Self {
+        Self {
+            reveal: RevealState::retry(slot_count, previous.reveal.attempt),
+            ..Self::empty(slot_count)
         }
     }
 
@@ -86,12 +122,14 @@ impl SessionState {
         }
     }
 
-    /// The same state carrying an existing clock forward (chunk hand-off).
-    pub fn inheriting_clock_from(self, previous: &Self) -> Self {
-        Self {
-            started_at: previous.started_at,
-            ..self
-        }
+    /// Slots resolved while the player could see them — the numerator of the
+    /// weighted figure's assistance discount.
+    pub fn assisted_count(&self, program: &Program) -> usize {
+        self.assisted
+            .iter()
+            .enumerate()
+            .filter(|&(slot, &assisted)| assisted && matches!((self.entries.get(slot).copied().flatten(), program.slot_char(slot)), (Some(t), Some(e)) if t == e))
+            .count()
     }
 }
 
@@ -128,21 +166,54 @@ pub enum Command {
     JumpToSlot { slot: usize },
     /// Wave off the consecutive-error alert.
     DismissAlert,
+    /// Nothing happened, and that is the information.
+    ///
+    /// The reveal loop is a controller whose most important input is a
+    /// player who has *stopped* typing, and a state machine driven only by
+    /// keystrokes cannot see one — the idle player issues no commands, so
+    /// `k` would freeze exactly when it most needs to open. The host ticks
+    /// while a step is in flight; the engine is otherwise untouched by it.
+    Tick,
 }
 
 /// Apply one command to a session. Pure: `state` is read, never written.
-pub fn reduce(state: &SessionState, program: &Program, config: SessionConfig, command: Command) -> Transition {
+///
+/// `now` is threaded in because reveal is a function of *time*, not only of
+/// keystrokes: the initial delay, the instantaneous rate, and the decay
+/// during a hesitation are all read off the clock. Every command therefore
+/// carries a timestamp, and every command re-runs the control loop before
+/// returning — including the ones that were refused, since a refused
+/// keystroke is still a keystroke's worth of elapsed time.
+pub fn reduce(state: &SessionState, program: &Program, config: SessionConfig, command: Command, now: f64) -> Transition {
     let transition = match command {
-        Command::Press { key } => press(state, program, config, key),
-        Command::Backspace => Transition::landed(backspace(state)),
+        Command::Press { key } => press(state, program, config, key, now),
+        Command::Backspace => Transition::landed(backspace(state, now)),
         Command::JumpToSlot { slot } => Transition::landed(jump_to_slot(state, program, slot)),
         Command::DismissAlert => Transition::landed(SessionState {
             alert_dismissed: true,
             ..state.clone()
         }),
+        Command::Tick => Transition::landed(state.clone()),
     };
 
-    settle_alert(transition, program)
+    let settled = settle_alert(transition, program);
+    Transition {
+        state: with_reveal_advanced(settled.state, program, config, now),
+        rejection: settled.rejection,
+    }
+}
+
+/// Re-run the control loop over whatever the command left behind.
+fn with_reveal_advanced(state: SessionState, program: &Program, config: SessionConfig, now: f64) -> SessionState {
+    let reveal = reveal::advance(&state.reveal, program, state.cursor, &state.keystrokes, state.started_at, config.reveal, now);
+    SessionState { reveal, ..state }
+}
+
+/// The keystroke history with `now` appended, oldest entries dropped so the
+/// window stays [`stats::INSTANT_WINDOW`] wide.
+fn recorded(keystrokes: &[f64], now: f64) -> Vec<f64> {
+    let start = (keystrokes.len() + 1).saturating_sub(stats::INSTANT_WINDOW);
+    keystrokes.iter().skip(start).copied().chain(std::iter::once(now)).collect()
 }
 
 /// Once the streak that raised the alert is broken, the dismissal has
@@ -162,7 +233,7 @@ fn settle_alert(transition: Transition, program: &Program) -> Transition {
     }
 }
 
-fn press(state: &SessionState, program: &Program, config: SessionConfig, key: char) -> Transition {
+fn press(state: &SessionState, program: &Program, config: SessionConfig, key: char, now: f64) -> Transition {
     let Some(expected) = program.slot_char(state.cursor) else {
         return Transition::refused(state.clone(), Rejection::NothingPending);
     };
@@ -182,6 +253,15 @@ fn press(state: &SessionState, program: &Program, config: SessionConfig, key: ch
     let mut entries = state.entries.clone();
     entries[state.cursor] = Some(key);
 
+    // Read before the caret moves: assistance is "could the player see this
+    // slot at the moment they resolved it", which is a fact about the
+    // reveal state that was in force when the key landed, not the one the
+    // control loop is about to compute.
+    let mut assisted = state.assisted.clone();
+    if let Some(flag) = assisted.get_mut(state.cursor) {
+        *flag = state.reveal.is_visible(program, state.cursor, state.cursor);
+    }
+
     let total_errors = state.total_errors + usize::from(key != expected);
     let cursor = advance(state.cursor, &entries, program.slot_count());
 
@@ -189,6 +269,8 @@ fn press(state: &SessionState, program: &Program, config: SessionConfig, key: ch
         entries,
         cursor,
         total_errors,
+        assisted,
+        keystrokes: recorded(&state.keystrokes, now),
         ..state.clone()
     })
 }
@@ -204,7 +286,7 @@ fn advance(cursor: usize, entries: &[Option<char>], slot_count: usize) -> usize 
     first_gap(entries).unwrap_or(slot_count)
 }
 
-fn backspace(state: &SessionState) -> SessionState {
+fn backspace(state: &SessionState, now: f64) -> SessionState {
     if state.cursor == 0 {
         return state.clone();
     }
@@ -213,7 +295,15 @@ fn backspace(state: &SessionState) -> SessionState {
     let mut entries = state.entries.clone();
     entries[cursor] = None;
 
-    SessionState { entries, cursor, ..state.clone() }
+    // A backspace is a keystroke. Feeding it to the instantaneous window
+    // means a backspace burst reads as *fast*, which closes the reveal
+    // window — deliberate, see `stats::instantaneous_wpm`.
+    SessionState {
+        entries,
+        cursor,
+        keystrokes: recorded(&state.keystrokes, now),
+        ..state.clone()
+    }
 }
 
 fn jump_to_slot(state: &SessionState, program: &Program, slot: usize) -> SessionState {
@@ -308,6 +398,9 @@ mod tests {
         program: Program,
         config: SessionConfig,
         state: SessionState,
+        /// A monotone fake clock. These tests are about the keystroke model,
+        /// not the reveal loop, so the clock only has to move forward.
+        now: f64,
     }
 
     impl Harness {
@@ -324,8 +417,12 @@ mod tests {
             let state = SessionState::empty(program.slot_count());
             Self {
                 program,
-                config: SessionConfig { max_consecutive_errors },
+                config: SessionConfig {
+                    max_consecutive_errors,
+                    ..SessionConfig::default()
+                },
                 state,
+                now: 0.0,
             }
         }
 
@@ -334,7 +431,8 @@ mod tests {
         }
 
         fn send(&mut self, command: Command) -> Option<Rejection> {
-            let transition = reduce(&self.state, &self.program, self.config, command);
+            self.now += 100.0;
+            let transition = reduce(&self.state, &self.program, self.config, command, self.now);
             self.state = transition.state;
             transition.rejection
         }
