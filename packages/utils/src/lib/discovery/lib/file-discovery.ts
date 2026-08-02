@@ -37,9 +37,13 @@ export class ViteGlobDiscovery implements FileDiscovery {
     private modules: Record<string, () => Promise<unknown>>
   ) {}
 
-  async listFiles(rootPath: string, extension: string): Promise<Array<string>> {
-    return Object.keys(this.modules).filter(
-      (path) => path.startsWith(rootPath) && path.endsWith(extension)
+  // Synchronous under an async interface: the modules map is already in
+  // memory. `Promise.resolve` rather than `async` says that out loud.
+  listFiles(rootPath: string, extension: string): Promise<Array<string>> {
+    return Promise.resolve(
+      Object.keys(this.modules).filter(
+        (path) => path.startsWith(rootPath) && path.endsWith(extension)
+      )
     )
   }
 
@@ -54,9 +58,9 @@ export class ViteGlobDiscovery implements FileDiscovery {
 export class StaticFileDiscovery implements FileDiscovery {
   constructor(private files: Array<string>) {}
 
-  async listFiles(rootPath: string, extension: string): Promise<Array<string>> {
-    return this.files.filter(
-      (f) => f.startsWith(rootPath) && f.endsWith(extension)
+  listFiles(rootPath: string, extension: string): Promise<Array<string>> {
+    return Promise.resolve(
+      this.files.filter((f) => f.startsWith(rootPath) && f.endsWith(extension))
     )
   }
 }

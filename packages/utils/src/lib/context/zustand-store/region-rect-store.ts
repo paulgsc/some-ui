@@ -34,6 +34,11 @@ export const useRegionRectStore = create<RegionRectState>((set, get) => ({
 export function useRegionRect(
   regionId: YouTubeRegion | undefined
 ): Rect | undefined {
-  if (!regionId) return
-  return useRegionRectStore((state) => state.rects.get(regionId))
+  // The selector, not the hook, is what is conditional here. Returning
+  // early before the `useRegionRectStore` call meant a component whose
+  // `regionId` went from set to undefined rendered a different number of
+  // hooks than the render before it, which React rejects outright.
+  return useRegionRectStore((state) =>
+    regionId ? state.rects.get(regionId) : undefined
+  )
 }

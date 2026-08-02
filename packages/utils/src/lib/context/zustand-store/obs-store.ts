@@ -13,6 +13,8 @@ import type {
 import { create } from "zustand"
 import { useShallow } from "zustand/shallow"
 
+import { assertNever } from "../../assert-never"
+
 type CommandSender = (cmd: ObsCommand) => Promise<void>
 
 // ============================================================================
@@ -168,11 +170,17 @@ export const defaultClientObsState: ClientObsState = {
   ...defaultStatsState,
 }
 
+/** Anything with string keys - what `deepEqual` can walk. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
 // Helper: Deep equality check for objects (simple version)
-function deepEqual(a: any, b: any): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true
-  if (typeof a !== "object" || typeof b !== "object") return false
-  if (a === null || b === null) return false
+  // Same two conditions as before (non-object, or null) via one predicate,
+  // which also gives the body an indexable type without an assertion.
+  if (!isRecord(a) || !isRecord(b)) return false
 
   const keysA = Object.keys(a)
   const keysB = Object.keys(b)
@@ -404,7 +412,7 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
           sceneItemEnableStates: {
             ...state.sceneItemEnableStates,
             [event.data.sceneName]: {
-              ...(state.sceneItemEnableStates[event.data.sceneName] || {}),
+              ...(state.sceneItemEnableStates[event.data.sceneName] ?? {}),
               [event.data.itemId]: event.data.enabled,
             },
           },
@@ -431,7 +439,11 @@ function applyObsEvent(state: ClientObsState, event: ObsEvent): ClientObsState {
       }
     }
     default: {
-      return state
+      // `ObsEvent` is a Zod discriminated union, parsed at the socket
+      // boundary before anything reaches here - so an event of an unknown
+      // type never gets this far, and a *new* event type added to the schema
+      // without a case here stops compiling.
+      return assertNever(event)
     }
   }
 }

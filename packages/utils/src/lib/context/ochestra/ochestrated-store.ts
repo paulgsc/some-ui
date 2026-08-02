@@ -89,7 +89,10 @@ export function createStore<T, A extends Action>(
     if (idx === -1) queue.push(action)
     else queue.splice(idx, 0, action)
 
-    process()
+    // Deliberately not awaited: `dispatch` is synchronous by contract, and
+    // `process` drains the queue on its own schedule. It never rejects - the
+    // loop only awaits a zero-delay timer - so there is nothing to handle.
+    void process()
   }
 
   function flush(): void {

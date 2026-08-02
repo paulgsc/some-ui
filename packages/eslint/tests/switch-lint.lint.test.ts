@@ -329,6 +329,79 @@ switch (x) {
     )
   })
 
+  /**
+   * `switch (action.type)` over a discriminated union is the shape this rule
+   * exists for, and in its default case TypeScript has narrowed `action` -
+   * not `action.type` - to `never`. A property access on `never` does not
+   * compile, so demanding the full discriminant text there would ask for
+   * code that cannot exist. Both spellings are accepted.
+   */
+  it("accepts the narrowing object when the discriminant is a member expression", async () => {
+    const code = `
+switch (action.type) {
+  case "a":
+    doThing()
+    break
+  default:
+    return assertNever(action)
+}
+`
+    const msgs = await lintSnippet(
+      makeConfig("require-fail-fast-default"),
+      code,
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "switch-lint/require-fail-fast-default",
+      "assertNever(action) for switch (action.type)"
+    )
+  })
+
+  it("still accepts the full discriminant for a member expression", async () => {
+    const code = `
+switch (action.type) {
+  case "a":
+    doThing()
+    break
+  default:
+    return assertNever(action.type)
+}
+`
+    const msgs = await lintSnippet(
+      makeConfig("require-fail-fast-default"),
+      code,
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "switch-lint/require-fail-fast-default",
+      "assertNever(action.type) for switch (action.type)"
+    )
+  })
+
+  it("still fires on an unrelated identifier for a member-expression discriminant", async () => {
+    const code = `
+switch (action.type) {
+  case "a":
+    doThing()
+    break
+  default:
+    return assertNever(other)
+}
+`
+    const msgs = await lintSnippet(
+      makeConfig("require-fail-fast-default"),
+      code,
+      TS_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "switch-lint/require-fail-fast-default",
+      "assertNever(other) for switch (action.type)"
+    )
+  })
+
   it("does NOT fire for a custom helper name via the helperNames option", async () => {
     const code = `
 switch (x) {

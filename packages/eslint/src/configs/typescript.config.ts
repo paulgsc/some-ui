@@ -46,6 +46,16 @@ export default defineConfig(
       ],
       "@typescript-eslint/no-unused-expressions": "error",
 
+      // ── Redeclaration ────────────────────────────────────────────────────
+      // Core `no-redeclare` cannot see TypeScript, so it reports every
+      // overload signature as a redeclaration of the implementation - which
+      // is not a mistake, it is the only way to write an overloaded function.
+      // The typescript-eslint version understands overloads and declaration
+      // merging, and is the documented replacement. Same swap as
+      // `no-unused-vars` above.
+      "no-redeclare": "off",
+      "@typescript-eslint/no-redeclare": "error",
+
       // ── Imports / types ──────────────────────────────────────────────────
       "@typescript-eslint/consistent-type-imports": [
         "error",

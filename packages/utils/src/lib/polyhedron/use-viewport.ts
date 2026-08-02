@@ -18,7 +18,7 @@ export type UseViewportOptions = {
   onContentAdvance?: (newCursor: number, oldCursor: number) => void
 }
 
-export type FaceContent<T = any> = {
+export type FaceContent<T = unknown> = {
   faceIndex: number
   contentIndices: Array<number>
   isActive: boolean
@@ -72,7 +72,15 @@ export function useViewport(
   const viewportRef = useRef<Viewport | null>(null)
   const engineRef = useRef<ViewportEngine | null>(null)
   const optionsRef = useRef(options)
-  optionsRef.current = options
+
+  // Written in an effect rather than during render: a render can be thrown
+  // away, and a discarded render must not leave a mutated ref behind for the
+  // next one. Declared *above* the init effect on purpose - effects run in
+  // declaration order, so on mount this has already written the first
+  // options by the time `initEngine` reads them.
+  useEffect(() => {
+    optionsRef.current = options
+  }, [options])
 
   // Initialize engine (only on config.id change)
   useEffect(() => {
@@ -132,7 +140,7 @@ export function useViewport(
       }
     }
 
-    initEngine()
+    void initEngine()
 
     return (): void => {
       mounted = false
@@ -151,6 +159,11 @@ export function useViewport(
         viewportRef.current = null
       }
     }
+    // Keyed on `config.id`, not on `config`: the engine owns a wasm viewport,
+    // and recreating it because a caller passed a fresh object literal with
+    // the same id would tear down and re-init on every render. The id is the
+    // identity here; the rest of `config` is read once at creation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [config.id, autoRefresh, autoTick, tickIntervalMs])
 
   // Update engine callbacks when they change (without recreating engine)

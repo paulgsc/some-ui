@@ -16,7 +16,24 @@ export class ViewportEngine {
   private lastFace = -1
   private lastCursor = -1
   private paused = false
-  private disposed = false
+  private _disposed = false
+
+  /**
+   * Read through a method rather than off the field directly.
+   *
+   * Every `if (this.isDisposed()) return` after an `await` is guarding a real
+   * hazard: `dispose()` can run while the awaited wasm call is in flight, and
+   * continuing afterwards would emit state for a torn-down viewport.
+   * TypeScript does not model that - it narrows `this._disposed` to `false`
+   * from the guard at the top of the method and keeps that narrowing across
+   * the await, so every re-check read as provably dead code.
+   *
+   * A call result is not narrowed, so this says what the field cannot: the
+   * value can change under us, and re-reading it is the point.
+   */
+  private isDisposed(): boolean {
+    return this._disposed
+  }
 
   constructor(viewport: Viewport, events: ViewportEngineEvents) {
     this.viewport = viewport
@@ -51,15 +68,15 @@ export class ViewportEngine {
    * Manual tick
    */
   async tick(dtMs: number): Promise<void> {
-    if (this.disposed) return
+    if (this.isDisposed()) return
 
     try {
       const advanced = await this.viewport.tick(dtMs)
-      if (this.disposed) return
+      if (this.isDisposed()) return
 
-      await this.handleStateUpdate(advanced)
+      this.handleStateUpdate(advanced)
     } catch (err) {
-      if (!this.disposed) {
+      if (!this.isDisposed()) {
         const message = err instanceof Error ? err.message : String(err)
         this.events.onError?.(message)
         // eslint-disable-next-line no-console
@@ -72,19 +89,22 @@ export class ViewportEngine {
    * Start auto-tick loop
    */
   startAutoTick(intervalMs: number): void {
-    if (this.tickTimer || this.disposed) return
+    if (this.tickTimer || this.isDisposed()) return
 
-    this.tickTimer = setInterval(async () => {
-      if (this.paused || this.disposed) return
-      await this.tick(intervalMs)
+    this.tickTimer = setInterval(() => {
+      if (this.paused || this.isDisposed()) return
+      // Not awaited, and cannot be - a timer discards what its callback
+      // returns. `tick` handles its own failures, so nothing is lost here
+      // that an `async` callback would have caught.
+      void this.tick(intervalMs)
     }, intervalMs)
   }
 
   /**
    * Handle state updates and auto-rotation logic
    */
-  private async handleStateUpdate(checkAdvance: boolean): Promise<void> {
-    if (this.disposed) return
+  private handleStateUpdate(checkAdvance: boolean): void {
+    if (this.isDisposed()) return
 
     const state = this.viewport.getState()
     if (!state) return
@@ -116,11 +136,11 @@ export class ViewportEngine {
    * Apply transition
    */
   async transition(trans: WasmTransition): Promise<void> {
-    if (this.disposed) return
+    if (this.isDisposed()) return
 
     try {
       await this.viewport.transition(trans)
-      if (this.disposed) return
+      if (this.isDisposed()) return
 
       const state = this.viewport.getState()
       if (!state) return
@@ -137,7 +157,7 @@ export class ViewportEngine {
         this.lastCursor = state.cursor
       }
     } catch (err) {
-      if (!this.disposed) {
+      if (!this.isDisposed()) {
         const message = err instanceof Error ? err.message : String(err)
         this.events.onError?.(message)
       }
@@ -148,17 +168,17 @@ export class ViewportEngine {
    * Refresh state from viewport
    */
   async refreshState(): Promise<void> {
-    if (this.disposed) return
+    if (this.isDisposed()) return
 
     try {
       const state = await this.viewport.refreshState()
-      if (this.disposed) return
+      if (this.isDisposed()) return
 
       this.events.onState(state)
       this.lastFace = state.activeFace
       this.lastCursor = state.cursor
     } catch (err) {
-      if (!this.disposed) {
+      if (!this.isDisposed()) {
         const message = err instanceof Error ? err.message : String(err)
         this.events.onError?.(message)
         // eslint-disable-next-line no-console
@@ -199,7 +219,7 @@ export class ViewportEngine {
    * Clean up resources
    */
   dispose(): void {
-    this.disposed = true
+    this._disposed = true
     this.stopAutoTick()
   }
 }

@@ -77,19 +77,31 @@ export function createEventBus<
     selector?: Selector<T>
   }
 
+  /**
+   * How a listener is stored, once its event type has been erased.
+   *
+   * `never` in the payload position is what makes *storing* sound without an
+   * assertion: a function is contravariant in its parameters, so every
+   * `Listener<Events[T]>` is already a `Listener<never>`. Only the reverse
+   * direction - calling a stored listener with a concrete payload - is
+   * unsound, and `emit` is the one place that does it.
+   */
+  type StoredListener = {
+    callback: Listener<never>
+    selector?: Selector<never>
+  }
+
   // Use a Map to store all event listeners with their optional selectors
-  const listeners = new Map<
-    keyof Events,
-    Set<EventListener<Events[keyof Events]>>
-  >()
+  const listeners = new Map<keyof Events, Set<StoredListener>>()
 
   // State management implementation
   let currentState = initialState
-  const stateListeners = new Set<{
+  type StateListenerEntry = {
     selector: StateSelector<NonNullable<S>, unknown>
     listener: (selected: unknown, prevSelected: unknown) => void
     memoizedValue: unknown
-  }>()
+  }
+  const stateListeners = new Set<StateListenerEntry>()
 
   // Subscribe to an event (without selector)
   function on<T extends keyof Events>(
@@ -121,11 +133,9 @@ export function createEventBus<
     // Type assertion is safe because we just ensured the Set exists
     const eventListeners = listeners.get(eventType)!
 
-    // Create listener object with optional selector
-    const listenerObj = {
-      callback: callback as Listener<Events[keyof Events]>,
-      selector: selector as Selector<Events[keyof Events]> | undefined,
-    }
+    // No assertion: `Listener<Events[T]>` widens to `Listener<never>` on its
+    // own (see StoredListener).
+    const listenerObj: StoredListener = { callback, selector }
 
     // Add to the set
     eventListeners.add(listenerObj)
@@ -155,11 +165,16 @@ export function createEventBus<
     const eventListeners = listeners.get(eventType)
     if (eventListeners) {
       eventListeners.forEach((listenerObj) => {
-        const { callback, selector } = listenerObj
+        // The one unsound direction, and the reason it is safe: a listener is
+        // only ever stored under the event type it was registered for, and
+        // `emit` looks it up by that same key. The Map erases the link;
+        // `registerListener` is what maintains it.
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+        const { callback, selector } = listenerObj as EventListener<Events[T]>
 
         // Only invoke the callback if there's no selector or the selector returns true
-        if (!selector || (selector as Selector<Events[T]>)(payload)) {
-          ;(callback as Listener<Events[T]>)(payload)
+        if (!selector || selector(payload)) {
+          callback(payload)
         }
       })
     }
@@ -196,10 +211,11 @@ export function createEventBus<
     })
 
     // Emit a state change event with proper typing
-    const stateChangeEvent = {
-      prevState,
-      nextState,
-    } as unknown as Events[keyof Events]
+    // `Events` does not statically include "state:changed" - the overload
+    // that returns a stateful bus is what adds it, and the implementation
+    // signature cannot see that. This is that gap, at its one site.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+    const stateChangeEvent = { prevState, nextState } as Events[keyof Events]
 
     emit("state:changed", stateChangeEvent)
   }
@@ -212,23 +228,22 @@ export function createEventBus<
       throw new Error("subscribe called but no initial state was provided")
     }
 
-    const entry = {
+    // `selector` and `memoizedValue` widen to `unknown` on their own; only
+    // `listener` does not, because a function is contravariant in its
+    // parameters. It is sound in practice for the same reason `emit` is: the
+    // value handed to a listener is always the one its own selector produced.
+    const entry: StateListenerEntry = {
       selector,
-      listener,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+      listener: listener as (selected: unknown, prev: unknown) => void,
       memoizedValue: selector(currentState),
     }
 
-    // Type assertion necessary due to variance issues with generic Set
-    stateListeners.add(
-      entry as {
-        selector: StateSelector<NonNullable<S>, unknown>
-        listener: (selected: unknown, prevSelected: unknown) => void
-        memoizedValue: unknown
-      }
-    )
+    stateListeners.add(entry)
 
+    // The same object that was added, so removing it needs no assertion.
     return () => {
-      stateListeners.delete(entry as any) // Need to cast due to Set type variance
+      stateListeners.delete(entry)
     }
   }
 

@@ -3,7 +3,7 @@
 // // See LICENSE file for full text.
 //
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import { useEventCallback, useEventListener } from "usehooks-ts"
 
@@ -74,9 +74,13 @@ export function useLocalStorage<T>(
       if (options.deserializer) {
         return options.deserializer(value)
       }
-      // Support 'undefined' as a value
+      // Support 'undefined' as a value. `T` need not include `undefined`,
+      // so this is a deliberate hole rather than an oversight: a caller that
+      // stored `undefined` gets it back, and one that never stores it never
+      // reaches this branch.
       if (value === "undefined") {
-        return undefined as unknown as T
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+        return undefined as T
       }
 
       const defaultValue =
@@ -85,10 +89,14 @@ export function useLocalStorage<T>(
       let parsed: unknown
       try {
         parsed = JSON.parse(value)
-      } catch (error) {
+      } catch {
         return defaultValue // Return initialValue if parsing fails
       }
 
+      // JSON.parse hands back `unknown`, and what is in localStorage was put
+      // there by a previous version of this app. The assertion is the trust
+      // boundary; a caller that needs it checked passes a `deserializer`.
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
       return parsed as T
     },
     [options, initialValue]
@@ -108,7 +116,7 @@ export function useLocalStorage<T>(
     try {
       const raw = window.localStorage.getItem(key)
       return raw ? deserializer(raw) : initialValueToUse
-    } catch (error) {
+    } catch {
       return initialValueToUse
     }
   }, [initialValue, key, deserializer])
@@ -166,14 +174,29 @@ export function useLocalStorage<T>(
     window.dispatchEvent(new StorageEvent("local-storage", { key }))
   })
 
-  useEffect(() => {
+  // A different key is a different value, and it has to be the new one on the
+  // very first render under that key - not one frame later. Adjusting state
+  // during render is React's own shape for this (the same one `useFittedPage`
+  // uses in this package): React discards this render and immediately
+  // re-renders, so no frame ever paints the previous key's value, and there
+  // is no effect to cascade.
+  const [readKey, setReadKey] = useState(key)
+  if (readKey !== key) {
+    setReadKey(key)
     setStoredValue(readValue())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }
 
   const handleStorageChange = useCallback(
     (event: StorageEvent | CustomEvent) => {
-      if ((event as StorageEvent).key && (event as StorageEvent).key !== key) {
+      // Narrowed rather than asserted: the custom "local-storage" event is a
+      // CustomEvent with no `key` at all, and reading one off it used to
+      // depend on the assertion producing `undefined`. Same outcome - a
+      // keyless event is for every subscriber - said out loud.
+      if (
+        event instanceof StorageEvent &&
+        event.key !== null &&
+        event.key !== key
+      ) {
         return
       }
       setStoredValue(readValue())
