@@ -1,8 +1,42 @@
-import { readFileSync, writeFileSync } from "fs"
+import { existsSync, readFileSync, writeFileSync } from "fs"
 import { resolve } from "path"
 
 import type { ViteConfigOptions } from "../../types/index.js"
+import { resolveEntryPath } from "../build-config.js"
 import { generatePackageJsonFields } from "./generate.js"
+
+/**
+ * Refuses to touch a package.json that does not belong to the package being
+ * built. The manifest we rewrite must sit next to the library entry point the
+ * same options describe - if `packageRoot` is pointed somewhere else (a stale
+ * cwd, a workspace root, a sibling package) the entry will not be there.
+ *
+ * On the legitimate path this can never fire: the build that triggers the
+ * sync already compiled that exact entry file. It only speaks up when the
+ * caller is wrong, which is precisely when a silent write does real damage.
+ */
+function assertPackageRoot(
+  options: ViteConfigOptions,
+  packageRoot: string,
+  packageJsonPath: string
+): void {
+  if (!existsSync(packageJsonPath)) {
+    throw new Error(
+      `No package.json at ${packageJsonPath} - refusing to create one. ` +
+        `Check the packageRoot passed for ${options.packageName}.`
+    )
+  }
+
+  const entryPath = resolveEntryPath(options, packageRoot)
+  if (!existsSync(entryPath)) {
+    throw new Error(
+      `Refusing to rewrite ${packageJsonPath}: it does not look like the ` +
+        `package for ${options.packageName}, whose entry point ` +
+        `(${entryPath}) does not exist. This usually means packageRoot is ` +
+        `pointing at the wrong directory.`
+    )
+  }
+}
 
 function omitUndefined<T extends object>(obj: T): Partial<T> {
   const result: Partial<T> = {}
@@ -26,14 +60,22 @@ function omitUndefined<T extends object>(obj: T): Partial<T> {
  * whatever workspace they happened to be pointed at. That is exactly the bug
  * this file's separation from ./generate.ts exists to prevent; keep the
  * pure derivation there and the write here.
+ *
+ * `packageRoot` is REQUIRED and has deliberately no `process.cwd()` fallback.
+ * A cwd default silently retargets the write at whatever directory the
+ * process happens to sit in, so a caller that forgot the argument corrupts an
+ * unrelated manifest instead of failing. Callers must name the package they
+ * mean; `assertPackageRoot` then verifies the claim.
  */
 export function updatePackageJson(
   options: ViteConfigOptions,
-  packageRoot: string = process.cwd()
+  packageRoot: string
 ): Record<string, unknown> {
   const packageJsonPath = resolve(packageRoot, "package.json")
 
   try {
+    assertPackageRoot(options, packageRoot, packageJsonPath)
+
     // Read existing package.json
     const packageJsonContent = readFileSync(packageJsonPath, "utf-8")
     const existingPackageJson: Record<string, unknown> =
