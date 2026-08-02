@@ -25,7 +25,7 @@ import { cn } from "some-ui-utils"
 import type {
   ActivityDefinition,
   ActivityMaturity,
-} from "@/lib/activity-catalog"
+} from "@some-ui/activity-catalog"
 
 type MaturityCopy = {
   label: string

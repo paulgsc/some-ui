@@ -1,6 +1,6 @@
 import type { ActiveLifetime, SlotId } from "@some-ui/types"
 
-import { getActivityByRegistryKey } from "@/lib/activity-catalog"
+import { getActivityByRegistryKey } from "@some-ui/activity-catalog"
 
 type MinimalUiLayer = { panels?: Record<string, { registry_key: string }> }
 

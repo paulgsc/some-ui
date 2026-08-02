@@ -8,7 +8,7 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
-import { getActivity } from "@/lib/activity-catalog"
+import { getActivity } from "@some-ui/activity-catalog"
 
 import {
   ActivityMaturityBadge,

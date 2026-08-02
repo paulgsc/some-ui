@@ -14,7 +14,7 @@
 import type { JSX } from "react"
 import { cn } from "some-ui-utils"
 
-import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
+import { ACTIVITY_CATALOG } from "@some-ui/activity-catalog"
 import type { SessionRecord } from "@/lib/tenant"
 import { AudioActivityNotice } from "@/components/audio/audio-activity-notice"
 

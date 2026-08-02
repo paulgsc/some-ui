@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import type { ActiveLifetime, SlotId } from "@some-ui/types"
-import { usePrimaryScene } from "some-ui-utils"
+import { useEditModeHotkey, usePrimaryScene } from "some-ui-utils"
 import type { LayoutIntent, LayoutNode } from "wireframes"
 import { applyIntent } from "wireframes"
 
@@ -8,7 +8,6 @@ import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 
 import { NAIVE_LAYOUT } from "./layout"
-import { useEditModeHotkey } from "./use-edit-mode-hotkey"
 import { useSessionLayout } from "./use-session-layout"
 import { boundLeafIdsOf } from "./utils"
 

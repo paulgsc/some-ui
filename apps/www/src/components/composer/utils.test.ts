@@ -1,32 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import type { ActivityId } from "@/lib/activity-catalog"
+import type { ActivityId } from "@some-ui/activity-catalog"
 
-import { buildSessionActivities, defaultSessionName } from "./utils"
-
-describe("defaultSessionName", () => {
-  it("returns a fallback for an empty session", () => {
-    expect(defaultSessionName([])).toBe("New session")
-  })
-
-  it("joins distinct activities by name", () => {
-    expect(defaultSessionName(["honeycomb", "topik"])).toBe(
-      "Hangul Honeycomb + TOPIK Study"
-    )
-  })
-
-  it("labels repeated instances of the same activity with a ×N count instead of repeating the name", () => {
-    expect(defaultSessionName(["honeycomb", "honeycomb"])).toBe(
-      "Hangul Honeycomb ×2"
-    )
-  })
-
-  it("counts repeats regardless of where they fall in the order", () => {
-    expect(defaultSessionName(["honeycomb", "topik", "honeycomb"])).toBe(
-      "Hangul Honeycomb ×2 + TOPIK Study"
-    )
-  })
-})
+import { buildSessionActivities } from "./utils"
 
 describe("buildSessionActivities", () => {
   it("preserves order and repetition, dropping only the composer-local instanceId", () => {

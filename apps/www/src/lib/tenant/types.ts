@@ -2,10 +2,20 @@ import type { TTSProvider } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
-import type { LayoutTreeId, SessionActivity } from "../activity-catalog"
+import type {
+  LayoutTreeId,
+  SessionActivity,
+  TopikLevel,
+} from "@some-ui/activity-catalog"
 import type { AudioPreferences } from "../audio-preferences"
 
-export type TopikLevel = "beginner" | "intermediate" | "advanced"
+/**
+ * Re-exported rather than redeclared: the levels a profile can target and the
+ * levels an activity offers have to be the same three strings, and
+ * `rankActivities` is the code that compares them. The catalogue package owns
+ * the vocabulary; this is the profile field that points at it.
+ */
+export type { TopikLevel }
 
 export type UserProfile = {
   id: string

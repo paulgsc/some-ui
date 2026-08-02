@@ -11,10 +11,16 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * One keybinding (`E`) toggles the live layout editor overlay, per epic
- * #693 story 6. Only listens while `active` (a session is actually
- * playing) - inert everywhere else, so it never competes with typing on
- * other routes.
+ * One keybinding (`{`) toggles an editor overlay, per epic #693 story 6.
+ *
+ * Only listens while `active` - inert otherwise, so it never competes with
+ * typing on surfaces that are not in an editable state - and it ignores
+ * keystrokes aimed at a field, so `{` in a text input is a brace.
+ *
+ * Nothing here is specific to the live layout editor or to `apps/www`: it is
+ * a `useState` and a window listener over zero app imports, which is why it
+ * lives alongside `use-event-listener` and `use-interval` rather than in the
+ * one component that happens to call it today (#759).
  */
 export function useEditModeHotkey(active: boolean): [boolean, () => void] {
   const [rawEditMode, setRawEditMode] = useState(false)

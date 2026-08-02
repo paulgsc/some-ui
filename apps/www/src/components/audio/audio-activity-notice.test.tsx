@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { getActivity } from "@/lib/activity-catalog"
+import { getActivity } from "@some-ui/activity-catalog"
 
 import { AudioActivityHint, AudioActivityNotice } from "./audio-activity-notice"
 

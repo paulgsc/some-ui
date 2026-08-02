@@ -288,6 +288,9 @@ importers:
       '@radix-ui/react-accordion':
         specifier: ^1.2.7
         version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/activity-catalog':
+        specifier: workspace:*
+        version: link:../../packages/activity-catalog
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry
@@ -740,6 +743,21 @@ importers:
       eslint:
         specifier: ^10.8.0
         version: 10.8.0(jiti@2.7.0)
+      fast-check:
+        specifier: ^3.23.1
+        version: 3.23.2
+
+  packages/activity-catalog:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/types':
+        specifier: workspace:*
+        version: link:../types
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
       fast-check:
         specifier: ^3.23.1
         version: 3.23.2

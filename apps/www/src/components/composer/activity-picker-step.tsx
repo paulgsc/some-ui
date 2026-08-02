@@ -7,8 +7,8 @@ import {
   ACTIVITY_CATALOG,
   ACTIVITY_IDS,
   getActivity,
-} from "@/lib/activity-catalog"
-import type { ActivityId } from "@/lib/activity-catalog"
+} from "@some-ui/activity-catalog"
+import type { ActivityId } from "@some-ui/activity-catalog"
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"

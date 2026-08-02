@@ -84,3 +84,36 @@ export function sequenceScenes(
 export function layoutTreeFor(activityId: ActivityId): LayoutTreeId {
   return getActivity(activityId).layoutTree
 }
+
+/**
+ * Recomputes each scene's start_time from its position and duration.
+ *
+ * The counterpart to `sequenceScenes` for scenes that already exist: the
+ * Advanced arrangement step reorders and resizes them, and every such edit
+ * invalidates every later start_time.
+ */
+export function resequence(
+  scenes: ReadonlyArray<SceneConfig>
+): Array<SceneConfig> {
+  let cursor = 0
+  return scenes.map((scene) => {
+    const updated: SceneConfig = { ...scene, start_time: cursor }
+    cursor += scene.duration
+    return updated
+  })
+}
+
+/**
+ * How long a session actually runs, in ms.
+ *
+ * Takes the furthest end rather than summing durations, so it stays correct
+ * for an Advanced arrangement whose scenes are not back-to-back.
+ */
+export function totalDurationOfScenes(
+  scenes: ReadonlyArray<SceneConfig>
+): number {
+  return scenes.reduce(
+    (max, scene) => Math.max(max, scene.start_time + scene.duration),
+    0
+  )
+}

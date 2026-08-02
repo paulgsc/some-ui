@@ -8,8 +8,8 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { ACTIVITY_IDS } from "@/lib/activity-catalog"
-import type { ActivityId } from "@/lib/activity-catalog"
+import { ACTIVITY_IDS } from "@some-ui/activity-catalog"
+import type { ActivityId } from "@some-ui/activity-catalog"
 import { useSession } from "@/lib/tenant"
 import { SessionComposer } from "@/components/composer/session-composer"
 

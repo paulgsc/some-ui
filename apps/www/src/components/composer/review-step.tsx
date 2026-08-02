@@ -10,14 +10,17 @@ import {
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 
-import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
-import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import {
+  ACTIVITY_CATALOG,
+  summarizeConfig,
+  totalDurationOfScenes,
+} from "@some-ui/activity-catalog"
+import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
 import { formatDurationMs } from "@/lib/format"
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
 import { PaginationControls } from "@/components/pagination-controls"
 
-import { summarizeConfig, totalDurationOfScenes } from "./utils"
 
 const REVIEW_PAGE_SIZE = 10
 

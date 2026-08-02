@@ -1,69 +1,20 @@
-import type { SceneConfig } from "@some-ui/types"
-
-import { getActivity } from "@/lib/activity-catalog"
-import type {
-  ActivityConfigValues,
-  ActivityDefinition,
-  ActivityId,
-  SessionActivity,
-} from "@/lib/activity-catalog"
-
-/** Recomputes each scene's start_time from its position and duration. */
-export function resequence(
-  scenes: ReadonlyArray<SceneConfig>
-): Array<SceneConfig> {
-  let cursor = 0
-  return scenes.map((scene) => {
-    const updated: SceneConfig = { ...scene, start_time: cursor }
-    cursor += scene.duration
-    return updated
-  })
-}
-
-/** Plain-language summary of one activity's config, e.g. "Intermediate • 15 min". */
-export function summarizeConfig(
-  activity: ActivityDefinition,
-  config: ActivityConfigValues
-): string {
-  return activity.fields
-    .map((field) => {
-      const value = config[field.key]
-      if (field.kind === "select") {
-        const option = field.options.find(
-          (candidate) => candidate.value === value
-        )
-        return option?.label ?? String(value)
-      }
-      return `${String(value)} min`
-    })
-    .join(" • ")
-}
+import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
+import type { SessionActivity } from "@some-ui/activity-catalog"
 
 /**
- * Same activityId may appear more than once (two Honeycomb blocks with
- * different modes are a valid, expected session shape, not a duplicate to
- * collapse) - so this counts occurrences and labels repeats "Name ×N" rather
- * than assuming activityIds is a set.
+ * What is left of this module after #756.
+ *
+ * `summarizeConfig`, `defaultSessionName`, `resequence` and
+ * `totalDurationOfScenes` used to live here and moved to
+ * `@some-ui/activity-catalog`: all four are pure functions of an activity or
+ * of a scene list, and the player and the sessions route were both importing
+ * them from *inside the composer's folder* to get at them. A shared thing
+ * reached for by three features belongs somewhere shared.
+ *
+ * `buildSessionActivities` stays, because it is genuinely composer-local: it
+ * exists to strip `instanceId`, which is the composer's own UI state and has
+ * no meaning anywhere else.
  */
-export function defaultSessionName(
-  activityIds: ReadonlyArray<ActivityId>
-): string {
-  if (activityIds.length === 0) return "New session"
-
-  const counts = new Map<ActivityId, number>()
-  for (const id of activityIds) counts.set(id, (counts.get(id) ?? 0) + 1)
-
-  const seen = new Set<ActivityId>()
-  const parts: Array<string> = []
-  for (const id of activityIds) {
-    if (seen.has(id)) continue
-    seen.add(id)
-    const count = counts.get(id) ?? 1
-    const name = getActivity(id).name
-    parts.push(count > 1 ? `${name} ×${count}` : name)
-  }
-  return parts.join(" + ")
-}
 
 /**
  * One entry per activity *instance* the user has added to the session -
@@ -78,13 +29,4 @@ export function buildSessionActivities(
   items: ReadonlyArray<{ activityId: ActivityId; config: ActivityConfigValues }>
 ): Array<SessionActivity> {
   return items.map(({ activityId, config }) => ({ activityId, config }))
-}
-
-export function totalDurationOfScenes(
-  scenes: ReadonlyArray<SceneConfig>
-): number {
-  return scenes.reduce(
-    (max, scene) => Math.max(max, scene.start_time + scene.duration),
-    0
-  )
 }

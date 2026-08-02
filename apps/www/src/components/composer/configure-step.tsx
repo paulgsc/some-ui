@@ -13,8 +13,8 @@ import {
   SelectValue,
 } from "@some-ui/shared"
 
-import { ACTIVITY_CATALOG } from "@/lib/activity-catalog"
-import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import { ACTIVITY_CATALOG } from "@some-ui/activity-catalog"
+import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
 import { PaginationControls } from "@/components/pagination-controls"

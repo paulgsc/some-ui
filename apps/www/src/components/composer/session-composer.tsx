@@ -6,8 +6,13 @@ import { useNavigate } from "@tanstack/react-router"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
-import { getActivity, sequenceScenes } from "@/lib/activity-catalog"
-import type { ActivityConfigValues, ActivityId } from "@/lib/activity-catalog"
+import {
+  defaultSessionName,
+  getActivity,
+  sequenceScenes,
+  totalDurationOfScenes,
+} from "@some-ui/activity-catalog"
+import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -19,11 +24,7 @@ import { ActivityPickerStep } from "./activity-picker-step"
 import { ArrangementStep } from "./arrangement-step"
 import { ConfigureStep } from "./configure-step"
 import { ReviewStep } from "./review-step"
-import {
-  buildSessionActivities,
-  defaultSessionName,
-  totalDurationOfScenes,
-} from "./utils"
+import { buildSessionActivities } from "./utils"
 
 type ArrangementMode = "basic" | "advanced"
 type ComposerStep = 1 | 2 | 3 | 4

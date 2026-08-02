@@ -19,7 +19,7 @@ import type { JSX } from "react"
 import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { cn, useLocalStorage } from "some-ui-utils"
 
-import type { ActivityDefinition } from "@/lib/activity-catalog"
+import type { ActivityDefinition } from "@some-ui/activity-catalog"
 import {
   setAllEnabled,
   setChannelEnabled,

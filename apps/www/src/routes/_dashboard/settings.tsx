@@ -27,7 +27,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
-import type { LayoutTreeId } from "@/lib/activity-catalog"
+import type { LayoutTreeId } from "@some-ui/activity-catalog"
 import type { UserSettings } from "@/lib/tenant"
 import { useSettings, useUpdateSettings } from "@/lib/tenant"
 
