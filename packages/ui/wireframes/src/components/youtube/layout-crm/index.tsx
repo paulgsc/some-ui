@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
+import { Button, Card } from "@some-ui/shared"
 import type { SlotId } from "@some-ui/types"
 import { LayoutNodeRenderer } from "@wireframes/components/editor-layout-renderer"
 import { TreeVisualizer } from "@wireframes/components/tree-visualizer"
@@ -24,7 +25,6 @@ import {
   Plus,
   RotateCcw,
 } from "lucide-react"
-import { Button, Card } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 

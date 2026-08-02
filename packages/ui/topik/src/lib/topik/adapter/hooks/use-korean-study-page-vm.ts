@@ -71,7 +71,8 @@ export type KoreanStudyPageVM = {
 }
 
 export function useKoreanStudyPageVM(): KoreanStudyPageVM {
-  const { topikRepository, metadataRepository, audioTTS } = useSessionConfig()
+  const { topikRepository, metadataRepository, speechAdapter } =
+    useSessionConfig()
 
   // componentId is an opaque, per-instance key threaded through to the
   // session/TTS pipeline (see use-session.ts, tts-effect-handler.ts) - it's
@@ -84,9 +85,12 @@ export function useKoreanStudyPageVM(): KoreanStudyPageVM {
   const session = useSession({
     repository: topikRepository,
     metadataRepository,
-    audioTTS,
+    speechAdapter,
     componentId,
-    enableTTS: true,
+    // No voice, no spoken prompts. The effect executor already treats a
+    // missing adapter as "no TTS handler"; saying so here keeps the two
+    // from disagreeing.
+    enableTTS: speechAdapter !== null,
   })
 
   const { state, dispatch } = session

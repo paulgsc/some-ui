@@ -1,6 +1,6 @@
 import type { JSX } from "react"
-import { TimelineEditor } from "some-ui-input"
 import { Button, Dialog, DialogContent, DialogTrigger } from "@some-ui/shared"
+import { TimelineEditor } from "some-ui-input"
 
 export const StepperDialog = (): JSX.Element => {
   return (

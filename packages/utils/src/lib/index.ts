@@ -3,11 +3,10 @@
 // repoint directly at the new package.
 export * from "@some-ui/core-utils"
 export * from "./hooks"
+export * from "./speech"
 export { useCycleRotationAdapter, useViewport } from "./polyhedron"
 export {
   createEventBus,
-  initializeSpeechQueue,
-  getSpeechQueue,
   selectProgress,
   selectIsRunning,
   selectTotalDuration,
@@ -46,7 +45,6 @@ export {
   useStudioModeEnabled,
   useVirtualCamActive,
 } from "./context"
-export type { SpeechQueueState } from "./context"
 export {
   preloadRegistryComponents,
   hasRegistryKey,

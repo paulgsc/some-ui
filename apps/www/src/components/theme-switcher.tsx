@@ -1,8 +1,5 @@
 import type { JSX } from "react"
 import { useTheme } from "@/providers/theme"
-import { APP_THEMES, SYSTEM_PREFERENCE } from "@some-ui/styles/theme"
-import type { AppTheme, ThemePreference } from "@some-ui/styles/theme"
-import { Check, Monitor, Palette } from "lucide-react"
 import {
   Button,
   DropdownMenu,
@@ -12,6 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@some-ui/shared"
+import { APP_THEMES, SYSTEM_PREFERENCE } from "@some-ui/styles/theme"
+import type { AppTheme, ThemePreference } from "@some-ui/styles/theme"
+import { Check, Monitor, Palette } from "lucide-react"
 
 const Swatch = ({ theme }: { theme: AppTheme }): JSX.Element => (
   <span

@@ -11,7 +11,6 @@ import type {
   Difficulty,
   PlayerProgress,
 } from "@leetype/types/leetype"
-import { Lock } from "lucide-react"
 import {
   Badge,
   Button,
@@ -21,6 +20,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@some-ui/shared"
+import { Lock } from "lucide-react"
 import { cn, useFittedPage } from "some-ui-utils"
 
 type ChallengeSelectorProps = {

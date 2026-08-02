@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { Button, Card, ScrollArea, WithAvatar } from "@some-ui/shared"
 import type { Message, PlayState } from "@topik/lib/topik"
 import {
   Loader2,
@@ -8,7 +9,6 @@ import {
   RotateCcw,
   Volume2,
 } from "lucide-react"
-import { Button, Card, ScrollArea, WithAvatar } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type ChatPanelProps = {

@@ -1,0 +1,69 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "@tanstack/react-query": "^5.66.11",
+    "@testing-library/react": "^16.3.0",
+    "@vitejs/plugin-react": "^6.0.4",
+    "fast-check": "^3.23.1",
+    "jsdom": "26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.5"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/speech.d.ts",
+      "import": "./dist/@some-ui/speech.es.js",
+      "require": "./dist/@some-ui/speech.cjs.js",
+      "default": "./dist/@some-ui/speech.es.js"
+    },
+    "./style.css": "./dist/speech.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/@some-ui/speech.cjs.js",
+  "module": "./dist/@some-ui/speech.es.js",
+  "name": "@some-ui/speech",
+  "private": true,
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.66.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.json",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "style": "./dist/speech.css",
+  "type": "module",
+  "types": "./dist/@some-ui/speech.d.ts",
+  "unpkg": "speech.umd.js",
+  "version": "0.0.1"
+}

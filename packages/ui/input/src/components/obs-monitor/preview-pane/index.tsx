@@ -1,6 +1,14 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@some-ui/shared"
+import {
   Activity,
   Eye,
   Monitor,
@@ -9,14 +17,6 @@ import {
   VolumeX,
   Wifi,
 } from "lucide-react"
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@some-ui/shared"
 
 type PreviewPaneProps = {
   currentTime: number

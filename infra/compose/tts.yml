@@ -1,3 +1,14 @@
+# openai-edge-tts: the speech backend apps/www talks to wherever one is
+# reachable (vite dev, vite preview, the Docker image). It exposes an
+# OpenAI-compatible /v1/audio/speech, which is why @some-ui/speech's HTTP
+# adapter speaks to it with an OpenAI-shaped request and no vendor-specific
+# code of its own.
+#
+# The browser reaches nginx below on ${PORT:-5050} of whatever host serves
+# the page - apps/www derives exactly that by default (src/lib/tts-config),
+# and VITE_TTS_ENDPOINT overrides it for deployments that front this service
+# somewhere else. The GitHub Pages build has no backend at all and resolves
+# to the browser's own speechSynthesis instead; nothing here applies to it.
 services:
   openai-edge-tts:
     image: travisvn/openai-edge-tts:latest-ffmpeg

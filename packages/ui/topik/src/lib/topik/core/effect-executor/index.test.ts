@@ -1,3 +1,4 @@
+import type { SpeakOptions, SpeechAdapter } from "@some-ui/speech"
 import type {
   ConversationBatch,
   ITopikRepository,
@@ -8,7 +9,6 @@ import type {
   ISessionMachine,
   SessionState,
 } from "@topik/lib/topik/core/session-types"
-import type { TTSOptions, UseAudioTTSReturn } from "some-ui-utils"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createEffectExecutor, type EffectExecutor } from "."
@@ -115,11 +115,15 @@ function emptyActiveState(): SessionState {
   }
 }
 
-function createFakeAudioTTS(): UseAudioTTSReturn {
-  let pendingOptions: TTSOptions = {}
+function createFakeSpeechAdapter(): SpeechAdapter {
   return {
-    speak: vi.fn((_content: string) => {
-      pendingOptions.onStart?.()
+    id: "web-speech",
+    supported: true,
+    voices: [],
+    pending: 0,
+    speak: vi.fn((_content: string, options: SpeakOptions = {}) => {
+      options.onStart?.()
+      options.onEnd?.()
       return Promise.resolve()
     }),
     stop: vi.fn(),
@@ -127,18 +131,7 @@ function createFakeAudioTTS(): UseAudioTTSReturn {
     resume: vi.fn(),
     setVolume: vi.fn(),
     setPlaybackRate: vi.fn(),
-    updateOptions: vi.fn((opts: TTSOptions) => {
-      pendingOptions = opts
-    }),
-    speaking: false,
-    paused: false,
-    loading: false,
-    supported: true,
-    currentTime: 0,
-    duration: 0,
-    voices: [],
-    selectedVoice: null,
-    setSelectedVoice: vi.fn(),
+    dispose: vi.fn(),
   }
 }
 
@@ -337,12 +330,12 @@ describe("EffectExecutor", () => {
     it("PLAY_AUDIO enqueues the current message for speech", async () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
       const machine = createFakeMachine(state)
-      const audioTTS = createFakeAudioTTS()
+      const speechAdapter = createFakeSpeechAdapter()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        audioTTS,
+        speechAdapter,
         componentId: "c1",
         enableTTS: true,
       })
@@ -350,57 +343,63 @@ describe("EffectExecutor", () => {
       executor.execute([{ type: "PLAY_AUDIO" }])
       await flushAsync()
 
-      expect(audioTTS.speak).toHaveBeenCalledWith("hello world")
+      // The second argument is the utterance's own callback bundle - the
+      // handler passes onStart/onEnd/onError per `speak` now rather than
+      // installing them statefully beforehand.
+      expect(speechAdapter.speak).toHaveBeenCalledWith(
+        "hello world",
+        expect.objectContaining({ onEnd: expect.any(Function) })
+      )
     })
 
     it("PLAY_AUDIO is a safe no-op when there is no current message", () => {
       const machine = createFakeMachine(emptyActiveState())
-      const audioTTS = createFakeAudioTTS()
+      const speechAdapter = createFakeSpeechAdapter()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        audioTTS,
+        speechAdapter,
         componentId: "c1",
         enableTTS: true,
       })
 
       expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
-      expect(audioTTS.speak).not.toHaveBeenCalled()
+      expect(speechAdapter.speak).not.toHaveBeenCalled()
     })
 
     it("PLAY_AUDIO is a safe no-op when TTS is disabled", () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello"))
       const machine = createFakeMachine(state)
-      const audioTTS = createFakeAudioTTS()
+      const speechAdapter = createFakeSpeechAdapter()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        audioTTS,
+        speechAdapter,
         componentId: "c1",
         enableTTS: false,
       })
 
       expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
-      expect(audioTTS.speak).not.toHaveBeenCalled()
+      expect(speechAdapter.speak).not.toHaveBeenCalled()
     })
 
     it("STOP_AUDIO stops the underlying audio", () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello"))
       const machine = createFakeMachine(state)
-      const audioTTS = createFakeAudioTTS()
+      const speechAdapter = createFakeSpeechAdapter()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        audioTTS,
+        speechAdapter,
         componentId: "c1",
         enableTTS: true,
       })
 
       executor.execute([{ type: "STOP_AUDIO" }])
-      expect(audioTTS.stop).toHaveBeenCalled()
+      expect(speechAdapter.stop).toHaveBeenCalled()
     })
   })
 
@@ -507,12 +506,12 @@ describe("EffectExecutor", () => {
 
   describe("public TTS-control API", () => {
     it("speakMessage delegates to the TTS handler's manual speak", async () => {
-      const audioTTS = createFakeAudioTTS()
+      const speechAdapter = createFakeSpeechAdapter()
       executor = createEffectExecutor({
         machine: createFakeMachine(emptyActiveState()),
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        audioTTS,
+        speechAdapter,
         componentId: "c1",
         enableTTS: true,
       })
@@ -526,7 +525,10 @@ describe("EffectExecutor", () => {
         english: "hello",
       })
 
-      expect(audioTTS.speak).toHaveBeenCalledWith("manual line")
+      expect(speechAdapter.speak).toHaveBeenCalledWith(
+        "manual line",
+        expect.objectContaining({ onEnd: expect.any(Function) })
+      )
     })
 
     it("speakMessage warns instead of throwing when TTS is disabled", async () => {

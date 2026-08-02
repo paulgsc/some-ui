@@ -24,6 +24,7 @@
     "@some-ui/hangul-game-core": "0.0.5",
     "@some-ui/shared": "workspace:*",
     "@some-ui/some-hexagon": "0.0.5",
+    "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "some-ui-utils": "workspace:*",

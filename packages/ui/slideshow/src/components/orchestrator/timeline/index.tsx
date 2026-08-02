@@ -2,8 +2,6 @@ import type { FC, JSX } from "react"
 import { useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { SceneConfig } from "@some-ui/types"
-import { AlertCircle, Edit2, Layers, Layout, Trash2 } from "lucide-react"
 import {
   Badge,
   Card,
@@ -12,6 +10,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@some-ui/shared"
+import type { SceneConfig } from "@some-ui/types"
+import { AlertCircle, Edit2, Layers, Layout, Trash2 } from "lucide-react"
 import {
   cn,
   selectCurrentTime,

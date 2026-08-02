@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react"
 import { ChatMessage } from "@chat/components/chat-message"
 import { useChatMessages } from "@chat/hooks/use-chat-messages"
 import type { Message } from "@chat/types/chat"
-import { cn, useSpeechQueue } from "some-ui-utils"
+import { useSpeechQueue } from "@some-ui/speech"
+import { cn } from "some-ui-utils"
 
 type ChatMessagesProps = {
   messages: Array<Message>

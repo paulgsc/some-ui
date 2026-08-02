@@ -1,43 +1,23 @@
-import type {
-  InterviewTTSAdapter,
-  SpeakOptions,
-} from "@interview/lib/interview/core/interview-types"
+import type { InterviewTTSAdapter } from "@interview/lib/interview/core/interview-types"
+import { createWebSpeechAdapter } from "@some-ui/speech"
 
 /**
- * Real (non-mocked) question playback using the browser's SpeechSynthesis
- * API. This is an interim implementation - the shape matches what a
- * backend-driven TTS adapter (e.g. `some-ui-utils`'s `useAudioTTS`) would
- * expose, so swapping in real audio later doesn't touch call sites.
+ * Question playback, delegated to `@some-ui/speech`.
+ *
+ * This file used to carry its own `SpeechSynthesisUtterance` plumbing. Two
+ * of its promises were wrong in ways that only showed up as "the interview
+ * stopped talking": `onerror` resolved as though the question had been read
+ * in full, and the `speechSynthesis.cancel()` at the top of every `speak`
+ * silently finished the previous utterance the same way. The speech
+ * workspace owns that plumbing now, and gets those cases right - see
+ * `adapters/web-speech`, and the settlement laws its contract test runs.
+ *
+ * The browser adapter specifically, not `createSpeechAdapter`: question
+ * playback highlights the word being spoken, and word boundaries are
+ * something only the browser's synthesizer reports. A caller that wants a
+ * backend-driven voice passes its own adapter through
+ * `InterviewSessionConfig.ttsAdapter` - any `SpeechAdapter` satisfies the
+ * interview's port.
  */
-export const createWebSpeechTTSAdapter = (): InterviewTTSAdapter => {
-  const supported = typeof window !== "undefined" && "speechSynthesis" in window
-
-  const speak = (text: string, opts?: SpeakOptions): Promise<void> => {
-    if (!supported) {
-      return Promise.resolve()
-    }
-
-    window.speechSynthesis.cancel()
-
-    return new Promise((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.98
-      utterance.pitch = 1
-
-      utterance.onboundary = (event): void => {
-        opts?.onBoundary?.(event.charIndex, event.charLength)
-      }
-      utterance.onend = (): void => resolve()
-      utterance.onerror = (): void => resolve()
-
-      window.speechSynthesis.speak(utterance)
-    })
-  }
-
-  const stop = (): void => {
-    if (!supported) return
-    window.speechSynthesis.cancel()
-  }
-
-  return { supported, speak, stop }
-}
+export const createWebSpeechTTSAdapter = (): InterviewTTSAdapter =>
+  createWebSpeechAdapter()

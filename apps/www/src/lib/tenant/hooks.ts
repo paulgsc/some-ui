@@ -20,7 +20,12 @@ const settingsRepository = createSettingsRepository()
 const sessionsRepository = createSessionsRepository()
 
 const profileKey = ["tenant", "profile"] as const
-const settingsKey = ["tenant", "settings"] as const
+/**
+ * Exported so an optimistic writer (the audio indicator) can update the
+ * cache in place rather than re-deriving this literal - a duplicated key
+ * that drifts is a cache that silently stops updating.
+ */
+export const settingsKey = ["tenant", "settings"] as const
 const sessionsKey = ["tenant", "sessions"] as const
 const sessionKey = (id: string): readonly [string, string, string] =>
   ["tenant", "sessions", id] as const

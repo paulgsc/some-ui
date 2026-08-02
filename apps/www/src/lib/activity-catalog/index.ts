@@ -9,6 +9,7 @@ export type {
   ActivityDefinition,
   ActivityIconKey,
   ActivityId,
+  ActivityMaturity,
   LayoutTreeId,
 } from "./types"
 export { sequenceScenes } from "./to-scene-config"

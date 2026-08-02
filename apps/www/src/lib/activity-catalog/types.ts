@@ -1,3 +1,5 @@
+import type { AudioChannelId } from "../audio-preferences"
+
 /**
  * The friendly, end-user-facing identity for one of the playable applets.
  * This is intentionally decoupled from `registry_key`/`SceneConfig` - it's
@@ -35,6 +37,47 @@ export type ActivityIconKey = "hexagon" | "book-open" | "mic" | "keyboard"
 
 export type ActivityConfigValues = Record<string, string | number>
 
+/**
+ * How finished an activity is, in a person's terms rather than a
+ * developer's.
+ *
+ * This app ships applets at very different stages, and shipping them is the
+ * right call - they get better by being used. What is not right is letting
+ * someone walk into a half-built room expecting a finished one. This is the
+ * wet-floor sign: enough warning to set expectations, no diagnostics, no
+ * internals, no apology.
+ *
+ * - `"ready"` - works end to end. Says nothing, because there is nothing to
+ *   warn about, and a badge on everything is a badge on nothing.
+ * - `"preview"` - usable and worth using, with rough edges.
+ * - `"early"` - a construction zone. Parts are missing or unfinished, and a
+ *   person should expect that before they start rather than discover it.
+ */
+export type ActivityMaturity = "ready" | "preview" | "early"
+
+/**
+ * What an activity does to a person's ears, in their terms.
+ *
+ * Different modules have genuinely different audio semantics - Korean
+ * lessons are pronunciation-led, the typing game only ever plays short
+ * feedback sounds - so the disclosure belongs at the activity level rather
+ * than as one global banner that has to be vague enough to cover both.
+ *
+ * `blurb` is written to sit on an activity card next to a speaker glyph:
+ * short, concrete, and about the experience rather than the mechanism.
+ */
+type ActivityAudio = {
+  channels: ReadonlyArray<AudioChannelId>
+  blurb: string
+  /**
+   * True when the activity is not usable without sound - a listening
+   * exercise with no captions, say. Only such an activity earns a
+   * prompt strong enough to interrupt; for everything else audio is an
+   * enhancement and a dismissible notice is the right weight.
+   */
+  required?: boolean
+}
+
 export type ActivityDefinition = {
   id: ActivityId
   name: string
@@ -46,6 +89,10 @@ export type ActivityDefinition = {
   fields: ReadonlyArray<ActivityField>
   /** Values matching `fields`, used when the user hasn't customized anything. */
   defaultConfig: ActivityConfigValues
+  /** Absent means the activity is silent and needs no disclosure at all. */
+  audio?: ActivityAudio
+  /** Absent means `"ready"` - the quiet default. */
+  maturity?: ActivityMaturity
   /**
    * Maps friendly config values onto the scene `props` payload for this
    * activity's registry component. Some fields (e.g. picking an exact

@@ -1,83 +1,28 @@
-import { useEffect, useState } from "react"
+import type { JSX, ReactNode } from "react"
+import { SpeechProvider } from "@some-ui/speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
-import {
-  createTopikMetadataRepository,
-  createTopikRepository,
-  SessionConfigProvider,
-} from "@topik/lib/topik"
-import { cn, useAudioTTS } from "some-ui-utils"
 
 import { KoreanStudyPage } from "."
 
-// 1. Initialize mock repositories for the story environment
-const storyTopikRepository = createTopikRepository()
-const storyMetadataRepository = createTopikMetadataRepository(
-  "/topiks/manifest.json"
+/**
+ * The whole decorator, now.
+ *
+ * It used to build the session config by hand - two repositories and an
+ * adapter pulled out of the speech session through a second nested
+ * component, because `useSpeechAdapter` is a hook and the config object
+ * needed its return value. The applet assembles all of that itself; a story
+ * only supplies what is genuinely environmental.
+ *
+ * Storybook has no companion services, so the session is `static`, which
+ * `@some-ui/speech` resolves to the browser's own voice. Removing the
+ * provider entirely would also work - the applet runs silently without one -
+ * but a Korean lesson is worth hearing.
+ */
+const WithSpeech = ({ children }: { children: ReactNode }): JSX.Element => (
+  <SpeechProvider config={{ mode: "static", lang: "ko-KR" }}>
+    {children}
+  </SpeechProvider>
 )
-
-const WithSessionConfig = ({ children }: { children: React.ReactNode }) => {
-  const [isSpeechContextReady, setIsSpeechContextReady] = useState(false)
-  const audioTTS = useAudioTTS({
-    service: {
-      provider: "openai",
-      apiUrl: "http://nixos.local:5050/v1/audio/speech",
-      apiKey: "your_dummy_api_key_here",
-      format: "mp3",
-      timeout: 30_000,
-    },
-    voice: {
-      id: "ko-KR-SunHiNeural",
-      name: "Sun-Hi (Korean Female)",
-      provider: "openai",
-      language: "ko-KR",
-      gender: "female",
-    },
-    autoPlay: true,
-  })
-
-  useEffect(() => {
-    if (audioTTS.supported) {
-      try {
-        // Speech context initialized for Storybook
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("Speech context already initialized or error:", error)
-      } finally {
-        setIsSpeechContextReady(true)
-      }
-    }
-  }, [audioTTS.supported]) // Only depend on supported, not the entire hook
-
-  if (!isSpeechContextReady) {
-    const message = "Waiting for TTS Provider"
-
-    // You can return a loading spinner, a placeholder, or null
-
-    return (
-      <div className={cn("flex items-center justify-center gap-3 p-4")}>
-        <div
-          className={cn("bg-primary/20 size-12 animate-pulse rounded-full")}
-        />
-
-        <span className={cn("text-muted-foreground animate-pulse font-medium")}>
-          {message}
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <SessionConfigProvider
-      value={{
-        topikRepository: storyTopikRepository,
-        metadataRepository: storyMetadataRepository,
-        audioTTS,
-      }}
-    >
-      {children}
-    </SessionConfigProvider>
-  )
-}
 
 type Story = StoryObj<typeof KoreanStudyPage>
 type Meta = MetaObj<typeof KoreanStudyPage>
@@ -87,12 +32,20 @@ const meta: Meta = {
   component: KoreanStudyPage,
   decorators: [
     (Story) => (
-      <WithSessionConfig>
+      <WithSpeech>
         <Story />
-      </WithSessionConfig>
+      </WithSpeech>
     ),
   ],
 }
 export default meta
 
 export const Default: Story = {}
+
+/**
+ * What the content registry mounts: no props, no providers, no host
+ * knowledge of what this applet needs.
+ */
+export const AsMountedByTheRegistry: Story = {
+  decorators: [(Story) => <Story />],
+}

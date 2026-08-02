@@ -6,6 +6,7 @@ export type {
   UserSettings,
 } from "./types"
 export {
+  settingsKey,
   useCreateSession,
   useDeleteManySessions,
   useDeleteSession,

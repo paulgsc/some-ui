@@ -1,12 +1,5 @@
 import type { ComponentType, JSX } from "react"
 import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useRouterState,
-} from "@tanstack/react-router"
-import { FileText, ListVideo, Settings, User } from "lucide-react"
-import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -19,8 +12,16 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@some-ui/shared"
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useRouterState,
+} from "@tanstack/react-router"
+import { FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn } from "some-ui-utils"
 
+import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -100,6 +101,11 @@ const DashboardLayout = (): JSX.Element => {
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
           <ThemeSwitcher />
+          {/* Layer 1 of audio disclosure: a standing indicator of what this
+              app may play, always visible and never interrupting. It is the
+              canonical place a person learns this app has audio, and the
+              place the first-use notices point back to. */}
+          <AudioIndicator />
         </header>
         <div
           className={cn(

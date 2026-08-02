@@ -1,5 +1,5 @@
-import { ArrowRight, BookMarked, CheckCircle2, XCircle } from "lucide-react"
 import { Button, Card } from "@some-ui/shared"
+import { ArrowRight, BookMarked, CheckCircle2, XCircle } from "lucide-react"
 
 type QuizFeedbackProps = {
   isCorrect: boolean

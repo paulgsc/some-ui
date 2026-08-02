@@ -6,7 +6,6 @@ import {
   getChapterByUID,
   searchExistingChapters,
 } from "@input/utils/event-helpers"
-import { Check, ChevronDown, Clock, Hash, Search } from "lucide-react"
 import {
   Badge,
   Button,
@@ -26,6 +25,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@some-ui/shared"
+import { Check, ChevronDown, Clock, Hash, Search } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type UIDSelectorProps = {

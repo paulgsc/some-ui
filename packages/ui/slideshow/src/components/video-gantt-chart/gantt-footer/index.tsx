@@ -1,6 +1,6 @@
 import type { Chapter, SubChapter } from "@slideshow/types/gantt"
-import { Play } from "lucide-react"
 import { Button } from "@some-ui/shared"
+import { Play } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type GanttFooterProps = {

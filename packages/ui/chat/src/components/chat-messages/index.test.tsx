@@ -1,7 +1,7 @@
 import type { Message } from "@chat/types/chat"
+import type * as SomeUiSpeech from "@some-ui/speech"
+import type { TTSOptions } from "@some-ui/speech"
 import { act, render } from "@testing-library/react"
-import type * as SomeUiUtils from "some-ui-utils"
-import type { TTSOptions } from "some-ui-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ChatMessages } from "."
@@ -27,11 +27,13 @@ const { speakMock, useSpeechQueueMock } = vi.hoisted(() => {
   return { speakMock, useSpeechQueueMock }
 })
 
-// ChatMessages's child (ChatMessage) also pulls other exports (e.g.
-// formatRelativeTime) from "some-ui-utils", so the real module is kept via
-// importOriginal and only useSpeechQueue is swapped out.
-vi.mock("some-ui-utils", async (importOriginal) => {
-  const actual = await importOriginal<typeof SomeUiUtils>()
+// Only `useSpeechQueue` is swapped out; the rest of "@some-ui/speech" is
+// kept via importOriginal. Mocking it is what keeps this a test of
+// ChatMessages rather than of the speech session - the hook throws without
+// a live session on purpose, so that a component asking to speak outside
+// one fails loudly instead of silently going quiet.
+vi.mock("@some-ui/speech", async (importOriginal) => {
+  const actual = await importOriginal<typeof SomeUiSpeech>()
   // The mock's useSpeechQueue only returns the 3 fields ChatMessages
   // actually reads (speak/isActive/currentItem) - the rest of the real
   // UseSpeechQueueReturn is irrelevant to what's under test here, and

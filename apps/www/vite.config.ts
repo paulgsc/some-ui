@@ -19,6 +19,11 @@ const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 // vite's SPA history fallback and come back as index.html, which the browser
 // reports as an opaque "Content-Type text/html is not supported" media
 // error. Surface the actual cause loudly instead of leaving that to guess.
+//
+// hangul, leetype and topiks are deliberately not warned about: their absence
+// is expected and legible in the UI on its own (a bundled demo pool for the
+// first two, an empty catalogue for topiks), so a startup warning would fire
+// on almost every checkout and mean nothing.
 function warnMissingContentAssets(): Plugin {
   return {
     name: "warn-missing-content-assets",

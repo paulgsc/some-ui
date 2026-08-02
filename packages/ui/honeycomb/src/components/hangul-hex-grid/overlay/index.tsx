@@ -42,7 +42,18 @@ import type {
 } from "@honeycomb/types/hangul-types"
 import type { HexCellData } from "@honeycomb/types/hex-grid"
 
+/** Matches `useGameAudio`'s own default, kept here as the documented one. */
+const DEFAULT_EFFECTS_VOLUME = 0.5
+
 type HangulHexGridProps = {
+  /**
+   * Whether this instance may play its sound effects, and how loudly.
+   *
+   * A host with an audio preference passes it here; one without gets
+   * today's behaviour (on, at half volume). The component never reads a
+   * global - the host owns the person's choice, this owns the sounds.
+   */
+  audio?: { enabled?: boolean; volume?: number }
   mode?: GameMode
   /**
    * A named difficulty, not raw engine config (ADR-aligned with #762's
@@ -85,6 +96,7 @@ type HangulHexGridProps = {
 }
 
 export const HangulHexGrid = ({
+  audio,
   mode = "completion",
   difficulty,
   sessionKey,
@@ -163,10 +175,13 @@ export const HangulHexGrid = ({
     sessionKey,
   })
 
-  // Initialize audio
+  // Initialize audio. The host decides whether sound effects play at all
+  // and how loudly - this package has no idea what a person has chosen, and
+  // hardcoding `enabled: true` here made every audio preference in every
+  // host a toggle that controlled nothing.
   const { unlockAudio, playSound } = useGameAudio({
-    enabled: true,
-    volume: 0.5,
+    enabled: audio?.enabled ?? true,
+    volume: audio?.volume ?? DEFAULT_EFFECTS_VOLUME,
   })
 
   useEffect((): (() => void) => {

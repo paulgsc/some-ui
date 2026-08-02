@@ -75,6 +75,20 @@ hoist/de-hoist; must never be publicly exported.
 are dead weight on the public surface and are cleanup candidates, not
 hoist/de-hoist candidates.
 
+**Executed in #533** — the cluster now lives in `@some-ui/speech`, which owns
+the concern end to end. Two consumers this census missed turned up during the
+extraction and are folded in: `packages/ui/interview` and
+`packages/ui/honeycomb` had each re-derived their own `speechSynthesis`
+plumbing rather than import anything from here, which is genuine independent
+demand for the same concern (Doctrine §1.1) and raises the cluster to six
+consumers. The cleanup candidates above were taken with the move:
+`useAudioSpeech` and `useTTSFetch` are now non-React internals
+(`engine/audio-player`, `engine/tts-client`), and `useAudioTTS` — the
+2-consumer symbol flagged for DEHOIST S5 adjudication — is gone entirely,
+its consumers repointed at `SpeechProvider`/`useSpeechQueue`. `some-ui-utils`
+keeps a temporary re-export shim (`lib/speech.ts`, `types/index.ts`) until
+UTL-CUTOVER.
+
 ## 5. Viewport / polyhedron (`lib/polyhedron/*`)
 
 | Symbol                                                                        | Real consumers                                                                   | Verdict                                   |
@@ -200,9 +214,9 @@ not an import of this fixture — confirmed by reading the call site.)
 
 ## 15. `@some-ui/shared` non-component exports
 
-| Symbol                        | Real consumers                                                                                                                                                                                                                                                                                             | Verdict                                                                                                                                                                                                                                               |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useToast` (`hooks/index.ts`) | 2 workspaces: `apps/www`, `packages/ui/wireframes`                                                                                                                                                                                                                                                         | **borderline → flag for DEHOIST S5**                                                                                                                                                                                                                  |
+| Symbol                        | Real consumers                                                                                                                                                                                                                                                                                               | Verdict                                                                                                                                                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useToast` (`hooks/index.ts`) | 2 workspaces: `apps/www`, `packages/ui/wireframes`                                                                                                                                                                                                                                                           | **borderline → flag for DEHOIST S5**                                                                                                                                                                                                                  |
 | `cn` (`lib/utils.ts`)         | **Not part of the public barrel.** `src/index.ts` only re-exports `./components` and `./hooks` — `lib/utils.ts` is never re-exported. All internal `@some-ui/shared` usages go through the `@shared/lib/utils` path alias, not the package barrel. Zero external files import `cn` from `"@some-ui/shared"`. | **no external consumers** — and confirmed to be an independent implementation from `some-ui-utils`'s `cn`, not a re-export or duplicate call path. This resolves the ambiguity in the epic's first-pass table: only `some-ui-utils`'s `cn` is public. |
 
 ## Declared-but-unused dependencies
@@ -211,11 +225,11 @@ Cross-checking `package.json` deps against actual imports found workspaces
 that declare a dependency but never import a named symbol — pure
 package.json noise, independent of any hoist/de-hoist decision:
 
-| Workspace                     | Declares `some-ui-utils` | Declares `@some-ui/shared` | Actual imports                                                                |
-| ----------------------------- | ------------------------ | ------------------------- | ----------------------------------------------------------------------------- |
-| `packages/ui/portfolio-chart` | yes                      | yes                       | none                                                                          |
-| `packages/mdx-generator`      | yes                      | no                        | none                                                                          |
-| `packages/ui/honeycomb`       | yes                      | yes                       | `@some-ui/shared` only (real component consumer); zero `some-ui-utils` imports |
+| Workspace                     | Declares `some-ui-utils` | Declares `@some-ui/shared` | Actual imports                                                                 |
+| ----------------------------- | ------------------------ | -------------------------- | ------------------------------------------------------------------------------ |
+| `packages/ui/portfolio-chart` | yes                      | yes                        | none                                                                           |
+| `packages/mdx-generator`      | yes                      | no                         | none                                                                           |
+| `packages/ui/honeycomb`       | yes                      | yes                        | `@some-ui/shared` only (real component consumer); zero `some-ui-utils` imports |
 
 No `extensions/*` workspace declares or imports either package — fully out
 of scope for this census.

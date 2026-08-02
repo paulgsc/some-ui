@@ -1,5 +1,6 @@
 import type { FC } from "react"
 import type { Challenge, Difficulty, SolveRecord } from "@leetype/types/leetype"
+import { Badge, Button, Card } from "@some-ui/shared"
 import {
   CheckCircle2,
   EyeOff,
@@ -8,7 +9,6 @@ import {
   XCircle,
   Zap,
 } from "lucide-react"
-import { Badge, Button, Card } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
 type ResultsCardProps = {

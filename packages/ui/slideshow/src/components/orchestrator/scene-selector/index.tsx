@@ -8,7 +8,6 @@ import {
   getNextInstanceIndex,
   validateSelections,
 } from "@slideshow/utils/scene-selector"
-import { AlertCircle, Check, Copy, Library, Plus, Trash2 } from "lucide-react"
 import {
   Alert,
   AlertDescription,
@@ -17,6 +16,7 @@ import {
   Card,
   ScrollArea,
 } from "@some-ui/shared"
+import { AlertCircle, Check, Copy, Library, Plus, Trash2 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type SceneSelectorTabProps = {

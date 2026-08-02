@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import type { FilterType } from "@nfl/types/hopium/hopium-tracker"
-import type { LucideIcon } from "lucide-react"
 import { Card } from "@some-ui/shared"
+import type { LucideIcon } from "lucide-react"
 
 type StatsCardProps = {
   title: string

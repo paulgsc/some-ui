@@ -6,6 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import type { SpeechAdapter } from "@some-ui/speech"
 import { useQueryClient } from "@tanstack/react-query"
 import type {
   EffectExecutor,
@@ -22,12 +23,12 @@ import {
   createSessionMachine,
 } from "@topik/lib/topik"
 import { createQueryBridge } from "@topik/lib/topik/adapter/server"
-import type { UseAudioTTSReturn } from "some-ui-utils"
 
 export type UseEnhancedSessionConfig = {
   repository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
-  audioTTS: UseAudioTTSReturn
+  /** Null when the host provides no speech session. */
+  speechAdapter: SpeechAdapter | null
   componentId: string
   enableTTS: boolean
   onBatchComplete?: (batchIndex: number) => void
@@ -45,7 +46,7 @@ export type UseEnhancedSessionReturn = {
   currentSpeakingId: string | null
   machine: ISessionMachine
   repository: ITopikRepository
-  audioTTS: UseAudioTTSReturn
+  speechAdapter: SpeechAdapter | null
 }
 
 export function useSession(
@@ -54,7 +55,7 @@ export function useSession(
   const {
     repository,
     metadataRepository,
-    audioTTS,
+    speechAdapter,
     componentId,
     enableTTS = true,
     onBatchComplete,
@@ -170,7 +171,7 @@ export function useSession(
       machine,
       repository,
       queryBridge,
-      audioTTS, // Pass the audio TTS instance instead of speech queue
+      speechAdapter, // Pass the audio TTS instance instead of speech queue
       componentId,
       enableTTS,
       timerInterval,
@@ -192,7 +193,7 @@ export function useSession(
     machine,
     repository,
     queryBridge,
-    audioTTS,
+    speechAdapter,
     componentId,
     enableTTS,
     timerInterval,
@@ -247,6 +248,6 @@ export function useSession(
     currentSpeakingId,
     machine,
     repository,
-    audioTTS,
+    speechAdapter,
   }
 }

@@ -1,6 +1,4 @@
 import type { JSX } from "react"
-import { createFileRoute } from "@tanstack/react-router"
-import { Download } from "lucide-react"
 import {
   Button,
   Card,
@@ -8,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@some-ui/shared"
+import { createFileRoute } from "@tanstack/react-router"
+import { Download } from "lucide-react"
 
 // GitHub Pages serves this app under /<repo>/ (see vite.config.ts's
 // VITE_BASE_PATH); a bare "/resume.pdf" would request the domain root

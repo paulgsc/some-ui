@@ -21,17 +21,24 @@
 # `docker compose up www` working out of the box against this repo's own
 # (mostly empty/gitignored) copies.
 #
-# packages/some-content/public/hangul and .../leetype are the same story with
-# one difference: they're optional, not load-bearing. HangulHexGrid's and
-# Leetype's own bundled demo pools (@some-ui/honeycomb's HANGUL_WORDS,
+# packages/some-content/public/hangul, .../leetype and .../topiks are the same
+# story with one difference: they're optional, not load-bearing. HangulHexGrid's
+# and Leetype's own bundled demo pools (@some-ui/honeycomb's HANGUL_WORDS,
 # @some-ui/content's CHALLENGES) always work with nothing mounted here at
 # all - these volumes only matter if you've asked an LLM to generate a
 # hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) or a
 # leetype/challenges.json (see apps/www/src/lib/leetype-challenges) and want
 # this container to serve one instead of its demo pool. Unlike
-# sfx/code-samples, the GitHub Pages build never bakes either of these in
+# sfx/code-samples, the GitHub Pages build never bakes any of these in
 # either way: there's no companion data there, by design (apps/www resolves
 # to "static" mode and never fetches them).
+#
+# topiks differs from those two in one respect worth knowing before you mount
+# nothing and wonder why the applet is empty: @some-ui/topik ships no bundled
+# demo pool, so an unmounted topiks dir means an empty catalogue rather than a
+# fallback one. That is the honest state - the study material is curated, not
+# generated at build time - and apps/www renders it as "nothing to study"
+# rather than as an error (see src/lib/topik-content).
 #
 # REPO_ROOT must actually be exported (e.g. `export REPO_ROOT=$(pwd)` from
 # repo root) before running docker compose. The root docker-compose.yml
@@ -56,6 +63,7 @@ services:
       - ${WWW_CODE_SAMPLES_PATH:-${REPO_ROOT:-.}/packages/some-content/public/code-samples}:/usr/share/nginx/html/code-samples:ro
       - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
       - ${WWW_LEETYPE_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/leetype}:/usr/share/nginx/html/leetype:ro
+      - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
     # Dockerfile bakes in the same wget-spider HEALTHCHECK as a baseline for

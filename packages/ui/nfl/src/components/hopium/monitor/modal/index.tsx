@@ -1,7 +1,6 @@
 import type { JSX } from "react"
 import type { SatelliteDataItem } from "@nfl/types/hopium/hopium-tracker"
 import { getFreshnessStatus } from "@nfl/utils/hopium/monitor-utils"
-import { RefreshCw } from "lucide-react"
 import {
   Badge,
   Button,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
   Progress,
 } from "@some-ui/shared"
+import { RefreshCw } from "lucide-react"
 
 type SatelliteDetails = {
   dataType?: string

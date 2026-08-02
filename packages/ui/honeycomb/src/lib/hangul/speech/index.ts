@@ -1,25 +1,48 @@
-// Thin wrapper over the Web Speech API's SpeechSynthesis, for `Speech` stimuli (ADR 0001 §2(a),
-// #762's Prompt/Concept Station). TTS-generated at runtime carries no bundling/licensing
+// `Speech` stimuli (ADR 0001 §2(a), #762's Prompt/Concept Station), spoken through
+// `@some-ui/speech`'s browser adapter. TTS-generated at runtime carries no bundling/licensing
 // obligation (ADR 0001 §5), unlike a prerecorded asset - this is the whole reason the seed word
 // list (`@honeycomb/data`) ships `ttsText` instead of an audio file per word.
 //
-// No-ops (never throws) when `speechSynthesis` isn't available, so callers don't need their own
-// feature-detection branch - #762's UI shows the word's Hangul spelling either way.
+// The `speechSynthesis` calls this file used to make by hand now live in one place for the whole
+// repo, which is the point: three workspaces were each re-deriving the same cancel/settle
+// handling, and getting it wrong differently. The exported shape is unchanged - no-ops (never
+// throws) when speech isn't available, so callers don't need their own feature-detection branch,
+// and #762's UI shows the word's Hangul spelling either way.
 
-export function isSpeechSynthesisAvailable(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window
+import type { SpeechAdapter } from "@some-ui/speech"
+import { createWebSpeechAdapter } from "@some-ui/speech"
+
+const DEFAULT_LANG = "ko-KR"
+
+// One adapter for the page, built on first use: constructing it reads `window`, and this module
+// gets imported by code that runs before there is one.
+let adapter: SpeechAdapter | null = null
+
+function getAdapter(): SpeechAdapter {
+  adapter ??= createWebSpeechAdapter({ lang: DEFAULT_LANG })
+  return adapter
 }
 
-export function speak(text: string, lang = "ko-KR"): void {
-  if (!isSpeechSynthesisAvailable() || text.length === 0) return
+export function isSpeechSynthesisAvailable(): boolean {
+  return getAdapter().supported
+}
 
-  window.speechSynthesis.cancel() // don't queue behind a stale utterance from a prior challenge
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = lang
-  window.speechSynthesis.speak(utterance)
+export function speak(text: string, lang = DEFAULT_LANG): void {
+  if (text.length === 0) return
+  const speech = getAdapter()
+  if (!speech.supported) return
+
+  // Fire and forget, by design: a challenge advances on the learner's answer, not on the audio
+  // finishing. The rejection still has to be consumed - the adapter rejects a superseded or
+  // cancelled utterance now instead of pretending it was spoken, and an unhandled rejection is a
+  // poor way to find that out.
+  void speech
+    .speak(text, {
+      voice: { id: lang, name: lang, provider: "custom", language: lang },
+    })
+    .catch(() => undefined)
 }
 
 export function cancelSpeech(): void {
-  if (!isSpeechSynthesisAvailable()) return
-  window.speechSynthesis.cancel()
+  getAdapter().stop()
 }

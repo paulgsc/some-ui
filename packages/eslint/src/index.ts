@@ -12,6 +12,8 @@ import {
   extensionsSecurityConfig,
   fitsTheBoxConfig,
   fitsTheBoxPlugin,
+  lazyRegistryConfig,
+  lazyRegistryPlugin,
   reactConfig,
   reactPeerDependencyConfig,
   switchLintConfig,
@@ -72,6 +74,9 @@ export { switchLintConfig, switchLintPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
+
+// ── Lazy content-registry loading ──────────────────────────────────────────
+export { lazyRegistryConfig, lazyRegistryPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
 
 // ── Library-build hygiene (centralized dts excludes) ───────────────────────
@@ -85,6 +90,27 @@ export const extensionsRecommended: Config = [
   ...maishatuRecommended,
   ...extensionsSecurityConfig,
   ...extensionsCharterConfig,
+]
+
+/**
+ * Recommended preset for deployable apps (`apps/*`).
+ *
+ * Extends maishatuRecommended with the lints that only mean something for a
+ * thing that ships a bundle. Today that is lazy-registry: a *host* is the
+ * only place a static import can short-circuit the content registry's
+ * dynamic boundary, because the host is what has an entry chunk. A library
+ * importing a sibling library is ordinary composition, and linting it there
+ * only manufactures exceptions.
+ *
+ * The parallel is `extensionsRecommended`, not `buildHygieneConfig` - the
+ * latter stays in maishatuRecommended and self-limits by file glob
+ * (`**\/vite.config.*`) plus call-site detection, so it is inert where it
+ * does not apply. A lint that must look at every source file cannot do
+ * that, so it is scoped by who extends it.
+ */
+export const appsRecommended: Config = [
+  ...maishatuRecommended,
+  ...lazyRegistryConfig,
 ]
 
 /**

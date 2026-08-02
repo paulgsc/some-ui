@@ -1,6 +1,4 @@
 import type { JSX } from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
-import { CheckCircle2, RotateCcw, StopCircle } from "lucide-react"
 import {
   Badge,
   Button,
@@ -9,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@some-ui/shared"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { CheckCircle2, RotateCcw, StopCircle } from "lucide-react"
 
 import { getActivityByRegistryKey } from "@/lib/activity-catalog"
 import { formatDurationMs } from "@/lib/format"

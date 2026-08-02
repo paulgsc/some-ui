@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import { AlertCircle } from "lucide-react"
 import {
   Label,
   Tabs,
@@ -8,6 +7,7 @@ import {
   TabsTrigger,
   Textarea,
 } from "@some-ui/shared"
+import { AlertCircle } from "lucide-react"
 
 type EditorProps = {
   payloadJson: string

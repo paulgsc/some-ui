@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "@some-ui/shared": "workspace:*",
+    "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/types": "workspace:*",
     "@some-ui/ws": "workspace:*",

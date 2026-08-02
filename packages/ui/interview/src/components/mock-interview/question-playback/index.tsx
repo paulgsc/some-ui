@@ -3,8 +3,8 @@ import type {
   InterviewTTSAdapter,
   Question,
 } from "@interview/lib/interview/core/interview-types"
-import { Pause, Play, RotateCcw } from "lucide-react"
 import { Button, Card } from "@some-ui/shared"
+import { Pause, Play, RotateCcw } from "lucide-react"
 
 const WAVEFORM_BAR_KEYS = Array.from(
   { length: 32 },

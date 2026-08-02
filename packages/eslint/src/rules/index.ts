@@ -1,5 +1,6 @@
 export { noUnprefixedNamespace } from "./no-unprefixed-namespace.js"
 export { noZindexEscalation } from "./no-zindex-escalation.js"
+export { noEagerRegistryImport } from "./no-eager-registry-import.js"
 export { noGreedyOverflow } from "./no-greedy-overflow.js"
 export { noInterpolatedClassname } from "./no-interpolated-classname.js"
 export { noLogicLayerSideEffects } from "./no-logic-layer-side-effects.js"

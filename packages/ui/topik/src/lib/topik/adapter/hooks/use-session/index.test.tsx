@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from "react"
 import { StrictMode } from "react"
+import type { SpeechAdapter } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
 import type {
@@ -8,7 +9,6 @@ import type {
   TopikManifestFile,
 } from "@topik/lib/topik"
 import { actions } from "@topik/lib/topik"
-import type { UseAudioTTSReturn } from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import { useSession } from "."
@@ -51,12 +51,12 @@ function createStrictWrapper(
 }
 
 /**
- * `enableTTS: false` keeps the executor from ever touching `audioTTS`, so an
+ * `enableTTS: false` keeps the executor from ever touching `speechAdapter`, so an
  * empty placeholder that satisfies the type is enough here.
  */
-function fakeAudioTTS(): UseAudioTTSReturn {
+function fakeAudioTTS(): SpeechAdapter {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
-  return {} as UseAudioTTSReturn
+  return {} as SpeechAdapter
 }
 
 function makeConfig(
@@ -71,7 +71,7 @@ function makeConfig(
   return {
     repository,
     metadataRepository,
-    audioTTS: fakeAudioTTS(),
+    speechAdapter: fakeAudioTTS(),
     componentId: "c1",
     enableTTS: false,
     ...overrides,

@@ -7,15 +7,6 @@ import {
   getEditorView,
 } from "@slideshow/utils/scene-editor"
 import { createSceneInstance } from "@slideshow/utils/scene-selector"
-import type { SceneConfig } from "@some-ui/types"
-import {
-  AlertCircle,
-  Clock,
-  Code,
-  Layers,
-  Library as LibraryIcon,
-  Save,
-} from "lucide-react"
 import {
   Badge,
   Button,
@@ -32,6 +23,15 @@ import {
   TabsTrigger,
   Textarea,
 } from "@some-ui/shared"
+import type { SceneConfig } from "@some-ui/types"
+import {
+  AlertCircle,
+  Clock,
+  Code,
+  Layers,
+  Library as LibraryIcon,
+  Save,
+} from "lucide-react"
 import { cn } from "some-ui-utils"
 
 type EditSceneDialogProps = {

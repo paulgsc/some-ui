@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
+import { Button } from "@some-ui/shared"
 import { ChangeMaterialDialog } from "@topik/components/topik/change-material/change-material-dialog"
 import type { TopikMetadata } from "@topik/lib/topik"
 import {
@@ -10,7 +11,6 @@ import {
   Target,
   Trophy,
 } from "lucide-react"
-import { Button } from "@some-ui/shared"
 
 // ═══════════════════════════════════════════════════════════════
 // Props — public API unchanged

@@ -1,5 +1,6 @@
 import type { JSX } from "react"
 import { SlideshowPresenter } from "@interview/components/mock-interview/interview-app/slideshow-presenter"
+import { selectInterviewQuestions } from "@interview/data/interview-questions"
 import type { UseInterviewSessionConfig } from "@interview/hooks/use-interview-session"
 import { useInterviewSession } from "@interview/hooks/use-interview-session"
 import type { Question } from "@interview/lib/interview/core/interview-types"
@@ -16,15 +17,30 @@ export type InterviewPresentationMode = "slideshow" | "chat"
 type InterviewAppProps = {
   mode?: InterviewPresentationMode
   sessionConfig?: UseInterviewSessionConfig
-  interviewQuestions: Array<Question>
+  /**
+   * An explicit question set. Omit it and this package selects from its own
+   * bank using `level`/`category` below - which is what the content
+   * registry does, since it renders this component with whatever scene
+   * props exist for its key and cannot supply a question bank it has no way
+   * to import.
+   */
+  interviewQuestions?: Array<Question>
+  /** Ignored when `interviewQuestions` is given. */
+  level?: string
+  /** Ignored when `interviewQuestions` is given. */
+  category?: string
 }
 
 export const InterviewApp = ({
   mode = "slideshow",
   sessionConfig,
   interviewQuestions,
-}: InterviewAppProps): JSX.Element | null => {
-  const session = useInterviewSession(sessionConfig, interviewQuestions)
+  level,
+  category,
+}: InterviewAppProps = {}): JSX.Element | null => {
+  const questions =
+    interviewQuestions ?? selectInterviewQuestions(level, category)
+  const session = useInterviewSession(sessionConfig, questions)
 
   // The chat/voice presenter doesn't exist yet - fall back to slideshow
   // rather than rendering nothing.

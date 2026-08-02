@@ -66,3 +66,33 @@ export const interviewQuestions: Array<Question> = [
     durationSeconds: 90,
   },
 ]
+
+/**
+ * The questions matching a level/category, with a widening fallback.
+ *
+ * Lives here rather than in a host because it reads this package's own
+ * question bank: a host doing the filtering has to import the bank, and an
+ * import of the bank is an import of this package - which lands it in the
+ * host's eager bundle and undoes the lazy import the content registry
+ * exists for. `apps/www` used to do exactly that.
+ *
+ * Falls back to a looser match (category only, then the whole bank) so that
+ * a combination with no exact matches still produces a playable session
+ * rather than an empty one.
+ */
+export function selectInterviewQuestions(
+  level?: string,
+  category?: string
+): Array<Question> {
+  const byLevelAndCategory = interviewQuestions.filter(
+    (question) => question.level === level && question.category === category
+  )
+  if (byLevelAndCategory.length > 0) return byLevelAndCategory
+
+  const byCategory = interviewQuestions.filter(
+    (question) => question.category === category
+  )
+  if (byCategory.length > 0) return byCategory
+
+  return interviewQuestions
+}

@@ -2,10 +2,10 @@ import "./index.css"
 
 import type { ElementType } from "react"
 import { useState } from "react"
+import { Button } from "@some-ui/shared"
 import type { DiscoveryMode } from "@umag/types/spectrum"
 import { assertNever } from "@umag/utils/error"
 import { Clock, Heart, Sparkles, Star, Trophy, Zap } from "lucide-react"
-import { Button } from "@some-ui/shared"
 
 type DiscoveryModeConfig = {
   label: string
