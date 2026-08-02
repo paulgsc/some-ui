@@ -4,9 +4,27 @@
 # adapter speaks to it with an OpenAI-shaped request and no vendor-specific
 # code of its own.
 #
-# The browser reaches nginx below on ${PORT:-5050} of whatever host serves
-# the page - apps/www derives exactly that by default (src/lib/tts-config),
-# and VITE_TTS_ENDPOINT overrides it for deployments that front this service
+# There are two ways in, and which one a page uses comes down to its scheme:
+#
+#   - Plain-HTTP pages reach nginx below on ${PORT:-5050} of whatever host
+#     serves them - Storybook, cert-less `vite dev`, the www container's :80
+#     listener. apps/www derives exactly that by default
+#     (src/lib/tts-config).
+#   - HTTPS pages cannot: this stack terminates no TLS, and an http:// fetch
+#     from an https:// document is mixed content, blocked by the browser
+#     before it is sent. Giving *this* nginx a cert instead would collide
+#     with the HTTP consumers above, which share the same port. So the www
+#     container proxies a same-origin /api/tts/ path to `openai-edge-tts`
+#     over some-ui-network instead (apps/www/nginx.tts-proxy.conf, mounted
+#     by infra/compose/www.yml), and apps/www defaults to that path when the
+#     page is HTTPS.
+#
+# Note what that second path does *not* need: any change here. `expose` and
+# the published port only govern reachability from the host - containers on
+# some-ui-network already resolve `openai-edge-tts` and connect to 5050
+# directly, which is precisely what the www proxy does.
+#
+# VITE_TTS_ENDPOINT overrides both for deployments that front this service
 # somewhere else. The GitHub Pages build has no backend at all and resolves
 # to the browser's own speechSynthesis instead; nothing here applies to it.
 services:

@@ -3,6 +3,25 @@
 # interview app) sees a secure context. HTTP stays available on 8080 for
 # plain local checks.
 #
+# That HTTPS listener is also why nginx.tts-proxy.conf is mounted below. The
+# speech backend in infra/compose/tts.yml publishes plain HTTP on :5050 and
+# terminates no TLS, so a page served from :443 here cannot fetch it
+# directly - the browser blocks it as mixed content, and the topik applet
+# goes silent with nothing to say why. The mounted snippet adds a
+# same-origin /api/tts/ route that this container proxies to the TTS
+# container over some-ui-network (service-to-service, so :5050 never has to
+# be reachable from the browser at all), and apps/www's src/lib/tts-config
+# defaults to it whenever the page is HTTPS. Plain-HTTP consumers - Storybook,
+# cert-less `vite dev`, the :80 listener here - are untouched and keep
+# talking to the published :5050 as before.
+#
+# The TTS containers are not a `depends_on` of this service, deliberately:
+# `docker compose up www` on its own stays the documented way to serve just
+# the app, and the proxy resolves its upstream per request (see the snippet),
+# so a missing TTS stack costs speech and nothing else. Bring both up with
+# `docker compose up www openai-edge-tts nginx` (or plain `docker compose up`)
+# when you want the applet to speak.
+#
 # Requires local mkcert certs at ${REPO_ROOT}/certs (gitignored, machine-local)
 # — the same ones apps/www/vite.config.ts already looks for:
 #   mkcert -install
@@ -58,6 +77,7 @@ services:
       - "${WWW_HTTPS_PORT:-5173}:443"
     volumes:
       - ${REPO_ROOT:-.}/apps/www/nginx.https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${REPO_ROOT:-.}/apps/www/nginx.tts-proxy.conf:/etc/nginx/tts-proxy.conf:ro
       - ${REPO_ROOT:-.}/certs:/etc/nginx/certs:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
       - ${WWW_CODE_SAMPLES_PATH:-${REPO_ROOT:-.}/packages/some-content/public/code-samples}:/usr/share/nginx/html/code-samples:ro

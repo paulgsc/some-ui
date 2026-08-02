@@ -12,6 +12,21 @@ const certPath = resolve(__dirname, "../../certs/nixos.local+3.pem")
 const keyPath = resolve(__dirname, "../../certs/nixos.local+3-key.pem")
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 
+// The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
+// same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
+// publishes on the host instead of at the container over the compose
+// network. Without it, `vite dev` with the certs above (i.e. over HTTPS)
+// hits the mixed-content block that path exists to avoid, since
+// src/lib/tts-config resolves an HTTPS page to this path.
+//
+// Kept in step by hand with that nginx snippet and with TTS_PROXY_PATH in
+// src/lib/tts-config - importing the constant here would pull an
+// `import.meta.env` reader into the config's Node context for one string.
+// TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
+// running somewhere other than this machine.
+const TTS_PROXY_PATH = "/api/tts"
+const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
+
 // honeycomb's sfx / leetype's code samples (see scripts/link-content-assets.js)
 // are curated, gitignored, and only ever present if a developer symlinked
 // them in on purpose - never auto-run on dev startup (see that script's
@@ -57,6 +72,16 @@ export default defineConfig(
       allowedHosts: ["nixos.local"],
       port: 5173,
       strictPort: true,
+      // `vite preview` inherits this (its own `preview.proxy` defaults to
+      // `server.proxy`), so both dev servers speak.
+      proxy: {
+        [TTS_PROXY_PATH]: {
+          target: ttsProxyTarget,
+          changeOrigin: true,
+          rewrite: (path): string =>
+            path.replace(new RegExp(`^${TTS_PROXY_PATH}`), ""),
+        },
+      },
       // Local mkcert certs are machine-local (gitignored) and only relevant to
       // `vite dev`/`vite preview` - `vite build` never starts a server, and
       // CI/Docker builds don't have these certs, so only wire this up when

@@ -8,17 +8,29 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { DEFAULT_TTS_PORT, resolveTTSEndpoint } from "."
+import { DEFAULT_TTS_PORT, resolveTTSEndpoint, TTS_PROXY_PATH } from "."
 
 /**
  * Worth pinning for the same reason `data-mode` is: getting this wrong
  * fails silently and asymmetrically. Point it at the wrong host and every
  * utterance 404s with nothing in the UI to say so; hardcode a host and it
  * works on exactly one machine - which is the bug this module replaced.
+ *
+ * The scheme split below is the second half of that: an absolute
+ * `http://host:5050` URL from an HTTPS page is mixed content, which the
+ * browser blocks before the request is ever made. That failure is
+ * invisible in the same way - the applet simply never speaks - so it gets
+ * pinned rather than rediscovered.
  */
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
 })
+
+/** jsdom's own location is HTTP; the HTTPS cases substitute their own. */
+function servePageOver(protocol: "http:" | "https:", hostname: string): void {
+  vi.stubGlobal("location", { ...window.location, hostname, protocol })
+}
 
 describe("resolveTTSEndpoint", () => {
   it("prefers an explicitly configured endpoint", () => {
@@ -27,14 +39,49 @@ describe("resolveTTSEndpoint", () => {
     expect(resolveTTSEndpoint()).toBe("https://tts.example.com/v1/audio/speech")
   })
 
+  it("keeps an explicit endpoint even on an HTTPS page", () => {
+    // The override is the escape hatch for deployments that front the
+    // service somewhere else; the proxy default must not quietly win.
+    servePageOver("https:", "nixos.local")
+    vi.stubEnv("VITE_TTS_ENDPOINT", "https://tts.example.com/v1/audio/speech")
+
+    expect(resolveTTSEndpoint()).toBe("https://tts.example.com/v1/audio/speech")
+  })
+
   it("defaults to the compose service beside whatever host serves the page", () => {
     vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
 
-    // jsdom serves from localhost; the rule is "same hostname, TTS port",
-    // which is what makes this work unchanged on a LAN mDNS name too.
+    // jsdom serves from localhost over HTTP; the rule is "same hostname,
+    // TTS port", which is what makes this work unchanged on a LAN mDNS
+    // name too.
     expect(resolveTTSEndpoint()).toBe(
       `http://${window.location.hostname}:${DEFAULT_TTS_PORT}/v1/audio/speech`
     )
+  })
+
+  it("stays on plain HTTP for an HTTP page, proxy or no proxy", () => {
+    // Storybook and cert-less `vite dev` land here, and neither has a
+    // same-origin proxy in front of it - this is the case that must not
+    // move when the HTTPS one does.
+    servePageOver("http:", "nixos.local")
+    vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
+
+    expect(resolveTTSEndpoint()).toBe(
+      `http://nixos.local:${DEFAULT_TTS_PORT}/v1/audio/speech`
+    )
+  })
+
+  it("routes an HTTPS page through the same-origin proxy path", () => {
+    servePageOver("https:", "nixos.local")
+    vi.stubEnv("VITE_TTS_ENDPOINT", undefined)
+
+    const endpoint = resolveTTSEndpoint()
+
+    expect(endpoint).toBe(`${TTS_PROXY_PATH}/v1/audio/speech`)
+    // Same-origin means relative: an absolute http:// URL here is the
+    // mixed-content block, and an absolute https:// one would need a TLS
+    // front-end the compose service does not have.
+    expect(endpoint).not.toMatch(/^https?:/)
   })
 
   it("ignores an empty override rather than building an empty URL", () => {
