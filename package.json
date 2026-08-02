@@ -35,6 +35,7 @@
     "prettier": "turbo prettier",
     "check-file": "turbo run check-file",
     "knip": "knip --no-progress --reporter compact",
+    "check:catalog": "node scripts/check-catalog-drift.mjs",
     "prepare": "husky",
     "test": "turbo test",
     "storybook": "storybook dev -p 6006 --no-open",
@@ -127,7 +128,7 @@
     "vite-plugin-top-level-await": "1.6.0",
     "vite-plugin-wasm": "3.6.0",
     "vitest": "^4.1.10",
-    "zod": "4.0.5"
+    "zod": "catalog:"
   },
   "pnpm": {
     "overrides": {

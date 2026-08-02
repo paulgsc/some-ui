@@ -13,7 +13,7 @@
     "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
-    "lucide-react": "^0.263.1",
+    "lucide-react": "catalog:",
     "web-ext": "^7.6.2"
   },
   "exports": {

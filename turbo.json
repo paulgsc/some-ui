@@ -31,6 +31,9 @@
     "lint": {
       "cache": false
     },
+    "knip": {
+      "cache": false
+    },
     "lint:fix": {
       "cache": false,
       "outputs": []

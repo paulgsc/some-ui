@@ -25,9 +25,9 @@
     "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@tanstack/react-query": "^5.66.11",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*",
-    "zod": "4.0.5"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

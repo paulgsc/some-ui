@@ -4,7 +4,7 @@
   },
   "dependencies": {
     "@some-ui/shared": "workspace:*",
-    "lucide-react": "^0.474.0",
+    "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {

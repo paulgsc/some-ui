@@ -24,10 +24,10 @@
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "embla-carousel-autoplay": "^8.6.0",
-    "lucide-react": "^0.536.0",
+    "lucide-react": "catalog:",
     "some-bricks": "link:../../../crates/some-bricks/dist",
     "some-ui-utils": "workspace:*",
-    "zod": "4.0.5"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/content": "workspace:*",

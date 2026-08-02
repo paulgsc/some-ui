@@ -8,9 +8,9 @@
     "@some-ui/styles": "workspace:*",
     "@some-ui/types": "workspace:*",
     "@some-ui/ws": "workspace:*",
-    "lucide-react": "^0.522.0",
+    "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*",
-    "zod": "4.0.5",
+    "zod": "catalog:",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
