@@ -3,7 +3,7 @@ name: Extension CI
 #
 # Job graph:
 #   detect
-#     └── build-workspace      (shared packages + wasm crates, paid once)
+#     └── build-workspace      (shared packages, paid once)
 #           └── verify[matrix] (per-extension: typecheck/lint/test/build)
 #
 # Signing is intentionally NOT wired here. AMO compliance footguns are being
@@ -11,21 +11,30 @@ name: Extension CI
 # auto-signing on main is suspended until all A+B issues are closed.
 # Use extension-sign-manual.yml (workflow_dispatch) to sign when ready.
 #
-# Workspace packages and wasm crates are built once and shared via the
-# workspace-packages-dist / workspace-crates-dist artifacts.
+# Workspace packages are built once and shared via the
+# workspace-packages-dist artifact.
 # verify does not rebuild shared packages — it only bundles the extension itself.
 #
 # Smart filter: build-workspace uses Turbo's dep-graph filter
 # '...{./extensions/*}' (transitive deps of all extensions) minus the
-# extensions themselves. This means only the packages and wasm crates that
-# extensions actually import are built — packages/ui/** and other unrelated
-# workspaces are skipped automatically by the dep graph.
+# extensions themselves. This means only the packages that extensions
+# actually import are built — packages/ui/** and other unrelated workspaces
+# are skipped automatically by the dep graph.
+#
+# Wasm crates are not part of that closure, are not built here, and no longer
+# trigger this workflow. Extensions pin the published npm package
+# (extensions/some-conveyor: "@some-ui/polyhedron": "0.0.4"), so wasm arrives
+# from the registry via pnpm install. Editing a .rs file cannot change an
+# extension bundle until wasm-release.yml publishes a new version and the pin
+# is bumped — and that bump touches package.json + pnpm-lock.yaml, which is
+# already in the trigger list below. crates/** here only bought a full
+# detect + build-workspace + per-extension verify matrix on crate-only pushes,
+# for a diff no extension could observe.
 on:
   pull_request:
     paths:
       - "extensions/**"
       - "packages/**"
-      - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/extension.yml"
       - ".github/workflows/_extension-*.yml"
@@ -36,7 +45,6 @@ on:
     paths:
       - "extensions/**"
       - "packages/**"
-      - "crates/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/extension.yml"
       - ".github/workflows/_extension-*.yml"
@@ -49,24 +57,25 @@ jobs:
     name: Detect Changed Extensions
     uses: ./.github/workflows/_extension-detect.yml
 
-  # Build shared workspace packages and wasm crates once.
-  # Uses a dep-graph-aware filter so only packages/crates that extensions
-  # actually depend on are built — packages/ui/** and other unrelated
-  # packages are skipped automatically.
+  # Build shared workspace packages once.
+  # Uses a dep-graph-aware filter so only packages that extensions actually
+  # depend on are built — packages/ui/** and other unrelated packages are
+  # skipped automatically.
   build-workspace:
     name: Build Workspace Packages
     needs: detect
     if: needs.detect.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     steps:
+      # No cargo-cache: nothing in this job invokes cargo. The extension
+      # dependency closure resolves the wasm packages from the npm registry
+      # (extensions/some-conveyor pins "@some-ui/polyhedron": "0.0.4"), not
+      # from crates/* as workspace source, so `...{./extensions/*}` below
+      # selects zero crates and the cache was restored and saved for a
+      # toolchain the job never ran.
       - uses: actions/checkout@v7
       - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/cargo-cache
-        with:
-          key-suffix: wasm-ext-deps
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
 
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
@@ -74,23 +83,25 @@ jobs:
           HUSKY: 0
 
       # Restore cached dist to skip rebuilding when nothing relevant changed.
-      # Key covers pnpm-lock + all package/crate source trees.
+      # Key covers pnpm-lock + the package source trees this job actually
+      # builds. Cargo.toml/Cargo.lock are deliberately not hashed in: a Rust
+      # dependency bump cannot change any output of this job, so hashing it
+      # only threw away a valid packages/*/dist cache and forced a full JS
+      # rebuild.
       - name: Restore workspace dist cache
         id: ws-cache
         uses: actions/cache@v6
         with:
-          path: |
-            packages/*/dist
-            crates/*/dist
-          key: workspace-dist-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'packages/**/package.json', 'crates/**/Cargo.toml', 'Cargo.lock') }}
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'packages/**/package.json') }}
           restore-keys: |
             workspace-dist-${{ runner.os }}-
 
-      # Build only the packages/crates that extensions depend on.
-      # pnpm build at the root invokes `turbo run build` (see package.json).
-      # Turbo's '...{./extensions/*}' dependency selector walks the graph
-      # upstream from every extension, building their transitive workspace deps
-      # (packages, wasm crates like polyhedron) without the extensions themselves.
+      # Build only the packages that extensions depend on.
+      # pnpm build at the root invokes `turbo run build --filter='!./crates/*'`
+      # (see package.json). Turbo's '...{./extensions/*}' dependency selector
+      # walks the graph upstream from every extension, building their
+      # transitive workspace deps without the extensions themselves.
       - name: Build workspace deps
         if: steps.ws-cache.outputs.cache-hit != 'true'
         run: |
@@ -100,24 +111,21 @@ jobs:
         env:
           NODE_ENV: production
 
-      # Upload packages/*/dist and crates/*/dist as separate artifacts so
-      # verify jobs can download each to its correct location.
+      # Upload packages/*/dist so verify jobs can download it.
       # Use 'error' so a broken build fails loudly here rather than silently
       # producing a missing artifact that breaks all downstream verify jobs.
+      #
+      # There is no companion crates/*/dist artifact: this job builds no
+      # crates (see above), so it only ever uploaded an empty one - which is
+      # why it carried `if-no-files-found: warn` while its sibling used
+      # `error`. Extensions get their wasm from node_modules like any other
+      # published dependency.
       - name: Upload package dist
         uses: actions/upload-artifact@v7
         with:
           name: workspace-packages-dist
           path: packages/*/dist
           if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload crate dist
-        uses: actions/upload-artifact@v7
-        with:
-          name: workspace-crates-dist
-          path: crates/*/dist
-          if-no-files-found: warn
           retention-days: 1
 
   verify:

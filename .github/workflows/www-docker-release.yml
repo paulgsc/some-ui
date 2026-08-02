@@ -73,8 +73,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
@@ -108,8 +106,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
       - name: Install dependencies
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:

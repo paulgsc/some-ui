@@ -1,23 +1,36 @@
 name: "pnpm Cache"
-description: "Resolve pnpm store path inside Nix shell and restore/save the cache."
-inputs:
-  shell:
-    description: "Nix devShell to run pnpm store path in"
-    required: false
-    default: "ci"
+description: "Restore/save the pnpm content-addressable store."
+# The store path used to be discovered at runtime with
+# `nix develop .#ci --command pnpm store path`, purely to learn a directory
+# name before actions/cache could restore into it. That put a full cold
+# devShell entry inside a step whose name says "cache", and the two costs
+# were then indistinguishable in every per-step measurement: on Trunk run
+# 30762782458 this action took 44s while the `pnpm install` it exists to
+# accelerate took 8s, and cargo-cache - the same actions/cache calls with no
+# `nix develop` in front of them - took 2-4s in five sibling jobs on the same
+# run. The ~40s gap was the devShell, not tar extraction.
+#
+# So don't discover the path, declare it. pnpm reads `store-dir` from any
+# `npm_config_*` environment variable, so exporting it here fixes the store
+# location for every later `pnpm` call in the job - inside or outside the nix
+# shell - with no shell entry at all. The devShell still gets realized, but
+# now it is billed to the step that actually needs it (`pnpm install`), which
+# is what makes the next round of measurements honest.
+#
+# `runner.temp` rather than a path under the workspace: it survives
+# actions/checkout, stays out of lint/knip globs, and is on the same
+# filesystem as `node_modules`, so pnpm can still hardlink out of the store
+# instead of copying.
 runs:
   using: composite
   steps:
-    - name: Get pnpm store path
-      id: store
+    - name: Point pnpm at a fixed store path
       shell: bash
-      run: |
-        PATH_VAL=$(nix develop ".#${{ inputs.shell }}" --command pnpm store path 2>/dev/null)
-        echo "path=${PATH_VAL}" >> "$GITHUB_OUTPUT"
+      run: echo "npm_config_store_dir=${{ runner.temp }}/pnpm-store" >> "$GITHUB_ENV"
     - name: Restore pnpm store cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
-        path: ${{ steps.store.outputs.path }}
+        path: ${{ runner.temp }}/pnpm-store
         key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: |
           pnpm-${{ runner.os }}-

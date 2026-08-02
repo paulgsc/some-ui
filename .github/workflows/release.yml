@@ -17,8 +17,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/nix-setup
       - uses: ./.github/actions/pnpm-cache
-        with:
-          shell: ci
       - name: Install dependencies
         run: |
           nix develop .#ci --command pnpm install \
@@ -26,6 +24,14 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # `pnpm build` excludes crates/* (root package.json). This is the
+      # changesets release for the Node packages; the wasm packages have their
+      # own publish track in wasm-release.yml, which builds each changed crate
+      # with wasm-pack and restores the dist into the crate directory before
+      # running `changeset publish`. In steady state `.changeset/` on main
+      # therefore never holds a wasm entry for this workflow to publish - if
+      # one is ever added by hand, dispatch wasm-release.yml instead, so the
+      # tarball ships with a dist built for that exact version.
       - name: Build packages
         run: nix develop .#ci --command pnpm build --concurrency=100%
       - name: Create Release PR or Publish
