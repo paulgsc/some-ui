@@ -7,7 +7,7 @@ import { defineSceneProps, withSceneProps } from "."
 /**
  * These pin the property the `extraProps` bag did not have: runtime props
  * reach *only* the panel whose `registry_key` consumes them. Under the old
- * design `words`/`sessionKey`/`suspended`/`challenges` were spread onto every
+ * design `words`/`sessionKey`/`suspended` were spread onto every
  * rendered panel, so an unrelated component received all of them as stray
  * props and the layout viewport held content concerns it could not interpret.
  */
@@ -37,7 +37,7 @@ function panelsOf(
 
 const PROPS: ScenePropsMap = {
   hangul: { words: ["사과"], sessionKey: "s-1", suspended: false },
-  leetype: { challenges: ["ex-1"], challengesPending: false },
+  interview: { level: "mid", category: "technical" },
 }
 
 describe("withSceneProps", () => {
@@ -65,7 +65,7 @@ describe("withSceneProps", () => {
       PROPS
     )
 
-    // The whole point: `neon` never sees hangul's words or leetype's corpus.
+    // The whole point: `neon` never sees hangul's words or interview's config.
     expect(panelsOf(result).sidebar.props).toBeUndefined()
   })
 
@@ -74,7 +74,7 @@ describe("withSceneProps", () => {
       [
         lifetime({
           main: { registry_key: "hangul" },
-          footer: { registry_key: "leetype" },
+          footer: { registry_key: "interview" },
         }),
       ],
       PROPS
@@ -86,8 +86,8 @@ describe("withSceneProps", () => {
       "suspended",
     ])
     expect(Object.keys(panelsOf(result).footer.props!)).toEqual([
-      "challenges",
-      "challengesPending",
+      "level",
+      "category",
     ])
   })
 
@@ -118,14 +118,14 @@ describe("withSceneProps", () => {
     const result = withSceneProps(
       [
         lifetime({ main: { registry_key: "neon" } }, 1),
-        lifetime({ main: { registry_key: "leetype" } }, 2),
+        lifetime({ main: { registry_key: "interview" } }, 2),
       ],
       PROPS
     )
 
     expect(panelsOf(result, 1).main.props).toEqual({
-      challenges: ["ex-1"],
-      challengesPending: false,
+      level: "mid",
+      category: "technical",
     })
   })
 
@@ -180,12 +180,12 @@ describe("defineSceneProps", () => {
   it("passes a valid map through unchanged", () => {
     const map = defineSceneProps({
       hangul: { words: ["사과"] },
-      leetype: { challenges: [] },
+      interview: { level: "mid" },
     })
 
     expect(map).toEqual({
       hangul: { words: ["사과"] },
-      leetype: { challenges: [] },
+      interview: { level: "mid" },
     })
   })
 

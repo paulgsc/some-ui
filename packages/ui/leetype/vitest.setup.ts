@@ -77,6 +77,32 @@ function createMemoryStorage(): Storage {
   }
 }
 
+/**
+ * jsdom implements no scrolling at all, so `Element.prototype.scrollIntoView`
+ * is simply absent — calling it throws rather than being a no-op.
+ *
+ * `TypingViewport`'s caret-following calls it unconditionally, and it should:
+ * guarding the call in the component would be dead weight in the only
+ * environment that matters, added to satisfy a test environment's gap. The
+ * repair belongs here instead.
+ *
+ * Asked through `getOwnPropertyDescriptor` rather than a truthiness check
+ * because the DOM lib types the method as always present — which is true of a
+ * browser and false of jsdom, and only the descriptor can tell them apart.
+ */
+if (
+  Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView") ===
+  undefined
+) {
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    configurable: true,
+    writable: true,
+    value: function scrollIntoView(): void {
+      // Nothing in jsdom scrolls, so there is nothing to do.
+    },
+  })
+}
+
 ensureUsableWebStorage(globalThis)
 
 afterEach(() => {

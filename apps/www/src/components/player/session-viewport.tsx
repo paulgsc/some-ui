@@ -12,7 +12,6 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useHangulVocab } from "@/lib/hangul-vocab"
-import { useLeetypeChallenges } from "@/lib/leetype-challenges"
 import type { SessionRecord } from "@/lib/tenant"
 import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
@@ -63,13 +62,17 @@ export const SessionViewport = ({
   // whether they play, and this is the seam between the two - without it,
   // the "Game sounds" toggle in the audio indicator would control nothing.
   const { preferences: audioPreferences } = useAudioPreferences()
-  const { challenges, isPending: challengesPending } = useLeetypeChallenges()
 
   // Each panel's runtime props, associated with the one registry key that
   // consumes them. Nothing here is cross-cutting - `words`/`sessionKey`/
-  // `suspended` are HangulHexGrid's alone, `challenges`/`challengesPending`
-  // are Leetype's alone - so the association is made statically here rather
-  // than by merging one bag onto every panel in the viewport.
+  // `suspended` are HangulHexGrid's alone - so the association is made
+  // statically here rather than by merging one bag onto every panel in the
+  // viewport.
+  //
+  // `leetype` is deliberately absent: it needs nothing injected. Its
+  // exercises come from its own shim (@some-ui/leetype's
+  // lib/leetype/exercises), which is the single seam a future generator
+  // replaces - a corpus threaded through this app would be a second one.
   // Built through `defineSceneProps` rather than annotated: a plain
   // ScenePropsMap annotation would not catch a misspelled registry key here -
   // see that function's own comment.
@@ -89,22 +92,8 @@ export const SessionViewport = ({
           loadManifest: loadTopikManifest,
           loadTopik: loadTopikFile,
         },
-        leetype: {
-          challenges,
-          // Leetype's picker is a blocking step of the session, so it has to
-          // know the difference between "this build has no corpus" and "this
-          // build's corpus is still on the wire" - see useLeetypeChallenges.
-          challengesPending,
-        },
       }),
-    [
-      sessionKey,
-      suspended,
-      hangulWords,
-      challenges,
-      challengesPending,
-      audioPreferences.effects,
-    ]
+    [sessionKey, suspended, hangulWords, audioPreferences.effects]
   )
 
   const renderedLifetimes = useMemo(

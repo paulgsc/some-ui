@@ -1,4 +1,3 @@
-import { CHALLENGES } from "@some-ui/content"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { ResultsCard } from "."
@@ -6,117 +5,44 @@ import { ResultsCard } from "."
 const meta: Meta<typeof ResultsCard> = {
   title: "UI/Input/Components/Typing/ResultsCard",
   component: ResultsCard,
-  parameters: { layout: "padded" },
-  argTypes: {
-    onPlayAgain: { action: "play again" },
-    onChooseChallenge: { action: "choose challenge" },
-  },
 }
 
 export default meta
 type Story = StoryObj<typeof ResultsCard>
 
-const dsChallenge = CHALLENGES.find((c) => c.id === "ds-linked-list")!
-const hardChallenge = CHALLENGES.find((c) => c.id === "ds-min-heap")!
-const algoChallenge = CHALLENGES.find((c) => c.id === "algo-merge-sort")!
-
-export const FastSolve: Story = {
+export const CleanRun: Story = {
   args: {
-    challenge: dsChallenge,
-    solve: {
-      challengeId: "ds-linked-list",
-      solvedAt: Date.now(),
-      wpm: 52,
-      accuracy: 97.3,
-      elapsedTime: 145,
-      errors: 1,
-      n: null,
-      displayMode: "shown",
-      xpEarned: 0, // shown for display, real value comes from xpEarned prop
-    },
-    xpEarned: 15,
-    leveledUp: false,
-    newLevel: 2,
-  },
-}
-
-export const LevelUp: Story = {
-  args: {
-    challenge: dsChallenge,
-    solve: {
-      challengeId: "ds-linked-list",
-      solvedAt: Date.now(),
-      wpm: 44,
-      accuracy: 88,
-      elapsedTime: 210,
-      errors: 4,
-      n: null,
-      displayMode: "shown",
-      xpEarned: 0,
-    },
-    xpEarned: 11,
-    leveledUp: true,
-    newLevel: 3,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Shows level-up banner when player reaches a new level",
-      },
-    },
-  },
-}
-
-export const HardModeHidden: Story = {
-  args: {
-    challenge: hardChallenge,
-    solve: {
-      challengeId: "ds-min-heap",
-      solvedAt: Date.now(),
-      wpm: 61,
-      accuracy: 94.5,
-      elapsedTime: 320,
+    exerciseTitle: "The Entry API",
+    stats: {
+      wpm: 74,
+      accuracy: 98.2,
+      elapsedTime: 214,
       errors: 6,
-      n: null,
-      displayMode: "hidden",
-      xpEarned: 0,
+      stepsCompleted: 10,
+      stepsEscaped: 0,
+      assistance: 0.12,
     },
-    xpEarned: 108,
-    leveledUp: false,
-    newLevel: 4,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Hard challenge completed in hidden mode — large XP bonus",
-      },
-    },
+    onPlayAgain: () => {},
   },
 }
 
-export const AlgorithmWithN: Story = {
+/**
+ * A run the gate had to carry. "Carried" is reported rather than hidden — a
+ * step the repeat cap let the player past is not a step they cleared, and
+ * showing the two as one number would make the gate decorative.
+ */
+export const CarriedByTheGate: Story = {
   args: {
-    challenge: algoChallenge,
-    solve: {
-      challengeId: "algo-merge-sort",
-      solvedAt: Date.now(),
-      wpm: 38,
-      accuracy: 91.2,
-      elapsedTime: 480,
-      errors: 9,
-      n: "large",
-      displayMode: "shown",
-      xpEarned: 0,
+    exerciseTitle: "The Entry API",
+    stats: {
+      wpm: 31,
+      accuracy: 88.4,
+      elapsedTime: 620,
+      errors: 74,
+      stepsCompleted: 10,
+      stepsEscaped: 3,
+      assistance: 0.71,
     },
-    xpEarned: 58,
-    leveledUp: false,
-    newLevel: 4,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Algorithm challenge solved with large N — N multiplier shown",
-      },
-    },
+    onPlayAgain: () => {},
   },
 }

@@ -2,6 +2,7 @@ import type {
   CumulativeStats,
   Layout,
   Outcome,
+  Progression,
   SectionProgress,
   Snapshot,
   TypingGameWasm,
@@ -11,6 +12,7 @@ import {
   CumulativeStatsSchema,
   LayoutSchema,
   OutcomeSchema,
+  ProgressionSchema,
   SectionProgressSchema,
   SnapshotSchema,
 } from "@leetype/types/leetype"
@@ -70,10 +72,22 @@ export class TypedTypingGame {
   private instance: TypingGameWasm
   private listeners = new Set<() => void>()
 
-  constructor(targetCode: string, maxConsecutiveErrors?: number) {
+  constructor(
+    targetCode: string,
+    maxConsecutiveErrors?: number,
+    /**
+     * The player's sampled copying speed and its spread. Every threshold in
+     * the reveal loop and the gate is a fraction of these; omitting them
+     * takes the engine's cold-start stand-in, which is playable.
+     */
+    baselineWpm?: number,
+    dispersionWpm?: number
+  ) {
     this.instance = new (requireModule().TypingGame)(
       targetCode,
-      maxConsecutiveErrors
+      maxConsecutiveErrors,
+      baselineWpm,
+      dispersionWpm
     )
   }
 
@@ -95,6 +109,22 @@ export class TypedTypingGame {
   /** Per-slot status: `SLOT_UNTOUCHED` / `SLOT_CORRECT` / `SLOT_WRONG`. */
   slotStatus(): Uint8Array {
     return this.instance.slot_status()
+  }
+
+  /**
+   * Per-slot reveal state: `VISIBILITY_MASKED` / `VISIBILITY_REVEALED`.
+   *
+   * Crosses as a typed array for the same reason `slotStatus` does, and is
+   * consumed the same way: the renderer draws what it says. There is no
+   * masking policy on this side of the boundary at all.
+   */
+  visibility(): Uint8Array {
+    return this.instance.visibility()
+  }
+
+  /** What the runner should do with this step: advance, repeat, or escape. */
+  progression(now: number): Progression {
+    return ProgressionSchema.parse(this.instance.progression(now))
   }
 
   snapshot(now: number): Snapshot {
@@ -155,9 +185,30 @@ export class TypedTypingGame {
     return this.commit(this.instance.complete_chunk(now))
   }
 
-  /** Swap in the next chunk of source, keeping the clock running. */
+  /** Swap in the next step's source, keeping the session clock running. */
   startNextChunk(newTargetCode: string, now: number): Outcome {
     return this.commit(this.instance.start_next_chunk(newTargetCode, now))
+  }
+
+  /** Replay the same source as a fresh attempt — the gate held. */
+  retryChunk(now: number): Outcome {
+    return this.commit(this.instance.retry_chunk(now))
+  }
+
+  /**
+   * Advance the reveal loop without a keystroke.
+   *
+   * Not optional plumbing: the loop's most important input is a player who
+   * has *stopped* typing, and a state machine driven only by keystrokes
+   * cannot see one.
+   */
+  tick(now: number): Outcome {
+    return this.commit(this.instance.tick(now))
+  }
+
+  /** Re-derive every threshold from a fresh sample of the player's speed. */
+  calibrate(baselineWpm: number, dispersionWpm: number, now: number): Outcome {
+    return this.commit(this.instance.calibrate(baselineWpm, dispersionWpm, now))
   }
 
   /**

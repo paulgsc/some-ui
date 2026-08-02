@@ -27,31 +27,31 @@ const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 const TTS_PROXY_PATH = "/api/tts"
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
-// honeycomb's sfx / leetype's code samples (see scripts/link-content-assets.js)
-// are curated, gitignored, and only ever present if a developer symlinked
-// them in on purpose - never auto-run on dev startup (see that script's
-// header for why). Without them, requests like /sfx/correct.mp3 fall through
-// vite's SPA history fallback and come back as index.html, which the browser
-// reports as an opaque "Content-Type text/html is not supported" media
-// error. Surface the actual cause loudly instead of leaving that to guess.
+// honeycomb's sfx (see scripts/link-content-assets.js) is curated,
+// gitignored, and only ever present if a developer symlinked it in on purpose
+// - never auto-run on dev startup (see that script's header for why). Without
+// it, requests like /sfx/correct.mp3 fall through vite's SPA history fallback
+// and come back as index.html, which the browser reports as an opaque
+// "Content-Type text/html is not supported" media error. Surface the actual
+// cause loudly instead of leaving that to guess.
 //
-// hangul, leetype and topiks are deliberately not warned about: their absence
-// is expected and legible in the UI on its own (a bundled demo pool for the
-// first two, an empty catalogue for topiks), so a startup warning would fire
-// on almost every checkout and mean nothing.
+// hangul and topiks are deliberately not warned about: their absence is
+// expected and legible in the UI on its own (a bundled demo pool for the
+// first, an empty catalogue for topiks), so a startup warning would fire on
+// almost every checkout and mean nothing.
 function warnMissingContentAssets(): Plugin {
   return {
     name: "warn-missing-content-assets",
     configureServer(): void {
-      const missing = ["sfx", "code-samples"].filter(
+      const missing = ["sfx"].filter(
         (name) => !fs.existsSync(resolve(__dirname, "public", name))
       )
       if (missing.length === 0) return
       // eslint-disable-next-line no-console
       console.warn(
         `\n[www] public/${missing.join(", public/")} not found - honeycomb sound` +
-          ` and/or leetype code samples won't load. The browser will show a` +
-          ` confusing "Content-Type text/html" media error instead of a 404.\n` +
+          ` won't load. The browser will show a confusing` +
+          ` "Content-Type text/html" media error instead of a 404.\n` +
           `  If you have the real files under packages/some-content/public/, run:\n` +
           `    pnpm run content:link\n` +
           `  Otherwise this is expected on a fresh checkout - those assets are` +

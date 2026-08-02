@@ -31,26 +31,29 @@
 #
 # Usage: docker compose up www   (from repo root, via root docker-compose.yml)
 #
-# honeycomb's sfx and leetype's code samples (packages/some-content/public/
-# {sfx,code-samples}) are volume-mounted rather than baked into the image -
-# unlike the GitHub Pages build, the Docker image doesn't bundle them, so
-# nginx serves whatever's mounted at WWW_SFX_ASSETS_PATH /
-# WWW_CODE_SAMPLES_PATH on the host. Point those env vars wherever the
-# deployer keeps the actual asset files; the defaults below just keep
+# honeycomb's sfx (packages/some-content/public/sfx) is volume-mounted rather
+# than baked into the image - unlike the GitHub Pages build, the Docker image
+# doesn't bundle it, so nginx serves whatever's mounted at
+# WWW_SFX_ASSETS_PATH on the host. Point that env var wherever the deployer
+# keeps the actual asset files; the default below just keeps
 # `docker compose up www` working out of the box against this repo's own
-# (mostly empty/gitignored) copies.
+# (mostly empty/gitignored) copy.
 #
-# packages/some-content/public/hangul, .../leetype and .../topiks are the same
-# story with one difference: they're optional, not load-bearing. HangulHexGrid's
-# and Leetype's own bundled demo pools (@some-ui/honeycomb's HANGUL_WORDS,
-# @some-ui/content's CHALLENGES) always work with nothing mounted here at
-# all - these volumes only matter if you've asked an LLM to generate a
-# hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) or a
-# leetype/challenges.json (see apps/www/src/lib/leetype-challenges) and want
-# this container to serve one instead of its demo pool. Unlike
-# sfx/code-samples, the GitHub Pages build never bakes any of these in
-# either way: there's no companion data there, by design (apps/www resolves
-# to "static" mode and never fetches them).
+# packages/some-content/public/hangul and .../topiks are the same story with
+# one difference: they're optional, not load-bearing. HangulHexGrid's own
+# bundled demo pool (@some-ui/honeycomb's HANGUL_WORDS) works with nothing
+# mounted here at all - that volume only matters if you've asked an LLM to
+# generate a hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) and
+# want this container to serve one instead of its demo pool. Unlike sfx, the
+# GitHub Pages build never bakes any of these in either way: there's no
+# companion data there, by design (apps/www resolves to "static" mode and
+# never fetches them).
+#
+# LeetType used to be in this list, mounting a generated challenges.json and a
+# tree of code samples. Both went in M20 (#887): exercises carry inline
+# sources now, so the activity fetches nothing and there is nothing to mount.
+# That also removes the only difference the Pages and Docker builds had for
+# this activity - they now run the same code path.
 #
 # topiks differs from those two in one respect worth knowing before you mount
 # nothing and wonder why the applet is empty: @some-ui/topik ships no bundled
@@ -80,9 +83,7 @@ services:
       - ${REPO_ROOT:-.}/apps/www/nginx.tts-proxy.conf:/etc/nginx/tts-proxy.conf:ro
       - ${REPO_ROOT:-.}/certs:/etc/nginx/certs:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
-      - ${WWW_CODE_SAMPLES_PATH:-${REPO_ROOT:-.}/packages/some-content/public/code-samples}:/usr/share/nginx/html/code-samples:ro
       - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
-      - ${WWW_LEETYPE_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/leetype}:/usr/share/nginx/html/leetype:ro
       - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network

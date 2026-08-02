@@ -5,7 +5,7 @@
  * `/topiks/manifest.json` and `/topiks/<key>.json`, and both factories take
  * a loader precisely so a host can decide where those files actually live
  * (see their factory doc comments). This is that decision for `apps/www`,
- * and it is the same one `hangul-vocab` and `leetype-challenges` already
+ * and it is the same one `hangul-vocab` already
  * make for their content:
  *
  * - **`vite dev` / `vite preview` / Docker** (`DATA_MODE === "server"`) -

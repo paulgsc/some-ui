@@ -1,6 +1,6 @@
-import { useFormattedCode } from "@leetype/hooks/leetype/use-formatted-code"
 import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
-import { assertNever } from "@leetype/utils"
+import { nextExercise } from "@leetype/lib/leetype/exercises"
+import { languageOf, typingBlockOf } from "@leetype/types/exercise"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { CodeDisplay } from "."
@@ -8,175 +8,87 @@ import { CodeDisplay } from "."
 const meta: Meta<typeof CodeDisplay> = {
   title: "UI/Input/Components/Typing/CodeDisplay",
   component: CodeDisplay,
-  argTypes: {
-    language: {
-      control: "select",
-      options: ["typescript", "rust", "cpp", "c"],
-    },
-  },
 }
 
 export default meta
 type Story = StoryObj<typeof CodeDisplay>
 
-/* ---------- Story wrapper ---------- */
-
-const StoryFromFile = ({
-  path,
-  language,
+/**
+ * Every story mounts against the exercise shim rather than an ad-hoc prop
+ * bag — one fixture set, the same one a player would be handed, so a story
+ * cannot quietly drift into showing a state the corpus cannot produce.
+ *
+ * The engine is driven for real (`usePreviewGame`) rather than hand-rolled:
+ * reconstructing a mid-step state by hand would mean reimplementing the
+ * indentation rule and the reveal loop in TypeScript, which is the exact
+ * drift the engine exists to prevent.
+ */
+const StoryFromStep = ({
+  stepIndex,
   typedChars,
+  idleSeconds = 0,
 }: {
-  path: string
-  language: string
+  stepIndex: number
   typedChars: number
+  /** How long the player has been sitting there — the reveal window's input. */
+  idleSeconds?: number
 }) => {
-  // Determine the Prettier parser
-  const prettierParser =
-    language === "typescript"
-      ? "typescript"
-      : language === "rust"
-        ? "rust"
-        : language === "cpp"
-          ? "cpp"
-          : "c"
+  const exercise = nextExercise()
+  const step = exercise.steps[stepIndex] ?? exercise.steps[0]
+  const source = step ? (typingBlockOf(step)?.source ?? "") : ""
+  const preview = usePreviewGame(source, typedChars, idleSeconds)
 
-  // Consume the full FSM state
-  const state = useFormattedCode(path, {
-    prettierParser: prettierParser,
-  })
-
-  // Drives the real engine `typedChars` keystrokes in, so the story shows
-  // what the player would actually see rather than a hand-rolled guess at
-  // where the caret lands around indentation.
-  const preview = usePreviewGame(
-    state.status === "SUCCESS" ? state.code : "",
-    typedChars
-  )
-
-  // --- Handle FSM States ---
-
-  const { status } = state
-  switch (status) {
-    case "IDLE": {
-      // Initial render, or when path is empty
-      return (
-        <div style={{ padding: "20px", color: "#888" }}>Initializing...</div>
-      )
-    }
-
-    case "LOADING": {
-      // Show loading state, indicating the current attempt number for retries
-      return (
-        <div
-          style={{
-            padding: "20px",
-            color: "#007aff",
-            border: "1px solid #007aff",
-            borderRadius: "4px",
-          }}
-        >
-          ⏳ **Loading Code...** (Attempt {state.attempt})
-        </div>
-      )
-    }
-
-    case "ERROR": {
-      // Show the final error state, leveraging the typestate's guaranteed error object
-      return (
-        <div
-          style={{
-            padding: "20px",
-            color: "#ff3b30",
-            border: "1px solid #ff3b30",
-            borderRadius: "4px",
-          }}
-        >
-          ❌ **Failed to Load Code** ❌
-          <p style={{ margin: "5px 0 0" }}>**Path:** `{path}`</p>
-          <details>
-            <summary>Error Details</summary>
-            <code
-              style={{
-                display: "block",
-                whiteSpace: "pre-wrap",
-                marginTop: "5px",
-              }}
-            >
-              {state.error.message}
-            </code>
-          </details>
-        </div>
-      )
-    }
-
-    case "SUCCESS": {
-      if (!preview) {
-        return (
-          <div style={{ padding: "20px", color: "#888" }}>
-            Starting engine...
-          </div>
-        )
-      }
-
-      return (
-        <CodeDisplay
-          className={"code"}
-          displayCode={state.code}
-          language={language}
-          roles={preview.roles}
-          slotOfDisplay={preview.slotOfDisplay}
-          slotStatus={preview.slotStatus}
-          cursorDisplay={preview.snapshot.cursorDisplay}
-        />
-      )
-    }
-
-    default: {
-      // Should be unreachable
-      status satisfies never
-      assertNever(status)
-    }
+  if (!preview) {
+    return (
+      <div className="p-5 text-sm text-muted-foreground">Starting engine…</div>
+    )
   }
+
+  return (
+    <div className="code rounded-lg border border-border bg-secondary p-4">
+      <CodeDisplay
+        displayCode={source}
+        language={step ? languageOf(step) : "rust"}
+        roles={preview.roles}
+        slotOfDisplay={preview.slotOfDisplay}
+        slotStatus={preview.slotStatus}
+        visibility={preview.visibility}
+        cursorDisplay={preview.snapshot.cursorDisplay}
+      />
+    </div>
+  )
 }
 
-/* ---------- Stories ---------- */
+/** A step at rest: fully masked, which is where every step starts. */
+export const FullyMasked: Story = {
+  render: () => <StoryFromStep stepIndex={1} typedChars={0} />,
+}
 
-export const TypescriptIdle: Story = {
+/** The reveal window open after the initial delay, nothing typed yet. */
+export const WindowOpen: Story = {
+  render: () => <StoryFromStep stepIndex={1} typedChars={0} idleSeconds={12} />,
+}
+
+/** Mid-step, some slots resolved. */
+export const PartiallyTyped: Story = {
+  render: () => <StoryFromStep stepIndex={1} typedChars={12} idleSeconds={6} />,
+}
+
+/** A multi-line proof, so the indentation-skipping caret is visible. */
+export const MultiLineProof: Story = {
   render: () => (
-    <StoryFromFile
-      path="/code-samples/two-sum.ts"
-      language="typescript"
-      typedChars={0}
-    />
+    <StoryFromStep stepIndex={9} typedChars={40} idleSeconds={20} />
   ),
 }
 
-export const TypescriptPartial: Story = {
+/**
+ * The renderer at a height shorter than its content. It must not introduce a
+ * scrollbar of its own — that is `TypingViewport`'s job and nobody else's.
+ */
+export const ShorterThanItsContent: Story = {
   render: () => (
-    <StoryFromFile
-      path="/code-samples/fibonacci.ts"
-      language="typescript"
-      typedChars={42}
-    />
-  ),
-}
-
-export const TypescriptMidScroll: Story = {
-  render: () => (
-    <StoryFromFile
-      path="/code-samples/fibonacci.ts"
-      language="typescript"
-      typedChars={180}
-    />
-  ),
-}
-
-export const RustTyping: Story = {
-  render: () => (
-    <StoryFromFile
-      path="/code-samples/factorial.rs"
-      language="rust"
-      typedChars={35}
-    />
+    <div className="code h-32 rounded-lg border border-border bg-secondary p-4">
+      <StoryFromStep stepIndex={9} typedChars={20} idleSeconds={20} />
+    </div>
   ),
 }
