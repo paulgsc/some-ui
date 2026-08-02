@@ -77,7 +77,7 @@ const TimingParamsSchema = z.object({
 // carries ids/refs (Axiom 3.1's asset-opacity invariant) - this package resolves them to
 // renderable/speakable sources (icon glyphs via @honeycomb/data, TTS via
 // @honeycomb/lib/hangul/speech).
-export const StimulusSchema = z.discriminatedUnion("kind", [
+const StimulusSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("glyph"), text: z.string() }),
   z.object({ kind: z.literal("image"), assetId: z.string() }),
   z.object({ kind: z.literal("icon"), name: z.string() }),
@@ -87,17 +87,6 @@ export const StimulusSchema = z.discriminatedUnion("kind", [
     ttsText: z.string().optional(),
   }),
 ])
-
-// What a `GameMode` hands the engine for the next spawn (canon Def. 6.1's `Challenge` + the
-// `identity` a mode needs for completion bookkeeping). Also the wire shape a curated word pool is
-// sent to the engine in (`HangulGameCore`'s `word_pool_js` constructor param), for
-// `"vocabulary"`/`"vocabulary-endless"` modes.
-export const ChallengeSeedSchema = z.object({
-  stimulus: StimulusSchema,
-  answerKeys: z.array(z.string()),
-  answerGlyphs: z.array(z.string()),
-  identity: z.string(),
-})
 
 // cellId/hangul/expectedKey are the pre-#421 fields (first cell / full display text / first
 // token's key), kept exactly as-is for single-jamo back-compat; cellIds/stimulus/answerKeys/
@@ -193,7 +182,6 @@ export type GameStatus = z.infer<typeof GameStatusSchema>
 export type GameStats = z.infer<typeof GameStatsSchema>
 export type TimingParams = z.infer<typeof TimingParamsSchema>
 export type Stimulus = z.infer<typeof StimulusSchema>
-export type ChallengeSeed = z.infer<typeof ChallengeSeedSchema>
 export type SpawnResult = z.infer<typeof SpawnResultSchema>
 export type GameEvent = z.infer<typeof GameEventSchema>
 export type GameMode =
@@ -217,6 +205,13 @@ export type DisplayCharacter = {
   tokenIndex: number
   /** Tokens matched so far in the shared challenge; this cell is revealed once cursor > tokenIndex. */
   cursor: number
+}
+
+export type ChallengeSeed = {
+  stimulus: Stimulus
+  answerKeys: Array<string>
+  answerGlyphs: Array<string>
+  identity: string
 }
 
 type StatusListener = () => void

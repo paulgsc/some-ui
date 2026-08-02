@@ -9,7 +9,6 @@ import {
   WasmGameBridge,
 } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { HangulGameCore } from "@some-ui/hangul-game-core"
-import type { WasmLoaderState } from "@some-ui/wasm-loader"
 import { createWasmLoader } from "@some-ui/wasm-loader"
 
 // Set immediately before load()/preload() so the in-flight importModule()
@@ -61,17 +60,11 @@ const loader = createWasmLoader<WasmGameBridge>({
 })
 
 // Runtime getters
-export function getRuntimeState(): WasmLoaderState {
-  return loader.getState()
-}
 export function getLastError(): Error | null {
   return loader.getLastError()
 }
 export function getCoreInstance(): HangulGameCore | null {
   return coreInstance
-}
-export function getBridgeInstance(): WasmGameBridge | null {
-  return loader.peek()
 }
 
 /**

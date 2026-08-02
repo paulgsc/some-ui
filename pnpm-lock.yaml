@@ -1287,9 +1287,6 @@ importers:
 
   packages/ui/honeycomb:
     dependencies:
-      '@some-ui/fetch-kit':
-        specifier: workspace:*
-        version: link:../../fetch-kit
       '@some-ui/hangul-game-core':
         specifier: 0.0.5
         version: 0.0.5
@@ -1302,9 +1299,6 @@ importers:
       '@some-ui/speech':
         specifier: workspace:*
         version: link:../../speech
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../some-styles
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
@@ -1330,9 +1324,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-      concurrently:
-        specifier: 10.0.3
-        version: 10.0.3
 
   packages/ui/input:
     dependencies:

@@ -2,11 +2,7 @@ import { assertNever } from "@honeycomb/utils/error"
 
 export type HexGridFitStrategy = "shrink-only" | "shrink-then-reduce"
 
-export type HexGridFitStatus =
-  | "fit"
-  | "shrunk"
-  | "reduced-radius"
-  | "impossible"
+type HexGridFitStatus = "fit" | "shrunk" | "reduced-radius" | "impossible"
 
 export type ViewportSize = {
   width: number
