@@ -68,7 +68,7 @@ function endpointForCurrentHost(): string | undefined {
  * serves. Naming the source is what makes that legible; see the dev-only
  * disclosure in src/providers/tts.tsx.
  */
-export type TTSEndpointSource =
+type TTSEndpointSource =
   | "override"
   | "same-origin-proxy"
   | "published-port"
