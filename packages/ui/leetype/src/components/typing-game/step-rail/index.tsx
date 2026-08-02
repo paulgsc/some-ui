@@ -52,7 +52,7 @@ export const StepRail: FC<StepRailProps> = ({
 
     {attempt > 0 && (
       <span className="font-mono text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-        again ×{attempt}
+        {`again ×${attempt}`}
       </span>
     )}
   </div>

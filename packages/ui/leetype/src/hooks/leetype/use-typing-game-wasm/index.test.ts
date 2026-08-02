@@ -188,11 +188,13 @@ vi.mock("@some-ui/leetype-wasm", () => {
 function baseProps(overrides: { gameState?: GameState } = {}): {
   targetCode: string
   gameState: GameState
+  stepKey: string
   onComplete: Mock
 } {
   return {
     targetCode: "const x = 1",
     gameState: "playing",
+    stepKey: "step-0",
     onComplete: vi.fn(),
     ...overrides,
   }

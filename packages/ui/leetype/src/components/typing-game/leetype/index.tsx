@@ -145,6 +145,14 @@ export const Leetype: FC<LeetypeProps> = ({
   const calibrating = phase === "calibrating"
   const step = calibrating ? CALIBRATION_STEP : runner.step
   const source = typingBlockOf(step)?.source ?? ""
+  /**
+   * Which step this is, independent of what it says.
+   *
+   * Two different steps may carry the same source — a corpus is allowed to
+   * repeat a proof — so identity has to be the step's own, not its text.
+   */
+  const stepKey = calibrating ? "warm-up" : `${runner.index}:${runner.step.id}`
+  const attempt = calibrating ? 0 : runner.attempt
 
   const {
     roles,
@@ -158,13 +166,15 @@ export const Leetype: FC<LeetypeProps> = ({
     start,
     onDismiss,
     readProgression,
+    activeStep,
     calibrate,
     isLoading,
     error,
   } = useTypingGame({
     targetCode: source,
     gameState,
-    attemptKey: calibrating ? 0 : runner.attempt,
+    stepKey,
+    attempt,
     initialBaseline: initialBaseline ?? undefined,
     maxConsecutiveErrors: 3,
   })
@@ -214,6 +224,16 @@ export const Leetype: FC<LeetypeProps> = ({
    */
   useEffect(() => {
     if (gameState !== "playing" || !isComplete) return
+    // The guard that keeps a finished step from being resolved twice.
+    //
+    // This effect depends on the runner, so moving the runner re-runs it —
+    // and on that pass `snapshot` still describes the step just finished,
+    // because the engine has been *told* to swap but React has not yet
+    // committed the result. Acting on that stale snapshot advances a second
+    // time, and the player skips every other step. Asking the engine which
+    // step it is actually holding is the whole fix; `index.test.tsx` is the
+    // test that catches it going back.
+    if (activeStep !== `${stepKey}#${attempt}`) return
 
     // The warm-up ends the same way any step does, and then hands over. Its
     // sample is taken outright rather than blended: the cold start it
@@ -254,6 +274,9 @@ export const Leetype: FC<LeetypeProps> = ({
   }, [
     isComplete,
     gameState,
+    activeStep,
+    stepKey,
+    attempt,
     calibrating,
     warmUpIntervals,
     correct,
@@ -350,7 +373,7 @@ export const Leetype: FC<LeetypeProps> = ({
               step={step}
               index={calibrating ? 0 : runner.index}
               total={calibrating ? 1 : runner.total}
-              attempt={calibrating ? 0 : runner.attempt}
+              attempt={attempt}
               roles={roles}
               slotOfDisplay={slotOfDisplay}
               slotStatus={slotStatus}

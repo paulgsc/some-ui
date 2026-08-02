@@ -26,11 +26,24 @@ import type {
 const TICK_INTERVAL_MS = 250
 
 type UseTypingGameProps = {
-  /** The current step's source. Swapping it hands the engine the next step. */
+  /** The current step's source. */
   targetCode: string
   gameState: GameState
-  /** Bumped to replay the same source as a fresh attempt (the gate held). */
-  attemptKey?: number
+  /**
+   * Identity of the step in flight.
+   *
+   * Explicit rather than inferred from `targetCode`, because two different
+   * steps are allowed to carry the same source — a corpus can repeat a proof
+   * — and inferring identity from the string would leave the engine holding
+   * a finished step forever, with nothing to tell it a new one had started.
+   */
+  stepKey: string
+  /**
+   * Zero-based. Increasing it *without* changing `stepKey` is the gate
+   * holding: the engine replays the same source as a further attempt, which
+   * shortens the reveal delay.
+   */
+  attempt?: number
   /**
    * The player's own sampled typing speed at construction time. Every
    * threshold the engine applies is a fraction of it; omitting it takes the
@@ -78,6 +91,17 @@ type UseTypingGameReturn = GameView & {
    * player was not typing in would answer a different question.
    */
   readProgression: () => Progression
+  /**
+   * Which `stepKey#attempt` the engine is *currently* compiled for.
+   *
+   * The caller needs this to tell a live snapshot from a stale one. React
+   * commits a state update at the end of an effect pass, so between "the
+   * runner moved on" and "the engine was told" there is one render where the
+   * snapshot still describes the finished step — and a caller that acted on
+   * it would act twice. Comparing this against what it asked for is the
+   * whole guard.
+   */
+  activeStep: string | null
   /**
    * Re-derive every threshold from a fresh sample. A command to the engine,
    * which is the external system this hook exists to wrap.
@@ -148,27 +172,39 @@ function refreshView(previous: GameView, game: TypedTypingGameType): GameView {
   }
 }
 
+/** How a step is identified across the boundary: which one, and which try. */
+function tokenOf(stepKey: string, attempt: number): string {
+  return `${stepKey}#${attempt}`
+}
+
 export function useTypingGame({
   targetCode,
   gameState,
-  attemptKey = 0,
+  stepKey,
+  attempt = 0,
   initialBaseline,
   onComplete,
   maxConsecutiveErrors = 3,
 }: UseTypingGameProps): UseTypingGameReturn {
   const gameRef = useRef<TypedTypingGameType | null>(null)
   const completedRef = useRef(false)
+  /** The step the engine is compiled for, mirrored for the effect below. */
+  const activeStepRef = useRef<string | null>(null)
+  /** The previous step's identity, to tell a repeat from an advance. */
+  const previousKeyRef = useRef<string | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [view, setView] = useState<GameView>(EMPTY_VIEW)
   const [rejection, setRejection] = useState<Rejection | null>(null)
+  const [activeStep, setActiveStep] = useState<string | null>(null)
 
   // Latest-ref: the mount effect below only wants these values *at
   // construction time* — it must not re-run (and reload wasm) whenever the
   // step changes, since the effects below already handle those.
   const targetCodeRef = useRef(targetCode)
   const baselineRef = useRef(initialBaseline)
+  const initialTokenRef = useRef(tokenOf(stepKey, attempt))
   useEffect(() => {
     targetCodeRef.current = targetCode
     baselineRef.current = initialBaseline
@@ -193,7 +229,10 @@ export function useTypingGame({
         )
         gameRef.current = game
         completedRef.current = false
+        activeStepRef.current = initialTokenRef.current
+        previousKeyRef.current = initialTokenRef.current.split("#")[0] ?? null
 
+        setActiveStep(initialTokenRef.current)
         setView(readView(game, Date.now()))
         setIsLoading(false)
       } catch (e) {
@@ -214,27 +253,37 @@ export function useTypingGame({
     const game = gameRef.current
     if (!game || !targetCode || isLoading) return
 
+    const token = tokenOf(stepKey, attempt)
+    if (activeStepRef.current === token) return
+
     try {
       const now = Date.now()
-      // `attemptKey` moving with the same source is the gate holding: the
-      // engine replays it as a further attempt, which shortens the initial
-      // delay. A new source is the next step.
-      if (attemptKey > 0 && game.snapshot(now).attempt < attemptKey) {
+      // Same step, later attempt: the gate held, so the engine replays the
+      // source it already has rather than being handed a "new" one — which
+      // is what keeps the attempt counter (and the shortened reveal delay)
+      // meaningful. A different step is a swap.
+      if (previousKeyRef.current === stepKey) {
         game.retryChunk(now)
       } else {
         game.startNextChunk(targetCode, now)
       }
+
+      activeStepRef.current = token
+      previousKeyRef.current = stepKey
+      completedRef.current = false
+
       // Reacting to a prop change by resyncing local UI state to match the
       // engine's new step — the imperative call above can't move to render
       // (it must run exactly once per change), so this can't be
       // restructured as a render-time adjustment.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveStep(token)
       setView(readView(game, Date.now()))
       setRejection(null)
-      completedRef.current = false
     } catch (e) {
       setError(e instanceof Error ? e : new Error("Step transition failed"))
     }
-  }, [targetCode, attemptKey, isLoading])
+  }, [targetCode, stepKey, attempt, isLoading])
 
   /**
    * Run one engine command and republish what it produced. The engine hands
@@ -324,6 +373,7 @@ export function useTypingGame({
     start,
     onDismiss,
     readProgression,
+    activeStep,
     calibrate,
     isLoading,
     error,
