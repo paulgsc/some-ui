@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
-import { resolveTTSEndpoint } from "@/lib/tts-config"
+import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
 
 /**
  * Establishes the app's one speech session.
@@ -53,6 +53,42 @@ const announce = (notice: SpeechNotice): void => {
   const render = notice.tone === "warning" ? toast.warning : toast.info
   render(notice.title, { description: notice.description })
 }
+/**
+ * Says once, in dev, where this session is about to look for speech.
+ *
+ * Speech is the one thing in this app whose configuration is invisible from
+ * the inside: the settings page shows provider and voice but no endpoint,
+ * and `@some-ui/speech` deliberately keeps hosts and ports out of its
+ * notices (they are for the person using the app, not the person running
+ * it). That is right for the UI and unhelpful the moment the endpoint is
+ * wrong - a `VITE_TTS_ENDPOINT` left over in a shell or an .env.local wins
+ * over every default in `tts-config`, and all the browser shows for it is a
+ * 404 on a path nobody serves.
+ *
+ * So: one line, dev only, naming the endpoint and which rule produced it.
+ * Not a toast and not a notice - this is for whoever is running the stack,
+ * and the console is where they already are. Production builds drop
+ * `console` entirely (see vite.config.ts terser options), and the `MODE`
+ * guard keeps it out of the test runner's output.
+ */
+let disclosedEndpoint = false
+const discloseEndpoint = (): void => {
+  if (disclosedEndpoint) return
+  if (!import.meta.env.DEV || import.meta.env.MODE === "test") return
+  disclosedEndpoint = true
+  const { endpoint, source } = describeTTSEndpoint()
+  const explanation: Record<typeof source, string> = {
+    override: "VITE_TTS_ENDPOINT is set - it beats the defaults",
+    "same-origin-proxy": "HTTPS page, proxied to the TTS container",
+    "published-port": "HTTP page, straight to the published TTS port",
+    unavailable: "no window to derive one from",
+  }
+  // eslint-disable-next-line no-console
+  console.info(
+    `[www] speech endpoint: ${endpoint ?? "(none)"} - ${explanation[source]}`
+  )
+}
+
 const InitializingSpeech = (): JSX.Element => (
   <div className={cn("flex items-center justify-center gap-3 p-4")}>
     <div className={cn("bg-primary/20 size-12 animate-pulse rounded-full")} />
@@ -69,6 +105,8 @@ export const TTSProvider = ({
 }): JSX.Element => {
   const { data: settings } = useSettings()
   const { preferences } = useAudioPreferences()
+
+  discloseEndpoint()
 
   return (
     <SpeechProvider

@@ -16,11 +16,13 @@ interface ImportMetaEnv {
   /**
    * Overrides where the app looks for its speech backend (the
    * `openai-edge-tts` service in `infra/compose/tts.yml`). Left unset, the
-   * app derives `http://<current hostname>:5050/v1/audio/speech`, which is
-   * correct for `vite dev`, `vite preview` and the Docker image alike. Set
-   * it when the service is fronted somewhere else - notably any HTTPS
-   * deployment, where the plain-HTTP default would be blocked as mixed
-   * content. See src/lib/tts-config.
+   * app follows the page it is served from: `http://<current
+   * hostname>:5050/v1/audio/speech` over plain HTTP, and the same-origin
+   * `/api/tts/v1/audio/speech` over HTTPS, where an absolute http:// URL
+   * would be blocked as mixed content. Both `vite dev`/`vite preview` and
+   * the www container proxy that path to the TTS service, so all the usual
+   * ways of running this app work with this unset. Set it when the service
+   * is fronted somewhere else entirely. See src/lib/tts-config.
    *
    * Irrelevant to the GitHub Pages build: that one has no backend at all
    * and `@some-ui/speech` resolves it to the browser's own voice.

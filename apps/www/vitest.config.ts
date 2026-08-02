@@ -15,6 +15,12 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    // Repairs `localStorage` where the runtime shipped one of its own and
+    // Vitest's jsdom environment therefore skipped jsdom's - the reason
+    // audio-activity-notice's tests fail on CI's Node and pass on
+    // everyone's. Inert where the environment is already sane; see the
+    // file's header for the mechanism.
+    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {

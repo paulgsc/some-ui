@@ -18,9 +18,32 @@
  * - Survives React Strict Mode (double effect calls)
  */
 
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { SpeechAdapter, VoiceConfig } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
+
+/**
+ * What this applet's utterances are, in BCP-47 terms.
+ *
+ * The session speaks Korean study material, and the voice it speaks with
+ * has to match - not as a nicety, but because the backends fail on the
+ * mismatch rather than muddling through. `openai-edge-tts` hands Hangul to
+ * whatever Edge voice it was asked for, and an en-US voice returns *no
+ * audio stream at all* for a script it cannot pronounce, which surfaces as
+ * an HTTP 500 ("No audio was received. Please verify that your parameters
+ * are correct.") - a message that points at the request and says nothing
+ * about the voice being the wrong language.
+ *
+ * That is what a host's default gets you: `apps/www` ships `ttsVoiceId: ""`
+ * in its settings, `@some-ui/speech` resolves an unset voice to the first
+ * entry in the provider's catalogue, and the first entry there is English.
+ * A Korean lesson then 500s on its first sentence in a deployment where
+ * speech is otherwise working perfectly.
+ *
+ * So the applet asks for its own language rather than inheriting the host's
+ * global voice preference, which was never about this content.
+ */
+const SPOKEN_LANGUAGE = "ko"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG
@@ -55,6 +78,11 @@ export class TTSEffectHandler {
   // Serial queue
   private queue: Array<{ message: Message; isAuto: boolean }> = []
   private processing: boolean = false
+
+  // Resolved once per handler: the adapter's voice list is fixed for the
+  // session it came from. `null` means "asked, and this backend offers
+  // none" - distinct from "not asked yet".
+  private spokenVoice: VoiceConfig | null | undefined = undefined
 
   constructor(private readonly config: TTSEffectHandlerConfig) {
     // Force stop any existing audio on construction (handles remount case)
@@ -185,6 +213,27 @@ export class TTSEffectHandler {
   }
 
   /**
+   * The adapter's own voice for this applet's language, if it has one.
+   *
+   * Asked of the adapter rather than named here on purpose: which voices
+   * exist is a property of the backend that resolved (an `openai-edge-tts`
+   * catalogue, the browser's installed voices), and `SpeechAdapter.voices`
+   * is where that lives. Undefined when the backend offers no Korean voice
+   * - the browser adapter on a machine with none, say - and `speak` then
+   * falls back to whatever default the session was configured with, which
+   * is the behaviour this applet had all along.
+   */
+  private voiceForSpokenLanguage(): VoiceConfig | undefined {
+    if (this.spokenVoice === undefined) {
+      this.spokenVoice =
+        this.config.speechAdapter.voices.find((candidate) =>
+          candidate.language?.toLowerCase().startsWith(SPOKEN_LANGUAGE)
+        ) ?? null
+    }
+    return this.spokenVoice ?? undefined
+  }
+
+  /**
    * Speak a single message and wait for completion
    */
   private async _speak(message: Message, isAuto: boolean): Promise<void> {
@@ -219,6 +268,8 @@ export class TTSEffectHandler {
       // The callbacks belong to *this* utterance, so a later one cannot
       // finish an earlier one's bookkeeping.
       await this.config.speechAdapter.speak(message.content, {
+        voice: this.voiceForSpokenLanguage(),
+
         onStart: () => {
           this.config.onSpeechStart?.(message.id)
         },
