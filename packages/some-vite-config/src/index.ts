@@ -5,6 +5,7 @@ import { defineConfig } from "vite"
 
 import {
   createBuildConfig,
+  createPackageJsonPlugin,
   createPlugins,
   createResolveConfig,
   createRollupOptions,
@@ -46,18 +47,18 @@ export function createViteConfig(
     ...depKeys(pkg, "devDependencies"),
   ]
 
-  // Update package.json with build configuration
-  if (shouldUpdatePackageJson) {
-    try {
-      updatePackageJson(options, packageRoot)
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to update package.json:", error)
-    }
-  }
-
   const config: UserConfig = {
-    plugins: createPlugins(options, packageRoot),
+    // The package.json sync is a build-lifecycle plugin, NOT something that
+    // runs while this config object is being built. Evaluating a
+    // vite.config.ts must stay free of filesystem writes: knip loads every
+    // workspace's vite config to discover entry points, and when the sync ran
+    // eagerly here that read-only analysis rewrote each package's manifest.
+    plugins: [
+      ...createPlugins(options, packageRoot),
+      ...(shouldUpdatePackageJson
+        ? [createPackageJsonPlugin(options, packageRoot)]
+        : []),
+    ],
     resolve: createResolveConfig(options, packageRoot),
     // esbuild: {
     //   // This removes console.log and debugger statements
@@ -93,7 +94,11 @@ export function createReactLibConfig(
   })
 }
 
-// Command to just update package.json without creating Vite config
+/**
+ * Explicit, caller-invoked package.json sync for scripts that need the build
+ * fields written without running a build. This is the deliberate escape hatch
+ * from the build-only plugin - importing this module does not call it.
+ */
 export function syncPackageJson(
   options: ViteConfigOptions,
   packageRoot: string = process.cwd()
