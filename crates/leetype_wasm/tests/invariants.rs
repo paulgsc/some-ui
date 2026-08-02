@@ -318,10 +318,7 @@ fn a_constant_rate_player_inside_the_deadband_reaches_a_fixed_point() {
         let (frames, _) = support::play_step(source, Typist::steady(mid).with_jitter(0.25), config, 3, 120_000.0);
         let settled: Vec<usize> = frames.iter().skip(3).map(|frame| frame.reveal_k).collect();
 
-        assert!(
-            reversals(&frames) == 0,
-            "source={source:?} k reversed direction inside the deadband: {settled:?}"
-        );
+        assert!(reversals(&frames) == 0, "source={source:?} k reversed direction inside the deadband: {settled:?}");
     }
 }
 
@@ -437,10 +434,7 @@ fn every_exercise_terminates_however_slowly_the_player_types() {
             matches!(outcomes.last(), Some(Progression::Escape | Progression::Advance)),
             "source={source:?} outcomes={outcomes:?}"
         );
-        assert!(
-            attempt < leetype_wasm::MAX_STEP_ATTEMPTS,
-            "source={source:?} took {attempt} attempts to escape"
-        );
+        assert!(attempt < leetype_wasm::MAX_STEP_ATTEMPTS, "source={source:?} took {attempt} attempts to escape");
     }
 }
 

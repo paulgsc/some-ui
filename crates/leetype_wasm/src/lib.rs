@@ -196,10 +196,7 @@ impl TypingGame {
     pub fn calibrate(&self, baseline_wpm: f64, dispersion_wpm: f64, now: f64) -> JsValue {
         self.apply(
             &Command::Calibrate {
-                reveal: RevealConfig {
-                    baseline_wpm,
-                    dispersion_wpm,
-                },
+                reveal: RevealConfig { baseline_wpm, dispersion_wpm },
             },
             now,
         )

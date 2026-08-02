@@ -369,7 +369,7 @@ pub fn progression(weighted_wpm: f64, attempt: usize, config: RevealConfig) -> P
 
 #[cfg(test)]
 mod tests {
-    use super::{advance, progression, visibility_codes, Progression, Program, RevealConfig, RevealState, MAX_STEP_ATTEMPTS};
+    use super::{advance, progression, visibility_codes, Program, Progression, RevealConfig, RevealState, MAX_STEP_ATTEMPTS};
 
     const BASELINE: RevealConfig = RevealConfig {
         baseline_wpm: 60.0,
@@ -487,9 +487,7 @@ mod tests {
     fn the_window_never_opens_past_the_runs_that_remain() {
         let program = Program::compile("let mut map = HashMap::new();");
         let mut state = RevealState::empty(program.slot_count());
-        let Some(last_run) = program.runs().last().copied() else {
-            panic!("source has runs")
-        };
+        let Some(last_run) = program.runs().last().copied() else { panic!("source has runs") };
         let cursor = last_run.start_slot;
 
         for tick in 1..40 {

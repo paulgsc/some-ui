@@ -402,9 +402,9 @@ fn build_runs(chars: &[char], slot_display: &[usize]) -> Vec<Run> {
             continue;
         }
 
-        let continues = runs.last().is_some_and(|run: &Run| {
-            run.end_slot == slot && slot_display.get(slot - 1).is_some_and(|&previous| previous + 1 == display)
-        });
+        let continues = runs
+            .last()
+            .is_some_and(|run: &Run| run.end_slot == slot && slot_display.get(slot - 1).is_some_and(|&previous| previous + 1 == display));
 
         if continues {
             if let Some(run) = runs.last_mut() {

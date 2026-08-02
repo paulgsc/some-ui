@@ -177,7 +177,9 @@ mod tests {
     /// `count` keystrokes at a steady `wpm`, the last one landing at `end_ms`.
     fn steady_window(wpm: f64, count: usize, end_ms: f64) -> Vec<f64> {
         let interval_ms = 60_000.0 / (wpm * 5.0);
-        (0..count).map(|index| interval_ms.mul_add(-f64::from(u32::try_from(count - 1 - index).unwrap_or(0)), end_ms)).collect()
+        (0..count)
+            .map(|index| interval_ms.mul_add(-f64::from(u32::try_from(count - 1 - index).unwrap_or(0)), end_ms))
+            .collect()
     }
 
     #[test]
@@ -259,10 +261,7 @@ mod tests {
         let after_instant = instantaneous_wpm(&window, FOUR_MINUTES_MS + 8_000.0);
         let after_cumulative = wpm(correct, 248.0);
 
-        assert!(
-            after_instant < before_instant * 0.35,
-            "instantaneous should collapse: {before_instant} -> {after_instant}"
-        );
+        assert!(after_instant < before_instant * 0.35, "instantaneous should collapse: {before_instant} -> {after_instant}");
         assert!(
             before_cumulative - after_cumulative <= 2,
             "cumulative should barely notice: {before_cumulative} -> {after_cumulative}"
@@ -279,7 +278,10 @@ mod tests {
     #[test]
     fn an_idle_gap_decays_the_figure_monotonically_toward_zero() {
         let window = steady_window(60.0, INSTANT_WINDOW, 10_000.0);
-        let readings: Vec<f64> = [10_100.0, 12_000.0, 20_000.0, 60_000.0, 300_000.0].iter().map(|&now| instantaneous_wpm(&window, now)).collect();
+        let readings: Vec<f64> = [10_100.0, 12_000.0, 20_000.0, 60_000.0, 300_000.0]
+            .iter()
+            .map(|&now| instantaneous_wpm(&window, now))
+            .collect();
 
         for pair in readings.windows(2) {
             assert!(pair[1] < pair[0], "expected decay, got {readings:?}");
