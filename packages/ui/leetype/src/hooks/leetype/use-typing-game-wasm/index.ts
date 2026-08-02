@@ -68,7 +68,7 @@ type UseTypingGameProps = {
  * `snapshot` from after it would put the caret one character ahead of the
  * highlighting.
  */
-export type GameView = {
+type GameView = {
   layout: Layout
   roles: Uint8Array
   slotOfDisplay: Int32Array

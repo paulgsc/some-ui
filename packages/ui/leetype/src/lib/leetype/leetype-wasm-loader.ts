@@ -235,31 +235,8 @@ export class TypedTypingGame {
 }
 
 /**
- * Classify a source string's rendered characters without constructing a
- * game — `ROLE_SKIP` for layout the caret jumps over, `ROLE_TYPEABLE` for
- * characters the player owes a keystroke.
- */
-export function classifySource(input: string): Uint8Array {
-  return requireModule().classify_source(input)
-}
-
-/**
- * Map each rendered character of a source string to its slot ordinal, `-1`
- * where the character is layout the player never types.
- */
-export function slotMapFromSource(input: string): Int32Array {
-  return requireModule().slot_map_from_source(input)
-}
-
-/**
- * Check if WASM is loaded
- */
-export function isWasmLoaded(): boolean {
-  return loader.isLoaded()
-}
-
-/**
- * Force reload the WASM module (useful for testing)
+ * Force reload the WASM module. Used by the hook's tests to clear the
+ * module-level singleton between cases.
  */
 export function resetWasm(): void {
   loader.reset()

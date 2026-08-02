@@ -28,6 +28,38 @@ import type { Language } from "./leetype"
  * difficulty estimate beyond a bag of strings. That is not an omission —
  * `concepts` is where the future concept graph attaches, and pretending to
  * more structure now would be inventing the very judgment M20 defers.
+ *
+ * # Migrating from `Challenge` (#884, #866)
+ *
+ * `Challenge` was a whole problem plus a file path per language. `Exercise`
+ * is a sequence of steps with inline sources. The mapping, recorded because
+ * the old type is deleted and the correspondence is the only thing that
+ * carries its reasoning forward:
+ *
+ * | `Challenge`                          | `Exercise`                          |
+ * | ------------------------------------ | ----------------------------------- |
+ * | `title`                              | `Exercise.title`                    |
+ * | `description`                        | a `PromptBlock` on the first step    |
+ * | `tags`                               | `Step.concepts`                     |
+ * | `curriculum.insight`                 | `Step.goal` — same one-sentence bound |
+ * | `curriculum.learningObjectives`      | `PromptBlock.lines`                 |
+ * | `curriculum.conceptsIntroduced`      | `Step.concepts` on the step that introduces them |
+ * | `curriculum.conceptsReinforced`      | `Step.concepts` on the step that reuses them |
+ * | `curriculum.completionCriteria`      | **dropped** — the typing block *is* the criterion now; a step is finished when its proof is typed |
+ * | `curriculum.step` / `totalSteps`     | position in `Exercise.steps`        |
+ * | `curriculum.dependsOn`               | **dropped** — order is the linearization, and an edge nothing branches on is a claim without a consumer |
+ * | `curriculum.stage`                   | **dropped** — a Bloom rung the new flow never renders |
+ * | `curriculum.targetProblem`           | **dropped** — the exercise's own title says it |
+ * | `codePaths`                          | `TypingBlock.source`, inline        |
+ * | `difficulty`                         | **dropped** — difficulty is measured now, not declared |
+ * | `levelRequired`                      | **dropped** — nothing is locked     |
+ * | `mode`                               | **dropped** — nothing branched on it |
+ *
+ * The four dropped `curriculum` fields are the ones worth arguing about, so:
+ * each was prose a surface displayed, every surface that displayed them is
+ * gone, and none of them was ever read by code. Reinstating one is cheap
+ * (a new prompt-side block kind) and should be driven by something wanting
+ * to render it, not by the fact that it used to exist.
  */
 
 /**
