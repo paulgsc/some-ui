@@ -152,6 +152,60 @@ narrow: _it emits what the shim emits._
 | [#863](https://github.com/paulgsc/some-ui/issues/863) LTY-REVEAL | Decisions 3 and 4 — the reveal loop, the two scalars, the gate |
 | [#864](https://github.com/paulgsc/some-ui/issues/864) LTY-SHIM   | The exercise contract and the quarantine boundary above        |
 
+## What the implementation settled that the decisions left open
+
+Four questions the stories deliberately deferred to whoever wrote the code.
+Recorded here because each is now load-bearing and none of them is guessable
+from the design above.
+
+**The reveal unit is a _run_.** Not a slot, not a lexical token. A run is a
+maximal span of adjacent, non-whitespace slots, derivable from the existing
+`Role` classification with no language knowledge at all. `k` counts runs.
+Revealing "the next three slots" of `or_insert_with` would reveal `or_`,
+which is noise; revealing by lexical token would make the engine learn the
+language. See `crates/leetype_wasm/src/leetype/program.rs`'s `Run`.
+
+**Instantaneous WPM spans to `now`, not to the last keystroke.** A fixed ring
+of the last twelve keystrokes, measured from the oldest retained one to the
+present moment — so the figure keeps falling _during_ a hesitation rather
+than only once it ends. A measure that updates only on keystrokes cannot see
+a player who has stopped typing, which is exactly the player the reveal
+window exists for. The same fact forced `Command::Tick`: a controller driven
+only by keystrokes freezes precisely when it most needs to open.
+
+**The gate's miss is a repeat, capped at three attempts.** Falling short
+brings the same step round again with a shorter initial delay; the third
+attempt advances regardless. The cap is not a nicety — without it "the player
+can always eventually reach the end" stops being true. The affordance is one
+line on the step rail and nothing else: a dialog explaining that you were too
+slow would break the loop's only rule.
+
+**The corpus-fetch seam is gone, not re-typed.** `apps/www` no longer fetches
+anything for this activity, and the `public/leetype` plumbing, the
+code-samples tree and the Curriculum Decomposer prompt went with it (see
+[`retired-curriculum-decomposer.md`](./retired-curriculum-decomposer.md)).
+Keeping a fetch path against `Exercise` would mean two sources for one thing
+and a second, unexercised copy of a validation the shim already performs. The
+consequence worth knowing: the GitHub Pages build and the Docker build now
+run the same code path for LeetType, with nothing mounted and nothing
+fetched — the difference between them is gone rather than documented.
+
+## Where the invariants actually live
+
+```bash
+cargo test -p leetype_wasm     # the reveal loop and the gate
+pnpm --filter @some-ui/leetype test   # the contract, the shim, the shell
+STORYBOOK_STATIC=… pnpm --filter www test:ui-fit   # the boxes
+```
+
+The first is the one that matters most, because it is the one that could not
+have been written any other way: reveal is engine state, so oscillation,
+runaway, traps, regression and reflow are all reachable without a DOM.
+`tests/invariants.rs` states them as properties over a synthetic player
+(`tests/support::Typist`), and includes a negative control that collapses the
+deadband and asserts the flicker comes back — a hysteresis test that passes
+without hysteresis is not a test.
+
 ## Why this is a `.md` and not a `.typ`
 
 `docs/canon` is for claims that want citation-checked proof obligations.

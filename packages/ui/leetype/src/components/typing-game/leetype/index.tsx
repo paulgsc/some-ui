@@ -5,6 +5,7 @@ import { ExerciseHeader } from "@leetype/components/typing-game/exercise-header"
 import { ResultsCard } from "@leetype/components/typing-game/results-card"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useExerciseRunner } from "@leetype/hooks/leetype/use-exercise-runner"
+import { useKeystrokeIntervals } from "@leetype/hooks/leetype/use-keystroke-intervals"
 import { useTypingGame } from "@leetype/hooks/leetype/use-typing-game-wasm"
 import type { Baseline } from "@leetype/lib/leetype/baseline-store"
 import {
@@ -13,6 +14,7 @@ import {
   sampleFromIntervals,
   saveBaseline,
 } from "@leetype/lib/leetype/baseline-store"
+import { CALIBRATION_STEP } from "@leetype/lib/leetype/baseline-store/calibration"
 import { nextExercise } from "@leetype/lib/leetype/exercises"
 import type { Exercise } from "@leetype/types/exercise"
 import { typingBlockOf } from "@leetype/types/exercise"
@@ -21,6 +23,7 @@ import type {
   GameState,
   TextGradient,
 } from "@leetype/types/leetype"
+import { VISIBILITY_REVEALED } from "@leetype/types/leetype"
 import { Button } from "@some-ui/shared"
 
 /**
@@ -94,6 +97,21 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const [gameState, setGameState] = useState<GameState>("idle")
   /**
+   * A player with no stored baseline warms up first.
+   *
+   * Mechanically the same typing surface with the new features switched off:
+   * nothing masked, nothing gated, one line of prompt. It is not part of the
+   * exercise and the runner never sees it — sequencing a warm-up would mean
+   * teaching the runner what a warm-up is, and it proves no competency.
+   *
+   * Skipping it is not an option offered, but skipping it is also not
+   * necessary: a player who somehow arrives without one still plays, on the
+   * engine's cold-start stand-in.
+   */
+  const [phase, setPhase] = useState<"calibrating" | "exercise">(() =>
+    loadBaseline() === null ? "calibrating" : "exercise"
+  )
+  /**
    * Set once, when the sequence ends. Everything the results surface shows
    * is a fact about a run that is over, so holding it as state — rather than
    * recomputing it every frame of a run that is still going — is both
@@ -116,8 +134,17 @@ export const Leetype: FC<LeetypeProps> = ({
   const baselineRef = useRef<Baseline | null>(initialBaseline)
   /** Per-step assistance, banked as each step is left behind. */
   const assistanceRef = useRef<Array<number>>([])
+  /**
+   * Every interval of the warm-up, so the store gets a real distribution to
+   * take a trimmed mean and an IQR from. A run's mean repeated has a
+   * dispersion of zero, which would tell the deadband every player is a
+   * metronome.
+   */
+  const warmUpIntervals = useKeystrokeIntervals()
 
-  const source = typingBlockOf(runner.step)?.source ?? ""
+  const calibrating = phase === "calibrating"
+  const step = calibrating ? CALIBRATION_STEP : runner.step
+  const source = typingBlockOf(step)?.source ?? ""
 
   const {
     roles,
@@ -137,10 +164,30 @@ export const Leetype: FC<LeetypeProps> = ({
   } = useTypingGame({
     targetCode: source,
     gameState,
-    attemptKey: runner.attempt,
+    attemptKey: calibrating ? 0 : runner.attempt,
     initialBaseline: initialBaseline ?? undefined,
     maxConsecutiveErrors: 3,
   })
+
+  /**
+   * The warm-up's off switch, and the whole of it.
+   *
+   * `CodeDisplay` draws the visibility map it is handed and owns no masking
+   * policy, so handing it an all-revealed map is how the reveal loop is
+   * switched off for one step. No mode flag reached the engine, and the
+   * renderer did not learn what calibration is.
+   */
+  const shownVisibility = calibrating
+    ? new Uint8Array(visibility.length).fill(VISIBILITY_REVEALED)
+    : visibility
+
+  const recordKeystroke = useCallback(
+    (key: string): void => {
+      if (calibrating) warmUpIntervals.record()
+      press(key)
+    },
+    [calibrating, warmUpIntervals, press]
+  )
 
   const {
     showErrorAlert,
@@ -168,6 +215,26 @@ export const Leetype: FC<LeetypeProps> = ({
   useEffect(() => {
     if (gameState !== "playing" || !isComplete) return
 
+    // The warm-up ends the same way any step does, and then hands over. Its
+    // sample is taken outright rather than blended: the cold start it
+    // replaces was a stand-in, not evidence.
+    if (calibrating) {
+      const sample = sampleFromIntervals(warmUpIntervals.read())
+      if (sample) {
+        baselineRef.current = sample
+        saveBaseline(sample)
+        calibrate(sample)
+      }
+      warmUpIntervals.reset()
+      // The warm-up finishing is an engine fact arriving from outside React —
+      // the same shape as the sequence ending below, and for the same reason:
+      // "which phase is this" is genuinely new state, not something derivable
+      // during render from the engine's snapshot.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPhase("exercise")
+      return
+    }
+
     assistanceRef.current.push(correct > 0 ? assisted / correct : 0)
 
     // The run contributes to the sample, so the cold-start stand-in is
@@ -187,6 +254,8 @@ export const Leetype: FC<LeetypeProps> = ({
   }, [
     isComplete,
     gameState,
+    calibrating,
+    warmUpIntervals,
     correct,
     assisted,
     elapsedTime,
@@ -196,7 +265,7 @@ export const Leetype: FC<LeetypeProps> = ({
   ])
 
   useEffect(() => {
-    if (!runner.isFinished || gameState !== "playing") return
+    if (calibrating || !runner.isFinished || gameState !== "playing") return
 
     const shares = assistanceRef.current
     const stats: CompletedSessionStats = {
@@ -220,6 +289,7 @@ export const Leetype: FC<LeetypeProps> = ({
     setGameState("finished")
     onSessionCompleteRef.current?.(stats)
   }, [
+    calibrating,
     runner.isFinished,
     runner.completed,
     runner.escaped,
@@ -269,7 +339,7 @@ export const Leetype: FC<LeetypeProps> = ({
       ) : (
         <>
           <ExerciseHeader
-            title={resolvedExercise.title}
+            title={calibrating ? "Warm-up" : resolvedExercise.title}
             elapsedTime={sessionElapsedTime}
             wpm={wpm}
             accuracy={accuracy}
@@ -277,18 +347,18 @@ export const Leetype: FC<LeetypeProps> = ({
 
           <div className="relative flex min-h-0 flex-1 flex-col">
             <ExerciseCard
-              step={runner.step}
-              index={runner.index}
-              total={runner.total}
-              attempt={runner.attempt}
+              step={step}
+              index={calibrating ? 0 : runner.index}
+              total={calibrating ? 1 : runner.total}
+              attempt={calibrating ? 0 : runner.attempt}
               roles={roles}
               slotOfDisplay={slotOfDisplay}
               slotStatus={slotStatus}
-              visibility={visibility}
+              visibility={shownVisibility}
               cursorDisplay={cursorDisplay}
               rejection={rejection}
               gameState={gameState}
-              onKey={press}
+              onKey={recordKeystroke}
               onBackspace={backspace}
               inputRef={inputRef}
               textGradient={textGradient}

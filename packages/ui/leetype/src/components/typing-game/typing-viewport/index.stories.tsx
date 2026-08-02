@@ -42,7 +42,7 @@ const InBox = ({
   return (
     <div
       className="code flex flex-col overflow-hidden rounded-lg border border-dashed border-border p-2"
-      style={{ width: "44rem", height }}
+      style={{ width: "min(44rem, 100%)", height }}
     >
       <TypingViewport
         displayCode={source}

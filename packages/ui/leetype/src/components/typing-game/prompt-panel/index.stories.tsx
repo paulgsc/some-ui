@@ -41,7 +41,7 @@ const PanelInBox = ({
   return (
     <div
       className="code flex flex-col overflow-hidden rounded-lg border border-dashed border-border p-2"
-      style={{ width, height }}
+      style={{ width: `min(${width}, 100%)`, height }}
     >
       <PromptPanel
         goal={step?.goal ?? ""}

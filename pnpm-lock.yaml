@@ -1431,9 +1431,6 @@ importers:
 
   packages/ui/leetype:
     dependencies:
-      '@some-ui/content':
-        specifier: workspace:*
-        version: link:../../some-content
       '@some-ui/leetype-wasm':
         specifier: ^0.0.9
         version: 0.0.9

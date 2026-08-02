@@ -60,7 +60,7 @@ const Mounted = ({
   return (
     <div
       className="code relative overflow-hidden rounded-lg border border-dashed border-border p-3"
-      style={{ width, height }}
+      style={{ width: `min(${width}, 100%)`, height }}
     >
       <ExerciseCard
         step={step}
