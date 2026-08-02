@@ -1,10 +1,25 @@
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { GameState } from "@leetype/types/leetype"
+import type { default as wasmInit } from "@some-ui/leetype-wasm"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useTypingGame } from "."
+
+/**
+ * What `__wbg_init` resolves to — the wasm exports table.
+ *
+ * Derived from the bindings rather than written as `void` so these mocks
+ * keep tracking the real signature: the stub now takes its types from the
+ * published `.d.ts`, so init's return type is the crate's to change. The
+ * loader awaits init purely for sequencing and never reads the table, so a
+ * stand-in value is enough.
+ */
+type InitOutput = Awaited<ReturnType<typeof wasmInit>>
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- a stand-in for the wasm exports table, which the loader awaits but never reads
+const INIT_OUTPUT = {} as InitOutput
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Two things are pinned here.
@@ -227,7 +242,7 @@ beforeEach(async () => {
   const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
     .mockReset()
-    .mockImplementation(() => Promise.resolve())
+    .mockImplementation(() => Promise.resolve(INIT_OUTPUT))
 })
 
 describe("lazy init", () => {
@@ -424,7 +439,7 @@ describe("teardown", () => {
 describe("resolve-after-unmount safety (aliveRef guard)", () => {
   it("does not construct a game instance if loadWasm resolves after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
-    const gate = deferred<void>()
+    const gate = deferred<InitOutput>()
     vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 
     const { unmount } = renderHook(() => useTypingGame(baseProps()))
@@ -436,7 +451,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
     expect(instances).toHaveLength(0)
 
     await act(async () => {
-      gate.resolve()
+      gate.resolve(INIT_OUTPUT)
       await gate.promise
     })
 
@@ -447,7 +462,7 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
 
   it("does not surface an error state if loadWasm rejects after unmount", async () => {
     const wasmStub = await import("@some-ui/leetype-wasm")
-    const gate = deferred<void>()
+    const gate = deferred<InitOutput>()
     vi.mocked(wasmStub.default).mockImplementation(() => gate.promise)
 
     const { result, unmount } = renderHook(() => useTypingGame(baseProps()))

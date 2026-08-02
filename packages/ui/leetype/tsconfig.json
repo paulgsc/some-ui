@@ -10,6 +10,17 @@
       // exists after a wasm-pack build, so tsc resolves the hand-written
       // stub instead — the same mapping tsconfig.eslint.json uses, hoisted
       // here so `tsc --noEmit` doesn't depend on a built crate.
+      // Note this mapping has no wildcard, so it is an *exact* match:
+      // "@some-ui/leetype-wasm/dist/leetype_wasm" still resolves normally,
+      // through node_modules, to the declarations wasm-pack actually
+      // published. That is deliberate — it is how the stub below and
+      // src/types/wasm/bindings-contract.ts reach the real bindings to
+      // check this workspace's hand-written surface against. The trade is
+      // that the *bare* specifier still resolves without a wasm build, but
+      // the contract check does not: link the crate as a workspace package
+      // instead of installing it and `wasm-pack build` becomes a
+      // prerequisite for typechecking. That is the intended cost — a
+      // contract with nothing to check against is not worth having.
       "@some-ui/leetype-wasm": ["./src/types/wasm/leetype-wasm.d.ts"]
     }
   },
