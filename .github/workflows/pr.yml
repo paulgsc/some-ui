@@ -94,12 +94,30 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
-      # Unused-export/dependency graph check for apps/www specifically -
-      # not turbo-filtered like the steps above since knip needs to see
-      # www's whole workspace to reason about its import graph, not just
-      # what changed since HEAD^1.
-      - name: Knip (www)
-        run: nix develop .#ci --command pnpm run knip --workspace apps/www
+      # Repo-wide invariant, so not turbo-filtered: a manifest that opts out
+      # of the catalog is drift regardless of which package changed. Runs
+      # without an install (no dependencies of its own) and is cheap enough
+      # not to warrant a filter.
+      - name: Dependency catalog guardrail
+        run: node scripts/check-catalog-drift.mjs
+
+      # Unused-export/dependency graph check, same shape as the steps above.
+      # A workspace opts in by declaring a `knip` script; turbo only runs the
+      # task where the script exists, so widening coverage is a one-line
+      # change in that package's manifest rather than an edit here.
+      #
+      # The script anchors knip at the repo root (`--directory`) and scopes it
+      # to the calling package (`--workspace`), because knip invoked with the
+      # package as its cwd cannot see the root manifest or knip.json: it then
+      # reports every colocated *.test.ts as an unused file and every
+      # root-provided binary (tsc, eslint, vitest, …) as unlisted. Anchored,
+      # apps/www reports clean; unanchored it reports 23 phantom findings.
+      - name: Knip (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run knip \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**' \
+            --concurrency=100%
 
       # Scoped to CSS files actually touched by this PR, not a full-repo
       # sweep — the repo carries pre-existing stylelint debt outside this

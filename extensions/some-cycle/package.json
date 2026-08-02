@@ -6,7 +6,7 @@
     "@some-cycle/content": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@types/webextension-polyfill": "^0.10.0",
-    "lucide-react": "^0.263.1",
+    "lucide-react": "catalog:",
     "webextension-polyfill": "^0.10.0"
   },
   "devDependencies": {

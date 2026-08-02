@@ -17,7 +17,7 @@
     "@some-ui/assessment": "workspace:*",
     "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*",
-    "zod": "4.0.5",
+    "zod": "catalog:",
     "node-fetch": "^3.3.2"
   },
   "description": "Scene registry, layout orchestration, and other content-driven logic for the monorepo's activities. Pairs with @some-ui/content, which holds the actual assets/data this package registers and orchestrates.",

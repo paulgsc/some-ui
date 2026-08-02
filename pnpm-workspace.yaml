@@ -6,3 +6,57 @@ packages:
   - "!extensions/**/dist/**"
   - packages/*
   - crates/*
+
+# Single source of truth for dependencies that more than one workspace needs
+# to agree on. Reference them as `"lucide-react": "catalog:"` in a package
+# manifest instead of a version range — there is then no per-package version
+# left to drift.
+#
+# Both entries here were added after finding six copies of lucide-react
+# (0.378, 0.474, 0.511, 0.522, 0.525, 0.562) and two majors of zod in the
+# apps/www browser bundle. The cause is `^0.x` semantics: for a 0.x package
+# caret pins the *minor*, so `^0.378.0` can never resolve to 0.562.0 and every
+# distinct spec installs its own copy. Ten distinct lucide-react specs existed
+# across seventeen declarations.
+#
+# Adding a dependency here is only worth it for something two workspaces
+# genuinely share; a single-consumer dependency belongs in its own manifest.
+# Both are pinned to a version already in use rather than the newest
+# available: the point of this change was to collapse duplicates, not to
+# upgrade. `^4.0.5` here would resolve zod to 4.4.3 and quietly fold a minor
+# bump into a dedupe commit.
+catalog:
+  # Every icon identifier imported repo-wide (120 of them) was checked to
+  # resolve in 0.562.0 before unifying on it. Caret on a 0.x version only
+  # admits patches, so this stays on 0.562.x.
+  lucide-react: ^0.562.0
+  zod: 4.0.5
+
+  # Radix is here for a second-order reason. These are proper semver ranges,
+  # so caret alone would have been enough to converge them — but ten of the
+  # eighteen were declared at different ranges (react-accordion had four:
+  # ^1.1.2, ^1.2.1, ^1.2.7, ^1.2.11), and each top-level component pins its
+  # own range on the shared internals (react-context, react-primitive,
+  # react-slot, …). Two versions of one component therefore multiply into
+  # twenty-odd duplicated internals in the browser bundle. `pnpm dedupe`
+  # cannot merge those — the ranges genuinely do not overlap — so the fix has
+  # to happen at the declarations. Each entry is the highest range that was
+  # already declared somewhere, and every bump stays inside its major.
+  "@radix-ui/react-accordion": ^1.2.11
+  "@radix-ui/react-aspect-ratio": ^1.1.7
+  "@radix-ui/react-avatar": ^1.1.10
+  "@radix-ui/react-collapsible": ^1.1.11
+  "@radix-ui/react-compose-refs": ^1.1.1
+  "@radix-ui/react-dialog": ^1.1.14
+  "@radix-ui/react-dropdown-menu": ^2.1.15
+  "@radix-ui/react-label": ^2.1.1
+  "@radix-ui/react-popover": ^1.1.5
+  "@radix-ui/react-progress": ^1.1.1
+  "@radix-ui/react-scroll-area": ^1.2.3
+  "@radix-ui/react-select": ^2.3.7
+  "@radix-ui/react-separator": ^1.1.7
+  "@radix-ui/react-slider": ^1.3.5
+  "@radix-ui/react-slot": ^1.2.3
+  "@radix-ui/react-switch": ^1.1.2
+  "@radix-ui/react-tabs": 1.1.21
+  "@radix-ui/react-tooltip": ^1.2.7

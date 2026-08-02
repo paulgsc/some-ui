@@ -55,7 +55,7 @@
     "./style.css": "./dist/assessment.css"
   },
   "dependencies": {
-    "lucide-react": "^0.511.0"
+    "lucide-react": "catalog:"
   },
   "style": "./dist/assessment.css"
 }

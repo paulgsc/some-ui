@@ -29,7 +29,7 @@
     "@some-ui/wasm-loader": "workspace:*",
     "some-ui-utils": "workspace:*",
     "sonner": "^2.0.7",
-    "zod": "4.0.5"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",

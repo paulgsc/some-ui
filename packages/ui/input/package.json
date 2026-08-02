@@ -28,9 +28,9 @@
     "@some-ui/viewport-rotation": "0.0.4",
     "@some-ui/wasm-loader": "workspace:*",
     "katex": "^0.18.1",
-    "lucide-react": "^0.525.0",
+    "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*",
-    "zod": "4.0.5"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
