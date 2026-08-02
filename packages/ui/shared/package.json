@@ -10,6 +10,7 @@
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
@@ -17,7 +18,6 @@
   },
   "peerDependencies": {
     "@radix-ui/react-accordion": "catalog:",
-    "@radix-ui/react-aspect-ratio": "catalog:",
     "@radix-ui/react-avatar": "catalog:",
     "@radix-ui/react-compose-refs": "catalog:",
     "@radix-ui/react-dialog": "catalog:",
@@ -43,7 +43,6 @@
   },
   "dependencies": {
     "@radix-ui/react-accordion": "catalog:",
-    "@radix-ui/react-aspect-ratio": "catalog:",
     "@radix-ui/react-avatar": "catalog:",
     "@radix-ui/react-collapsible": "catalog:",
     "@radix-ui/react-dialog": "catalog:",
@@ -55,7 +54,6 @@
     "@radix-ui/react-tabs": "catalog:",
     "@radix-ui/react-tooltip": "catalog:",
     "@some-ui/core-utils": "workspace:*",
-    "@some-ui/styles": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -67,7 +65,6 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-typescript": "4.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
