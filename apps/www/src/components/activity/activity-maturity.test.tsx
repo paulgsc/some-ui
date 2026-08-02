@@ -5,10 +5,9 @@
  * a badge on every card is a badge on none of them.
  */
 
+import { getActivity } from "@some-ui/activity-catalog"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
-
-import { getActivity } from "@some-ui/activity-catalog"
 
 import {
   ActivityMaturityBadge,

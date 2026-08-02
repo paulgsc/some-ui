@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest"
-
 import type { ActivityId } from "@some-ui/activity-catalog"
+import { describe, expect, it } from "vitest"
 
 import { buildSessionActivities } from "./utils"
 

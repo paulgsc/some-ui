@@ -19,13 +19,12 @@
  */
 
 import type { JSX } from "react"
-import { Badge } from "@some-ui/shared"
-import { cn } from "some-ui-utils"
-
 import type {
   ActivityDefinition,
   ActivityMaturity,
 } from "@some-ui/activity-catalog"
+import { Badge } from "@some-ui/shared"
+import { cn } from "some-ui-utils"
 
 type MaturityCopy = {
   label: string

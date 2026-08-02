@@ -39,8 +39,8 @@ describe("catalogue size", () => {
         `  pnpm --filter www test:ui-fit\n\n` +
         `If it does not fit: page it (useFittedPage, as the composer's picker does),\n` +
         `rank it (pickRecommended, as the dashboard launcher does), or search it\n` +
-        `(searchActivities). Reaching for overflow-y-auto is the one answer this repo\n` +
-        `does not take - see docs/ui-fit/README.md.`
+        `(searchActivities). Handing the remainder to a scrollbar is the one\n` +
+        `answer this repo does not take - see docs/ui-fit/README.md.`
     ).toBe(KNOWN_CATALOGUE_SIZE)
   })
 

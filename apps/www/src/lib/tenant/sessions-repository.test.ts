@@ -1,7 +1,7 @@
+import type { SessionActivity } from "@some-ui/activity-catalog"
 import type { SceneConfig } from "@some-ui/types"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import type { SessionActivity } from "@some-ui/activity-catalog"
 import {
   createSessionsRepository,
   SessionNotFoundError,

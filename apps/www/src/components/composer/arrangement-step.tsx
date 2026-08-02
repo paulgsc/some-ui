@@ -15,6 +15,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
+import { resequence } from "@some-ui/activity-catalog"
 import {
   Card,
   CardContent,
@@ -30,11 +31,9 @@ import {
 import type { EditorState } from "@some-ui/slideshow"
 import type { SceneConfig } from "@some-ui/types"
 
-import { resequence } from "@some-ui/activity-catalog"
 import { formatTimecode } from "@/lib/format"
 import { usePagination } from "@/hooks/use-pagination"
 import { PaginationControls } from "@/components/pagination-controls"
-
 
 const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
 /** Basic mode's read-only preview list is compact rows, same page size as the other simple lists. */

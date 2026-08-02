@@ -1,5 +1,8 @@
-import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
-import type { SessionActivity } from "@some-ui/activity-catalog"
+import type {
+  ActivityConfigValues,
+  ActivityId,
+  SessionActivity,
+} from "@some-ui/activity-catalog"
 
 /**
  * What is left of this module after #756.

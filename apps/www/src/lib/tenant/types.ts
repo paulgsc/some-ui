@@ -1,12 +1,12 @@
-import type { TTSProvider } from "@some-ui/speech"
-import type { SceneConfig, SlotId } from "@some-ui/types"
-import type { LayoutNode } from "wireframes"
-
 import type {
   LayoutTreeId,
   SessionActivity,
   TopikLevel,
 } from "@some-ui/activity-catalog"
+import type { TTSProvider } from "@some-ui/speech"
+import type { SceneConfig, SlotId } from "@some-ui/types"
+import type { LayoutNode } from "wireframes"
+
 import type { AudioPreferences } from "../audio-preferences"
 
 /**

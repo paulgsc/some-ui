@@ -62,9 +62,9 @@ describe("searchActivities", () => {
     // "a" is a single character - subsequence matching is off, but plenty of
     // names still contain it as a substring.
     for (const query of ["a", "dr", "quiz", "synthetic"]) {
-      expect(
-        searchActivities(catalogue, query).length
-      ).toBeLessThanOrEqual(SEARCH_RESULT_LIMIT)
+      expect(searchActivities(catalogue, query).length).toBeLessThanOrEqual(
+        SEARCH_RESULT_LIMIT
+      )
     }
   })
 

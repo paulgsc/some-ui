@@ -14,9 +14,7 @@ describe("recommendedCount", () => {
 
   it("never exceeds the bound a first paint has to assume", () => {
     for (const width of [0, 320, 640, 1024, 4096]) {
-      expect(recommendedCount(width)).toBeLessThanOrEqual(
-        MAX_RECOMMENDED_COUNT
-      )
+      expect(recommendedCount(width)).toBeLessThanOrEqual(MAX_RECOMMENDED_COUNT)
     }
   })
 

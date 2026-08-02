@@ -103,7 +103,7 @@ const topik: ActivityDefinition = {
   },
   maturity: "preview",
   defaultConfig: { level: "beginner", durationMinutes: 15 },
-  toSceneProps: (config) => ({ path: `topiks/${config.level}.json` }),
+  toSceneProps: (config) => ({ path: `topiks/${String(config.level)}.json` }),
 }
 
 const interview: ActivityDefinition = {

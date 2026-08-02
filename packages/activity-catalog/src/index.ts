@@ -28,11 +28,7 @@ export {
   rankActivities,
   rankActivitiesWithScores,
 } from "./lib/rank"
-export type {
-  ActivityPlay,
-  RankedActivity,
-  RankingSignals,
-} from "./lib/rank"
+export type { ActivityPlay, RankedActivity, RankingSignals } from "./lib/rank"
 export { searchActivities } from "./lib/search"
 export type { SearchOptions } from "./lib/search"
 export {

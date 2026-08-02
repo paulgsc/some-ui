@@ -1,8 +1,4 @@
-import type {
-  ActivityDefinition,
-  ActivityMaturity,
-  TopikLevel,
-} from "./types"
+import type { ActivityDefinition, ActivityMaturity, TopikLevel } from "./types"
 
 /**
  * One past play of one activity. Deliberately not a `SessionRecord`: ranking

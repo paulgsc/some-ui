@@ -1,18 +1,21 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { Button } from "@some-ui/shared"
-import type { SceneConfig } from "@some-ui/types"
-import { useNavigate } from "@tanstack/react-router"
-import { cn } from "some-ui-utils"
-import { toast } from "sonner"
-
 import {
   defaultSessionName,
   getActivity,
   sequenceScenes,
   totalDurationOfScenes,
 } from "@some-ui/activity-catalog"
-import type { ActivityConfigValues, ActivityId } from "@some-ui/activity-catalog"
+import type {
+  ActivityConfigValues,
+  ActivityId,
+} from "@some-ui/activity-catalog"
+import { Button } from "@some-ui/shared"
+import type { SceneConfig } from "@some-ui/types"
+import { useNavigate } from "@tanstack/react-router"
+import { cn } from "some-ui-utils"
+import { toast } from "sonner"
+
 import {
   checkSessionDuration,
   describeDurationCheck,

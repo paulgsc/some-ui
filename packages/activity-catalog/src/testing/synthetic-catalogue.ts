@@ -107,13 +107,19 @@ function pick<T>(source: ReadonlyArray<T>, index: number, fallback: T): T {
 
 /**
  * `ActivityId` is a closed union of the four real activities, and it is
- * closed on purpose - `getActivity` is total because of it, and the whole
- * app leans on that. A fixture cannot widen it without widening it for
- * production code too, so the cast is here, once, in a testing module, and
- * nowhere else.
+ * closed on purpose: `getActivity` is total because of it, and the app leans
+ * on that everywhere. A fixture cannot widen it without widening it for
+ * production code too.
+ *
+ * So the one assertion this package contains is here, in a testing module,
+ * behind a function whose name says what it is doing. `getActivity` is never
+ * called with one of these - the ranking and search functions only ever read
+ * `id` as an opaque key - and nothing outside `src/testing` may produce one.
  */
 function syntheticId(index: number): ActivityId {
-  return `synthetic-${index}` as ActivityId
+  const id = `synthetic-${index}`
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+  return id as ActivityId
 }
 
 export type SyntheticCatalogueOptions = {

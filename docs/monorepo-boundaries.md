@@ -7,11 +7,11 @@ one.**
 This is the third of three standing documents about shared code, and the one
 that answers "where does this module live?":
 
-| Document                                                                     | Answers                                              |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [`packages/README.md`](../packages/README.md)                                 | _How_ do I scaffold a leaf workspace?                |
-| [`packages/SHARED_WORKSPACE_DOCTRINE.md`](../packages/SHARED_WORKSPACE_DOCTRINE.md) | _Should_ this export be shared at all? (blast radius) |
-| this one                                                                      | Is this module app glue, or is it a package hiding in an app? |
+| Document                                                                            | Answers                                                       |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [`packages/README.md`](../packages/README.md)                                       | _How_ do I scaffold a leaf workspace?                         |
+| [`packages/SHARED_WORKSPACE_DOCTRINE.md`](../packages/SHARED_WORKSPACE_DOCTRINE.md) | _Should_ this export be shared at all? (blast radius)         |
+| this one                                                                            | Is this module app glue, or is it a package hiding in an app? |
 
 It exists because there was no such document, and that absence is why the
 drift in #754 went unnoticed rather than being caught at review: two modules
@@ -75,7 +75,7 @@ is not a size question; it is a wrong edge, whatever the LOC. Either the
 thing is shared - in which case it belongs in a package or a shared module,
 and the fix is to move it - or it is not, in which case the reach is a bug.
 
-This one is worth stating separately because it is the failure that *looks*
+This one is worth stating separately because it is the failure that _looks_
 harmless. It costs nothing at the moment it is written and shows up later as
 "why does deleting a composer file break the player?".
 
@@ -88,7 +88,7 @@ route files, ~450 lines with tests, and a nameable concern. It is now
 
 The hoist was done alongside #852, which needed to add ranking, fuzzy search
 and fixtures to the same module - which is the useful signal to take from it.
-The moment a module starts growing *new pure logic* is the cheapest moment to
+The moment a module starts growing _new pure logic_ is the cheapest moment to
 draw its boundary, and the most expensive moment to keep putting it off.
 
 Three edges moved with it, each one an instance of a rule above:
@@ -96,7 +96,7 @@ Three edges moved with it, each one an instance of a rule above:
 - `summarizeConfig` moved out of `components/composer/utils` because the
   player and the sessions route were importing it from there - the wrong-edge
   rule, not the threshold.
-- `AudioChannelId` moved *into* the catalogue, because activities are where
+- `AudioChannelId` moved _into_ the catalogue, because activities are where
   channels are declared and `lib/audio-preferences` is where they are
   consumed. Two modules cannot both own a vocabulary.
 - `useEditModeHotkey` went to `packages/utils` instead of a new package: 42
