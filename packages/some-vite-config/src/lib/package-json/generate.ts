@@ -1,7 +1,4 @@
-import { readFileSync, writeFileSync } from "fs"
-import { resolve } from "path"
-
-import type { ViteConfigOptions } from "../types/index.js"
+import type { ViteConfigOptions } from "../../types/index.js"
 
 export type PackageJsonExportTarget = string | Record<string, string>
 
@@ -34,6 +31,11 @@ function cssBaseName(realPackageName: string): string {
   return parts[parts.length - 1] ?? realPackageName
 }
 
+/**
+ * Pure: derives the build-output package.json fields from the vite options.
+ * No filesystem access, no logging - safe to call from anywhere, including
+ * static-analysis tooling. The filesystem write lives in ./write.ts.
+ */
 export function generatePackageJsonFields(
   options: ViteConfigOptions,
   realPackageName: string = options.packageName
@@ -105,62 +107,5 @@ export function generatePackageJsonFields(
     files: ["dist"],
     type: hasESM && !hasCJS ? "module" : undefined,
     sideEffects: ["*.css"],
-  }
-}
-
-function omitUndefined<T extends object>(obj: T): Partial<T> {
-  const result: Partial<T> = {}
-  for (const key in obj) {
-    const value = obj[key]
-    if (value !== undefined) {
-      result[key] = value
-    }
-  }
-  return result
-}
-
-export function updatePackageJson(
-  options: ViteConfigOptions,
-  packageRoot: string = process.cwd()
-): Record<string, unknown> {
-  const packageJsonPath = resolve(packageRoot, "package.json")
-
-  try {
-    // Read existing package.json
-    const packageJsonContent = readFileSync(packageJsonPath, "utf-8")
-    const existingPackageJson: Record<string, unknown> =
-      JSON.parse(packageJsonContent)
-    const realPackageName =
-      typeof existingPackageJson.name === "string"
-        ? existingPackageJson.name
-        : options.packageName
-
-    // Generate new fields
-    const newFields = generatePackageJsonFields(options, realPackageName)
-
-    // Merge with existing package.json, new fields take precedence - but an
-    // undefined newField (e.g. `type` when the package isn't ESM-only) must
-    // not overwrite an existing value, so it's omitted rather than spread.
-    const updatedPackageJson: Record<string, unknown> = {
-      ...existingPackageJson,
-      ...omitUndefined(newFields),
-    }
-
-    // Write back to package.json with pretty formatting
-    writeFileSync(
-      packageJsonPath,
-      `${JSON.stringify(updatedPackageJson, null, 2)}\n`
-    )
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `📦 Updated package.json with build configuration for ${options.packageName}`
-    )
-    return updatedPackageJson
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    // eslint-disable-next-line no-console
-    console.error(`Failed to update package.json: ${message}`)
-    throw error
   }
 }

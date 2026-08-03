@@ -2,6 +2,19 @@ import { resolve } from "path"
 
 import type { ViteConfigOptions } from "../types/index.js"
 
+/**
+ * Absolute path to the package's library entry point. Single source of truth
+ * for the `src/index.ts` default - the package.json sync uses this to prove
+ * the packageRoot it was handed really is the package it just built.
+ */
+export function resolveEntryPath(
+  options: ViteConfigOptions,
+  packageRoot: string
+): string {
+  const { entry = "src/index.ts" } = options
+  return resolve(packageRoot, entry)
+}
+
 export function createBuildConfig(
   options: ViteConfigOptions,
   packageRoot: string
@@ -13,14 +26,9 @@ export function createBuildConfig(
     formats: NonNullable<ViteConfigOptions["formats"]>
   }
 } {
-  const {
-    packageName,
-    entry = "src/index.ts",
-    libraryName,
-    formats = ["es", "cjs"],
-  } = options
+  const { packageName, libraryName, formats = ["es", "cjs"] } = options
 
-  const entryPath = resolve(packageRoot, entry)
+  const entryPath = resolveEntryPath(options, packageRoot)
   const defaultLibraryName =
     libraryName ||
     packageName.replace(/[-_]/g, "").replace(/^./, (c) => c.toUpperCase())

@@ -23,10 +23,6 @@ function getAdapter(): SpeechAdapter {
   return adapter
 }
 
-export function isSpeechSynthesisAvailable(): boolean {
-  return getAdapter().supported
-}
-
 export function speak(text: string, lang = DEFAULT_LANG): void {
   if (text.length === 0) return
   const speech = getAdapter()
@@ -41,8 +37,4 @@ export function speak(text: string, lang = DEFAULT_LANG): void {
       voice: { id: lang, name: lang, provider: "custom", language: lang },
     })
     .catch(() => undefined)
-}
-
-export function cancelSpeech(): void {
-  getAdapter().stop()
 }

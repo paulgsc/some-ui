@@ -45,7 +45,7 @@ type SidebarContext = {
   toggleSidebar: () => void
 }
 
-// eslint-disable-next-line no-redeclare -- deliberate type+value same-name pattern
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 const SidebarContext = createContext<SidebarContext | null>(null)
 
 function useSidebar(): SidebarContext {

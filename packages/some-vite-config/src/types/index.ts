@@ -62,6 +62,13 @@ export type ViteConfigOptions = {
   additionalPlugins?: Array<PluginOption>
   /** Override any part of the config */
   configOverrides?: Partial<UserConfig>
-  /** Whether to auto-update package.json with build fields */
+  /**
+   * Whether to auto-update package.json with build fields. Defaults to true.
+   *
+   * The sync runs as a build-only plugin hook (`vite build`, after the bundle
+   * is written), never while this config is being constructed - so loading a
+   * vite.config.ts for analysis (knip, IDE tooling) leaves the manifest
+   * untouched.
+   */
   updatePackageJson?: boolean
 }

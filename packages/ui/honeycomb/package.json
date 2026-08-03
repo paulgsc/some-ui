@@ -6,9 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
@@ -20,12 +20,10 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/hangul-game-core": "0.0.5",
     "@some-ui/shared": "workspace:*",
     "@some-ui/some-hexagon": "0.0.5",
     "@some-ui/speech": "workspace:*",
-    "@some-ui/styles": "workspace:*",
     "@some-ui/wasm-loader": "workspace:*",
     "some-ui-utils": "workspace:*",
     "sonner": "^2.0.7",
@@ -33,8 +31,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*",
-    "concurrently": "10.0.3"
+    "@some-ui/vite-config": "workspace:*"
   },
   "repository": {
     "type": "git",

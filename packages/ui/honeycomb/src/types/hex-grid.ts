@@ -3,7 +3,7 @@ export type HexPoint = {
   y: number
 }
 
-export type HexCellTheme = {
+type HexCellTheme = {
   fill?: string
   stroke?: string
   strokeWidth?: number
