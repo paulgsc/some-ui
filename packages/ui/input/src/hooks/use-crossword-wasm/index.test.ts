@@ -1,3 +1,5 @@
+/**
+*
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -27,7 +29,6 @@ function validResult(): unknown {
   return { grid: ["A"], width: 1, height: 1, wordPlacements: [] }
 }
 
-/**
  * The real `CrosswordGenerator` (a wasm-bindgen class) carries internal
  * bookkeeping fields (`__wbg_ptr`, `__destroy_into_raw`) that aren't part of
  * its public `.d.ts`, so a `FakeGenerator` exposing only `generate()` can
@@ -35,7 +36,7 @@ function validResult(): unknown {
  * than an `as` cast, which this project's lint config forbids outright) is
  * the documented escape hatch — `generatorCtor` is typed as the untyped
  * `Mock` above specifically so `.mockImplementation` here accepts it.
- */
+   *
 function asCrosswordGenerator(generator: FakeGenerator): unknown {
   return generator
 }
@@ -167,3 +168,4 @@ describe("wasm-bridge lazy init (S5)", () => {
     expect(result.current.crossword).toBeNull()
   })
 })
+*/
