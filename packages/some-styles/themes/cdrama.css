@@ -5,58 +5,55 @@
 
 .cdrama {
   /* Base layer – soft warm cream with hint of peach */
-  --background: oklch(0.97 0.015 40);
-  --foreground: oklch(0.25 0.03 30);
-
-  --card: oklch(0.99 0.01 40);
+  --background: oklch(97% 0.015 40deg);
+  --foreground: oklch(25% 0.03 30deg);
+  --card: oklch(99% 0.01 40deg);
   --card-foreground: var(--foreground);
-
-  --popover: oklch(0.99 0.01 40);
+  --popover: oklch(99% 0.01 40deg);
   --popover-foreground: var(--foreground);
 
   /* Primary = peach blossom pink */
-  --primary: oklch(0.75 0.15 20);
-  --primary-foreground: oklch(0.98 0.01 20);
+  --primary: oklch(75% 0.15 20deg);
+  --primary-foreground: oklch(98% 0.01 20deg);
 
   /* Secondary = soft lavender-grey */
-  --secondary: oklch(0.88 0.03 280);
-  --secondary-foreground: oklch(0.35 0.03 280);
+  --secondary: oklch(88% 0.03 280deg);
+  --secondary-foreground: oklch(35% 0.03 280deg);
 
   /* Muted = warm blush beige */
-  --muted: oklch(0.92 0.02 40);
-  --muted-foreground: oklch(0.5 0.02 30);
+  --muted: oklch(92% 0.02 40deg);
+  --muted-foreground: oklch(50% 0.02 30deg);
 
   /* Accent = sunset coral-rose */
-  --accent: oklch(0.72 0.18 15);
-  --accent-foreground: oklch(0.98 0.01 15);
+  --accent: oklch(72% 0.18 15deg);
+  --accent-foreground: oklch(98% 0.01 15deg);
 
   /* Destructive */
-  --destructive: oklch(0.6 0.2 25);
+  --destructive: oklch(60% 0.2 25deg);
   --destructive-foreground: var(--card);
 
   /* Structural */
-  --border: oklch(0.88 0.02 30);
+  --border: oklch(88% 0.02 30deg);
   --input: var(--border);
   --ring: var(--primary);
 
   /* Chart tokens – soft pastel palette */
-  --chart-1: oklch(0.78 0.14 20);
-  --chart-2: oklch(0.75 0.12 340);
-  --chart-3: oklch(0.8 0.1 60);
-  --chart-4: oklch(0.76 0.11 280);
-  --chart-5: oklch(0.74 0.13 10);
+  --chart-1: oklch(78% 0.14 20deg);
+  --chart-2: oklch(75% 0.12 340deg);
+  --chart-3: oklch(80% 0.1 60deg);
+  --chart-4: oklch(76% 0.11 280deg);
+  --chart-5: oklch(74% 0.13 10deg);
 
   /* Cdrama specific tokens */
-  --cdrama-blossom: oklch(0.75 0.15 20);
-  --cdrama-accent: oklch(0.72 0.18 15);
-  --cdrama-surface: oklch(0.95 0.02 40);
+  --cdrama-blossom: oklch(75% 0.15 20deg);
+  --cdrama-accent: oklch(72% 0.18 15deg);
+  --cdrama-surface: oklch(95% 0.02 40deg);
 
   /* Extras — soft romantic glows */
-  --glow-primary: 0 0 20px oklch(0.75 0.15 20 / 0.35);
-  --glow-accent: 0 0 24px oklch(0.72 0.18 15 / 0.4);
-  --glow-card: 0 0 12px oklch(0.88 0.03 280 / 0.25);
-  --glow-destructive: 0 0 20px oklch(0.6 0.2 25 / 0.4);
-
+  --glow-primary: 0 0 20px oklch(75% 0.15 20deg / 35%);
+  --glow-accent: 0 0 24px oklch(72% 0.18 15deg / 40%);
+  --glow-card: 0 0 12px oklch(88% 0.03 280deg / 25%);
+  --glow-destructive: 0 0 20px oklch(60% 0.2 25deg / 40%);
   --radius: 1.1rem;
 
   /* Apply styles */
@@ -67,34 +64,31 @@
 /* DARK VARIANT — warm evening twilight */
 .cdrama.dark,
 .dark .cdrama {
-  --background: oklch(0.18 0.03 30);
+  --background: oklch(18% 0.03 30deg);
 
   /* Dimmed from oklch(0.96 0.02 40) — same "text is never the brightest
      thing on screen" argument as some-filter's swatch registry (see
      packages/some-styles/tokens/base.css's own --foreground comment);
      0.96 read as glowing white against this dark ground regardless of
      its tiny chroma. Hue kept at 40 (cdrama's own warm cream tone). */
-  --foreground: oklch(0.68 0.03 40);
-
-  --card: oklch(0.22 0.03 30);
-  --popover: oklch(0.22 0.03 30);
-
-  --secondary: oklch(0.32 0.04 280);
-  --muted: oklch(0.28 0.02 30);
-  --border: oklch(0.32 0.03 30);
+  --foreground: oklch(68% 0.03 40deg);
+  --card: oklch(22% 0.03 30deg);
+  --popover: oklch(22% 0.03 30deg);
+  --secondary: oklch(32% 0.04 280deg);
+  --muted: oklch(28% 0.02 30deg);
+  --border: oklch(32% 0.03 30deg);
 
   /* Warmer, richer tones for dark mode */
-  --primary: oklch(0.78 0.16 25);
-  --accent: oklch(0.75 0.19 18);
-
-  --glow-primary: 0 0 24px oklch(0.78 0.16 25 / 0.5);
-  --glow-accent: 0 0 28px oklch(0.75 0.19 18 / 0.55);
-  --glow-card: 0 0 16px oklch(0.88 0.03 280 / 0.3);
+  --primary: oklch(78% 0.16 25deg);
+  --accent: oklch(75% 0.19 18deg);
+  --glow-primary: 0 0 24px oklch(78% 0.16 25deg / 50%);
+  --glow-accent: 0 0 28px oklch(75% 0.19 18deg / 55%);
+  --glow-card: 0 0 16px oklch(88% 0.03 280deg / 30%);
 
   /* Adding dark mode variants of cdrama-specific tokens */
-  --cdrama-blossom: oklch(0.78 0.16 25);
-  --cdrama-accent: oklch(0.75 0.19 18);
-  --cdrama-surface: oklch(0.25 0.03 30);
+  --cdrama-blossom: oklch(78% 0.16 25deg);
+  --cdrama-accent: oklch(75% 0.19 18deg);
+  --cdrama-surface: oklch(25% 0.03 30deg);
 }
 
 .cdrama * {
@@ -108,9 +102,11 @@
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
+
   60% {
     transform: translateY(-5px) scale(1.01);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -121,6 +117,7 @@
   0% {
     background-position: -200% center;
   }
+
   100% {
     background-position: 200% center;
   }
@@ -132,6 +129,7 @@
     filter: drop-shadow(var(--glow-primary));
     transform: scale(1);
   }
+
   50% {
     filter: drop-shadow(var(--glow-accent));
     transform: scale(1.05);
@@ -144,6 +142,7 @@
     opacity: 0;
     transform: scale(0) rotate(0deg);
   }
+
   50% {
     opacity: 1;
     transform: scale(1) rotate(180deg);
@@ -155,6 +154,7 @@
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -164,6 +164,7 @@
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }

@@ -19,7 +19,6 @@
 @theme inline {
   --animate-deck-float: deck-float calc(var(--animation-duration) * 2)
     var(--easing-container) infinite;
-
   --animate-deck-card: deck-card-shuffle var(--animation-duration)
     var(--easing-bounce)
     calc(var(--card-index) * var(--animation-duration) * 0.03)
@@ -27,8 +26,8 @@
 
   @keyframes deck-card-shuffle {
     0% {
-      transform: translateY(0) rotate(0deg) scale(1);
       opacity: 1;
+      transform: translateY(0) rotate(0deg) scale(1);
     }
 
     15% {
@@ -47,8 +46,8 @@
     }
 
     100% {
-      transform: translateY(0) rotate(0deg) scale(1);
       opacity: 1;
+      transform: translateY(0) rotate(0deg) scale(1);
     }
   }
 
@@ -56,9 +55,11 @@
     0% {
       transform: translateY(calc(-1 * var(--y-offset) / 3 * 1%));
     }
+
     50% {
       transform: translateY(calc(var(--y-offset) / 3 * 1%));
     }
+
     100% {
       transform: translateY(calc(-1 * var(--y-offset) / 3 * 1%));
     }

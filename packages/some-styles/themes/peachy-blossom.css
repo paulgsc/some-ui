@@ -13,78 +13,65 @@
    ============================================================ */
 
 .peachy-blossom {
-  --background: oklch(0.98 0.02 60);
-  --foreground: oklch(0.34 0.04 40);
-
-  --card: oklch(0.99 0.015 60);
+  --background: oklch(98% 0.02 60deg);
+  --foreground: oklch(34% 0.04 40deg);
+  --card: oklch(99% 0.015 60deg);
   --card-foreground: var(--foreground);
-
-  --popover: oklch(0.99 0.015 60);
+  --popover: oklch(99% 0.015 60deg);
   --popover-foreground: var(--foreground);
 
   /* Coral blossom */
-  --primary: oklch(0.74 0.16 25);
-  --primary-foreground: oklch(0.99 0.01 25);
-
-  --secondary: oklch(0.92 0.04 55);
-  --secondary-foreground: oklch(0.38 0.05 40);
-
-  --muted: oklch(0.94 0.025 60);
-  --muted-foreground: oklch(0.54 0.04 40);
+  --primary: oklch(74% 0.16 25deg);
+  --primary-foreground: oklch(99% 0.01 25deg);
+  --secondary: oklch(92% 0.04 55deg);
+  --secondary-foreground: oklch(38% 0.05 40deg);
+  --muted: oklch(94% 0.025 60deg);
+  --muted-foreground: oklch(54% 0.04 40deg);
 
   /* Ripe peach */
-  --accent: oklch(0.82 0.13 65);
-  --accent-foreground: oklch(0.34 0.06 45);
-
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.99 0.01 25);
-
-  --border: oklch(0.89 0.03 55);
-  --input: oklch(0.89 0.03 55);
+  --accent: oklch(82% 0.13 65deg);
+  --accent-foreground: oklch(34% 0.06 45deg);
+  --destructive: oklch(60% 0.2 25deg);
+  --destructive-foreground: oklch(99% 0.01 25deg);
+  --border: oklch(89% 0.03 55deg);
+  --input: oklch(89% 0.03 55deg);
   --ring: var(--primary);
-
-  --chart-1: oklch(0.78 0.15 25);
-  --chart-2: oklch(0.82 0.13 65);
-  --chart-3: oklch(0.75 0.12 40);
-  --chart-4: oklch(0.8 0.11 340);
-  --chart-5: oklch(0.72 0.14 15);
-
-  --sidebar: oklch(0.96 0.025 60);
+  --chart-1: oklch(78% 0.15 25deg);
+  --chart-2: oklch(82% 0.13 65deg);
+  --chart-3: oklch(75% 0.12 40deg);
+  --chart-4: oklch(80% 0.11 340deg);
+  --chart-5: oklch(72% 0.14 15deg);
+  --sidebar: oklch(96% 0.025 60deg);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.92 0.04 55);
+  --sidebar-accent: oklch(92% 0.04 55deg);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-
-  --surface: oklch(0.96 0.025 60);
+  --surface: oklch(96% 0.025 60deg);
   --surface-foreground: var(--foreground);
-
   --code: var(--surface);
   --code-foreground: var(--surface-foreground);
-  --code-highlight: oklch(0.93 0.03 55);
-  --code-number: oklch(0.6 0.04 40);
-
-  --selection: oklch(0.74 0.16 25);
-  --selection-foreground: oklch(0.99 0.01 25);
-
+  --code-highlight: oklch(93% 0.03 55deg);
+  --code-number: oklch(60% 0.04 40deg);
+  --selection: oklch(74% 0.16 25deg);
+  --selection-foreground: oklch(99% 0.01 25deg);
   --gradient-heading: linear-gradient(
     180deg,
-    oklch(0.5 0.08 35),
-    oklch(0.36 0.05 40)
+    oklch(50% 0.08 35deg),
+    oklch(36% 0.05 40deg)
   );
   --gradient-accent: linear-gradient(
     100deg,
-    oklch(0.74 0.16 25),
-    oklch(0.82 0.13 65)
+    oklch(74% 0.16 25deg),
+    oklch(82% 0.13 65deg)
   );
   --gradient-muted: linear-gradient(
     180deg,
-    oklch(0.58 0.04 40),
-    oklch(0.5 0.04 40)
+    oklch(58% 0.04 40deg),
+    oklch(50% 0.04 40deg)
   );
-
   --radius: 1rem;
 
   background-color: var(--background);
@@ -94,40 +81,36 @@
 /* DARK VARIANT — dusk over the orchard */
 .peachy-blossom.dark,
 .dark .peachy-blossom {
-  --background: oklch(0.2 0.03 35);
+  --background: oklch(20% 0.03 35deg);
+
   /* Dimmed from oklch(0.9 0.025 60) — same "never the sun" bar as
      tokens/base.css's own --foreground, hue kept at this theme's own 60
      (peach). */
-  --foreground: oklch(0.68 0.04 60);
-
-  --card: oklch(0.24 0.03 35);
-  --popover: oklch(0.24 0.03 35);
-
-  --secondary: oklch(0.3 0.04 40);
+  --foreground: oklch(68% 0.04 60deg);
+  --card: oklch(24% 0.03 35deg);
+  --popover: oklch(24% 0.03 35deg);
+  --secondary: oklch(30% 0.04 40deg);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.28 0.03 40);
-  --muted-foreground: oklch(0.5 0.035 55);
-
-  --primary: oklch(0.76 0.17 28);
-  --accent: oklch(0.78 0.14 65);
-  --accent-foreground: oklch(0.22 0.05 40);
-
-  --border: oklch(0.32 0.03 40);
-  --input: oklch(0.32 0.04 40 / 60%);
-
-  --surface: oklch(0.23 0.03 35);
-  --surface-foreground: oklch(0.55 0.03 55);
+  --muted: oklch(28% 0.03 40deg);
+  --muted-foreground: oklch(50% 0.035 55deg);
+  --primary: oklch(76% 0.17 28deg);
+  --accent: oklch(78% 0.14 65deg);
+  --accent-foreground: oklch(22% 0.05 40deg);
+  --border: oklch(32% 0.03 40deg);
+  --input: oklch(32% 0.04 40deg / 60%);
+  --surface: oklch(23% 0.03 35deg);
+  --surface-foreground: oklch(55% 0.03 55deg);
 
   /* Stops dimmed (was 0.92->0.8 / 0.76->0.66) to match this block's own
      --foreground/--muted-foreground fix above. */
   --gradient-heading: linear-gradient(
     180deg,
-    oklch(0.7 0.045 60),
-    oklch(0.58 0.045 55)
+    oklch(70% 0.045 60deg),
+    oklch(58% 0.045 55deg)
   );
   --gradient-muted: linear-gradient(
     180deg,
-    oklch(0.56 0.035 55),
-    oklch(0.46 0.035 55)
+    oklch(56% 0.035 55deg),
+    oklch(46% 0.035 55deg)
   );
 }

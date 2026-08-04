@@ -14,22 +14,22 @@
 
 /* Position variants using Tailwind v4 approach */
 .card-position-left {
+  opacity: var(--side-opacity);
   transform: translateX(calc(-1 * var(--card-spacing)))
     translateZ(var(--card-depth)) scale(var(--side-scale));
-  opacity: var(--side-opacity);
   z-index: 1;
 }
 
 .card-position-center {
-  transform: translateX(0px) translateZ(0px) scale(1);
   opacity: 1;
+  transform: translateX(0) translateZ(0) scale(1);
   z-index: 10;
 }
 
 .card-position-right {
+  opacity: var(--side-opacity);
   transform: translateX(var(--card-spacing)) translateZ(var(--card-depth))
     scale(var(--side-scale));
-  opacity: var(--side-opacity);
   z-index: 1;
 }
 
@@ -49,89 +49,110 @@
 /* Keyframe animations following the pattern: (L,C,R) -> (C,R,L) -> (R,L,C) -> (L,C,R) */
 @keyframes card1-positions {
   0% {
+    opacity: var(--side-opacity);
+
     /* Card 1 starts LEFT */
     transform: translateX(calc(-1 * var(--card-spacing)))
       translateZ(var(--card-depth)) scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   33.33% {
-    /* Card 1 moves to CENTER */
-    transform: translateX(0px) translateZ(0px) scale(1);
     opacity: 1;
+
+    /* Card 1 moves to CENTER */
+    transform: translateX(0) translateZ(0) scale(1);
     z-index: 10;
   }
+
   66.66% {
+    opacity: var(--side-opacity);
+
     /* Card 1 moves to RIGHT */
     transform: translateX(var(--card-spacing)) translateZ(var(--card-depth))
       scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   100% {
+    opacity: var(--side-opacity);
+
     /* Card 1 returns to LEFT */
     transform: translateX(calc(-1 * var(--card-spacing)))
       translateZ(var(--card-depth)) scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
 }
 
 @keyframes card2-positions {
   0% {
-    /* Card 2 starts CENTER */
-    transform: translateX(0px) translateZ(0px) scale(1);
     opacity: 1;
+
+    /* Card 2 starts CENTER */
+    transform: translateX(0) translateZ(0) scale(1);
     z-index: 10;
   }
+
   33.33% {
+    opacity: var(--side-opacity);
+
     /* Card 2 moves to RIGHT */
     transform: translateX(var(--card-spacing)) translateZ(var(--card-depth))
       scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   66.66% {
+    opacity: var(--side-opacity);
+
     /* Card 2 moves to LEFT */
     transform: translateX(calc(-1 * var(--card-spacing)))
       translateZ(var(--card-depth)) scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   100% {
-    /* Card 2 returns to CENTER */
-    transform: translateX(0px) translateZ(0px) scale(1);
     opacity: 1;
+
+    /* Card 2 returns to CENTER */
+    transform: translateX(0) translateZ(0) scale(1);
     z-index: 10;
   }
 }
 
 @keyframes card3-positions {
   0% {
+    opacity: var(--side-opacity);
+
     /* Card 3 starts RIGHT */
     transform: translateX(var(--card-spacing)) translateZ(var(--card-depth))
       scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   33.33% {
+    opacity: var(--side-opacity);
+
     /* Card 3 moves to LEFT */
     transform: translateX(calc(-1 * var(--card-spacing)))
       translateZ(var(--card-depth)) scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
+
   66.66% {
-    /* Card 3 moves to CENTER */
-    transform: translateX(0px) translateZ(0px) scale(1);
     opacity: 1;
+
+    /* Card 3 moves to CENTER */
+    transform: translateX(0) translateZ(0) scale(1);
     z-index: 10;
   }
+
   100% {
+    opacity: var(--side-opacity);
+
     /* Card 3 returns to RIGHT */
     transform: translateX(var(--card-spacing)) translateZ(var(--card-depth))
       scale(var(--side-scale));
-    opacity: var(--side-opacity);
     z-index: 1;
   }
 }

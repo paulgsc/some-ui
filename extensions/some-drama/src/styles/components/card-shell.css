@@ -4,15 +4,16 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-card {
+  -webkit-backdrop-filter: var(--dc-blur);
+  backdrop-filter: var(--dc-blur);
+
   /* Solid dark background with warm tint — visible on any dark page */
   background: linear-gradient(
     135deg,
-    hsl(25 25% 16% / 0.97) 0%,
-    hsl(340 20% 14% / 0.95) 50%,
-    hsl(20 25% 15% / 0.97) 100%
+    hsl(25deg 25% 16% / 97%) 0%,
+    hsl(340deg 20% 14% / 95%) 50%,
+    hsl(20deg 25% 15% / 97%) 100%
   );
-  backdrop-filter: var(--dc-blur);
-  -webkit-backdrop-filter: var(--dc-blur);
 
   /* Visible border with glow */
   border: 1.5px solid var(--dc-border-strong);
@@ -20,44 +21,43 @@
 
   /* Layered shadows for depth + glow effect */
   box-shadow:
-    0 0 0 1px hsl(340 50% 40% / 0.15),
+    0 0 0 1px hsl(340deg 50% 40% / 15%),
     0 8px 32px var(--dc-shadow-strong),
-    0 0 60px hsl(340 60% 50% / 0.15),
-    inset 0 1px 0 hsl(340 40% 50% / 0.2),
-    inset 0 -1px 0 hsl(340 30% 30% / 0.3);
-
-  /* Prevent jitter */
-  will-change: box-shadow;
+    0 0 60px hsl(340deg 60% 50% / 15%),
+    inset 0 1px 0 hsl(340deg 40% 50% / 20%),
+    inset 0 -1px 0 hsl(340deg 30% 30% / 30%);
   transform: translateZ(0);
-
   transition:
     box-shadow 300ms var(--dc-ease),
     border-color 300ms var(--dc-ease);
+
+  /* Prevent jitter */
+  will-change: box-shadow;
 }
 
 .dc-card:hover {
   border-color: var(--dc-rose);
   box-shadow:
-    0 0 0 1px hsl(340 60% 50% / 0.3),
+    0 0 0 1px hsl(340deg 60% 50% / 30%),
     0 12px 48px var(--dc-shadow-strong),
-    0 0 80px hsl(340 70% 55% / 0.2),
-    inset 0 1px 0 hsl(340 50% 55% / 0.25),
-    inset 0 -1px 0 hsl(340 30% 30% / 0.3);
+    0 0 80px hsl(340deg 70% 55% / 20%),
+    inset 0 1px 0 hsl(340deg 50% 55% / 25%),
+    inset 0 -1px 0 hsl(340deg 30% 30% / 30%);
 }
 
 /* Drag handle affordance — subtle pill that appears on hover */
 .dc-card::before {
+  background: hsl(340deg 40% 50% / 40%);
+  border-radius: 2px;
   content: "";
+  height: 4px;
+  left: 50%;
+  opacity: 0;
   position: absolute;
   top: 10px;
-  left: 50%;
   transform: translateX(-50%);
-  width: 32px;
-  height: 4px;
-  border-radius: 2px;
-  background: hsl(340 40% 50% / 0.4);
-  opacity: 0;
   transition: opacity 300ms var(--dc-ease);
+  width: 32px;
 }
 
 .dc-card:hover::before {
@@ -66,26 +66,26 @@
 
 /* Size toggle button — top-right corner */
 .dc-size-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: hsl(340 30% 25% / 0.8);
+  background: hsl(340deg 30% 25% / 80%);
   border: 1px solid var(--dc-border);
-  cursor: pointer;
+  border-radius: 50%;
   color: var(--dc-text-secondary);
+  cursor: pointer;
   font-size: 10px;
-  z-index: 20;
+  height: 24px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
   transition:
     background 200ms var(--dc-ease),
     color 200ms var(--dc-ease),
     border-color 200ms var(--dc-ease);
+  width: 24px;
+  z-index: 20;
 }
 
 .dc-size-btn:hover {
-  background: hsl(340 40% 35% / 0.9);
-  color: var(--dc-text-primary);
+  background: hsl(340deg 40% 35% / 90%);
   border-color: var(--dc-border-strong);
+  color: var(--dc-text-primary);
 }

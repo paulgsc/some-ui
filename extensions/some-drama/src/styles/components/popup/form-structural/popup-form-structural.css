@@ -17,14 +17,13 @@
 ────────────────────────────────────────────────────────── */
 
 .pf-tab-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  flex-shrink: 0;
   border-bottom: 1px solid var(--p-border);
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 1fr 1fr;
 }
 
 .pf-tab {
-  padding: 10px 0;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -34,6 +33,7 @@
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
+  padding: 10px 0;
   transition:
     color 0.18s,
     border-color 0.18s;
@@ -52,11 +52,11 @@
 .pf-tab:last-child.pf-tab-active {
   background: linear-gradient(
     180deg,
-    hsl(340 60% 18% / 0.4) 0%,
+    hsl(340deg 60% 18% / 40%) 0%,
     transparent 100%
   );
   border-bottom-color: var(--p-rose);
-  color: hsl(340 85% 75%);
+  color: hsl(340deg 85% 75%);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -69,16 +69,17 @@
 ────────────────────────────────────────────────────────── */
 
 .pf-panel-host {
-  position: relative;
   flex: 1;
   overflow-y: auto;
-  scrollbar-width: thin;
+  position: relative;
   scrollbar-color: var(--p-border) transparent;
+  scrollbar-width: thin;
 }
 
 .pf-panel {
   display: none;
 }
+
 .pf-panel-visible {
   display: block;
 }
@@ -96,7 +97,7 @@
 ────────────────────────────────────────────────────────── */
 
 .pf-form-actions {
-  padding: 10px 16px 14px;
   border-top: 1px solid var(--p-border);
   flex-shrink: 0;
+  padding: 10px 16px 14px;
 }

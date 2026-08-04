@@ -6,81 +6,79 @@
 
 .scheduler {
   /* ── Surfaces ─────────────────────────────── */
-  --background: oklch(0.14 0.01 260);
+  --background: oklch(14% 0.01 260deg);
+
   /* Dimmed from oklch(0.92 0.008 260) — same "never the sun" bar as
      tokens/base.css's own --foreground, hue kept at this theme's own
      260 (neutral-cool). */
-  --foreground: oklch(0.68 0.03 260);
-
-  --card: oklch(0.18 0.012 260);
+  --foreground: oklch(68% 0.03 260deg);
+  --card: oklch(18% 0.012 260deg);
   --card-foreground: var(--foreground);
-
-  --popover: oklch(0.2 0.012 260);
+  --popover: oklch(20% 0.012 260deg);
   --popover-foreground: var(--foreground);
 
   /* ── Interactive surfaces ─────────────────── */
-  --secondary: oklch(0.22 0.012 260);
+  --secondary: oklch(22% 0.012 260deg);
   --secondary-foreground: var(--foreground);
-
-  --muted: oklch(0.26 0.01 260);
-  --muted-foreground: oklch(0.46 0.02 260);
-
-  --accent: oklch(0.24 0.012 260);
+  --muted: oklch(26% 0.01 260deg);
+  --muted-foreground: oklch(46% 0.02 260deg);
+  --accent: oklch(24% 0.012 260deg);
   --accent-foreground: var(--foreground);
 
   /* ── Primary — violet (outer ring) ───────── */
-  --primary: oklch(0.68 0.18 300);
-  --primary-foreground: oklch(0.98 0.005 300);
+  --primary: oklch(68% 0.18 300deg);
+  --primary-foreground: oklch(98% 0.005 300deg);
 
   /* ── Destructive ──────────────────────────── */
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
+  --destructive: oklch(62% 0.22 25deg);
+  --destructive-foreground: oklch(98% 0 0deg);
 
   /* ── Structure ────────────────────────────── */
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.24 0.01 260);
+  --border: oklch(28% 0.01 260deg);
+  --input: oklch(24% 0.01 260deg);
   --ring: var(--primary);
 
   /* ── Sidebar ──────────────────────────────── */
-  --sidebar: oklch(0.16 0.01 260);
-  --sidebar-foreground: oklch(0.55 0.025 260);
+  --sidebar: oklch(16% 0.01 260deg);
+  --sidebar-foreground: oklch(55% 0.025 260deg);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.22 0.012 260);
+  --sidebar-accent: oklch(22% 0.012 260deg);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--primary);
 
   /* ── Surface / code extras ────────────────── */
-  --surface: oklch(0.2 0.012 260);
+  --surface: oklch(20% 0.012 260deg);
   --surface-foreground: var(--muted-foreground);
   --code: var(--surface);
   --code-foreground: var(--surface-foreground);
-  --code-highlight: oklch(0.26 0.012 260);
-  --code-number: oklch(0.46 0.008 260);
+  --code-highlight: oklch(26% 0.012 260deg);
+  --code-number: oklch(46% 0.008 260deg);
   --selection: var(--primary);
   --selection-foreground: var(--primary-foreground);
 
   /* ── Charts ───────────────────────────────── */
-  --chart-1: oklch(0.68 0.18 300); /* violet */
-  --chart-2: oklch(0.72 0.18 155); /* emerald */
-  --chart-3: oklch(0.76 0.17 85); /* amber */
-  --chart-4: oklch(0.65 0.2 25); /* rose */
-  --chart-5: oklch(0.7 0.16 220); /* sky */
+  --chart-1: oklch(68% 0.18 300deg); /* violet */
+  --chart-2: oklch(72% 0.18 155deg); /* emerald */
+  --chart-3: oklch(76% 0.17 85deg); /* amber */
+  --chart-4: oklch(65% 0.2 25deg); /* rose */
+  --chart-5: oklch(70% 0.16 220deg); /* sky */
 
   /* ── Radius ───────────────────────────────── */
   --radius: 0.75rem;
 
   /* ── Scheduler-specific tokens ───────────── */
+
   /* Used directly by canvas getComputedStyle reads in Rings.tsx */
-  --ring-track: oklch(0.92 0.008 260 / 0.07);
-  --accent-outer: oklch(0.68 0.18 300); /* violet-400 equivalent */
-  --accent-outer-past: oklch(0.44 0.12 300); /* dimmed past-state */
-  --accent-inner: oklch(0.72 0.18 155); /* emerald-400 equivalent */
-  --accent-inner-past: oklch(0.38 0.1 155); /* dimmed past-state */
-  --status-ok: oklch(0.72 0.18 155);
-  --status-warn: oklch(0.82 0.17 85);
-  --status-err: oklch(0.65 0.22 25);
+  --ring-track: oklch(92% 0.008 260deg / 7%);
+  --accent-outer: oklch(68% 0.18 300deg); /* violet-400 equivalent */
+  --accent-outer-past: oklch(44% 0.12 300deg); /* dimmed past-state */
+  --accent-inner: oklch(72% 0.18 155deg); /* emerald-400 equivalent */
+  --accent-inner-past: oklch(38% 0.1 155deg); /* dimmed past-state */
+  --status-ok: oklch(72% 0.18 155deg);
+  --status-warn: oklch(82% 0.17 85deg);
+  --status-err: oklch(65% 0.22 25deg);
 
   background-color: var(--background);
   color: var(--foreground);
@@ -89,18 +87,18 @@
 /* ── Optional deeper dark override ─────────── */
 .scheduler.dark,
 .dark .scheduler {
-  --background: oklch(0.11 0.008 260);
-  --card: oklch(0.15 0.01 260);
-  --popover: oklch(0.17 0.01 260);
-  --secondary: oklch(0.19 0.01 260);
-  --muted: oklch(0.22 0.008 260);
-  --border: oklch(0.24 0.008 260);
-  --input: oklch(0.2 0.008 260);
-  --surface: oklch(0.17 0.01 260);
-  --code-highlight: oklch(0.23 0.01 260);
+  --background: oklch(11% 0.008 260deg);
+  --card: oklch(15% 0.01 260deg);
+  --popover: oklch(17% 0.01 260deg);
+  --secondary: oklch(19% 0.01 260deg);
+  --muted: oklch(22% 0.008 260deg);
+  --border: oklch(24% 0.008 260deg);
+  --input: oklch(20% 0.008 260deg);
+  --surface: oklch(17% 0.01 260deg);
+  --code-highlight: oklch(23% 0.01 260deg);
 
   /* slightly richer accents in deep dark */
-  --primary: oklch(0.72 0.2 300);
-  --accent-outer: oklch(0.72 0.2 300);
-  --accent-inner: oklch(0.76 0.2 155);
+  --primary: oklch(72% 0.2 300deg);
+  --accent-outer: oklch(72% 0.2 300deg);
+  --accent-inner: oklch(76% 0.2 155deg);
 }

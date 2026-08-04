@@ -31,11 +31,11 @@
 .strawberry-moon {
   background: radial-gradient(
     circle at 30% 50%,
-    oklch(0.85 0.12 0 / 1) 0%,
-    oklch(0.85 0.12 0 / 1) 30%,
-    oklch(0.78 0.18 350 / 1) 40%,
-    oklch(0.65 0.24 350 / 1) 60%,
-    oklch(0.45 0.24 330 / 1) 80%,
-    oklch(0.3 0.18 320 / 1) 100%
+    oklch(85% 0.12 0deg / 100%) 0%,
+    oklch(85% 0.12 0deg / 100%) 30%,
+    oklch(78% 0.18 350deg / 100%) 40%,
+    oklch(65% 0.24 350deg / 100%) 60%,
+    oklch(45% 0.24 330deg / 100%) 80%,
+    oklch(30% 0.18 320deg / 100%) 100%
   );
 }

@@ -2,18 +2,23 @@
   0% {
     transform: translateX(0);
   }
+
   20% {
     transform: translateX(-2px);
   }
+
   40% {
     transform: translateX(2px);
   }
+
   60% {
     transform: translateX(-2px);
   }
+
   80% {
     transform: translateX(2px);
   }
+
   100% {
     transform: translateX(0);
   }
@@ -25,13 +30,15 @@
 
 @keyframes highlight-pulse {
   0% {
-    background-color: rgba(255, 235, 59, 0.3);
+    background-color: rgb(255 235 59 / 30%);
   }
+
   50% {
-    background-color: rgba(255, 235, 59, 0.7);
+    background-color: rgb(255 235 59 / 70%);
   }
+
   100% {
-    background-color: rgba(255, 235, 59, 0.3);
+    background-color: rgb(255 235 59 / 30%);
   }
 }
 
@@ -41,10 +48,11 @@
 
 @keyframes success-fade {
   0% {
-    background-color: rgba(76, 175, 80, 0.7);
+    background-color: rgb(76 175 80 / 70%);
   }
+
   100% {
-    background-color: rgba(76, 175, 80, 0.3);
+    background-color: rgb(76 175 80 / 30%);
   }
 }
 
@@ -54,13 +62,15 @@
 
 @keyframes error-flash {
   0% {
-    background-color: rgba(244, 67, 54, 0.3);
+    background-color: rgb(244 67 54 / 30%);
   }
+
   50% {
-    background-color: rgba(244, 67, 54, 0.7);
+    background-color: rgb(244 67 54 / 70%);
   }
+
   100% {
-    background-color: rgba(244, 67, 54, 0.3);
+    background-color: rgb(244 67 54 / 30%);
   }
 }
 

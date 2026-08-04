@@ -1,17 +1,15 @@
 @layer base {
   :root {
     --ant-size: 24px;
-    --ant-color: #333333;
+    --ant-color: #333;
     --ant-duration: 8s;
     --ant-delay: 0s;
     --ant-direction: 1;
-
     --trail-width: 2px;
     --trail-opacity: 0.6;
     --trail-fade-duration: 4s;
     --trail-color-start: #ffaa40;
     --trail-color-end: #9c40ff;
-
     --container-width: 0px;
     --container-height: 0px;
   }
@@ -34,16 +32,19 @@
 
 @keyframes ant-border {
   0% {
-    transform: translate(0px, 0px) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg);
   }
+
   24.9% {
-    transform: translate(calc(var(--container-width) - var(--ant-size)), 0px)
+    transform: translate(calc(var(--container-width) - var(--ant-size)), 0)
       rotate(0deg);
   }
+
   25% {
-    transform: translate(calc(var(--container-width) - var(--ant-size)), 0px)
+    transform: translate(calc(var(--container-width) - var(--ant-size)), 0)
       rotate(90deg);
   }
+
   49.9% {
     transform: translate(
         calc(var(--container-width) - var(--ant-size)),
@@ -51,6 +52,7 @@
       )
       rotate(90deg);
   }
+
   50% {
     transform: translate(
         calc(var(--container-width) - var(--ant-size)),
@@ -58,19 +60,23 @@
       )
       rotate(180deg);
   }
+
   74.9% {
-    transform: translate(0px, calc(var(--container-height) - var(--ant-size)))
+    transform: translate(0, calc(var(--container-height) - var(--ant-size)))
       rotate(180deg);
   }
+
   75% {
-    transform: translate(0px, calc(var(--container-height) - var(--ant-size)))
+    transform: translate(0, calc(var(--container-height) - var(--ant-size)))
       rotate(270deg);
   }
+
   99.9% {
-    transform: translate(0px, 0px) rotate(270deg);
+    transform: translate(0, 0) rotate(270deg);
   }
+
   100% {
-    transform: translate(0px, 0px) rotate(360deg);
+    transform: translate(0, 0) rotate(360deg);
   }
 }
 
@@ -78,6 +84,7 @@
   0% {
     stroke-dashoffset: var(--trail-length);
   }
+
   100% {
     stroke-dashoffset: 0;
   }
@@ -88,6 +95,7 @@
   calc((var(--ant-duration) - var(--trail-fade-duration)) / var(--ant-duration) * 100%) {
     opacity: var(--trail-opacity);
   }
+
   100% {
     opacity: 0;
   }
@@ -98,15 +106,17 @@
   100% {
     transform: rotate(-10deg);
   }
+
   50% {
     transform: rotate(10deg);
   }
 }
 
-@keyframes legMove {
+@keyframes leg-move {
   0% {
     transform: rotate(-15deg);
   }
+
   100% {
     transform: rotate(15deg);
   }
@@ -121,9 +131,9 @@
 }
 
 .animate-leg-move {
-  animation: legMove 0.5s ease-in-out infinite alternate;
+  animation: leg-move 0.5s ease-in-out infinite alternate;
 }
 
 .animate-leg-move-reverse {
-  animation: legMove 0.5s ease-in-out infinite alternate-reverse;
+  animation: leg-move 0.5s ease-in-out infinite alternate-reverse;
 }

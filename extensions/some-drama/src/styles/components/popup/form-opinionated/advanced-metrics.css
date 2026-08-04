@@ -6,15 +6,15 @@
 }
 
 .dj-adv-tab {
-  flex: 1;
-  padding: 8px 0;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  font-size: 12px;
-  font-weight: 500;
   color: var(--dj-muted);
   cursor: pointer;
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 0;
   transition:
     color 160ms var(--dj-ease),
     border-color 160ms var(--dj-ease);
@@ -25,8 +25,8 @@
 }
 
 .dj-adv-tab.dj-adv-tab-active {
-  color: var(--dj-accent);
   border-bottom-color: var(--dj-accent);
+  color: var(--dj-accent);
 }
 
 .dj-adv-panel {
@@ -38,19 +38,19 @@
 }
 
 .dj-adv-label {
+  color: var(--dj-text);
   font-size: 12px;
   font-weight: 600;
-  color: var(--dj-text);
 }
 
 .dj-star-btn {
   background: transparent;
   border: none;
-  font-size: 22px;
-  cursor: pointer;
   color: var(--dj-border);
-  padding: 0;
+  cursor: pointer;
+  font-size: 22px;
   outline: none;
+  padding: 0;
   transition:
     transform 160ms var(--dj-spring),
     color 160ms var(--dj-ease);
@@ -65,9 +65,9 @@
 }
 
 .dj-radio-label {
+  cursor: pointer;
   font-size: 13px;
   margin-right: 16px;
-  cursor: pointer;
 }
 
 .dj-radio-label input {
@@ -76,31 +76,31 @@
 }
 
 .dj-slider {
-  flex: 1;
   accent-color: var(--dj-accent);
   cursor: pointer;
+  flex: 1;
 }
 
 .dj-slider-val-indicator {
+  color: var(--dj-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  color: var(--dj-muted);
   min-width: 36px;
 }
 
 .inline-ep {
-  width: 50px;
-  text-align: center;
   padding: 2px 0;
+  text-align: center;
+  width: 50px;
 }
 
 .dj-axis-row-labels {
-  font-size: 11px;
   color: var(--dj-muted);
+  font-size: 11px;
 }
 
 .dj-axis-slider {
-  width: 100%;
   accent-color: var(--dj-accent);
   cursor: pointer;
+  width: 100%;
 }

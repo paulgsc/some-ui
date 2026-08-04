@@ -1,29 +1,35 @@
 @layer utilities {
-  @keyframes rubberBand {
+  @keyframes rubber-band {
     0% {
       transform: scale3d(1, 1, 1);
     }
+
     30% {
       transform: scale3d(1.25, 0.75, 1);
     }
+
     40% {
       transform: scale3d(0.75, 1.25, 1);
     }
+
     50% {
       transform: scale3d(1.15, 0.85, 1);
     }
+
     65% {
       transform: scale3d(0.95, 1.05, 1);
     }
+
     75% {
       transform: scale3d(1.05, 0.95, 1);
     }
+
     100% {
       transform: scale3d(1, 1, 1);
     }
   }
 
   .animate-clue-rubber-band {
-    animation: rubberBand 0.75s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+    animation: rubber-band 0.75s cubic-bezier(0.215, 0.61, 0.355, 1) both;
   }
 }

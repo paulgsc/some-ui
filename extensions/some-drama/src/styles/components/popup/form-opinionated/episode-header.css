@@ -3,10 +3,12 @@
 .dj-meta-title {
   flex: 2;
 }
+
 .dj-meta-ep {
   flex: 0 0 60px;
   text-align: center;
 }
+
 .dj-meta-date {
   flex: 1;
 }

@@ -1,29 +1,29 @@
 /* ── Accordion ───────────────────────────────────────────────────────────── */
 
 .dj-accordion-item {
+  background: var(--dj-paper-soft);
   border: 1px solid var(--dj-border);
   border-radius: var(--dj-r-card);
   overflow: hidden;
-  background: var(--dj-paper-soft);
 }
 
 .dj-accordion-header {
-  width: 100%;
-  padding: 14px 18px;
   background: transparent;
   border: none;
+  color: var(--dj-text);
   cursor: pointer;
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
-  color: var(--dj-text);
+  padding: 14px 18px;
   text-align: left;
+  width: 100%;
 }
 
 .dj-accordion-chevron {
-  transition: transform var(--dj-spring);
   color: var(--dj-muted);
   font-size: 13px;
+  transition: transform var(--dj-spring);
 }
 
 .dj-accordion-item.dj-open .dj-accordion-chevron {
@@ -31,9 +31,9 @@
 }
 
 .dj-accordion-panel {
-  overflow: hidden;
   max-height: 0;
   opacity: 0;
+  overflow: hidden;
   transform: translateY(-4px);
   transition:
     max-height 250ms var(--dj-ease),

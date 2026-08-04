@@ -4,35 +4,31 @@
     /* Refined Light Mode 
        Focus on high contrast and "Study Paper" cleanliness 
     */
-    --background: oklch(0.99 0.002 240);
-    --foreground: oklch(0.25 0.02 260);
-
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.25 0.02 260);
+    --background: oklch(99% 0.002 240deg);
+    --foreground: oklch(25% 0.02 260deg);
+    --card: oklch(100% 0 0deg);
+    --card-foreground: oklch(25% 0.02 260deg);
 
     /* Primary: Royal Blue - evokes trust and academic focus */
-    --primary: oklch(0.55 0.18 260);
-    --primary-foreground: oklch(0.99 0 0);
+    --primary: oklch(55% 0.18 260deg);
+    --primary-foreground: oklch(99% 0 0deg);
 
     /* Secondary: Soft Slate - for UI chrome */
-    --secondary: oklch(0.96 0.01 260);
-    --secondary-foreground: oklch(0.35 0.02 260);
+    --secondary: oklch(96% 0.01 260deg);
+    --secondary-foreground: oklch(35% 0.02 260deg);
 
     /* Success: "Correct" Green */
-    --success: oklch(0.68 0.16 150);
-    --success-foreground: oklch(0.99 0 0);
+    --success: oklch(68% 0.16 150deg);
+    --success-foreground: oklch(99% 0 0deg);
 
     /* Destructive: "Mistake" Coral */
-    --destructive: oklch(0.62 0.18 25);
-    --destructive-foreground: oklch(0.99 0 0);
-
-    --muted: oklch(0.94 0.01 260);
-    --muted-foreground: oklch(0.55 0.02 260);
-
-    --border: oklch(0.91 0.01 260);
-    --input: oklch(0.91 0.01 260);
-    --ring: oklch(0.55 0.18 260 / 0.5);
-
+    --destructive: oklch(62% 0.18 25deg);
+    --destructive-foreground: oklch(99% 0 0deg);
+    --muted: oklch(94% 0.01 260deg);
+    --muted-foreground: oklch(55% 0.02 260deg);
+    --border: oklch(91% 0.01 260deg);
+    --input: oklch(91% 0.01 260deg);
+    --ring: oklch(55% 0.18 260deg / 50%);
     --radius: 0.75rem;
   }
 
@@ -41,32 +37,26 @@
   */
   .dark .topik,
   .topik.dark {
-    --background: oklch(0.18 0.01 260);
+    --background: oklch(18% 0.01 260deg);
+
     /* Dimmed from oklch(0.92 0.01 260) — same "never the sun" bar as
        tokens/base.css's own --foreground, hue kept at this theme's own
        260. */
-    --foreground: oklch(0.68 0.035 260);
-
-    --card: oklch(0.22 0.01 260);
+    --foreground: oklch(68% 0.035 260deg);
+    --card: oklch(22% 0.01 260deg);
     --card-foreground: var(--foreground);
-
-    --primary: oklch(0.65 0.14 250);
-    --primary-foreground: oklch(0.12 0.01 260);
-
-    --secondary: oklch(0.28 0.02 260);
+    --primary: oklch(65% 0.14 250deg);
+    --primary-foreground: oklch(12% 0.01 260deg);
+    --secondary: oklch(28% 0.02 260deg);
     --secondary-foreground: var(--foreground);
-
-    --success: oklch(0.72 0.12 150);
-    --success-foreground: oklch(0.15 0.02 150);
-
-    --destructive: oklch(0.65 0.15 25);
-    --destructive-foreground: oklch(0.99 0 0);
-
-    --muted: oklch(0.25 0.02 260);
-    --muted-foreground: oklch(0.48 0.025 260);
-
-    --border: oklch(0.32 0.02 260);
-    --input: oklch(0.32 0.02 260);
+    --success: oklch(72% 0.12 150deg);
+    --success-foreground: oklch(15% 0.02 150deg);
+    --destructive: oklch(65% 0.15 25deg);
+    --destructive-foreground: oklch(99% 0 0deg);
+    --muted: oklch(25% 0.02 260deg);
+    --muted-foreground: oklch(48% 0.025 260deg);
+    --border: oklch(32% 0.02 260deg);
+    --input: oklch(32% 0.02 260deg);
   }
 }
 
@@ -82,17 +72,17 @@
 
   .topik-card {
     background: var(--card);
-    color: var(--card-foreground);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: 0 4px 12px oklch(0 0 0 / 0.03);
+    box-shadow: 0 4px 12px oklch(0% 0 0deg / 3%);
+    color: var(--card-foreground);
   }
 
   .topik-btn-primary {
     background: var(--primary);
-    color: var(--primary-foreground);
-    padding: 0.6rem 1.2rem;
     border-radius: calc(var(--radius) - 0.25rem);
+    color: var(--primary-foreground);
     font-weight: 500;
+    padding: 0.6rem 1.2rem;
   }
 } /* Updated theme for Korean learning app with vibrant accent colors */
