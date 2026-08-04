@@ -142,6 +142,85 @@ describe("solveLayout - geometry invariants", () => {
       )
     )
   })
+
+  // Seed 1554378956 is the CI run that first caught this; it is pinned so the
+  // regression has a deterministic reproduction rather than one that depends
+  // on fast-check drawing the same shape again.
+  it("focus-aware solving tiles the viewport for the seed that first caught the absent-focus collapse", () => {
+    fc.assert(
+      fc.property(
+        layoutIntentSequenceArbitrary,
+        viewportArbitrary,
+        regionArbitrary,
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (intents, viewport, focusId, intensity) => {
+          let tree: LayoutNode<YouTubeRegion> | null = null
+          for (const intent of intents) tree = applyIntent(tree, intent)
+          if (tree === null) return
+
+          const focused = solveLayoutWithFocus(
+            tree,
+            viewport,
+            focusId,
+            intensity
+          )
+          expect(isValidTiling(focused, viewport)).toBe(true)
+        }
+      ),
+      { seed: 1554378956, path: "76:5:5:4:4:5:5:4:0:3:3:3", endOnFailure: true }
+    )
+  })
+
+  // The shrunk counterexample from that run, as a plain example: a two-leaf
+  // tree focused at full intensity on a region it does not contain. Every
+  // node is off the focus path, so before the guard in `focusConstraints`
+  // both children solved to zero width while the root still claimed all
+  // 100x100 - a gap the size of the viewport.
+  it("focusing a region absent from the tree is a no-op, not a collapse", () => {
+    const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
+    const tree: LayoutNode<YouTubeRegion> = {
+      type: "split",
+      axis: "row",
+      splitId: "split-0",
+      children: [
+        { node: { type: "leaf", id: "video" }, weight: 1 },
+        { node: { type: "leaf", id: "footerRight" }, weight: 1 },
+      ],
+    }
+
+    const base = solveLayout(tree, viewport)
+    const focused = solveLayoutWithFocus(tree, viewport, "sidebarTop", 1)
+
+    expect(isValidTiling(focused, viewport)).toBe(true)
+    // Absent target means no emphasis to apply, so geometry is untouched.
+    expect(focused).toEqual(base)
+  })
+
+  // The complement: a target that *is* present must still be emphasised at
+  // full intensity, so the guard above cannot be satisfied by disabling focus
+  // altogether.
+  it("focusing a region present in the tree still gives it the full extent at intensity 1", () => {
+    const viewport: Rect = { x: 0, y: 0, width: 100, height: 100 }
+    const tree: LayoutNode<YouTubeRegion> = {
+      type: "split",
+      axis: "row",
+      splitId: "split-0",
+      children: [
+        { node: { type: "leaf", id: "video" }, weight: 1 },
+        { node: { type: "leaf", id: "footerRight" }, weight: 1 },
+      ],
+    }
+
+    const focused = solveLayoutWithFocus(tree, viewport, "video", 1)
+
+    expect(isValidTiling(focused, viewport)).toBe(true)
+    const leaves = collectSolvedLeaves(focused)
+    expect(leaves.find((l) => l.id === "video")!.rect.width).toBeCloseTo(100, 5)
+    expect(leaves.find((l) => l.id === "footerRight")!.rect.width).toBeCloseTo(
+      0,
+      5
+    )
+  })
 })
 
 function collectSolvedLeaves<T>(
