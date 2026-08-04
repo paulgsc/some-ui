@@ -16,9 +16,9 @@ pub fn pixel_to_hex(x: f32, y: f32, size: f32) -> CubeCoord {
     let r = (2.0 / 3.0 * y) / size;
 
     // Convert to cube coordinates
-    let  cx = q;
-    let  cz = r;
-    let  cy = -cx - cz;
+    let cx = q;
+    let cz = r;
+    let cy = -cx - cz;
 
     // Round to nearest hex
     let mut rx = cx.round();
