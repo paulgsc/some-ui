@@ -17,7 +17,7 @@
     "clean:build": "turbo clean:build && turbo daemon stop && rimraf dist",
     "build": "scripts/with-limits.sh turbo run build --filter='!./crates/*'",
     "build:crates": "scripts/with-limits.sh turbo run build --filter='./crates/*'",
-    "build:unsafe": "turbo run build",
+    "build:unsafe": "turbo run build --filter='!./crates/*'",
     "build-storybook": "scripts/with-limits.sh storybook build",
     "build:template": "cargo run --manifest-path crates/pkg_cloner/Cargo.toml",
     "wasm:link": "scripts/wasm-link.sh",
