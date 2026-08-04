@@ -30,6 +30,7 @@ import { toast } from "sonner"
 
 import type { UserSettings } from "@/lib/tenant"
 import { useSettings, useUpdateSettings } from "@/lib/tenant"
+import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
   value: TTSProvider
@@ -223,6 +224,11 @@ const SettingsForm = ({
             </SelectContent>
           </Select>
         </div>
+
+        <StudyNudgeSection
+          preferences={draft.notifications}
+          onChange={(notifications) => setDraft({ ...draft, notifications })}
+        />
 
         <Button
           onClick={handleSave}

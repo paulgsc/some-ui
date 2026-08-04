@@ -2,6 +2,7 @@ import {
   DEFAULT_AUDIO_PREFERENCES,
   withAudioDefaults,
 } from "../audio-preferences"
+import { DEFAULT_NUDGE_PREFERENCES, withNudgeDefaults } from "../study-nudge"
 import type { StorageAdapter } from "./storage"
 import {
   browserLocalStorage,
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   ttsProvider: "openai",
   ttsVoiceId: "",
   audio: DEFAULT_AUDIO_PREFERENCES,
+  notifications: DEFAULT_NUDGE_PREFERENCES,
   defaultSessionDurationMinutes: 10,
   defaultLayoutTree: "study",
 }
@@ -39,6 +41,7 @@ export class SettingsRepository {
       ...DEFAULT_SETTINGS,
       ...stored,
       audio: withAudioDefaults(stored.audio),
+      notifications: withNudgeDefaults(stored.notifications),
     }
   }
 
