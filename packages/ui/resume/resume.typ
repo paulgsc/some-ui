@@ -94,7 +94,7 @@ an attention firewall that makes exposure opt-in rather than default, a
 rendering layer that treats visual comfort as a measurable property, and an
 instruction engine that estimates what a learner knows instead of marching
 them through a fixed curriculum. All four ship from `some-ui` --- a
-58-package TypeScript and Rust monorepo --- alongside the CI/CD, release, and
+52-package TypeScript and Rust monorepo --- alongside the CI/CD, release, and
 signing pipelines behind them. Sole engineer, from architecture to production.
 
 #sectionhead[Selected Work --- some-ui, sole engineer (2024 --- Present)]
@@ -210,7 +210,7 @@ signing pipelines behind them. Sole engineer, from architecture to production.
 
 #sectionhead[Platform, Release, and Reuse]
 
-- Operate a 58-package pnpm and Turborepo monorepo spanning TypeScript and
+- Operate a 52-package pnpm and Turborepo monorepo spanning TypeScript and
   Rust. A required merge gate scopes lint, type-check, and test runs to
   changed packages and their transitive dependents, backed by a full-repo
   trunk sweep and a standalone Rust job running `clippy` and `cargo-deny`.

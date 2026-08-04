@@ -141,23 +141,34 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*58 workspace packages, 12 browser extensions* --- counted 2026-07-26.
-`pnpm -r list --depth -1` reports 59 workspace projects including the repo
-root, hence 58. The extension count is directories under `extensions/` that
+*52 workspace packages, 6 browser extensions* --- counted 2026-08-04.
+`pnpm -r list --depth -1` reports 53 workspace projects including the repo
+root, hence 52. The extension count is directories under `extensions/` that
 declare a `manifest_version`, which deliberately excludes the shared
 packages (`common`, `transport`, `docs`, `scripts`) and the
-`filter-classifier` test corpus. Re-derive both before reusing them if
-meaningful time has passed --- an earlier revision of this résumé claimed
-"61 packages" and "15+ extensions", and neither survived a recount.
+`filter-classifier` test corpus: `some-censor`, `some-conveyor`,
+`some-drama`, `some-filter`, `some-mujik`, `suspender-ledger`. Re-derive
+both before reusing them if meaningful time has passed --- an earlier
+revision of this résumé claimed "61 packages" and "15+ extensions", and
+neither survived a recount.
+
+Both numbers dropped on 2026-08-04, when six graveyard workspaces
+(`some-tab-meta`, `tab-tracker`, `some-schedule`, `some-cycle`,
+`some-prompt`, `some-streak`) were deleted as defunct. That is the honest
+direction for this document to move: the earlier figures counted work that
+was abandoned, and a smaller number of extensions that actually ship is a
+stronger claim than a larger one padded with dead trees.
 
 = Method
 
 The repository is the dataset: résumé claims are derived from what's
 actually in the tree (a workflow file, a package, a shipped extension), the
-way `some-schedule`'s own `JobBoardExtractor`
-(`extensions/some-schedule/src/extractors/job-board.ts`) derives structured
-fields — title, seniority signal, a `TECH_TERMS` keyword list — from a job
-posting's raw text. Same instinct, pointed inward instead of outward. See
+way `some-filter`'s own `classifyPage`
+(`extensions/some-filter/src/lib/content/theme-detector.ts`) derives a
+structured verdict — theme, a comfort report, a pass or fail against a
+threshold — from a page's raw rendered styles rather than from whatever the
+page claims about itself. Same instinct, pointed inward instead of outward.
+See
 `packages/ui/resume/README.md` for the build pipeline itself
 (`resume.typ` → `dist/resume.pdf` via `scripts/compile.mjs`) and what's
 deliberately out of scope for the MVP cut.
@@ -218,11 +229,13 @@ deliberately out of scope for the MVP cut.
 )
 
 *Tally:* 5 direct matches, 1 adjacent-but-different, 6 gaps out of 12.
-Notably, this repo's own job-listing keyword extractor
-(`some-schedule`'s `TECH_TERMS` --- rust, typescript, aws, kubernetes, ml,
-llm, systems, compiler, `...`) doesn't track AEM, SOLR, Angular, or
-Bootstrap either — the gap isn't just this analysis, it's in what the
-maintainer's own tooling considers relevant.
+An earlier revision made this point by citing `some-schedule`'s
+`TECH_TERMS` keyword list, which tracked rust, typescript, aws, kubernetes,
+ml, llm, systems and compiler but not AEM, SOLR, Angular or Bootstrap — the
+gap wasn't just in this analysis, it was in what the maintainer's own
+tooling considered relevant. That extension was deleted on 2026-08-04, so
+the citation is gone; the observation it supported is unchanged, but it now
+rests on the requirements map above rather than on a file in the tree.
 
 *So what, for this posting specifically:* this is a government-subcontract
 staff-aug role embedded in an existing AEM/SOLR stack, not a from-scratch
@@ -249,7 +262,7 @@ not claim AWS or model-training experience that isn't backed by the repo.
   one page, reusable across applications) and moved the "why" and the
   posting-specific analysis here rather than deleting them.
 
-- *v4 (current)* --- v3 was over-corrected, and reading it against the
+- *v4* --- v3 was over-corrected, and reading it against the
   actual user stories behind the projects made the failure obvious. Stripped
   to deliverables, the work read like ordinary feature output: "developed a
   browser-extension architecture that isolates extension UI from host-page
@@ -289,3 +302,14 @@ not claim AWS or model-training experience that isn't backed by the repo.
 
   Also corrected the workspace counts (61 → 58 packages, "15+" → 12
   extensions); see §2's *Counts* note for how both are derived.
+
+- *v5 (current)* --- no argument changed; the tree underneath it did. Six
+  graveyard workspaces (`some-tab-meta`, `tab-tracker`, `some-schedule`,
+  `some-cycle`, `some-prompt`, `some-streak`) were deleted as defunct, so
+  the counts were re-derived by the §2 method: 58 → 52 packages, 12 → 6
+  extensions. Two citations pointed into the deleted trees and were dealt
+  with rather than left dangling — the *Method* section's analogy now uses
+  `some-filter`'s `classifyPage`, and the requirements-map aside that leaned
+  on `some-schedule`'s `TECH_TERMS` is marked as historical. A résumé whose
+  numbers are derived from the repo has to move when the repo does,
+  including downward.
