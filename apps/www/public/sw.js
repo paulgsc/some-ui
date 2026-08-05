@@ -10,15 +10,20 @@
  *    the tab that raised it is gone, and only a service worker outlives its
  *    page.
  *
- * 2. `push` — display a notification the server sent. Nothing sends one
- *    yet. The Rust side has no VAPID keypair, no subscription store, and no
- *    scheduler (docs/study-nudge.md lists what that would take). The
- *    handler ships anyway because it is the half that has to already be
- *    installed and claimed *before* the server half can be turned on: a
- *    push that arrives at a browser whose worker has no `push` listener is
- *    dropped, and a worker update only lands on the visit after the one
- *    that fetched it. Writing it now means the server work is a server-only
- *    change.
+ * 2. `push` — display a notification the server sent. `file_host` now sends
+ *    them: it holds the VAPID identity, the subscription store, and the
+ *    daily tick. That handler shipped before anything could send one, which
+ *    is what made the server work a server-only change — a push arriving at
+ *    a browser whose worker has no `push` listener is dropped, and a worker
+ *    update only lands on the visit after the one that fetched it.
+ *
+ * 3. `pushsubscriptionchange` — re-subscribe when the browser drops a
+ *    subscription on its own, and tell the server the new address.
+ *
+ * That third one is the same "ship it before it is needed" bet as the
+ * second, and so is the snooze `fetch` in `notificationclick`: the worker
+ * a person is running is always the one from their previous visit, so
+ * anything the server will come to rely on has to be here a deploy early.
  *
  * There is deliberately **no `fetch` handler**. A service worker that
  * registers none is bypassed for navigations altogether, so this file
@@ -30,11 +35,58 @@
 /** Shared by the page and the push payload so a second nudge replaces the
  * first in the notification centre rather than stacking under it. Kept in
  * step by hand with NUDGE_TAG in src/lib/study-nudge/service-worker.ts —
- * this file is plain public/ asset JS and cannot import from src/. */
+ * this file is plain public/ asset JS and cannot import from src/ — and
+ * with `nudge::payload::NUDGE_TAG` in paulgsc/server. Three copies, two
+ * repositories; a mismatch shows up as notifications stacking. */
 const NUDGE_TAG = "some-ui.study-nudge"
 
-/** Dismiss-only action id; see the notificationclick handler. */
+/** The "Later" action id; see the notificationclick handler. */
 const DISMISS_ACTION = "later"
+
+/**
+ * Where `file_host` is, from inside a worker that cannot import
+ * src/lib/file-host-config.
+ *
+ * **Derived from `self.registration.scope`, not injected at build time.**
+ * Both were available and this is the smaller coupling: the path below is
+ * origin-absolute, so resolving it against the scope yields this origin's
+ * proxy route whatever subpath the app is served from, with no build step
+ * and no worker URL that changes when a deployment does. It is the same
+ * hand-maintained-constant problem NUDGE_TAG has, one file over.
+ *
+ * The one case it does not cover, stated rather than left to be found: a
+ * deployment setting `VITE_FILE_HOST_ENDPOINT` to front `file_host`
+ * somewhere else has no way to tell the worker, so the snooze POST below
+ * 404s there and "Later" falls back to dismiss-only — which is exactly the
+ * behaviour #907 shipped, and safe. Everything else keeps working, because
+ * the page resolves its own base URL and does not use this one.
+ *
+ * Kept in step by hand with FILE_HOST_PROXY_PATH in
+ * src/lib/file-host-config, the `location` blocks in nginx.https.conf, and
+ * the `server.proxy` entry in vite.config.ts.
+ */
+const FILE_HOST_PROXY_PATH = "/api/file-host/api/v1"
+
+function fileHostUrl(route) {
+  return new URL(`${FILE_HOST_PROXY_PATH}${route}`, self.registration.scope)
+    .href
+}
+
+/**
+ * base64url → Uint8Array. A second copy of the helper in
+ * src/lib/study-nudge/service-worker.ts, tested over there; this file
+ * cannot import it. Needed because `applicationServerKey` will not accept
+ * the string, and a wrong conversion produces a subscription that every
+ * send reports as accepted and no browser ever displays.
+ */
+function urlBase64ToUint8Array(base64url) {
+  const padding = "=".repeat((4 - (base64url.length % 4)) % 4)
+  const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/")
+  const raw = atob(base64)
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i)
+  return bytes
+}
 
 // Take over as soon as this version is installed instead of idling in
 // `waiting` until every tab using the previous worker closes. A stale
@@ -95,6 +147,52 @@ self.addEventListener("push", (event) => {
 })
 
 /**
+ * The browser can drop a subscription without asking: storage pressure, a
+ * permission reset, or its own key rotation. This event is how it says so,
+ * and re-subscribing here is what keeps the person from silently stopping
+ * receiving reminders until they next open the settings page.
+ *
+ * Everything is wrapped so a failure resolves. A `pushsubscriptionchange`
+ * that rejects is reported to the user agent as a broken worker, and the
+ * page's `reconcilePushSubscription` covers the same ground on the next
+ * visit, so there is nothing to gain by throwing.
+ */
+async function resubscribe(event) {
+  // Some browsers hand over both; Chrome fires the event bare. The old
+  // endpoint is worth deleting when it is offered, so the server is not
+  // left fanning out to an address that no longer exists.
+  const previous = event.oldSubscription
+  if (previous) {
+    await fetch(fileHostUrl("/push/subscriptions"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: previous.endpoint }),
+    }).catch(() => undefined)
+  }
+
+  let subscription = event.newSubscription
+  if (!subscription) {
+    const response = await fetch(fileHostUrl("/push/vapid-key"))
+    if (!response.ok) return
+    const { public_key: publicKey } = await response.json()
+    subscription = await self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    })
+  }
+
+  await fetch(fileHostUrl("/push/subscriptions"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(subscription),
+  })
+}
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(resubscribe(event).catch(() => undefined))
+})
+
+/**
  * Focus a tab already on this origin rather than opening a second one — the
  * dashboard is typically already open somewhere, and a nudge that spawns a
  * duplicate tab every time adds friction instead of removing it.
@@ -120,17 +218,49 @@ async function openStudySession(url) {
   await self.clients.openWindow(target.href)
 }
 
+/**
+ * "Later" postpones, as it says.
+ *
+ * It was dismiss-only until the cooldown moved. The comment that used to
+ * be here explained why — the stamp lived in localStorage, which a worker
+ * cannot reach — and that constraint is gone: `nudge_log` holds the
+ * cooldown now, and a service worker can `fetch`. This is the four lines
+ * that make the button do what it says, and the note is rewritten rather
+ * than left, because leaving it would mislead the next reader in the
+ * opposite direction.
+ *
+ * The semantics are the server's and are worth knowing from here: each
+ * dismissal **doubles** the interval rather than postponing by a fixed
+ * hour, and the day's quota caps it at one further nudge, so a second
+ * dismissal means silence until tomorrow. A fixed postponement would nudge
+ * someone three times for dismissing three times — the nagging this
+ * feature exists to avoid.
+ *
+ * A rejected `fetch` must not escape. A `notificationclick` that throws is
+ * reported to the user agent as a broken worker, and Chrome revokes the
+ * subscription over repeated failures — so an offline worker, or a
+ * `file_host` that is down, falls back to exactly the dismiss-only
+ * behaviour this replaced. That is both the safe outcome and the correct
+ * one: the cooldown is measured from when a nudge was *shown*, so a
+ * dismissal that reaches nobody costs nothing.
+ */
+async function snoozeToday() {
+  await fetch(fileHostUrl("/push/snooze"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  }).catch(() => undefined)
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
 
-  // "Later" is dismiss-only on purpose. Postponing properly means writing a
-  // new cooldown stamp, and the stamp lives in localStorage, which a worker
-  // cannot reach. The spacing a person actually feels is already enforced:
-  // minHoursBetweenNudges is measured from when a nudge was *shown*, not
-  // from when it was answered, so dismissing costs nothing and the next
-  // nudge is a full cooldown away regardless.
-  if (event.action === DISMISS_ACTION) return
+  if (event.action === DISMISS_ACTION) {
+    event.waitUntil(snoozeToday())
+    return
+  }
 
+  // "Start now" and a click on the notification body are the same thing:
+  // put the person in the session. Unchanged.
   const url = event.notification.data?.url || self.registration.scope
   event.waitUntil(openStudySession(url))
 })

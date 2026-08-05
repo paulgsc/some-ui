@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
 import { createProfileRepository } from "./profile-repository"
+import { createSessionsBackend } from "./sessions-backend"
 import type {
   CreateSessionInput,
   UpdateSessionInput,
 } from "./sessions-repository"
-import { createSessionsRepository } from "./sessions-repository"
 import { createSettingsRepository } from "./settings-repository"
 import type {
   SessionRecord,
@@ -17,7 +17,12 @@ import type {
 
 const profileRepository = createProfileRepository()
 const settingsRepository = createSettingsRepository()
-const sessionsRepository = createSessionsRepository()
+/**
+ * `localStorage` on the Pages build, `file_host` everywhere else — and
+ * nothing above this line knows which. That is the seam #923 swapped;
+ * see `sessions-backend.ts`.
+ */
+const sessionsRepository = createSessionsBackend()
 
 const profileKey = ["tenant", "profile"] as const
 /**

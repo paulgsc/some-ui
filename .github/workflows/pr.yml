@@ -157,6 +157,23 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # The study-nudge decision table is vendored from paulgsc/server and run
+      # by both repositories' suites, so that a rule changed on one side and
+      # not the other fails a test. That only holds while the two copies are
+      # the same file, and nothing else enforces it - the server repository
+      # cannot publish here. Scoped to changes that touch either the table or
+      # the policy it guards; the script itself skips (rather than fails) when
+      # GitHub is unreachable, since a network blip is not evidence of drift.
+      - name: Shared decision table matches paulgsc/server (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/src/lib/study-nudge/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command node apps/www/scripts/check-shared-fixture.mjs
+          else
+            echo "No study-nudge files changed."
+          fi
+
       # Scoped to the CSP/nginx config surface actually touched by this PR -
       # this is a config invariant (apps/www/nginx.security-headers.conf),
       # not a per-package build/test, so turbo's dep-graph filter doesn't

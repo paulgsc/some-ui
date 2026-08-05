@@ -27,6 +27,21 @@ const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 const TTS_PROXY_PATH = "/api/tts"
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
+// The same trick for the same reason, one port over: file_host (paulgsc/server)
+// serves plain HTTP on 3000 and terminates no TLS, so an https:// page cannot
+// fetch it directly - mixed content, blocked before the request leaves the
+// page, and no amount of ALLOWED_ORIGINS on the server changes that. This is
+// the study origin's only route to sessions and push subscriptions, since a
+// service worker requires a secure context in the first place.
+//
+// Kept in step by hand with the location block in apps/www/nginx.https.conf
+// and with FILE_HOST_PROXY_PATH in src/lib/file-host-config - changing it means
+// changing all three. FILE_HOST_PROXY_TARGET covers file_host running on
+// another host or port.
+const FILE_HOST_PROXY_PATH = "/api/file-host"
+const fileHostProxyTarget =
+  process.env.FILE_HOST_PROXY_TARGET || "http://127.0.0.1:3000"
+
 // honeycomb's sfx (see scripts/link-content-assets.js) is curated,
 // gitignored, and only ever present if a developer symlinked it in on purpose
 // - never auto-run on dev startup (see that script's header for why). Without
@@ -96,6 +111,29 @@ export default defineConfig(
                   `  Both TTS containers have to be up, not just the backend:\n` +
                   `    docker compose up -d openai-edge-tts nginx\n` +
                   `  (set TTS_PROXY_TARGET if your PORT is not 5050 or the backend is on another host.)\n`
+              )
+            })
+          },
+        },
+        [FILE_HOST_PROXY_PATH]: {
+          target: fileHostProxyTarget,
+          changeOrigin: true,
+          rewrite: (path): string =>
+            path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
+          // Name the backend, the same way the TTS proxy names its
+          // container. Vite's bare "http proxy error: ECONNREFUSED" is the
+          // exact message that gets read as a CORS problem and sends
+          // someone to reconfigure a server that was already correct.
+          configure: (proxy): void => {
+            proxy.on("error", (error: Error & { code?: string }): void => {
+              if (error.code !== "ECONNREFUSED") return
+              // eslint-disable-next-line no-console
+              console.warn(
+                `\n[www] nothing is listening on ${fileHostProxyTarget} - file_host is down.\n` +
+                  `  Sessions and study reminders will fail; everything else works.\n` +
+                  `  Start it from paulgsc/server:\n` +
+                  `    cargo run -p file_host\n` +
+                  `  (set FILE_HOST_PROXY_TARGET if it runs on another host or port.)\n`
               )
             })
           },
