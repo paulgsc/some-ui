@@ -160,6 +160,20 @@ export function recordNudgeShown(at: Date): void {
  * `file_host` the address it produced. Without it the server can encrypt
  * and VAPID-sign a notification and has nobody to send it to.
  *
+ * ## Consent is a precondition, not a preference
+ *
+ * A subscription now carries the topics the person agreed to, in the same
+ * request that creates it — `file_host` has no path that stores one
+ * without a grant, and an empty topic list is honoured as "receives
+ * nothing" rather than read as "receives everything". So `subscribeToPush`
+ * takes topics and there is no default: a person who has never been asked
+ * is a person who is never notified, which is the only defensible position
+ * for a channel that reaches a locked screen.
+ *
+ * The topics on offer come from `GET /push/vapid-key` alongside the key,
+ * so the settings UI renders what the sender will actually honour rather
+ * than a list maintained separately here.
+ *
  * Everything below degrades to #907's behaviour rather than failing. A
  * missing or unconfigured backend must cost the closed-browser case, not
  * the feature: `useStudyNudge` still polls, and in static mode it is the
@@ -195,6 +209,8 @@ export type PushSubscribeOutcome =
  */
 type PushSubscriptionLike = {
   endpoint: string
+  /** The only way to reach `keys.p256dh`/`keys.auth`; see `postSubscription`. */
+  toJSON: () => object
   unsubscribe: () => Promise<boolean>
 }
 
@@ -214,7 +230,29 @@ type PushDeps = {
   registration?: PushRegistrationLike | null
 }
 
-type VapidKeyResponse = { public_key: string }
+type SubscribeDeps = PushDeps & {
+  /**
+   * What they agreed to hear about. No default, and not optional: the one
+   * value that must never be guessed here is this one.
+   */
+  topics: ReadonlyArray<string>
+}
+
+/** `topics` is optional: a `file_host` older than the consent work answers
+ * with the key alone, and reading that as "no topics on offer" is right. */
+type VapidKeyResponse = { public_key: string; topics?: Array<string> }
+
+/**
+ * What this deployment can be subscribed to, and the key to subscribe with.
+ *
+ * Both come from one request because they answer one question — what can
+ * this server actually send me — and a settings page that offered a topic
+ * the sender does not honour would be asking for a consent it cannot keep.
+ */
+export type PushOffer = {
+  applicationServerKey: Uint8Array<ArrayBuffer>
+  topics: Array<string>
+}
 
 /**
  * base64url → `Uint8Array`, because `applicationServerKey` will not take
@@ -272,24 +310,43 @@ async function resolveRegistration(
  * supposed to be quiet most of the time. `GET /push/vapid-key` exists so
  * that rotating the key is not a frontend redeploy.
  */
-async function fetchApplicationServerKey(
+async function fetchPushOffer(
   transport: FileHostTransport
-): Promise<Uint8Array<ArrayBuffer>> {
-  const { public_key: publicKey } = await requestJSON<VapidKeyResponse>(
+): Promise<PushOffer> {
+  const { public_key: publicKey, topics } = await requestJSON<VapidKeyResponse>(
     transport,
     "/push/vapid-key"
   )
 
-  const key = urlBase64ToUint8Array(publicKey)
-  if (key.byteLength !== VAPID_KEY_BYTES) {
+  const applicationServerKey = urlBase64ToUint8Array(publicKey)
+  if (applicationServerKey.byteLength !== VAPID_KEY_BYTES) {
     // Refuse here rather than subscribing with it. A malformed key produces
     // a subscription that looks fine and never delivers, and the row
     // outlives the mistake.
     throw new Error(
-      `file_host returned a ${key.byteLength}-byte VAPID key; expected ${VAPID_KEY_BYTES}`
+      `file_host returned a ${applicationServerKey.byteLength}-byte VAPID key; expected ${VAPID_KEY_BYTES}`
     )
   }
-  return key
+  return { applicationServerKey, topics: topics ?? [] }
+}
+
+/**
+ * The topics this deployment offers, for the settings UI to render.
+ *
+ * Returns `[]` when there is no backend or it has no push identity — which
+ * the caller shows as "this build cannot notify you with the browser
+ * closed" rather than as an empty checklist.
+ */
+export async function fetchPushTopics(
+  deps: PushDeps = {}
+): Promise<Array<string>> {
+  const transport = defaultTransport(deps)
+  if (!transport) return []
+  try {
+    return (await fetchPushOffer(transport)).topics
+  } catch {
+    return []
+  }
 }
 
 /** Translate the ways this can fail into the outcomes above. */
@@ -300,15 +357,23 @@ function outcomeOf(error: unknown): PushSubscribeOutcome {
 }
 
 /**
- * Subscribe this browser and register the result with `file_host`.
+ * Register a subscription and the consent that permits sending to it.
  *
- * The `PushSubscription` is posted verbatim — `JSON.stringify(subscription)`
- * — because the server was built to accept exactly that shape, deliberately,
- * so that there is no mapping layer here to get wrong. The upsert is keyed
- * on endpoint, so calling this twice does not produce two rows.
+ * The browser's `PushSubscription` goes over as-is, flattened alongside
+ * `topics`, because the server takes exactly that shape on purpose so that
+ * there is no mapping layer here to get wrong. The upsert is keyed on
+ * endpoint, so calling this twice does not produce two rows — and calling
+ * it again with a different topic list is how consent is *changed*, which
+ * is why the settings checklist re-runs it rather than doing anything of
+ * its own.
+ *
+ * An empty `topics` is passed through rather than rejected. It is a real
+ * answer — "reminders on, nothing I want to hear about" — and the server
+ * honours it as silence; short-circuiting it here would leave the stored
+ * grant disagreeing with the checkboxes on screen.
  */
 export async function subscribeToPush(
-  deps: PushDeps = {}
+  deps: SubscribeDeps
 ): Promise<PushSubscribeOutcome> {
   if (!nudgesSupported()) return "unsupported"
   if (nudgePermission() !== "granted") return "denied"
@@ -320,7 +385,7 @@ export async function subscribeToPush(
   if (!active) return "unsupported"
 
   try {
-    const applicationServerKey = await fetchApplicationServerKey(transport)
+    const { applicationServerKey } = await fetchPushOffer(transport)
 
     // An existing subscription is reused rather than replaced: it may have
     // been made with this same key, and unsubscribing to re-subscribe would
@@ -335,15 +400,38 @@ export async function subscribeToPush(
         applicationServerKey,
       }))
 
-    await requestJSON<{ endpoint: string }>(transport, "/push/subscriptions", {
-      method: "POST",
-      body: JSON.stringify(subscription),
-    })
-
+    await postSubscription(transport, subscription, deps.topics)
     return "subscribed"
   } catch (error) {
     return outcomeOf(error)
   }
+}
+
+/**
+ * `{ ...subscription, topics }` — one request, because a subscription
+ * without a grant is not a state the server should be able to hold, even
+ * briefly.
+ *
+ * `toJSON()` is what carries `keys.p256dh` and `keys.auth`: spreading a
+ * live `PushSubscription` yields an object with no own enumerable
+ * properties, so the naive `{ ...subscription, topics }` posts a body with
+ * nothing in it but the topic list. That failure is a `422` naming
+ * `keys.p256dh`, which at least says so — but only after a subscribe that
+ * looked like it worked.
+ */
+async function postSubscription(
+  transport: FileHostTransport,
+  subscription: PushSubscriptionLike,
+  topics: ReadonlyArray<string>
+): Promise<void> {
+  await requestJSON<{ endpoint: string; topics: Array<string> }>(
+    transport,
+    "/push/subscriptions",
+    {
+      method: "POST",
+      body: JSON.stringify({ ...subscription.toJSON(), topics }),
+    }
+  )
 }
 
 /**
@@ -412,10 +500,15 @@ export async function hasPushSubscription(
  * subscription nothing will ever send to. There is no endpoint to ask
  * "do you have mine?", and there does not need to be: the POST is an
  * idempotent upsert, so re-posting what we hold is both the check and the
- * repair. This is the client's half of the same conversation.
+ * repair.
+ *
+ * This is also where a `pushsubscriptionchange` is finished. That handler
+ * retires the dropped endpoint and stops, because a worker has no access
+ * to the consent a new subscription would have to carry; the topics live
+ * in settings, which only the page can read.
  */
 export async function reconcilePushSubscription(
-  deps: PushDeps = {}
+  deps: SubscribeDeps
 ): Promise<PushSubscribeOutcome | "none"> {
   if (!nudgesSupported()) return "unsupported"
 
@@ -427,10 +520,7 @@ export async function reconcilePushSubscription(
   if (!transport) return "unreachable"
 
   try {
-    await requestJSON<{ endpoint: string }>(transport, "/push/subscriptions", {
-      method: "POST",
-      body: JSON.stringify(subscription),
-    })
+    await postSubscription(transport, subscription, deps.topics)
     return "subscribed"
   } catch (error) {
     return outcomeOf(error)

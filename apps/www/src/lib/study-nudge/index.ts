@@ -38,7 +38,30 @@ export type NudgePreferences = {
   quietHoursEnd: number
   /** Floor on the gap between two nudges, measured from when one was shown. */
   minHoursBetweenNudges: number
+  /**
+   * What they agreed to be pushed about, by the server's own topic names.
+   *
+   * A preference in shape only — it is really a *consent record*, and it
+   * lives here because this is already the block that says what this app
+   * may do unprompted, and because it has to round-trip with `enabled`.
+   * The server holds the authoritative copy alongside the subscription; this
+   * is what gets re-sent when a subscription is replaced, which is the one
+   * moment the page needs to know it without asking.
+   *
+   * An empty list is a real answer, not a missing one: the server honours
+   * it as "receives nothing" rather than reading it as "receives
+   * everything". Nothing here defaults it to the full set for that reason.
+   */
+  pushTopics: Array<string>
 }
+
+/**
+ * The topic the settings toggle's own words describe: "nudge me when a
+ * session is prepared". Used as the grant when someone turns reminders on
+ * without opening the topic list — not a guess at what they want, but the
+ * thing the control they just used says it does.
+ */
+export const DEFAULT_PUSH_TOPIC = "lesson-ready"
 
 export const DEFAULT_NUDGE_PREFERENCES: NudgePreferences = {
   // Off until asked for, and not negotiable: turning this on requires a
@@ -49,6 +72,7 @@ export const DEFAULT_NUDGE_PREFERENCES: NudgePreferences = {
   quietHoursStart: 22,
   quietHoursEnd: 8,
   minHoursBetweenNudges: 4,
+  pushTopics: [DEFAULT_PUSH_TOPIC],
 }
 
 /**
@@ -254,5 +278,13 @@ export function decideNudge(input: NudgeInput): NudgeDecision {
 export function withNudgeDefaults(
   stored: Partial<NudgePreferences> | undefined
 ): NudgePreferences {
-  return { ...DEFAULT_NUDGE_PREFERENCES, ...stored }
+  const merged = { ...DEFAULT_NUDGE_PREFERENCES, ...stored }
+  // A browser that stored preferences before topics existed has no grant
+  // recorded, but did turn the toggle on — and the toggle says it nudges
+  // about prepared sessions. Reading that as the one topic it names is
+  // narrower than the alternative (everything) and matches what they were
+  // actually shown. An explicitly empty list survives untouched.
+  return Array.isArray(merged.pushTopics)
+    ? merged
+    : { ...merged, pushTopics: [DEFAULT_PUSH_TOPIC] }
 }

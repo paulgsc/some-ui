@@ -23,6 +23,11 @@ const VAPID_KEY =
   "BLMbF9ffKBiWQLCKvTHb6LO8Nb6dcUh6TItC455vu2kElga6PQvUmaFyCdykxY2nOSSL3yKgfbmFLRTUaGv4yV8"
 
 const ENDPOINT = "https://updates.push.services.mozilla.com/wpush/v2/abc"
+const P256DH = "BLMbF9ffKBiWQLCKvTHb6LO8Nb6dcUh6TItC455vu2k"
+const AUTH = "xS03Fi5ErfTNH_l9WHE9Ig"
+
+/** What the toggle grants when nobody opens the topic list. */
+const TOPICS = ["lesson-ready"]
 
 type Call = { route: string; init?: RequestInit }
 
@@ -43,7 +48,9 @@ function mockTransport(
     const answer = answers[route]
     if (answer) return Promise.resolve(answer())
     if (route === "/push/vapid-key") {
-      return Promise.resolve(jsonResponse({ public_key: VAPID_KEY }))
+      return Promise.resolve(
+        jsonResponse({ public_key: VAPID_KEY, topics: ["lesson-ready"] })
+      )
     }
     return Promise.resolve(jsonResponse({ endpoint: ENDPOINT }))
   }
@@ -59,7 +66,7 @@ function mockTransport(
 type FakeSubscription = {
   endpoint: string
   unsubscribed: boolean
-  toJSON: () => unknown
+  toJSON: () => object
   unsubscribe: () => Promise<boolean>
 }
 
@@ -67,7 +74,10 @@ function fakeSubscription(): FakeSubscription {
   const subscription: FakeSubscription = {
     endpoint: ENDPOINT,
     unsubscribed: false,
-    toJSON: (): unknown => ({ endpoint: ENDPOINT }),
+    toJSON: (): object => ({
+      endpoint: ENDPOINT,
+      keys: { p256dh: P256DH, auth: AUTH },
+    }),
     unsubscribe: (): Promise<boolean> => {
       subscription.unsubscribed = true
       return Promise.resolve(true)
@@ -181,7 +191,11 @@ describe("subscribeToPush", () => {
     const transport = mockTransport()
     const { registration, subscribeCalls } = fakeRegistration()
 
-    const outcome = await subscribeToPush({ transport, registration })
+    const outcome = await subscribeToPush({
+      transport,
+      registration,
+      topics: TOPICS,
+    })
 
     expect(outcome).toBe("subscribed")
 
@@ -195,10 +209,15 @@ describe("subscribeToPush", () => {
     const post = transport.calls[1]
     expect(post.route).toBe("/push/subscriptions")
     expect(post.init?.method).toBe("POST")
-    // Posted verbatim — the server takes the browser's shape on purpose so
-    // there is no mapping layer here to get wrong.
+    // The browser's own shape, flattened, plus the grant. `keys` is the
+    // part that goes missing if this ever spreads the subscription object
+    // instead of its `toJSON()` — a live PushSubscription has no own
+    // enumerable properties, so the naive version posts only `topics` and
+    // the server refuses it with a 422 naming `keys.p256dh`.
     expect(JSON.parse(String(post.init?.body))).toEqual({
       endpoint: ENDPOINT,
+      keys: { p256dh: P256DH, auth: AUTH },
+      topics: TOPICS,
     })
   })
 
@@ -207,9 +226,9 @@ describe("subscribeToPush", () => {
     const { registration, subscribeCalls } =
       fakeRegistration(fakeSubscription())
 
-    expect(await subscribeToPush({ transport, registration })).toBe(
-      "subscribed"
-    )
+    expect(
+      await subscribeToPush({ transport, registration, topics: TOPICS })
+    ).toBe("subscribed")
 
     // Subscribing twice is idempotent: no second subscribe() call, and the
     // POST is an upsert keyed on endpoint, so no duplicate row.
@@ -228,9 +247,9 @@ describe("subscribeToPush", () => {
 
     // Not a throw: a backend without push configured must cost the
     // closed-browser case, not the feature.
-    expect(await subscribeToPush({ transport, registration })).toBe(
-      "not-configured"
-    )
+    expect(
+      await subscribeToPush({ transport, registration, topics: TOPICS })
+    ).toBe("not-configured")
     expect(subscribeCalls).toHaveLength(0)
   })
 
@@ -241,22 +260,22 @@ describe("subscribeToPush", () => {
     )
     const { registration } = fakeRegistration()
 
-    expect(await subscribeToPush({ transport, registration })).toBe(
-      "unreachable"
-    )
+    expect(
+      await subscribeToPush({ transport, registration, topics: TOPICS })
+    ).toBe("unreachable")
   })
 
   it("refuses a VAPID key that is not a P-256 point", async () => {
     // A truncated or re-encoded key subscribes happily and never delivers;
     // the only symptom is silence. Refuse before the row exists.
     const transport = mockTransport({
-      "/push/vapid-key": () => jsonResponse({ public_key: "AQID" }),
+      "/push/vapid-key": () => jsonResponse({ public_key: "AQID", topics: [] }),
     })
     const { registration, subscribeCalls } = fakeRegistration()
 
-    expect(await subscribeToPush({ transport, registration })).toBe(
-      "unreachable"
-    )
+    expect(
+      await subscribeToPush({ transport, registration, topics: TOPICS })
+    ).toBe("unreachable")
     expect(subscribeCalls).toHaveLength(0)
   })
 
@@ -265,7 +284,9 @@ describe("subscribeToPush", () => {
     const transport = mockTransport()
     const { registration } = fakeRegistration()
 
-    expect(await subscribeToPush({ transport, registration })).toBe("denied")
+    expect(
+      await subscribeToPush({ transport, registration, topics: TOPICS })
+    ).toBe("denied")
     expect(transport.calls).toHaveLength(0)
   })
 })
@@ -319,9 +340,13 @@ describe("reconcilePushSubscription", () => {
     const transport = mockTransport()
     const { registration } = fakeRegistration(fakeSubscription())
 
-    expect(await reconcilePushSubscription({ transport, registration })).toBe(
-      "subscribed"
-    )
+    expect(
+      await reconcilePushSubscription({
+        transport,
+        registration,
+        topics: TOPICS,
+      })
+    ).toBe("subscribed")
     expect(transport.calls[0].route).toBe("/push/subscriptions")
   })
 
@@ -329,9 +354,13 @@ describe("reconcilePushSubscription", () => {
     const transport = mockTransport()
     const { registration } = fakeRegistration(null)
 
-    expect(await reconcilePushSubscription({ transport, registration })).toBe(
-      "none"
-    )
+    expect(
+      await reconcilePushSubscription({
+        transport,
+        registration,
+        topics: TOPICS,
+      })
+    ).toBe("none")
     expect(transport.calls).toHaveLength(0)
   })
 })

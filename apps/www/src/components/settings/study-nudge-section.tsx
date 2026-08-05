@@ -18,6 +18,17 @@
  * different thing in each - so the mode is stated rather than left to be
  * discovered.
  *
+ * ## Consent is asked for, not assumed
+ *
+ * A subscription carries the topics it is permitted to deliver, and the
+ * server honours an empty list as "receives nothing" rather than reading it
+ * as "receives everything". So the topics are a control here rather than a
+ * constant: the list is fetched from the deployment (`GET /push/vapid-key`
+ * returns it beside the key) so the checkboxes are what the sender will
+ * actually honour, and turning the switch on grants what is ticked. The
+ * default tick is `lesson-ready` and only that, because it is the topic the
+ * switch's own words describe.
+ *
  * ## Quiet hours are read-only in server mode, and say so
  *
  * The seam is genuinely awkward and the honest options were: disable the
@@ -41,6 +52,7 @@ import { toast } from "sonner"
 import type { NudgePreferences } from "@/lib/study-nudge"
 import { decideNudge, SILENT_REASON_LABEL } from "@/lib/study-nudge"
 import {
+  fetchPushTopics,
   hasPushSubscription,
   nudgePermission,
   nudgesSupported,
@@ -52,6 +64,17 @@ import {
 } from "@/lib/study-nudge/service-worker"
 import { clientOwnsNudgeDelivery } from "@/lib/study-nudge/use-study-nudge"
 import { useSessions } from "@/lib/tenant"
+
+/**
+ * Words for the server's topic names. A topic this build has no label for
+ * still renders - under its own identifier - rather than being hidden: a
+ * checkbox missing from a consent list is a grant nobody can withdraw.
+ */
+const TOPIC_LABEL: Record<string, string> = {
+  "lesson-ready": "A session is prepared and waiting",
+  coaching: "Coaching that follows from how sessions went",
+  "new-material": "New curriculum or exercises",
+}
 
 function clampHour(raw: string, fallback: number): number {
   const value = Number.parseInt(raw, 10)
@@ -125,11 +148,21 @@ export const StudyNudgeSection = ({
    */
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
 
+  /**
+   * What this deployment will actually honour. Fetched rather than listed
+   * here so the checkboxes cannot offer a consent the sender ignores; an
+   * empty result means there is no push backend to consent to at all.
+   */
+  const [offered, setOffered] = useState<Array<string>>([])
+
   useEffect(() => {
     if (!serverDelivers || !supported) return
     let live = true
     void hasPushSubscription().then((has) => {
       if (live) setSubscribed(has)
+    })
+    void fetchPushTopics().then((topics) => {
+      if (live) setOffered(topics)
     })
     return (): void => {
       live = false
@@ -163,7 +196,7 @@ export const StudyNudgeSection = ({
     await registerNudgeWorker()
 
     if (serverDelivers) {
-      const outcome = await subscribeToPush()
+      const outcome = await subscribeToPush({ topics: preferences.pushTopics })
       setSubscribed(outcome === "subscribed")
       if (outcome !== "subscribed") {
         // Reminders still turn on: without a subscription this degrades to
@@ -287,6 +320,45 @@ export const StudyNudgeSection = ({
               (NUDGE_QUIET_HOURS_START / _END) and shown here read-only, so this
               control cannot silently disagree with what actually decides.
             </p>
+          ) : null}
+
+          {serverDelivers && offered.length > 0 ? (
+            <div className="space-y-2">
+              <Label>Notify me about</Label>
+              {offered.map((topic) => (
+                <label
+                  key={topic}
+                  className="flex items-center gap-2 text-sm"
+                  htmlFor={`push-topic-${topic}`}
+                >
+                  <input
+                    id={`push-topic-${topic}`}
+                    type="checkbox"
+                    checked={preferences.pushTopics.includes(topic)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      // Re-subscribing is how consent is *changed*: the
+                      // upsert is keyed on endpoint, so posting the new
+                      // list replaces the grant rather than adding a row.
+                      const next = e.target.checked
+                        ? [...preferences.pushTopics, topic]
+                        : preferences.pushTopics.filter((t) => t !== topic)
+                      onChange({ ...preferences, pushTopics: next })
+                      void subscribeToPush({ topics: next })
+                    }}
+                  />
+                  {TOPIC_LABEL[topic] ?? topic}
+                </label>
+              ))}
+              {preferences.pushTopics.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  {/* An empty list is a real answer and the server honours
+                      it as silence. Saying so beats a person concluding
+                      later that reminders are broken. */}
+                  Nothing ticked, so nothing will be sent. Reminders stay on for
+                  this browser while a tab is open.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <StatusLine preferences={preferences} local={serverDelivers} />

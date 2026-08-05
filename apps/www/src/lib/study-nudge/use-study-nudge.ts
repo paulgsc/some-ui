@@ -4,10 +4,15 @@
  *
  * ## Two policies, one person
  *
- * #907's limitation is gone. `file_host` now holds the sessions, ports
- * `decideNudge` verbatim, ticks every fifteen minutes, and pushes to a
- * browser with no tab open — the thing this hook could never do. But it
- * does not *replace* this hook, because the two deployments are not the
+ * #907's limitation is gone. `file_host` holds the sessions now and pushes
+ * to a browser with no tab open — the thing this hook could never do. It
+ * does not run this hook's policy, though, and that distinction matters:
+ * the server keeps an engagement level per subject that decays with time
+ * and is restored by signals, and intervenes when the weighted aggregate
+ * falls to a threshold. `decideNudge` here is a *fallback* for a build with
+ * no backend, not a mirror of what the server does.
+ *
+ * So this hook is not replaced, because the two deployments are not the
  * same:
  *
  * - The **GitHub Pages** build (`DATA_MODE === "static"`) has no backend at
@@ -17,23 +22,24 @@
  *   down.
  *
  * Running both is not "occasionally two notifications", it is *reliably*
- * two on any day that earns one: this hook's cooldown lives in
- * `localStorage` and the server's in `nudge_log`, and neither can see the
- * other. For a feature whose entire value proposition is not being
- * annoying, that would make the product worse than #907 alone — which is
- * why this file changes in the same release as the subscription that makes
- * the server able to send.
+ * two whenever both conclude it is time: this hook's cooldown lives in
+ * `localStorage` and the server's pacing in an engagement ledger, and
+ * neither can see the other. For a feature whose entire value proposition
+ * is not being annoying, that would make the product worse than #907
+ * alone — which is why this file changes in the same release as the
+ * subscription that makes the server able to send.
  *
  * ## Standing down is not going quiet
  *
  * In server mode this hook still registers the worker (push needs it) and
- * still reconciles the subscription on load (the server prunes rows on
- * `410` and the browser can drop one unasked). It just does not raise
- * anything. The *decision* also keeps running where it is useful — the
- * settings status line — because "You've already studied today." is worth
- * saying whoever is doing the sending; see `study-nudge-section.tsx`,
- * where it is labelled as this browser's own reading rather than the
- * server's answer.
+ * still reconciles the subscription on load — the server prunes rows on
+ * `410`, the browser can drop one unasked, and `sw.js` deliberately does
+ * not re-subscribe because it cannot reach the consent a subscription has
+ * to carry. It just does not raise anything. The *decision* also keeps
+ * running where it is useful — the settings status line — because "You've
+ * already studied today." is worth saying whoever is doing the sending;
+ * see `study-nudge-section.tsx`, where it is labelled as this browser's
+ * own reading rather than the server's answer.
  *
  * Hidden tabs have their timers throttled to roughly once a minute, which
  * a five-minute interval absorbs without noticing. The interval is the only
@@ -152,10 +158,14 @@ export function useStudyNudge(): void {
   // row on `410` from the push service, and a browser can drop a
   // subscription unasked; re-posting what this browser holds is both the
   // check and the repair, and it is an idempotent upsert either way.
+  const topics = preferences.pushTopics
   useEffect(() => {
     if (deliver || !preferences.enabled) return
-    void reconcilePushSubscription()
-  }, [deliver, preferences.enabled])
+    // Re-sent rather than assumed still stored: an upsert with the topics
+    // this browser believes it agreed to is what keeps the server's grant
+    // and the settings checklist from drifting apart.
+    void reconcilePushSubscription({ topics })
+  }, [deliver, preferences.enabled, topics])
 
   useEffect(() => {
     // Nothing to poll for in server mode: the decision this would compute

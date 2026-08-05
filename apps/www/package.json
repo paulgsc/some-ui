@@ -21,7 +21,6 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check:fixture": "node scripts/check-shared-fixture.mjs",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit"
   },

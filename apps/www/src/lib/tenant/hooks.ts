@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
+import { reportSessionTransition } from "../study-nudge/signals"
 import { createProfileRepository } from "./profile-repository"
 import { createSessionsBackend } from "./sessions-backend"
 import type {
@@ -107,8 +108,12 @@ export function useCreateSession(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateSessionInput) => sessionsRepository.create(input),
-    onSuccess: () => {
+    onSuccess: (session) => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
+      // A new session is the opportunity a reminder can point at. See
+      // `lib/study-nudge/signals` for why this is emitted here and not in
+      // the repository.
+      reportSessionTransition(session)
     },
   })
 }
@@ -116,14 +121,29 @@ export function useCreateSession(): UseMutationResult<
 export function useUpdateSession(): UseMutationResult<
   SessionRecord,
   Error,
-  { id: string; patch: UpdateSessionInput }
+  { id: string; patch: UpdateSessionInput },
+  { previous: SessionRecord | undefined }
 > {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, patch }) => sessionsRepository.update(id, patch),
-    onSuccess: (session) => {
+    // Captured before the write, because after it the cache holds the new
+    // record and the transition is unrecoverable. Only a *change* of status
+    // is a behaviour worth reporting: without the before, renaming a
+    // running session would report "they sat down" all over again and
+    // silently inflate the engagement the server is measuring.
+    onMutate: ({ id }) => ({
+      previous: queryClient.getQueryData<SessionRecord>(sessionKey(id)),
+    }),
+    onSuccess: (session, _variables, context) => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
       queryClient.setQueryData(sessionKey(session.id), session)
+      // No `previous` means the single-session query was never populated —
+      // an update from a list view. Reporting a provisioning for it would
+      // be wrong, so `signalForTransition` is only given what is known.
+      if (context.previous) {
+        reportSessionTransition(session, context.previous)
+      }
     },
   })
 }
@@ -178,6 +198,10 @@ export function useUpdateStatusManySessions(): UseMutationResult<
       sessionsRepository.updateStatusMany(ids, status),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
+      // Deliberately silent. A bulk status change is housekeeping from the
+      // list view - marking six drafts as scheduled is not six people
+      // sitting down - and reporting it would put behaviour the server
+      // trusts on an administrative action.
     },
   })
 }
