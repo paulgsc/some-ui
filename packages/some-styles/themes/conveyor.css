@@ -43,6 +43,7 @@
   --cv-line: #39444f;
 
   /* ── Raw ink ramp ─────────────────────────────────────────── */
+
   /* Dimmed from #e9eef3/#aab6c4/#717f8e (oklch L .947/.771/.590) — every
      consumer below is a text-color role read against a near-black steel
      surface, and the top of that ramp was glowing white regardless of its

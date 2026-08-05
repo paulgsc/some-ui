@@ -20,14 +20,17 @@ const {
 }))
 
 vi.mock("@interview/lib/interview/audio-recording-service", () => ({
-  AudioRecordingService: vi.fn().mockImplementation(() => ({
-    requestPermission: requestPermissionMock,
-    startRecording: startRecordingMock,
-    stop: stopMock,
-    pause: pauseMock,
-    resume: resumeMock,
-    cleanup: cleanupMock,
-  })),
+  // eslint-disable-next-line prefer-arrow-callback
+  AudioRecordingService: vi.fn().mockImplementation(function () {
+    return {
+      requestPermission: requestPermissionMock,
+      startRecording: startRecordingMock,
+      stop: stopMock,
+      pause: pauseMock,
+      resume: resumeMock,
+      cleanup: cleanupMock,
+    }
+  }),
 }))
 
 // ═══════════════════════════════════════════════════════════════════════════

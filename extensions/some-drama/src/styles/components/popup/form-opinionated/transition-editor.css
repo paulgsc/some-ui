@@ -5,20 +5,20 @@
 }
 
 .dj-state-card {
-  flex: 1;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--dj-border);
   background: var(--dj-surface);
+  border: 1px solid var(--dj-border);
+  border-radius: 12px;
+  color: var(--dj-text);
+  display: flex;
+  flex: 1;
   font-size: 15px;
   font-weight: 500;
-  color: var(--dj-text);
+  justify-content: center;
+  min-height: 44px;
   outline: none;
+  padding: 10px 12px;
+  text-align: center;
   transition:
     border-color 180ms var(--dj-ease),
     box-shadow 180ms var(--dj-ease),
@@ -27,20 +27,20 @@
 
 .dj-state-card:focus {
   border-color: var(--peach-400);
-  transform: translateY(-1px);
   box-shadow:
     0 0 0 1px var(--peach-300),
     0 0 16px var(--strawberry-300);
+  transform: translateY(-1px);
 }
 
 .dj-state-card:empty::before {
-  content: attr(data-placeholder);
   color: var(--dj-muted);
+  content: attr(data-placeholder);
 }
 
 .dj-trans-arrow {
-  font-size: 18px;
   color: var(--dj-muted);
-  user-select: none;
   flex-shrink: 0;
+  font-size: 18px;
+  user-select: none;
 }

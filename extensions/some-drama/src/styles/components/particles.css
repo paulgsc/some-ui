@@ -19,32 +19,30 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-blossom-layer {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
   height: 100vh;
-  pointer-events: none;
-  z-index: 2147483646;
+  inset: 0;
   overflow: visible;
+  pointer-events: none;
+  position: fixed;
+  width: 100vw;
+  z-index: 2147483646;
 }
 
 .dc-blossom {
-  position: fixed; /* fixed so left/top are viewport-relative, not layer-relative */
-  left: calc(var(--b-layer-x, 0px) + var(--b-px, 0px));
-  top: calc(var(--b-layer-y, 0px) + var(--b-py, 0px));
+  animation-delay: var(--b-delay, 0s);
+  animation-duration: var(--b-dur, 7s);
+  animation-iteration-count: infinite;
+  animation-name: dc-blossom-drift;
+  animation-timing-function: ease-in-out;
+  backface-visibility: hidden;
   font-size: 16px;
+  left: calc(var(--b-layer-x, 0px) + var(--b-px, 0px));
   line-height: 1;
   opacity: 0;
-
-  will-change: transform, opacity;
+  position: fixed; /* fixed so left/top are viewport-relative, not layer-relative */
+  top: calc(var(--b-layer-y, 0px) + var(--b-py, 0px));
   transform: translateZ(0);
-  backface-visibility: hidden;
-
-  animation-name: dc-blossom-drift;
-  animation-duration: var(--b-dur, 7s);
-  animation-delay: var(--b-delay, 0s);
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes dc-blossom-drift {
@@ -52,12 +50,15 @@
     opacity: 0;
     transform: translate(0, 0) rotate(0deg) scale(0.8) translateZ(0);
   }
+
   15% {
     opacity: 0.85;
   }
+
   60% {
     opacity: 0.5;
   }
+
   100% {
     opacity: 0;
     transform: translate(var(--b-tx, -35px), var(--b-ty, -70px))

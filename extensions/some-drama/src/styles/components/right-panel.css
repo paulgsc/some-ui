@@ -4,8 +4,8 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 .dc-card-right {
-  min-width: 140px;
   max-width: 170px;
+  min-width: 140px;
   padding-left: 4px;
 }
 
@@ -15,28 +15,28 @@
   /* Vibrant gradient background */
   background: linear-gradient(90deg, var(--dc-peach), var(--dc-rose));
   border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 10px;
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-weight: bold;
-  color: hsl(0 0% 100%);
-  letter-spacing: 0.05em;
-  white-space: nowrap;
 
   /* Glow effect */
   box-shadow:
-    0 2px 12px hsl(340 70% 55% / 0.45),
-    0 0 20px hsl(18 85% 60% / 0.25),
-    inset 0 1px 0 hsl(0 0% 100% / 0.25);
-  text-shadow: 0 1px 2px hsl(340 60% 25% / 0.5);
+    0 2px 12px hsl(340deg 70% 55% / 45%),
+    0 0 20px hsl(18deg 85% 60% / 25%),
+    inset 0 1px 0 hsl(0deg 0% 100% / 25%);
+  color: hsl(0deg 0% 100%);
+  font-family: Georgia, serif;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  text-shadow: 0 1px 2px hsl(340deg 60% 25% / 50%);
+  white-space: nowrap;
 }
 
 .dc-timestamp {
-  font-size: 11px;
-  font-family: "Courier New", monospace;
-  font-weight: bold;
   color: var(--dc-text-secondary);
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: bold;
   letter-spacing: 0.1em;
   text-shadow: var(--dc-text-glow-subtle);
 }
@@ -47,53 +47,53 @@
 }
 
 .dc-progress-labels {
-  font-size: 9px;
-  font-family: "Courier New", monospace;
-  font-weight: bold;
   color: var(--dc-text-secondary);
+  font-family: "Courier New", monospace;
+  font-size: 9px;
+  font-weight: bold;
   text-shadow: var(--dc-text-glow-subtle);
 }
 
 .dc-progress-track {
-  height: 6px;
-  background: hsl(340 20% 25%);
+  background: hsl(340deg 20% 25%);
   border-radius: 4px;
+  box-shadow:
+    inset 0 1px 3px hsl(0deg 0% 0% / 40%),
+    0 1px 0 hsl(340deg 30% 35% / 30%);
+  height: 6px;
   overflow: hidden;
   position: relative;
-  box-shadow:
-    inset 0 1px 3px hsl(0 0% 0% / 0.4),
-    0 1px 0 hsl(340 30% 35% / 0.3);
 }
 
 .dc-progress-fill {
-  height: 100%;
   background: linear-gradient(to right, var(--dc-peach), var(--dc-rose));
   border-radius: 4px;
-  width: var(--dc-prog-pct, 0%);
-  transition: width 1s linear;
-  position: relative;
 
   /* Glow on the fill */
   box-shadow:
-    0 0 10px hsl(340 70% 60% / 0.5),
-    0 0 20px hsl(18 80% 60% / 0.3);
+    0 0 10px hsl(340deg 70% 60% / 50%),
+    0 0 20px hsl(18deg 80% 60% / 30%);
+  height: 100%;
+  position: relative;
+  transition: width 1s linear;
+  width: var(--dc-prog-pct, 0%);
 }
 
 /* Glint dot at fill tip */
 .dc-progress-fill::after {
+  background: hsl(0deg 0% 100%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--dc-rose),
+    0 0 12px hsl(340deg 80% 65% / 80%),
+    0 0 24px hsl(340deg 70% 60% / 50%);
   content: "";
+  height: 10px;
   position: absolute;
   right: 0;
   top: 50%;
   translate: 50% -50%;
   width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: hsl(0 0% 100%);
-  box-shadow:
-    0 0 0 2px var(--dc-rose),
-    0 0 12px hsl(340 80% 65% / 0.8),
-    0 0 24px hsl(340 70% 60% / 0.5);
 }
 
 /* ── Stats row ───────────────────────────────────────────────────────────── */
@@ -103,19 +103,19 @@
 }
 
 .dc-stat-label {
-  font-size: 8px;
   color: var(--dc-text-muted);
   font-family: Georgia, serif;
+  font-size: 8px;
   font-style: italic;
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   text-shadow: var(--dc-text-glow-subtle);
+  text-transform: uppercase;
 }
 
 .dc-stat-value {
-  font-size: 12px;
   color: var(--dc-text-primary);
   font-family: Georgia, serif;
+  font-size: 12px;
   font-weight: bold;
   letter-spacing: 0.03em;
   text-shadow: var(--dc-text-glow-warm);
@@ -124,14 +124,14 @@
 /* ── Mood strip ──────────────────────────────────────────────────────────── */
 
 .dc-mood-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
   background: hsl(var(--dc-mood-hue) 65% 55%);
-  opacity: 0.4;
-  border: 1.5px solid hsl(var(--dc-mood-hue) 50% 45% / 0.5);
-  transition: all 350ms var(--dc-ease);
+  border: 1.5px solid hsl(var(--dc-mood-hue) 50% 45% / 50%);
+  border-radius: 50%;
   cursor: pointer;
+  height: 10px;
+  opacity: 0.4;
+  transition: all 350ms var(--dc-ease);
+  width: 10px;
 }
 
 .dc-mood-dot:hover {
@@ -140,24 +140,24 @@
 }
 
 .dc-mood-dot.dc-mood-active {
+  border-color: hsl(var(--dc-mood-hue) 60% 60%);
+  box-shadow:
+    0 0 12px hsl(var(--dc-mood-hue) 70% 55% / 70%),
+    0 0 24px hsl(var(--dc-mood-hue) 65% 50% / 40%),
+    0 0 4px hsl(var(--dc-mood-hue) 80% 70%);
   opacity: 1;
   transform: scale(1.4);
-  box-shadow:
-    0 0 12px hsl(var(--dc-mood-hue) 70% 55% / 0.7),
-    0 0 24px hsl(var(--dc-mood-hue) 65% 50% / 0.4),
-    0 0 4px hsl(var(--dc-mood-hue) 80% 70%);
-  border-color: hsl(var(--dc-mood-hue) 60% 60%);
 }
 
 .dc-mood-label {
-  font-size: 10px;
+  color: hsl(var(--dc-mood-hue) 50% 70%);
   font-family: Georgia, serif;
+  font-size: 10px;
   font-style: italic;
   font-weight: bold;
-  color: hsl(var(--dc-mood-hue) 50% 70%);
   margin-left: 4px;
   text-shadow:
-    0 0 8px hsl(var(--dc-mood-hue) 60% 50% / 0.4),
-    0 1px 2px hsl(0 0% 0% / 0.5);
+    0 0 8px hsl(var(--dc-mood-hue) 60% 50% / 40%),
+    0 1px 2px hsl(0deg 0% 0% / 50%);
   transition: color 400ms var(--dc-ease);
 }

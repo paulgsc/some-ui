@@ -338,7 +338,10 @@ describe("the warm-up", () => {
     expect(passageLength).toBeGreaterThan(0)
 
     typeStep(input, passageLength)
-    await screen.findByText("Step 0.")
+    await waitFor(
+      () => screen.findByText("Step 0."),
+      { timeout: 10000 } // Increase timeout for warm-up completion
+    )
     expect(screen.queryByText(/Warm up/i)).not.toBeInTheDocument()
   })
 

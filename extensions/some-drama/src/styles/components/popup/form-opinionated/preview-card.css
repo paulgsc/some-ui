@@ -9,11 +9,11 @@
 .dj-preview-card {
   background: linear-gradient(135deg, var(--moon-900) 0%, var(--moon-800) 100%);
   border-radius: 16px;
-  padding: 22px;
-  color: var(--moon-ink);
   box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.25),
-    0 0 30px rgba(255, 120, 180, 0.15);
+    0 10px 25px rgb(0 0 0 / 25%),
+    0 0 30px rgb(255 120 180 / 15%);
+  color: var(--moon-ink);
+  padding: 22px;
   transition: box-shadow 240ms var(--dj-ease);
 }
 
@@ -22,25 +22,25 @@
 }
 
 .card-meta-line {
+  color: var(--strawberry-300);
   font-size: 13px;
   letter-spacing: 0.05em;
-  color: var(--strawberry-300);
   text-transform: uppercase;
 }
 
 .card-transitions-line {
+  color: var(--moon-ink);
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--moon-ink);
 }
 
 .card-chip {
-  background: rgba(255, 255, 255, 0.12);
-  padding: 4px 10px;
+  animation: dj-chip-in 220ms var(--dj-spring) both;
+  background: rgb(255 255 255 / 12%);
   border-radius: 999px;
   font-size: 11px;
-  animation: dj-chip-in 220ms var(--dj-spring) both;
+  padding: 4px 10px;
 }
 
 @keyframes dj-chip-in {
@@ -48,6 +48,7 @@
     opacity: 0;
     transform: translateX(8px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -62,7 +63,7 @@
 }
 
 .card-empty-hint {
+  color: rgb(255 255 255 / 50%);
   font-size: 12px;
   font-style: italic;
-  color: rgba(255, 255, 255, 0.5);
 }

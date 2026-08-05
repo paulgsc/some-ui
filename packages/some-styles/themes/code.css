@@ -4,51 +4,50 @@
 
 .code {
   /* Editor background */
-  --background: oklch(0.12 0.01 240);
+  --background: oklch(12% 0.01 240deg);
+
   /* Dimmed from oklch(0.92 0.01 260) — same "never the sun" bar as
      tokens/base.css's own --foreground, hue kept at this theme's own
      260 (vim-night blue). */
-  --foreground: oklch(0.68 0.045 260);
+  --foreground: oklch(68% 0.045 260deg);
 
   /* Panels / blocks */
-  --card: oklch(0.15 0.012 240);
+  --card: oklch(15% 0.012 240deg);
   --card-foreground: var(--foreground);
-
-  --popover: oklch(0.15 0.012 240);
+  --popover: oklch(15% 0.012 240deg);
   --popover-foreground: var(--foreground);
 
   /* Cursor / selection / active line */
-  --secondary: oklch(0.2 0.015 250);
+  --secondary: oklch(20% 0.015 250deg);
   --secondary-foreground: var(--foreground);
 
   /* Comments / gutters */
-  --muted: oklch(0.26 0.015 250);
-  --muted-foreground: oklch(0.48 0.035 260);
+  --muted: oklch(26% 0.015 250deg);
+  --muted-foreground: oklch(48% 0.035 260deg);
 
   /* Keywords / functions (vim purple/blue) */
-  --primary: oklch(0.65 0.18 270);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: oklch(65% 0.18 270deg);
+  --primary-foreground: oklch(98% 0 0deg);
 
   /* Types / numbers */
-  --accent: oklch(0.7 0.2 200);
-  --accent-foreground: oklch(0.98 0 0);
+  --accent: oklch(70% 0.2 200deg);
+  --accent-foreground: oklch(98% 0 0deg);
 
   /* Errors */
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
+  --destructive: oklch(62% 0.22 25deg);
+  --destructive-foreground: oklch(98% 0 0deg);
 
   /* Structure */
-  --border: oklch(0.22 0.01 240);
+  --border: oklch(22% 0.01 240deg);
   --input: var(--border);
   --ring: var(--primary);
 
   /* Sidebar / line numbers */
-  --sidebar: oklch(0.14 0.01 240);
-  --sidebar-foreground: oklch(0.55 0.03 250);
-  --sidebar-accent: oklch(0.2 0.015 250);
+  --sidebar: oklch(14% 0.01 240deg);
+  --sidebar-foreground: oklch(55% 0.03 250deg);
+  --sidebar-accent: oklch(20% 0.015 250deg);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--primary);
-
   --radius: 0.4rem;
 
   background-color: var(--background);
@@ -58,8 +57,8 @@
 /* Optional slightly deeper dark mode */
 .code.dark,
 .dark .code {
-  --background: oklch(0.1 0.01 240);
-  --card: oklch(0.13 0.01 240);
-  --secondary: oklch(0.18 0.015 250);
-  --muted: oklch(0.24 0.015 250);
+  --background: oklch(10% 0.01 240deg);
+  --card: oklch(13% 0.01 240deg);
+  --secondary: oklch(18% 0.015 250deg);
+  --muted: oklch(24% 0.015 250deg);
 }

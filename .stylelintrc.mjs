@@ -50,5 +50,23 @@ export default {
     "media-feature-range-notation": "prefix",
     // Adopts the import notation from `postcss-import`
     "import-notation": "string",
+    // stylelint-config-standard turns this on, but it is wrong for this repo
+    // on both counts.
+    //
+    // Correctness: the autofix only strips the prefix, it does not merge the
+    // declaration with the unprefixed one that usually sits next to it. On
+    // `.dc-title-pill` it turned
+    //     backdrop-filter: var(--dc-blur);
+    //     -webkit-backdrop-filter: var(--dc-blur);
+    // into the same declaration twice.
+    //
+    // Coverage: the premise of the rule is that autoprefixer re-adds whatever
+    // it removes. It does for background-clip, user-select and appearance, but
+    // not for backdrop-filter — unprefixed backdrop-filter only shipped in
+    // Safari 18, and `-webkit-backdrop-filter` is what makes every glass
+    // surface in umag/makjang render on anything older. Deleting the twelve
+    // hand-written prefixes still in the tree would be a silent visual
+    // regression on Safari and iOS, not a cleanup.
+    "property-no-vendor-prefix": null,
   },
 }

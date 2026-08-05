@@ -8,39 +8,39 @@
   --spacing: 0.25rem;
 
   /* ── Core Brand Colors — Vibrant & saturated for dark backgrounds ─────── */
-  --dc-peach: hsl(18 95% 65%);
-  --dc-rose: hsl(340 85% 60%);
-  --dc-gold: hsl(42 100% 55%);
-  --dc-coral: hsl(12 90% 62%);
+  --dc-peach: hsl(18deg 95% 65%);
+  --dc-rose: hsl(340deg 85% 60%);
+  --dc-gold: hsl(42deg 100% 55%);
+  --dc-coral: hsl(12deg 90% 62%);
 
   /* ── Surface Colors — Semi-opaque with solid fallbacks ────────────────── */
-  --dc-surface-solid: hsl(25 30% 18%);
-  --dc-surface-glass: hsl(25 25% 15% / 0.92);
-  --dc-surface-elevated: hsl(25 20% 22% / 0.96);
+  --dc-surface-solid: hsl(25deg 30% 18%);
+  --dc-surface-glass: hsl(25deg 25% 15% / 92%);
+  --dc-surface-elevated: hsl(25deg 20% 22% / 96%);
 
   /* ── Text Colors — High contrast for legibility ───────────────────────── */
-  --dc-text-primary: hsl(30 20% 95%);
-  --dc-text-secondary: hsl(30 15% 75%);
-  --dc-text-muted: hsl(30 10% 55%);
-  --dc-text-dark: hsl(25 50% 12%);
+  --dc-text-primary: hsl(30deg 20% 95%);
+  --dc-text-secondary: hsl(30deg 15% 75%);
+  --dc-text-muted: hsl(30deg 10% 55%);
+  --dc-text-dark: hsl(25deg 50% 12%);
 
   /* ── Border Colors — Visible but subtle ───────────────────────────────── */
-  --dc-border: hsl(340 40% 45% / 0.5);
-  --dc-border-strong: hsl(340 50% 55% / 0.7);
-  --dc-border-glow: hsl(340 60% 65% / 0.4);
+  --dc-border: hsl(340deg 40% 45% / 50%);
+  --dc-border-strong: hsl(340deg 50% 55% / 70%);
+  --dc-border-glow: hsl(340deg 60% 65% / 40%);
 
   /* ── Shadows — Colored shadows for depth on dark backgrounds ──────────── */
-  --dc-shadow: hsl(340 60% 20% / 0.5);
-  --dc-shadow-strong: hsl(340 70% 15% / 0.7);
-  --dc-shadow-glow: hsl(340 80% 55% / 0.35);
+  --dc-shadow: hsl(340deg 60% 20% / 50%);
+  --dc-shadow-strong: hsl(340deg 70% 15% / 70%);
+  --dc-shadow-glow: hsl(340deg 80% 55% / 35%);
 
   /* ── Text Shadows — For text to pop on any background ─────────────────── */
-  --dc-text-glow-warm: 0 0 12px hsl(18 90% 60% / 0.5),
-    0 0 4px hsl(0 0% 0% / 0.8), 0 1px 2px hsl(0 0% 0% / 0.6);
-  --dc-text-glow-gold: 0 0 10px hsl(42 100% 55% / 0.6),
-    0 0 4px hsl(0 0% 0% / 0.8);
-  --dc-text-glow-subtle: 0 1px 3px hsl(0 0% 0% / 0.7),
-    0 0 8px hsl(340 60% 50% / 0.3);
+  --dc-text-glow-warm: 0 0 12px hsl(18deg 90% 60% / 50%),
+    0 0 4px hsl(0deg 0% 0% / 80%), 0 1px 2px hsl(0deg 0% 0% / 60%);
+  --dc-text-glow-gold: 0 0 10px hsl(42deg 100% 55% / 60%),
+    0 0 4px hsl(0deg 0% 0% / 80%);
+  --dc-text-glow-subtle: 0 1px 3px hsl(0deg 0% 0% / 70%),
+    0 0 8px hsl(340deg 60% 50% / 30%);
 
   /* ── Radii ────────────────────────────────────────────────────────────── */
   --dc-r-card: 20px;
@@ -57,16 +57,15 @@
   --dc-prog-pct: 0%;
 
   /* ── Emotion vector spectrum (ADR-002) ────────────────────────────────── */
-  --dc-warm: hsl(36 90% 64%);
-  --dc-cool: hsl(250 70% 68%);
-  --dc-tension: hsl(322 78% 62%);
-
+  --dc-warm: hsl(36deg 90% 64%);
+  --dc-cool: hsl(250deg 70% 68%);
+  --dc-tension: hsl(322deg 78% 62%);
   --dj-bg: #fcfbf9; /* Notebook soft paper background */
   --dj-text: #2c2a29; /* High contrast readability charcoal */
   --dj-border: #e6e3df; /* Organic subtle baseline lines */
   --dj-accent: #634eb8; /* Single warm violet character accent color */
   --dj-muted: #8c8782; /* Auxiliary guidance text color */
-  --dj-surface: #ffffff; /* Foreground pristine element backing */
+  --dj-surface: #fff; /* Foreground pristine element backing */
   --dj-preview-bg: linear-gradient(
     135deg,
     #1e1b24 0%,

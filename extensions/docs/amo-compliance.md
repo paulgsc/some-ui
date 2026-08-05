@@ -35,10 +35,10 @@ When you call `web-ext sign --channel=unlisted`, your `.xpi` is uploaded to Mozi
 infrastructure and an AMO add-on record is created. Mozilla can — and does — sweep uploaded
 content at any time, listed or not. The two review scenarios you will encounter:
 
-| Scenario | Trigger | Timeline | Outcome if violation found |
-|---|---|---|---|
-| Automated scan | Every upload | Minutes | Instant disable or 30-day warning |
-| Manual sweep | Mozilla initiative | Days–weeks after upload | Immediate permanent disable |
+| Scenario       | Trigger            | Timeline                | Outcome if violation found        |
+| -------------- | ------------------ | ----------------------- | --------------------------------- |
+| Automated scan | Every upload       | Minutes                 | Instant disable or 30-day warning |
+| Manual sweep   | Mozilla initiative | Days–weeks after upload | Immediate permanent disable       |
 
 The 30-day warning (as in the source-missing email) gives you time to resubmit a compliant
 version. A permanent disable (as in the deceptive-content email) requires an appeal. You can
@@ -47,7 +47,7 @@ reviewing the same build.
 
 **Unlisted vs. listed differences relevant to compliance:**
 
-- Source code upload is required for *both* channels.
+- Source code upload is required for _both_ channels.
 - Unlisted skips the public review queue but not policy enforcement.
 - Unlisted add-ons can continue to be used by installed users even after disable (unlike listed).
 - You have 6 months to appeal any enforcement action.
@@ -58,11 +58,11 @@ reviewing the same build.
 
 Issues are classified on the **ABC model**:
 
-| Class | Meaning | When it fires |
-|---|---|---|
-| **A** | Blocking — will fail AMO review | Before or at submission; immediate action required |
-| **B** | Likely — probable flag on next manual sweep | After submission; caught in 1–2 cycles |
-| **C** | Hygiene — best practice; eventual flag risk | Long-term; caught as policies tighten |
+| Class | Meaning                                     | When it fires                                      |
+| ----- | ------------------------------------------- | -------------------------------------------------- |
+| **A** | Blocking — will fail AMO review             | Before or at submission; immediate action required |
+| **B** | Likely — probable flag on next manual sweep | After submission; caught in 1–2 cycles             |
+| **C** | Hygiene — best practice; eventual flag risk | Long-term; caught as policies tighten              |
 
 Each footgun below includes: the AMO policy it maps to, a weight (1–5 severity), and the
 affected extensions.
@@ -71,7 +71,7 @@ affected extensions.
 
 ## A — Blocking: Will Fail Review
 
-### A1 · Source Code Not Uploaded *(weight: 5)*
+### A1 · Source Code Not Uploaded _(weight: 5)_
 
 **Policy:** [Sources](https://extensionworkshop.com/documentation/publish/add-on-policies/#sources)
 
@@ -80,10 +80,11 @@ code be accompanied by a source archive and build instructions. A Vite + TypeScr
 produces machine-generated output — every extension in this workspace is affected.
 
 **What is required:**
+
 - A `.zip` of the source tree (excluding `node_modules`, `dist`, `.env*`)
 - A top-level `README` (or `README.build.md`) that describes, step by step, how to reproduce the
   exact `dist/` output from the source archive using only public package registries
-- The archive must be uploaded via the AMO developer hub *source code upload field* at sign time;
+- The archive must be uploaded via the AMO developer hub _source code upload field_ at sign time;
   `web-ext sign` does not do this automatically
 
 **Affected:** All extensions (every workspace produces compiled output)
@@ -92,7 +93,7 @@ produces machine-generated output — every extension in this workspace is affec
 
 ---
 
-### A2 · Localhost Permissions in Production Manifest *(weight: 5)*
+### A2 · Localhost Permissions in Production Manifest _(weight: 5)_
 
 **Policy:** [Permissions](https://extensionworkshop.com/documentation/develop/request-the-right-permissions/)
 
@@ -100,14 +101,16 @@ Some manifests hardcode `http://localhost:3000/*` (or similar) as a host permiss
 content-script match. AMO rejects these unconditionally: production add-ons must not request
 access to `localhost`.
 
-**Affected:** `some-cycle`, `some-prompt`, `some-streak`
+**Affected:** none. The only offender was `some-streak` (`http://localhost:3000/*` in
+`permissions`), removed along with the rest of the graveyard workspaces. Retained as a rule to
+check new manifests against, not an open finding.
 
 **Fix:** Remove localhost entries entirely from production manifests. If needed for development,
 gate them behind a separate `manifest.dev.json` that is never submitted.
 
 ---
 
-### A3 · Manifest V2 (Deprecated) *(weight: 4)*
+### A3 · Manifest V2 (Deprecated) _(weight: 4)_
 
 **Policy:** [MV2 Deprecation Timeline](https://extensionworkshop.com/documentation/develop/manifest-v3-migration-guide/)
 
@@ -115,11 +118,10 @@ Mozilla has deprecated MV2. New MV2 submissions are unlikely to pass review beyo
 and existing MV2 add-ons will eventually be forced to migrate. Starting MV3 migration now
 prevents a forced, rushed migration later.
 
-**Affected:** `some-cycle`, `some-drama`, `some-mujik`, `some-prompt`, `some-schedule`,
-`some-scrobbler`, `some-streak`, `some-tab-meta`, `tab-tracker`, and the Firefox variant
-of `some-filter`
+**Affected:** `some-drama` — the last remaining MV2 manifest in the tree.
 
 **Key MV3 changes required:**
+
 - `background.scripts` → `background.scripts` (array form, Firefox) or service worker (Chrome)
 - `browser_action` → `action`
 - `web_accessible_resources` gains required `matches` array
@@ -128,7 +130,7 @@ of `some-filter`
 
 ---
 
-### A4 · CI Auto-Sign on Main Merge *(weight: 4)*
+### A4 · CI Auto-Sign on Main Merge _(weight: 4)_
 
 This is a process control, not a code issue. The current CI pipeline triggers `web-ext sign`
 automatically on every push to `main`. Until all A/B footguns are resolved, an automatic sign
@@ -142,14 +144,14 @@ pre-sign checklist passes in CI.
 
 ## B — Likely: Probable Flag on Next Cycle
 
-### B1 · Overly Broad Host Permissions *(weight: 4)*
+### B1 · Overly Broad Host Permissions _(weight: 4)_
 
 **Policy:** [Request only what you need](https://extensionworkshop.com/documentation/develop/request-the-right-permissions/#request-permissions-at-runtime)
 
 `<all_urls>` and `*://*/*` are the broadest possible host permission. AMO reviewers scrutinize
 these closely and may request narrowing or a written justification.
 
-**Affected (MV2 `<all_urls>`):** `some-drama`, `some-schedule`, `tab-tracker`
+**Affected (MV2 `<all_urls>`):** `some-drama`
 **Affected (MV3 `*://*/*` host_permissions):** `suspender-ledger`, `some-conveyor`
 
 For tab suspenders and content scripts that genuinely need all-URL access, a written justification
@@ -158,7 +160,7 @@ specific sites, narrow the match pattern.
 
 ---
 
-### B2 · Overly Broad web_accessible_resources *(weight: 3)*
+### B2 · Overly Broad web_accessible_resources _(weight: 3)_
 
 **Policy:** [web_accessible_resources security note](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/web_accessible_resources)
 
@@ -166,14 +168,17 @@ Resources declared in `web_accessible_resources` are accessible to any web page 
 the declared patterns. Exposing `./*` (all assets) turns the extension's entire file system
 into a fingerprinting surface and may raise a policy flag.
 
-**Affected:** `some-cycle` (`["./*", "icons/*"]`)
+**Affected:** none. The only offender was `some-cycle` (`["./*", "icons/*"]`), removed along
+with the rest of the graveyard workspaces. `some-conveyor` is the closest remaining case and
+already enumerates concrete resources (`*.wasm`, `assets/*`, `styles/*`, `polyhedron/*`), so
+this entry is retained as a rule to check new extensions against, not an open finding.
 
 **Fix:** List only the specific files actually embedded in page content (e.g. the suspend page,
 a specific injected CSS), with narrowed `matches` arrays.
 
 ---
 
-### B3 · Suspend Page Title/Favicon Reflection *(weight: 3)*
+### B3 · Suspend Page Title/Favicon Reflection _(weight: 3)_
 
 **Policy:** [Acceptable Use — Deceptive/misleading](https://www.mozilla.org/about/legal/acceptable-use/)
 
@@ -184,6 +189,7 @@ indistinguishable from phishing scaffolding. (This was the original block; the a
 but a future sweep could re-flag it.)
 
 **Fix:**
+
 - Prefix the document title: `[Suspended] ${originalTitle}` instead of `${originalTitle}`
 - Overlay a small badge on the favicon rather than serving the site's exact icon verbatim
 
@@ -191,7 +197,7 @@ This keeps recognizability while making the suspended state visually unambiguous
 
 ---
 
-### B4 · Missing CSP in Extension HTML Surfaces *(weight: 3)*
+### B4 · Missing CSP in Extension HTML Surfaces _(weight: 3)_
 
 **Policy:** [Content Security Policy](https://extensionworkshop.com/documentation/develop/content-security-policy/)
 
@@ -215,7 +221,7 @@ justification in "Notes to Reviewers".
 
 ---
 
-### B5 · lint:ext Not Uniformly Applied *(weight: 3)*
+### B5 · lint:ext Not Uniformly Applied _(weight: 3)_
 
 `web-ext lint` is the official validator that checks manifests, permissions, and packaging
 against AMO's own rules. Currently only `suspender-ledger` has an explicit `lint:ext` script.
@@ -227,11 +233,11 @@ but this is not enforced in local development.
 
 ---
 
-### B6 · wasm-unsafe-eval Without Documented Justification *(weight: 2)*
+### B6 · wasm-unsafe-eval Without Documented Justification _(weight: 2)_
 
 `some-conveyor` uses `script-src 'self' 'wasm-unsafe-eval'` in its CSP, required for
 WebAssembly. This keyword is an automatic red flag for AMO automated scanners. It is
-*permitted* for legitimate WASM use, but must be accompanied by a reviewer note explaining
+_permitted_ for legitimate WASM use, but must be accompanied by a reviewer note explaining
 the necessity.
 
 **Fix:** Add a `README.reviewer.md` or populate "Notes to Reviewers" in the AMO developer hub
@@ -241,7 +247,7 @@ explaining which WASM module is loaded and why it cannot use a pre-compiled bina
 
 ## C — Hygiene: Best Practice / Eventual Flag
 
-### C1 · data_collection_permissions Not Declared in All Manifests *(weight: 2)*
+### C1 · data_collection_permissions Not Declared in All Manifests _(weight: 2)_
 
 Firefox MV3 supports `browser_specific_settings.gecko.data_collection_permissions`. Declaring
 `"required": ["none"]` proactively signals that the extension collects nothing and suppresses
@@ -251,22 +257,22 @@ automated data-collection review flags. Currently only `suspender-ledger` declar
 
 ---
 
-### C2 · No Security-Focused ESLint Rules for Extensions *(weight: 2)*
+### C2 · No Security-Focused ESLint Rules for Extensions _(weight: 2)_
 
 General ESLint configs do not cover extension-specific attack surfaces. Security rules that
 should be enforced across all extension workspaces:
 
-| Rule | Rationale |
-|---|---|
-| No `eval()` / `new Function()` | Remote code execution; immediate AMO block |
-| No `document.write()` | XSS vector in content scripts |
-| No hardcoded `http://` URLs in source | Plaintext network requests |
-| No `chrome.tabs.executeScript` with inline strings | Code injection |
-| Require `browser.*` not `chrome.*` | Cross-browser compatibility |
+| Rule                                               | Rationale                                  |
+| -------------------------------------------------- | ------------------------------------------ |
+| No `eval()` / `new Function()`                     | Remote code execution; immediate AMO block |
+| No `document.write()`                              | XSS vector in content scripts              |
+| No hardcoded `http://` URLs in source              | Plaintext network requests                 |
+| No `chrome.tabs.executeScript` with inline strings | Code injection                             |
+| Require `browser.*` not `chrome.*`                 | Cross-browser compatibility                |
 
 ---
 
-### C3 · No Explicit gecko.id in Some Manifests *(weight: 2)*
+### C3 · No Explicit gecko.id in Some Manifests _(weight: 2)_
 
 AMO requires a stable `browser_specific_settings.gecko.id` across versions. If this changes,
 AMO treats the upload as a new extension and loses update history. Verify that every extension
@@ -274,14 +280,14 @@ declares a stable, unique ID and that it is never auto-generated by the build.
 
 ---
 
-### C4 · MPL-2.0 License Header Coverage *(weight: 1)*
+### C4 · MPL-2.0 License Header Coverage _(weight: 1)_
 
 `suspender-ledger` enforces MPL-2.0 headers on ported files via `check:headers`. No other
 extension enforces license header consistency. For OSS compliance, this should be workspace-wide.
 
 ---
 
-### C5 · AMO Submission Checklist Not Templated Across Extensions *(weight: 1)*
+### C5 · AMO Submission Checklist Not Templated Across Extensions _(weight: 1)_
 
 `suspender-ledger` has an AMO checklist in its README. Other extensions do not. A shared
 checklist (as a GitHub PR template or turbo task) would catch compliance regressions before
@@ -322,10 +328,11 @@ source.zip
 
 ### README.build.md template
 
-```markdown
+````markdown
 # Build Instructions for AMO Review
 
 ## Prerequisites
+
 - Node.js 20+
 - pnpm 9+
 
@@ -335,6 +342,7 @@ source.zip
 pnpm install --frozen-lockfile
 pnpm -F @some-extension/<name> build:firefox
 ```
+````
 
 The compiled extension will be in `extensions/<name>/dist/`.
 The submitted `.xpi` was built from commit `<git-sha>` on <date>.
@@ -344,7 +352,8 @@ The submitted `.xpi` was built from commit `<git-sha>` on <date>.
 The `dist/manifest.json` version must match the submitted add-on version.
 All JS files in `dist/` are produced by Vite from TypeScript sources in `src/`.
 No remote code is fetched at runtime.
-```
+
+````
 
 ### How to generate the archive in CI
 
@@ -357,7 +366,7 @@ git archive HEAD \
   --add-file=pnpm-lock.yaml \
   -o artifacts/source-<version>.zip \
   extensions/<name> extensions/common packages
-```
+````
 
 This produces a deterministic archive from the git tree (no node_modules, no dist).
 
@@ -385,10 +394,12 @@ This produces a deterministic archive from the git tree (no node_modules, no dis
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
 
-  "web_accessible_resources": [{
-    "resources": ["specific-file.html"],
-    "matches": ["*://*/*"]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": ["specific-file.html"],
+      "matches": ["*://*/*"]
+    }
+  ],
 
   "browser_specific_settings": {
     "gecko": {
@@ -403,6 +414,7 @@ This produces a deterministic archive from the git tree (no node_modules, no dis
 ```
 
 **Non-negotiable MV3 rules:**
+
 - No `eval()` anywhere in extension pages or background scripts
 - No remotely-hosted scripts (no CDN URLs in `<script src>`)
 - `web_accessible_resources` must include `matches` array
@@ -410,14 +422,14 @@ This produces a deterministic archive from the git tree (no node_modules, no dis
 
 ### MV2 → MV3 Migration Quick Reference
 
-| MV2 | MV3 |
-|---|---|
-| `manifest_version: 2` | `manifest_version: 3` |
-| `background.scripts` | `background.scripts` (Firefox) |
-| `browser_action` | `action` |
-| `permissions: ["<all_urls>"]` | `host_permissions: ["*://*/*"]` |
-| `web_accessible_resources: ["file.js"]` | `web_accessible_resources: [{"resources": ["file.js"], "matches": ["*://*/*"]}]` |
-| `content_security_policy: "..."` (string) | `content_security_policy: {"extension_pages": "..."}` (object) |
+| MV2                                       | MV3                                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| `manifest_version: 2`                     | `manifest_version: 3`                                                            |
+| `background.scripts`                      | `background.scripts` (Firefox)                                                   |
+| `browser_action`                          | `action`                                                                         |
+| `permissions: ["<all_urls>"]`             | `host_permissions: ["*://*/*"]`                                                  |
+| `web_accessible_resources: ["file.js"]`   | `web_accessible_resources: [{"resources": ["file.js"], "matches": ["*://*/*"]}]` |
+| `content_security_policy: "..."` (string) | `content_security_policy: {"extension_pages": "..."}` (object)                   |
 
 ---
 
@@ -425,13 +437,13 @@ This produces a deterministic archive from the git tree (no node_modules, no dis
 
 When broad permissions are unavoidable, include this in "Notes to Reviewers" at AMO sign time:
 
-| Permission | Required justification |
-|---|---|
+| Permission               | Required justification                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<all_urls>` / `*://*/*` | Extension must operate on every URL the user visits (e.g. tab manager, content filter). Cannot be narrowed without breaking core functionality. |
-| `tabs` | Required to read tab URLs/titles for suspension/tracking logic. Not used to send tab data off-device. |
-| `scripting` | Required to inject content scripts dynamically (MV3). Only injects to tabs matching declared host permissions. |
-| `storage` | Stores user preferences locally. No sync to external servers. |
-| `notifications` | Notifies user of suspension events. User-initiated; no remote triggers. |
+| `tabs`                   | Required to read tab URLs/titles for suspension/tracking logic. Not used to send tab data off-device.                                           |
+| `scripting`              | Required to inject content scripts dynamically (MV3). Only injects to tabs matching declared host permissions.                                  |
+| `storage`                | Stores user preferences locally. No sync to external servers.                                                                                   |
+| `notifications`          | Notifies user of suspension events. User-initiated; no remote triggers.                                                                         |
 
 ---
 
@@ -446,6 +458,7 @@ script-src 'self'; object-src 'self'
 ```
 
 Do not use:
+
 - `'unsafe-inline'` — allows inline `<script>` tags (XSS risk; AMO flag)
 - `'unsafe-eval'` — allows `eval()` (code injection; immediate AMO block)
 - External origins (e.g. `https://cdn.example.com`) — remote code; immediate AMO block
@@ -493,10 +506,10 @@ push to main
 
 ### Secrets required
 
-| Secret | Description |
-|---|---|
+| Secret           | Description          |
+| ---------------- | -------------------- |
 | `AMO_JWT_ISSUER` | AMO API key (issuer) |
-| `AMO_JWT_SECRET` | AMO API secret |
+| `AMO_JWT_SECRET` | AMO API secret       |
 
 Never commit these to the repository. Rotate if leaked.
 
@@ -507,23 +520,27 @@ Never commit these to the repository. Rotate if leaked.
 Run through this before every `sign:firefox` invocation. All items must pass.
 
 ### Build integrity
+
 - [ ] `pnpm -F @some-extension/<name> build:firefox` exits 0
 - [ ] `dist/worker.js` is a single flat file — no `import`/`import()` statements
 - [ ] `dist/manifest.json` version matches the intended AMO version
 - [ ] `dist/manifest.json` has a stable `gecko.id` (unchanged from previous versions)
 
 ### Lint
+
 - [ ] `pnpm -F @some-extension/<name> lint:js` exits 0
 - [ ] `pnpm -F @some-extension/<name> typecheck` exits 0
 - [ ] `pnpm -F @some-extension/<name> lint:ext` reports 0 errors AND 0 warnings
 - [ ] `pnpm -F @some-extension/<name> test` exits 0
 
 ### Source archive
+
 - [ ] `artifacts/source-<version>.zip` generated from `git archive`
 - [ ] `README.build.md` inside archive describes exact build steps
 - [ ] Build is reproducible: clean machine can produce byte-identical `dist/` from archive
 
 ### Manifest
+
 - [ ] No `localhost` in host_permissions or content_script matches
 - [ ] No externally-hosted script URLs
 - [ ] Explicit `content_security_policy` declared for all HTML surfaces
@@ -531,6 +548,7 @@ Run through this before every `sign:firefox` invocation. All items must pass.
 - [ ] `web_accessible_resources` entries are minimal and specific
 
 ### AMO developer hub
+
 - [ ] Source archive uploaded to the version page before or at sign time
 - [ ] "Notes to Reviewers" populated (explain broad permissions, WASM if applicable)
 
@@ -554,11 +572,11 @@ If an enforcement action is received:
 
 ### Our history
 
-| Date | Event | Ref |
-|---|---|---|
-| 2026-06 | Permanent disable — "Deceptive/misleading" (title/favicon reflection) | `34e3f4df-3042-4672-9502-9096e9095ef6` |
-| 2026-06 | Appeal succeeded — reinstated v0.1.0 | `c05f4fe5-f16d-433d-8e15-f39dead5c4f3` |
-| 2026-06 | 30-day warning — "Sources missing" (no source archive uploaded at sign time) | pending |
+| Date    | Event                                                                        | Ref                                    |
+| ------- | ---------------------------------------------------------------------------- | -------------------------------------- |
+| 2026-06 | Permanent disable — "Deceptive/misleading" (title/favicon reflection)        | `34e3f4df-3042-4672-9502-9096e9095ef6` |
+| 2026-06 | Appeal succeeded — reinstated v0.1.0                                         | `c05f4fe5-f16d-433d-8e15-f39dead5c4f3` |
+| 2026-06 | 30-day warning — "Sources missing" (no source archive uploaded at sign time) | pending                                |
 
 The source-missing warning is the current live item. A compliant resubmission with a source
 archive resolves it without an appeal.

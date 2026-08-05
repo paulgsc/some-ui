@@ -4,15 +4,19 @@
     100% {
       transform: scale(1);
     }
+
     14% {
       transform: scale(var(--heartbeat-scale1, 1.08));
     }
+
     28% {
       transform: scale(1);
     }
+
     42% {
       transform: scale(var(--heartbeat-scale2, 1.12));
     }
+
     70% {
       transform: scale(1);
     }

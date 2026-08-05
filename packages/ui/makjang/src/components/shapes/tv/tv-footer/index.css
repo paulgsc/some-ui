@@ -2,10 +2,10 @@
   .bg-gradient-leg {
     background: linear-gradient(
       0deg,
-      rgb(114, 114, 114),
-      rgb(255, 255, 255),
-      rgb(197, 197, 197),
-      rgb(114, 114, 114)
+      rgb(114 114 114),
+      rgb(255 255 255),
+      rgb(197 197 197),
+      rgb(114 114 114)
     );
   }
 

@@ -853,18 +853,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "some-charts"
-version = "0.0.0"
-dependencies = [
- "js-sys",
- "once_cell",
- "regex",
- "serde-wasm-bindgen",
- "wasm-bindgen",
- "wasm-bindgen-test",
-]
-
-[[package]]
 name = "some-crossword"
 version = "0.0.0"
 dependencies = [
