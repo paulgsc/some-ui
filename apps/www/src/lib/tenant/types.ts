@@ -8,6 +8,7 @@ import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
 import type { AudioPreferences } from "../audio-preferences"
+import type { NudgePreferences } from "../study-nudge"
 
 /**
  * Re-exported rather than redeclared: the levels a profile can target and the
@@ -34,6 +35,13 @@ export type UserSettings = {
    * round-trip exactly like their voice choice does.
    */
   audio: AudioPreferences
+  /**
+   * When this app may interrupt you to say a session is waiting. Sits with
+   * the audio preferences rather than in its own store for the same reason
+   * they do - it is one more statement about what this app is allowed to
+   * do unprompted, and the three should round-trip together.
+   */
+  notifications: NudgePreferences
   defaultSessionDurationMinutes: number
   defaultLayoutTree: LayoutTreeId
 }
