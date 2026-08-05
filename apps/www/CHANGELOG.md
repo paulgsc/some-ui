@@ -1,5 +1,12 @@
 # www
 
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @some-ui/content-registry@1.0.6
+
 ## 0.1.9
 
 ### Patch Changes
