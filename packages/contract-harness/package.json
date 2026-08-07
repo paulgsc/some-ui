@@ -1,0 +1,44 @@
+{
+  "name": "@some-ui/contract-harness",
+  "version": "0.1.0",
+  "description": "Runs the declared client/server boundary contracts against a real file_host and reports where actual I/O diverges from what the client expects",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "pgdev",
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "keywords": [],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "contract": "tsx src/cli.ts",
+    "contract:drift": "tsx src/cli.ts --drift-only",
+    "contract:coverage": "tsx src/cli.ts --drift-only --show-uncovered",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.ts\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  }
+}
