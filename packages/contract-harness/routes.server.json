@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "api_base_path": "/api/v1",
+  "server_version": "0.0.0",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/get_audio/:id",
+      "full_path": "/api/v1/get_audio/:id",
+      "versioned": true,
+      "module": "audio_files"
+    },
+    {
+      "method": "GET",
+      "path": "/search_audio",
+      "full_path": "/api/v1/search_audio",
+      "versioned": true,
+      "module": "audio_files"
+    },
+    {
+      "method": "POST",
+      "path": "/search_audio",
+      "full_path": "/api/v1/search_audio",
+      "versioned": true,
+      "module": "audio_files"
+    },
+    {
+      "method": "GET",
+      "path": "/gdrive/image/:image_id",
+      "full_path": "/api/v1/gdrive/image/:image_id",
+      "versioned": true,
+      "module": "gdrive"
+    },
+    {
+      "method": "GET",
+      "path": "/gdrive/json/:file_id",
+      "full_path": "/api/v1/gdrive/json/:file_id",
+      "versioned": true,
+      "module": "gdrive"
+    },
+    {
+      "method": "GET",
+      "path": "/gdrive/list",
+      "full_path": "/api/v1/gdrive/list",
+      "versioned": true,
+      "module": "gdrive"
+    },
+    {
+      "method": "GET",
+      "path": "/gdrive/list/:folder_id",
+      "full_path": "/api/v1/gdrive/list/:folder_id",
+      "versioned": true,
+      "module": "gdrive"
+    },
+    {
+      "method": "PUT",
+      "path": "/gdrive/write/:folder_id/:name",
+      "full_path": "/api/v1/gdrive/write/:folder_id/:name",
+      "versioned": true,
+      "module": "gdrive"
+    },
+    {
+      "method": "GET",
+      "path": "/get_github_repos",
+      "full_path": "/api/v1/get_github_repos",
+      "versioned": true,
+      "module": "github"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "full_path": "/health",
+      "versioned": false,
+      "module": "health"
+    },
+    {
+      "method": "GET",
+      "path": "/mood_events",
+      "full_path": "/api/v1/mood_events",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "POST",
+      "path": "/mood_events",
+      "full_path": "/api/v1/mood_events",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "DELETE",
+      "path": "/mood_events/:id",
+      "full_path": "/api/v1/mood_events/:id",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "GET",
+      "path": "/mood_events/:id",
+      "full_path": "/api/v1/mood_events/:id",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "PATCH",
+      "path": "/mood_events/:id",
+      "full_path": "/api/v1/mood_events/:id",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "DELETE",
+      "path": "/mood_events/batch",
+      "full_path": "/api/v1/mood_events/batch",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "PATCH",
+      "path": "/mood_events/batch",
+      "full_path": "/api/v1/mood_events/batch",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "POST",
+      "path": "/mood_events/batch",
+      "full_path": "/api/v1/mood_events/batch",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "GET",
+      "path": "/mood_events/stats",
+      "full_path": "/api/v1/mood_events/stats",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "GET",
+      "path": "/mood_events/team/:team",
+      "full_path": "/api/v1/mood_events/team/:team",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "GET",
+      "path": "/mood_events/week/:week",
+      "full_path": "/api/v1/mood_events/week/:week",
+      "versioned": true,
+      "module": "mood_events"
+    },
+    {
+      "method": "GET",
+      "path": "/get_attributions/:sheet_id",
+      "full_path": "/api/v1/get_attributions/:sheet_id",
+      "versioned": true,
+      "module": "sheets"
+    },
+    {
+      "method": "GET",
+      "path": "/get_gantt/:sheet_id",
+      "full_path": "/api/v1/get_gantt/:sheet_id",
+      "versioned": true,
+      "module": "sheets"
+    },
+    {
+      "method": "GET",
+      "path": "/get_nfl_roster/:sheet_id",
+      "full_path": "/api/v1/get_nfl_roster/:sheet_id",
+      "versioned": true,
+      "module": "sheets"
+    },
+    {
+      "method": "GET",
+      "path": "/get_nfl_tennis/:sheet_id",
+      "full_path": "/api/v1/get_nfl_tennis/:sheet_id",
+      "versioned": true,
+      "module": "sheets"
+    },
+    {
+      "method": "GET",
+      "path": "/get_video_chapters/:sheet_id",
+      "full_path": "/api/v1/get_video_chapters/:sheet_id",
+      "versioned": true,
+      "module": "sheets"
+    },
+    {
+      "method": "POST",
+      "path": "/now-playing",
+      "full_path": "/api/v1/now-playing",
+      "versioned": true,
+      "module": "tab_metadata"
+    },
+    {
+      "method": "GET",
+      "path": "/tabs",
+      "full_path": "/api/v1/tabs",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/tabs",
+      "full_path": "/api/v1/tabs",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/tabs/:tab_id",
+      "full_path": "/api/v1/tabs/:tab_id",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "GET",
+      "path": "/tabs/:tab_id",
+      "full_path": "/api/v1/tabs/:tab_id",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/tabs/batch",
+      "full_path": "/api/v1/tabs/batch",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/tabs/batch",
+      "full_path": "/api/v1/tabs/batch",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/tabs/pipeline",
+      "full_path": "/api/v1/tabs/pipeline",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/tabs/prune",
+      "full_path": "/api/v1/tabs/prune",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/tabs/reconcile",
+      "full_path": "/api/v1/tabs/reconcile",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "GET",
+      "path": "/tabs/summaries",
+      "full_path": "/api/v1/tabs/summaries",
+      "versioned": true,
+      "module": "tabs"
+    },
+    {
+      "method": "POST",
+      "path": "/utter",
+      "full_path": "/api/v1/utter",
+      "versioned": true,
+      "module": "utterance"
+    },
+    {
+      "method": "GET",
+      "path": "/ws",
+      "full_path": "/ws",
+      "versioned": false,
+      "module": "websocket"
+    }
+  ]
+}
