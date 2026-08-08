@@ -158,6 +158,43 @@ A migrated session keeps everything the policy reads and gets a new id.
 There is no conflict resolution. **Last write wins** — one browser at a time
 is the assumption, written down rather than silently relied on.
 
+## How it is tested
+
+Three layers, and the split matters because each is blind to what the next
+one sees.
+
+| Layer    | Command                                            | Answers                                                         |
+| -------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| Unit     | `pnpm --filter www test`                           | Is the decision right? Do the transports send the right shapes? |
+| Contract | `pnpm --filter @some-ui/contract-harness contract` | Do the client and `file_host` still fit?                        |
+| Browser  | `pnpm --filter www test:sw`                        | Does a push actually become a notification?                     |
+
+The contract layer is server-to-server by design and **structurally cannot see
+the service worker**: a push leaves `file_host`, crosses a push service, and is
+handled by `public/sw.js` inside a browser. Every push contract can be green
+while the feature is dead. Its drift half runs in CI with no server at all —
+a contract targeting a route the server no longer serves fails by name — and
+its conformance half needs a running `file_host`.
+
+The browser layer is that missing hop. `public/sw.js` is the one file in this
+app that nothing else checks: a plain `public/` asset, never bundled, never
+imported, never type-checked, and unreachable from vitest, so until now a typo
+in it shipped and presented as a reminder that silently never arrived. The
+spec serves the real file from a throwaway `127.0.0.1` origin (a secure
+context by the same exception `localhost` gets), registers it, and delivers a
+real push through Chromium's own plumbing over CDP. What it asserts is what
+the browser actually created, read back through
+`registration.getNotifications()` — not what a spy recorded.
+
+Worth knowing about that spec: the click is synthesised, because no CDP
+command clicks a notification; the _handler_ is the real one and the
+notification it receives is one a delivered push genuinely created. And
+`harness.push()` re-delivers if nothing lands, because
+`ServiceWorker.deliverPushMessage` accepts and silently drops roughly one
+message in fifty. That retry compensates for the test transport, not for
+`sw.js` — a handler that genuinely shows nothing still fails, which the
+malformed-payload cases exercise.
+
 ## Known gaps
 
 - **Preferences are one-way.** Quiet hours and the cooldown live in

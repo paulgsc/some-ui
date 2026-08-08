@@ -151,6 +151,90 @@
       "module": "mood_events"
     },
     {
+      "method": "DELETE",
+      "path": "/push/subscriptions",
+      "full_path": "/api/v1/push/subscriptions",
+      "versioned": true,
+      "module": "push"
+    },
+    {
+      "method": "POST",
+      "path": "/push/subscriptions",
+      "full_path": "/api/v1/push/subscriptions",
+      "versioned": true,
+      "module": "push"
+    },
+    {
+      "method": "POST",
+      "path": "/push/test",
+      "full_path": "/api/v1/push/test",
+      "versioned": true,
+      "module": "push"
+    },
+    {
+      "method": "GET",
+      "path": "/push/vapid-key",
+      "full_path": "/api/v1/push/vapid-key",
+      "versioned": true,
+      "module": "push"
+    },
+    {
+      "method": "DELETE",
+      "path": "/sessions",
+      "full_path": "/api/v1/sessions",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions",
+      "full_path": "/api/v1/sessions",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions",
+      "full_path": "/api/v1/sessions",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/sessions/:id",
+      "full_path": "/api/v1/sessions/:id",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "GET",
+      "path": "/sessions/:id",
+      "full_path": "/api/v1/sessions/:id",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "PATCH",
+      "path": "/sessions/:id",
+      "full_path": "/api/v1/sessions/:id",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/sessions/:id/duplicate",
+      "full_path": "/api/v1/sessions/:id/duplicate",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
+      "method": "PATCH",
+      "path": "/sessions/status",
+      "full_path": "/api/v1/sessions/status",
+      "versioned": true,
+      "module": "sessions"
+    },
+    {
       "method": "GET",
       "path": "/get_attributions/:sheet_id",
       "full_path": "/api/v1/get_attributions/:sheet_id",
@@ -184,6 +268,13 @@
       "full_path": "/api/v1/get_video_chapters/:sheet_id",
       "versioned": true,
       "module": "sheets"
+    },
+    {
+      "method": "POST",
+      "path": "/signals",
+      "full_path": "/api/v1/signals",
+      "versioned": true,
+      "module": "signals"
     },
     {
       "method": "POST",

@@ -177,7 +177,7 @@ Worth knowing before trusting a green run.
   one declaration — that removes the copy without making the check circular,
   since the server side still comes from the wire.
 
-- **Coverage is 8 of 39 routes.** Not a gap to close for its own sake; the
+- **Coverage is 15 of 52 routes.** Not a gap to close for its own sake; the
   valuable contracts are the ones on boundaries that actually move. Run
   `contract:coverage` to see what's unwritten.
 
@@ -187,6 +187,13 @@ Worth knowing before trusting a green run.
   reporting on CORS policy as much as on the handshake. A Playwright layer that
   drives the real UI is a reasonable thing to add _above_ this — it answers
   "does the product work", where this answers "do the two sides still fit".
+
+  There is now one such layer, for the case where the gap between those two
+  questions is widest: `apps/www/tests/study-nudge/service-worker.spec.ts`.
+  Every push contract here can be green while no notification is ever shown,
+  because the last hop — push service to `public/sw.js` to a desktop — is
+  three hops this runner does not make. That spec drives the real worker in a
+  real Chromium with a real push. Run it with `pnpm --filter www test:sw`.
 
 - **Findings are only as good as the data.** A contract whose response is an
   empty collection reports `no-samples` rather than passing quietly, but it

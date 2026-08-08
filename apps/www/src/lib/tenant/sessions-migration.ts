@@ -156,6 +156,3 @@ export async function migrateLocalSessions(
   })
   return { kind: "migrated", count: migrated }
 }
-
-/** Exported for the tests, and for anyone hunting the key in devtools. */
-export const SESSIONS_MIGRATION_KEY = MIGRATION_KEY

@@ -249,7 +249,7 @@ type VapidKeyResponse = { public_key: string; topics?: Array<string> }
  * this server actually send me — and a settings page that offered a topic
  * the sender does not honour would be asking for a consent it cannot keep.
  */
-export type PushOffer = {
+type PushOffer = {
   applicationServerKey: Uint8Array<ArrayBuffer>
   topics: Array<string>
 }

@@ -61,7 +61,7 @@ export type NudgePreferences = {
  * without opening the topic list — not a guess at what they want, but the
  * thing the control they just used says it does.
  */
-export const DEFAULT_PUSH_TOPIC = "lesson-ready"
+const DEFAULT_PUSH_TOPIC = "lesson-ready"
 
 export const DEFAULT_NUDGE_PREFERENCES: NudgePreferences = {
   // Off until asked for, and not negotiable: turning this on requires a
