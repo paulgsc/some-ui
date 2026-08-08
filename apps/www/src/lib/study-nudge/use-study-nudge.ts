@@ -1,17 +1,45 @@
 /**
- * Runs the nudge policy on a timer for as long as the app is loaded.
+ * Runs the nudge policy on a timer, and decides — once per build — whether
+ * anything it decides is allowed to raise a notification.
  *
- * ## The honest limitation
+ * ## Two policies, one person
  *
- * This is a client-only trigger, so it only fires while a tab is alive —
- * backgrounded is fine, closed is not. That covers the friction actually
- * described (the dashboard sits open on a second monitor and drifts out of
- * mind) and none of the rest of it. Notifying a browser with no tab open
- * requires Web Push, which requires a VAPID keypair, a subscription store,
- * and something server-side deciding when to send; see docs/study-nudge.md.
- * `public/sw.js` already handles the `push` event for exactly that reason —
- * when the server half lands, it replaces this hook's trigger and nothing
- * else.
+ * #907's limitation is gone. `file_host` holds the sessions now and pushes
+ * to a browser with no tab open — the thing this hook could never do. It
+ * does not run this hook's policy, though, and that distinction matters:
+ * the server keeps an engagement level per subject that decays with time
+ * and is restored by signals, and intervenes when the weighted aggregate
+ * falls to a threshold. `decideNudge` here is a *fallback* for a build with
+ * no backend, not a mirror of what the server does.
+ *
+ * So this hook is not replaced, because the two deployments are not the
+ * same:
+ *
+ * - The **GitHub Pages** build (`DATA_MODE === "static"`) has no backend at
+ *   all. This hook is the only policy there is, and it behaves exactly as
+ *   it did in #907.
+ * - **Everywhere else** the server owns delivery, and this hook stands
+ *   down.
+ *
+ * Running both is not "occasionally two notifications", it is *reliably*
+ * two whenever both conclude it is time: this hook's cooldown lives in
+ * `localStorage` and the server's pacing in an engagement ledger, and
+ * neither can see the other. For a feature whose entire value proposition
+ * is not being annoying, that would make the product worse than #907
+ * alone — which is why this file changes in the same release as the
+ * subscription that makes the server able to send.
+ *
+ * ## Standing down is not going quiet
+ *
+ * In server mode this hook still registers the worker (push needs it) and
+ * still reconciles the subscription on load — the server prunes rows on
+ * `410`, the browser can drop one unasked, and `sw.js` deliberately does
+ * not re-subscribe because it cannot reach the consent a subscription has
+ * to carry. It just does not raise anything. The *decision* also keeps
+ * running where it is useful — the settings status line — because "You've
+ * already studied today." is worth saying whoever is doing the sending;
+ * see `study-nudge-section.tsx`, where it is labelled as this browser's
+ * own reading rather than the server's answer.
  *
  * Hidden tabs have their timers throttled to roughly once a minute, which
  * a five-minute interval absorbs without noticing. The interval is the only
@@ -21,12 +49,15 @@
  */
 
 import { useEffect, useRef } from "react"
+import type { RuntimeMode } from "@some-ui/fetch-kit"
 
+import { DATA_MODE } from "../data-mode"
 import { useSessions, useSettings } from "../tenant"
-import type { NudgePreferences } from "./index"
+import type { NudgeDecision, NudgePreferences } from "./index"
 import { decideNudge, DEFAULT_NUDGE_PREFERENCES } from "./index"
 import {
   readLastNudgeAt,
+  reconcilePushSubscription,
   recordNudgeShown,
   registerNudgeWorker,
   showNudge,
@@ -36,12 +67,67 @@ import {
  * long enough to sit well inside a hidden tab's throttling budget. */
 const POLL_INTERVAL_MS = 5 * 60_000
 
+/**
+ * Whether this build's client is the one that raises notifications.
+ *
+ * The same bit `sessions-backend.ts` uses to pick a store picks the
+ * trigger, and for the same underlying reason: it is the answer to "is
+ * there a backend here".
+ */
+export function clientOwnsNudgeDelivery(
+  mode: RuntimeMode = DATA_MODE
+): boolean {
+  return mode === "static"
+}
+
+export type NudgeTickDeps = {
+  sessions: Parameters<typeof decideNudge>[0]["sessions"]
+  preferences: NudgePreferences
+  now: Date
+  pageVisible: boolean
+  lastNudgeAt: string | null
+  /** False in server mode: decide, but do not raise. */
+  deliver: boolean
+  show: (
+    decision: Extract<NudgeDecision, { kind: "nudge" }>
+  ) => Promise<boolean>
+  record: (at: Date) => void
+}
+
+/**
+ * One turn of the policy. Exported so both modes can be asserted without a
+ * fake timer or a DOM: the interesting property is that `show` is called in
+ * one and not the other, and that is a property of this function.
+ */
+export async function runNudgeTick(
+  deps: NudgeTickDeps
+): Promise<NudgeDecision> {
+  const decision = decideNudge({
+    sessions: deps.sessions,
+    now: deps.now,
+    pageVisible: deps.pageVisible,
+    lastNudgeAt: deps.lastNudgeAt,
+    preferences: deps.preferences,
+  })
+
+  if (decision.kind !== "nudge") return decision
+  if (!deps.deliver) return decision
+
+  // Only stamp the cooldown for a notification that was actually raised —
+  // a denied permission or a failed registration must not silently burn
+  // the next few hours of eligibility.
+  if (await deps.show(decision)) deps.record(new Date())
+  return decision
+}
+
 export function useStudyNudge(): void {
   const { data: sessions } = useSessions()
   const { data: settings } = useSettings()
 
   const preferences: NudgePreferences =
     settings?.notifications ?? DEFAULT_NUDGE_PREFERENCES
+
+  const deliver = clientOwnsNudgeDelivery()
 
   // The interval callback reads the latest sessions and preferences through
   // refs rather than closing over them, so it is installed once instead of
@@ -61,31 +147,49 @@ export function useStudyNudge(): void {
   // Register as soon as reminders are on, and not before: an unrequested
   // worker registration on a first visit is a background download nobody
   // asked for. Registration is separate from showing so the worker is
-  // already installed and claimed by the time the first nudge is due.
+  // already installed and claimed by the time the first nudge is due — and
+  // in server mode it is the thing that receives the push at all.
   useEffect(() => {
     if (!preferences.enabled) return
     void registerNudgeWorker()
   }, [preferences.enabled])
 
+  // The client's half of the subscription conversation. The server prunes a
+  // row on `410` from the push service, and a browser can drop a
+  // subscription unasked; re-posting what this browser holds is both the
+  // check and the repair, and it is an idempotent upsert either way.
+  const topics = preferences.pushTopics
   useEffect(() => {
+    if (deliver || !preferences.enabled) return
+    // Re-sent rather than assumed still stored: an upsert with the topics
+    // this browser believes it agreed to is what keeps the server's grant
+    // and the settings checklist from drifting apart.
+    void reconcilePushSubscription({ topics })
+  }, [deliver, preferences.enabled, topics])
+
+  useEffect(() => {
+    // Nothing to poll for in server mode: the decision this would compute
+    // is not used, and the notification it would raise is the duplicate
+    // this whole story exists to prevent. The settings page computes its
+    // own on demand for the status line.
+    if (!deliver) return undefined
+
     const tick = async (): Promise<void> => {
-      const decision = decideNudge({
+      await runNudgeTick({
         sessions: sessionsRef.current ?? [],
+        preferences: preferencesRef.current,
         now: new Date(),
         pageVisible:
           typeof document === "undefined" ||
           document.visibilityState === "visible",
         lastNudgeAt: readLastNudgeAt(),
-        preferences: preferencesRef.current,
+        deliver: true,
+        show: showNudge,
+        record: recordNudgeShown,
       })
-      if (decision.kind !== "nudge") return
-      // Only stamp the cooldown for a notification that was actually
-      // raised — a denied permission or a failed registration must not
-      // silently burn the next few hours of eligibility.
-      if (await showNudge(decision)) recordNudgeShown(new Date())
     }
 
     const id = window.setInterval(() => void tick(), POLL_INTERVAL_MS)
     return (): void => window.clearInterval(id)
-  }, [])
+  }, [deliver])
 }

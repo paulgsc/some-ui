@@ -12,7 +12,8 @@ import {
 } from "./storage"
 import type { SessionRecord, SessionStatus } from "./types"
 
-const STORAGE_KEY = "some-ui.tenant.sessions.v1"
+/** Also read by `sessions-migration`, which uploads what is under it. */
+export const STORAGE_KEY = "some-ui.tenant.sessions.v1"
 
 export type CreateSessionInput = {
   name: string
@@ -25,6 +26,30 @@ export type UpdateSessionInput = Partial<
   Omit<SessionRecord, "id" | "createdAt" | "updatedAt">
 >
 
+/**
+ * What the rest of the app is allowed to know about session storage.
+ *
+ * Extracted so there can be two implementations of it — this file's
+ * `localStorage` one and the HTTP one in `http-sessions-repository.ts` —
+ * without `hooks.ts` or anything above it changing. That the seam was
+ * already drawn here is why moving the source of truth to `file_host` is a
+ * swap rather than a rewrite; `MOCK_LATENCY_MS` existed to simulate exactly
+ * the network that now exists.
+ */
+export type SessionsStore = {
+  list: () => Promise<Array<SessionRecord>>
+  get: (id: string) => Promise<SessionRecord | null>
+  create: (input: CreateSessionInput) => Promise<SessionRecord>
+  update: (id: string, patch: UpdateSessionInput) => Promise<SessionRecord>
+  remove: (id: string) => Promise<void>
+  removeMany: (ids: ReadonlyArray<string>) => Promise<void>
+  updateStatusMany: (
+    ids: ReadonlyArray<string>,
+    status: SessionStatus
+  ) => Promise<Array<SessionRecord>>
+  duplicate: (id: string) => Promise<SessionRecord>
+}
+
 function totalDurationOf(scenes: Array<SceneConfig>): number {
   return scenes.reduce((max, s) => Math.max(max, s.start_time + s.duration), 0)
 }
@@ -36,7 +61,12 @@ export class SessionNotFoundError extends Error {
   }
 }
 
-export class SessionsRepository {
+/**
+ * The `localStorage` backend. Still the whole story for the GitHub Pages
+ * build, which has no backend to talk to (`DATA_MODE === "static"`), and
+ * still what the repository tests run against through an in-memory adapter.
+ */
+export class SessionsRepository implements SessionsStore {
   constructor(
     private readonly storage: StorageAdapter,
     private readonly latencyMs: number

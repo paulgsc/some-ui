@@ -111,6 +111,17 @@ jobs:
       - name: Dependency catalog guardrail
         run: node scripts/check-catalog-drift.mjs
 
+      # Repo-wide invariant like the catalog check above, and not turbo-filtered
+      # for the same reason: the client/server boundary is a property of the
+      # whole repo, and the snapshot it compares against
+      # (packages/contract-harness/routes.server.json) can go stale from a
+      # change in the *server* repo that no file here reflects. Only the drift
+      # layer runs - it is pure Node string comparison against the checked-in
+      # snapshot and needs no file_host. The conformance layer needs a live
+      # server and stays a local step; see that package's README.
+      - name: Contract drift (client/server boundary)
+        run: nix develop .#ci --command pnpm --filter @some-ui/contract-harness contract:drift
+
       # Unused-export/dependency graph check, same shape as the steps above.
       # A workspace opts in by declaring a `knip` script; turbo only runs the
       # task where the script exists, so widening coverage is a one-line
@@ -156,6 +167,25 @@ jobs:
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
             --concurrency=100%
+
+      # public/sw.js is the one file in apps/www that nothing else checks: a
+      # plain public/ asset, never bundled, never imported, never type-checked,
+      # and unreachable from vitest. This drives it in a real Chromium with a
+      # real push, so a typo in it fails here instead of shipping as a study
+      # reminder that silently never arrives. Scoped like the CSP step below,
+      # because it is a behavioural invariant of specific files rather than a
+      # per-package test turbo's dep graph would select.
+      - name: E2E — study-nudge service worker (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/public/sw.js' \
+            'apps/www/tests/study-nudge/**' \
+            'apps/www/src/lib/study-nudge/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci-playwright --command pnpm --filter www test:sw
+          else
+            echo "No service-worker files changed."
+          fi
 
       # Scoped to the CSP/nginx config surface actually touched by this PR -
       # this is a config invariant (apps/www/nginx.security-headers.conf),

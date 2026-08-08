@@ -87,6 +87,14 @@ services:
       - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
+    # nginx.https.conf proxies /api/file-host/ to paulgsc/server's `file_host`,
+    # which is another repository's process and normally runs on the host rather
+    # than on some-ui-network. Docker Desktop resolves host.docker.internal on
+    # its own; Linux does not, and without this the study nudge's requests come
+    # back as 502s that look exactly like the backend being down. Harmless where
+    # the name already resolves.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Dockerfile bakes in the same wget-spider HEALTHCHECK as a baseline for
     # bare `docker run`; redeclared here so compose can tune it without a
     # rebuild (matches the pattern used by infra/compose/*.yml in server).

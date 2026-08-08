@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest"
-
 import type { SessionActivity } from "@some-ui/activity-catalog"
+import { describe, expect, it } from "vitest"
 
 import type { SessionRecord } from "../tenant/types"
 import type { NudgePreferences } from "./index"
