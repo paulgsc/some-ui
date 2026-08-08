@@ -9,9 +9,10 @@ FROM node:24-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:${PATH}"
 
-RUN npm install -g pnpm turbo
-
 WORKDIR /app
+
+COPY package.json ./package.json
+RUN npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")" turbo
 
 # ------------------------------------------------------------
 # Stage 1: Prune workspace
