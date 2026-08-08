@@ -1,6 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["**/bindings-contract.ts", "apps/www/public/sw.js"],
+  "ignore": [
+    "**/bindings-contract.ts",
+    "apps/www/public/sw.js",
+    "**/__type-fixtures__/**"
+  ],
   "workspaces": {
     "apps/www": {
       "ignoreDependencies": ["@some-ui/resume"]

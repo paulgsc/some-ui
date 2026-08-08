@@ -360,6 +360,9 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../../packages/ui/honeycomb
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../packages/intent-kit
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../../packages/ui/shared
@@ -853,6 +856,15 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.0.5
+
+  packages/intent-kit:
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
 
   packages/some-content:
     devDependencies:
