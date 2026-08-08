@@ -14,7 +14,15 @@ import { defineConfig } from "vitest/config"
  */
 export default defineConfig({
   test: {
-    include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    include: [
+      "src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
+      // The intent-census generator lives under scripts/ (it's a Node CLI,
+      // not app source) but its own drift check belongs in the ordinary
+      // `pnpm test` run so CI catches a stale docs/intent-census.md the same
+      // way it catches any other regression - no separate workflow step to
+      // gate, unlike the Playwright suites under tests/.
+      "scripts/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts}",
+    ],
     // Repairs `localStorage` where the runtime shipped one of its own and
     // Vitest's jsdom environment therefore skipped jsdom's - the reason
     // audio-activity-notice's tests fail on CI's Node and pass on
