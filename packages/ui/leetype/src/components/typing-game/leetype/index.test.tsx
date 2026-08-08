@@ -338,12 +338,9 @@ describe("the warm-up", () => {
     expect(passageLength).toBeGreaterThan(0)
 
     typeStep(input, passageLength)
-    await waitFor(
-      () => screen.findByText("Step 0."),
-      { timeout: 10000 } // Increase timeout for warm-up completion
-    )
+    await screen.findByText("Step 0.", {}, { timeout: 10000 })
     expect(screen.queryByText(/Warm up/i)).not.toBeInTheDocument()
-  })
+  }, 15000)
 
   it("is skipped entirely once a baseline is stored", async () => {
     seedBaseline()
