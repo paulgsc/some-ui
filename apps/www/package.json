@@ -35,6 +35,7 @@
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
+    "@some-ui/intent-kit": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
     "@some-ui/speech": "workspace:*",
