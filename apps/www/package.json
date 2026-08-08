@@ -23,7 +23,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
-    "test:sw": "playwright test --config playwright.config.ts tests/study-nudge"
+    "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
+    "census:write": "node scripts/intent-census/generate.mjs --write",
+    "census:check": "node scripts/intent-census/generate.mjs --check"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
