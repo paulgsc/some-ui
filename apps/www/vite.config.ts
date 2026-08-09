@@ -157,7 +157,10 @@ export default defineConfig(
       // utilities + the shared design layer are generated exactly once, from an
       // explicit @source set, instead of once per package. See #636.
       ...createStylePlugins(styleContext),
-      TanStackRouterVite({ autoCodeSplitting: true }),
+      TanStackRouterVite({
+        autoCodeSplitting: true,
+        routeFileIgnorePattern: String.raw`\.test\.[jt]sx?$`,
+      }),
       viteReact(),
       ...(command === "serve" ? [warnMissingContentAssets()] : []),
     ],
