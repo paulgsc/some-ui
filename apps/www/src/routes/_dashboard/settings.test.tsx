@@ -63,10 +63,10 @@ describe("settings: save button", () => {
     const input = await screen.findByLabelText(/default session length/i)
     fireEvent.change(input, { target: { value: "25" } })
 
-    const writeSpy = vi.spyOn(
-      Object.getPrototypeOf(window.localStorage),
-      "setItem"
-    )
+    const storageTarget =
+      typeof Storage !== "undefined" ? Storage.prototype : window.localStorage
+
+    const writeSpy = vi.spyOn(storageTarget, "setItem")
     const save = screen.getByRole("button", { name: /save changes/i })
 
     act(() => {
