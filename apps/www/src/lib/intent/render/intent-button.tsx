@@ -11,9 +11,16 @@
  * concern - a synchronous ref guard at the dispatch site is the only place
  * that actually closes it. `IntentButton` disabling itself while `working`
  * is a visible echo of that guard, not the mechanism.
+ *
+ * The outer action stack is deliberately stable across every state. Earlier
+ * versions introduced it only for failures, changing the button's flex item
+ * between a button and a div as the intent settled. In toolbars that caused a
+ * visible horizontal jump. A retryable failure also replaces the original
+ * action with its retry rather than rendering two controls that dispatch the
+ * same intent.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { JSX, PropsWithChildren, ReactNode } from "react"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ButtonProps } from "@some-ui/shared"
@@ -51,6 +58,10 @@ export type IntentButtonProps<TStep extends string = never> = {
   title?: string
 }
 
+const ActionStack = ({ children }: PropsWithChildren): JSX.Element => (
+  <div className="inline-flex flex-col items-start gap-2">{children}</div>
+)
+
 export const IntentButton = <TStep extends string = never>({
   state,
   onPress,
@@ -67,42 +78,7 @@ export const IntentButton = <TStep extends string = never>({
 }: IntentButtonProps<TStep>): JSX.Element =>
   matchIntent<unknown, JSX.Element, TStep>(state, {
     idle: () => (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        disabled={disabled}
-        onClick={onPress}
-        title={title}
-      >
-        {idleLabel}
-      </Button>
-    ),
-    working: (step) => (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        disabled
-        title={title}
-      >
-        {workingStepLabel?.(step) ?? workingLabel}
-      </Button>
-    ),
-    succeeded: () => (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        disabled={disabled}
-        onClick={onPress}
-        title={title}
-      >
-        {succeededLabel ?? idleLabel}
-      </Button>
-    ),
-    failed: (error, retry) => (
-      <div className="flex flex-col items-start gap-2">
+      <ActionStack>
         <Button
           variant={variant}
           size={size}
@@ -113,11 +89,55 @@ export const IntentButton = <TStep extends string = never>({
         >
           {idleLabel}
         </Button>
-        <IntentFailure
-          error={error}
-          onRetry={retry}
-          className={cn("w-full", failureClassName)}
-        />
-      </div>
+      </ActionStack>
+    ),
+    working: (step) => (
+      <ActionStack>
+        <Button
+          variant={variant}
+          size={size}
+          className={className}
+          disabled
+          title={title}
+        >
+          {workingStepLabel?.(step) ?? workingLabel}
+        </Button>
+      </ActionStack>
+    ),
+    succeeded: () => (
+      <ActionStack>
+        <Button
+          variant={variant}
+          size={size}
+          className={className}
+          disabled={disabled}
+          onClick={onPress}
+          title={title}
+        >
+          {succeededLabel ?? idleLabel}
+        </Button>
+      </ActionStack>
+    ),
+    failed: (error, retry) => (
+      <ActionStack>
+        <>
+          {error.retryable ? (
+            <Button
+              variant={variant}
+              size={size}
+              className={className}
+              disabled={disabled}
+              onClick={retry}
+              title={title}
+            >
+              Try again
+            </Button>
+          ) : null}
+          <IntentFailure
+            error={error}
+            className={cn("w-full", failureClassName)}
+          />
+        </>
+      </ActionStack>
     ),
   })

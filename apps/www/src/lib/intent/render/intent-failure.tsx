@@ -21,7 +21,7 @@ import { cn } from "some-ui-utils"
 
 export type IntentFailureProps = {
   error: IntentError
-  onRetry: () => void
+  onRetry?: () => void
   className?: string
 }
 
@@ -33,7 +33,7 @@ export const IntentFailure = ({
   <Alert variant="destructive" className={cn("py-2", className)}>
     <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
       <span>{error.summary}</span>
-      {error.retryable ? (
+      {error.retryable && onRetry ? (
         <Button size="sm" variant="outline" onClick={onRetry}>
           Try again
         </Button>
