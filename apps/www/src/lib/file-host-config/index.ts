@@ -44,6 +44,7 @@
  * `file_host` somewhere else entirely - the same escape hatch
  * `VITE_TTS_ENDPOINT` is.
  */
+import { API_V1_PREFIX } from "@some-ui/fetch-kit"
 
 /** The port `file_host` listens on. */
 export const DEFAULT_FILE_HOST_PORT = 3000
@@ -61,14 +62,11 @@ export const DEFAULT_FILE_HOST_PORT = 3000
  */
 export const FILE_HOST_PROXY_PATH = "/api/file-host"
 
-/** `file_host` nests every route under this; see its `API_V1_BASE_PATH`. */
-const API_BASE_PATH = "/api/v1"
-
 function baseForCurrentHost(): string | undefined {
   if (typeof window === "undefined") return undefined
   const { hostname, protocol } = window.location
-  if (protocol === "https:") return `${FILE_HOST_PROXY_PATH}${API_BASE_PATH}`
-  return `http://${hostname}:${DEFAULT_FILE_HOST_PORT}${API_BASE_PATH}`
+  if (protocol === "https:") return `${FILE_HOST_PROXY_PATH}${API_V1_PREFIX}`
+  return `http://${hostname}:${DEFAULT_FILE_HOST_PORT}${API_V1_PREFIX}`
 }
 
 /**
