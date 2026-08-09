@@ -3,7 +3,6 @@ import { useState } from "react"
 import { useTheme } from "@/providers/theme"
 import type { LayoutTreeId } from "@some-ui/activity-catalog"
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
@@ -28,6 +27,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
+import { useIntent, useIntentEffect } from "@/lib/intent"
+import { IntentButton } from "@/lib/intent/render"
 import type { UserSettings } from "@/lib/tenant"
 import { useSettings, useUpdateSettings } from "@/lib/tenant"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
@@ -83,11 +84,20 @@ const SettingsForm = ({
   settings: UserSettings
 }): JSX.Element => {
   const [draft, setDraft] = useState<UserSettings>(settings)
-  const updateSettings = useUpdateSettings()
+  const saveIntent = useIntent(useUpdateSettings(), {
+    presentation: "interactive",
+  })
   const { preference, setPreference } = useTheme()
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
   const voicesForProvider = BUILTIN_VOICES[draft.ttsProvider]
+
+  // Lifted verbatim from the pre-migration `onSuccess`. No navigation, so
+  // no `disabled` check is needed here the way session-composer's chain
+  // needs `activeAction` - this form only ever has the one save intent.
+  useIntentEffect(saveIntent.state, () => {
+    toast("Settings saved")
+  })
 
   const handleProviderChange = (provider: TTSProvider): void => {
     // A voice id from the old provider won't exist on the new one.
@@ -95,11 +105,7 @@ const SettingsForm = ({
   }
 
   const handleSave = (): void => {
-    updateSettings.mutate(draft, {
-      onSuccess: () => {
-        toast("Settings saved")
-      },
-    })
+    saveIntent.start(draft)
   }
 
   return (
@@ -230,12 +236,13 @@ const SettingsForm = ({
           onChange={(notifications) => setDraft({ ...draft, notifications })}
         />
 
-        <Button
-          onClick={handleSave}
-          disabled={!isDirty || updateSettings.isPending}
-        >
-          {updateSettings.isPending ? "Saving..." : "Save changes"}
-        </Button>
+        <IntentButton
+          state={saveIntent.state}
+          onPress={handleSave}
+          disabled={!isDirty}
+          idleLabel="Save changes"
+          workingLabel="Saving..."
+        />
       </CardContent>
     </Card>
   )

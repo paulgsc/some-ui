@@ -46,9 +46,13 @@
 
 import type { ChangeEvent, JSX } from "react"
 import { useEffect, useState } from "react"
-import { Button, Input, Label, Separator, Switch } from "@some-ui/shared"
+import type { Intent } from "@some-ui/intent-kit"
+import { matchIntent } from "@some-ui/intent-kit"
+import { Input, Label, Separator, Switch } from "@some-ui/shared"
 import { toast } from "sonner"
 
+import { useAsyncIntent } from "@/lib/intent"
+import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { NudgePreferences } from "@/lib/study-nudge"
 import { decideNudge, SILENT_REASON_LABEL } from "@/lib/study-nudge"
 import {
@@ -80,6 +84,18 @@ function clampHour(raw: string, fallback: number): number {
   const value = Number.parseInt(raw, 10)
   if (Number.isNaN(value) || value < 0 || value > 23) return fallback
   return value
+}
+
+/** A named function, not an inline arrow embedded in `StudyNudgeSection`'s
+ * own JSX - the latter trips `react/no-unstable-nested-components` (see
+ * the identical pattern and comment in `routes/_dashboard/sessions/index.tsx`). */
+function toggleFailure(state: Intent<void>): JSX.Element | null {
+  return matchIntent(state, {
+    idle: () => null,
+    working: () => null,
+    succeeded: () => null,
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
+  })
 }
 
 /**
@@ -172,7 +188,13 @@ export const StudyNudgeSection = ({
   // Enabling is the user gesture that earns the permission prompt, so the
   // request happens here and nowhere else. A refusal leaves the switch off
   // rather than storing an "on" that can never fire.
-  const handleToggle = async (enabled: boolean): Promise<void> => {
+  //
+  // Every branch below already resolves rather than throws (see
+  // service-worker.ts's own header) - `toggleIntent`'s `failed` arm is a
+  // backstop for whatever those wrappers didn't anticipate, not the
+  // expected outcome of a declined permission or a degraded subscribe,
+  // both of which stay exactly the inline `toast(...)` calls they were.
+  const runToggle = async (enabled: boolean): Promise<void> => {
     if (!enabled) {
       // Both ends, in server mode: dropping only the local subscription
       // leaves the server sending to a live endpoint.
@@ -214,7 +236,11 @@ export const StudyNudgeSection = ({
     onChange({ ...preferences, enabled: true })
   }
 
-  const handleTest = async (): Promise<void> => {
+  const toggleIntent = useAsyncIntent(runToggle, {
+    presentation: "interactive",
+  })
+
+  const runTest = async (_trigger: undefined): Promise<void> => {
     const shown = await showNudge({
       kind: "nudge",
       sessionId: "test",
@@ -223,6 +249,8 @@ export const StudyNudgeSection = ({
     })
     if (!shown) toast("Could not show a notification - check permission.")
   }
+
+  const testIntent = useAsyncIntent(runTest, { presentation: "interactive" })
 
   if (!supported) {
     return (
@@ -255,9 +283,17 @@ export const StudyNudgeSection = ({
         <Switch
           id="study-reminders"
           checked={preferences.enabled}
-          onCheckedChange={(checked: boolean) => void handleToggle(checked)}
+          disabled={matchIntent(toggleIntent.state, {
+            idle: () => false,
+            working: () => true,
+            succeeded: () => false,
+            failed: () => false,
+          })}
+          onCheckedChange={(checked: boolean) => toggleIntent.start(checked)}
         />
       </div>
+
+      {toggleFailure(toggleIntent.state)}
 
       {preferences.enabled ? (
         <>
@@ -304,14 +340,15 @@ export const StudyNudgeSection = ({
                 }
               />
             </div>
-            <Button
+            <IntentButton
+              state={testIntent.state}
+              onPress={() => testIntent.start(undefined)}
               variant="outline"
               size="sm"
-              onClick={() => void handleTest()}
               disabled={permission !== "granted"}
-            >
-              Send a test
-            </Button>
+              idleLabel="Send a test"
+              workingLabel="Sending..."
+            />
           </div>
 
           {serverDelivers ? (

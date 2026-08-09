@@ -268,4 +268,91 @@ describe("useIntent", () => {
       "onSettled",
     ])
   })
+
+  it("thundering-herd guard: two start() calls in the same burst dispatch only once", async () => {
+    const { wrapper } = withQueryClient()
+    // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
+    const mutationFn = vi.fn(async (input: string) => `created:${input}`)
+
+    const { result } = renderHook(
+      () =>
+        useIntent(useMutation({ mutationFn }), { presentation: "interactive" }),
+      { wrapper }
+    )
+
+    // Two calls with no `act`/`await` between them, mimicking a fast
+    // double-click or two synchronous `fireEvent.click()`s landing before
+    // React has re-rendered with the "pending" status - the exact race
+    // #936 calls out for "Save and play".
+    act(() => {
+      result.current.start("session-a")
+      result.current.start("session-a")
+    })
+
+    await waitFor(() => {
+      expect(summarize(result.current.state)).toBe(
+        'succeeded:"created:session-a"'
+      )
+    })
+
+    expect(mutationFn.mock.calls).toHaveLength(1)
+  })
+
+  it("thundering-herd guard: retry() during an in-flight retry does not double-dispatch", async () => {
+    const { wrapper } = withQueryClient()
+    let resolveMutation: ((value: string) => void) | undefined
+    const mutationFn = vi
+      .fn<(input: string) => Promise<string>>()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockImplementation(
+        (input: string) =>
+          new Promise<string>((resolve) => {
+            resolveMutation = (): void => {
+              resolve(`created:${input}`)
+            }
+          })
+      )
+
+    const { result } = renderHook(
+      () =>
+        useIntent(useMutation({ mutationFn }), { presentation: "interactive" }),
+      { wrapper }
+    )
+
+    act(() => {
+      result.current.start("session-a")
+    })
+    await waitFor(() => {
+      expect(summarize(result.current.state)).toBe("failed:unknown")
+    })
+
+    matchIntent(result.current.state, {
+      idle: () => undefined,
+      working: () => undefined,
+      succeeded: () => undefined,
+      failed: (_error, retry) => {
+        act(() => {
+          // Two retries in the same burst - only the first should dispatch.
+          retry()
+          retry()
+        })
+      },
+    })
+
+    await waitFor(() => {
+      expect(summarize(result.current.state)).toBe("working")
+    })
+
+    act(() => {
+      resolveMutation?.("session-a")
+    })
+    await waitFor(() => {
+      expect(summarize(result.current.state)).toBe(
+        'succeeded:"created:session-a"'
+      )
+    })
+
+    // One dispatch from start(), exactly one from the retry burst.
+    expect(mutationFn.mock.calls).toHaveLength(2)
+  })
 })

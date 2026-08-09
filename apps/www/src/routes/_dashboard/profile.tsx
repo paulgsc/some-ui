@@ -1,7 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
@@ -20,6 +19,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
+import { useIntent, useIntentEffect } from "@/lib/intent"
+import { IntentButton } from "@/lib/intent/render"
 import type { TopikLevel, UserProfile } from "@/lib/tenant"
 import { useProfile, useUpdateProfile } from "@/lib/tenant"
 
@@ -57,16 +58,19 @@ const ProfileSkeleton = (): JSX.Element => (
 
 const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
   const [draft, setDraft] = useState<UserProfile>(profile)
-  const updateProfile = useUpdateProfile()
+  const saveIntent = useIntent(useUpdateProfile(), {
+    presentation: "interactive",
+  })
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(draft)
 
+  // Lifted verbatim from the pre-migration `onSuccess`.
+  useIntentEffect(saveIntent.state, () => {
+    toast("Profile saved")
+  })
+
   const handleSave = (): void => {
-    updateProfile.mutate(draft, {
-      onSuccess: () => {
-        toast("Profile saved")
-      },
-    })
+    saveIntent.start(draft)
   }
 
   return (
@@ -130,12 +134,13 @@ const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
           </Select>
         </div>
 
-        <Button
-          onClick={handleSave}
-          disabled={!isDirty || updateProfile.isPending}
-        >
-          {updateProfile.isPending ? "Saving..." : "Save changes"}
-        </Button>
+        <IntentButton
+          state={saveIntent.state}
+          onPress={handleSave}
+          disabled={!isDirty}
+          idleLabel="Save changes"
+          workingLabel="Saving..."
+        />
       </CardContent>
     </Card>
   )

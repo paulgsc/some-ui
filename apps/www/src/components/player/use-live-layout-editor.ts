@@ -1,9 +1,23 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { Intent } from "@some-ui/intent-kit"
+import {
+  failed,
+  idle,
+  matchIntent,
+  succeeded,
+  working,
+} from "@some-ui/intent-kit"
 import type { ActiveLifetime, SlotId } from "@some-ui/types"
 import { useEditModeHotkey, usePrimaryScene } from "some-ui-utils"
 import type { LayoutIntent, LayoutNode } from "wireframes"
 import { applyIntent } from "wireframes"
 
+import { useIntent } from "@/lib/intent"
+import {
+  clearDurableFailure,
+  readDurableFailure,
+  writeDurableFailure,
+} from "@/lib/intent/durable-failure"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 
@@ -30,6 +44,10 @@ type LiveLayoutEditor = {
     deltaPx: number,
     containerSizePx: number
   ) => void
+  /** `ambient-durable` per `presentation.ts`'s autosave verdict: quiet while
+   * pending or succeeding, but a failure renders (via `AmbientIntentStatus`)
+   * and survives this component unmounting - see `durable-failure.ts`. */
+  autosaveStatus: Intent<SessionRecord>
 }
 
 /**
@@ -48,11 +66,82 @@ export function useLiveLayoutEditor(
   const [editMode, toggleHotkey] = useEditModeHotkey(activeLifetimes.length > 0)
   const [tree, setTree] = useState<LayoutNode<SlotId>>(baseline)
   const [bindOverrides, setBindOverrides] = useState<Record<SlotId, string>>({})
-  const updateSession = useUpdateSession()
+  const updateIntent = useIntent(useUpdateSession(), {
+    presentation: "ambient-durable",
+  })
   const primaryScene = usePrimaryScene()
 
   const pendingTreeRef = useRef<LayoutNode<SlotId> | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Seeded once, from whatever the *previous* mount of this session's
+  // editor (or a previous tab) left behind - see `durable-failure.ts`. The
+  // effect below is what keeps it in sync with this mount's own attempts.
+  const [restoredFailure, setRestoredFailure] = useState(() =>
+    readDurableFailure(session.id)
+  )
+  const lastHandledStatusRef = useRef<
+    "idle" | "working" | "succeeded" | "failed"
+  >("idle")
+
+  // No dependency array, deliberately - `updateIntent.state` is a fresh
+  // object every render (see `use-intent.ts`'s header), so it can't gate
+  // this effect. `lastHandledStatusRef` is what makes each arm act once
+  // per genuine transition rather than once per render, the same idiom
+  // `useIntentEffect` uses for the success-only case.
+  useEffect(() => {
+    matchIntent(updateIntent.state, {
+      idle: () => undefined,
+      working: () => {
+        if (lastHandledStatusRef.current === "working") return
+        lastHandledStatusRef.current = "working"
+        setRestoredFailure(null)
+      },
+      succeeded: () => {
+        if (lastHandledStatusRef.current === "succeeded") return
+        lastHandledStatusRef.current = "succeeded"
+        clearDurableFailure(session.id)
+        setRestoredFailure(null)
+      },
+      failed: (error) => {
+        if (lastHandledStatusRef.current === "failed") return
+        lastHandledStatusRef.current = "failed"
+        writeDurableFailure(session.id, {
+          kind: error.kind,
+          summary: error.summary,
+        })
+        setRestoredFailure(null)
+      },
+    })
+  })
+
+  // What actually renders: this mount's own live attempt once one has
+  // happened, otherwise a failure restored from before this mount existed.
+  // The restored case never offers retry - the tree that failed to save
+  // isn't held anywhere by the time a person is back looking at this
+  // screen (see `durable-failure.ts`'s header on why that isn't stored
+  // either), so editing the layout again is the honest retry path.
+  const autosaveStatus: Intent<SessionRecord> = matchIntent<
+    SessionRecord,
+    Intent<SessionRecord>
+  >(updateIntent.state, {
+    idle: () =>
+      restoredFailure
+        ? failed(
+            {
+              kind: restoredFailure.kind,
+              retryable: false,
+              summary:
+                "Your last layout edit here didn't save. Edit the layout again to retry.",
+              cause: "restored-durable-autosave-failure",
+            },
+            () => undefined
+          )
+        : idle(),
+    working: () => working(),
+    succeeded: (value) => succeeded(value),
+    failed: (error, retry) => failed(error, retry),
+  })
 
   function schedulePersist(next: LayoutNode<SlotId>): void {
     pendingTreeRef.current = next
@@ -61,7 +150,7 @@ export function useLiveLayoutEditor(
       const toSave = pendingTreeRef.current
       pendingTreeRef.current = null
       if (toSave) {
-        updateSession.mutate({ id: session.id, patch: { layout: toSave } })
+        updateIntent.start({ id: session.id, patch: { layout: toSave } })
       }
     }, PERSIST_DEBOUNCE_MS)
   }
@@ -78,7 +167,7 @@ export function useLiveLayoutEditor(
       timerRef.current = null
       const toSave = pendingTreeRef.current
       pendingTreeRef.current = null
-      updateSession.mutate({ id: session.id, patch: { layout: toSave } })
+      updateIntent.start({ id: session.id, patch: { layout: toSave } })
     }
     toggleHotkey()
   }
@@ -109,7 +198,7 @@ export function useLiveLayoutEditor(
         ...restLayers,
       ],
     }
-    updateSession.mutate({ id: session.id, patch: { scenes: nextScenes } })
+    updateIntent.start({ id: session.id, patch: { scenes: nextScenes } })
   }
 
   function onLeafResize(
@@ -168,5 +257,6 @@ export function useLiveLayoutEditor(
     boundLeafIds: boundLeafIdsOf(effectiveLifetimes),
     onBind,
     onLeafResize,
+    autosaveStatus,
   }
 }

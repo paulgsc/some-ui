@@ -14,6 +14,10 @@
  * unmocked production code (`useDeleteSession`, `useDeleteManySessions`,
  * `useUpdateStatusManySessions`, `lib/tenant/hooks.ts`,
  * `lib/file-host-config/client.ts`) all the way down to `global.fetch`.
+ *
+ * #936 migrated both flows onto `useIntent`/`IntentButton` - every `it.fails`
+ * this suite originally wrote for the not-yet-true "tells the person"
+ * outcome has flipped to a plain `it` now that it is true.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -137,22 +141,19 @@ describe("sessions list: single-shot delete on a card", () => {
       restore()
     })
 
-    it.fails(
-      "tells the person the delete failed (#936 — today renders nothing)",
-      async () => {
-        render(withQueryClient(<SessionsRoute />))
-        const restore = installFileHostSabotage(mode)
+    it("tells the person the delete failed (#936)", async () => {
+      render(withQueryClient(<SessionsRoute />))
+      const restore = installFileHostSabotage(mode)
 
-        const [deleteButton] = screen.getAllByTitle("Delete")
-        // eslint-disable-next-line @typescript-eslint/require-await -- see the sanity test above
-        await act(async () => {
-          fireEvent.click(deleteButton)
-        })
+      const [deleteButton] = screen.getAllByTitle("Delete")
+      // eslint-disable-next-line @typescript-eslint/require-await -- see the sanity test above
+      await act(async () => {
+        fireEvent.click(deleteButton)
+      })
 
-        await expectSomeFailureAffordance(document.body)
-        restore()
-      }
-    )
+      await expectSomeFailureAffordance(document.body)
+      restore()
+    })
   })
 })
 
@@ -200,24 +201,21 @@ describe("sessions list: bulk delete from the selection toolbar", () => {
       restore()
     })
 
-    it.fails(
-      "tells the person the bulk delete failed (#936 — today renders nothing)",
-      async () => {
-        render(withQueryClient(<SessionsRoute />))
-        selectAllSessions()
-        const restore = installFileHostSabotage(mode)
+    it("tells the person the bulk delete failed (#936)", async () => {
+      render(withQueryClient(<SessionsRoute />))
+      selectAllSessions()
+      const restore = installFileHostSabotage(mode)
 
-        const bulkDelete = within(bulkToolbar()).getByRole("button", {
-          name: /delete/i,
-        })
-        // eslint-disable-next-line @typescript-eslint/require-await -- see the composer suite's header note
-        await act(async () => {
-          fireEvent.click(bulkDelete)
-        })
+      const bulkDelete = within(bulkToolbar()).getByRole("button", {
+        name: /delete/i,
+      })
+      // eslint-disable-next-line @typescript-eslint/require-await -- see the composer suite's header note
+      await act(async () => {
+        fireEvent.click(bulkDelete)
+      })
 
-        await expectSomeFailureAffordance(document.body)
-        restore()
-      }
-    )
+      await expectSomeFailureAffordance(document.body)
+      restore()
+    })
   })
 })

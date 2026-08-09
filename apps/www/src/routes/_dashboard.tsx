@@ -21,6 +21,8 @@ import {
 import { FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn } from "some-ui-utils"
 
+import { AmbientIntentStatus } from "@/lib/intent/render"
+import { useMigrationSignal } from "@/lib/tenant/migration-signal"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -66,6 +68,7 @@ const DashboardLayout = (): JSX.Element => {
     select: (state) => state.location.pathname,
   })
   const isViewportRoute = isViewportPath(pathname)
+  const migrationSignal = useMigrationSignal()
 
   return (
     <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
@@ -106,6 +109,10 @@ const DashboardLayout = (): JSX.Element => {
               canonical place a person learns this app has audio, and the
               place the first-use notices point back to. */}
           <AudioIndicator />
+          {/* #947: sessions-backend.ts's partial-migration outcome, ambient
+              per #940 - quiet unless there's something to say, and never
+              silent when there is. */}
+          <AmbientIntentStatus state={migrationSignal} className="ml-2" />
         </header>
         <div
           className={cn(

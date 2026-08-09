@@ -35,6 +35,8 @@
 // source) but doesn't itself match the repo's *.test.*/tests/** glob that
 // exempts this rule; see packages/eslint/src/configs/overrides-deps.config.ts.
 // eslint-disable-next-line import/no-extraneous-dependencies
+import { waitFor } from "@testing-library/react"
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { expect, vi } from "vitest"
 
 export type SabotageMode =
@@ -112,26 +114,39 @@ export const SABOTAGE_MODES: ReadonlyArray<SabotageMode> = [
   "hang",
 ]
 
-/** Fails today: no failure affordance exists for any intent this census
- * found. Wrapped by callers in `test.fails` so CI shows it as an expected
- * failure - #936's job is to make this assertion pass, not this suite's.
+/** Pre-#936: failed for every intent this census found, since nothing
+ * rendered a failure at all. #936 makes this assertion pass for every
+ * migrated call site - see each `*.intent.test.tsx`'s own header for which
+ * of its `it.fails` wrappers that has already flipped to a plain `it`.
  *
- * Awaits a microtask tick first so a mutation's `.catch`-driven state update
- * (queued, not yet flushed, at the moment `fireEvent.click` returns) has a
- * chance to render before the DOM is inspected. */
+ * Two things this checks, not one: `role="alert"`/`role="status"` are what
+ * `IntentFailure`/`AmbientIntentStatus` actually render (see
+ * `lib/intent/render`), and are checked first since they're what a real
+ * failure now looks like; the keyword regex stays as a fallback for
+ * anything that names a failure without going through either renderer.
+ *
+ * Polls via `waitFor` rather than awaiting one fixed microtask tick - the
+ * real mutation pipeline a `fireEvent.click` sets off (`useIntent`'s
+ * `start` -> TanStack's `mutate` -> the sessions repository's `fetch` ->
+ * file_host's own error normalization -> TanStack's notify queue ->
+ * React's own state update) does not resolve in a fixed number of
+ * microtask turns, and asserting after exactly one was an intermittent
+ * false negative waiting to happen, not a stable wait. */
 export async function expectSomeFailureAffordance(
   container: HTMLElement
 ): Promise<void> {
-  await Promise.resolve()
   const failureText = /error|fail|couldn.?t|try again|retry|went wrong/i
-  const match = Array.from(container.querySelectorAll("*")).find(
-    (el) =>
-      el.textContent &&
-      failureText.test(el.textContent) &&
-      el.children.length === 0
-  )
-  expect(
-    match,
-    "expected some element naming the failure, found none"
-  ).toBeTruthy()
+  await waitFor(() => {
+    const roleMatch = container.querySelector('[role="alert"], [role="status"]')
+    const textMatch = Array.from(container.querySelectorAll("*")).find(
+      (el) =>
+        el.textContent &&
+        failureText.test(el.textContent) &&
+        el.children.length === 0
+    )
+    expect(
+      roleMatch ?? textMatch,
+      "expected some element naming the failure, found none"
+    ).toBeTruthy()
+  })
 }

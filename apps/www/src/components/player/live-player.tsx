@@ -6,6 +6,8 @@ import {
   useOrchestratorStore,
 } from "some-ui-utils"
 
+import { useIntent } from "@/lib/intent"
+import { AmbientIntentStatus } from "@/lib/intent/render"
 import type { SessionRecord } from "@/lib/tenant"
 import { useUpdateSession } from "@/lib/tenant"
 import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
@@ -30,7 +32,15 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const start = useOrchestratorStore((s) => s.start)
   const isTerminal = useIsTerminal()
   const { current_time: currentTime } = useOrchestratorClock()
-  const updateSession = useUpdateSession()
+  // Ambient per #940/#944's classification: the gesture that ends a session
+  // (finishing it, or Stop) already has its own on-screen confirmation - the
+  // completion screen itself, rendered unconditionally below regardless of
+  // whether this write has settled. This intent only has to make a *failed*
+  // write visible; a silent success stays silent, matching the pre-existing
+  // (and correct) optimistic render.
+  const completeSessionIntent = useIntent(useUpdateSession(), {
+    presentation: "ambient",
+  })
 
   const hasConfiguredRef = useRef(false)
   const hasWrittenBackRef = useRef(false)
@@ -60,7 +70,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
     if (hasWrittenBackRef.current || session.status === "completed") return
     hasWrittenBackRef.current = true
 
-    updateSession.mutate({
+    completeSessionIntent.start({
       id: session.id,
       patch: {
         status: "completed",
@@ -68,14 +78,20 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         finalElapsedMs: latestTimeRef.current,
       },
     })
-  }, [isTerminal, session.id, session.status, updateSession])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `completeSessionIntent.start` is stable per useIntent's own useCallback; `completeSessionIntent` itself is a fresh object every render and would defeat `hasWrittenBackRef`'s guard for no benefit if included here.
+  }, [isTerminal, session.id, session.status, completeSessionIntent.start])
 
   if (isTerminal) {
     const completedSession: SessionRecord =
       session.status === "completed"
         ? session
         : { ...session, status: "completed", finalElapsedMs: currentTime }
-    return <CompletionSummary session={completedSession} />
+    return (
+      <div className="flex flex-col gap-3">
+        <CompletionSummary session={completedSession} />
+        <AmbientIntentStatus state={completeSessionIntent.state} />
+      </div>
+    )
   }
 
   return (
