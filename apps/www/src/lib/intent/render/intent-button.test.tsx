@@ -82,7 +82,7 @@ describe("IntentButton", () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
-  it("failed: renders the failure affordance adjacent to the button, not in place of it - a retryable error offers Try again", () => {
+  it("failed and retryable: replaces the original action with one Try again control", () => {
     const retry = vi.fn()
     render(
       <IntentButton
@@ -101,7 +101,7 @@ describe("IntentButton", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull()
     const alert = screen.getByRole("alert")
     expect(alert.textContent).toContain("Server unreachable")
 
@@ -131,6 +131,7 @@ describe("IntentButton", () => {
       "This feature isn't available on this deployment."
     )
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull()
   })
 
   it("composes an external disabled condition (e.g. a form's isDirty gate) with the intent's own state", () => {
