@@ -29,6 +29,12 @@ pub struct LayerDistribution {
 #[wasm_bindgen]
 pub struct BrickLadderCalculator;
 
+impl Default for BrickLadderCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen]
 impl BrickLadderCalculator {
     #[wasm_bindgen(constructor)]
@@ -77,6 +83,7 @@ impl BrickLadderCalculator {
 
     /// Calculate brick positions for a given layer
     #[wasm_bindgen]
+    #[allow(clippy::too_many_arguments)]
     pub fn calculate_brick_positions(
         &self,
         layer_index: usize,
@@ -158,8 +165,7 @@ impl BrickLadderCalculator {
     #[wasm_bindgen]
     pub fn calculate_color_shade(&self, value: f64, min: f64, max: f64) -> u32 {
         let intensity = self.normalize_color_intensity(value, min, max);
-        let shade = (220.0 - intensity * 150.0).floor() as u32;
-        shade
+        (220.0 - intensity * 150.0).floor() as u32
     }
 }
 

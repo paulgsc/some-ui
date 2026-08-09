@@ -33,7 +33,7 @@ pub fn find_packages(workspaces: &Path) -> IoResult<Vec<Package>> {
 
     let packages: Vec<Package> = entries
         .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_dir()))
         .filter(|entry| entry.path().join("package.json").is_file())
         .filter_map(|entry| Package::new(entry.path()))
         .collect();

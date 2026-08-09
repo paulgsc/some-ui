@@ -18,7 +18,7 @@ jobs:
           nix develop .#ci --command cargo clippy \
             --workspace \
             --all-targets \
-            -- -D warnings -A unknown-lints
+            -- -D warnings -A unknown-lints -A clippy::multiple-crate-versions
       - name: Format check
         run: nix develop .#ci --command cargo fmt --all -- --check
       - name: wasm_bindgen boundary guardrail

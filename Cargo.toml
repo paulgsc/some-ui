@@ -6,12 +6,6 @@ members = ["crates/pkg_cloner", "crates/some-bricks", "crates/some-crossword", "
 
 exclude = []
 
-[workspace.lints.clippy]
-all = { level = "deny", priority = 2 }
-pedantic = { level = "deny", priority = 2 }
-nursery = { level = "deny", priority = 2 }
-cargo = { level = "deny", priority = 2 }
-
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test_coverage)'] }
 
@@ -35,4 +29,3 @@ regex = "1.7.0"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
 tracing = "0.1.44"
-

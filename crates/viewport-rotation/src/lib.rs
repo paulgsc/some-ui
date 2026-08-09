@@ -81,7 +81,7 @@ pub struct ViewportManager {
 impl ViewportRotation {
     /// Creates a new ViewportRotation instance
     pub fn new(total_items: usize, max_per_face: usize) -> Result<ViewportRotation, String> {
-        if max_per_face < 1 || max_per_face > 6 {
+        if !(1..=6).contains(&max_per_face) {
             return Err("max_per_face must be between 1 and 6".to_string());
         }
 
@@ -292,6 +292,12 @@ struct ViewportListResponse {
     viewport_ids: Vec<String>,
     #[serde(rename = "activeViewportId")]
     active_viewport_id: Option<String>,
+}
+
+impl Default for ViewportManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[wasm_bindgen]

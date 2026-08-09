@@ -263,13 +263,13 @@ mod tests {
         let mut grid = HexGrid::new(2);
         let coord = create_coord(0, 0, 0);
         let result = grid.set_cell_color(&coord, 0x00FF00);
-        assert_eq!(result, true);
+        assert!(result);
         let cell = grid.get_cell(&coord);
         assert_eq!(cell.unwrap().color, Some(0x00FF00));
 
         let invalid_coord = create_coord(10, 10, -20);
         let result = grid.set_cell_color(&invalid_coord, 0x00FF00);
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -277,13 +277,13 @@ mod tests {
         let mut grid = HexGrid::new(2);
         let coord = create_coord(0, 0, 0);
         let result = grid.set_cell_content(&coord, "Test Content".to_string());
-        assert_eq!(result, true);
+        assert!(result);
         let cell = grid.get_cell(&coord);
         assert_eq!(cell.unwrap().content, Some("Test Content".to_string()));
 
         let invalid_coord = create_coord(10, 10, -20);
         let result = grid.set_cell_content(&invalid_coord, "Test Content".to_string());
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]

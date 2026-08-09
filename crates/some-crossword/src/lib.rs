@@ -156,7 +156,7 @@ impl CrosswordGenerator {
             let chars: HashSet<char> = word.chars().collect();
 
             for &c in &chars {
-                letter_word_map.entry(c).or_insert_with(Vec::new).push(word.clone());
+                letter_word_map.entry(c).or_default().push(word.clone());
             }
         }
 
@@ -234,11 +234,9 @@ impl CrosswordGenerator {
         let word_chars: Vec<char> = word.chars().collect();
 
         // Check each position of the new word
-        for i in 0..word.len() {
+        for (i, &current_char) in word_chars.iter().enumerate() {
             let x = if is_across { start_x + i } else { start_x };
             let y = if is_across { start_y } else { start_y + i };
-            let current_char = word_chars[i];
-
             // If position is not empty, check for valid intersection
             if self.grid[y][x] != ' ' {
                 if self.grid[y][x] != current_char {
@@ -275,9 +273,9 @@ impl CrosswordGenerator {
                     // and is not an intersection point, it's an invalid adjacency
                     if self.grid[adj_y][adj_x] != ' ' && !intersections.contains(&adj_pos) {
                         let is_part_of_word = if is_across {
-                            adj_y == y && (adj_x >= start_x && adj_x <= start_x + word.len() - 1)
+                            adj_y == y && (adj_x >= start_x && adj_x < start_x + word.len())
                         } else {
-                            adj_x == x && (adj_y >= start_y && adj_y <= start_y + word.len() - 1)
+                            adj_x == x && (adj_y >= start_y && adj_y < start_y + word.len())
                         };
 
                         if !is_part_of_word {
@@ -303,7 +301,7 @@ impl CrosswordGenerator {
             if self.grid[y][x] != ' ' {
                 // Find which word placement this is
                 for placement in &self.word_positions {
-                    if placement.group_id.is_some() {
+                    if let Some(group_id) = placement.group_id {
                         let in_placement_range = if placement.is_across {
                             y == placement.start_y && x >= placement.start_x && x < placement.start_x + placement.word.len()
                         } else {
@@ -311,7 +309,7 @@ impl CrosswordGenerator {
                         };
 
                         if in_placement_range {
-                            connected_groups.insert(placement.group_id.unwrap());
+                            connected_groups.insert(group_id);
                             break;
                         }
                     }
@@ -599,9 +597,9 @@ impl CrosswordGenerator {
         let mut new_grid = vec![vec![' '; new_width]; new_height];
 
         // Copy the content
-        for y in 0..new_height {
-            for x in 0..new_width {
-                new_grid[y][x] = self.grid[y + min_y][x + min_x];
+        for (y, row) in new_grid.iter_mut().enumerate() {
+            for (x, cell) in row.iter_mut().enumerate() {
+                *cell = self.grid[y + min_y][x + min_x];
             }
         }
 
@@ -621,7 +619,7 @@ impl CrosswordGenerator {
         let mut result = String::new();
 
         // Add a horizontal ruler
-        result.push_str(&format!("  "));
+        result.push_str("  ");
         for x in 0..self.width {
             result.push_str(&format!("{}", x % 10));
         }

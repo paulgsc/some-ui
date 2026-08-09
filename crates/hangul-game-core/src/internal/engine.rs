@@ -44,7 +44,7 @@ fn compute_match_outcome(stats: &GameStats, config: &GameConfig, revealed_at_ms:
     let points = config.points_per_correct + streak_bonus;
     new_stats.score += points;
 
-    let streak_milestone = if new_stats.current_streak > 0 && new_stats.current_streak % 5 == 0 && new_stats.current_streak != prev_streak {
+    let streak_milestone = if new_stats.current_streak > 0 && new_stats.current_streak.is_multiple_of(5) && new_stats.current_streak != prev_streak {
         Some(new_stats.current_streak)
     } else {
         None
