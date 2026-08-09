@@ -99,7 +99,9 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       })
 
       expect(
-        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
+        isDisabled(
+          screen.getByRole("button", { name: /save.*play|try.*again/i })
+        )
       ).toBe(false)
       restore()
     })

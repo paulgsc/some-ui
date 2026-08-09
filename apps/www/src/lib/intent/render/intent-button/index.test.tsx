@@ -6,7 +6,7 @@ import { failed, idle, succeeded, working } from "@some-ui/intent-kit"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { IntentButton } from "./intent-button"
+import { IntentButton } from "."
 
 afterEach(() => {
   cleanup()
@@ -131,7 +131,7 @@ describe("IntentButton", () => {
       "This feature isn't available on this deployment."
     )
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy()
   })
 
   it("composes an external disabled condition (e.g. a form's isDirty gate) with the intent's own state", () => {

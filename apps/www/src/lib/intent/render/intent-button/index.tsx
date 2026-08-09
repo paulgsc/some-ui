@@ -27,7 +27,7 @@ import type { ButtonProps } from "@some-ui/shared"
 import { Button } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
 
-import { IntentFailure } from "./intent-failure"
+import { IntentFailure } from "@/lib/intent/render"
 
 export type IntentButtonProps<TStep extends string = never> = {
   state: Intent<unknown, TStep>
@@ -120,24 +120,28 @@ export const IntentButton = <TStep extends string = never>({
     ),
     failed: (error, retry) => (
       <ActionStack>
-        <>
-          {error.retryable ? (
-            <Button
-              variant={variant}
-              size={size}
-              className={className}
-              disabled={disabled}
-              onClick={retry}
-              title={title}
-            >
-              Try again
-            </Button>
-          ) : null}
+        <div className="flex flex-col items-end gap-1.5 pe-1.5">
+          <Button
+            variant={variant}
+            size={size}
+            className={cn(
+              className,
+              "opacity-80 hover:opacity-100 transition-opacity",
+              // Custom striped CSS gradient layered over the existing background
+              "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
+              "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
+            )}
+            disabled={disabled}
+            onClick={error.retryable ? retry : onPress}
+            title={title}
+          >
+            {error.retryable ? "Try again" : idleLabel}
+          </Button>
           <IntentFailure
             error={error}
             className={cn("w-full", failureClassName)}
           />
-        </>
+        </div>
       </ActionStack>
     ),
   })
