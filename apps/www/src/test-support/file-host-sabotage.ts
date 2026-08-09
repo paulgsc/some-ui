@@ -28,7 +28,7 @@
  * whether `onError` fired — the thing #939 explicitly warns a narrower unit
  * test would get wrong. The gap this leaves — a real browser, a real
  * network stack, a stopped `file_host` process — is real and is recorded as
- * a gap in `docs/intent-census.md` rather than papered over.
+ * deliberately outside this component-level suite's scope.
  */
 
 // This module is test-only support code (never imported by production
