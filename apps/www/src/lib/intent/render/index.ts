@@ -41,8 +41,5 @@
  */
 
 export { IntentButton } from "./intent-button"
-export type { IntentButtonProps } from "./intent-button"
 export { IntentFailure } from "./intent-failure"
-export type { IntentFailureProps } from "./intent-failure"
 export { AmbientIntentStatus } from "./ambient-status"
-export type { AmbientIntentStatusProps } from "./ambient-status"
