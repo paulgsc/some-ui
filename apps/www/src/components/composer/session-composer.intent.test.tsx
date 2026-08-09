@@ -26,7 +26,14 @@ import {
 } from "@/test-support/file-host-sabotage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const navigateSpy = vi.fn()
@@ -98,11 +105,13 @@ describe("composer Save & Play, new session (#933's flow)", () => {
         clickSaveAndPlay()
       })
 
-      expect(
-        isDisabled(
-          screen.getByRole("button", { name: /save.*play|try.*again/i })
-        )
-      ).toBe(false)
+      await waitFor(() => {
+        expect(
+          isDisabled(
+            screen.getByRole("button", { name: /save.*play|try.*again/i })
+          )
+        ).toBe(false)
+      })
       restore()
     })
 
