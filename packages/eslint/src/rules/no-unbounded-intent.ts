@@ -21,9 +21,11 @@ const HANDLER_PROP_PATTERN = /^on[A-Z]/
 /** This codebase's own naming convention for a handler referenced by
  * identifier rather than declared inline - `handleSaveDraft`,
  * `handleDelete`, `handleStatusChange`, etc. (see session-composer.tsx,
- * sessions/index.tsx, settings.tsx). Resolving arbitrary identifiers would
- * need full scope/data-flow analysis; this AST-local heuristic covers the
- * pattern every producer in the app actually uses. */
+ * sessions/index.tsx, settings.tsx). Deliberately scoped to this naming
+ * convention rather than resolving arbitrary identifiers (a prop drilled
+ * down from a parent, an imported callback) - those have no local body this
+ * rule can see anyway. What *is* resolved lexically rather than by name
+ * alone: see `resolveHandlerFunction` below. */
 const HANDLER_NAME_PATTERN = /^handle[A-Z0-9]/
 
 const OPT_OUT = "intent-exempt:"
@@ -52,12 +54,50 @@ function calleeName(call: any): string | null {
   return null
 }
 
-function enclosingFunction(node: any): any {
+/**
+ * Whether `call` is lexically nested inside any function that is itself a
+ * registered producer - not only the *nearest* enclosing one. A producer's
+ * body can wrap the effect in another closure (`items.forEach(() =>
+ * mutation.mutate())`, a `.then()`, an IIFE) without that closure itself
+ * being the JSX handler; the effect is still initiated by the click. Walking
+ * past the first function found (rather than stopping there) is what makes
+ * that still count.
+ */
+function isInsideProducer(node: any, producers: ReadonlySet<any>): boolean {
   let current = node.parent
   while (current) {
     const currentType: string = current.type
-    if (FUNCTION_TYPES.has(currentType)) return current
+    if (FUNCTION_TYPES.has(currentType) && producers.has(current)) {
+      return true
+    }
     current = current.parent
+  }
+  return false
+}
+
+/**
+ * Resolves a `handle*`-named JSX handler prop's `Identifier` to the
+ * function it actually refers to, via real lexical scoping rather than a
+ * file-wide name lookup - two components in the same file each declaring
+ * their own `handleSave` must not be conflated, in either direction (an
+ * earlier dirty one hidden by a later clean one of the same name, or a
+ * clean one blamed for an unrelated dirty one). `context.sourceCode`'s
+ * scope analysis is computed for the whole file up front, so this resolves
+ * correctly regardless of whether the declaration appears before or after
+ * the JSX in source order.
+ */
+function resolveHandlerFunction(context: Rule.RuleContext, expr: any): any {
+  const exprNode: Rule.Node = expr
+  const scope = context.sourceCode.getScope(exprNode)
+  const reference = scope.references.find((ref: any) => ref.identifier === expr)
+  const variable = reference?.resolved
+  const def = variable?.defs[0]
+  if (!def) return null
+  if (def.type === "FunctionName") return def.node
+  if (def.type === "Variable") {
+    const init = def.node.init
+    const initType: string | undefined = init?.type
+    if (initType !== undefined && FUNCTION_TYPES.has(initType)) return init
   }
   return null
 }
@@ -119,12 +159,13 @@ export const noUnboundedIntent: Rule.RuleModule = {
 
     const source = context.sourceCode
 
-    // Two-pass: JSX attributes and handler declarations can appear in
-    // either order in the file, so producers/candidate calls are resolved
-    // once the whole file has been seen rather than as each is visited.
+    // Producers are registered as they're found (an inline function is
+    // added immediately; a `handle*` reference is resolved to its
+    // declaration via scope, which doesn't depend on traversal order).
+    // Effect calls are still collected and checked at `Program:exit`,
+    // because the JSX attribute that makes a given function a producer can
+    // appear later in the file than the effect call inside it.
     const producers = new Set<any>()
-    const namedHandlers = new Map<string, any>()
-    const referencedNames = new Set<string>()
     const candidateCalls: Array<any> = []
 
     function isEffectCall(call: any): boolean {
@@ -172,33 +213,9 @@ export const noUnboundedIntent: Rule.RuleModule = {
         }
         if (exprType === "Identifier") {
           const handlerName: string = expr.name
-          if (HANDLER_NAME_PATTERN.test(handlerName)) {
-            referencedNames.add(handlerName)
-          }
-        }
-      },
-      FunctionDeclaration(rawNode: any): void {
-        const node = rawNode
-        const id = node.id
-        if (!id) return
-        const handlerName: string = id.name
-        if (HANDLER_NAME_PATTERN.test(handlerName)) {
-          namedHandlers.set(handlerName, node)
-        }
-      },
-      VariableDeclarator(rawNode: any): void {
-        const node = rawNode
-        const id = node.id
-        const idType: string = id.type
-        const init = node.init
-        const initType: string | undefined = init?.type
-        if (idType !== "Identifier" || initType === undefined) return
-        const handlerName: string = id.name
-        if (
-          HANDLER_NAME_PATTERN.test(handlerName) &&
-          FUNCTION_TYPES.has(initType)
-        ) {
-          namedHandlers.set(handlerName, init)
+          if (!HANDLER_NAME_PATTERN.test(handlerName)) return
+          const resolved = resolveHandlerFunction(context, expr)
+          if (resolved) producers.add(resolved)
         }
       },
       CallExpression(rawNode: any): void {
@@ -208,14 +225,8 @@ export const noUnboundedIntent: Rule.RuleModule = {
         }
       },
       "Program:exit"(): void {
-        for (const name of referencedNames) {
-          const fn = namedHandlers.get(name)
-          if (fn) producers.add(fn)
-        }
-
         for (const call of candidateCalls) {
-          const fn = enclosingFunction(call)
-          if (!fn || !producers.has(fn)) continue
+          if (!isInsideProducer(call, producers)) continue
           if (hasOptOut(call)) continue
 
           context.report({

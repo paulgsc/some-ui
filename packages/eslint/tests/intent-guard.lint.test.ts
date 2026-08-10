@@ -221,4 +221,92 @@ function Widget() {
     const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
     expect(msgs.some((m) => m.ruleId === RULE)).toBe(true)
   })
+
+  // Regression coverage for a review finding: the nearest enclosing
+  // function is not always the producer itself - a producer can wrap the
+  // effect in another closure (forEach, then, an IIFE) without that
+  // closure being the JSX handler.
+  it("fires when the effect is nested inside a closure within the handler (forEach)", async () => {
+    const code = `
+function Widget() {
+  const handleDeleteMany = () => {
+    items.forEach(() => { deleteSession.mutate(item.id) })
+  }
+  return <button onClick={handleDeleteMany}>Delete all</button>
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expectMessageForRule(
+      msgs,
+      RULE,
+      "an effect nested inside a forEach callback within the handler"
+    )
+  })
+
+  it("fires when the effect is nested inside a .then() within an inline handler", async () => {
+    const code = `
+function Widget() {
+  return (
+    <button onClick={() => {
+      checkThing().then(() => { session.mutate(draft) })
+    }}>Go</button>
+  )
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expectMessageForRule(
+      msgs,
+      RULE,
+      "an effect nested inside a .then() callback within an inline handler"
+    )
+  })
+
+  // Regression coverage for a review finding: two components in the same
+  // file declaring their own same-named handle* function must not be
+  // conflated via a file-wide name lookup, in either direction.
+  it("fires on the dirty handleSave and not the unrelated clean handleSave sharing its name", async () => {
+    const code = `
+function Dirty() {
+  const handleSave = () => {
+    saveSession.mutate(draft)
+  }
+  return <button onClick={handleSave}>Save dirty</button>
+}
+
+function Clean() {
+  const handleSave = () => {
+    setSaved(true)
+  }
+  return <button onClick={handleSave}>Save clean</button>
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expectMessageForRule(msgs, RULE, "the dirty handleSave's own mutate() call")
+    expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(1)
+  })
+
+  it("fires on the dirty handleSave even when its own clean namesake is declared later in the file", async () => {
+    const code = `
+function Clean() {
+  const handleSave = () => {
+    setSaved(true)
+  }
+  return <button onClick={handleSave}>Save clean</button>
+}
+
+function Dirty() {
+  const handleSave = () => {
+    saveSession.mutate(draft)
+  }
+  return <button onClick={handleSave}>Save dirty</button>
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expectMessageForRule(
+      msgs,
+      RULE,
+      "the dirty handleSave's own mutate() call, declared after its clean namesake"
+    )
+    expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(1)
+  })
 })
