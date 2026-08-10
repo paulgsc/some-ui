@@ -20,9 +20,23 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
+
+import { SettingsRepository } from "@/lib/tenant/settings-repository"
 
 const toastSpy = vi.fn()
+// Install this before importing the route: hooks.ts creates its repository at
+// module evaluation time, and this test cares about commands crossing that
+// boundary rather than jsdom's WebIDL-backed localStorage implementation.
+const saveSettingsSpy = vi.spyOn(SettingsRepository.prototype, "save")
 
 vi.mock("sonner", () => ({
   toast: (...args: Array<unknown>): void => {
@@ -51,11 +65,16 @@ function withProviders(children: ReactNode): JSX.Element {
 
 beforeEach(() => {
   toastSpy.mockClear()
+  saveSettingsSpy.mockClear()
   window.localStorage.clear()
 })
 
 afterEach(() => {
   cleanup()
+})
+
+afterAll(() => {
+  saveSettingsSpy.mockRestore()
 })
 
 async function renderLoaded(): Promise<void> {
@@ -65,11 +84,6 @@ async function renderLoaded(): Promise<void> {
 
 describe("settings: save button", () => {
   it("double-clicking Save issues exactly one write (thundering-herd regression)", async () => {
-    const storageTarget =
-      typeof Storage !== "undefined" ? Storage.prototype : window.localStorage
-
-    const writeSpy = vi.spyOn(storageTarget, "setItem")
-
     await renderLoaded()
 
     const input = await screen.findByLabelText(/default session length/i)
@@ -83,13 +97,8 @@ describe("settings: save button", () => {
     })
 
     await waitFor(() => {
-      const settingsWrites = writeSpy.mock.calls.filter(
-        ([key]) => key === "some-ui.tenant.settings.v1"
-      )
-      expect(settingsWrites).toHaveLength(1)
+      expect(saveSettingsSpy).toHaveBeenCalledTimes(1)
     })
-
-    writeSpy.mockRestore()
   })
 
   it("saves, toasts, and the button disables again without a further edit - unchanged from pre-migration", async () => {
