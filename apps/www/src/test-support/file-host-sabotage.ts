@@ -35,7 +35,7 @@
 // source) but doesn't itself match the repo's *.test.*/tests/** glob that
 // exempts this rule; see packages/eslint/src/configs/overrides-deps.config.ts.
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { waitFor } from "@testing-library/react"
+import { waitFor, within } from "@testing-library/react"
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { expect, vi } from "vitest"
 
@@ -138,6 +138,19 @@ export async function expectSomeFailureAffordance(
   const failureText = /error|fail|couldn.?t|try again|retry|went wrong/i
   await waitFor(() => {
     const roleMatch = container.querySelector('[role="alert"], [role="status"]')
+    if (roleMatch) {
+      // #950's non-emptiness check: a `[role="alert"]` with no text is
+      // exactly what a `failed: () => <div role="alert" />` arm produces -
+      // well-typed, routed through the boundary correctly, and silent
+      // anyway. Presence of the role alone doesn't catch that; the text
+      // inside it does.
+      const accessibleText = roleMatch.textContent.trim()
+      expect(
+        accessibleText.length > 0,
+        'found a [role="alert"]/[role="status"] failure affordance with no visible text - an empty failed arm passes a presence-only check and fails this one'
+      ).toBe(true)
+      return
+    }
     const textMatch = Array.from(container.querySelectorAll("*")).find(
       (el) =>
         el.textContent &&
@@ -145,8 +158,39 @@ export async function expectSomeFailureAffordance(
         el.children.length === 0
     )
     expect(
-      roleMatch ?? textMatch,
+      textMatch,
       "expected some element naming the failure, found none"
     ).toBeTruthy()
   })
+}
+
+/**
+ * #950's own acceptance criterion: the retry control's presence must track
+ * `IntentError.retryable`, not just "some failure text exists somewhere" -
+ * `unreachable` (connection-refused, response-error's 5xx branch) gets one,
+ * `unavailable` (not-configured) must not, per `IntentFailure`'s own header
+ * ("a retry button wired to a request that cannot succeed is the
+ * inert-button defect in a new costume"). Checked by accessible name
+ * ("Try again" - the literal label both `IntentButton`'s failed arm and the
+ * standalone `IntentFailure` render for a retryable error) rather than a
+ * class or test id, so a restyle can't accidentally satisfy this.
+ */
+export function expectRetryAffordanceTracksRetryable(
+  container: HTMLElement,
+  retryable: boolean
+): void {
+  const retryButtons = within(container).queryAllByRole("button", {
+    name: /try again/i,
+  })
+  if (retryable) {
+    expect(
+      retryButtons.length,
+      'expected a "Try again" retry control for a retryable failure, found none'
+    ).toBeGreaterThan(0)
+  } else {
+    expect(
+      retryButtons.length,
+      'expected no "Try again" retry control for a non-retryable failure - a retry button wired to a request that cannot succeed is the inert-button defect in a new costume'
+    ).toBe(0)
+  }
 }

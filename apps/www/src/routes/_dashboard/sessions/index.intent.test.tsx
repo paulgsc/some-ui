@@ -18,10 +18,24 @@
  * #936 migrated both flows onto `useIntent`/`IntentButton` - every `it.fails`
  * this suite originally wrote for the not-yet-true "tells the person"
  * outcome has flipped to a plain `it` now that it is true.
+ *
+ * #937 S3 extends coverage to a third flow in this file: a card's own
+ * duplicate action (`SessionCard`'s `duplicateIntent`, adjacent to the
+ * delete intent above it). The bulk status-change intent
+ * (`updateStatusManyIntent`, driven from a Radix `Select`) is a real
+ * remaining gap - this suite has no existing precedent or polyfills for
+ * driving a Radix `Select` through jsdom (`hasPointerCapture`,
+ * `scrollIntoView`), and building that harness is its own piece of work
+ * rather than something to bolt on here without it either being flaky or
+ * silently wrong. `bulkStatusChangeFailure` (this file's own renderer for
+ * that intent) reuses the same `IntentFailure` component every other
+ * covered flow does, so the render path is not untested, only the
+ * Select-driven route-level path.
  */
 
 import type { JSX, ReactNode } from "react"
 import {
+  expectRetryAffordanceTracksRetryable,
   expectSomeFailureAffordance,
   installFileHostSabotage,
   SABOTAGE_MODES,
@@ -34,6 +48,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -109,6 +124,13 @@ function withQueryClient(children: ReactNode): JSX.Element {
 
 const REJECTING_MODES = SABOTAGE_MODES.filter((mode) => mode !== "hang")
 
+/** `not-configured` -> `FileHostNotConfiguredError` -> `IntentError.kind
+ * "unavailable"`, the one rejecting mode that is not retryable - see
+ * `lib/intent/errors.ts`'s `mapFileHostError`. */
+function isRetryableMode(mode: (typeof REJECTING_MODES)[number]): boolean {
+  return mode !== "not-configured"
+}
+
 beforeEach(() => {
   vi.spyOn(window, "confirm").mockReturnValue(true)
 })
@@ -141,7 +163,7 @@ describe("sessions list: single-shot delete on a card", () => {
       restore()
     })
 
-    it("tells the person the delete failed (#936)", async () => {
+    it("tells the person the delete failed, with a retry control tracking retryability", async () => {
       render(withQueryClient(<SessionsRoute />))
       const restore = installFileHostSabotage(mode)
 
@@ -152,6 +174,42 @@ describe("sessions list: single-shot delete on a card", () => {
       })
 
       await expectSomeFailureAffordance(document.body)
+      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+      restore()
+    })
+  })
+})
+
+describe("sessions list: duplicate on a card", () => {
+  describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
+    it("re-enables the duplicate button once the request settles (sanity)", async () => {
+      render(withQueryClient(<SessionsRoute />))
+      const restore = installFileHostSabotage(mode)
+
+      const [duplicateButton] = screen.getAllByTitle("Duplicate")
+      // eslint-disable-next-line @typescript-eslint/require-await -- see the delete suite's own sanity test
+      await act(async () => {
+        fireEvent.click(duplicateButton)
+      })
+
+      await waitFor(() => {
+        expect(isDisabled(screen.getAllByTitle("Duplicate")[0])).toBe(false)
+      })
+      restore()
+    })
+
+    it("tells the person the duplicate failed, with a retry control tracking retryability", async () => {
+      render(withQueryClient(<SessionsRoute />))
+      const restore = installFileHostSabotage(mode)
+
+      const [duplicateButton] = screen.getAllByTitle("Duplicate")
+      // eslint-disable-next-line @typescript-eslint/require-await -- see the delete suite's own sanity test
+      await act(async () => {
+        fireEvent.click(duplicateButton)
+      })
+
+      await expectSomeFailureAffordance(document.body)
+      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
       restore()
     })
   })
@@ -201,7 +259,7 @@ describe("sessions list: bulk delete from the selection toolbar", () => {
       restore()
     })
 
-    it("tells the person the bulk delete failed (#936)", async () => {
+    it("tells the person the bulk delete failed, with a retry control tracking retryability", async () => {
       render(withQueryClient(<SessionsRoute />))
       selectAllSessions()
       const restore = installFileHostSabotage(mode)
@@ -215,6 +273,7 @@ describe("sessions list: bulk delete from the selection toolbar", () => {
       })
 
       await expectSomeFailureAffordance(document.body)
+      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
       restore()
     })
   })

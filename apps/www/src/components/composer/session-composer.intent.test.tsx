@@ -1,25 +1,29 @@
 /**
  * @vitest-environment jsdom
  *
- * #939, S2 of #934: sabotage `file_host` behind the #933 flow — the
- * composer's "Save & Play" on a new session, which chains
- * `createSession.mutate` into `updateSession.mutate` into `navigate` inside
- * each other's `onSuccess` — and record what a person actually sees.
+ * #939/#950: sabotage `file_host` behind the #933 flow — the composer's
+ * "Save & Play" and "Save as draft" on a new session — and record what a
+ * person actually sees. "Save & Play" chains `createSession.mutate` into
+ * `updateSession.mutate` into `navigate` inside each other's `onSuccess`.
  *
  * See `test-support/file-host-sabotage.ts` for why this is Vitest against
  * the real `SessionComposer`, not a Playwright suite booting the real app.
  *
- * #936 migrated this flow onto `useIntent`/`IntentButton`, so every
+ * #937 S3 promotes this suite from characterization to enforcement: every
  * `it.fails` this suite originally wrote to encode the *desired*,
- * not-yet-true outcome has flipped to a plain `it` - except one: "hang"
- * mode has no timeout anywhere in the chain to hit, so a stuck request
- * still waits forever with nothing telling the person why. That one stays
- * `it.fails`, on the record as the one remaining gap rather than quietly
- * dropped.
+ * not-yet-true outcome has flipped to a plain `it` - except one. "hang" mode
+ * has no timeout anywhere in `client.ts`'s chain to hit, so a stuck request
+ * still waits forever with nothing telling the person why. Flipping that one
+ * to a plain `it` would require shipping a request-timeout feature, which is
+ * a product decision outside this epic's charter (type/lint/CI enforcement
+ * of the boundary that already exists) - so it stays `it.fails`, a searchable
+ * record of a real, separately-scoped gap rather than a silently dropped or
+ * dishonestly "passing" one.
  */
 
 import type { JSX, ReactNode } from "react"
 import {
+  expectRetryAffordanceTracksRetryable,
   expectSomeFailureAffordance,
   installFileHostSabotage,
   SABOTAGE_MODES,
@@ -83,7 +87,18 @@ function clickSaveAndPlay(): void {
   fireEvent.click(screen.getByRole("button", { name: /save.*play/i }))
 }
 
+function clickSaveAsDraft(): void {
+  fireEvent.click(screen.getByRole("button", { name: /save as draft/i }))
+}
+
 const REJECTING_MODES = SABOTAGE_MODES.filter((mode) => mode !== "hang")
+
+/** `not-configured` -> `FileHostNotConfiguredError` -> `IntentError.kind
+ * "unavailable"`, the one rejecting mode that is not retryable - see
+ * `lib/intent/errors.ts`'s `mapFileHostError`. */
+function isRetryableMode(mode: (typeof REJECTING_MODES)[number]): boolean {
+  return mode !== "not-configured"
+}
 
 beforeEach(() => {
   navigateSpy.mockClear()
@@ -131,7 +146,7 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       restore()
     })
 
-    it("tells the person the save failed (#936)", async () => {
+    it("tells the person the save failed, with a retry control tracking retryability", async () => {
       await renderAtReviewStep()
       const restore = installFileHostSabotage(mode)
 
@@ -141,13 +156,14 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       })
 
       await expectSomeFailureAffordance(document.body)
+      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
       restore()
     })
   })
 
   describe("file_host sabotaged: hang (no timeout exists to hit)", () => {
     it.fails(
-      "eventually tells the person something is wrong, or offers a way out (#936 — today waits forever, silently)",
+      "eventually tells the person something is wrong, or offers a way out (deferred - no request-timeout mechanism exists anywhere in the chain today; tracked separately from #937)",
       async () => {
         await renderAtReviewStep()
         const restore = installFileHostSabotage("hang")
@@ -169,5 +185,24 @@ describe("composer Save & Play, new session (#933's flow)", () => {
         restore()
       }
     )
+  })
+})
+
+describe("composer Save as draft, new session (#950 coverage extension)", () => {
+  describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
+    it("tells the person saving as a draft failed, with a retry control tracking retryability", async () => {
+      await renderAtReviewStep()
+      const restore = installFileHostSabotage(mode)
+
+      // eslint-disable-next-line @typescript-eslint/require-await -- see renderAtReviewStep
+      await act(async () => {
+        clickSaveAsDraft()
+      })
+
+      await expectSomeFailureAffordance(document.body)
+      expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
+      expect(navigateSpy).not.toHaveBeenCalled()
+      restore()
+    })
   })
 })
