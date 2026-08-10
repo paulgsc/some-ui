@@ -524,11 +524,7 @@ mod invariance_tests {
             vp.apply(Transition::RotateNext);
         }
 
-        let expected = if metrics.r > 0 && metrics.cycle_epoch == metrics.q {
-            metrics.c.min(metrics.n)
-        } else {
-            metrics.c.min(metrics.n)
-        };
+        let expected = metrics.c.min(metrics.n);
 
         assert_eq!(
             all_items.len(),

@@ -6,6 +6,10 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "WebAssembly game engine for generating and playing crossword puzzles."
+readme = "README.md"
+keywords = ["crossword", "game", "puzzle", "wasm"]
+categories = ["game-development", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -32,4 +36,3 @@ workspace = true
 # backend otherwise panics at runtime under wasm-pack).
 [package.metadata.cargo-machete]
 ignored = ["getrandom"]
-

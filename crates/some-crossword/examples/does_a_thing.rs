@@ -14,7 +14,7 @@ fn main() {
     let mut generator = match CrosswordGenerator::new(words, 4) {
         Ok(generator) => generator,
         Err(e) => {
-            println!("Failed to create generator: {}", e);
+            println!("Failed to create generator: {e}");
             return;
         }
     };
@@ -25,7 +25,7 @@ fn main() {
             println!("{}", generator.display());
         }
         Err(e) => {
-            println!("Failed to generate crossword: {:?}", e);
+            println!("Failed to generate crossword: {e:?}");
         }
     }
 }

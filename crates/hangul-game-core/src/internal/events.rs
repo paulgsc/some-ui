@@ -175,7 +175,7 @@ pub struct EventBatch {
 }
 
 impl EventBatch {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             primary: None,
             secondary: Vec::new(),

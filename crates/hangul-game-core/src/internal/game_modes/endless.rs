@@ -10,7 +10,7 @@ pub struct EndlessMode {
 }
 
 impl EndlessMode {
-    pub fn new(pool: Vec<ChallengeSeed>) -> Self {
+    pub const fn new(pool: Vec<ChallengeSeed>) -> Self {
         Self { pool }
     }
 }

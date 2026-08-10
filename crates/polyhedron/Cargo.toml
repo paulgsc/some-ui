@@ -6,6 +6,10 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "WebAssembly geometry engine for interactive polyhedron visualizations."
+readme = "README.md"
+keywords = ["geometry", "polyhedron", "visualization", "wasm"]
+categories = ["graphics", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

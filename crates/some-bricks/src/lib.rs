@@ -38,7 +38,7 @@ impl BrickLadderCalculator {
 
     /// Calculate the number of layers and elements per layer
     #[wasm_bindgen]
-    pub fn calculate_layer_distribution(&self, total_elements: usize) -> JsValue {
+    pub fn calculate_layer_distribution(&self, total_elements: usize) -> Result<JsValue, JsValue> {
         // Using quadratic formula to solve: n(n+1)/2 = total_elements
         // This gives us the number of layers for a perfect triangle
         let n = ((((8.0 * total_elements as f64) + 1.0).sqrt() - 1.0) / 2.0).floor() as usize;
@@ -72,7 +72,7 @@ impl BrickLadderCalculator {
             total_elements_used: total_elements,
         };
 
-        serde_wasm_bindgen::to_value(&result).unwrap()
+        serde_wasm_bindgen::to_value(&result).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     /// Calculate brick positions for a given layer
@@ -86,7 +86,7 @@ impl BrickLadderCalculator {
         canvas_width: f64,
         canvas_height: f64,
         padding: f64,
-    ) -> JsValue {
+    ) -> Result<JsValue, JsValue> {
         let mut positions = Vec::new();
 
         // Calculate total width needed for this layer
@@ -112,7 +112,7 @@ impl BrickLadderCalculator {
             });
         }
 
-        serde_wasm_bindgen::to_value(&positions).unwrap()
+        serde_wasm_bindgen::to_value(&positions).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     /// Calculate normalized color intensity based on data value
@@ -129,37 +129,42 @@ impl BrickLadderCalculator {
 
     /// Sort data items by value (descending)
     #[wasm_bindgen]
-    pub fn sort_data(&self, data: JsValue) -> JsValue {
-        let mut data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).unwrap();
+    pub fn sort_data(&self, data: JsValue) -> Result<JsValue, JsValue> {
+        let mut data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).map_err(|error| JsValue::from_str(&error.to_string()))?;
 
         // Sort by value in descending order
-        data_items.sort_by(|a, b| b.value.partial_cmp(&a.value).unwrap());
+        data_items.sort_by(|a, b| b.value.total_cmp(&a.value));
 
-        serde_wasm_bindgen::to_value(&data_items).unwrap()
+        serde_wasm_bindgen::to_value(&data_items).map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
     /// Get min and max values from data
     #[wasm_bindgen]
-    pub fn get_data_range(&self, data: JsValue) -> JsValue {
-        let data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).unwrap();
+    pub fn get_data_range(&self, data: JsValue) -> Result<JsValue, JsValue> {
+        let data_items: Vec<DataItem> = serde_wasm_bindgen::from_value(data).map_err(|error| JsValue::from_str(&error.to_string()))?;
 
         let min_value = data_items.iter().map(|item| item.value).fold(f64::INFINITY, f64::min);
 
         let max_value = data_items.iter().map(|item| item.value).fold(f64::NEG_INFINITY, f64::max);
 
         let result = Object::new();
-        js_sys::Reflect::set(&result, &JsValue::from_str("min"), &JsValue::from_f64(min_value)).unwrap();
-        js_sys::Reflect::set(&result, &JsValue::from_str("max"), &JsValue::from_f64(max_value)).unwrap();
+        js_sys::Reflect::set(&result, &JsValue::from_str("min"), &JsValue::from_f64(min_value))?;
+        js_sys::Reflect::set(&result, &JsValue::from_str("max"), &JsValue::from_f64(max_value))?;
 
-        result.into()
+        Ok(result.into())
     }
 
     /// Calculate color shade based on value
     #[wasm_bindgen]
     pub fn calculate_color_shade(&self, value: f64, min: f64, max: f64) -> u32 {
         let intensity = self.normalize_color_intensity(value, min, max);
-        let shade = (220.0 - intensity * 150.0).floor() as u32;
-        shade
+        (220.0 - intensity * 150.0).floor() as u32
+    }
+}
+
+impl Default for BrickLadderCalculator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -79,9 +79,9 @@ pub struct ViewportManager {
 }
 
 impl ViewportRotation {
-    /// Creates a new ViewportRotation instance
-    pub fn new(total_items: usize, max_per_face: usize) -> Result<ViewportRotation, String> {
-        if max_per_face < 1 || max_per_face > 6 {
+    /// Creates a new `ViewportRotation` instance
+    pub fn new(total_items: usize, max_per_face: usize) -> Result<Self, String> {
+        if !(1..=6).contains(&max_per_face) {
             return Err("max_per_face must be between 1 and 6".to_string());
         }
 
@@ -296,8 +296,9 @@ struct ViewportListResponse {
 
 #[wasm_bindgen]
 impl ViewportManager {
-    /// Creates a new ViewportManager instance
+    /// Creates a new `ViewportManager` instance
     #[wasm_bindgen(constructor)]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             viewports: HashMap::new(),
@@ -310,7 +311,7 @@ impl ViewportManager {
     pub fn create_viewport(&mut self, viewport_id: &str, total_items: usize, max_per_face: usize) -> Result<JsValue, JsValue> {
         // Check if the viewport ID already exists
         if self.viewports.contains_key(viewport_id) {
-            return Err(JsValue::from_str(&format!("Viewport with ID '{}' already exists", viewport_id)));
+            return Err(JsValue::from_str(&format!("Viewport with ID '{viewport_id}' already exists")));
         }
 
         // Create a new viewport
@@ -335,7 +336,7 @@ impl ViewportManager {
     #[wasm_bindgen]
     pub fn set_active_viewport(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
         if !self.viewports.contains_key(viewport_id) {
-            return Err(JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)));
+            return Err(JsValue::from_str(&format!("Viewport with ID '{viewport_id}' does not exist")));
         }
 
         self.active_viewport_id = Some(viewport_id.to_string());
@@ -344,6 +345,7 @@ impl ViewportManager {
 
     /// Get the active viewport ID
     #[wasm_bindgen]
+    #[must_use]
     pub fn get_active_viewport_id(&self) -> Option<String> {
         self.active_viewport_id.clone()
     }
@@ -356,7 +358,7 @@ impl ViewportManager {
             active_viewport_id: self.active_viewport_id.clone(),
         };
 
-        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
     }
 
     /// Get state for a specific viewport
@@ -369,14 +371,14 @@ impl ViewportManager {
             state: viewport.get_state(),
         };
 
-        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
     }
 
     /// Remove a viewport
     #[wasm_bindgen]
     pub fn remove_viewport(&mut self, viewport_id: &str) -> Result<JsValue, JsValue> {
         if !self.viewports.contains_key(viewport_id) {
-            return Err(JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)));
+            return Err(JsValue::from_str(&format!("Viewport with ID '{viewport_id}' does not exist")));
         }
 
         // Remove the viewport
@@ -409,7 +411,7 @@ impl ViewportManager {
             state,
         };
 
-        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
     }
 
     /// Move to the next item in a specific viewport
@@ -424,7 +426,7 @@ impl ViewportManager {
             state,
         };
 
-        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
     }
 
     /// Get the current item index in the active viewport
@@ -450,7 +452,7 @@ impl ViewportManager {
     pub fn set_viewport_rotation_axis(&mut self, viewport_id: &str, axis_json: &str) -> Result<JsValue, JsValue> {
         let viewport = self.get_viewport_mut(viewport_id)?;
 
-        let axis: RotationAxis = serde_json::from_str(axis_json).map_err(|e| JsValue::from_str(&format!("Failed to parse rotation axis: {}", e)))?;
+        let axis: RotationAxis = serde_json::from_str(axis_json).map_err(|e| JsValue::from_str(&format!("Failed to parse rotation axis: {e}")))?;
 
         let state = viewport.set_rotation_axis(axis);
 
@@ -459,7 +461,7 @@ impl ViewportManager {
             state,
         };
 
-        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&response).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
     }
 
     /// Get all item indices for a specific face in the active viewport
@@ -479,7 +481,13 @@ impl ViewportManager {
             return Err(JsValue::from_str("Face index out of bounds"));
         }
 
-        serde_wasm_bindgen::to_value(&viewport.face_indices[face_index]).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+        serde_wasm_bindgen::to_value(&viewport.face_indices[face_index]).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
+    }
+}
+
+impl Default for ViewportManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -489,14 +497,14 @@ impl ViewportManager {
     fn get_viewport(&self, viewport_id: &str) -> Result<&ViewportRotation, JsValue> {
         self.viewports
             .get(viewport_id)
-            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)))
+            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{viewport_id}' does not exist")))
     }
 
     /// Get a mutable reference to a viewport by ID
     fn get_viewport_mut(&mut self, viewport_id: &str) -> Result<&mut ViewportRotation, JsValue> {
         self.viewports
             .get_mut(viewport_id)
-            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{}' does not exist", viewport_id)))
+            .ok_or_else(|| JsValue::from_str(&format!("Viewport with ID '{viewport_id}' does not exist")))
     }
 
     /// Get the active viewport ID or return an error

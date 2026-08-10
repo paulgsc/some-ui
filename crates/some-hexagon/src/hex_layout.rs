@@ -1,4 +1,4 @@
-pub(crate) use crate::hex_grid::HexGrid;
+pub use crate::hex_grid::HexGrid;
 use crate::{hex_pattern::Direction, CubeCoord};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -43,7 +43,7 @@ impl SymmetricHexLayout {
         // Step 1: Group data by label
         let mut data_by_label: HashMap<String, Vec<HexData>> = HashMap::new();
         for item in data {
-            data_by_label.entry(item.label.clone()).or_insert_with(Vec::new).push(item);
+            data_by_label.entry(item.label.clone()).or_default().push(item);
         }
 
         // We expect exactly two labels for our symmetric layout
@@ -83,7 +83,7 @@ impl SymmetricHexLayout {
         let mut by_weight: HashMap<u32, Vec<HexData>> = HashMap::new();
 
         for item in items {
-            by_weight.entry(item.weight).or_insert_with(Vec::new).push(item.clone());
+            by_weight.entry(item.weight).or_default().push(item.clone());
         }
 
         by_weight
@@ -132,13 +132,11 @@ impl SymmetricHexLayout {
         let mut modified_coords = Vec::new();
 
         // Get weights sorted in ascending order (lower weight = higher priority)
-        let mut weights: Vec<u32> = data_by_weight.keys().cloned().collect();
-        weights.sort();
+        let mut weights: Vec<u32> = data_by_weight.keys().copied().collect();
+        weights.sort_unstable();
 
         // Place data row by row, starting from the row closest to the center
-        let mut row_offset = 1; // Start at row offset 1 (adjacent to center)
-
-        for weight in weights {
+        for (row_offset, weight) in (1..).zip(weights) {
             let items = &data_by_weight[&weight];
 
             // Determine the row for this weight
@@ -168,9 +166,6 @@ impl SymmetricHexLayout {
                     modified_coords.push(coord);
                 }
             }
-
-            // Move to the next row
-            row_offset += 1;
         }
 
         modified_coords
@@ -273,40 +268,39 @@ mod tests {
         let layout = SymmetricHexLayout::new(Direction::Horizontal, Some("TEAM".to_string()), Some(0xCCCCCC));
 
         // Create some test data
-        let mut data = Vec::new();
-
-        // Offense players (weight 1)
-        data.push(HexData {
-            color: 0xFF0000,
-            weight: 1,
-            label: "offense".to_string(),
-            value: "QB".to_string(),
-        });
-        data.push(HexData {
-            color: 0xFF0000,
-            weight: 1,
-            label: "offense".to_string(),
-            value: "WR".to_string(),
-        });
-
-        // Defense players (weight 1)
-        data.push(HexData {
-            color: 0x0000FF,
-            weight: 1,
-            label: "defense".to_string(),
-            value: "CB".to_string(),
-        });
-        data.push(HexData {
-            color: 0x0000FF,
-            weight: 1,
-            label: "defense".to_string(),
-            value: "SS".to_string(),
-        });
+        let data = vec![
+            // Offense players (weight 1)
+            HexData {
+                color: 0xFF0000,
+                weight: 1,
+                label: "offense".to_string(),
+                value: "QB".to_string(),
+            },
+            HexData {
+                color: 0xFF0000,
+                weight: 1,
+                label: "offense".to_string(),
+                value: "WR".to_string(),
+            },
+            // Defense players (weight 1)
+            HexData {
+                color: 0x0000FF,
+                weight: 1,
+                label: "defense".to_string(),
+                value: "CB".to_string(),
+            },
+            HexData {
+                color: 0x0000FF,
+                weight: 1,
+                label: "defense".to_string(),
+                value: "SS".to_string(),
+            },
+        ];
 
         // Place data in grid
         let modified = layout.layout_data(&mut grid, data);
 
         // Check that some cells were modified
-        assert!(modified.len() > 0);
+        assert!(!modified.is_empty());
     }
 }

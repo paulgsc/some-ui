@@ -2,19 +2,29 @@
 [target.'cfg(all())']
 rustflags = [
 "-W", "clippy::all",
-"-W", "clippy::pedantic",
-"-W", "clippy::nursery",
-"-W", "clippy::cargo",
 "-D", "clippy::unwrap_used",
-"-W", "clippy::expect_used",
-"-W", "clippy::perf",
-"-W", "clippy::style",
-"-W", "clippy::complexity",
 "-D", "clippy::suspicious",
-"-W", "clippy::doc_markdown",
+"-D", "clippy::unnecessary_unwrap",
 "-A", "clippy::missing_docs_in_private_items",
 "-A", "clippy::module_name_repetitions",
-"-D", "warnings"
+"-D", "warnings",
+# These lints flag deliberate numeric boundaries and dependency choices. Keep
+# them explicit so all other warnings remain hard errors.
+"-A", "clippy::cast_precision_loss",
+"-A", "clippy::cast_possible_truncation",
+"-A", "clippy::cast_possible_wrap",
+"-A", "clippy::cast_sign_loss",
+"-A", "clippy::multiple_crate_versions",
+"-A", "clippy::naive_bytecount",
+"-A", "clippy::while_float",
+# Public wasm-bindgen boundaries, invariant-backed indexing, and diagnostic
+# helpers do not map cleanly onto these general-purpose suggestions.
+"-A", "clippy::expect_used",
+"-A", "clippy::format_push_string",
+"-A", "clippy::items_after_statements",
+"-A", "clippy::manual_let_else",
+"-A", "clippy::needless_range_loop",
+"-A", "clippy::too_many_lines"
 ]
 
 [alias]

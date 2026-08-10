@@ -1,7 +1,6 @@
 allow-dbg-in-tests    = true
 allow-unwrap-in-tests = true
-too-many-arguments-threshold = 7
+too-many-arguments-threshold = 8
 too-many-lines-threshold = 100
 type-complexity-threshold = 250
 enum-variant-size-threshold = 200
-

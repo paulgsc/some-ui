@@ -25,7 +25,7 @@ pub struct ActiveChallenge {
 }
 
 impl ActiveChallenge {
-    /// t(C) = w_c - the current expected token (canon Def. 4.3).
+    /// t(C) = `w_c` - the current expected token (canon Def. 4.3).
     pub fn current_key(&self) -> &str {
         &self.answer_keys[self.cursor]
     }
@@ -139,7 +139,7 @@ pub struct GameStats {
 }
 
 impl GameStats {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             score: 0,
             current_streak: 0,
