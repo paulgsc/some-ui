@@ -66,7 +66,17 @@ export type IntentArms<T, R, TStep extends string = never> = {
   failed: (error: IntentError, retry: () => void) => R
 }
 
-function assertNever(_value: never): never {
+/**
+ * Exported so `switch-lint/require-fail-fast-default`'s default
+ * `helperNames` (`assertNever`/`assertUnreachable`/`unreachable`) has one
+ * canonical implementation to point every `apps/www` consumer at, rather
+ * than each file re-declaring its own copy of the same three-line function -
+ * see `apps/www/src/lib/intent/index.ts`'s header for the three-layer
+ * enforcement this is one piece of. `_value: never` is polymorphic over
+ * whatever union a given call site has already exhaustively switched on, so
+ * one implementation serves every one of them.
+ */
+export function assertNever(_value: never): never {
   // `_value` is `never` at every real call site - the only way to reach this
   // at runtime is a status this module doesn't know about, which is exactly
   // the defensive case `matchIntent`'s own test exercises directly. No safe,

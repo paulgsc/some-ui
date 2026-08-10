@@ -30,7 +30,13 @@ import type {
   IntentError,
   IntentPresentation,
 } from "@some-ui/intent-kit"
-import { failed, idle, succeeded, working } from "@some-ui/intent-kit"
+import {
+  assertNever,
+  failed,
+  idle,
+  succeeded,
+  working,
+} from "@some-ui/intent-kit"
 
 import { mapFileHostError } from "./errors"
 
@@ -52,10 +58,6 @@ type LocalState<TVariables, TData> =
   | { status: "working" }
   | { status: "succeeded"; value: TData }
   | { status: "failed"; error: unknown; variables: TVariables }
-
-function assertNever(_value: never): never {
-  throw new Error("unhandled useAsyncIntent local status")
-}
 
 /**
  * Wraps a bare `(variables: TVariables) => Promise<TData>` - no mutation
