@@ -28,8 +28,7 @@ rustflags = [
 "-A", "clippy::needless_pass_by_value",
 "-A", "clippy::needless_range_loop",
 "-A", "clippy::too_many_lines",
-"-A", "clippy::unnecessary_unwrap",
-"-A", "clippy::unwrap_used"
+"-A", "clippy::unnecessary_unwrap"
 ]
 
 [alias]

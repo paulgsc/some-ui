@@ -513,7 +513,10 @@ impl<D: ContentDomain> GameEngine<D> {
         }
 
         // Pick the oldest (closest to expiring)
-        *exact_matches.iter().min_by_key(|&&idx| self.active_reveals[idx].revealed_at_ms).unwrap()
+        *exact_matches
+            .iter()
+            .min_by_key(|&&idx| self.active_reveals[idx].revealed_at_ms)
+            .expect("caller only selects a best match from a non-empty exact-match set")
     }
 }
 

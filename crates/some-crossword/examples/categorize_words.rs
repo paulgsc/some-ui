@@ -1,6 +1,6 @@
 use some_crossword::CrosswordGenerator;
 
-fn main() {
+fn main() -> Result<(), String> {
     let words = vec![
         "rust".to_string(),
         "programming".to_string(),
@@ -11,7 +11,8 @@ fn main() {
         "generator".to_string(),
     ];
 
-    let mut generator = CrosswordGenerator::new(words, 4).unwrap();
-    let _ = generator.generate_internal();
+    let mut generator = CrosswordGenerator::new(words, 4)?;
+    generator.generate_internal()?;
     println!("{}", generator.display());
+    Ok(())
 }

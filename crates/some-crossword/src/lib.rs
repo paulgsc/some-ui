@@ -168,8 +168,7 @@ impl CrosswordGenerator {
             let mut can_intersect = false;
 
             for c in word.chars() {
-                let words_with_letter = letter_word_map.get(&c).unwrap();
-                if words_with_letter.len() > 1 {
+                if letter_word_map.get(&c).is_some_and(|words| words.len() > 1) {
                     can_intersect = true;
                     break;
                 }
@@ -303,7 +302,7 @@ impl CrosswordGenerator {
             if self.grid[y][x] != ' ' {
                 // Find which word placement this is
                 for placement in &self.word_positions {
-                    if placement.group_id.is_some() {
+                    if let Some(group_id) = placement.group_id {
                         let in_placement_range = if placement.is_across {
                             y == placement.start_y && x >= placement.start_x && x < placement.start_x + placement.word.len()
                         } else {
@@ -311,7 +310,7 @@ impl CrosswordGenerator {
                         };
 
                         if in_placement_range {
-                            connected_groups.insert(placement.group_id.unwrap());
+                            connected_groups.insert(group_id);
                             break;
                         }
                     }
@@ -363,7 +362,7 @@ impl CrosswordGenerator {
         }
 
         // Resize grid to be square with side length of max word length * 3
-        let max_word_len = self.words.iter().map(std::string::String::len).max().unwrap();
+        let max_word_len = self.words.iter().map(std::string::String::len).max().ok_or_else(|| "No words provided".to_string())?;
         let grid_size = max_word_len * 3;
         self.width = grid_size;
         self.height = grid_size;
@@ -380,12 +379,10 @@ impl CrosswordGenerator {
 
         // Place first word in center (preferably from shared_words)
         let mut group_counter = 0;
-        let first_word = if !remaining_shared_words.is_empty() {
-            let word = remaining_shared_words.iter().next().unwrap().clone();
+        let first_word = if let Some(word) = remaining_shared_words.iter().next().cloned() {
             remaining_shared_words.remove(&word);
             word
-        } else if !remaining_isolated_words.is_empty() {
-            let word = remaining_isolated_words.iter().next().unwrap().clone();
+        } else if let Some(word) = remaining_isolated_words.iter().next().cloned() {
             remaining_isolated_words.remove(&word);
             word
         } else {
