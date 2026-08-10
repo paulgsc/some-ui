@@ -65,15 +65,16 @@ async function renderLoaded(): Promise<void> {
 
 describe("settings: save button", () => {
   it("double-clicking Save issues exactly one write (thundering-herd regression)", async () => {
+    const storageTarget =
+      typeof Storage !== "undefined" ? Storage.prototype : window.localStorage
+
+    const writeSpy = vi.spyOn(storageTarget, "setItem")
+
     await renderLoaded()
 
     const input = await screen.findByLabelText(/default session length/i)
     fireEvent.change(input, { target: { value: "25" } })
 
-    const storageTarget =
-      typeof Storage !== "undefined" ? Storage.prototype : window.localStorage
-
-    const writeSpy = vi.spyOn(storageTarget, "setItem")
     const save = screen.getByRole("button", { name: /save changes/i })
 
     act(() => {
