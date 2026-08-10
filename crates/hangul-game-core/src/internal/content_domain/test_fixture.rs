@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 //! Proves `ContentDomain` genericity (canon §11.1, Theorem 11.1) with a second, deliberately
 //! minimal implementation, distinct from `Korean`, that exercises `GameEngine` end-to-end. "A trait
 //! with exactly one implementer is unfalsified, not proven" (epic #709's design notes) - this
