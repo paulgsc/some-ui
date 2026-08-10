@@ -15,6 +15,8 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { CheckCircle2, RotateCcw, StopCircle } from "lucide-react"
 
 import { formatDurationMs } from "@/lib/format"
+import { useIntent, useIntentEffect } from "@/lib/intent"
+import { IntentButton } from "@/lib/intent/render"
 import type { SessionRecord } from "@/lib/tenant"
 import { useDuplicateSession } from "@/lib/tenant"
 import { ActivityIcon } from "@/components/activity-icon"
@@ -27,7 +29,9 @@ export const CompletionSummary = ({
   session,
 }: CompletionSummaryProps): JSX.Element => {
   const navigate = useNavigate()
-  const duplicateSession = useDuplicateSession()
+  const replayIntent = useIntent(useDuplicateSession(), {
+    presentation: "interactive",
+  })
   const finalElapsedMs = session.finalElapsedMs ?? session.totalDurationMs
   const finishedNaturally = finalElapsedMs >= session.totalDurationMs
 
@@ -35,13 +39,14 @@ export const CompletionSummary = ({
   // player a fresh draft copy (same activities, same starting config) and
   // drops them into the composer's own Configure step, where mode/
   // difficulty/duration are all still editable before they start, exactly
-  // like setting up any other new session.
+  // like setting up any other new session. Lifted verbatim from the
+  // pre-migration onSuccess.
+  useIntentEffect(replayIntent.state, (copy) => {
+    void navigate({ to: "/sessions/new", search: { edit: copy.id } })
+  })
+
   const handleReplay = (): void => {
-    duplicateSession.mutate(session.id, {
-      onSuccess: (copy) => {
-        void navigate({ to: "/sessions/new", search: { edit: copy.id } })
-      },
-    })
+    replayIntent.start(session.id)
   }
 
   return (
@@ -124,14 +129,18 @@ export const CompletionSummary = ({
       <div className="flex items-center gap-2">
         <Badge variant="outline">Completed</Badge>
         <div className="ml-auto flex items-center gap-2">
-          <Button
+          <IntentButton
+            state={replayIntent.state}
+            onPress={handleReplay}
             variant="outline"
-            onClick={handleReplay}
-            disabled={duplicateSession.isPending}
-          >
-            <RotateCcw className="mr-1.5 size-3.5" />
-            Play again
-          </Button>
+            idleLabel={
+              <>
+                <RotateCcw className="mr-1.5 size-3.5" />
+                Play again
+              </>
+            }
+            workingLabel="Replaying..."
+          />
           <Button asChild variant="outline">
             <Link to="/sessions">Back to sessions</Link>
           </Button>

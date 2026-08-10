@@ -10,12 +10,26 @@ import type {
   ActivityConfigValues,
   ActivityId,
 } from "@some-ui/activity-catalog"
+import type { Intent } from "@some-ui/intent-kit"
+import {
+  failed,
+  idle,
+  matchIntent,
+  succeeded,
+  working,
+} from "@some-ui/intent-kit"
 import { Button } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
+import {
+  composeSequentialIntents,
+  useIntent,
+  useIntentEffect,
+} from "@/lib/intent"
+import { IntentButton } from "@/lib/intent/render"
 import {
   checkSessionDuration,
   describeDurationCheck,
@@ -64,8 +78,111 @@ export const SessionComposer = ({
   existingSession,
 }: SessionComposerProps): JSX.Element => {
   const navigate = useNavigate()
-  const createSession = useCreateSession()
-  const updateSession = useUpdateSession()
+  // One create/update pair, shared by both buttons - matching the pre-
+  // migration code exactly (a single `createSession`/`updateSession`
+  // mutation object backed both handlers), which is why `isSaving` used to
+  // combine both `.isPending`s into one flag. `activeAction` (below) is
+  // what keeps each button showing *its own* state rather than the other
+  // button's leftover result now that both read the same two intents.
+  const createIntent = useIntent(useCreateSession(), {
+    presentation: "interactive",
+  })
+  const updateIntent = useIntent(useUpdateSession(), {
+    presentation: "interactive",
+  })
+
+  // Which button most recently ran, so each button can tell "am I the one
+  // that's in flight/just finished" apart from "the other button happens to
+  // share my mutation instance". Reset on every press - never read as
+  // stale, since a fresh click always overwrites it before the intent's
+  // own state has had a chance to change.
+  const [activeAction, setActiveAction] = useState<"draft" | "play" | null>(
+    null
+  )
+
+  const anySaving =
+    matchIntent(createIntent.state, {
+      idle: () => false,
+      working: () => true,
+      succeeded: () => false,
+      failed: () => false,
+    }) ||
+    matchIntent(updateIntent.state, {
+      idle: () => false,
+      working: () => true,
+      succeeded: () => false,
+      failed: () => false,
+    })
+
+  // The chain: a new session's "Save & Play" creates, then activates. The
+  // middle failure - created, but couldn't start - is reported honestly
+  // rather than folded into a generic message: `composeSequentialIntents`
+  // already tells the difference between "create failed" and "activate
+  // failed" (only the latter defers to the second intent), so the rewrite
+  // below only fires when the session genuinely was created.
+  const createdAlready = matchIntent(createIntent.state, {
+    idle: () => false,
+    working: () => false,
+    succeeded: () => true,
+    failed: () => false,
+  })
+  const playChain = composeSequentialIntents(
+    createIntent.state,
+    updateIntent.state,
+    {
+      first: "create",
+      second: "activate",
+    }
+  )
+  const playChainState: Intent<SessionRecord, "create" | "activate"> =
+    matchIntent(playChain, {
+      idle: () => idle(),
+      working: (step) => working(step),
+      succeeded: (value) => succeeded(value),
+      failed: (error, retry) =>
+        createdAlready
+          ? failed(
+              {
+                ...error,
+                summary: `Session saved, but couldn't start it. ${error.summary}`,
+              },
+              retry
+            )
+          : failed(error, retry),
+    })
+
+  // A new session's create succeeding is the terminal outcome for "Save as
+  // draft" (toast + navigate to the list, lifted verbatim from the
+  // pre-migration onSuccess) and the mid-chain trigger for "Save & Play"
+  // (activate what was just created). `createIntent` is shared by both
+  // buttons - `activeAction` is what tells this effect which one to run.
+  useIntentEffect(createIntent.state, (session) => {
+    if (activeAction === "draft") {
+      toast("Session saved as draft")
+      void navigate({ to: "/sessions" })
+    } else if (activeAction === "play") {
+      updateIntent.start({
+        id: session.id,
+        patch: { status: "active", startedAt: new Date().toISOString() },
+      })
+    }
+  })
+
+  // Terminal navigation, lifted verbatim from the pre-migration onSuccess
+  // callbacks - same targets, same toasts, just fired from here instead of
+  // from TanStack's own per-call onSuccess (useIntent doesn't re-expose
+  // that; see its header).
+  useIntentEffect(updateIntent.state, (session) => {
+    if (activeAction === "draft") {
+      toast("Draft updated")
+      void navigate({ to: "/sessions" })
+    } else if (activeAction === "play") {
+      void navigate({
+        to: "/sessions/$sessionId",
+        params: { sessionId: session.id },
+      })
+    }
+  })
 
   const [step, setStep] = useState<ComposerStep>(1)
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
@@ -178,91 +295,70 @@ export const SessionComposer = ({
   const finalName = sessionName.trim() || defaultSessionName(selectedIds)
 
   const handleSaveDraft = (): void => {
+    setActiveAction("draft")
     if (existingSession) {
-      updateSession.mutate(
-        {
-          id: existingSession.id,
-          patch: {
-            name: finalName,
-            activities,
-            scenes,
-            layoutMode: arrangementMode,
-            totalDurationMs: totalDurationOfScenes(scenes),
-          },
+      updateIntent.start({
+        id: existingSession.id,
+        patch: {
+          name: finalName,
+          activities,
+          scenes,
+          layoutMode: arrangementMode,
+          totalDurationMs: totalDurationOfScenes(scenes),
         },
-        {
-          onSuccess: () => {
-            toast("Draft updated")
-            void navigate({ to: "/sessions" })
-          },
-        }
-      )
+      })
       return
     }
 
-    createSession.mutate(
-      { name: finalName, activities, scenes, layoutMode: arrangementMode },
-      {
-        onSuccess: () => {
-          toast("Session saved as draft")
-          void navigate({ to: "/sessions" })
-        },
-      }
-    )
+    createIntent.start({
+      name: finalName,
+      activities,
+      scenes,
+      layoutMode: arrangementMode,
+    })
   }
 
   const handleSaveAndPlay = (): void => {
+    setActiveAction("play")
     if (existingSession) {
-      updateSession.mutate(
-        {
-          id: existingSession.id,
-          patch: {
-            name: finalName,
-            activities,
-            scenes,
-            layoutMode: arrangementMode,
-            totalDurationMs: totalDurationOfScenes(scenes),
-            status: "active",
-            startedAt: new Date().toISOString(),
-          },
+      updateIntent.start({
+        id: existingSession.id,
+        patch: {
+          name: finalName,
+          activities,
+          scenes,
+          layoutMode: arrangementMode,
+          totalDurationMs: totalDurationOfScenes(scenes),
+          status: "active",
+          startedAt: new Date().toISOString(),
         },
-        {
-          onSuccess: (session) => {
-            void navigate({
-              to: "/sessions/$sessionId",
-              params: { sessionId: session.id },
-            })
-          },
-        }
-      )
+      })
       return
     }
 
-    createSession.mutate(
-      { name: finalName, activities, scenes, layoutMode: arrangementMode },
-      {
-        onSuccess: (session) => {
-          updateSession.mutate(
-            {
-              id: session.id,
-              patch: { status: "active", startedAt: new Date().toISOString() },
-            },
-            {
-              onSuccess: () => {
-                void navigate({
-                  to: "/sessions/$sessionId",
-                  params: { sessionId: session.id },
-                })
-              },
-            }
-          )
-        },
-      }
-    )
+    // The chain's first step; useIntentEffect above picks up the success
+    // and activates. See this file's top-level effects for the rest.
+    createIntent.start({
+      name: finalName,
+      activities,
+      scenes,
+      layoutMode: arrangementMode,
+    })
   }
 
   const canProceedFromStep1 = selectedIds.length > 0
-  const isSaving = createSession.isPending || updateSession.isPending
+  const saveDraftState: Intent<SessionRecord> =
+    activeAction === "draft"
+      ? existingSession
+        ? updateIntent.state
+        : createIntent.state
+      : idle()
+  const saveAndPlayState: Intent<SessionRecord, "create" | "activate"> =
+    activeAction === "play"
+      ? existingSession
+        ? updateIntent.state
+        : playChainState
+      : idle()
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -346,20 +442,25 @@ export const SessionComposer = ({
             Continue
           </Button>
         ) : (
-          <div className="flex gap-2">
-            <Button
+          <div className="flex flex-wrap gap-2">
+            <IntentButton
+              state={saveDraftState}
+              onPress={handleSaveDraft}
+              idleLabel="Save as draft"
+              workingLabel="Saving..."
               variant="outline"
-              onClick={handleSaveDraft}
-              disabled={isSaving || durationCheck.state !== "valid"}
-            >
-              Save as draft
-            </Button>
-            <Button
-              onClick={handleSaveAndPlay}
-              disabled={isSaving || durationCheck.state !== "valid"}
-            >
-              Save &amp; Play
-            </Button>
+              disabled={anySaving || durationCheck.state !== "valid"}
+            />
+            <IntentButton
+              state={saveAndPlayState}
+              onPress={handleSaveAndPlay}
+              idleLabel="Save & Play"
+              workingLabel="Saving..."
+              workingStepLabel={(step) =>
+                step === "activate" ? "Starting..." : undefined
+              }
+              disabled={anySaving || durationCheck.state !== "valid"}
+            />
           </div>
         )}
       </div>

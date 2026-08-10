@@ -31,9 +31,25 @@
  * Call `reset()` explicitly when the intent itself needs to return to
  * `idle` without a new edit prompting it (e.g. navigating away and back to
  * the same form instance).
+ *
+ * ## Thundering-herd guard
+ *
+ * `mutate()` doesn't change `mutation.status` inside the closure that just
+ * called it - only the *next* render, once React has processed TanStack's
+ * notification, sees the new status. Two `start()`/`retry()` calls that
+ * both land before that re-render (a fast real double-click, or two
+ * `fireEvent.click()`s fired synchronously in a test with no `await`
+ * between them) would otherwise both read the same stale `idle`/`failed`
+ * state and both dispatch - the exact failure mode #936 calls out
+ * explicitly for "Save and play". `dispatchingRef` is a render-cycle-
+ * independent guard: the second call in the same burst is dropped rather
+ * than firing a second request, and it clears itself the moment
+ * `mutation.status` actually changes, so a genuine subsequent action
+ * (retry after a real failure, resubmitting a dirty form) is never
+ * blocked - only a duplicate within the same burst is.
  */
 
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type {
   Intent,
   IntentError,
@@ -84,20 +100,30 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   options: UseIntentOptions
 ): UseIntentResult<TVariables, TData, TStep> {
   const mapError = options.mapError ?? mapFileHostError
-  const { mutate, variables, reset: mutationReset } = mutation
+  const { mutate, status, variables, reset: mutationReset } = mutation
+
+  // See this module's header, "Thundering-herd guard".
+  const dispatchingRef = useRef(false)
+  useEffect(() => {
+    dispatchingRef.current = false
+  }, [status])
 
   const retry = useCallback((): void => {
+    if (dispatchingRef.current) return
     // TanStack retains the variables from the last `mutate()` call on the
     // result itself; re-deriving them locally would risk disagreeing with
     // what actually ran. Nothing to retry with means nothing to do - not a
     // state `matchIntent`'s `failed` arm should ever actually observe,
     // since `retry` only exists once a mutation has already run once.
     if (variables === undefined) return
+    dispatchingRef.current = true
     mutate(variables)
   }, [mutate, variables])
 
   const start = useCallback(
     (nextVariables: TVariables): void => {
+      if (dispatchingRef.current) return
+      dispatchingRef.current = true
       mutate(nextVariables)
     },
     [mutate]
@@ -108,12 +134,11 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
   }, [mutationReset])
 
   const state = ((): Intent<TData, TStep> => {
-    // Switching on the destructured status (rather than `mutation.status`
+    // Switching on the destructured `status` (rather than `mutation.status`
     // inline) so the compiler narrows a plain string literal in the default
     // arm - narrowing `mutation.status` directly narrows `mutation` itself
     // to `never` once every case is covered, and `never` has no `.status`
     // to read at all.
-    const { status } = mutation
     switch (status) {
       case "idle": {
         return idle()
@@ -125,6 +150,7 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
         return succeeded(mutation.data)
       }
       case "error": {
+        // eslint-disable-next-line react-hooks/refs -- `retry` closes over `dispatchingRef` (the thundering-herd guard above), but only reads `.current` when actually invoked later from an event handler, never during this render. The rule can't statically see that distinction and flags any ref-reading closure handed into a render-time value.
         return failed(mapError(mutation.error), retry)
       }
       default: {

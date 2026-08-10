@@ -9,10 +9,13 @@
  * See `test-support/file-host-sabotage.ts` for why this is Vitest against
  * the real `SessionComposer`, not a Playwright suite booting the real app.
  *
- * Every `test.fails` below encodes the *desired* outcome (#936's job), not
- * today's. It exists to go green when #936 lands, and to fail loudly if it
- * ever silently starts passing beforehand (which would mean the assertion
- * itself stopped being meaningful).
+ * #936 migrated this flow onto `useIntent`/`IntentButton`, so every
+ * `it.fails` this suite originally wrote to encode the *desired*,
+ * not-yet-true outcome has flipped to a plain `it` - except one: "hang"
+ * mode has no timeout anywhere in the chain to hit, so a stuck request
+ * still waits forever with nothing telling the person why. That one stays
+ * `it.fails`, on the record as the one remaining gap rather than quietly
+ * dropped.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -23,7 +26,14 @@ import {
 } from "@/test-support/file-host-sabotage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const navigateSpy = vi.fn()
@@ -95,9 +105,13 @@ describe("composer Save & Play, new session (#933's flow)", () => {
         clickSaveAndPlay()
       })
 
-      expect(
-        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
-      ).toBe(false)
+      await waitFor(() => {
+        expect(
+          isDisabled(
+            screen.getByRole("button", { name: /save.*play|try.*again/i })
+          )
+        ).toBe(false)
+      })
       restore()
     })
 
@@ -117,21 +131,18 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       restore()
     })
 
-    it.fails(
-      "tells the person the save failed (#936 — today renders nothing)",
-      async () => {
-        await renderAtReviewStep()
-        const restore = installFileHostSabotage(mode)
+    it("tells the person the save failed (#936)", async () => {
+      await renderAtReviewStep()
+      const restore = installFileHostSabotage(mode)
 
-        // eslint-disable-next-line @typescript-eslint/require-await -- see renderAtReviewStep
-        await act(async () => {
-          clickSaveAndPlay()
-        })
+      // eslint-disable-next-line @typescript-eslint/require-await -- see renderAtReviewStep
+      await act(async () => {
+        clickSaveAndPlay()
+      })
 
-        await expectSomeFailureAffordance(document.body)
-        restore()
-      }
-    )
+      await expectSomeFailureAffordance(document.body)
+      restore()
+    })
   })
 
   describe("file_host sabotaged: hang (no timeout exists to hit)", () => {

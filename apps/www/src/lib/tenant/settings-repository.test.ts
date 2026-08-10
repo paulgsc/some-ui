@@ -27,6 +27,9 @@ describe("SettingsRepository", () => {
     }
 
     await repo.save(updated)
+    expect(storage.getItem("some-ui.tenant.settings.v1")).toBe(
+      JSON.stringify(updated)
+    )
     expect(await repo.get()).toEqual(updated)
   })
 })

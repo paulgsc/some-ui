@@ -12,6 +12,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useHangulVocab } from "@/lib/hangul-vocab"
+import { AmbientIntentStatus } from "@/lib/intent/render"
 import type { SessionRecord } from "@/lib/tenant"
 import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
@@ -40,6 +41,7 @@ export const SessionViewport = ({
     boundLeafIds,
     onBind,
     onLeafResize,
+    autosaveStatus,
   } = useLiveLayoutEditor(session, activeLifetimes)
 
   // This is the layer with write authority over both facts - which session
@@ -139,6 +141,11 @@ export const SessionViewport = ({
           </button>
         </>
       )}
+
+      <AmbientIntentStatus
+        state={autosaveStatus}
+        className="absolute bottom-2 left-2 z-50 rounded-md border bg-background/90 px-2 py-1 shadow-sm"
+      />
     </div>
   )
 }

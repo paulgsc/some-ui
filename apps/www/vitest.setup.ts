@@ -4,7 +4,7 @@
  *
  * The failure this exists for looks like a test bug and is not one:
  *
- *   TypeError: window.localStorage.clear is not a function
+ *    TypeError: window.localStorage.clear is not a function
  *
  * from CI only, on a test that passes on every developer machine. The cause
  * is an interaction between the runtime and Vitest's jsdom environment.
@@ -12,7 +12,7 @@
  * but it deliberately skips any key the runtime already defines and that is
  * not in its own KEYS list:
  *
- *   if (k in global) return keysArray.includes(k)
+ *    if (k in global) return keysArray.includes(k)
  *
  * `localStorage` is not in that list. Node ships Web Storage from v22
  * onwards (enabled by default in recent majors), so on a new enough Node
@@ -39,23 +39,34 @@
 /** Everything the `Storage` interface promises, in memory. */
 function createMemoryStorage(): Storage {
   const entries = new Map<string, string>()
-  return {
+
+  class MemoryStorage implements Storage {
     get length(): number {
       return entries.size
-    },
-    key: (index: number): string | null =>
-      Array.from(entries.keys())[index] ?? null,
-    getItem: (key: string): string | null => entries.get(key) ?? null,
-    setItem: (key: string, value: string): void => {
+    }
+
+    key(index: number): string | null {
+      return Array.from(entries.keys())[index] ?? null
+    }
+
+    getItem(key: string): string | null {
+      return entries.get(key) ?? null
+    }
+
+    setItem(key: string, value: string): void {
       entries.set(key, String(value))
-    },
-    removeItem: (key: string): void => {
+    }
+
+    removeItem(key: string): void {
       entries.delete(key)
-    },
-    clear: (): void => {
+    }
+
+    clear(): void {
       entries.clear()
-    },
+    }
   }
+
+  return new MemoryStorage()
 }
 
 /**
@@ -65,8 +76,16 @@ function createMemoryStorage(): Storage {
  */
 function isUsableStorage(candidate: unknown): boolean {
   if (typeof candidate !== "object" || candidate === null) return false
-  return ["getItem", "setItem", "removeItem", "clear"].every(
-    (method) => typeof Reflect.get(candidate, method) === "function"
+
+  return (
+    "getItem" in candidate &&
+    typeof candidate.getItem === "function" &&
+    "setItem" in candidate &&
+    typeof candidate.setItem === "function" &&
+    "removeItem" in candidate &&
+    typeof candidate.removeItem === "function" &&
+    "clear" in candidate &&
+    typeof candidate.clear === "function"
   )
 }
 

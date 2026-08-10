@@ -33,6 +33,7 @@
 import { DATA_MODE } from "../data-mode"
 import { createFileHostTransport } from "../file-host-config/client"
 import { createHttpSessionsRepository } from "./http-sessions-repository"
+import { reportPartialMigration } from "./migration-signal"
 import { migrateLocalSessions } from "./sessions-migration"
 import type {
   CreateSessionInput,
@@ -113,12 +114,7 @@ export function createSessionsBackend(
   const ready = migrateLocalSessions(remote, storage)
     .then((outcome) => {
       if (outcome.kind !== "partial") return
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[www] carried ${outcome.migrated} session(s) to file_host; ${outcome.remaining} still local.` +
-          ` They will be retried on the next load.`,
-        outcome.error
-      )
+      reportPartialMigration(outcome.migrated, outcome.remaining, outcome.error)
     })
     .catch(() => {
       // Reading localStorage threw (private mode, a corrupted blob). There

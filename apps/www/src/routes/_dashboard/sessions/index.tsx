@@ -1,6 +1,8 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { getActivity, summarizeConfig } from "@some-ui/activity-catalog"
+import type { Intent } from "@some-ui/intent-kit"
+import { matchIntent } from "@some-ui/intent-kit"
 import {
   Badge,
   Button,
@@ -17,6 +19,8 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
+import { useIntent, useIntentEffect } from "@/lib/intent"
+import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
   useDeleteManySessions,
@@ -61,16 +65,20 @@ const SessionCard = ({
   isSelected: boolean
   onToggleSelected: (id: string) => void
 }): JSX.Element => {
-  const duplicateSession = useDuplicateSession()
-  const deleteSession = useDeleteSession()
+  const duplicateIntent = useIntent(useDuplicateSession(), {
+    presentation: "interactive",
+  })
+  const deleteIntent = useIntent(useDeleteSession(), {
+    presentation: "interactive",
+  })
 
   const handleDuplicate = (): void => {
-    duplicateSession.mutate(session.id)
+    duplicateIntent.start(session.id)
   }
 
   const handleDelete = (): void => {
     if (confirm(`Delete "${session.name}"? This cannot be undone.`)) {
-      deleteSession.mutate(session.id)
+      deleteIntent.start(session.id)
     }
   }
 
@@ -141,25 +149,25 @@ const SessionCard = ({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {primaryAction}
-          <Button
+          <IntentButton
+            state={duplicateIntent.state}
+            onPress={handleDuplicate}
             size="sm"
             variant="ghost"
-            onClick={handleDuplicate}
-            disabled={duplicateSession.isPending}
             title="Duplicate"
-          >
-            <Copy className="size-3.5" />
-          </Button>
-          <Button
+            idleLabel={<Copy className="size-3.5" />}
+            workingLabel={<Copy className="size-3.5" />}
+          />
+          <IntentButton
+            state={deleteIntent.state}
+            onPress={handleDelete}
             size="sm"
             variant="ghost"
-            onClick={handleDelete}
-            disabled={deleteSession.isPending}
             title="Delete"
             className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+            idleLabel={<Trash2 className="size-3.5" />}
+            workingLabel={<Trash2 className="size-3.5" />}
+          />
         </div>
       </CardContent>
     </Card>
@@ -222,6 +230,34 @@ function isBulkStatus(value: string): value is SessionStatus {
   return BULK_STATUS_OPTIONS.some((status) => status === value)
 }
 
+function isIntentPending<T>(state: Intent<T>): boolean {
+  return matchIntent(state, {
+    idle: () => false,
+    working: () => true,
+    succeeded: () => false,
+    failed: () => false,
+  })
+}
+
+/** A named function, not an inline arrow embedded in `BulkActionBar`'s own
+ * JSX - the latter trips `react/no-unstable-nested-components` (a function
+ * returning JSX, defined inside a render body, reads as a component to
+ * that rule even though it's invoked directly here rather than mounted as
+ * one). No dropdown/select has a matching button to attach a retry to
+ * (`handleStatusChange` fires from a `Select`, not a click this component
+ * can re-run standalone), so `IntentFailure`'s own built-in retry control
+ * is rendered directly rather than through `IntentButton`. */
+function bulkStatusChangeFailure(
+  state: Intent<Array<SessionRecord>>
+): JSX.Element | null {
+  return matchIntent(state, {
+    idle: () => null,
+    working: () => null,
+    succeeded: () => null,
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
+  })
+}
+
 const BulkActionBar = ({
   selectedIds,
   onClearSelection,
@@ -229,10 +265,24 @@ const BulkActionBar = ({
   selectedIds: ReadonlySet<string>
   onClearSelection: () => void
 }): JSX.Element => {
-  const deleteMany = useDeleteManySessions()
-  const updateStatusMany = useUpdateStatusManySessions()
+  const deleteManyIntent = useIntent(useDeleteManySessions(), {
+    presentation: "interactive",
+  })
+  const updateStatusManyIntent = useIntent(useUpdateStatusManySessions(), {
+    presentation: "interactive",
+  })
   const ids = [...selectedIds]
-  const isBusy = deleteMany.isPending || updateStatusMany.isPending
+  const isBusy =
+    isIntentPending(deleteManyIntent.state) ||
+    isIntentPending(updateStatusManyIntent.state)
+
+  // Decoupled from either `.start()` call, per #945's own recorded bulk
+  // decision (`lib/intent/render/index.ts`) - clearing the selection is
+  // what a *successful* batch means, not what starting one means, and it
+  // must not fire again just because this component re-renders while
+  // already succeeded.
+  useIntentEffect(deleteManyIntent.state, onClearSelection)
+  useIntentEffect(updateStatusManyIntent.state, onClearSelection)
 
   const handleDeleteSelected = (): void => {
     if (
@@ -240,50 +290,58 @@ const BulkActionBar = ({
         `Delete ${ids.length} session${ids.length === 1 ? "" : "s"}? This cannot be undone.`
       )
     ) {
-      deleteMany.mutate(ids, { onSuccess: onClearSelection })
+      deleteManyIntent.start(ids)
     }
   }
 
   const handleStatusChange = (status: string): void => {
     if (!isBulkStatus(status)) return
-    updateStatusMany.mutate({ ids, status }, { onSuccess: onClearSelection })
+    updateStatusManyIntent.start({ ids, status })
   }
 
   return (
-    <div className="bg-muted/50 sticky top-0 z-10 flex items-center gap-3 rounded-lg border px-4 py-2.5">
-      <span className="text-sm font-medium">{ids.length} selected</span>
-      <Select onValueChange={handleStatusChange} disabled={isBusy}>
-        <SelectTrigger className="h-8 w-[160px]">
-          <SelectValue placeholder="Set status to..." />
-        </SelectTrigger>
-        <SelectContent>
-          {BULK_STATUS_OPTIONS.map((status) => (
-            <SelectItem key={status} value={status}>
-              {STATUS_LABEL[status]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleDeleteSelected}
-        disabled={isBusy}
-        className="text-destructive hover:text-destructive"
-      >
-        <Trash2 className="mr-1.5 size-3.5" />
-        Delete
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={onClearSelection}
-        disabled={isBusy}
-        className="ml-auto"
-      >
-        <X className="mr-1.5 size-3.5" />
-        Clear selection
-      </Button>
+    <div className="bg-muted/50 sticky top-0 z-10 flex flex-col gap-2 rounded-lg border px-4 py-2.5">
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium">{ids.length} selected</span>
+        <Select onValueChange={handleStatusChange} disabled={isBusy}>
+          <SelectTrigger className="h-8 w-[160px]">
+            <SelectValue placeholder="Set status to..." />
+          </SelectTrigger>
+          <SelectContent>
+            {BULK_STATUS_OPTIONS.map((status) => (
+              <SelectItem key={status} value={status}>
+                {STATUS_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <IntentButton
+          state={deleteManyIntent.state}
+          onPress={handleDeleteSelected}
+          size="sm"
+          variant="outline"
+          disabled={isIntentPending(updateStatusManyIntent.state)}
+          className="text-destructive hover:text-destructive"
+          idleLabel={
+            <>
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete
+            </>
+          }
+          workingLabel="Deleting..."
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onClearSelection}
+          disabled={isBusy}
+          className="ml-auto"
+        >
+          <X className="mr-1.5 size-3.5" />
+          Clear selection
+        </Button>
+      </div>
+      {bulkStatusChangeFailure(updateStatusManyIntent.state)}
     </div>
   )
 }
