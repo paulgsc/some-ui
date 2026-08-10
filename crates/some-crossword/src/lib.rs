@@ -65,12 +65,12 @@ pub struct JsWordPlacement {
 impl CrosswordGenerator {
     // Constructor exposed to JavaScript
     #[wasm_bindgen(constructor)]
-    pub fn new_from_js(words_js: JsValue, max_group_size: usize) -> Result<CrosswordGenerator, JsValue> {
+    pub fn new_from_js(words_js: JsValue, max_group_size: usize) -> Result<Self, JsValue> {
         // Set up panic hook for better error messages
         console_error_panic_hook::set_once();
 
         // Convert JS array of strings to Rust Vec<String>
-        let words: Vec<String> = serde_wasm_bindgen::from_value(words_js).map_err(|e| JsValue::from_str(&format!("Failed to parse words: {}", e)))?;
+        let words: Vec<String> = serde_wasm_bindgen::from_value(words_js).map_err(|e| JsValue::from_str(&format!("Failed to parse words: {e}")))?;
 
         // Use the core implementation
         Self::create(words, max_group_size).map_err(|e| JsValue::from_str(&e))
@@ -80,7 +80,7 @@ impl CrosswordGenerator {
     #[wasm_bindgen]
     pub fn generate(&mut self) -> Result<JsValue, JsValue> {
         match self.generate_internal() {
-            Ok(_) => {
+            Ok(()) => {
                 // Convert grid to row strings for easier JS handling
                 let grid_strings: Vec<String> = self.grid.iter().map(|row| row.iter().collect()).collect();
 
@@ -107,7 +107,7 @@ impl CrosswordGenerator {
                 };
 
                 // Convert to JS value
-                Ok(serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
+                Ok(serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))?)
             }
             Err(msg) => Err(JsValue::from_str(&msg)),
         }
@@ -130,7 +130,7 @@ impl CrosswordGenerator {
         }
 
         // Determine maximum word length to help with grid sizing
-        let max_word_length = normalized_words.iter().map(|word| word.len()).max().unwrap_or(0);
+        let max_word_length = normalized_words.iter().map(std::string::String::len).max().unwrap_or(0);
 
         // Initialize grid with reasonable size
         let initial_size = max_word_length * 3;
@@ -156,7 +156,7 @@ impl CrosswordGenerator {
             let chars: HashSet<char> = word.chars().collect();
 
             for &c in &chars {
-                letter_word_map.entry(c).or_insert_with(Vec::new).push(word.clone());
+                letter_word_map.entry(c).or_default().push(word.clone());
             }
         }
 
@@ -275,9 +275,9 @@ impl CrosswordGenerator {
                     // and is not an intersection point, it's an invalid adjacency
                     if self.grid[adj_y][adj_x] != ' ' && !intersections.contains(&adj_pos) {
                         let is_part_of_word = if is_across {
-                            adj_y == y && (adj_x >= start_x && adj_x <= start_x + word.len() - 1)
+                            adj_y == y && (adj_x >= start_x && adj_x < start_x + word.len())
                         } else {
-                            adj_x == x && (adj_y >= start_y && adj_y <= start_y + word.len() - 1)
+                            adj_x == x && (adj_y >= start_y && adj_y < start_y + word.len())
                         };
 
                         if !is_part_of_word {
@@ -325,7 +325,7 @@ impl CrosswordGenerator {
         }
 
         // Return the lowest group ID (this is arbitrary but consistent)
-        connected_groups.iter().min().cloned()
+        connected_groups.iter().min().copied()
     }
 
     // Count words in a group
@@ -363,7 +363,7 @@ impl CrosswordGenerator {
         }
 
         // Resize grid to be square with side length of max word length * 3
-        let max_word_len = self.words.iter().map(|w| w.len()).max().unwrap();
+        let max_word_len = self.words.iter().map(std::string::String::len).max().unwrap();
         let grid_size = max_word_len * 3;
         self.width = grid_size;
         self.height = grid_size;
@@ -436,7 +436,13 @@ impl CrosswordGenerator {
             // Find possible intersections
             let intersections = self.find_intersections(&next_word);
 
-            if !intersections.is_empty() {
+            if intersections.is_empty() {
+                // No intersections found, try random placement
+                clue_num += 1;
+                if self.try_random_placement(&next_word, &mut group_counter, clue_num) {
+                    remaining_shared_words.remove(&next_word);
+                }
+            } else {
                 // Try intersection placements in random order
                 let mut shuffled_intersections = intersections.clone();
                 shuffled_intersections.shuffle(&mut self.rng);
@@ -479,12 +485,6 @@ impl CrosswordGenerator {
                     if self.try_random_placement(&next_word, &mut group_counter, clue_num) {
                         remaining_shared_words.remove(&next_word);
                     }
-                }
-            } else {
-                // No intersections found, try random placement
-                clue_num += 1;
-                if self.try_random_placement(&next_word, &mut group_counter, clue_num) {
-                    remaining_shared_words.remove(&next_word);
                 }
             }
         }
@@ -617,11 +617,12 @@ impl CrosswordGenerator {
         self.height = new_height;
     }
 
+    #[must_use]
     pub fn display(&self) -> String {
         let mut result = String::new();
 
         // Add a horizontal ruler
-        result.push_str(&format!("  "));
+        result.push_str("  ");
         for x in 0..self.width {
             result.push_str(&format!("{}", x % 10));
         }
@@ -741,7 +742,7 @@ mod tests {
         let words = vec!["apple".to_string(), "pear".to_string(), "plum".to_string(), "peach".to_string(), "apricot".to_string()];
 
         // Set max group size to 3
-        let mut generator = CrosswordGenerator::new(words.clone(), 3).unwrap();
+        let mut generator = CrosswordGenerator::new(words, 3).unwrap();
 
         let result = generator.generate_internal();
         assert!(result.is_ok());

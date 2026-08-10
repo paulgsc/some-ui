@@ -158,8 +158,13 @@ impl BrickLadderCalculator {
     #[wasm_bindgen]
     pub fn calculate_color_shade(&self, value: f64, min: f64, max: f64) -> u32 {
         let intensity = self.normalize_color_intensity(value, min, max);
-        let shade = (220.0 - intensity * 150.0).floor() as u32;
-        shade
+        (220.0 - intensity * 150.0).floor() as u32
+    }
+}
+
+impl Default for BrickLadderCalculator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

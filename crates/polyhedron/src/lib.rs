@@ -92,6 +92,12 @@ pub struct WasmViewportManager {
     inner: ViewportManager,
 }
 
+impl Default for WasmViewportManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[wasm_bindgen]
 impl WasmViewportManager {
     #[wasm_bindgen(constructor)]

@@ -255,10 +255,10 @@ impl WasmHexGrid {
 
         let mut points = Vec::with_capacity(6);
         for i in 0..6 {
-            let angle = std::f32::consts::PI / 6.0 + std::f32::consts::PI / 3.0 * i as f32;
-            let x = center_x + size * angle.cos();
-            let y = center_y + size * angle.sin();
-            points.push(HexPoint { x: x as f64, y: y as f64 });
+            let angle = (std::f32::consts::PI / 3.0).mul_add(i as f32, std::f32::consts::PI / 6.0);
+            let x = size.mul_add(angle.cos(), center_x);
+            let y = size.mul_add(angle.sin(), center_y);
+            points.push(HexPoint { x: f64::from(x), y: f64::from(y) });
         }
 
         points

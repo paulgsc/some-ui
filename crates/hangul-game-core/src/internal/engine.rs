@@ -32,7 +32,7 @@ struct MatchCalc {
 
 fn compute_match_outcome(stats: &GameStats, config: &GameConfig, revealed_at_ms: u64, now: u64) -> (GameStats, MatchCalc) {
     let time_gap = now.saturating_sub(revealed_at_ms);
-    let is_high_quality = time_gap <= config.correctness_threshold_ms as u64;
+    let is_high_quality = time_gap <= u64::from(config.correctness_threshold_ms);
     let prev_streak = stats.current_streak;
 
     let mut new_stats = stats.clone();
@@ -44,7 +44,7 @@ fn compute_match_outcome(stats: &GameStats, config: &GameConfig, revealed_at_ms:
     let points = config.points_per_correct + streak_bonus;
     new_stats.score += points;
 
-    let streak_milestone = if new_stats.current_streak > 0 && new_stats.current_streak % 5 == 0 && new_stats.current_streak != prev_streak {
+    let streak_milestone = if new_stats.current_streak > 0 && new_stats.current_streak.is_multiple_of(5) && new_stats.current_streak != prev_streak {
         Some(new_stats.current_streak)
     } else {
         None
@@ -215,7 +215,7 @@ impl<D: ContentDomain> GameEngine<D> {
         self.active_reveals.retain(|reveal| {
             let age = now.saturating_sub(reveal.revealed_at_ms);
             let token_count = reveal.answer_keys.len() as u64;
-            let budget = (token_count * self.current_lifetime_ms as u64).min(MAX_CHALLENGE_BUDGET_MS);
+            let budget = (token_count * u64::from(self.current_lifetime_ms)).min(MAX_CHALLENGE_BUDGET_MS);
             let is_expired = age > budget;
 
             if is_expired {
@@ -364,7 +364,7 @@ impl<D: ContentDomain> GameEngine<D> {
     }
 
     /// Get active count
-    pub fn get_active_count(&self) -> usize {
+    pub const fn get_active_count(&self) -> usize {
         self.active_reveals.len()
     }
 
@@ -376,7 +376,7 @@ impl<D: ContentDomain> GameEngine<D> {
 
     /// Switches to a different game mode (and word pool, for vocabulary modes) as a genuine,
     /// isolated state transition (canon Axiom 12.1, ADR 0004) rather than requiring a fresh
-    /// `GameEngine`: mode/word_pool are lifecycle state a session can legitimately change at
+    /// `GameEngine`: `mode/word_pool` are lifecycle state a session can legitimately change at
     /// runtime, not fixed construction-time configuration the way `config` is. Clears
     /// board/stats/difficulty exactly like `reset()` - a new mode's challenges are not
     /// comparable to the old one's - then rebuilds `game_mode` via the same factory `new` uses.
@@ -622,11 +622,11 @@ mod tests {
         let identity: String = glyphs.concat();
         engine.active_reveals.push(ActiveChallenge {
             stimulus: Stimulus::Glyph { text: identity.clone() },
-            answer_keys: keys.iter().map(|s| s.to_string()).collect(),
-            answer_glyphs: glyphs.iter().map(|s| s.to_string()).collect(),
+            answer_keys: keys.iter().map(std::string::ToString::to_string).collect(),
+            answer_glyphs: glyphs.iter().map(std::string::ToString::to_string).collect(),
             cursor: 0,
             revealed_at_ms,
-            cell_ids: cell_ids.iter().map(|s| s.to_string()).collect(),
+            cell_ids: cell_ids.iter().map(std::string::ToString::to_string).collect(),
             identity,
         });
     }

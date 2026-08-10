@@ -2,9 +2,9 @@ use crate::hex_cell::HexCell;
 use crate::CubeCoord;
 use std::collections::HashMap;
 
-/// HexGrid represents a hexagonal grid of hexagon cells
+/// `HexGrid` represents a hexagonal grid of hexagon cells
 #[derive(Debug, Clone)]
-pub(super) struct HexGrid {
+pub struct HexGrid {
     pub(super) cells: HashMap<CubeCoord, HexCell>,
     size: i32, // The "radius" of the hexagonal grid
 }

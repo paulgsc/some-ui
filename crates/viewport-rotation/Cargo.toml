@@ -6,6 +6,10 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "WebAssembly utilities for tracking and transforming viewport rotation."
+readme = "README.md"
+keywords = ["rotation", "viewport", "wasm"]
+categories = ["graphics", "wasm"]
 
 
 [lib]
@@ -23,4 +27,3 @@ console_error_panic_hook = "0.1"
 
 [lints]
 workspace = true
-

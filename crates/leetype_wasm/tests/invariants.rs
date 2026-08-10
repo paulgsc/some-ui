@@ -217,7 +217,7 @@ const REVEAL_SOURCES: &[&str] = &[
     "fn main() {\n    let mut totals = HashMap::new();\n    totals.entry(word).or_insert(0);\n}",
 ];
 
-fn baseline(wpm: f64) -> RevealConfig {
+const fn baseline(wpm: f64) -> RevealConfig {
     RevealConfig {
         baseline_wpm: wpm,
         dispersion_wpm: 8.0,
@@ -312,7 +312,7 @@ fn a_constant_rate_player_inside_the_deadband_reaches_a_fixed_point() {
     // The hysteresis property. A metronome sitting between the two bands must
     // see `k` settle and stay settled — no flicker between `•` and glyph.
     let config = baseline(60.0);
-    let mid = (config.slow_band() + config.fast_band()) / 2.0;
+    let mid = f64::midpoint(config.slow_band(), config.fast_band());
 
     for source in REVEAL_SOURCES {
         let (frames, _) = support::play_step(source, Typist::steady(mid).with_jitter(0.25), config, 3, 120_000.0);
@@ -329,10 +329,12 @@ fn the_deadband_is_what_stops_the_flicker_rather_than_luck() {
     // test. Same player, same readings, two controllers — one with the real
     // deadband, one with it collapsed to a single threshold.
     let config = baseline(60.0);
-    let mid = (config.slow_band() + config.fast_band()) / 2.0;
+    let mid = f64::midpoint(config.slow_band(), config.fast_band());
     let mut rng = Rng(0x9E37_79B9_7F4A_7C15);
 
-    let readings: Vec<f64> = (0..200).map(|_| mid + (rng.unit() * 2.0 - 1.0) * (config.fast_band() - config.slow_band()) / 2.2).collect();
+    let readings: Vec<f64> = (0..200)
+        .map(|_| mid + rng.unit().mul_add(2.0, -1.0) * (config.fast_band() - config.slow_band()) / 2.2)
+        .collect();
 
     let run = |slow: f64, fast: f64| -> usize {
         let mut k = 4_usize;

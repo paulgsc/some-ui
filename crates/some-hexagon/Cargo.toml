@@ -6,6 +6,10 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "WebAssembly game engine for the Some Hexagon puzzle game."
+readme = "README.md"
+keywords = ["hexagon", "game", "puzzle", "wasm"]
+categories = ["game-development", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

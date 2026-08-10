@@ -26,33 +26,38 @@ impl CubeCoord {
     }
 
     /// Create a new cube coordinate without validation, use with caution
+    #[must_use]
     pub fn new_unchecked(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
     }
 
     /// Convert axial coordinates (q,r) to cube coordinates
+    #[must_use]
     pub fn from_axial(q: i32, r: i32) -> Self {
         let y = -q - r;
         Self { x: q, y, z: r }
     }
 
     /// Convert to axial coordinates (q,r)
+    #[must_use]
     pub fn to_axial(&self) -> (i32, i32) {
         (self.x, self.z)
     }
 
     /// Calculate distance between two cube coordinates
-    pub fn distance(&self, other: &CubeCoord) -> i32 {
+    #[must_use]
+    pub fn distance(&self, other: &Self) -> i32 {
         ((self.x - other.x).abs() + (self.y - other.y).abs() + (self.z - other.z).abs()) / 2
     }
 
     /// Get the six neighboring coordinates
+    #[must_use]
     pub fn neighbors(&self) -> [Self; 6] {
         const DIRECTIONS: [(i32, i32, i32); 6] = [(1, -1, 0), (1, 0, -1), (0, 1, -1), (-1, 1, 0), (-1, 0, 1), (0, -1, 1)];
 
-        let mut result = [CubeCoord { x: 0, y: 0, z: 0 }; 6];
+        let mut result = [Self { x: 0, y: 0, z: 0 }; 6];
         for (i, &(dx, dy, dz)) in DIRECTIONS.iter().enumerate() {
-            result[i] = CubeCoord {
+            result[i] = Self {
                 x: self.x + dx,
                 y: self.y + dy,
                 z: self.z + dz,
@@ -62,8 +67,9 @@ impl CubeCoord {
     }
 
     /// Add another cube coordinate to this one
+    #[must_use]
     pub fn add(&self, other: &Self) -> Self {
-        CubeCoord {
+        Self {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
@@ -71,8 +77,9 @@ impl CubeCoord {
     }
 
     /// Scale this cube coordinate by a factor
+    #[must_use]
     pub fn scale(&self, factor: i32) -> Self {
-        CubeCoord {
+        Self {
             x: self.x * factor,
             y: self.y * factor,
             z: self.z * factor,
@@ -174,7 +181,7 @@ mod tests {
     #[test]
     fn test_cube_coord_display() {
         let coord = create_coord(1, -3, 2);
-        let display_string = format!("{}", coord);
+        let display_string = format!("{coord}");
         assert_eq!(display_string, "(1, -3, 2)");
     }
 
@@ -263,13 +270,13 @@ mod tests {
         let mut grid = HexGrid::new(2);
         let coord = create_coord(0, 0, 0);
         let result = grid.set_cell_color(&coord, 0x00FF00);
-        assert_eq!(result, true);
+        assert!(result);
         let cell = grid.get_cell(&coord);
         assert_eq!(cell.unwrap().color, Some(0x00FF00));
 
         let invalid_coord = create_coord(10, 10, -20);
         let result = grid.set_cell_color(&invalid_coord, 0x00FF00);
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -277,13 +284,13 @@ mod tests {
         let mut grid = HexGrid::new(2);
         let coord = create_coord(0, 0, 0);
         let result = grid.set_cell_content(&coord, "Test Content".to_string());
-        assert_eq!(result, true);
+        assert!(result);
         let cell = grid.get_cell(&coord);
         assert_eq!(cell.unwrap().content, Some("Test Content".to_string()));
 
         let invalid_coord = create_coord(10, 10, -20);
         let result = grid.set_cell_content(&invalid_coord, "Test Content".to_string());
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -413,7 +420,7 @@ mod tests {
             CubeCoord::new_unchecked(0, -1, 1), // Top right
         ];
 
-        for expected in expected_neighbors.iter() {
+        for expected in &expected_neighbors {
             assert!(neighbors.contains(expected));
         }
     }

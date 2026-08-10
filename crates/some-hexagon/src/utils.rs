@@ -4,7 +4,7 @@ use crate::CubeCoord;
 pub fn hex_to_pixel(coord: &CubeCoord, size: f32) -> (f32, f32) {
     let (q, r) = coord.to_axial();
     // Formulas for pointy-topped hexagons
-    let x = size * (3.0_f32.sqrt() * q as f32 + 3.0_f32.sqrt() / 2.0 * r as f32);
+    let x = size * 3.0_f32.sqrt().mul_add(q as f32, 3.0_f32.sqrt() / 2.0 * r as f32);
     let y = size * (3.0 / 2.0 * r as f32);
     (x, y)
 }
@@ -12,7 +12,7 @@ pub fn hex_to_pixel(coord: &CubeCoord, size: f32) -> (f32, f32) {
 /// Convert pixel position to hex coordinates for pointy-topped hexagons
 pub fn pixel_to_hex(x: f32, y: f32, size: f32) -> CubeCoord {
     // Reverse formulas for pointy-topped hexagons
-    let q = (3.0_f32.sqrt() / 3.0 * x - 1.0 / 3.0 * y) / size;
+    let q = (3.0_f32.sqrt() / 3.0).mul_add(x, -(1.0 / 3.0 * y)) / size;
     let r = (2.0 / 3.0 * y) / size;
 
     // Convert to cube coordinates

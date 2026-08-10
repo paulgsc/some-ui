@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 // §11.2): this is the crate's only file allowed to reference wasm_bindgen -
 // enforced by scripts/check-wasm-bindgen-boundary.sh in CI.
 
-/// Thin WASM wrapper - delegates all logic to GameEngine. Korean (canon Def.
+/// Thin WASM wrapper - delegates all logic to `GameEngine`. Korean (canon Def.
 /// 11.1) is the sole production-wired content domain.
 #[wasm_bindgen]
 pub struct HangulGameCore {
@@ -22,7 +22,7 @@ impl HangulGameCore {
     /// ignores it, so an absent/unparseable value falls back to an empty pool rather than failing
     /// construction.
     #[wasm_bindgen(constructor)]
-    pub fn new(config_js: JsValue, mode: String, word_pool_js: JsValue) -> Result<HangulGameCore, JsValue> {
+    pub fn new(config_js: JsValue, mode: String, word_pool_js: JsValue) -> Result<Self, JsValue> {
         let config: GameConfig = serde_wasm_bindgen::from_value(config_js).unwrap_or_else(|_| GameConfig::default());
         let word_pool: Vec<ChallengeSeed> = serde_wasm_bindgen::from_value(word_pool_js).unwrap_or_default();
 
@@ -71,6 +71,7 @@ impl HangulGameCore {
 
     /// Get current game status
     #[wasm_bindgen(js_name = getGameStatus)]
+    #[must_use]
     pub fn get_game_status(&self, current_time_ms: u64) -> JsValue {
         let status = self.engine.get_status(current_time_ms);
         serde_wasm_bindgen::to_value(&status).unwrap_or(JsValue::NULL)
@@ -78,6 +79,7 @@ impl HangulGameCore {
 
     /// Get current game stats
     #[wasm_bindgen(js_name = getStats)]
+    #[must_use]
     pub fn get_stats(&self) -> JsValue {
         let stats = self.engine.get_stats();
         serde_wasm_bindgen::to_value(&stats).unwrap_or(JsValue::NULL)
@@ -85,6 +87,7 @@ impl HangulGameCore {
 
     /// Get timing parameters
     #[wasm_bindgen(js_name = getTimingParams)]
+    #[must_use]
     pub fn get_timing_params(&self) -> JsValue {
         let params = self.engine.get_timing_params();
         serde_wasm_bindgen::to_value(&params).unwrap_or(JsValue::NULL)
@@ -92,12 +95,14 @@ impl HangulGameCore {
 
     /// Get current time window
     #[wasm_bindgen(js_name = getCurrentTimeWindow)]
+    #[must_use]
     pub fn get_current_time_window(&self) -> u32 {
         self.engine.get_timing_params().character_lifetime_ms
     }
 
     /// Get number of active reveals
     #[wasm_bindgen(js_name = getActiveCount)]
+    #[must_use]
     pub fn get_active_count(&self) -> usize {
         self.engine.get_active_count()
     }
@@ -109,9 +114,9 @@ impl HangulGameCore {
     }
 
     /// Switch to a different game mode (and word pool, for vocabulary modes) on the existing
-    /// engine, instead of constructing a new `HangulGameCore` - mode/word_pool are runtime
+    /// engine, instead of constructing a new `HangulGameCore` - `mode/word_pool` are runtime
     /// lifecycle state (canon Axiom 12.1), not fixed construction-time configuration. Same
-    /// permissive parse-or-default word_pool handling as the constructor.
+    /// permissive parse-or-default `word_pool` handling as the constructor.
     #[wasm_bindgen(js_name = changeMode)]
     pub fn change_mode(&mut self, mode: String, word_pool_js: JsValue) {
         let word_pool: Vec<ChallengeSeed> = serde_wasm_bindgen::from_value(word_pool_js).unwrap_or_default();
@@ -126,7 +131,7 @@ mod tests {
     #[test]
     fn test_engine_creation() {
         let config = GameConfig::default();
-        let engine = GameEngine::<Korean>::new(config.clone(), "endless".to_string(), vec![]);
+        let engine = GameEngine::<Korean>::new(config, "endless".to_string(), vec![]);
         assert_eq!(engine.get_active_count(), 0);
     }
 

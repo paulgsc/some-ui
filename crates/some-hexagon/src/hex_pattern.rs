@@ -1,4 +1,4 @@
-pub(crate) use crate::hex_grid::HexGrid;
+pub use crate::hex_grid::HexGrid;
 use crate::CubeCoord;
 
 /// Direction enumeration for text and pattern placement
@@ -16,9 +16,9 @@ impl Direction {
     /// Gets the direction vector as a `CubeCoord`
     pub fn get_vector(&self) -> CubeCoord {
         match self {
-            Direction::Horizontal => CubeCoord::new_unchecked(1, -1, 0),   // Moving along visual horizontal (east)
-            Direction::DiagonalUp => CubeCoord::new_unchecked(1, 0, -1),   // Moving northeast (along q-axis)
-            Direction::DiagonalDown => CubeCoord::new_unchecked(0, 1, -1), // Moving southeast (along r-axis)
+            Self::Horizontal => CubeCoord::new_unchecked(1, -1, 0),   // Moving along visual horizontal (east)
+            Self::DiagonalUp => CubeCoord::new_unchecked(1, 0, -1),   // Moving northeast (along q-axis)
+            Self::DiagonalDown => CubeCoord::new_unchecked(0, 1, -1), // Moving southeast (along r-axis)
         }
     }
 }
@@ -33,7 +33,7 @@ impl From<u32> for Direction {
     }
 }
 
-/// Defines relative rank/importance of cells in the grid
+// Defines relative rank/importance of cells in the grid
 // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // pub enum RankOrder {
 //     /// North to South (decreasing y, or increasing z)
@@ -116,15 +116,15 @@ impl HexGrid {
         let text_len = text.chars().count();
 
         if text_len == width {
-            return text.to_string();
+            text.to_string()
         } else if text_len < width {
             // Center the text
             let padding_left = (width - text_len) / 2;
             let padding_right = width - text_len - padding_left;
-            return " ".repeat(padding_left) + text + &" ".repeat(padding_right);
+            " ".repeat(padding_left) + text + &" ".repeat(padding_right)
         } else {
             // Truncate the text
-            return text.chars().take(width).collect();
+            text.chars().take(width).collect()
         }
     }
 

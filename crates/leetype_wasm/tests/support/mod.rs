@@ -17,7 +17,7 @@ use leetype_wasm::{Command, RevealConfig, TypingGameCore};
 pub struct Rng(pub u64);
 
 impl Rng {
-    pub fn next(&mut self) -> u64 {
+    pub const fn next(&mut self) -> u64 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
         self.0 ^= self.0 << 17;
@@ -92,7 +92,7 @@ impl Typist {
     /// Milliseconds until this typist's next keystroke.
     pub fn interval_ms(&self, rng: &mut Rng) -> f64 {
         let mean = 60_000.0 / (self.wpm * 5.0);
-        let spread = mean * self.jitter * (rng.unit() * 2.0 - 1.0);
+        let spread = mean * self.jitter * rng.unit().mul_add(2.0, -1.0);
         let hesitation = if rng.unit() < self.hesitation_rate { self.hesitation_ms } else { 0.0 };
         (mean + spread).max(1.0) + hesitation
     }
@@ -181,7 +181,7 @@ fn observe(core: &TypingGameCore, now: f64) -> Frame {
     }
 }
 
-fn pick_wrong(expected: char) -> char {
+const fn pick_wrong(expected: char) -> char {
     // A space would be swallowed as `ExtraSpace` rather than scored, so the
     // wrong key has to be a real character the slot did not want.
     if expected == 'q' {
@@ -235,7 +235,7 @@ impl Player {
         self.core.snapshot(self.now)
     }
 
-    pub fn core(&self) -> &TypingGameCore {
+    pub const fn core(&self) -> &TypingGameCore {
         &self.core
     }
 }
