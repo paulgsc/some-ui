@@ -8,7 +8,10 @@ set -euo pipefail
 # manual case, and a maintainer could still push it directly, so this stays
 # symmetric with wasm-release.yml / www-docker-release.yml's own guard.
 is_release_commit=false
-if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$PUBLISH_ONLY" = "true" ]; then
+# Supplying a rollback SHA is itself an explicit request to publish. Requiring
+# the operator to also discover and tick publish_only makes the emergency path
+# needlessly easy to no-op into a release PR.
+if [ "$EVENT_NAME" = "workflow_dispatch" ] && { [ "$PUBLISH_ONLY" = "true" ] || [ -n "$ROLLBACK_SHA" ]; }; then
 	is_release_commit=true
 elif [ "$EVENT_NAME" = "push" ] && [[ "$COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
 	is_release_commit=true

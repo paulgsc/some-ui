@@ -8,6 +8,10 @@ inputs:
     description: "workflow_dispatch inputs.publish_only (empty when not dispatched)"
     required: false
     default: ""
+  rollback-sha:
+    description: "workflow_dispatch inputs.rollback_sha (empty unless rolling back)"
+    required: false
+    default: ""
   commit-message:
     description: "github.event.head_commit.message (empty outside push events)"
     required: false
@@ -27,6 +31,7 @@ runs:
       env:
         EVENT_NAME: ${{ inputs.event-name }}
         PUBLISH_ONLY: ${{ inputs.publish-only }}
+        ROLLBACK_SHA: ${{ inputs.rollback-sha }}
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
         RELEASE_COMMIT_MESSAGE: ${{ inputs.release-commit-message }}
       run: bash "${{ github.action_path }}/detect.sh"
