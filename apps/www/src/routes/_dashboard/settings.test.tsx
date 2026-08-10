@@ -82,16 +82,13 @@ describe("settings: save button", () => {
       fireEvent.click(save)
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 250))
-    })
-
-    const settingsWrites = writeSpy.mock.calls.filter(
-      ([key]) => key === "some-ui.tenant.settings.v1"
-    )
     await waitFor(() => {
+      const settingsWrites = writeSpy.mock.calls.filter(
+        ([key]) => key === "some-ui.tenant.settings.v1"
+      )
       expect(settingsWrites).toHaveLength(1)
     })
+
     writeSpy.mockRestore()
   })
 
@@ -104,16 +101,17 @@ describe("settings: save button", () => {
     const save = screen.getByRole("button", { name: /save changes/i })
     expect(save.hasAttribute("disabled")).toBe(false)
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(save)
-      await new Promise((resolve) => setTimeout(resolve, 250))
     })
 
-    expect(toastSpy).toHaveBeenCalledWith("Settings saved")
-    expect(
-      screen
-        .getByRole("button", { name: /save changes/i })
-        .hasAttribute("disabled")
-    ).toBe(true)
+    await waitFor(() => {
+      expect(toastSpy).toHaveBeenCalledWith("Settings saved")
+      expect(
+        screen
+          .getByRole("button", { name: /save changes/i })
+          .hasAttribute("disabled")
+      ).toBe(true)
+    })
   })
 })
