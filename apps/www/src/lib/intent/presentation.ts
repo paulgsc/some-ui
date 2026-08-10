@@ -63,6 +63,7 @@
  * policy's answer, and is true for no other mode.
  */
 
+import { assertNever } from "@some-ui/intent-kit"
 import type { IntentPresentation } from "@some-ui/intent-kit"
 
 export type PresentationPolicy = {
@@ -81,10 +82,6 @@ export type PresentationPolicy = {
    * navigating away from whatever triggered it? True only for
    * `ambient-durable` - see the autosave verdict above. */
   readonly failureMustSurviveNavigation: boolean
-}
-
-function assertNever(_mode: never): never {
-  throw new Error("unhandled IntentPresentation")
 }
 
 export function presentationPolicyFor(

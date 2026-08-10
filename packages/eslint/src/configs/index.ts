@@ -39,3 +39,7 @@ export {
   default as buildHygieneConfig,
   buildHygienePlugin,
 } from "./build-hygiene.config.js"
+export {
+  default as intentGuardConfig,
+  intentGuardPlugin,
+} from "./intent-guard.config.js"

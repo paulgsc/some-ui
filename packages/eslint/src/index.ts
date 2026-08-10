@@ -12,6 +12,8 @@ import {
   extensionsSecurityConfig,
   fitsTheBoxConfig,
   fitsTheBoxPlugin,
+  intentGuardConfig,
+  intentGuardPlugin,
   lazyRegistryConfig,
   lazyRegistryPlugin,
   reactConfig,
@@ -71,6 +73,9 @@ export {
 
 // ── Switch-statement idiom rules ───────────────────────────────────────────
 export { switchLintConfig, switchLintPlugin }
+
+// ── Intent boundary guard (#937 S1) ─────────────────────────────────────────
+export { intentGuardConfig, intentGuardPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }

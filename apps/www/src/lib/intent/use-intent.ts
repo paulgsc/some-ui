@@ -55,7 +55,13 @@ import type {
   IntentError,
   IntentPresentation,
 } from "@some-ui/intent-kit"
-import { failed, idle, succeeded, working } from "@some-ui/intent-kit"
+import {
+  assertNever,
+  failed,
+  idle,
+  succeeded,
+  working,
+} from "@some-ui/intent-kit"
 import type { UseMutationResult } from "@tanstack/react-query"
 
 import { mapFileHostError } from "./errors"
@@ -82,10 +88,6 @@ export type UseIntentResult<TVariables, TData, TStep extends string = never> = {
   /** Returns the intent to `idle`, discarding the last result. See this
    * module's header on the double-terminal case for when to call it. */
   readonly reset: () => void
-}
-
-function assertNever(_value: never): never {
-  throw new Error("unhandled UseMutationResult status")
 }
 
 /**
