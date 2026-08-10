@@ -25,12 +25,23 @@
  * `createDataSource.fetch()` always resolves an endpoint and issues a
  * request - it has no notion of "this mode has no resource" - so the empty
  * fallback above stays a gate in front of it, not something the data source
- * itself decides. Only a 404 falls back to the empty manifest; anything else
- * (a timeout, a 500, malformed JSON) is a real failure and surfaces as one,
- * same as `hangul-vocab`'s non-404 handling.
+ * itself decides. Only a 404, or a response that plainly isn't a manifest,
+ * falls back to the empty manifest; anything else (a timeout, a 500) is a
+ * real failure and surfaces as one, same as `hangul-vocab`'s non-404
+ * handling.
+ *
+ * That second case is not hypothetical: both `nginx.https.conf` and the
+ * Dockerfile's nginx config serve every unmatched path via
+ * `try_files $uri $uri/ /index.html`, and `vite preview` does the same for
+ * SPA navigation. A `public/topiks` that exists but hasn't been
+ * populated/mounted (a fresh checkout, an unmounted `WWW_TOPIK_ASSETS_PATH`)
+ * therefore answers `/topiks/manifest.json` with `index.html` at HTTP 200,
+ * not a 404 - the exact "nobody has generated any topiks yet" case, just
+ * dressed up as success. `manifestShapeSchema` below is what catches that.
  */
 
 import { ApiError, createDataSource } from "@some-ui/fetch-kit"
+import { z } from "zod"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
 
@@ -98,20 +109,38 @@ const topikSource = createDataSource<string, unknown>(
   { mode: DATA_MODE }
 )
 
+/**
+ * Enough to tell "this is a manifest" from "this is an SPA fallback's
+ * `index.html`, or otherwise not a manifest" - not `@some-ui/topik`'s real
+ * `TopikManifestSchema`, which validates each entry and would need that
+ * package's types to write. Importing it here would put the applet back in
+ * this app's main bundle. The applet re-validates the full shape on the way
+ * in regardless; this check only decides fetch-vs-empty-fallback.
+ */
+const manifestShapeSchema = z.object({
+  version: z.string(),
+  topiks: z.array(z.unknown()),
+})
+
 /** Handed to `KoreanStudyPage` as `loadManifest`. */
 export async function loadTopikManifest(): Promise<unknown> {
   if (!FETCHES_CONTENT) return EMPTY_TOPIK_MANIFEST
 
   try {
-    return await manifestSource.fetch()
+    return await manifestSource.fetch(undefined, manifestShapeSchema)
   } catch (error) {
-    // A 404 here is the common case on a fresh checkout: the material is
-    // curated and gitignored (see apps/www/.gitignore), so "nobody has
-    // generated any topiks yet" is expected, not broken. An empty catalogue
-    // says that in the UI; anything else (a timeout, a 500, malformed JSON)
-    // is a real failure and should surface as one instead of vanishing into
-    // the same fallback.
-    if (error instanceof ApiError && error.status === 404) {
+    // A 404 is the common case on a fresh checkout: the material is curated
+    // and gitignored (see apps/www/.gitignore), so "nobody has generated any
+    // topiks yet" is expected, not broken. A response that fails
+    // `manifestShapeSchema` (status 400, thrown by the shared fetch client)
+    // is the same case wearing an SPA fallback's clothes - see this file's
+    // header comment. An empty catalogue says either in the UI; anything
+    // else (a timeout, a 500) is a real failure and should surface as one
+    // instead of vanishing into the same fallback.
+    if (
+      error instanceof ApiError &&
+      (error.status === 404 || error.status === 400)
+    ) {
       return EMPTY_TOPIK_MANIFEST
     }
     throw error

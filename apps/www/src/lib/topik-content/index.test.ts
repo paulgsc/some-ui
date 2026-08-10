@@ -28,6 +28,19 @@ function statusResponse(status: number, statusText: string): Response {
 }
 
 /**
+ * What nginx's `try_files $uri $uri/ /index.html` (and `vite preview`'s SPA
+ * fallback) actually serves for a `/topiks/manifest.json` that doesn't exist
+ * on disk: the app shell, at HTTP 200 - not a 404. See this module's header
+ * comment.
+ */
+function spaFallbackResponse(): Response {
+  return new Response("<!doctype html><html><body>app shell</body></html>", {
+    status: 200,
+    headers: { "content-type": "text/html" },
+  })
+}
+
+/**
  * `FETCHES_CONTENT` is a build-time constant folded at import, so each case
  * re-imports the module under a different env rather than calling a setter.
  */
@@ -126,9 +139,24 @@ describe("loadTopikManifest - builds that serve public/", () => {
 
     const { loadTopikManifest } = await loadModule()
 
-    // A 500 (or a timeout, or malformed JSON) means something is actually
-    // broken - only a 404 gets read as "nobody generated this yet."
+    // A 500 (or a timeout) means something is actually broken - only a 404,
+    // or a 200 that isn't shaped like a manifest, reads as "nobody generated
+    // this yet."
     await expect(loadTopikManifest()).rejects.toThrow(/500/)
+  })
+
+  it("treats an SPA-fallback response as an empty catalogue, not a crash", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", undefined)
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(spaFallbackResponse()))
+
+    const { loadTopikManifest, EMPTY_TOPIK_MANIFEST } = await loadModule()
+
+    // A missing manifest in server mode (fresh checkout, unmounted
+    // WWW_TOPIK_ASSETS_PATH) comes back as index.html at HTTP 200 via
+    // nginx's/vite's SPA fallback, not a 404 - this must resolve the same
+    // way a 404 does, not hand `index.html`'s markup to the applet as if it
+    // were a manifest.
+    await expect(loadTopikManifest()).resolves.toEqual(EMPTY_TOPIK_MANIFEST)
   })
 
   it("fetches a selected topik's batches by key", async () => {
