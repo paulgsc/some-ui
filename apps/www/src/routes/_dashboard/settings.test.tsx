@@ -12,7 +12,14 @@
 import type { JSX, ReactNode } from "react"
 import { ThemeProvider } from "@/providers/theme"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const toastSpy = vi.fn()
@@ -81,7 +88,9 @@ describe("settings: save button", () => {
     const settingsWrites = writeSpy.mock.calls.filter(
       ([key]) => key === "some-ui.tenant.settings.v1"
     )
-    expect(settingsWrites).toHaveLength(1)
+    await waitFor(() => {
+      expect(settingsWrites).toHaveLength(1)
+    })
     writeSpy.mockRestore()
   })
 
