@@ -65,7 +65,7 @@ const getProviderColor = (provider: TTSProvider): string => {
       return "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200"
     }
     case "custom": {
-      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+      return "bg-muted text-muted-foreground"
     }
     default: {
       provider satisfies never

@@ -780,8 +780,8 @@ const SetupStage: FC<SetupStageProps> = ({
   setIsConcentrated,
   onStart,
 }) => (
-  <div className="absolute inset-0 bg-slate-900 text-white flex items-center justify-center overflow-hidden">
-    <div className="w-full max-w-2xl bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl mx-4">
+  <div className="absolute inset-0 bg-background text-foreground flex items-center justify-center overflow-hidden">
+    <div className="w-full max-w-2xl bg-card text-card-foreground p-6 rounded-3xl border border-border shadow-2xl mx-4">
       <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
         Assessment Configuration
       </h1>
@@ -791,7 +791,7 @@ const SetupStage: FC<SetupStageProps> = ({
           <div className="space-y-2">
             <label
               htmlFor="questions-per-category"
-              className="text-sm text-slate-400"
+              className="text-sm text-muted-foreground"
             >
               Questions per Category
             </label>
@@ -800,13 +800,13 @@ const SetupStage: FC<SetupStageProps> = ({
               type="number"
               value={qPerCategory}
               onChange={(e): void => setQPerCategory(Number(e.target.value))}
-              className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
+              className="w-full bg-muted p-3 rounded-xl border border-border"
             />
           </div>
           <div className="space-y-2">
             <label
               htmlFor="minutes-per-question"
-              className="text-sm text-slate-400"
+              className="text-sm text-muted-foreground"
             >
               Minutes per Question
             </label>
@@ -815,7 +815,7 @@ const SetupStage: FC<SetupStageProps> = ({
               type="number"
               value={perQuestionMins}
               onChange={(e): void => setPerQuestionMins(Number(e.target.value))}
-              className="w-full bg-slate-700 p-3 rounded-xl border border-slate-600"
+              className="w-full bg-muted p-3 rounded-xl border border-border"
             />
           </div>
         </div>
@@ -825,7 +825,7 @@ const SetupStage: FC<SetupStageProps> = ({
           className={`w-full p-4 rounded-xl border-2 transition-all ${
             isConcentrated
               ? "border-purple-500 bg-purple-500/10"
-              : "border-slate-600 bg-slate-700"
+              : "border-border bg-muted"
           }`}
         >
           Mode: {isConcentrated ? "🎯 Topic Concentration" : "🎲 Full Shuffle"}
@@ -871,20 +871,20 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
   if (!currentQ) return null
 
   return (
-    <div className="size-full bg-slate-950 text-white flex flex-col overflow-hidden">
+    <div className="size-full bg-background text-foreground flex flex-col overflow-hidden">
       <div className="flex flex-col flex-1 min-h-0 max-w-5xl mx-auto w-full px-6 py-4 gap-4">
         {/* Timer Header */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-900 p-4 rounded-2xl border border-red-500/30">
-            <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">
+          <div className="bg-card p-4 rounded-2xl border border-red-500/30">
+            <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest">
               Global Time Remaining
             </span>
             <div className="text-3xl font-mono text-red-400">
               {formatTime(totalSecsLeft)}
             </div>
           </div>
-          <div className="bg-slate-900 p-4 rounded-2xl border border-cyan-500/30">
-            <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">
+          <div className="bg-card p-4 rounded-2xl border border-cyan-500/30">
+            <span className="text-xs text-muted-foreground uppercase font-bold tracking-widest">
               Question Time Remaining
             </span>
             <div className="text-3xl font-mono text-cyan-400">
@@ -899,12 +899,12 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
             CATEGORIES[currentQ.category].color
           }`}
         >
-          <div className="bg-slate-900 rounded-[22px] p-6 flex flex-col size-full min-h-0 overflow-hidden">
+          <div className="bg-card rounded-[22px] p-6 flex flex-col size-full min-h-0 overflow-hidden">
             <div className="flex justify-between items-start mb-4">
-              <span className="px-4 py-1 bg-slate-800 rounded-full text-sm font-bold border border-slate-700">
+              <span className="px-4 py-1 bg-muted rounded-full text-sm font-bold border border-border">
                 {currentQ.id} | {CATEGORIES[currentQ.category].name}
               </span>
-              <span className="text-slate-500 font-mono text-sm">
+              <span className="text-muted-foreground font-mono text-sm">
                 Question {currentIdx + 1} of {questions.length}
               </span>
             </div>
@@ -918,7 +918,7 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
               {currentQ.criteria.map((c, i) => (
                 <div
                   key={i}
-                  className="flex gap-3 text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-700/50"
+                  className="flex gap-3 text-foreground bg-muted/50 p-3 rounded-lg border border-border/50"
                 >
                   <CheckCircle
                     className="text-emerald-500 shrink-0"
@@ -931,7 +931,7 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
 
             {/* Input Area */}
             <textarea
-              className="w-full flex-1 min-h-0 bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 text-lg resize-none focus:border-purple-500 outline-none transition-all"
+              className="w-full flex-1 min-h-0 bg-muted border-2 border-border rounded-2xl p-4 text-lg resize-none focus:border-purple-500 outline-none transition-all"
               placeholder="Structure your technical response..."
               value={currentAnswer.text ?? ""}
               onChange={(e): void => onUpdateAnswer({ text: e.target.value })}
@@ -946,7 +946,7 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
                   currentAnswer.showedCode
                     ? "bg-cyan-500/20 border-cyan-500"
-                    : "bg-slate-800 border-slate-700 text-slate-500"
+                    : "bg-muted border-border text-muted-foreground"
                 }`}
               >
                 <Code size={20} /> Live Code
@@ -958,7 +958,7 @@ const AssessmentStage: FC<AssessmentStageProps> = ({
                 className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
                   currentAnswer.didResearch
                     ? "bg-pink-500/20 border-pink-500"
-                    : "bg-slate-800 border-slate-700 text-slate-500"
+                    : "bg-muted border-border text-muted-foreground"
                 }`}
               >
                 <FileText size={20} /> Research
@@ -991,7 +991,7 @@ type CompleteStageProps = {
 }
 
 const CompleteStage: FC<CompleteStageProps> = ({ onRestart }) => (
-  <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-white overflow-hidden">
+  <div className="absolute inset-0 bg-background flex items-center justify-center text-foreground overflow-hidden">
     <div className="text-center">
       <h1 className="text-4xl font-bold mb-4">Assessment Complete</h1>
       <button onClick={onRestart} className="text-cyan-400 hover:underline">

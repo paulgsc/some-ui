@@ -22,6 +22,12 @@ export const VoiceAvatarControls = ({
           ? "purple"
           : "cyan"
 
+  // The four `text-slate-900` values below are the label on a saturated amber/sky/
+  // purple/cyan gradient fill. The fill is fixed art direction, so its label
+  // has to be fixed too — `text-primary-foreground` would invert to near-white
+  // under a dark session theme and vanish into the button. The inactive branch
+  // underneath is the themed one, and uses tokens.
+  /* eslint-disable theme-protocol/no-structural-palette-color */
   const getButtonClass = (primary = false): string =>
     `px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
       primary
@@ -32,8 +38,9 @@ export const VoiceAvatarControls = ({
             : themeClass === "purple"
               ? "bg-gradient-to-r from-purple-400 to-purple-500 text-slate-900 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40"
               : "bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40"
-        : `bg-slate-800/80 text-${themeClass}-400 border-2 border-${themeClass}-500/50 hover:bg-slate-700/80 hover:border-${themeClass}-500/70 backdrop-blur-sm`
+        : `bg-card/80 text-${themeClass}-400 border-2 border-${themeClass}-500/50 hover:bg-accent/80 hover:border-${themeClass}-500/70 backdrop-blur-sm`
     }`
+  /* eslint-enable theme-protocol/no-structural-palette-color */
 
   return (
     <div className="mt-16 flex gap-6">

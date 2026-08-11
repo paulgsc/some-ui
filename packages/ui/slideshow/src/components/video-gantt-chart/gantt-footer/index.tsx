@@ -24,13 +24,13 @@ export const GanttFooter = ({
         )}
       />
       <span className="text-white">{currentChapter.title}</span>
-      <span className="text-xs text-gray-400">
+      <span className="text-xs text-muted-foreground">
         {currentChapter.description}
       </span>
       <Button
         variant="ghost"
         size="sm"
-        className="ml-auto h-6 gap-1 px-2 text-xs text-gray-400 hover:text-white"
+        className="ml-auto h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
         onClick={() => onJumpToTimestamp(currentChapter.startTime || 0)}
       >
         <Play className="size-3" />

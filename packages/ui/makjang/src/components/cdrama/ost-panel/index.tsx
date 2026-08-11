@@ -1,5 +1,7 @@
 import type { FC } from "react"
 import { startTransition, useEffect, useState } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { Disc3, Music, Star } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -9,6 +11,13 @@ type OSTPanelProps = {
   score: number
   ranking: number
   favoriteTrack: string
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 const getOSTEmoji = (score: number): string => {
@@ -22,6 +31,7 @@ export const OSTPanel: FC<OSTPanelProps> = ({
   score,
   ranking,
   favoriteTrack,
+  appearance = "inherit",
 }): React.JSX.Element => {
   const [mounted, setMounted] = useState(false)
   const [visualizerBars, setVisualizerBars] = useState<Array<number>>([])
@@ -48,7 +58,8 @@ export const OSTPanel: FC<OSTPanelProps> = ({
   return (
     <div
       className={cn(
-        "cdrama space-y-5 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        appearanceClassName(appearance),
+        "space-y-5 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-accent)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
         mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"

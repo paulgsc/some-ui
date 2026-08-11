@@ -1,5 +1,7 @@
 import type { JSX } from "react"
 import { useCallback, useEffect, useRef } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 
 export type RingHit = {
   type: "outer" | "inner"
@@ -10,6 +12,12 @@ type Props = {
   outerPos: number
   innerPos: number
   onHit: (hit: RingHit) => void
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established. Pass `"scheduler"` to opt into the standalone scheduler
+   * palette, which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 // Configuration Constants
@@ -38,7 +46,12 @@ const THEME = {
   emeraldPast: "#065f46",
 }
 
-export const Rings = ({ outerPos, innerPos, onHit }: Props): JSX.Element => {
+export const Rings = ({
+  outerPos,
+  innerPos,
+  onHit,
+  appearance = "inherit",
+}: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const ang24 = (i: number): number => -Math.PI / 2 + (i / N24) * 2 * Math.PI
@@ -230,7 +243,9 @@ export const Rings = ({ outerPos, innerPos, onHit }: Props): JSX.Element => {
   )
 
   return (
-    <div className="scheduler flex items-center justify-center w-full p-4">
+    <div
+      className={`${appearanceClassName(appearance)} flex items-center justify-center w-full p-4`.trim()}
+    >
       <canvas
         ref={canvasRef}
         width={W}

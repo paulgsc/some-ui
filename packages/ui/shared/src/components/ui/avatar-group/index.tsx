@@ -57,7 +57,7 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
           }
           className="-ml-2 size-8 shrink-0 cursor-pointer first:ml-0"
         >
-          <span className="flex size-8 items-center justify-center rounded-full border-2 border-white bg-neutral-100 object-cover text-xs text-neutral-800 dark:border-neutral-950 dark:bg-neutral-900 dark:text-neutral-300">
+          <span className="flex size-8 items-center justify-center rounded-full border-2 border-background bg-muted object-cover text-xs text-muted-foreground">
             {`${showMore ? "-" : "+"}${avatars.length - limit}`}
           </span>
         </Button>

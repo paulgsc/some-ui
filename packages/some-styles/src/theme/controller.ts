@@ -9,18 +9,22 @@
  * subset here (storage key + class mapping); keep them in sync.
  */
 
-import type { AppTheme, AppThemeId } from "./registry"
-import { ALL_THEME_CLASSES, APP_THEMES, getAppTheme } from "./registry"
+import type { SessionTheme, SessionThemeId } from "./registry"
+import {
+  getSessionTheme,
+  SESSION_THEME_CLASSES,
+  SESSION_THEMES,
+} from "./registry"
 
 export const THEME_STORAGE_KEY = "some-ui.theme"
 
-/** "system" follows the OS setting; any other value is an {@link AppThemeId}. */
+/** "system" follows the OS setting; any other value is a {@link SessionThemeId}. */
 export const SYSTEM_PREFERENCE = "system"
-export type ThemePreference = AppThemeId | typeof SYSTEM_PREFERENCE
+export type ThemePreference = SessionThemeId | typeof SYSTEM_PREFERENCE
 
 /** The theme "system" resolves to for each OS mode. */
-const SYSTEM_LIGHT: AppThemeId = "light"
-const SYSTEM_DARK: AppThemeId = "dark"
+const SYSTEM_LIGHT: SessionThemeId = "light"
+const SYSTEM_DARK: SessionThemeId = "dark"
 
 export const DEFAULT_PREFERENCE: ThemePreference = SYSTEM_DARK
 
@@ -37,7 +41,9 @@ function safeStorage(): StorageLike | null {
 }
 
 export function isThemePreference(value: string): value is ThemePreference {
-  return value === SYSTEM_PREFERENCE || APP_THEMES.some((t) => t.id === value)
+  return (
+    value === SYSTEM_PREFERENCE || SESSION_THEMES.some((t) => t.id === value)
+  )
 }
 
 /** True when the OS currently prefers a dark color scheme. */
@@ -53,12 +59,12 @@ export function prefersDark(): boolean {
 export function resolveTheme(
   preference: ThemePreference,
   systemDark: boolean = prefersDark()
-): AppTheme {
+): SessionTheme {
   if (preference === SYSTEM_PREFERENCE) {
     const id = systemDark ? SYSTEM_DARK : SYSTEM_LIGHT
-    return getAppTheme(id) ?? APP_THEMES[0]
+    return getSessionTheme(id) ?? SESSION_THEMES[0]
   }
-  return getAppTheme(preference) ?? APP_THEMES[0]
+  return getSessionTheme(preference) ?? SESSION_THEMES[0]
 }
 
 export function readStoredPreference(
@@ -84,12 +90,12 @@ export function writeStoredPreference(
  * `color-scheme` / `data-theme` so native UI (scrollbars, form controls) and
  * CSS hooks stay in sync. Idempotent — safe to call on every change.
  */
-export function applyTheme(root: HTMLElement, theme: AppTheme): void {
-  root.classList.remove(...ALL_THEME_CLASSES)
-  if (theme.classNames.length > 0) {
-    root.classList.add(...theme.classNames)
+export function applyTheme(root: HTMLElement, theme: SessionTheme): void {
+  root.classList.remove(...SESSION_THEME_CLASSES)
+  if (theme.boundary.classNames.length > 0) {
+    root.classList.add(...theme.boundary.classNames)
   }
-  root.dataset.theme = theme.id
+  root.dataset.theme = theme.boundary.dataTheme
   root.style.colorScheme = theme.mode
 }
 
@@ -98,7 +104,7 @@ export function applyPreference(
   root: HTMLElement,
   preference: ThemePreference,
   systemDark: boolean = prefersDark()
-): AppTheme {
+): SessionTheme {
   const theme = resolveTheme(preference, systemDark)
   applyTheme(root, theme)
   return theme

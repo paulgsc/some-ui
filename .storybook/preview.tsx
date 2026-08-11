@@ -23,8 +23,9 @@ const preview: Preview = {
   globalTypes: themeGlobalTypes,
 
   initialGlobals: {
-    mode: "light",
-    theme: "none",
+    session: "system",
+    appearance: "inherit",
+    accent: "none",
   },
 
   parameters: {

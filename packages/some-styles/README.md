@@ -153,19 +153,106 @@ pnpm build:css   # compiles examples/showcase.html → dist/some-ui.css
 
 Open `examples/showcase.html` to see the static output styling a plain page.
 
-## Themes
+## The theme protocol
 
-`themes` (from the JS API) is the registry of available themes for building
-switchers:
+Theme reaches a component by **CSS inheritance from a DOM boundary**, and by
+nothing else. There is no context, no hook, and no framework anywhere in this
+path:
 
-```ts
-import { appThemes, colorThemes } from "@some-ui/styles"
+```
+session preference           (the user picks; localStorage remembers)
+        ↓
+framework-specific adapter   (apps/www ThemeProvider, a pre-paint script,
+        ↓                     a Next server component, a plain <script>)
+DOM boundary                 (class + data-theme + color-scheme on <html>)
+        ↓
+semantic custom properties   (tokens/base.css, themes/*.css)
+        ↓
+components inherit           (bg-background, text-muted-foreground, …)
 ```
 
-- **Color themes** layer a `--primary` palette onto light/dark
+The consequence for a reusable component is one rule: **inherit your theme,
+never choose one**. A component that mounts a palette class on its own markup
+has replaced `--background` / `--foreground` for its whole subtree, so the
+user's session theme still changes and that subtree does not follow. Both
+halves of the rule are enforced by `theme-protocol/*` in `@some-ui/eslint-kit`,
+which `uiRecommended` turns on for every `packages/ui/*` workspace.
+
+### The four scopes
+
+`src/theme/registry.ts` is the single source of truth. Every switcher, toolbar
+and lint rule reads a derived view of it — nothing maintains a second list.
+
+| Scope       | Applied to         | Who chooses it       | Replaces the semantic contract? |
+| ----------- | ------------------ | -------------------- | ------------------------------- |
+| `session`   | the document root  | the **user**         | yes — it _is_ the contract      |
+| `feature`   | any nested element | the **host**, opt-in | yes, for its subtree            |
+| `accent`    | `.theme-container` | the host             | no — `--primary` family only    |
+| `component` | a component's root | the **component**    | no — own namespaced tokens only |
+
+`session` and `feature` are the two a component must never author. `component`
+is the shape the others should migrate toward: `.headline` owns `--base-bg`,
+`--light-a`, `--text-main` and touches nothing shared, which is exactly why
+`neon-sign` is free to apply it to itself.
+
+### Opting into a feature appearance
+
+A component whose product design genuinely calls for a branded surface takes
+it as a prop and defaults to inheriting:
+
+```tsx
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
+
+type Props = { appearance?: Appearance }
+
+export const Leetype = ({ appearance = "inherit" }: Props) => (
+  <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
+    …
+  </div>
+)
+```
+
+`appearanceClassName("inherit")` is the empty string — the default case is
+genuinely "open no boundary". The type only admits feature ids, so the helper
+cannot be used to force a session theme even by accident.
+
+### Feature tokens have ambient defaults
+
+A feature palette's own tokens (`--cdrama-blossom`, `--glow-primary`, …) are
+declared on `:root` in terms of the semantic roles, and overridden by the
+feature class:
+
+```css
+:root {
+  --cdrama-blossom: var(--primary);
+}
+.cdrama {
+  --cdrama-blossom: oklch(75% 0.15 20deg);
+}
+```
+
+Without the first rule, `var(--cdrama-blossom)` resolves to nothing outside
+`.cdrama` — which is what forced five components to mount `.cdrama` on their
+own root just to make three variables exist. Mounting a full palette to get
+three variables is how a feature skin ends up overriding the user's theme, so
+a new feature token needs its ambient default in the same commit.
+
+### Registries for building switchers
+
+```ts
+import {
+  ACCENT_THEMES, // --primary overlays
+  COMPONENT_SKINS, // namespaced, component-applied
+  FEATURE_APPEARANCES, // opt-in nested palettes
+  SESSION_THEMES, // user-selectable palettes, with swatches
+} from "@some-ui/styles/theme"
+```
+
+- **Accent themes** layer a `--primary` palette onto light/dark
   (`.theme-blue .theme-container`).
-- **App themes** are standalone palettes applied to a root element
-  (`.scheduler`, `.code`, `.conveyor`).
+- **Session and feature themes** are standalone palettes applied to a boundary
+  element (`.dark`, `.peachy-blossom`, `.scheduler`, `.code`, `.conveyor`).
 
 The **`conveyor`** app theme (`themes/conveyor.css`) is the steel transport
 palette for the `some-conveyor` extension: a steel substrate plus three

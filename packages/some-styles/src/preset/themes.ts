@@ -1,17 +1,31 @@
 /**
- * Theme registry.
+ * A flat, class-name-shaped **view** over the canonical registry in
+ * `../theme/registry.ts`.
  *
- * Each entry corresponds to a class selector shipped in the CSS token files.
- * This is the JS-side source of truth for theme metadata — useful for
- * building theme switchers, Storybook toolbars, and docs without re-parsing
- * CSS.
+ * This file used to be a second registry: it independently listed every class
+ * selector shipped in CSS, with its own `ThemeKind` schema and its own
+ * membership. `strawberry-moon` and `peachy-blossom` appeared here *and* in the
+ * session registry with different metadata, and nothing kept them in step.
+ * Everything below is now derived — adding a theme in one place is the only way
+ * to add one at all.
  *
- * - `color` themes restyle `--primary` (and friends) on `.theme-container`.
- *   They layer on top of light/dark and live in `themes.css`.
- * - `app` themes are full standalone palettes (their own background /
- *   foreground), applied to a root element. They live in `themes/*.css`.
+ * The `kind` split is preserved because it is the distinction toolbars care
+ * about (does this restyle `--primary` on a `.theme-container`, or replace the
+ * whole palette on a root?), but it now reads straight off `scope`.
  */
 
+import {
+  ACCENT_THEMES,
+  FEATURE_APPEARANCES,
+  SESSION_THEMES,
+  type ThemeDefinition,
+} from "../theme/registry"
+
+/**
+ * - `color` themes restyle `--primary` (and friends) on `.theme-container`.
+ * - `app` themes are full standalone palettes applied to a boundary element —
+ *   both the session palettes and the opt-in feature appearances.
+ */
 export type ThemeKind = "color" | "app"
 
 export type ThemeMeta = {
@@ -24,47 +38,27 @@ export type ThemeMeta = {
   kind: ThemeKind
 }
 
-export const colorThemes: ReadonlyArray<ThemeMeta> = [
-  {
-    id: "default",
-    label: "Default",
-    className: "theme-default",
-    kind: "color",
-  },
-  { id: "blue", label: "Blue", className: "theme-blue", kind: "color" },
-  { id: "green", label: "Green", className: "theme-green", kind: "color" },
-  { id: "amber", label: "Amber", className: "theme-amber", kind: "color" },
-  { id: "rose", label: "Rose", className: "theme-rose", kind: "color" },
-  { id: "purple", label: "Purple", className: "theme-purple", kind: "color" },
-  { id: "orange", label: "Orange", className: "theme-orange", kind: "color" },
-  { id: "teal", label: "Teal", className: "theme-teal", kind: "color" },
-  { id: "red", label: "Red", className: "theme-red", kind: "color" },
-  { id: "yellow", label: "Yellow", className: "theme-yellow", kind: "color" },
-  { id: "violet", label: "Violet", className: "theme-violet", kind: "color" },
-  { id: "mono", label: "Mono", className: "theme-mono", kind: "color" },
-  { id: "scaled", label: "Scaled", className: "theme-scaled", kind: "color" },
-]
+function toMeta(theme: ThemeDefinition, kind: ThemeKind): ThemeMeta {
+  return {
+    id: theme.id,
+    label: theme.label,
+    // Session themes carry `dark` alongside their palette class; the last
+    // entry is the palette itself, which is what a switcher wants to name.
+    className:
+      theme.boundary.classNames[theme.boundary.classNames.length - 1] ??
+      theme.boundary.dataTheme,
+    kind,
+  }
+}
+
+export const colorThemes: ReadonlyArray<ThemeMeta> = ACCENT_THEMES.map((t) =>
+  toMeta(t, "color")
+)
 
 export const appThemes: ReadonlyArray<ThemeMeta> = [
-  { id: "scheduler", label: "Scheduler", className: "scheduler", kind: "app" },
-  { id: "code", label: "Code", className: "code", kind: "app" },
-  { id: "cdrama", label: "C-Drama", className: "cdrama", kind: "app" },
-  { id: "topik", label: "Topik", className: "topik", kind: "app" },
-  { id: "headline", label: "Headline", className: "headline", kind: "app" },
-  { id: "conveyor", label: "Conveyor", className: "conveyor", kind: "app" },
-  {
-    id: "strawberry-moon",
-    label: "Strawberry Moon",
-    className: "strawberry-moon",
-    kind: "app",
-  },
-  {
-    id: "peachy-blossom",
-    label: "Peachy Blossom",
-    className: "peachy-blossom",
-    kind: "app",
-  },
-]
+  ...FEATURE_APPEARANCES,
+  ...SESSION_THEMES.filter((t) => t.boundary.classNames.length > 0),
+].map((t) => toMeta(t, "app"))
 
 export const themes: ReadonlyArray<ThemeMeta> = [...colorThemes, ...appThemes]
 

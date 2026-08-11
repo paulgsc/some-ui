@@ -194,7 +194,7 @@ export const HexGrid = <T = unknown,>({
   const renderContent = (): ReactNode => {
     if (!hasMeasured || isLoading) {
       return (
-        <div className="flex h-full w-full items-center justify-center text-gray-400">
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
           Loading hexagon grid...
         </div>
       )
@@ -249,7 +249,7 @@ export const HexGrid = <T = unknown,>({
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
-                    className="text-gray-950"
+                    className="text-border"
                   />
                 ))}
               </g>

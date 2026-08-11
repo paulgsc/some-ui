@@ -20,8 +20,8 @@ import {
 import { BUILTIN_VOICES } from "@some-ui/speech"
 import type { TTSProvider } from "@some-ui/speech"
 import {
-  APP_THEMES,
   isThemePreference,
+  SESSION_THEMES,
   SYSTEM_PREFERENCE,
 } from "@some-ui/styles/theme"
 import { createFileRoute } from "@tanstack/react-router"
@@ -57,7 +57,7 @@ const LAYOUT_TREE_OPTIONS: ReadonlyArray<{
 /** "System" plus every selectable palette from the shared design system. */
 const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: SYSTEM_PREFERENCE, label: "Match system" },
-  ...APP_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
+  ...SESSION_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
 ]
 
 function isTTSProvider(value: string): value is TTSProvider {

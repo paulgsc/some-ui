@@ -212,6 +212,7 @@ export const FloatingElementsPresets: {
       "▿",
     ],
     className:
+      // eslint-disable-next-line theme-protocol/no-structural-palette-color -- ambient texture at 5% alpha, not text: one of several decorative glyph fields drifting behind the recap, each with its own fixed hue. At this opacity it reads as grain rather than as content, and a foreground token would make it legible — the opposite of what it is for.
       "absolute text-xs text-gray-400/5 animate-float pointer-events-none",
     maxElements: 25,
     spawnInterval: 1500,

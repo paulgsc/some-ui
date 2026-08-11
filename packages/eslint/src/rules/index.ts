@@ -13,3 +13,8 @@ export { noBareWasmSingleton } from "./no-bare-wasm-singleton.js"
 export { requireReactPeerDependency } from "./require-react-peer-dependency.js"
 export { noManualBuildExclude } from "./no-manual-build-exclude.js"
 export { noUnboundedIntent } from "./no-unbounded-intent.js"
+export {
+  noStructuralPaletteColor,
+  noThemeBoundary,
+  THEME_BOUNDARY_OVERRIDE_CLASSES,
+} from "./theme-protocol.js"

@@ -6,7 +6,7 @@ import {
   useEffect,
   useState,
 } from "react"
-import type { AppTheme, ThemePreference } from "@some-ui/styles/theme"
+import type { SessionTheme, ThemePreference } from "@some-ui/styles/theme"
 import {
   applyPreference,
   DEFAULT_PREFERENCE,
@@ -22,7 +22,7 @@ type ThemeContextValue = {
   /** The user's stored choice ("system" or a concrete theme id). */
   preference: ThemePreference
   /** The theme actually applied right now (system resolved to light/dark). */
-  resolved: AppTheme
+  resolved: SessionTheme
   setPreference: (preference: ThemePreference) => void
 }
 

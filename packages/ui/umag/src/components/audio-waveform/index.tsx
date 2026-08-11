@@ -60,7 +60,9 @@ export const WaveBarChart: FC<WaveBarChartProps> = ({
             className="w-full max-w-xs"
           />
           {fileName && (
-            <p className="text-sm text-gray-600">Current file: {fileName}</p>
+            <p className="text-sm text-muted-foreground">
+              Current file: {fileName}
+            </p>
           )}
         </div>
         <div className="space-y-2">

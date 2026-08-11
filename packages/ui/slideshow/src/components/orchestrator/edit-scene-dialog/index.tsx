@@ -186,7 +186,7 @@ const EditModeContent = ({
               dispatch({ type: "UPDATE_DRAFT_JSON", value: e.target.value })
             }
             className={cn(
-              "h-full min-h-full resize-none bg-zinc-950 text-zinc-300 p-4 border-2 transition-colors",
+              "h-full min-h-full resize-none bg-muted text-foreground p-4 border-2 transition-colors",
               draft.jsonError ? "border-destructive/50" : "border-border"
             )}
             spellCheck={false}

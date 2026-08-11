@@ -11,8 +11,14 @@ export const ScrambledCard: FC<ScrambledCardProps> = ({ className }) => {
     <div
       className={cn(
         "-clip relative size-full rounded-lg",
+        // The two ::before/::after discs are notches punched out of the sign's
+        // card, painted to match the fixed dark ground this component's own
+        // index.css lays down. They are holes, not surfaces: a themed value
+        // would make them glow rather than read as cut-outs.
+        // eslint-disable-next-line theme-protocol/no-structural-palette-color
         "before:absolute before:size-10 before:rounded-full before:bg-gray-950",
         "before:bottom-1/2 before:start-0 before:-translate-x-1/2 before:translate-y-1/2",
+        // eslint-disable-next-line theme-protocol/no-structural-palette-color -- the matching notch; see above.
         "after:absolute after:size-10 after:rounded-full after:bg-gray-950",
         "after:bottom-1/2 after:end-0 after:translate-x-1/2 after:translate-y-1/2",
         "flex items-center justify-center text-center tracking-wide",
@@ -24,6 +30,7 @@ export const ScrambledCard: FC<ScrambledCardProps> = ({ className }) => {
       <div
         role="separator"
         className={cn(
+          // eslint-disable-next-line theme-protocol/no-structural-palette-color -- the unlit glass tube running across the sign, a fixed prop of the same drawing.
           "absolute bottom-1/2 h-0.5 w-full translate-y-1/2 border border-slate-300",
           "pointer-events-none -z-10"
         )}

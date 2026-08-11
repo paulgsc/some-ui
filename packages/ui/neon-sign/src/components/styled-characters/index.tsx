@@ -48,6 +48,7 @@ export const StyledCharacters: FC<StyledCharactersProps> = ({ text }) => {
             <span
               key={id}
               className={cn({
+                // eslint-disable-next-line theme-protocol/no-structural-palette-color -- an unlit neon tube, not muted text. This renders inside `.headline`, a component-scope skin that owns only its own --base-bg/--text-* tokens and defines no --muted-foreground, so a semantic token would resolve against the ambient theme rather than against the sign it sits on.
                 "text-gray-500": !neon,
                 "text-red-500 [text-shadow:0_0_0.5rem_#ef4444,0_0_1.5rem_#ef4444]":
                   neon,

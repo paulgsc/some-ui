@@ -184,6 +184,16 @@ const sampleProjects: Array<Project> = [
   },
 ]
 
+/**
+ * The paper ground this diagram is drawn on, and the rule across the top of
+ * it. Both are deliberately fixed rather than themed: the canvas is a
+ * notebook page, and a themed border above a hardcoded off-white sheet would
+ * float free of it. They belong together or neither does.
+ */
+const CANVAS_GROUND = "#fdfbf6"
+// eslint-disable-next-line theme-protocol/no-structural-palette-color -- see CANVAS_GROUND
+const CANVAS_CLASS = "size-full rounded-b-lg border-t border-gray-200"
+
 export const NeuralNetworkSVG = forwardRef<
   NeuralNetworkSVGRef,
   NeuralNetworkSVGProps
@@ -334,8 +344,8 @@ export const NeuralNetworkSVG = forwardRef<
           width="100%"
           height="100%"
           viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-          className="size-full rounded-b-lg border-t border-gray-200"
-          style={{ background: "#fdfbf6" }}
+          className={CANVAS_CLASS}
+          style={{ background: CANVAS_GROUND }}
         >
           {connections.map((conn) => (
             <g

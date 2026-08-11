@@ -1,5 +1,7 @@
 import type { FC } from "react"
 import { useEffect, useRef, useState } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { Heart, Sparkles, TrendingDown, TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -20,6 +22,13 @@ type CoupleRatingProps = {
   mlRank: number
   flRank: number
   vibe?: CoupleVibe
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 const vibeConfig: Record<
@@ -64,6 +73,9 @@ const vibeConfig: Record<
   unrequited: {
     emoji: "💔",
     label: "Unrequited",
+    // Identity color, not substrate: every vibe in this table is a fixed
+    // gradient (pink for soulmates, orange for slow burn), and desaturated
+    // gray *is* what "unrequited" looks like.
     gradient: "from-slate-400 via-gray-400 to-zinc-400",
   },
 }
@@ -75,6 +87,7 @@ export const CoupleRating: FC<CoupleRatingProps> = ({
   mlRank,
   flRank,
   vibe = "soulmates",
+  appearance = "inherit",
 }): React.JSX.Element => {
   const [animatedRating, setAnimatedRating] = useState(0)
   const [mounted, setMounted] = useState(false)
@@ -154,7 +167,12 @@ export const CoupleRating: FC<CoupleRatingProps> = ({
       : ""
 
   return (
-    <div className="cdrama size-full px-6 py-2.5 flex items-center justify-center">
+    <div
+      className={cn(
+        appearanceClassName(appearance),
+        "size-full px-6 py-2.5 flex items-center justify-center"
+      )}
+    >
       <section className={cardClasses} style={{ animationDelay: "100ms" }}>
         {/* Decorative background sparkles */}
         {showSparkles && (

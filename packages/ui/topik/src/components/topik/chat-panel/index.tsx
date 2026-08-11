@@ -83,7 +83,7 @@ export const ChatPanel = ({
                 ? "bg-green-500 animate-pulse"
                 : hasContent
                   ? "bg-blue-500"
-                  : "bg-gray-400"
+                  : "bg-muted-foreground"
             )}
           />
         </div>

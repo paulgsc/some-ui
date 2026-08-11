@@ -47,14 +47,14 @@ export const FocusControlPopup = <T extends string>({
         transform: "translate(-50%, -50%)",
         zIndex: 1000,
       }}
-      className="bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4 min-w-[220px]"
+      className="bg-card text-card-foreground border-2 border-border rounded-lg shadow-xl p-4 min-w-[220px]"
     >
       <div className="text-sm font-semibold mb-2">
         {title}: <span className="text-blue-600">{regionId}</span>
       </div>
 
       <div className="mb-3">
-        <label className="block text-xs text-gray-600 mb-1">
+        <label className="block text-xs text-muted-foreground mb-1">
           Intensity: {intensity.toFixed(2)}
         </label>
         <input
@@ -66,7 +66,7 @@ export const FocusControlPopup = <T extends string>({
           onChange={(e) => setIntensity(parseFloat(e.target.value))}
           className="w-full accent-blue-500"
         />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>{minIntensity}</span>
           <span>{maxIntensity}</span>
         </div>
@@ -81,7 +81,7 @@ export const FocusControlPopup = <T extends string>({
         </button>
         <button
           onClick={onClose}
-          className="flex-1 bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300 transition-colors"
+          className="flex-1 bg-secondary text-secondary-foreground px-3 py-1.5 rounded text-sm hover:bg-secondary/80 transition-colors"
         >
           Cancel
         </button>

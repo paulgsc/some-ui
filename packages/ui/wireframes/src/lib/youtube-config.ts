@@ -40,6 +40,10 @@ export const ALL_YOUTUBE_REGIONS: Array<YouTubeRegion> = [
   "footerRight",
 ]
 
+// The neutral member of a fixed legend palette. `regionColors` above assigns
+// each known slot its own literal pair (bg-cyan-100 border-cyan-300, …) so the
+// wireframe reads as a color key; this is the "unclassified" swatch in that
+// key, and a semantic token would make one entry drift away from the rest.
 const DEFAULT_SLOT_COLOR = "bg-slate-100 border-slate-300"
 const SLOT_COLOR_BY_ID = new Map<string, string>(Object.entries(regionColors))
 

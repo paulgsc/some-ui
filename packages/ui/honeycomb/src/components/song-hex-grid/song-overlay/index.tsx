@@ -217,7 +217,7 @@ export const SongHexGrid = (): JSX.Element => {
   )
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-neutral-50">
+    <div className="relative h-screen w-full overflow-hidden bg-background">
       <div
         className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-transparent to-pink-500/10 animate-pulse"
         style={{ animationDuration: "8s" }}
