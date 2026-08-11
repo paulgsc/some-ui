@@ -1,5 +1,11 @@
 # @some-ui/leetype-wasm
 
+## 0.0.12
+
+### Patch Changes
+
+- Update WASM package for leetype_wasm to version 0.0.0
+
 ## 0.0.11
 
 ### Patch Changes
