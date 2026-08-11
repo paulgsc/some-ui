@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process"
+import type { ChildProcess } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import type { IncomingMessage, ServerResponse } from "node:http"
@@ -12,8 +13,31 @@ import type {
 } from "@playwright/test"
 import { chromium } from "@playwright/test"
 
-const APP_ORIGIN = "http://127.0.0.1:4173"
-const API_ORIGIN = "http://127.0.0.1:4180"
+function originFromEnvironment(name: string, fallback: string): URL {
+  const configured = process.env[name]?.trim() || fallback
+  const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(configured)
+    ? configured
+    : `http://${configured}`
+  const origin = new URL(withScheme)
+  if (origin.protocol !== "http:") {
+    throw new Error(`${name} must use http://; the trace servers are HTTP-only`)
+  }
+  if (origin.pathname !== "/" || origin.search || origin.hash) {
+    throw new Error(`${name} must be an origin without a path: ${configured}`)
+  }
+  return origin
+}
+
+const APP_URL = originFromEnvironment(
+  "NETWORK_TRACE_APP_ORIGIN",
+  "http://127.0.0.1:4173"
+)
+const API_URL = originFromEnvironment(
+  "NETWORK_TRACE_API_ORIGIN",
+  "http://127.0.0.1:4180"
+)
+const APP_ORIGIN = APP_URL.origin
+const API_ORIGIN = API_URL.origin
 const BASELINE_DIR = resolve("tests/network-trace/baseline")
 const baselineMode = process.argv.includes("--baseline")
 const checkMode = process.argv.includes("--check")
@@ -302,39 +326,55 @@ function serialDepth(events: Array<WireEvent>): number {
   return Math.max(0, ...depth)
 }
 
-async function waitForServer(url: string): Promise<void> {
+async function waitForServer(
+  url: string,
+  process: ChildProcess
+): Promise<void> {
+  let lastFailure = "no response"
   for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (process.exitCode !== null) {
+      throw new Error(
+        `vite preview exited with code ${process.exitCode} before ${url} became reachable`
+      )
+    }
     try {
       const response = await fetch(url)
-      if (response.ok) return
-    } catch {
-      /* server is still starting */
+      // Any HTTP response proves the preview server is listening. Route status
+      // is a scenario concern, not a process-readiness concern.
+      if (response.status > 0) return
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error)
     }
     await new Promise((done) => setTimeout(done, 100))
   }
-  throw new Error(`Timed out waiting for ${url}`)
+  throw new Error(
+    `Timed out waiting for ${url}. Last connection error: ${lastFailure}`
+  )
 }
 
 async function main(): Promise<void> {
   await mkdir(BASELINE_DIR, { recursive: true })
-  await new Promise<void>((done) => api.listen(4180, "127.0.0.1", done))
+  const apiPort = Number(API_URL.port || "80")
+  await new Promise<void>((done) => api.listen(apiPort, "0.0.0.0", done))
   const preview = spawn(
     "pnpm",
     [
       "exec",
       "vite",
       "preview",
+      "--config",
+      "tests/network-trace/vite.preview.config.ts",
       "--host",
-      "127.0.0.1",
+      "0.0.0.0",
       "--port",
-      "4173",
+      APP_URL.port || "80",
       "--strictPort",
     ],
     { stdio: "inherit" }
   )
   let browser: Browser | undefined
   try {
-    await waitForServer(APP_ORIGIN)
+    await waitForServer(APP_ORIGIN, preview)
     browser = await chromium.launch(
       process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
         ? { executablePath: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] }

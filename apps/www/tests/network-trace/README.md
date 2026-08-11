@@ -16,6 +16,26 @@ pnpm test:network-trace              # report a delta table; always exits zero
 pnpm test:network-trace -- --check   # fail when request count/depth drift
 ```
 
+The runner owns its preview process and defaults to
+`http://127.0.0.1:4173`. It uses an isolated, HTTP-only Vite preview config so
+machine-local mkcert files cannot silently change the protocol. To use a local
+hostname or different ports, pass origins explicitly; a missing `http://`
+prefix is accepted and normalized:
+
+```sh
+NETWORK_TRACE_APP_ORIGIN=nixos.local:5173 \
+NETWORK_TRACE_API_ORIGIN=nixos.local:4180 \
+pnpm test:network-trace
+```
+
+When overriding the API origin, build with the same value in
+`VITE_FILE_HOST_ENDPOINT` (including `/api/v1`); the harness intentionally runs
+the artifact already in `dist/` rather than rebuilding it behind the scenes.
+
+The preview binds on all interfaces but is always driven through the configured
+origin. If it exits during startup, the runner reports its exit code immediately
+instead of replacing the real failure with a generic readiness timeout.
+
 Every scenario gets a fresh browser context and seedable `localStorage`. The
 snapshot records request count, response bytes, time until primary route content
 is ready, and the longest serial chain reconstructed solely from request-start
