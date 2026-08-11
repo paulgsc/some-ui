@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /** Repo root, from `apps/www/tests/ui-fit`. */
-export const REPO_ROOT = resolve(__dirname, "../../../..")
+const REPO_ROOT = resolve(__dirname, "../../../..")
 
 /** Where the static Storybook lives, if one was built. */
 export const STORYBOOK_STATIC = resolve(
