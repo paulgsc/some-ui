@@ -81,6 +81,18 @@ describe("lint: fits-the-box/no-unshrinkable-flex-child", () => {
     expectNoMessageForRule(msgs, RULE, "a flexible child that scrolls")
   })
 
+  it("does not accept basis-0 as a remedy — it sets the initial size, not the minimum", async () => {
+    const code = [
+      `const C = () => (`,
+      `  <div className="flex h-full flex-col">`,
+      `    <div className="flex-1 basis-0" />`,
+      `  </div>`,
+      `)`,
+    ].join("\n")
+    const msgs = await lintSnippet(config, code, PANEL)
+    expectMessageForRule(msgs, RULE, "flex-1 basis-0 without min-h-0")
+  })
+
   it("fires on the inline axis too, where a long word is the content floor", async () => {
     const code = [
       `const C = () => (`,

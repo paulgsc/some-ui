@@ -483,33 +483,50 @@ test.describe("every panel fits the rect the viewport grants it", () => {
    * which puts the panel back under the sweep above.
    */
   test("every debt entry still overflows", async ({ page }) => {
-    const fitted: Array<string> = []
+    const failures: Array<string> = []
 
     for (const panel of SWEPT) {
       if (panel.debt === null || !STORY_IDS.has(panel.story)) continue
 
       let overflowedSomewhere = false
+      let renderedSomewhere = false
+
       for (const viewport of VIEWPORTS) {
         await page.setViewportSize({
           width: viewport.width,
           height: viewport.height,
         })
         const { mounted, violations } = await measure(page, panel.story)
-        if (!mounted || violations.length > 0) {
+        // A story that renders nothing is not evidence of anything, least of
+        // all of an overflow - counting it as "still overflowing" would let a
+        // debt panel go dark and keep this test green.
+        if (!mounted) continue
+        renderedSomewhere = true
+        if (violations.length > 0) {
           overflowedSomewhere = true
           break
         }
       }
 
+      if (!renderedSomewhere) {
+        failures.push(
+          `  ${panel.label} (${panel.story}): rendered nothing at any viewport — ` +
+            `the debt entry cannot be checked, which is a harness failure, not a pass.`
+        )
+        continue
+      }
+
       if (!overflowedSomewhere) {
-        fitted.push(`  ${panel.label} — recorded as: ${panel.debt}`)
+        failures.push(
+          `  ${panel.label}: now fits at every viewport. Delete its entry from ` +
+            `PANELS so the sweep guards it again. Recorded as: ${panel.debt}`
+        )
       }
     }
 
     expect(
-      fitted,
-      `These panels are recorded as debt but now fit at every viewport. ` +
-        `Delete their entry from PANELS so the sweep guards them again:\n${fitted.join("\n")}`
+      failures,
+      `Debt entries are only honest while they still describe reality:\n${failures.join("\n")}`
     ).toEqual([])
   })
 

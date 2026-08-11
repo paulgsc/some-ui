@@ -36,10 +36,18 @@ const COLUMN = /(^|\s)flex-col(\s|$)/
 const ROW = /(^|\s)flex-row(\s|$)/
 const IS_FLEX = /(^|\s)(flex|inline-flex)(\s|$)/
 
-/** Anything that zeroes the automatic minimum size, per CSS box sizing. */
+/**
+ * Anything that zeroes the automatic minimum size, per CSS box sizing.
+ *
+ * `basis-0` is deliberately absent: `flex-basis: 0` sets the item's *initial*
+ * main size, and says nothing about its minimum. `min-height` stays `auto`,
+ * which resolves to the content's min-content height - so `flex-1 basis-0`
+ * with tall content still raises the floor, which is the failure this rule is
+ * about.
+ */
 const SHRINKABLE: Record<Axis, RegExp> = {
   column:
-    /(^|\s)(min-h-0|h-0|basis-0|overflow-(auto|hidden|scroll|clip)|overflow-y-(auto|hidden|scroll|clip))(\s|$)/,
+    /(^|\s)(min-h-0|h-0|overflow-(auto|hidden|scroll|clip)|overflow-y-(auto|hidden|scroll|clip))(\s|$)/,
   row: /(^|\s)(min-w-0|w-0|overflow-(auto|hidden|scroll|clip)|overflow-x-(auto|hidden|scroll|clip))(\s|$)/,
 }
 
