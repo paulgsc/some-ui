@@ -9,11 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@some-ui/shared"
-import { APP_THEMES, SYSTEM_PREFERENCE } from "@some-ui/styles/theme"
-import type { AppTheme, ThemePreference } from "@some-ui/styles/theme"
+import { SESSION_THEMES, SYSTEM_PREFERENCE } from "@some-ui/styles/theme"
+import type { SessionTheme, ThemePreference } from "@some-ui/styles/theme"
 import { Check, Monitor, Palette } from "lucide-react"
 
-const Swatch = ({ theme }: { theme: AppTheme }): JSX.Element => (
+const Swatch = ({ theme }: { theme: SessionTheme }): JSX.Element => (
   <span
     aria-hidden
     className="size-4 shrink-0 rounded-full border"
@@ -60,7 +60,7 @@ export const ThemeSwitcher = (): JSX.Element => {
           </OptionRow>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        {APP_THEMES.map((theme) => (
+        {SESSION_THEMES.map((theme) => (
           <DropdownMenuItem key={theme.id} onSelect={() => select(theme.id)}>
             <OptionRow active={preference === theme.id}>
               <Swatch theme={theme} />

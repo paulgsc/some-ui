@@ -1,9 +1,13 @@
-import someUIEslint, { switchLintConfig } from "@some-ui/eslint-kit"
+import {
+  structuralColorRatchet,
+  switchLintConfig,
+  uiRecommended,
+} from "@some-ui/eslint-kit"
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
 import tseslint from "typescript-eslint"
 
 const inputConfig = [
-  ...someUIEslint,
+  ...uiRecommended,
   {
     files: ["**/*.{js,mjs,ts,tsx}"],
     settings: {
@@ -28,6 +32,13 @@ const inputConfig = [
       ],
     },
   },
+
+  // Not yet migrated to semantic tokens for structural roles. See
+  // `structuralColorRatchet` in @some-ui/eslint-kit for what this defers and
+  // what it deliberately does not: `theme-protocol/no-theme-boundary` stays
+  // on. Delete this block once the fixed neutrals in this package have been
+  // read role by role and replaced.
+  ...structuralColorRatchet(),
 ]
 
 export default inputConfig

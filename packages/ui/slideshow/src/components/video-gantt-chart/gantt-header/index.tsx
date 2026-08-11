@@ -23,11 +23,11 @@ export const GanttHeader = ({
   return (
     <div className="mb-2 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Clock className="size-5 text-gray-400" />
+        <Clock className="size-5 text-muted-foreground" />
         <span className="font-medium text-white">
           {formatTime(currentTime)}
         </span>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-muted-foreground">
           / {formatTime(totalDuration)}
         </span>
       </div>
@@ -35,7 +35,7 @@ export const GanttHeader = ({
         <Button
           variant="ghost"
           size="sm"
-          className="size-8 p-0 text-gray-400 hover:text-white"
+          className="size-8 p-0 text-muted-foreground hover:text-foreground"
           onClick={onToggleSubchapters}
           title="Toggle subchapters"
         >
@@ -45,7 +45,7 @@ export const GanttHeader = ({
         <Button
           variant="ghost"
           size="sm"
-          className="size-8 p-0 text-gray-400 hover:text-white"
+          className="size-8 p-0 text-muted-foreground hover:text-foreground"
           onClick={onToggleExpand}
           title={isExpanded ? "Minimize" : "Maximize"}
         >
@@ -59,7 +59,7 @@ export const GanttHeader = ({
         <Button
           variant="ghost"
           size="sm"
-          className="size-8 p-0 text-gray-400 hover:text-white"
+          className="size-8 p-0 text-muted-foreground hover:text-foreground"
           onClick={onClose}
           title="Close"
         >

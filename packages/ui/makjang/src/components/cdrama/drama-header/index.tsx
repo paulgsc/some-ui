@@ -1,4 +1,6 @@
 import type { JSX } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { Film, Play } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -8,6 +10,13 @@ type DramaHeaderProps = {
   thumbnailUrl: string
   currentMinute: number
   className?: string
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 export const DramaHeader = ({
@@ -16,6 +25,7 @@ export const DramaHeader = ({
   thumbnailUrl,
   currentMinute,
   className,
+  appearance = "inherit",
 }: DramaHeaderProps): JSX.Element => {
   const progress = (currentMinute / 45) * 100
 
@@ -23,7 +33,8 @@ export const DramaHeader = ({
     <div
       className={cn(
         className,
-        "cdrama group relative overflow-hidden rounded-sm border-t-2 p-2.5 ps-4.5 shadow-2xl transition-all duration-700",
+        appearanceClassName(appearance),
+        "group relative overflow-hidden rounded-sm border-t-2 p-2.5 ps-4.5 shadow-2xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] via-[color:var(--cdrama-surface)] to-[color:var(--card)]",
         "size-full box-border"

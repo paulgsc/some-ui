@@ -23,6 +23,8 @@ import {
   tailwindIdiomConfig,
   tailwindIdiomPlugin,
   testsOverrideConfig,
+  themeProtocolConfig,
+  themeProtocolPlugin,
   toolsOverrideConfig,
   typescriptConfig,
   wasmLoaderGuardConfig,
@@ -80,6 +82,10 @@ export { intentGuardConfig, intentGuardPlugin }
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
 
+// ── Theme protocol (reusable UI must inherit its theme, not choose one) ────
+export { themeProtocolConfig, themeProtocolPlugin }
+export { structuralColorRatchet } from "./configs/index.js"
+
 // ── Lazy content-registry loading ──────────────────────────────────────────
 export { lazyRegistryConfig, lazyRegistryPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
@@ -95,6 +101,22 @@ export const extensionsRecommended: Config = [
   ...maishatuRecommended,
   ...extensionsSecurityConfig,
   ...extensionsCharterConfig,
+]
+
+/**
+ * Recommended preset for reusable UI workspaces (`packages/ui/*`).
+ *
+ * Extends maishatuRecommended with the theme protocol, which only means
+ * something for a *library*. A host — apps/www, a story, an extension popup —
+ * is the thing that legitimately picks a theme and opens a boundary; a
+ * reusable component is the thing that must inherit one. Enforcing the rules
+ * everywhere would flag exactly the hosts that are doing it right, so the
+ * preset is scoped by who extends it, the same way `appsRecommended` and
+ * `extensionsRecommended` are.
+ */
+export const uiRecommended: Config = [
+  ...maishatuRecommended,
+  ...themeProtocolConfig,
 ]
 
 /**

@@ -31,6 +31,8 @@
 import type { JSX } from "react"
 import { useMemo } from "react"
 import { useOptionalSpeechAdapter } from "@some-ui/speech"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
 import { QuizPanel } from "@topik/components/topik/quiz-panel"
 import { SessionHeader } from "@topik/components/topik/session-header"
@@ -44,6 +46,7 @@ import type {
   ITopikRepository,
 } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
 export const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
@@ -69,6 +72,17 @@ export type KoreanStudyPageProps = {
   loadManifest?: () => Promise<unknown>
   /** Same seam for a single topik's batches, keyed by its manifest key. */
   loadTopik?: (key: string) => Promise<unknown>
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so the user's session theme reaches the applet.
+   *
+   * This used to be hardcoded as `dark topik`, which is the reason changing
+   * the session theme did nothing here: `.topik` reassigns `--background` /
+   * `--foreground` for the subtree, and the bundled `dark` pinned every
+   * `dark:*` utility on even under a light palette. `appearance="topik"`
+   * restores the old self-contained study surface for a host that wants it.
+   */
+  appearance?: Appearance
 }
 
 /**
@@ -79,11 +93,25 @@ export type KoreanStudyPageProps = {
  * own `SessionConfigProvider`. Ordinary hosts render `KoreanStudyPage` and
  * pass the overrides they care about.
  */
-export const KoreanStudySession = (): JSX.Element => {
+export const KoreanStudySession = ({
+  appearance = "inherit",
+}: {
+  appearance?: Appearance
+} = {}): JSX.Element => {
   const vm = useKoreanStudyPageVM()
 
   return (
-    <div className="dark topik absolute inset-0 topik flex flex-col dark:bg-background">
+    <div
+      // A stable hook for hosts and tests. The theme class used to double as
+      // this, which is why removing it broke four tests that only wanted to
+      // know whether the applet had mounted — a mount probe should not depend
+      // on which palette is in play.
+      data-slot="topik-session"
+      className={cn(
+        appearanceClassName(appearance),
+        "absolute inset-0 flex flex-col bg-background"
+      )}
+    >
       <SessionHeader {...vm.header} />
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         <div className="w-80 xl:w-96 flex-shrink-0">
@@ -116,6 +144,7 @@ export const KoreanStudyPage = ({
   manifestUrl = DEFAULT_TOPIK_MANIFEST_URL,
   loadManifest,
   loadTopik,
+  appearance = "inherit",
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
    * The one thing that is legitimately ambient. There is one pair of
@@ -153,7 +182,7 @@ export const KoreanStudyPage = ({
 
   return (
     <SessionConfigProvider value={value}>
-      <KoreanStudySession />
+      <KoreanStudySession appearance={appearance} />
     </SessionConfigProvider>
   )
 }

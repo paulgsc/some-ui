@@ -2,6 +2,8 @@ import type { FC, JSX } from "react"
 import { NodePopup } from "@calendar/components/life-scheduler/node-popup"
 import { Rings, type RingHit } from "@calendar/components/life-scheduler/ring"
 import type { NodeData } from "@calendar/types/life-scheduler"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 
 export type PopupState = {
   type: "outer" | "inner"
@@ -15,6 +17,12 @@ export type CyclicSchedulerProps = {
   popup: PopupState | null
   onHitNode: (hit: RingHit) => void
   onClosePopup: () => void
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established. Pass `"scheduler"` to opt into the standalone scheduler
+   * palette, which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 const N60 = 60
@@ -26,6 +34,7 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
   popup,
   onHitNode,
   onClosePopup,
+  appearance = "inherit",
 }): JSX.Element => {
   const dayProgress = Math.round(((outer * N60 + inner) / (N24 * N60)) * 100)
 
@@ -40,7 +49,9 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
   }
 
   return (
-    <div className="scheduler absolute inset-0 bg-ink-950 flex flex-col items-center px-6 py-10 gap-8 text-ink-300">
+    <div
+      className={`${appearanceClassName(appearance)} absolute inset-0 bg-ink-950 flex flex-col items-center px-6 py-10 gap-8 text-ink-300`.trim()}
+    >
       {/* ── Life Telemetry Header ─────────────────────── */}
       <header className="w-full max-w-2xl text-center space-y-2">
         <h1 className="text-2xl font-light tracking-[0.2em] text-ink-50 uppercase">
@@ -53,7 +64,12 @@ export const CyclicScheduler: FC<CyclicSchedulerProps> = ({
 
       {/* ── Main Ring Display ─────────────────────────── */}
       <main className="relative w-full max-w-xl flex justify-center py-4">
-        <Rings outerPos={outer} innerPos={inner} onHit={onHitNode} />
+        <Rings
+          outerPos={outer}
+          innerPos={inner}
+          onHit={onHitNode}
+          appearance={appearance}
+        />
       </main>
 
       {/* ── Telemetry & Quick Actions ─────────────────── */}

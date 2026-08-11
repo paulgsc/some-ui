@@ -136,6 +136,7 @@ export const TVStaticAnimation = (): JSX.Element => {
 
   return (
     <div className="mx-auto size-full">
+      {/* eslint-disable-next-line theme-protocol/no-structural-palette-color -- the TV's plastic bezel around an unlit screen, drawn furniture rather than a themed surface. */}
       <div className="relative aspect-video size-full overflow-hidden rounded-lg border-8 border-gray-800 bg-black shadow-xl">
         <div className="absolute inset-0 bg-black">
           {isStatic && (

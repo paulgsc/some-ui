@@ -20,7 +20,7 @@ export const GanttTimeMarkers = ({
   const markerCount = Math.ceil(totalDuration / markerInterval) + 1
 
   return (
-    <div className="absolute inset-x-0 top-0 flex text-xs text-gray-500">
+    <div className="absolute inset-x-0 top-0 flex text-xs text-muted-foreground">
       {Array.from({ length: markerCount }).map((_, i) => {
         const timeInSeconds = i * markerInterval // Unique, stable value for each marker
 
@@ -34,7 +34,7 @@ export const GanttTimeMarkers = ({
               transform: "translateX(-50%)",
             }}
           >
-            <div className="h-3 w-px bg-gray-700" />
+            <div className="h-3 w-px bg-border" />
             <div className="mt-1">{formatTime(timeInSeconds)}</div>
           </div>
         )

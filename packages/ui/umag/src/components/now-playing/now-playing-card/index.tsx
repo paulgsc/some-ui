@@ -72,6 +72,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
         ref={containerRef}
         className={cn(
           className,
+          // eslint-disable-next-line theme-protocol/no-structural-palette-color -- the turntable platter the VinylRecord below sits on. Same argument as that component: it is the drawn object, and a light-themed platter would leave the record floating on nothing.
           "relative overflow-hidden rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6"
         )}
       >

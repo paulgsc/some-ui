@@ -41,6 +41,11 @@ export const LensShutter = ({
     ${leftX}% ${100 - leftY}%,
     ${leftX}% ${leftY}%
   )`
+  // A camera aperture, not a UI surface: the grays below are the lens barrel
+  // (ring), its interior (bg-gray-950) and the blades (bg-gray-600). A lens
+  // does not change color with the app theme, and a themed one would stop
+  // reading as a lens.
+  /* eslint-disable theme-protocol/no-structural-palette-color */
   return (
     <>
       {showAperture ? (

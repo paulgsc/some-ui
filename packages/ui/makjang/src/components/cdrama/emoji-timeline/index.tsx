@@ -1,5 +1,7 @@
 import type { JSX } from "react"
 import { startTransition, useEffect, useState } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { Clock } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -13,12 +15,20 @@ type EmojiTimelineProps = {
   reactions: Array<EmojiReaction>
   currentMinute: number
   className?: string
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 export const EmojiTimeline = ({
   reactions,
   currentMinute,
   className,
+  appearance = "inherit",
 }: EmojiTimelineProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
 
@@ -30,7 +40,8 @@ export const EmojiTimeline = ({
     <div
       className={cn(
         className,
-        "cdrama space-y-6 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        appearanceClassName(appearance),
+        "space-y-6 rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
         mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"

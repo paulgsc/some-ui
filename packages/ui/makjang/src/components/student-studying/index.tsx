@@ -79,9 +79,15 @@ export const StudyScene = (): JSX.Element => {
   }
 
   return (
+    // An illustration, not a themed surface: everything in this scene is drawn
+    // from the literal hex palette declared above, and the two grays here are
+    // its wall and its floor. Theming only the ground would leave the drawing
+    // floating on a mismatched backdrop.
+    // eslint-disable-next-line theme-protocol/no-structural-palette-color
     <div className="flex size-full items-center justify-center bg-gray-100 p-6">
       <div className="relative h-96 w-full max-w-2xl overflow-hidden rounded-lg bg-blue-50 shadow-lg">
-        {/* Background */}
+        {/* Background — see the note on the outer element. */}
+        {/* eslint-disable-next-line theme-protocol/no-structural-palette-color */}
         <div className="absolute inset-0 bg-gray-100" />
 
         {/* Bookshelf */}

@@ -1,5 +1,7 @@
 import type { JSX } from "react"
 import { startTransition, useEffect, useMemo, useState } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -13,6 +15,13 @@ type EmotionalDataPoint = {
 type EmotionalGraphProps = {
   data: Array<EmotionalDataPoint>
   currentMinute: number
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 type Emotions =
@@ -40,6 +49,7 @@ const emotionConfig: Record<
 export const EmotionalGraph = ({
   data,
   currentMinute,
+  appearance = "inherit",
 }: EmotionalGraphProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
   const maxIntensity = 1
@@ -83,7 +93,8 @@ export const EmotionalGraph = ({
   return (
     <div
       className={cn(
-        "cdrama relative overflow-hidden rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
+        appearanceClassName(appearance),
+        "relative overflow-hidden rounded-3xl border-2 p-6 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-accent)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
         "max-w-full max-h-full box-border"

@@ -43,3 +43,8 @@ export {
   default as intentGuardConfig,
   intentGuardPlugin,
 } from "./intent-guard.config.js"
+export {
+  default as themeProtocolConfig,
+  structuralColorRatchet,
+  themeProtocolPlugin,
+} from "./theme-protocol.config.js"

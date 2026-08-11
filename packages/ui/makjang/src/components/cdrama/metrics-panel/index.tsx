@@ -1,5 +1,7 @@
 import type { JSX } from "react"
 import { startTransition, useEffect, useState } from "react"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
 import { Eye, Gauge, RotateCcw, TrendingUp } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -7,6 +9,13 @@ type MetricsPanelProps = {
   overallRating: number
   likelihoodToFinish: number
   rewatchValue: number
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so switching the session theme moves this component
+   * with it. Pass `"cdrama"` to opt into the standalone C-drama palette,
+   * which replaces the substrate for this subtree.
+   */
+  appearance?: Appearance
 }
 
 const getRatingEmoji = (rating: number): string => {
@@ -29,6 +38,7 @@ export const MetricsPanel = ({
   overallRating,
   likelihoodToFinish,
   rewatchValue,
+  appearance = "inherit",
 }: MetricsPanelProps): JSX.Element => {
   const [mounted, setMounted] = useState(false)
   const [animatedRating, setAnimatedRating] = useState(0)
@@ -57,7 +67,8 @@ export const MetricsPanel = ({
   return (
     <div
       className={cn(
-        "cdrama space-y-5 rounded-sm border-2 px-6 py-2.5 shadow-xl transition-all duration-700",
+        appearanceClassName(appearance),
+        "space-y-5 rounded-sm border-2 px-6 py-2.5 shadow-xl transition-all duration-700",
         "border-[color:var(--cdrama-blossom)]",
         "bg-gradient-to-br from-[color:var(--card)] to-[color:var(--cdrama-surface)]",
         "size-full",

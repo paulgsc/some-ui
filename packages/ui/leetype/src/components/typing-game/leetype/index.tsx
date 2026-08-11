@@ -25,6 +25,9 @@ import type {
 } from "@leetype/types/leetype"
 import { VISIBILITY_REVEALED } from "@leetype/types/leetype"
 import { Button } from "@some-ui/shared"
+import type { Appearance } from "@some-ui/styles/theme"
+import { appearanceClassName } from "@some-ui/styles/theme"
+import { cn } from "some-ui-utils"
 
 /**
  * A baseline sample from one finished step.
@@ -59,6 +62,19 @@ type LeetypeProps = {
   textGradient?: TextGradient
   /** Called once the whole sequence is finished. */
   onSessionComplete?: (stats: CompletedSessionStats) => void
+  /**
+   * Art direction. `inherit` — the default — renders in whatever theme the
+   * host established, so the user's session theme reaches this surface like
+   * any other component.
+   *
+   * This used to be hardcoded as `dark code`, which is why picking a light
+   * palette left the typing game dark: `.code` reassigns `--background` /
+   * `--foreground` for its subtree, and the bundled `dark` kept every
+   * `dark:*` utility inside it active regardless of the user's choice. A host
+   * that genuinely wants the vim-night editor surface — a full-bleed practice
+   * route, say — passes `appearance="code"` and gets exactly the old look.
+   */
+  appearance?: Appearance
 }
 
 /**
@@ -86,6 +102,7 @@ export const Leetype: FC<LeetypeProps> = ({
   exercise,
   textGradient,
   onSessionComplete,
+  appearance = "inherit",
 }) => {
   // The shim is consulted once per mount rather than on every render: it is
   // synchronous and cheap, but "which exercise am I playing" must not change
@@ -340,7 +357,12 @@ export const Leetype: FC<LeetypeProps> = ({
 
   if (error) {
     return (
-      <div className="dark code absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+      <div
+        className={cn(
+          appearanceClassName(appearance),
+          "absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
+        )}
+      >
         <p className="text-sm font-medium text-destructive">
           The typing engine could not start.
         </p>
@@ -352,7 +374,12 @@ export const Leetype: FC<LeetypeProps> = ({
   }
 
   return (
-    <div className="dark code absolute inset-0 flex flex-col gap-3 overflow-hidden">
+    <div
+      className={cn(
+        appearanceClassName(appearance),
+        "absolute inset-0 flex flex-col gap-3 overflow-hidden"
+      )}
+    >
       {finished ? (
         <ResultsCard
           exerciseTitle={resolvedExercise.title}

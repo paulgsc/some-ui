@@ -53,5 +53,8 @@
     },
     "./style.css": "./dist/calendar.css"
   },
-  "style": "./dist/calendar.css"
+  "style": "./dist/calendar.css",
+  "dependencies": {
+    "@some-ui/styles": "workspace:*"
+  }
 }

@@ -94,6 +94,43 @@
     oklch(50% 0 0deg),
     oklch(42% 0 0deg)
   );
+
+  /* ---------------------------------------------------------------
+     Feature-namespaced tokens — ambient defaults.
+
+     These used to exist *only* inside `.cdrama`, which is what forced
+     every component that consumed them to mount `.cdrama` on its own
+     root: `var(--cdrama-blossom)` outside that class resolved to
+     nothing, so the component painted transparent unless it opened its
+     own theme boundary. Mounting a full palette to make three variables
+     resolve is how a feature skin ends up overriding the user's session
+     theme.
+
+     Defining them here in terms of the ambient semantic roles inverts
+     that: a component can use them anywhere and they follow whatever
+     theme is in scope, while `.cdrama` still overrides them with its own
+     literals when a host deliberately opts into that appearance. The
+     feature palette becomes art direction the host chooses rather than a
+     precondition for the component rendering at all.
+
+     Substitution happens at computed-value time on the element these are
+     declared on. `:root` and the session theme classes (`.dark`,
+     `.peachy-blossom`, …) are the same element — <html> — so a session
+     theme's `--primary` is already in effect here and these track it.
+     --------------------------------------------------------------- */
+  --cdrama-blossom: var(--primary);
+  --cdrama-accent: var(--accent);
+  --cdrama-surface: var(--muted);
+
+  /* Glow shadows, as `box-shadow`/`drop-shadow` values. color-mix keeps
+     them tied to the ambient role rather than to cdrama's literals; the
+     percentages match .cdrama's original alphas so opting into that
+     appearance is visually unchanged. */
+  --glow-primary: 0 0 20px color-mix(in oklab, var(--primary) 35%, transparent);
+  --glow-accent: 0 0 24px color-mix(in oklab, var(--accent) 40%, transparent);
+  --glow-card: 0 0 12px color-mix(in oklab, var(--secondary) 25%, transparent);
+  --glow-destructive: 0 0 20px
+    color-mix(in oklab, var(--destructive) 40%, transparent);
 }
 
 .dark {

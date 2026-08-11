@@ -88,7 +88,7 @@ export const VoiceAvatar = (): JSX.Element => {
   }, [handleMouseMove, canvasRef])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8">
       <VoiceAvatarCanvas ref={canvasRef} />
 
       <VoiceAvatarControls

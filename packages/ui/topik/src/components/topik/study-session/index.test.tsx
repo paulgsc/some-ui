@@ -69,7 +69,11 @@ describe("KoreanStudyPage - mountable by the registry", () => {
     // Exactly what `componentRegistry.topik` does.
     expect(() => renderApplet(<KoreanStudyPage />)).not.toThrow()
 
-    await waitFor(() => expect(document.querySelector(".topik")).not.toBeNull())
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-slot='topik-session']")
+      ).not.toBeNull()
+    )
   })
 
   it("runs without a voice rather than refusing to run", async () => {
@@ -77,7 +81,11 @@ describe("KoreanStudyPage - mountable by the registry", () => {
     // story, a test, or simply a host that hasn't mounted one yet.
     renderApplet(<KoreanStudyPage />)
 
-    await waitFor(() => expect(document.querySelector(".topik")).not.toBeNull())
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-slot='topik-session']")
+      ).not.toBeNull()
+    )
     // Silence is a degraded lesson; a crash is not a lesson at all.
     expect(screen.queryByText(/SessionConfigProvider/i)).toBeNull()
   })
@@ -96,11 +104,46 @@ describe("KoreanStudyPage - mountable by the registry", () => {
       </SpeechProvider>
     )
 
-    await waitFor(() => expect(document.querySelector(".topik")).not.toBeNull())
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-slot='topik-session']")
+      ).not.toBeNull()
+    )
 
     // The applet takes the page's voice rather than building its own - one
     // session, one pair of speakers, whoever ends up speaking.
     expect(adapter.spoken).toBeDefined()
+  })
+
+  it("inherits the host's theme instead of mounting its own", async () => {
+    // The bug this replaced: the root carried `dark topik` unconditionally, so
+    // the applet kept the study palette (and every `dark:*` utility) no matter
+    // which theme the user had selected. The default must open no boundary.
+    renderApplet(<KoreanStudyPage />)
+
+    const root = await waitFor(() => {
+      const found = document.querySelector("[data-slot='topik-session']")
+      expect(found).not.toBeNull()
+      return found
+    })
+
+    expect(root?.classList.contains("topik")).toBe(false)
+    expect(root?.classList.contains("dark")).toBe(false)
+  })
+
+  it("opens the study boundary only when a host asks for it", async () => {
+    renderApplet(<KoreanStudyPage appearance="topik" />)
+
+    const root = await waitFor(() => {
+      const found = document.querySelector("[data-slot='topik-session']")
+      expect(found).not.toBeNull()
+      return found
+    })
+
+    expect(root?.classList.contains("topik")).toBe(true)
+    // Still never `dark`: the appearance is a palette, and forcing the mode on
+    // top of it is what pinned `dark:*` utilities on under a light theme.
+    expect(root?.classList.contains("dark")).toBe(false)
   })
 
   it("takes repository overrides for a host that owns its data", async () => {
@@ -114,7 +157,11 @@ describe("KoreanStudyPage - mountable by the registry", () => {
       />
     )
 
-    await waitFor(() => expect(document.querySelector(".topik")).not.toBeNull())
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-slot='topik-session']")
+      ).not.toBeNull()
+    )
     // The default repositories fetch over HTTP; a host that passed its own
     // must not find them running anyway.
     expect(loadCatalog).toHaveBeenCalled()

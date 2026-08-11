@@ -65,7 +65,7 @@ export const DeckCard = forwardRef<
         style={cardStyle}
         className={cn(
           "col-start-1 col-end-1 row-start-1 row-end-1 flex aspect-[2.5/3.5] w-[23vmin]",
-          "rounded-2xl border border-black/25 bg-gray-100 shadow-lg",
+          "rounded-2xl border border-border bg-card shadow-lg",
           "transform transition-transform will-change-transform",
           "[transform:translateY(calc(var(--card-index)*0.5px))]",
           "animate-deck-card",
