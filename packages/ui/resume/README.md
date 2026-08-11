@@ -48,21 +48,20 @@ decision was made against for the fuller tradeoff.
 `apps/www`'s `/resume` route serves the compiled PDF for inline preview and
 download — see its README for how the two are wired together.
 
-### No system `typst` dependency
+### Hermetic tool provisioning
 
-`scripts/compile.mjs` resolves a `typst` binary in order:
+`scripts/compile.mjs` only compiles: it never downloads or installs executable
+code. The repository's Nix shells provide `typst` from the `flake.lock`-pinned
+`nixpkgs` input, so local and CI builds use the same content-addressed toolchain:
 
-1. Already on `PATH` (respects a dev's own install, e.g. via `cargo install
-typst-cli` or a system package manager).
-2. Already cached at `node_modules/.cache/typst-bin/<version>/typst` from a
-   previous run.
-3. Otherwise, downloads the pinned version's release binary straight from
-   [typst/typst releases](https://github.com/typst/typst/releases) for the
-   current platform and caches it.
+```sh
+nix develop .#ci --command pnpm --filter @some-ui/resume build
+```
 
-The auto-download path currently covers Linux and macOS (`x64`/`arm64`) via
-`tar`. Windows isn't wired up for the auto-fetch fallback yet — install
-`typst` yourself and make sure it's on `PATH`.
+The default development shell and `ci-playwright` shell provide the same tool.
+Outside Nix, install Typst through the environment's normal, auditable package
+management before building. A missing binary fails immediately with a setup
+message; the build never turns missing tooling into an implicit network request.
 
 `pnpm watch` runs `typst watch` for live recompilation while editing.
 

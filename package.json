@@ -42,7 +42,8 @@
     "contract": "pnpm --filter @some-ui/contract-harness contract",
     "contract:drift": "pnpm --filter @some-ui/contract-harness contract:drift",
     "storybook": "storybook dev -p 6006 --no-open",
-    "test:ui-fit": "CI=1 pnpm build-storybook -o storybook-static && STORYBOOK_STATIC=storybook-static pnpm --filter www test:ui-fit"
+    "test:ui-fit": "CI=1 pnpm build-storybook -o storybook-static && STORYBOOK_STATIC=storybook-static pnpm --filter www test:ui-fit",
+    "test:network-trace": "pnpm --filter www test:network-trace"
   },
   "packageManager": "pnpm@10.11.1",
   "author": "pgdev",

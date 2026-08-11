@@ -43,7 +43,8 @@
           buildInputs =
             rust.deps
             ++ rust.devDeps
-            ++ desktop.deps;
+            ++ desktop.deps
+            ++ [pkgs.typst];
 
           LD_LIBRARY_PATH = mkLdPath desktop.ldLibs;
 
@@ -63,7 +64,7 @@
           buildInputs =
             rust.deps
             ++ node.deps
-            ++ [pkgs.nodePackages.web-ext];
+            ++ [pkgs.nodePackages.web-ext pkgs.typst];
 
           shellHook = ''
             export RUST_BACKTRACE=${rust.ciEnv.RUST_BACKTRACE}
@@ -122,7 +123,8 @@
           buildInputs =
             node.deps
             ++ [pkgs.nodePackages.web-ext]
-            ++ playwright.deps;
+            ++ playwright.deps
+            ++ [pkgs.typst];
 
           LD_LIBRARY_PATH = mkLdPath playwright.ldLibs;
 
