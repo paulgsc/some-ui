@@ -1,6 +1,6 @@
 import { defineConfig } from "eslint/config"
 
-import { noGreedyOverflow } from "../rules/index.js"
+import { noGreedyOverflow, noUnshrinkableFlexChild } from "../rules/index.js"
 
 /**
  * Plugin enforcing the "content fits its box" idiom for overlay surfaces.
@@ -31,6 +31,7 @@ export const fitsTheBoxPlugin = {
   meta: { name: "fits-the-box", version: "0.0.1" },
   rules: {
     "no-greedy-overflow": noGreedyOverflow,
+    "no-unshrinkable-flex-child": noUnshrinkableFlexChild,
   },
 }
 
@@ -39,6 +40,13 @@ export default defineConfig([
     files: ["**/*.{ts,tsx,jsx}"],
     plugins: { "fits-the-box": fitsTheBoxPlugin },
     rules: {
+      // The structural half of the idiom, and the one #899 needed: a flexible
+      // child that cannot shrink below its content raises the floor of every
+      // box above it, so a panel handed a small rect paints past it. Unlike
+      // the rule below this one reads a *relationship* (a flex parent and its
+      // flexible child) rather than a single class, which is what lets it name
+      // the defect rather than the symptom.
+      "fits-the-box/no-unshrinkable-flex-child": "warn",
       "fits-the-box/no-greedy-overflow": [
         "warn",
         {

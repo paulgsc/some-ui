@@ -59,15 +59,20 @@ export const SessionHeader = ({
 
   return (
     <>
-      <header className="border-b border-border bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-card-foreground">
+      {/*
+       * Wraps rather than pushing: the header is the first thing the session
+       * body's height is taken from, and a row of chips that refuses to wrap
+       * pushes itself out of the panel's rect on a narrow leaf (docs/ui-fit).
+       */}
+      <header className="border-border bg-card shrink-0 border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 items-center gap-6">
+            <div className="min-w-0">
+              <h1 className="text-card-foreground truncate text-xl font-bold tracking-tight sm:text-2xl">
                 Korean Study Session
               </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-muted-foreground">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2">
+                <p className="text-muted-foreground text-sm">
                   TOPIK 3-4 Comprehension Practice
                 </p>
                 {topikDisplayName && (
@@ -85,23 +90,23 @@ export const SessionHeader = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg">
-              <Layers className="size-4 text-secondary-foreground/70" />
-              <span className="font-semibold text-secondary-foreground">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="bg-secondary flex items-center gap-2 rounded-lg px-3 py-1.5">
+              <Layers className="text-secondary-foreground/70 size-4" />
+              <span className="text-secondary-foreground text-sm font-semibold">
                 Conversation {currentBatch}/{totalBatches}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg">
-              <Clock className="size-4 text-primary" />
-              <span className="font-mono font-semibold text-lg text-secondary-foreground">
+            <div className="bg-secondary flex items-center gap-2 rounded-lg px-3 py-1.5">
+              <Clock className="text-primary size-4" />
+              <span className="text-secondary-foreground font-mono font-semibold">
                 {String(minutes).padStart(2, "0")}:
                 {String(seconds).padStart(2, "0")}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg">
-              <Trophy className="size-4 text-secondary-foreground/70" />
-              <span className="font-semibold text-secondary-foreground">
+            <div className="bg-secondary flex items-center gap-2 rounded-lg px-3 py-1.5">
+              <Trophy className="text-secondary-foreground/70 size-4" />
+              <span className="text-secondary-foreground text-sm font-semibold">
                 {score}/{totalQuestions}
               </span>
             </div>

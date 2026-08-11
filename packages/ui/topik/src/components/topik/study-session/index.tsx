@@ -113,8 +113,20 @@ export const KoreanStudySession = ({
       )}
     >
       <SessionHeader {...vm.header} />
-      <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-        <div className="w-80 xl:w-96 flex-shrink-0">
+      {/*
+       * The body is the applet's own size-authority boundary: it hands each
+       * pane a share of whatever height the host granted this root, and both
+       * panes must stay inside it. `min-h-0` is what makes that true - a flex
+       * item's automatic minimum size is its content, so without it a pane
+       * whose content is tall silently widens the floor of this row past the
+       * space it was allocated, and the row hands the excess to whatever is
+       * painted below (docs/ui-fit).
+       *
+       * Stacked below `md`, where a 320px conversation rail plus a quiz pane
+       * do not both fit the inline axis.
+       */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 md:flex-row">
+        <div className="min-h-0 w-full shrink-0 basis-2/5 md:w-80 md:basis-auto xl:w-96">
           <ChatPanel
             {...vm.chat}
             onPlay={vm.actions.startChat}
@@ -123,7 +135,7 @@ export const KoreanStudySession = ({
             onJumpToMessage={vm.actions.jumpToMessage}
           />
         </div>
-        <div className="flex-1 topik-card">
+        <div className="topik-card min-h-0 min-w-0 flex-1">
           <QuizPanel
             {...vm.quiz}
             onAnswerSubmit={vm.actions.submitAnswer}

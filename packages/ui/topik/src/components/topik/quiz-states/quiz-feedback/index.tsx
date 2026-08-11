@@ -25,34 +25,42 @@ export const QuizFeedback = ({
   grammarNote,
 }: QuizFeedbackProps): React.JSX.Element => {
   return (
-    <Card className="h-full border-2 flex flex-col">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden border-2">
       {/* Progress Bar */}
-      <div className="h-2 w-full bg-muted">
+      <div className="bg-muted h-2 w-full shrink-0">
         <div
-          className="h-full bg-primary transition-all duration-500"
+          className="bg-primary h-full transition-all duration-500"
           style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
         />
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-12 overflow-auto">
-        <div className="w-full max-w-2xl space-y-8">
+      <div
+        data-scroll-intent="long-form"
+        className={
+          // scroll-intent: long-form — the explanation and grammar note are as
+          // long as the material's author wrote them. The box stays bounded
+          // (min-h-0 above); this is the declared last rung of docs/ui-fit.
+          "flex min-h-0 flex-1 flex-col overflow-auto p-4 sm:p-6"
+        }
+      >
+        <div className="m-auto w-full max-w-2xl space-y-4 sm:space-y-6">
           {/* Result Icon */}
           <div className="text-center">
             <div
-              className={`inline-flex items-center justify-center p-6 rounded-3xl ${
+              className={`inline-flex items-center justify-center rounded-3xl p-3 ${
                 isCorrect ? "bg-success/10" : "bg-destructive/10"
               }`}
             >
               {isCorrect ? (
-                <CheckCircle2 className="size-20 text-success" />
+                <CheckCircle2 className="text-success size-10" />
               ) : (
-                <XCircle className="size-20 text-destructive" />
+                <XCircle className="text-destructive size-10" />
               )}
             </div>
-            <h2 className="text-4xl font-bold mt-6">
+            <h2 className="mt-3 text-2xl font-bold">
               {isCorrect ? "Correct!" : "Not Quite"}
             </h2>
-            <p className="text-muted-foreground text-lg mt-2">
+            <p className="text-muted-foreground mt-1 text-sm">
               {isCorrect
                 ? "Great understanding of the context!"
                 : "Let's review this concept"}
@@ -77,12 +85,12 @@ export const QuizFeedback = ({
           )}
 
           {/* Explanation Card */}
-          <div className="bg-muted/30 p-6 rounded-2xl space-y-4 border">
-            <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wide">
+          <div className="bg-muted/30 space-y-3 rounded-2xl border p-4">
+            <div className="text-primary flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
               <BookMarked className="size-4" />
               Explanation
             </div>
-            <p className="text-base leading-relaxed">{explanation}</p>
+            <p className="text-sm leading-relaxed">{explanation}</p>
             {grammarNote && (
               <div className="pt-2 border-t">
                 <p className="text-sm text-muted-foreground italic">
@@ -94,20 +102,16 @@ export const QuizFeedback = ({
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button
-              size="lg"
-              onClick={onNextQuestion}
-              className="flex-1 text-lg py-6"
-            >
+            <Button onClick={onNextQuestion} className="min-w-0 flex-1">
               {questionNumber < totalQuestions ? (
                 <>
                   Next Question
-                  <ArrowRight className="size-5 ml-2" />
+                  <ArrowRight className="ml-2 size-4" />
                 </>
               ) : (
                 <>
                   View Results
-                  <ArrowRight className="size-5 ml-2" />
+                  <ArrowRight className="ml-2 size-4" />
                 </>
               )}
             </Button>

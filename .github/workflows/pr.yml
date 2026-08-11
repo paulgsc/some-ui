@@ -187,6 +187,44 @@ jobs:
             echo "No service-worker files changed."
           fi
 
+      # docs/ui-fit calls its Playwright layer "the actual gate", and until #899
+      # nothing ran it: it lived behind `pnpm test:ui-fit`, which no workflow
+      # invoked, so a panel could paint outside its rect for months with every
+      # check green. This wires the part of it that is green.
+      #
+      # `no-overflow.spec.ts` - the repo-wide story sweep - is deliberately not
+      # in this list. It reports 128 stories today (Sandlot, the scheduler's
+      # popups, the chat surfaces, topik's change-material dialog …), all of it
+      # predating #899, and turning that into a required check would fail every
+      # UI PR for work it did not do. It stays a local command until that
+      # backlog is worked down; the three specs here are the ones that pass and
+      # therefore the ones that can regress.
+      #
+      # Scoped to PRs that touch UI, because a Storybook build is minutes, not
+      # seconds. The registry is in the trigger set on purpose - binding a new
+      # key delegates size authority to a component the panel sweep has never
+      # measured.
+      - name: E2E — content fits its box (panels, launcher, exercise shell)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'packages/ui/**' \
+            'packages/some-content-registry/**' \
+            'packages/some-styles/**' \
+            'apps/www/src/**' \
+            'apps/www/tests/ui-fit/**' \
+            '.storybook/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command env CI=1 STORYBOOK_SCOPE=packages \
+              pnpm build-storybook -o storybook-static
+            nix develop .#ci-playwright --command env STORYBOOK_STATIC=storybook-static \
+              pnpm --filter www test:e2e \
+                tests/ui-fit/panel-fit.spec.ts \
+                tests/ui-fit/launcher-fit.spec.ts \
+                tests/ui-fit/exercise-shell-fit.spec.ts
+          else
+            echo "No UI files changed."
+          fi
+
       # Scoped to the CSP/nginx config surface actually touched by this PR -
       # this is a config invariant (apps/www/nginx.security-headers.conf),
       # not a per-package build/test, so turbo's dep-graph filter doesn't

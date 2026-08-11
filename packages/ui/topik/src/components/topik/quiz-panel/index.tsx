@@ -45,7 +45,10 @@ export const QuizPanel = ({
   const activeQuestion = questions[currentQuestion]
 
   return (
-    <div className="h-full w-full">
+    // Every stage below fills this box rather than sizing itself: the pane's
+    // height comes from the session body, which got it from the host. `min-h-0`
+    // keeps that grant intact through this wrapper.
+    <div className="size-full min-h-0">
       {/* STANDBY: Not in quiz mode */}
       {!isInQuiz && <QuizIdle chatPlayState={chatPlayState} />}
 

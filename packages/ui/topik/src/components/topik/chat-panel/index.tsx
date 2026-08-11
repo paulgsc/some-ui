@@ -57,7 +57,7 @@ export const ChatPanel = ({
           <div className="p-2 bg-primary rounded-lg">
             <MessageCircle className="size-5 text-primary-foreground" />
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <h2 className="font-bold text-sm">Conversation</h2>
             <p className="text-xs text-muted-foreground">
               {isLoading ? (
@@ -89,7 +89,7 @@ export const ChatPanel = ({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="min-h-0 flex-1 p-4">
         {!hasContent && !isLoading && (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-50">
             <MessageCircle className="size-8 mb-2" />
@@ -122,7 +122,7 @@ export const ChatPanel = ({
                 />
                 <div
                   className={cn(
-                    "flex-1",
+                    "min-w-0 flex-1",
                     message.role === "user" ? "text-right" : ""
                   )}
                 >
