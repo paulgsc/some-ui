@@ -1,10 +1,15 @@
+import type { JSX, ReactNode } from "react"
+import { useEffect, useState } from "react"
+import type { ThemePreference } from "@some-ui/styles/theme"
 import {
   ACCENT_THEMES,
   applyPreference,
   FEATURE_APPEARANCES,
   isThemePreference,
+  prefersDark,
   SESSION_THEMES,
   SYSTEM_PREFERENCE,
+  watchSystem,
 } from "@some-ui/styles/theme"
 import type { Decorator } from "@storybook/react-vite"
 import { cn } from "some-ui-utils"
@@ -94,6 +99,52 @@ export const themeGlobalTypes = {
  * Render the story with no wrapper at all so the canvas stays neutral no
  * matter what the toolbar is set to.
  */
+/**
+ * The decorator's stateful half.
+ *
+ * Applying the preference during the decorator call was enough for an explicit
+ * palette but not for "System": `prefers-color-scheme` was read once per
+ * render, and nothing rerenders a story when the OS flips. The preview kept the
+ * stale palette until some unrelated Storybook interaction happened to
+ * rerender it — which is the one behaviour www's provider has that a
+ * render-time call cannot reproduce, since it subscribes.
+ *
+ * A component rather than hooks in the decorator body: decorators are plain
+ * functions Storybook may call outside a React render, so the subscription
+ * needs a real mount to hang its cleanup on.
+ */
+const ThemedCanvas = ({
+  preference,
+  className,
+  dataAppearance,
+  children,
+}: {
+  preference: ThemePreference
+  className: string
+  dataAppearance?: string
+  children: ReactNode
+}): JSX.Element => {
+  const [systemDark, setSystemDark] = useState(prefersDark)
+
+  // Only track the OS while the toolbar is on "System" — same condition as
+  // apps/www's provider, for the same reason: an explicit palette must not
+  // move when the OS does.
+  useEffect(() => {
+    if (preference !== SYSTEM_PREFERENCE) return
+    return watchSystem(setSystemDark)
+  }, [preference])
+
+  useEffect(() => {
+    applyPreference(document.documentElement, preference, systemDark)
+  }, [preference, systemDark])
+
+  return (
+    <div className={className} data-appearance={dataAppearance} style={{ padding: "1.5rem" }}>
+      <div className="theme-container">{children}</div>
+    </div>
+  )
+}
+
 export const withTheme: Decorator = (Story, context) => {
   if (context.parameters.neutralCanvas === true) {
     // The session theme now lands on the document root rather than on this
@@ -113,29 +164,17 @@ export const withTheme: Decorator = (Story, context) => {
   const appearance = FEATURE_APPEARANCES.find((t) => t.id === appearanceId)
   const accent = ACCENT_THEMES.find((t) => t.id === accentId)
 
-  // The same controller call apps/www's provider makes, against the same
-  // element — including "system", which resolves through the same OS-preference
-  // path. Storybook owns no theme logic of its own.
-  if (typeof document !== "undefined") {
-    applyPreference(
-      document.documentElement,
-      isThemePreference(sessionId) ? sessionId : SYSTEM_PREFERENCE
-    )
-  }
-
   return (
-    <div
+    <ThemedCanvas
+      preference={isThemePreference(sessionId) ? sessionId : SYSTEM_PREFERENCE}
       className={cn(
         "min-h-screen bg-background text-foreground",
         appearance?.boundary.classNames,
         accent?.boundary.classNames
       )}
-      data-appearance={appearance?.boundary.dataTheme}
-      style={{ padding: "1.5rem" }}
+      dataAppearance={appearance?.boundary.dataTheme}
     >
-      <div className="theme-container">
-        <Story />
-      </div>
-    </div>
+      <Story />
+    </ThemedCanvas>
   )
 }

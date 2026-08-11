@@ -28,13 +28,28 @@ function read(...parts: Array<string>): string {
   return readFileSync(join(PACKAGE_ROOT, ...parts), "utf8")
 }
 
+/**
+ * Escape every regex metacharacter, not just the one that happened to appear
+ * in a theme id.
+ *
+ * This used to be `.replace(/-/g, "\\-")`, which CodeQL flagged: escaping one
+ * character and leaving `\` itself unescaped means an id containing a
+ * backslash would inject into the pattern rather than be matched by it. No
+ * registered id contains one today, but "the input is currently well-behaved"
+ * is not a property this function states or enforces — and a half-escape reads
+ * like a whole one at the call site.
+ */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")
+}
+
 /** Custom properties declared in the block(s) for `selector` across the file. */
 function declaredIn(css: string, selector: string): Set<string> {
   const found = new Set<string>()
   // Matches `.foo {` and compound/descendant forms like `.dark .topik {` or
   // `.cdrama.dark,` — anything whose selector list mentions the class.
   const pattern = new RegExp(
-    `(^|[\\s,])[^{}\\n]*\\.${selector.replace(/-/g, "\\-")}\\b[^{}]*\\{([^{}]*)\\}`,
+    `(^|[\\s,])[^{}\\n]*\\.${escapeRegExp(selector)}\\b[^{}]*\\{([^{}]*)\\}`,
     "gm"
   )
   for (const match of Array.from(css.matchAll(pattern))) {

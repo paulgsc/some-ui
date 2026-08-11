@@ -358,7 +358,7 @@ export const HangulHexGrid = ({
 
   return (
     <div className="absolute inset-0">
-      <div className="relative size-full overflow-hidden bg-gradient-to-br from-background via-purple-900 to-background">
+      <div className="relative size-full overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div
           className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10 animate-pulse"
           style={{ animationDuration: "8s" }}

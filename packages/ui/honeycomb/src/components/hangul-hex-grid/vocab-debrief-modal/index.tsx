@@ -123,7 +123,7 @@ export const VocabDebriefModal = ({
           // height of the board it covers. Scrolling is safe on this one
           // surface precisely because engagement pauses the countdown (see
           // `useAutoDismiss`), so a player who scrolls is not racing a timer.
-          "hangul-debrief-panel relative mx-4 flex max-h-[calc(100%-2rem)] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-3xl border border-white/15 bg-background/85 px-6 py-7 text-center text-white shadow-2xl sm:px-10"
+          "hangul-debrief-panel relative mx-4 flex max-h-[calc(100%-2rem)] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-3xl border border-white/15 bg-slate-950/85 px-6 py-7 text-center text-white shadow-2xl sm:px-10"
         }
         data-scroll-intent="long-form"
         role="dialog"
