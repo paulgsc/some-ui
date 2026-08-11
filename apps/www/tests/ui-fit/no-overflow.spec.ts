@@ -34,32 +34,9 @@
  * back silently.
  */
 
-import { createReadStream, existsSync, readFileSync, statSync } from "node:fs"
-import { createServer, type Server } from "node:http"
-import { dirname, extname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = resolve(__dirname, "../../../..")
-
-/** Where the static Storybook lives, if one was built. */
-const STORYBOOK_STATIC = resolve(
-  REPO_ROOT,
-  process.env["STORYBOOK_STATIC"] ?? "storybook-static"
-)
-
-/**
- * Sizes chosen for what they prove, not for device names: the shortest
- * viewport a laptop realistically presents (a browser with devtools docked),
- * a narrow phone, and a large desktop. A panel that fits all three has been
- * fitted rather than tuned to one breakpoint.
- */
-const VIEWPORTS = [
-  { name: "short-laptop", width: 1280, height: 560 },
-  { name: "phone", width: 390, height: 720 },
-  { name: "desktop", width: 1680, height: 1050 },
-] as const
+import { loadStoryIds, serve, STORYBOOK_STATIC, VIEWPORTS } from "./harness"
 
 /**
  * Scroll containers that are meant to scroll. Anything not on this list that
@@ -94,8 +71,6 @@ const ALLOWED_SCROLL_INTENTS = new Set([
  */
 const NON_RENDERING_STORIES: ReadonlyArray<string> = []
 
-type StoryEntry = { id: string; title: string; name: string; type?: string }
-
 type Offender = {
   tag: string
   intent: string | null
@@ -104,84 +79,7 @@ type Offender = {
   clientHeight: number
 }
 
-function loadStoryIds(): Array<StoryEntry> {
-  const indexPath = resolve(STORYBOOK_STATIC, "index.json")
-  if (!existsSync(indexPath)) return []
-
-  const parsed: unknown = JSON.parse(readFileSync(indexPath, "utf8"))
-  if (typeof parsed !== "object" || parsed === null || !("entries" in parsed)) {
-    return []
-  }
-
-  const entries: unknown = parsed.entries
-  if (typeof entries !== "object" || entries === null) return []
-
-  // Storybook's index is external JSON, so each row is narrowed rather than
-  // asserted - a shape change should drop rows, not crash the sweep.
-  return Object.values(entries).flatMap((entry): Array<StoryEntry> => {
-    if (typeof entry !== "object" || entry === null) return []
-    const row: Record<string, unknown> = { ...entry }
-    const { id, title, name, type } = row
-    if (
-      typeof id !== "string" ||
-      typeof title !== "string" ||
-      typeof name !== "string"
-    ) {
-      return []
-    }
-    if (type === "docs") return []
-    return [
-      { id, title, name, type: typeof type === "string" ? type : undefined },
-    ]
-  })
-}
-
 const STORIES = loadStoryIds()
-
-const MIME: Record<string, string> = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".woff2": "font/woff2",
-}
-
-/** A static file server for the built Storybook, on an ephemeral port. */
-function serve(
-  root: string
-): Promise<{ origin: string; close: () => Promise<void> }> {
-  const server: Server = createServer((request, response) => {
-    const url = new URL(request.url ?? "/", "http://localhost")
-    const filePath = join(root, decodeURIComponent(url.pathname))
-
-    if (
-      !filePath.startsWith(root) ||
-      !existsSync(filePath) ||
-      statSync(filePath).isDirectory()
-    ) {
-      response.writeHead(404).end()
-      return
-    }
-
-    response.writeHead(200, {
-      "content-type": MIME[extname(filePath)] ?? "application/octet-stream",
-    })
-    createReadStream(filePath).pipe(response)
-  })
-
-  return new Promise((resolveServer) => {
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address()
-      const port = typeof address === "object" && address ? address.port : 0
-      resolveServer({
-        origin: `http://127.0.0.1:${port}`,
-        close: () => new Promise<void>((done) => server.close(() => done())),
-      })
-    })
-  })
-}
 
 async function findOverflow(page: Page): Promise<{
   rendersSomething: boolean

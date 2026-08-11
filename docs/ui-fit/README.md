@@ -4,6 +4,30 @@ The rule, in one line: **a surface's size is chosen by the layout, and the
 content's job is to fit it.** Scrolling is what you reach for when that has
 genuinely failed, not the first thing you reach for.
 
+Stated the other way round, which is the version that says where to fix things:
+
+> **Containment is the default contract. Expansion beyond the containing block
+> requires an explicit escape — and the escape is declared at the boundary
+> where size authority was granted, not at every descendant that exercises
+> it.**
+
+That distinction is what stops this being whack-a-mole. There are only two
+kinds of overflow. **Structurally preventable** overflow is the large kind: it
+happens because some descendant asserted a lower bound its ancestors could not
+honour, and it is prevented once — at the boundary — for every component
+downstream. **Semantically intentional** overflow (a popover, a code pane, a
+marquee, an unbroken URL) is the small kind: it genuinely differs per surface,
+so it is declared per surface. Everything below is an attempt to keep the first
+kind out of the second kind's budget.
+
+The boundaries that grant size authority in this repo are few and nameable:
+the dashboard shell (`routes/_dashboard.tsx`), the session viewport
+(`SessionViewport` → `OrchestratedYouTubeViewport` → `RenderSolved`'s leaf
+rects), and `componentRegistry` — where a key is bound to a leaf and a whole
+workspace's component is handed a rect it never sees. Those are the places to
+enforce; a rule spread across every descendant instead is the thing this
+document exists to avoid.
+
 This exists because the leetype nav-menu modals violated it in every way at
 once — a picker at `max-h-[85vh] overflow-y-auto`, a drawer wrapping its body
 in `ScrollArea max-h-[60vh]`, a skip menu nesting `max-h-[52vh]` inside
@@ -60,6 +84,21 @@ Flags `overflow-auto` / `overflow-y-auto` / `max-h-[Nvh]` in component source
 and names the alternatives. Fast, runs on every save — but it only sees a
 class name, so it cannot tell whether the content ended up fitting. It is a
 prompt, not a proof.
+
+### 1b. `fits-the-box/no-unshrinkable-flex-child` (lint, warn)
+
+The structural half, added by #899. A flex item's automatic minimum size is its
+**content**, not zero — so `flex-1` in a bounded column does not mean "take
+what is left", it means "take what is left, but never less than what I hold".
+A child with tall content therefore raises the floor of every ancestor up to
+the one that clips, and a panel handed a small rect paints past it. This rule
+reads the _relationship_ (a flex parent, a flexible child, no `min-h-0` /
+`min-w-0` and no declared overflow) rather than a single class, which is why it
+can name the defect instead of the symptom.
+
+It is the one mechanizable piece of the containment contract: intrinsic minimum
+sizes are exactly how a descendant defeats composition, and they are visible in
+the class list.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
@@ -143,7 +182,62 @@ when an activity is added, with a message saying to re-run the fit sweep and
 bump the recorded count. Adding an applet is meant to be easy; noticing that
 you did is meant to be automatic.
 
-### 3. Review
+### 2c. `apps/www/tests/ui-fit/panel-fit.spec.ts` (Playwright, the #899 gate)
+
+The sweep in 2 renders every story in a canvas of **unbounded height**, and
+that is a hole exactly the shape of #899. A component whose box comes from its
+host has no host in a story: `h-full` resolves against `auto`, the content sets
+its own height, and "content fits its box" passes vacuously because there is no
+box. The TOPIK quiz summary sat at ~950px of content behind that pass for
+months, and painted the difference over the pane below it in a real session.
+
+So this spec grants the box before measuring. `#storybook-root` is pinned to
+the viewport and `overflow: hidden`, the decorator chain is made definite down
+to the panel — the same shape `RenderSolved` gives a leaf — and two things are
+then asserted at the same three viewports:
+
+- **escape** — nothing paints outside the granted rect. A panel asking for more
+  than it was given: `min-h-screen` on a panel root, a chip row that will not
+  wrap.
+- **leak** — no box holds more content than its own height without clipping it.
+  A box that sizes to its content cannot leak (`scrollHeight` equals
+  `clientHeight`), so this only fires where something really did assert a size.
+  This is #899's exact shape, and running the spec against the pre-fix commit
+  reports it in those words: _"holds 395px more content than its own height and
+  does not clip it"_.
+
+What is swept is `Record<RegistryKey, …>`: **every registry key must say how it
+gets fitted**, so binding a new panel without a swept story is a type error
+rather than an omission nobody notices. Entries carrying `debt` are measured
+but not failed — and a second test asserts each one _still_ overflows, so the
+list cannot rot: fix a panel and the way to get green again is to delete its
+entry, which puts it back under the gate.
+
+`PANEL_STAGES` covers the states a top-level story never reaches. The summary
+only appears after ten answers; sweeping only the applet's initial state is how
+#899 shipped past a green sweep in the first place.
+
+### 3. CI
+
+Layers 2, 2b and 2c ran nowhere until #899. `pnpm test:ui-fit` existed, this
+document called layer 2 "the actual gate", and no workflow invoked it — which
+is its own lesson about where guardrails actually live. `pr.yml` now builds
+Storybook and runs `panel-fit`, `launcher-fit` and `exercise-shell-fit`
+whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+`packages/some-styles/**`, `apps/www/src/**` or `.storybook/**`.
+
+**Layer 2 is deliberately not in that list yet.** Run against a
+packages-scoped build today it reports **128 stories** — Sandlot, the
+scheduler's node popups, the chat surfaces, topik's change-material dialog,
+and a long tail of extension stories that render nothing at all. All of it
+predates #899. Making it required would fail every UI PR for work it did not
+do, and quietly pressure the next author to delete the check rather than the
+debt. The honest position is the one recorded here: the sweep is real, it is
+red, it runs locally, and the number above is the size of the backlog. Bring
+it down and wire it in — one package at a time is a perfectly good shape for
+that, since `STORYBOOK_WORKSPACE=<pkg>` scopes the build.
+
+### 4. Review
 
 The remaining judgement calls — is this tab split natural, is this dialog the
 right size — are not mechanizable. The two layers above exist so review can

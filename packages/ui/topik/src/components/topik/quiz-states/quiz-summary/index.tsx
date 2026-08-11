@@ -7,6 +7,7 @@ import {
   Trophy,
   XCircle,
 } from "lucide-react"
+import { cn } from "some-ui-utils"
 
 type QuizSummaryProps = {
   score: number
@@ -14,6 +15,17 @@ type QuizSummaryProps = {
   onAssessmentComplete: (passed: boolean) => void
 }
 
+/**
+ * The end-of-batch result.
+ *
+ * This is the stage that produced #899: at `p-12`, `text-7xl` and `space-y-8`
+ * it asked for roughly 950px of height inside a pane that the session viewport
+ * had granted around 340, and painted the difference over whatever the layout
+ * had put below it. Every size here is therefore chosen against the shortest
+ * pane this applet is rendered into rather than against the tallest - the
+ * panel-fit gate (apps/www/tests/ui-fit/panel-fit.spec.ts) is what holds it
+ * there.
+ */
 export const QuizSummary = ({
   score,
   totalQuestions,
@@ -37,102 +49,104 @@ export const QuizSummary = ({
   }
 
   return (
-    <Card className="h-full border-2 flex flex-col">
-      <div className="flex-1 flex items-center justify-center p-12">
-        <div className="w-full max-w-2xl space-y-8">
-          {/* Trophy Icon */}
-          <div className="text-center">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden border-2">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-lg space-y-3 sm:space-y-4">
+          {/* Verdict */}
+          <div className="flex items-center justify-center gap-3">
             <div
-              className={`inline-flex items-center justify-center p-6 rounded-3xl ${
+              className={cn(
+                "inline-flex shrink-0 items-center justify-center rounded-2xl p-2.5",
                 passed
                   ? "bg-gradient-to-br from-green-500/20 to-accent/20"
                   : "bg-gradient-to-br from-destructive/20 to-orange-500/20"
-              }`}
+              )}
             >
               {passed ? (
-                <Trophy className="size-20 text-green-500" />
+                <Trophy className="size-8 text-green-500" />
               ) : (
-                <Target className="size-20 text-destructive" />
+                <Target className="text-destructive size-8" />
               )}
             </div>
-            <h2 className="text-4xl font-bold mt-6">
-              {passed ? "Assessment Passed!" : "Keep Practicing!"}
-            </h2>
-            <p className="text-muted-foreground text-lg mt-2">
-              {passed ? "Moving to next conversation" : "Review and try again"}
-            </p>
+            <div>
+              <h2 className="text-xl font-bold leading-tight sm:text-2xl">
+                {passed ? "Assessment Passed!" : "Keep Practicing!"}
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                {passed
+                  ? "Moving to next conversation"
+                  : "Review and try again"}
+              </p>
+            </div>
           </div>
 
-          {/* Score Card */}
-          <div className="bg-gradient-to-br from-primary/5 to-accent/5 p-8 rounded-3xl border-2 text-center">
-            <div className="text-7xl font-bold mb-2">
-              {score}/{totalQuestions}
-            </div>
-            <div className="text-2xl text-muted-foreground mb-4">
-              {percentage}% Accuracy
+          {/* Score */}
+          <div className="from-primary/5 to-accent/5 rounded-2xl border-2 bg-gradient-to-br p-4 text-center">
+            <div className="flex items-baseline justify-center gap-2">
+              <span className="text-4xl font-bold leading-none">
+                {score}/{totalQuestions}
+              </span>
+              <span className="text-muted-foreground text-base">
+                {percentage}% Accuracy
+              </span>
             </div>
             <div
-              className={`inline-flex items-center gap-2 px-4 py-2 bg-background rounded-full ${color} font-bold`}
+              className={cn(
+                "bg-background mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold",
+                color
+              )}
             >
               {passed ? (
-                <CheckCircle2 className="size-5" />
+                <CheckCircle2 className="size-4" />
               ) : (
-                <XCircle className="size-5" />
+                <XCircle className="size-4" />
               )}
               {level} Level
             </div>
           </div>
 
-          {/* Feedback Message */}
-          <div className="bg-muted/30 p-6 rounded-2xl border text-center">
-            <p className="text-lg leading-relaxed">{message}</p>
-          </div>
+          {/* Feedback message */}
+          <p className="text-muted-foreground text-center text-sm leading-relaxed">
+            {message}
+          </p>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-green-500">{score}</div>
-              <div className="text-xs text-muted-foreground mt-1">Correct</div>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-card rounded-xl border p-2 text-center">
+              <div className="text-lg font-bold text-green-500">{score}</div>
+              <div className="text-muted-foreground text-xs">Correct</div>
             </div>
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-destructive">
+            <div className="bg-card rounded-xl border p-2 text-center">
+              <div className="text-destructive text-lg font-bold">
                 {totalQuestions - score}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Incorrect
-              </div>
+              <div className="text-muted-foreground text-xs">Incorrect</div>
             </div>
-            <div className="bg-card border rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-accent">
-                {percentage}%
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Score</div>
+            <div className="bg-card rounded-xl border p-2 text-center">
+              <div className="text-accent text-lg font-bold">{percentage}%</div>
+              <div className="text-muted-foreground text-xs">Score</div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {passed ? (
-              <Button
-                size="lg"
-                onClick={() => onAssessmentComplete(true)}
-                className="flex-1 text-lg py-6 bg-green-500 hover:bg-green-600"
-              >
-                <TrendingUp className="size-5 mr-2" />
-                Continue to Next Conversation
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => onAssessmentComplete(false)}
-                className="flex-1 text-lg py-6"
-              >
-                <RotateCcw className="size-5 mr-2" />
-                Retry Conversation
-              </Button>
-            )}
-          </div>
+          {/* Action */}
+          {passed ? (
+            <Button
+              onClick={() => onAssessmentComplete(true)}
+              className="w-full bg-green-500 hover:bg-green-600"
+            >
+              <TrendingUp className="mr-2 size-4" />
+              Continue to Next Conversation
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => onAssessmentComplete(false)}
+              className="w-full"
+            >
+              <RotateCcw className="mr-2 size-4" />
+              Retry Conversation
+            </Button>
+          )}
         </div>
       </div>
     </Card>
