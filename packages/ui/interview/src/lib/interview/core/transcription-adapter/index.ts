@@ -6,6 +6,7 @@ import {
   type TranscriptionJob,
   type TranscriptionResult,
 } from "@interview/lib/interview/core/interview-types"
+import { apiClient } from "@some-ui/fetch-kit"
 
 const SAMPLE_TRANSCRIPTS: Record<QuestionCategory, string> = {
   "system-design":
@@ -109,31 +110,20 @@ export const createHttpTranscriptionAdapter = (
       formData.append("questionId", meta.questionId)
       formData.append("durationSeconds", String(meta.durationSeconds))
 
-      const response = await fetch(`${baseUrl}/recordings`, {
-        method: "POST",
-        headers,
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to submit recording: ${response.status}`)
-      }
-
-      return TranscriptionJobSchema.parse(await response.json())
+      return apiClient.post(
+        `${baseUrl}/recordings`,
+        formData,
+        { headers },
+        TranscriptionJobSchema
+      )
     },
 
     async poll(jobId): Promise<TranscriptionResult> {
-      const response = await fetch(`${baseUrl}/recordings/${jobId}`, {
-        headers,
-      })
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch transcription status: ${response.status}`
-        )
-      }
-
-      return TranscriptionResultSchema.parse(await response.json())
+      return apiClient.get(
+        `${baseUrl}/recordings/${jobId}`,
+        { headers },
+        TranscriptionResultSchema
+      )
     },
   }
 }

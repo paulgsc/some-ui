@@ -1,6 +1,10 @@
 import { z } from "zod"
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+export type FetchUrl = string | URL
+
+/** Every request is bounded unless its call site explicitly overrides this. */
+export const DEFAULT_FETCH_TIMEOUT_MS = 10_000
 
 export type FetchOptions<TBody = unknown> = {
   method?: HttpMethod
@@ -21,40 +25,40 @@ export type FetchOptions<TBody = unknown> = {
 // Return type definition for createFetchClient
 export type FetchClient = {
   get: <T>(
-    url: URL,
+    url: FetchUrl,
     options?: Omit<FetchOptions, "method" | "body">,
     schema?: z.ZodType<T>
   ) => Promise<T>
 
   post: <T, TBody = unknown>(
-    url: URL,
+    url: FetchUrl,
     body?: TBody,
     options?: Omit<FetchOptions<TBody>, "method" | "body">,
     schema?: z.ZodType<T>
   ) => Promise<T>
 
   put: <T, TBody = unknown>(
-    url: URL,
+    url: FetchUrl,
     body?: TBody,
     options?: Omit<FetchOptions<TBody>, "method" | "body">,
     schema?: z.ZodType<T>
   ) => Promise<T>
 
   patch: <T, TBody = unknown>(
-    url: URL,
+    url: FetchUrl,
     body?: TBody,
     options?: Omit<FetchOptions<TBody>, "method" | "body">,
     schema?: z.ZodType<T>
   ) => Promise<T>
 
   delete: <T>(
-    url: URL,
+    url: FetchUrl,
     options?: Omit<FetchOptions, "method">,
     schema?: z.ZodType<T>
   ) => Promise<T>
 
   createQueryFn: <T>(
-    url: URL,
+    url: FetchUrl,
     method?: HttpMethod,
     options?: Omit<FetchOptions, "method">,
     schema?: z.ZodType<T>
@@ -62,7 +66,7 @@ export type FetchClient = {
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   createMutationFn: <T, TVariables = unknown>(
-    url: URL,
+    url: FetchUrl,
     method?: HttpMethod,
     options?: Omit<FetchOptions, "method" | "body">,
     schema?: z.ZodType<T>
@@ -99,12 +103,7 @@ export class ApiError extends Error {
  */
 const DEFAULT_OPTIONS: FetchOptions = {
   baseUrl: "",
-  timeout: 10000, // 10 seconds
-  retry: {
-    count: 1,
-    delay: 1000,
-    backoffFactor: 1.5,
-  },
+  timeout: DEFAULT_FETCH_TIMEOUT_MS,
   credentials: "same-origin",
   headers: {
     "Content-Type": "application/json",
@@ -172,7 +171,7 @@ export const createFetchClient = (
    * Execute the fetch with timeouts, retries, and error handling
    */
   async function executeFetch<T>(
-    url: URL,
+    url: FetchUrl,
     fetchOptions: FetchOptions,
     schema?: z.ZodType<T>,
     retryCount = 0
@@ -180,10 +179,14 @@ export const createFetchClient = (
     const { timeout, retry, ...restOptions } = fetchOptions
 
     // Set up timeout controller
-    const controller = new AbortController()
+    const timeoutController = new AbortController()
+    let timedOut = false
     const timeoutId = setTimeout(
-      () => controller.abort(),
-      timeout || options.timeout
+      () => {
+        timedOut = true
+        timeoutController.abort()
+      },
+      timeout ?? options.timeout ?? DEFAULT_FETCH_TIMEOUT_MS
     )
 
     try {
@@ -216,7 +219,9 @@ export const createFetchClient = (
 
       const response = await fetch(url, {
         ...restOptions,
-        signal: controller.signal,
+        signal: restOptions.signal
+          ? AbortSignal.any([restOptions.signal, timeoutController.signal])
+          : timeoutController.signal,
         headers,
         body,
       })
@@ -228,7 +233,11 @@ export const createFetchClient = (
         throw error
       }
 
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (
+        timedOut &&
+        error instanceof DOMException &&
+        error.name === "AbortError"
+      ) {
         throw new ApiError("Request timed out", 408, undefined, false, true)
       }
 
@@ -268,7 +277,7 @@ export const createFetchClient = (
    * Fetches data and validates with Zod schema
    */
   async function fetchWithSchema<T>(
-    url: URL,
+    url: FetchUrl,
     options: FetchOptions = {},
     schema?: z.ZodType<T>
   ): Promise<T> {
@@ -305,7 +314,7 @@ export const createFetchClient = (
      * Performs a GET request
      */
     get<T>(
-      url: URL,
+      url: FetchUrl,
       options: Omit<FetchOptions, "method" | "body"> = {},
       schema?: z.ZodType<T>
     ): Promise<T> {
@@ -316,7 +325,7 @@ export const createFetchClient = (
      * Performs a POST request
      */
     post<T, TBody = unknown>(
-      url: URL,
+      url: FetchUrl,
       body?: TBody,
       options: Omit<FetchOptions<TBody>, "method" | "body"> = {},
       schema?: z.ZodType<T>
@@ -332,7 +341,7 @@ export const createFetchClient = (
      * Performs a PUT request
      */
     put<T, TBody = unknown>(
-      url: URL,
+      url: FetchUrl,
       body?: TBody,
       options: Omit<FetchOptions<TBody>, "method" | "body"> = {},
       schema?: z.ZodType<T>
@@ -348,7 +357,7 @@ export const createFetchClient = (
      * Performs a PATCH request
      */
     patch<T, TBody = unknown>(
-      url: URL,
+      url: FetchUrl,
       body?: TBody,
       options: Omit<FetchOptions<TBody>, "method" | "body"> = {},
       schema?: z.ZodType<T>
@@ -364,7 +373,7 @@ export const createFetchClient = (
      * Performs a DELETE request
      */
     delete<T>(
-      url: URL,
+      url: FetchUrl,
       options: Omit<FetchOptions, "method"> = {},
       schema?: z.ZodType<T>
     ): Promise<T> {
@@ -375,7 +384,7 @@ export const createFetchClient = (
      * Creates a query function for React Query
      */
     createQueryFn<T>(
-      url: URL,
+      url: FetchUrl,
       method: HttpMethod = "GET",
       options: Omit<FetchOptions, "method"> = {},
       schema?: z.ZodType<T>
@@ -390,7 +399,7 @@ export const createFetchClient = (
      */
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
     createMutationFn<T, TVariables = unknown>(
-      url: URL,
+      url: FetchUrl,
       method: HttpMethod = "POST",
       options: Omit<FetchOptions, "method" | "body"> = {},
       schema?: z.ZodType<T>

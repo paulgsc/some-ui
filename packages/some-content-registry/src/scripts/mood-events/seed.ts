@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
-import fetch from "node-fetch"
+import { apiClient } from "@some-ui/fetch-kit"
 
 type CreateMoodEvent = {
   id: number
@@ -57,22 +57,10 @@ async function seedMoodEvents(): Promise<void> {
     console.log(`🚀 Posting to ${endpoint}`)
 
     // Make the batch create request
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Add auth if needed:
-        // 'Authorization': `Bearer ${process.env.API_TOKEN}`,
-      },
-      body: JSON.stringify(data),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`HTTP ${response.status}: ${errorText}`)
-    }
-
-    const result: unknown = await response.json()
+    const result = await apiClient.post<unknown, BatchCreateRequest>(
+      endpoint,
+      data
+    )
 
     if (!Array.isArray(result)) {
       throw new Error("Unexpected response format")

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { apiClient } from "@some-ui/fetch-kit"
 
 type FetchState<T> = {
   data: T | null
@@ -14,19 +15,20 @@ export function useFetch<T>(url: string): FetchState<T> {
   })
 
   useEffect(() => {
+    const controller = new AbortController()
     const fetchData = async (): Promise<void> => {
       try {
-        const response = await fetch(url)
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        const result = await response.json()
+        const result = await apiClient.get<T>(url, {
+          signal: controller.signal,
+        })
+        if (controller.signal.aborted) return
         setState({
           data: result,
           loading: false,
           error: null,
         })
       } catch (err) {
+        if (controller.signal.aborted) return
         setState({
           data: null,
           loading: false,
@@ -38,6 +40,7 @@ export function useFetch<T>(url: string): FetchState<T> {
     // Not awaited: an effect body cannot be async, and fetchData already
     // routes both outcomes into state.
     void fetchData()
+    return () => controller.abort()
   }, [url])
 
   return state

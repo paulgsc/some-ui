@@ -5,6 +5,7 @@
  * Separate from full batch loading
  */
 
+import { apiClient } from "@some-ui/fetch-kit"
 import type {
   ITopikMetadataRepository,
   TopikManifestFile,
@@ -49,14 +50,6 @@ export function createTopikMetadataRepository(
 
 function defaultLoader(manifestUrl: string): () => Promise<unknown> {
   return async () => {
-    const response = await fetch(manifestUrl)
-    if (!response.ok) {
-      throw new Error(
-        `Failed to load topik manifest: ${response.status} ${response.statusText}`
-      )
-    }
-    const json: unknown = await response.json()
-
-    return json
+    return apiClient.get<unknown>(manifestUrl)
   }
 }

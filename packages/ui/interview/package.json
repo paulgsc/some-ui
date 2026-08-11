@@ -21,6 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",

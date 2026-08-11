@@ -115,6 +115,7 @@ export class EffectBus implements Disposable {
         const opts: RequestInit = {
           method,
           headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(10_000),
         }
         if (action.body != null && method !== "GET") {
           opts.body = JSON.stringify(action.body)

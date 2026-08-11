@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { ApiError, createFetchClient } from "."
+import { ApiError, createFetchClient, DEFAULT_FETCH_TIMEOUT_MS } from "."
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -141,6 +141,24 @@ describe("timeout handling", () => {
     })
 
     await vi.advanceTimersByTimeAsync(50)
+    await assertion
+  })
+
+  it("applies the documented default when the call site does not override it", async () => {
+    fetchMock.mockImplementation(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"))
+          })
+        })
+    )
+    const promise = createFetchClient().get("https://api.test/data")
+    const assertion = expect(promise).rejects.toMatchObject({
+      isTimeoutError: true,
+    })
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_FETCH_TIMEOUT_MS)
     await assertion
   })
 })

@@ -17,14 +17,12 @@
     "@some-ui/assessment": "workspace:*",
     "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*",
-    "zod": "catalog:",
-    "node-fetch": "^3.3.2"
+    "zod": "catalog:"
   },
   "description": "Scene registry, layout orchestration, and other content-driven logic for the monorepo's activities. Pairs with @some-ui/content, which holds the actual assets/data this package registers and orchestrates.",
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*",
-    "@types/node-fetch": "^2.6.11"
+    "@some-ui/vite-config": "workspace:*"
   },
   "exports": {
     ".": {

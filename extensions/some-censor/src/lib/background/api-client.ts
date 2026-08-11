@@ -13,6 +13,7 @@ import type { WhitelistEntry } from "@censor/types/messages"
 
 // eslint-disable-next-line no-restricted-syntax
 const DEFAULT_BASE_URL = "http://localhost:7474"
+const DEV_API_TIMEOUT_MS = 10_000
 
 /**
  * Localhost persistence API client.
@@ -102,7 +103,9 @@ export class ApiClient {
 
   private async _get<T>(path: string): Promise<T> {
     this._assertDev()
-    const res = await fetch(`${this._baseUrl}${path}`)
+    const res = await fetch(`${this._baseUrl}${path}`, {
+      signal: AbortSignal.timeout(DEV_API_TIMEOUT_MS),
+    })
     return this._unwrap<T>(res)
   }
 
@@ -112,6 +115,7 @@ export class ApiClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(DEV_API_TIMEOUT_MS),
     })
     return this._unwrap<Res>(res)
   }
@@ -122,13 +126,17 @@ export class ApiClient {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(DEV_API_TIMEOUT_MS),
     })
     return this._unwrap<Res>(res)
   }
 
   private async _delete<Res>(path: string): Promise<Res> {
     this._assertDev()
-    const res = await fetch(`${this._baseUrl}${path}`, { method: "DELETE" })
+    const res = await fetch(`${this._baseUrl}${path}`, {
+      method: "DELETE",
+      signal: AbortSignal.timeout(DEV_API_TIMEOUT_MS),
+    })
     return this._unwrap<Res>(res)
   }
 

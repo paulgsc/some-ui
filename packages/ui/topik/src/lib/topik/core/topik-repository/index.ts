@@ -14,6 +14,7 @@
  * - Lifecycle coordination
  */
 
+import { apiClient } from "@some-ui/fetch-kit"
 import type { ConversationBatch } from "@topik/lib/topik"
 import { TopikFileSchema } from "@topik/lib/topik"
 import type { ITopikRepository } from "@topik/lib/topik/core/session-types"
@@ -46,17 +47,7 @@ export class TopikRepository implements ITopikRepository {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function defaultLoader(key: string): Promise<unknown> {
-  const response = await fetch(key)
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load topik "${key}": ${response.status} ${response.statusText}`
-    )
-  }
-
-  const json: unknown = await response.json()
-
-  return json
+  return apiClient.get<unknown>(key)
 }
 
 /**

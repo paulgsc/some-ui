@@ -8,6 +8,12 @@ import { z } from "zod"
 
 import { createApiHooks } from "."
 
+function expectUrl(value: string | URL): URL {
+  expect(value).toBeInstanceOf(URL)
+  if (!(value instanceof URL)) throw new Error("Expected URL")
+  return value
+}
+
 function fakeClient(): FetchClient {
   return {
     get: vi.fn(),
@@ -51,7 +57,8 @@ describe("createQueryHook - param routing", () => {
     })
 
     await waitFor(() => expect(client.createQueryFn).toHaveBeenCalled())
-    const [calledUrl] = vi.mocked(client.createQueryFn).mock.calls[0]!
+    const [value] = vi.mocked(client.createQueryFn).mock.calls[0]!
+    const calledUrl = expectUrl(value)
     expect(calledUrl.pathname).toBe("/items/42")
     expect(calledUrl.searchParams.get("verbose")).toBe("true")
     // the placeholder param must not also leak through as a query param
@@ -125,7 +132,8 @@ describe("createMutationHook - param routing", () => {
     })
 
     await waitFor(() => expect(client.createMutationFn).toHaveBeenCalled())
-    const [calledUrl] = vi.mocked(client.createMutationFn).mock.calls[0]!
+    const [value] = vi.mocked(client.createMutationFn).mock.calls[0]!
+    const calledUrl = expectUrl(value)
     expect(calledUrl.pathname).toBe("/items/7")
   })
 
@@ -152,7 +160,8 @@ describe("createMutationHook - param routing", () => {
     })
 
     await waitFor(() => expect(client.createMutationFn).toHaveBeenCalled())
-    const [calledUrl] = vi.mocked(client.createMutationFn).mock.calls[0]!
+    const [value] = vi.mocked(client.createMutationFn).mock.calls[0]!
+    const calledUrl = expectUrl(value)
     expect(calledUrl.pathname).toBe("/items/7")
     expect(calledUrl.search).toBe("")
   })

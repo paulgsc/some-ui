@@ -4,12 +4,20 @@ import unusedImports from "eslint-plugin-unused-imports"
 import { defineConfig } from "eslint/config"
 import globals from "globals"
 
+import { noRawFetch } from "../rules/index.js"
+
+const networkBoundaryPlugin = {
+  meta: { name: "network-boundary", version: "0.0.1" },
+  rules: { "no-raw-fetch": noRawFetch },
+}
+
 export default defineConfig(
   prettier,
   {
     plugins: {
       prettier: prettierPlugin,
       "unused-imports": unusedImports,
+      "network-boundary": networkBoundaryPlugin,
     },
   },
   {
@@ -77,6 +85,22 @@ export default defineConfig(
       eqeqeq: ["error", "always", { null: "ignore" }],
       // Enforce arrow callbacks where possible
       "prefer-arrow-callback": "error",
+      // Warn first so existing application exceptions remain visible while
+      // migrations land; promote to error once the allowlist is retired.
+      "network-boundary/no-raw-fetch": [
+        "warn",
+        {
+          allowlist: [
+            // The primitive that implements the bounded client itself.
+            "packages/fetch-kit/src/lib/fetch-client/index.ts",
+            // Preserves file_host-specific error envelopes at this boundary;
+            // tracked for a transport adapter migration.
+            "apps/www/src/lib/file-host-config/client.ts",
+            // Executable probe supplies its own AbortSignal deadline.
+            "packages/contract-harness/src/probe.ts",
+          ],
+        },
+      ],
     },
   }
 )

@@ -1,3 +1,5 @@
+import { apiClient } from "@some-ui/fetch-kit"
+
 /**
  * Resource Loader Abstraction Layer
  * Responsible for: Given a file path → return parsed JSON (unvalidated)
@@ -13,11 +15,7 @@ export type ResourceLoader = {
  */
 export class HttpJsonLoader implements ResourceLoader {
   async load(path: string): Promise<unknown> {
-    const res = await fetch(path)
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${path}`)
-    }
-    return res.json()
+    return apiClient.get<unknown>(path)
   }
 }
 

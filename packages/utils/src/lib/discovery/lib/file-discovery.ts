@@ -1,3 +1,5 @@
+import { apiClient } from "@some-ui/fetch-kit"
+
 /**
  * File Discovery Abstraction Layer
  * Responsible for: Given (P, E) → return S = string[]
@@ -16,12 +18,7 @@ export class HttpFileDiscovery implements FileDiscovery {
   constructor(private manifestUrl: string) {}
 
   async listFiles(rootPath: string, extension: string): Promise<Array<string>> {
-    const res = await fetch(this.manifestUrl)
-    if (!res.ok) {
-      throw new Error(`Failed to fetch manifest: HTTP ${res.status}`)
-    }
-
-    const files: Array<string> = await res.json()
+    const files = await apiClient.get<Array<string>>(this.manifestUrl)
 
     return files.filter((f) => f.startsWith(rootPath) && f.endsWith(extension))
   }

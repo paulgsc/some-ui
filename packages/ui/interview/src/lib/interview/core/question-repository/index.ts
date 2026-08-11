@@ -3,6 +3,7 @@ import {
   type Question,
   type QuestionRepository,
 } from "@interview/lib/interview/core/interview-types"
+import { apiClient } from "@some-ui/fetch-kit"
 
 const matches = (
   question: Question,
@@ -44,16 +45,11 @@ export const createHttpQuestionRepository = (
       if (filters?.category) params.set("category", filters.category)
 
       const query = params.toString()
-      const response = await fetch(
+      return apiClient.get(
         `${baseUrl}/questions${query ? `?${query}` : ""}`,
-        { headers }
+        { headers },
+        QuestionSchema.array()
       )
-
-      if (!response.ok) {
-        throw new Error(`Failed to load questions: ${response.status}`)
-      }
-
-      return QuestionSchema.array().parse(await response.json())
     },
   }
 }

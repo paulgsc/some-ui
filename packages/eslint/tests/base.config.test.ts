@@ -33,6 +33,7 @@ import {
   expectError,
   expectMessageForRule,
   expectNoMessageForRule,
+  expectWarn,
   lintSnippet,
 } from "./helpers/eslint-resolver.js"
 
@@ -71,6 +72,13 @@ describe("base.config — error rules wired for .js files", () => {
       expectError(rules, rule, "src/util.js")
     })
   }
+})
+
+describe("base.config — network boundary rollout", () => {
+  it("no-raw-fetch is wired at warn while migrations land", async () => {
+    const rules = await calculateConfig(baseConfig, JS_FILE)
+    expectWarn(rules, "network-boundary/no-raw-fetch", "src/util.js")
+  })
 })
 
 describe("lint: base.config rules fire on real code", () => {
