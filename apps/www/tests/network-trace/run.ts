@@ -106,11 +106,7 @@ function sessionFixture(
   }
 }
 
-const remoteSessions = new Map<string, Session>([
-  ["honeycomb-direct", sessionFixture("honeycomb-direct")],
-  ["topik-direct", sessionFixture("topik-direct", "topik")],
-  ["scene-library", sessionFixture("scene-library")],
-])
+const remoteSessions = new Map<string, Session>()
 let createdId = 0
 let sessionListDelayMs = 0
 let sessionListFails = false
@@ -188,6 +184,7 @@ async function drainBody(request: IncomingMessage): Promise<void> {
 const scenarios: ReadonlyArray<{
   name: string
   seed?: number
+  remote?: ReadonlyArray<Session>
   run: (page: Page) => Promise<void>
 }> = [
   ...[0, 1, 10, 50].map((count) => ({
@@ -195,11 +192,16 @@ const scenarios: ReadonlyArray<{
     seed: count,
     run: async (page: Page): Promise<void> => {
       await page.goto(`${APP_ORIGIN}/sessions`)
-      await page.getByRole("heading", { name: "Sessions" }).waitFor()
+      if (count === 0) {
+        await page.getByText("No sessions yet.", { exact: true }).waitFor()
+      } else {
+        await page.getByRole("heading", { name: /^Drafts \(/ }).waitFor()
+      }
     },
   })),
   {
     name: "direct-honeycomb-session",
+    remote: [sessionFixture("honeycomb-direct")],
     run: async (page: Page): Promise<void> => {
       await page.goto(`${APP_ORIGIN}/sessions/honeycomb-direct`)
       await page.getByText("Press Play to begin").waitFor()
@@ -207,6 +209,7 @@ const scenarios: ReadonlyArray<{
   },
   {
     name: "direct-topik-session",
+    remote: [sessionFixture("topik-direct", "topik")],
     run: async (page: Page): Promise<void> => {
       await page.goto(`${APP_ORIGIN}/sessions/topik-direct`)
       await page.getByText("Press Play to begin").waitFor()
@@ -214,6 +217,7 @@ const scenarios: ReadonlyArray<{
   },
   {
     name: "scene-library-picker",
+    remote: [sessionFixture("scene-library")],
     run: async (page: Page): Promise<void> => {
       await page.goto(`${APP_ORIGIN}/sessions/scene-library`)
       await page.getByText("Press Play to begin").waitFor()
@@ -227,6 +231,7 @@ const scenarios: ReadonlyArray<{
   },
   {
     name: "dashboard-slow-sessions",
+    remote: [sessionFixture("dashboard-slow")],
     run: async (page: Page): Promise<void> => {
       sessionListDelayMs = 250
       await page.goto(`${APP_ORIGIN}/app`)
@@ -260,6 +265,11 @@ async function traceScenario(
 ): Promise<WireMetric> {
   sessionListDelayMs = 0
   sessionListFails = false
+  createdId = 0
+  remoteSessions.clear()
+  for (const session of scenario.remote ?? []) {
+    remoteSessions.set(session.id, session)
+  }
   const context: BrowserContext = await browser.newContext()
   await context.addInitScript(
     (sessions) => {
@@ -272,13 +282,40 @@ async function traceScenario(
     localSessions(scenario.seed ?? 0)
   )
   const page = await context.newPage()
+  const browserFailures: Array<string> = []
+  page.on("pageerror", (error) =>
+    browserFailures.push(`page: ${error.message}`)
+  )
+  page.on("requestfailed", (request) =>
+    browserFailures.push(
+      `request: ${request.method()} ${request.url()} (${request.failure()?.errorText ?? "unknown failure"})`
+    )
+  )
   const traffic = new Map<Request, WireEvent>()
   page.on("request", (request) =>
     traffic.set(request, { start: performance.now(), bytes: 0 })
   )
   page.on("response", (response) => void recordResponse(response, traffic))
   const started = performance.now()
-  await scenario.run(page)
+  try {
+    await scenario.run(page)
+  } catch (cause) {
+    const visibleText = (
+      await page
+        .locator("body")
+        .innerText()
+        .catch(() => "")
+    )
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500)
+    throw new Error(
+      `Scenario "${scenario.name}" did not become ready at ${page.url()}. ` +
+        `Visible page text: ${visibleText || "<empty>"}. ` +
+        `Browser failures: ${browserFailures.join("; ") || "<none>"}.`,
+      { cause }
+    )
+  }
   const timeToReadyMs = Math.round(performance.now() - started)
   await page.waitForTimeout(25)
   await Promise.allSettled(
