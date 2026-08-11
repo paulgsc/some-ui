@@ -52,37 +52,62 @@ const SHRINKABLE: Record<Axis, RegExp> = {
  * present, which errs towards *not* reporting when a fix is applied
  * conditionally.
  */
+/** Array-ish AST children, narrowed rather than asserted. */
+function children(value: unknown): Array<unknown> {
+  return Array.isArray(value) ? value : []
+}
+
 function collectStrings(node: any, into: Array<string>): void {
   if (node === null || typeof node !== "object") return
 
-  switch (node.type) {
-    case "Literal":
-      if (typeof node.value === "string") into.push(node.value)
-      return
-    case "TemplateLiteral":
-      for (const quasi of node.quasis ?? []) {
-        if (typeof quasi?.value?.raw === "string") into.push(quasi.value.raw)
-      }
-      for (const expression of node.expressions ?? []) {
-        collectStrings(expression, into)
-      }
-      return
-    case "CallExpression":
-      for (const argument of node.arguments ?? []) {
-        collectStrings(argument, into)
-      }
-      return
-    case "ConditionalExpression":
-      collectStrings(node.consequent, into)
-      collectStrings(node.alternate, into)
-      return
-    case "LogicalExpression":
-      collectStrings(node.right, into)
-      return
-    case "ArrayExpression":
-      for (const element of node.elements ?? []) collectStrings(element, into)
-      return
-    default:
+  const type: unknown = node.type
+
+  if (type === "Literal") {
+    const value: unknown = node.value
+    if (typeof value === "string") into.push(value)
+    return
+  }
+
+  if (type === "TemplateLiteral") {
+    for (const quasi of children(node.quasis)) {
+      if (quasi === null || typeof quasi !== "object") continue
+      if (!("value" in quasi)) continue
+      const cooked: unknown = quasi.value
+      if (cooked === null || typeof cooked !== "object") continue
+      if (!("raw" in cooked)) continue
+      const raw: unknown = cooked.raw
+      if (typeof raw === "string") into.push(raw)
+    }
+    for (const expression of children(node.expressions)) {
+      collectStrings(expression, into)
+    }
+    return
+  }
+
+  // `cn(…)` / `clsx(…)` and friends: every argument is a candidate class list.
+  if (type === "CallExpression") {
+    for (const argument of children(node.arguments)) {
+      collectStrings(argument, into)
+    }
+    return
+  }
+
+  if (type === "ArrayExpression") {
+    for (const element of children(node.elements)) {
+      collectStrings(element, into)
+    }
+    return
+  }
+
+  if (type === "ConditionalExpression") {
+    collectStrings(node.consequent, into)
+    collectStrings(node.alternate, into)
+    return
+  }
+
+  // `active && "ring-2"` - only the right side can contribute classes.
+  if (type === "LogicalExpression") {
+    collectStrings(node.right, into)
   }
 }
 
@@ -126,7 +151,7 @@ const TRANSPARENT = new Set([
 ])
 
 /** The axis of the nearest enclosing flex container, if that is what it is. */
-function flexParentAxis(node: Rule.Node): Axis | null {
+function flexParentAxis(node: any): Axis | null {
   let scope: any = node.parent ?? null
 
   while (scope) {
