@@ -104,23 +104,29 @@
    this rule from occluding a channel or playlist tile that no content script
    will ever come back for; see selectors.ts for the full argument.
    ============================================================ */
-ytd-video-renderer:not([data-boyo]),
-ytd-rich-item-renderer:not([data-boyo]),
-ytd-grid-video-renderer:not([data-boyo]),
-ytd-compact-video-renderer:not([data-boyo]),
-ytd-playlist-panel-video-renderer:not([data-boyo]),
-ytd-playlist-video-renderer:not([data-boyo]),
-ytd-reel-item-renderer:not([data-boyo]),
-yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-disabled]) ytd-video-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled]) ytd-rich-item-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled]) ytd-grid-video-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled]) ytd-compact-video-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled])
+  ytd-playlist-panel-video-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled]) ytd-playlist-video-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled]) ytd-reel-item-renderer:not([data-boyo]),
+:root:not([data-boyo-disabled])
+  yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     [data-boyo]
   ),
-ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+:root:not([data-boyo-disabled])
+  ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     [data-boyo]
   ),
-ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
-    [data-boyo]
-  ),
-ytd-structured-description-video-lockup-renderer:has(
+:root:not([data-boyo-disabled])
+  ytm-shorts-lockup-view-model-v2:has(
+    a[href*="/watch"],
+    a[href*="/shorts/"]
+  ):not([data-boyo]),
+:root:not([data-boyo-disabled])
+  ytd-structured-description-video-lockup-renderer:has(
     a[href*="/watch"],
     a[href*="/shorts/"]
   ):not([data-boyo]) {

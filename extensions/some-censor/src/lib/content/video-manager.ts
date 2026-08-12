@@ -611,8 +611,10 @@ export class VideoManager {
       try {
         this.retryUnresolved()
 
-        // lightweight reconciliation
-        this.scan()
+        // Do not scan the full document here. Hydration is delivered by the
+        // observer and this loop is only the bounded fallback for cards already
+        // in one of the retry queues. A document scan every 500ms turns one bad
+        // card into permanent main-thread work proportional to the whole feed.
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error("[VideoManager] retry threw", err)

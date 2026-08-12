@@ -19,10 +19,9 @@ export { SEL } from "./selectors"
  *      Catches newly inserted renderer elements that are already hydrated
  *      (e.g. initial page load, SPA navigation completing).
  *
- * On every mutation batch we also call mgr.retryUnresolved() — this is what
- * makes the unresolved registry event-driven rather than time-bounded.
- * Any DOM activity is a signal that YouTube may have finished hydrating
- * a previously unresolved element.
+ * Deep additions and href changes are promoted to their closest renderer.
+ * This keeps hydration event-driven without re-walking every unresolved or
+ * rejected card on every unrelated mutation made by YouTube's player.
  *
  * Signal (1) covers the Polymer renderers only: the Lit-era lockups added in
  * #973 never set data-video-id. A lockup is added as a shell and filled in
@@ -30,9 +29,9 @@ export { SEL } from "./selectors"
  * deep inside a card the observer has already seen — and re-deriving the
  * enclosing card with `closest()` on every childList batch would mean walking
  * the tree for every mutation YouTube's player makes, which is most of them.
- * Instead the shell is adopted by signal (2) and parked in the manager's
- * unresolved queue, where the retry loop re-checks it under a bounded budget.
- * That reuses machinery that already exists and costs nothing per mutation.
+ * Instead signal (2) promotes the added descendant to its closest card. The
+ * bounded retry queue remains a fallback for hydration shapes without a useful
+ * mutation target, but unrelated page activity no longer drains it eagerly.
  */
 export function startObserver(mgr: VideoManager): MutationObserver {
   const obs = new MutationObserver((mutations) => {
@@ -41,13 +40,9 @@ export function startObserver(mgr: VideoManager): MutationObserver {
 
     for (const m of mutations) {
       // 1. Hydration Signal
-      if (
-        m.type === "attributes" &&
-        m.attributeName === "data-video-id" &&
-        m.target instanceof HTMLElement &&
-        m.target.matches(SEL)
-      ) {
-        candidates.add(m.target)
+      if (m.type === "attributes" && m.target instanceof HTMLElement) {
+        const card = m.target.matches(SEL) ? m.target : m.target.closest(SEL)
+        if (card instanceof HTMLElement) candidates.add(card)
         continue
       }
 
@@ -58,6 +53,8 @@ export function startObserver(mgr: VideoManager): MutationObserver {
           if (node.matches(SEL)) {
             candidates.add(node)
           } else {
+            const card = node.closest(SEL)
+            if (card instanceof HTMLElement) candidates.add(card)
             node
               .querySelectorAll<HTMLElement>(SEL)
               .forEach((el) => candidates.add(el))
@@ -74,16 +71,6 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     // Process new/updated elements
     candidates.forEach((el) => mgr.upsert(el))
 
-    // Retry previously unresolved elements
-    mgr.retryUnresolved()
-
-    // …and reconsider the ones we already gave up on. A Lit lockup hydrates
-    // from the inside out, so the mutation that turns a shell into a real video
-    // card is an insertion deep within it — invisible to both signals above.
-    // This is the only thing that can revive such a card, and without it the
-    // static occluder would leave it blurred forever (see recheckRejected).
-    mgr.recheckRejected()
-
     // Evict disconnected entries on any removal
     if (needsPrune) {
       mgr.prune()
@@ -97,7 +84,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["data-video-id"],
+    attributeFilter: ["data-video-id", "href"],
   })
 
   // NOTE: yt-navigate-finish handling moved to Controller (C2).  Chip/SPA
