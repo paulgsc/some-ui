@@ -1,6 +1,3 @@
 networks:
   some-ui-network:
     driver: bridge
-  monitoring-network:
-    name: shared-dev-network
-    external: true

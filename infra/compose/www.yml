@@ -79,7 +79,7 @@ services:
       - "${WWW_HTTP_PORT:-5172}:80"
       - "${WWW_HTTPS_PORT:-5173}:443"
     volumes:
-      - ${REPO_ROOT:-.}/apps/www/nginx.https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${REPO_ROOT:-.}/apps/www/nginx.https.conf:/etc/nginx/templates/default.conf.template:ro
       - ${REPO_ROOT:-.}/apps/www/nginx.tts-proxy.conf:/etc/nginx/tts-proxy.conf:ro
       - ${REPO_ROOT:-.}/certs:/etc/nginx/certs:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
@@ -87,13 +87,23 @@ services:
       - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
-      - monitoring-network
     # nginx.https.conf proxies /api/file-host/ to paulgsc/server's `file_host`,
     # which is another repository's process and normally runs on the host rather
-    # than on some-ui-network. Docker Desktop resolves host.docker.internal on
-    # its own; Linux does not, and without this the study nudge's requests come
-    # back as 502s that look exactly like the backend being down. Harmless where
-    # the name already resolves.
+    # than on some-ui-network. FILE_HOST_UPSTREAM defaults to the Docker host
+    # gateway, which is what a host-run file_host needs; the runtime container
+    # mounts nginx.https.conf as a template (see the volume above) so the base
+    # nginx:alpine image's own docker-entrypoint.d/20-envsubst-on-templates.sh
+    # fills it in before nginx starts. Docker Desktop resolves
+    # host.docker.internal on its own; Linux does not, and without the
+    # extra_hosts entry below the study nudge's requests come back as 502s
+    # that look exactly like the backend being down. Harmless where the name
+    # already resolves.
+    #
+    # infra/compose/monitoring.yml overrides FILE_HOST_UPSTREAM to
+    # file-host-server:3000 for deployments running file_host as a container
+    # on shared-dev-network instead of on the host - see that file.
+    environment:
+      FILE_HOST_UPSTREAM: ${FILE_HOST_UPSTREAM:-host.docker.internal:3000}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Dockerfile bakes in the same wget-spider HEALTHCHECK as a baseline for

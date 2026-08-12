@@ -59,7 +59,6 @@ services:
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-en-US}
     networks:
       - some-ui-network
-      - monitoring-network
     restart: unless-stopped
   nginx:
     image: nginx:alpine
@@ -70,7 +69,6 @@ services:
       - ${REPO_ROOT:-.}/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - some-ui-network
-      - monitoring-network
     depends_on:
       - openai-edge-tts
     restart: unless-stopped
