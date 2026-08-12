@@ -44,19 +44,25 @@ import { VideoEntry } from "./video-entry"
 type Phase = "idle" | "running"
 
 /**
- * How many retry passes an element gets before it is dropped.
+ * How long an element gets to resolve before it is dropped.
  *
- * The retry loop runs at 500ms, so this is a ~10s hydration budget — generous
- * for a card YouTube is still filling in, and finite for one that will never
- * resolve. Both queues need the bound for the same reason (#973): the tags
- * added for the newer feeds are polymorphic. `yt-lockup-view-model` also
- * renders channels and playlists, which have no videoId and would sit in
- * `_unresolved` forever; a shorts lockup has a videoId but frequently no
- * channel link at all, so it would sit in `_channelPending` forever. Either
- * one alone is enough to keep a 500ms interval — and the full-document
- * `scan()` it drives — running for the lifetime of the tab (Charter §8).
+ * Both queues need a bound for the same reason (#973): the tags added for the
+ * newer feeds are polymorphic. `yt-lockup-view-model` also renders channels and
+ * playlists, which have no videoId and would sit in `_unresolved` forever; a
+ * shorts lockup has a videoId but frequently no channel link at all, so it
+ * would sit in `_channelPending` forever. Either one alone is enough to keep a
+ * 500ms interval — and the full-document `scan()` it drives — running for the
+ * lifetime of the tab (Charter §8).
+ *
+ * The budget is wall-clock, not a pass count. `retryUnresolved()` is driven by
+ * the observer on every mutation batch as well as by the 500ms interval, so a
+ * pass count is really a count of *page activity*: instrumenting a fixture
+ * showed 15 passes inside the first four seconds, almost all of them from the
+ * mount burst. A 20-pass budget therefore expired in a fraction of the ~10s it
+ * was documented as granting, and would expire faster still on a busy feed —
+ * exactly when a slow card most needs the time.
  */
-const MAX_RESOLVE_ATTEMPTS = 20
+const RESOLVE_BUDGET_MS = 10_000
 
 export class VideoManager {
   // Primary lookup: videoId → entry
@@ -65,15 +71,19 @@ export class VideoManager {
   private readonly _elToVid: WeakMap<HTMLElement, VideoId> = new WeakMap()
   // Failed-resolution queue
   private readonly _unresolved: Map<string, HTMLElement> = new Map()
-  // Retry budget per queued element, keyed alongside _unresolved /
-  // _channelPending. Bounded so a card that can never resolve cannot keep the
-  // retry loop alive; see MAX_RESOLVE_ATTEMPTS.
-  private readonly _attempts: Map<string, number> = new Map()
+  // When each queued key was first seen, keyed alongside _unresolved /
+  // _channelPending. The budget is measured from here; see RESOLVE_BUDGET_MS.
+  private readonly _firstSeen: Map<string, number> = new Map()
   // Elements whose budget is spent. Without this, giving up is not sticky: the
   // retry loop calls scan(), scan() re-upserts every matching element, and a
   // re-queued element starts a fresh budget — so the queue would empty and
-  // immediately refill, forever. Weak so a card leaving the DOM is collectable.
-  private readonly _rejected: WeakSet<HTMLElement> = new WeakSet()
+  // immediately refill, forever.
+  //
+  // Strong refs, unlike the WeakSet this started as, because `recheckRejected`
+  // has to iterate them. Bounded by the number of non-video lockups on one
+  // page, pruned as they disconnect, and cleared by reset() on every
+  // navigation.
+  private readonly _rejected: Set<HTMLElement> = new Set()
   // Same, for channel backfill: videoIds we have stopped looking for a channel
   // for. Keyed by videoId (not element) because that is what _channelPending is
   // keyed by, and cleared on reset() since a new session re-derives entries.
@@ -153,7 +163,8 @@ export class VideoManager {
     this._byVideo.clear()
     this._unresolved.clear()
     this._channelPending.clear()
-    this._attempts.clear()
+    this._firstSeen.clear()
+    this._rejected.clear()
     this._channelGaveUp.clear()
 
     if (this._retryInterval !== null) {
@@ -244,7 +255,7 @@ export class VideoManager {
   private _enqueueUnresolved(el: HTMLElement): void {
     if (this._rejected.has(el)) return
     const key = elementKey(el)
-    if (this._attempts.get(key) === undefined) this._attempts.set(key, 0)
+    this._startBudget(key)
     const wasEmpty = this._unresolved.size === 0
     this._unresolved.set(key, el)
     if (wasEmpty) this._ensureRetryLoop()
@@ -252,17 +263,59 @@ export class VideoManager {
 
   private _dequeueUnresolved(key: string): void {
     this._unresolved.delete(key)
-    this._attempts.delete(key)
+    this._firstSeen.delete(key)
+  }
+
+  /** Start `key`'s clock, unless it is already running. */
+  private _startBudget(key: string): void {
+    if (!this._firstSeen.has(key)) this._firstSeen.set(key, Date.now())
+  }
+
+  /** Has `key` been waiting longer than {@link RESOLVE_BUDGET_MS}? */
+  private _budgetSpent(key: string): boolean {
+    const since = this._firstSeen.get(key)
+    if (since === undefined) {
+      this._firstSeen.set(key, Date.now())
+      return false
+    }
+    return Date.now() - since >= RESOLVE_BUDGET_MS
   }
 
   /**
-   * Charge one attempt against `key`. Returns true when the budget is spent,
-   * at which point the caller drops the entry.
+   * Re-examine elements we gave up on, in case one has since become a video.
+   *
+   * Rejection has to be revocable, because it interacts with the static
+   * pre-mask rule. That rule occludes a lockup as soon as it contains a video
+   * link, and only the content script writing data-boyo lifts it. So a shell we
+   * rejected while it was link-less, which then hydrates into a real video
+   * lockup, would be occluded with nothing coming to un-occlude it — a
+   * permanently blurred card, which is the very failure the `:has()` guard
+   * exists to prevent.
+   *
+   * The observer cannot notice that transition on its own: the link is added
+   * deep inside the lockup, so neither the added node nor its descendants match
+   * SEL, and re-deriving the enclosing card with `closest()` would mean walking
+   * the tree on every mutation YouTube's player makes. Iterating the rejected
+   * set instead costs one `querySelector` per rejected element — bounded by the
+   * number of non-video lockups on the page, not by mutation volume — and the
+   * set is usually empty, in which case this returns immediately.
    */
-  private _budgetSpent(key: string): boolean {
-    const next = (this._attempts.get(key) ?? 0) + 1
-    this._attempts.set(key, next)
-    return next >= MAX_RESOLVE_ATTEMPTS
+  recheckRejected(): void {
+    if (this._phase !== "running" || this._rejected.size === 0) return
+
+    for (const el of this._rejected) {
+      if (!el.isConnected) {
+        this._rejected.delete(el)
+        continue
+      }
+      if (!isVideoCard(el)) continue
+      // It is a video now. Clear the rejection and let the normal path run;
+      // upsert() re-queues under a fresh budget if extraction still fails, and
+      // a video-shaped element is exempt from the budget anyway.
+      this._rejected.delete(el)
+      this._firstSeen.delete(elementKey(el))
+      this.upsert(el)
+    }
   }
 
   /**
@@ -361,7 +414,7 @@ export class VideoManager {
 
   private _dropChannelPending(videoId: VideoId): void {
     this._channelPending.delete(videoId)
-    this._attempts.delete(channelKey(videoId))
+    this._firstSeen.delete(channelKey(videoId))
   }
 
   /**

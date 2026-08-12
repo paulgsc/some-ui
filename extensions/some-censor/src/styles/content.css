@@ -28,6 +28,52 @@
   --boyo-mint: 52 211 153; /* whitelist accent         */
   --boyo-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --boyo-font: "Roboto", "SF Pro Text", system-ui, sans-serif;
+
+  /* ── Firefox 112 baseline ────────────────────────────────────────────
+     UnoCSS emits colors as
+       color-mix(in oklab, <color> var(--un-bg-opacity), transparent)
+     and supplies that variable's initial value only through
+       @property --un-bg-opacity { initial-value: 100%; … }
+
+     Firefox did not support @property until 128, and
+     manifest.firefox.json declares strict_min_version 112.0. On 112–127
+     the variable resolves to nothing, color-mix() becomes invalid, and
+     the entire declaration is dropped — including the veil's background.
+
+     For a masking extension that is the worst available failure: the
+     veil still mounts and still takes clicks, but paints nothing, while
+     [data-boyo] has already lifted the static occluder. The extension
+     fails OPEN, showing exactly the content it exists to hide.
+
+     Declaring the same initial values as ordinary custom properties
+     makes them resolve everywhere; @property still registers them where
+     it is supported, so nothing is lost on modern engines.
+
+     Only the nine variables the generated sheet reads with no inline
+     `var(--x, fallback)` and never assigns are listed — the rest carry
+     their own fallback. Because nothing assigns these, ordinary
+     inheritance cannot leak one element's value to another the way it
+     could for a variable a utility sets per-element. styles.test.ts
+     regenerates the stylesheet and fails if either of those stops
+     holding, or if a new unbacked variable appears. */
+  --un-bg-opacity: 100%;
+  --un-border-opacity: 100%;
+  --un-inset-ring-shadow: 0 0 #0000;
+  --un-inset-shadow: 0 0 #0000;
+  --un-outline-opacity: 100%;
+  --un-outline-style: solid;
+  --un-ring-offset-shadow: 0 0 #0000;
+  --un-ring-shadow: 0 0 #0000;
+  --un-text-opacity: 100%;
+
+  /* Read bare by the `transition` utility. Every call site here also sets an
+     explicit duration and easing, so the fallback is never reached today — but
+     that is a coincidence of the current class strings, not a property of the
+     stylesheet, and an unbacked var() is one edit away from being live. */
+  --default-transition-duration: 150ms;
+  /* stylelint-disable-next-line custom-property-pattern -- the name is
+     UnoCSS's, emitted camelCase; matching it exactly is the whole point. */
+  --default-transition-timingFunction: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================================

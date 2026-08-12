@@ -118,9 +118,11 @@ const HINT_SUBTLE =
 
 const HINT_TONE = {
   idle:
-    "bg-white/6 b-white/12 text-[rgb(var(--boyo-ink)/90%)] " +
+    "bg-[rgb(255_255_255/6%)] b-[rgb(255_255_255/12%)] " +
+    "text-[rgb(var(--boyo-ink)/90%)] " +
     "shadow-[0_2px_14px_rgb(0_0_0/35%)] " +
-    "group-hover:bg-white/10 group-hover:b-white/20",
+    "group-hover:bg-[rgb(255_255_255/10%)] " +
+    "group-hover:b-[rgb(255_255_255/20%)]",
   meta:
     "bg-[rgb(var(--boyo-indigo)/12%)] b-[rgb(var(--boyo-indigo)/24%)] " +
     "text-[rgb(var(--boyo-indigo))]",
@@ -170,9 +172,9 @@ export function railClass(step: RailStep): string {
  */
 const META_BASE =
   "boyo-meta flex flex-col items-center w-full min-w-0 max-w-full " +
-  "overflow-hidden rounded-xl b b-solid text-center pointer-events-none " +
+  "overflow-hidden rounded-[12px] b b-solid text-center pointer-events-none " +
   "bg-[rgb(var(--boyo-indigo)/10%)] b-[rgb(var(--boyo-indigo)/20%)] " +
-  "text-[rgb(var(--boyo-ink)/92%)] font-[var(--boyo-font)] leading-1.5 " +
+  "text-[rgb(var(--boyo-ink)/92%)] font-[var(--boyo-font)] leading-[1.5] " +
   "animate-[boyo-rise_0.35s_var(--boyo-ease)_both]"
 
 /** Meta as the card's main content (meta state). */
@@ -219,8 +221,8 @@ export const META_SUB =
  */
 const TITLE_BASE =
   "boyo-title-chip w-full min-w-0 max-w-full overflow-hidden " +
-  "rounded-xl b b-solid text-center break-words pointer-events-none " +
-  "font-[var(--boyo-font)] font-500 leading-1.45 " +
+  "rounded-[12px] b b-solid text-center break-words pointer-events-none " +
+  "font-[var(--boyo-font)] font-500 leading-[1.45] " +
   "animate-[boyo-rise_0.35s_var(--boyo-ease)_both] " +
   "line-clamp-2 @[220px]:line-clamp-3 @[340px]:line-clamp-4 " +
   "px-2 py-1 text-10px " +

@@ -77,6 +77,13 @@ export function startObserver(mgr: VideoManager): MutationObserver {
     // Retry previously unresolved elements
     mgr.retryUnresolved()
 
+    // …and reconsider the ones we already gave up on. A Lit lockup hydrates
+    // from the inside out, so the mutation that turns a shell into a real video
+    // card is an insertion deep within it — invisible to both signals above.
+    // This is the only thing that can revive such a card, and without it the
+    // static occluder would leave it blurred forever (see recheckRejected).
+    mgr.recheckRejected()
+
     // Evict disconnected entries on any removal
     if (needsPrune) {
       mgr.prune()

@@ -20,12 +20,27 @@ import { defineSomeUiConfig } from "@some-ui/styles/config"
  *
  * Here every class string the extension can put in the DOM lives in exactly one
  * module — `src/lib/content/veil-styles.ts` — and `dom-handle.ts` may only
- * consume it. Scanning that one file plus the irreducible raw CSS makes the
- * output exactly the set of utilities the veil declares, with no denylist and
- * no bare-identifier noise. The narrow scan is also what keeps the idiom
- * honest: a class name written anywhere else simply will not be generated, so
- * "styles live in veil-styles.ts" is enforced by the build rather than by
- * review.
+ * consume it. Scanning that one file plus the irreducible raw CSS keeps the
+ * output to the utilities the veil actually declares. The narrow scan is also
+ * what keeps the idiom honest: a class name written anywhere else simply will
+ * not be generated, so "styles live in veil-styles.ts" is enforced by the build
+ * rather than by review.
+ *
+ * ## Why there is still a two-entry blocklist
+ *
+ * `styles/content.css` has to be scanned as well as concatenated, and the
+ * scanner reads its *prose* along with its rules. The words "card" and
+ * "container" appear in the comments explaining the pre-mask occluder, and both
+ * are shortcuts in the some-ui preset — so the build emitted `.card` and
+ * `.container` rules referencing `--card`, `--card-foreground`, `--border` and
+ * `--radius-lg`, none of which a preflight-less sheet defines. Dangling
+ * `var()`s in a stylesheet that ships into YouTube.
+ *
+ * This is the same failure mode as the sibling blocklists, at 1/10th the size,
+ * and it is bounded by the vocabulary of one comment block rather than by the
+ * whole language. `styles.test.ts` regenerates the stylesheet from these exact
+ * inputs and fails on any unbacked `var()`, so a third leak is caught by the
+ * suite rather than by reading `dist/`.
  *
  * preflight: off. A content script must not ship a global reset — it would
  * repaint YouTube. Disabled both here and via the CLI's `--no-preflights` flag
@@ -37,5 +52,8 @@ export default defineSomeUiConfig(
     content: {
       filesystem: ["src/lib/content/veil-styles.ts", "src/styles/content.css"],
     },
+    // Shortcut names that appear as ordinary English in content.css's comments.
+    // See the note above — these are not authored classes.
+    blocklist: ["card", "container"],
   }
 )

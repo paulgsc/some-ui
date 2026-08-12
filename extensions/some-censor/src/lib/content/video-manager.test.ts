@@ -18,9 +18,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { VideoManager } from "./video-manager"
 
-/** One retry pass is 500ms; the budget is 20 passes. */
+/** The retry loop ticks at 500ms; the budget is 10s of wall clock. */
 const PASS_MS = 500
-const BUDGET_PASSES = 20
+const BUDGET_MS = 10_000
+const BUDGET_PASSES = BUDGET_MS / PASS_MS
 
 function channelLockup(): HTMLElement {
   const el = document.createElement("yt-lockup-view-model")
@@ -153,6 +154,106 @@ describe("a card with no channel", () => {
     mgr.scan()
     await passes(5)
     expect(el.getAttribute("data-boyo"), "and it stays masked").toBe("0")
+  })
+})
+
+describe("the budget is wall clock, not page activity", () => {
+  it("is not exhausted by a burst of mutation-driven retries", async () => {
+    // retryUnresolved() is called by the observer on every mutation batch as
+    // well as by the interval, so counting *passes* really counts how busy the
+    // page is. A mount burst on a real feed spends dozens of passes in the
+    // first second, which would reject a shell YouTube had barely started
+    // filling in — the opposite of what the budget is for.
+    const el = channelLockup()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+
+    for (let i = 0; i < 200; i++) mgr.retryUnresolved()
+
+    expect(
+      mgr.unresolvedSize,
+      "200 passes inside one tick must not spend a 10s budget"
+    ).toBe(1)
+
+    await passes(BUDGET_PASSES + 1)
+    expect(mgr.unresolvedSize, "…but the clock still runs out").toBe(0)
+  })
+
+  it("gives a slow card the full budget however quiet the page is", async () => {
+    const shell = document.createElement("yt-lockup-view-model")
+    document.body.appendChild(shell)
+    mgr.upsert(shell)
+
+    await passes(BUDGET_PASSES - 2)
+    expect(mgr.unresolvedSize, "still inside the budget").toBe(1)
+
+    // Hydrates just before the deadline — the case the burst bug stole.
+    shell.innerHTML = `
+      <a class="yt-lockup-view-model__content-image" href="/watch?v=slow_1"></a>
+      <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>`
+    await passes(3)
+
+    expect(mgr.size, "adopted, not rejected").toBe(1)
+  })
+})
+
+describe("giving up is revocable", () => {
+  it("revives a rejected shell that later becomes a video lockup", async () => {
+    // The interaction that makes rejection dangerous: the static pre-mask rule
+    // occludes a lockup as soon as it holds a video link, and only the content
+    // script lifts that. A shell rejected while link-less, which then hydrates,
+    // would otherwise stay blurred with nothing coming for it.
+    const el = channelLockup()
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+    expect(mgr.unresolvedSize, "rejected").toBe(0)
+
+    el.innerHTML = `
+      <a class="yt-lockup-view-model__content-image" href="/watch?v=revived_1"></a>
+      <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>`
+
+    // What the observer calls on the mutation batch that added the link.
+    mgr.recheckRejected()
+    await passes(2)
+
+    expect(mgr.size, "adopted after all").toBe(1)
+    expect(el.getAttribute("data-boyo"), "and masked").toBe("0")
+  })
+
+  it("leaves a still-unwanted element rejected", async () => {
+    const el = channelLockup()
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+
+    for (let i = 0; i < 50; i++) mgr.recheckRejected()
+
+    expect(mgr.unresolvedSize, "no re-queue, no churn").toBe(0)
+    expect(el.hasAttribute("data-boyo")).toBe(false)
+  })
+
+  it("forgets rejected elements once they leave the DOM", async () => {
+    const el = channelLockup()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+
+    el.remove()
+    mgr.recheckRejected()
+
+    // Nothing observable to assert but the absence of a retained reference, so
+    // assert the next-best thing: a fresh element at the same position is
+    // treated on its own merits rather than inheriting the old one's rejection.
+    const fresh = channelLockup()
+    fresh.innerHTML = '<a href="/watch?v=fresh_1"></a>'
+    document.body.appendChild(fresh)
+    mgr.upsert(fresh)
+    await passes(2)
+
+    expect(mgr.size).toBe(1)
   })
 })
 
