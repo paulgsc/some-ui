@@ -87,21 +87,23 @@ services:
       - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
+      - monitoring-network
     # nginx.https.conf proxies /api/file-host/ to paulgsc/server's `file_host`,
-    # which is another repository's process. No shared network needed to reach
-    # it: FILE_HOST_UPSTREAM defaults to the Docker host gateway, which finds
-    # file_host whether it runs directly on the host or as a container that
-    # publishes its port there - either way it's a normal host-side listener.
-    # The runtime container mounts nginx.https.conf as a template (see the
-    # volume above) so the base nginx:alpine image's own
+    # which is another repository's process. FILE_HOST_UPSTREAM defaults to
+    # the Docker host gateway, for file_host run directly on the host
+    # (`cargo run -p file_host`) - the long-documented default. Joining
+    # monitoring-network (see base.yml) is what makes the other case work
+    # too: a container-run file_host on shared-dev-network that only
+    # `expose`s its port rather than publishing it, where host.docker.internal
+    # can't reach it at all - set FILE_HOST_UPSTREAM=file-host-server:3000
+    # (that repo's service name) for that deployment instead. The runtime
+    # container mounts nginx.https.conf as a template (see the volume above)
+    # so the base nginx:alpine image's own
     # docker-entrypoint.d/20-envsubst-on-templates.sh fills FILE_HOST_UPSTREAM
-    # in before nginx starts, so a container-run file_host with a different
-    # published port (or one reachable some other way entirely) is a plain env
-    # var override, not a compose network to join. Docker Desktop resolves
-    # host.docker.internal on its own; Linux does not, and without the
-    # extra_hosts entry below the study nudge's requests come back as 502s
-    # that look exactly like the backend being down. Harmless where the name
-    # already resolves.
+    # in before nginx starts. Docker Desktop resolves host.docker.internal on
+    # its own; Linux does not, and without the extra_hosts entry below the
+    # study nudge's requests come back as 502s that look exactly like the
+    # backend being down. Harmless where the name already resolves.
     environment:
       FILE_HOST_UPSTREAM: ${FILE_HOST_UPSTREAM:-host.docker.internal:3000}
     extra_hosts:

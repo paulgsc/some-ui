@@ -1,3 +1,12 @@
 networks:
   some-ui-network:
     driver: bridge
+  # Not `external: true`: that requires shared-dev-network to already exist
+  # and makes Compose refuse to start *anything* referencing it otherwise,
+  # which broke plain `docker compose up www` (or the TTS pair) on a fresh
+  # checkout. Left implicit here, Compose creates shared-dev-network itself
+  # the first time any stack (this one or paulgsc/server's) brings it up,
+  # and every later `up` - from either repo - just attaches to the network
+  # that already exists by that name. No prerequisite, no override file.
+  monitoring-network:
+    name: shared-dev-network
