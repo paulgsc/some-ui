@@ -21,22 +21,18 @@
  *        `Masked` (not `ViewState`), so the old session is structurally gone.
  */
 
+import type {
+  HintTone,
+  MetaData,
+  RailStep,
+  TitleData,
+} from "@censor/types/states"
+import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
-import type { SessionId } from "./session"
+export type { MetaData, TitleData }
 
 // ── State variants ────────────────────────────────────────────────────────────
-
-export type MetaData = {
-  readonly channelName: string | null
-  readonly duration: string | null
-  readonly uploadDate: string | null
-}
-
-export type TitleData = {
-  readonly text: string
-  readonly translated: boolean
-}
 
 export type Masked = {
   readonly kind: "masked"
@@ -75,11 +71,11 @@ export type ViewState = Masked | MetaState | TitleState | Revealed | Whitelisted
 // The implementation union handles structural sharing.
 
 export function applyClick(s: Masked, meta: MetaData): MetaState
-// eslint-disable-next-line no-redeclare
+
 export function applyClick(s: MetaState, rawTitle: string): TitleState
-// eslint-disable-next-line no-redeclare
+
 export function applyClick(s: TitleState | Revealed | Whitelisted): typeof s
-// eslint-disable-next-line no-redeclare
+
 export function applyClick(
   s: ViewState,
   payload?: MetaData | string
@@ -163,9 +159,31 @@ export type VeilContent =
       readonly title: TitleData
     }
 
+/**
+ * The hint pill's copy and accent.
+ *
+ * This used to live in the stylesheet as five `content:` strings on
+ * `.boyo-veil::before`, keyed by `[data-boyo]`. Projecting it instead means the
+ * copy for a state sits next to the state, the pill can be a real element that
+ * a container query and a screen reader can both see, and adding a state makes
+ * the exhaustive switch below fail to compile rather than silently rendering a
+ * pill with no text.
+ */
+export type HintModel = {
+  readonly label: string
+  readonly tone: HintTone
+}
+
+/** Which role the veil is playing — occluding the card, or merely tinting it. */
+export type VeilTone = "occluding" | "whitelisted"
+
 export type RenderModel = {
   readonly dataBoyo: DataBoyo
+  readonly veilTone: VeilTone
+  /** `null` while the veil is on its way out. */
+  readonly hint: HintModel | null
   readonly veilContent: VeilContent
+  readonly rail: RailStep
   readonly removeVeil: boolean // true only for "revealed"
 }
 
@@ -183,7 +201,10 @@ export function project(state: ViewState): RenderModel {
     case "masked": {
       return {
         dataBoyo: "0",
+        veilTone: "occluding",
+        hint: { label: "Click to preview", tone: "idle" },
         veilContent: { kind: "empty" },
+        rail: 0,
         removeVeil: false,
       }
     }
@@ -191,7 +212,10 @@ export function project(state: ViewState): RenderModel {
     case "meta": {
       return {
         dataBoyo: "1",
+        veilTone: "occluding",
+        hint: { label: "Click for title", tone: "meta" },
         veilContent: { kind: "meta", meta: state.meta },
+        rail: 1,
         removeVeil: false,
       }
     }
@@ -199,7 +223,10 @@ export function project(state: ViewState): RenderModel {
     case "title": {
       return {
         dataBoyo: "2",
+        veilTone: "occluding",
+        hint: { label: "Double-click to reveal", tone: "title" },
         veilContent: { kind: "title", meta: state.meta, title: state.title },
+        rail: 2,
         removeVeil: false,
       }
     }
@@ -207,7 +234,10 @@ export function project(state: ViewState): RenderModel {
     case "revealed": {
       return {
         dataBoyo: "3",
+        veilTone: "occluding",
+        hint: null,
         veilContent: { kind: "empty" },
+        rail: 2,
         removeVeil: true,
       }
     }
@@ -215,7 +245,10 @@ export function project(state: ViewState): RenderModel {
     case "whitelisted": {
       return {
         dataBoyo: "wl",
+        veilTone: "whitelisted",
+        hint: { label: "Whitelisted", tone: "whitelist" },
         veilContent: { kind: "empty" },
+        rail: 0,
         removeVeil: false,
       }
     }

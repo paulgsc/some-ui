@@ -57,6 +57,43 @@
         padding: 2px 4px;
         font-size: 11px;
       }
+
+      /* The upcoming-feed slider from #973: a horizontal shelf of cards far
+         narrower than a home-feed card. The widths are the point of the
+         fixture — the veil is a container, so these are what its container
+         queries resolve against. */
+      #upcoming-slider {
+        display: flex;
+        gap: 8px;
+        margin-top: 24px;
+        overflow-x: auto;
+      }
+      #upcoming-slider yt-lockup-view-model,
+      #upcoming-slider ytm-shorts-lockup-view-model-v2 {
+        display: block;
+        position: relative;
+        flex: 0 0 auto;
+        width: 168px;
+        min-height: 160px;
+        background: #1f1f1f;
+        border-radius: 8px;
+      }
+      /* Same component, full width — the control for the narrow cards above. */
+      #wide-shelf yt-lockup-view-model {
+        display: block;
+        position: relative;
+        width: 420px;
+        min-height: 260px;
+        margin-top: 24px;
+        background: #1f1f1f;
+        border-radius: 8px;
+      }
+      .lockup-thumb {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #333;
+      }
     </style>
   </head>
   <body>
@@ -146,6 +183,160 @@
           <span>5 days ago</span>
         </div>
       </ytd-rich-item-renderer>
+    </div>
+
+    <!--
+      The upcoming-feed slider from #973.
+
+      These are `yt-lockup-view-model` — YouTube's Lit-era card, which the
+      extension did not track at all, so every card here went unmasked. Three
+      things are being exercised at once:
+
+        1. Two video lockups, which must mask exactly like a Polymer card even
+           though they share none of its markup (no data-video-id, no
+           #video-title, no ytd-channel-name).
+        2. A channel lockup, which is the *same tag* with no watch link. It must
+           NOT be masked — nothing would ever come back to un-mask it.
+        3. A shorts lockup, which has a videoId but no channel anywhere. It must
+           mask on the videoId alone and must not stall waiting for a channel.
+
+      The 168px width is what makes this the overflow case: the meta chip used
+      to carry a 180px min-width, which is wider than the whole card.
+    -->
+    <div id="upcoming-slider">
+      <yt-lockup-view-model id="slider-card-1">
+        <a class="yt-lockup-view-model__content-image" href="/watch?v=lock_aaa">
+          <span class="lockup-thumb"></span>
+        </a>
+        <div class="ytThumbnailOverlayBadgeViewModelHost">
+          <div class="badge-shape-wiz__text">10:11</div>
+        </div>
+        <div class="yt-lockup-metadata-view-model__metadata">
+          <h3>
+            <a
+              class="yt-lockup-metadata-view-model__title"
+              href="/watch?v=lock_aaa"
+            >
+              <span role="text"
+                >An Extremely Long Upcoming Video Title That Has No Business
+                Fitting Inside A Card This Narrow</span
+              >
+            </a>
+          </h3>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <a
+              class="yt-content-metadata-view-model__metadata-text"
+              href="/@UpcomingChannel"
+              >A Rather Long Channel Name</a
+            >
+          </div>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >1.2M views</span
+            >
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >3 days ago</span
+            >
+          </div>
+        </div>
+      </yt-lockup-view-model>
+
+      <yt-lockup-view-model id="slider-card-2">
+        <a class="yt-lockup-view-model__content-image" href="/watch?v=lock_bbb">
+          <span class="lockup-thumb"></span>
+        </a>
+        <div class="ytThumbnailOverlayBadgeViewModelHost">
+          <div class="badge-shape-wiz__text">4:02</div>
+        </div>
+        <div class="yt-lockup-metadata-view-model__metadata">
+          <h3>
+            <a
+              class="yt-lockup-metadata-view-model__title"
+              href="/watch?v=lock_bbb"
+            >
+              <span role="text">Short Title</span>
+            </a>
+          </h3>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <a
+              class="yt-content-metadata-view-model__metadata-text"
+              href="/@AnotherChannel"
+              >AnotherChannel</a
+            >
+          </div>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >12K views</span
+            >
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >1 hour ago</span
+            >
+          </div>
+        </div>
+      </yt-lockup-view-model>
+
+      <!-- Same tag, not a video. Must be left alone. -->
+      <yt-lockup-view-model id="slider-channel-lockup">
+        <a href="/@SomeChannel"><span class="lockup-thumb"></span></a>
+        <div class="yt-lockup-metadata-view-model__metadata">
+          <h3>
+            <a
+              class="yt-lockup-metadata-view-model__title"
+              href="/@SomeChannel"
+            >
+              <span role="text">Some Channel</span>
+            </a>
+          </h3>
+        </div>
+      </yt-lockup-view-model>
+
+      <!-- videoId but no channel, anywhere. Must mask, must not stall. -->
+      <ytm-shorts-lockup-view-model-v2 id="slider-short">
+        <a href="/shorts/short_eee"><span class="lockup-thumb"></span></a>
+        <div class="shortsLockupViewModelHostMetadataTitle">
+          A Short With No Channel Attached
+        </div>
+      </ytm-shorts-lockup-view-model-v2>
+    </div>
+
+    <!-- The control: same component, a card wide enough for the full design. -->
+    <div id="wide-shelf">
+      <yt-lockup-view-model id="wide-card">
+        <a
+          class="yt-lockup-view-model__content-image"
+          href="/watch?v=lock_wide"
+        >
+          <span class="lockup-thumb"></span>
+        </a>
+        <div class="ytThumbnailOverlayBadgeViewModelHost">
+          <div class="badge-shape-wiz__text">21:37</div>
+        </div>
+        <div class="yt-lockup-metadata-view-model__metadata">
+          <h3>
+            <a
+              class="yt-lockup-metadata-view-model__title"
+              href="/watch?v=lock_wide"
+            >
+              <span role="text">A Wide Card With The Very Same Markup</span>
+            </a>
+          </h3>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <a
+              class="yt-content-metadata-view-model__metadata-text"
+              href="/@WideChannel"
+              >WideChannel</a
+            >
+          </div>
+          <div class="yt-content-metadata-view-model__metadata-row">
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >44K views</span
+            >
+            <span class="yt-content-metadata-view-model__metadata-text"
+              >6 days ago</span
+            >
+          </div>
+        </div>
+      </yt-lockup-view-model>
     </div>
 
     <script>
@@ -280,18 +471,103 @@
           return document.querySelectorAll("ytd-rich-item-renderer").length
         },
 
+        /**
+         * Any card the extension may have adopted, of any generation.
+         *
+         * Scoping the helpers to ytd-rich-item-renderer is how the previous
+         * suite could pass while every lockup on the page went unmasked: the
+         * assertions could not see the cards that were broken.
+         */
+        cardEl(videoId) {
+          return document.querySelector(`[data-boyo-vid="${videoId}"]`)
+        },
+
         dataBoyoFor(videoId) {
-          const el = [
-            ...document.querySelectorAll("ytd-rich-item-renderer"),
-          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          const el = window.__FIXTURE__.cardEl(videoId)
           return el ? el.getAttribute("data-boyo") : null
         },
 
         hasVeil(videoId) {
-          const el = [
-            ...document.querySelectorAll("ytd-rich-item-renderer"),
-          ].find((n) => n.getAttribute("data-boyo-vid") === videoId)
+          const el = window.__FIXTURE__.cardEl(videoId)
           return el ? el.querySelector(".boyo-veil") !== null : false
+        },
+
+        /** Has this element been adopted at all? Keyed by id, not videoId. */
+        isMaskedById(elementId) {
+          const el = document.getElementById(elementId)
+          return el ? el.hasAttribute("data-boyo") : false
+        },
+
+        /**
+         * Is the pre-mask occluder currently applied to this element?
+         *
+         * That rule is the only thing hiding a card before the veil mounts, so
+         * "not masked and not occluded" is the leak #973 reported, and "not
+         * masked but still occluded" is the permanent blur the :has() guard
+         * exists to prevent.
+         */
+        isPreMasked(elementId) {
+          const el = document.getElementById(elementId)
+          if (!el) return false
+          return getComputedStyle(el).filter.includes("blur")
+        },
+
+        /** Click the veil over a card, n times, honouring the dblclick gate. */
+        async clickVeil(videoId, times = 1) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          const veil = el && el.querySelector(".boyo-veil")
+          if (!veil) return false
+          for (let i = 0; i < times; i++) {
+            veil.dispatchEvent(
+              new MouseEvent("click", { bubbles: true, cancelable: true })
+            )
+            // Longer than the gate's 300ms window, so each click commits as a
+            // single rather than collapsing into a dblclick.
+            await new Promise((r) => setTimeout(r, 380))
+          }
+          return true
+        },
+
+        /**
+         * Does the veil's content fit inside the card?
+         *
+         * The #973 overflow, measured rather than inferred: every node the
+         * extension injected must sit within the card's own border box.
+         */
+        veilOverflow(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          const veil = el && el.querySelector(".boyo-veil")
+          if (!veil) return null
+          const card = el.getBoundingClientRect()
+          let worst = 0
+          for (const node of veil.querySelectorAll("*")) {
+            const r = node.getBoundingClientRect()
+            if (r.width === 0 && r.height === 0) continue
+            worst = Math.max(
+              worst,
+              card.left - r.left,
+              r.right - card.right,
+              card.top - r.top,
+              r.bottom - card.bottom
+            )
+          }
+          // Sub-pixel rounding is not an overflow.
+          return Math.round(worst * 100) / 100
+        },
+
+        /** Which meta rows are actually painted in this card's veil. */
+        visibleMeta(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          const veil = el && el.querySelector(".boyo-veil")
+          if (!veil) return null
+          const shown = (sel) => {
+            const n = veil.querySelector(sel)
+            return n ? getComputedStyle(n).display !== "none" : false
+          }
+          return {
+            channel: shown(".boyo-meta-channel"),
+            sub: shown(".boyo-meta-sub"),
+          }
         },
       }
     </script>

@@ -27,9 +27,13 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
     if (user) return asChannelId(`@${user}`)
   }
 
-  // Fallback: visible channel name text (less stable but better than null)
+  // Fallback: visible channel name text (less stable but better than null).
+  // The second selector is the Lit-era lockup's metadata row (#973); a lockup
+  // usually does carry an /@handle anchor, but a shorts lockup carries none at
+  // all, so without this every shorts card stayed channel-less forever.
   const node = el.querySelector(
-    "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string"
+    "ytd-channel-name yt-formatted-string, #channel-name yt-formatted-string, " +
+      'a[class*="yt-content-metadata-view-model__metadata-text"]'
   )
 
   if (!node) return null

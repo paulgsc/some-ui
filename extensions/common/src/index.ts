@@ -11,9 +11,13 @@
  * - {@link ./lib/layers} — overlay-root / page-layer DOM helpers
  * - {@link ./lib/migration-ledger} — per-workspace, isolated, idempotent migration ledger
  * - {@link ./lib/keybindings} — keybinding/command typestate (ModifierSet, KeyBinding, CommandRegistry, attachKeyBindings)
+ * - {@link ./lib/click-gate} — click/double-click disambiguation gate
+ * - {@link ./lib/session} — opaque monotonic lifecycle token (SessionId, mkSession)
  */
 
 export * from "./lib/layers"
 export * from "./lib/migration-ledger"
 export * from "./lib/keybindings/index"
+export * from "./lib/click-gate"
+export * from "./lib/session"
 export * from "./utils"

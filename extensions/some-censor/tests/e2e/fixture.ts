@@ -143,7 +143,7 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
     await context.addInitScript(
       /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unsafe-argument */
       () => {
-        document.addEventListener("__boyo_debug_update__", (e: any) => {
+        document.addEventListener("boyo:debug-update", (e: any) => {
           window.__BOYO_DEBUG__ = JSON.parse(
             e.detail
           ) as typeof window.__BOYO_DEBUG__

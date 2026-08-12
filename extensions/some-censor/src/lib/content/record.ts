@@ -15,8 +15,9 @@
  *        this; the type makes the contract visible.
  */
 
+import type { SessionId } from "@some-extension/common"
+
 import type { FullyExtracted, VideoOnlyExtracted } from "./extract/index"
-import type { SessionId } from "./session"
 
 export type VideoRecord = {
   readonly videoId: string

@@ -91,7 +91,7 @@ test("D1: page is reachable and main world is writable", async ({
    */
   await page.evaluate(() => {
     document.dispatchEvent(
-      new CustomEvent("__boyo_debug_update__", {
+      new CustomEvent("boyo:debug-update", {
         detail: JSON.stringify({
           tick: 999,
           phase: "running",
@@ -169,31 +169,30 @@ test("D2: content script is injecting and running", async ({ fixture }) => {
   console.log("__BOYO_LOADED__:", loaded)
 
   /**
-   * Detect whether extension CSS injected successfully.
+   * Detect whether extension CSS arrived.
    *
-   * Firefox extension failures commonly show up as:
+   * Extension failures commonly show up as:
    *   - script injected
    *   - stylesheet missing
+   *
+   * This probes *computed style*, not `document.styleSheets`. A stylesheet
+   * loaded from `content_scripts[].css` is injected by the browser into its own
+   * cascade origin and does not appear in `document.styleSheets` at all — the
+   * enumeration only ever found our rules back when the bundle also shipped a
+   * JS-injected `<style>` tag, which is a real FOUC bug (the tag lands after
+   * first paint, so cards flash unmasked) and no longer happens: the stylesheet
+   * is now referenced from the manifest alone.
+   *
+   * Reading a computed value is also the stronger assertion. The old check
+   * proved a sheet containing the substring "boyo" existed somewhere; this
+   * proves a BOYO rule actually matched a BOYO element and won.
    */
   const hasStyle = await page.evaluate(() => {
-    const sheets = Array.from(document.styleSheets)
-
-    return sheets.some((sheet) => {
-      try {
-        return (
-          sheet.cssRules.length > 0 &&
-          Array.from(sheet.cssRules).some((rule) =>
-            rule.cssText.includes("boyo")
-          )
-        )
-      } catch {
-        /**
-         * Accessing cross-origin stylesheets can throw.
-         * Ignore inaccessible sheets.
-         */
-        return false
-      }
-    })
+    const veil = document.querySelector(".boyo-veil")
+    if (!(veil instanceof HTMLElement)) return false
+    const style = getComputedStyle(veil)
+    // Both come from the extension stylesheet and neither is a UA default.
+    return style.position === "absolute" && style.backgroundColor !== ""
   })
 
   console.log("BOYO CSS injected:", hasStyle)
