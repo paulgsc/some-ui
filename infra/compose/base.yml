@@ -10,3 +10,4 @@ networks:
   # that already exists by that name. No prerequisite, no override file.
   monitoring-network:
     name: shared-dev-network
+    external: true
