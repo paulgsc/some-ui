@@ -88,20 +88,20 @@ services:
     networks:
       - some-ui-network
     # nginx.https.conf proxies /api/file-host/ to paulgsc/server's `file_host`,
-    # which is another repository's process and normally runs on the host rather
-    # than on some-ui-network. FILE_HOST_UPSTREAM defaults to the Docker host
-    # gateway, which is what a host-run file_host needs; the runtime container
-    # mounts nginx.https.conf as a template (see the volume above) so the base
-    # nginx:alpine image's own docker-entrypoint.d/20-envsubst-on-templates.sh
-    # fills it in before nginx starts. Docker Desktop resolves
+    # which is another repository's process. No shared network needed to reach
+    # it: FILE_HOST_UPSTREAM defaults to the Docker host gateway, which finds
+    # file_host whether it runs directly on the host or as a container that
+    # publishes its port there - either way it's a normal host-side listener.
+    # The runtime container mounts nginx.https.conf as a template (see the
+    # volume above) so the base nginx:alpine image's own
+    # docker-entrypoint.d/20-envsubst-on-templates.sh fills FILE_HOST_UPSTREAM
+    # in before nginx starts, so a container-run file_host with a different
+    # published port (or one reachable some other way entirely) is a plain env
+    # var override, not a compose network to join. Docker Desktop resolves
     # host.docker.internal on its own; Linux does not, and without the
     # extra_hosts entry below the study nudge's requests come back as 502s
     # that look exactly like the backend being down. Harmless where the name
     # already resolves.
-    #
-    # infra/compose/monitoring.yml overrides FILE_HOST_UPSTREAM to
-    # file-host-server:3000 for deployments running file_host as a container
-    # on shared-dev-network instead of on the host - see that file.
     environment:
       FILE_HOST_UPSTREAM: ${FILE_HOST_UPSTREAM:-host.docker.internal:3000}
     extra_hosts:
