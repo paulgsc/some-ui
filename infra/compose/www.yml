@@ -87,6 +87,7 @@ services:
       - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
+      - monitoring-network
     # nginx.https.conf proxies /api/file-host/ to paulgsc/server's `file_host`,
     # which is another repository's process and normally runs on the host rather
     # than on some-ui-network. Docker Desktop resolves host.docker.internal on
