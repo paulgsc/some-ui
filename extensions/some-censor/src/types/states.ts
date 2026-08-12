@@ -1,33 +1,17 @@
 /**
- * Discriminated union types for all state machines.
+ * Session-free payload types shared by the extract layer and the FSM.
  * Zero runtime — imported as `import type` everywhere.
+ *
+ * Scope note: the *state union* itself (Masked/MetaState/… and the transition
+ * functions over them) lives in `lib/content/fsm.ts`, because every state there
+ * carries a SessionId and that is what makes cross-session transitions
+ * unrepresentable (fsm.ts F1). This module previously carried a second,
+ * session-free copy of that union — structurally assignable to the real one, so
+ * the compiler could not tell them apart and a state could silently lose its
+ * session on the way through a signature. Only the leaf payloads live here now:
+ * they are what the extract layer produces, and the extract layer has no
+ * session to carry.
  */
-
-import type { ChannelId, VideoId } from "./ids"
-
-// ── Node lifecycle (Resolver output) ──────────────────────────────────────────
-
-export type Unresolved = {
-  readonly kind: "unresolved"
-  readonly el: HTMLElement
-}
-
-export type Resolved = {
-  readonly kind: "resolved"
-  readonly el: HTMLElement
-  readonly videoId: VideoId
-  readonly channelId: ChannelId
-}
-
-export type Failed = {
-  readonly kind: "failed"
-  readonly el: HTMLElement
-  readonly reason: "missing-video-id" | "missing-channel-id"
-}
-
-export type NodeState = Unresolved | Resolved | Failed
-
-// ── View / UI FSM ─────────────────────────────────────────────────────────────
 
 export type MetaData = {
   readonly channelName: string | null
@@ -40,27 +24,16 @@ export type TitleData = {
   readonly translated: boolean
 }
 
-export type Masked = { readonly kind: "masked" }
-export type MetaState = { readonly kind: "meta"; readonly meta: MetaData }
-export type TitleState = {
-  readonly kind: "title"
-  readonly meta: MetaData
-  readonly title: TitleData
-}
-export type Revealed = { readonly kind: "revealed" }
-export type Whitelisted = { readonly kind: "whitelisted" }
-
-export type ViewState = Masked | MetaState | TitleState | Revealed | Whitelisted
-
+/** Committed interactions, as emitted by the ClickGate and the whitelist path. */
 export type FsmEvent = "CLICK" | "DBLCLICK" | "WHITELIST"
 
-// ── DOM mount state ───────────────────────────────────────────────────────────
+/**
+ * Accent of the hint pill. Semantic, not a colour: the FSM projects a tone and
+ * `veil-styles.ts` decides what indigo, violet or mint means for it. Lives here
+ * rather than in fsm.ts so the presentation layer can name a tone without
+ * importing the state machine.
+ */
+export type HintTone = "idle" | "meta" | "title" | "whitelist"
 
-export type Mounted = { readonly kind: "mounted"; readonly veil: HTMLElement }
-export type Unmounted = { readonly kind: "unmounted"; readonly veil: null }
-export type DomState = Mounted | Unmounted
-
-export type ControllerState =
-  | { kind: "booting" }
-  | { kind: "active"; enabled: boolean }
-  | { kind: "degraded"; reason: string; enabled: boolean }
+/** How far along the disclosure ladder the progress rail should read. */
+export type RailStep = 0 | 1 | 2

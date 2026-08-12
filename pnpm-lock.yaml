@@ -513,15 +513,24 @@ importers:
       '@some-ui/eslint-kit':
         specifier: workspace:*
         version: link:../../packages/eslint
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../packages/some-styles
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/firefox-webext-browser':
         specifier: ^120.0.4
         version: 120.0.5
+      '@unocss/cli':
+        specifier: ^66.0.0
+        version: 66.7.3
       eslint:
         specifier: ^10.8.0
         version: 10.8.0(jiti@2.7.0)
+      unocss:
+        specifier: ^66.0.0
+        version: 66.7.3(vite@8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
       vite:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)

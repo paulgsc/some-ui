@@ -107,7 +107,7 @@ function _publish(): void {
 
   // Bridge to main world so page.evaluate() can read it
   document.dispatchEvent(
-    new CustomEvent("__boyo_debug_update__", {
+    new CustomEvent("boyo:debug-update", {
       detail: JSON.stringify(snapObj),
     })
   )

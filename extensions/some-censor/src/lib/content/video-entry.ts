@@ -29,9 +29,9 @@
  *             it is monotonic: empty → concrete, never concrete → other.
  */
 
-import { assertNever } from "@some-extension/common"
+import type { FsmEvent } from "@censor/types/states"
+import { assertNever, ClickGate } from "@some-extension/common"
 
-import { ClickGate } from "./click-gate"
 import { DomHandle } from "./dom-handle"
 import { extractMeta, extractTitle } from "./extract/index"
 import type { ViewState } from "./fsm"
@@ -48,7 +48,7 @@ type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
 
 export class VideoEntry {
   private _record: VideoRecord
-  readonly gate: ClickGate
+  readonly gate: ClickGate<FsmEvent>
 
   private _view: ViewState
   private _handle: DomHandle
@@ -60,7 +60,10 @@ export class VideoEntry {
     this._view = isWhitelisted
       ? { kind: "whitelisted", session: record.session }
       : { kind: "masked", session: record.session }
-    this.gate = new ClickGate(this._onCommit.bind(this))
+    this.gate = new ClickGate<FsmEvent>(this._onCommit.bind(this), {
+      single: "CLICK",
+      double: "DBLCLICK",
+    })
 
     // Cache videoId on element for O(1) event delegation
     el.dataset["boyoVid"] = record.videoId
@@ -161,7 +164,7 @@ export class VideoEntry {
 
   // ── FSM dispatch ──────────────────────────────────────────────────────────
 
-  private _onCommit(event: "CLICK" | "DBLCLICK" | "WHITELIST"): void {
+  private _onCommit(event: FsmEvent): void {
     let next: ViewState
 
     switch (event) {

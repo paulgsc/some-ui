@@ -32,16 +32,31 @@ import { ext } from "@censor/platform/content"
 import type { EntryDebugInfo } from "@censor/types/debug"
 import type { ChannelId, VideoId } from "@censor/types/ids"
 import { asVideoId } from "@censor/types/ids"
+import type { SessionId } from "@some-extension/common"
+import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { SEL } from "./selectors"
-import type { SessionId } from "./session"
-import { mkSession } from "./session"
+import { isVideoCard, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
+
+/**
+ * How many retry passes an element gets before it is dropped.
+ *
+ * The retry loop runs at 500ms, so this is a ~10s hydration budget — generous
+ * for a card YouTube is still filling in, and finite for one that will never
+ * resolve. Both queues need the bound for the same reason (#973): the tags
+ * added for the newer feeds are polymorphic. `yt-lockup-view-model` also
+ * renders channels and playlists, which have no videoId and would sit in
+ * `_unresolved` forever; a shorts lockup has a videoId but frequently no
+ * channel link at all, so it would sit in `_channelPending` forever. Either
+ * one alone is enough to keep a 500ms interval — and the full-document
+ * `scan()` it drives — running for the lifetime of the tab (Charter §8).
+ */
+const MAX_RESOLVE_ATTEMPTS = 20
 
 export class VideoManager {
   // Primary lookup: videoId → entry
@@ -50,6 +65,19 @@ export class VideoManager {
   private readonly _elToVid: WeakMap<HTMLElement, VideoId> = new WeakMap()
   // Failed-resolution queue
   private readonly _unresolved: Map<string, HTMLElement> = new Map()
+  // Retry budget per queued element, keyed alongside _unresolved /
+  // _channelPending. Bounded so a card that can never resolve cannot keep the
+  // retry loop alive; see MAX_RESOLVE_ATTEMPTS.
+  private readonly _attempts: Map<string, number> = new Map()
+  // Elements whose budget is spent. Without this, giving up is not sticky: the
+  // retry loop calls scan(), scan() re-upserts every matching element, and a
+  // re-queued element starts a fresh budget — so the queue would empty and
+  // immediately refill, forever. Weak so a card leaving the DOM is collectable.
+  private readonly _rejected: WeakSet<HTMLElement> = new WeakSet()
+  // Same, for channel backfill: videoIds we have stopped looking for a channel
+  // for. Keyed by videoId (not element) because that is what _channelPending is
+  // keyed by, and cleared on reset() since a new session re-derives entries.
+  private readonly _channelGaveUp: Set<VideoId> = new Set()
   // Mounted-but-channel-pending: videoId → element.  These entries are already
   // masked in the DOM; the retry loop backfills their channelId.  Tracked
   // separately from _unresolved (which is "not even maskable yet") so the retry
@@ -125,6 +153,8 @@ export class VideoManager {
     this._byVideo.clear()
     this._unresolved.clear()
     this._channelPending.clear()
+    this._attempts.clear()
+    this._channelGaveUp.clear()
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -148,10 +178,21 @@ export class VideoManager {
   upsert(el: HTMLElement): void {
     if (this._phase !== "running") return
 
+    // A `yt-lockup-view-model` matched by SEL may currently be a channel, a
+    // playlist, or a shell YouTube has not filled in yet. Extraction would scan
+    // every anchor in its subtree to conclude nothing, on every pass, for every
+    // such tile on the page — so the cheap structural check runs first and the
+    // element goes straight onto the (bounded) retry queue instead. If it later
+    // hydrates into a video lockup, the retry loop picks it up there.
+    if (!isVideoCard(el)) {
+      this._enqueueUnresolved(el)
+      return
+    }
+
     const extracted = tryExtract(el)
 
     if (extracted.kind === "full" || extracted.kind === "video-only") {
-      this._unresolved.delete(elementKey(el))
+      this._dequeueUnresolved(elementKey(el))
 
       // Detect scroll-virtualizer element reuse: same HTMLElement, new videoId.
       // data-boyo-vid is set at mount time and cleared at destroy().
@@ -169,7 +210,7 @@ export class VideoManager {
         if (oldEntry) {
           oldEntry.destroy()
           this._byVideo.delete(rawAsPrevId)
-          this._channelPending.delete(rawAsPrevId)
+          this._dropChannelPending(rawAsPrevId)
         }
       }
 
@@ -178,7 +219,7 @@ export class VideoManager {
         // than tearing it down (avoids a mask flicker on the fast path).
         const pending = this._byVideo.get(currentId)
         if (pending && !pending.hasChannel) {
-          this._channelPending.delete(currentId)
+          this._dropChannelPending(currentId)
           void this._backfill(pending, extracted.channelId)
         } else {
           void this._promote(el, currentId, extracted.channelId)
@@ -189,11 +230,39 @@ export class VideoManager {
       }
       this._maybeStopRetryLoop()
     } else {
-      const key = elementKey(el)
-      const wasEmpty = this._unresolved.size === 0
-      this._unresolved.set(key, el)
-      if (wasEmpty) this._ensureRetryLoop()
+      this._enqueueUnresolved(el)
     }
+  }
+
+  /**
+   * Queue an element for a later resolution attempt, under the shared budget.
+   *
+   * Re-queuing an element that is already queued keeps its existing attempt
+   * count — otherwise a card the observer happens to touch every batch would
+   * have its budget reset forever and the bound would not bind.
+   */
+  private _enqueueUnresolved(el: HTMLElement): void {
+    if (this._rejected.has(el)) return
+    const key = elementKey(el)
+    if (this._attempts.get(key) === undefined) this._attempts.set(key, 0)
+    const wasEmpty = this._unresolved.size === 0
+    this._unresolved.set(key, el)
+    if (wasEmpty) this._ensureRetryLoop()
+  }
+
+  private _dequeueUnresolved(key: string): void {
+    this._unresolved.delete(key)
+    this._attempts.delete(key)
+  }
+
+  /**
+   * Charge one attempt against `key`. Returns true when the budget is spent,
+   * at which point the caller drops the entry.
+   */
+  private _budgetSpent(key: string): boolean {
+    const next = (this._attempts.get(key) ?? 0) + 1
+    this._attempts.set(key, next)
+    return next >= MAX_RESOLVE_ATTEMPTS
   }
 
   /**
@@ -210,36 +279,89 @@ export class VideoManager {
   }
 
   retryUnresolved(): void {
+    // Dropping an entry changes `unresolved`, which the debug layer publishes
+    // and the e2e suite polls. Without this the snapshot reports a queue that
+    // drained several seconds earlier, because nothing else on these paths
+    // publishes — the observable state and the real state disagree exactly
+    // when a test is trying to prove the queue converged.
+    let changed = false
+
     for (const [key, el] of this._unresolved) {
       if (!el.isConnected) {
-        this._unresolved.delete(key)
+        this._dequeueUnresolved(key)
+        changed = true
         continue
       }
-      const extracted = tryExtract(el)
+      const extracted = isVideoCard(el)
+        ? tryExtract(el)
+        : ({ kind: "raw", videoId: null, channelId: null } as const)
       if (extracted.kind === "full") {
-        this._unresolved.delete(key)
+        this._dequeueUnresolved(key)
         void this._promote(el, extracted.videoId, extracted.channelId)
       } else if (extracted.kind === "video-only") {
         // Maskable now — mount provisionally; channel resolves on a later pass.
-        this._unresolved.delete(key)
+        this._dequeueUnresolved(key)
         this._promoteProvisional(el, extracted.videoId)
+      } else if (!isVideoCard(el) && this._budgetSpent(key)) {
+        // Out of budget, and still not video-shaped: a channel or playlist
+        // lockup. Give up on it for good. This is safe precisely because it is
+        // not video-shaped — the pre-mask rule's `:has()` guard means the
+        // stylesheet is not occluding it either, so nothing is left blurred
+        // behind us.
+        //
+        // A *video-shaped* element is deliberately exempt from the budget: the
+        // stylesheet IS occluding it, so giving up would leave it blurred with
+        // nothing coming to lift the blur. In practice it cannot spin either —
+        // being video-shaped means it has a watch or shorts href, which is the
+        // very thing extractVideoId reads.
+        this._dequeueUnresolved(key)
+        this._rejected.add(el)
+        changed = true
       }
     }
 
     // Backfill channel for already-masked provisional entries.
     for (const [videoId, el] of this._channelPending) {
       if (!el.isConnected) {
-        this._channelPending.delete(videoId)
+        this._dropChannelPending(videoId)
+        changed = true
         continue
       }
       const extracted = tryExtract(el)
       if (extracted.kind === "full") {
-        this._channelPending.delete(videoId)
+        this._dropChannelPending(videoId)
         const entry = this._byVideo.get(videoId)
         if (entry) void this._backfill(entry, extracted.channelId)
+      } else if (this._budgetSpent(channelKey(videoId))) {
+        // No channel is coming (a shorts lockup exposes none). The entry stays
+        // mounted and masked — masking only ever needed the videoId. It simply
+        // never participates in channel whitelisting, which is correct: we do
+        // not know whose channel it is.
+        this._dropChannelPending(videoId)
+        this._channelGaveUp.add(videoId)
+        changed = true
       }
     }
+
+    if (changed) publish()
     this._maybeStopRetryLoop()
+  }
+
+  /**
+   * Queue a mounted entry for channel backfill, unless we have already spent
+   * its budget. The guard is what makes give-up stick: `scan()` re-upserts
+   * every card each pass, and a card with no channel takes the provisional
+   * path again every time.
+   */
+  private _trackChannelPending(videoId: VideoId, el: HTMLElement): void {
+    if (this._channelGaveUp.has(videoId)) return
+    this._channelPending.set(videoId, el)
+    this._ensureRetryLoop()
+  }
+
+  private _dropChannelPending(videoId: VideoId): void {
+    this._channelPending.delete(videoId)
+    this._attempts.delete(channelKey(videoId))
   }
 
   /**
@@ -256,7 +378,7 @@ export class VideoManager {
       if (!entry.isConnected) {
         entry.destroy()
         this._byVideo.delete(videoId)
-        this._channelPending.delete(videoId)
+        this._dropChannelPending(videoId)
       }
     }
     publish()
@@ -376,7 +498,7 @@ export class VideoManager {
     const existing = this._byVideo.get(videoId)
     if (existing?.record.session === this._session) {
       existing.repair()
-      if (!existing.hasChannel) this._channelPending.set(videoId, el)
+      if (!existing.hasChannel) this._trackChannelPending(videoId, el)
       return
     }
     existing?.destroy()
@@ -385,7 +507,7 @@ export class VideoManager {
     if (prevVid !== undefined && prevVid !== videoId) {
       this._byVideo.get(prevVid)?.destroy()
       this._byVideo.delete(prevVid)
-      this._channelPending.delete(prevVid)
+      this._dropChannelPending(prevVid)
     }
 
     const record = makeProvisionalRecord(
@@ -395,7 +517,7 @@ export class VideoManager {
     this._elToVid.set(el, videoId)
     const entry = new VideoEntry(record, el, /* isWhitelisted */ false)
     this._byVideo.set(videoId, entry)
-    this._channelPending.set(videoId, el)
+    this._trackChannelPending(videoId, el)
     entry.mount()
     publish()
   }
@@ -455,6 +577,14 @@ export class VideoManager {
       this._retryInterval = null
     }
   }
+}
+
+/**
+ * Attempt-budget key for a channel backfill. Namespaced away from
+ * elementKey()'s output so a videoId can never collide with an element key.
+ */
+function channelKey(videoId: VideoId): string {
+  return `c:${videoId}`
 }
 
 function elementKey(el: HTMLElement): string {

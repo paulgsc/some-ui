@@ -23,6 +23,16 @@ export { SEL } from "./selectors"
  * makes the unresolved registry event-driven rather than time-bounded.
  * Any DOM activity is a signal that YouTube may have finished hydrating
  * a previously unresolved element.
+ *
+ * Signal (1) covers the Polymer renderers only: the Lit-era lockups added in
+ * #973 never set data-video-id. A lockup is added as a shell and filled in
+ * afterwards, so the mutation that makes it a *video* lockup is an insertion
+ * deep inside a card the observer has already seen — and re-deriving the
+ * enclosing card with `closest()` on every childList batch would mean walking
+ * the tree for every mutation YouTube's player makes, which is most of them.
+ * Instead the shell is adopted by signal (2) and parked in the manager's
+ * unresolved queue, where the retry loop re-checks it under a bounded budget.
+ * That reuses machinery that already exists and costs nothing per mutation.
  */
 export function startObserver(mgr: VideoManager): MutationObserver {
   const obs = new MutationObserver((mutations) => {

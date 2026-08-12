@@ -1,0 +1,168 @@
+/* ============================================================
+   BOYO — Purposeful Feed  |  the irreducible layer
+
+   Everything that styles an element BOYO *builds* lives in
+   src/lib/content/veil-styles.ts as UnoCSS utilities, and is appended
+   below this file at build time. What is left here is the set of rules
+   that cannot be expressed as a class on our own element:
+
+     1. Design tokens. The utilities reference these by name
+        (`text-[rgb(var(--boyo-ink))]`), so the ramp stays one edit.
+     2. The pre-mask occluder — rules that target *vendor* elements,
+        which we do not construct and must not add classes to.
+     3. Keyframes, which are @-rules rather than declarations.
+
+   State machine, driven by data-boyo on the renderer element:
+     "0" masked   "1" meta   "2" title   "3" revealed   "wl" whitelisted
+   ============================================================ */
+
+:root {
+  /* UnoCSS spacing scale — normally emitted by preflight, which a content
+     script must not ship (it would repaint YouTube). */
+  --spacing: 0.25rem;
+  --boyo-ink: 232 234 240; /* near-white text          */
+  --boyo-dim: 168 176 196; /* muted captions           */
+  --boyo-glass: 15 15 18; /* veil base (matches yt)   */
+  --boyo-indigo: 129 140 248; /* meta accent              */
+  --boyo-violet: 167 139 250; /* title accent             */
+  --boyo-mint: 52 211 153; /* whitelist accent         */
+  --boyo-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --boyo-font: "Roboto", "SF Pro Text", system-ui, sans-serif;
+}
+
+/* ============================================================
+   PRE-MASK OCCLUSION — SAFETY INVARIANT, NOT DECORATION
+   ------------------------------------------------------------
+   This is the most important rule in the file. It is the static-CSS
+   guarantee that a card is OCCLUDED from the instant it paints until the
+   content script proves it has taken ownership by writing data-boyo.
+
+   The JS handover can fail open-endedly: the content script may never load,
+   may throw during bootstrap, or may never resolve this particular card. In
+   ALL of those failure modes this rule is the ONLY thing occluding the
+   thumbnail/title — there is no veil yet, because the veil is injected by JS.
+
+   Therefore this MUST be a true occluder, not a "pending" affordance. The
+   blur radius and brightness floor are deliberately strong enough that the
+   thumbnail content is unreadable. When JS does take over, [data-boyo]
+   replaces this with the glass veil — an equal-or-stronger occlusion — so the
+   handover is never a reveal, only a swap between two occluding layers.
+
+   DO NOT soften this into a legible dim. A readable pre-mask state exposes the
+   card during the (possibly infinite) gap before JS resolves it, which defeats
+   the extension's entire reason for existing.
+
+   The selector list is derived from CARD_SELECTORS in lib/content/selectors.ts
+   and is asserted equal to PREMASK_SELECTOR by selectors.test.ts — the two
+   drifting apart is #973. `:has()` on the polymorphic lockup tags is what keeps
+   this rule from occluding a channel or playlist tile that no content script
+   will ever come back for; see selectors.ts for the full argument.
+   ============================================================ */
+ytd-video-renderer:not([data-boyo]),
+ytd-rich-item-renderer:not([data-boyo]),
+ytd-grid-video-renderer:not([data-boyo]),
+ytd-compact-video-renderer:not([data-boyo]),
+ytd-playlist-panel-video-renderer:not([data-boyo]),
+ytd-playlist-video-renderer:not([data-boyo]),
+ytd-reel-item-renderer:not([data-boyo]),
+yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    [data-boyo]
+  ),
+ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    [data-boyo]
+  ),
+ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    [data-boyo]
+  ),
+ytd-structured-description-video-lockup-renderer:has(
+    a[href*="/watch"],
+    a[href*="/shorts/"]
+  ):not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* ----------------------------------------------------------
+   HANDOVER + POSITION CONTEXT
+
+   Once JS has taken ownership (data-boyo present) the veil occludes
+   instead, so the static filter is lifted and the veil's own backdrop
+   becomes what the user sees. The same rule establishes the local
+   stacking context the veil anchors to, which is what keeps it over the
+   card and never over a real YouTube dialog.
+
+   Targets vendor elements, so it cannot be a utility class: we do not
+   own these nodes and adding classes to them would be a mutation of the
+   host page's markup (Charter §0).
+   ---------------------------------------------------------- */
+[data-boyo] {
+  filter: none !important;
+  isolation: isolate;
+  opacity: 1 !important;
+  overflow: hidden !important;
+  pointer-events: auto;
+  position: relative !important;
+}
+
+/* ----------------------------------------------------------
+   BOX MODEL — the one line of preflight a content script may ship.
+
+   UnoCSS's preflight normally sets `box-sizing: border-box` globally, and
+   the utility scale assumes it: `w-full` plus `p-2` plus a 1px border is a
+   box that fits its parent only under border-box. We cannot ship that
+   preflight — it would restyle YouTube — so the same rule is scoped to the
+   veil's own subtree, which contains nothing but nodes this extension
+   built.
+
+   Without it the meta chip painted ~5px past the edge of a 168px card,
+   which is #973's overflow returning by a different route than the
+   `min-width` that originally caused it.
+   ---------------------------------------------------------- */
+.boyo-veil,
+.boyo-veil * {
+  box-sizing: border-box;
+}
+
+/* ----------------------------------------------------------
+   MOTION — @keyframes are @-rules, not declarations, so they
+   stay here; the utilities reference them by name via
+   `animate-[boyo-rise_…]`.
+   ---------------------------------------------------------- */
+
+@keyframes boyo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes boyo-thaw {
+  to {
+    backdrop-filter: blur(0);
+    opacity: 0;
+  }
+}
+
+@keyframes boyo-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* The reduced-motion contract has to reach *every* BOYO node regardless of
+   which utilities it happens to carry, so it is written once against the
+   namespace rather than repeated as a variant on each class. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="boyo-"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
