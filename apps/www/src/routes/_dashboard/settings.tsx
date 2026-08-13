@@ -30,7 +30,7 @@ import { toast } from "sonner"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { UserSettings } from "@/lib/tenant"
-import { useSettings, useUpdateSettings } from "@/lib/tenant"
+import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
@@ -259,5 +259,10 @@ const SettingsRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/settings")({
+  // See `sessions/$sessionId.tsx`'s loader for why this is a non-awaited
+  // prefetch and not `ensureQueryData`: a head start, never a gate.
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(settingsQuery)
+  },
   component: SettingsRoute,
 })

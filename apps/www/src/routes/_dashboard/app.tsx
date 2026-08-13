@@ -13,7 +13,12 @@ import { ArrowRight, Play, Sparkles } from "lucide-react"
 import { formatRelativeTime } from "some-ui-utils"
 
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
-import { useProfile, useSessions } from "@/lib/tenant"
+import {
+  profileQuery,
+  sessionsQuery,
+  useProfile,
+  useSessions,
+} from "@/lib/tenant"
 import { ActivityLauncher } from "@/components/activity/activity-launcher"
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
@@ -159,5 +164,13 @@ const DashboardHome = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/app")({
+  // Both of this route's queries, started together. `ProfileSummary` and
+  // `RecentSessions` are siblings, so their two requests were already
+  // concurrent with each other - what they were waiting on was this component
+  // rendering at all. See `$sessionId.tsx`'s loader for the prefetch rationale.
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(profileQuery)
+    void context.queryClient.prefetchQuery(sessionsQuery)
+  },
   component: DashboardHome,
 })

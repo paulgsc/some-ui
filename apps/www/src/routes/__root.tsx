@@ -1,8 +1,19 @@
 import { TanstackDevtools } from "@tanstack/react-devtools"
-import { createRootRoute, Outlet } from "@tanstack/react-router"
+import type { QueryClient } from "@tanstack/react-query"
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
-export const Route = createRootRoute({
+/**
+ * What every route's `loader` is handed. The `queryClient` is the app's single
+ * client (`providers/tanstack-query.tsx`), passed in at `createRouter` so a
+ * loader can prefetch into the same cache the components read from — the
+ * router's own type checking is what guarantees the two cannot drift apart.
+ */
+export type RouterContext = {
+  queryClient: QueryClient
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => (
     <>
       <Outlet />

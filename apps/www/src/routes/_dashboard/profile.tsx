@@ -22,7 +22,7 @@ import { toast } from "sonner"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import type { TopikLevel, UserProfile } from "@/lib/tenant"
-import { useProfile, useUpdateProfile } from "@/lib/tenant"
+import { profileQuery, useProfile, useUpdateProfile } from "@/lib/tenant"
 
 const AVATAR_OPTIONS: ReadonlyArray<string> = [
   "🙂",
@@ -157,5 +157,10 @@ const ProfileRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/profile")({
+  // See `sessions/$sessionId.tsx`'s loader for why this is a non-awaited
+  // prefetch and not `ensureQueryData`: a head start, never a gate.
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(profileQuery)
+  },
   component: ProfileRoute,
 })

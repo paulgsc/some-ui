@@ -23,6 +23,7 @@ import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
+  sessionsQuery,
   useDeleteManySessions,
   useDeleteSession,
   useDuplicateSession,
@@ -430,5 +431,10 @@ const SessionsRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/")({
+  // See `$sessionId.tsx`'s loader for why this is a non-awaited prefetch and
+  // not `ensureQueryData`: a head start, never a gate.
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(sessionsQuery)
+  },
   component: SessionsRoute,
 })

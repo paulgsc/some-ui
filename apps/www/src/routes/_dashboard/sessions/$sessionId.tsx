@@ -8,7 +8,7 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { useSession } from "@/lib/tenant"
+import { sessionQuery, useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
 
 const PlayerSkeleton = (): JSX.Element => (
@@ -65,5 +65,20 @@ const SessionPlayerRoute = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({
+  // Starts the session fetch when the router starts the navigation - on hover,
+  // given `defaultPreload: "intent"` - instead of after this component has
+  // rendered and mounted. That ordering was the whole cost: the layout above
+  // had to render before the effect below could ask for anything.
+  //
+  // Not awaited, and `prefetchQuery` rather than `ensureQueryData`, so this
+  // stays a pure head start: navigation is never held up by a slow or failing
+  // request, and `useSession` below remains the thing that decides what is on
+  // screen. A prefetch that fails changes nothing - the component falls back
+  // to PlayerSkeleton and then SessionNotFound exactly as it does today.
+  loader: ({ context, params }) => {
+    void context.queryClient.prefetchQuery(
+      sessionQuery(String(params.sessionId))
+    )
+  },
   component: SessionPlayerRoute,
 })

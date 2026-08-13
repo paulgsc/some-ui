@@ -17,8 +17,15 @@ const createQueryClient = (): QueryClient =>
     },
   })
 
-// Create a singleton instance to avoid recreating on re-renders
-const queryClient = createQueryClient()
+/**
+ * Create a singleton instance to avoid recreating on re-renders.
+ *
+ * Exported because the router carries it in its context: route loaders
+ * prefetch into this exact cache, and the components that later read it do so
+ * through `QueryClientProvider` below. Two clients would mean a loader
+ * warming a cache nobody reads.
+ */
+export const queryClient = createQueryClient()
 
 export const QueryProvider = ({
   children,

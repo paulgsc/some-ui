@@ -10,7 +10,7 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { useSession } from "@/lib/tenant"
+import { sessionQuery, useSession } from "@/lib/tenant"
 import { SessionComposer } from "@/components/composer/session-composer"
 
 type NewSessionSearch = {
@@ -72,5 +72,14 @@ export const Route = createFileRoute("/_dashboard/sessions/new")({
     activity: isActivityId(search.activity) ? search.activity : undefined,
     edit: typeof search.edit === "string" ? search.edit : undefined,
   }),
+  // `?edit=` is what this route fetches, so it is what the loader has to
+  // depend on: without `loaderDeps` the router would reuse one navigation's
+  // loader result for a different draft. A bare /sessions/new fetches nothing
+  // — there is no existing session to prefetch.
+  loaderDeps: ({ search }) => ({ edit: search.edit }),
+  loader: ({ context, deps }) => {
+    if (!deps.edit) return
+    void context.queryClient.prefetchQuery(sessionQuery(deps.edit))
+  },
   component: NewSessionRoute,
 })

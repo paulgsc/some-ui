@@ -1,5 +1,6 @@
 import { StrictMode } from "react"
 import { AppProviders } from "@/providers"
+import { queryClient } from "@/providers/tanstack-query"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import ReactDOM from "react-dom/client"
 
@@ -31,10 +32,19 @@ import.meta.glob(
 const router = createRouter({
   routeTree,
   basepath: import.meta.env.BASE_URL,
-  context: {},
+  // Handed to every route's `loader` so it can prefetch into the same cache
+  // the components read (see `routes/__root.tsx`'s RouterContext). Before this
+  // there was nothing in context, so no loader could exist, so `defaultPreload`
+  // below preloaded route *code* and no data.
+  context: { queryClient },
   defaultPreload: "intent",
   scrollRestoration: true,
   defaultStructuralSharing: true,
+  // Zero, deliberately: React Query owns the caching decision, so the router
+  // should re-run a loader on every preload rather than second-guess it with a
+  // staleness window of its own. The loaders call `prefetchQuery`, which
+  // no-ops on a query that is still fresh and dedupes one already in flight,
+  // so a hovered link does not re-fetch on every pointer event.
   defaultPreloadStaleTime: 0,
   // Housekeeping fallbacks applied to every route: 404, error boundary, and a
   // loading skeleton. Individual routes can still override these.
