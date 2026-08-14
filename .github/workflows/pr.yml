@@ -214,6 +214,26 @@ jobs:
             'apps/www/tests/ui-fit/**' \
             '.storybook/**' || true)
           if [ -n "$files" ]; then
+            # A repo-wide Storybook build needs a repo-wide package build, so
+            # this is NOT turbo-filtered the way the steps above are.
+            #
+            # STORYBOOK_SCOPE=packages compiles every story under packages/**,
+            # and a story reaching a sibling workspace by package name
+            # (packages/ui/input's demo-dice -> @some-ui/dice-card) resolves it
+            # through node_modules to that package's dist/. "Build (affected
+            # packages)" only covers the changed package and its dependents, so
+            # any workspace outside that closure has no dist and the build dies
+            # on "Rolldown failed to resolve", pointing at a file the PR never
+            # touched.
+            #
+            # This stayed hidden for as long as every UI change dragged
+            # apps/www in as a dependent, whose own ^build happens to cover
+            # most of the graph. A new leaf package that nothing depends on yet
+            # selects a two-package closure and walks straight into it.
+            nix develop .#ci --command pnpm turbo run build \
+              --filter='./packages/**' \
+              --concurrency=100%
+
             nix develop .#ci --command env CI=1 STORYBOOK_SCOPE=packages \
               pnpm build-storybook -o storybook-static
             nix develop .#ci-playwright --command env STORYBOOK_STATIC=storybook-static \
