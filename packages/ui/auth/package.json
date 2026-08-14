@@ -28,6 +28,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
+    "@some-ui/eslint-kit": "workspace:*",
     "eslint-import-resolver-typescript": "4.4.5"
   },
   "repository": {

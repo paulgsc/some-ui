@@ -1102,6 +1102,9 @@ importers:
         specifier: 'catalog:'
         version: 4.0.5
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
