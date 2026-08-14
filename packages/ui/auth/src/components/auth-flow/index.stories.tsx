@@ -177,6 +177,14 @@ export const StepResetPassword: Story = {
   },
 }
 
+export const StepPasskeyEnrollment: Story = {
+  args: {
+    step: "passkey-enrollment",
+    onCreatePasskey: () => undefined,
+    onSkipPasskey: () => undefined,
+  },
+}
+
 const meta: Meta = {
   title: "UI/Auth/Components/AuthFlow",
   component: AuthFlow,

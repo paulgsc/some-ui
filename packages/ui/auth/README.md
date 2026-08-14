@@ -14,18 +14,29 @@ harness is the same job.
 
 **Workflow**
 
-| Piece                      | What it is                                         |
-| -------------------------- | -------------------------------------------------- |
-| `AuthFlow`                 | Every step, one at a time, in a card               |
-| `SignInForm`               | Email + password + remember-me, optional providers |
-| `SignUpForm`               | Email + password + confirmation + terms            |
-| `RequestPasswordResetForm` | Step one of reset — ask for the address            |
-| `ResetPasswordForm`        | Step two of reset — set the new password           |
-| `VerifyCodeForm`           | Second factor / email verification                 |
-| `AuthGate`                 | Renders gated content only for a resolved session  |
+| Piece                      | What it is                                          |
+| -------------------------- | --------------------------------------------------- |
+| `AuthFlow`                 | Every step, including passkey enrollment, in a card |
+| `SignInForm`               | Email + password + remember-me, optional providers  |
+| `SignUpForm`               | Email + password + confirmation + terms             |
+| `RequestPasswordResetForm` | Step one of reset — ask for the address             |
+| `ResetPasswordForm`        | Step two of reset — set the new password            |
+| `VerifyCodeForm`           | Second factor / email verification                  |
+| `AuthGate`                 | Renders gated content only for a resolved session   |
+| `AuthPageTemplate`         | Copy-friendly full-page or split-screen composition |
 
 **Parts the forms are built from** — `AuthCard`, `AuthField`, `PasswordField`,
 `CheckboxField`, `CodeInput`, `OAuthButtons`, `AuthSubmitButton`, `AuthError`.
+`PasskeyButton` and `PasskeyEnrollment` expose passkey UX without invoking
+WebAuthn: the host adapter owns challenge fetching, browser API calls, and
+credential submission.
+
+**Templates** — `AuthPageTemplate` composes the controlled flow into a static,
+shadcn-style page with brand, aside, and footer slots. It is intentionally a
+copy-friendly composition rather than an application shell or router. The
+template is passkey-first by default: its initial sign-in surface is a single
+passkey action, while email/password and OAuth stay behind an explicit backup
+method link. Set `passkeyFirst={false}` for a conventional all-methods form.
 
 **Hooks** — `useAuthForm` (values, zod validation on submit, per-field
 messages) and `useAuthFlow` (step state for consumers with no router).

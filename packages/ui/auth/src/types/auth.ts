@@ -41,6 +41,7 @@ export type AuthFlowStep =
   | "request-reset"
   | "reset-sent"
   | "reset-password"
+  | "passkey-enrollment"
 
 /** A third-party sign-in button. `id` is whatever the backend calls it. */
 export type OAuthProvider = {
