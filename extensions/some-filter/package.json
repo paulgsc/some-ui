@@ -4,7 +4,8 @@
   },
   "dependencies": {
     "@some-extension/common": "workspace:*",
-    "@some-extension/transport": "workspace:*"
+    "@some-extension/transport": "workspace:*",
+    "@some-ui/some-filter-fsm": "workspace:*"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
@@ -52,9 +53,9 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "vite build --configLoader runner",
-    "build:chromium": "vite build --mode chromium --configLoader runner",
-    "build:firefox": "vite build --mode firefox --configLoader runner",
+    "build": "pnpm --filter @some-ui/some-filter-fsm build && vite build --configLoader runner",
+    "build:chromium": "pnpm --filter @some-ui/some-filter-fsm build && vite build --mode chromium --configLoader runner",
+    "build:firefox": "pnpm --filter @some-ui/some-filter-fsm build && vite build --mode firefox --configLoader runner",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "dev": "vite --configLoader runner",

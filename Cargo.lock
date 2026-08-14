@@ -866,6 +866,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "some-filter-fsm"
+version = "0.0.0"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "some-hexagon"
 version = "0.0.0"
 dependencies = [

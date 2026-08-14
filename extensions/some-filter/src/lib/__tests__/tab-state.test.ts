@@ -1,27 +1,29 @@
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_TAB_STATE, nextTabState, STATE_CYCLE } from "../tab-state"
+import { createTabStateMachine, DEFAULT_TAB_STATE } from "../tab-state"
 
 describe("tab-state", () => {
   it("defaults to auto (themed-by-default)", () => {
     expect(DEFAULT_TAB_STATE).toBe("auto")
   })
 
-  it("cycles legacy → auto → off → legacy", () => {
-    expect(nextTabState("legacy")).toBe("auto")
-    expect(nextTabState("auto")).toBe("off")
-    expect(nextTabState("off")).toBe("legacy")
+  it("cycles legacy → auto → off → legacy", async () => {
+    const machine = await createTabStateMachine("legacy")
+    expect(machine.cycle()).toBe("auto")
+    expect(machine.cycle()).toBe("off")
+    expect(machine.cycle()).toBe("legacy")
   })
 
-  it("cycle returns to the start after three steps", () => {
-    let s = DEFAULT_TAB_STATE
-    s = nextTabState(s)
-    s = nextTabState(s)
-    s = nextTabState(s)
-    expect(s).toBe(DEFAULT_TAB_STATE)
+  it("cycle returns to the start after three steps", async () => {
+    const machine = await createTabStateMachine()
+    machine.cycle()
+    machine.cycle()
+    expect(machine.cycle()).toBe(DEFAULT_TAB_STATE)
   })
 
-  it("covers every state exactly once as a source", () => {
-    expect(Object.keys(STATE_CYCLE).sort()).toEqual(["auto", "legacy", "off"])
+  it("accepts direct browser-driven transitions", async () => {
+    const machine = await createTabStateMachine()
+    expect(machine.transitionTo("legacy")).toBe("legacy")
+    expect(machine.state).toBe("legacy")
   })
 })

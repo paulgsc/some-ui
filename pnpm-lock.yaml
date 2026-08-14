@@ -425,6 +425,8 @@ importers:
 
   crates/polyhedron: {}
 
+  crates/some-filter-fsm: {}
+
   crates/some-crossword: {}
 
   crates/some-hexagon: {}
@@ -596,6 +598,9 @@ importers:
       '@some-extension/transport':
         specifier: workspace:*
         version: link:../transport
+      '@some-ui/some-filter-fsm':
+        specifier: workspace:*
+        version: link:../../crates/some-filter-fsm
     devDependencies:
       '@some-ui/eslint-kit':
         specifier: workspace:*

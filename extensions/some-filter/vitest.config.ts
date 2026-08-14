@@ -10,6 +10,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@some-ui/some-filter-fsm": resolve(
+        __dirname,
+        "./src/lib/__tests__/fixtures/some-filter-fsm.ts"
+      ),
       "@filter": resolve(__dirname, "./src"),
     },
   },

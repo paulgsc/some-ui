@@ -33,10 +33,12 @@ That document is the canonical entry point. It links to each extension's own
 
 ## Prerequisites
 
-| Tool    | Version    |
-| ------- | ---------- |
-| Node.js | ≥ 20 (LTS) |
-| pnpm    | ≥ 9        |
+| Tool      | Version    |
+| --------- | ---------- |
+| Node.js   | ≥ 20 (LTS) |
+| pnpm      | ≥ 9        |
+| Rust      | stable     |
+| wasm-pack | ≥ 0.13     |
 
 Install pnpm if not present:
 
@@ -51,11 +53,14 @@ npm install -g pnpm
 #    Resolves workspace packages from the archive; no private registries used.
 pnpm install --frozen-lockfile
 
-# 2. Build the extension
+# 2. Install the WebAssembly compilation target
+rustup target add wasm32-unknown-unknown
+
+# 3. Build the extension (also compiles the Rust state-machine crate)
 pnpm --filter "@some-extension/filter" build
 ```
 
-The `dist/` directory produced by step 2 corresponds exactly to the
+The `dist/` directory produced by step 3 corresponds exactly to the
 `dist/` submitted with this version.
 
 ## Verification

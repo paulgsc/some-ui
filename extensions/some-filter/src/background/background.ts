@@ -4,7 +4,7 @@ import {
   isLegacyStyle,
   LEGACY_PRESETS,
 } from "@filter/lib/legacy-presets"
-import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
+import { createTabStateMachine, DEFAULT_TAB_STATE } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/background"
 import type { ExtensionMessage } from "@filter/types/message"
 import type { FilterConfig, LegacyStyle } from "@filter/types/popup"
@@ -267,7 +267,8 @@ ext.commands.onCommand.addListener((command): void => {
 
     const { tabStates } = await getState()
     const current = tabStates[activeTab.id] ?? DEFAULT_TAB_STATE
-    const next = nextTabState(current)
+    const stateMachine = await createTabStateMachine(current)
+    const next = stateMachine.cycle()
 
     await setTabState(activeTab.id, next)
     await sendToTab(activeTab.id, {

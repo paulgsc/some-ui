@@ -14,7 +14,11 @@ import {
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
-import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
+import {
+  createTabStateMachine,
+  DEFAULT_TAB_STATE,
+  type FilterStateMachine,
+} from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
 import type { TabState } from "@filter/types/tab"
@@ -58,6 +62,7 @@ function writeCachedState(state: TabState): void {
 // ── State machine ─────────────────────────────────────────────────────────────
 
 let currentState: TabState = DEFAULT_TAB_STATE
+let stateMachine: FilterStateMachine | null = null
 let filterConfig: FilterConfig = DEFAULT_FILTER
 let autoWasApplied = false
 
@@ -68,7 +73,7 @@ const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
 function applyState(state: TabState): void {
-  currentState = state
+  currentState = stateMachine?.transitionTo(state) ?? state
   writeCachedState(state)
 
   // Auto's pipeline owns its own MutationObserver — leaving auto (or
@@ -99,7 +104,8 @@ function applyState(state: TabState): void {
 }
 
 function cycleState(): void {
-  applyState(nextTabState(currentState))
+  if (!stateMachine) return
+  applyState(stateMachine.cycle())
 }
 
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
@@ -155,14 +161,15 @@ function updateDebugAttrs(): void {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-function init(): void {
-  // Restore the last-known state synchronously from sessionStorage so that
-  // legacy/off tabs can apply the correct visual state before the background
-  // responds. For a cold background this avoids a 100–300 ms window of
-  // un-filtered native page between veil drop and filter application.
-  // Falls back to "auto" on the very first visit (no cache yet).
+async function init(): Promise<void> {
+  // Read the last-known state before initializing the WASM machine so that
+  // legacy/off tabs realize the cached mode as soon as the module is ready,
+  // without waiting for the background response. The prepaint veil remains
+  // in place during initialization. Falls back to "auto" on the first visit.
   const cached = readCachedState()
   if (cached !== null) currentState = cached
+
+  stateMachine = await createTabStateMachine(currentState)
 
   applyState(currentState)
 
@@ -274,7 +281,11 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
 
 function bootInit(): void {
   try {
-    init()
+    void init().catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] content init() rejected:", error)
+      disablePrepaint()
+    })
   } catch (error) {
     // A throw in init() (a transport factory failing, restoreVendor or
     // withPrepaintSuppressed dying before the pipeline's onFire hook ever
