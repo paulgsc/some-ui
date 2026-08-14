@@ -37,6 +37,11 @@ copy-friendly composition rather than an application shell or router. The
 template is passkey-first by default: its initial sign-in surface is a single
 passkey action, while email/password and OAuth stay behind an explicit backup
 method link. Set `passkeyFirst={false}` for a conventional all-methods form.
+The template defaults to the same seven-cell `AuthBrand` mark as the Some UI
+favicon and adds a subtle CSS honeycomb lattice. Every colour outside the
+fixed amber brand mark comes from the shared semantic tokens (`background`,
+`foreground`, `card`, `muted`, `border`, `primary`, and their companions), so
+the active Some Styles theme automatically reaches the complete auth surface.
 
 **Hooks** — `useAuthForm` (values, zod validation on submit, per-field
 messages) and `useAuthFlow` (step state for consumers with no router).

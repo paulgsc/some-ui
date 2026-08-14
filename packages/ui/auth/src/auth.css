@@ -1,0 +1,62 @@
+.some-ui-auth-page {
+  background-color: var(--background);
+  color: var(--foreground);
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Three token-coloured line families form a real hexagonal lattice. Keeping
+ * the colour derived from --border makes it quietly follow every Some Styles
+ * theme instead of baking a light- or dark-only decoration into the template. */
+.some-ui-auth-page::before {
+  background-image: linear-gradient(
+      30deg,
+      transparent 24%,
+      color-mix(in oklch, var(--border) 38%, transparent) 25%,
+      color-mix(in oklch, var(--border) 38%, transparent) 26%,
+      transparent 27%,
+      transparent 74%,
+      color-mix(in oklch, var(--border) 38%, transparent) 75%,
+      color-mix(in oklch, var(--border) 38%, transparent) 76%,
+      transparent 77%
+    ),
+    linear-gradient(
+      150deg,
+      transparent 24%,
+      color-mix(in oklch, var(--border) 38%, transparent) 25%,
+      color-mix(in oklch, var(--border) 38%, transparent) 26%,
+      transparent 27%,
+      transparent 74%,
+      color-mix(in oklch, var(--border) 38%, transparent) 75%,
+      color-mix(in oklch, var(--border) 38%, transparent) 76%,
+      transparent 77%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 24%,
+      color-mix(in oklch, var(--border) 28%, transparent) 25%,
+      color-mix(in oklch, var(--border) 28%, transparent) 26%,
+      transparent 27%,
+      transparent 74%,
+      color-mix(in oklch, var(--border) 28%, transparent) 75%,
+      color-mix(in oklch, var(--border) 28%, transparent) 76%,
+      transparent 77%
+    );
+  background-position:
+    0 0,
+    0 0,
+    24px 42px;
+  background-size: 48px 84px;
+  content: "";
+  inset: 0;
+  mask-image: radial-gradient(circle at center, black, transparent 82%);
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.some-ui-auth-page__aside {
+  background-color: color-mix(in oklch, var(--muted) 88%, transparent);
+  border-color: var(--border);
+}

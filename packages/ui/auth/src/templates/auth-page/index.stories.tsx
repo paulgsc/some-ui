@@ -27,7 +27,7 @@ const meta: Meta<typeof AuthPageTemplate> = {
   parameters: { layout: "fullscreen" },
   tags: ["autodocs"],
   args: {
-    brand: <span className="font-semibold">Acme</span>,
+    brand: undefined,
     footer: <>By continuing, you agree to the terms and privacy policy.</>,
     step: "sign-in",
     productName: "Acme",

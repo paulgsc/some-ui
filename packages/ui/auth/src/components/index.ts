@@ -1,4 +1,5 @@
 export * from "./auth-card"
+export * from "./auth-brand"
 export * from "./auth-error"
 export * from "./auth-field"
 export * from "./auth-flow"

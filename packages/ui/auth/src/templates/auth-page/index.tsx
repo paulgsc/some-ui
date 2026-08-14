@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from "react"
 import { cn } from "@some-ui/core-utils"
 
+import { AuthBrand } from "../../components/auth-brand"
 import { AuthFlow } from "../../components/auth-flow"
 import type { AuthFlowProps } from "../../components/auth-flow"
 
@@ -19,7 +20,7 @@ export type AuthPageTemplateProps = AuthFlowProps & {
  * host application's adapter.
  */
 export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
-  brand,
+  brand = <AuthBrand />,
   aside,
   footer,
   className,
@@ -29,13 +30,13 @@ export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
 }) => (
   <main
     className={cn(
-      "bg-background grid min-h-screen lg:grid-cols-2",
+      "some-ui-auth-page bg-background text-foreground grid min-h-screen font-sans lg:grid-cols-2",
       !aside && "lg:grid-cols-1",
       className
     )}
   >
     {aside ? (
-      <aside className="bg-muted relative hidden overflow-hidden p-10 lg:flex lg:flex-col">
+      <aside className="some-ui-auth-page__aside relative hidden overflow-hidden border-r p-10 lg:flex lg:flex-col">
         {brand ? <div className="relative z-10">{brand}</div> : null}
         <div className="relative z-10 mt-auto">{aside}</div>
       </aside>
