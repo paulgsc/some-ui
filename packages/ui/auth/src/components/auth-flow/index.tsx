@@ -15,6 +15,7 @@ import type {
 } from "../../types/auth"
 import { assertNever } from "../../utils/error"
 import { AuthCard } from "../auth-card"
+import { PasskeyEnrollment } from "../passkey-enrollment"
 import { RequestPasswordResetForm } from "../request-password-reset-form"
 import { ResetPasswordForm } from "../reset-password-form"
 import { SignInForm } from "../sign-in-form"
@@ -32,6 +33,13 @@ export type AuthFlowProps = AuthFormStatusProps & {
   onResetPassword: (values: ResetPasswordValues) => void
   onVerifyCode: (values: VerifyCodeValues) => void
   onResendCode?: () => void
+  /** Adapter callbacks: this package never calls the WebAuthn browser API. */
+  onPasskeySignIn?: () => void
+  onCreatePasskey?: () => void
+  onSkipPasskey?: () => void
+  passkeyAvailable?: boolean
+  /** Makes passkey the sole initial action; legacy methods remain a fallback. */
+  passkeyFirst?: boolean
 
   providers?: ReadonlyArray<OAuthProvider>
   onProviderSelect?: (providerId: string) => void
@@ -72,13 +80,22 @@ export const AuthFlow: FC<AuthFlowProps> = ({
   productName = "your account",
   pending = false,
   error = null,
+  onPasskeySignIn,
+  onCreatePasskey,
+  onSkipPasskey,
+  passkeyAvailable = false,
+  passkeyFirst = false,
 }) => {
   switch (step) {
     case "sign-in": {
       return (
         <AuthCard
           title="Sign in"
-          description={`Welcome back to ${productName}.`}
+          description={
+            passkeyFirst
+              ? `Use your passkey to continue to ${productName}.`
+              : `Welcome back to ${productName}.`
+          }
           footer={
             <button
               type="button"
@@ -97,6 +114,8 @@ export const AuthFlow: FC<AuthFlowProps> = ({
             defaultEmail={email}
             pending={pending}
             error={error}
+            onPasskeySignIn={passkeyAvailable ? onPasskeySignIn : undefined}
+            passkeyFirst={passkeyFirst}
           />
         </AuthCard>
       )
@@ -190,6 +209,22 @@ export const AuthFlow: FC<AuthFlowProps> = ({
           <ResetPasswordForm
             onSubmit={onResetPassword}
             email={email}
+            pending={pending}
+            error={error}
+          />
+        </AuthCard>
+      )
+    }
+
+    case "passkey-enrollment": {
+      return (
+        <AuthCard
+          title="Protect your account"
+          description="Add a passkey for secure, passwordless sign-in."
+        >
+          <PasskeyEnrollment
+            onCreate={onCreatePasskey}
+            onSkip={onSkipPasskey}
             pending={pending}
             error={error}
           />

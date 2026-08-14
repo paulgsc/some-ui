@@ -20,6 +20,24 @@ export const WithProviders: Story = {
   },
 }
 
+export const WithPasskey: Story = {
+  args: {
+    onPasskeySignIn: () => undefined,
+  },
+}
+
+export const PasskeyFirst: Story = {
+  args: {
+    onPasskeySignIn: () => undefined,
+    passkeyFirst: true,
+    providers: [
+      { id: "github", label: "GitHub" },
+      { id: "google", label: "Google" },
+    ],
+    onProviderSelect: () => undefined,
+  },
+}
+
 /** The whole form is disabled and the button spins while the request is out. */
 export const Pending: Story = {
   args: {
@@ -56,6 +74,7 @@ const meta: Meta = {
   argTypes: {
     onSubmit: { action: "sign-in submitted" },
     onProviderSelect: { action: "provider selected" },
+    onPasskeySignIn: { action: "passkey selected" },
   },
   decorators: [
     (Story) => (
