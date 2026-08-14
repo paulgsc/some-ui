@@ -82,36 +82,5 @@ jobs:
         run: |
           nix develop .#ci --command bash -c '
             pnpm licenses list --json > /tmp/licenses.json
-
-            node -e "
-              const ALLOWED = new Set([
-                \"MIT\", \"Apache-2.0\", \"ISC\",
-                \"BSD-2-Clause\", \"BSD-3-Clause\",
-                \"0BSD\", \"BlueOak-1.0.0\",
-                \"MIT-0\", \"CC0-1.0\", \"Unlicense\", \"Zlib\",
-              ]);
-              // pnpm licenses list --json groups packages BY license, not a
-              // flat package array - { <license>: Package[] }, and each
-              // Package has versions (plural, array), not version.
-              const data = JSON.parse(require(\"fs\").readFileSync(\"/tmp/licenses.json\", \"utf8\"));
-              const isAllowed = (license) =>
-                license !== \"Unknown\" &&
-                license.replace(/[()]/g, \"\").split(\" AND \").every((part) =>
-                  part.split(\" OR \").some((l) => ALLOWED.has(l.trim()))
-                );
-              const violations = [];
-              for (const [license, packages] of Object.entries(data)) {
-                if (isAllowed(license)) continue;
-                for (const p of packages) {
-                  violations.push(p.name + \"@\" + (p.versions || []).join(\",\") + \" (\" + license + \")\");
-                }
-              }
-              if (violations.length > 0) {
-                console.error(\"License violations:\");
-                violations.forEach(v => console.error(\" -\", v));
-                process.exit(1);
-              }
-              const total = Object.values(data).reduce((sum, arr) => sum + arr.length, 0);
-              console.log(\"All licenses OK (\", total, \"packages)\");
-            "
+            node scripts/audit-node-licenses.mjs /tmp/licenses.json
           '
