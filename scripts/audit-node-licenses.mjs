@@ -30,9 +30,25 @@ const ALLOWED_LICENSES = new Set([
   "Zlib",
 ])
 
-// pnpm reports Unknown when a package omits license metadata. Only add an
-// exception after verifying the package's published license.
-const LICENSE_EXCEPTIONS = new Map([["spawndamnit", "MIT"]])
+// pnpm reports Unknown when a package omits license metadata. Bind exceptions
+// to the exact release whose bundled license was reviewed so upgrades fail
+// closed and require a fresh review.
+const LICENSE_EXCEPTIONS = new Map([["spawndamnit@3.0.1", "MIT"]])
+
+const getReviewedLicense = ({ name, versions = [] }) => {
+  if (versions.length === 0) return undefined
+
+  const reviewedLicenses = versions.map((version) =>
+    LICENSE_EXCEPTIONS.get(`${name}@${version}`)
+  )
+
+  return reviewedLicenses.every(
+    (reviewedLicense) =>
+      reviewedLicense && reviewedLicense === reviewedLicenses[0]
+  )
+    ? reviewedLicenses[0]
+    : undefined
+}
 
 const isAllowedExpression = (expression) =>
   expression
@@ -51,9 +67,7 @@ for (const [license, packages] of Object.entries(report)) {
     packageCount += 1
 
     const effectiveLicense =
-      license === "Unknown"
-        ? LICENSE_EXCEPTIONS.get(packageDetails.name)
-        : license
+      license === "Unknown" ? getReviewedLicense(packageDetails) : license
 
     if (!effectiveLicense || !isAllowedExpression(effectiveLicense)) {
       const versions = packageDetails.versions?.join(",") || "unknown version"
