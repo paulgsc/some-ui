@@ -7,14 +7,12 @@
 
 import { expect, test } from "@playwright/test"
 
-// Functions are assigned to globalThis so they survive strict-mode eval.
+import { modifiersMatch } from "../../src/lib/keybindings/index"
+
+// Functions are assigned to globalThis so they survive strict-mode eval. Use
+// the production matcher's source rather than maintaining a test-only copy.
 const INLINE_KEYBINDINGS = `
-  globalThis.modifiersMatch = function modifiersMatch(e, m, isMac) {
-    const mac = isMac !== undefined ? isMac : navigator.userAgent.includes("Mac");
-    const primary = mac ? e.metaKey === m.ctrl : e.ctrlKey === m.ctrl;
-    const secondary = mac ? e.ctrlKey === m.meta : e.metaKey === m.meta;
-    return primary && secondary && e.altKey === m.alt && e.shiftKey === m.shift;
-  };
+  globalThis.modifiersMatch = ${modifiersMatch.toString()};
 
   globalThis.isInputContext = function isInputContext(target) {
     if (!(target instanceof HTMLElement)) return false;
