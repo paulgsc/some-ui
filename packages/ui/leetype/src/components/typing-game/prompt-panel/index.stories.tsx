@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import type { Exercise } from "@leetype/types/exercise"
@@ -19,6 +20,18 @@ type Story = StoryObj<typeof PromptPanel>
 
 const seed = nextExercise()
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
+
+/**
+ * The hostile long prompt, wrapped as a one-step exercise: it is well past
+ * `PromptBlockSchema`'s budget and cannot live in the validated corpus (see
+ * `lib/leetype/exercises/seed.ts`), but the pagination path it exercises is
+ * still real code that has to keep working as a defensive floor.
+ */
+const hostile: Exercise = {
+  id: "fixture-hostile",
+  title: "Hostile fixture",
+  steps: [FIXTURE_HOSTILE_PROMPT_STEP],
+}
 
 /**
  * The panel is bounded by its *box*, not by its contents — so every story
@@ -68,30 +81,21 @@ export const SeveralLines: Story = {
 }
 
 /**
- * The hostile one, from the adversarial fixture. This is the case the
+ * The hostile one, well past the prose budget. This is the case the
  * doctrine exists for: it must page rather than scroll, and nothing may be
- * silently cut off.
+ * silently cut off. Never part of the validated corpus — see `hostile`
+ * above.
  */
 export const DeliberatelyAbusive: Story = {
   render: () => (
-    <PanelInBox
-      exercise={adversarial}
-      stepIndex={0}
-      width="42rem"
-      height="24rem"
-    />
+    <PanelInBox exercise={hostile} stepIndex={0} width="42rem" height="24rem" />
   ),
 }
 
 /** The same abusive prompt in a narrow column, where every line wraps. */
 export const AbusiveAndNarrow: Story = {
   render: () => (
-    <PanelInBox
-      exercise={adversarial}
-      stepIndex={0}
-      width="20rem"
-      height="22rem"
-    />
+    <PanelInBox exercise={hostile} stepIndex={0} width="20rem" height="22rem" />
   ),
 }
 

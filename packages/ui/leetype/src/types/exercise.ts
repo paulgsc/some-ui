@@ -74,6 +74,44 @@ import type { Language } from "./leetype"
 export const GOAL_MAX_CHARS = 140
 
 /**
+ * The longest a prompt block's prose is allowed to run: this many lines,
+ * this many characters each. Also the ceiling on a *step's* combined prompt
+ * prose — see the `StepSchema` refinement below.
+ *
+ * The bound *is* the design, same posture as `GOAL_MAX_CHARS` just above.
+ * A prompt block is a pointer at evidence, not the exposition that used to
+ * carry the step: "a diagnostic step must remain actionable if the learner
+ * reads only the failure label, the observed value and the highlighted
+ * line." Two short lines is generous for that. A step whose prose keeps
+ * overflowing this is not a step with a formatting problem — it is a step
+ * that wanted a different kind of evidence block than plain prose, once one
+ * exists.
+ *
+ * Applying the same number at both the block and the step level is
+ * deliberate rather than an accident of reuse: a single over-budget block
+ * and three on-budget blocks stacked sideways are the same failure — more
+ * prose than the panel's pagination-free path was built to hold — so one
+ * bound closes both doors instead of two independently-tunable ones drifting
+ * apart.
+ */
+export const PROMPT_MAX_LINES = 2
+export const PROMPT_LINE_MAX_CHARS = 120
+
+const PROMPT_TOO_MANY_LINES_MESSAGE =
+  `A prompt block holds more than ${PROMPT_MAX_LINES} lines. Split the step, ` +
+  "or this is evidence rather than exposition and wants a different block kind."
+
+const PROMPT_LINE_TOO_LONG_MESSAGE =
+  `A prompt line runs past ${PROMPT_LINE_MAX_CHARS} characters. A prompt line ` +
+  "is a pointer, not a paragraph — tighten the sentence, or split the step."
+
+const STEP_PROMPT_BUDGET_MESSAGE =
+  `A step's prompt blocks hold more than ${PROMPT_MAX_LINES} lines combined. ` +
+  "Several on-budget blocks stacked sideways are still more prose than the panel's " +
+  "pagination-free path was built to hold — split the step, or reach for a different " +
+  "kind of evidence block."
+
+/**
  * A block the player reads rather than types.
  *
  * The union exists so that future kinds — a hint, compiler output, a
@@ -84,7 +122,12 @@ export const GOAL_MAX_CHARS = 140
 export const PromptBlockSchema = z.object({
   kind: z.literal("prompt"),
   /** Rendered as separate lines. One short paragraph, or a few bullets. */
-  lines: z.array(z.string().min(1)).min(1),
+  lines: z
+    .array(
+      z.string().min(1).max(PROMPT_LINE_MAX_CHARS, PROMPT_LINE_TOO_LONG_MESSAGE)
+    )
+    .min(1)
+    .max(PROMPT_MAX_LINES, PROMPT_TOO_MANY_LINES_MESSAGE),
 })
 
 /**
@@ -162,6 +205,25 @@ export const StepSchema = z
         "'which prompt is sticky right now' a live question and drags a scroll-spy into the " +
         "prompt panel; zero gives the player nothing to type. Split the step instead — a " +
         "multi-part proof is a sequence of steps, not a taller card.",
+      path: ["blocks"],
+    }
+  )
+  .refine(
+    (step) => {
+      // Each `prompt` block is bounded on its own (`PromptBlockSchema`), but
+      // nothing stopped a step from holding several on-budget blocks that
+      // are still, combined, more prose than the panel's pagination-free
+      // path was built to hold. This closes that gap at the step level.
+      const promptLineCount = step.blocks
+        .filter(
+          (block): block is z.infer<typeof PromptBlockSchema> =>
+            block.kind === "prompt"
+        )
+        .reduce((total, block) => total + block.lines.length, 0)
+      return promptLineCount <= PROMPT_MAX_LINES
+    },
+    {
+      message: STEP_PROMPT_BUDGET_MESSAGE,
       path: ["blocks"],
     }
   )

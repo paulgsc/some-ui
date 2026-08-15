@@ -2,6 +2,7 @@ import { useRef } from "react"
 import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import type { Exercise } from "@leetype/types/exercise"
@@ -20,6 +21,18 @@ type Story = StoryObj<typeof ExerciseCard>
 
 const seed = nextExercise()
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
+
+/**
+ * The hostile long prompt, wrapped as a one-step exercise: past
+ * `PromptBlockSchema`'s budget and never part of the validated corpus (see
+ * `lib/leetype/exercises/seed.ts`), kept here for the stories that need to
+ * prove the panel's pagination path still works as a defensive floor.
+ */
+const hostile: Exercise = {
+  id: "fixture-hostile",
+  title: "Hostile fixture",
+  steps: [FIXTURE_HOSTILE_PROMPT_STEP],
+}
 
 /**
  * The card in a definite box, which is the only way it is ever mounted for
@@ -103,12 +116,7 @@ export const LongPromptLongBody: Story = {
 /** The hostile prompt over a two-character proof. */
 export const AbusivePromptTinyBody: Story = {
   render: () => (
-    <Mounted
-      exercise={adversarial}
-      stepIndex={0}
-      typedChars={1}
-      idleSeconds={10}
-    />
+    <Mounted exercise={hostile} stepIndex={0} typedChars={1} idleSeconds={10} />
   ),
 }
 
@@ -144,7 +152,7 @@ export const ShortWindow: Story = {
 export const TallWindow: Story = {
   render: () => (
     <Mounted
-      exercise={adversarial}
+      exercise={hostile}
       stepIndex={0}
       typedChars={0}
       idleSeconds={10}

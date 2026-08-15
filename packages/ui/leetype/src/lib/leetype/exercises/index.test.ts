@@ -1,9 +1,14 @@
-import { GOAL_MAX_CHARS, typingBlockOf } from "@leetype/types/exercise"
+import {
+  GOAL_MAX_CHARS,
+  StepSchema,
+  typingBlockOf,
+} from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
 
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
   FIXTURE_EXERCISE_ID,
+  FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
 } from "."
 
@@ -92,5 +97,33 @@ describe("the seed set", () => {
       expect(source).not.toMatch(/^\/|^https?:/)
       expect(source.length).toBeGreaterThan(0)
     }
+  })
+
+  it("keeps every step in the validated corpus inside the prose budget", () => {
+    // `CORPUS` is `ExerciseCorpusSchema.parse`d at module load, so this is
+    // really just re-asserting a load-bearing fact — but a step this far
+    // over budget failing silently at import time, in every consumer of the
+    // shim at once, is exactly the failure a direct test here avoids.
+    for (const exercise of [
+      nextExercise(),
+      nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID }),
+    ]) {
+      for (const step of exercise.steps) {
+        expect(StepSchema.safeParse(step).success).toBe(true)
+      }
+    }
+  })
+})
+
+describe("the hostile prompt fixture", () => {
+  it("is genuinely over budget — it fails StepSchema", () => {
+    // The whole point of keeping it out of SEED_EXERCISES: a step this far
+    // past PromptBlockSchema's line budget cannot survive the shim's
+    // load-time validation, so it is exported as a raw, unvalidated value
+    // instead. This test is the guarantee that it stays hostile rather than
+    // quietly drifting inside the budget and testing nothing.
+    expect(StepSchema.safeParse(FIXTURE_HOSTILE_PROMPT_STEP).success).toBe(
+      false
+    )
   })
 })
