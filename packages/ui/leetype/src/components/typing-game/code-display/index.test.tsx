@@ -2,6 +2,7 @@ import {
   ROLE_CONTEXT,
   ROLE_TYPEABLE,
   SLOT_UNTOUCHED,
+  VISIBILITY_MASKED,
   VISIBILITY_REVEALED,
 } from "@leetype/types/leetype"
 import { render, screen } from "@testing-library/react"
@@ -87,12 +88,61 @@ describe("CodeDisplay — the caret never lands on a context character", () => {
       expect(caretOnContext).toHaveLength(0)
 
       // Every context character in the fixture is still rendered as context
-      // — muted, not masked, not carrying a slot — regardless of where the
-      // (always-typeable) cursor sits.
+      // — muted, carrying its real glyph rather than MASK_CHAR — regardless
+      // of where the (always-typeable) cursor sits. Checking the joined text
+      // rather than just the span count: a regression that fed context
+      // characters through the masked branch would still produce the right
+      // number of spans, just with the wrong content.
       const contextSpans = container.querySelectorAll(
         ".italic.text-muted-foreground\\/70"
       )
-      expect(contextSpans).toHaveLength(CONTEXT_PREFIX.length)
+      expect(
+        Array.from(contextSpans)
+          .map((span) => span.textContent)
+          .join("")
+      ).toBe(CONTEXT_PREFIX)
     }
   )
+
+  it("keeps context unmasked while every typeable slot around it is masked", () => {
+    // The fixture above never masks anything, which cannot distinguish
+    // "context renders correctly" from "context renders correctly because
+    // nothing is masked in the first place" — this is the case that
+    // actually exercises "context carries no slot for VISIBILITY_MASKED to
+    // apply to" (the component's own comment on the branch below it).
+    const allMasked = new Uint8Array(slotStatus.length).fill(VISIBILITY_MASKED)
+    const cursorDisplay = CONTEXT_PREFIX.length // the first typeable slot
+
+    const { container } = render(
+      <CodeDisplay
+        displayCode={DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={allMasked}
+        cursorDisplay={cursorDisplay}
+      />
+    )
+
+    const contextSpans = container.querySelectorAll(
+      ".italic.text-muted-foreground\\/70"
+    )
+    expect(
+      Array.from(contextSpans)
+        .map((span) => span.textContent)
+        .join("")
+    ).toBe(CONTEXT_PREFIX)
+
+    // Contrast: the typeable body, masked and off the caret, does show
+    // MASK_CHAR — proving the fixture actually masks something, so the
+    // context assertion above means what it claims to.
+    const maskedTypeableSpans = container.querySelectorAll(
+      ".text-muted-foreground\\/40"
+    )
+    expect(maskedTypeableSpans.length).toBeGreaterThan(0)
+    maskedTypeableSpans.forEach((span) => {
+      expect(span.textContent).toBe("•")
+    })
+  })
 })
