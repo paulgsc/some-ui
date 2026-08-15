@@ -231,6 +231,27 @@ describe("the evidence block kinds", () => {
   })
 })
 
+describe("a region's span against the step's typing source", () => {
+  it("rejects a region reaching past the typing source's length, and says why", () => {
+    // typing.source is "let mut map = HashMap::new();" (30 chars) — a span
+    // running to 100 is unambiguously past it regardless of what the engine
+    // eventually renders.
+    const outOfRange: Block = {
+      kind: "region",
+      label: "past the end",
+      startDisplay: 5,
+      endDisplay: 100,
+    }
+    const result = StepSchema.safeParse(step([outOfRange, typing]))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/reaches past/)
+  })
+
+  it("accepts a region whose span fits inside the typing source", () => {
+    expect(StepSchema.safeParse(step([region, typing])).success).toBe(true)
+  })
+})
+
 describe("the block union is closed", () => {
   it("rejects an unknown kind rather than passing it through", () => {
     const unknown = { kind: "hint", text: "not a real kind" }

@@ -111,6 +111,11 @@ const STEP_PROMPT_BUDGET_MESSAGE =
   "pagination-free path was built to hold — split the step, or reach for a different " +
   "kind of evidence block."
 
+const REGION_SPAN_MESSAGE =
+  "A region's endDisplay reaches past the step's typing source. The rendered frame " +
+  "can only be the same length or shorter (a context span's delimiters are stripped, " +
+  "never added to), so a span past the raw source length is never valid."
+
 /**
  * A block the player reads rather than types.
  *
@@ -298,6 +303,36 @@ export const StepSchema = z
     },
     {
       message: STEP_PROMPT_BUDGET_MESSAGE,
+      path: ["blocks"],
+    }
+  )
+  .refine(
+    (step) => {
+      // A conservative bound, not an exact one: `startDisplay`/`endDisplay`
+      // index the engine's *rendered* text (`Layout.displaySource`), which
+      // this schema cannot compute — doing so would mean importing the wasm
+      // engine into a file whose entire point is staying a plain,
+      // engine-free serializable value (see the file's own doc comment).
+      // What is knowable without the engine: a context span's `‹…›`
+      // delimiters are only ever stripped, never added to, so the rendered
+      // length can never exceed the raw authored source length. A region
+      // reaching past *that* is unambiguously wrong regardless of what the
+      // engine does with context spans.
+      const typing = step.blocks.find(
+        (block): block is z.infer<typeof TypingBlockSchema> =>
+          block.kind === "typing"
+      )
+      if (!typing) return true // the "exactly one typing block" refine already reports this
+      const regions = step.blocks.filter(
+        (block): block is z.infer<typeof RegionBlockSchema> =>
+          block.kind === "region"
+      )
+      return regions.every(
+        (region) => region.endDisplay <= typing.source.length
+      )
+    },
+    {
+      message: REGION_SPAN_MESSAGE,
       path: ["blocks"],
     }
   )
