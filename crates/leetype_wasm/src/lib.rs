@@ -254,3 +254,15 @@ pub fn classify_source(input: &str) -> Vec<u8> {
 pub fn slot_map_from_source(input: &str) -> Vec<i32> {
     Program::compile(input).slot_of_display_codes()
 }
+
+/// The rendered form of a source string: what [`classify_source`] and
+/// [`slot_map_from_source`] are indexed against, with any context span's
+/// delimiters already stripped. Not always the input verbatim — see
+/// [`Role::Context`]. A caller that classifies a source without
+/// constructing a [`TypingGame`] must draw this string, not the input it
+/// passed in, or the two fall out of alignment at the first context span.
+#[wasm_bindgen]
+#[must_use]
+pub fn rendered_source(input: &str) -> String {
+    Program::compile(input).rendered()
+}

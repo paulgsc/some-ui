@@ -198,6 +198,20 @@ impl Program {
         self.chars.len()
     }
 
+    /// The rendered characters, joined back into a string.
+    ///
+    /// Not always the authored source verbatim: a context span's
+    /// delimiters are stripped before this is built, so display index `i`
+    /// here is exactly what `role_codes()[i]` / `slot_of_display_codes()[i]`
+    /// describe, while the same index into the raw authored string is not,
+    /// once a context span has shifted everything after it. A renderer
+    /// must draw this string — never the raw source it was authored from —
+    /// or the two fall out of alignment at the first delimiter.
+    #[must_use]
+    pub fn rendered(&self) -> String {
+        self.chars.iter().collect()
+    }
+
     /// Number of keystrokes this chunk is worth.
     #[must_use]
     pub const fn slot_count(&self) -> usize {
@@ -549,7 +563,7 @@ mod tests {
     }
 
     fn rendered(source: &str) -> String {
-        Program::compile(source).chars.iter().collect()
+        Program::compile(source).rendered()
     }
 
     #[test]
