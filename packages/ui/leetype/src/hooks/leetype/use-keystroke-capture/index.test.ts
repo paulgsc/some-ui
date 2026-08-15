@@ -8,6 +8,7 @@ type Harness = {
   element: HTMLTextAreaElement
   onKey: ReturnType<typeof vi.fn>
   onBackspace: ReturnType<typeof vi.fn>
+  onToggleReveal: ReturnType<typeof vi.fn>
   unmount: () => void
 }
 
@@ -22,12 +23,13 @@ function mount({ enabled = true } = {}): Harness {
 
   const onKey = vi.fn()
   const onBackspace = vi.fn()
+  const onToggleReveal = vi.fn()
 
   const { unmount } = renderHook(() =>
-    useKeystrokeCapture(ref, { onKey, onBackspace, enabled })
+    useKeystrokeCapture(ref, { onKey, onBackspace, onToggleReveal, enabled })
   )
 
-  return { element, onKey, onBackspace, unmount }
+  return { element, onKey, onBackspace, onToggleReveal, unmount }
 }
 
 function keydown(
@@ -89,17 +91,36 @@ describe("keydown", () => {
     expect(event.defaultPrevented).toBe(true)
   })
 
-  it("swallows Enter and Tab without scoring them", () => {
-    const { element, onKey, onBackspace } = mount()
+  it("swallows Enter without scoring or acting on it", () => {
+    const { element, onKey, onBackspace, onToggleReveal } = mount()
 
     const enter = keydown(element, "Enter")
-    const tab = keydown(element, "Tab")
 
     expect(onKey).not.toHaveBeenCalled()
     expect(onBackspace).not.toHaveBeenCalled()
-    // Tab in particular must not walk focus out of the card mid-run.
+    expect(onToggleReveal).not.toHaveBeenCalled()
     expect(enter.defaultPrevented).toBe(true)
+  })
+
+  it("routes Tab to the reveal toggle instead of scoring or moving focus", () => {
+    const { element, onKey, onToggleReveal } = mount()
+
+    const tab = keydown(element, "Tab")
+
+    expect(onToggleReveal).toHaveBeenCalledTimes(1)
+    expect(onKey).not.toHaveBeenCalled()
+    // Must not walk focus out of the card mid-run.
     expect(tab.defaultPrevented).toBe(true)
+  })
+
+  it("fires the reveal toggle once per physical press, not once per key-repeat event", () => {
+    const { element, onToggleReveal } = mount()
+
+    keydown(element, "Tab")
+    keydown(element, "Tab", { repeat: true })
+    keydown(element, "Tab", { repeat: true })
+
+    expect(onToggleReveal).toHaveBeenCalledTimes(1)
   })
 
   it("ignores named non-printable keys", () => {

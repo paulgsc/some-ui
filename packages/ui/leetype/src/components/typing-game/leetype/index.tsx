@@ -182,6 +182,7 @@ export const Leetype: FC<LeetypeProps> = ({
     backspace,
     start,
     onDismiss,
+    toggleReveal,
     readProgression,
     activeStep,
     calibrate,
@@ -228,7 +229,18 @@ export const Leetype: FC<LeetypeProps> = ({
     wpm,
     accuracy,
     totalErrors,
+    manualRevealActive,
+    manualRevealFraction,
   } = snapshot
+
+  /**
+   * The warm-up already shows everything (`shownVisibility` above), so the
+   * toggle's own affordance would be reporting a freeze that changes
+   * nothing the player can see. Suppressed here rather than in
+   * `ExerciseCard`, which has no idea a warm-up phase exists.
+   */
+  const shownManualRevealActive = calibrating ? false : manualRevealActive
+  const shownManualRevealFraction = calibrating ? 0 : manualRevealFraction
 
   /**
    * The step is typed. Bank the assistance, feed the run back into the
@@ -406,10 +418,13 @@ export const Leetype: FC<LeetypeProps> = ({
               slotStatus={slotStatus}
               visibility={shownVisibility}
               cursorDisplay={cursorDisplay}
+              manualRevealActive={shownManualRevealActive}
+              manualRevealFraction={shownManualRevealFraction}
               rejection={rejection}
               gameState={gameState}
               onKey={recordKeystroke}
               onBackspace={backspace}
+              onToggleReveal={toggleReveal}
               inputRef={inputRef}
               textGradient={textGradient}
             />

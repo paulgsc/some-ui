@@ -57,6 +57,8 @@ const SNAPSHOT = {
   attempt: 0,
   revealK: 0,
   runCount: 1,
+  manualRevealActive: false,
+  manualRevealFraction: 0,
   assisted: 0,
   elapsedTime: 0,
   sessionElapsedTime: 0,
@@ -160,6 +162,9 @@ vi.mock("@some-ui/leetype-wasm", () => {
     }
     dismiss_alert(now: number): unknown {
       return this.record("dismiss_alert", now)
+    }
+    toggle_reveal(now: number): unknown {
+      return this.record("toggle_reveal", now)
     }
     reset(now: number): unknown {
       return this.record("reset", now)
@@ -326,6 +331,30 @@ describe("keystroke commands", () => {
     })
 
     expect(methodsOf(instances[0])).toContain("dismiss_alert")
+  })
+
+  it("forwards the reveal toggle to the engine while playing", async () => {
+    const { result } = renderHook(() => useTypingGame(baseProps()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.toggleReveal()
+    })
+
+    expect(methodsOf(instances[0])).toContain("toggle_reveal")
+  })
+
+  it("ignores the reveal toggle while the game is not playing", async () => {
+    const { result } = renderHook(() =>
+      useTypingGame(baseProps({ gameState: "idle" }))
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.toggleReveal()
+    })
+
+    expect(methodsOf(instances[0])).not.toContain("toggle_reveal")
   })
 })
 

@@ -72,10 +72,13 @@ const Mounted = ({
         slotStatus={preview.slotStatus}
         visibility={preview.visibility}
         cursorDisplay={preview.snapshot.cursorDisplay}
+        manualRevealActive={preview.snapshot.manualRevealActive}
+        manualRevealFraction={preview.snapshot.manualRevealFraction}
         rejection={null}
         gameState="playing"
         onKey={() => {}}
         onBackspace={() => {}}
+        onToggleReveal={() => {}}
         inputRef={inputRef}
       />
     </div>

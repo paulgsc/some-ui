@@ -5,6 +5,14 @@ type UseKeystrokeCaptureOptions = {
   /** One printable character the player produced. */
   onKey: (key: string) => void
   onBackspace: () => void
+  /**
+   * Flip the manual-reveal override — the escape hatch for a player who
+   * does not want to wait for their own typing to earn a reveal. Bound to
+   * Tab: layout is the machine's job (see the Enter/Tab note below), which
+   * already leaves Tab permanently claimed and doing nothing, so this gives
+   * a no-op key a job instead of asking the player to learn a new chord.
+   */
+  onToggleReveal: () => void
   /** While false, every event is left alone. */
   enabled: boolean
 }
@@ -30,10 +38,18 @@ type UseKeystrokeCaptureOptions = {
  *
  * Modifier chords (⌘/Ctrl/Alt) are left alone so browser and OS shortcuts
  * keep working while the card has focus.
+ *
+ * Tab carries one more job on top of being swallowed: it toggles the
+ * manual-reveal override (`onToggleReveal`). It is never owed as a
+ * keystroke and was already unconditionally claimed and focus-trapped, so
+ * repurposing its no-op into the toggle costs nothing — no new chord to
+ * learn, and no risk of colliding with a character the exercise expects.
+ * `event.repeat` is checked so holding the key down fires the toggle
+ * exactly once per physical press rather than once per repeat event.
  */
 export function useKeystrokeCapture(
   ref: RefObject<HTMLTextAreaElement | null>,
-  { onKey, onBackspace, enabled }: UseKeystrokeCaptureOptions
+  { onKey, onBackspace, onToggleReveal, enabled }: UseKeystrokeCaptureOptions
 ): void {
   useEffect(() => {
     const element = ref.current
@@ -48,11 +64,18 @@ export function useKeystrokeCapture(
         return
       }
 
-      // Layout is the machine's job now — Enter and Tab are never owed, so
-      // they are swallowed rather than scored (and Tab must not walk focus
-      // out of the card mid-run).
-      if (event.key === "Enter" || event.key === "Tab") {
+      // Enter is never owed, so it is swallowed rather than scored.
+      if (event.key === "Enter") {
         event.preventDefault()
+        return
+      }
+
+      // Tab must not walk focus out of the card mid-run either way, so it
+      // stays swallowed — but it is also the reveal toggle, guarded against
+      // key-repeat so one held-down press cannot fire it more than once.
+      if (event.key === "Tab") {
+        event.preventDefault()
+        if (!event.repeat) onToggleReveal()
         return
       }
 
@@ -87,5 +110,5 @@ export function useKeystrokeCapture(
       element.removeEventListener("keydown", handleKeyDown)
       element.removeEventListener("beforeinput", handleBeforeInput)
     }
-  }, [ref, onKey, onBackspace, enabled])
+  }, [ref, onKey, onBackspace, onToggleReveal, enabled])
 }

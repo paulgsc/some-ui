@@ -86,6 +86,13 @@ type UseTypingGameReturn = GameView & {
   start: () => void
   onDismiss: () => void
   /**
+   * Flip the manual-reveal override — see `TypedTypingGame.toggleReveal`.
+   * Gated on `gameState === "playing"` the same as `press`/`backspace`,
+   * since freezing the auto-hide loop is only meaningful while a step is
+   * actually in flight.
+   */
+  toggleReveal: () => void
+  /**
    * What the engine makes of the step as typed — read at the moment the
    * runner asks, because weighted WPM is a rate and asking it about time the
    * player was not typing in would answer a different question.
@@ -130,6 +137,8 @@ const EMPTY_SNAPSHOT: Snapshot = {
   attempt: 0,
   revealK: 0,
   runCount: 0,
+  manualRevealActive: false,
+  manualRevealFraction: 0,
   assisted: 0,
   elapsedTime: 0,
   sessionElapsedTime: 0,
@@ -329,6 +338,11 @@ export function useTypingGame({
     dispatch((game, now) => game.dismissAlert(now))
   }, [dispatch])
 
+  const toggleReveal = useCallback((): void => {
+    if (gameState !== "playing") return
+    dispatch((game, now) => game.toggleReveal(now))
+  }, [dispatch, gameState])
+
   const readProgression = useCallback(
     (): Progression => gameRef.current?.progression(Date.now()) ?? "advance",
     []
@@ -372,6 +386,7 @@ export function useTypingGame({
     reset,
     start,
     onDismiss,
+    toggleReveal,
     readProgression,
     activeStep,
     calibrate,
