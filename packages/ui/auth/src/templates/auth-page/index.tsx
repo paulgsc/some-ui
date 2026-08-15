@@ -36,9 +36,9 @@ export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
     )}
   >
     {aside ? (
-      <aside className="some-ui-auth-page__aside relative hidden overflow-hidden border-r p-10 lg:flex lg:flex-col">
+      <aside className="some-ui-auth-page__aside relative flex flex-col overflow-hidden border-b p-6 lg:min-h-screen lg:border-r lg:border-b-0 lg:p-10">
         {brand ? <div className="relative z-10">{brand}</div> : null}
-        <div className="relative z-10 mt-auto">{aside}</div>
+        <div className="relative z-10 mt-8 lg:mt-auto">{aside}</div>
       </aside>
     ) : null}
     <section className="flex min-h-screen flex-col p-6 md:p-10">

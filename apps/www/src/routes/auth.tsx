@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { AuthBrand, AuthPageTemplate } from "@some-ui/auth"
+import { AuthPageTemplate } from "@some-ui/auth"
 import { Alert, AlertDescription, AlertTitle } from "@some-ui/shared"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Info } from "lucide-react"
@@ -42,20 +42,36 @@ const AuthPage = (): JSX.Element => {
       passkeyFirst
       passkeyOnly
       productName="Some UI"
-      brand={
-        <div className="space-y-4">
-          <AuthBrand />
+      aside={
+        <div className="max-w-xl space-y-6">
+          <div className="space-y-3">
+            <p className="text-primary text-sm font-semibold tracking-wide uppercase">
+              Welcome back
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">
+              Your next learning session is ready when you are.
+            </h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
+              Continue with a passkey to return to your sessions, preferences,
+              and learning progress in Some UI.
+            </p>
+          </div>
           <Alert className="max-w-xl">
             <Info aria-hidden="true" />
-            <AlertTitle>Decorative authentication only</AlertTitle>
+            <AlertTitle>This sign-in is a preview</AlertTitle>
             <AlertDescription>
-              Passkey sign-in is currently a no-op. Continuing only unlocks this
-              static browser session; no credential is created or checked.
+              Authentication is not connected yet. The passkey button is a no-op
+              that only unlocks this decorative browser session—no credential is
+              created or checked.
             </AlertDescription>
           </Alert>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Preview note: access lasts only for this page session. Refreshing
+            starts the decorative sign-in flow again while backend
+            authentication is being built.
+          </p>
         </div>
       }
-      footer="Passkey support is a preview while backend authentication is being built."
     />
   )
 }
