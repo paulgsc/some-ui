@@ -78,6 +78,22 @@ const INITIAL_DELAY_CHARS: f64 = 12.0;
 /// exists to avoid.
 const MIN_DEADBAND_WPM: f64 = 6.0;
 
+/// How long a manual-reveal toggle holds the auto-hide loop open, in
+/// milliseconds, before control reverts to the automatic controller on its
+/// own.
+///
+/// This is the escape hatch for a player who has hit a mental block and does
+/// not want to wait for their own typing to slow down enough to earn a
+/// reveal the ordinary way — they ask for it directly instead (see
+/// [`toggle_manual_override`]). Bounded rather than indefinite: an unbounded
+/// override would let one keypress opt a step out of the probe entirely,
+/// which is a different feature (and the wrong one — the loop's whole job is
+/// reading retrieval fluency, and a permanently open window reads nothing).
+/// Eight seconds is enough to read a short unfamiliar line without hurrying,
+/// and short enough that the mechanic the rest of this module tests is still
+/// mostly in force across a step.
+pub const MAX_MANUAL_REVEAL_MS: f64 = 8_000.0;
+
 /// How many attempts a player gets on one step before the gate lets them
 /// past regardless.
 ///
@@ -188,7 +204,7 @@ const fn attempts_as_f64(value: usize) -> f64 {
 }
 
 /// The reveal loop's state within one step.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RevealState {
     /// How many runs from the caret's own run forward are unmasked.
     /// `0` is fully masked, which is where every step starts.
@@ -208,6 +224,14 @@ pub struct RevealState {
     /// Watching the character under your own caret turn into a bullet is
     /// the kind of thing that ends a run.
     seen: Vec<bool>,
+    /// Host timestamp the manual-reveal freeze lifts at, or `None` when the
+    /// auto loop has full control.
+    ///
+    /// Only ever `Some` while it is genuinely still in force — [`advance`]
+    /// clears an expired one itself (see its doc comment), so every other
+    /// reader of this field can trust `Some` to mean "in force right now"
+    /// without re-checking the deadline against `now` itself.
+    pub manual_override_until: Option<f64>,
 }
 
 impl RevealState {
@@ -219,6 +243,7 @@ impl RevealState {
             opened: false,
             attempt: 0,
             seen: vec![false; slot_count],
+            manual_override_until: None,
         }
     }
 
@@ -232,13 +257,37 @@ impl RevealState {
         }
     }
 
+    /// The same state with the manual-reveal override flipped — see
+    /// [`toggle_manual_override`].
+    ///
+    /// A method here rather than left to the caller to reconstruct with
+    /// struct-update syntax: `seen` is private to this module, so a
+    /// `session`-level caller has no other way to carry it through
+    /// unchanged.
+    #[must_use]
+    pub fn toggled(&self, now: f64) -> Self {
+        Self {
+            manual_override_until: toggle_manual_override(self.manual_override_until, now),
+            ..self.clone()
+        }
+    }
+
     /// Whether the player is being shown `slot` right now.
+    ///
+    /// The manual override is checked here, not baked into [`Self::k`]:
+    /// `k` is always the auto controller's own arithmetic, evolving exactly
+    /// as it would if the override did not exist, so that cancelling the
+    /// override (or letting it expire) hands back precisely the state the
+    /// controller would already be in — see [`advance`]'s doc comment.
     #[must_use]
     pub fn is_visible(&self, program: &Program, cursor: usize, slot: usize) -> bool {
         if program.slot_is_space(slot) {
             return true;
         }
         if self.seen.get(slot).copied().unwrap_or(false) {
+            return true;
+        }
+        if self.manual_override_until.is_some() {
             return true;
         }
         window(program, cursor, self.k).is_some_and(|range| range.contains(&slot))
@@ -291,8 +340,43 @@ pub fn next_k(k: usize, instant_wpm: f64, slow_band: f64, fast_band: f64, remain
 /// Pure — `state` is read, never written — and total: every branch has a
 /// defined answer, including the ones a caller can only reach by handing it
 /// a cursor past the end of the program.
+///
+/// # The manual override
+///
+/// While [`RevealState::manual_override_until`] names a deadline still ahead
+/// of `now`, [`RevealState::is_visible`] shows everything regardless of `k`
+/// or `opened` — but neither of those keeps running the ordinary
+/// negative-feedback arithmetic and delay gate any differently than if the
+/// override were not there at all. The override changes what is *shown*,
+/// never what the controller has concluded or how far it has progressed.
+///
+/// That split is what makes cancelling the override (a second toggle, or the
+/// deadline simply passing) hand back the controller's own state rather than
+/// one the override itself perturbed. Two things were tried and are wrong:
+///
+/// - Baking the override into `k` directly: with no keystrokes to read, a
+///   masked `next_k` sees zero WPM forever, which only ever grows — so a
+///   step never un-reveals once toggled, even after the toggle is switched
+///   back off.
+/// - Letting the override contribute to `opened`: `opened` is a one-way
+///   latch for the rest of the step, so even a toggle cancelled immediately,
+///   before the initial delay has genuinely elapsed, would permanently
+///   unlock `next_k` for a step that should still be sitting at a pinned
+///   `k == 0` — the exact "hand back the pre-override state" promise this
+///   override exists to keep.
+///
+/// Fast typing *during* the override still closes the real `k` down, same as
+/// it always did (once `opened` is genuinely true), so a player who is now
+/// confidently copying revealed text arrives at the override's expiry
+/// already converging shut rather than starting from fully open.
+///
+/// An override past its deadline is cleared here, in the one place every
+/// other reader of the field already has to pass through, rather than left
+/// for the next toggle to notice.
 #[must_use]
 pub fn advance(state: &RevealState, program: &Program, cursor: usize, keystrokes: &[f64], started_at: Option<f64>, config: RevealConfig, now: f64) -> RevealState {
+    let manual_override_until = state.manual_override_until.filter(|&until| now < until);
+
     let opened = state.opened || started_at.is_some_and(|start| now - start >= config.initial_delay_ms(state.attempt));
 
     let remaining = program.runs().len().saturating_sub(program.run_index_at_or_after(cursor));
@@ -303,12 +387,53 @@ pub fn advance(state: &RevealState, program: &Program, cursor: usize, keystrokes
         0
     };
 
+    // The slot under the caret must be ratcheted as seen using what is
+    // *actually shown* right now, not the controller's own `k` — otherwise
+    // a caret sitting outside the controller's real window while the
+    // override is covering for it would go unprotected the instant the
+    // override lifts (docs/leetype/README.md: "the character under your own
+    // caret turns into a bullet is the kind of thing that ends a run").
+    let shown_k = if manual_override_until.is_some() { remaining } else { k };
+
     RevealState {
         k,
         opened,
         attempt: state.attempt,
-        seen: ratcheted(&state.seen, program, cursor, k),
+        seen: ratcheted(&state.seen, program, cursor, shown_k),
+        manual_override_until,
     }
+}
+
+/// Flip the manual-reveal override: open it if the auto loop currently has
+/// control, or hand control back immediately if it is already frozen open.
+///
+/// A two-state cycle rather than a latch plus a separate "cancel" command —
+/// the same keypress that asks for relief is the one that gives control back
+/// early, which is the ergonomic point of a *toggle* rather than a one-shot
+/// reveal. Pure and total: every `(current, now)` pair has exactly one
+/// answer, so a caller dispatching this command twice in a row — a stray
+/// key-repeat event, say — always lands on a well-defined state rather than
+/// one that depends on how many times it happened to fire.
+#[must_use]
+pub fn toggle_manual_override(current: Option<f64>, now: f64) -> Option<f64> {
+    let active = current.is_some_and(|until| now < until);
+    if active {
+        None
+    } else {
+        Some(now + MAX_MANUAL_REVEAL_MS)
+    }
+}
+
+/// Fraction of the manual-reveal freeze window still remaining: `1.0` the
+/// instant a toggle opens it, decaying to `0.0` as `now` reaches the
+/// deadline, and `0.0` whenever no override is in force.
+///
+/// The renderer's visual ergonomic effect reads this directly rather than
+/// re-deriving a countdown from a raw deadline and a copy of
+/// [`MAX_MANUAL_REVEAL_MS`] on the other side of the wasm boundary.
+#[must_use]
+pub fn manual_reveal_fraction(manual_override_until: Option<f64>, now: f64) -> f64 {
+    manual_override_until.map_or(0.0, |until| ((until - now) / MAX_MANUAL_REVEAL_MS).clamp(0.0, 1.0))
 }
 
 /// Freeze everything the player has already been shown at or behind the
@@ -369,7 +494,10 @@ pub fn progression(weighted_wpm: f64, attempt: usize, config: RevealConfig) -> P
 
 #[cfg(test)]
 mod tests {
-    use super::{advance, progression, visibility_codes, Program, Progression, RevealConfig, RevealState, MAX_STEP_ATTEMPTS};
+    use super::{
+        advance, manual_reveal_fraction, progression, toggle_manual_override, visibility_codes, Program, Progression, RevealConfig, RevealState, MAX_MANUAL_REVEAL_MS,
+        MAX_STEP_ATTEMPTS,
+    };
 
     const BASELINE: RevealConfig = RevealConfig {
         baseline_wpm: 60.0,
@@ -548,5 +676,160 @@ mod tests {
         }
         assert_eq!(progression(slow, MAX_STEP_ATTEMPTS - 1, BASELINE), Progression::Escape);
         assert_eq!(progression(slow, MAX_STEP_ATTEMPTS + 20, BASELINE), Progression::Escape);
+    }
+
+    // ── The manual-reveal toggle ──────────────────────────────────────────
+
+    #[test]
+    fn the_manual_override_toggle_is_a_two_state_cycle() {
+        assert_eq!(toggle_manual_override(None, 0.0), Some(MAX_MANUAL_REVEAL_MS), "idle -> frozen opens a fresh window");
+        assert_eq!(toggle_manual_override(Some(1_000.0), 0.0), None, "toggling while active hands control back early");
+        assert_eq!(
+            toggle_manual_override(Some(500.0), 1_000.0),
+            Some(1_000.0 + MAX_MANUAL_REVEAL_MS),
+            "a deadline already behind `now` is exactly like no override at all"
+        );
+    }
+
+    #[test]
+    fn repeated_toggles_at_the_same_instant_still_land_on_a_well_defined_state() {
+        // The idempotence a stray key-repeat event depends on: firing the
+        // same command twice back to back cancels out rather than doing
+        // something a caller would have to special-case.
+        let opened = toggle_manual_override(None, 0.0);
+        let closed = toggle_manual_override(opened, 0.0);
+        assert_eq!(closed, None);
+        assert_eq!(toggle_manual_override(closed, 0.0), opened);
+    }
+
+    #[test]
+    fn a_manual_override_keeps_everything_visible_even_as_the_underlying_controller_closes() {
+        let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        // `opened: true` here stands in for a step whose initial delay has
+        // already genuinely elapsed — the override must not be what is
+        // opening the controller (see `advance`'s doc comment), so the
+        // fixture opens it the ordinary way, same as
+        // `a_fast_player_closes_the_window_and_keeps_it_closed` above.
+        let mut state = RevealState {
+            k: 3,
+            opened: true,
+            manual_override_until: Some(5_000.0),
+            ..RevealState::empty(program.slot_count())
+        };
+
+        let mut now = 0.0;
+        for _ in 0..10 {
+            now += 60.0;
+            // The same 200 WPM-against-a-60-WPM-baseline reading that closes
+            // the window in `a_fast_player_closes_the_window_and_keeps_it_closed`
+            // above — comfortably past the fast band.
+            let window: Vec<f64> = (0..12).map(|index| 60.0f64.mul_add(-f64::from(12 - index), now)).collect();
+            state = advance(&state, &program, 0, &window, Some(0.0), BASELINE, now);
+            assert!(
+                visibility_codes(&state, &program, 0).iter().all(|&code| code == 1),
+                "the override should keep every slot visible at t={now}, whatever the controller's own k is doing"
+            );
+        }
+
+        // The controller underneath was never frozen — it closed exactly as
+        // it would have without the override. That is what lets cancelling
+        // or expiring the override hand back a sensible state instead of one
+        // stuck wide open; see the regression below.
+        assert_eq!(state.k, 0, "the real controller should have closed by now, independent of what the override is showing");
+    }
+
+    #[test]
+    fn cancelling_the_override_restores_the_controllers_own_progression() {
+        // The regression this override design exists to prevent: two
+        // toggles back to back, nothing typed in between. Baking the
+        // override straight into `k` (the first cut at this feature) left
+        // `next_k` reading zero keystrokes forever after — which only ever
+        // grows — so the window never un-revealed even once the toggle was
+        // switched back off and the status pill said it had.
+        let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        let empty = RevealState::empty(program.slot_count());
+
+        let frozen = empty.toggled(0.0);
+        let after_first_toggle = advance(&frozen, &program, 0, &[], Some(0.0), BASELINE, 0.0);
+        assert!(after_first_toggle.manual_override_until.is_some());
+
+        let cancelled = after_first_toggle.toggled(0.0);
+        let after_second_toggle = advance(&cancelled, &program, 0, &[], Some(0.0), BASELINE, 0.0);
+
+        assert_eq!(after_second_toggle.manual_override_until, None);
+        // The controller only grows one run per idle step - it must not
+        // have jumped straight to "everything", which is what carrying the
+        // override's inflated value forward would leave behind.
+        assert!(
+            after_second_toggle.k < program.runs().len(),
+            "cancelling immediately should not leave the window pinned open: k={} of {}",
+            after_second_toggle.k,
+            program.runs().len()
+        );
+        assert!(
+            !visibility_codes(&after_second_toggle, &program, 0).iter().all(|&code| code == 1),
+            "the window should have re-shut to the controller's real, still-ramping position"
+        );
+    }
+
+    #[test]
+    fn cancelling_the_override_before_the_delay_elapses_leaves_the_controller_still_shut() {
+        // A sharper case than the regression above: `opened` is a one-way
+        // latch for the rest of the step, so if the override ever
+        // contributed to it (even indirectly, by riding along in the same
+        // `||` chain), a toggle cancelled *immediately* — before the initial
+        // delay has genuinely elapsed — would permanently unlock `next_k`
+        // for a step that should still be sitting at a pinned `k == 0`. The
+        // regression above alone would not have caught this: `k` growing
+        // from 0 to 2 still satisfies "less than the run count" on a source
+        // with more than two runs.
+        let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        let empty = RevealState::empty(program.slot_count());
+        let started_at = Some(0.0);
+        let now = 0.0;
+        assert!(now < BASELINE.initial_delay_ms(0), "the fixture must actually sit inside the delay window");
+
+        let frozen = empty.toggled(now);
+        let after_first_toggle = advance(&frozen, &program, 0, &[], started_at, BASELINE, now);
+        assert!(after_first_toggle.manual_override_until.is_some());
+
+        let cancelled = after_first_toggle.toggled(now);
+        let after_second_toggle = advance(&cancelled, &program, 0, &[], started_at, BASELINE, now);
+
+        assert_eq!(after_second_toggle.manual_override_until, None);
+        assert!(!after_second_toggle.opened, "the delay gate must not have been unlocked by a cancelled override");
+        assert_eq!(
+            after_second_toggle.k, 0,
+            "the controller must still be pinned shut, exactly as if the toggle had never happened"
+        );
+    }
+
+    #[test]
+    fn the_override_lifts_on_its_own_once_the_deadline_passes() {
+        let program = Program::compile("let mut map = HashMap::new();");
+        let state = RevealState {
+            manual_override_until: Some(1_000.0),
+            opened: true,
+            k: program.runs().len(),
+            ..RevealState::empty(program.slot_count())
+        };
+
+        let still_active = advance(&state, &program, 0, &[], Some(0.0), BASELINE, 999.0);
+        assert_eq!(still_active.manual_override_until, Some(1_000.0));
+
+        let lifted = advance(&state, &program, 0, &[], Some(0.0), BASELINE, 1_000.0);
+        assert_eq!(lifted.manual_override_until, None, "the deadline having passed clears the override on its own");
+    }
+
+    #[test]
+    fn manual_reveal_fraction_decays_from_one_to_zero_and_clamps() {
+        assert_eq!(manual_reveal_fraction(None, 0.0), 0.0, "no override in force reads as zero, not a stale fraction");
+        assert_eq!(manual_reveal_fraction(Some(MAX_MANUAL_REVEAL_MS), 0.0), 1.0);
+        assert_eq!(manual_reveal_fraction(Some(MAX_MANUAL_REVEAL_MS), MAX_MANUAL_REVEAL_MS / 2.0), 0.5);
+        assert_eq!(
+            manual_reveal_fraction(Some(1_000.0), 5_000.0),
+            0.0,
+            "a deadline already in the past clamps rather than going negative"
+        );
     }
 }
