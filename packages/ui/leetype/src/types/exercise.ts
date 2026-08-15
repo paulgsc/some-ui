@@ -74,6 +74,30 @@ import type { Language } from "./leetype"
 export const GOAL_MAX_CHARS = 140
 
 /**
+ * The longest a prompt block's prose is allowed to run: this many lines,
+ * this many characters each.
+ *
+ * The bound *is* the design, same posture as `GOAL_MAX_CHARS` just above.
+ * A prompt block is a pointer at evidence, not the exposition that used to
+ * carry the step: "a diagnostic step must remain actionable if the learner
+ * reads only the failure label, the observed value and the highlighted
+ * line." Two short lines is generous for that. A step whose prose keeps
+ * overflowing this is not a step with a formatting problem — it is a step
+ * that wanted a different kind of evidence block than plain prose, once one
+ * exists.
+ */
+export const PROMPT_MAX_LINES = 2
+export const PROMPT_LINE_MAX_CHARS = 120
+
+const PROMPT_TOO_MANY_LINES_MESSAGE =
+  `A prompt block holds more than ${PROMPT_MAX_LINES} lines. Split the step, ` +
+  "or this is evidence rather than exposition and wants a different block kind."
+
+const PROMPT_LINE_TOO_LONG_MESSAGE =
+  `A prompt line runs past ${PROMPT_LINE_MAX_CHARS} characters. A prompt line ` +
+  "is a pointer, not a paragraph — tighten the sentence, or split the step."
+
+/**
  * A block the player reads rather than types.
  *
  * The union exists so that future kinds — a hint, compiler output, a
@@ -84,7 +108,12 @@ export const GOAL_MAX_CHARS = 140
 export const PromptBlockSchema = z.object({
   kind: z.literal("prompt"),
   /** Rendered as separate lines. One short paragraph, or a few bullets. */
-  lines: z.array(z.string().min(1)).min(1),
+  lines: z
+    .array(
+      z.string().min(1).max(PROMPT_LINE_MAX_CHARS, PROMPT_LINE_TOO_LONG_MESSAGE)
+    )
+    .min(1)
+    .max(PROMPT_MAX_LINES, PROMPT_TOO_MANY_LINES_MESSAGE),
 })
 
 /**

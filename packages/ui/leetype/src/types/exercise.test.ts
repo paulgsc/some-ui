@@ -5,6 +5,9 @@ import {
   ExerciseSchema,
   GOAL_MAX_CHARS,
   languageOf,
+  PROMPT_LINE_MAX_CHARS,
+  PROMPT_MAX_LINES,
+  PromptBlockSchema,
   promptBlocksOf,
   StepSchema,
   typingBlockOf,
@@ -79,6 +82,46 @@ describe("StepSchema", () => {
     })
     expect(withProvenance.provenance?.source).toBe("pnpm")
     expect(typingBlockOf(withProvenance)).toEqual(typing)
+  })
+})
+
+describe("PromptBlockSchema — the prose budget", () => {
+  it("accepts a prompt at the line limit", () => {
+    const atLimit = {
+      kind: "prompt",
+      lines: Array(PROMPT_MAX_LINES).fill("A short line."),
+    }
+    expect(PromptBlockSchema.safeParse(atLimit).success).toBe(true)
+  })
+
+  it("rejects a prompt with more lines than the budget, and says why", () => {
+    const overLimit = {
+      kind: "prompt",
+      lines: Array(PROMPT_MAX_LINES + 1).fill("A short line."),
+    }
+    const result = PromptBlockSchema.safeParse(overLimit)
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/more than 2 lines/)
+    expect(result.error?.issues[0]?.message).toMatch(/Split the step/)
+  })
+
+  it("rejects a single line longer than the per-line budget, and says why", () => {
+    const tooLong = {
+      kind: "prompt",
+      lines: ["a".repeat(PROMPT_LINE_MAX_CHARS + 1)],
+    }
+    const result = PromptBlockSchema.safeParse(tooLong)
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/past 120 characters/)
+    expect(result.error?.issues[0]?.message).toMatch(/pointer, not a paragraph/)
+  })
+
+  it("accepts a line right at the per-line budget", () => {
+    const atLimit = {
+      kind: "prompt",
+      lines: ["a".repeat(PROMPT_LINE_MAX_CHARS)],
+    }
+    expect(PromptBlockSchema.safeParse(atLimit).success).toBe(true)
   })
 })
 

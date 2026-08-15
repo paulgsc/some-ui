@@ -1,8 +1,9 @@
-import type { Exercise } from "@leetype/types/exercise"
+import type { Exercise, Step } from "@leetype/types/exercise"
 import { ExerciseCorpusSchema } from "@leetype/types/exercise"
 
 import {
   ADVERSARIAL_EXERCISE_ID,
+  HOSTILE_PROMPT_STEP,
   SEED_EXERCISE_ID,
   SEED_EXERCISES,
 } from "./seed"
@@ -108,3 +109,11 @@ export function nextExercise(state?: SelectionState): Exercise {
  */
 export const FIXTURE_EXERCISE_ID = SEED_EXERCISE_ID
 export const FIXTURE_ADVERSARIAL_EXERCISE_ID = ADVERSARIAL_EXERCISE_ID
+
+/**
+ * A step over `PromptBlockSchema`'s prose budget, for stories and tests
+ * that need to prove the panel's pagination path still works as a
+ * defensive floor. Never handed out by `nextExercise` and never validated
+ * against `StepSchema` — see `./seed.ts` for why.
+ */
+export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
