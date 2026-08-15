@@ -50,6 +50,7 @@ function renderRow(row: EvidenceRow): ReactNode {
           )}
           {row.before}
           <span aria-hidden="true"> → </span>
+          <span className="sr-only"> becomes </span>
           {row.after}
         </p>
       )

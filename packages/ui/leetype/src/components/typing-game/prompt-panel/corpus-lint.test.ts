@@ -1,7 +1,4 @@
-import {
-  FIXTURE_ADVERSARIAL_EXERCISE_ID,
-  nextExercise,
-} from "@leetype/lib/leetype/exercises"
+import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
 import { promptBlocksOf } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
 
@@ -16,14 +13,12 @@ import { EVIDENCE_ROW_BUDGET, evidenceRowsOf } from "./rows"
  * proven against the deliberately-hostile fixture (see
  * `index.stories.tsx`'s `DeliberatelyAbusive`) — but never something a
  * validated corpus should reach. This is the other half of that claim: it
- * walks every step the shim actually hands out and fails loudly if one
- * would.
+ * walks every step in `ALL_FIXTURE_EXERCISES` — the whole validated corpus,
+ * not just the ones `nextExercise` happens to reach by default or by a
+ * `preferId` this file knows to ask for — and fails loudly if one would.
  */
 describe("corpus lint: no step's evidence reaches the panel's row budget", () => {
-  for (const exercise of [
-    nextExercise(),
-    nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID }),
-  ]) {
+  for (const exercise of ALL_FIXTURE_EXERCISES) {
     it(`holds for every step in "${exercise.id}"`, () => {
       for (const step of exercise.steps) {
         const rowCount = evidenceRowsOf(promptBlocksOf(step)).length
