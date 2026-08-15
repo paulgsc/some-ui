@@ -9,11 +9,15 @@ export const Default: Story = {}
 
 export const SplitScreen: Story = {
   args: {
-    aside: (
-      <blockquote className="max-w-md text-lg">
-        “One calm, consistent place to access your workspace.”
-      </blockquote>
-    ),
+    welcome: {
+      eyebrow: "Welcome back",
+      title: "Ready to continue?",
+      description: "Use your passkey to pick up where you left off.",
+    },
+    notice: {
+      title: "Preview",
+      description: "Authentication is not connected in this story.",
+    },
   },
 }
 
