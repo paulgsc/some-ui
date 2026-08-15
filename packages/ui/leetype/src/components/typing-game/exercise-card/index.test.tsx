@@ -15,6 +15,7 @@ const seed = nextExercise()
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
 
 function projectionsFor(step: Step): {
+  displaySource: string
   roles: Uint8Array
   slotOfDisplay: Int32Array
   slotStatus: Uint8Array
@@ -26,6 +27,7 @@ function projectionsFor(step: Step): {
   const source = typingBlockOf(step)?.source ?? ""
   const length = source.length
   return {
+    displaySource: source,
     roles: new Uint8Array(length).fill(1),
     slotOfDisplay: Int32Array.from({ length }, (_, index) => index),
     slotStatus: new Uint8Array(length),

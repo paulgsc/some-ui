@@ -118,7 +118,12 @@ type UseTypingGameReturn = GameView & {
   error: Error | null
 }
 
-const EMPTY_LAYOUT: Layout = { displayLen: 0, slotCount: 0, sections: [] }
+const EMPTY_LAYOUT: Layout = {
+  displayLen: 0,
+  slotCount: 0,
+  sections: [],
+  displaySource: "",
+}
 
 const EMPTY_SNAPSHOT: Snapshot = {
   cursorSlot: 0,

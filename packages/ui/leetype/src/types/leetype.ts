@@ -49,13 +49,21 @@ export type CompletedSessionStats = {
 //                   which is exactly what lets the caret fly over
 //                   indentation while still sitting on a real character.
 //
-// `ROLE_TYPEABLE`/`ROLE_SKIP` decode the per-display-character role map;
-// `SLOT_*` decode the per-slot status map; `VISIBILITY_*` decode the
-// per-slot reveal map. All three cross the boundary as typed arrays, so they
-// are numbers rather than strings.
+// `ROLE_TYPEABLE`/`ROLE_SKIP`/`ROLE_CONTEXT` decode the per-display-character
+// role map; `SLOT_*` decode the per-slot status map; `VISIBILITY_*` decode
+// the per-slot reveal map. All three cross the boundary as typed arrays, so
+// they are numbers rather than strings.
 
 export const ROLE_SKIP = 0
 export const ROLE_TYPEABLE = 1
+/**
+ * Rendered as code, anchors the typeable slots around it to a position, and
+ * — like `ROLE_SKIP` — has a display index but no slot. Unlike skip, it is
+ * not layout: it is content the player reads but is never asked to type,
+ * and it must never be drawn behind a mask (there is no slot for
+ * `VISIBILITY_MASKED` to apply to in the first place).
+ */
+export const ROLE_CONTEXT = 2
 
 export const SLOT_UNTOUCHED = 0
 export const SLOT_CORRECT = 1
@@ -95,6 +103,16 @@ export const LayoutSchema = z.object({
   displayLen: z.number(),
   slotCount: z.number(),
   sections: z.array(SectionSchema),
+  /**
+   * The chunk's rendered text — what a renderer must draw, and what
+   * `roles`/`slotOfDisplay`/`slotStatus`/`visibility` are indexed against.
+   *
+   * Not always the authored `TypingBlock.source` verbatim: a context span's
+   * `‹…›` delimiters are stripped before this is built (see `ROLE_CONTEXT`).
+   * Indexing the per-character maps against the raw authored source instead
+   * of this field falls out of alignment at the first context span.
+   */
+  displaySource: z.string(),
 })
 
 export const SnapshotSchema = z.object({
@@ -258,6 +276,7 @@ export type WasmModule = {
   ) => TypingGameWasm
   classify_source(input: string): Uint8Array
   slot_map_from_source(input: string): Int32Array
+  rendered_source(input: string): string
 }
 
 export type TypedTypingGame = {

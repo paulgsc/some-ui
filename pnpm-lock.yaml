@@ -1386,8 +1386,8 @@ importers:
   packages/ui/leetype:
     dependencies:
       '@some-ui/leetype-wasm':
-        specifier: ^0.0.13
-        version: 0.0.13
+        specifier: ^0.0.14
+        version: 0.0.14
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -4817,8 +4817,8 @@ packages:
   '@some-ui/hangul-game-core@0.0.5':
     resolution: {integrity: sha512-TeC+861SSq3NYR+Hg+4Z3QF0XuadvNAcbGRosSuXaLLG2JKVczpy5/J9jVvh/pWVLdamsxGGDfEjX+LkqqvloA==}
 
-  '@some-ui/leetype-wasm@0.0.13':
-    resolution: {integrity: sha512-GIUCrYMfoR9ncDFX37Zk3MG1/uPs8yQPx5kkFPZOpIgjhRmHos4091rg8ZD25HEWzH+1Oyre/75G+bBXhTfN7A==}
+  '@some-ui/leetype-wasm@0.0.14':
+    resolution: {integrity: sha512-ZLqgYhUjQFmSnAQ/WIxUH7sb9FAqBtpNFevJ0X/I4Bvei+pOXpNpE2lvg1tSU7exIBqfSNtkL7UeOfMDCyh+oQ==}
 
   '@some-ui/polyhedron@0.0.4':
     resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
@@ -13389,7 +13389,7 @@ snapshots:
 
   '@some-ui/hangul-game-core@0.0.5': {}
 
-  '@some-ui/leetype-wasm@0.0.13': {}
+  '@some-ui/leetype-wasm@0.0.14': {}
 
   '@some-ui/polyhedron@0.0.4': {}
 

@@ -122,6 +122,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
         displayLen: this.source.length,
         slotCount: this.source.length,
         sections: [],
+        displaySource: this.source,
       }
     }
     roles(): Uint8Array {

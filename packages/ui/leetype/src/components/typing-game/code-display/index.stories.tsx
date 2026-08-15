@@ -47,7 +47,7 @@ const StoryFromStep = ({
   return (
     <div className="code rounded-lg border border-border bg-secondary p-4">
       <CodeDisplay
-        displayCode={source}
+        displayCode={preview.displaySource}
         language={step ? languageOf(step) : "rust"}
         roles={preview.roles}
         slotOfDisplay={preview.slotOfDisplay}
