@@ -135,6 +135,18 @@ export const SnapshotSchema = z.object({
   revealK: z.number(),
   /** Reveal units the step holds in total. */
   runCount: z.number(),
+  /**
+   * Whether a manual-reveal toggle currently has the auto-hide loop frozen
+   * open. Drives the toggle's visual ergonomic effect; there is no
+   * client-side masking policy behind it, same posture as `visibility`.
+   */
+  manualRevealActive: z.boolean(),
+  /**
+   * Fraction of the manual-reveal freeze window still remaining, `1` at the
+   * instant of toggling down to `0` once it lifts. Always `0` when
+   * `manualRevealActive` is `false`.
+   */
+  manualRevealFraction: z.number(),
   /** Correctly-resolved slots the player could see when they resolved them. */
   assisted: z.number(),
   /** Seconds this step has been in flight; restarts on every step. */
@@ -226,6 +238,7 @@ export type TypingGameWasm = {
   jump_to_section(section: number, now: number): unknown
   resume(now: number): unknown
   dismiss_alert(now: number): unknown
+  toggle_reveal(now: number): unknown
   reset(now: number): unknown
   reset_game(now: number): unknown
   complete_chunk(now: number): unknown
@@ -264,6 +277,7 @@ export type TypedTypingGame = {
   jumpToSection(section: number, now: number): Outcome
   resume(now: number): Outcome
   dismissAlert(now: number): Outcome
+  toggleReveal(now: number): Outcome
   reset(now: number): Outcome
   resetGame(now: number): Outcome
   completeChunk(now: number): Outcome

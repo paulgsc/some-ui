@@ -170,6 +170,16 @@ export class TypedTypingGame {
     return this.commit(this.instance.dismiss_alert(now))
   }
 
+  /**
+   * Flip the manual-reveal override: freeze the auto-hide loop open for a
+   * bounded duration, or hand control back early if it is already frozen.
+   * The keybinding that calls this lives in `use-keystroke-capture`; this
+   * method only forwards it to the engine.
+   */
+  toggleReveal(now: number): Outcome {
+    return this.commit(this.instance.toggle_reveal(now))
+  }
+
   /** Clear this chunk's progress, keeping session totals. */
   reset(now: number): Outcome {
     return this.commit(this.instance.reset(now))

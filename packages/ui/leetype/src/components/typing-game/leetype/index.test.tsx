@@ -49,6 +49,8 @@ type Snapshot = {
   attempt: number
   revealK: number
   runCount: number
+  manualRevealActive: boolean
+  manualRevealFraction: number
   assisted: number
   elapsedTime: number
   sessionElapsedTime: number
@@ -94,6 +96,8 @@ vi.mock("@some-ui/leetype-wasm", () => {
         attempt: this.attempt,
         revealK: 1,
         runCount: 3,
+        manualRevealActive: false,
+        manualRevealFraction: 0,
         assisted: 0,
         elapsedTime: 10,
         sessionElapsedTime: 30,
@@ -160,6 +164,9 @@ vi.mock("@some-ui/leetype-wasm", () => {
       return this.outcome()
     }
     dismiss_alert(): unknown {
+      return this.outcome()
+    }
+    toggle_reveal(): unknown {
       return this.outcome()
     }
     reset(): unknown {

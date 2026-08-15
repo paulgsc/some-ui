@@ -49,10 +49,13 @@ function renderCard(
       attempt={attempt}
       {...projectionsFor(step)}
       cursorDisplay={0}
+      manualRevealActive={false}
+      manualRevealFraction={0}
       rejection={null}
       gameState="playing"
       onKey={() => {}}
       onBackspace={() => {}}
+      onToggleReveal={() => {}}
       inputRef={inputRef}
     />
   )
@@ -99,10 +102,13 @@ describe("ExerciseCard", () => {
         attempt={0}
         {...projectionsFor(second)}
         cursorDisplay={0}
+        manualRevealActive={false}
+        manualRevealFraction={0}
         rejection={null}
         gameState="playing"
         onKey={() => {}}
         onBackspace={() => {}}
+        onToggleReveal={() => {}}
         inputRef={inputRef}
       />
     )

@@ -11,6 +11,7 @@ import {
   typingBlockOf,
 } from "@leetype/types/exercise"
 import type { GameState, Rejection, TextGradient } from "@leetype/types/leetype"
+import { Eye } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 /**
@@ -35,10 +36,19 @@ type ExerciseCardProps = {
   slotStatus: Uint8Array
   visibility: Uint8Array
   cursorDisplay: number
+  /**
+   * Whether a manual-reveal toggle currently has the auto-hide loop frozen
+   * open, and how much of that freeze is left (`1` just after toggling,
+   * decaying to `0`). Drives the toggle's visual ergonomic effect below —
+   * never `CodeDisplay`, which owns no masking-state affordance of its own.
+   */
+  manualRevealActive: boolean
+  manualRevealFraction: number
   rejection: Rejection | null
   gameState: GameState
   onKey: (key: string) => void
   onBackspace: () => void
+  onToggleReveal: () => void
   inputRef: RefObject<HTMLTextAreaElement | null>
   textGradient?: TextGradient
   className?: string
@@ -87,10 +97,13 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   slotStatus,
   visibility,
   cursorDisplay,
+  manualRevealActive,
+  manualRevealFraction,
   rejection,
   gameState,
   onKey,
   onBackspace,
+  onToggleReveal,
   inputRef,
   textGradient,
   className,
@@ -103,6 +116,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   useKeystrokeCapture(inputRef, {
     onKey,
     onBackspace,
+    onToggleReveal,
     enabled: canType,
   })
 
@@ -156,6 +170,24 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
             <span className="rounded-full border border-border bg-background/90 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
               {hint}
             </span>
+          </div>
+        )}
+
+        {canType && manualRevealActive && (
+          // The manual-reveal toggle's whole visual footprint: a small,
+          // out-of-the-way pill, not a banner. It fades as the freeze runs
+          // down (`manualRevealFraction`) instead of showing a countdown
+          // number — informative without being another thing to read, which
+          // is the same "non-mentally-load-bearing" bar the reveal loop
+          // itself is held to.
+          <div
+            role="status"
+            aria-live="polite"
+            className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm transition-opacity duration-500"
+            style={{ opacity: 0.35 + manualRevealFraction * 0.65 }}
+          >
+            <Eye className="h-3 w-3" aria-hidden="true" />
+            <span>Revealed — Tab to hide</span>
           </div>
         )}
       </div>
