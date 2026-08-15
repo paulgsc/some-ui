@@ -154,6 +154,13 @@ impl TypingGame {
         self.apply(&Command::DismissAlert, now)
     }
 
+    /// Flip the manual-reveal override: freeze the auto-hide loop open for
+    /// up to `reveal::MAX_MANUAL_REVEAL_MS`, or hand control back early if
+    /// it is already frozen open. See `leetype::reveal::toggle_manual_override`.
+    pub fn toggle_reveal(&self, now: f64) -> JsValue {
+        self.apply(&Command::ToggleReveal, now)
+    }
+
     /// Clear this chunk's progress, keeping session totals.
     pub fn reset(&self, now: f64) -> JsValue {
         self.apply(&Command::ResetChunk, now)

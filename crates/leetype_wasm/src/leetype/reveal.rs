@@ -78,6 +78,22 @@ const INITIAL_DELAY_CHARS: f64 = 12.0;
 /// exists to avoid.
 const MIN_DEADBAND_WPM: f64 = 6.0;
 
+/// How long a manual-reveal toggle holds the auto-hide loop open, in
+/// milliseconds, before control reverts to the automatic controller on its
+/// own.
+///
+/// This is the escape hatch for a player who has hit a mental block and does
+/// not want to wait for their own typing to slow down enough to earn a
+/// reveal the ordinary way — they ask for it directly instead (see
+/// [`toggle_manual_override`]). Bounded rather than indefinite: an unbounded
+/// override would let one keypress opt a step out of the probe entirely,
+/// which is a different feature (and the wrong one — the loop's whole job is
+/// reading retrieval fluency, and a permanently open window reads nothing).
+/// Eight seconds is enough to read a short unfamiliar line without hurrying,
+/// and short enough that the mechanic the rest of this module tests is still
+/// mostly in force across a step.
+pub const MAX_MANUAL_REVEAL_MS: f64 = 8_000.0;
+
 /// How many attempts a player gets on one step before the gate lets them
 /// past regardless.
 ///
@@ -188,7 +204,7 @@ const fn attempts_as_f64(value: usize) -> f64 {
 }
 
 /// The reveal loop's state within one step.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RevealState {
     /// How many runs from the caret's own run forward are unmasked.
     /// `0` is fully masked, which is where every step starts.
@@ -208,6 +224,14 @@ pub struct RevealState {
     /// Watching the character under your own caret turn into a bullet is
     /// the kind of thing that ends a run.
     seen: Vec<bool>,
+    /// Host timestamp the manual-reveal freeze lifts at, or `None` when the
+    /// auto loop has full control.
+    ///
+    /// Only ever `Some` while it is genuinely still in force — [`advance`]
+    /// clears an expired one itself (see its doc comment), so every other
+    /// reader of this field can trust `Some` to mean "in force right now"
+    /// without re-checking the deadline against `now` itself.
+    pub manual_override_until: Option<f64>,
 }
 
 impl RevealState {
@@ -219,6 +243,7 @@ impl RevealState {
             opened: false,
             attempt: 0,
             seen: vec![false; slot_count],
+            manual_override_until: None,
         }
     }
 
@@ -229,6 +254,21 @@ impl RevealState {
         Self {
             attempt: previous_attempt.saturating_add(1),
             ..Self::empty(slot_count)
+        }
+    }
+
+    /// The same state with the manual-reveal override flipped — see
+    /// [`toggle_manual_override`].
+    ///
+    /// A method here rather than left to the caller to reconstruct with
+    /// struct-update syntax: `seen` is private to this module, so a
+    /// `session`-level caller has no other way to carry it through
+    /// unchanged.
+    #[must_use]
+    pub fn toggled(&self, now: f64) -> Self {
+        Self {
+            manual_override_until: toggle_manual_override(self.manual_override_until, now),
+            ..self.clone()
         }
     }
 
@@ -291,13 +331,32 @@ pub fn next_k(k: usize, instant_wpm: f64, slow_band: f64, fast_band: f64, remain
 /// Pure — `state` is read, never written — and total: every branch has a
 /// defined answer, including the ones a caller can only reach by handing it
 /// a cursor past the end of the program.
+///
+/// # The manual override
+///
+/// While [`RevealState::manual_override_until`] names a deadline still ahead
+/// of `now`, the window is pinned fully open and the negative-feedback loop
+/// below does not run at all — not even the shrinking half. Without that
+/// carve-out, the first few fast, confident keystrokes a player types once
+/// they can finally see the answer would read as "fast enough to close the
+/// window" ([`FAST_FRACTION`]), and the loop would re-mask the exact relief
+/// [`toggle_manual_override`] just gave them — the one outcome the whole
+/// feature exists to prevent.
+///
+/// An override past its deadline is cleared here, in the one place every
+/// other reader of the field already has to pass through, rather than left
+/// for the next toggle to notice.
 #[must_use]
 pub fn advance(state: &RevealState, program: &Program, cursor: usize, keystrokes: &[f64], started_at: Option<f64>, config: RevealConfig, now: f64) -> RevealState {
-    let opened = state.opened || started_at.is_some_and(|start| now - start >= config.initial_delay_ms(state.attempt));
+    let manual_override_until = state.manual_override_until.filter(|&until| now < until);
+
+    let opened = manual_override_until.is_some() || state.opened || started_at.is_some_and(|start| now - start >= config.initial_delay_ms(state.attempt));
 
     let remaining = program.runs().len().saturating_sub(program.run_index_at_or_after(cursor));
 
-    let k = if opened {
+    let k = if manual_override_until.is_some() {
+        remaining
+    } else if opened {
         next_k(state.k, stats::instantaneous_wpm(keystrokes, now), config.slow_band(), config.fast_band(), remaining)
     } else {
         0
@@ -308,7 +367,40 @@ pub fn advance(state: &RevealState, program: &Program, cursor: usize, keystrokes
         opened,
         attempt: state.attempt,
         seen: ratcheted(&state.seen, program, cursor, k),
+        manual_override_until,
     }
+}
+
+/// Flip the manual-reveal override: open it if the auto loop currently has
+/// control, or hand control back immediately if it is already frozen open.
+///
+/// A two-state cycle rather than a latch plus a separate "cancel" command —
+/// the same keypress that asks for relief is the one that gives control back
+/// early, which is the ergonomic point of a *toggle* rather than a one-shot
+/// reveal. Pure and total: every `(current, now)` pair has exactly one
+/// answer, so a caller dispatching this command twice in a row — a stray
+/// key-repeat event, say — always lands on a well-defined state rather than
+/// one that depends on how many times it happened to fire.
+#[must_use]
+pub fn toggle_manual_override(current: Option<f64>, now: f64) -> Option<f64> {
+    let active = current.is_some_and(|until| now < until);
+    if active {
+        None
+    } else {
+        Some(now + MAX_MANUAL_REVEAL_MS)
+    }
+}
+
+/// Fraction of the manual-reveal freeze window still remaining: `1.0` the
+/// instant a toggle opens it, decaying to `0.0` as `now` reaches the
+/// deadline, and `0.0` whenever no override is in force.
+///
+/// The renderer's visual ergonomic effect reads this directly rather than
+/// re-deriving a countdown from a raw deadline and a copy of
+/// [`MAX_MANUAL_REVEAL_MS`] on the other side of the wasm boundary.
+#[must_use]
+pub fn manual_reveal_fraction(manual_override_until: Option<f64>, now: f64) -> f64 {
+    manual_override_until.map_or(0.0, |until| ((until - now) / MAX_MANUAL_REVEAL_MS).clamp(0.0, 1.0))
 }
 
 /// Freeze everything the player has already been shown at or behind the
@@ -369,7 +461,10 @@ pub fn progression(weighted_wpm: f64, attempt: usize, config: RevealConfig) -> P
 
 #[cfg(test)]
 mod tests {
-    use super::{advance, progression, visibility_codes, Program, Progression, RevealConfig, RevealState, MAX_STEP_ATTEMPTS};
+    use super::{
+        advance, manual_reveal_fraction, progression, toggle_manual_override, visibility_codes, Program, Progression, RevealConfig, RevealState, MAX_MANUAL_REVEAL_MS,
+        MAX_STEP_ATTEMPTS,
+    };
 
     const BASELINE: RevealConfig = RevealConfig {
         baseline_wpm: 60.0,
@@ -548,5 +643,78 @@ mod tests {
         }
         assert_eq!(progression(slow, MAX_STEP_ATTEMPTS - 1, BASELINE), Progression::Escape);
         assert_eq!(progression(slow, MAX_STEP_ATTEMPTS + 20, BASELINE), Progression::Escape);
+    }
+
+    // ── The manual-reveal toggle ──────────────────────────────────────────
+
+    #[test]
+    fn the_manual_override_toggle_is_a_two_state_cycle() {
+        assert_eq!(toggle_manual_override(None, 0.0), Some(MAX_MANUAL_REVEAL_MS), "idle -> frozen opens a fresh window");
+        assert_eq!(toggle_manual_override(Some(1_000.0), 0.0), None, "toggling while active hands control back early");
+        assert_eq!(
+            toggle_manual_override(Some(500.0), 1_000.0),
+            Some(1_000.0 + MAX_MANUAL_REVEAL_MS),
+            "a deadline already behind `now` is exactly like no override at all"
+        );
+    }
+
+    #[test]
+    fn repeated_toggles_at_the_same_instant_still_land_on_a_well_defined_state() {
+        // The idempotence a stray key-repeat event depends on: firing the
+        // same command twice back to back cancels out rather than doing
+        // something a caller would have to special-case.
+        let opened = toggle_manual_override(None, 0.0);
+        let closed = toggle_manual_override(opened, 0.0);
+        assert_eq!(closed, None);
+        assert_eq!(toggle_manual_override(closed, 0.0), opened);
+    }
+
+    #[test]
+    fn a_manual_override_holds_the_window_open_against_a_typist_fast_enough_to_normally_close_it() {
+        let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        let mut state = RevealState {
+            manual_override_until: Some(5_000.0),
+            ..RevealState::empty(program.slot_count())
+        };
+
+        let mut now = 0.0;
+        for _ in 0..10 {
+            now += 60.0;
+            // The same 200 WPM-against-a-60-WPM-baseline reading that closes
+            // the window in `a_fast_player_closes_the_window_and_keeps_it_closed`
+            // above — comfortably past the fast band.
+            let window: Vec<f64> = (0..12).map(|index| 60.0f64.mul_add(-f64::from(12 - index), now)).collect();
+            state = advance(&state, &program, 0, &window, Some(0.0), BASELINE, now);
+            assert_eq!(state.k, program.runs().len(), "the override should pin the window fully open at t={now}");
+        }
+    }
+
+    #[test]
+    fn the_override_lifts_on_its_own_once_the_deadline_passes() {
+        let program = Program::compile("let mut map = HashMap::new();");
+        let state = RevealState {
+            manual_override_until: Some(1_000.0),
+            opened: true,
+            k: program.runs().len(),
+            ..RevealState::empty(program.slot_count())
+        };
+
+        let still_active = advance(&state, &program, 0, &[], Some(0.0), BASELINE, 999.0);
+        assert_eq!(still_active.manual_override_until, Some(1_000.0));
+
+        let lifted = advance(&state, &program, 0, &[], Some(0.0), BASELINE, 1_000.0);
+        assert_eq!(lifted.manual_override_until, None, "the deadline having passed clears the override on its own");
+    }
+
+    #[test]
+    fn manual_reveal_fraction_decays_from_one_to_zero_and_clamps() {
+        assert_eq!(manual_reveal_fraction(None, 0.0), 0.0, "no override in force reads as zero, not a stale fraction");
+        assert_eq!(manual_reveal_fraction(Some(MAX_MANUAL_REVEAL_MS), 0.0), 1.0);
+        assert_eq!(manual_reveal_fraction(Some(MAX_MANUAL_REVEAL_MS), MAX_MANUAL_REVEAL_MS / 2.0), 0.5);
+        assert_eq!(
+            manual_reveal_fraction(Some(1_000.0), 5_000.0),
+            0.0,
+            "a deadline already in the past clamps rather than going negative"
+        );
     }
 }

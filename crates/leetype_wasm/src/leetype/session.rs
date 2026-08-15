@@ -166,6 +166,15 @@ pub enum Command {
     JumpToSlot { slot: usize },
     /// Wave off the consecutive-error alert.
     DismissAlert,
+    /// Flip the manual-reveal override: freeze the auto-hide loop open for
+    /// up to `reveal::MAX_MANUAL_REVEAL_MS`, or hand control back early if
+    /// it is already frozen. See `reveal::toggle_manual_override` for the
+    /// two-state cycle this drives.
+    ///
+    /// The keybinding that dispatches this lives entirely on the JS side
+    /// (`use-keystroke-capture`); the session only owns what the toggle
+    /// means for the reveal loop.
+    ToggleReveal,
     /// Nothing happened, and that is the information.
     ///
     /// The reveal loop is a controller whose most important input is a
@@ -191,6 +200,10 @@ pub fn reduce(state: &SessionState, program: &Program, config: SessionConfig, co
         Command::JumpToSlot { slot } => Transition::landed(jump_to_slot(state, program, slot)),
         Command::DismissAlert => Transition::landed(SessionState {
             alert_dismissed: true,
+            ..state.clone()
+        }),
+        Command::ToggleReveal => Transition::landed(SessionState {
+            reveal: state.reveal.toggled(now),
             ..state.clone()
         }),
         Command::Tick => Transition::landed(state.clone()),
@@ -518,6 +531,19 @@ mod tests {
         let before = harness.state.clone();
         harness.send(Command::Backspace);
         assert_eq!(harness.state, before);
+    }
+
+    #[test]
+    fn toggling_reveal_freezes_the_window_open_and_toggling_again_hands_it_back() {
+        let mut harness = Harness::new("let mut map = HashMap::new();");
+        assert_eq!(harness.state.reveal.manual_override_until, None);
+
+        harness.send(Command::ToggleReveal);
+        assert!(harness.state.reveal.manual_override_until.is_some());
+        assert_eq!(harness.state.reveal.k, harness.program.runs().len(), "the override pins the window fully open");
+
+        harness.send(Command::ToggleReveal);
+        assert_eq!(harness.state.reveal.manual_override_until, None);
     }
 
     #[test]

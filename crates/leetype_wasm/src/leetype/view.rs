@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::program::{Program, Section};
+use super::reveal;
 use super::session::{self, Rejection, SessionConfig, SessionState};
 use super::stats;
 
@@ -67,6 +68,14 @@ pub struct Snapshot {
     /// Reveal units the chunk holds in total — the ceiling `reveal_k`
     /// converges to for a player who never types.
     pub run_count: usize,
+    /// Whether a manual-reveal toggle currently has the auto-hide loop
+    /// frozen open. See `reveal::toggle_manual_override`; this is the read
+    /// side the renderer's visual ergonomic effect is driven by.
+    pub manual_reveal_active: bool,
+    /// Fraction of the manual-reveal freeze window still remaining — `1.0`
+    /// the instant a toggle opens it, decaying to `0.0` as it lifts. Always
+    /// `0.0` when `manual_reveal_active` is `false`.
+    pub manual_reveal_fraction: f64,
     /// Correctly-resolved slots the player could see at the moment they
     /// resolved them.
     pub assisted: usize,
@@ -137,6 +146,7 @@ pub fn snapshot(state: &SessionState, program: &Program, config: SessionConfig, 
     let assisted = state.assisted_count(program);
     let weighted_wpm = stats::weighted_wpm(correct, assisted, state.total_errors, elapsed_time);
     let gate_threshold = config.reveal.gate_threshold();
+    let manual_reveal_fraction = reveal::manual_reveal_fraction(state.reveal.manual_override_until, now);
 
     Snapshot {
         cursor_slot: state.cursor,
@@ -155,6 +165,8 @@ pub fn snapshot(state: &SessionState, program: &Program, config: SessionConfig, 
         attempt: state.reveal.attempt,
         reveal_k: state.reveal.k,
         run_count: program.runs().len(),
+        manual_reveal_active: manual_reveal_fraction > 0.0,
+        manual_reveal_fraction,
         assisted,
         elapsed_time,
         session_elapsed_time: stats::elapsed_seconds(session_started_at, now),
@@ -232,5 +244,26 @@ mod tests {
 
         assert_eq!(progress.len(), 2);
         assert!(progress.iter().all(|entry| entry.filled == 0 && entry.slot_count > 0));
+    }
+
+    #[test]
+    fn a_fresh_snapshot_has_no_manual_override_in_force() {
+        let program = Program::compile("let x = 1;");
+        let state = SessionState::empty(program.slot_count());
+        let view = snapshot(&state, &program, SessionConfig::default(), None, 0.0);
+
+        assert!(!view.manual_reveal_active);
+        assert!((view.manual_reveal_fraction - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn the_snapshot_projects_the_manual_override_the_toggle_produces() {
+        let program = Program::compile("let x = 1;");
+        let mut state = SessionState::empty(program.slot_count());
+        state.reveal.manual_override_until = Some(4_000.0);
+
+        let view = snapshot(&state, &program, SessionConfig::default(), None, 2_000.0);
+        assert!(view.manual_reveal_active);
+        assert!((view.manual_reveal_fraction - 0.25).abs() < f64::EPSILON);
     }
 }
