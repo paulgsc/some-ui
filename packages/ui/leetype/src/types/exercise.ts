@@ -131,6 +131,66 @@ export const PromptBlockSchema = z.object({
 })
 
 /**
+ * A before/after pair — the discriminating evidence for a value, type,
+ * state, complexity or control-flow change. Absorbs five of the seven
+ * affordances the original design discussion enumerated: all five are
+ * "this was X, it becomes Y" with only the formatting of X and Y differing,
+ * which is a rendering concern and not a reason for five renderer cases.
+ *
+ * Data, not markup: a transition wanting a third state is two transitions,
+ * or it is a `trace`.
+ */
+export const TransitionBlockSchema = z.object({
+  kind: z.literal("transition"),
+  /** What changed, e.g. "lookups". Optional — the pair can speak for itself. */
+  label: z.string().min(1).optional(),
+  before: z.string().min(1),
+  after: z.string().min(1),
+})
+
+/** One labelled scalar observation inside a `trace` block. */
+export const TraceObservationSchema = z.object({
+  label: z.string().min(1),
+  value: z.string().min(1),
+})
+
+/**
+ * An ordered list of labelled scalar observations — `iterations: 10,000`,
+ * `cursor: 0 → 0`. The failure signal for the diagnostic family: what a run
+ * actually produced, in the order that explains it.
+ */
+export const TraceBlockSchema = z.object({
+  kind: z.literal("trace"),
+  /** The failure class or headline, e.g. `TIMEOUT`. Optional — a trace can be pure observation. */
+  headline: z.string().min(1).optional(),
+  observations: z.array(TraceObservationSchema).min(1),
+})
+
+/**
+ * A span annotation over the step's typing block: a highlighted locus, a
+ * finalized prefix, an unresolved interval. `label` is what the player
+ * reads. `startDisplay`/`endDisplay` are the span, in the same
+ * display-index coordinate system as `roles`/`slotOfDisplay` (see
+ * `types/leetype.ts`) — carried now so a future renderer can draw the span
+ * against the frame, not required to for this epic: `CodeDisplay`'s props
+ * are unchanged (LTY-EVIDENCE E4), so today `label` alone is what
+ * `PromptPanel` shows, the same "worth recording, never load-bearing"
+ * posture `ProvenanceSchema` already takes below.
+ */
+export const RegionBlockSchema = z
+  .object({
+    kind: z.literal("region"),
+    label: z.string().min(1),
+    startDisplay: z.number().int().nonnegative(),
+    endDisplay: z.number().int().positive(),
+  })
+  .refine((region) => region.endDisplay > region.startDisplay, {
+    message:
+      "A region's end must come after its start — an empty span highlights nothing.",
+    path: ["endDisplay"],
+  })
+
+/**
  * The block the player types. Exactly one per step.
  *
  * `source` is an inline string, never a path. A minimal proof is a few
@@ -144,8 +204,22 @@ export const TypingBlockSchema = z.object({
   language: z.enum(["typescript", "rust", "cpp", "c"]),
 })
 
+/**
+ * The three evidence kinds, closed. If a fourth turns out to be genuinely
+ * necessary, that is a change to this union argued on its own merits — not
+ * an instance that was easier to author as a fourth kind.
+ */
+export const EvidenceBlockSchema = z.discriminatedUnion("kind", [
+  TransitionBlockSchema,
+  TraceBlockSchema,
+  RegionBlockSchema,
+])
+
 export const BlockSchema = z.discriminatedUnion("kind", [
   PromptBlockSchema,
+  TransitionBlockSchema,
+  TraceBlockSchema,
+  RegionBlockSchema,
   TypingBlockSchema,
 ])
 
@@ -237,6 +311,11 @@ export const ExerciseSchema = z.object({
 export const ExerciseCorpusSchema = z.array(ExerciseSchema).min(1)
 
 export type PromptBlock = z.infer<typeof PromptBlockSchema>
+export type TransitionBlock = z.infer<typeof TransitionBlockSchema>
+export type TraceObservation = z.infer<typeof TraceObservationSchema>
+export type TraceBlock = z.infer<typeof TraceBlockSchema>
+export type RegionBlock = z.infer<typeof RegionBlockSchema>
+export type EvidenceBlock = z.infer<typeof EvidenceBlockSchema>
 export type TypingBlock = z.infer<typeof TypingBlockSchema>
 export type Block = z.infer<typeof BlockSchema>
 export type Provenance = z.infer<typeof ProvenanceSchema>
@@ -257,7 +336,15 @@ export function typingBlockOf(step: Step): TypingBlock | undefined {
   )
 }
 
-/** Everything in the step the player reads rather than types, in order. */
+/**
+ * Everything in the step the player reads rather than types, in order.
+ *
+ * Still scoped to `prompt` blocks: `PromptPanel` does not yet render
+ * `transition`/`trace`/`region` (LTY-EVIDENCE E3), and widening this to
+ * include them ahead of that would hand the panel evidence its current
+ * `blocks.flatMap((block) => block.lines)` cannot express — a silent drop
+ * dressed up as support. E3 widens both together.
+ */
 export function promptBlocksOf(step: Step): Array<PromptBlock> {
   return step.blocks.filter(
     (block): block is PromptBlock => block.kind === "prompt"

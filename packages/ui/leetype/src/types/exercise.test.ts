@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Block } from "./exercise"
 import {
+  BlockSchema,
   ExerciseSchema,
   GOAL_MAX_CHARS,
   languageOf,
@@ -9,8 +10,12 @@ import {
   PROMPT_MAX_LINES,
   PromptBlockSchema,
   promptBlocksOf,
+  RegionBlockSchema,
   StepSchema,
+  TraceBlockSchema,
+  TransitionBlockSchema,
   typingBlockOf,
+  TypingBlockSchema,
 } from "./exercise"
 
 const prompt: Block = { kind: "prompt", lines: ["Why this matters."] }
@@ -18,6 +23,26 @@ const typing: Block = {
   kind: "typing",
   source: "let mut map = HashMap::new();",
   language: "rust",
+}
+const transition: Block = {
+  kind: "transition",
+  label: "lookups",
+  before: "2 lookups",
+  after: "1 lookup",
+}
+const trace: Block = {
+  kind: "trace",
+  headline: "TIMEOUT",
+  observations: [
+    { label: "iterations", value: "10,000" },
+    { label: "cursor", value: "0 → 0" },
+  ],
+}
+const region: Block = {
+  kind: "region",
+  label: "the finalized prefix",
+  startDisplay: 0,
+  endDisplay: 12,
 }
 
 /**
@@ -144,6 +169,81 @@ describe("PromptBlockSchema — the prose budget", () => {
       lines: ["a".repeat(PROMPT_LINE_MAX_CHARS)],
     }
     expect(PromptBlockSchema.safeParse(atLimit).success).toBe(true)
+  })
+})
+
+describe("the evidence block kinds", () => {
+  it("accepts a transition, with and without its optional label", () => {
+    expect(TransitionBlockSchema.safeParse(transition).success).toBe(true)
+    expect(
+      TransitionBlockSchema.safeParse({
+        kind: "transition",
+        before: "2 lookups",
+        after: "1 lookup",
+      }).success
+    ).toBe(true)
+  })
+
+  it("rejects a transition missing either side of the pair", () => {
+    expect(
+      TransitionBlockSchema.safeParse({ kind: "transition", before: "x" })
+        .success
+    ).toBe(false)
+  })
+
+  it("accepts a trace, with and without its optional headline", () => {
+    expect(TraceBlockSchema.safeParse(trace).success).toBe(true)
+    expect(
+      TraceBlockSchema.safeParse({
+        kind: "trace",
+        observations: [{ label: "cursor", value: "0 → 0" }],
+      }).success
+    ).toBe(true)
+  })
+
+  it("requires at least one observation in a trace block", () => {
+    expect(
+      TraceBlockSchema.safeParse({ kind: "trace", observations: [] }).success
+    ).toBe(false)
+  })
+
+  it("accepts a region whose end comes after its start", () => {
+    expect(RegionBlockSchema.safeParse(region).success).toBe(true)
+  })
+
+  it("rejects a region whose end does not come after its start, and says why", () => {
+    const result = RegionBlockSchema.safeParse({
+      kind: "region",
+      label: "x",
+      startDisplay: 5,
+      endDisplay: 5,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/end must come after/)
+  })
+
+  it("mixes prompt, transition, trace and region blocks around one typing block", () => {
+    const parsed = StepSchema.parse(
+      step([prompt, transition, trace, region, typing])
+    )
+    expect(parsed.blocks).toHaveLength(5)
+    expect(typingBlockOf(parsed)).toEqual(typing)
+  })
+})
+
+describe("the block union is closed", () => {
+  it("rejects an unknown kind rather than passing it through", () => {
+    const unknown = { kind: "hint", text: "not a real kind" }
+    expect(BlockSchema.safeParse(unknown).success).toBe(false)
+  })
+
+  it("leaves TypingBlockSchema exactly as it was", () => {
+    expect(TypingBlockSchema.safeParse(typing).success).toBe(true)
+    // The typing path never grows a case for the new evidence kinds — its
+    // shape is still exactly kind/source/language.
+    expect(Object.keys(TypingBlockSchema.shape).sort()).toEqual(
+      ["kind", "language", "source"].sort()
+    )
   })
 })
 
