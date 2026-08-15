@@ -83,6 +83,28 @@ describe("StepSchema", () => {
     expect(withProvenance.provenance?.source).toBe("pnpm")
     expect(typingBlockOf(withProvenance)).toEqual(typing)
   })
+
+  it("rejects several on-budget prompt blocks that are over budget combined", () => {
+    // Each block alone satisfies PromptBlockSchema's per-block bound, but
+    // stacked sideways they are still more prose than the panel's
+    // pagination-free path was built to hold — the gap a single per-block
+    // check leaves open.
+    const twoLineBlock: Block = {
+      kind: "prompt",
+      lines: ["First line.", "Second line."],
+    }
+    const stacked = step([twoLineBlock, twoLineBlock, typing])
+    const result = StepSchema.safeParse(stacked)
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/combined/)
+    expect(result.error?.issues[0]?.message).toMatch(/split the step/i)
+  })
+
+  it("accepts several prompt blocks whose combined lines stay in budget", () => {
+    const oneLineBlock: Block = { kind: "prompt", lines: ["A short line."] }
+    const stacked = step([oneLineBlock, oneLineBlock, typing])
+    expect(StepSchema.safeParse(stacked).success).toBe(true)
+  })
 })
 
 describe("PromptBlockSchema — the prose budget", () => {
@@ -167,10 +189,10 @@ describe("the view contract's extension point", () => {
     // The acceptance criterion, exercised rather than asserted: a future
     // `hint` block is a prompt-side addition. Until the union grows, the
     // demonstration is that the typing path reads *only* the typing block
-    // and is indifferent to how many other blocks sit beside it.
-    const many = StepSchema.parse(
-      step([prompt, prompt, prompt, typing, prompt])
-    )
+    // and is indifferent to how many other blocks sit beside it. Two
+    // one-line prompt blocks (rather than four) so the fixture itself stays
+    // inside the step-level prose budget below.
+    const many = StepSchema.parse(step([prompt, typing, prompt]))
     expect(typingBlockOf(many)).toEqual(typing)
     expect(languageOf(many)).toBe("rust")
   })
