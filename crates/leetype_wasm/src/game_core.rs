@@ -606,14 +606,18 @@ mod tests {
             core.visibility_codes().iter().all(|&code| code == 1),
             "the toggle should reveal the whole step immediately, without waiting on the initial delay"
         );
-        assert_eq!(outcome.snapshot.reveal_k, outcome.snapshot.run_count);
+        // `reveal_k` deliberately does *not* jump to `run_count` here: it is
+        // the auto controller's own count, which the override overlays
+        // rather than overwrites (see `reveal::advance`). Visibility above
+        // is the contract; `reveal_k` staying low is what lets a cancelled
+        // override hand back a sane state instead of a pinned-open one.
         assert!(outcome.snapshot.manual_reveal_active);
         assert!((outcome.snapshot.manual_reveal_fraction - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn toggling_reveal_a_second_time_hands_control_back_to_the_auto_loop() {
-        let mut core = TypingGameCore::new("let mut map = HashMap::new();", None, None);
+        let mut core = TypingGameCore::new("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);", None, None);
         core.dispatch(&Command::Start, 0.0);
         core.dispatch(&Command::ToggleReveal, 0.0);
 
@@ -621,5 +625,15 @@ mod tests {
         assert!(outcome.accepted);
         assert!(!outcome.snapshot.manual_reveal_active);
         assert!((outcome.snapshot.manual_reveal_fraction - 0.0).abs() < f64::EPSILON);
+
+        // The regression this design exists to prevent: toggling twice with
+        // nothing typed in between must not leave the step stuck fully
+        // revealed just because the pill says the freeze is off. The
+        // controller had only taken two idle steps of its own, so most of
+        // a multi-run source is still masked.
+        assert!(
+            core.visibility_codes().contains(&0),
+            "cancelling with nothing typed should not leave the whole step revealed"
+        );
     }
 }

@@ -540,7 +540,14 @@ mod tests {
 
         harness.send(Command::ToggleReveal);
         assert!(harness.state.reveal.manual_override_until.is_some());
-        assert_eq!(harness.state.reveal.k, harness.program.runs().len(), "the override pins the window fully open");
+        // The override overlays visibility rather than the controller's own
+        // `k` (see `reveal::advance`), so it is `is_visible` that must say
+        // "shown", not the raw count of runs the controller has reached.
+        let cursor = harness.state.cursor;
+        assert!(
+            harness.state.reveal.is_visible(&harness.program, cursor, cursor),
+            "the override should reveal the caret's own slot immediately"
+        );
 
         harness.send(Command::ToggleReveal);
         assert_eq!(harness.state.reveal.manual_override_until, None);
