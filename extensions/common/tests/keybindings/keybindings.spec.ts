@@ -7,13 +7,12 @@
 
 import { expect, test } from "@playwright/test"
 
-// Functions are assigned to globalThis so they survive strict-mode eval.
+import { modifiersMatch } from "../../src/lib/keybindings/index"
+
+// Functions are assigned to globalThis so they survive strict-mode eval. Use
+// the production matcher's source rather than maintaining a test-only copy.
 const INLINE_KEYBINDINGS = `
-  globalThis.modifiersMatch = function modifiersMatch(e, m, isMac) {
-    const mac = isMac !== undefined ? isMac : navigator.userAgent.includes("Mac");
-    const primary = mac ? e.metaKey === m.ctrl : e.ctrlKey === m.ctrl;
-    return primary && e.altKey === m.alt && e.shiftKey === m.shift;
-  };
+  globalThis.modifiersMatch = ${modifiersMatch.toString()};
 
   globalThis.isInputContext = function isInputContext(target) {
     if (!(target instanceof HTMLElement)) return false;
@@ -139,6 +138,48 @@ test.describe("modifiersMatch", () => {
         altKey: false,
       })
       return fn(e, { ctrl: true, alt: false, shift: false, meta: false }, false)
+    }, INLINE_KEYBINDINGS)
+    expect(result).toBe(false)
+  })
+
+  test("non-Mac: rejects an unexpected meta modifier", async ({ page }) => {
+    const result = await page.evaluate((inline) => {
+      eval(inline) // eslint-disable-line no-eval
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+      const fn = (window as any)["modifiersMatch"] as (
+        e: KeyboardEvent,
+        m: object,
+        isMac?: boolean
+      ) => boolean
+      const e = new KeyboardEvent("keydown", {
+        metaKey: true,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+      })
+      return fn(e, { ctrl: true, alt: false, shift: false, meta: false }, false)
+    }, INLINE_KEYBINDINGS)
+    expect(result).toBe(false)
+  })
+
+  test("macOS: rejects an unexpected physical ctrl modifier", async ({
+    page,
+  }) => {
+    const result = await page.evaluate((inline) => {
+      eval(inline) // eslint-disable-line no-eval
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+      const fn = (window as any)["modifiersMatch"] as (
+        e: KeyboardEvent,
+        m: object,
+        isMac?: boolean
+      ) => boolean
+      const e = new KeyboardEvent("keydown", {
+        metaKey: true,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+      })
+      return fn(e, { ctrl: true, alt: false, shift: false, meta: false }, true)
     }, INLINE_KEYBINDINGS)
     expect(result).toBe(false)
   })

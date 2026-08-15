@@ -58,7 +58,8 @@ export function modifiersMatch(
 ): boolean {
   const mac = isMac ?? navigator.userAgent.includes("Mac")
   const primary = mac ? e.metaKey === m.ctrl : e.ctrlKey === m.ctrl
-  return primary && e.altKey === m.alt && e.shiftKey === m.shift
+  const secondary = mac ? e.ctrlKey === m.meta : e.metaKey === m.meta
+  return primary && secondary && e.altKey === m.alt && e.shiftKey === m.shift
 }
 
 /**
