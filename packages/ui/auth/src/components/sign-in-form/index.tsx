@@ -25,6 +25,8 @@ export type SignInFormProps = AuthFormStatusProps & {
   onPasskeySignIn?: () => void
   /** Keeps email, password, and OAuth behind an explicit fallback action. */
   passkeyFirst?: boolean
+  /** Hides every fallback method for passkey-only deployments. */
+  passkeyOnly?: boolean
 }
 
 export const SignInForm: FC<SignInFormProps> = ({
@@ -37,6 +39,7 @@ export const SignInForm: FC<SignInFormProps> = ({
   error = null,
   onPasskeySignIn,
   passkeyFirst = false,
+  passkeyOnly = false,
 }) => {
   const [fallbackVisible, setFallbackVisible] = useState(false)
   const initialValues = useMemo(
@@ -56,7 +59,8 @@ export const SignInForm: FC<SignInFormProps> = ({
 
   const showProviders = providers.length > 0 && onProviderSelect !== undefined
   const showFallback =
-    !passkeyFirst || fallbackVisible || onPasskeySignIn === undefined
+    !passkeyOnly &&
+    (!passkeyFirst || fallbackVisible || onPasskeySignIn === undefined)
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
@@ -67,7 +71,7 @@ export const SignInForm: FC<SignInFormProps> = ({
           <PasskeyButton onClick={onPasskeySignIn} pending={pending} />
           {showFallback ? (
             <AuthDivider label="or use a backup method" />
-          ) : (
+          ) : !passkeyOnly ? (
             <button
               type="button"
               onClick={() => setFallbackVisible(true)}
@@ -76,7 +80,7 @@ export const SignInForm: FC<SignInFormProps> = ({
             >
               Use email or another method
             </button>
-          )}
+          ) : null}
         </>
       ) : null}
       {showFallback ? (

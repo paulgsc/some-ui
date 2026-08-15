@@ -1,7 +1,13 @@
 import { TanstackDevtools } from "@tanstack/react-devtools"
 import type { QueryClient } from "@tanstack/react-query"
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
+import {
+  createRootRouteWithContext,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
+
+import { hasDecorativeSession } from "@/lib/auth-session"
 
 /**
  * What every route's `loader` is handed. The `queryClient` is the app's single
@@ -14,6 +20,16 @@ export type RouterContext = {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: ({ location }) => {
+    const isPublicRoute =
+      location.pathname === "/" || location.pathname === "/auth"
+    if (!isPublicRoute && !hasDecorativeSession()) {
+      throw redirect({
+        to: "/auth",
+        search: { redirect: location.href },
+      })
+    }
+  },
   component: () => (
     <>
       <Outlet />

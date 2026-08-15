@@ -351,6 +351,9 @@ importers:
       '@some-ui/activity-catalog':
         specifier: workspace:*
         version: link:../../packages/activity-catalog
+      '@some-ui/auth':
+        specifier: workspace:*
+        version: link:../../packages/ui/auth
       '@some-ui/content-registry':
         specifier: workspace:*
         version: link:../../packages/some-content-registry

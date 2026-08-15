@@ -40,6 +40,8 @@ export type AuthFlowProps = AuthFormStatusProps & {
   passkeyAvailable?: boolean
   /** Makes passkey the sole initial action; legacy methods remain a fallback. */
   passkeyFirst?: boolean
+  /** Removes the backup-method and account-creation affordances. */
+  passkeyOnly?: boolean
 
   providers?: ReadonlyArray<OAuthProvider>
   onProviderSelect?: (providerId: string) => void
@@ -85,6 +87,7 @@ export const AuthFlow: FC<AuthFlowProps> = ({
   onSkipPasskey,
   passkeyAvailable = false,
   passkeyFirst = false,
+  passkeyOnly = false,
 }) => {
   switch (step) {
     case "sign-in": {
@@ -97,13 +100,15 @@ export const AuthFlow: FC<AuthFlowProps> = ({
               : `Welcome back to ${productName}.`
           }
           footer={
-            <button
-              type="button"
-              onClick={() => onStepChange("sign-up")}
-              className="hover:text-foreground underline-offset-4 hover:underline"
-            >
-              No account yet? Create one
-            </button>
+            passkeyOnly ? null : (
+              <button
+                type="button"
+                onClick={() => onStepChange("sign-up")}
+                className="hover:text-foreground underline-offset-4 hover:underline"
+              >
+                No account yet? Create one
+              </button>
+            )
           }
         >
           <SignInForm
@@ -116,6 +121,7 @@ export const AuthFlow: FC<AuthFlowProps> = ({
             error={error}
             onPasskeySignIn={passkeyAvailable ? onPasskeySignIn : undefined}
             passkeyFirst={passkeyFirst}
+            passkeyOnly={passkeyOnly}
           />
         </AuthCard>
       )
