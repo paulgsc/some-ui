@@ -344,21 +344,31 @@ pub fn next_k(k: usize, instant_wpm: f64, slow_band: f64, fast_band: f64, remain
 /// # The manual override
 ///
 /// While [`RevealState::manual_override_until`] names a deadline still ahead
-/// of `now`, [`RevealState::is_visible`] shows everything regardless of `k` —
-/// but `k` itself keeps running the ordinary negative-feedback arithmetic
-/// underneath, exactly as if the override were not there. The override
-/// changes what is *shown*, never what the controller has concluded.
+/// of `now`, [`RevealState::is_visible`] shows everything regardless of `k`
+/// or `opened` — but neither of those keeps running the ordinary
+/// negative-feedback arithmetic and delay gate any differently than if the
+/// override were not there at all. The override changes what is *shown*,
+/// never what the controller has concluded or how far it has progressed.
 ///
 /// That split is what makes cancelling the override (a second toggle, or the
 /// deadline simply passing) hand back the controller's own state rather than
-/// a value the override itself inflated. Baking the override into `k`
-/// directly was tried and is wrong: with no keystrokes to read, a masked
-/// `next_k` sees zero WPM forever, which only ever grows — so a step never
-/// un-reveals once toggled, even after the toggle is switched back off. Fast
-/// typing *during* the override still closes the real `k` down, same as it
-/// always did, so a player who is now confidently copying revealed text
-/// arrives at the override's expiry already converging shut rather than
-/// starting from fully open.
+/// one the override itself perturbed. Two things were tried and are wrong:
+///
+/// - Baking the override into `k` directly: with no keystrokes to read, a
+///   masked `next_k` sees zero WPM forever, which only ever grows — so a
+///   step never un-reveals once toggled, even after the toggle is switched
+///   back off.
+/// - Letting the override contribute to `opened`: `opened` is a one-way
+///   latch for the rest of the step, so even a toggle cancelled immediately,
+///   before the initial delay has genuinely elapsed, would permanently
+///   unlock `next_k` for a step that should still be sitting at a pinned
+///   `k == 0` — the exact "hand back the pre-override state" promise this
+///   override exists to keep.
+///
+/// Fast typing *during* the override still closes the real `k` down, same as
+/// it always did (once `opened` is genuinely true), so a player who is now
+/// confidently copying revealed text arrives at the override's expiry
+/// already converging shut rather than starting from fully open.
 ///
 /// An override past its deadline is cleared here, in the one place every
 /// other reader of the field already has to pass through, rather than left
@@ -367,7 +377,7 @@ pub fn next_k(k: usize, instant_wpm: f64, slow_band: f64, fast_band: f64, remain
 pub fn advance(state: &RevealState, program: &Program, cursor: usize, keystrokes: &[f64], started_at: Option<f64>, config: RevealConfig, now: f64) -> RevealState {
     let manual_override_until = state.manual_override_until.filter(|&until| now < until);
 
-    let opened = manual_override_until.is_some() || state.opened || started_at.is_some_and(|start| now - start >= config.initial_delay_ms(state.attempt));
+    let opened = state.opened || started_at.is_some_and(|start| now - start >= config.initial_delay_ms(state.attempt));
 
     let remaining = program.runs().len().saturating_sub(program.run_index_at_or_after(cursor));
 
@@ -695,7 +705,14 @@ mod tests {
     #[test]
     fn a_manual_override_keeps_everything_visible_even_as_the_underlying_controller_closes() {
         let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        // `opened: true` here stands in for a step whose initial delay has
+        // already genuinely elapsed — the override must not be what is
+        // opening the controller (see `advance`'s doc comment), so the
+        // fixture opens it the ordinary way, same as
+        // `a_fast_player_closes_the_window_and_keeps_it_closed` above.
         let mut state = RevealState {
+            k: 3,
+            opened: true,
             manual_override_until: Some(5_000.0),
             ..RevealState::empty(program.slot_count())
         };
@@ -752,6 +769,38 @@ mod tests {
         assert!(
             !visibility_codes(&after_second_toggle, &program, 0).iter().all(|&code| code == 1),
             "the window should have re-shut to the controller's real, still-ramping position"
+        );
+    }
+
+    #[test]
+    fn cancelling_the_override_before_the_delay_elapses_leaves_the_controller_still_shut() {
+        // A sharper case than the regression above: `opened` is a one-way
+        // latch for the rest of the step, so if the override ever
+        // contributed to it (even indirectly, by riding along in the same
+        // `||` chain), a toggle cancelled *immediately* — before the initial
+        // delay has genuinely elapsed — would permanently unlock `next_k`
+        // for a step that should still be sitting at a pinned `k == 0`. The
+        // regression above alone would not have caught this: `k` growing
+        // from 0 to 2 still satisfies "less than the run count" on a source
+        // with more than two runs.
+        let program = Program::compile("let mut map = HashMap::new();\nmap.entry(key).or_insert_with(Vec::new);");
+        let empty = RevealState::empty(program.slot_count());
+        let started_at = Some(0.0);
+        let now = 0.0;
+        assert!(now < BASELINE.initial_delay_ms(0), "the fixture must actually sit inside the delay window");
+
+        let frozen = empty.toggled(now);
+        let after_first_toggle = advance(&frozen, &program, 0, &[], started_at, BASELINE, now);
+        assert!(after_first_toggle.manual_override_until.is_some());
+
+        let cancelled = after_first_toggle.toggled(now);
+        let after_second_toggle = advance(&cancelled, &program, 0, &[], started_at, BASELINE, now);
+
+        assert_eq!(after_second_toggle.manual_override_until, None);
+        assert!(!after_second_toggle.opened, "the delay gate must not have been unlocked by a cancelled override");
+        assert_eq!(
+            after_second_toggle.k, 0,
+            "the controller must still be pinned shut, exactly as if the toggle had never happened"
         );
     }
 
