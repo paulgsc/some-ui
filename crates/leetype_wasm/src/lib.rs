@@ -59,7 +59,8 @@ impl TypingGame {
         encode(&self.core.borrow().layout())
     }
 
-    /// Per-rendered-character roles: `0` skipped layout, `1` typeable.
+    /// Per-rendered-character roles: `0` skipped layout, `1` typeable, `2`
+    /// context (rendered, never typed, never masked).
     #[must_use]
     pub fn roles(&self) -> Vec<u8> {
         self.core.borrow().role_codes()
@@ -238,7 +239,7 @@ fn reveal_config(baseline_wpm: f64, dispersion_wpm: Option<f64>) -> RevealConfig
 }
 
 /// Classify a source string's characters without constructing a game:
-/// `0` for skipped layout, `1` for a typeable slot. Mirrors
+/// `0` for skipped layout, `1` for a typeable slot, `2` for context. Mirrors
 /// [`TypingGame::roles`] for callers that only need to render.
 #[wasm_bindgen]
 #[must_use]

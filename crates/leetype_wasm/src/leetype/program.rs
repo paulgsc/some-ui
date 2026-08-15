@@ -14,6 +14,8 @@
 //! - [`Role::Typeable`] — the player must press a key for it.
 //! - [`Role::Skip`] — layout the caret jumps over (indentation, line
 //!   breaks, alignment padding, trailing whitespace).
+//! - [`Role::Context`] — source that is rendered as code, anchors the
+//!   answer to a position, and is never typed and never masked.
 //!
 //! The classification rule is deliberately one sentence: **a run of
 //! whitespace is typeable only when it is exactly one space bounded on both
@@ -23,11 +25,34 @@
 //! (the run contains `\n`), and trailing whitespace (the run ends the
 //! source or abuts a newline). One interior space is a real token the
 //! player types; everything else is layout the caret flies through.
+//!
+//! # Context, and why it is carved out before that rule ever runs
+//!
+//! Authored source marks a span as context by wrapping it in `‹` … `›`
+//! (`CONTEXT_OPEN` / `CONTEXT_CLOSE`). Those two characters are markup, not
+//! content: they never reach `chars` or any rendered index, so the caret and
+//! the on-screen code stay in the same character-for-character agreement
+//! `Role::Skip` already promises. Everything between them renders exactly as
+//! written and carries `Role::Context` uniformly — including its own
+//! interior whitespace, which is not run back through the Skip/Typeable
+//! rule above.
+//!
+//! That last point is the one a simpler design gets wrong. Deleting the
+//! delimiters and classifying what is left as one contiguous string would
+//! let the whitespace rule read *across* a context boundary — the single
+//! space between a context span and the typeable text after it would look
+//! exactly like an ordinary interior space, and pick up `Role::Typeable`.
+//! [`Program::compile`] avoids this by classifying each surviving span of
+//! ordinary source on its own, the same way the whole source is classified
+//! today: leading and trailing whitespace of a *span* is `Role::Skip`
+//! regardless of what sits on the other side of the boundary that ends it,
+//! exactly as leading and trailing whitespace of the whole source already
+//! is. No second rule, and no boundary left for context to silently soften.
 
 use serde::{Deserialize, Serialize};
 
-/// Whether a rendered source character is typed by the player or skipped
-/// over by the caret.
+/// Whether a rendered source character is typed by the player, skipped over
+/// by the caret, or shown as unmodifiable context.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
@@ -35,6 +60,11 @@ pub enum Role {
     Skip,
     /// A slot in the typeable stream; the player owes it one keystroke.
     Typeable,
+    /// Rendered code the player never types and is never masked. Anchors
+    /// the typeable slots around it to a position without itself being
+    /// assistance: it carries no slot at all, so it cannot appear in any
+    /// figure the reveal gate reads (see `super::session::SessionState`).
+    Context,
 }
 
 impl Role {
@@ -45,6 +75,7 @@ impl Role {
         match self {
             Self::Skip => 0,
             Self::Typeable => 1,
+            Self::Context => 2,
         }
     }
 }
@@ -134,8 +165,7 @@ impl Program {
     /// Compile a chunk of source into its typeable stream and sections.
     #[must_use]
     pub fn compile(source: &str) -> Self {
-        let chars: Vec<char> = source.chars().collect();
-        let roles = classify(&chars);
+        let (chars, roles) = parse(source);
 
         let mut slot_display = Vec::new();
         let mut display_slot = Vec::with_capacity(chars.len());
@@ -145,7 +175,7 @@ impl Program {
                     display_slot.push(Some(slot_display.len()));
                     slot_display.push(index);
                 }
-                Role::Skip => display_slot.push(None),
+                Role::Skip | Role::Context => display_slot.push(None),
             }
         }
 
@@ -245,6 +275,76 @@ impl Program {
 /// keeps the JS-facing map a plain `Int32Array`.
 fn i32_from_slot(slot: usize) -> i32 {
     i32::try_from(slot).unwrap_or(i32::MAX)
+}
+
+/// Opens a context span. Never itself rendered — see the module docs.
+const CONTEXT_OPEN: char = '‹';
+
+/// Closes a context span opened by [`CONTEXT_OPEN`]. An opener with no
+/// matching closer runs to the end of the source rather than being treated
+/// as an error: [`Program::compile`] is total, and a dangling delimiter
+/// reads far more legibly as "the rest of this is context" than as a panic
+/// an author has to go trace back to its source.
+const CONTEXT_CLOSE: char = '›';
+
+/// One maximal stretch of authored source, tagged with whether it is inside
+/// a context span.
+enum Segment {
+    Source(Vec<char>),
+    Context(Vec<char>),
+}
+
+/// Split raw authored source on [`CONTEXT_OPEN`]/[`CONTEXT_CLOSE`], dropping
+/// the delimiters themselves and alternating ordinary source with context.
+///
+/// A single boolean state machine, not a nested counter: a `CONTEXT_OPEN`
+/// encountered while already inside a span is just an ordinary context
+/// character, since only [`CONTEXT_CLOSE`] is ever looked for once inside
+/// one. Context spans do not nest.
+fn segments(source: &str) -> Vec<Segment> {
+    let mut result = Vec::new();
+    let mut current = Vec::new();
+    let mut in_context = false;
+
+    for ch in source.chars() {
+        match (in_context, ch) {
+            (false, CONTEXT_OPEN) => {
+                result.push(Segment::Source(std::mem::take(&mut current)));
+                in_context = true;
+            }
+            (true, CONTEXT_CLOSE) => {
+                result.push(Segment::Context(std::mem::take(&mut current)));
+                in_context = false;
+            }
+            _ => current.push(ch),
+        }
+    }
+    result.push(if in_context { Segment::Context(current) } else { Segment::Source(current) });
+
+    result
+}
+
+/// Carve context out of authored source, then classify what is left one
+/// span at a time (see the module docs for why per-span classification is
+/// the load-bearing detail here).
+fn parse(source: &str) -> (Vec<char>, Vec<Role>) {
+    let mut chars = Vec::with_capacity(source.len());
+    let mut roles = Vec::with_capacity(source.len());
+
+    for segment in segments(source) {
+        match segment {
+            Segment::Source(span) => {
+                roles.extend(classify(&span));
+                chars.extend(span);
+            }
+            Segment::Context(span) => {
+                roles.extend(std::iter::repeat_n(Role::Context, span.len()));
+                chars.extend(span);
+            }
+        }
+    }
+
+    (chars, roles)
 }
 
 /// Assign a [`Role`] to every rendered character (see the module docs for
@@ -448,6 +548,10 @@ mod tests {
         (0..program.slot_count()).filter_map(|slot| program.slot_char(slot)).collect()
     }
 
+    fn rendered(source: &str) -> String {
+        Program::compile(source).chars.iter().collect()
+    }
+
     #[test]
     fn lone_interior_space_is_typeable() {
         assert_eq!(typed_stream("let x = 1"), "let x = 1");
@@ -567,5 +671,134 @@ mod tests {
         let label = &program.sections()[0].label;
         assert!(label.ends_with('…'));
         assert_eq!(label.chars().count(), super::LABEL_MAX_CHARS + 1);
+    }
+
+    // ── Context (F1-F2) ──────────────────────────────────────────────────
+
+    #[test]
+    fn context_delimiters_are_markup_and_never_rendered() {
+        assert_eq!(rendered("‹abc›"), "abc");
+        assert_eq!(rendered("x‹y›z"), "xyz");
+    }
+
+    #[test]
+    fn a_context_span_is_typed_by_nobody() {
+        // "let x = " keeps its two genuine interior spaces (bounded by
+        // non-whitespace within their own span); the trailing space right
+        // before the context boundary does not, by the same rule that
+        // already makes trailing whitespace of the whole source Skip.
+        assert_eq!(typed_stream("let x = ‹the answer›;"), "let x =;");
+    }
+
+    #[test]
+    fn context_carries_its_own_wire_code_distinct_from_skip_and_typeable() {
+        let program = Program::compile("a‹ b ›c");
+        let roles = program.role_codes();
+        // rendered: 'a' '_' 'b' '_' 'c'  (context interior space included verbatim)
+        assert_eq!(roles, vec![1, 2, 2, 2, 1]);
+    }
+
+    #[test]
+    fn context_interior_whitespace_is_uniformly_context_not_reclassified() {
+        // If the interior of a context span were run back through the
+        // Skip/Typeable rule, a lone interior space here would misread as
+        // Typeable. It must not: every character between the delimiters is
+        // Role::Context, full stop.
+        let program = Program::compile("‹a b›");
+        assert!(program.roles.iter().all(|role| *role == Role::Context));
+    }
+
+    #[test]
+    fn context_owns_no_slot() {
+        let program = Program::compile("x‹ctx›y");
+        let codes = program.slot_of_display_codes();
+        // rendered: 'x' 'c' 't' 'x' 'y'
+        assert_eq!(codes, vec![0, -1, -1, -1, 1]);
+        assert_eq!(program.slot_count(), 2);
+    }
+
+    #[test]
+    fn whitespace_touching_a_context_boundary_is_skipped_not_typed() {
+        // The regression this design exists to prevent: classifying the
+        // stripped-and-concatenated source as one string would see the space
+        // before/after the context span as an ordinary interior space
+        // (bounded by non-whitespace on both sides) and wrongly type it.
+        // Per-span classification makes it trailing/leading whitespace of
+        // its own span instead, exactly like the edges of the whole source.
+        assert_eq!(typed_stream("a ‹ctx› b"), "ab");
+        // rendered, delimiters stripped: "a ctx b" -> indices 0..7
+        let roles = roles_of("a ‹ctx› b");
+        assert_eq!(roles[1], Role::Skip, "space before the span");
+        assert_eq!(roles[5], Role::Skip, "space after the span");
+    }
+
+    #[test]
+    fn a_lone_interior_space_still_types_on_either_side_of_a_context_span() {
+        // The boundary rule above must not overcorrect into treating every
+        // space near a span as Skip - one bounded by non-whitespace on both
+        // sides *within its own span* is still a real keystroke.
+        assert_eq!(typed_stream("a b‹ctx›c d"), "a bc d");
+    }
+
+    #[test]
+    fn an_unterminated_context_span_runs_to_the_end_of_the_source() {
+        let program = Program::compile("let x = ‹abc");
+        assert_eq!(typed_stream("let x = ‹abc"), "let x =");
+        assert!(
+            program.roles.iter().rev().take(3).all(|role| *role == Role::Context),
+            "trailing 'abc' should all be context"
+        );
+    }
+
+    #[test]
+    fn an_empty_context_span_contributes_nothing() {
+        assert_eq!(rendered("a‹›b"), "ab");
+        assert_eq!(typed_stream("a‹›b"), "ab");
+    }
+
+    #[test]
+    fn context_does_not_nest() {
+        // A second CONTEXT_OPEN inside a span is just an ordinary context
+        // character; only the next CONTEXT_CLOSE ends the span.
+        assert_eq!(rendered("‹a‹b›c"), "a‹bc");
+        assert_eq!(typed_stream("‹a‹b›c"), "c");
+    }
+
+    #[test]
+    fn context_breaks_a_run_that_would_otherwise_be_contiguous() {
+        let without_context = Program::compile("abcdef");
+        assert_eq!(without_context.runs().len(), 1);
+
+        let with_context = Program::compile("abc‹XXXXXX›def");
+        assert_eq!(with_context.runs().len(), 2, "context must split one run into two");
+        assert_eq!(with_context.slot_count(), without_context.slot_count());
+    }
+
+    #[test]
+    fn context_never_appears_inside_any_run() {
+        let program = Program::compile("abc‹context text here›def");
+        let context_indices: Vec<usize> = program
+            .roles
+            .iter()
+            .enumerate()
+            .filter(|&(_, role)| *role == Role::Context)
+            .map(|(index, _)| index)
+            .collect();
+        assert!(!context_indices.is_empty());
+
+        for run in program.runs() {
+            for slot in run.start_slot..run.end_slot {
+                let display = program.slot_display_index(slot);
+                assert!(!context_indices.contains(&display), "run slot {slot} (display {display}) is inside a context span");
+            }
+        }
+    }
+
+    #[test]
+    fn sections_are_unaffected_by_a_context_span() {
+        let with_context = Program::compile("fn a() {\n    ‹// a hint›\n    b();\n}\n");
+        let without_context = Program::compile("fn a() {\n    b();\n}\n");
+        assert_eq!(with_context.sections().len(), without_context.sections().len());
+        assert_eq!(with_context.slot_count(), without_context.slot_count());
     }
 }
