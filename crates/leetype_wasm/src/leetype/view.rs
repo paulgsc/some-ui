@@ -24,6 +24,18 @@ pub struct Layout {
     pub slot_count: usize,
     /// Navigable regions, in source order.
     pub sections: Vec<Section>,
+    /// The chunk's rendered text — what a renderer must draw, and what
+    /// `roles`/`slotOfDisplay`/`slotStatus`/`visibility` are indexed
+    /// against.
+    ///
+    /// Not always the authored source verbatim: a context span's
+    /// delimiters are stripped before this is built (see
+    /// `leetype::program::Role::Context`). A consumer that indexes those
+    /// per-character maps against the raw source it authored, instead of
+    /// against this field, falls out of alignment at the first context
+    /// span — this is the one field that stays in agreement with them by
+    /// construction.
+    pub display_source: String,
 }
 
 /// The live state of a run.
@@ -184,6 +196,7 @@ pub fn layout(program: &Program) -> Layout {
         display_len: program.display_len(),
         slot_count: program.slot_count(),
         sections: program.sections().to_vec(),
+        display_source: program.rendered(),
     }
 }
 
@@ -234,6 +247,20 @@ mod tests {
         assert_eq!(view.display_len, program.display_len());
         assert_eq!(view.slot_count, program.slot_count());
         assert_eq!(view.sections.len(), 2);
+        assert_eq!(view.display_source, "fn a() {}\nfn b() {}\n");
+    }
+
+    #[test]
+    fn layouts_display_source_has_context_delimiters_stripped_but_content_kept() {
+        // The field a renderer must draw instead of the raw authored
+        // source: it stays index-aligned with roles/slotOfDisplay even
+        // once a context span has removed characters (the delimiters) the
+        // author typed. Context *content* is still rendered — only the
+        // delimiter markup vanishes.
+        let program = Program::compile("‹a hint›fn a() {}\n");
+        let view = layout(&program);
+        assert_eq!(view.display_source, "a hintfn a() {}\n");
+        assert_eq!(view.display_source.chars().count(), view.display_len);
     }
 
     #[test]

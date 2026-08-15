@@ -205,10 +205,17 @@ impl Player {
 
     /// The exact keystroke sequence this source demands, in order — the
     /// engine's own answer to "what does the player still owe?".
+    ///
+    /// Reads slots directly off a compiled `Program` rather than zipping
+    /// `source.chars()` against `role_codes()`: those are only the same
+    /// length when the source carries no context span, since a context
+    /// span's delimiters are stripped before anything is rendered (see
+    /// `leetype::program`'s `Role::Context` docs). Zipping against the raw
+    /// source would silently misalign every character after the first
+    /// delimiter.
     pub fn token_stream(source: &str) -> String {
-        let core = TypingGameCore::new(source, None, None);
-        let roles = core.role_codes();
-        source.chars().zip(roles).filter_map(|(ch, role)| (role == 1).then_some(ch)).collect()
+        let program = leetype_wasm::Program::compile(source);
+        (0..program.slot_count()).filter_map(|slot| program.slot_char(slot)).collect()
     }
 
     pub fn advance_clock(&mut self, millis: f64) -> &mut Self {

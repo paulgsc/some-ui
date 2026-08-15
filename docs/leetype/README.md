@@ -43,6 +43,13 @@ Two coordinate systems, already in the engine, unchanged by any of this:
   actually presses a key for. Layout whitespace has a display index and no
   slot. This is what lets the caret fly over indentation while sitting on a
   real character. See `crates/leetype_wasm/src/leetype/program.rs`.
+- **context** — a third role alongside typeable and skip (LTY-FRAME, #991):
+  source that renders as code, anchors the typeable slots around it to a
+  position, and — like skip — has a display index and no slot. Unlike skip,
+  it is not layout; it is content the player reads but is never asked to
+  produce. Carrying no slot is the load-bearing fact: it keeps a frame out
+  of every figure the reveal gate reads without a special case anywhere
+  that reads them.
 
 New with the shift:
 

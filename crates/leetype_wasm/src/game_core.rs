@@ -147,7 +147,7 @@ impl TypingGameCore {
         view::layout(&self.program)
     }
 
-    /// Per-rendered-character roles (`0` skipped, `1` typeable).
+    /// Per-rendered-character roles (`0` skipped, `1` typeable, `2` context).
     #[must_use]
     pub fn role_codes(&self) -> Vec<u8> {
         self.program.role_codes()
