@@ -117,3 +117,14 @@ export const FIXTURE_ADVERSARIAL_EXERCISE_ID = ADVERSARIAL_EXERCISE_ID
  * against `StepSchema` — see `./seed.ts` for why.
  */
 export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
+
+/**
+ * Every exercise in the validated corpus — for lints that need to check a
+ * property across *all* of it, which `nextExercise` cannot express: it only
+ * ever returns one exercise (the default or an explicit `preferId`), so a
+ * lint built out of individual `nextExercise` calls silently stops covering
+ * the corpus the moment a new exercise is added and nothing calls for it by
+ * id. Not a runtime selection API — a host asking what the player should
+ * see next always goes through `nextExercise`, this export included.
+ */
+export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS

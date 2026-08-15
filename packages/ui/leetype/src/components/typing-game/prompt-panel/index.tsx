@@ -1,7 +1,10 @@
-import type { FC } from "react"
-import type { PromptBlock } from "@leetype/types/exercise"
+import type { FC, ReactNode } from "react"
+import type { ReadBlock } from "@leetype/types/exercise"
 import { PageControls } from "@some-ui/shared"
-import { cn, useFittedPage } from "some-ui-utils"
+import { assertNever, cn, useFittedPage } from "some-ui-utils"
+
+import type { EvidenceRow } from "./rows"
+import { evidenceRowsOf } from "./rows"
 
 type PromptPanelProps = {
   /**
@@ -9,12 +12,87 @@ type PromptPanelProps = {
    * instruction, and an instruction that can be paged away is not one.
    */
   goal: string
-  /** Everything else the step wants read. */
-  blocks: ReadonlyArray<PromptBlock>
+  /** Everything else the step wants read — prose and evidence alike. */
+  blocks: ReadonlyArray<ReadBlock>
   /** 1-based, for the "Step 5 / 12" line. */
   position: number
   total: number
   className?: string
+}
+
+/**
+ * One row's presentation. Descending prominence, per the doctrine this
+ * panel replaced a description card with: a failure class or constraint
+ * reads loudest, a discriminating observation reads as evidence (`font-mono`,
+ * the same register `CodeDisplay` uses for real code), and plain prose stays
+ * the quiet default it always was.
+ */
+function renderRow(row: EvidenceRow): ReactNode {
+  switch (row.kind) {
+    case "prompt-line": {
+      return (
+        <p
+          key={row.id}
+          className="text-pretty text-xs leading-relaxed text-muted-foreground"
+        >
+          {row.text}
+        </p>
+      )
+    }
+    case "transition": {
+      return (
+        <p
+          key={row.id}
+          className="text-pretty font-mono text-xs leading-relaxed text-muted-foreground"
+        >
+          {row.label !== undefined && (
+            <span className="text-card-foreground">{row.label}: </span>
+          )}
+          {row.before}
+          <span aria-hidden="true"> → </span>
+          <span className="sr-only"> becomes </span>
+          {row.after}
+        </p>
+      )
+    }
+    case "trace-headline": {
+      return (
+        <p
+          key={row.id}
+          className="font-mono text-xs font-semibold uppercase tracking-wide text-destructive"
+        >
+          {row.text}
+        </p>
+      )
+    }
+    case "trace-observation": {
+      return (
+        <p
+          key={row.id}
+          className="text-pretty font-mono text-xs leading-relaxed text-muted-foreground"
+        >
+          <span className="text-card-foreground">{row.label}: </span>
+          {row.value}
+        </p>
+      )
+    }
+    case "region": {
+      return (
+        <p
+          key={row.id}
+          className="text-pretty text-xs leading-relaxed text-muted-foreground"
+        >
+          <span aria-hidden="true" className="text-card-foreground">
+            ▸{" "}
+          </span>
+          {row.label}
+        </p>
+      )
+    }
+    default: {
+      return assertNever(row)
+    }
+  }
 }
 
 /**
@@ -57,6 +135,17 @@ type PromptPanelProps = {
  * The panel's box is fixed by the layout (`basis-1/5`, from `ExerciseCard`),
  * so nothing it contains can resize it.
  *
+ * # Evidence, not exposition
+ *
+ * `blocks` is prose (`prompt`) and evidence (`transition`/`trace`/`region`)
+ * alike (LTY-EVIDENCE E2). `evidenceRowsOf` (`./rows`) flattens both into the
+ * atomic rows `useFittedPage` pages over — a trace block's headline and each
+ * of its observations are separate rows, the same granularity a multi-line
+ * prompt block already had one row per line. `EVIDENCE_ROW_BUDGET` bounds
+ * that count in the corpus (`./corpus-lint.test.ts`), so the pagination path
+ * below stays what it always was: a defensive floor, not a feature a valid
+ * corpus reaches.
+ *
  * It imports nothing from the typing engine. No caret, no slots, no WPM.
  */
 export const PromptPanel: FC<PromptPanelProps> = ({
@@ -66,7 +155,7 @@ export const PromptPanel: FC<PromptPanelProps> = ({
   total,
   className,
 }) => {
-  const lines = blocks.flatMap((block) => block.lines)
+  const rows = evidenceRowsOf(blocks)
   const {
     viewportRef,
     contentRef,
@@ -75,7 +164,7 @@ export const PromptPanel: FC<PromptPanelProps> = ({
     pageCount,
     next,
     previous,
-  } = useFittedPage(lines, { minPerPage: 1, maxPerPage: 8 })
+  } = useFittedPage(rows, { minPerPage: 1, maxPerPage: 8 })
 
   return (
     <div
@@ -95,17 +184,7 @@ export const PromptPanel: FC<PromptPanelProps> = ({
 
       <div ref={viewportRef} className="min-h-0 flex-1">
         <div ref={contentRef} className="flex flex-col gap-1">
-          {pageItems.map((line) => (
-            <p
-              // Prompt lines are prose with no id of their own, and two
-              // identical lines in one prompt are indistinguishable by any
-              // measure — the text is the only key available.
-              key={`${page}-${line}`}
-              className="text-pretty text-xs leading-relaxed text-muted-foreground"
-            >
-              {line}
-            </p>
-          ))}
+          {pageItems.map(renderRow)}
         </div>
       </div>
 
@@ -114,7 +193,7 @@ export const PromptPanel: FC<PromptPanelProps> = ({
         pageCount={pageCount}
         onPrevious={previous}
         onNext={next}
-        label="prompt lines"
+        label="evidence"
       />
     </div>
   )

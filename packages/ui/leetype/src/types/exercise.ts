@@ -353,6 +353,8 @@ export type RegionBlock = z.infer<typeof RegionBlockSchema>
 export type EvidenceBlock = z.infer<typeof EvidenceBlockSchema>
 export type TypingBlock = z.infer<typeof TypingBlockSchema>
 export type Block = z.infer<typeof BlockSchema>
+/** Every block kind except `typing` — what `promptBlocksOf` hands back. */
+export type ReadBlock = PromptBlock | EvidenceBlock
 export type Provenance = z.infer<typeof ProvenanceSchema>
 export type Step = z.infer<typeof StepSchema>
 export type Exercise = z.infer<typeof ExerciseSchema>
@@ -372,17 +374,16 @@ export function typingBlockOf(step: Step): TypingBlock | undefined {
 }
 
 /**
- * Everything in the step the player reads rather than types, in order.
- *
- * Still scoped to `prompt` blocks: `PromptPanel` does not yet render
- * `transition`/`trace`/`region` (LTY-EVIDENCE E3), and widening this to
- * include them ahead of that would hand the panel evidence its current
- * `blocks.flatMap((block) => block.lines)` cannot express — a silent drop
- * dressed up as support. E3 widens both together.
+ * Everything in the step the player reads rather than types, in order —
+ * plain prose (`prompt`) and evidence (`transition`/`trace`/`region`)
+ * alike. The name predates the evidence kinds but the doc comment it always
+ * carried — "everything read rather than typed" — never stopped being
+ * accurate, so it keeps its name rather than gaining a second one that
+ * means the same thing.
  */
-export function promptBlocksOf(step: Step): Array<PromptBlock> {
+export function promptBlocksOf(step: Step): Array<ReadBlock> {
   return step.blocks.filter(
-    (block): block is PromptBlock => block.kind === "prompt"
+    (block): block is ReadBlock => block.kind !== "typing"
   )
 }
 
