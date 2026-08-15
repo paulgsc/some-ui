@@ -172,6 +172,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const attempt = calibrating ? 0 : runner.attempt
 
   const {
+    layout,
     roles,
     slotOfDisplay,
     slotStatus,
@@ -413,6 +414,7 @@ export const Leetype: FC<LeetypeProps> = ({
               index={calibrating ? 0 : runner.index}
               total={calibrating ? 1 : runner.total}
               attempt={attempt}
+              displaySource={layout.displaySource}
               roles={roles}
               slotOfDisplay={slotOfDisplay}
               slotStatus={slotStatus}

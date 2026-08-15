@@ -45,7 +45,7 @@ const InBox = ({
       style={{ width: "min(44rem, 100%)", height }}
     >
       <TypingViewport
-        displayCode={source}
+        displayCode={preview.displaySource}
         language={languageOf(step)}
         roles={preview.roles}
         slotOfDisplay={preview.slotOfDisplay}

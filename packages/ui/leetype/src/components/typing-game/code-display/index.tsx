@@ -1,6 +1,7 @@
 import type { FC, JSX, ReactNode, RefObject } from "react"
 import type { TextGradient } from "@leetype/types/leetype"
 import {
+  ROLE_CONTEXT,
   ROLE_TYPEABLE,
   SLOT_CORRECT,
   SLOT_WRONG,
@@ -64,7 +65,8 @@ type CodeDisplayProps = {
   /**
    * Per-rendered-character role from the engine: `ROLE_SKIP` for layout the
    * caret jumps over, `ROLE_TYPEABLE` for characters the player owes a
-   * keystroke for.
+   * keystroke for, `ROLE_CONTEXT` for code the player reads but is never
+   * asked to type.
    */
   roles: Uint8Array
   /**
@@ -143,6 +145,7 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 }): JSX.Element => {
   const renderChar = (char: string, displayIndex: number): JSX.Element => {
     const isTypeable = roles[displayIndex] === ROLE_TYPEABLE
+    const isContext = roles[displayIndex] === ROLE_CONTEXT
     const slot = slotOfDisplay[displayIndex] ?? -1
     const status = slot >= 0 ? slotStatus[slot] : undefined
     const isMasked = slot >= 0 && visibility[slot] === VISIBILITY_MASKED
@@ -175,6 +178,17 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     if (status === SLOT_WRONG) {
       return (
         <span key={displayIndex} className="bg-red-500/30 text-red-400">
+          {char}
+        </span>
+      )
+    }
+
+    // Context: code the player reads but is never asked to type, and never
+    // masked — it carries no slot for VISIBILITY_MASKED to apply to. Muted
+    // so it reads as given rather than as a not-yet-typed real character.
+    if (isContext) {
+      return (
+        <span key={displayIndex} className="italic text-muted-foreground/70">
           {char}
         </span>
       )

@@ -96,7 +96,10 @@ export class TypedTypingGame {
     return LayoutSchema.parse(this.instance.layout())
   }
 
-  /** Per-rendered-character role: `ROLE_SKIP` or `ROLE_TYPEABLE`. */
+  /**
+   * Per-rendered-character role: `ROLE_SKIP`, `ROLE_TYPEABLE`, or
+   * `ROLE_CONTEXT`.
+   */
   roles(): Uint8Array {
     return this.instance.roles()
   }

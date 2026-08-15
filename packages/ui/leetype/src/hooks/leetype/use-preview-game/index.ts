@@ -7,6 +7,13 @@ import type { Snapshot } from "@leetype/types/leetype"
 import { ROLE_TYPEABLE } from "@leetype/types/leetype"
 
 export type PreviewGame = {
+  /**
+   * What a renderer must draw — the engine's rendered text, not necessarily
+   * `code` verbatim. See `Layout.displaySource`: a context span's
+   * delimiters are stripped before this is built, so it is this field
+   * `roles`/`slotOfDisplay` are indexed against, not the raw `code` prop.
+   */
+  displaySource: string
   roles: Uint8Array
   slotOfDisplay: Int32Array
   slotStatus: Uint8Array
@@ -53,7 +60,12 @@ export function usePreviewGame(
         game.start(start)
 
         const roles = game.roles()
-        const chars = Array.from(code)
+        // Walk the engine's own rendered text, not `code` verbatim: a
+        // context span's delimiters are stripped before `roles` is built,
+        // so indexing against the raw `code` string instead would
+        // misalign at the first one (see `Layout.displaySource`).
+        const displaySource = game.layout().displaySource
+        const chars = Array.from(displaySource)
         let pressed = 0
 
         for (
@@ -71,6 +83,7 @@ export function usePreviewGame(
         game.tick(now)
 
         setPreview({
+          displaySource,
           roles,
           slotOfDisplay: game.slotOfDisplay(),
           slotStatus: game.slotStatus(),

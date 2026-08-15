@@ -5,11 +5,7 @@ import { StepRail } from "@leetype/components/typing-game/step-rail"
 import { TypingViewport } from "@leetype/components/typing-game/typing-viewport"
 import { useKeystrokeCapture } from "@leetype/hooks/leetype/use-keystroke-capture"
 import type { Step } from "@leetype/types/exercise"
-import {
-  languageOf,
-  promptBlocksOf,
-  typingBlockOf,
-} from "@leetype/types/exercise"
+import { languageOf, promptBlocksOf } from "@leetype/types/exercise"
 import type { GameState, Rejection, TextGradient } from "@leetype/types/leetype"
 import { Eye } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -31,6 +27,14 @@ type ExerciseCardProps = {
   /** Non-zero once the gate has held on this step. */
   attempt: number
   // ── Engine projections for this step's typing block ──────────────────
+  /**
+   * The engine's rendered text for this step — `Layout.displaySource`, not
+   * `typingBlockOf(step)?.source`. The two differ once the source carries a
+   * context span (its `‹…›` delimiters are stripped before this is built),
+   * and `roles`/`slotOfDisplay`/`slotStatus`/`visibility` below are indexed
+   * against the rendered form, not the raw authored one.
+   */
+  displaySource: string
   roles: Uint8Array
   slotOfDisplay: Int32Array
   slotStatus: Uint8Array
@@ -92,6 +96,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   index,
   total,
   attempt,
+  displaySource,
   roles,
   slotOfDisplay,
   slotStatus,
@@ -111,7 +116,6 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const inputId = useId()
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
-  const typing = typingBlockOf(step)
 
   useKeystrokeCapture(inputRef, {
     onKey,
@@ -152,7 +156,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <TypingViewport
-          displayCode={typing?.source ?? ""}
+          displayCode={displaySource}
           language={languageOf(step)}
           roles={roles}
           slotOfDisplay={slotOfDisplay}

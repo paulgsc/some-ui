@@ -115,7 +115,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
     }
 
     layout(): unknown {
-      return { displayLen: 3, slotCount: 3, sections: [] }
+      return { displayLen: 3, slotCount: 3, sections: [], displaySource: "abc" }
     }
     roles(): Uint8Array {
       return new Uint8Array([1, 1, 1])

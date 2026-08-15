@@ -16,6 +16,7 @@
 import type {
   classify_source as generatedClassifySource,
   default as generatedInit,
+  rendered_source as generatedRenderedSource,
   slot_map_from_source as generatedSlotMapFromSource,
   TypingGame as GeneratedTypingGame,
 } from "@some-ui/leetype-wasm/dist/leetype_wasm"
@@ -26,3 +27,4 @@ export default init
 export declare const TypingGame: typeof GeneratedTypingGame
 export declare const classify_source: typeof generatedClassifySource
 export declare const slot_map_from_source: typeof generatedSlotMapFromSource
+export declare const rendered_source: typeof generatedRenderedSource

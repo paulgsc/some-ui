@@ -67,6 +67,7 @@ const Mounted = ({
         index={stepIndex}
         total={exercise.steps.length}
         attempt={attempt}
+        displaySource={preview.displaySource}
         roles={preview.roles}
         slotOfDisplay={preview.slotOfDisplay}
         slotStatus={preview.slotStatus}
