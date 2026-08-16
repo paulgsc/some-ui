@@ -259,29 +259,111 @@ export const RationaleSchema = z.object({
 })
 
 /**
- * The longest a diagnostic step's repair — its typing block, revealed in
- * full — is allowed to run: constraint 4's "seconds to copy once revealed,
- * not a minute," made a number. One line, the same posture as
- * `PROMPT_LINE_MAX_CHARS`: a repair that needs a second line was too broad
- * for the family and wanted two steps.
+ * The longest a diagnostic step's repair — the *typed* portion of its
+ * typing block, i.e. `typedPortionOf(source)` below, not `source.length` —
+ * is allowed to run: constraint 4's "seconds to copy once revealed, not a
+ * minute," made a number. The frame around the repair (context, per
+ * LTY-FRAME) is unbounded by this constant on purpose; only what the player
+ * actually types is. One line, the same posture as `PROMPT_LINE_MAX_CHARS`:
+ * a repair that needs a second line was too broad for the family and wanted
+ * two steps.
  *
  * 50 rather than a round "looks generous" figure: the five hand-authored
- * instances span 11–41 characters (`right -= 1;` to
+ * instances span 11–41 typed characters (`right -= 1;` to
  * `map.entry(key).or_default().push(value);`), so this is headroom above
  * the corpus's own actual ceiling, not a number picked in the abstract.
  */
 export const DIAGNOSTIC_REPAIR_MAX_CHARS = 50
 
 const DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE =
-  `A diagnostic step's repair runs past ${DIAGNOSTIC_REPAIR_MAX_CHARS} characters ` +
+  `A diagnostic step's repair runs past ${DIAGNOSTIC_REPAIR_MAX_CHARS} typed characters ` +
   "or spans more than one line. The repair is meant to be copied in seconds once " +
   "revealed, not authored as a second exercise — narrow the fault, or this wants " +
   "to be two diagnostic instances."
 
-const DIAGNOSTIC_MISSING_RATIONALE_MESSAGE =
-  "A diagnostic step must carry a rationale — cause and whyRepairDiscriminates — " +
-  "or constraints 1, 2 and 5 (one failure, one discriminating repair, a " +
-  "deterministic signal) have nothing to be argued against."
+const DIAGNOSTIC_MISSING_TRACE_MESSAGE =
+  "A diagnostic step must carry a trace block — the visible falsified expectation " +
+  "the repair falsifies. Without one there is no failure for the player to diagnose, " +
+  "only a blank to fill in — constraint 5's deterministic signal has nothing to attach to."
+
+/**
+ * The three shape invariants every step variant shares, factored out to
+ * predicate functions rather than duplicated `.refine()` bodies: both
+ * `StepSchema` and `DiagnosticStepSchema` below apply all three, and a
+ * family-specific schema extending the object shape (`DiagnosticStepSchema`
+ * today, `ConstructionStepSchema` to follow) needs its own `.refine()` calls
+ * anyway, since zod has no "inherit the refinements of the schema I
+ * `.extend()`ed" operation. Sharing the predicates is what keeps the actual
+ * logic — and its one authoritative message — in one place.
+ */
+type BlocksHolder = { blocks: Array<Block> }
+
+function hasExactlyOneTypingBlock(step: BlocksHolder): boolean {
+  return step.blocks.filter((block) => block.kind === "typing").length === 1
+}
+
+const ONE_TYPING_BLOCK_MESSAGE =
+  "A step must hold exactly one typing block. Two typing blocks on one card makes " +
+  "'which prompt is sticky right now' a live question and drags a scroll-spy into the " +
+  "prompt panel; zero gives the player nothing to type. Split the step instead — a " +
+  "multi-part proof is a sequence of steps, not a taller card."
+
+function isWithinStepPromptBudget(step: BlocksHolder): boolean {
+  // Each `prompt` block is bounded on its own (`PromptBlockSchema`), but
+  // nothing stopped a step from holding several on-budget blocks that are
+  // still, combined, more prose than the panel's pagination-free path was
+  // built to hold. This closes that gap at the step level.
+  const promptLineCount = step.blocks
+    .filter(
+      (block): block is z.infer<typeof PromptBlockSchema> =>
+        block.kind === "prompt"
+    )
+    .reduce((total, block) => total + block.lines.length, 0)
+  return promptLineCount <= PROMPT_MAX_LINES
+}
+
+function regionsFitTypingSource(step: BlocksHolder): boolean {
+  // A conservative bound, not an exact one: `startDisplay`/`endDisplay`
+  // index the engine's *rendered* text (`Layout.displaySource`), which this
+  // schema cannot compute — doing so would mean importing the wasm engine
+  // into a file whose entire point is staying a plain, engine-free
+  // serializable value (see the file's own doc comment). What is knowable
+  // without the engine: a context span's `‹…›` delimiters are only ever
+  // stripped, never added to, so the rendered length can never exceed the
+  // raw authored source length. A region reaching past *that* is
+  // unambiguously wrong regardless of what the engine does with context
+  // spans.
+  const typing = step.blocks.find(
+    (block): block is z.infer<typeof TypingBlockSchema> =>
+      block.kind === "typing"
+  )
+  if (!typing) return true // the "exactly one typing block" refine already reports this
+  const regions = step.blocks.filter(
+    (block): block is z.infer<typeof RegionBlockSchema> =>
+      block.kind === "region"
+  )
+  return regions.every((region) => region.endDisplay <= typing.source.length)
+}
+
+/**
+ * The typed portion of an authored typing-block source: everything outside
+ * a `‹…›` context span. A budget check has to measure this, not
+ * `source.length` — a diagnostic step's frame legitimately spans several
+ * lines of context around a short repair, and counting the frame would
+ * reject exactly the shape the family is built on.
+ *
+ * An approximation of the engine's own `typed_stream` (`program.rs`), not a
+ * port of it — same posture as `regionsFitTypingSource` above, and for the
+ * same reason: importing the wasm engine here would compromise this file's
+ * one job (staying a plain, engine-free serializable value). It does not
+ * special-case an unterminated `‹` with no matching `›` (the engine treats
+ * everything after it as context; this leaves it counted as typed) —
+ * malformed enough that an author will notice from the schema's own
+ * "exactly one typing block" and length failures before this gap matters.
+ */
+function typedPortionOf(source: string): string {
+  return source.replace(/‹[^›]*›/g, "")
+}
 
 /**
  * The atom of an exercise: *n* prompt-ish blocks plus exactly one typing
@@ -297,92 +379,46 @@ const DIAGNOSTIC_MISSING_RATIONALE_MESSAGE =
  * The cost, stated plainly: an exercise that genuinely wants two typing
  * blocks under one shared prompt repeats the prompt across two steps.
  */
-export const StepSchema = z
-  .object({
-    id: z.string().min(1),
-    /**
-     * One sentence stating what the player is being asked to *achieve* —
-     * "Insert a default value into a HashMap only if the key is absent", not
-     * "type the following". A goal, not an instruction.
-     */
-    goal: z.string().min(1).max(GOAL_MAX_CHARS),
-    blocks: z.array(BlockSchema).min(1),
-    /**
-     * Competency labels. A bag of strings nothing branches on: the honest
-     * shape for the place a concept graph will eventually attach.
-     */
-    concepts: z.array(z.string().min(1)).default([]),
-    provenance: ProvenanceSchema.optional(),
-    /**
-     * Falsification→repair family (LTY-FAMILIES A1): the authoring
-     * justification for a diagnostic step's repair. Optional on the base
-     * step — `DiagnosticStepSchema` below is what requires it — so an
-     * ordinary step round-trips through `StepSchema` without ever
-     * mentioning the field it doesn't use.
-     */
-    rationale: RationaleSchema.optional(),
+const StepObjectSchema = z.object({
+  id: z.string().min(1),
+  /**
+   * One sentence stating what the player is being asked to *achieve* —
+   * "Insert a default value into a HashMap only if the key is absent", not
+   * "type the following". A goal, not an instruction.
+   */
+  goal: z.string().min(1).max(GOAL_MAX_CHARS),
+  blocks: z.array(BlockSchema).min(1),
+  /**
+   * Competency labels. A bag of strings nothing branches on: the honest
+   * shape for the place a concept graph will eventually attach.
+   */
+  concepts: z.array(z.string().min(1)).default([]),
+  provenance: ProvenanceSchema.optional(),
+  /**
+   * Falsification→repair family (LTY-FAMILIES A1): the authoring
+   * justification for a diagnostic step's repair. Optional here — and
+   * declared here, rather than only on `DiagnosticStepObjectSchema` below —
+   * so that parsing a diagnostic step through the *generic* `StepSchema`
+   * (which is what `ExerciseSchema`/`ExerciseCorpusSchema` actually use,
+   * including the `ExerciseCorpusSchema.parse` the shim runs at module
+   * load) preserves the field instead of silently stripping it as an
+   * unrecognized key. `DiagnosticStepSchema` overrides this to required.
+   */
+  rationale: RationaleSchema.optional(),
+})
+
+export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
+  message: ONE_TYPING_BLOCK_MESSAGE,
+  path: ["blocks"],
+})
+  .refine(isWithinStepPromptBudget, {
+    message: STEP_PROMPT_BUDGET_MESSAGE,
+    path: ["blocks"],
   })
-  .refine(
-    (step) =>
-      step.blocks.filter((block) => block.kind === "typing").length === 1,
-    {
-      message:
-        "A step must hold exactly one typing block. Two typing blocks on one card makes " +
-        "'which prompt is sticky right now' a live question and drags a scroll-spy into the " +
-        "prompt panel; zero gives the player nothing to type. Split the step instead — a " +
-        "multi-part proof is a sequence of steps, not a taller card.",
-      path: ["blocks"],
-    }
-  )
-  .refine(
-    (step) => {
-      // Each `prompt` block is bounded on its own (`PromptBlockSchema`), but
-      // nothing stopped a step from holding several on-budget blocks that
-      // are still, combined, more prose than the panel's pagination-free
-      // path was built to hold. This closes that gap at the step level.
-      const promptLineCount = step.blocks
-        .filter(
-          (block): block is z.infer<typeof PromptBlockSchema> =>
-            block.kind === "prompt"
-        )
-        .reduce((total, block) => total + block.lines.length, 0)
-      return promptLineCount <= PROMPT_MAX_LINES
-    },
-    {
-      message: STEP_PROMPT_BUDGET_MESSAGE,
-      path: ["blocks"],
-    }
-  )
-  .refine(
-    (step) => {
-      // A conservative bound, not an exact one: `startDisplay`/`endDisplay`
-      // index the engine's *rendered* text (`Layout.displaySource`), which
-      // this schema cannot compute — doing so would mean importing the wasm
-      // engine into a file whose entire point is staying a plain,
-      // engine-free serializable value (see the file's own doc comment).
-      // What is knowable without the engine: a context span's `‹…›`
-      // delimiters are only ever stripped, never added to, so the rendered
-      // length can never exceed the raw authored source length. A region
-      // reaching past *that* is unambiguously wrong regardless of what the
-      // engine does with context spans.
-      const typing = step.blocks.find(
-        (block): block is z.infer<typeof TypingBlockSchema> =>
-          block.kind === "typing"
-      )
-      if (!typing) return true // the "exactly one typing block" refine already reports this
-      const regions = step.blocks.filter(
-        (block): block is z.infer<typeof RegionBlockSchema> =>
-          block.kind === "region"
-      )
-      return regions.every(
-        (region) => region.endDisplay <= typing.source.length
-      )
-    },
-    {
-      message: REGION_SPAN_MESSAGE,
-      path: ["blocks"],
-    }
-  )
+  .refine(regionsFitTypingSource, {
+    message: REGION_SPAN_MESSAGE,
+    path: ["blocks"],
+  })
 
 /**
  * A step in the falsification→repair family: a visible attempted witness
@@ -394,13 +430,23 @@ export const StepSchema = z
  * diagnosis — the bounded repair string simultaneously is the answer, the
  * explanation, the interaction and the evidence.
  *
- * Composes `StepSchema` rather than replacing it: a diagnostic instance
- * still validates through `ExerciseCorpusSchema` and plays through the
- * existing runner exactly like any other step, because `rationale` is
- * inert everywhere except here and in the corpus lint. This schema adds no
- * field naming difficulty, severity or a diagnostic-specific threshold —
- * those are exactly the fields the epic forbids this family from
- * reinventing.
+ * Extends `StepObjectSchema` (`rationale` required, rather than the
+ * optional field `StepSchema` carries) and reapplies the same three shape
+ * invariants, rather than composing `StepSchema` itself: zod has no
+ * "inherit the refinements of the schema I `.extend()`ed" operation, and a
+ * `.refine()`'s type-predicate does not narrow a `ZodEffects`' inferred
+ * output in this zod version, so building on `StepSchema` directly would
+ * leave `DiagnosticStep.rationale` typed as optional despite being
+ * runtime-required. A consumer that had already checked
+ * `DiagnosticStepSchema.safeParse(...).success` would still need a redundant
+ * `undefined` check to use `rationale` — exactly the gap requiring it in the
+ * object shape closes. The instance still validates through
+ * `ExerciseCorpusSchema` (which parses via `StepSchema`, and `rationale` is
+ * a strict superset of what that expects) and plays through the existing
+ * runner exactly like any other step, because `rationale` is inert
+ * everywhere except here and in the corpus lint. This schema adds no field
+ * naming difficulty, severity or a diagnostic-specific threshold — those
+ * are exactly the fields the epic forbids this family from reinventing.
  *
  * # The six validity constraints, and where each is enforced
  *
@@ -413,41 +459,55 @@ export const StepSchema = z
  *    the fault. Judgement — there is no shape-level signal for "everything
  *    in this context span is relevant."
  * 4. **Bounded answer.** Seconds to copy once revealed, not a minute.
- *    Checked below (`DIAGNOSTIC_REPAIR_MAX_CHARS`, single line) — the one
- *    constraint of the six with an actual shape to check.
+ *    Checked below (`DIAGNOSTIC_REPAIR_MAX_CHARS`, single line, measured
+ *    over the typed portion only) — the one constraint of the six with an
+ *    actual shape to check.
  * 5. **Deterministic signal.** `expected 3, received 4`, never "something
- *    went wrong." Judgement — argued in `rationale.cause`; a `trace`
- *    block's `observations` are free-form strings, so nothing here can
- *    tell a determinstic reading from a vague one.
+ *    went wrong." Partly checked: a `trace` block must be present (below),
+ *    but whether its `observations` actually read as deterministic is
+ *    judgement, argued in `rationale.cause`.
  * 6. **Revealable in isolation.** Revealing the repair without showing
  *    where it belongs is malformed. Structurally guaranteed by LTY-FRAME:
  *    a step's typing block is always rendered in place inside its frame,
  *    whatever surrounds it, so there is no shape a diagnostic step could
  *    take that violates this.
  */
-export const DiagnosticStepSchema = StepSchema.refine(
-  (step): step is Step & { rationale: Rationale } =>
-    step.rationale !== undefined,
-  {
-    message: DIAGNOSTIC_MISSING_RATIONALE_MESSAGE,
-    path: ["rationale"],
-  }
-).refine(
-  (step) => {
-    const repair = typingBlockOf(step)
-    // The "exactly one typing block" refine on `StepSchema` already reports
-    // a missing repair; nothing to bound here.
-    if (repair === undefined) return true
-    return (
-      repair.source.length <= DIAGNOSTIC_REPAIR_MAX_CHARS &&
-      !repair.source.includes("\n")
-    )
-  },
-  {
-    message: DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE,
-    path: ["blocks"],
-  }
+const DiagnosticStepObjectSchema = StepObjectSchema.extend({
+  rationale: RationaleSchema,
+})
+
+export const DiagnosticStepSchema = DiagnosticStepObjectSchema.refine(
+  hasExactlyOneTypingBlock,
+  { message: ONE_TYPING_BLOCK_MESSAGE, path: ["blocks"] }
 )
+  .refine(isWithinStepPromptBudget, {
+    message: STEP_PROMPT_BUDGET_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine(regionsFitTypingSource, {
+    message: REGION_SPAN_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine((step) => step.blocks.some((block) => block.kind === "trace"), {
+    message: DIAGNOSTIC_MISSING_TRACE_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine(
+    (step) => {
+      const repair = typingBlockOf(step)
+      // The "exactly one typing block" refine above already reports a
+      // missing repair; nothing to bound here.
+      if (repair === undefined) return true
+      const typed = typedPortionOf(repair.source)
+      return (
+        typed.length <= DIAGNOSTIC_REPAIR_MAX_CHARS && !typed.includes("\n")
+      )
+    },
+    {
+      message: DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE,
+      path: ["blocks"],
+    }
+  )
 
 export const ExerciseSchema = z.object({
   id: z.string().min(1),

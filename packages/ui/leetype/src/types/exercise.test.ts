@@ -329,18 +329,41 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
     expect(parsed.rationale).toBeUndefined()
   })
 
-  it("rejects a diagnostic step with no rationale, and says why", () => {
+  it("rejects a diagnostic step with no rationale, at the rationale path", () => {
     const result = DiagnosticStepSchema.safeParse(step([failure, shortRepair]))
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toMatch(/must carry a rationale/)
+    expect(result.error?.issues[0]?.path).toEqual(["rationale"])
   })
 
-  it("accepts a diagnostic step whose rationale is present", () => {
+  it("rejects a diagnostic step with no trace block, and says why", () => {
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([shortRepair]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/must carry a trace block/)
+  })
+
+  it("accepts a diagnostic step whose rationale and trace block are present", () => {
     const result = DiagnosticStepSchema.safeParse({
       ...step([failure, shortRepair]),
       rationale,
     })
     expect(result.success).toBe(true)
+  })
+
+  it("preserves rationale through the generic StepSchema/ExerciseSchema parse", () => {
+    // The corpus lint's whole premise depends on this: `nextExercise`'s
+    // shim parses every seed exercise through `ExerciseCorpusSchema`
+    // (generic `StepSchema`, not `DiagnosticStepSchema`), so a `rationale`
+    // authored on a diagnostic instance must survive that generic parse
+    // rather than being stripped as an unrecognized key.
+    const exercise = ExerciseSchema.parse({
+      id: "e1",
+      title: "Diagnostic fixture",
+      steps: [{ ...step([failure, shortRepair]), rationale }],
+    })
+    expect(exercise.steps[0]?.rationale).toEqual(rationale)
   })
 
   it("rejects a repair past the bounded-answer budget, and says why", () => {
@@ -354,7 +377,9 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       rationale,
     })
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toMatch(/runs past 50 characters/)
+    expect(result.error?.issues[0]?.message).toMatch(
+      /runs past 50 typed characters/
+    )
   })
 
   it("accepts a repair right at the bounded-answer budget", () => {
@@ -378,6 +403,38 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
     }
     const result = DiagnosticStepSchema.safeParse({
       ...step([failure, multiline]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("bounds only the typed portion of a repair framed with ‹context›", () => {
+    // The gap this guards: a diagnostic step's frame legitimately spans
+    // many lines of context around a short repair (LTY-FRAME's context
+    // spans), and counting the whole source — frame included — would
+    // reject exactly the shape the family is built on. A ~150-character
+    // frame around a 12-character repair must still pass.
+    const framed: Block = {
+      kind: "typing",
+      source:
+        "‹while cursor < input.len() {\n    parse(input[cursor]);\n    ›cursor += 1;‹\n}›",
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, framed]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("still rejects when the typed portion alone is over budget, context aside", () => {
+    const framed: Block = {
+      kind: "typing",
+      source: `‹let x = ›${"a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1)}‹;›`,
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, framed]),
       rationale,
     })
     expect(result.success).toBe(false)
