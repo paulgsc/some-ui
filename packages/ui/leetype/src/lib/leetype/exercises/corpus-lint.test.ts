@@ -127,6 +127,61 @@ describe("lintCorpus — deliberately malformed fixtures", () => {
     expect(violations.some((v) => v.includes("concepts is empty"))).toBe(true)
   })
 
+  it("fails when two exercises share a step id — the collision indexStepsById cannot itself detect", () => {
+    // Regression for a real review finding on #1073: a `Map` silently lets
+    // a later step with the same id shadow an earlier one, which would
+    // check a transferFrom reference against the wrong step instead of
+    // catching the real mismatch. This is the loud failure that replaces
+    // that silent one.
+    const stepA = constructionStep({ id: "dup", concepts: ["a"] })
+    const stepB = diagnosticStep({ id: "dup", concepts: ["b"] })
+    const violations = lintCorpus([
+      { id: "e1", title: "t1", steps: [stepA] },
+      { id: "e2", title: "t2", steps: [stepB] },
+    ])
+    expect(
+      violations.some((v) => v.includes('step id "dup" is used by both'))
+    ).toBe(true)
+  })
+
+  it("fails when transferFrom references a step id not in the corpus", () => {
+    const step = diagnosticStep({ transferFrom: "does-not-exist" })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("is not a step id"))).toBe(true)
+  })
+
+  it("fails when transferFrom references the step itself", () => {
+    const step = diagnosticStep({ transferFrom: "story-diagnostic" })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("references itself"))).toBe(true)
+  })
+
+  it("fails when transferFrom's target shares no concept id", () => {
+    const source = constructionStep({
+      id: "source",
+      concepts: ["other-concept"],
+    })
+    const step = diagnosticStep({ transferFrom: "source" })
+    const violations = lintCorpus([
+      { id: "e1", title: "t", steps: [source, step] },
+    ])
+    expect(violations.some((v) => v.includes("shares no concept id"))).toBe(
+      true
+    )
+  })
+
+  it("passes when transferFrom's target shares a concept id", () => {
+    const source = constructionStep({ id: "source", concepts: ["shared"] })
+    const step = diagnosticStep({
+      transferFrom: "source",
+      concepts: ["shared"],
+    })
+    const violations = lintCorpus([
+      { id: "e1", title: "t", steps: [source, step] },
+    ])
+    expect(violations).toEqual([])
+  })
+
   it("passes a well-formed diagnostic step and a well-formed construction step", () => {
     const violations = lintCorpus([
       { id: "e1", title: "t", steps: [diagnosticStep(), constructionStep()] },

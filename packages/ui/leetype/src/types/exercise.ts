@@ -425,6 +425,24 @@ const StepObjectSchema = z.object({
    * card this whole shift retired, returning through a new field.
    */
   obligation: z.string().min(1).optional(),
+  /**
+   * The id of the step whose obligation this one transfers (LTY-SEAM S3,
+   * #1017) — the corpus's declaration that this step probes recognition of
+   * the same abstraction a different step introduced, in a new context.
+   * Alongside `concepts` and in the same register `provenance` already
+   * holds: worth recording, because the pairing is a judgement made once,
+   * at authoring time, and expensive to reconstruct later; never
+   * load-bearing, because nothing in the runtime path reads it (see
+   * `exercise.test.ts`'s "keeps transferFrom optional and never needs it
+   * to render", the same pin `provenance` gets).
+   *
+   * Checked only by the corpus lint (`corpus-lint.ts`), and only
+   * mechanically: the referenced id must exist in the corpus and must
+   * share at least one `concepts` entry with this step. The lint does not,
+   * and cannot, judge whether a transfer is a *good* one — that judgement
+   * is the author's, argued nowhere but in the choice of pairing itself.
+   */
+  transferFrom: z.string().min(1).optional(),
 })
 
 export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {

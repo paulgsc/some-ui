@@ -112,6 +112,23 @@ describe("StepSchema", () => {
     expect(typingBlockOf(withProvenance)).toEqual(typing)
   })
 
+  it("keeps transferFrom optional and never needs it to render (LTY-SEAM S3, #1017)", () => {
+    // The same pin `provenance` gets above: a step with the field set reads
+    // through every render-facing helper identically to one without it —
+    // proof the field is inert at runtime, not just documented as such.
+    const withoutTransfer = StepSchema.parse(step([prompt, typing]))
+    const withTransfer = StepSchema.parse({
+      ...step([prompt, typing]),
+      transferFrom: "entry-03-place",
+    })
+    expect(withTransfer.transferFrom).toBe("entry-03-place")
+    expect(typingBlockOf(withTransfer)).toEqual(typingBlockOf(withoutTransfer))
+    expect(promptBlocksOf(withTransfer)).toEqual(
+      promptBlocksOf(withoutTransfer)
+    )
+    expect(languageOf(withTransfer)).toEqual(languageOf(withoutTransfer))
+  })
+
   it("rejects several on-budget prompt blocks that are over budget combined", () => {
     // Each block alone satisfies PromptBlockSchema's per-block bound, but
     // stacked sideways they are still more prose than the panel's

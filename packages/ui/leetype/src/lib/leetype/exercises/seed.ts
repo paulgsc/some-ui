@@ -158,6 +158,12 @@ const diagnosticDoubleLookupStep: DiagnosticStep = {
     CONCEPT_IDS.doubleLookup,
     CONCEPT_IDS.amortizedHashing,
   ],
+  // LTY-SEAM S3 (#1017): entry-04-fill constructs single-lookup mutation
+  // via Entry; this diagnostic probes recognition of the same idea from
+  // its failure mode — repairing a naive check-then-fetch back into it.
+  // Renamed to entry-09-diagnostic-double-lookup below (LTY-FAMILIES A4),
+  // and this field travels with it.
+  transferFrom: "entry-04-fill",
   blocks: [
     {
       kind: "trace",
@@ -365,6 +371,11 @@ const entryApi: Exercise = {
         CONCEPT_IDS.eagerVsLazyEvaluation,
         CONCEPT_IDS.inPlaceMutation,
       ],
+      // LTY-SEAM S3 (#1017): entry-03-place introduces lookupAsPlace —
+      // holding a lookup as a place rather than a value. This step is the
+      // corpus's own "transfer" (it says so in its id): recognizing the
+      // same abstraction applies to a structurally different value type.
+      transferFrom: "entry-03-place",
       obligation:
         "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because there is nothing to defer — 0 is a literal, not a closure's worth of work",
       blocks: [

@@ -42,6 +42,90 @@ function locate(exercise: Exercise, step: Step): string {
   return `exercise "${exercise.id}", step "${step.id}"`
 }
 
+/** Every step in the corpus, keyed by id — what `transferFrom` cross-references, since a declared pair may span exercises. */
+function indexStepsById(
+  exercises: ReadonlyArray<Exercise>
+): ReadonlyMap<string, Step> {
+  const byId = new Map<string, Step>()
+  for (const exercise of exercises) {
+    for (const step of exercise.steps) {
+      byId.set(step.id, step)
+    }
+  }
+  return byId
+}
+
+/**
+ * No two steps in the corpus share an id — a precondition `indexStepsById`
+ * depends on and does not itself check: a `Map` silently lets a later step
+ * shadow an earlier one with the same id, which would check a `transferFrom`
+ * reference against the wrong step instead of catching the real mismatch
+ * (review finding on #1073). `ExerciseCorpusSchema` only enforces uniqueness
+ * *within* one exercise's `steps` array, never across the whole corpus, so
+ * this is the one thing schema-level validation cannot catch.
+ */
+function checkNoDuplicateStepIds(
+  exercises: ReadonlyArray<Exercise>
+): Array<string> {
+  const firstSeenIn = new Map<string, string>()
+  const violations: Array<string> = []
+  for (const exercise of exercises) {
+    for (const step of exercise.steps) {
+      const seenIn = firstSeenIn.get(step.id)
+      if (seenIn === undefined) {
+        firstSeenIn.set(step.id, exercise.id)
+      } else {
+        violations.push(
+          `step id "${step.id}" is used by both exercise "${seenIn}" and exercise "${exercise.id}" — step ids must be unique across the whole corpus, not just within one exercise.`
+        )
+      }
+    }
+  }
+  return violations
+}
+
+/**
+ * `transferFrom`'s two mechanical checks (LTY-SEAM S3, #1017): the
+ * referenced step exists in this corpus, and the two steps share at least
+ * one concept id — a declared transfer pair has to be probing the same
+ * abstraction, or the pairing is a typo rather than a judgement. Whether
+ * the transfer itself is a *good* one stays judgement, argued in the
+ * steps' own `goal`s, not checkable here — same posture as `rationale`
+ * and `obligation` below.
+ */
+function checkTransferFrom(
+  exercise: Exercise,
+  step: Step,
+  stepsById: ReadonlyMap<string, Step>
+): Array<string> {
+  if (step.transferFrom === undefined) return []
+  const where = locate(exercise, step)
+
+  if (step.transferFrom === step.id) {
+    return [
+      `${where}: transferFrom references itself — a transfer pair needs two steps.`,
+    ]
+  }
+
+  const source = stepsById.get(step.transferFrom)
+  if (source === undefined) {
+    return [
+      `${where}: transferFrom "${step.transferFrom}" is not a step id in this corpus.`,
+    ]
+  }
+
+  const sharesConcept = step.concepts.some((concept) =>
+    source.concepts.includes(concept)
+  )
+  if (!sharesConcept) {
+    return [
+      `${where}: transferFrom "${step.transferFrom}" shares no concept id with this step — a declared transfer pair must probe the same abstraction.`,
+    ]
+  }
+
+  return []
+}
+
 /** Strips LTY-FRAME's `‹…›` context spans — see `typedPortionOf` in `types/exercise.ts`. */
 function typedPortionOf(source: string): string {
   return source.replace(/‹[^›]*›/g, "")
@@ -89,7 +173,11 @@ function isRestatementOfWitness(
 }
 
 /** Every violation found in one step. Empty means the step is clean. */
-function lintStep(exercise: Exercise, step: Step): Array<string> {
+function lintStep(
+  exercise: Exercise,
+  step: Step,
+  stepsById: ReadonlyMap<string, Step>
+): Array<string> {
   const violations: Array<string> = []
   const where = locate(exercise, step)
 
@@ -151,6 +239,8 @@ function lintStep(exercise: Exercise, step: Step): Array<string> {
     )
   }
 
+  violations.push(...checkTransferFrom(exercise, step, stepsById))
+
   return violations
 }
 
@@ -160,10 +250,11 @@ function lintStep(exercise: Exercise, step: Step): Array<string> {
  * failure's diff is stable rather than shuffled between runs.
  */
 export function lintCorpus(exercises: ReadonlyArray<Exercise>): Array<string> {
-  const violations: Array<string> = []
+  const stepsById = indexStepsById(exercises)
+  const violations: Array<string> = [...checkNoDuplicateStepIds(exercises)]
   for (const exercise of exercises) {
     for (const step of exercise.steps) {
-      violations.push(...lintStep(exercise, step))
+      violations.push(...lintStep(exercise, step, stepsById))
     }
   }
   return violations
