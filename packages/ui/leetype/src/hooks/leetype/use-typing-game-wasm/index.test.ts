@@ -83,6 +83,16 @@ type FakeTypingGameInstance = {
 
 let instances: Array<FakeTypingGameInstance>
 
+/**
+ * Merged onto `SNAPSHOT` for one test at a time (LTY-SEAM S2, #1016).
+ *
+ * Every other test in this file relies on `SNAPSHOT`'s fixed zeroes, so this
+ * stays `{}` — a no-op spread — except inside "the assistance seam" below,
+ * which needs `assisted`/`attempt` at values `0` cannot be told apart from
+ * "stripped" at.
+ */
+let snapshotOverride: Partial<typeof SNAPSHOT> = {}
+
 vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
     targetCode: string
@@ -111,7 +121,11 @@ vi.mock("@some-ui/leetype-wasm", () => {
 
     private record(method: string, ...args: Array<unknown>): unknown {
       this.calls.push({ method, args })
-      return { accepted: true, rejection: undefined, snapshot: SNAPSHOT }
+      return {
+        accepted: true,
+        rejection: undefined,
+        snapshot: { ...SNAPSHOT, ...snapshotOverride },
+      }
     }
 
     layout(): unknown {
@@ -134,7 +148,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
       return "advance"
     }
     snapshot(): unknown {
-      return SNAPSHOT
+      return { ...SNAPSHOT, ...snapshotOverride }
     }
     section_progress(): unknown {
       return []
@@ -243,6 +257,7 @@ function deferred<T>(): {
 
 beforeEach(async () => {
   instances = []
+  snapshotOverride = {}
   resetWasm()
   const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
@@ -508,5 +523,30 @@ describe("resolve-after-unmount safety (aliveRef guard)", () => {
     // `setError`/`setIsLoading` on the unmounted fiber.
     expect(result.current.error).toBeNull()
     expect(instances).toHaveLength(0)
+  })
+})
+
+describe("the assistance seam (LTY-SEAM S2, #1016)", () => {
+  it("republishes assisted and attempt from the engine untouched", async () => {
+    // Neither field has a reader in this workspace today — the component
+    // above this hook destructures `assisted` (to fold into
+    // `CompletedSessionStats.assistance`) but nothing reads `attempt` off
+    // `snapshot` at all, and the eventual belief system these fields are
+    // for (adaptive-learning-canon.typ's O3) does not exist yet. That is
+    // exactly the shape of field a well-meaning "remove what's unused"
+    // pass would target. `0`, `SNAPSHOT`'s default for both, cannot be
+    // told apart from "silently stripped" — so this pins them at values
+    // that can, proving the hook still hands back whatever the engine
+    // reports rather than a hook-side default standing in for it.
+    snapshotOverride = { assisted: 2, attempt: 1 }
+    const { result } = renderHook(() => useTypingGame(baseProps()))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.press("c")
+    })
+
+    expect(result.current.snapshot.assisted).toBe(2)
+    expect(result.current.snapshot.attempt).toBe(1)
   })
 })

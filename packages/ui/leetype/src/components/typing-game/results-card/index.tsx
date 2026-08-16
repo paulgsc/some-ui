@@ -54,6 +54,17 @@ function formatTime(seconds: number): string {
  * "Carried" is the one worth stating plainly rather than hiding. A step the
  * repeat cap let the player past is not a step they cleared, and reporting
  * the two as the same number would make the gate decorative.
+ *
+ * # The line a future stat cell must not cross (LTY-SEAM S2, #1016)
+ *
+ * Every figure here describes *this session's typing* — a rate, a
+ * duration, a count, a fraction revealed. None of them describes *the
+ * learner*: there is no mastery percentage, no level, no per-concept
+ * score, because none of those claims is being made this milestone
+ * (`adaptive-learning-canon.typ` Cor. 4.3, `p_credited = "false"`). A stat
+ * cell added here later must pass the same test `stepsEscaped` already
+ * does: it reports what happened, honestly, and stops short of saying
+ * what it means about who the player is.
  */
 export const ResultsCard: FC<ResultsCardProps> = ({
   exerciseTitle,

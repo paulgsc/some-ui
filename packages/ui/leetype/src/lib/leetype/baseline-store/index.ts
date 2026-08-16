@@ -19,6 +19,34 @@ import { z } from "zod"
  * worth mourning, no score, and no unlock. That is a deliberate property,
  * not an unfinished feature — it is what lets the whole store be thrown away
  * on any schema change without a migration.
+ *
+ * # The nuisance-vs-competence line (LTY-SEAM S2, #1016)
+ *
+ * `STORAGE_KEY` below is, as of this milestone, the *only* `localStorage`
+ * key `packages/ui/leetype` writes — checked by grepping `src/` for
+ * `localStorage.setItem`/`getItem`/`removeItem` outside test fixtures. That
+ * is not an accident worth losing the next time someone reaches for
+ * `localStorage` in this workspace, so the rule that makes it true is
+ * written down here, where a future key would be added:
+ *
+ * A key belongs in `localStorage` only if it is a **nuisance parameter** —
+ * something that calibrates how a session is *presented* (a rendering or
+ * timing instrument), never something that constitutes a **competence
+ * claim** — a record of what the learner knows, has completed, or has
+ * earned. `Baseline` is the former: it is a copying-speed sample the reveal
+ * loop divides its own thresholds by, exactly the register
+ * `adaptive-learning-canon.typ` Proposition 9.1 calls a nuisance parameter
+ * for the renderer. It is deliberately unbounded-history-free (only ever
+ * one blended sample, never a log) and deliberately disposable.
+ *
+ * The test for a *new* key, before it is written: would losing it change
+ * anything about what a session is scored, gated, or credited on for
+ * anyone other than this one calibration instrument? If yes, it is a
+ * competence claim, and this workspace has nowhere to put one —
+ * `adaptive-learning-canon.typ`'s O3 (a real belief envelope) is where a
+ * competence claim belongs, and it does not exist yet (Cor. 4.3: this
+ * surface is uncredited by declaration). A `localStorage` key is never the
+ * fallback for "O3 isn't built yet."
  */
 
 /** One player's sampled typing speed. */

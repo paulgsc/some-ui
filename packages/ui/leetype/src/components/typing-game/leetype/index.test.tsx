@@ -1,5 +1,6 @@
 import { resetWasm } from "@leetype/lib/leetype/leetype-wasm-loader"
 import type { Exercise } from "@leetype/types/exercise"
+import type { CompletedSessionStats } from "@leetype/types/leetype"
 import type { default as wasmInit } from "@some-ui/leetype-wasm"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -65,6 +66,14 @@ type Snapshot = {
 let progression: "advance" | "repeat" | "escape"
 /** Every source the fake was handed, in order — the record under test. */
 let sourcesSeen: Array<string>
+/**
+ * `Snapshot.assisted` the fake engine reports for every step (LTY-SEAM S2,
+ * #1016). `0` everywhere except "the assistance seam" below, which needs a
+ * nonzero value to prove `assisted` still reaches `CompletedSessionStats
+ * .assistance` — every other test in this file runs a fluent session and
+ * would not notice that pipeline silently dropping the field.
+ */
+let assistedOverride: number
 
 vi.mock("@some-ui/leetype-wasm", () => {
   class TypingGame {
@@ -98,7 +107,7 @@ vi.mock("@some-ui/leetype-wasm", () => {
         runCount: 3,
         manualRevealActive: false,
         manualRevealFraction: 0,
-        assisted: 0,
+        assisted: assistedOverride,
         elapsedTime: 10,
         sessionElapsedTime: 30,
         totalErrors: 0,
@@ -262,6 +271,7 @@ beforeEach(async () => {
   localStorage.clear()
   progression = "advance"
   sourcesSeen = []
+  assistedOverride = 0
   resetWasm()
   const wasmStub = await import("@some-ui/leetype-wasm")
   vi.mocked(wasmStub.default)
@@ -357,5 +367,40 @@ describe("the warm-up", () => {
     await begin()
     await screen.findByText("Step 0.")
     expect(screen.queryByText(/Warm up/i)).not.toBeInTheDocument()
+  })
+})
+
+describe("the assistance seam (LTY-SEAM S2, #1016)", () => {
+  it("carries a nonzero assisted count through to CompletedSessionStats.assistance", async () => {
+    // Nothing consumes `assistance` as a competence claim today — S2 (#1016)
+    // forbids that outright — but `adaptive-learning-canon.typ`'s eventual
+    // O3 will read it at this exact boundary, and every other test in this
+    // file runs a fluent session where `assisted` stays 0 throughout. That
+    // makes 0 the value a refactor that silently stopped forwarding
+    // `Snapshot.assisted` into this aggregate would *also* produce — so
+    // this test forces it nonzero and confirms the whole pipeline
+    // (Snapshot.assisted -> assistanceRef -> CompletedSessionStats
+    // .assistance) still carries it.
+    seedBaseline()
+    assistedOverride = 1
+    const onSessionComplete = vi.fn<(stats: CompletedSessionStats) => void>()
+    render(
+      <Leetype exercise={EXERCISE} onSessionComplete={onSessionComplete} />
+    )
+
+    const input = await begin()
+    await screen.findByText("Step 0.")
+
+    for (let step = 0; step < 3; step++) {
+      typeStep(input, 3)
+      await waitFor(() =>
+        expect(sourcesSeen.length).toBeGreaterThanOrEqual(step + 1)
+      )
+    }
+
+    await screen.findByText(/Exercise complete/i)
+    expect(onSessionComplete).toHaveBeenCalledTimes(1)
+    const stats = onSessionComplete.mock.calls[0]?.[0]
+    expect(stats?.assistance).toBeGreaterThan(0)
   })
 })
