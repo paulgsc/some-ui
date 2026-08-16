@@ -5,6 +5,8 @@ import type {
   Step,
 } from "@leetype/types/exercise"
 
+import { CONCEPT_IDS } from "./concepts"
+
 /**
  * Hand-authored exercises. The whole corpus, for now.
  *
@@ -48,7 +50,7 @@ import type {
 const diagnosticLoopProgressStep: DiagnosticStep = {
   id: "diagnostic-loop-progress-01",
   goal: "Give the parse loop the missing step that lets it terminate.",
-  concepts: ["loop progress", "mutable state"],
+  concepts: [CONCEPT_IDS.loopProgress, CONCEPT_IDS.mutableState],
   blocks: [
     {
       kind: "trace",
@@ -80,7 +82,7 @@ const diagnosticLoopProgress: Exercise = {
 const diagnosticInclusiveBoundaryStep: DiagnosticStep = {
   id: "diagnostic-inclusive-boundary-01",
   goal: "Fix the scan bound so the loop stops one before the slice ends, not at it.",
-  concepts: ["exclusive vs inclusive bounds", "slice indexing"],
+  concepts: [CONCEPT_IDS.exclusiveVsInclusiveBounds, CONCEPT_IDS.sliceIndexing],
   blocks: [
     {
       kind: "trace",
@@ -115,7 +117,7 @@ const diagnosticInclusiveBoundary: Exercise = {
 const diagnosticShrinkingIntervalStep: DiagnosticStep = {
   id: "diagnostic-shrinking-interval-01",
   goal: "Give the shrinking search its missing step, so the window actually narrows.",
-  concepts: ["loop progress", "window shrinking"],
+  concepts: [CONCEPT_IDS.loopProgress, CONCEPT_IDS.windowShrinking],
   blocks: [
     {
       kind: "trace",
@@ -151,7 +153,11 @@ const diagnosticShrinkingInterval: Exercise = {
 const diagnosticDoubleLookupStep: DiagnosticStep = {
   id: "diagnostic-double-lookup-01",
   goal: "Replace the naive check-then-fetch with the single-lookup Entry call.",
-  concepts: ["Entry API", "double lookup", "amortized hashing"],
+  concepts: [
+    CONCEPT_IDS.singleLookupMutation,
+    CONCEPT_IDS.doubleLookup,
+    CONCEPT_IDS.amortizedHashing,
+  ],
   blocks: [
     {
       kind: "trace",
@@ -184,7 +190,7 @@ const diagnosticDoubleLookupStep: DiagnosticStep = {
 const diagnosticEagerLazyDefaultStep: DiagnosticStep = {
   id: "diagnostic-eager-lazy-default-01",
   goal: "Make the default lazy, so the constructor runs only on the call that needs it.",
-  concepts: ["Entry::or_insert_with", "eager vs lazy evaluation"],
+  concepts: [CONCEPT_IDS.eagerVsLazyEvaluation],
   blocks: [
     {
       kind: "trace",
@@ -249,7 +255,7 @@ const entryApi: Exercise = {
     {
       id: "entry-01-import",
       goal: "Bring HashMap into scope.",
-      concepts: ["use declarations", "std::collections"],
+      concepts: [CONCEPT_IDS.useDeclarations],
       blocks: [
         {
           kind: "typing",
@@ -261,7 +267,7 @@ const entryApi: Exercise = {
     {
       id: "entry-02-empty-map",
       goal: "Create an empty map you are allowed to change.",
-      concepts: ["mutability", "type inference"],
+      concepts: [CONCEPT_IDS.mutability, CONCEPT_IDS.typeInference],
       blocks: [
         {
           kind: "typing",
@@ -273,7 +279,7 @@ const entryApi: Exercise = {
     {
       id: "entry-03-place",
       goal: "Ask the map for the place a key lives, not its value.",
-      concepts: ["Entry API", "borrowing"],
+      concepts: [CONCEPT_IDS.lookupAsPlace, CONCEPT_IDS.borrowing],
       obligation: "a lookup can be held as a place, not a value",
       blocks: [
         {
@@ -292,7 +298,7 @@ const entryApi: Exercise = {
     {
       id: "entry-04-fill",
       goal: "Fill the place without hashing the key a second time.",
-      concepts: ["Entry::or_insert_with", "closures"],
+      concepts: [CONCEPT_IDS.singleLookupMutation, CONCEPT_IDS.closures],
       obligation: "a vacant place can be filled without a second lookup",
       blocks: [
         {
@@ -311,7 +317,7 @@ const entryApi: Exercise = {
     {
       id: "entry-05-mutate",
       goal: "Push onto the vector the filled place actually holds.",
-      concepts: ["mutable references", "method chaining"],
+      concepts: [CONCEPT_IDS.mutableReferences, CONCEPT_IDS.methodChaining],
       obligation: "the filled place yields a mutable borrow, not a copy",
       blocks: [
         {
@@ -331,7 +337,10 @@ const entryApi: Exercise = {
     {
       id: "entry-06-compose",
       goal: "Chain the three commitments into the one line they were always building toward.",
-      concepts: ["method chaining", "expression-oriented style"],
+      concepts: [
+        CONCEPT_IDS.methodChaining,
+        CONCEPT_IDS.expressionOrientedStyle,
+      ],
       obligation:
         "the three commitments compose into one expression, with no named intermediate for the place or the filled result",
       blocks: [
@@ -351,7 +360,11 @@ const entryApi: Exercise = {
     {
       id: "entry-07-transfer",
       goal: "Apply the same shape to counting, where the default is already a value, not a computation.",
-      concepts: ["Entry::or_insert", "in-place mutation"],
+      concepts: [
+        CONCEPT_IDS.lookupAsPlace,
+        CONCEPT_IDS.eagerVsLazyEvaluation,
+        CONCEPT_IDS.inPlaceMutation,
+      ],
       obligation:
         "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because there is nothing to defer — 0 is a literal, not a closure's worth of work",
       blocks: [
@@ -371,7 +384,7 @@ const entryApi: Exercise = {
     {
       id: "entry-08-generalize",
       goal: "Fold the shape into a function that groups any pairs by key.",
-      concepts: ["generics", "trait bounds", "Entry::or_default"],
+      concepts: [CONCEPT_IDS.generics, CONCEPT_IDS.traitBounds],
       obligation:
         "the shape holds for any key and value type, not just this one map",
       blocks: [
@@ -423,7 +436,7 @@ const adversarial: Exercise = {
     {
       id: "adversarial-01-tiny-proof",
       goal: "Read a short prompt and type two characters.",
-      concepts: ["fixture"],
+      concepts: [CONCEPT_IDS.fixture],
       blocks: [
         {
           kind: "prompt",
@@ -437,7 +450,7 @@ const adversarial: Exercise = {
     {
       id: "adversarial-02-no-prompt",
       goal: "Type a long body under no prompt at all.",
-      concepts: ["fixture"],
+      concepts: [CONCEPT_IDS.fixture],
       blocks: [
         {
           kind: "typing",
@@ -450,7 +463,7 @@ const adversarial: Exercise = {
     {
       id: "adversarial-03-one-line-each",
       goal: "One short line of prompt over one short line of proof.",
-      concepts: ["fixture"],
+      concepts: [CONCEPT_IDS.fixture],
       blocks: [
         { kind: "prompt", lines: ["The ordinary case, for contrast."] },
         { kind: "typing", source: "let x = 1;", language: "rust" },
@@ -476,7 +489,7 @@ const adversarial: Exercise = {
 export const HOSTILE_PROMPT_STEP: Step = {
   id: "fixture-hostile-prompt",
   goal: "Read a prompt far longer than the budget allows and type two characters.",
-  concepts: ["fixture"],
+  concepts: [CONCEPT_IDS.fixture],
   blocks: [
     {
       kind: "prompt",
