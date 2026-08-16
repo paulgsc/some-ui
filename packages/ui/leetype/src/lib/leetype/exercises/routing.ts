@@ -42,7 +42,7 @@ import type { Obligation } from "./obligation-graph"
  * | attempt vs. cap | assisted | sinkRoutes  | Row | Outcome |
  * | --------------- | -------- | ----------- | --- | ------- |
  * | below cap        | `0`      | —           | fluent completion | `"next-fluent"` |
- * | below cap, first  | `> 0`    | —           | fully revealed, first attempt | `"next-uncredited"` |
+ * | below cap, first  | `> 0`    | —           | any reveal used, first attempt | `"next-uncredited"` |
  * | below cap, repeat | `> 0`    | empty       | partial reveal | `"next-partial-reveal"` |
  * | below cap, repeat | `> 0`    | non-empty   | repeated assisted completion | `"decompose"` |
  * | at or past cap    | any      | —           | escape at the cap | `"worked-route"` |
@@ -54,6 +54,23 @@ import type { Obligation } from "./obligation-graph"
  * conservative default `route(U)` (R3) is built on — sending an
  * unnecessary worked route costs little, and failing to send a needed one
  * costs a stuck learner.
+ *
+ * The issue's own words for that second row are "completed **fully**
+ * revealed, first attempt" — worth being honest about, because
+ * `"next-uncredited"` here actually fires on *any* `assisted > 0` on the
+ * first attempt, not only a completion where every slot was seen. That is
+ * not an oversight: `assisted` is a raw resolved-slot count
+ * (`types/leetype.ts`), and telling "one slot revealed" from "every slot
+ * revealed" needs it compared against a total — `correct`, `filled` or
+ * `slotCount` — which this router is not permitted to read. Rather than
+ * violate that to chase the word "fully," the first-attempt branch
+ * accepts the coarser signal on a real justification of its own: reveal
+ * does not open for no reason — the engine's own reveal loop opens `k`
+ * specifically on sustained low instantaneous WPM (`docs/leetype/README.md`'s
+ * decision 3) — so a resolved slot the learner *could see* on the very
+ * first attempt is already evidence of hesitation the moment it appears,
+ * regardless of how many slots it ends up covering. The two-signal
+ * constraint is treated as harder than the exact word "fully."
  *
  * # What is deliberately not here
  *

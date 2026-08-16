@@ -59,8 +59,20 @@ describe("routeObligation — the five-row table", () => {
     )
   })
 
-  it("row 3: fully revealed on the first attempt -> next-uncredited", () => {
+  it("row 3: any reveal used on the first attempt -> next-uncredited", () => {
     expect(routeObligation({ attempt: 0, assisted: 7 }, NO_ALTERNATIVE)).toBe(
+      "next-uncredited"
+    )
+  })
+
+  it("row 3 fires on a single resolved-visible slot, not only a fully-revealed witness", () => {
+    // assisted is a raw resolved-slot count (types/leetype.ts), not a
+    // fraction of the witness — routeObligation can't tell "one slot
+    // seen" from "every slot seen" without reading a third Snapshot
+    // field it isn't permitted to read. Documented in routing.ts as a
+    // deliberate trade against the two-signal constraint, verified here
+    // so the trade-off can't silently drift.
+    expect(routeObligation({ attempt: 0, assisted: 1 }, NO_ALTERNATIVE)).toBe(
       "next-uncredited"
     )
   })
