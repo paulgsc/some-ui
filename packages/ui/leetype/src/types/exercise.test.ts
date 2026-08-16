@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { Block } from "./exercise"
 import {
   BlockSchema,
+  ConstructionStepSchema,
   DIAGNOSTIC_REPAIR_MAX_CHARS,
   DiagnosticStepSchema,
   ExerciseSchema,
@@ -438,6 +439,73 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       rationale,
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe("ConstructionStepSchema — the obligation→witness family", () => {
+  const constraint: Block = {
+    kind: "trace",
+    headline: "hash ops",
+    observations: [{ label: "naive", value: "2" }],
+  }
+  const witness: Block = {
+    kind: "typing",
+    source: "map.entry(key)",
+    language: "rust",
+  }
+  const obligation = "a lookup can be held as a place, not a value"
+
+  it("keeps obligation optional on the plain StepSchema", () => {
+    const parsed = StepSchema.parse(step([constraint, witness]))
+    expect(parsed.obligation).toBeUndefined()
+  })
+
+  it("rejects a construction step with no obligation, at the obligation path", () => {
+    const result = ConstructionStepSchema.safeParse(step([constraint, witness]))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.path).toEqual(["obligation"])
+  })
+
+  it("rejects a construction step whose only block is its witness, and says why", () => {
+    const result = ConstructionStepSchema.safeParse({
+      ...step([witness]),
+      obligation,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(
+      /at least one block besides its witness/
+    )
+  })
+
+  it("accepts a construction step with an obligation and a visible constraint", () => {
+    const result = ConstructionStepSchema.safeParse({
+      ...step([constraint, witness]),
+      obligation,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("preserves obligation through the generic StepSchema/ExerciseSchema parse", () => {
+    // Same regression class as rationale: the shim's `ExerciseCorpusSchema.parse`
+    // uses the generic `StepSchema`, not `ConstructionStepSchema`, so an
+    // authored obligation must survive that parse rather than being
+    // stripped as an unrecognized key.
+    const exercise = ExerciseSchema.parse({
+      id: "e1",
+      title: "Construction fixture",
+      steps: [{ ...step([constraint, witness]), obligation }],
+    })
+    expect(exercise.steps[0]?.obligation).toBe(obligation)
+  })
+
+  it("ships no assumes, difficulty or level field", () => {
+    const parsed = ConstructionStepSchema.parse({
+      ...step([constraint, witness]),
+      obligation,
+    })
+    expect(parsed).not.toHaveProperty("assumes")
+    expect(parsed).not.toHaveProperty("difficulty")
+    expect(parsed).not.toHaveProperty("level")
   })
 })
 
