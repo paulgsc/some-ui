@@ -56,6 +56,35 @@ function indexStepsById(
 }
 
 /**
+ * No two steps in the corpus share an id — a precondition `indexStepsById`
+ * depends on and does not itself check: a `Map` silently lets a later step
+ * shadow an earlier one with the same id, which would check a `transferFrom`
+ * reference against the wrong step instead of catching the real mismatch
+ * (review finding on #1073). `ExerciseCorpusSchema` only enforces uniqueness
+ * *within* one exercise's `steps` array, never across the whole corpus, so
+ * this is the one thing schema-level validation cannot catch.
+ */
+function checkNoDuplicateStepIds(
+  exercises: ReadonlyArray<Exercise>
+): Array<string> {
+  const firstSeenIn = new Map<string, string>()
+  const violations: Array<string> = []
+  for (const exercise of exercises) {
+    for (const step of exercise.steps) {
+      const seenIn = firstSeenIn.get(step.id)
+      if (seenIn === undefined) {
+        firstSeenIn.set(step.id, exercise.id)
+      } else {
+        violations.push(
+          `step id "${step.id}" is used by both exercise "${seenIn}" and exercise "${exercise.id}" — step ids must be unique across the whole corpus, not just within one exercise.`
+        )
+      }
+    }
+  }
+  return violations
+}
+
+/**
  * `transferFrom`'s two mechanical checks (LTY-SEAM S3, #1017): the
  * referenced step exists in this corpus, and the two steps share at least
  * one concept id — a declared transfer pair has to be probing the same
@@ -222,7 +251,7 @@ function lintStep(
  */
 export function lintCorpus(exercises: ReadonlyArray<Exercise>): Array<string> {
   const stepsById = indexStepsById(exercises)
-  const violations: Array<string> = []
+  const violations: Array<string> = [...checkNoDuplicateStepIds(exercises)]
   for (const exercise of exercises) {
     for (const step of exercise.steps) {
       violations.push(...lintStep(exercise, step, stepsById))

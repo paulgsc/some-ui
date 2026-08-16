@@ -127,6 +127,23 @@ describe("lintCorpus — deliberately malformed fixtures", () => {
     expect(violations.some((v) => v.includes("concepts is empty"))).toBe(true)
   })
 
+  it("fails when two exercises share a step id — the collision indexStepsById cannot itself detect", () => {
+    // Regression for a real review finding on #1073: a `Map` silently lets
+    // a later step with the same id shadow an earlier one, which would
+    // check a transferFrom reference against the wrong step instead of
+    // catching the real mismatch. This is the loud failure that replaces
+    // that silent one.
+    const stepA = constructionStep({ id: "dup", concepts: ["a"] })
+    const stepB = diagnosticStep({ id: "dup", concepts: ["b"] })
+    const violations = lintCorpus([
+      { id: "e1", title: "t1", steps: [stepA] },
+      { id: "e2", title: "t2", steps: [stepB] },
+    ])
+    expect(
+      violations.some((v) => v.includes('step id "dup" is used by both'))
+    ).toBe(true)
+  })
+
   it("fails when transferFrom references a step id not in the corpus", () => {
     const step = diagnosticStep({ transferFrom: "does-not-exist" })
     const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
