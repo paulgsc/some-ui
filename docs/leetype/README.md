@@ -3,7 +3,7 @@
 This is the decision record for the user-story shift tracked in
 [#851](https://github.com/paulgsc/some-ui/issues/851) and decomposed across
 milestone **leetype (M20)**. The epics carry the work; this file carries the
-vocabulary and the four decisions the work assumes, because those outlive
+vocabulary and the five decisions the work assumes, because those outlive
 the issues that close.
 
 It is deliberately not a spec. If a detail is only interesting while one
@@ -68,7 +68,7 @@ New with the shift:
 - **baseline** — the player's own typing speed, sampled in an agnostic
   warm-up. Every threshold is a function of it.
 
-## The four decisions
+## The five decisions
 
 ### 1. The prompt is outside the scroll model
 
@@ -122,13 +122,42 @@ readable against a player's own copying speed. Thresholds are functions of
 the sampled baseline, which is ephemeral (`localStorage`): clearing it costs
 one warm-up.
 
+### 5. Sink classification from typing behavior is deferred, on purpose
+
+LTY-ROUTE (M20's finite sink graph and fallback) routes between obligations
+on exactly two signals, both already engine-owned and already across the
+boundary in `Snapshot`: `attempt` (which attempt at this obligation this is)
+and `assisted` (correctly-resolved slots the player could see when they
+resolved them). It does not attempt to classify _which_ sink a stuck learner
+hit from typing behavior — no hesitation attribution, no pause-duration
+inference, no reveal-pattern classifier.
+
+This is a decision, not a shortfall. `adaptive-learning-canon.typ` Axiom 3.1:
+evidence arrives confounded, and no single observation identifies a
+competence. A pause on a witness is consistent with not knowing it, knowing
+it but mistyping, keyboard unfamiliarity, reading the frame, or a phone
+ringing — the same confound this document's own "gate's miss is a repeat"
+note is built around, one level up. `attempt` and `assisted` say only _this
+witness was not fluently produced_; inferring _why_ from the same channel
+would be a claim the channel cannot support, and the repository's own rule
+is that no judgment ships unless it can produce its own justification.
+
+**What would lift the deferral:** a **Proposition 8.2** class III sensor —
+an explicit, off-critical-path, confidence-weighted _observation_ channel,
+never an inference from timing. "I don't know what `.swap` does," typed
+between sessions, is that channel. A 900ms pause before typing it is not.
+Until such a channel exists, sinks are authored graph structure (LTY-ROUTE
+R1/R2's confusion-edge-plus-bridge), never a runtime inference — no type in
+this workspace names an inferred sink.
+
 ## Where the magic is quarantined
 
 The full ambition is a compiler, not a prompt:
 
 ```
 source → AST → concept extraction → evidence graph → difficulty estimation
-       → minimal competency decomposition → forcing-question wording → steps
+       → minimal competency decomposition → construction/diagnostic classification
+       → frame/evidence generation → typeable witnesses
 ```
 
 Every arrow left of the last one is **deferred out of M20**. What ships is a
@@ -136,6 +165,15 @@ hand-authored TS shim behind a single function, which occupies the last
 arrow only. That is not a shortcut around the interesting problem — it is
 the sequencing: the mechanical half (shell, reveal loop, gate) has to be
 playable before there is anything to judge the judgment against.
+
+LTY-ROUTE adds one arrow to the left of the shim, without moving the
+boundary: `obligation graph → linearized route → Exercise`
+(`lib/leetype/exercises/obligation-graph.ts`). `requires` — the edge order
+depends on — now has a consumer; the emitted `Exercise` still does not
+change shape, and the graph stays private to that directory, unwired from
+the seed corpus, exercised only by its own tests. Wiring it into
+`nextExercise` is a decision for whoever authors the next problem, not a
+consequence of the graph existing.
 
 The rule the eventual pipeline inherits, and the reason the shim's _shape_
 matters more than its contents:
