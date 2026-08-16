@@ -185,10 +185,22 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
 
     // Context: code the player reads but is never asked to type, and never
     // masked — it carries no slot for VISIBILITY_MASKED to apply to. Muted
-    // so it reads as given rather than as a not-yet-typed real character.
+    // so it reads as given rather than as a not-yet-typed real character,
+    // in gradient mode as much as out of it — the deliberate answer to "how
+    // does context interact with TextGradient" the story for this file asks
+    // for, matching the posture SLOT_CORRECT/SLOT_WRONG already take
+    // ("already-typed feedback... keep their own colors either way", see
+    // `TextGradient`'s doc comment). `-webkit-text-fill-color` is itself an
+    // inherited property, so without resetting it here a context span would
+    // silently pick up the gradient `<code>` ancestor's `transparent` in
+    // WebKit and vanish into the clipped gradient instead of staying muted.
     if (isContext) {
       return (
-        <span key={displayIndex} className="italic text-muted-foreground/70">
+        <span
+          key={displayIndex}
+          className="italic text-muted-foreground/70"
+          style={{ WebkitTextFillColor: "currentColor" }}
+        >
           {char}
         </span>
       )
