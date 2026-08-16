@@ -37,7 +37,7 @@
     "@some-ui/vite-config": "workspace:*",
     "@types/prismjs": "^1.26.5",
     "eslint-import-resolver-typescript": "4.4.5",
-    "tsx": "^4.19.2"
+    "tsx": "^4.22.4"
   },
   "repository": {
     "type": "git",
