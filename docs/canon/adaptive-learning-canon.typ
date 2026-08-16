@@ -1489,13 +1489,28 @@ rather than as *data*, and the remedy is to exhibit the data.
   $(k_1, k_2, b)$ where $(k_1, k_2)$ is a confusion edge and $b in "Bridge"$
   is a bounded route that resolves the incidental burden $k_1$ names and
   returns the learner to the *same* obligation at $k_2$ --- never to a
-  different one (Prop. 6.3). For a subject matter with finite declared sink
-  set $Sigma$ (Axiom 1.1 applies to $Sigma$ exactly as it applies to
-  $cal(K)$) and unclassified state $bot$ --- "no declared sink matched" ---
-  a *routing function* is a map $"route" : Sigma union {bot} -> "Bridge"$.
-  This introduces no relation beyond the two O1 already names: a sink is
-  what a confusion edge is called once it is equipped with a bridge, not a
-  third kind of thing.
+  different one (Prop. 6.3). A bridge is built from machinery this canon
+  already has and nothing else: a revised policy-vector valuation
+  (Def. 4.2) for the same exercise --- $p_"hint"$ moved earlier,
+  $p_"retry"$ loosened --- a short additional sequence of ordinary
+  exercises (Def. 4.4) drawn from $k_2$'s neighbourhood under $prec$
+  (Def. 1.2), or a bounded composition of the two. A route that needs a
+  rendering surface, a UI mode, or a policy-vector dimension that does not
+  already exist is not a bridge under this definition; it is a change of
+  scope to §4 or §6, to be argued on its own merits. For a subject matter
+  with finite declared sink set $Sigma$ (Axiom 1.1 applies to $Sigma$
+  exactly as it applies to $cal(K)$), *classification* is the map from an
+  attempt to $Sigma union {bot}$ that decides which sink, if any, applies:
+  sinks are checked in a fixed declared order and the first confusion edge
+  whose condition holds is the match; an attempt matching none is $bot$
+  --- "no declared sink matched." This makes classification single-valued
+  by construction rather than by assumption: an attempt satisfying more
+  than one confusion edge's condition still resolves to exactly one sink,
+  the earliest in the declared order, never to a set. A *routing function*
+  is then a map $"route" : Sigma union {bot} -> "Bridge"$. This introduces
+  no relation beyond the two O1 already names: a sink is what a confusion
+  edge is called once it is equipped with a bridge, not a third kind of
+  thing.
 ]
 
 #remark("6.4", name: "A sink is local and falsifiable, never a learner identity")[
@@ -1531,13 +1546,16 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #corollary("6.3", name: "Sinks do not become modes")[
-  Derivable from Theorem 4.1: a bridge is a valuation over dimensions the
-  policy vector (Def. 4.2) already has --- $p_"hint"$ moved earlier,
-  $p_"retry"$ loosened, decomposition depth increased --- so the
-  implementations required to support $|Sigma|$ sinks are $O(|p|)$, not
-  $O(|Sigma|)$, by the same argument Corollary 4.1 makes for named modes. A
-  bridge that requires a component the runner does not already have has
-  reproduced Corollary 4.1's pile-up with the word "sink" in place of the
+  Derivable from Theorem 4.1 together with Definition 6.5's constraint on
+  what a bridge may be built from: a bridge is either a revised
+  policy-vector valuation or a short additional sequence of ordinary
+  exercises over a prerequisite neighbourhood, so it costs exactly the
+  implementations Theorem 4.1 and Definition 4.4 already require --- $O(|p|)$
+  to interpret a valuation, and nothing further to run one more exercise in
+  a session --- independent of $|Sigma|$. A route that needs a component
+  the runner does not already have is not a bridge under Definition 6.5,
+  so it cannot be the witness against this corollary; admitting one would
+  reproduce Corollary 4.1's pile-up with the word "sink" in place of the
   word "mode".
 ]
 
@@ -1552,17 +1570,20 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #proof[
-  $Sigma union {bot}$ is, by the definition of $bot$, the entire domain a
-  classification step can return: either a declared sink matched, or none
-  did. $"route"$ is defined on every element of $Sigma$ by hypothesis (each
-  sink carries its own bridge, Def. 6.5) and on $bot$ by the fallback
-  route's construction, which does not depend on which sink, if any, a
-  larger taxonomy would have matched. Enlarging or shrinking $Sigma$
-  therefore changes which bridge a given attempt receives but never removes
-  a value from $"route"$'s domain --- which is Definition 6.4's (P1) at the
-  routing sub-decision, instantiated rather than argued afresh. A compiled
-  graph can discharge this structurally, over its finite node and edge set,
-  in place of enumerating $Sigma$'s coverage of human causes of blockage.
+  By Definition 6.5's classification rule, every attempt resolves to
+  exactly one element of $Sigma union {bot}$: the earliest-declared sink
+  whose condition holds, or $bot$ if none does — never to more than one
+  and never to nothing, so $Sigma union {bot}$ is the entire range
+  classification can produce, not merely an intended one. $"route"$ is
+  defined on every element of $Sigma$ by hypothesis (each sink carries its
+  own bridge, Def. 6.5) and on $bot$ by the fallback route's construction,
+  which does not depend on which sink, if any, a larger taxonomy would have
+  matched. Enlarging or shrinking $Sigma$ therefore changes which bridge a
+  given attempt receives but never removes a value from $"route"$'s domain
+  --- which is Definition 6.4's (P1) at the routing sub-decision,
+  instantiated rather than argued afresh. A compiled graph can discharge
+  this structurally, over its finite node and edge set, in place of
+  enumerating $Sigma$'s coverage of human causes of blockage.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
