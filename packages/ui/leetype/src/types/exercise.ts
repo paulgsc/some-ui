@@ -286,6 +286,12 @@ const DIAGNOSTIC_MISSING_TRACE_MESSAGE =
   "the repair falsifies. Without one there is no failure for the player to diagnose, " +
   "only a blank to fill in — constraint 5's deterministic signal has nothing to attach to."
 
+const CONSTRUCTION_MISSING_EVIDENCE_MESSAGE =
+  "A construction step must carry at least one block besides its witness — a " +
+  "visible constraint or consequence. obligation is authoring metadata and is never " +
+  "rendered; without a constraint or consequence the player can actually see, the " +
+  "step shows nothing but a blank to fill in."
+
 /**
  * The three shape invariants every step variant shares, factored out to
  * predicate functions rather than duplicated `.refine()` bodies: both
@@ -405,6 +411,20 @@ const StepObjectSchema = z.object({
    * unrecognized key. `DiagnosticStepSchema` overrides this to required.
    */
   rationale: RationaleSchema.optional(),
+  /**
+   * Obligation→witness family (LTY-FAMILIES A2): the next concept-bearing
+   * decision a construction step's witness discharges. Optional here for
+   * the same reason `rationale` is: declaring it on the generic object
+   * shape, rather than only on `ConstructionStepObjectSchema`, is what lets
+   * it survive the *generic* `ExerciseCorpusSchema.parse` the shim runs at
+   * module load instead of being silently stripped as an unrecognized key.
+   * `ConstructionStepSchema` overrides this to required.
+   *
+   * Authoring metadata, like `rationale` — **never rendered to the
+   * learner**. The temptation to display it is exactly the description
+   * card this whole shift retired, returning through a new field.
+   */
+  obligation: z.string().min(1).optional(),
 })
 
 export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
@@ -509,6 +529,62 @@ export const DiagnosticStepSchema = DiagnosticStepObjectSchema.refine(
     }
   )
 
+/**
+ * A step in the obligation→witness family: a constraint that rules out
+ * irrelevant solution families, the next concept-bearing decision it
+ * forces (`obligation` — authoring metadata, never rendered), the smallest
+ * Rust fragment that discharges it (the step's one typing block, the
+ * witness), and the state, invariant or cost that follows (the
+ * consequence). Constraint and consequence are ordinary rendered blocks —
+ * `transition`/`trace`/`region`/`prompt` — nothing new; `obligation` is the
+ * one field this family actually adds.
+ *
+ * Extends `StepObjectSchema` the same way `DiagnosticStepObjectSchema`
+ * does, for the identical reason: `obligation` needs to be required in the
+ * object shape itself, not narrowed by a `.refine()` type predicate zod
+ * does not propagate through a `ZodEffects`' inferred output.
+ *
+ * # The authoring test, which is the acceptance criterion
+ *
+ * What conceptual claim becomes true *because this exact fragment is
+ * present*? If the honest answer is "the learner knows a method name," the
+ * step is a bridge (LTY-ROUTE), not an obligation — not checkable in zod,
+ * argued in `obligation` itself and checked for quality by the corpus lint
+ * (LTY-FAMILIES A5), the same posture `rationale` is held to.
+ *
+ * # What does not ship in this variant
+ *
+ * No `assumes: StepId[]`, no `difficulty`, no `level`. `types/exercise.ts`
+ * already deleted a prerequisite edge from `Challenge` with the reasoning
+ * that order is the linearization and an edge nothing branches on is a
+ * claim without a consumer; reintroducing one here because a future
+ * compiler might read it would undo that argument without answering it —
+ * the edge belongs upstream, in LTY-ROUTE R2's obligation graph, where
+ * route linearization actually consumes it. Difficulty is a property of
+ * how instances are *ordered* (decreasing structural support), not a field
+ * on one, so it has no home on a single step either.
+ */
+const ConstructionStepObjectSchema = StepObjectSchema.extend({
+  obligation: z.string().min(1),
+})
+
+export const ConstructionStepSchema = ConstructionStepObjectSchema.refine(
+  hasExactlyOneTypingBlock,
+  { message: ONE_TYPING_BLOCK_MESSAGE, path: ["blocks"] }
+)
+  .refine(isWithinStepPromptBudget, {
+    message: STEP_PROMPT_BUDGET_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine(regionsFitTypingSource, {
+    message: REGION_SPAN_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine((step) => step.blocks.length >= 2, {
+    message: CONSTRUCTION_MISSING_EVIDENCE_MESSAGE,
+    path: ["blocks"],
+  })
+
 export const ExerciseSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -531,6 +607,7 @@ export type Provenance = z.infer<typeof ProvenanceSchema>
 export type Rationale = z.infer<typeof RationaleSchema>
 export type Step = z.infer<typeof StepSchema>
 export type DiagnosticStep = z.infer<typeof DiagnosticStepSchema>
+export type ConstructionStep = z.infer<typeof ConstructionStepSchema>
 export type Exercise = z.infer<typeof ExerciseSchema>
 
 /**
