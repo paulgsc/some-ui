@@ -1085,7 +1085,7 @@ rather than as *data*, and the remedy is to exhibit the data.
   or not: no posterior is written, so none is written badly.
 ]
 
-#remark("4.3", name: "The valuation is this increment's position, not a terminal design")[
+#remark("4.5", name: "The valuation is this increment's position, not a terminal design")[
   Corollary 4.3 records where M20 sits, not where `packages/ui/leetype` stays.
   The eventual product carries persistence and scoring (O3, O5) and will care
   about reveal state at the moment it is disclosed, not merely that
@@ -2324,7 +2324,7 @@ this section's own triage rule, ahead of the source it governs in
 *v1.2 --- 2026-08-16.* Declares LeetType M20's valuation (Cor. 4.3): the
 *Tutorial* row of Theorem 4.1 with two named deviations
 ($p_"retry" = "bounded"$, $p_"reveal"$ as the witness itself), and records
-the vacuous satisfaction of Prop. 3.1 / Cor. 3.2 it carries. Remark 4.3
+the vacuous satisfaction of Prop. 3.1 / Cor. 3.2 it carries. Remark 4.5
 states the condition under which the valuation changes --- a belief
 envelope (O3) existing for this surface to write into --- so a future
 amendment has a named trigger rather than an implicit one. §10's
