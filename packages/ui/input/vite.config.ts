@@ -5,10 +5,10 @@ export default createViteConfig({
   packageName: "some-ui-input",
   libraryName: "SomeUIInput",
   alias: {
-    "@input": resolve(__dirname, "src"),
+    "@input": resolve(import.meta.dirname, "src"),
   },
   dtsOptions: {
     exclude: ["**/obs-monitor/**"],
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

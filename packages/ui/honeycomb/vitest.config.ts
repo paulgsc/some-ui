@@ -19,7 +19,7 @@ export default defineConfig({
 
     deps: {
       optimizer: {
-        web: {
+        client: {
           // If you encounter issues with WASM or specific UI libs, add them here
           include: ["@testing-library/react"],
         },
@@ -30,7 +30,7 @@ export default defineConfig({
     alias: {
       // Mirror the "@honeycomb/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
-      "@honeycomb": path.resolve(__dirname, "./src"),
+      "@honeycomb": path.resolve(import.meta.dirname, "./src"),
     },
   },
 })

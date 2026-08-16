@@ -5,10 +5,10 @@ export default createViteConfig({
   packageName: "some-ui-honeycomb",
   libraryName: "SomeUIHoneycomb",
   alias: {
-    "@honeycomb": resolve(__dirname, "src"),
+    "@honeycomb": resolve(import.meta.dirname, "src"),
   },
   dtsOptions: {
     exclude: ["**/hexagon-grid-demo/**", "vitest.config.ts", "vitest.setup.ts"],
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

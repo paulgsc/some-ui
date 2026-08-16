@@ -5,7 +5,7 @@ export default createViteConfig({
   packageName: "@some-ui/assessment",
   libraryName: "SomeUIAssessment",
   alias: {
-    "@assessment": resolve(__dirname, "src"),
+    "@assessment": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

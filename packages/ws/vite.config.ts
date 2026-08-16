@@ -5,7 +5,7 @@ export default createViteConfig({
   packageName: "ws",
   libraryName: "SomeUIWs",
   alias: {
-    "@ws": resolve(__dirname, "src"),
+    "@ws": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

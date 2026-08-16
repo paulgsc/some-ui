@@ -5,6 +5,6 @@ export default createViteConfig({
   packageName: "some-ui-auth",
   libraryName: "SomeUIAuth",
   alias: {
-    "@auth": resolve(__dirname, "src"),
+    "@auth": resolve(import.meta.dirname, "src"),
   },
 })

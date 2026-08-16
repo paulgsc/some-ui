@@ -5,6 +5,6 @@ export default createViteConfig({
   packageName: "some-ui-portfolio-chart",
   libraryName: "SomeUIPortfolio",
   alias: {
-    "@portfolio-chart": resolve(__dirname, "src"),
+    "@portfolio-chart": resolve(import.meta.dirname, "src"),
   },
 })

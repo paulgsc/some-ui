@@ -5,11 +5,11 @@ export default createViteConfig({
   packageName: "wireframes",
   libraryName: "SomeUIWireframes",
   alias: {
-    "@wireframes": resolve(__dirname, "src"),
+    "@wireframes": resolve(import.meta.dirname, "src"),
   },
   dtsOptions: {
     exclude: ["**/recap/**"],
   },
   contentPackage: true,
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

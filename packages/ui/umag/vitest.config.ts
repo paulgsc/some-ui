@@ -23,7 +23,7 @@ export default defineConfig({
 
     deps: {
       optimizer: {
-        web: {
+        client: {
           include: ["@testing-library/react"],
         },
       },
@@ -33,7 +33,7 @@ export default defineConfig({
     alias: {
       // Mirror the "@umag/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
-      "@umag": path.resolve(__dirname, "./src"),
+      "@umag": path.resolve(import.meta.dirname, "./src"),
     },
   },
 })

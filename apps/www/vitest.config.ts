@@ -27,7 +27,7 @@ export default defineConfig({
       // Mirrors vite.config.ts's "@" -> "./src" alias - this config doesn't
       // extend that one, so tests importing a "@/..." module (most of src/
       // does) need their own copy of the same mapping.
-      "@": resolve(__dirname, "./src"),
+      "@": resolve(import.meta.dirname, "./src"),
     },
   },
 })

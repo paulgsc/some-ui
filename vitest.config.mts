@@ -34,7 +34,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "some-charts": resolve(
-        __dirname,
+        import.meta.dirname,
         "./crates/some-charts/dist/some_charts.js"
       ),
     },

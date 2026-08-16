@@ -5,6 +5,6 @@ export default createViteConfig({
   packageName: "@some-ui/core-utils",
   libraryName: "SomeCoreUtils",
   alias: {
-    "@core-utils": resolve(__dirname, "src"),
+    "@core-utils": resolve(import.meta.dirname, "src"),
   },
 })

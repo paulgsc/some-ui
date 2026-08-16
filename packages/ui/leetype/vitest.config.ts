@@ -21,7 +21,7 @@ export default defineConfig({
 
     deps: {
       optimizer: {
-        web: {
+        client: {
           // If you encounter issues with WASM or specific UI libs, add them here
           include: ["@testing-library/react"],
         },
@@ -32,13 +32,13 @@ export default defineConfig({
     alias: {
       // Mirror the "@leetype/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
-      "@leetype": path.resolve(__dirname, "./src"),
+      "@leetype": path.resolve(import.meta.dirname, "./src"),
       // The wasm package is a workspace crate whose dist/ only exists after
       // a wasm-pack build. Tests never want the real binary anyway (they
       // `vi.mock` it), so this points the specifier at the hand-written
       // declaration stub purely so resolution succeeds without a build.
       "@some-ui/leetype-wasm": path.resolve(
-        __dirname,
+        import.meta.dirname,
         "./src/types/wasm/leetype-wasm.d.ts"
       ),
     },

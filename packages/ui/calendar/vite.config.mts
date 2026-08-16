@@ -5,8 +5,8 @@ export default createViteConfig({
   packageName: "some-ui-calendar",
   libraryName: "SomeUICalender",
   alias: {
-    "@calendar": resolve(__dirname, "src"),
+    "@calendar": resolve(import.meta.dirname, "src"),
   },
   contentPackage: true,
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

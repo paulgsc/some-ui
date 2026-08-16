@@ -5,7 +5,7 @@ export default createViteConfig({
   packageName: "some-ui-stepper",
   libraryName: "SomeUIStepper",
   alias: {
-    "@stepper": resolve(__dirname, "src"),
+    "@stepper": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })

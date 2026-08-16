@@ -5,8 +5,8 @@ export default createViteConfig({
   packageName: "@some-ui/dice-card",
   libraryName: "SomeUIDiceCard",
   alias: {
-    "@dice-card": resolve(__dirname, "src"),
+    "@dice-card": resolve(import.meta.dirname, "src"),
   },
   dtsOptions: { exclude: ["**/demo/**"] },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
 })
