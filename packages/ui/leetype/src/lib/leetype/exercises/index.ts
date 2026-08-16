@@ -3,6 +3,7 @@ import { ExerciseCorpusSchema } from "@leetype/types/exercise"
 
 import {
   ADVERSARIAL_EXERCISE_ID,
+  DIAGNOSTIC_EXERCISE_IDS,
   HOSTILE_PROMPT_STEP,
   SEED_EXERCISE_ID,
   SEED_EXERCISES,
@@ -109,6 +110,9 @@ export function nextExercise(state?: SelectionState): Exercise {
  */
 export const FIXTURE_EXERCISE_ID = SEED_EXERCISE_ID
 export const FIXTURE_ADVERSARIAL_EXERCISE_ID = ADVERSARIAL_EXERCISE_ID
+
+/** The five diagnostic instances (LTY-FAMILIES A3), for stories and tests. */
+export const FIXTURE_DIAGNOSTIC_EXERCISE_IDS = DIAGNOSTIC_EXERCISE_IDS
 
 /**
  * A step over `PromptBlockSchema`'s prose budget, for stories and tests
