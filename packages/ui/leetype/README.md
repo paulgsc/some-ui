@@ -37,7 +37,7 @@ a specific one passes `exercise`.
 ## The decision record
 
 [`docs/leetype/README.md`](../../../docs/leetype/README.md) carries the
-vocabulary and the four decisions this package assumes. Read it before
+vocabulary and the five decisions this package assumes. Read it before
 touching the shell or the reveal loop — it outlives the issues that closed.
 
 ## The shape
