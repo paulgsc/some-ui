@@ -192,7 +192,13 @@ export function linearize(graph: ObligationGraph): Exercise {
     // `graph.nodes`, so this lookup cannot fail — the non-null assertion
     // states that rather than re-deriving it with an unreachable throw.
     const node = graph.nodes[id]!
-    return { id, ...node.content }
+    // `id` spread last: `content`'s declared type omits `id`, but nothing
+    // at runtime enforces that against untrusted or malformed input, and
+    // `{ id, ...node.content }` would let a stray `content.id` silently
+    // override the node's real key — corrupting the emitted step's
+    // identity without corrupting the graph. The node's own key in
+    // `graph.nodes` is authoritative; nothing in `content` may override it.
+    return { ...node.content, id }
   })
 
   return { id: graph.problem, title: graph.title, steps }

@@ -111,6 +111,31 @@ describe("linearize", () => {
     expect(exercise.steps).toEqual(expectedSteps)
   })
 
+  it("uses the node's own key as the step id, even if content smuggles a stray id", () => {
+    // `content`'s declared type omits `id`, but nothing at runtime stops
+    // an untrusted or malformed value from carrying one anyway. The
+    // node's key in `graph.nodes` is the only authoritative identity;
+    // a stray `content.id` must never override it.
+    const graph = realEntryGraph()
+    const tampered: ObligationGraph = {
+      ...graph,
+      nodes: {
+        ...graph.nodes,
+        "entry-03-place": {
+          ...graph.nodes["entry-03-place"]!,
+          content: {
+            ...graph.nodes["entry-03-place"]!.content,
+            // @ts-expect-error — content's type omits id; this is exactly
+            // the malformed shape the runtime guard has to survive.
+            id: "smuggled-id",
+          },
+        },
+      },
+    }
+
+    expect(linearize(tampered).steps[0]!.id).toBe("entry-03-place")
+  })
+
   it("recovers dependency order from requires, not from node registration order", () => {
     // IDs deliberately chosen so alphabetical order and dependency order
     // disagree ("a-last" sorts before "z-first"): a linearizer that fell
