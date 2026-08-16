@@ -64,10 +64,10 @@ export const ContentFits: Story = {
 
 /** Content taller than the box: this is the one legitimate scroll. */
 export const ContentOverflows: Story = {
-  render: () => <InBox stepIndex={9} typedChars={20} height="10rem" />,
+  render: () => <InBox stepIndex={7} typedChars={20} height="10rem" />,
 }
 
 /** The caret deep into a long body, where following it is the whole point. */
 export const CaretFollowed: Story = {
-  render: () => <InBox stepIndex={9} typedChars={90} height="12rem" />,
+  render: () => <InBox stepIndex={7} typedChars={90} height="12rem" />,
 }

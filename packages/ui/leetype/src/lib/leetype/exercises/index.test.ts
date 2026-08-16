@@ -1,4 +1,5 @@
 import {
+  ConstructionStepSchema,
   DiagnosticStepSchema,
   GOAL_MAX_CHARS,
   StepSchema,
@@ -117,10 +118,10 @@ describe("the seed set", () => {
   })
 })
 
-describe("the five diagnostic instances (LTY-FAMILIES A3)", () => {
-  it("ships exactly five, one per failure class", () => {
-    expect(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).toHaveLength(5)
-    expect(new Set(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).size).toBe(5)
+describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => {
+  it("ships three, one per failure class — the other two moved into entryApi (A4)", () => {
+    expect(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).toHaveLength(3)
+    expect(new Set(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).size).toBe(3)
   })
 
   it("each validates through the strict DiagnosticStepSchema, not just StepSchema", () => {
@@ -167,19 +168,79 @@ describe("the five diagnostic instances (LTY-FAMILIES A3)", () => {
     }
   })
 
-  it("keeps instances 4 and 5 alongside entryApi until A4 folds them in", () => {
-    // The design discussion's own instruction: having both the flagship
-    // exercise and its diagnostic counterexamples in the corpus at once is
-    // the clearest available evidence for whether A4's rewrite is an
-    // improvement. This test is the trip wire that catches either one
-    // disappearing before A4 actually lands.
-    const doubleLookup = nextExercise({ preferId: "diagnostic-double-lookup" })
-    const eagerLazy = nextExercise({
-      preferId: "diagnostic-eager-lazy-default",
-    })
-    expect(doubleLookup.id).toBe("diagnostic-double-lookup")
-    expect(eagerLazy.id).toBe("diagnostic-eager-lazy-default")
-    expect(nextExercise().id).toBe(FIXTURE_EXERCISE_ID)
+  it("no longer serves instances 4 and 5 as freestanding exercises (A4 folded them in)", () => {
+    // The freestanding ids from A3 must not resolve to anything anymore —
+    // nextExercise falls back to the default rather than silently keeping
+    // a duplicate around.
+    expect(nextExercise({ preferId: "diagnostic-double-lookup" }).id).toBe(
+      FIXTURE_EXERCISE_ID
+    )
+    expect(nextExercise({ preferId: "diagnostic-eager-lazy-default" }).id).toBe(
+      FIXTURE_EXERCISE_ID
+    )
+  })
+})
+
+describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
+  it("carries the double-lookup and eager-lazy-default steps, renamed to sort with the ladder", () => {
+    const steps = nextExercise().steps
+    const doubleLookup = steps.find(
+      (step) => step.id === "entry-09-diagnostic-double-lookup"
+    )
+    const eagerLazy = steps.find(
+      (step) => step.id === "entry-10-diagnostic-eager-lazy-default"
+    )
+    expect(doubleLookup).toBeDefined()
+    expect(eagerLazy).toBeDefined()
+  })
+
+  it("keeps both tail steps strictly valid as diagnostic instances, not just plain steps", () => {
+    const steps = nextExercise().steps
+    const tail = steps.filter(
+      (step) =>
+        step.id.startsWith("entry-09-") || step.id.startsWith("entry-10-")
+    )
+    expect(tail).toHaveLength(2)
+    for (const step of tail) {
+      const result = DiagnosticStepSchema.safeParse(step)
+      const reason = result.success ? "" : result.error.message
+      expect(result.success, `"${step.id}" failed: ${reason}`).toBe(true)
+    }
+  })
+
+  it("orders the diagnostic tail after every commitment, composition and transfer step", () => {
+    const ids = nextExercise().steps.map((step) => step.id)
+    const tailStart = ids.indexOf("entry-09-diagnostic-double-lookup")
+    expect(tailStart).toBeGreaterThan(0)
+    expect(tailStart).toBe(ids.length - 2)
+  })
+
+  it("carries no PromptBlock anywhere — no conceptual exposition survived the rewrite", () => {
+    for (const step of nextExercise().steps) {
+      const hasPrompt = step.blocks.some((block) => block.kind === "prompt")
+      expect(hasPrompt, `step "${step.id}" still has a prompt block`).toBe(
+        false
+      )
+    }
+  })
+
+  it("validates every commitment, composition and transfer step as a strict ConstructionStep", () => {
+    const commitmentIds = [
+      "entry-03-place",
+      "entry-04-fill",
+      "entry-05-mutate",
+      "entry-06-compose",
+      "entry-07-transfer",
+      "entry-08-generalize",
+    ]
+    const steps = nextExercise().steps
+    for (const id of commitmentIds) {
+      const step = steps.find((candidate) => candidate.id === id)
+      expect(step, `step "${id}" not found`).toBeDefined()
+      const result = ConstructionStepSchema.safeParse(step)
+      const reason = result.success ? "" : result.error.message
+      expect(result.success, `"${id}" failed: ${reason}`).toBe(true)
+    }
   })
 })
 

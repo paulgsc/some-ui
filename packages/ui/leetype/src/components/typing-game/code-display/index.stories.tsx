@@ -78,7 +78,7 @@ export const PartiallyTyped: Story = {
 /** A multi-line proof, so the indentation-skipping caret is visible. */
 export const MultiLineProof: Story = {
   render: () => (
-    <StoryFromStep stepIndex={9} typedChars={40} idleSeconds={20} />
+    <StoryFromStep stepIndex={7} typedChars={40} idleSeconds={20} />
   ),
 }
 
@@ -89,19 +89,20 @@ export const MultiLineProof: Story = {
 export const ShorterThanItsContent: Story = {
   render: () => (
     <div className="code h-32 rounded-lg border border-border bg-secondary p-4">
-      <StoryFromStep stepIndex={9} typedChars={20} idleSeconds={20} />
+      <StoryFromStep stepIndex={7} typedChars={20} idleSeconds={20} />
     </div>
   ),
 }
 
 // ── A context-bearing step, one story per TextGradient value ─────────────
 //
-// No seed step carries a context span yet (LTY-FRAME's own fixture is a
-// crate-side test, not a corpus entry — authoring one for real is a
-// decision for whichever story actually wants the frame rendered end to
-// end in the shell). These mount `usePreviewGame` directly against a raw
-// source string instead of going through the corpus, the same shim-bypass
-// pattern the panel's hostile-prompt stories already use.
+// Several seed steps carry context spans now (LTY-FAMILIES A2-A4's
+// commitments and diagnostic instances), but none of them isolates the
+// frame-then-body shape as cleanly as a minimal, purpose-built fixture
+// does, and none needs to vary by `textGradient`. These mount
+// `usePreviewGame` directly against a raw source string instead of going
+// through the corpus, the same shim-bypass pattern the panel's
+// hostile-prompt stories already use.
 
 /**
  * `‹…›` wraps a context frame — the same fixture shape
