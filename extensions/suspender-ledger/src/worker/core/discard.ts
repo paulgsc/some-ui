@@ -531,6 +531,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.discarded === undefined && !acting) {
     return
   }
+  if (changeInfo.discarded === true) {
+    // The tab is no longer being kept awake, however it got discarded — the
+    // periodic sweep only ever queries `discarded: false` tabs, so a tab
+    // discarded by the browser's own memory pressure, another extension, or
+    // this extension's own success would otherwise never revisit this tab to
+    // clear a stale entry itself.
+    clearSkipped(tabId)
+  }
   record("browser.tab_updated", tabId, {
     changeInfo: {
       discarded: changeInfo.discarded ?? null,

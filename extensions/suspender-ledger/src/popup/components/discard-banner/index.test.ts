@@ -16,19 +16,22 @@ describe("DiscardBanner", () => {
 
   it("renders the plain-language heading and each reason, never the raw browser state name", () => {
     const el = DiscardBanner({
-      reasons: ["Unsaved text or form inputs", "Active audio or video"],
+      reasons: [
+        "This page asked not to be interrupted",
+        "Playing audio or video",
+      ],
     })
 
     expect(el.hidden).toBe(false)
     expect(el.querySelector(".discard-banner__heading")?.textContent).toBe(
-      "Some tabs were kept awake by Chrome"
+      "Some tabs were kept awake by Firefox"
     )
     const items = Array.from(
       el.querySelectorAll(".discard-banner__list li")
     ).map((li) => li.textContent)
     expect(items).toEqual([
-      "Unsaved text or form inputs",
-      "Active audio or video",
+      "This page asked not to be interrupted",
+      "Playing audio or video",
     ])
     expect(el.textContent).not.toMatch(
       /FormInteracted|CanDiscardTab|beforeunload/i

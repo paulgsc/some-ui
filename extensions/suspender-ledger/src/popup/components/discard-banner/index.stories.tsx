@@ -43,12 +43,15 @@ export const Empty: Story = {
   args: { reasons: [] },
 }
 
-export const FormInputOnly: Story = {
-  args: { reasons: ["Unsaved text or form inputs"] },
+export const ProtectedOnly: Story = {
+  args: { reasons: ["This page asked not to be interrupted"] },
 }
 
-export const MediaAndFormInput: Story = {
+export const ProtectedAndMedia: Story = {
   args: {
-    reasons: ["Unsaved text or form inputs", "Active audio or video"],
+    reasons: [
+      "This page asked not to be interrupted",
+      "Playing audio or video",
+    ],
   },
 }

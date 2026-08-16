@@ -70,8 +70,8 @@ describe("skipSummary / summarizeSkipReasons", () => {
     markSkipped(203, "media")
 
     expect(skipSummary()).toEqual([
-      "Unsaved text or form inputs",
-      "Active audio or video",
+      "This page asked not to be interrupted",
+      "Playing audio or video",
     ])
   })
 
@@ -80,8 +80,8 @@ describe("skipSummary / summarizeSkipReasons", () => {
     markSkipped(302, "protected")
 
     expect(skipSummary()).toEqual([
-      "Unsaved text or form inputs",
-      "Active audio or video",
+      "This page asked not to be interrupted",
+      "Playing audio or video",
     ])
   })
 
@@ -109,7 +109,7 @@ describe("hydrateDiscardState", () => {
 
     await hydrateDiscardState()
 
-    expect(skipSummary()).toEqual(["Unsaved text or form inputs"])
+    expect(skipSummary()).toEqual(["This page asked not to be interrupted"])
     expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "1" })
   })
 
@@ -117,5 +117,30 @@ describe("hydrateDiscardState", () => {
     await hydrateDiscardState()
 
     expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: "" })
+  })
+
+  it("does not clobber a mark that lands before the storage read resolves (the same alarm that discards a tab can also wake this worker)", async () => {
+    let resolveRead: ((items: Record<string, unknown>) => void) | undefined
+    vi.mocked(chrome.storage.session.get).mockImplementation(
+      (_keys: unknown, cb: (items: Record<string, unknown>) => void) => {
+        resolveRead = cb
+      }
+    )
+
+    const hydrating = hydrateDiscardState()
+    // A concurrent discard attempt lands while the read above is still in flight.
+    markSkipped(601, "media")
+
+    resolveRead?.({
+      [DISCARD_STATE_STORAGE_KEY]: { 602: { reason: "protected", at: 1000 } },
+    })
+    await hydrating
+
+    expect(skipped.get(601)).toEqual(
+      expect.objectContaining({ reason: "media" })
+    )
+    expect(skipped.get(602)).toEqual(
+      expect.objectContaining({ reason: "protected" })
+    )
   })
 })
