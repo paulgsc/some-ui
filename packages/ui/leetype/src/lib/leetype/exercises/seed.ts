@@ -306,7 +306,7 @@ const diagnosticInclusiveBoundaryStep: DiagnosticStep = {
     {
       kind: "typing",
       source:
-        "‹let (mut left, right) = (0, chars.len());\nwhile ›left < right‹ {\n    sum += chars[left] as u32;\n    left += 1;\n}›",
+        "‹let (mut left, right) = (0, chars.len());\n// attempted: while left <= right — panics once left reaches right\nwhile ›left < right‹ {\n    sum += chars[left] as u32;\n    left += 1;\n}›",
       language: "rust",
     },
   ],
