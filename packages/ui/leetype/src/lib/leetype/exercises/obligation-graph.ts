@@ -156,6 +156,23 @@ function topologicalOrder(graph: ObligationGraph): ReadonlyArray<ObligationId> {
  * array emits.* See `obligation-graph.test.ts`.
  */
 export function linearize(graph: ObligationGraph): Exercise {
+  // A node with no `requires` is a root — a route that could start there
+  // without inference. `entry` claims to be *the* route every player
+  // starts from, which only holds if it is the graph's only root: a second
+  // root would be a disconnected obligation that topologicalOrder still
+  // visits (it iterates every key, not just what's reachable from `entry`)
+  // and would ride along in the output whenever it happened to sort after
+  // `entry`, silently, with no requires edge tying it to anything.
+  const roots = Object.keys(graph.nodes)
+    .filter((id) => graph.nodes[id]!.requires.length === 0)
+    .sort()
+  if (roots.length > 1) {
+    throw new Error(
+      `linearize: more than one obligation has no prerequisite (${roots.join(", ")}) ` +
+        `— an obligation graph has exactly one entry, not one route per root.`
+    )
+  }
+
   const order = topologicalOrder(graph)
   const first = order[0]
 

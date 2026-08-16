@@ -258,4 +258,34 @@ describe("linearize", () => {
       /declared as the entry/
     )
   })
+
+  it("throws when a second, disconnected root exists — not silently included in the output", () => {
+    // "z-orphan" sorts after "entry-03-place", so the order[0] === entry
+    // check alone would not catch it: without the root-count guard, it
+    // would ride along at the end of the linearized output with no
+    // requires edge connecting it to anything the player actually did.
+    const graph = realEntryGraph()
+    const withOrphan: ObligationGraph = {
+      ...graph,
+      nodes: {
+        ...graph.nodes,
+        "z-orphan": {
+          claim: "representation",
+          requires: [],
+          sinkRoutes: {},
+          fallbackBridge: "worked-route",
+          content: {
+            goal: "Disconnected.",
+            concepts: ["fixture"],
+            obligation: "not reachable from entry",
+            blocks: [{ kind: "typing", source: "orphan()", language: "rust" }],
+          },
+        },
+      },
+    }
+
+    expect(() => linearize(withOrphan)).toThrow(
+      /more than one obligation has no prerequisite/
+    )
+  })
 })
