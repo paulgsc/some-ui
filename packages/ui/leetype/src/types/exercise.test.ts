@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import type { Block } from "./exercise"
 import {
   BlockSchema,
+  DIAGNOSTIC_REPAIR_MAX_CHARS,
+  DiagnosticStepSchema,
   ExerciseSchema,
   GOAL_MAX_CHARS,
   languageOf,
@@ -302,6 +304,83 @@ describe("block helpers", () => {
     expect(promptBlocksOf(parsed)).toHaveLength(2)
     expect(typingBlockOf(parsed)?.source).toBe(typing.source)
     expect(languageOf(parsed)).toBe("rust")
+  })
+})
+
+describe("DiagnosticStepSchema — the falsification→repair family", () => {
+  const failure: Block = {
+    kind: "trace",
+    headline: "TIMEOUT",
+    observations: [{ label: "cursor", value: "0 → 0" }],
+  }
+  const shortRepair: Block = {
+    kind: "typing",
+    source: "cursor += 1;",
+    language: "rust",
+  }
+  const rationale = {
+    cause: "the loop advances nothing, so cursor never reaches input.len()",
+    whyRepairDiscriminates:
+      "incrementing cursor is the only change that makes the loop terminate",
+  }
+
+  it("keeps rationale optional on the plain StepSchema", () => {
+    const parsed = StepSchema.parse(step([failure, shortRepair]))
+    expect(parsed.rationale).toBeUndefined()
+  })
+
+  it("rejects a diagnostic step with no rationale, and says why", () => {
+    const result = DiagnosticStepSchema.safeParse(step([failure, shortRepair]))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/must carry a rationale/)
+  })
+
+  it("accepts a diagnostic step whose rationale is present", () => {
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, shortRepair]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a repair past the bounded-answer budget, and says why", () => {
+    const tooLong: Block = {
+      kind: "typing",
+      source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1),
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, tooLong]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/runs past 50 characters/)
+  })
+
+  it("accepts a repair right at the bounded-answer budget", () => {
+    const atLimit: Block = {
+      kind: "typing",
+      source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS),
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, atLimit]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a multi-line repair even when it is under the character budget", () => {
+    const multiline: Block = {
+      kind: "typing",
+      source: "cursor += 1;\nlet done = true;",
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, multiline]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
   })
 })
 

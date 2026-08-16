@@ -245,6 +245,45 @@ export const ProvenanceSchema = z.object({
 })
 
 /**
+ * Why a diagnostic step's repair is the correct one — authoring/audit
+ * evidence for `DiagnosticStepSchema`'s judgement-only constraints (see its
+ * doc comment), inert during play like `concepts` and `provenance` above:
+ * nothing renders it, nothing branches on it. Checked mechanically, not for
+ * quality, by the corpus lint (LTY-FAMILIES A5).
+ */
+export const RationaleSchema = z.object({
+  /** The one principal causal defect the failure signal points at. */
+  cause: z.string().min(1),
+  /** Why *this* repair, not a shorter one that would only silence the symptom. */
+  whyRepairDiscriminates: z.string().min(1),
+})
+
+/**
+ * The longest a diagnostic step's repair — its typing block, revealed in
+ * full — is allowed to run: constraint 4's "seconds to copy once revealed,
+ * not a minute," made a number. One line, the same posture as
+ * `PROMPT_LINE_MAX_CHARS`: a repair that needs a second line was too broad
+ * for the family and wanted two steps.
+ *
+ * 50 rather than a round "looks generous" figure: the five hand-authored
+ * instances span 11–41 characters (`right -= 1;` to
+ * `map.entry(key).or_default().push(value);`), so this is headroom above
+ * the corpus's own actual ceiling, not a number picked in the abstract.
+ */
+export const DIAGNOSTIC_REPAIR_MAX_CHARS = 50
+
+const DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE =
+  `A diagnostic step's repair runs past ${DIAGNOSTIC_REPAIR_MAX_CHARS} characters ` +
+  "or spans more than one line. The repair is meant to be copied in seconds once " +
+  "revealed, not authored as a second exercise — narrow the fault, or this wants " +
+  "to be two diagnostic instances."
+
+const DIAGNOSTIC_MISSING_RATIONALE_MESSAGE =
+  "A diagnostic step must carry a rationale — cause and whyRepairDiscriminates — " +
+  "or constraints 1, 2 and 5 (one failure, one discriminating repair, a " +
+  "deterministic signal) have nothing to be argued against."
+
+/**
  * The atom of an exercise: *n* prompt-ish blocks plus exactly one typing
  * block.
  *
@@ -274,6 +313,14 @@ export const StepSchema = z
      */
     concepts: z.array(z.string().min(1)).default([]),
     provenance: ProvenanceSchema.optional(),
+    /**
+     * Falsification→repair family (LTY-FAMILIES A1): the authoring
+     * justification for a diagnostic step's repair. Optional on the base
+     * step — `DiagnosticStepSchema` below is what requires it — so an
+     * ordinary step round-trips through `StepSchema` without ever
+     * mentioning the field it doesn't use.
+     */
+    rationale: RationaleSchema.optional(),
   })
   .refine(
     (step) =>
@@ -337,6 +384,71 @@ export const StepSchema = z
     }
   )
 
+/**
+ * A step in the falsification→repair family: a visible attempted witness
+ * (the frame — typically the buggy code, carried as `‹context›` inside the
+ * typing block's source; see LTY-FRAME's `ROLE_CONTEXT`), a visible
+ * falsified expectation (a `trace` block, LTY-EVIDENCE E2), and the
+ * adaptively revealed Rust delta that repairs it (the step's one typing
+ * block). The player never produces an unbounded natural-language
+ * diagnosis — the bounded repair string simultaneously is the answer, the
+ * explanation, the interaction and the evidence.
+ *
+ * Composes `StepSchema` rather than replacing it: a diagnostic instance
+ * still validates through `ExerciseCorpusSchema` and plays through the
+ * existing runner exactly like any other step, because `rationale` is
+ * inert everywhere except here and in the corpus lint. This schema adds no
+ * field naming difficulty, severity or a diagnostic-specific threshold —
+ * those are exactly the fields the epic forbids this family from
+ * reinventing.
+ *
+ * # The six validity constraints, and where each is enforced
+ *
+ * 1. **One failure.** One principal causal defect. Judgement — argued in
+ *    `rationale.cause`, not independently checkable from the shape alone.
+ * 2. **One discriminating repair.** The repair distinguishes the intended
+ *    misconception rather than merely silencing the symptom. Judgement —
+ *    argued in `rationale.whyRepairDiscriminates`.
+ * 3. **Minimal causal surface.** The frame omits everything unrelated to
+ *    the fault. Judgement — there is no shape-level signal for "everything
+ *    in this context span is relevant."
+ * 4. **Bounded answer.** Seconds to copy once revealed, not a minute.
+ *    Checked below (`DIAGNOSTIC_REPAIR_MAX_CHARS`, single line) — the one
+ *    constraint of the six with an actual shape to check.
+ * 5. **Deterministic signal.** `expected 3, received 4`, never "something
+ *    went wrong." Judgement — argued in `rationale.cause`; a `trace`
+ *    block's `observations` are free-form strings, so nothing here can
+ *    tell a determinstic reading from a vague one.
+ * 6. **Revealable in isolation.** Revealing the repair without showing
+ *    where it belongs is malformed. Structurally guaranteed by LTY-FRAME:
+ *    a step's typing block is always rendered in place inside its frame,
+ *    whatever surrounds it, so there is no shape a diagnostic step could
+ *    take that violates this.
+ */
+export const DiagnosticStepSchema = StepSchema.refine(
+  (step): step is Step & { rationale: Rationale } =>
+    step.rationale !== undefined,
+  {
+    message: DIAGNOSTIC_MISSING_RATIONALE_MESSAGE,
+    path: ["rationale"],
+  }
+).refine(
+  (step) => {
+    const repair = typingBlockOf(step)
+    // The "exactly one typing block" refine on `StepSchema` already reports
+    // a missing repair; nothing to bound here.
+    if (repair === undefined) return true
+    return (
+      repair.source.length <= DIAGNOSTIC_REPAIR_MAX_CHARS &&
+      !repair.source.includes("\n")
+    )
+  },
+  {
+    message: DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE,
+    path: ["blocks"],
+  }
+)
+
 export const ExerciseSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -356,7 +468,9 @@ export type Block = z.infer<typeof BlockSchema>
 /** Every block kind except `typing` — what `promptBlocksOf` hands back. */
 export type ReadBlock = PromptBlock | EvidenceBlock
 export type Provenance = z.infer<typeof ProvenanceSchema>
+export type Rationale = z.infer<typeof RationaleSchema>
 export type Step = z.infer<typeof StepSchema>
+export type DiagnosticStep = z.infer<typeof DiagnosticStepSchema>
 export type Exercise = z.infer<typeof ExerciseSchema>
 
 /**
