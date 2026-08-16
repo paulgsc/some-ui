@@ -18,7 +18,6 @@ const meta: Meta<typeof PromptPanel> = {
 export default meta
 type Story = StoryObj<typeof PromptPanel>
 
-const seed = nextExercise()
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
 
 /** Wraps a single step as its own exercise, for stories with no corpus entry to pull from. */
@@ -36,6 +35,62 @@ const hostile: Exercise = wrap(
   "fixture-hostile",
   "Hostile fixture",
   FIXTURE_HOSTILE_PROMPT_STEP
+)
+
+/**
+ * One line of ordinary prose — the ordinary case. Not pulled from `seed`:
+ * LTY-FAMILIES A4 rewrote every step in `entryApi` to carry its claims as
+ * evidence or as an unrendered `obligation` rather than as a `PromptBlock`,
+ * so no step in the validated corpus has plain prose left to show here.
+ */
+const oneLinePromptExercise = wrap(
+  "fixture-one-line-prompt",
+  "One-line prompt fixture",
+  {
+    id: "story-one-line-prompt",
+    goal: "See a single line of ordinary prose beside the proof it points at.",
+    concepts: ["fixture"],
+    blocks: [
+      {
+        kind: "prompt",
+        lines: ["One call, one hash — the ordinary case, for contrast."],
+      },
+      {
+        kind: "typing",
+        source: 'map.entry("b").or_insert(Vec::new());',
+        language: "rust",
+      },
+    ],
+  }
+)
+
+/**
+ * Two lines, the longest a well-authored prompt block should carry
+ * (`PROMPT_MAX_LINES`, `types/exercise.ts`) — same reason this isn't
+ * pulled from `seed` as the one-line fixture just above.
+ */
+const twoLinePromptExercise = wrap(
+  "fixture-two-line-prompt",
+  "Two-line prompt fixture",
+  {
+    id: "story-two-line-prompt",
+    goal: "See the longest a well-authored prompt block should carry.",
+    concepts: ["fixture"],
+    blocks: [
+      {
+        kind: "prompt",
+        lines: [
+          "Two lines is the ceiling PromptBlockSchema enforces at the block level.",
+          "A third line means the step wanted a different kind of evidence block.",
+        ],
+      },
+      {
+        kind: "typing",
+        source: 'map.entry("b").or_insert(Vec::new());',
+        language: "rust",
+      },
+    ],
+  }
 )
 
 // ── One fixture step per evidence kind ────────────────────────────────────
@@ -159,14 +214,24 @@ const PanelInBox = ({
 /** The ordinary case: a one-line prompt. */
 export const OneLine: Story = {
   render: () => (
-    <PanelInBox exercise={seed} stepIndex={5} width="42rem" height="24rem" />
+    <PanelInBox
+      exercise={oneLinePromptExercise}
+      stepIndex={0}
+      width="42rem"
+      height="24rem"
+    />
   ),
 }
 
 /** Two lines, the longest a well-authored prompt block should carry. */
 export const SeveralLines: Story = {
   render: () => (
-    <PanelInBox exercise={seed} stepIndex={6} width="42rem" height="24rem" />
+    <PanelInBox
+      exercise={twoLinePromptExercise}
+      stepIndex={0}
+      width="42rem"
+      height="24rem"
+    />
   ),
 }
 

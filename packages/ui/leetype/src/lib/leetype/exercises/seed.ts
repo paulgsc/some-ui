@@ -350,16 +350,16 @@ const entryApi: Exercise = {
     } satisfies ConstructionStep,
     {
       id: "entry-07-transfer",
-      goal: "Apply the same shape to counting, where the default is cheap enough to build eagerly.",
-      concepts: ["Entry::or_insert", "in-place mutation", "eager defaults"],
+      goal: "Apply the same shape to counting, where the default is already a value, not a computation.",
+      concepts: ["Entry::or_insert", "in-place mutation"],
       obligation:
-        "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because 0 costs nothing to build",
+        "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because there is nothing to defer — 0 is a literal, not a closure's worth of work",
       blocks: [
         {
           kind: "transition",
           label: "default",
-          before: "Vec::new() — allocates",
-          after: "0 — a literal",
+          before: "or_insert_with(Vec::new) — a fn pointer, deferred",
+          after: "or_insert(0) — a literal, nothing to defer",
         },
         {
           kind: "typing",
