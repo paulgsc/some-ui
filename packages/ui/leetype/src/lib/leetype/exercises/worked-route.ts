@@ -60,15 +60,26 @@ const OBLIGATION_CLAIMS = [
 ] as const
 
 /**
- * An `Obligation.content` is valid exactly when attaching any id to it
- * satisfies `ConstructionStepSchema` — the real schema `types/exercise.ts`
- * already ships, reused rather than re-specified so the two can never
- * silently drift apart. The probe id is never seen outside this check.
+ * An `Obligation.content` is valid exactly when it carries no `id` of its
+ * own — the node's key in `ObligationGraph.nodes` is the only place an
+ * obligation's identity may come from (`linearize()`'s own comment on
+ * this) — and attaching a probe id to it satisfies `ConstructionStepSchema`,
+ * the real schema `types/exercise.ts` already ships, reused rather than
+ * re-specified so the two can never silently drift apart.
+ *
+ * Rejecting a stray `id` here, rather than letting the probe below
+ * silently absorb it, is deliberate: `{ id: probe, ...value }` would let
+ * `value.id` override the probe (object spread keeps the *last* value for
+ * a repeated key), so a malformed `content` with its own `id` would still
+ * validate — and would then corrupt `linearize()`'s output identity later,
+ * invisibly. Failing validation here is what makes that authoring mistake
+ * visible where it was made.
  */
 function isValidObligationContent(
   value: unknown
 ): value is Omit<ConstructionStep, "id"> {
   if (typeof value !== "object" || value === null) return false
+  if ("id" in value) return false
   return ConstructionStepSchema.safeParse({
     id: "obligation-content-schema-probe",
     ...value,

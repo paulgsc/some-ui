@@ -117,6 +117,18 @@ describe("ObligationSchema / ObligationGraphSchema", () => {
     expect(result.success).toBe(false)
   })
 
+  it("rejects content carrying its own id — the node's key is the only identity", () => {
+    // A stray content.id would silently absorb the validation probe
+    // (object spread keeps the last value for a repeated key) and, later,
+    // corrupt linearize()'s output identity. Must fail here, not there.
+    const graph = realEntryGraph()
+    const withEmbeddedId = {
+      ...graph.nodes["entry-03-place"]!,
+      content: { ...graph.nodes["entry-03-place"]!.content, id: "smuggled-id" },
+    }
+    expect(ObligationSchema.safeParse(withEmbeddedId).success).toBe(false)
+  })
+
   it("accepts the whole real graph", () => {
     const result = ObligationGraphSchema.safeParse(realEntryGraph())
     expect(result.success).toBe(true)
