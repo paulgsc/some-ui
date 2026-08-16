@@ -168,6 +168,20 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # Corpus lint (LTY-FAMILIES A5): "no judgment is allowed unless it can
+      # produce its own justification" as a CI failure, the fourth of this
+      # repo's data-as-CI-input guardrails (scripts/check-wasm-bindgen-boundary.sh,
+      # scripts/check-mutation-boundary.sh, docs/canon/scripts/check-citations.sh
+      # are the other three). Turbo-filtered, same shape as the Knip step
+      # below: a workspace opts in by declaring a `lint:corpus` script — only
+      # packages/ui/leetype declares one today.
+      - name: Corpus lint (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run lint:corpus \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**' \
+            --concurrency=100%
+
       # public/sw.js is the one file in apps/www that nothing else checks: a
       # plain public/ asset, never bundled, never imported, never type-checked,
       # and unreachable from vitest. This drives it in a real Chromium with a

@@ -5,6 +5,7 @@
     "**/*.stories.ts",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "scripts",
     "vite.config.ts",
     "vitest.config.ts",
     "vitest.setup.ts"
