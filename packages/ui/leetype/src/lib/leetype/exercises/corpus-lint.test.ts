@@ -127,6 +127,44 @@ describe("lintCorpus — deliberately malformed fixtures", () => {
     expect(violations.some((v) => v.includes("concepts is empty"))).toBe(true)
   })
 
+  it("fails when transferFrom references a step id not in the corpus", () => {
+    const step = diagnosticStep({ transferFrom: "does-not-exist" })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("is not a step id"))).toBe(true)
+  })
+
+  it("fails when transferFrom references the step itself", () => {
+    const step = diagnosticStep({ transferFrom: "story-diagnostic" })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("references itself"))).toBe(true)
+  })
+
+  it("fails when transferFrom's target shares no concept id", () => {
+    const source = constructionStep({
+      id: "source",
+      concepts: ["other-concept"],
+    })
+    const step = diagnosticStep({ transferFrom: "source" })
+    const violations = lintCorpus([
+      { id: "e1", title: "t", steps: [source, step] },
+    ])
+    expect(violations.some((v) => v.includes("shares no concept id"))).toBe(
+      true
+    )
+  })
+
+  it("passes when transferFrom's target shares a concept id", () => {
+    const source = constructionStep({ id: "source", concepts: ["shared"] })
+    const step = diagnosticStep({
+      transferFrom: "source",
+      concepts: ["shared"],
+    })
+    const violations = lintCorpus([
+      { id: "e1", title: "t", steps: [source, step] },
+    ])
+    expect(violations).toEqual([])
+  })
+
   it("passes a well-formed diagnostic step and a well-formed construction step", () => {
     const violations = lintCorpus([
       { id: "e1", title: "t", steps: [diagnosticStep(), constructionStep()] },
