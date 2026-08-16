@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
-import {
-  createSettingsRepository,
-  DEFAULT_SETTINGS,
-} from "./settings-repository"
-import type { StorageAdapter } from "./storage"
-import { createInMemoryStorage } from "./storage"
+import type { StorageAdapter } from "@/lib/tenant/storage"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
+
+import { createSettingsRepository, DEFAULT_SETTINGS } from "."
 
 let storage: StorageAdapter
 

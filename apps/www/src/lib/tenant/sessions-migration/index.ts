@@ -33,11 +33,11 @@
  * against an irreversible delete, which is neither.
  */
 
-import type { SessionsStore } from "./sessions-repository"
-import { STORAGE_KEY } from "./sessions-repository"
-import type { StorageAdapter } from "./storage"
-import { readJSON, writeJSON } from "./storage"
-import type { SessionRecord } from "./types"
+import type { SessionsStore } from "@/lib/tenant/sessions-repository"
+import { STORAGE_KEY } from "@/lib/tenant/sessions-repository"
+import type { StorageAdapter } from "@/lib/tenant/storage"
+import { readJSON, writeJSON } from "@/lib/tenant/storage"
+import type { SessionRecord } from "@/lib/tenant/types"
 
 /**
  * What has already been carried over. Versioned alongside the store it

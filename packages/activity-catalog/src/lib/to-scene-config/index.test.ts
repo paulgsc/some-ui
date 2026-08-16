@@ -1,8 +1,12 @@
+import {
+  ACTIVITY_CATALOG,
+  ACTIVITY_IDS,
+  getActivity,
+} from "@activity-catalog/lib/catalog"
+import type { ActivityId } from "@activity-catalog/lib/types"
 import { describe, expect, it } from "vitest"
 
-import { ACTIVITY_CATALOG, ACTIVITY_IDS, getActivity } from "./catalog"
-import { layoutTreeFor, sequenceScenes, toSceneConfig } from "./to-scene-config"
-import type { ActivityId } from "./types"
+import { layoutTreeFor, sequenceScenes, toSceneConfig } from "."
 
 describe("ACTIVITY_CATALOG", () => {
   it("has an entry for every ActivityId, keyed consistently", () => {

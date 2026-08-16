@@ -1,12 +1,12 @@
-import type { StorageAdapter } from "./storage"
+import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
   browserLocalStorage,
   delay,
   MOCK_LATENCY_MS,
   readJSON,
   writeJSON,
-} from "./storage"
-import type { UserProfile } from "./types"
+} from "@/lib/tenant/storage"
+import type { UserProfile } from "@/lib/tenant/types"
 
 const STORAGE_KEY = "some-ui.tenant.profile.v1"
 

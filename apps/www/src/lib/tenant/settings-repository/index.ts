@@ -1,17 +1,17 @@
 import {
   DEFAULT_AUDIO_PREFERENCES,
   withAudioDefaults,
-} from "../audio-preferences"
-import { DEFAULT_NUDGE_PREFERENCES, withNudgeDefaults } from "../study-nudge"
-import type { StorageAdapter } from "./storage"
+} from "@/lib/audio-preferences"
+import { DEFAULT_NUDGE_PREFERENCES, withNudgeDefaults } from "@/lib/study-nudge"
+import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
   browserLocalStorage,
   delay,
   MOCK_LATENCY_MS,
   readJSON,
   writeJSON,
-} from "./storage"
-import type { UserSettings } from "./types"
+} from "@/lib/tenant/storage"
+import type { UserSettings } from "@/lib/tenant/types"
 
 const STORAGE_KEY = "some-ui.tenant.settings.v1"
 
