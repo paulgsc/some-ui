@@ -338,25 +338,22 @@ function buildFilterString(config: FilterConfig): string {
 }
 
 function applyLegacyFilter(config: FilterConfig): void {
-  // Set the attribute on html so prepaint CSS can react instantly
-  document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
-
   const existing = document.getElementById(LEGACY_FILTER_STYLE_ID)
   const style =
     existing instanceof HTMLStyleElement
       ? existing
       : createExtensionStyle(LEGACY_FILTER_STYLE_ID)
 
-  if (existing === null) {
-    document.head.appendChild(style)
-  }
-
   // "dim" style (no invert): the browser's native dark theme already darkened
   // the background, so forcing a canvas colour here would fight it, and
   // counter-inverting media would be a no-op filter applied for nothing.
   // Only the "invert" style needs both.
   const isInverted = Boolean(config.invert)
-  const canvasRule = isInverted ? "background-color: #0d1117 !important;" : ""
+  // This declaration is inside the filtered <html> subtree. Its source colour
+  // therefore has to be white: invert(1) composites it to black. A dark source
+  // such as #0d1117 is inverted to a near-white canvas precisely when the veil
+  // is released, recreating the flash that prepaint is meant to prevent.
+  const canvasRule = isInverted ? "background-color: #fff !important;" : ""
   const mediaRule = isInverted
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
@@ -368,11 +365,25 @@ function applyLegacyFilter(config: FilterConfig): void {
     ${mediaRule}
   `
   )
+
+  // Install the filter before advertising it to prepaint.css. That stylesheet
+  // makes the veil white while this attribute is present, relying on invert()
+  // to composite it back to black. Setting the attribute first exposes the
+  // raw white veil until the filter style is live. A dim-only legacy config is
+  // not inverted at all, so it must never opt into that compensation.
+  if (existing === null) {
+    document.head.appendChild(style)
+  }
+  if (isInverted) {
+    document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
+  } else {
+    document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
+  }
 }
 
 function removeLegacyFilter(): void {
-  document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
   document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
+  document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
 }
 
 // ── Dark theme activation (internal) ────────────────────────────────────────────

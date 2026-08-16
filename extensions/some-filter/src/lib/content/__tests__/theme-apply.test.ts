@@ -75,6 +75,7 @@ describe("applyTheme", () => {
     expect(style).not.toBeNull()
     expect(style?.textContent).toContain("invert(1)")
     expect(style?.textContent).toContain("hue-rotate(180deg)")
+    expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(true)
   })
 
   it("'legacy' does not touch the dark-theme attribute or style", () => {
@@ -86,7 +87,8 @@ describe("applyTheme", () => {
   it("'legacy' with invert forces the canvas colour and counter-inverts media", () => {
     applyTheme("legacy", { invert: 1, brightness: 0.5 })
     const style = document.getElementById(LEGACY_STYLE_ID)
-    expect(style?.textContent).toContain("background-color: #0d1117")
+    expect(style?.textContent).toContain("background-color: #fff")
+    expect(style?.textContent).not.toContain("background-color: #0d1117")
     expect(style?.textContent).toContain(
       "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg)"
     )
@@ -98,6 +100,16 @@ describe("applyTheme", () => {
     expect(style?.textContent).toContain("brightness(0.7)")
     expect(style?.textContent).not.toContain("background-color: #0d1117")
     expect(style?.textContent).not.toContain("img, video, canvas, picture")
+    expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(false)
+  })
+
+  it("removes stale prepaint inversion compensation when switching to dim", () => {
+    applyTheme("legacy", { invert: 1 })
+    expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(true)
+
+    applyTheme("legacy", { invert: 0, brightness: 0.7 })
+
+    expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(false)
   })
 })
 
@@ -118,6 +130,7 @@ describe("restoreVendor", () => {
     restoreVendor()
 
     expect(document.getElementById(LEGACY_STYLE_ID)).toBeNull()
+    expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(false)
   })
 
   it("is safe to call when nothing is applied", () => {
